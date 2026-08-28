@@ -7,7 +7,6 @@ grids rather than instruction strings.
 
 import importlib
 import io
-from collections.abc import Callable
 from contextlib import redirect_stdout
 from typing import ClassVar
 from unittest.mock import patch
@@ -499,277 +498,130 @@ class TestWII2D:
                     v = _wii2d_apply(routes[i][bits[i]], v)
                 assert str(v) == table[combo], (table, bits)
 
-    @pytest.mark.slow
-    def test_symmetric_search_reduces_to_popcount_decode(self) -> None:
-        """Non-parity symmetric tables use a popcount prefix plus a decode."""
-        from esolangs.tools.boolean.wii2d import (
-            _wii2d_apply,
-            _wii2d_symmetric_search,
-        )
+    def test_decode_realizes_every_small_pattern(self) -> None:
+        """The decode primitive fits every 0/1 pattern on its domain.
 
-        n = 10
-        # majority-of-10: general search's length-6 ladder cannot fit this
-        # table (see _wii2d_search's docstring for the counting bound), so
-        # this exercises the fallback directly rather than via the full
-        # (slow) _wii2d_search ladder.
-        popcount_map = [1 if p > n // 2 else 0 for p in range(n + 1)]
-        result = _wii2d_symmetric_search(n, popcount_map)
-        assert result is not None
-        start, routes = result
-        assert routes[:-1] == [("", "+")] * (n - 1)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            v = start
-            for i in range(n):
-                v = _wii2d_apply(routes[i][bits[i]], v)
-            assert v == (1 if bin(combo).count("1") > n // 2 else 0), bits
-
-    def test_search_fallback_decision_at_small_arity(self) -> None:
-        """The fallback decision itself, without enumerating a real ladder.
-
-        ``_wii2d_search`` ends in two lines that decide what a failed ladder
-        means: a symmetric table gets one more chance through
-        :func:`_wii2d_symmetric_search`, and anything else gives up.  Both
-        the arity-10 test below and its slow sibling reach these through a
-        genuine ladder failure, which is what makes them slow -- so this
-        stubs the ladder out entirely and asks only the decision, at ``n``
-        3, where both answers are still real.
-
-        Kept fast (~4ms against ~5s) so the branch stays covered in a run
-        that deselects the slow marks.
+        This is the whole construction's load-bearing claim: the chain half
+        is fixed, so the generator reaches a table exactly when
+        :func:`_wii2d_decode` fits the two columns.  Every pattern through
+        eight points is checked here; the widest domain the generator asks
+        for is sixteen (``n == 5``), covered by the sampled case below.
         """
-        wii2d_mod = importlib.import_module("esolangs.tools.boolean.wii2d")
-        real_domain = wii2d_mod._wii2d_domain  # noqa: SLF001
+        from esolangs.tools.boolean.wii2d import _wii2d_apply, _wii2d_decode
 
-        def one_char_domain(maxlen: int, cap: int) -> list[int]:
-            return real_domain(min(maxlen, 1), cap)
-
-        n = 3
-        symmetric = "".join(
-            "1" if bin(c).count("1") > n // 2 else "0" for c in range(2**n)
-        )
-        stub_ladder = [(2, 10)]
-        with (
-            patch.object(wii2d_mod, "_wii2d_search_start", return_value=None),
-            patch.object(wii2d_mod, "_WII2D_LADDER", stub_ladder),
-            patch.object(wii2d_mod, "_wii2d_domain", side_effect=one_char_domain),
-        ):
-            # Symmetric: majority-of-3 still resolves, via the popcount path.
-            assert wii2d_mod._wii2d_search(n, symmetric) is not None  # noqa: SLF001
-            # Not symmetric, and no ladder to fall back on: give up.
-            assert wii2d_mod._wii2d_search(n, "00000010") is None  # noqa: SLF001
+        for width in range(1, 9):
+            for value in range(2**width):
+                pattern = [(value >> (width - 1 - i)) & 1 for i in range(width)]
+                ops = _wii2d_decode(pattern)
+                assert ops is not None, (width, pattern)
+                got = [_wii2d_apply(ops, x) for x in range(width)]
+                assert got == pattern, (pattern, ops, got)
 
     @pytest.mark.slow
-    def test_search_falls_back_to_symmetric_search_when_the_ladder_fails(
-        self,
-    ) -> None:
-        """A symmetric table that the general ladder can't fit still resolves
-        through :func:`_wii2d_symmetric_search`, and a non-symmetric table
-        that the ladder can't fit gives up entirely.  The general ladder's
-        real failure only shows up at large arity (see
-        ``test_symmetric_search_reduces_to_popcount_decode``), so this stubs
-        :func:`_wii2d_search_start` to fail unconditionally and caps the
-        ladder's own op-string length at 4 (maxlen 5-6 are real but
-        expensive to enumerate and irrelevant here, since the stubbed
-        ``_wii2d_search_start`` ignores them anyway), isolating the fallback
-        decision in :func:`_wii2d_search` itself.  The fallback's own
-        :func:`_wii2d_symmetric_search` call still runs for real (uncapped),
-        so it must still succeed.
-        """
-        wii2d_mod = importlib.import_module("esolangs.tools.boolean.wii2d")
-        from esolangs.tools.boolean.wii2d import _wii2d_domain, _wii2d_search
+    def test_decode_realizes_sampled_wide_patterns(self) -> None:
+        """The decode fits sampled 16-point patterns (the ``n == 5`` domain)."""
+        import random
 
-        def capped_domain(maxlen: int, cap: int) -> list[int]:
-            return _wii2d_domain(min(maxlen, 4), cap)
+        from esolangs.tools.boolean.wii2d import _wii2d_apply, _wii2d_decode
+
+        rng = random.Random(20260828)
+        for _ in range(200):
+            pattern = [rng.randint(0, 1) for _ in range(16)]
+            ops = _wii2d_decode(pattern)
+            assert ops is not None, pattern
+            got = [_wii2d_apply(ops, x) for x in range(16)]
+            assert got == pattern, (pattern, ops, got)
+
+    def test_decode_constant_pattern_is_a_single_digit(self) -> None:
+        """A constant column needs no folding at all, just a digit."""
+        from esolangs.tools.boolean.wii2d import _wii2d_decode
+
+        assert _wii2d_decode([0, 0, 0, 0]) == "0"
+        assert _wii2d_decode([1, 1, 1, 1]) == "1"
+
+    def test_threshold_reads_out_two_live_values(self) -> None:
+        """The tail turns the last two values into their bits, either way round."""
+        from esolangs.tools.boolean.wii2d import _wii2d_apply, _wii2d_threshold
+
+        rising = _wii2d_threshold({3: 0, 9: 1})
+        assert _wii2d_apply(rising, 3) == 0
+        assert _wii2d_apply(rising, 9) == 1
+        falling = _wii2d_threshold({3: 1, 9: 0})
+        assert _wii2d_apply(falling, 3) == 1
+        assert _wii2d_apply(falling, 9) == 0
+        assert _wii2d_threshold({7: 1}) == "1"
+
+    def test_points_rejects_a_collision_needing_both_bits(self) -> None:
+        """Two inputs on one value needing different bits is unrecoverable."""
+        from esolangs.tools.boolean.wii2d import _wii2d_points
+
+        assert _wii2d_points([0, 1, 2], [0, 1, 0]) == {0: 0, 1: 1, 2: 0}
+        assert _wii2d_points([0, 1, 1], [0, 1, 0]) is None
+
+    def test_compress_steers_with_an_increment(self) -> None:
+        """When a plain halving would collide, ``+`` re-pairs the neighbours.
+
+        A bare ``/`` sends both 2 and 3 to 1, which loses the distinction
+        the two bits need; incrementing first splits them to 1 and 2, so
+        compression makes progress instead of stalling.
+        """
+        from esolangs.tools.boolean.wii2d import _wii2d_apply, _wii2d_compress
+
+        values, ops = _wii2d_compress([2, 3], [0, 1], "")
+        # the two inputs stay on distinct values ...
+        assert values[0] != values[1]
+        # ... and the ops actually produce those values
+        assert [_wii2d_apply(ops, v) for v in (2, 3)] == values
+        assert "+" in ops
+
+    def test_chain_is_an_index_chain_then_a_decode(self) -> None:
+        """The constructed routes have the shape the docstring claims."""
+        from esolangs.tools.boolean.wii2d import _wii2d_routes
 
         n = 4
-        symmetric_table = "".join(
-            "1" if bin(c).count("1") > n // 2 else "0" for c in range(2**n)
-        )
-        with (
-            patch.object(wii2d_mod, "_wii2d_search_start", return_value=None),
-            patch.object(wii2d_mod, "_wii2d_domain", side_effect=capped_domain),
-        ):
-            result = _wii2d_search(n, symmetric_table)
-        assert result is not None
-
-        non_symmetric_table = "0001001000110100"
-        with (
-            patch.object(wii2d_mod, "_wii2d_search_start", return_value=None),
-            patch.object(wii2d_mod, "_wii2d_domain", side_effect=capped_domain),
-        ):
-            result = _wii2d_search(n, non_symmetric_table)
-        assert result is None
-
-    def test_symmetric_search_runs_the_whole_ladder(self) -> None:
-        """The symmetric ladder is bounded by construction, not by a clock.
-
-        It used to carry an 8-second deadline, which truncated a fixed
-        ``maxlen`` 0..6 ladder at whatever length the machine happened to
-        reach -- so a symmetric table's program depended on the host.  The
-        ladder is now run to completion, and a table it can decode is decoded
-        regardless of how slow the machine is.
-        """
-        from esolangs.tools.boolean.wii2d import _wii2d_symmetric_search
-
-        result = _wii2d_symmetric_search(3, [0, 1, 0, 1])
+        # not parity and not symmetric, so neither closed form intercepts it
+        table = "0001011001101011"
+        result = _wii2d_routes(n, table)
         assert result is not None
         start, routes = result
-        assert len(routes) == 3
         assert start == 0
+        assert len(routes) == n
+        # every junction but the last is the fixed Horner step
+        assert routes[:-1] == [("*", "*+")] * (n - 1)
 
-    def test_symmetric_search_gives_up_after_the_full_ladder(self) -> None:
-        """No decode is found once every ``maxlen`` in the ladder is tried."""
-        wii2d_mod = importlib.import_module("esolangs.tools.boolean.wii2d")
-        from esolangs.tools.boolean.wii2d import _wii2d_symmetric_search
+    def test_routes_reproduce_every_table_at_three_inputs(self) -> None:
+        """Constructed routes evaluate to the table for all 256 three-bit tables."""
+        import itertools
 
-        with patch.object(wii2d_mod, "_wii2d_sequences", return_value=[]):
-            result = _wii2d_symmetric_search(3, [0, 1, 0, 1])
-        assert result is None
-
-    @staticmethod
-    def _build_search_start_args(
-        maxlen: int, table: str
-    ) -> tuple[list[int], list[str], Callable[[int, int], int], dict[int, int]]:
-        """Build the ``(t, seqs, pre, index)`` args ``_wii2d_search_start`` needs."""
-        from esolangs.tools.boolean.wii2d import (
-            _wii2d_apply,
-            _wii2d_domain,
-            _wii2d_sequences,
-        )
-
-        domain = _wii2d_domain(maxlen, cap=10**6)
-        index = {v: i for i, v in enumerate(domain)}
-        seqs = _wii2d_sequences(maxlen, domain)
-        inv = []
-        for s in seqs:
-            m: dict[int, int] = {}
-            for v in domain:
-                y = _wii2d_apply(s, v)
-                m[y] = m.get(y, 0) | (1 << index[v])
-            inv.append(m)
-
-        def pre(sidx: int, targets: int) -> int:
-            out = 0
-            m = inv[sidx]
-            bits = targets
-            while bits:
-                low = bits & -bits
-                out |= m.get(domain[low.bit_length() - 1], 0)
-                bits ^= low
-            return out
-
-        t = [int(c) for c in table]
-        return t, seqs, pre, index
-
-    def test_search_start_exhausted_budget_returns_none(self) -> None:
-        """A spent work budget aborts the search immediately.
-
-        The budget counts ``pre`` evaluations rather than seconds, so this
-        needs no clock patching and the cut-off lands in the same place on
-        every machine -- which is the point of counting work.
-        """
-        from esolangs.tools.boolean.wii2d import _wii2d_search_start
+        from esolangs.tools.boolean.wii2d import _wii2d_apply, _wii2d_routes
 
         n = 3
-        t, seqs, pre, index = self._build_search_start_args(2, "01101001")
-        result = _wii2d_search_start(n, t, seqs, pre, index, 0)
-        assert result is None
+        for value in range(2 ** (2**n)):
+            table = format(value, f"0{2**n}b")
+            result = _wii2d_routes(n, table)
+            assert result is not None, table
+            start, routes = result
+            for combo, bits in enumerate(itertools.product((0, 1), repeat=n)):
+                acc = start
+                for i, bit in enumerate(bits):
+                    acc = _wii2d_apply(routes[i][bit], acc)
+                assert acc == int(table[combo]), (table, bits, acc)
 
-    def test_output_does_not_depend_on_machine_speed(self) -> None:
-        """A slow machine emits the same program a fast one does.
+    def test_routes_are_deterministic(self) -> None:
+        """The construction is a pure function of the table, not of the host."""
+        from esolangs.tools.boolean.wii2d import _wii2d_routes
 
-        This is the regression the counted budget exists for.  The search used
-        to stop on ``time.monotonic``, so the amount of it that completed --
-        and therefore which op-string length produced the answer -- depended on
-        how fast the host was.  Slowing every unit of work down by a large
-        factor here left the old code raising ``ValueError`` on a table it
-        solves when unloaded; the program must now be byte-identical no matter
-        how long the work takes.
+        table = "0001011001101001"
+        assert _wii2d_routes(4, table) == _wii2d_routes(4, table)
 
-        The slowdown is applied to ``pre``, the metered unit, so it costs wall
-        time without changing the work count -- exactly the axis the old clock
-        was sensitive to and the new counter is not.
-        """
-        from esolangs.tools.boolean.wii2d import _wii2d_search_start as original
-
-        wii2d_mod = importlib.import_module("esolangs.tools.boolean.wii2d")
-        table = "01101001"  # XOR3: solved quickly, so the slow run stays cheap
-        fast = wii2d_mod.wii2d(table)
-
-        def slowed(
-            n: int,
-            t: list[int],
-            seqs: list[str],
-            pre: Callable[[int, int], int],
-            index: dict[int, int],
-            budget: int,
-        ) -> tuple[int, list[tuple[str, str]]] | None:
-            def slow_pre(sidx: int, targets: int) -> int:
-                for _ in range(200):  # burn time, not budget
-                    pass
-                return pre(sidx, targets)
-
-            return original(n, t, seqs, slow_pre, index, budget)
-
-        with patch.object(wii2d_mod, "_wii2d_search_start", slowed):
-            slow = wii2d_mod.wii2d(table)
-        assert slow == fast
-
-    def test_search_start_is_machine_independent(self) -> None:
-        """The same table and budget give the same program, run after run.
-
-        The old ladder took its cut-off from ``time.monotonic``, so a busy or
-        slow host could fall through to a longer op string and emit a
-        different program.  With a counted budget the search is a pure
-        function of its inputs.
-        """
-        from esolangs.tools.boolean.wii2d import _wii2d_search_start
-
-        n = 3
-        runs = set()
-        for _ in range(3):
-            t, seqs, pre, index = self._build_search_start_args(2, "01101001")
-            out = _wii2d_search_start(n, t, seqs, pre, index, 10**9)
-            assert out is not None
-            runs.add(repr(out))
-        assert len(runs) == 1
-
-    def test_search_start_clean_failure_returns_none(self) -> None:
-        """An ample budget can still fail cleanly (no route pair fits every
-        requirement), exercising the dead-end and final-``None`` paths instead
-        of the budget path."""
-        from esolangs.tools.boolean.wii2d import _wii2d_search_start
-
-        n = 3
-        # maxlen=1 gives too small an op-string pool to realize XOR3
-        t, seqs, pre, index = self._build_search_start_args(1, "01101001")
-        result = _wii2d_search_start(n, t, seqs, pre, index, 10**9)
-        assert result is None
-
-    def test_search_start_memoizes_repeated_subproblems(self) -> None:
-        """A junction's sub-search is memoized by its requirement set so a
-        repeated subproblem returns the cached result instead of re-solving.
-
-        The budget is a count of ``pre`` evaluations, not a deadline, so it is
-        passed the same ample constant the other budget tests use.
-        """
-        from esolangs.tools.boolean.wii2d import _wii2d_search_start
-
-        n = 4
-        table = "0000000000111101"
-        t, seqs, pre, index = self._build_search_start_args(2, table)
-        result = _wii2d_search_start(n, t, seqs, pre, index, 10**9)
-        assert result is not None
-
-    def test_wii2d_raises_when_the_search_finds_no_route(self) -> None:
-        """``wii2d`` surfaces a search failure as a ``ValueError``."""
+    def test_wii2d_raises_when_the_construction_finds_no_route(self) -> None:
+        """``wii2d`` surfaces a construction failure as a ``ValueError``."""
         from esolangs.tools.boolean import parameterized
 
         wii2d_mod = importlib.import_module("esolangs.tools.boolean.wii2d")
 
         with (
-            patch.object(wii2d_mod, "_wii2d_search", return_value=None),
+            patch.object(wii2d_mod, "_wii2d_routes", return_value=None),
             pytest.raises(ValueError, match="no route"),
         ):
             parameterized.wii2d("0110")
@@ -777,7 +629,7 @@ class TestWII2D:
     def test_layout_embeds_a_nonzero_start_digit(self) -> None:
         """A nonzero ``start`` writes an initial digit before the chain runs.
 
-        ``_wii2d_search`` happens not to need a nonzero start for the small
+        The construction happens not to need a nonzero start for the small
         tables sampled elsewhere in this file, so this drives
         :func:`_wii2d_layout` directly with one and confirms the produced
         template actually runs correctly through the real interpreter.
