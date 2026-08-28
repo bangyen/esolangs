@@ -20,11 +20,13 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.grid_based.streetcode import (
+    _NO_LATCHES,
     _VOID,
     _WALLS,
     _Grid,
     _left,
     _Machine,
+    _Merge,
     _ReachableCell,
     _right,
     _State,
@@ -531,7 +533,7 @@ class TestStreetcodeLaneMerge:
     def test_diverting_before_the_target_abandons_the_merge_latch(self) -> None:
         """A 'U' during the phase-1 approach must not wedge the latch open.
 
-        Without invalidating ``_merge_target`` on a heading change, the
+        Without invalidating ``_merge`` on a heading change, the
         latch would wait forever for a (row, col) the car no longer visits
         (it U-turned away), permanently disabling junction detection for
         the rest of the run.
@@ -549,9 +551,9 @@ class TestStreetcodeLaneMerge:
         machine = machine_unvalidated(code)
         for _ in range(4):
             machine.step()  # down the west lane; the latch forms en route
-        assert machine._merge_target is not None  # noqa: SLF001
+        assert machine._merge is not None  # noqa: SLF001
         machine.step()  # 'U' at (4,1): turns around into the opposite lane
-        assert machine._merge_target is None  # noqa: SLF001
+        assert machine._merge is None  # noqa: SLF001
 
     def test_wall_at_the_turn_destination_falls_back_to_plain_rules(self) -> None:
         """The phase-1 turn must not step onto a wall that appears at the
@@ -559,12 +561,12 @@ class TestStreetcodeLaneMerge:
         wall-following instead of blindly trusting the stale latch."""
         machine = machine_unvalidated(self._lane_merge_code())
         machine.row, machine.col, machine.heading = 3, 1, "S"
-        machine._merge_target = (3, 1, "E", "S", False)  # noqa: SLF001
+        machine._merge = _Merge(3, 1, "E", "S", crossing=False)  # noqa: SLF001
         row = machine.grid[3]
         machine.grid[3] = row[:2] + "+" + row[3:]  # wall directly East
         heading = machine._choose_heading(0)  # noqa: SLF001
         assert heading != "E"
-        assert machine._merge_target is None  # noqa: SLF001
+        assert machine._merge is None  # noqa: SLF001
 
     def test_wall_after_merge_turn_falls_back_to_plain_rules(self) -> None:
         """The phase-2 straight-through suppression must not drive through
@@ -588,7 +590,7 @@ class TestStreetcodeLaneMerge:
         """
         machine = machine_unvalidated(self._lane_merge_code())
         machine.row, machine.col, machine.heading = 3, 1, "S"
-        machine._merge_target = (3, 1, "E", "S", False)  # noqa: SLF001
+        machine._merge = _Merge(3, 1, "E", "S", crossing=False)  # noqa: SLF001
         machine.cells[0] = 1  # latch was taken under cell == 0
         # 1 = the cell as the approach left it, on arrival at the turn
         heading = machine._choose_heading(1)  # noqa: SLF001
@@ -601,11 +603,11 @@ class TestStreetcodeLaneMerge:
         latch must not wait forever for a target it can no longer reach."""
         machine = machine_unvalidated(self._lane_merge_code())
         machine.row, machine.col, machine.heading = 1, 1, "S"
-        machine._merge_target = (3, 1, "E", "S", False)  # noqa: SLF001
+        machine._merge = _Merge(3, 1, "E", "S", crossing=False)  # noqa: SLF001
         row = machine.grid[2]
         machine.grid[2] = row[:1] + "+" + row[2:]  # wall directly ahead
         heading = machine._choose_heading(0)  # noqa: SLF001
-        assert machine._merge_target is None  # noqa: SLF001
+        assert machine._merge is None  # noqa: SLF001
         assert heading == "E"  # falls back to plain wall-following
 
     def test_turn_lands_in_the_lane_without_an_approach(self) -> None:
@@ -617,7 +619,7 @@ class TestStreetcodeLaneMerge:
         machine.cells[0] = 1  # nonzero -> second-leftmost of [S, W] = West
         heading = machine._choose_heading(0)  # noqa: SLF001
         assert heading == "W"
-        assert machine._merge_target is None  # noqa: SLF001
+        assert machine._merge is None  # noqa: SLF001
 
     def test_four_way_junction_also_merges(self) -> None:
         """A four-way junction (``+`` at all four detection-window corners,
@@ -1520,13 +1522,11 @@ class TestStreetcodeGraphBackedStepping:
         assert machine._graph is not None  # noqa: SLF001
         machine.heading = "N"
         machine._merging_heading = "N"  # noqa: SLF001
-        state = (
+        state = _State(
             machine.row,
             machine.col,
             machine.heading,
-            machine._merge_target,  # noqa: SLF001
-            machine._merging_heading,  # noqa: SLF001
-            machine._skip_hug,  # noqa: SLF001
+            machine._latches,  # noqa: SLF001
         )
         assert state not in machine._graph  # noqa: SLF001
         machine.step()
@@ -1543,7 +1543,7 @@ class TestStreetcodeGraphBackedStepping:
         """
         machine = _Machine(["+----+", "|C  ;|", "|    |", "+----+"], IO())
         assert machine._graph is not None  # noqa: SLF001
-        state = (1, 4, "N", None, None, 0)
+        state = _State(1, 4, "N", _NO_LATCHES)
         assert all(v == "halt" for v in machine._graph[state].values())  # noqa: SLF001
 
         machine.row, machine.col, machine.heading = 1, 4, "N"
@@ -1562,7 +1562,7 @@ class TestStreetcodeGraphBackedStepping:
         """
         machine = _Machine(["+----+", "|C  ;|", "|    |", "+----+"], IO())
         assert machine._graph is not None  # noqa: SLF001
-        state: _State = (1, 1, "E", None, None, 0)
+        state = _State(1, 1, "E", _NO_LATCHES)
         machine._graph[state] = dict.fromkeys(  # noqa: SLF001
             ((0, 0), (0, 1), (1, 0), (1, 1))
         )
@@ -1580,10 +1580,10 @@ class TestStreetcodeGraphBackedStepping:
         width violation at run time; the search just declines to drive on.
         """
         machine = _Machine(["CU;"], IO())
-        assert machine._probe((0, 1, "E", None, None, 0), 0, 0) is None  # noqa: SLF001
-        assert machine._probe((0, 1, "W", None, None, 0), 0, 0) is None  # noqa: SLF001
+        assert machine._probe(_State(0, 1, "E", _NO_LATCHES), 0, 0) is None  # noqa: SLF001
+        assert machine._probe(_State(0, 1, "W", _NO_LATCHES), 0, 0) is None  # noqa: SLF001
         # ...while a lane that is on the grid does produce a successor.
-        assert machine._probe((0, 1, "N", None, None, 0), 0, 0) is not None  # noqa: SLF001
+        assert machine._probe(_State(0, 1, "N", _NO_LATCHES), 0, 0) is not None  # noqa: SLF001
 
 
 class TestStreetcodeMutationSurvivors:
