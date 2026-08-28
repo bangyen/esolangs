@@ -664,15 +664,24 @@ def point_break(truth_table: str) -> str:
     ``POINT loop`` / ``IF g BREAK loop`` / ``END loop`` -- where ``g`` is
     nonzero exactly when ``f`` is 0, so the loop breaks (and the program
     halts) exactly on the 0 outputs and spins forever on the 1 outputs.
-    The constant tables skip the reads: all-0 emits a single no-op ``LET``
-    (always halts) and all-1 emits the loop with a never-firing break.
+    A constant table needs none of the sum, so it emits the template
+    directly -- all-0 a ``LET`` that always halts, all-1 the loop with a
+    never-firing break -- but it still *reads* its ``n`` inputs first and
+    discards them.  A program whose input count depended on its truth table
+    would leave the caller's remaining bits on the stream for whatever ran
+    next; the reads are the interface, and only the body may shrink.
     """
     n = _validate_truth_table(truth_table)
+    # The reads a constant table makes and throws away.  ``?`` is the read,
+    # and the names are the ones the non-constant path would have used, so
+    # nothing else about the template shifts.
+    discards = [f"LET {_pb_name(1 + i)}:=?" for i in range(n)]
     if all(c == "0" for c in truth_table):
-        return f"LET {_pb_name(0)}:=1"
+        return "\n".join([*discards, f"LET {_pb_name(0)}:=1"])
     if all(c == "1" for c in truth_table):
         return "\n".join(
             [
+                *discards,
                 f"LET {_pb_name(0)}:=0",
                 "POINT loop",
                 f"IF {_pb_name(0)} BREAK loop",

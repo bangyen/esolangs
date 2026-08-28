@@ -26,16 +26,6 @@ from esolangs.vm import run_until_halt_or_cycle
 # single row, so nothing about it can fold.
 _TABLES = ["00000000", "01101001"]
 
-# Generators that fail the read-count contract, found the moment this sweep
-# was pointed at an index that can see them (see ``_input_reading_generators``).
-# Both fold constant subtrees and skip the reads the folded-away branches would
-# have made, so a constant table consumes fewer inputs than a parity one --
-# ``flowchart``'s own docstring still claims "any single run ... executes
-# exactly ``n``", which folding falsified.  Jaune had the identical bug and is
-# fixed; these two are recorded as known failures rather than quietly dropped,
-# because the fix is a generator change and not a test change.
-_READ_COUNT_VIOLATORS = {"flowchart", "point_break"}
-
 
 def _input_reading_generators() -> list[tuple[str, object]]:
     """Every boolean generator whose language actually reads input.
@@ -117,8 +107,6 @@ def test_every_table_reads_the_same_number_of_inputs(name: str, entry: tuple) ->
     baseline = counts["01101001"]
     if baseline == 0:
         pytest.skip(f"{name} does not read input in this harness")
-    if name in _READ_COUNT_VIOLATORS:
-        pytest.xfail(f"{name} skips reads when its tree folds: {counts}")
     assert set(counts.values()) == {baseline}, (
         f"{name} reads a different number of inputs depending on the table: "
         f"{counts} -- a constant table must still consume all {baseline}"
