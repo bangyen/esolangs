@@ -65,10 +65,31 @@ __all__ = ["wii2d"]
 # pattern.
 _WII2D_BEAMS: tuple[int, ...] = (4, 16, 32)
 
-# Fold centres whose square would exceed this are rejected.  Op-string length
-# is grid width -- ``'-' * c`` is c cells -- so an unbounded fold centre is a
-# program too wide to be worth emitting even when it is correct.
-_WII2D_FOLD_CAP = 10**9
+# The widest fold centre worth emitting.  A centre costs ``abs(c)`` cells --
+# ``'-' * c`` is spelled out in the grid -- so this is a bound on program
+# width, not on the arithmetic: a fold at 10**6 is perfectly correct and
+# utterly useless, since the row it lands on is a million columns long.
+#
+# Compression normally keeps the centres tiny (the medians below 100 columns
+# come out of it), and this only rejects the outliers where a fold sequence
+# has drifted somewhere it cannot come back from.  Rejecting them costs
+# nothing: the beam simply takes another candidate, and every pattern
+# through ``D == 16`` still decodes.
+_WII2D_MAX_CENTRE = 4096
+
+# The widest decode domain the *index chain* will attempt, i.e. the general
+# (non-symmetric) path is used up to ``n == 6``.
+#
+# The fold search is superlinear in the number of live points, and the op
+# strings it produces grow with them: a 16-point decode is a few dozen cells,
+# a 32-point one a few hundred, and a 64-point one measured 187243 -- correct,
+# and far past any width worth emitting.  Symmetric tables are unaffected;
+# they decode over ``n`` points and stay cheap to much higher arity.
+#
+# The old search raised past ``n == 5`` for the same class of table, so
+# stopping here keeps that contract rather than replacing a bounded failure
+# with an unbounded run.
+_WII2D_MAX_INDEX_DOMAIN = 32
 
 
 def _wii2d_apply(ops: str, value: int) -> int:
@@ -185,12 +206,16 @@ def _wii2d_folds(
             for j in range(i + 1, len(points))
             if (points[i] + points[j]) % 2 == 0
         }
-        for centre in centres:
+        # sorted, not raw set order: ties in the ranking below are broken by
+        # the order candidates were appended, so iterating a set would let
+        # the emitted program depend on set iteration order rather than on
+        # the table alone.
+        for centre in sorted(centres):
+            if abs(centre) > _WII2D_MAX_CENTRE:
+                continue  # correct but too wide to spell out in the grid
             merged: dict[int, int] = {}
             for value in points:
                 folded = (value - centre) ** 2
-                if folded > _WII2D_FOLD_CAP:
-                    break
                 if merged.get(folded, live[value]) != live[value]:
                     break
                 merged[folded] = live[value]
@@ -278,6 +303,14 @@ def _wii2d_routes(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | Non
       ``table[2 * q + b]``.  Each is an arbitrary 0/1 pattern on
       ``0 .. 2 ** (n - 1)``, which :func:`_wii2d_decode` constructs.
 
+    A *symmetric* table (one that depends only on how many inputs are set)
+    takes a cheaper chain: junctions 0 through ``n - 2`` use ``('', '+')``,
+    so the accumulator is the popcount of the bits read so far, and the last
+    junction decodes over ``n`` points instead of ``2 ** (n - 1)``.  That is
+    the same decode primitive on an exponentially smaller domain, which is
+    what keeps majority-of-n and the other threshold functions reachable at
+    arities where the index chain's decode would be hopeless.
+
     ``n == 2`` uses a closed form (:func:`_wii2d_n2_closed_form`) and parity
     gets an exact O(1) one (:func:`_wii2d_parity_routes`); both are shorter
     than the general construction, so they stay.
@@ -289,7 +322,15 @@ def _wii2d_routes(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | Non
         parity_result = _wii2d_parity_routes(n, popcount_map)
         if parity_result is not None:
             return parity_result
+        # branch b of the last junction sees popcount p of the first n - 1
+        # bits and must answer for a total popcount of p + b.
+        low = _wii2d_decode(popcount_map[:n])
+        high = _wii2d_decode(popcount_map[1:])
+        if low is not None and high is not None:
+            return 0, [("", "+")] * (n - 1) + [(low, high)]
     half = 2 ** (n - 1)
+    if half > _WII2D_MAX_INDEX_DOMAIN:
+        return None  # a decode this wide is not worth emitting; see the constant
     branch0 = _wii2d_decode([int(table[2 * q]) for q in range(half)])
     branch1 = _wii2d_decode([int(table[2 * q + 1]) for q in range(half)])
     if branch0 is None or branch1 is None:
@@ -456,13 +497,20 @@ def wii2d(truth_table: str) -> str:
     branches decode that index into the table's two columns by folding
     (:func:`_wii2d_decode`).  The construction is deterministic and depends
     only on the table, so the same table yields the same program everywhere.
+
+    Symmetric tables (those depending only on how many inputs are set) take a
+    popcount chain instead, decoding over ``n`` points rather than
+    ``2 ** (n - 1)``; that keeps majority-of-n and friends cheap at arities
+    well past where the general path stops.  The general path raises
+    :class:`ValueError` past ``n == 6``, where the decode would be wider than
+    any program worth emitting.
     """
     n = _validate_truth_table(truth_table)
     result = _wii2d_routes(n, truth_table)
     if result is None:
         raise ValueError(
-            "the WII2D n-embedding construction found no route: the decode "
-            "folds dead-ended on this table"
+            "the WII2D n-embedding construction found no route; dense "
+            "non-symmetric tables past n == 6 are out of reach"
         )
     start, routes = result
     return "\n".join(_wii2d_layout(n, start, routes))

@@ -589,6 +589,51 @@ class TestWII2D:
         # every junction but the last is the fixed Horner step
         assert routes[:-1] == [("*", "*+")] * (n - 1)
 
+    def test_symmetric_tables_use_a_popcount_chain(self) -> None:
+        """A symmetric table decodes over ``n`` points, not ``2 ** (n - 1)``.
+
+        Majority-of-10 is the case the index chain cannot help with -- its
+        decode domain would be 512 points -- so this pins that symmetric
+        tables take the popcount chain instead, and that the result is
+        exact on every one of the 1024 inputs.
+        """
+        import itertools
+
+        from esolangs.tools.boolean.wii2d import _wii2d_apply, _wii2d_routes
+
+        n = 10
+        table = "".join(
+            "1" if bin(combo).count("1") > n // 2 else "0" for combo in range(2**n)
+        )
+        result = _wii2d_routes(n, table)
+        assert result is not None
+        start, routes = result
+        assert routes[:-1] == [("", "+")] * (n - 1)
+        for combo, bits in enumerate(itertools.product((0, 1), repeat=n)):
+            acc = start
+            for i, bit in enumerate(bits):
+                acc = _wii2d_apply(routes[i][bit], acc)
+            assert acc == int(table[combo]), (bits, acc)
+
+    def test_symmetric_non_monotone_table_is_reachable(self) -> None:
+        """An exactly-k-of-n table is symmetric but not monotone, and fits."""
+        import itertools
+
+        from esolangs.tools.boolean.wii2d import _wii2d_apply, _wii2d_routes
+
+        n, k = 6, 3
+        table = "".join(
+            "1" if bin(combo).count("1") == k else "0" for combo in range(2**n)
+        )
+        result = _wii2d_routes(n, table)
+        assert result is not None
+        start, routes = result
+        for combo, bits in enumerate(itertools.product((0, 1), repeat=n)):
+            acc = start
+            for i, bit in enumerate(bits):
+                acc = _wii2d_apply(routes[i][bit], acc)
+            assert acc == int(table[combo]), (bits, acc)
+
     def test_routes_reproduce_every_table_at_three_inputs(self) -> None:
         """Constructed routes evaluate to the table for all 256 three-bit tables."""
         import itertools
