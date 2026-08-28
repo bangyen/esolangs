@@ -147,6 +147,16 @@ def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
     is on top, and ``!`` evaluates it; each path keeps popping bits until a
     leaf prints.  No node or leaf contains a quote or backtick, so the
     strings need no escaping and the tree grows to any ``n``.
+
+    A node whose rows all agree becomes the leaf it would have reached, and
+    its descendants become empty strings.  The fold has to work that way
+    round: the heap is *positional*, so the ``;`` run is a function of the
+    node's own index and every child sits at a pinned ``2i+1``/``2i+2``, and
+    deleting a subtree the way a token-stream generator does would shift
+    every later index and misroute the whole tree.  Emptying the slots
+    instead leaves the arithmetic untouched, and an emptied slot is never
+    popped because the only node that routed into it has become a leaf.  A
+    constant table goes from 127 to 47 characters at ``n == 3``.
     """
     n = _validate_truth_table(truth_table)
 
@@ -158,13 +168,39 @@ def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
             leaf = (leaf - 1) // 2
         return tuple(reversed(path))
 
+    def rows_under(i: int) -> list[int]:
+        """Table rows reachable from heap node ``i``."""
+        if i >= 2**n - 1:
+            return [sum(b << (n - 1 - k) for k, b in enumerate(combo(i)))]
+        return rows_under(2 * i + 1) + rows_under(2 * i + 2)
+
+    # A node whose rows all agree is replaced, *in its own slot*, by the leaf
+    # it would have reached.  The heap is positional -- every node's children
+    # are pinned at 2i+1/2i+2 and its own ``;`` run is a function of ``i`` --
+    # so a folded subtree cannot be deleted the way a token-stream tree's
+    # can, or every later index would shift.  Leaving the slots in place and
+    # emptying them keeps all of that arithmetic untouched: an empty string
+    # is never popped, because the only node that routed into it is gone.
+    dead: set[int] = set()
     tree: list[str] = []
     for i in range(2 ** (n + 1) - 1):
-        if i < 2**n - 1:  # internal node: test the next input
+        if i in dead:
+            tree.append("")
+            continue
+        rows = rows_under(i)
+        values = {truth_table[row] for row in rows}
+        if i < 2**n - 1 and len(values) == 1:
+            tree.append("0+." if values.pop() == "1" else "0.")
+            below = [2 * i + 1, 2 * i + 2]
+            while below:  # the whole subtree, not just the two children
+                child = below.pop()
+                dead.add(child)
+                if child < 2**n - 1:
+                    below += [2 * child + 1, 2 * child + 2]
+        elif i < 2**n - 1:  # internal node: test the next input
             tree.append("~=~?" + ";" * (i + 1) + "!")
         else:  # leaf: print the table entry for this path
-            index = sum(b << (n - 1 - k) for k, b in enumerate(combo(i)))
-            tree.append("0+." if truth_table[index] == "1" else "0.")
+            tree.append("0+." if truth_table[rows[0]] == "1" else "0.")
 
     bits = "".join("{X" + str(i) + "}" for i in range(n - 1, -1, -1))
     return bits + "".join(f'"{t}"' for t in tree) + "*!"
