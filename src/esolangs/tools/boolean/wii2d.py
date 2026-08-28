@@ -5,14 +5,12 @@ convention described in :mod:`esolangs.tools.boolean.parameterized`: the
 template's ``{Xi}`` placeholders are junction cells the harness fills with
 ``>`` (bit 0) or ``v`` (bit 1), one program per input combination.
 
-The bulk of this module is the *chain search* that finds the branch op
-strings letting each input be embedded exactly once -- see
-:func:`_wii2d_search` for the counting-bound argument that bounds which
-tables the search can reach.
+The branch op strings are *constructed*, not searched -- see
+:func:`_wii2d_routes` for the two-part construction (an index chain and a
+folding decode) and :func:`_wii2d_decode` for the fold algebra it rests on.
 """
 
 import re
-from collections.abc import Callable
 
 from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
 
@@ -35,54 +33,42 @@ __all__ = ["wii2d"]
 # junctions form a *merging chain* (each branch's op cells transform the
 # accumulator and the branches re-merge before the next junction), so each
 # input is embedded exactly once and the final accumulator decodes to the
-# table entry.  WII2D's ops are not monotone (``s`` sends -1 to 1), so the
-# decoding routes can distinguish any table -- every table through four
-# inputs (exhaustively at one through three, sampled dense at four) and
-# sampled dense five-input tables are reachable (verified against the
-# interpreter), and symmetric tables of any arity are covered by closed
-# forms.  The route op sequences are searched per table; the search raises
-# :class:`ValueError` when it cannot fit a table in its budget (large dense
-# non-symmetric tables past ``n == 5``).
-
-
-class _WII2DBudgetError(Exception):
-    """The route search spent its work budget; unwind and try the next length."""
-
-
-# The op alphabet the search composes per junction branch: digits set the
-# accumulator, ``+ - * / s`` are arithmetic, and a space is a no-op.
-_WII2D_OPS = ["+", "-", "*", "/", "s"] + [str(d) for d in range(10)]
-
-# ``(maxlen, budget)`` for the search ladder, the budget in ``pre`` evaluations
-# (the search's inner unit of work: profiling a dense n == 5 table put 9.3M of
-# its 95M calls in ``pre``, and it is the term that grows with both the
-# op-string pool and the requirement count).
+# table entry.
 #
-# Measured cost of a *successful* search, over seeded random tables:
+# Nothing here searches.  WII2D has no accumulator-conditional control flow
+# -- ``^v<>`` are static cells the harness fills, so no cell's behaviour can
+# depend on the accumulator -- which means a junction's two op strings are
+# shared by every prefix that reaches it.  That pins the construction down to
+# one shape: the chain can only accumulate the bits into a single number, and
+# a final op string has to turn that number into the table entry.
+# :func:`_wii2d_routes` does exactly that, in two constructed halves.
+
+# The op alphabet the construction draws on: digits set the accumulator,
+# ``+ - * / s`` are arithmetic (increment, decrement, double, halve, square),
+# and a space is a no-op.  Only ``s`` is not order-preserving, which is why
+# the decode below is built out of folds around it.
+
+# How many fold candidates :func:`_wii2d_decode` keeps at each step, and the
+# widths it escalates through when a narrower one dead-ends.
 #
-#   n == 3   686 evaluations (every table)
-#   n == 4   1.5K - 32K
-#   n == 5   0.4M - 20.2M
+# The fold choice is not always safe to make greedily: the locally-largest
+# merge can leave a state whose remaining values no later fold can separate,
+# so a width of one dead-ends on a small fraction of patterns.  Widening
+# fixes those, and the cost of a wider pass is small enough to just pay it on
+# the patterns that need it -- 4 settles the great majority, and every
+# pattern tested exhaustively through ``D == 16`` (the widest domain the
+# generator asks for, at ``n == 5``) is decoded by 32 or less.
 #
-# Each level gets ~4x the largest success measured at it, so the budget cuts
-# off only searches that have clearly diverged from the pattern of ones that
-# finish.  The cost of proving a table *unreachable* is the whole ladder:
-# ~300M evaluations, which at the observed ~0.5M/s is roughly ten minutes.  A
-# clock-based ladder capped that at ~114 seconds, but only by making the answer
-# depend on the machine -- a bounded wrong answer is not better than a slow
-# right one here, since the caller is generating a program to keep.
-#
-# These replace a ladder of wall-clock seconds; see :func:`_wii2d_search` for
-# why counted work is the right unit.  Note the old 30s level-5 clock was
-# itself below the cost of the slowest success measured above, so it failed on
-# tables this ladder solves.
-_WII2D_LADDER: tuple[tuple[int, int], ...] = (
-    (2, 1_000_000),
-    (3, 2_000_000),
-    (4, 4_000_000),
-    (5, 100_000_000),
-    (6, 200_000_000),
-)
+# Escalating rather than always running at the widest width keeps the common
+# case cheap without making the answer depend on anything but the table: the
+# ladder is fixed, so the width a pattern lands on is a property of the
+# pattern.
+_WII2D_BEAMS: tuple[int, ...] = (4, 16, 32)
+
+# Fold centres whose square would exceed this are rejected.  Op-string length
+# is grid width -- ``'-' * c`` is c cells -- so an unbounded fold centre is a
+# program too wide to be worth emitting even when it is correct.
+_WII2D_FOLD_CAP = 10**9
 
 
 def _wii2d_apply(ops: str, value: int) -> int:
@@ -103,75 +89,198 @@ def _wii2d_apply(ops: str, value: int) -> int:
     return value
 
 
-def _wii2d_search(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | None:
-    """Search for the per-junction branch op sequences realizing ``table``.
+def _wii2d_offset(c: int) -> str:
+    """Return the op string subtracting ``c`` (``'-'`` or ``'+'`` repeated)."""
+    return "-" * c if c >= 0 else "+" * (-c)
+
+
+def _wii2d_points(values: list[int], bits: list[int]) -> dict[int, int] | None:
+    """Map each live accumulator value to its required bit.
+
+    Returns ``None`` when two inputs have collapsed onto the same value but
+    need different bits -- an unrecoverable state, since nothing downstream
+    can separate two inputs that share an accumulator value.
+    """
+    seen: dict[int, int] = {}
+    for value, bit in zip(values, bits, strict=True):
+        if seen.get(value, bit) != bit:
+            return None
+        seen[value] = bit
+    return seen
+
+
+def _wii2d_compress(
+    values: list[int], bits: list[int], ops: str
+) -> tuple[list[int], str]:
+    """Shrink the live values with ``/``, steering with ``+`` when needed.
+
+    Halving is the only thing keeping the fold centres small: ``s`` squares,
+    so without compression the centres (and the ``'-' * c`` runs that spell
+    them) grow past any width worth emitting.  A plain halving sometimes
+    collides two values that need different bits; incrementing first pairs
+    neighbours the other way round, which usually clears the collision.
+    """
+    while max(abs(v) for v in values) > 1:
+        for shift in (0, 1):
+            candidate = [(v + shift) // 2 for v in values]
+            if _wii2d_points(candidate, bits) is None:
+                continue
+            if set(candidate) == set(values):
+                continue  # no progress; a further halving would not help
+            ops += "+" * shift + "/"
+            values = candidate
+            break
+        else:
+            return values, ops
+    return values, ops
+
+
+def _wii2d_threshold(live: dict[int, int]) -> str:
+    """Return the op string collapsing one or two live values to their bits.
+
+    With a single value left the answer is a constant, so a digit does it.
+    With two, ``x -> (x - t) // 2 ** k`` is a step function: subtracting the
+    upper value leaves the lower one negative, and halving drives every
+    negative to -1 (floor division rounds toward minus infinity) and leaves 0
+    at 0, so a following ``+`` reads out the indicator ``[x >= t]``.  ``-s``
+    flips it when the bits run the other way.
+    """
+    points = sorted(live)
+    if len(points) == 1:
+        return str(live[points[0]])
+    low, high = points
+    # after the subtraction the values are ``low - high`` and 0, so the
+    # halving run only has to be long enough to bottom that span out at -1.
+    runs = max(abs(low - high).bit_length() + 1, 1)
+    indicator = _wii2d_offset(high) + "/" * runs + "+"
+    if live[low] == 0 and live[high] == 1:
+        return indicator
+    return indicator + "-s"
+
+
+def _wii2d_folds(
+    values: list[int], bits: list[int]
+) -> list[tuple[int, int, str, list[int]]]:
+    """Return the candidate folds from this state, best first.
+
+    ``s`` is the only op that is not order-preserving, and ``'-' * c + 's'``
+    sends ``x`` to ``(x - c) ** 2``, which merges exactly the pairs
+    equidistant from ``c``.  That is the whole trick: it is the one way to
+    make two different accumulator values agree without a conditional, so
+    every fold is one step toward the two values a threshold can read.  A
+    fold is legal only when every pair it merges needs the same bit.
+    Doubling first (``*``) makes every gap even, which opens the midpoints
+    that are otherwise half-integral.
+    """
+    out: list[tuple[int, int, str, list[int]]] = []
+    for scale in (0, 1):
+        scaled = [v * 2 for v in values] if scale else list(values)
+        live = _wii2d_points(scaled, bits)
+        if live is None:
+            continue
+        points = sorted(live)
+        centres = {
+            (points[i] + points[j]) // 2
+            for i in range(len(points))
+            for j in range(i + 1, len(points))
+            if (points[i] + points[j]) % 2 == 0
+        }
+        for centre in centres:
+            merged: dict[int, int] = {}
+            for value in points:
+                folded = (value - centre) ** 2
+                if folded > _WII2D_FOLD_CAP:
+                    break
+                if merged.get(folded, live[value]) != live[value]:
+                    break
+                merged[folded] = live[value]
+            else:
+                if len(merged) >= len(points):
+                    continue  # nothing merged; the fold buys no progress
+                fragment = ("*" if scale else "") + _wii2d_offset(centre) + "s"
+                folded_values = [(v - centre) ** 2 for v in scaled]
+                folded_values, fragment = _wii2d_compress(folded_values, bits, fragment)
+                out.append(
+                    (len(set(folded_values)), len(fragment), fragment, folded_values)
+                )
+    out.sort(key=lambda cand: (cand[0], cand[1]))
+    return out
+
+
+def _wii2d_decode_at(pattern: list[int], beam: int) -> str | None:
+    """Construct the decode at one fold width; see :func:`_wii2d_decode`."""
+    bits = list(pattern)
+    values, ops = _wii2d_compress(list(range(len(bits))), bits, "")
+    states = [(values, ops)]
+    for _ in range(4 * len(bits) + 8):
+        nxt: list[tuple[list[int], str]] = []
+        for state_values, state_ops in states:
+            live = _wii2d_points(state_values, bits)
+            if live is None:
+                continue
+            if len(live) <= 2:
+                return state_ops + _wii2d_threshold(live)
+            for _size, _cost, fragment, folded in _wii2d_folds(state_values, bits)[
+                :beam
+            ]:
+                nxt.append((folded, state_ops + fragment))
+        if not nxt:
+            return None
+        nxt.sort(key=lambda state: (len(set(state[0])), len(state[1])))
+        states = nxt[:beam]
+    for state_values, state_ops in states:
+        live = _wii2d_points(state_values, bits)
+        if live is not None and len(live) <= 2:
+            return state_ops + _wii2d_threshold(live)
+    return None
+
+
+def _wii2d_decode(pattern: list[int]) -> str | None:
+    """Construct an op string realizing ``pattern`` on ``0 .. len(pattern)-1``.
+
+    This is the one primitive the generator needs: every route is either a
+    fixed chain step or a call to this.  It folds the live values together
+    (:func:`_wii2d_folds`) until two remain, then reads those two out with a
+    threshold (:func:`_wii2d_threshold`), widening through
+    :data:`_WII2D_BEAMS` if a narrower fold width dead-ends.
+
+    Returns ``None`` if even the widest width dead-ends.  No pattern tested
+    through ``D == 16`` -- the widest domain the generator asks for -- does.
+    """
+    bits = list(pattern)
+    if all(bit == bits[0] for bit in bits):
+        return str(bits[0])  # constant: a digit is the whole decode
+    for beam in _WII2D_BEAMS:
+        ops = _wii2d_decode_at(bits, beam)
+        if ops is not None:
+            return ops
+    return None
+
+
+def _wii2d_routes(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | None:
+    """Construct the per-junction branch op strings realizing ``table``.
 
     A junction chain of length ``n`` (one per input) computes
 
         acc = R[n-1][b_n-1] ( ... R[0][b_0] ( start ) ... )
 
     for each input combo, where each ``R[i][b]`` is an op string applied when
-    input ``i`` takes value ``b``.  The search finds the ``2n`` op strings and
-    a starting accumulator value such that the composition equals the table
-    entry for every combo.  It works backward from the last junction (the
-    most constrained: its two branches must map the up to 2**(n-1) incoming
-    values to the table's two columns), propagating the set of acceptable
-    values for each prefix; returns ``(start, routes)`` or ``None`` if the
-    budget runs out.
+    input ``i`` takes value ``b``.  Since no op string can depend on the bits
+    already read, the construction splits the work in two:
 
-    ``n == 2`` uses a closed form (:func:`_wii2d_n2_closed_form`) instead of
-    searching.  Parity and its complement (symmetric tables where the entry
-    is the popcount's low bit) get an exact O(1) closed form
-    (:func:`_wii2d_parity_routes`) up front.  The general search below *can*
-    reach parity -- it finds a chain at every arity tested -- so this is not
-    a reachability requirement the way :func:`_wii2d_symmetric_search` is.
-    It pays on both of the things this package optimizes for, though:
+    * **Index chain.**  Junctions 0 through ``n - 2`` use ``('*', '*+')``, so
+      each one doubles the accumulator and adds the bit.  After them the
+      accumulator is exactly ``q``, the integer whose bits are the first
+      ``n - 1`` inputs -- Horner's rule, and the only thing a prefix-blind
+      chain can accumulate.
+    * **Decode.**  The last junction's two branches are the two columns of
+      the table read at ``q``: branch ``b`` must map ``q`` to
+      ``table[2 * q + b]``.  Each is an arbitrary 0/1 pattern on
+      ``0 .. 2 ** (n - 1)``, which :func:`_wii2d_decode` constructs.
 
-    * **Size.**  The chain the closed form states is shorter than the one the
-      search happens to find first, at every arity: 98 characters against 102
-      at ``n == 3``, 460 against 473 at ``n == 12``.  So the two are not
-      interchangeable -- removing the closed form changes every parity
-      program, and always for the worse.
-    * **Time.**  The search's cost grows sharply, and not smoothly: 137ms at
-      ``n == 12``, then 13.5s at ``n == 13`` and 23s at ``n == 14`` once it
-      falls through to a longer rung of the ladder.  (An earlier note here
-      put the cost at ~2s around ``n == 20``, which understated it by an
-      order of magnitude and at a much lower arity.)
-
-    Every other symmetric table (AND/OR/majority/threshold-k of any arity) is
-    left to the general search first, because it is usually faster there (its
-    preimage-effect pruning makes monotone tables cheap); only if every
-    length in the general ladder fails does :func:`_wii2d_symmetric_search`
-    get a turn, reducing a symmetric table to a popcount accumulator plus a
-    length-``n`` decode lookup instead of the full ``2**n``-row table.  That
-    reduction is not just a speed trick: no chain with op strings bounded by
-    a fixed length L can represent every table once n is large enough.  There
-    are at most ``10 * 15 ** (2*n*(L+1))`` distinct chains (2n routes times
-    (L+1) choices of alphabet-15 op per cell, times 10 start values) against
-    ``2 ** (2**n)`` tables, so universality needs ``L >~ 2**n / (7.8*n)`` --
-    vacuous at small n, but it forces L >= 12 at n == 10 and L >= 43 at
-    n == 12, both well past the length-6 ladder below.  So the general search
-    is *guaranteed* to eventually fail on some tables at high arity
-    (majority/threshold-k among them) regardless of how it is tuned, which is
-    where the popcount reduction earns its keep.
-
-    For non-symmetric tables, larger ``n`` tries the op strings at length 2
-    through 6 with an increasing per-length budget; length 2 suffices for
-    every table through three inputs, length 3 for sampled dense tables at
-    four, and length 5-6 for sampled tables at five.  The requirement sets
-    and preimages are bit-vectors (one bit per reachable accumulator value),
-    and routes that share a preimage effect are deduplicated, so the search
-    stays tractable at the longer lengths.
-
-    The budget is counted in ``pre`` evaluations, not seconds.  A wall-clock
-    budget makes the *output* depend on the machine: a slow host times out at
-    a short op-string length, falls through to a longer one, and emits a
-    different (longer) program than a fast host does -- or exhausts the ladder
-    and raises where the fast host succeeds.  Counting work instead makes the
-    program a pure function of the truth table, which is what lets the same
-    table be regenerated and diffed anywhere.  The price is that a slow
-    machine takes longer rather than silently degrading, and this search is
-    not interruptible mid-table.
+    ``n == 2`` uses a closed form (:func:`_wii2d_n2_closed_form`) and parity
+    gets an exact O(1) one (:func:`_wii2d_parity_routes`); both are shorter
+    than the general construction, so they stay.
     """
     if n == 2:
         return 0, _wii2d_n2_closed_form(table)
@@ -180,43 +289,12 @@ def _wii2d_search(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | Non
         parity_result = _wii2d_parity_routes(n, popcount_map)
         if parity_result is not None:
             return parity_result
-    t = [int(c) for c in table]
-
-    # Longer op strings cover denser tables (every table through n == 4 at
-    # length 3, sampled n == 5 at length 5-6); the budgets grow accordingly.
-    for maxlen, budget in _WII2D_LADDER:
-        domain = _wii2d_domain(maxlen, cap=10**6)
-        index = {v: i for i, v in enumerate(domain)}
-        seqs = _wii2d_sequences(maxlen, domain)
-        inv = []
-        for s in seqs:
-            m: dict[int, int] = {}
-            for v in domain:
-                y = _wii2d_apply(s, v)
-                m[y] = m.get(y, 0) | (1 << index[v])
-            inv.append(m)
-
-        def pre(
-            sidx: int,
-            targets: int,
-            inv: list[dict[int, int]] = inv,
-            domain: list[int] = domain,
-        ) -> int:
-            out = 0
-            m = inv[sidx]
-            bits = targets
-            while bits:
-                low = bits & -bits
-                out |= m.get(domain[low.bit_length() - 1], 0)
-                bits ^= low
-            return out
-
-        result = _wii2d_search_start(n, t, seqs, pre, index, budget)
-        if result is not None:
-            return result
-    if popcount_map is not None:
-        return _wii2d_symmetric_search(n, popcount_map)
-    return None
+    half = 2 ** (n - 1)
+    branch0 = _wii2d_decode([int(table[2 * q]) for q in range(half)])
+    branch1 = _wii2d_decode([int(table[2 * q + 1]) for q in range(half)])
+    if branch0 is None or branch1 is None:
+        return None
+    return 0, [("*", "*+")] * (n - 1) + [(branch0, branch1)]
 
 
 # For n == 2 a closed form exists: ``R0 = (-, *)`` packs bit 0 as -1 (a zero
@@ -280,231 +358,6 @@ def _wii2d_parity_routes(
     return 0, routes
 
 
-def _wii2d_symmetric_search(
-    n: int, popcount_map: list[int]
-) -> tuple[int, list[tuple[str, str]]] | None:
-    """Reduce a symmetric table to a popcount accumulator plus a small decode.
-
-    The first ``n - 1`` junctions all use ``('', '+')``, so the accumulator
-    equals the popcount of the first ``n - 1`` bits (0 through ``n - 1``)
-    regardless of the table.  The last junction only has to turn that
-    popcount into the table entry, so its two branches are searched over a
-    domain of size ``n`` instead of the full ``2**n`` rows the general search
-    fits -- a much cheaper problem that stays tractable well past where the
-    general chain search starts to struggle, though it can still fail (e.g.
-    non-monotone symmetric tables like "exactly k of n ones" for large ``n``)
-    since a single op string cannot express every popcount -> bit map.
-
-    The ladder needs no budget: it is bounded by construction.  ``maxlen``
-    stops at 6 and the only growing term is the op-string pool, which tops out
-    at 7182 strings over a 1062-value domain -- the whole ladder is a bounded
-    amount of work (~14s worst case, and far less whenever an earlier length
-    decodes the table), so there is nothing to cut short.  An earlier 8-second
-    deadline here truncated that fixed ladder at whatever length the machine
-    happened to reach, which made a symmetric table's program depend on the
-    host rather than on the table.
-    """
-    domain_size = n  # popcount before the last bit ranges over 0..n-1
-    for maxlen in range(0, 7):
-        dom = _wii2d_domain(maxlen, cap=10**6)
-        if not all(p in dom for p in range(domain_size)):
-            continue  # op strings this short can't even reach every popcount
-        seqs = _wii2d_sequences(maxlen, dom)
-        last0 = next(
-            (
-                s
-                for s in seqs
-                if all(
-                    _wii2d_apply(s, p) == popcount_map[p] for p in range(domain_size)
-                )
-            ),
-            None,
-        )
-        last1 = next(
-            (
-                s
-                for s in seqs
-                if all(
-                    _wii2d_apply(s, p) == popcount_map[p + 1]
-                    for p in range(domain_size)
-                )
-            ),
-            None,
-        )
-        if last0 is not None and last1 is not None:
-            routes = [("", "+")] * (n - 1) + [(last0, last1)]
-            return 0, routes
-    return None
-
-
-def _wii2d_search_start(
-    n: int,
-    t: list[int],
-    seqs: list[str],
-    pre: Callable[[int, int], int],
-    index: dict[int, int],
-    budget: int,
-) -> tuple[int, list[tuple[str, str]]] | None:
-    """Search the junction routes, returning ``(start, routes)``.
-
-    The requirement sets are bit-vectors over the domain; ``pre`` maps a
-    requirement bit-vector to the bit-vector of incoming values a route can
-    produce it from.  The whole search tree (the route pairs tried at every
-    junction) is independent of the starting accumulator value -- ``start``
-    only decides whether a complete chain is accepted at the leaf -- so the
-    chain is searched once and the leaf's requirement set yields every start
-    value the chain works for.  A junction's sub-search depends only on its
-    requirement set, so results are memoized by ``(junction, requirement set)``
-    to avoid re-solving the same sub-problem reached through different parents.
-
-    ``budget`` caps the number of ``pre`` evaluations, so an over-long search
-    is abandoned after a fixed amount of *work* rather than a fixed amount of
-    time and the result does not depend on how fast the machine is.
-    """
-    start_bits = 0
-    for v in range(10):
-        if v in index:
-            start_bits |= 1 << index[v]
-    memo: dict[
-        tuple[int, tuple[int, ...]], tuple[list[tuple[str, str]], int] | None
-    ] = {}
-    reqsets = [[1 << index[t[c]] for c in range(2**n)]]
-    work = 0
-
-    def metered(sidx: int, targets: int) -> int:
-        """``pre`` with the work counter; raises once the budget is spent."""
-        nonlocal work
-        work += 1
-        if work > budget:
-            raise _WII2DBudgetError
-        return pre(sidx, targets)
-
-    def search(i: int) -> tuple[list[tuple[str, str]], int] | None:
-        cur = reqsets[0]  # 2**(i+1) requirements
-        key = (i, tuple(cur))
-        if key in memo:
-            return memo[key]
-        # Two routes are interchangeable at this junction when they share the
-        # same preimage effect on every requirement (they allow exactly the
-        # same incoming values), so deduplicate by that effect to collapse the
-        # |seqs|**2 pair search -- dense n == 5 tables exhaust this way.
-        eff0: dict[tuple[int, ...], str] = {}
-        for si, s in enumerate(seqs):
-            eff0.setdefault(tuple(metered(si, cur[2 * p]) for p in range(2**i)), s)
-        eff1: dict[tuple[int, ...], str] = {}
-        for si, s in enumerate(seqs):
-            eff1.setdefault(tuple(metered(si, cur[2 * p + 1]) for p in range(2**i)), s)
-        # Try the least-constraining effects first (largest coverage: the most
-        # incoming values they accept), so a solution is reached after a handful
-        # of sub-problems instead of hundreds of dead ends.
-        e0 = sorted(eff0.items(), key=lambda kv: -sum(x.bit_count() for x in kv[0]))
-        e1 = sorted(eff1.items(), key=lambda kv: -sum(x.bit_count() for x in kv[0]))
-        m = 2**i
-        for a, r0 in e0:
-            for b, r1 in e1:
-                nxt = [0] * m
-                ok = True
-                for p in range(m):
-                    w = a[p] & b[p]
-                    if not w:
-                        ok = False
-                        break
-                    nxt[p] = w
-                if not ok:
-                    continue
-                if i == 0:
-                    if nxt[0] & start_bits:
-                        memo[key] = ([(r0, r1)], nxt[0])
-                        return memo[key]
-                else:
-                    reqsets.insert(0, nxt)
-                    sub = search(i - 1)
-                    reqsets.pop(0)
-                    if sub is not None:
-                        memo[key] = (sub[0] + [(r0, r1)], sub[1])
-                        return memo[key]
-        memo[key] = None
-        return None
-
-    try:
-        result = search(n - 1)
-    except _WII2DBudgetError:
-        return None
-    if result is None:
-        return None
-    routes, start_set = result
-    for v in range(10):
-        if v in index and (start_set >> index[v]) & 1:
-            return v, routes
-    # every accepted `result` has `start_set & start_bits` nonzero (the i == 0
-    # acceptance check above requires it, and start_set is that same value
-    # threaded back up unchanged), and start_bits is built from exactly the
-    # v in range(10) with v in index, so the loop above always returns
-    return None  # pragma: no cover
-
-
-def _wii2d_domain(maxlen: int, cap: int) -> list[int]:
-    """Return the values reachable from 0 by op strings up to ``maxlen`` long."""
-    dom = {0}
-    frontier = {0}
-    for _ in range(maxlen):
-        nxt: set[int] = set()
-        for v in frontier:
-            for op in _WII2D_OPS:
-                w = _wii2d_apply(op, v)
-                if abs(w) <= cap:
-                    nxt.add(w)
-        frontier = nxt
-        dom |= nxt
-    return sorted(dom)
-
-
-def _wii2d_sequences(maxlen: int, domain: list[int]) -> list[str]:
-    """All op strings up to ``maxlen`` long, deduplicated by behaviour on the domain.
-
-    The distinct behaviours are reached by breadth-first search (each step
-    appends one op and re-dedupes), rather than enumerating the full 15**maxlen
-    strings, so the pool stays cheap at the lengths the search ladder needs.
-    """
-    size = len(domain)
-    identity = tuple(range(size))  # the empty string leaves every value alone
-    behaviour_index = {identity: ""}  # behaviour (on domain positions) -> op string
-    frontier = [identity]
-    for _ in range(maxlen):
-        nxt: list[tuple[int, ...]] = []
-        for b in frontier:
-            for op in _WII2D_OPS:
-                nb = tuple(_wii2d_apply(op, b[i]) for i in range(size))
-                if nb not in behaviour_index:
-                    behaviour_index[nb] = ""
-                    nxt.append(nb)
-        frontier = nxt
-    # recover one op string per behaviour by walking BFS parents
-    parent: dict[tuple[int, ...], tuple[tuple[int, ...] | None, str]] = {
-        identity: (None, "")
-    }
-    frontier = [identity]
-    for _ in range(maxlen):
-        nxt = []
-        for b in frontier:
-            for op in _WII2D_OPS:
-                nb = tuple(_wii2d_apply(op, b[i]) for i in range(size))
-                if nb in behaviour_index and nb not in parent:
-                    parent[nb] = (b, op)
-                    nxt.append(nb)
-        frontier = nxt
-    out: list[str] = []
-    for b in behaviour_index:
-        ops: list[str] = []
-        cur = b
-        while (prev := parent[cur][0]) is not None:
-            op = parent[cur][1]
-            cur = prev
-            ops.append(op)
-        out.append("".join(reversed(ops)))
-    return out
-
-
 def _wii2d_layout(n: int, start: int, routes: list[tuple[str, str]]) -> list[str]:
     """Lay out the junction chain template.
 
@@ -525,7 +378,7 @@ def _wii2d_layout(n: int, start: int, routes: list[tuple[str, str]]) -> list[str
     placeholder_width = 1
 
     placeholder_col = [0] * n
-    # column 0 is always '>'; when there's a start digit (_wii2d_search only
+    # column 0 is always '>'; when there's a start digit (the construction only
     # ever returns a single digit 0-9), it sits at column 1 and the first
     # placeholder follows it at column 2.  With no digit the placeholder
     # starts right after the '>'.  (No table found at n <= 3 needs a nonzero
@@ -597,27 +450,19 @@ def wii2d(truth_table: str) -> str:
 
     Two inputs use a closed form (:func:`_wii2d_n2_closed_form`): bit 0 is
     packed as -1/0 and each column of the table is decoded by a single op.
-    Larger ``n`` searches for the branch op strings, trying lengths 2 through
-    6 with increasing budgets; length 2 covers every table through three
-    inputs, length 3 sampled dense tables at four, and lengths 5-6 sampled
-    dense tables at five (the earlier ``n == 4`` wall was a length cap, not a
-    representation limit).  The requirement sets and preimages are bit-vectors
-    and routes that share a preimage effect are deduplicated, keeping the
-    longer lengths tractable.  The budget is counted in units of search work,
-    not seconds, so the program a table yields is the same on every machine.
-    When the search cannot fit the table in its
-    budget it raises :class:`ValueError` -- a genuine cap, not a
-    representation limit: the counting-bound argument in :func:`_wii2d_search`
-    shows no chain with bounded op strings can represent every table once
-    ``n`` is large (dense non-symmetric tables past ``n == 5``), so
-    large-arity tables are simply out of reach.
+    Larger ``n`` *constructs* the branch op strings rather than searching for
+    them (:func:`_wii2d_routes`): the first ``n - 1`` junctions accumulate the
+    inputs into an index by Horner's rule, and the last junction's two
+    branches decode that index into the table's two columns by folding
+    (:func:`_wii2d_decode`).  The construction is deterministic and depends
+    only on the table, so the same table yields the same program everywhere.
     """
     n = _validate_truth_table(truth_table)
-    result = _wii2d_search(n, truth_table)
+    result = _wii2d_routes(n, truth_table)
     if result is None:
         raise ValueError(
-            "the WII2D n-embedding search found no route within its budget; "
-            "dense non-symmetric tables past n == 5 are out of reach"
+            "the WII2D n-embedding construction found no route: the decode "
+            "folds dead-ended on this table"
         )
     start, routes = result
     return "\n".join(_wii2d_layout(n, start, routes))
