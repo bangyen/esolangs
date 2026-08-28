@@ -442,6 +442,13 @@ against `10010110` at n=3 unless noted):
   per bit.  Draining `0` leaves as well was a real cost (AND-2's example
   went 124→128 before that case was carved out; it is 110 now), so the
   no-growth property is pinned by a test against the pre-fold construction.
+
+  A **reusable** drain — one cell that keeps popping until the queue is
+  spent, so the leaf is a fixed block rather than a staircase — is verified
+  correct (0/2120 at n≤3, plus n=5..7 in both entry modes) and written up in
+  `generator-optimizations.md`.  It is not shipped: the two cross at five
+  skipped levels, so it only wins from n≥5, past where anything exercises
+  folding.  Worth revisiting if deep tables start mattering.
 - **6-5** — 44 vs 226.  Since folding is what spends the 35 branch labels,
   the generator now picks the tree by counting them rather than by `n`,
   which renders tables the old `n <= 5` gate refused (AND-6 needs 6
