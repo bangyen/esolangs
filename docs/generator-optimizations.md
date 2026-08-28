@@ -1,12 +1,16 @@
 # What each text / boolean generator optimizes
 
 Catalog of the size-and-shape optimizations each of the 45 text and 61 boolean
-generators applies to the *emitted program*. Read from source and docstrings on
-2026-08-27; the constant-folding column for the boolean side reuses the verified
-results in `boolean-constant-folding.md` rather than re-deriving them.
+generators applies to the *emitted program*.
 
 "Optimization" here means what the generator does to make its output smaller
 or better-shaped — not the runtime of the generator itself.
+
+Figures here are measurements and go stale when a generator changes; the
+script that re-derives the shape classification is
+`tests/tools/test_boolean_contract.py::test_generator_shape_is_what_the_catalogue_says`,
+which fails rather than drifts. Prefer stating what a future change must
+respect over what a past change did — the latter is in the commits.
 
 ---
 
@@ -155,8 +159,9 @@ two columns.
 
 ### Constant-subtree folding — the single biggest lever
 
-Verified in `boolean-constant-folding.md` by a ones-count-controlled length
-test (equal ones-counts prevent complement effects from confounding).
+Verified by a ones-count-controlled length test (equal ones-counts prevent
+complement effects from confounding); see Sources for the method and its one
+pitfall.
 
 **Fold (16):** addsubjump, back, bfpda, bio, bitdeque, grapheme, jaune,
 lamfunc, nocomment, polynomial, ram0, rotfuck, sbleq, six_five_arithmetic
@@ -168,7 +173,7 @@ which fold inside their own construction.
 **Also fold (5, re-measured 2026-08-27):** myscript, nevermind,
 forbin_boolean, flowchart, sophie. The prior audit listed these as
 non-folding; the ones-count-controlled test disagrees, e.g. sophie 25 vs 111
-characters and flowchart 164 vs 632 on `11110000` against `10010110`.
+characters and flowchart 166 vs 632 on `11110000` against `10010110`.
 
 **Build a tree but never fold (0).** `circlefuck` / `circlefuck_byte`,
 `forth`, `decleq`, `eval`, `clockwise`, `streetcode`, `six_five` and finally
@@ -242,7 +247,7 @@ was, and the accounts below are kept because the obstacles differed:
 `decleq`, `eval`, `six_five` (n≤5) emit a linear token sequence, so a fold is
 a leaf test plus whatever index bookkeeping the language needs.
 
-- `circlefuck` — **done on this branch.** Reads are unconditional and up front,
+- `circlefuck` — Reads are unconditional and up front,
   and each leaf halts with `@`, so there was no sibling bookkeeping for a fold
   to disturb. `circlefuck` is a thin wrapper over `circlefuck_byte`, so the one
   fold serves both. Measured at n=3: `11111111` 594→203, `10101010` 594→263,
@@ -257,7 +262,7 @@ a leaf test plus whatever index bookkeeping the language needs.
   too high. Verified exhaustively over every table at n≤3 (276 tables × every
   input combination) through the real interpreter, plus 47 tables at n=4 and
   random byte tables for `circlefuck_byte`.
-- `forth` — **done on this branch.** It wrote every node of a full
+- `forth` — It wrote every node of a full
   heap-indexed tree, `for m in range(1, 2**(n+1) - 1)`. The heap indices
   looked like an obstacle but were not: the interpreter stores scopes in a
   `dict[int, str]` keyed by the pushed number and calls with `.get()`
@@ -276,7 +281,7 @@ a leaf test plus whatever index bookkeeping the language needs.
   bytes. The first version produced a *constant* table (99 chars) larger than
   a partly-constant one (63), which is what exposed it; the fix walks the
   whole subtree. Pinned by `test_folded_subtree_leaves_no_orphans`.
-- `decleq` — **done on this branch.** Same self-modifying-memory family as
+- `decleq` — Same self-modifying-memory family as
   `sbleq`. Unlike the other two it splits **most-significant-first**, so its
   subtrees are contiguous runs and `11110000` folds here (to a single branch)
   where it folds nothing in circlefuck or forth.
@@ -301,7 +306,7 @@ a leaf test plus whatever index bookkeeping the language needs.
   fixed `47n` cost the fold cannot touch, but they grow as the tree overtakes
   them: constant vs XOR is 7% at n=2, 16% at n=4, and **44% at n=6**
   (3448 vs 6148 characters).
-- `eval` — **done on this branch**, and the "positional indexing blocks it"
+- `eval` — the "positional indexing blocks it"
   call above was wrong. The premise held: the heap *is* positional, a node's
   `;` run is a function of its own index, and children sit at pinned
   `2i+1`/`2i+2`, so a folded subtree genuinely cannot be **removed**. The
@@ -309,12 +314,12 @@ a leaf test plus whatever index bookkeeping the language needs.
   node becomes the leaf it would have reached and its descendants become
   empty strings, so every index stays exactly where it was and the emptied
   slots are never popped, because the only node that routed into them is
-  gone. Constant tables go `127→47` at n=3.
+  gone. Constant tables go `127→46` at n=3.
 
   Being parameterized, this one also has to preserve equal-width embedding.
   It does so for free — the fold shrinks the *template*, which is shared by
   every instantiation — but that is now pinned by a test rather than assumed.
-- `six_five` — **done on this branch**, and not marginal after all. It was
+- `six_five` — not marginal after all. It was
   listed here as marginal because only the n≤5 path used the tree, but the
   fold changed that too: it now decides the dispatch, and the second
   construction it used to defer to is gone (both below). The saving is the
@@ -322,11 +327,15 @@ a leaf test plus whatever index bookkeeping the language needs.
 
   | n | constant | mixed (equal ones-count) | |
   |---|---|---|---|
-  | 1 | 15 | 46 | 3.1x |
-  | 2 | 16 | 106 | 6.6x |
-  | 3 | 44 | 226 | 5.1x |
-  | 4 | 46 | 466 | 10.1x |
-  | 5 | 19 | 946 | 49.8x |
+  | 1 | 13 | 46 | 3.5x |
+  | 2 | 14 | 106 | 7.6x |
+  | 3 | 15 | 226 | 15.1x |
+  | 4 | 16 | 466 | 29.1x |
+  | 5 | 17 | 946 | 55.6x |
+
+  (Constant column re-measured 2026-08-28; it had been recorded as 15/16/44/
+  46/19, which was neither monotonic nor matching the emitted programs. A
+  constant costs `n + 12`: the reads it must still spend, plus one leaf.)
 
   The committed example went 106→74 bytes.
 
@@ -531,59 +540,24 @@ mutually exclusive — a `*` at column 1 serves east and breaks south, at
 column 0 serves south and breaks east, both together break both — so the
 entry mode has to be a parameter, not a property of the block.
 
-### streetcode: done — but it needed an interpreter fix first
+### streetcode
 
-**Resolved.** A constant table is 428 characters against 1439 at n=3, and
-389 against 3391 at n=4. The committed example dropped 592→444 bytes.
+A constant table is 428 characters against 1439 at n=3, and 389 against 3391
+at n=4.
 
-The generator side is three changes: fold a subtree whose rendered block is
-constant (detected as `count('~') == count('O')` or no `~` at all — the same
-test at any depth), pad siblings to a common width with `ljust`, and carry the
-skipped halls' `=` CP advances into the folded leaf. Two hall markers were
-keyed on assumptions folding breaks: `k == 4` tested `size == 2` when it meant
-"the child is four rows tall", and the hall ran `height * 2` when it meant
-`len(top) + len(bot)`.
+Four things the fold depends on, each of which a change here must preserve:
 
-**What blocked it for most of this session was an interpreter bug, not the
-geometry.** `_junction_choices` takes "whichever way is open" when crossing a
-mouth head-on. One cell short of a gap the road is detected but not yet
-drivable, so that road was dropped and its slot filled with the *oncoming lane*
-of the two-wide street the car was already on — contradicting the method's own
-rule that an open cell with no mouth "is not a road, and must not consume a
-slot". The car then chose between the oncoming lane and straight on, and the
-resulting merge latch suppressed every junction to the end of the row. Fixed by
-deferring while a sighted road is not yet drivable (commit `1e33eb3`).
+- A subtree folds when its *rendered block* is constant — `count('~') ==
+  count('O')`, or no `~` at all — which is the same test at any depth.
+- Siblings are padded to a common width with `ljust`, or the hall's wall ends
+  mid-grid.
+- The skipped halls' `=` CP advances are carried into the folded leaf, or it
+  prints from the wrong cell.
+- Two hall markers are keyed on the child's shape, not its size: `k == 4`
+  means "the child is four rows tall", and the hall's height is
+  `len(top) + len(bot)`.
 
-The account below is what the investigation looked like before that was found,
-kept because the three obstacles it identifies were all real.
-
-### the original diagnosis (obstacles solved along the way)
-
-The leaf test itself is trivial and the reads are safe — `_streetcode_populate`
-emits `[col] * n` *before* the tree, so folding cannot change input
-consumption. Two further obstacles were solved:
-
-- **CP advances.** Each hall spends one `=` advancing the cell pointer, so a
-  folded leaf must spend the ones it skipped or it prints from the wrong cell
-  (an all-zeros table came out as `\x00`). Verified against the unfolded
-  output, which reaches its leaf as `=~O;` rather than `~O;`.
-- **Sibling widths.** `_streetcode_combine` stacks the two children and wraps
-  one wall around the pair, so a folded leaf beside a full subtree leaves that
-  wall ending mid-grid.
-
-The blocker is the third. The hall's rows are hardcoded four-character strings
-(`"|  |"`, `"|  +"`) that nest against each child's own wall, so the unfolded
-tree reads `|  ||  +---+` — hall wall and child wall in *adjacent* columns,
-forming corners. A folded leaf is a single block whose top wall lands where the
-hall expects that corner cell, and the interpreter rejects it: *"wall turns
-without a corner: `-` beside `|`"*. This holds even when both siblings fold to
-equal width, so it is not a raggedness problem — the hall's row construction
-itself assumes a full-depth child. Rewriting it is the layout redesign, and the
-attempt was reverted rather than iterated further.
-
-Worth having anyway, because the prize is real: rows double per level while a
-hall adds four columns, so a constant table measured **395 characters against
-1439** in the working prototype before the wall check rejected it.
+### Fold constraints worth knowing before editing a generator
 
 **`modulous` and `unsquare` fold along a different axis.** Both branch on the
 stack top, which is the *last* input, so they split on `row >> k` counting up
@@ -609,7 +583,7 @@ Three generators inherit folding rather than implementing it: `factor`,
 `painfuck`, and `three_d_brainfuck` all call `brainfuck()` and transform its
 output, so they fold because it does. `painfuck` and `three_d_brainfuck`
 described a "shorter of minterm and tree" dispatch that no longer exists;
-their docstrings are corrected on this branch. Folding matters most to
+their docstrings say so. Folding matters most to
 `factor`, which encodes the program as an integer and refuses tables whose
 encoding exceeds Python's digit limit, so folding turns some previously
 unrenderable tables into runnable ones.
@@ -923,13 +897,14 @@ making the program's *height* reveal the input.
 
 - Shared machinery: `text/helpers.py`, `boolean/helpers.py`, `wrap.py`,
   `laserfuck_layout.py`, `ztoalc_starts.py`, `_polynomial.py`
-- Folding classification: `boolean-constant-folding.md` (untracked in the
-  working checkout, not on this branch). **Partly superseded** — its
-  fold/non-fold split was re-measured here and five generators moved.
-- Re-measurement method: ones-count-controlled length test, comparing
-  `11110000` against `10010110` and `1111111100000000` against
-  `1001011001101001`. Equal ones-counts keep `_maybe_complement` and
-  minterm-count-driven generators from shrinking for the wrong reason, so a
-  strictly shorter program on the constant table means the generator folds.
+- Folding classification: measured, not inherited. The method is a
+  ones-count-controlled length test — equal ones-counts keep
+  `_maybe_complement` and minterm-count-driven generators from shrinking for
+  the wrong reason, so a strictly shorter program on the folding table means
+  the generator folds. **Compare against every one-dependency table, not
+  just `11110000`:** a generator that branches last-input-first (modulous,
+  unsquare, circlefuck, forth) folds `10101010` instead, and testing only
+  the MSB-aligned table reports those four as non-folding when they save
+  56–77%.
 - Everything else: generator docstrings and bodies under
   `src/esolangs/tools/{text,boolean}/`
