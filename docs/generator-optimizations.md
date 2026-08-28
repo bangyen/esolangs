@@ -201,6 +201,25 @@ short-circuit skips that scaffolding; it is not standing in for a fold,
 because there is no tree underneath it to fold. What it must still do is
 read its inputs, which it did not until this branch fixed it.
 
+**Should the other minterm generators get the same short-circuit?** Measured
+2026-08-28: no, because eight of the thirteen already emit their *smallest*
+program on a constant table, with nothing left to strip — `bit_tilde`,
+`cod`, `collatz_multiverse`, `container`, `qoibl`, `suffolk`, `suptiftam`
+and `point_break` itself, whose 35 and 71 characters sit well under the 164
+its other tables need. An empty sum is already the cheap case; the
+short-circuit only earns its place where the scaffolding *around* the sum is
+what costs, which is Point Break's loop guard and nobody else's.
+
+Two do have headroom, and it is **not** a missing constant case:
+`a_painter_ant` (all-0 92, all-1 444) and `rotfuck` (1404, 1740) are cheap
+on all-zeros and expensive on all-ones. That asymmetry is the signature of a
+missing *complement* (technique 6) — neither calls `_maybe_complement`, so a
+dense table is summed over all its one-rows instead of its zero rows, and
+all-ones is the extreme case. Worth doing, but as polarity, not as a
+constant special-case; mind the trap `_maybe_complement`'s docstring
+records, that an all-ones table complements to the same empty sum an
+all-zeros table has.
+
 Their read counts were checked at the same time, since an empty sum can drop
 the reads the way a folded tree can: all seven consume every input on a
 constant table. The note below that `suffolk`'s "constant tables need no
