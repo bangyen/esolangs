@@ -596,7 +596,15 @@ def point_break(truth_table: str) -> str:
     (``1 - bit``), and the function is evaluated as the sum of its
     minterms, each a product of bits and complements; every computation is
     a single-operation ``LET`` so no expression-precedence rule is relied
-    on.  The result ``f`` feeds a fixed template -- ``LET g:=one-f`` then
+    on.
+
+    A table with more ones than zeros sums its *zero* rows instead, since
+    each row costs a ``LET`` per factor.  Inverting is free rather than one
+    more line: ``g`` breaks the loop on a nonzero, so it is already the
+    complement of the answer, and a complemented sum *is* ``g`` -- the
+    subtraction is dropped rather than added to.
+
+    The result ``f`` feeds a fixed template -- ``LET g:=one-f`` then
     ``POINT loop`` / ``IF g BREAK loop`` / ``END loop`` -- where ``g`` is
     nonzero exactly when ``f`` is 0, so the loop breaks (and the program
     halts) exactly on the 0 outputs and spins forever on the 1 outputs.
@@ -622,8 +630,13 @@ def point_break(truth_table: str) -> str:
     for i in range(n):
         lines.append(f"LET {_pb_name(1 + n + i)}:={_pb_name(0)}-{_pb_name(1 + i)}")
     lines.append(f"LET {_pb_name(1 + 2 * n)}:=0")
+    # Each selected row costs a ``LET`` per factor plus one to add it in, so
+    # a table with more ones than zeros is cheaper summed over its *zero*
+    # rows.  Inverting is free: the tail already needs ``1 - f`` for the
+    # loop guard, so a complemented sum *is* that guard.
+    invert = truth_table.count("1") > len(truth_table) // 2
     for k in range(2**n):
-        if truth_table[k] == "0":
+        if truth_table[k] == ("1" if invert else "0"):
             continue
         factors = [
             _pb_name(1 + n + i) if negated else _pb_name(1 + i)
@@ -635,7 +648,12 @@ def point_break(truth_table: str) -> str:
         lines.append(
             f"LET {_pb_name(1 + 2 * n)}:={_pb_name(1 + 2 * n)}+{_pb_name(2 + 2 * n)}"
         )
-    lines.append(f"LET {_pb_name(3 + 2 * n)}:={_pb_name(0)}-{_pb_name(1 + 2 * n)}")
+    # ``g`` is the loop guard, which breaks on a nonzero -- so it is the
+    # complement of the answer, and a complemented sum already holds it.
+    if invert:
+        lines.append(f"LET {_pb_name(3 + 2 * n)}:={_pb_name(1 + 2 * n)}")
+    else:
+        lines.append(f"LET {_pb_name(3 + 2 * n)}:={_pb_name(0)}-{_pb_name(1 + 2 * n)}")
     lines.extend(
         [
             "POINT loop",
