@@ -147,6 +147,38 @@ class TestStreetcode:
             got = run_streetcode(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
+    def test_constant_subtrees_fold(self) -> None:
+        """A subtree whose rows agree prints instead of driving down halls.
+
+        Streetcode splits most-significant-first, so a subtree is a
+        contiguous run: ``11110000`` is two constant halves and collapses,
+        while ``10101010`` is constant over no run and keeps every hall.
+        """
+        constant = len(boolean.streetcode("11111111"))
+        halves = len(boolean.streetcode("11110000"))
+        scattered = len(boolean.streetcode("10101010"))
+        assert constant < scattered
+        assert halves < scattered
+        # a folded leaf still prints the right digit for every input
+        for table in ("11111111", "11110000", "11001100"):
+            program = boolean.streetcode(table)
+            for combo in range(8):
+                bits = [(combo >> (2 - i)) & 1 for i in range(3)]
+                got = run_streetcode(program, [str(b) for b in bits])
+                assert got == table[combo], f"{table} inputs {bits}"
+
+    def test_folded_leaf_keeps_the_cell_pointer_advances(self) -> None:
+        """A folded leaf spends the ``=`` its skipped halls would have.
+
+        Each hall advances CP by one on the way down, so a leaf reached
+        without them prints from the wrong cell -- an all-zeros table came
+        out as ``'\\x00'`` before this was threaded through.
+        """
+        program = boolean.streetcode("00000000")
+        for combo in range(8):
+            bits = [(combo >> (2 - i)) & 1 for i in range(3)]
+            assert run_streetcode(program, [str(b) for b in bits]) == "0"
+
     def test_width_is_a_shape_choice(self) -> None:
         """A width picks a narrower shape, and that shape still computes.
 
