@@ -1081,22 +1081,25 @@ def _heading_from_junction(
     # straight ahead, and a crossing mouth counts the open sides.
     new_heading = roads[0] if current_cell == 0 else roads[1]
     turning = new_heading != heading
+    # A turn's destination is open by construction, so there is no
+    # "sighted too early" case left to defer here.  There was one: a
+    # mouth anchors its near ``+`` up to a cell ahead, so a junction can
+    # fire before the car is level with the gap, and the turn then
+    # stepped into the wall the mouth opens through (fixed in 701de45 by
+    # a guard at this point).  What retired the guard was ``_road_deep``
+    # (fc58258): every road ``_junction_choices`` offers now passes
+    # either ``_road_deep``, whose first test is that very cell, or --
+    # on the crossing branch -- ``_open_toward`` directly.  The guard's
+    # condition became unsatisfiable, which is why it carried a
+    # ``no cover`` pragma and why deleting it moves no drive-state graph
+    # over the corpus.  Searched for a witness before removing it: none
+    # in 857 corpus programs (including 701de45's own fixture) nor in
+    # 3.6M brute-forced (grid, car) states.  ``_road_deep`` is where this
+    # is enforced; keep the first-cell test in it.
+    #
     # Lane merging applies only to a turn onto a detected side road:
     # continuing straight is not a turn at all, and a road whose
     # mouth is not bounded by real wall arms has no lanes to land in.
-    # No committed or generated program sights a road this early, so
-    # the deferral is a correctness guard rather than a path taken.
-    if turning and not _open_toward(grid, car, new_heading):  # pragma: no cover
-        # The chosen road was sighted before the car is level with
-        # its gap: ``_road_mouth`` anchors the near ``+`` up to one
-        # cell ahead, so the cell this turn would step onto can
-        # still be the wall the mouth opens through.  Turning now
-        # would drive the car inside that wall.  Defer instead:
-        # ordinary wall-following carries the car forward, the same
-        # mouth re-detects on arrival (``near`` only shrinks as the
-        # car advances), and the cell is re-read where the turn is
-        # actually made, which is what the spec's choice is about.
-        return None, latches
     if turning and _crossing_mouth(grid, car):
         # Emerging head-on from a branch onto the road it joins: the
         # car has to cross that road to its far lane before turning,
