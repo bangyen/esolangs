@@ -627,6 +627,39 @@ def bitdeque(truth_table: str) -> str:
     a trailing ``INVERT``, and ``GOTO``s past the program end to halt -- so
     every leaf always routes and the deque printed at halt holds exactly the
     answer.
+
+    **The tree splits on its inputs in whichever order emits the shortest
+    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
+    Bitdeque is a *deque*, not a stack: ``INJECT``/``EJECT`` work the head
+    where ``PUSH``/``POP`` work the tail, so a node can bring any bit to an
+    end with ``EJECT PUSH`` (head to tail) or ``POP INJECT`` (tail to head)
+    and is not restricted to the order the load pushed.  Rotation costs two
+    commands per position, so an order pays for its folds; the search
+    measures rather than models, and an order whose rotations outweigh its
+    savings simply loses to the identity.
+
+    The rotations happen *inside the tree*, never in the load block: the
+    ``{Xi}`` setter's ``INVERT PUSH``/``PUSH INVERT`` choice depends on the
+    register parity at its position, so moving the head would desync every
+    fill site.  The emitted load is byte-identical whatever the order.
+    """
+    return best_input_order(truth_table, _bitdeque_ordered)
+
+
+def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's Bitdeque template; see :func:`bitdeque`.
+
+    ``truth_table`` is already permuted, so the rows are in the permuted
+    frame.  ``perm`` is spent on the rotations a node runs before it
+    consumes its bit -- and those are a function of the *level* alone, not
+    of the node: both branches of a level have rotated and consumed exactly
+    the same bits on the way down, so the deque layout at a level is the
+    same on every path through it.  That is what keeps a node's width
+    well-defined for the walker's index arithmetic.
+
+    Under the identity order every bit is already at the tail when it is
+    wanted, so no rotation is emitted and the output is byte-identical to
+    what the unordered generator produced.
     """
     n = _validate_truth_table(truth_table)
 
@@ -640,25 +673,51 @@ def bitdeque(truth_table: str) -> str:
         out.append("GOTO@END")
         return out
 
+    # Simulate the deque to find each level's rotation.  The load pushes the
+    # most significant input first, so the tail -- what ``POP`` returns -- is
+    # input 0 and the head is input ``n - 1``.
+    deque = list(range(n - 1, -1, -1))
+    rotations: list[list[str]] = []
+    for level in range(n):
+        want = perm[level]
+        index = deque.index(want)
+        from_tail = len(deque) - 1 - index
+        if from_tail <= index:
+            # Nearer the tail: rotate the tail round to the head, then POP.
+            rotations.append(["POP", "INJECT"] * from_tail + ["POP"])
+            for _ in range(from_tail):
+                deque.insert(0, deque.pop())
+            deque.pop()
+        else:
+            # Nearer the head: rotate the head round to the tail, then EJECT.
+            rotations.append(["EJECT", "PUSH"] * index + ["EJECT"])
+            for _ in range(index):
+                deque.append(deque.pop(0))
+            deque.pop(0)
+
+    def width(level: int) -> int:
+        # the rotation, its consuming pop, and the node's own ``GOTO``
+        return len(rotations[level]) + 1
+
     # the load block, most significant placeholder first (so the first POP
     # after the load is the MSB); each placeholder expands to two commands
     head = ["{X" + str(i) + "}" for i in range(n - 1, -1, -1)]
 
-    # A node spends ``POP`` and its ``GOTO`` before either subtree, so the
-    # walker's ``at`` lands on this node and ``at + 2`` on the zero subtree.
-    # The load block occupies ``2n`` commands ahead of the tree, which is
-    # where the indices start, so the ``GOTO`` operands are right after
-    # substitution.
+    # A node spends its rotation, its pop and its ``GOTO`` before either
+    # subtree, so the walker's ``at`` lands on this node and ``at +
+    # width(level)`` on the zero subtree.  The load block occupies ``2n``
+    # commands ahead of the tree, which is where the indices start, so the
+    # ``GOTO`` operands are right after substitution.
     tree = decision_tree_tokens(
         truth_table,
         lambda _level, row: leaf(truth_table[row]),
-        lambda _level, zero, one, at: [
-            "POP",
-            f"GOTO {at + 2 + len(zero)}",
+        lambda level, zero, one, at: [
+            *rotations[level],
+            f"GOTO {at + width(level) + len(zero)}",
             *zero,
             *one,
         ],
-        parent_width=2,
+        parent_width=width,
         start=2 * n,
         collapse=True,
     )
