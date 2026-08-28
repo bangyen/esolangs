@@ -75,6 +75,17 @@ _Heading = Literal["N", "E", "S", "W"]
 # (``not self._junction_kind(...)``) and 0 has to keep meaning false.
 _Junction = Literal[0, 3, 4]
 
+# Which way a merge latch turns, relative to the heading it was taken
+# under.  A latch is only ever set for a turn onto a detected side road:
+# ``_junction_choices`` offers nothing but ``_left(heading)``, ``heading``
+# and ``_right(heading)``, and ``turning`` in
+# :meth:`_Machine._heading_from_junction` rules out the straight-ahead
+# case, so these two are the whole space -- straight and reverse are not
+# merely unobserved, they are unreachable.  Storing the turn rather than
+# the destination heading is what makes a merge's two direction fields
+# different types, so :class:`_Merge` cannot be built with them swapped.
+_Turn = Literal["left", "right"]
+
 
 class _Mouth(NamedTuple):
     """A road mouth as :meth:`_Machine._road_mouth` measured it.
@@ -103,25 +114,30 @@ class _Mouth(NamedTuple):
 class _Merge(NamedTuple):
     """An in-progress lane merge, latched until the car reaches ``target``.
 
-    ``new_heading`` and ``latched_heading`` are both a :data:`_Heading`,
-    so before this was a named record nothing but reading order stopped
-    the two from being swapped at either of the construction sites in
-    :meth:`_Machine._heading_from_junction` -- a mistake the checker
+    The latch holds *which way it turns* rather than the heading it turns
+    to.  Both were once a :data:`_Heading`, and a NamedTuple cannot make
+    its fields keyword-only, so nothing but argument order stopped the
+    two from being swapped in a positional call -- a mistake the checker
     could not see and the drive-state graph would faithfully reproduce.
+    A :data:`_Turn` beside a :data:`_Heading` is two different types, so
+    the swap no longer typechecks; it is ruled out by the record's shape
+    rather than by a convention the next construction site has to follow.
+
+    Storing the turn also keeps one fact in one place.  The destination
+    is recovered by :attr:`new_heading`, and the "was this a left turn?"
+    question :meth:`_Machine._heading_from_merge_target` asks when it
+    re-reads the branch is now the stored field rather than a comparison
+    that reconstructs it -- the two spellings could previously disagree.
+
     ``None`` (rather than an instance) means no merge is in progress.
     See ``_Machine.__init__``.
-
-    A NamedTuple cannot make its fields keyword-only, so the checker
-    still accepts the two headings swapped in a positional call; both
-    construction sites therefore pass every field by name, which is what
-    actually rules the swap out.  Keep it that way when adding a third.
     """
 
     # The cell the car must reach before the turn is made.
     target_row: int
     target_col: int
-    # The heading it will turn to there.
-    new_heading: _Heading
+    # Which way it turns there, relative to ``latched_heading``.
+    turn: _Turn
     # The heading the latch was taken under; a turn in between voids it.
     latched_heading: _Heading
     # Whether the latch came from a crossing mouth, which decides whether
@@ -132,6 +148,15 @@ class _Merge(NamedTuple):
     def target(self) -> tuple[int, int]:
         """The cell the car is driving to, as a coordinate pair."""
         return self.target_row, self.target_col
+
+    @property
+    def new_heading(self) -> _Heading:
+        """The heading the car will take at ``target``."""
+        return (
+            _left(self.latched_heading)
+            if self.turn == "left"
+            else _right(self.latched_heading)
+        )
 
 
 class _Latches(NamedTuple):
@@ -435,6 +460,26 @@ def _left(heading: _Heading) -> _Heading:
 def _opposite(heading: _Heading) -> _Heading:
     """Return the heading 180 degrees from ``heading``."""
     return _HEADINGS[(_HEADINGS.index(heading) + 2) % 4]
+
+
+def _turn_of(heading: _Heading, new_heading: _Heading) -> _Turn:
+    """Classify ``heading`` -> ``new_heading`` as a left or a right turn.
+
+    Only the two are representable, because only the two can be latched:
+    see :data:`_Turn`.  A caller that has not already ruled out straight
+    ahead and the reverse is asking a question with no answer, so this
+    raises rather than picking one -- a silent "right" there would latch
+    a turn the junction never offered and steer the car into a wall
+    several steps later, where the cause is no longer visible.
+    """
+    if new_heading == _left(heading):
+        return "left"
+    if new_heading == _right(heading):
+        return "right"
+    raise AssertionError(
+        f"{heading} -> {new_heading} is neither a left nor a right turn:"
+        " a merge latch is only ever set for a turn onto a side road"
+    )
 
 
 class _Machine:
@@ -1530,9 +1575,15 @@ class _Machine:
         # already made, which is the same "preparation must not double
         # as the decision" the arrival read exists to prevent.
         if not merge.crossing:
+            # Left-to-right as the driver sees it: a left turn comes
+            # before carrying straight on, a right turn after.  The
+            # latch stores which of the two it is, so this ordering is
+            # read off the record rather than recomputed from the
+            # headings -- the comparison that used to stand here was a
+            # second spelling of the same fact, free to disagree.
             choices = (
                 [new_heading, merge.latched_heading]
-                if new_heading == _left(merge.latched_heading)
+                if merge.turn == "left"
                 else [merge.latched_heading, new_heading]
             )
             new_heading = choices[0] if arrival_cell == 0 else choices[1]
@@ -1596,7 +1647,7 @@ class _Machine:
             self._merge = _Merge(
                 target_row=target[0],
                 target_col=target[1],
-                new_heading=new_heading,
+                turn=_turn_of(heading, new_heading),
                 latched_heading=heading,
                 crossing=True,
             )
@@ -1615,7 +1666,7 @@ class _Machine:
                 self._merge = _Merge(
                     target_row=target[0],
                     target_col=target[1],
-                    new_heading=new_heading,
+                    turn=_turn_of(heading, new_heading),
                     latched_heading=heading,
                     crossing=False,
                 )
