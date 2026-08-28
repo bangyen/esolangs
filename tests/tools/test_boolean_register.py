@@ -387,6 +387,28 @@ class TestPointBreak:
         assert program.count("LET f:=f+g") == 2  # one minterm per 1 row
         assert program[-3:] == ["POINT loop", "IF h BREAK loop", "END loop"]
 
+    def test_a_dense_table_sums_its_zero_rows(self) -> None:
+        """More ones than zeros costs less summed the other way.
+
+        The guard breaks the loop on a nonzero, so it is already the
+        complement of the answer -- which makes inverting free here: the
+        complemented sum *is* the guard, and the ``one-f`` subtraction is
+        dropped rather than added to.
+        """
+        dense = boolean.point_break("11111110").splitlines()
+        sparse = boolean.point_break("00000001").splitlines()
+        # one minterm each: summing the dense table's ones would be seven
+        assert dense.count("LET h:=h+i") == 1
+        assert sparse.count("LET h:=h+i") == 1
+        # the dense one aliases the guard instead of subtracting for it
+        assert "LET j:=h" in dense
+        assert "LET j:=a-h" in sparse
+        for table in ("11111110", "00000001"):
+            program = boolean.point_break(table)
+            for combo in range(8):
+                bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
+                assert point_break_result(program, bits) == table[combo]
+
     def test_mismatched_table_rejected(self) -> None:
         with pytest.raises(ValueError, match="power-of-two"):
             boolean.point_break("011")
