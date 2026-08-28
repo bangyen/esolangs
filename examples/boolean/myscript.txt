@@ -8,8 +8,4 @@ check b0?
       else,
         say "0"
   else,
-    check b1?
-      if "1",
-        say "0"
-      else,
-        say "0"
+    say "0"
