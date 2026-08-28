@@ -77,7 +77,17 @@ def myscript(truth_table: str) -> str:
     The program reads all ``n`` input lines up front into ``b0..b(n-1)``,
     then walks a ``check`` decision tree: at level ``i`` it branches on
     ``b_i`` and the leaves ``say`` the table value for the combination.
+
+    **The tree splits on its inputs in whichever order emits the shortest
+    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
+    The ``var b{i} is ask`` reads stay in input order, so only the variable
+    a ``check`` names moves.
     """
+    return best_input_order(truth_table, _myscript_ordered)
+
+
+def _myscript_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's MyScript program; see :func:`myscript`."""
     n = _validate_truth_table(truth_table)
     lines = [f"var b{i} is ask" for i in range(n)]
 
@@ -89,7 +99,7 @@ def myscript(truth_table: str) -> str:
         one = build(i + 1, combo | (1 << (n - 1 - i)), pad + "    ")
         zero = build(i + 1, combo, pad + "    ")
         return [
-            f"{pad}check b{i}?",
+            f"{pad}check b{perm[i]}?",
             f'{pad}  if "1",',
             *one,
             f"{pad}  else,",
@@ -200,7 +210,17 @@ def nevermind(truth_table: str) -> str:
     Nevermind reads each input with ``input,?`` into its own variable, then a
     decision tree of nested ``if``/``endif`` blocks prints the result for the
     matching combination.
+
+    **The tree splits on its inputs in whichever order emits the shortest
+    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
+    The ``input,?`` reads stay in input order, so only the variable an
+    ``if`` names moves.
     """
+    return best_input_order(truth_table, _nevermind_ordered)
+
+
+def _nevermind_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's Nevermind program; see :func:`nevermind`."""
     n = _validate_truth_table(truth_table)
     lines: list[str] = []
     for i in range(n):
@@ -217,7 +237,7 @@ def nevermind(truth_table: str) -> str:
             lines.append(f"{indent}print,{truth_table[lo]}")
             return
         for bit in (0, 1):
-            lines.append(f"{indent}if,${chr(ord('a') + k)},==,{bit}")
+            lines.append(f"{indent}if,${chr(ord('a') + perm[k])},==,{bit}")
             build(k + 1, row * 2 + bit)
             lines.append(f"{indent}endif")
 
