@@ -446,7 +446,7 @@ against `10010110` at n=3 unless noted):
   A **reusable** drain — one cell that keeps popping until the queue is
   spent, so the leaf is a fixed block rather than a staircase — is verified
   correct (0/2120 at n≤3, plus n=5..7 in both entry modes) and written up in
-  `generator-optimizations.md`.  It is not shipped: the two cross at five
+  `docs/generator-optimizations.md`.  It is not shipped: the two cross at five
   skipped levels, so it only wins from n≥5, past where anything exercises
   folding.  Worth revisiting if deep tables start mattering.
 - **6-5** — 44 vs 226.  Since folding is what spends the 35 branch labels,
