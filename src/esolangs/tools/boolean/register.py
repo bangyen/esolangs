@@ -42,11 +42,17 @@ def decleq(truth_table: str) -> str:
     The fold has to be counted *before* it is emitted.  ``data_base`` sits
     above the code, so the output cells' addresses depend on how long the
     tree came out; :func:`tree_instrs` walks it first and must stop in
-    exactly the places :func:`node` will.  Getting that wrong does not
-    produce a broken program -- the padding below runs out to whatever
-    address was reserved, so the leaves still resolve -- it just leaves a
-    block of unused zero cells, which is why the test pins the padding
-    rather than the output.
+    exactly the places :func:`node` will.  When it does, the code ends
+    exactly at ``data_base`` and the ``extend`` below allocates only the
+    ``n`` read cells and the two output cells -- every cell in the program
+    holds either an instruction or live data.
+
+    Getting the count wrong does not produce a *broken* program: the
+    ``extend`` fills out to whatever address was reserved, so the leaves
+    still resolve and the output is still correct.  It silently inserts a
+    run of dead zero cells instead (63 of them at ``n == 3`` if the tree is
+    sized as though nothing folded), which is why the test pins the cell
+    count rather than the output -- an output-based test cannot see it.
 
     The 47-step normalize chains are a fixed ``47 * n`` cost the fold
     cannot touch, so the saving grows with ``n`` as the tree overtakes
