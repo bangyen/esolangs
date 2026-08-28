@@ -31,6 +31,17 @@ def six_five(truth_table: str) -> str:
     right path) with a run of sixes plus ``62`` pairs (each ``6`` then ``2``
     nets ``+6 - 5 = +1``), prints with ``A``, and halts with ``0``.
 
+    A subtree whose rows all hold the same value folds to a single leaf
+    rather than the branches that would all reach it -- a constant table is
+    17 characters against 226 at n == 3, and 19 against 946 at n == 5.  The
+    fold still spends the reads it skipped, so a caller feeding several
+    programs from one input stream stays in sync.  Those reads are why a
+    folded leaf cannot use the 8/9 base: ``B`` overwrites the cell, so after
+    the skipped reads it holds the last input character (48 or 49, differing
+    per input) and no fixed run of cell ops maps both to one value.  The
+    leaf steps to cell 1 instead -- untouched, since every tree path works in
+    cell 0 and every leaf halts -- and builds the digit from zero there.
+
     The branch labels are the digits 0..9 then A..Z (values 1..35, consumed
     as ``8n`` operands), one per internal node, so the decision tree caps at
     n == 5 (31 internal nodes).  For larger ``n`` the generator falls back
@@ -48,6 +59,20 @@ def six_five(truth_table: str) -> str:
                 delta = _ASCII_ZERO + int(truth_table[rows[0]]) - base
                 q, r = divmod(delta, 6)
                 return "6" * q + "62" * r + "A0"
+            values = {truth_table[r] for r in rows}
+            if len(values) == 1:
+                # A constant subtree emits its value directly instead of the
+                # branches that would all reach it.  The skipped reads still
+                # happen (a caller feeding several programs from one stream
+                # would otherwise desync), but their ``B``s leave the cell
+                # holding the last input character -- 48 or 49, which differs
+                # per input -- and every cell op adds an unconditional
+                # constant, so no fixed suffix could bring both to one value.
+                # The leaf therefore steps to cell 1, which no tree path ever
+                # writes, and builds the digit from zero.
+                reads = "B" * (n - bit + 1)
+                value = _ASCII_ZERO + int(values.pop())
+                return reads + "13" + _six_five_const(value) + "A0"
             g0 = [r for r in rows if ((r >> (n - bit)) & 1) == 0]
             g1 = [r for r in rows if ((r >> (n - bit)) & 1) == 1]
             sub0 = build(g0, bit + 1, 8)
