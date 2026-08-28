@@ -442,7 +442,31 @@ group (bit~, Suptiftam, Suffolk, Collatz Multiverse, Qoibl, Point Break,
 Circuit Diagram), Container's per-row enumeration, Taglate's table-as-data,
 the arithmetic-index cascades (BFStack, COD, Minsky Swap, Home Row), A
 Painter Ant's grid placement, and WII2D's searched op-chain — have no
-constant subtree to fold and are not candidates.
+constant subtree to fold and are not candidates.  The minterm group has its
+own optimization, below.
+
+## Suffolk's minterm complement (open, ~5%)
+
+A sum-of-minterms program costs one term per row it selects, so a table
+with more ones than zeros is cheaper evaluated complemented and inverted.
+Every generator in that family takes this through `_maybe_complement`
+except Suffolk, where a measured 5.1% is still on the table.
+
+It is not a language limit, though it reads like one at first.  `<` only
+*adds* the cell under the pointer to the accumulator, so the result
+`48 + sum` looks uninvertible — but `!` is
+`tape[ptr] = max(0, tape[ptr] + 1 - acc)`, which subtracts the
+accumulator from a cell.  With the minterm sum in `acc`, a cell holding
+48 becomes `49 - sum`: exactly the complement, and the clamp never bites
+because the sum is 0 or 1.
+
+**What is left is the arithmetic around it.**  A first attempt printed
+one too low (`/` where `0` was wanted), because `.` emits `chr(acc - 1)`
+and `!`'s own `+ 1` has to be accounted for in the constant the cell is
+preloaded with.  Getting that right is a matter of picking the preload,
+not of finding a new primitive — worth doing when the 5% is worth the
+care, and recorded here so the next attempt starts from `!` rather than
+re-deriving that `<` alone cannot do it.
 
 ## Severely constrained boolean generators (remove or lift)
 
