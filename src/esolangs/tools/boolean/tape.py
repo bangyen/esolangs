@@ -88,10 +88,21 @@ def brainif(truth_table: str) -> str:
     BrainIf reads each input into a cell with ``if 0 input``, then a
     recursive decision tree checks each cell with ``if 48/49 goto`` (the
     groups' checks sit adjacent so a failed check falls through to the next
-    candidate).  Every leaf lands on a fresh cell (the last marker moved the
-    pointer past the inputs), so it jumps to one of two shared output
-    routines that build 48 or 49 in place and print it, instead of each leaf
-    incrementing a fresh cell itself.
+    candidate).
+
+    The answer byte is built *before* the tree, on the cell past the inputs:
+    48 ``increment`` lines once, rather than a climb per digit.  A leaf then
+    steps out to that cell, adds one iff its entry is a ``1``, and joins a
+    two-line tail that prints whichever byte it now holds.
+
+    This is what a digit costs.  There is no way to copy a byte in BrainIf
+    and the inputs are consumed by the tree, so an answer built *after* the
+    branch has to be climbed to from zero -- and since a climb of ``if v
+    increment`` lines converges (every entry value 0..47 leaves it at 48),
+    one climb cannot serve both digits.  Two climbs is 48 + 49 lines, which
+    dominated the program: a folded ``11110000`` was 97 increments out of
+    153 lines.  Building first inverts that -- the climb is paid once and
+    the branch only decides whether to add one.
     """
     n = _validate_truth_table(truth_table)
     entries: list[_Entry] = []
@@ -100,16 +111,35 @@ def brainif(truth_table: str) -> str:
         if i < n - 1:
             entries.append(_Cmd("if 48 move right"))
             entries.append(_Cmd("if 49 move right"))
-    for _ in range(n - 1):
-        entries.append(_Cmd("if 48 move left"))
-        entries.append(_Cmd("if 49 move left"))
+    # Build the answer byte once, before the tree, on the cell past the
+    # inputs.  Each leaf then only has to decide whether to add one, which
+    # is what retires the two per-digit output routines.
+    entries.append(_Cmd("if 48 move right"))
+    entries.append(_Cmd("if 49 move right"))
+    entries += [_Cmd(f"if {v} increment") for v in range(_ASCII_ZERO)]
+    # Walk home to cell 0 for the tree.  Both guards are needed at every
+    # step: the answer cell holds 48 and an input cell holds 48 or 49, so
+    # guarding on one digit alone stalls the walk on the other.
+    for _ in range(n):
+        entries.append(_Cmd(f"if {_ASCII_ZERO} move left"))
+        entries.append(_Cmd(f"if {_ASCII_ONE} move left"))
 
     counter = [0]
 
     def build(rows: list[int], k: int) -> list[_Entry]:
         if len(rows) == 1:
             r = int(truth_table[rows[0]])
-            return [_Cmd(f"if 0 goto OUT{r}")]
+            # The pointer is on cell ``k - 1``; step out to the answer cell,
+            # add one iff the answer is a 1, and join the shared tail.
+            out: list[_Entry] = []
+            for _ in range(n - (k - 1)):
+                out.append(_Cmd(f"if {_ASCII_ZERO} move right"))
+                out.append(_Cmd(f"if {_ASCII_ONE} move right"))
+            if r:
+                out.append(_Cmd(f"if {_ASCII_ZERO} increment"))
+            out.append(_Cmd(f"if {_ASCII_ZERO} goto OUT0"))
+            out.append(_Cmd(f"if {_ASCII_ONE} goto OUT0"))
+            return out
         g0 = [row for row in rows if ((row >> (n - k)) & 1) == 0]
         g1 = [row for row in rows if ((row >> (n - k)) & 1) == 1]
         l0, l1 = counter[0], counter[0] + 1
@@ -126,14 +156,11 @@ def brainif(truth_table: str) -> str:
         ]
 
     entries += build(list(range(2**n)), 1)
-    # two shared output routines: every leaf's pointer is on a fresh cell
-    for r in (0, 1):
-        entries.append(_Out(r))
-        entries.append(_Cmd("if 48 move right"))
-        entries.append(_Cmd("if 49 move right"))
-        entries += [_Cmd(f"if {v} increment") for v in range(_ASCII_ZERO + r)]
-        entries.append(_Cmd(f"if {_ASCII_ZERO + r} output"))
-        entries.append(_Cmd(f"if {_ASCII_ZERO + r} goto end"))
+    # One shared tail: the answer cell already holds the byte to print, so
+    # this is two lines rather than a climb per digit.
+    entries.append(_Out(0))
+    entries.append(_Cmd(f"if {_ASCII_ZERO} output"))
+    entries.append(_Cmd(f"if {_ASCII_ONE} output"))
     entries.append(_End())
 
     # resolve labels from the actual line sequence (the "out" markers emit
@@ -159,8 +186,10 @@ def brainif(truth_table: str) -> str:
         if isinstance(entry, _Cmd):
             text = entry.text
             if "goto OUT" in text:
-                r = int(text.split("OUT")[1])
-                text = f"if 0 goto {out_labels[r]}"
+                # keep the line's own guard: a leaf reaches the tail from a
+                # cell holding 48 or 49, so it emits one goto for each
+                guard, target = text.split(" goto OUT")
+                text = f"{guard} goto {out_labels[int(target)]}"
             elif "goto end" in text:
                 text = text.replace("goto end", f"goto {end_line}")
             lines.append(text)
