@@ -874,6 +874,13 @@ def suptiftam(truth_table: str) -> str:
     recursive add-until-zero ``mulStep`` guarded by ``if``), and the sum is
     written to ``term``.  Exactly one minterm is 1 for any input, so the
     sum is the table entry.
+
+    A table with more ones than zeros is summed over its *zero* rows and the
+    sum inverted, since a minterm is four lines per input and ``1 - sum`` is
+    one line however many it saves.  No constant table needs excluding here,
+    unlike the gate-network generators: an all-ones table complements to no
+    minterms at all, leaving ``sum`` at 0, and ``1 - 0`` is the 1 it should
+    print.
     """
     n = _validate_truth_table(truth_table)
     names = [_suptiftam_bit(i) for i in range(n)]
@@ -889,15 +896,21 @@ def suptiftam(truth_table: str) -> str:
     for name in names:
         lines.append(f"{name}=%-[read]22%")
         lines.append("down(:read:)")
+    # One minterm per row selected, so a table with more ones than zeros is
+    # cheaper summed over its *zero* rows and the sum inverted -- ``1 - sum``
+    # is one more line however many minterms it saves.  The same trade
+    # :func:`~esolangs.tools.boolean.helpers._maybe_complement` makes for the
+    # other sum-of-minterms generators.
+    invert = truth_table.count("1") > len(truth_table) // 2
     for row in range(2**n):
-        if truth_table[row] != "1":
+        if truth_table[row] != ("0" if invert else "1"):
             continue
         lines.append("p=1")
         for i, negated in minterm_literals(row, n):
             factor = f"%-[1]{names[i]}%" if negated else names[i]
             lines += ["prod=0", f"a={factor}", "mulStep(:p:)if(p)", "p=prod"]
         lines.append("sum=%+[sum]p%")
-    lines.append("term=sum")
+    lines.append("term=%-[1]sum%" if invert else "term=sum")
     return "\n".join(lines)
 
 
