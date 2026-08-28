@@ -825,8 +825,17 @@ most likely place for this.
 `wii2d` 3.4%) all screen with real upside, but their trees are placements on
 a plane rather than token sequences, so reordering them is 2D layout surgery
 rather than renaming a branch operand. The upside is measured and recorded;
-the work is not attempted here. Likewise `eval` (11.8%),
-`arrowqueue` (12.4%), `circlefuck` (10.5%), `sbleq` (8.3%), `brainif` (4.9%),
+the work is not attempted here — and `arrowqueue` (12.4%) joins them: it is
+a *queue*-fed grid template, so a real reorder needs re-enqueue gadgets to
+bring a bit to the front. Permuting which `{Xi}` name sits in each header
+slot is not an alternative: `_header_rows` fills the header positionally
+from the bits, so the names are inert, and even if they were not, an
+identical emitted program booking a saving against the harness's fill order
+is a redefined benchmark rather than a smaller program. **The bar is that
+the emitted program changes and still consumes its inputs in the same
+order.**
+
+Likewise `eval` (11.8%), `circlefuck` (10.5%), `sbleq` (8.3%), `brainif` (4.9%),
 `three_x` (4.5%), `taglate` (3.1%), `minsky_swap` (2.8%), `bio` (1.5%),
 `decleq` (1.4%), `nocomment` (0.7%), `painfuck` (0.5%), `rotfuck` (0.4%) and
 `bfstack` (0.2%) remain unexamined candidates. Read each figure as a **lower
