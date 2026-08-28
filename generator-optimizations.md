@@ -256,10 +256,44 @@ a leaf test plus whatever index bookkeeping the language needs.
   table at n≤3 (2120 runs through the real interpreter) plus constants and
   half-constants at n=4 and n=5.
 
-  Left alone deliberately: the `2**n - 1 <= 35` gate. Folding lowers the
-  marker count, so a build-then-count dispatch could admit some n≥6 tables
-  that currently hit the arithmetic fallback's size cap — a behaviour
-  change, and a separate decision.
+  **The `n ≤ 5` gate is now raised too.** Folding is what spends the branch
+  labels, so the dispatch counts them (`_six_five_markers`) instead of
+  testing `n`: any table whose folded tree fits in 35 labels uses the tree,
+  at any `n`. The old gate tested the *unfolded* node count, which is why
+  it capped at n=5.
+
+  This renders tables neither path could produce before — a table with ones
+  at high indices has a huge `T`, so the arithmetic fallback refused it, and
+  the tree was gated off:
+
+  | table | n | labels | before | after |
+  |---|---|---|---|---|
+  | AND-6 (`0…01`) | 6 | 6 | `ValueError` | 191 chars |
+  | one split | 6 | 1 | `ValueError` | 50 |
+  | two regions | 6 | 2 | `ValueError` | 81 |
+  | constant | 6 | 0 | 483 (arithmetic) | 20 |
+  | AND-8 | 8 | 8 | `ValueError` | 256 |
+
+  Verified through the interpreter over every input combination at n=6,
+  plus n=7 and n=8 — the tree had never executed past n=5 before.
+
+  The count must be exact, since the gate decides before building. It is
+  structurally the same walk as the fold (both split MSB-first over a
+  contiguous range, so a node's children are its slice's two halves),
+  which avoids the second-walk desync trap `decleq` documents above. Note
+  that counting `4` *characters* is not the same as counting markers: an
+  `8n` jump whose operand happens to be `4` contributes one, which is why
+  the test tokenizes the way the interpreter does.
+
+  **Side effect worth recording: the arithmetic path is now unreachable
+  through `six_five`.** A small `T` means ones confined to low indices,
+  which leaves the rest of the table constant, which folds well inside the
+  budget — the two conditions are mutually exclusive. A search over
+  contiguous families and 1500 random tables each at n=6,7,8,9 found no
+  table that both exceeds 35 labels and renders arithmetically. That is the
+  same pattern that retired `brainfuck`'s and `dimensional`'s second
+  constructions, but `six_five_arithmetic` is exported API, so it is kept
+  and now tested directly rather than through the dispatch.
 
 **Grid trees.** `clockwise`, `streetcode`, `arrowqueue` place their tree on a
 plane. `clockwise` turned out to need only a leaf test plus two geometry
