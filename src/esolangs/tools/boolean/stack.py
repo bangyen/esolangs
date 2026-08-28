@@ -179,59 +179,72 @@ def forth(truth_table: str) -> str:
 _FORTH_READ = ",68*-"
 
 
+def _forth_swap_top_two(stack: tuple[int, ...]) -> tuple[int, ...]:
+    """``v``: the top two bits trade places."""
+    *rest, second, first = stack
+    return (*rest, first, second)
+
+
+def _forth_rotate_third_up(stack: tuple[int, ...]) -> tuple[int, ...]:
+    """``c``: the third bit from the top moves to the top."""
+    *rest, third, second, first = stack
+    return (*rest, second, first, third)
+
+
+# The stack ops the search may use, each with the character that spells it
+# and the number of *bits* it needs above the scope indices.  ``o`` is absent
+# deliberately: it reverses the whole stack, which would drag those indices
+# up with the bits.
+_FORTH_STACK_OPS = (
+    ("v", _forth_swap_top_two, 2),
+    ("c", _forth_rotate_third_up, 3),
+)
+
+
 @cache
 def _forth_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     """Shortest read-and-rotate program reaching each stack arrangement.
 
-    Returns the bit arrangement (bottom to top, by input index) mapped to
-    the program text that produces it.  A breadth-first walk over
-    (arrangement, reads done) finds the shortest, and an arrangement absent
-    from the result is one the ops cannot reach.
+    The state is (arrangement, reads done) and the moves are "read the next
+    input" or one of :data:`_FORTH_STACK_OPS`; breadth-first order makes the
+    first program to reach an arrangement a shortest one.  An arrangement
+    absent from the result is one the ops cannot reach.
 
-    **Reachability is a composition question, not a pool count.**  Counting
-    what a fixed post-read preamble can do says 6 arrangements at every
-    width; interleaving the same two ops with the reads reaches 18 at
-    n == 4 and 54 at n == 5, because a bit can be moved while it is still
-    within reach and then buried in place.
+    **Interleaving is what makes this worth searching.**  A preamble after
+    all ``n`` reads permutes only the last three bits -- 6 arrangements at
+    every width -- while moving a bit before later reads bury it reaches 18
+    at n == 4 and 54 at n == 5.
 
-    **The reachable set is calculable; the shortest program is not, which is
-    why this searches.**  After each read the new bit is on top and its only
-    lasting freedom is how far it sinks -- 0, 1 or 2 places -- so the set is
-    a product of one independent choice per read, ``2 * 3**(n - 2)``, and a
-    test pins that count rather than the magic numbers above.  Building the
-    op strings that way is what does not work: they compose *across* reads,
-    so a ``c`` placed late can do work several per-read ``v``s would each
-    have to redo.  Enumerating per-read choices and keeping the shortest
-    still came out longer on 30 of 54 arrangements at n == 5 (up to two
-    characters each), and program length is the whole objective.
-
-    ``v`` needs two values and ``c`` three, and they are gated on that many
-    *bits* rather than on the stack depth: the scope indices sit below and
-    must not move, and ``c`` would not abort on them -- it would silently
-    rotate an index up to be dispatched on.
+    **The reachable set alone would not need a search**, and a test pins it
+    by its closed form: each read past the first independently sinks its bit
+    0, 1 or 2 places, so the count is ``2 * 3**(n - 2)``.  The *op strings*
+    are why this searches -- they compose across reads, so a late ``c`` does
+    work that several per-read ``v``s would each repeat, and building them
+    per-read came out longer on 30 of 54 arrangements at n == 5.
     """
-    start: tuple[tuple[int, ...], int] = ((), 0)
-    seen: dict[tuple[tuple[int, ...], int], str] = {start: ""}
-    queue = deque([start])
     reached: dict[tuple[int, ...], str] = {}
-    while queue:
-        state = queue.popleft()
-        stack, reads = state
-        text = seen[state]
-        if reads == n and stack not in reached:
-            reached[stack] = text
+    seen: set[tuple[tuple[int, ...], int]] = {((), 0)}
+    frontier: deque[tuple[tuple[int, ...], int, str]] = deque([((), 0, "")])
+    while frontier:
+        stack, reads, text = frontier.popleft()
+        if reads == n:
+            # Breadth-first, so the first program to reach an arrangement is
+            # a shortest one and later arrivals are discarded.
+            reached.setdefault(stack, text)
+
         moves: list[tuple[tuple[int, ...], int, str]] = []
         if reads < n:
-            moves.append(((*stack, reads), reads + 1, _FORTH_READ))
-        if len(stack) >= 2:
-            moves.append(((*stack[:-2], stack[-1], stack[-2]), reads, "v"))
-        if len(stack) >= 3:
-            moves.append(((*stack[:-3], stack[-2], stack[-1], stack[-3]), reads, "c"))
-        for next_stack, next_reads, op in moves:
-            key = (next_stack, next_reads)
-            if key not in seen:
-                seen[key] = text + op
-                queue.append(key)
+            moves.append(((*stack, reads), reads + 1, _FORTH_READ))  # lands on top
+        moves += [
+            (rearrange(stack), reads, code)
+            for code, rearrange, needs in _FORTH_STACK_OPS
+            if len(stack) >= needs
+        ]
+
+        for next_stack, next_reads, code in moves:
+            if (next_stack, next_reads) not in seen:
+                seen.add((next_stack, next_reads))
+                frontier.append((next_stack, next_reads, text + code))
     return reached
 
 
