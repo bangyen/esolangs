@@ -143,7 +143,11 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
 def _reordering_generators() -> list[tuple[str, object, object]]:
     from esolangs.tools.boolean.helpers import _decision_tree_program
     from esolangs.tools.boolean.other import _between_ordered
-    from esolangs.tools.boolean.parameterized import _lamfunc_ordered, _ram0_ordered
+    from esolangs.tools.boolean.parameterized import (
+        _bitdeque_ordered,
+        _lamfunc_ordered,
+        _ram0_ordered,
+    )
 
     return [
         (
@@ -159,6 +163,7 @@ def _reordering_generators() -> list[tuple[str, object, object]]:
         ("ram0", boolean.ram0, _ram0_ordered),
         ("between", boolean.between, _between_ordered),
         ("lamfunc", boolean.lamfunc, _lamfunc_ordered),
+        ("bitdeque", boolean.bitdeque, _bitdeque_ordered),
     ]
 
 

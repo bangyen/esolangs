@@ -201,10 +201,18 @@ def best_input_order(
     inputs in changes; the reads (or the load block, or the ``{Xi}``
     placeholders) stay in input order, so the program consumes its input
     stream exactly as it did.  That is what rules out the generators whose
-    node reads its own bit -- 6-5 and Polynomial read at each node, and
-    Modulous and Bitdeque pop a stack the load pushed in order, so for all
-    four the test order *is* the stream order and cannot be permuted
-    independently.
+    node reads its own bit: 6-5 and Polynomial read at the node that tests
+    the bit, so for them the test order *is* the stream order.  Modulous is
+    out for the neighbouring reason -- its stack reaches only the top two
+    cells (``SWP`` swaps them, and there is no rotate), so a node cannot
+    get at a bit the load buried.
+
+    **Whether a generator can be reordered is a property of the language,
+    not of what its generator happens to emit.**  Bitdeque looked excluded
+    for pushing and popping in order, and is not: ``INJECT``/``EJECT`` work
+    the head where ``PUSH``/``POP`` work the tail, so it is a deque and any
+    bit can be rotated to an end.  Read the interpreter's op set before
+    concluding a tree is stuck with its load order.
     """
     n = _validate_truth_table(truth_table)
     identity = tuple(range(n))
