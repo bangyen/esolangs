@@ -303,6 +303,12 @@ class TestNevermind:
         assert "if,$a,==,0" in program
         assert program.count("endif") == 2
 
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant slice prints its answer instead of branching further."""
+        assert boolean.nevermind("11111111").count("print,") == 1
+        assert boolean.nevermind("11110000").count("print,") == 2
+        assert boolean.nevermind("10010110").count("print,") == 8  # no fold
+
 
 class TestContainer:
     @pytest.mark.parametrize(
