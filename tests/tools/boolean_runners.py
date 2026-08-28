@@ -8,6 +8,7 @@ generated program's output without repeating the capture plumbing.
 import importlib
 import io
 import random
+from collections.abc import Iterator
 from contextlib import redirect_stdout, suppress
 from unittest.mock import patch
 
@@ -28,6 +29,24 @@ def run_six_five(program: str, inputs: list[str]) -> str:
     run = importlib.import_module("esolangs.interpreters.tape_based.six_five").run
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
+def run_six_five_from(program: str, feed: Iterator[str]) -> str:
+    """Run a 6-5 program against an iterator, leaving what it did not read.
+
+    ``run_six_five`` takes a list, so a caller cannot tell an exact read
+    from an under-read.  Draining a shared iterator instead lets the caller
+    assert it came back empty, which is how the "every path consumes exactly
+    ``n`` inputs" contract is checked without parsing the emission.
+    """
+    run = importlib.import_module("esolangs.interpreters.tape_based.six_five").run
+    buffer = io.StringIO()
+    with (
+        patch("builtins.input", side_effect=lambda *_: next(feed)),
+        redirect_stdout(buffer),
+    ):
         run(program, io=IO())
     return buffer.getvalue()
 
