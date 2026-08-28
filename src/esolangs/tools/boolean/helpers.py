@@ -235,10 +235,14 @@ def best_input_order(
         greedy = _greedy_input_order(truth_table, n)
         orders = [] if greedy == identity else [greedy]
 
+    # An empty candidate means "this order could not be built" -- ZTOALC L
+    # searches for a collision-free line placement and some orders have
+    # none -- so it is skipped rather than winning on length 0.  A build
+    # that always succeeds never returns one, and gets the plain behaviour.
     best = build(truth_table, identity)
     for perm in orders:
         candidate = build(permute_truth_table(truth_table, perm), perm)
-        if len(candidate) < len(best):
+        if candidate and (not best or len(candidate) < len(best)):
             best = candidate
     return best
 

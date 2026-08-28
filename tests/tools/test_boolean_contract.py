@@ -148,6 +148,7 @@ def _reordering_generators() -> list[tuple[str, object, object]]:
         _lamfunc_ordered,
         _ram0_ordered,
     )
+    from esolangs.tools.boolean.ztoalc_l import _ztoalc_ordered
 
     return [
         (
@@ -164,6 +165,7 @@ def _reordering_generators() -> list[tuple[str, object, object]]:
         ("between", boolean.between, _between_ordered),
         ("lamfunc", boolean.lamfunc, _lamfunc_ordered),
         ("bitdeque", boolean.bitdeque, _bitdeque_ordered),
+        ("ztoalc_l_boolean", boolean.ztoalc_l_boolean, _ztoalc_ordered),
     ]
 
 
@@ -180,9 +182,13 @@ def test_reordering_never_grows_a_program(
     for n in (1, 2, 3):
         for value in range(2 ** (2**n)):
             table = bin(value)[2:].zfill(2**n)
-            assert len(fn(table)) <= len(ordered(table, tuple(range(n)))), (
-                f"{name} grew on {table}"
-            )
+            baseline = ordered(table, tuple(range(n)))
+            # A searching generator returns "" for an order it cannot place
+            # (ZTOALC L); there is no baseline to be no worse than, and any
+            # order that *did* place is an improvement on not building.
+            if not baseline:
+                continue
+            assert len(fn(table)) <= len(baseline), f"{name} grew on {table}"
 
 
 @pytest.mark.parametrize(("name", "fn", "ordered"), _reordering_generators())
