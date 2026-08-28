@@ -237,16 +237,29 @@ class _State(NamedTuple):
     The tape, CP and I/O are deliberately absent -- they do not steer,
     and leaving them out is what makes the state space finite and small
     enough to enumerate (see ``_Machine._drive_states``).  A NamedTuple
-    rather than a plain tuple so that the graph's keys, the probe's
-    successors and ``step``'s lookup all name their fields; it stays
-    hashable and tuple-compatible, which is what the graph dict and
-    :meth:`_Machine.snapshot` need.
+    rather than a plain tuple so that the graph's keys, the successors
+    :func:`_drive` returns and ``step``'s lookup all name their fields;
+    it stays hashable and tuple-compatible, which is what the graph dict
+    and :meth:`_Machine.snapshot` need.
+
+    :class:`_Machine` holds one of these as the whole of its steering
+    state, so the value a step looks up in the graph is the machine's own
+    rather than one rebuilt from separate fields to match.  Those were
+    once separate -- a ``_Car`` beside a ``_Latches`` -- and ``step`` had
+    to assemble a state on the way in and take one apart on the way out,
+    which is two conversions that existed only because the same four
+    values were written down twice.
     """
 
     row: int
     col: int
     heading: _Heading
     latches: _Latches
+
+    @property
+    def car(self) -> "_Car":
+        """Return the car half of the state, for the rules that only steer."""
+        return _Car(self.row, self.col, self.heading)
 
 
 # An open cell the flood fill in ``_validate_width`` reached from ``C``.
@@ -451,7 +464,16 @@ class _Grid:
         self.height = len(self._rows)
 
     def __getitem__(self, where: int | tuple[int, int]) -> str:
-        """Return a whole row by index, or one character by coordinate."""
+        """Return a whole row by index, or one character by coordinate.
+
+        The coordinate read is total, so the scans that come through here
+        -- the mouth scans, which look several cells out and can
+        legitimately run off the drawing, and ``_validate_glyphs`` --
+        need no bounds test of their own.  ``_VOID`` matches no glyph and
+        is not a wall, so what they find out there is nothing rather than
+        a phantom wall; :meth:`open_at` is the one read that treats off
+        the grid as closed instead.
+        """
         if isinstance(where, int):
             return self._rows[where]
         row, col = where
@@ -1232,7 +1254,7 @@ def _drive(
     deliberately does not predict; they stay with the tape and the I/O in
     :meth:`_Machine.step`.
     """
-    car = _Car(state.row, state.col, state.heading)
+    car = state.car
     op = grid.op_at(car.row, car.col)
     if op == "HALT":
         return "halt"
@@ -1281,8 +1303,6 @@ class _Machine:
             raise ValueError("Streetcode program cannot be empty")
         self.io = io
         self.grid = _Grid(code)
-        self.width = self.grid.width
-        self.height = self.grid.height
 
         starts = [
             (r, c)
@@ -1294,37 +1314,31 @@ class _Machine:
             raise ValueError(
                 f"Streetcode program must have exactly one C, found {len(starts)}"
             )
-        # Position and heading live in one record, so that handing the
-        # car to a movement rule is passing a value rather than reading
-        # three fields that have to be read together to mean anything.
-        # ``row``, ``col`` and ``heading`` remain assignable properties
-        # over it: they are how a caller places the car (the interpreter's
-        # own fixtures set up geometry that way), and each rebuilds the
-        # record rather than the three drifting apart.
-        self._car = _Car(*starts[0], _initial_heading(self.grid, starts[0]))
+        # The whole of the machine's steering state, as the one record the
+        # movement rules speak in: where the car is, which way it points,
+        # and the three latches the steering phases carry between steps.
+        # ``step`` hands this to :func:`_drive` and stores back what comes
+        # out, so the value looked up in the drive-state graph is the
+        # machine's own rather than one assembled to match it.
+        #
+        # The latches (see :func:`_choose_heading` and :class:`_Latches`):
+        # ``merge`` is set when a junction turn is detected but not yet
+        # reached (phase 1, driving to the new road's lane before
+        # turning); ``merging_heading`` is set after that turn while the
+        # new road's right-hand wall has not yet picked up (phase 2,
+        # suppressing the immediate right-hand-hug re-turn).  Both are
+        # ``None`` outside an in-progress merge.  ``skip_hug`` counts
+        # steps of ordinary right-hand hugging still to be suppressed
+        # after a junction chose to carry straight on past a side road:
+        # the declined road's mouth is open ground exactly where the hug
+        # looks, so without it the car would be steered into the road it
+        # just chose against on the very next step.
+        self._state = _State(
+            *starts[0], _initial_heading(self.grid, starts[0]), _NO_LATCHES
+        )
         self.cp = 0
         self.cells: dict[int, int] = {}
         self._done = False
-        # The steering latches (see :func:`_choose_heading` and
-        # :class:`_Latches`), held as one record so that everything which
-        # carries them -- the drive-state graph, ``snapshot``, and the
-        # states the movement rules return -- names the same fields
-        # rather than spelling out three of them each time.  ``merge`` is
-        # set when a junction turn is detected but not yet reached (phase
-        # 1, driving to the new road's lane before turning);
-        # ``merging_heading`` is set after that turn while the new road's
-        # right-hand wall has not yet picked up (phase 2, suppressing the
-        # immediate right-hand-hug re-turn).  Both are ``None`` outside
-        # an in-progress merge.  ``skip_hug`` counts steps of ordinary
-        # right-hand hugging still to be suppressed after a junction
-        # chose to carry straight on past a side road: the declined
-        # road's mouth is open ground exactly where the hug looks, so
-        # without it the car would be steered into the road it just
-        # chose against on the very next step.
-        #
-        # This is the machine's copy of what the rules thread through as
-        # an argument; ``step`` stores back whatever the rules answer.
-        self._latches = _NO_LATCHES
         # The enumerated drive-state graph, or ``None`` when there is no
         # graph to consult: a program whose geometry is not a street
         # (``_validate_width`` exempts those) or one whose validation the
@@ -1351,17 +1365,17 @@ class _Machine:
     @property
     def row(self) -> int:
         """The row the car occupies."""
-        return self._car.row
+        return self._state.row
 
     @property
     def col(self) -> int:
         """The column the car occupies."""
-        return self._car.col
+        return self._state.col
 
     @property
     def heading(self) -> _Heading:
         """The direction the car points."""
-        return self._car.heading
+        return self._state.heading
 
     def place(self, row: int, col: int, heading: _Heading) -> None:
         """Put the car at ``(row, col)`` pointing ``heading``.
@@ -1379,19 +1393,19 @@ class _Machine:
         *and* sets up a merge wants both, and clearing them here would
         silently undo half of what it asked for.
         """
-        self._car = _Car(row, col, heading)
+        self._state = self._state._replace(row=row, col=col, heading=heading)
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
 
         Every attribute the machine carries between steps appears here, so
         two equal snapshots really do have equal futures.  Per-step values
-        are deliberately not attributes at all -- the arrival cell is passed
-        to ``_choose_heading`` as a parameter -- and the steering latches
-        enter as the single :class:`_Latches` record, so a latch added
-        later is carried here without this method being touched, rather
-        than drifting out of the snapshot the way a separate attribute
-        could.
+        are deliberately not attributes at all -- the arrival cell is
+        passed to :func:`_choose_heading` as a parameter -- and everything
+        that steers enters as the single :class:`_State` record, so a
+        latch added later is carried here without this method being
+        touched, rather than drifting out of the snapshot the way a
+        separate attribute could.
 
         ``_done`` matters even though a halted machine takes no further
         steps: ``;`` halts without moving the car, so the states either
@@ -1399,14 +1413,11 @@ class _Machine:
         made the halt look like a repeat of the step before it.
         """
         return (
-            self.row,
-            self.col,
-            self.heading,
+            self._state,
             self.cp,
             tuple(sorted(self.cells.items())),
             self.io.position(),
             self._done,
-            self._latches,
         )
 
     def _cell(self) -> int:
@@ -1416,27 +1427,11 @@ class _Machine:
     def _set_cell(self, value: int) -> None:
         self.cells[self.cp] = value
 
-    def _open(self, row: int, col: int) -> bool:
-        """Whether ``(row, col)`` is in bounds and not a wall character."""
-        return self.grid.open_at(row, col)
-
-    def _at(self, row: int, col: int) -> str:
-        """Return the character at ``(row, col)``, or ``_VOID`` off the grid.
-
-        The read is total (see :class:`_Grid`), so the scans that come
-        through here -- the mouth scans, which look several cells out and
-        can legitimately run off the drawing, and ``_validate_glyphs`` --
-        need no bounds test of their own.  ``_VOID`` matches no glyph and
-        is not a wall, so what they find out there is nothing rather than
-        a phantom wall; :meth:`_open` is the one read that treats off the
-        grid as closed instead.
-        """
-        return self.grid[row, col]
-
     def _block(self, cell: _ReachableCell) -> tuple[str, ...]:
         """Return the three-by-three neighbourhood around a reachable cell.
 
-        Unlike :meth:`_at` this does not bounds-check the eight reads.
+        Unlike an ordinary ``grid[row, col]`` this does not bounds-check
+        the eight reads.
         What makes that sound is :meth:`_validate_enclosed`, which has
         already rejected any street whose road touches the border, so a
         cell reaching here has all eight neighbours on the grid.  The
@@ -1446,7 +1441,7 @@ class _Machine:
         """
         row, col = cell
         _require(
-            condition=0 < row < self.height - 1 and 0 < col < self.width - 1,
+            condition=0 < row < self.grid.height - 1 and 0 < col < self.grid.width - 1,
             message=(
                 f"{cell} is on the border of the grid, so its neighbourhood"
                 " runs off it: the enclosure check did not establish what"
@@ -1604,7 +1599,7 @@ class _Machine:
         is a bug in this module -- the same distinction :meth:`step`
         draws when a ``None`` edge survives the totality check.
         """
-        if not self._open(state.row, state.col):
+        if not self.grid.open_at(state.row, state.col):
             raise AssertionError(
                 f"the car occupies {(state.row, state.col)}, which is not"
                 f" open floor: {self.grid[state.row, state.col]!r}"
@@ -1621,7 +1616,7 @@ class _Machine:
                     f" {(successor.row, successor.col)}, which is not one"
                     " orthogonal step"
                 )
-            if not self._open(successor.row, successor.col):
+            if not self.grid.open_at(successor.row, successor.col):
                 raise AssertionError(
                     f"the car drove from {(state.row, state.col)} into"
                     f" {(successor.row, successor.col)}, which is not open"
@@ -1633,7 +1628,7 @@ class _Machine:
         # stale by construction and describes no geometry to check.
         if merge is None or state.heading != merge.latched_heading:
             return
-        if not self._open(merge.target_row, merge.target_col):
+        if not self.grid.open_at(merge.target_row, merge.target_col):
             raise AssertionError(
                 f"the merge latched at {(state.row, state.col)} is driving to"
                 f" {merge.target}, which is not open floor:"
@@ -1704,7 +1699,7 @@ class _Machine:
                 nr, nc = r + dr, c + dc
                 # No bounds test: off the grid is not open (see ``_Grid``),
                 # so the fill cannot walk out of the drawing.
-                if self._open(nr, nc) and (nr, nc) not in visited:
+                if self.grid.open_at(nr, nc) and (nr, nc) not in visited:
                     visited.add(_ReachableCell((nr, nc)))
                     q.append(_ReachableCell((nr, nc)))
         # Isolated single cell is not a street
@@ -1725,10 +1720,10 @@ class _Machine:
         is the one the validator raises with.
         """
         for r, c in reachable:
-            n = self._open(r - 1, c)
-            s = self._open(r + 1, c)
-            e = self._open(r, c + 1)
-            w2 = self._open(r, c - 1)
+            n = self.grid.open_at(r - 1, c)
+            s = self.grid.open_at(r + 1, c)
+            e = self.grid.open_at(r, c + 1)
+            w2 = self.grid.open_at(r, c - 1)
             cnt = sum((n, s, e, w2))
             if cnt == 1:
                 return f"not two-wide at {(r, c)} (dead end)"
@@ -1736,7 +1731,11 @@ class _Machine:
                 return f"not two-wide at {(r, c)} (vertical)"
             if e and w2 and not (n or s):
                 return f"not two-wide at {(r, c)} (horizontal)"
-            if all(self._open(r + dr, c + dc) for dr in (0, 1, 2) for dc in (0, 1, 2)):
+            if all(
+                self.grid.open_at(r + dr, c + dc)
+                for dr in (0, 1, 2)
+                for dc in (0, 1, 2)
+            ):
                 return f"not two-wide at {(r, c)} (wider than two)"
         return None
 
@@ -1829,7 +1828,7 @@ class _Machine:
         border is.
         """
         for r, c in reachable:
-            if r in (0, self.height - 1) or c in (0, self.width - 1):
+            if r in (0, self.grid.height - 1) or c in (0, self.grid.width - 1):
                 return (
                     f"street reaches the edge of the grid at {(r, c)}:"
                     " the road is not enclosed by walls"
@@ -1857,8 +1856,8 @@ class _Machine:
 
     def _glyph_violation(self) -> str | None:
         """Name a ``-`` drawn beside a ``|``, or ``None`` if none is."""
-        for r in range(self.height):
-            for c in range(self.width):
+        for r in range(self.grid.height):
+            for c in range(self.grid.width):
                 char = self.grid[r, c]
                 if char == "-":
                     neighbours = ((r, c - 1), (r, c + 1))
@@ -1869,7 +1868,7 @@ class _Machine:
                 else:
                     continue
                 for nr, nc in neighbours:
-                    if self._at(nr, nc) == other:
+                    if self.grid[nr, nc] == other:
                         return (
                             f"wall turns without a corner at {(r, c)}:"
                             f" {char!r} beside {other!r} at {(nr, nc)}"
@@ -1927,8 +1926,8 @@ class _Machine:
             for dr in (-1, 0, 1)
             for dc in (-1, 0, 1)
         }
-        for r in range(self.height):
-            for c in range(self.width):
+        for r in range(self.grid.height):
+            for c in range(self.grid.width):
                 char = self.grid[r, c]
                 if char == " " or (r, c) in grown:
                     continue
@@ -1945,10 +1944,12 @@ class _Machine:
             return
 
         # The driving state as the car arrives, for the graph lookup below.
-        # Taken here because an instruction moves CP and the tape but never
-        # the car, its heading or the latches, and ``U`` returns before the
-        # lookup; so this is still the state when the lookup happens.
-        state = _State(self.row, self.col, self.heading, self._latches)
+        # Read into a local because an instruction moves CP and the tape
+        # but never the car, its heading or the latches, and ``U`` returns
+        # before the lookup; so this is still the state when the lookup
+        # happens.  It is the machine's own record, not one rebuilt from
+        # separate fields to match what the graph is keyed by.
+        state = self._state
 
         # The cell as the car arrives, before this square's instruction runs.
         # A junction decision is about the road the car is arriving at, so it
@@ -2001,8 +2002,7 @@ class _Machine:
             turned = _drive(self.grid, state, arrival_cell, arrival_cell)
             if turned is None or turned == "halt":
                 raise HaltError
-            self._car = _Car(turned.row, turned.col, turned.heading)
-            self._latches = turned.latches
+            self._state = turned
             return
         # "NOP" is the remaining case: ``C``, space, and every character
         # the spec does not define all fold to it (see ``_Op``), so there
@@ -2050,8 +2050,7 @@ class _Machine:
                 f" {self.heading}: the drive-state graph outlived"
                 " the totality check"
             )
-        self._car = _Car(successor.row, successor.col, successor.heading)
-        self._latches = successor.latches
+        self._state = successor
 
 
 def run(code: list[str], io: IO) -> None:
