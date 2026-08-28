@@ -697,6 +697,7 @@ what it emitted before — this can only shrink a program, never churn one.
 | `addsubjump` | 31.7% | **41.0%** | 254/256 |
 | `myscript` | 18.6% | 17.8% | 112/256 |
 | `forth` | 13.8% | 13.2% | 112/256 |
+| `eval` | 9.3% | 9.9% | 114/256 |
 | `six_five` | 18.1% | **23.6%** | 186/256 |
 | `nevermind` | 16.3% | 16.2% | 112/256 |
 | `bitdeque` | 14.9% | 14.8% | 112/256 |
@@ -835,16 +836,6 @@ is a redefined benchmark rather than a smaller program. **The bar is that
 the emitted program changes and still consumes its inputs in the same
 order.**
 
-`eval` (11.8%) is out for the same reason and is worth spelling out, because
-its shape looks reorderable and is not. Its nodes are all `~=~?` plus a
-semicolon run equal to the node's **heap index** — no node names an input, so
-a node at level `k` tests whatever bit is `k`-th on the input stack. The only
-lever is the order the `{Xi}` staging blocks are emitted in (currently
-hardcoded to the reversal), and moving those changes which slot receives
-which input rather than what the program does with them. **A generator whose
-nodes are input-agnostic has no runtime reorder** — the split order lives in
-the staging, and staging is the fill interface.
-
 Likewise `circlefuck` (10.5%), `sbleq` (8.3%), `brainif` (4.9%),
 `three_x` (4.5%), `taglate` (3.1%), `minsky_swap` (2.8%), `bio` (1.5%),
 `decleq` (1.4%), `nocomment` (0.7%), `painfuck` (0.5%), `rotfuck` (0.4%) and
@@ -871,6 +862,43 @@ tests it* and has nowhere else to put one — so its test order **is** its
 stream order. `six_five` reads at the node too, but that was a property of
 its generator rather than of the language: it has a tape, so its reads were
 hoisted into cells of their own and the two orders came apart.
+
+### Eval — input-agnostic nodes do not mean there is no reorder
+
+Eval's nodes name no input: each is `~=~?` plus a semicolon run fixed by the
+node's **heap index**, so a node at level `k` tests whatever bit is `k`-th on
+the input stack. The tempting conclusion is that the split order lives only in
+the `{Xi}` staging order, and that reordering would therefore be fill-slot
+relabelling — out of bounds under technique 11's bar.
+
+That conclusion is wrong, and the correction is the useful part. Input-agnostic
+nodes mean the split order lives in the **stack arrangement**. Staging
+*establishes* that arrangement, but the emitted program may **rearrange it
+afterwards**, which is a runtime reorder in good standing: the `{Xi}` blocks
+keep their slots, the harness fills them exactly as before, and the program
+does the work. So the question to ask of a parameterized generator is not
+"do its nodes name inputs" but **"can the emitted program rearrange whatever
+the fills establish"**.
+
+Here it can, because the staging leaves the bits *alone* on the input stack.
+`~` switches stacks, `*` reverses the active one and `=` moves its top across;
+the two stacks are a spindle, so the three compose to every arrangement at
+n ≤ 4 (119 of 120 at n=5, the last needing more than 16 ops). Contrast Forþ's
+`o`, which is unusable because scope indices share the stack — the difference
+is what else is sitting there, so check that before assuming a reverse is
+available.
+
+**The staging direction is a free choice, not a constraint.** Staging forward
+versus backward reaches the same arrangements at identical total cost — 29
+characters over all six orders at n=3, 201 over all 24 at n=4 — because `*`
+is an involution, so staging one way and reversing *is* the other way. It
+decides only which single arrangement costs no ops. The generator stages
+forward, matching every other parameterized generator; the consequence to
+remember is that the free arrangement's split order is then the *reversal*,
+so the no-ops candidate is not the identity permutation.
+
+Delivered 9.3% at n=3 (114 of 256), 9.9% at n=4, 11.8% at n=5, against a
+screened 11.8% — the rotation-cost case, same direction as Forþ.
 
 ### Forþ — the natural order is the reversal, and rotations go between the reads
 
