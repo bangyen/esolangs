@@ -655,13 +655,32 @@ not a verdict:
 
 | generator | upside | why it cannot be reordered |
 |---|---|---|
-| `polynomial` | 25.1% | reads at the node that tests the bit, drains at the leaf |
-| `six_five` | 17.9% | same — `B` reads inside the node |
+| `polynomial` | 25.1% | **no addressable storage at all** — one register, no tape or variables, so a bit that is read can only be branched on before the next read overwrites it |
 | `modulous` | 16.4% | stack reaches top two only; variables store and print but never load back |
-| `sophie` | 16.4% | reads inside the tree (`;` then `@$48{}`) |
+| `sophie` | 16.4% | reads inside the tree (`;` then `@$48{}`) with only an accumulator to hold a bit |
 | `addsubjump` | 16.7% | reads at the node, drains skipped reads at each leaf |
-| `jaune` | 16.3% | `v` reads and tests in one instruction |
 | `unsquare` | 15.7% | reads up front but pops LIFO; `S` swaps the top two and there is one accumulator, so no rotation to depth |
+
+**Two of these were wrong and are now candidates.** `six_five` (17.9%) and
+`jaune` (16.3%) were excluded for "reading at the node" — but that describes
+what their *generators* currently emit, not what the languages allow. Both
+have a tape and a pointer:
+
+- `jaune` — `v` reads into the *current* cell and `?` branches on the current
+  cell, with `>`/`<` to move and `#`/`&` to copy through a hold register. So
+  `v>v>v` reads every bit into its own cell and a node can walk to any of
+  them. Verified: a hand-written program reading three bits up front and
+  testing the **last** one first is correct on all 8 combinations.
+- `six_five` — `B` reads into the current cell, `1`/`3` move the pointer
+  (+2/-1), and `7n` compares the current cell. Same story, verified the same
+  way.
+
+Reordering them means restructuring each generator to hoist its reads, which
+is more than renaming a branch operand, so it is recorded here as open rather
+than done. **This is the third time the "reads at the node" reasoning came
+from the generator instead of the interpreter** (`bitdeque` was the first,
+and it became one of the largest wins). The rule holds: a generator's current
+emission is evidence about the generator, never about the language.
 
 The rule that decides these is **read the interpreter's op set, not what the
 generator emits** — `bitdeque` was wrongly excluded on the latter and turned
