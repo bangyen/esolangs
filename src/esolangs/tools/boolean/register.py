@@ -7,6 +7,7 @@ from esolangs.tools.boolean.helpers import (
     _ASCII_ZERO,
     _maybe_complement,
     _validate_truth_table,
+    best_input_order,
     minterm_literals,
 )
 from esolangs.tools.text.helpers import _cm_constants
@@ -167,15 +168,48 @@ def addsubjump(truth_table: str) -> str:
     ASJ's instruction is ``a b c d``: ``*a += *b`` (when ``*d <= 0``) or
     ``*a -= *b`` (when ``*d > 0``), then ``goto *c``, where ``c`` is a cell
     holding the next instruction pointer.  There is no data-testable jump,
-    so the generator routes a decision tree through the negative flag: with
-    flag mode enabled (writing ``-9``), ``t -6 ... d`` (``d`` = the bit cell)
-    sets the flag from the bit, but the branch itself is ``jump += 4 * bit``
-    onto two consecutive trampolines.  Each bit (48/49) is normalized to
-    ``{0, 4}`` (subtract 48, double twice), a jump cell initialized to the
-    zero trampoline's address is advanced by that value, and ``goto *jump``
-    lands on the zero or one trampoline, which jumps to the corresponding
-    subtree.  Leaves print 48/49 and halt via ``c = -8`` (a special
-    address).  Subtrees whose table entries are constant collapse to a leaf.
+    so the generator routes a decision tree through two trampolines: a jump
+    cell initialized to the zero trampoline's address is advanced by
+    ``4 * bit``, and ``goto *jump`` lands on the zero or one trampoline,
+    which jumps to the corresponding subtree.  Leaves print 48/49 and halt
+    via ``c = -8`` (a special address).  Subtrees whose table entries are
+    constant collapse to a leaf.
+
+    **All ``n`` bits are read up front**, each into a cell of its own and
+    normalized there once from 48/49 to ``{0, 4}`` (subtract 48, double
+    twice).  A node then spends two instructions -- ``J += B`` naming
+    whichever bit it tests, and ``goto *J``.  Reading at the node instead
+    would repeat the four-instruction normalization at every node and make a
+    folded leaf drain the reads its untaken siblings skipped; hoisting pays
+    for both once, which is 25.1% of the program at n == 3 before any
+    reordering.
+
+    **The tree then splits on its inputs in whichever order emits the
+    shortest program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`),
+    which the hoist is what enables: with every bit in its own cell, ``J +=
+    *b`` can name any of them, so a node is not tied to the bit just read.
+    The reads stay in stream order, so the program consumes its input
+    exactly as before.  Reordering adds 8.9% on top of the hoist at n == 3,
+    for 31.7% together, rising to 41.0% at n == 4 and 47.8% at n == 5.
+
+    Only the inputs the tree actually branches on get a cell; one no node
+    tests is read into write-only scratch, so a constant table still
+    consumes every input without storing any.
+    """
+    return best_input_order(truth_table, _addsubjump_ordered)
+
+
+def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's AddSubJump program; see :func:`addsubjump`.
+
+    ``truth_table`` is already permuted, so every row index here is in the
+    permuted frame; ``perm`` surfaces only where a node names the *stream*
+    input whose cell it tests.
+
+    Cells are named by the input they hold (``B{i}`` for stream input
+    ``i``), not by the instruction index that allocated them.  The node-read
+    build keyed its names off ``len(instructions)``, which a reorder shifts;
+    naming by input keeps every reference stable however the tree comes out.
     """
     n = _validate_truth_table(truth_table)
 
@@ -194,33 +228,62 @@ def addsubjump(truth_table: str) -> str:
     values["U"] = 0
     values["D48"] = _ASCII_ZERO
     values["D49"] = _ASCII_ONE
-    values["DUMP"] = 0  # scratch the collapsed leaves read into and discard
 
-    def build(level: int, rows: list[int]) -> None:
-        results = {truth_table[r] for r in rows}
-        if len(results) == 1:
-            # Drain the reads the untaken siblings would have made: an
-            # input-capable language reads each of its n inputs exactly once
-            # per run whatever the table says, or the caller's remaining bits
-            # are left on the input stream.  DUMP is write-only scratch.
-            for _ in range(level, n):
-                emit("DUMP", -1, "next", -7)  # DUMP += input byte, discarded
-            out = _ASCII_ZERO + int(results.pop())
-            emit(-1, f"D{out}", -8, -7)
-            return
-        base = len(instructions)
-        bit = f"B{base}"
-        jump = f"J{base}"
-        zero = [r for r in rows if not ((r >> (n - 1 - level)) & 1)]
-        one = [r for r in rows if (r >> (n - 1 - level)) & 1]
+    # Which levels can branch, computed in *level* space over the permuted
+    # table and translated to the *stream* inputs the read block runs over:
+    # level ``k`` reads input ``perm[k]``, and mixing the frames stores the
+    # wrong bits.
+    branching = {
+        k
+        for k in range(n)
+        if any(
+            truth_table[r] != truth_table[r | (1 << (n - 1 - k))]
+            for r in range(2**n)
+            if not r & (1 << (n - 1 - k))
+        )
+    }
+    stored = {perm[k] for k in branching}
+
+    # The reads, in stream order.  An input no node tests is read into
+    # write-only scratch: the contract is that every input is *consumed*,
+    # not that every value is kept.
+    if any(i not in stored for i in range(n)):
+        values["DUMP"] = 0
+    for i in range(n):
+        if i not in stored:
+            emit("DUMP", -1, "next", -7)  # read and discard
+            continue
+        bit = f"B{i}"
         values[bit] = 0
-        values[jump] = ("t0", base + 6)
         emit(bit, -1, "next", -7)  # B += input byte (48/49)
         emit(bit, "C48", "next", -7)  # B += -48
         emit(bit, bit, "next", -7)  # double
         emit(bit, bit, "next", -7)  # double -> {0, 4}
-        emit(jump, bit, "next", -7)  # J += B
-        emit("U", "U", f"J{base}", -7)  # goto *J
+
+    def build(level: int, rows: list[int]) -> None:
+        results = {truth_table[r] for r in rows}
+        if len(results) == 1:
+            # Every read already happened up front, so a folded leaf prints
+            # and halts with nothing to drain.
+            out = _ASCII_ZERO + int(results.pop())
+            emit(-1, f"D{out}", -8, -7)
+            return
+        if perm[level] not in stored:
+            # A discarded input has no cell to test.  Its bit cannot change
+            # the answer, so both halves are the same function -- descend
+            # into the zero half, keeping the row span halving with level.
+            build(level + 1, [r for r in rows if not ((r >> (n - 1 - level)) & 1)])
+            return
+        base = len(instructions)
+        bit = f"B{perm[level]}"
+        jump = f"J{base}"
+        zero = [r for r in rows if not ((r >> (n - 1 - level)) & 1)]
+        one = [r for r in rows if (r >> (n - 1 - level)) & 1]
+        # Two instructions precede the trampolines, so the jump cell starts
+        # at the zero trampoline two slots on.
+        values[jump] = ("t0", base + 2)
+        emit(jump, bit, "next", -7)  # J += B, the hoisted bit this node tests
+        emit("U", "U", jump, -7)  # goto *J
         ztarget = f"Z{base}"
         otarget = f"O{base}"
         emit("U", "U", ztarget, -7)  # zero trampoline

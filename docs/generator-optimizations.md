@@ -694,6 +694,7 @@ what it emitted before — this can only shrink a program, never churn one.
 | generator | n=3 (all 256 tables) | n=4 (sampled) | tables improved at n=3 |
 |---|---|---|---|
 | `ztoalc_l` | **32.4%** | — | 150/256 |
+| `addsubjump` | 31.7% | **41.0%** | 254/256 |
 | `myscript` | 18.6% | 17.8% | 112/256 |
 | `six_five` | 18.1% | **23.6%** | 186/256 |
 | `nevermind` | 16.3% | 16.2% | 112/256 |
@@ -729,8 +730,7 @@ not a verdict:
 |---|---|---|
 | `polynomial` | 25.1% | **no addressable storage at all** — one register, no tape or variables, so a bit that is read can only be branched on before the next read overwrites it. The 25.1% is unreachable as a reorder; [residual merging](#polynomial--merging-beats-reordering-and-the-gate-is-instructions) collects it instead |
 | `modulous` | 16.4% | stack reaches top two only; variables store and print but never load back |
-| `sophie` | 16.4% | reads inside the tree (`;` then `@$48{}`) with only an accumulator to hold a bit |
-| `addsubjump` | 16.7% | reads at the node, drains skipped reads at each leaf |
+| `sophie` | 16.4% | reads inside the tree (`;` then `@$48{}`) with only an accumulator to hold a bit — **the weakest entry here**: this is the accumulator-only reasoning Polynomial's cursor state disproved, and "reads inside the tree" is the phrase that was wrong four times. Read the interpreter before trusting this row |
 | `unsquare` | 15.7% | reads up front but pops LIFO; `S` swaps the top two and there is one accumulator, so no rotation to depth |
 
 **Two of these were wrong, and both are now done.** `six_five` and `jaune`
@@ -758,11 +758,22 @@ pointer:
   way.
 
 Reordering them meant restructuring each generator to hoist its reads, which
-is more than renaming a branch operand. **This is the third time the "reads
-at the node" reasoning came from the generator instead of the interpreter**
-(`bitdeque` was the first, and it became one of the largest wins). The rule
-holds: a generator's current emission is evidence about the generator, never
-about the language.
+is more than renaming a branch operand. **"Reads at the node" has now been
+read off the generator instead of the interpreter four times** — `bitdeque`,
+`six_five`, `jaune`, `addsubjump` — and every one turned out reorderable,
+three of them among the largest wins in the table. Treat that phrase in any
+remaining exclusion as unverified until the interpreter says so: a
+generator's current emission is evidence about the generator, never about
+the language.
+
+**The screen undercounts when a hoist is required**, which is why these
+entries kept being left for later. It measures the best of the `n!` orders
+against the identity *under the existing construction*, so it prices the
+reorder alone. Hoisting the reads is usually a saving in its own right —
+it lifts a per-node normalization or read-drain out of the tree — and that
+part is invisible to the screen. `addsubjump` screened 16.7% and delivered
+31.7%, of which the hoist was 25.1% and reordering 8.9%. A screen figure is
+a lower bound on a generator whose reads sit at its nodes, not an estimate.
 
 **6-5 keeps two constructions, and that is load-bearing.** Every other
 generator in the table replaced its build outright, because reordering there
@@ -817,7 +828,9 @@ the work is not attempted here. Likewise `forth` (14.5%), `eval` (11.8%),
 `arrowqueue` (12.4%), `circlefuck` (10.5%), `sbleq` (8.3%), `brainif` (4.9%),
 `three_x` (4.5%), `taglate` (3.1%), `minsky_swap` (2.8%), `bio` (1.5%),
 `decleq` (1.4%), `nocomment` (0.7%), `painfuck` (0.5%), `rotfuck` (0.4%) and
-`bfstack` (0.2%) remain unexamined candidates.
+`bfstack` (0.2%) remain unexamined candidates. Read each figure as a **lower
+bound**: any of these whose reads sit at its nodes gains the hoist as well as
+the reorder, and the screen prices only the reorder.
 
 `factor` and `three_d_brainfuck` reuse brainfuck's output and inherit the
 saving unchanged; a shorter program also shrinks factor's set of tables
