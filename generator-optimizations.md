@@ -12,7 +12,7 @@ or better-shaped — not the runtime of the generator itself.
 
 ## The recurring techniques
 
-Nine patterns account for nearly everything. Most generators combine two or
+Ten patterns account for nearly everything. Most generators combine two or
 three.
 
 | # | Technique | What it buys | Lives in |
@@ -26,6 +26,7 @@ three.
 | 7 | **Shape-aware width** | honour a width by building a *different* shape, not by reflowing | `laserfuck_layout.py`, `wrap.py` |
 | 8 | **Literal batching** | print a whole string in one statement rather than per character | `text/helpers.py` `_literal_chunks` |
 | 9 | **Equal-width embedding** | *anti*-optimization: pad both bits to equal width so length can't leak inputs | `boolean/helpers.py:97` `instantiate` |
+| 10 | **Dependency reduction** | a table that ignores an input is emitted as the *smaller* table, reading and discarding the rest | `boolean/other.py` `_taglate_dependencies` |
 
 Technique 9 is the one deliberate refusal to shorten. A zero embedded as
 nothing makes `len(program)` a function of the inputs, leaking the very bits
@@ -549,6 +550,54 @@ zero rows and inverting — one term saved per row, paid for once.
 | `suffolk` | one minterm block per row saved — 5.1% averaged over every n=3 table, 45% on the densest n=4 ones. Builds **both** polarities and returns the shorter, since a complement literal sits at a nearer cell than a raw one, so row counts alone do not decide it |
 | `qoibl`, `bit_tilde`, `grapheme` | fewer minterms; grapheme picks whichever row-set is shorter |
 | `container` | `OUT` spends one `+1 S{row}>=Gout` line per one-row, so a dense table sums its zero rows from a 49 start and subtracts — 12.7% on the densest n=4 table. The per-row survivor blocks are fixed and unaffected |
+
+### Dependency reduction — taglate
+
+Every other technique here shaves a cost that scales with *rows*. Taglate has
+none: a one and a zero both cost two characters (`bd`/`bb`), so every table of
+a given `n` used to be byte-identical — all 256 at n=3 were 451 characters.
+That is exactly why it looked unoptimizable, and why it has the largest
+single-table saving in the catalogue.
+
+Its cost is per **input**: the seed alone is `2**(n_eff + 2)` cells. So a
+table that ignores an input is really a smaller table, and emitting it as one
+drops a whole tier:
+
+| table | depends on | before | after |
+|---|---|---|---|
+| `11110000` | input 0 | 451 | 21 |
+| `11001100` | input 1 | 451 | 25 |
+| `10101010` | input 2 | 451 | 29 |
+| `00000000` | nothing | 451 | 21 |
+| `1111111100000000` (n=4) | input 0 | 451 | 17 |
+
+The ignored inputs are still read — reads-not-skipped holds — and then
+discarded: `h` appends the character to the queue's **tail**, `e` repeated
+once per queued cell rotates it to the front, and `f` drops it. The queue is
+left exactly as it was, which is what keeps the reduces' positional
+arithmetic intact; every earlier attempt failed by inserting a bare `h` and
+shifting every slot the reduce blocks address.
+
+**The rotation count is computed, not searched:** it is the queue length at
+that point, which before any command has run is the seed's length.
+
+Two shapes are deliberately skipped. A **gapped** dependency set (needing
+inputs 0 and 2 but not 1) would want a discard *between* the reduced
+program's own reads, where the queue is not what the following reduce block
+assumes — the output comes out arithmetically corrupted, not merely
+permuted. And an **odd-sized** dependency set would make the reduced program
+ghost-pad itself and expect an input the stream does not carry, so the
+window is widened by one adjacent ignored input to keep it even.
+
+Coverage is 14.8% of tables at n=3 and 1.4% at n=4 — it thins as `n` grows,
+because depending on every input is the common case.
+
+**A pitfall worth recording.** Odd `n` above 1 is called with a leading
+ghost digit (`_build_padded_tt`), so the caller supplies `n + 1` values.
+Every scratch harness written for this without that convention produced
+confident, wrong conclusions — the same failure as arrowqueue's leaf-entry
+assumption earlier in this branch. Scrape the input convention from the
+repo's own test or fill code before building a verifier.
 
 `_maybe_complement`'s docstring flags the trap: an all-ones table complements to
 *no* minterms, indistinguishable from all-zeros. Fine where the sum feeds an
