@@ -421,6 +421,27 @@ class TestDumpFormat:
             run(code, io=IO())
         return f.getvalue()
 
+    def test_dump_happens_once_however_often_a_halted_machine_is_stepped(
+        self,
+    ) -> None:
+        """The dump is guarded by a flag that starts as False itself.
+
+        Stepping past the halt is a no-op except for the one dump, and the
+        flag that arranges it is only ever read for truth -- which ``None``
+        satisfies as well as ``False`` -- so the identity is asserted too,
+        the flag being annotated a bool.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.ram0 import _Machine
+
+        machine = _Machine("A", ScriptedIO())
+        assert machine._dumped is False  # noqa: SLF001
+        while not machine.halted:
+            machine.step()
+        for _ in range(3):
+            machine.step()
+        assert machine.io.getvalue() == "z: 1\nn: 0\nram: {}"
+
     def test_dump_with_memory(self) -> None:
         assert self.dump("A N S") == "z: 1\nn: 1\nram: {\n    1: 1\n}"
 
