@@ -167,3 +167,21 @@ class TestUncoveredSteering:
     def test_absolute_steer_left(self) -> None:
         """``{`` sets the heading to left, as ``}`` sets it to right."""
         assert run_and_capture([" /\\", "|o}\\", " \\/", " x+{"]) == "1"
+
+    def test_conditional_mirrors_pass_a_zero_cell(self) -> None:
+        """The other half of each conditional mirror: it does *not* deflect.
+
+        Command coverage is not branch coverage.  Every mirror above runs
+        on a cell that has already been incremented, so only the deflecting
+        half of ``(`` and ``|`` was ever taken -- and a guard that stopped
+        consulting the tape at all, or joined its two conditions with
+        ``or`` instead of ``and``, still deflected in every case the suite
+        could see.
+
+        These two swap the order so the beam meets the mirror first: the
+        ``(`` grid increments *after* its mirror, and the ``|`` one sends a
+        beam down onto a mirror whose cell is set, which is the reverse of
+        the covered case.
+        """
+        assert run_and_capture([" _", "/o\\", "\\v/", " #", " }x", " (", " +"]) == "1"
+        assert run_and_capture(["\xff}o+v", "    |", "    x"]) == "\x01"
