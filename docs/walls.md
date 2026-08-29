@@ -199,6 +199,25 @@ answer is computed and then washed out in transit, which is a different
 problem from the ones above and would need a way to read a cell without
 first walking to it.
 
+### The termination convention is not an option here
+
+Point Break's boolean generator sidesteps having no output by halting for a
+0 and looping for a 1, and that convention would suit the obstruction above
+exactly: it consumes the answer *where it stands*, with none of the transit
+that washes the column out.
+
+Minifuck cannot use it.  The instruction pointer is only ever incremented --
+once in `[`'s skip branch, once at the end of `step` -- with no decrement, no
+assignment and no jump anywhere in the interpreter, so every program halts
+within `len(code)` steps.  "Loops forever" is not a reachable state, which
+makes the convention unavailable rather than merely unattractive.  Confirmed
+over 4000 random programs: none failed to halt, and the step count never
+exceeded the program length.
+
+This is also why the language needs no hang detector, and why the
+`run_until_halt_or_cycle` machinery that makes the convention testable
+elsewhere has nothing to detect here.
+
 ### Where a construction would have to start
 
 The shipped generator is a search, and searches are what this repo replaces:
