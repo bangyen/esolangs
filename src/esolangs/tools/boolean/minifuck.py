@@ -34,14 +34,15 @@ is emitted, every choice is made against the simulated truth, and
 :func:`minifuck` raises rather than returning a program it has not seen
 print the table.
 
-**Coverage: every two-input table, and roughly a third of the three-input
-ones.**  This is a *search* -- three routes across two embed separators --
+**Coverage: every two-input table, and eight of the fourteen three-input
+orbits.**  This is a *search* -- three routes across two embed separators --
 so its reach is bounded by the depth caps below rather than by an argument.
-At ``n == 3`` a random 12-table sample built 4, median 82 seconds, the rest
-raising after about two minutes; structured tables (constants, AND, OR,
-parity, majority) do build, which is why a hand-picked sample badly
-overstates the coverage.  The failures are cap exhaustion, not a proof that
-anything is unreachable.
+Measuring by orbit rather than by sampling tables: the four degenerate orbits
+are immediate, and AND3, majority, parity and one more build in 7-40 seconds.
+The six that fail do so after about two minutes, and not for want of a
+computable answer -- the column search finds the answer for all six in
+seconds; it is the walk to an accumulator that washes it out.  See
+``docs/walls.md``.
 
 That makes this generator weaker than the repo's better ones, and the
 comparison is worth stating: ``bfpda`` is a closed-form decision tree at any
