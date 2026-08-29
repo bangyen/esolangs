@@ -252,6 +252,15 @@ def run_bfstack(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+def run_slow_acv_mammalian(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
 def run_streetcode(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.grid_based.streetcode import run
 

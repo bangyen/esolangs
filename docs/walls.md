@@ -158,28 +158,55 @@ contains a quote or backtick, so the strings need no escaping and the tree
 grows to any ``n``.  It is a parameterized generator, total for any arity
 and table, and embeds each input exactly once.
 
-## SLOW ACV MAMMALIAN (general n-bit open)
+## SLOW ACV MAMMALIAN (resolved: the tree lives in code space)
 
-The n-bit case is blocked by three mutually conflicting constraints:
+The wall recorded here held that the n-bit case was blocked by three
+mutually conflicting constraints: that `ACCEPT` appends the bit to `lst[0]`
+and consuming it needs `ptr == 0`, while routing `SPRINT`s move the pointer
+away, so a bit could not be both read and routed; that the only constant
+source accumulates rather than resets, so the `[48, C, m]` triple a branch
+needs cannot be assembled; and that `DIGEST` recovers a buried bit only as
+part of a sum.
 
-- `ACCEPT` unconditionally appends the normalized bit to `lst[0]`, and
-  consuming that bit needs `ptr == 0`, but routing `SPRINT`s move the
-  pointer to a node — so the bit cannot be both read and routed without a
-  way to return the pointer to 0.
-- The read's clean normalization needs `lst[0][0] == 48` (the `^ 48` base),
-  and `SEED` skips empty arrays, so the only constant source is `K SEEDs
-  CONSUME` starting from `lst[0] = [0]` — which empties the array, so every
-  later constant **accumulates** on the previous one (`42 + 5 = 47`, never a
-  clean `5`).  The `[48, C, m]` triple a branch needs therefore cannot be
-  assembled in one array.
-- `DIGEST` normalizes by XORing the *sum* of `lst[ptr]`, so a bit buried
-  among previous bits is only recoverable as part of a sum, and `48 ^ (48 +
-  m1 + m2)` is not `m1 ^ m2` when both bits are set.
+**The first constraint is false, and it was load-bearing.**  `ACCEPT`
+appends to `lst[0]` *whatever the pointer holds* — the interpreter's `n == 8`
+arm writes `self.lst[0]`, not `self.lst[self.ptr]` — so nothing has to be
+routed to be read.  The branch is `LEAPFROG`, which jumps exactly when
+`curr[-1]` is nonzero, and the just-appended bit *is* `curr[-1]`.  Entering
+with `acc % 256 == 48` normalizes the digit to a clean `0`/`1`, so
 
-Re-verified against the interpreter: a search over the branch-free tails
-after the `b1`-normalize prefix reaches only the 0-preserving two-input
-tables, matching the structural argument.  (Unlike Minifuck, this wall
-holds.)
+```
+ACCEPT DIGEST LEAPFROG
+```
+
+is a decision-tree node three tokens long: a `0` falls through, a `1` jumps.
+The pointer never leaves array 0 and the tree lives in code space.
+
+The earlier re-verification searched only the *branch-free* tails, so it
+never contained `LEAPFROG` — the language's one conditional — and its
+"0-preserving tables only" result describes the branch-free fragment rather
+than the language.  The other two constraints dissolve once the tree exists:
+every path has already branched on the bits it read, so the whole machine
+state is a generation-time constant, and an accumulating constant is not a
+problem when the generator knows exactly what accumulated.
+
+The shipped generator
+(:func:`esolangs.tools.boolean.slow_acv_mammalian.slow_acv_mammalian_boolean`)
+aims each jump by *measuring* rather than solving.  Every arithmetic knob
+here ties the array head to the array sum — `SEED` bumps both — so offsets
+that look independent cancel, and each state reaches only a handful of token
+indices.  What makes that enough is that a subtree ends in a halting leaf,
+so the tokens after it are unreachable: the generator emits the node,
+measures where the 1-branch actually lands, and pads the dead gap out to
+meet it.  `EXCRETE` stashes bytes to raise the reachable band and `CONSUME`
+pops them back to lower it; both directions are needed, since a 0-subtree
+inherits its parent's array and a grow-only sum would track the layout it
+has to clear, which is what stops the tree converging past two levels.
+
+The tree is uniform depth `n`, so a constant table still reads all `n`
+inputs.  Verified against the interpreter: every table through `n == 3`
+(4 at `n == 1`, 16 at `n == 2`, all 256 at `n == 3`), plus `n == 4` spot
+checks.
 
 ## NoComment, BF-PDA (a `{Ci}` embed was not actually needed)
 

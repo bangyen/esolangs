@@ -362,7 +362,19 @@ _MINTERM_SHAPED = {
 # not a sum and not a tree.  The other two do not take a boolean truth table
 # at all: ``jaune_multiply`` takes no argument (it multiplies two decimal
 # numbers, a fixed program), and ``circlefuck_byte`` takes a *byte* table.
-_UNSHAPED = {"wii2d", "jaune_multiply", "circlefuck_byte"}
+#
+# ``slow_acv_mammalian_boolean`` is a tree, but a deliberately *unfolded*
+# one, so the folding discriminator does not apply to it.  Its nodes are
+# what read the input -- the branch condition is the bit ``ACCEPT`` just
+# appended -- so collapsing a constant subtree would drop that subtree's
+# reads and break the read-count contract above.  The tree therefore stays
+# uniform depth ``n`` and its size tracks ``2**n`` whatever the table says.
+_UNSHAPED = {
+    "wii2d",
+    "jaune_multiply",
+    "circlefuck_byte",
+    "slow_acv_mammalian_boolean",
+}
 
 # Every table depending on exactly one input, at n == 3, both polarities.
 # All have ones-count 4, as parity does, so the comparison below is not

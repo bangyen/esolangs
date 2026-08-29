@@ -20,6 +20,7 @@ from esolangs.tools.boolean.helpers import (
 )
 from esolangs.tools.boolean.rotfuck import rotfuck
 from esolangs.tools.boolean.six_five import six_five
+from esolangs.tools.boolean.slow_acv_mammalian import slow_acv_mammalian_boolean
 from esolangs.tools.text.tape import _factor_encode
 
 __all__ = [
@@ -38,6 +39,7 @@ __all__ = [
     "rotfuck",
     "sbleq",
     "six_five",
+    "slow_acv_mammalian_boolean",
     "suffolk",
     "three_d_brainfuck",
 ]
