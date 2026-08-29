@@ -336,15 +336,19 @@ jobs:
           exit 1
         fi
 
-  # Temporarily disabled.  The Lean project is mid-restructure: the proofs
-  # are being moved out of the `Esolangs.lean` root into their own modules so
-  # that the default `lake build` target covers all of them rather than just
-  # MAMMALIAN.  Re-enable by deleting the `if: false` line below.
+  # Disabled for now.  Re-enable by deleting the `if: false` line below;
+  # nothing else in the workflow needs this job.
   #
-  # Note the cache key and the `sources_hash` below both enumerate
-  # `Esolangs.lean` and `Esolangs/*.lean` explicitly; they keep working across
-  # the restructure, but a proof added outside those paths would be invisible
-  # to both.
+  # When it does run, `lake build` builds the `Esolangs` root, which imports
+  # every proof module, so the job checks all of them.  Keep new proofs
+  # imported from `Esolangs.lean` -- one that is not is built by nothing.
+  # (That was how `BfMintermCorrect` rotted into 35 elaboration errors
+  # unnoticed: the root once imported every proof, and when those imports were
+  # dropped the default target quietly narrowed to MAMMALIAN alone.)
+  #
+  # The cache key and `sources_hash` below enumerate `Esolangs.lean` and
+  # `Esolangs/*.lean`, which covers the current layout; a proof added outside
+  # those paths would be invisible to both.
   lean:
     if: false
     runs-on: ubuntu-latest
