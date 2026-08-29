@@ -510,12 +510,15 @@ def _unsquare_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     ``2 * 3**(n - 2)`` of them, which a test pins.  Forþ's stack has the same
     count for the same reason, reached through different ops.
 
-    Unlike Forþ, no breadth-first search beats this product: searching over
-    (arrangement, reads done) finds the *same* set with the *same* shortest
-    string at every width through n == 7, because unsquare's sink ops do not
-    compose across reads the way a late ``c`` does there.  So there is
-    nothing here to trade away, and the enumeration is both the simpler code
-    and the optimal one.
+    Forþ enumerates for the same reason and records a breadth-first search as
+    the rejected alternative: there the search *does* find shorter op strings
+    on some arrangements, because a late ``c`` composes across reads, and it
+    is dropped as a trade -- 1-2 characters that mostly do not survive to the
+    output, against code a reader can follow.  Here there is no trade to make.
+    A search over (arrangement, reads done) finds the *same* set with the
+    *same* shortest string at every width through n == 7, because these sinks
+    do not compose across reads at all, so the enumeration is both the simpler
+    code and the optimal one.
     """
     reached: dict[tuple[int, ...], str] = {}
     for sinks in product(_UNSQUARE_SINKS, repeat=n):
