@@ -84,16 +84,48 @@ class TestBack:
         assert run_and_capture(["\\", "+", "-", "*"]) == "0"
 
     def test_blank_only_program_is_empty(self) -> None:
-        """Programs of only blank lines are rejected, not crashed on."""
+        """Programs of only blank lines are rejected, not crashed on.
+
+        The message is matched whole, and with its casing: ``match="empty"``
+        is a substring search, so the wording could drift to anything still
+        containing the word and no test would say so.
+        """
         import pytest
 
-        with pytest.raises(ValueError, match="empty"):
+        message = r"^Back program cannot be empty$"
+        with pytest.raises(ValueError, match=message):
             run_and_capture(["\n"])
-        with pytest.raises(ValueError, match="empty"):
+        with pytest.raises(ValueError, match=message):
             run_and_capture(["   ", "\t"])
+
+    def test_a_short_line_is_padded_on_the_right(self) -> None:
+        r"""A short row keeps its content at the left, and the pad goes right.
+
+        ``test_short_lines_pad_on_the_right`` already covers this, but it
+        settles the question with the cycle detector, so it cannot run
+        against a bundled interpreter and is dropped before mutation ever
+        sees it.  This grid decides the same thing by halting either way:
+        the beam reflects off the ``\`` on the short first row, and which
+        column that row's content sits in changes which cell the tape ends
+        up holding -- 1 when the row is padded on the right, 0 when the pad
+        goes in front of it instead.
+        """
+        assert run_and_capture(["\\", "\\-*"]) == "1"
 
 
 class TestStepMachine:
+    def test_a_fresh_machine_reports_a_boolean(self) -> None:
+        """``halted`` starts as False itself, not merely as something falsey.
+
+        Every other read of it is a truthiness test, which ``None`` passes
+        just as well, so the flag could start un-set rather than unset and
+        nothing would object -- while ``halted`` is annotated as a bool.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.back import _Machine
+
+        assert _Machine(["-*"], ScriptedIO()).halted is False
+
     def test_step_tracks_beam_tape_and_direction(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.back import _Machine
