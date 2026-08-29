@@ -131,12 +131,34 @@ it crosses.  Greedy banking therefore spent the columns a later step needed
   `n == 2, 3, 4` (4/4, 8/8, 16/16).  The earlier stalls were probe depth, not
   exhausted material.
 
-What remains is **executing** a plan.  Chaining the reads means holding
-divergence across steps, but clamping between steps to keep the rows in step
-discards the divergence being accumulated — so the conjunction has to be
-banked into a cell after each read rather than carried in the pointer.  That
-is the next thing to build, and it is the last piece: isolation, reads, the
-shelf, the deposit and the endgame are all verified.
+What remains is the **hand-off from search to print**.
+
+The route there changed, because chasing a clean bank turned out to be
+chasing the wrong thing.  Three attempts to bank a literal without altering
+it all failed the same way — the delivered column came out a function of the
+literal *and* the path.  That is not a defect: it is the language's only
+source of non-linearity.  A bank that delivered exactly the literal could
+only shuffle existing columns about, and those are closed under XOR and
+complement, so no conjunction would ever appear.  The row-dependent
+absorption is the multiplexing.
+
+The evidence is direct: **3/9 shelf columns at `n == 2` and 22/26 at
+`n == 3` are not affine functions of the inputs**, and one at `n == 2` is
+plain AND (`minifuck_column.py`).
+
+So the emitter chases a *result* rather than a meaning-preserving gadget.
+`find_column` searches the live joint state for code after which some cell
+holds the wanted column, and it reaches **all 16 tables at `n == 2` in about
+a second** from the embed alone; at `n == 3` it reaches 9 of a 24-table
+sample at depth 11, with the rest wanting the intermediate ladder.
+
+The gap is that the search leaves the pointer wherever it finished, while the
+endgame needs it parked at the answer cell — and walking back there
+re-crosses, and so changes, that cell.  Ordering the pool fix before the
+search and reading wherever the column lands gets 4/16 printed end to end;
+folding the read into the search's own acceptance (demand a state where the
+pointer is *already* parked to read the answer) is the next step, and is what
+would turn 16/16-as-columns into 16/16-as-programs.
 
 ## Dead ends worth not repeating
 
