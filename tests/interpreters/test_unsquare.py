@@ -26,9 +26,39 @@ class TestUnsquare:
         assert run_program("++Po") == "\x04"
         assert run_program("-Po") == "-2"  # -2 is not a valid code point
         assert run_program("xxPo") == "\x00"
+        # The doubling above runs on zero, which any multiplier leaves at
+        # zero.  Doubling something first says the factor is 2.
+        assert run_program("+xPo") == "\x04"
+        assert run_program("+xxPo") == "\x08"
 
     def test_swap(self) -> None:
         assert run_program("OISo") == "\x00"
+
+    def test_pop_puts_the_value_in_the_accumulator(self) -> None:
+        """``A`` is only otherwise tested for the error it raises when empty.
+
+        What it does on a stack that *has* something was never asserted, so
+        the pop could have discarded the value entirely and only a later
+        use of the accumulator would notice.
+        """
+        assert run_program("IAPo") == "\x01"
+        assert run_program("+PA+Po") == "\x04"
+
+    def test_swap_exchanges_both_of_the_top_two(self) -> None:
+        """Reading only the new top cannot see what went underneath it.
+
+        ``o`` does not pop, so every swap test read one element and left
+        the other unchecked -- and a swap that overwrites *both* slots with
+        the same value looks identical from the top alone.  Printing the
+        top, popping it with ``A``, and printing what surfaces says both
+        moved.  A third element underneath is there because the indices
+        involved only diverge on a stack deeper than two.
+        """
+        # the accumulator carries across pushes: +P pushes 2, ++P pushes 6.
+        # Then I pushes 1, and the swap exchanges the 1 and the 6.
+        assert run_program("+P++PISoAo") == "\x06\x01"
+        # and with only the two, the pair still comes back in order
+        assert run_program("+P++PSoAo") == "\x02\x06"
 
     def test_read_input(self) -> None:
         assert run_program("iPo", "7\n") == "\x00"
@@ -41,6 +71,28 @@ class TestUnsquare:
 
     def test_print_letter(self) -> None:
         assert run_program("+" * 32 + "Po") == "@"
+
+    def test_printing_at_the_code_point_boundaries(self) -> None:
+        """``o`` prints a character, or a decimal when the value is not one.
+
+        Which values are "not one" was only tested at -2, far outside every
+        boundary, so both edges of the surrogate block and the top of the
+        range could move without any program noticing.  Each is checked
+        from both sides.
+
+        The accumulator is built from ``+``/``-``/``x``, so it is always
+        even and cannot reach the odd boundaries; those are read through
+        ``i`` instead, which pushes a character's code point.
+        """
+        # the surrogate block is rejected at both ends, and its neighbours
+        # are not
+        assert run_program("io", chr(0xD800)) == "55296"
+        assert run_program("io", chr(0xDFFF)) == "57343"
+        assert run_program("io", chr(0xD7FF)) == "\ud7ff"
+        assert run_program("io", chr(0xE000)) == "\ue000"
+        # the top of the range is a character; one past it is not
+        assert run_program("io", chr(0x10FFFF)) == "\U0010ffff"
+        assert run_program("+xxxx+xxxxxxxxxxxxxxxPo") == "1114112"
 
     def test_loop_skips_when_acc_01(self) -> None:
         assert run_program("O>I<") == ""
@@ -58,17 +110,27 @@ class TestUnsquare:
         assert run_program("++>Po-<") == "\x04\x02"
 
     def test_error_empty_stack(self) -> None:
-        with pytest.raises(HaltError):
+        """Each refusal says which one it is.
+
+        The four messages went unasserted, so any of them could have become
+        empty -- or all four the same -- and the raise alone would still
+        pass.  ``S`` is the one that distinguishes itself: it needs *two*
+        elements, so it refuses a stack that is merely short rather than
+        empty.
+        """
+        with pytest.raises(HaltError, match=r"^empty stack$"):
             run_program("A")
-        with pytest.raises(HaltError):
+        with pytest.raises(HaltError, match=r"^empty stack$"):
             run_program("o")
-        with pytest.raises(HaltError):
+        with pytest.raises(HaltError, match=r"^swap needs two elements$"):
             run_program("S")
+        with pytest.raises(HaltError, match=r"^swap needs two elements$"):
+            run_program("IS")
 
     def test_error_unmatched_brackets(self) -> None:
-        with pytest.raises(HaltError):
+        with pytest.raises(HaltError, match=r"^unmatched <$"):
             run_program("<")
-        with pytest.raises(HaltError):
+        with pytest.raises(HaltError, match=r"^unmatched >$"):
             run_program(">")
 
     def test_empty_program(self) -> None:
