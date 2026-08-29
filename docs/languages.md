@@ -47,7 +47,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | Jaune |  | yes |  | yes | yes |
 | Lamfunc |  | yes |  | yes |  |
 | LaserFuck | yes | yes |  | yes |  |
-| Minifuck | yes | yes |  |  |  |
+| Minifuck | yes | yes |  | yes |  |
 | Minsky Swap |  | yes | yes | yes |  |
 | Modulous | yes | yes |  | yes |  |
 | MyScript | yes | yes |  | yes |  |
