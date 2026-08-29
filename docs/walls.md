@@ -344,6 +344,24 @@ from termination.  The seven still unreached are AND, NAND, NOR, both
 `AND NOT` tables and both `OR NOT` tables; of those only AND is monotone,
 so only AND is predicted reachable without a third construction.
 
+Complementation does not close the gap either.  The printing route's answer
+digit is set by the prologue constant (0xCF prints `'0'`, 0xCE prints
+`'1'`), which is why its reachable set is closed under complement — but that
+maps affine tables to affine tables and adds nothing.  Of the seven
+missing, six have complements that are *also* missing; the exception is NOR,
+whose complement OR the termination route does build.  NOR still cannot come
+from that route: it loops on row `00` alone, so its looping set is not
+upward-closed, which is exactly what the monotonicity argument forbids
+(`notes/t123/complement.py`).
+
+**So the generator is not total at `n == 2`.**  That is the bar
+`docs/limitations.md` records for the 2dFish removal — "affine-only with no
+total once-embedding construction" — and 123 clears the first clause
+without clearing the second.  What keeps 123 in the repo is unrelated and
+untouched: unlike 2dFish, whose generator floor was a literal-embed in
+disguise, 123's text generator is genuinely computational (a running XOR
+across characters, emitting only per-character bit differences).
+
 That also corrects the impossibility sketch this section might invite.
 Position maps in `1`/`2` are tape-independent, which suggests rows entering
 a segment together must leave together and so share a halt verdict — but a
