@@ -888,8 +888,10 @@ class TestSlowAcvMammalian:
             ("0110", 2),  # XOR
             ("0001", 2),  # AND
             ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
+            # The three-input tables search: 3.5s and 3.3s at one worker,
+            # over the one-second budget the fast run holds to.
+            pytest.param("11111110", 3, marks=pytest.mark.slow),  # NAND3
+            pytest.param("01101001", 3, marks=pytest.mark.slow),  # XOR3
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -921,6 +923,7 @@ class TestSlowAcvMammalian:
             run_until_halt_or_cycle(_Machine(program, io_obj))
             assert io_obj.position() == 2
 
+    @pytest.mark.slow  # 3.3s: builds a searching generator per table
     def test_pointer_never_leaves_array_zero(self) -> None:
         """No ``SPRINT``: the tree lives in code space, not in array space.
 

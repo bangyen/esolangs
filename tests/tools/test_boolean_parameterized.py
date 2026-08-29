@@ -1594,15 +1594,22 @@ class TestParameterizedMinifuck:
         [
             ("10", 1),  # NOT
             ("01", 1),  # identity
-            ("0001", 2),  # AND
-            ("0110", 2),  # XOR
-            ("1001", 2),  # XNOR -- unreachable in the reading model
-            ("1110", 2),  # NAND -- likewise
+            # ``parameterized.minifuck`` searches, and it is the *build*
+            # that costs, not the assertion: measured at one worker, a
+            # two-input table takes 2.7s (NAND) to 9.0s (XOR) to emit while
+            # a one-input table takes ~0.03s.  So the two-input cases carry
+            # ``slow`` -- as does every other test in this class that builds
+            # one -- and the one-input cases above stay in the fast run.
+            pytest.param("0001", 2, marks=pytest.mark.slow),  # AND
+            pytest.param("0110", 2, marks=pytest.mark.slow),  # XOR
+            # XNOR and NAND -- unreachable in the reading model
+            pytest.param("1001", 2, marks=pytest.mark.slow),
+            pytest.param("1110", 2, marks=pytest.mark.slow),
             # OR ("0111") and NOR ("1000") are not listed: they cost ~48s and
             # ~47s here, and test_all_two_input_tables below already runs all
             # sixteen two-input tables through the same assertion.  The cases
             # that remain are the two one-input tables, which it does not
-            # cover, plus four two-input tables at a second or less apiece.
+            # cover.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -1633,6 +1640,7 @@ class TestParameterizedMinifuck:
                 got = self.run_minifuck(self.instantiate(template, bits))
                 assert got == table[combo], f"{table} inputs {bits}"
 
+    @pytest.mark.slow  # 7.8s: builds the searching two-input template
     def test_instantiations_have_equal_length(self) -> None:
         """No instantiation leaks its inputs through the program's length."""
         from esolangs.tools.boolean import parameterized
@@ -1643,6 +1651,7 @@ class TestParameterizedMinifuck:
         }
         assert len(lengths) == 1, f"unequal instantiation lengths: {lengths}"
 
+    @pytest.mark.slow  # 9.0s: builds the searching two-input template
     def test_template_is_input_independent(self) -> None:
         """The template has {Xi} placeholders, not hardcoded bits."""
         from esolangs.tools.boolean import parameterized
