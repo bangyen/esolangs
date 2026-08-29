@@ -19,8 +19,13 @@ counter sits above the value rather than below it.
 """
 
 from collections.abc import Callable
+from itertools import permutations
 
-from esolangs.tools.boolean.helpers import _validate_truth_table
+from esolangs.tools.boolean.helpers import (
+    _ORDER_SEARCH_MAX,
+    _validate_truth_table,
+    permute_truth_table,
+)
 from esolangs.tools.wrap import shortest
 
 __all__ = ["streetcode"]
@@ -419,7 +424,36 @@ def _streetcode_shared_lap(body: str) -> list[str]:
     return ["".join(row) for row in grid]
 
 
-def _streetcode_shared(n: int) -> list[str]:
+def _streetcode_walk(frm: int, to: int) -> str:
+    """Spell the CP walk from cell ``frm`` to cell ``to``.
+
+    ``=`` moves CP right and ``_`` left, so a walk is just the gap spelled
+    in whichever of the two the direction calls for.
+    """
+    return "=" * (to - frm) if to >= frm else "_" * (frm - to)
+
+
+def _streetcode_cells(n: int, perm: tuple[int, ...]) -> list[int]:
+    """Return the cell each stream input is read into, indexed by input.
+
+    The tree tests cells *positionally* -- every hall spends one ``=``, so
+    level ``k`` tests cell ``k + 1`` -- which is what makes the reorder a
+    placement rather than layout surgery.  Level ``k`` has to test original
+    input ``perm[k]``, so that input is the one stored at cell ``k + 1``.
+
+    The result is therefore the *inverse* of ``perm``, shifted by the one
+    cell the rewind leaves CP on.  Reading it in the forward direction
+    stores the right bits in the wrong cells and every non-identity order
+    computes a different function -- the frame mix-up
+    :func:`~esolangs.tools.boolean.helpers.stored_inputs` warns about.
+    """
+    cells = [0] * n
+    for level, i in enumerate(perm):
+        cells[i] = level + 1
+    return cells
+
+
+def _streetcode_shared(n: int, perm: tuple[int, ...] | None = None) -> list[str]:
     """Build the populate phase as one shared 48-lap loop over every cell.
 
     The per-loop shapes spend a whole 48-cell loop on each input and another
@@ -445,14 +479,41 @@ def _streetcode_shared(n: int) -> list[str]:
     The trailing ``_`` then walk CP back to cell 1.  There is nothing to
     correct on the way: with no ``^`` after the reads the ring subtracts 48
     from 48 or 49, so the inputs are already the bare bits the tree wants.
+
+    ``perm`` reorders which cell each input is read into, so the tree's
+    fixed positional tests fall on the inputs in ``perm`` order (see
+    :func:`_streetcode_cells`).  Only the prefix changes: instead of
+    stepping one cell per read it walks to each input's target, so a swap
+    at two inputs reads ``==I_I`` where the identity reads ``=I=I``.  The
+    reads stay in stream order -- ``I`` fires once per input, left to
+    right, exactly as before -- and everything downstream is untouched,
+    because the lap and the rewind are position-based over cells 1..n and
+    do not care which input sits where.
+
+    Two things keep a permuted prefix as safe as the identity one.  The
+    walks are junction-free: they run down the shaft, not along the street,
+    so no mouth is crossed while CP names an arbitrary cell.  And the fixed
+    seeding suffix is *relative* to cell ``n`` -- it seeds the loader at
+    ``n + 1`` and the counter above it -- so the prefix walks CP back to
+    cell ``n`` after the last read rather than assuming it landed there.
     """
+    perm = tuple(range(n)) if perm is None else perm
     body = "_" * (n + 1) + "~=" * n + "^"
     # No ``^`` after the reads: ``I`` stores the code point of an ASCII digit,
     # 48 or 49, so a cell it has just filled is nonzero on its own and needs
     # no bump to satisfy the mouths' junctions.  The ring then subtracts
     # exactly 48 and the inputs land on bare bits, so the tail only has to
     # walk CP back -- there is no +1 for it to take off.
-    prefix = "C" + "=I" * n + "=^" + "=" + "=^"
+    cells = _streetcode_cells(n, perm)
+    reads = ""
+    at = 0
+    for cell in cells:
+        reads += _streetcode_walk(at, cell) + "I"
+        at = cell
+    # Back to cell ``n``, which the seeding suffix below counts from.  Under
+    # the identity order the last read already left CP there and the walk is
+    # empty, so the prefix is spelled exactly as it was.
+    prefix = "C" + reads + _streetcode_walk(at, n) + "=^" + "=" + "=^"
     tail = "_" * n
     blocks = [_streetcode_ring("^"), _streetcode_shared_lap(body)]
 
@@ -497,6 +558,35 @@ def _streetcode_shared(n: int) -> list[str]:
     return ["".join(row) for row in grid]
 
 
+def _streetcode_orders(n: int) -> list[tuple[int, ...]]:
+    """Return the input orders to build the shared shape over, identity first.
+
+    Streetcode cannot go through
+    :func:`~esolangs.tools.boolean.helpers.best_input_order` the way the
+    token-sequence generators do, because that returns one shortest string
+    and this generator's ``width`` has to choose among *every* candidate --
+    the shapes differ in aspect, so the narrowest program is often not the
+    shortest one.  The orders are enumerated here instead and the existing
+    selection runs over the whole pool, which is the ``six_five`` and
+    ``forth`` precedent.
+
+    The cap is shared with ``best_input_order`` rather than reinvented:
+    above it the exhaustive search is ``n!`` builds of an ``O(2**n)``
+    drawing, which is the cost that does not announce itself.  Past the cap
+    this returns the identity alone rather than ``best_input_order``'s
+    greedy order -- a Streetcode program is a *drawing*, so the greedy
+    score (how many subtrees a split leaves constant) misses the per-order
+    cost that actually decides the winner here, which is the walk the
+    prefix spends putting each bit in its cell.  A table that big is
+    outside what the suite exercises; wiring the greedy path in unmeasured
+    would be guessing at its own benchmark.
+    """
+    identity = tuple(range(n))
+    if n <= _ORDER_SEARCH_MAX:
+        return [identity, *(p for p in permutations(range(n)) if p != identity)]
+    return [identity]
+
+
 def _streetcode_columns(program: str) -> int:
     """Return the widest row of ``program``, which is what a width bounds."""
     return max(len(line) for line in program.split("\n"))
@@ -521,6 +611,18 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     Whichever shape wins, the leading run then moves to the oncoming lane
     and runs westbound (:func:`_streetcode_lift`), which takes its columns
     off every row of the program.
+
+    The tree also splits on its inputs in whichever order emits the
+    shortest program, so more subtrees fold.  That is a *placement* here
+    rather than layout surgery: the halls test cells positionally, so
+    moving which cell an input is read into is enough to change what every
+    junction tests, and only the shared shape's prefix changes (see
+    :func:`_streetcode_shared`).  The reads stay in stream order.  The
+    per-loop shapes are built at the identity order alone -- they are never
+    the shortest program at any ``n`` the suite reaches, so they survive
+    only as ``width`` fallbacks, and their labels thread the ``+1``
+    hand-off between neighbouring loops in a way a permuted placement would
+    have to re-derive for no measured gain.
 
     ``width`` bounds the columns by *choosing among the shapes* rather than
     reflowing the winner: a Streetcode program's rows are streets, so no
@@ -549,11 +651,22 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     # names a cell that nothing has seeded yet, because the prefix is the only
     # code that has run.  No ordering of the seeds avoids that: the cells CP
     # walks over are exactly the ones the prefix has not reached.
-    shared = _streetcode_combine([_streetcode_shared(n), tree])
-    # Padding siblings to a common width leaves trailing blanks on the
-    # shorter one's rows; they are outside the walls and never driven, so
-    # trim them the way :func:`_streetcode_lift` trims its own.
-    programs.append("\n".join(row.rstrip() for row in shared))
+    #
+    # It is built once per input order.  The identity comes first, so a table
+    # no reorder improves keeps the program it already emitted -- ties are
+    # settled by :func:`~esolangs.tools.wrap.shortest`, which keeps its first
+    # argument.
+    for perm in _streetcode_orders(n):
+        shared = _streetcode_combine(
+            [
+                _streetcode_shared(n, perm),
+                _streetcode_tree(permute_truth_table(truth_table, perm)),
+            ],
+        )
+        # Padding siblings to a common width leaves trailing blanks on the
+        # shorter one's rows; they are outside the walls and never driven, so
+        # trim them the way :func:`_streetcode_lift` trims its own.
+        programs.append("\n".join(row.rstrip() for row in shared))
     if width is not None:
         fitting = [p for p in programs if _streetcode_columns(p) <= width]
         if fitting:
