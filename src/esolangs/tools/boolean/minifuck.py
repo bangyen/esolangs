@@ -426,6 +426,74 @@ def _find_parked(
     return _search(j, accept, maxlen) or hits
 
 
+# Where the embed leaves the first two inputs and the constants, whatever the
+# arity: the carry chain preserves ``b0`` and ``b1`` individually before the
+# prefix-XOR starts mixing, so these cells are fixed rather than searched.
+# Later inputs are *not* here at any settle count -- the affine transform
+# fixes which bits stay separable -- but a column search finds them in a
+# fraction of a second, which is why the degenerate path still beats the
+# ladder without being wholly search-free.
+_DEGENERATE_CELLS = {
+    "const1": 1,
+    "~b0": 16,
+    "b0": 17,
+    "const0": 18,
+    "~b1": 19,
+    "b1": 20,
+}
+
+
+def _essential_inputs(truth_table: str, n: int) -> list[int]:
+    """Which inputs the table actually depends on."""
+    return [
+        i
+        for i in range(n)
+        if any(
+            truth_table[row] != truth_table[row ^ (1 << (n - 1 - i))]
+            for row in range(2**n)
+        )
+    ]
+
+
+def _degenerate(truth_table: str, n: int) -> str | None:
+    """Build a table depending on at most one input, without the ladder.
+
+    Such a table is a constant, a projection, or a negated projection, and
+    every one of those already stands as a *column* somewhere after the
+    embed -- at a known cell for the first two inputs, and at a cheaply
+    searched one beyond that.  So the whole construction is: find the cell
+    holding the answer, then run the endgame on it.
+
+    This is the piece that composes upward: a table with ``k`` essential
+    inputs is a ``k``-input problem whatever its arity, so four of the
+    fourteen three-input orbits are handled here for free.
+    """
+    want = tuple(int(c) for c in truth_table)
+    base = _embed(n, sep=_SEP)
+    _clamp(base)
+
+    # The fixed cells first, then a search for the rest.
+    candidates = list(_DEGENERATE_CELLS.values())
+    for acc in candidates:
+        hit = _try_print(base, truth_table, acc)
+        if hit is not None:
+            return hit.template()
+
+    probe = _embed(n, sep=_SEP)
+    _clamp(probe)
+    _walk_to(probe, _BASE - 1)
+    found = _find_column(probe, want, _BASE + n * _SPAN + 14, _COLUMN_DEPTH)
+    if found is None:
+        return None
+    probe.emit(found[0])
+    _clamp(probe)
+    for acc in range(9, _BASE + n * _SPAN + 14):
+        hit = _try_print(probe, truth_table, acc)
+        if hit is not None:
+            return hit.template()
+    return None
+
+
 @cache
 def minifuck(truth_table: str) -> str:
     """Build a Minifuck template for the given truth table.
@@ -455,6 +523,15 @@ def minifuck(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     want = tuple(int(c) for c in truth_table)
+
+    # A table depending on at most one input has a closed form -- it is a
+    # constant or a (negated) projection, and the embed already holds those
+    # as columns.  Taking it first skips the ladder entirely, and it is the
+    # part that composes: the same case handles such a table at any arity.
+    if len(_essential_inputs(truth_table, n)) <= 1:
+        degenerate = _degenerate(truth_table, n)
+        if degenerate is not None:
+            return degenerate
 
     frontier = _BASE + n * _SPAN + 6
 
