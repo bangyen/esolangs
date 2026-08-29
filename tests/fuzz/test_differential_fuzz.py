@@ -159,4 +159,3 @@ class TestDivergenceDetection:
 
         with patch.object(verify_differential, "_asm_refs", side_effect=tampered):
             assert not verify_differential._fuzz_minsky_swap(rng, 20)  # noqa: SLF001
-
