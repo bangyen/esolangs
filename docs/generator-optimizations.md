@@ -784,7 +784,9 @@ against the identity *under the existing construction*, so it prices the
 reorder alone. Hoisting the reads is usually a saving in its own right —
 it lifts a per-node normalization or read-drain out of the tree — and that
 part is invisible to the screen. `addsubjump` screened 16.7% and delivered
-31.7%, of which the hoist was 25.1% and reordering 8.9%. A screen figure is
+31.7%, of which the hoist was 25.1% and reordering 8.9%; `sbleq` screened
+8.3% and delivered 24.7%, a factor of three and the widest gap in the table.
+A screen figure is
 a lower bound on a generator whose reads sit at its nodes, not an estimate.
 
 **6-5 keeps two constructions, and that is load-bearing.** Every other
@@ -999,6 +1001,58 @@ arrangements it did report were all genuinely reachable, so the direction of
 the error was conservative, but a screen that prunes its own frontier is worth
 recognising: the tell was n=2 reporting 1 reachable arrangement when a single
 trailing `S` visibly reaches the other.
+
+### S*bleq — a non-destructive test is what frees the order
+
+S*bleq screened 8.3% and delivered **24.7% at n=3** (254 of 256 tables
+improved, none grown) and **38.0% at n=4**. That is the widest screen-to-
+delivered gap in the table, and almost all of it is the hoist; the reorder
+rides on top of a restructuring the screen could not see.
+
+The old build read at each node, which forced a **drain**. An input-capable
+language reads each of its `n` inputs exactly once per run whatever the table
+says, so a leaf reached before the tree had tested every input still had to
+perform the reads its untaken siblings never made — two instructions and a
+data triple per undrained level, *per leaf*. Hoisting the reads above the
+tree deletes every drain and pays for each input once for the whole program.
+
+**The enabling trick is subtracting zero.** S*bleq's instruction always
+mutates its `a` operand, so the old node's normalize-and-branch consumed the
+value it tested — which is precisely why the read had to sit at the node. A
+hoisted tree needs to test a value cell without destroying it, and
+`v ZERO ONE` does exactly that: the subtraction is a no-op and only the sign
+is read. A destructive test would also have worked here, because a
+root-to-leaf path tests each input at most once, but only by accident of the
+tree's shape; it would break the moment a node wanted to re-test a bit. The
+non-destructive form is what makes the ordering genuinely free, and it is the
+part worth carrying to another self-modifying-memory generator.
+
+The read block is `2n` instructions, two per input:
+
+    v_i -2    NXT   # v_i = -byte (always <= 0, so NXT is the next instruction)
+    v_i NEG49 NXT2  # v_i = 49 - byte; both outcomes continue to the next
+
+and a branch node collapses from two instructions to one. Note that the read
+block's *first* instruction always branches — `-byte` is never positive — so
+its `c` operand is a real jump target, not a fall-through.
+
+**Both constructions are kept** (technique 4), and here the exception is
+sharp rather than statistical. The node-read build wins on exactly two of the
+256 tables at n=3 — the two **constant** tables, where the whole program
+folds to a single leaf and the hoisted read block pays for inputs no branch
+ever tests. It costs one character more. The same happens at n=2 for parity
+(`0110`), which never folds. Keeping the older build in the dispatch is what
+turns a 24.64% average with two regressions into 24.65% with none;
+`test_node_read_build_survives_for_the_constant_tables` fails if the dispatch
+ever stops earning its keep.
+
+Verified by 3080 interpreter runs — every table exhaustively at n=1..3,
+sampled at n=4 and n=5. The permuted build is checked against
+`best_input_order`'s contract, that `build(permute_table(tt, perm), perm)`
+computes the *original* table on the *original* input stream. A harness that
+feeds an unpermuted table to a permuted build reports mass failure and means
+nothing; that cost a detour here, and it is the same frame-mapping mistake
+the ZTOALC L trap describes, seen from the test side.
 
 ### Forþ — the natural order is the reversal, and rotations go between the reads
 

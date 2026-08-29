@@ -1309,6 +1309,38 @@ class TestSbleq:
             (0, 0, data_base + 3)
         ]  # one halt per leaf
 
+    def test_reordering_only_shrinks(self) -> None:
+        """No table comes out longer than the node-read build it replaces."""
+        from esolangs.tools.boolean.tape import _sbleq_node_read
+
+        for i in range(256):
+            table = format(i, "08b")
+            assert len(boolean.sbleq(table)) <= len(_sbleq_node_read(table))
+
+    def test_node_read_build_survives_for_the_constant_tables(self) -> None:
+        """The drain beats a read block when no node ever branches.
+
+        Both constructions are kept as candidates precisely for these two:
+        the whole program is one leaf, so the hoisted read block pays for
+        inputs nothing tests.  If this starts passing with the hoisted build
+        the dispatch has stopped earning its keep.
+        """
+        from esolangs.tools.boolean.tape import _sbleq_node_read
+
+        for table in ("0" * 8, "1" * 8):
+            assert boolean.sbleq(table) == _sbleq_node_read(table)
+
+    def test_hoisted_build_reads_every_input_once_up_front(self) -> None:
+        """The read block is 2n instructions and precedes every branch."""
+        from esolangs.tools.boolean.tape import _sbleq_hoisted
+
+        program = _sbleq_hoisted("00010111", (0, 1, 2))
+        cells = [int(tok) for tok in program.split()]
+        triples = [tuple(cells[i : i + 3]) for i in range(0, len(cells), 3)]
+        reads = [t for t in triples[:6] if t[1] == -2]
+        assert len(reads) == 3  # one read per input, all in the first 6 instrs
+        assert [t[0] for t in reads] == sorted({t[0] for t in reads})  # input order
+
     def test_mismatched_table_rejected(self) -> None:
         with pytest.raises(ValueError, match="power-of-two"):
             boolean.sbleq("011")
