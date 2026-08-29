@@ -223,7 +223,18 @@ def _tail_for(one_value: int, zero_value: int) -> str | None:
                 if move is None:
                     continue
                 body = pre + "m" * amp + move
-                if _apply(one_value, body) == 1 and _apply(zero_value, body) == 0:
+                if (
+                    _apply(one_value, body) == 1
+                    and _apply(zero_value, body) == 0  # pragma: no cover - see below
+                ):
+                    # Unreachable as the moves stand.  Every ``move`` here is
+                    # a translation, and ``m`` scales both classes alike, so
+                    # this body sends the gap to ``2**amp * (one - zero)``
+                    # (negated by ``p``).  Landing on 1 and 0 needs a gap of
+                    # exactly 1, which only ``amp == 0`` gives -- and that is
+                    # the bare translation the first shape already tried.
+                    # The clamp this loop was written for would need a move
+                    # that is not affine in the accumulator.
                     return body + "l"
     return None
 
