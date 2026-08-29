@@ -31,7 +31,7 @@ three.
 | 8 | **Literal batching** | print a whole string in one statement rather than per character | `text/helpers.py` `_literal_chunks` |
 | 9 | **Equal-width embedding** | *anti*-optimization: pad both bits to equal width so length can't leak inputs | `boolean/helpers.py:97` `instantiate` |
 | 10 | **Dependency reduction** | a table that ignores an input is emitted as the *smaller* table, reading and discarding the rest | `boolean/other.py` `_taglate_dependencies` |
-| 11 | **Input reordering** | the tree splits on its inputs in whichever order emits the shortest program, so more subtrees fold — the bar is that the **emitted program changes** and still **consumes its inputs in the same order**, which rules out *relabelling* a parameterized template's fill slots but not interleaving ops between them | `boolean/helpers.py` `best_input_order` (`six_five`, `forth`, `streetcode` and `laserfuck` roll their own) |
+| 11 | **Input reordering** | the tree splits on its inputs in whichever order emits the shortest program, so more subtrees fold — the bar is that the **emitted program changes** and still **consumes its inputs in the same order**, which rules out only a template whose emitted program is *identical* under the permutation | `boolean/helpers.py` `best_input_order` (`six_five`, `forth`, `streetcode` and `laserfuck` roll their own) |
 
 ## Which shape a boolean generator is
 
@@ -215,12 +215,14 @@ discarding the rest (`_taglate_dependencies`). Note `taglate`'s own
 
 The tree splits on inputs in whichever order emits the shortest program, so
 more subtrees fold. **The bar: the emitted program must change and still
-consume its inputs in the same order.** *Relabelling* a parameterized
-template's fill slots — swapping which `{Xi}` name sits in which slot — is not
-a reorder, because the emitted program is identical and booking a saving
-against the harness's fill order is a redefined benchmark. Interleaving
-runtime ops *between* the slots is a different thing and does qualify; `eval`
-ships it, and it is what puts `back` in scope (see the grid tier below).
+consume its inputs in the same order.** The test is on the *drawing*, not on
+which `{Xi}` name sits where. A parameterized template whose emitted program
+is byte-identical under the permutation books a saving against the harness's
+fill order and is a redefined benchmark; one whose drawing genuinely changes
+is a reorder however its slots are labelled, since `instantiate` substitutes
+by name and each input still reaches its own slot. Both shipped forms clear
+it: `eval` interleaves stack ops *between* the slots, and `back` permutes
+which name fills each slot while building its tree on the permuted table.
 
 **Shipped:** `six_five`, `jaune`, `eval`, `circlefuck`, `unsquare`, `sbleq`,
 `three_x`, `forth`, `sophie`, `polynomial`, `addsubjump`, `streetcode`,
@@ -248,16 +250,18 @@ Four rules worth carrying into the remaining candidates:
   (addsubjump screened 16.7%, delivered 31.7%; sbleq 8.3% → 24.7%); a node
   testing a *position* rather than naming an input owes a walk and comes in
   under it (circlefuck 10.47% → 10.42%, streetcode 16.8% → 16.76%, laserfuck
-  16.3% → 16.08%). **How far under is set by what a pointer move costs in
-  that language**, and it is not always a rounding error: Back spends a whole
-  *row* per move and came in at 9.15% against a 12.0% screen. Rebuilding its
-  permuted tables with an identity load isolates the two — the fold win alone
-  measures 11.99%, the screen to two decimals — so treat the screen as the
-  gross figure and subtract the walk yourself where moves are expensive. It
-  is *exact* only when the reads
-  already sit in named storage and the reorder is a rename — `three_x`
-  permutes the **store target** each `?` writes to, leaving the tree
-  untouched, and delivered its screened 4.5%/5.4% to the character.
+  16.3% → 16.08%). **How far under is the walk's cost as a fraction of the
+  program**, so a compact program pays a larger fraction for the same
+  absolute walk — an early Back build lost 2.85 points that way, on moves
+  costing only 2.00 characters each, because its programs average 82
+  characters against Streetcode's 842. **But first check whether a walk is
+  needed at all.** It is *exact* when the reads already sit in named storage
+  and the reorder is a rename — `three_x` permutes the **store target** each
+  `?` writes to, leaving the tree untouched, and delivered its screened
+  4.5%/5.4% to the character; `back` permutes which name fills each load
+  slot and delivered 11.99% against a 12.0% screen. A generator with no
+  sequenced reads has no reason to move a pointer at all, and treating one
+  as if it had is how that Back build lost its 2.85 points.
 - **Reachable orders are often far fewer than `n!`** — stack- and pointer-bound
   generators reach a structured subset (Forþ and Unsquare a product; BrainIf
   only `n+1` j-splits, since a written cell cannot be crossed without
@@ -355,30 +359,62 @@ on a `>`). Deriving the identity spelling first and checking it reproduces
 what the generator already emitted catches an off-by-one before any table is
 run.
 
-**Back is the third, and it is where the screen's blind spot finally
-bites.** It screened 12.0% and **delivered 9.15%** at n=3 (23119 → 21003
-characters, 112 of 256 tables improved, none grown; 2048 fill-and-run
-verifications, equal-width embedding checked on every one). Node `+\>` tests
-the current cell and *then* advances, so level *k* tests cell **k** — one
-lower than streetcode's halls and LaserFuck's `>#v)`, both of which step
-first. The load's `>` between units becomes a walk; the `-`/`{Xi}` pairs are
-never separated.
+**Back is the third, and it is the whole screen — because its reorder is
+free.** It screened 12.0% and **delivers 11.99%** at n=3 (23119 → 20347
+characters, none grown) and **15.35% at n=4** over the complete 65536-table
+space. Verified by 2048 fill-and-run cycles at n≤3 and **1048576 at n=4** —
+every table, every input combination — with the equal-width embedding checked
+on each one.
 
-The 2.85-point shortfall was measured rather than guessed, and it is worth
-recording because it is the first case where the circlefuck effect is
-*material* rather than a rounding error. Rebuilding every permuted table with
-an identity load — the fold win with the walks made free — gives **11.99%**,
-which is the screen figure to two decimal places. So the screen is exactly
-right about what reordering buys and silent about what it costs, and in Back
-the cost is large because **a pointer move is a whole load row**, not a
-character. Where a generator spends rows per move rather than characters,
-discount the screen before deciding.
+Node `+\>` tests the current cell and *then* advances, so level *k* tests
+cell **k**, one lower than streetcode's halls and LaserFuck's `>#v)`, which
+both step before they test.
 
-Back is also the case that settles the fill-slot question: it is a
-parameterized template and it reorders anyway, because what moves is the
-`>`/`<` runs *between* the `{Xi}` units, not which name sits in which slot.
-Keeping each `-`/`{Xi}` pair intact is what preserves the equal-width
-embedding (9) — split one and the template's height would leak the bit.
+**The load fills cells in order and permutes which name lands in each.**
+Cell *c* is tested by level *c*, which must test input `perm[c]`, so cell *c*
+simply gets `{X perm[c]}`. The pointer still only steps one cell forward, so
+a reordered load is *exactly as long as the identity one* — there is no walk
+to pay for. That is the store-target regime (`three_x` permutes which
+variable each `?` writes to; `decleq` names any of its cells at a node),
+where the screen is **exact** rather than an upper bound.
+
+That is worth stating as a rule, because the first build here got it wrong
+and cost 2.85 points. It interleaved `>`/`<` walks between the units, filling
+in *name* order and moving the pointer to each name's cell — the construction
+Streetcode and LaserFuck need, carried over by habit. Those two have runtime
+reads: `I` and `,` fire in stream order, so the bits arrive in a fixed
+sequence and only the pointer can decide where each lands. **Back has no
+runtime reads at all** — the harness substitutes `{Xi}` by name — so nothing
+forces the fill to follow the names, and the walk was an artifact of the
+wrong mental model rather than a cost the language imposes. Before paying for
+a walk, check whether the reads are actually sequenced.
+
+For the record, the discarded walk was itself cheap: 2.00 characters a move
+(a grid character plus the newline its own load row carries), 656 characters
+across the corpus. It read as 2.85 points only because Back's programs are
+small — 82 characters on average against LaserFuck's 326 and Streetcode's
+842. **Price a walk against the program's own size**; compact programs are
+where a fixed cost shows up as a large fraction.
+
+Back also settles the fill-slot question, and settles it more sharply than
+the walk build did: a parameterized template can reorder by permuting **which
+name fills which slot**, so long as the emitted program changes. Here it does
+— the tree is built on the permuted table — and `instantiate` substitutes by
+*name*, so each named input still reaches its own slot however the slots are
+ordered. The bar rules out a template whose drawing is *identical* under the
+permutation, booking a saving against the harness's fill order; it does not
+rule this out. Keeping each `-`/`{Xi}` pair intact is what preserves the
+equal-width embedding (9) — split one and the template's height would leak
+the bit.
+
+**One layout idea is screened and unbuilt.** The load runs up column 0 at one
+command per row, so it is `2n+2` rows tall while the tree needs only ~7.5;
+snaking it into two columns would halve that. Counted at n=3 it nets about
+**+1.9%** — 13 characters of rows saved against 7.5 for shifting the tree one
+column right and ~4 for the turn mirrors — which is under the 5% bar for a
+cheap change, and the mirror estimate is the soft part: a turn cell cannot
+also carry a load command, and `+`'s conditional step interacts with the
+beam's direction at a mirror. Recorded rather than built.
 
 **Not yet done.** What is left splits by *where the node reads*, which is the
 same question the token-sequence tier answers, not by being 2D:
@@ -422,16 +458,25 @@ is simply not cheaper than the reads it replaces. Worth keeping as the case
 where the *language* has the richest storage in the tier and the hoist still
 loses — read the generator to classify, then count before building.
 
-**What the fill-slot bar rules out, precisely.** "Permuting a parameterized
-template's fill slots is not a reorder" excludes *relabelling* — swapping
-which `{Xi}` name sits in which slot, which leaves the emitted program
-identical. It does not exclude **interleaving runtime ops between the
-slots**, which changes the program. `eval` is the shipped precedent and says
-so in `_eval_stack_programs`: the `{Xi}` blocks keep their slots and the
-harness fills them exactly as before, while the emitted ops rearrange the
-stack the nodes pop from. `instantiate` substitutes by *name*, so a named
-input still reaches its named slot however the moves around it change. This
-is what puts `back` in scope.
+**What the fill-slot bar rules out, precisely.** It is a test on the emitted
+**drawing**, not on where the names sit. "Permuting a parameterized
+template's fill slots is not a reorder" excludes a template whose program is
+*byte-identical* under the permutation — there the saving is booked against
+the harness's fill order and nothing was made smaller. It does not exclude a
+template whose drawing changes, and there are two shipped ways to change one.
+`eval` **interleaves runtime ops between the slots**: `_eval_stack_programs`
+records that the `{Xi}` blocks keep their slots and the harness fills them
+exactly as before, while the emitted ops rearrange the stack the nodes pop
+from. `back` **permutes which name fills each slot** and builds its tree on
+the permuted table, so the tree changes even though the load's shape does
+not. Both are legal for the same underlying reason: `instantiate` substitutes
+by *name*, so a named input reaches its own slot wherever that slot is.
+
+The two differ in cost, and the difference is worth carrying. `eval`'s ops
+are real emitted characters, so its reorder is priced like any other walk.
+`back`'s is **free** — a permuted load is exactly as long as the identity
+one — which is why it delivers its screen to two decimals. Ask which case a
+candidate is in before assuming a reorder must be paid for.
 
 `arrowqueue` (12.4%) is separate: it is
 a *queue*-fed grid template, so a real reorder needs re-enqueue gadgets to

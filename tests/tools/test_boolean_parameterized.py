@@ -268,17 +268,18 @@ class TestParameterizedBack:
         """The tree splits in whichever order folds most, not load order.
 
         ``10101010`` depends on its last input alone, so it folds nothing
-        loaded in order and everything once that input sits in cell 0.  It
-        stays longer than the already-aligned table, because Back pays for
-        a reorder in *rows* -- each pointer move is its own load row -- but
-        it comes in far under the table that folds under no order at all.
+        loaded in order and everything once that input sits in cell 0.  The
+        reorder costs nothing to reach -- the load fills cells in order and
+        only the *name* in each slot moves -- so it comes out exactly as
+        cheap as the table that was already aligned, and far under the one
+        that folds under no order at all.
         """
         from esolangs.tools.boolean import parameterized
 
         scattered = len(parameterized.back("10101010"))
         aligned = len(parameterized.back("11110000"))
         parity = len(parameterized.back("01101001"))
-        assert aligned <= scattered < parity
+        assert aligned == scattered < parity
 
     def test_input_reordering_never_grows_a_template(self) -> None:
         """The identity order is built first and ties keep it.
@@ -316,6 +317,32 @@ class TestParameterizedBack:
             bits = [(combo >> (2 - i)) & 1 for i in range(3)]
             got = self.run_back(self.instantiate(template, bits), 3)
             assert got == table[combo], f"{table} inputs {bits}"
+
+    def test_reordering_costs_no_load_rows(self) -> None:
+        """A permuted load is exactly as long as the identity one.
+
+        The load fills cells in order and permutes which ``{Xi}`` name lands
+        in each, so the pointer still only steps one cell forward and no
+        walk is emitted.  That is what makes Back deliver its screen rather
+        than the screen minus a walk, and it is the property a future change
+        must not trade away: an earlier build interleaved pointer moves
+        between the units instead and lost 2.85 points to them.
+        """
+        from itertools import permutations
+
+        from esolangs.tools.boolean import parameterized
+
+        def load_rows(template: str) -> int:
+            """Count the rows carrying a load unit -- the load is column 0."""
+            return sum(1 for line in template.split("\n") if line[:1].strip())
+
+        for table in ("10", "0110", "10101010", "01101001"):
+            n = (len(table) - 1).bit_length()
+            base = parameterized._back_ordered(table, tuple(range(n)))  # noqa: SLF001
+            for perm in permutations(range(n)):
+                permuted = parameterized.permute_truth_table(table, perm)
+                other = parameterized._back_ordered(permuted, perm)  # noqa: SLF001
+                assert load_rows(other) == load_rows(base), f"{table} perm={perm}"
 
     def test_reordering_keeps_the_equal_width_embedding(self) -> None:
         """Reordered loads still cost the same for either bit.
