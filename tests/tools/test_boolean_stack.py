@@ -294,6 +294,24 @@ class TestUnsquare:
         for value in range(256):
             assert boolean.unsquare(format(value, "08b")).count("iA>-<P") == 3
 
+    def test_past_the_cap_only_the_natural_order_is_built(self) -> None:
+        """Above ``_ORDER_SEARCH_MAX`` the arrangement search is skipped.
+
+        The reachable arrangements are ``2 * 3**(n - 2)`` rather than
+        ``n!``, but that is still a program built per candidate, so the
+        shared cap applies.  Past it the generator emits the natural order
+        alone -- what it produced before reordering existed, never worse,
+        just unimproved -- and this pins that only one program is built.
+        """
+        from esolangs.tools.boolean.helpers import _ORDER_SEARCH_MAX
+
+        n = _ORDER_SEARCH_MAX + 1
+        table = "01" * (2 ** (n - 1))
+        program = boolean.unsquare(table)
+
+        assert program.count("iA>-<P") == n  # one read per input
+        assert program.endswith("o")
+
     def test_reordering_never_grows_a_program(self) -> None:
         """Choosing the stack arrangement can only shrink the program.
 

@@ -631,6 +631,47 @@ class TestCirclefuck:
         with pytest.raises(ValueError, match="power-of-two"):
             boolean.circlefuck_byte([1, 2, 3])
 
+    def test_past_the_cap_the_greedy_order_replaces_the_search(self) -> None:
+        """Above ``_ORDER_SEARCH_MAX`` one greedy pick stands in for ``n!``.
+
+        The exhaustive reorder is capped because it builds a program per
+        order; at n == 7 that is 5040 builds.  Past the cap the generator
+        scores each input by the constant subtrees choosing it next would
+        create and commits to that order, so exactly one extra candidate is
+        built.  The count is the assertion -- it is what a change to the cap
+        or to the fallback would break -- and the table still has to come
+        out right, so the program is run over all 128 combinations too.
+        """
+        import importlib
+
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.boolean.tape")
+        from esolangs.tools.boolean.tape import _circlefuck_ordered
+
+        table = "01" * 64  # alternating: the greedy pick is not the identity
+        built = 0
+        ordered = _circlefuck_ordered
+
+        def counted(
+            values: list[int],
+            perm: tuple[int, ...],
+            _build: object = ordered,
+        ) -> str:
+            nonlocal built
+            built += 1
+            return _build(values, perm)  # type: ignore[operator, no-any-return]
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_circlefuck_ordered", counted)
+            program = boolean.circlefuck(table)
+        assert built == 2, f"built {built} candidates, not identity plus greedy"
+
+        for combo in range(128):
+            bits = [(combo >> (6 - i)) & 1 for i in range(7)]
+            got = run_circlefuck(program, [str(b) for b in bits])
+            assert got == table[combo], f"inputs {bits}"
+
     def test_constant_subtrees_fold(self) -> None:
         """A constant slice prints its answer instead of branching further.
 

@@ -1823,3 +1823,32 @@ class TestParameterizedPctSquaredMinusOne:
 
         with pytest.raises(ValueError, match="power-of-two"):
             parameterized.pct_squared_minus_one("011")
+
+    def test_slope_zero_forgets_the_accumulator(self) -> None:
+        """``'`` is the constant map: it discards whatever it was given.
+
+        The setters are affine maps ``x -> a*x + b``, and ``a == 0`` is the
+        one that cannot be reached by scaling -- it needs the reset command.
+        Both inputs must land on the same value, which is what makes it a
+        constant rather than merely a steep slope.
+        """
+        from esolangs.tools.boolean.pct_squared_minus_one import _affine_code, _apply
+
+        code = _affine_code(0, 5)
+        assert code is not None
+        assert "'" in code, "a constant map has to reset the accumulator"
+        assert _apply(7, code) == 5
+        assert _apply(0, code) == 5
+
+    def test_a_tail_is_not_always_available(self) -> None:
+        """Not every pair of class values can be printed apart.
+
+        The tail has to land the one-class on exactly 1 and the zero-class
+        on 0 (or past the reset limit).  Two classes that share a value are
+        the clearest case that no tail can separate -- ``l`` prints one
+        accumulator, so identical inputs cannot print differently.
+        """
+        from esolangs.tools.boolean.pct_squared_minus_one import _tail_for
+
+        assert _tail_for(-5, -5) is None
+        assert _tail_for(1, 0) is not None, "the trivial pair still works"
