@@ -143,9 +143,20 @@ Two pieces of that are known, and one is missing:
   `2s + b` — Horner's step — is findable on prepared scratch:
   `[x[<<<<[<` does width 2 to 4.  (On a *blank* tape the pointer spread is
   pinned at 1, which is why an early search called this impossible.)
-- **It does not compose.**  No width 4 to 8 stage was found at depth 14, so
-  the chain stalls after the first junction, and a two-input index is all it
-  builds.
+- **It does not compose.**  No width 4 to 8 stage exists over 48
+  configurations at depth 13 — both embed separators at three settle counts,
+  plus an alternating and an all-ones tape, each against six bit-cell offsets.
+  So the chain stalls after the first junction, and a two-input index is all
+  it builds.
+
+And the chain would not be enough on its own, because the two languages
+decode different things.  wii2d's junctions accumulate a *number* and its
+fold decode inverts that number; Minifuck's endgame decodes a *bit* —
+`_walk_to(acc - 1)` wants a converged pointer, and `[<` turns one cell's
+value into the ±1 offset the print consumes.  An index chain would therefore
+need a second construction that does not exist here: a decode from an
+accumulated *position* back to a cell the endgame can read.  Both pieces are
+missing, not one.
 
 The other candidate mechanism — chaining `[<` reads across planted
 indicators, so disjoint minterms accumulate into the pointer — is **disproved**
