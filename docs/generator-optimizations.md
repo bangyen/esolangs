@@ -719,6 +719,8 @@ what it emitted before — this can only shrink a program, never churn one.
 | `dimensional` | 7.6% | 5.9% | 114/256 |
 | `circlefuck` | 10.4% | **12.8%** | 112/256 |
 | `unsquare` | 15.4% | **16.0%** | 112/256 |
+| `sbleq` | **24.7%** | **38.0%** | 254/256 |
+| `brainif` | 5.2% | 8.0% | 194/256 |
 
 `factor` and `three_d_brainfuck` inherit brainfuck's output unchanged.
 
@@ -848,7 +850,7 @@ is a redefined benchmark rather than a smaller program. **The bar is that
 the emitted program changes and still consumes its inputs in the same
 order.**
 
-Likewise `sbleq` (8.3%), `brainif` (4.9%), `three_x` (4.5%),
+Likewise `three_x` (4.5%),
 `taglate` (3.1%), `minsky_swap` (2.8%), `bio` (1.5%), `decleq` (1.4%),
 `nocomment` (0.7%), `painfuck` (0.5%), `rotfuck` (0.4%) and `bfstack` (0.2%)
 remain unexamined candidates. Read each figure as a **lower
@@ -1053,6 +1055,74 @@ computes the *original* table on the *original* input stream. A harness that
 feeds an unpermuted table to a permuted build reports mass failure and means
 nothing; that cost a detour here, and it is the same frame-mapping mistake
 the ZTOALC L trap describes, seen from the test side.
+
+### BrainIf — the guard pair is the constraint, and the reachable orders are n+1
+
+BrainIf screened 4.9% and delivered **5.2% at n=3** (194 of 256 tables
+improved, none grown) and **8.0% at n=4**. Unusually the delivered figure is
+*above* the screen, which for a position-testing node is supposed to be an
+upper bound — the screen missed a hoist here at the same time as it
+overcounted the reorder, and the two very nearly cancel.
+
+**Every line is gated on an exact cell value, and that governs the pointer.**
+A step whose starting digit is unknown needs both guards, and the two lines
+test *different* cells — the second runs after the first has already moved.
+Over written cells a guarded pair therefore fires **twice** whenever the
+neighbouring digits differ. The minimal witness: three written cells, one
+intended step left from cell 2, lands on cell 0 for `110` and on cell 1 for
+`100`. The destination depends on the data, so a pair is not a step.
+
+That is why the original construction reads on the way *out* and tests on the
+way back: every cell the pointer lands on during the tree phase is still
+unwritten, where the pair's second guard cannot re-fire. The drain at each
+leaf is not overhead a hoist can simply delete — it *is* the walk home, and
+it is sound only because those cells are zero.
+
+Two spellings escape the pair. A cell whose digit the code **knows** — the
+arm of the branch that just tested it — moves in one line. A cell that is
+**dead**, already tested and never tested again, moves in two by normalizing
+first:
+
+    if 48 increment   # 48 -> 49; a 49 is untouched, so the cell is now 49
+    if 49 move left   # and exactly one move fires
+
+The idiom is destructive, which is exactly why it is confined to dead cells,
+and cell 0 is excluded outright: it holds the answer byte, which must stay 48
+until a leaf increments it. Walking one cell too far and normalizing the
+answer turns every `0` into a `1`, and the constant tables are what catch it
+— they fold at the root, so the whole program *is* that walk.
+
+**The reachable orders are not `n!` but `n + 1`.** Reads happen in input
+order and a written cell cannot be crossed without destroying it, so
+placement is monotone and the test order is forced to be
+`(j, ..., n-1, j-1, ..., 0)` — the *j-splits*, where `j` inputs are hoisted
+into cells on the way out and the remaining `n - j` are read at their nodes.
+`j = 0` is the construction this generator has always emitted and `j = n`
+hoists everything. As with Unsquare, the reachable set *is* the candidate
+list rather than a filter over a much larger one, so the loop enumerates
+`n + 1` builds instead of searching `n!`; unlike Unsquare, the bound comes
+from what the pointer can cross rather than from what a stack can rotate.
+
+All `n + 1` are built and the shortest kept, the node-read build first so a
+tie preserves today's emission. It is not a formality: the node-read build
+still wins outright on 62 of the 256 tables at n=3, because a table that
+already folds under the identity gains nothing from hoisting and still pays
+for it.
+
+Verified by 11000 interpreter runs — every table at n=1..3 through the
+dispatch *and* through each `j` individually, sampled at n=4 and n=5. Running
+only the dispatch winner would have hidden three of the four bugs found here,
+since a broken `j` is invisible whenever some other `j` happens to be
+shorter.
+
+**The measurements that mattered were of correct programs only.** An earlier
+pass here compared lengths while `j = 1..3` were still miscomputing their
+tables and concluded that hoisting was a net loss — j=1 measured 25165 lines
+against the node-read build's 24843, and `11110000` appeared to swell from 75
+lines to 109. Every one of those figures was an artifact of the bugs; with
+the same tables computing correctly, j=1 comes in at 24397. A size comparison
+between builds is meaningless until both compute the function, in whichever
+direction it points.
 
 ### Forþ — the natural order is the reversal, and rotations go between the reads
 
