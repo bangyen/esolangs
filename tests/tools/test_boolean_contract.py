@@ -27,7 +27,7 @@ from esolangs.vm import run_until_halt_or_cycle
 _TABLES = ["00000000", "01101001"]
 
 
-def _input_reading_generators() -> list[tuple[str, object]]:
+def _input_reading_generators() -> list[object]:
     """Every boolean generator whose language actually reads input.
 
     Looked up in ``BY_BOOLEAN``, not ``BY_FUNCTION``.  The latter is keyed
@@ -51,7 +51,13 @@ def _input_reading_generators() -> list[tuple[str, object]]:
             ).run
         except Exception:  # pragma: no cover - interpreter lives outside the pkg
             continue
-        found.append((name, (fn, lang, run)))
+        if name == "minifuck":
+            # ~36s of the sweep's runtime sits in this one language: its
+            # generator simulates every row as it emits.  The other entries
+            # are milliseconds each, so only this one is marked.
+            found.append(pytest.param(name, (fn, lang, run), marks=pytest.mark.slow))
+        else:
+            found.append((name, (fn, lang, run)))
     return found
 
 
