@@ -1,10 +1,20 @@
 """Boolean-function generator for COD (parameterized convention).
 
-COD has no input command, so this follows the parameterized convention
-described in :mod:`esolangs.tools.boolean.parameterized`: the template's
-``{Xi}`` placeholders are filled by the harness, one program per input
-combination.  The generator routes a fork/cascade decision tree whose
-leaves print the truth-table entry.
+This follows the parameterized convention described in
+:mod:`esolangs.tools.boolean.parameterized`: the template's ``{Xi}``
+placeholders are filled by the harness, one program per input combination.
+The generator routes a fork/cascade decision tree whose leaves print the
+truth-table entry.
+
+COD *does* have an input command, contrary to what this docstring used to
+say: ``...`` (three periods, touching the top or bottom edge) sets the cod's
+value from stdin, per the wiki spec and
+:func:`esolangs.interpreters.grid_based.cod._edge_dot_cells`.  The
+parameterized convention is kept here anyway because a reading generator
+would have to route every input crossing *horizontally* -- this interpreter
+treats each of the three dot cells as its own read, so a cod that turns into
+the column reads three times for one command, and one that dead-ends there
+re-reads until EOF.  See ``docs/parameterized-input-conversion.md``.
 """
 
 from itertools import zip_longest
