@@ -277,11 +277,104 @@ class TestBfstack:
 
 class TestUnsquare:
     def test_program_shape(self) -> None:
-        """The program reads n inputs and prints once."""
+        """The program reads n inputs and prints once.
+
+        The reads are no longer necessarily consecutive: a sink that
+        reorders the tree is emitted *between* them, because a bit has to
+        be moved while it is still near the top.  What stays invariant is
+        that there is one read per input and the program still consumes its
+        input stream in order.
+        """
         program = boolean.unsquare("0110")
-        assert program.startswith("iA>-<P" * 2)
+        assert program.startswith("iA>-<P")
         assert program.count("iA>-<P") == 2  # one read per input
         assert program.endswith("o")
+
+        # A table whose best order needs a sink still reads once per input.
+        for value in range(256):
+            assert boolean.unsquare(format(value, "08b")).count("iA>-<P") == 3
+
+    def test_reordering_never_grows_a_program(self) -> None:
+        """Choosing the stack arrangement can only shrink the program.
+
+        The natural order here is the *reversal* -- ``A`` pops, so the tree
+        has always tested the last input at the root -- and it is tried
+        first with ties keeping it, so a table no reorder helps emits
+        exactly what it emitted before.
+        """
+        from esolangs.tools.boolean.stack import (
+            _unsquare_stack_programs,
+            _unsquare_tree,
+        )
+
+        n = 3
+        natural = tuple(reversed(range(n)))
+        prefix = _unsquare_stack_programs(n)[tuple(reversed(natural))]
+        improved = 0
+        for value in range(256):
+            table = format(value, "08b")
+            reordered = len(boolean.unsquare(table))
+            stack_ordered = len(
+                prefix
+                + _unsquare_tree(
+                    permute_truth_table(table, tuple(reversed(natural))), n
+                )
+            )
+            assert reordered <= stack_ordered, table
+            improved += reordered < stack_ordered
+        assert improved == 112
+
+    def test_sinks_are_interleaved_with_the_reads(self) -> None:
+        """Weaving the sinks into the reads is what reaches the arrangements.
+
+        A bit stashed in the accumulator does not survive a read block --
+        the block's own ``A`` overwrites it -- so a bit has to be sunk while
+        it is still near the top, before later reads bury it.
+
+        The reachable *set* has a closed form, which is why no search is
+        needed: after each read the new bit is on top and the only lasting
+        freedom is how far it sinks (0, 1 or 2 places), one independent
+        choice per read past the first.  Forþ's stack has the same count for
+        the same reason, reached through different ops.
+        """
+        from esolangs.tools.boolean.stack import _unsquare_stack_programs
+
+        for n in range(2, 7):
+            assert len(_unsquare_stack_programs(n)) == 2 * 3 ** (n - 2)
+        assert len(_unsquare_stack_programs(3)) == 6  # all of 3!
+        assert len(_unsquare_stack_programs(4)) == 18  # of 24
+        assert len(_unsquare_stack_programs(5)) == 54  # of 120
+
+        # The reads themselves are still one per input, whatever the weave.
+        for n in (3, 4, 5):
+            for program in _unsquare_stack_programs(n).values():
+                assert program.count("iA>-<P") == n
+
+    def test_two_place_sink_needs_the_leading_swap(self) -> None:
+        """Sinking two places is ``SASP``; ``ASP`` alone does something else.
+
+        ``A`` lifts the *top* out, so the ``S`` that follows swaps the pair
+        beneath it and ``P`` returns the bit to where it started -- which
+        reorders the wrong two cells.  The leading ``S`` is what moves the
+        bit down first so the pair it must cross ends up above it.  This is
+        pinned because the difference is invisible in the arrangement count
+        (both spellings reach the same number of arrangements) and shows up
+        only as a program computing the wrong function.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.unsquare import _Machine
+
+        def apply(ops: str) -> list[int]:
+            machine = _Machine(ops, ScriptedIO(""))
+            machine.stack = [10, 20, 30]
+            for _ in range(100):
+                if machine.halted:
+                    break
+                machine.step()
+            return machine.stack
+
+        assert apply("SASP") == [30, 10, 20]  # the top sank two places
+        assert apply("ASP") == [20, 10, 30]  # the top never moved
 
     def test_decision_tree(self) -> None:
         """Each internal node branches on a bit with the flip primitive."""

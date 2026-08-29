@@ -573,20 +573,22 @@ Four things the fold depends on, each of which a change here must preserve:
 
 ### Fold constraints worth knowing before editing a generator
 
-**`modulous` and `unsquare` fold along a different axis.** Both branch on the
-stack top, which is the *last* input, so they split on `row >> k` counting up
-from the **LSB** — a subtree is a stride, not a contiguous run. They therefore
-fold constant *strides* rather than constant prefixes:
+**`modulous` folds along a different axis.** It branches on the stack top,
+which is the *last* input, so it splits on `row >> k` counting up from the
+**LSB** — a subtree is a stride, not a contiguous run. It therefore folds
+constant *strides* rather than constant prefixes. `unsquare` had the same
+shape until it started choosing its stack arrangement, which is what the third
+column shows: reordering buys it the axis it used to be blind to.
 
 | table | modulous | unsquare | |
 |---|---|---|---|
 | `11111111` | 52 | 48 | fully constant — folds hard |
 | `10101010` | 115 | 94 | constant along the LSB axis |
-| `11001100` | 242 | 186 | partly constant that way |
-| `11110000` | 496 | 370 | constant along the *MSB* axis — no saving |
-| `10010110` | 496 | 370 | scattered |
+| `11001100` | 242 | 95 | partly constant that way |
+| `11110000` | 496 | 96 | constant along the *MSB* axis — no saving for modulous; unsquare reorders to reach it |
+| `10010110` | 496 | 370 | scattered — no order folds it |
 
-The standard `11110000` probe therefore reports "no fold" for these two even
+The standard `11110000` probe therefore reports "no fold" for modulous even
 though the fold is live and effective; `test_constant_subtrees_fold`
 (`tests/tools/test_boolean_stack.py:110`) documents exactly this. This is the
 same constraint `decision_tree_tokens` records at `helpers.py:182`
@@ -716,6 +718,7 @@ what it emitted before — this can only shrink a program, never churn one.
 | `brainfuck` | 8.6% | 7.8% | 114/256 |
 | `dimensional` | 7.6% | 5.9% | 114/256 |
 | `circlefuck` | 10.4% | **12.8%** | 112/256 |
+| `unsquare` | 15.4% | **16.0%** | 112/256 |
 
 `factor` and `three_d_brainfuck` inherit brainfuck's output unchanged.
 
@@ -941,32 +944,58 @@ Unsquare was excluded on the reading that it "reads up front but pops LIFO;
 The op set says otherwise, and this is the fifth time an exclusion phrased as
 a property of the language turned out to be a property of the generator.
 
-`A` pops the stack into the accumulator, `P` pushes the accumulator, and `S`
-swaps the top two. Taken singly none of them reaches depth; taken together
-they are a rotation, because **the accumulator is the second place to hold a
-bit** the exclusion says does not exist. `A S A S` walks a value down past two
-neighbours and `P` puts it back.
+`A` pops the stack into the accumulator, `P` pushes it, and `S` swaps the top
+two. Taken singly none reaches depth; taken together they rotate, because
+**the accumulator is the second place to hold a bit** the exclusion says does
+not exist.
 
-Two facts bound what that buys, and both come from the read block `iA>-<P`:
+Two facts from the read block `iA>-<P` bound what that buys:
 
 - A bit stashed in the accumulator **does not survive a read block** — the
-  block's own `A` overwrites it. So a shuffle window cannot carry a live
-  accumulator across a read.
+  block's own `A` overwrites it. So a bit must be moved while it is still near
+  the top, before later reads bury it.
 - After each read block the accumulator **still holds a copy of the bit just
-  read**, because `P` pushes a copy rather than moving it. Every window there-
-  fore opens with one free live register.
+  read**, because `P` pushes a copy rather than moving it.
 
-Interleaving the shuffles with the reads is what makes the difference, exactly
-as it did for Forþ: post-hoc shuffling reaches 6 of 24 arrangements at n=4,
-interleaved reaches 12. Pricing each reachable arrangement by its shortest
-`A`/`P`/`S` sequence and charging the tree for it gives **15.36% at n=3 (112
-of 256 tables) and 16.93% at n=4** — a *net* figure with every shuffle
-character paid for, not a screen. Verified by replaying each arrangement's op
-sequence on the interpreter: 224 runs, no mismatches, so every arrangement the
-search claims is reachable really is.
+**The reachable set is a product, not a search**, and it is exactly Forþ's:
+after each read the new bit is on top and its only lasting freedom is how far
+it sinks — 0, 1 or 2 places — so the count is `2 * 3**(n - 2)`, pinned by a
+test at n=2..7 and reached through entirely different ops. Unlike Forþ, no
+breadth-first search beats the product here: a search over
+`(arrangement, reads done)` finds the same set with the same shortest string at
+every width through n=7, because unsquare's sinks do not compose across reads
+the way a late `c` does there. So the enumeration is both the simpler code and
+the optimal one.
 
-The build is not done here. What is settled is that the exclusion's stated
-reason is false and the upside survives being priced.
+**Sinking two places is `SASP`, not `ASP`.** `A` lifts the *top* out, so a
+following `S` swaps the pair beneath it and `P` returns the bit to where it
+started — reordering the wrong two cells. The leading `S` moves the bit down
+first so the pair it must cross ends up above it. This cost a wrong number and
+552 failing interpreter runs before it was caught, and it is worth stating
+because **the error is invisible in the arrangement count**: both spellings
+reach 18 arrangements at n=4, and only executing the program distinguishes
+them.
+
+Measured: **15.4% at n=3 (112 of 256 tables improved, none grown), 16.0% at
+n=4, 10.6% at n=5**, verified by 3880 interpreter runs across n=1..5.
+
+**The candidate loop iterates the reachable arrangements, not `n!` orders.**
+Only `2 * 3**(n - 2)` of the `n!` can be built, so the reachable set *is* the
+candidate list rather than a filter over a much larger one — which makes this
+generator cheaper than Forþ, whose loop still walks all `n!` and rejects most.
+It is still capped at `_ORDER_SEARCH_MAX`, because `3**n` builds of an
+`O(2**n)` program is the same cost shape with a smaller base: n=10 measured 18
+seconds uncapped against milliseconds at n=6.
+
+**An earlier commit recorded 15.36%/16.93% here from a priced search, and
+those figures were wrong** — the search recorded each completed arrangement
+and then stopped expanding it, which pruned every route passing *through* one
+full arrangement, i.e. every post-hoc shuffle. It under-reported both the
+reachable count (4 of 6 at n=3 against the true 6) and the costs. The
+arrangements it did report were all genuinely reachable, so the direction of
+the error was conservative, but a screen that prunes its own frontier is worth
+recognising: the tell was n=2 reporting 1 reachable arrangement when a single
+trailing `S` visibly reaches the other.
 
 ### Forþ — the natural order is the reversal, and rotations go between the reads
 
@@ -1189,10 +1218,10 @@ making the program's *height* reveal the input.
   the wrong reason, so a strictly shorter program on the folding table means
   the generator folds. **Compare against every one-dependency table, not
   just `11110000`:** a generator that branches last-input-first (modulous,
-  unsquare, forth) folds `10101010` instead, and testing only the
-  MSB-aligned table reports those as non-folding when they save 56–77%. A
-  generator that picks its own split order — circlefuck since it started
-  reordering — folds every one-dependency table, so it is the reorder rather
-  than the fold that the MSB-aligned table now measures there.
+  forth) folds `10101010` instead, and testing only the MSB-aligned table
+  reports those as non-folding when they save 56–77%. A generator that picks
+  its own split order — circlefuck and unsquare since they started reordering
+  — folds every one-dependency table, so it is the reorder rather than the
+  fold that the MSB-aligned table now measures there.
 - Everything else: generator docstrings and bodies under
   `src/esolangs/tools/{text,boolean}/`
