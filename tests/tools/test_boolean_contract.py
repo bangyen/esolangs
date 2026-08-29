@@ -31,8 +31,13 @@ _TABLES = ["00000000", "01101001"]
 # instead of milliseconds.  The rule is a one-second budget per entry in this
 # sweep: over that, the case carries ``slow`` and sits out the fast run.
 # Measured at the time of writing (``pytest --durations``, one worker):
-# minifuck 35.9s, slow_acv_mammalian 5.0s, ztoalc_l_boolean 2.8s, and the
-# next entry down is polynomial at 0.5s, with the median around 0.03s.
+# minifuck 35.9s, slow_acv_mammalian 5.0s, pct_squared_minus_one 4.6s,
+# ztoalc_l_boolean 2.8s, and the next entry down is polynomial at 0.5s, with
+# the median around 0.03s.
+#
+# ``pct_squared_minus_one`` searches setter assignments, a product whose size
+# is ``len(_OPTIONS) ** (2 * n)``; the parity table here is ``n == 3``, which
+# it cannot separate, so it pays its whole budget before raising.
 #
 # Naming the languages rather than timing them at collection time is
 # deliberate: a wall-clock threshold evaluated during collection would make
@@ -40,7 +45,12 @@ _TABLES = ["00000000", "01101001"]
 # silently cover less than the last one.  Re-measure and edit this set when
 # a generator's cost changes.
 _SEARCHING_GENERATORS = frozenset(
-    {"minifuck", "slow_acv_mammalian_boolean", "ztoalc_l_boolean"}
+    {
+        "minifuck",
+        "slow_acv_mammalian_boolean",
+        "pct_squared_minus_one",
+        "ztoalc_l_boolean",
+    }
 )
 
 
