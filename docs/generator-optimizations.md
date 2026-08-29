@@ -293,10 +293,13 @@ Four rules worth carrying into the remaining candidates:
   needed at all.** It is *exact* when the reads already sit in named storage
   and the reorder is a rename — `three_x` permutes the **store target** each
   `?` writes to, leaving the tree untouched, and delivered its screened
-  4.5%/5.4% to the character; `back` permutes which name fills each load
-  slot and delivered 11.99% against a 12.0% screen. A generator with no
-  sequenced reads has no reason to move a pointer at all, and treating one
-  as if it had is how that Back build lost its 2.85 points.
+  4.5%/5.4% to the character. `back` *could* be exact the same way —
+  permuting which name fills each load slot delivered 11.99% against its
+  12.0% screen — but that build is declined for emitting its placeholders
+  out of name order, and the walk it pays instead costs about 2.85 points.
+  A generator with no sequenced reads has no *need* to move a pointer at
+  all; whether it should is then a question about the shape of the
+  template rather than about the language.
 - **Reachable orders are often far fewer than `n!`** — stack- and pointer-bound
   generators reach a structured subset (Forþ and Unsquare a product; BrainIf
   only `n+1` j-splits, since a written cell cannot be crossed without
@@ -394,53 +397,53 @@ on a `>`). Deriving the identity spelling first and checking it reproduces
 what the generator already emitted catches an off-by-one before any table is
 run.
 
-**Back is the third, and it is the whole screen — because its reorder is
-free.** It screened 12.0% and **delivers 11.99%** at n=3 (23119 → 20347
-characters, none grown) and **15.35% at n=4** over the complete 65536-table
-space. Verified by 2048 fill-and-run cycles at n≤3 and **1048576 at n=4** —
-every table, every input combination — with the equal-width embedding checked
-on each one.
+**Back is the third, and it is where a cheaper build was measured and then
+declined.** It screened 12.0% and **delivers 16.55%** at n=3 against its own
+identity order (25167 → 21003 characters, none grown) and **17.33% at n=4**
+over the complete 65536-table space. Verified by 2048 fill-and-run cycles at
+n≤3 and **1048576 at n=4** — every table, every input combination — with the
+equal-width embedding checked on each one.
 
 Node `+\>` tests the current cell and *then* advances, so level *k* tests
 cell **k**, one lower than streetcode's halls and LaserFuck's `>#v)`, which
-both step before they test.
+both step before they test. Input *i* therefore belongs at cell
+`perm.index(i)` — the inverse of the permutation — and the load walks the
+pointer there with `>`/`<`, exactly as the other two placements do.
 
-**The load fills cells in order and permutes which name lands in each.**
-Cell *c* is tested by level *c*, which must test input `perm[c]`, so cell *c*
-simply gets `{X perm[c]}`. The pointer still only steps one cell forward, so
-a reordered load is *exactly as long as the identity one* — there is no walk
-to pay for. That is the store-target regime (`three_x` permutes which
-variable each `?` writes to; `decleq` names any of its cells at a node),
-where the screen is **exact** rather than an upper bound.
+**A free build exists and is not used.** Filling in *cell* order instead —
+putting `{X perm[c]}` in cell *c* — emits no walk at all, because the pointer
+only ever steps one cell forward, and it measured **11.99% against the 12.0%
+screen**: the store-target regime (`three_x`, `decleq`), where the screen is
+exact. It is declined because it leaves the template's placeholders out of
+name order, and every other generator in this module emits `{X0}`..`{Xn-1}`
+in sequence. Both forms are correct — `instantiate` substitutes by *name*, so
+a placeholder is filled wherever it sits — so the choice is consistency, not
+correctness, and it is worth recording that it costs about 2.85 points.
 
-That is worth stating as a rule, because the first build here got it wrong
-and cost 2.85 points. It interleaved `>`/`<` walks between the units, filling
-in *name* order and moving the pointer to each name's cell — the construction
-Streetcode and LaserFuck need, carried over by habit. Those two have runtime
-reads: `I` and `,` fire in stream order, so the bits arrive in a fixed
-sequence and only the pointer can decide where each lands. **Back has no
-runtime reads at all** — the harness substitutes `{Xi}` by name — so nothing
-forces the fill to follow the names, and the walk was an artifact of the
-wrong mental model rather than a cost the language imposes. Before paying for
-a walk, check whether the reads are actually sequenced.
+Mind the two baselines when comparing those numbers. **11.99% and 12.0% are
+against the pre-reorder generator**, which loaded in name order and stepped
+one cell at a time. **16.55% is against this generator's own identity order**,
+which now spends a walk of its own, so its identity build is larger (25167
+against the old 23119) and the same emitted programs measure as a bigger
+saving. The 21003 characters the walk build actually emits is the figure to
+compare across builds: the free build emits 20347.
 
-For the record, the discarded walk was itself cheap: 2.00 characters a move
-(a grid character plus the newline its own load row carries), 656 characters
-across the corpus. It read as 2.85 points only because Back's programs are
-small — 82 characters on average against LaserFuck's 326 and Streetcode's
-842. **Price a walk against the program's own size**; compact programs are
-where a fixed cost shows up as a large fraction.
+The load's units are emitted in **reverse** name order, because the load is
+drawn bottom-to-top up column 0 (the beam runs up it), so the template's text
+reads them backwards: loading input *n−1* first is what puts `{X0}` first on
+the page. One consequence is worth knowing — with the units reversed, parity
+now *shrinks* under reordering (126 → 118 at n=3) without folding anything,
+because some orders simply spend a shorter walk. "The identity order wins on
+a table that folds nothing" was true of the walk-free build and is not a
+general invariant; what survives is the one-sided one, that no table comes
+out larger than its identity build.
 
-Back also settles the fill-slot question, and settles it more sharply than
-the walk build did: a parameterized template can reorder by permuting **which
-name fills which slot**, so long as the emitted program changes. Here it does
-— the tree is built on the permuted table — and `instantiate` substitutes by
-*name*, so each named input still reaches its own slot however the slots are
-ordered. The bar rules out a template whose drawing is *identical* under the
-permutation, booking a saving against the harness's fill order; it does not
-rule this out. Keeping each `-`/`{Xi}` pair intact is what preserves the
-equal-width embedding (9) — split one and the template's height would leak
-the bit.
+The walk itself is cheap in absolute terms — two characters a move, the
+character plus the newline its own load row carries — and reads as a couple
+of points only because Back's programs are small: 82 characters on average at
+n=3, against LaserFuck's 326 and Streetcode's 842. **Price a walk against the
+program's own size**; compact programs are where a fixed cost shows up as a
+large fraction.
 
 **One layout idea is screened and unbuilt.** The load runs up column 0 at one
 command per row, so it is `2n+2` rows tall while the tree needs only ~7.5;
@@ -498,27 +501,31 @@ loses — read the generator to classify, then count before building.
 template's fill slots is not a reorder" excludes a template whose program is
 *byte-identical* under the permutation — there the saving is booked against
 the harness's fill order and nothing was made smaller. It does not exclude a
-template whose drawing changes, and there are two shipped ways to change one.
-`eval` **interleaves runtime ops between the slots**: `_eval_stack_programs`
-records that the `{Xi}` blocks keep their slots and the harness fills them
-exactly as before, while the emitted ops rearrange the stack the nodes pop
-from. `back` **permutes which name fills each slot** and builds its tree on
-the permuted table, so the tree changes even though the load's shape does
-not. Both are legal for the same underlying reason: `instantiate` substitutes
-by *name*, so a named input reaches its own slot wherever that slot is.
+template whose drawing changes, and both shipped parameterized reorders
+change one by emitting different code, not by moving names: `eval`
+**interleaves runtime ops between the slots** (`_eval_stack_programs` records
+that the `{Xi}` blocks keep their slots and the harness fills them exactly as
+before, while the emitted ops rearrange the stack the nodes pop from), and
+`back` **walks its pointer between the load units**. Both keep their
+placeholders in `{X0}`..`{Xn-1}` sequence, and both pay real characters for
+the rearrangement.
 
-The two differ in cost, and the difference is worth carrying. `eval`'s ops
-are real emitted characters, so its reorder is priced like any other walk.
-`back`'s is **free** — a permuted load is exactly as long as the identity
-one — which is why it delivers its screen to two decimals. Ask which case a
-candidate is in before assuming a reorder must be paid for.
+**Permuting the names is legal and is still not done.** `instantiate`
+substitutes by *name*, so a named input reaches its own slot wherever that
+slot sits; a build that permutes Back's slots and keeps the tree on the
+permuted table changes the drawing and clears the bar, and it is free —
+measured at 11.99% against a 12.0% screen, against 16.55% (identity-relative)
+for the walk build. It is declined so that every template in the module reads
+in name order, which `test_slots_run_in_name_order` now enforces. Worth
+knowing the option exists and what it costs, rather than believing the bar
+forbids it.
 
-**Back turned out to be the outlier, not the pattern.** The obvious follow-up
-was to apply its trick to every generator that pays for its reorder, so each
-was measured against a *free-reorder ceiling*: the same fold, built with the
-identity emission on a permuted table. The headroom is what a Back-style
-reorder would take off the shipped size, and there is none worth having
-(n=3, all 256 tables):
+**The free-reorder trick turned out to be the outlier, not the pattern**, and
+that is part of why Back does not use it either. The obvious follow-up was to
+apply it to every generator that pays for its reorder, so each was measured
+against a *free-reorder ceiling*: the same fold, built with the identity
+emission on a permuted table. The headroom is what such a build would take
+off the shipped size, and there is none worth having (n=3, all 256 tables):
 
 | generator | shipped | ceiling | headroom |
 |---|---|---|---|
