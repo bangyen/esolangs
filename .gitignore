@@ -142,8 +142,12 @@ compile_commands.json
 # macOS
 .DS_Store
 
-# Lean 4 build artifacts (extra/lean/esolangs)
+# Lean 4 build artifacts (extra/lean/esolangs).  Both spellings: the trailing
+# slash matches the build directory, the bare name also catches a `.lake`
+# symlink (worktrees often point at the main checkout's build to avoid
+# refetching mathlib, and such a link holds an absolute path).
 .lake/
+.lake
 
 # editor swap files
 *.swp
