@@ -301,13 +301,24 @@ is a redefined benchmark rather than a smaller program. **The bar is that
 the emitted program changes and still consumes its inputs in the same
 order.**
 
-Likewise `brainif` (4.9% screened, 5.2% delivered and reverted — see the
-rule above), `taglate` (3.1%), `minsky_swap` (2.8%), `bio` (1.5%),
-`decleq` (1.4%),
-`nocomment` (0.7%), `painfuck` (0.5%), `rotfuck` (0.4%) and `bfstack` (0.2%)
-remain unexamined candidates. Read each figure as a **lower
-bound**: any of these whose reads sit at its nodes gains the hoist as well as
-the reorder, and the screen prices only the reorder.
+**The sequential queue is closed.** Every remaining candidate was screened at
+n=3 over all 256 tables and then checked against the rule above; none is worth
+building, and three close for reasons the screen figure alone does not show —
+re-screening them would only reproduce the numbers below.
+
+| generator | screen | why it closes |
+|---|---|---|
+| `brainif` | 4.9% | built, delivered 5.2%/8.0%, **reverted** — reads at the nodes, so reaching it cost ~146 lines on the guarded-pair law for a hoist that relocates cost rather than deleting it (see the rule above; construction in `d04932c`) |
+| `taglate` | 3.1% | below the rename threshold |
+| `minsky_swap` | 2.8% | **no decision tree** — `{Xi}` setters assemble the input's numeric index into `reg[0]` and a `~` cascade routes value *v* to leaf *v*, so there is no split order to permute |
+| `bio` | 1.5% | **no decision tree** — each `{Xi}` packs `2**w` into `x`, so the program computes an index rather than branching on bits in an order |
+| `decleq` | 1.4% | a real rename (reads land in `n` cells up front; a node's `cell cell c` can name any of them) and it was built and verified — 1.42%/2.25%, 14536 interpreter runs, nothing grown — but below the threshold, so it was **not kept** |
+| `nocomment` | 0.7% | minterm-shaped; reordering is not applicable |
+| `painfuck` | 0.5% | **already reordered** — it translates `brainfuck`'s output, so it inherits `decision_tree_program`'s reorder the way `factor` and `three_d_brainfuck` do; the residue is translation effects, not upside |
+| `rotfuck` | 0.4% | minterm-shaped |
+| `bfstack` | 0.2% | minterm-shaped |
+
+What is left is the grid tier above, where the upside actually is.
 
 `factor` and `three_d_brainfuck` reuse brainfuck's output and inherit the
 saving unchanged; a shorter program also shrinks factor's set of tables
