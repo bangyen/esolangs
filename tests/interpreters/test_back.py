@@ -109,6 +109,47 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.row == 0
 
+    def test_moving_left_from_cell_zero_stays_put(self) -> None:
+        """``<`` at the leftmost cell is a no-op, not an underflow.
+
+        The tape only grows rightward, so there is nothing to the left of
+        cell 0 to step onto; without the guard the pointer would go
+        negative and start indexing the tape from its far end.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.back import _Machine
+
+        machine = _Machine(["<-*"], ScriptedIO())
+        assert machine.cell == 0
+        machine.step()  # "<" with nowhere to go
+        assert machine.cell == 0
+        machine.step()  # "-" flips the cell the pointer stayed on
+        assert machine.tape[0] == 1, "the flip landed on cell 0"
+
+    def test_moving_right_grows_the_tape_only_at_its_end(self) -> None:
+        """``>`` appends a cell when it steps past the last one, once.
+
+        Stepping back and forth over ground already covered must not keep
+        appending, or the tape would grow with every lap of a loop.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.back import _Machine
+
+        machine = _Machine([">>*"], ScriptedIO())
+        assert machine.tape == [0]
+        machine.step()  # past the end: the tape grows
+        assert machine.tape == [0, 0]
+        machine.step()  # past the new end: it grows again
+        assert machine.tape == [0, 0, 0]
+
+        # Re-entering a cell that already exists leaves the tape alone.
+        revisit = _Machine(["><>*"], ScriptedIO())
+        revisit.step()  # ">" grows to two cells
+        assert revisit.tape == [0, 0]
+        revisit.step()  # "<" back to cell 0
+        revisit.step()  # ">" onto the cell that already exists
+        assert revisit.tape == [0, 0], "no cell appended for known ground"
+
     def test_snapshot_is_hashable(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.back import _Machine
