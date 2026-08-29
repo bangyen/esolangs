@@ -382,14 +382,29 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     test cell ``k + 1``), and getting it wrong computes a different
     function rather than failing to draw.
 
-    **The reorder is the moves between the units, not the units.**  Each
-    ``{Xi}`` keeps its place in fill order and the harness fills it exactly
-    as before; what changes is the ``>``/``<`` runs that separate them, so
-    the emitted template genuinely differs.  That distinction is what makes
-    this a reorder rather than a relabelling -- ``eval`` is the precedent,
-    rearranging its stack between the staging and the tree.
+    **The load fills cells in order and permutes which name lands in each**,
+    rather than filling in name order and walking the pointer between the
+    units.  Cell ``c`` gets ``{X perm[c]}``, so a reordered load is exactly
+    as long as the identity one -- the pointer still only ever steps one
+    cell forward -- and the reorder costs nothing at all.
 
-    Keeping the ``-``/``{Xi}`` pairs intact is also what preserves the
+    That is the store-target regime (``three_x`` permutes which variable
+    each ``?`` writes to; ``decleq`` names any of its ``n`` cells at a
+    node), where the screen is *exact* rather than an upper bound.  An
+    earlier build here interleaved ``>``/``<`` walks between the units
+    instead, which worked but paid two characters a move and delivered
+    9.15% against a 12.0% screen; filling in cell order recovers the rest.
+    Back has no runtime reads to keep in stream order -- the harness
+    substitutes the bits -- so nothing forces the fill to follow the names.
+
+    **It is not the barred relabelling.**  That bar is against a template
+    whose emitted program is *identical* under the permutation, booking a
+    saving against the harness's fill order.  Here the tree is built on the
+    permuted table, so the drawing genuinely changes, and ``instantiate``
+    substitutes each placeholder by *name*, so a named input still reaches
+    its own slot however the slots are ordered.
+
+    Keeping the ``-``/``{Xi}`` pairs intact is what preserves the
     equal-width embedding: the primer and the placeholder are one unit and
     are never separated, so both bits still cost the same two rows and the
     template's height cannot leak an input.
@@ -398,19 +413,25 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
     # The load: fill the input cells, then '>' to open the answer cell at n
     # and walk the pointer back to cell 0 for the tree's first test.  Held as
-    # units because a '{Xi}' is one grid cell but four template characters --
-    # and because a unit is a *row*, which is what a permuted load spends.
-    cells = [0] * n
-    for level, i in enumerate(perm):
-        cells[i] = level
-
-    def walk(frm: int, to: int) -> list[str]:
-        """Move the pointer from cell ``frm`` to cell ``to``, one per row."""
-        return [">" if to >= frm else "<"] * abs(to - frm)
-
+    # units because a '{Xi}' is one grid cell but four template characters.
+    #
+    # The load fills the cells *in cell order* and lets the order decide
+    # which name goes in each, rather than filling in name order and walking
+    # the pointer between the units.  Cell ``c`` is tested by level ``c``,
+    # which has to test input ``perm[c]``, so cell ``c`` gets ``{X perm[c]}``
+    # -- and the pointer only ever steps one cell forward, exactly as it did
+    # before any reordering existed.  **A reordered load is therefore the
+    # same length as the identity one**: the reorder is free here, and Back
+    # delivers its screen rather than the screen minus a walk.
+    #
+    # This is not the barred relabelling.  That is a template whose emitted
+    # program is *identical* under the permutation, booking a saving against
+    # the harness's fill order; here the tree below is built on the permuted
+    # table, so the drawing genuinely changes, and ``instantiate`` (through
+    # ``_fill_back``) substitutes each placeholder by *name*, so a named
+    # input still reaches its own slot however the slots are ordered.
     units: list[str] = []
-    at = 0
-    for i in range(n):
+    for cell in range(n):
         # Two units per input, so neither bit has to be written as a blank:
         # the beam reads one cell per row in column 0, so the setter's second
         # command needs a row of its own rather than the column beside it.
@@ -422,17 +443,12 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         # Putting the bit on the trailing row rather than the leading one is
         # what makes every load row execute -- see the fill for why the older
         # '{Xi}' + '+' order skipped a row instead.
-        #
-        # The walk that puts this input in its cell goes *before* the pair,
-        # never between the two halves of it.
-        units.extend(walk(at, cells[i]))
         units.append("-")
-        units.append("{X" + str(i) + "}")
-        at = cells[i]
-    # Open the answer cell at n, then home to cell 0 for the tree's first
-    # test.  Under the identity order the last input sits at cell n-1 and
-    # this is the single '>' the load always ended on.
-    units.extend(walk(at, n))
+        units.append("{X" + str(perm[cell]) + "}")
+        if cell < n - 1:
+            units.append(">")
+    # Open the answer cell at n, then home to cell 0 for the tree's first test.
+    units.append(">")
     units.extend("<" * n)
 
     # The load occupies column 0 and the tree everything from column 1, so the
