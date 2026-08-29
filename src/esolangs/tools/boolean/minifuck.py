@@ -70,7 +70,6 @@ import re
 from collections import deque
 from collections.abc import Callable
 from functools import cache
-from typing import TypeVar
 
 from esolangs.tools.boolean.helpers import _validate_truth_table
 
@@ -78,7 +77,6 @@ __all__ = ["minifuck"]
 
 # What an acceptance callback keeps: each search names its own result type,
 # and returning None means "keep looking".
-_Hit = TypeVar("_Hit")
 
 # Where the embedded bits start.  The pool is cells 0..7, so the working area
 # begins past it with a little room for the walk-in.
@@ -280,11 +278,11 @@ def _embed(n: int, settle: int = 0, sep: str = _SEP) -> _Joint:
     return j
 
 
-def _search(
+def _search[Hit](
     j: _Joint,
-    accept: Callable[[list[_Sim], str], _Hit | None],
+    accept: Callable[[list[_Sim], str], Hit | None],
     maxlen: int,
-) -> _Hit | None:
+) -> Hit | None:
     """Breadth-first over ``<[x`` from the live joint state.
 
     ``accept`` sees the advanced machines and returns a result (or None).
