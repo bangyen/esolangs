@@ -74,6 +74,56 @@ class TestMachineState:
             machine.step()
         return machine.row, machine.col, machine.d, list(machine.queue)
 
+    def steps(self, code: list[str]) -> int:
+        """Return how many steps the program takes before it halts."""
+        machine = _Machine(code)
+        count = 0
+        while not machine.halted:
+            count += 1
+            machine.step()
+        return count
+
+    def test_leaving_the_grid_halts_on_the_step_that_leaves(self) -> None:
+        """The move that goes out of bounds is the last step, not the one after.
+
+        The bounds are checked twice -- once before reading a cell, once
+        after moving -- and the second check is what makes the departing
+        move final.  Without it the machine takes one more step, whose only
+        job is to notice it is already outside; the IP ends up in the same
+        place either way, so the *count* is the only thing that separates
+        them.  Both axes are covered because the row and column halves of
+        the condition are separate comparisons: three cells to the right
+        edge, and one down through a single-column grid.
+        """
+        assert self.steps(["..."]) == 3
+        assert self.steps(["*"]) == 1
+
+    def test_a_pointer_placed_off_the_grid_halts_without_reading(self) -> None:
+        """The bounds check before the cell read is what makes this safe.
+
+        Nothing a program does reaches it -- the check after each move
+        halts the machine first, so the IP never *begins* a step outside --
+        but the VM and the hang detector drive ``step()`` directly, and a
+        machine positioned past the last row must halt rather than index a
+        row that is not there.  ``row == len(grid)`` is the case that
+        separates a strict bound from a non-strict one.
+        """
+        machine = _Machine(["...", "..."])
+        machine.row, machine.col = 2, 0
+        machine.step()
+        assert machine.halted
+        assert (machine.row, machine.col) == (2, 0)
+
+    def test_a_fresh_machine_reports_a_boolean(self) -> None:
+        """``halted`` starts as False itself, not merely as something falsey.
+
+        Every other check of it is a truthiness test, which ``None`` passes
+        just as well -- so the flag could start un-set rather than unset and
+        no test would notice, while ``halted`` is annotated as returning a
+        bool.  The identity comparison is the part that pins it.
+        """
+        assert _Machine(["..."]).halted is False
+
     def test_short_lines_pad_on_the_right(self) -> None:
         """A short line is padded to the right, keeping its content in place.
 
