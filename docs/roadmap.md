@@ -384,6 +384,32 @@ rest.  What remains:
   handles both languages correctly, so this is only worth building if the
   "always hangs" guarantee is specifically needed.
 
+## Input reordering (remainder)
+
+A decision tree may split on its inputs in any order, so the generators
+build under every order and keep the shortest.  Seventeen have landed;
+`docs/generator-optimizations.md`'s "Not yet done" carries the screen
+figures, the hoist caveat, and the frame-mapping trap.  What is still on
+the table, in two groups:
+
+- **Unexamined, no layout work** — sbleq, brainif, three_x, taglate,
+  minsky_swap, bio, decleq, nocomment, painfuck, rotfuck, bfstack.  Each
+  screen figure is a **lower bound**: the screen prices the reorder alone,
+  so a generator whose reads sit at its nodes gains the hoist as well
+  (AddSubJump screened 16.7% and delivered 31.7%).
+- **Blocked on 2D layout surgery** — Dig, Flowchart, Streetcode, LaserFuck,
+  Back, Clockwise, WII2D, and ArrowQueue, whose queue-fed template needs
+  re-enqueue gadgets.  Their trees are placements on a plane rather than
+  token sequences.  The bar for any of these: the emitted program changes
+  and still consumes its inputs in the same order.
+
+## Mutation-testing sweep
+
+`scripts/mutate_one.py`'s four harness bugs are fixed, so the sweep that
+audit gated is now runnable past the six smallest interpreters.  Survivors
+are the point — the two that scored (89.9% and 76.7%) each pointed at a
+real coverage gap rather than an equivalent mutant.
+
 ## Boolean generators that still emit a full decision tree
 
 A generator "folds" when a subtree whose table rows all agree becomes a
