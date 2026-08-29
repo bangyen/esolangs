@@ -217,9 +217,7 @@ def _reordering_generators() -> list[tuple[str, object, object]]:
             # The byte-valued builder underneath takes a *byte* table,
             # so the contract's binary-string table is lifted the way
             # circlefuck() itself lifts it.
-            lambda t, p: _circlefuck_ordered(
-                [_ASCII_ZERO + int(b) for b in t], p
-            ),
+            lambda t, p: _circlefuck_ordered([_ASCII_ZERO + int(b) for b in t], p),
         ),
         ("forbin_boolean", boolean.forbin_boolean, _forbin_ordered),
         ("jaune", boolean.jaune, _jaune_ordered),
