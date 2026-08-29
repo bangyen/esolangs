@@ -20,11 +20,12 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from minifuck_shelf import embed
 
 
-def find_parked(j, target, maxlen=12, window=40):
+def find_parked(j, target, maxlen=12, window=40, limit=1):
     """Find code leaving `target` in a cell with the pointer parked to read it."""
     want = tuple(target)
     comp = tuple(1 - v for v in want)
     root = tuple(m.copy() for m in j.ms)
+    hits: list[tuple[str, int, bool]] = []
     seen = {tuple(m.key() for m in root)}
     q = deque([(root, "")])
     while q:
@@ -51,9 +52,11 @@ def find_parked(j, target, maxlen=12, window=40):
                     if cell < window:
                         col = tuple(m.tape[cell] for m in new)
                         if col in (want, comp):
-                            return p, cell, col == comp
+                            hits.append((p, cell, col == comp))
+                            if len(hits) >= limit:
+                                return hits
             q.append((tuple(new), p))
-    return None
+    return hits
 
 
 if __name__ == "__main__":
