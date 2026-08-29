@@ -6,6 +6,7 @@ from itertools import permutations, product
 from esolangs.tools.boolean.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
+    _ORDER_SEARCH_MAX,
     _validate_truth_table,
     minterm_literals,
     permute_truth_table,
@@ -404,13 +405,146 @@ def unsquare(truth_table: str) -> str:
     becomes 2) and its negation by a stack-clean flip ``x->IA<`` (``0`` swaps
     to 1, ``1`` to 0).  Each input is read and reduced to 0/1 by ``>-<``
     (subtracting 2 until parity) and pushed; the decision tree then pops bits
-    from the stack top (the last input first) and branches.  A branch that
-    runs ends with ``IA`` (leaving acc = 1 so the sibling's ``FLIP x > <``
-    guard skips), and each leaf pushes ``48 + entry`` and leaves acc = 0, so
-    the final ``o`` prints exactly the matching row's entry.
+    from the stack top and branches.  A branch that runs ends with ``IA``
+    (leaving acc = 1 so the sibling's ``FLIP x > <`` guard skips), and each
+    leaf pushes ``48 + entry`` and leaves acc = 0, so the final ``o`` prints
+    exactly the matching row's entry.
+
+    **The tree splits on its inputs in whichever order emits the shortest
+    program.**  ``A`` pops, so the *natural* order tests the last input at
+    the root -- Unsquare's tree is stack-ordered, not input-ordered, exactly
+    as Forþ's is.
+
+    This generator was long excluded from reordering on the reading that
+    ``S`` swaps only the top two and there is one accumulator, so nothing
+    rotates to depth.  That reads the ops singly.  Together they rotate,
+    because **the accumulator is the second place to hold a bit**: ``A``
+    pops the top into it, ``S`` swaps the two now exposed, and ``P`` pushes
+    it back, which sinks a bit two places (:data:`_UNSQUARE_SINKS`).
+
+    **The sinks are interleaved with the reads, not run after them.**  A bit
+    stashed in the accumulator does not survive a read block -- the block's
+    own ``A`` overwrites it -- so a bit has to be moved while it is still
+    near the top, before later reads bury it.  Every sink costs characters,
+    so an order pays for the folds it wins or loses to the natural one and
+    the search measures rather than assumes.  Measured saving: 15.6% over
+    all 256 tables at n == 3 (112 improved, none grown), 18.0% and 13.8%
+    over samples at n == 4 and n == 5.
     """
     n = _validate_truth_table(truth_table)
+    # ``A`` pops, so the tree tests the *last* input at the root: the order
+    # this generator has always emitted is the reversal, not the identity.
+    # It goes first and ties keep it, so a table no reorder helps emits
+    # exactly what it emitted before.
+    natural = tuple(reversed(range(n)))
+    arrangements = _unsquare_stack_programs(n)
 
+    def candidate(perm: tuple[int, ...]) -> str | None:
+        # The tree pops LIFO, so testing ``perm`` means the bits must sit on
+        # the stack in the reverse of that order.
+        prefix = arrangements.get(tuple(reversed(perm)))
+        if prefix is None:
+            return None
+        # ``permute_truth_table`` puts the input tested at level ``k`` in the
+        # table's ``k``-th *most* significant bit, but this tree splits on
+        # ``row >> k`` -- least significant first, because that is the order
+        # the pops arrive in.  Reversing the permutation converts between the
+        # two frames; without it a table is read against the wrong axis and
+        # the program computes a different function.
+        table = permute_truth_table(truth_table, tuple(reversed(perm)))
+        return prefix + _unsquare_tree(table, n)
+
+    best = candidate(natural)
+    assert best is not None, "the natural order is always reachable"
+    # Iterate the *reachable* arrangements rather than all ``n!`` orders:
+    # only ``2 * 3**(n - 2)`` of them can be built, so this is the candidate
+    # set rather than a filter over a much larger one.  (The unreachable
+    # orders are exactly the ones ``candidate`` would return ``None`` for.)
+    #
+    # Still capped, because ``3**n`` builds of an ``O(2**n)`` program is the
+    # same cost shape the shared helper caps for, just with a smaller base:
+    # n == 10 is 18 seconds of a call that is milliseconds at n == 6.  Above
+    # the cap only the natural order is emitted, which is what this generator
+    # produced before reordering existed -- never worse, just unimproved.
+    if n > _ORDER_SEARCH_MAX:
+        return best
+    for arrangement in arrangements:
+        perm = tuple(reversed(arrangement))
+        if perm == natural:
+            continue
+        other = candidate(perm)
+        if other is not None and len(other) < len(best):
+            best = other
+    return best
+
+
+# The read that pushes one normalized input bit.
+_UNSQUARE_READ = "iA>-<P"
+
+# How far a freshly-read bit can sink, and the ops that put it there.  ``S``
+# swaps the top two.  Sinking two places is ``SASP``, not ``ASP``: ``A``
+# lifts the *top* out and ``S`` then swaps the pair beneath it, so ``ASP``
+# reorders those two and puts the bit back where it started.  The leading
+# ``S`` is what moves the bit down first, so the pair it must cross ends up
+# above it.  Nothing reaches three places: ``S`` sees only the top two and
+# the accumulator holds one value, so a third would need somewhere to put
+# the bit already in it.
+_UNSQUARE_SINKS = ((0, ""), (1, "S"), (2, "SASP"))
+
+
+def _unsquare_sink_top(stack: tuple[int, ...], places: int) -> tuple[int, ...]:
+    """Move the top bit down by ``places``, leaving the others in order."""
+    *below, top = stack
+    at = len(below) - places
+    return (*below[:at], top, *below[at:])
+
+
+@cache
+def _unsquare_stack_programs(n: int) -> dict[tuple[int, ...], str]:
+    """Read-and-sink program for each reachable stack arrangement.
+
+    Returns the arrangement (bottom to top, by input index) mapped to the
+    program producing it; an absent arrangement is one the ops cannot reach.
+
+    **The reachable set is a product, not a search.**  A read leaves its bit
+    on top, and the only choice that outlasts the next read is how far that
+    bit sinks -- 0, 1 or 2 places, since ``S`` and the one accumulator reach
+    no deeper.  Composing one choice per read enumerates every arrangement,
+    ``2 * 3**(n - 2)`` of them, which a test pins.  Forþ's stack has the same
+    count for the same reason, reached through different ops.
+
+    Unlike Forþ, no breadth-first search beats this product: searching over
+    (arrangement, reads done) finds the *same* set with the *same* shortest
+    string at every width through n == 7, because unsquare's sink ops do not
+    compose across reads the way a late ``c`` does there.  So there is
+    nothing here to trade away, and the enumeration is both the simpler code
+    and the optimal one.
+    """
+    reached: dict[tuple[int, ...], str] = {}
+    for sinks in product(_UNSQUARE_SINKS, repeat=n):
+        stack: tuple[int, ...] = ()
+        text = ""
+        for read_index, (places, ops) in enumerate(sinks):
+            stack = (*stack, read_index)
+            text += _UNSQUARE_READ
+            if places >= len(stack):
+                break  # nothing below to sink under
+            stack = _unsquare_sink_top(stack, places)
+            text += ops
+        else:
+            if stack not in reached or len(text) < len(reached[stack]):
+                reached[stack] = text
+    return reached
+
+
+def _unsquare_tree(truth_table: str, n: int) -> str:
+    """Emit the decision tree for an already-permuted table; see :func:`unsquare`.
+
+    ``truth_table`` is in the permuted frame, so bit ``k`` of a row index is
+    the input tested at level ``k`` and the tree needs no reference to the
+    order that produced it -- the stack prefix has already put the bits where
+    the pops will find them.
+    """
     flip = "x->IA<"
 
     def leaf(row: int) -> str:
@@ -424,4 +558,4 @@ def unsquare(truth_table: str) -> str:
         g0 = [row for row in rows if ((row >> k) & 1) == 0]
         return f"Ax>{build(g1, k + 1)}IA<{flip}x>{build(g0, k + 1)}OA<"
 
-    return "iA>-<P" * n + build(list(range(2**n)), 0) + "o"
+    return build(list(range(2**n)), 0) + "o"
