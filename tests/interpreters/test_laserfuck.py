@@ -197,6 +197,25 @@ class TestUncoveredSteering:
         split = [" /\\ x", "|o}+*+x", " \\/ x"]
         assert [run_and_capture(split, heading=h) for h in range(4)] == ["2"] * 4
 
+    def test_the_pointer_moves_within_tape_that_already_exists(self) -> None:
+        """``<`` and ``>`` move rather than grow, once the tape is there.
+
+        Both were only ever run at an edge -- ``>`` at the last cell, where
+        it appends, and ``<`` at cell 0, where it prepends -- so the move
+        itself was never separated from the growth.  Going right, left,
+        then right again lands twice on tape that already exists.
+        """
+        assert run_and_capture([" /\\", "|o}><>+x", " \\/"]) == "1"
+
+    def test_a_split_beam_runs_on_after_its_sibling_dies(self) -> None:
+        """``x`` removes one laser and leaves the other running.
+
+        The split grid above kills its second laser immediately; here the
+        two arms are different lengths, so one reaches its ``x`` while the
+        other still has cells to cross.
+        """
+        assert run_and_capture([" /\\x", "|o}*  +x", " \\/", "   x"]) == "1"
+
     def test_conditional_mirrors_pass_a_zero_cell(self) -> None:
         """The other half of each conditional mirror: it does *not* deflect.
 
