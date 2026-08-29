@@ -1766,6 +1766,216 @@ class TestParameterizedMinifuck:
         # A window that excludes the answer's cell yields nothing.
         assert _find_parked(_embed(2, settle=_SETTLE), want, 10, 6, 3) == []
 
+    def test_the_pool_search_needs_the_rows_to_agree_on_the_pointer(self) -> None:
+        """A pool is only a pool if every row reads it from one place.
+
+        The embed leaves the rows on different cells -- that spread is what
+        carries the inputs -- so the pool search declines outright until a
+        clamp has brought them back together.
+        """
+        from esolangs.tools.boolean.minifuck import _clamp, _embed, _find_pool
+
+        spread = _embed(2)
+        assert len(set(spread.ptrs())) > 1, "the embed should leave rows apart"
+        assert _find_pool(spread, 0, 12, 4) is None
+
+        clamped = _embed(2)
+        _clamp(clamped)
+        assert len(set(clamped.ptrs())) == 1
+
+    def test_the_endgame_refuses_an_impossible_setup(self) -> None:
+        """Two ways the endgame cannot run, reported rather than emitted.
+
+        The pool occupies cells 0..7, so an accumulator inside it would be
+        overwritten by the digit it is supposed to carry.  And the pool has
+        to be *built*: if no pattern reaches it from here, there is nothing
+        to print, and emitting the read anyway would print a junk byte.
+        """
+        import importlib
+
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        from esolangs.tools.boolean.minifuck import _clamp, _embed, _endgame
+
+        joint = _embed(2)
+        _clamp(joint)
+
+        with pytest.raises(ValueError, match="must sit past the pool"):
+            _endgame(joint.fork(), 3, "[<", 0)
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_find_pool", lambda *_a, **_k: None)
+            with pytest.raises(ValueError, match="no pool pattern"):
+                _endgame(joint.fork(), 12, "[<", 0)
+
+    def test_the_routes_are_tried_in_order_and_then_give_up(self) -> None:
+        """With every route failing the generator refuses rather than guesses.
+
+        The three routes are ordered by cost -- the scans, the column
+        search, then the parked search -- and the cheap ones answer every
+        table at this arity, so the later ones are never reached by a real
+        build.  Blocking each in turn is what runs them: the column search
+        is stubbed away and the parked search shrunk to a depth it cannot
+        succeed at, leaving the final refusal.
+
+        ``__wrapped__`` steps around the cache, so a stubbed build cannot
+        be handed to a later caller as if it were real.
+        """
+        import importlib
+
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_try_print", lambda *_a, **_k: None)
+            patch.setattr(module, "_find_column", lambda *_a, **_k: None)
+            patch.setattr(module, "_PARKED_DEPTH", 6)
+            patch.setattr(module, "_PARKED_LIMIT", 2)
+            with pytest.raises(ValueError, match="could not build"):
+                module.minifuck.__wrapped__("0110")
+
+    def test_the_parked_route_returns_the_program_it_prints(self) -> None:
+        """A parked candidate that prints ends the search there.
+
+        Which of the collected candidates survives the endgame is settled
+        by running it, so the route tries each in turn and returns the
+        first that prints the table -- it does not rank them or keep
+        looking once one works.
+        """
+        import importlib
+
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        from esolangs.tools.boolean.minifuck import _find_parked as real_parked
+
+        parked = {"fired": False}
+
+        def spy(*args: object, **kwargs: object) -> list[tuple[str, int]]:
+            parked["fired"] = True
+            return real_parked(*args, **kwargs)  # type: ignore[arg-type]
+
+        class _Printed:
+            def template(self) -> str:
+                return "SENTINEL"
+
+        def only_after_parking(*_a: object, **_k: object) -> object:
+            return _Printed() if parked["fired"] else None
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_find_parked", spy)
+            patch.setattr(module, "_try_print", only_after_parking)
+            patch.setattr(module, "_find_column", lambda *_a, **_k: None)
+            patch.setattr(module, "_PARKED_DEPTH", 6)
+            patch.setattr(module, "_PARKED_LIMIT", 2)
+            assert module.minifuck.__wrapped__("0110") == "SENTINEL"
+
+        assert parked["fired"], "the parked route never ran"
+
+    def test_a_found_column_is_walked_out_and_printed_from(self) -> None:
+        """The column route emits its find, re-clamps, and scans for the print.
+
+        A column is only half an answer -- the pointer still has to reach
+        it -- so the route emits the search's code, clamps the rows back
+        together, and then tries the accumulators in turn.  Stubbing the
+        search to a cell it can reach is what exercises that body without
+        paying for the search that normally finds it.
+        """
+        import importlib
+
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_try_print", lambda *_a, **_k: None)
+            patch.setattr(module, "_find_column", lambda *_a, **_k: ("", 20))
+            patch.setattr(module, "_PARKED_DEPTH", 4)
+            patch.setattr(module, "_PARKED_LIMIT", 1)
+            with pytest.raises(ValueError, match="could not build"):
+                module.minifuck.__wrapped__("0110")
+
+    def test_a_park_the_walk_refuses_is_skipped(self) -> None:
+        """The column route walks to each park in turn; some cannot be reached.
+
+        ``_walk_to`` refuses a target it cannot reach rightward from a
+        converged pointer, and that is a reason to try the next park rather
+        than to fail the build.
+        """
+        import importlib
+
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        from esolangs.tools.boolean.minifuck import _BASE
+        from esolangs.tools.boolean.minifuck import _walk_to as real_walk
+
+        refused = {"n": 0}
+
+        def refuse_first(joint: object, target: int) -> None:
+            # The embed walks too, and to a fixed target; the route's parks
+            # start one cell below it, so that is the one to refuse.
+            if refused["n"] == 0 and target == _BASE - 2:
+                refused["n"] += 1
+                raise ValueError("forced: this park is unreachable")
+            real_walk(joint, target)  # type: ignore[arg-type]
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_try_print", lambda *_a, **_k: None)
+            patch.setattr(module, "_find_column", lambda *_a, **_k: None)
+            patch.setattr(module, "_walk_to", refuse_first)
+            patch.setattr(module, "_PARKED_DEPTH", 4)
+            patch.setattr(module, "_PARKED_LIMIT", 1)
+            with pytest.raises(ValueError, match="could not build"):
+                module.minifuck.__wrapped__("0110")
+
+        assert refused["n"] == 1, "the forced refusal never fired"
+
+    @pytest.mark.slow  # 2.4s: the XOR arm scans every accumulator and fails
+    def test_a_degenerate_table_falls_back_to_searching_for_its_column(self) -> None:
+        """Past the fixed cells the degenerate route searches, then reports.
+
+        A table depending on at most one input is a constant, a projection,
+        or a negated projection, and each of those already stands as a
+        column somewhere after the embed -- at a known cell for the first
+        two inputs, and at a searched one beyond that.  Every table at this
+        arity is answered by the known cells, so the search below them only
+        runs when those are taken away.
+        """
+        import importlib
+
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        from esolangs.tools.boolean.minifuck import _DEGENERATE_CELLS, _degenerate
+
+        # b1's cell carries "0101" at n == 2, so pointing the stubbed search
+        # at it stands in for a search that succeeded.
+        b1_cell = _DEGENERATE_CELLS["b1"]
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_DEGENERATE_CELLS", {})
+            patch.setattr(module, "_find_column", lambda *_a, **_k: ("", b1_cell))
+            found = _degenerate("0101", 2)
+        assert found is not None, "the searched column should still print"
+        assert "{X0}" in found
+        assert "{X1}" in found
+
+        # XOR is not degenerate, so no accumulator prints it however the
+        # search claims to have gone: the scan runs out and reports that.
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_DEGENERATE_CELLS", {})
+            patch.setattr(module, "_find_column", lambda *_a, **_k: ("", b1_cell))
+            assert _degenerate("0110", 2) is None
+
+        # And a search that finds nothing at all reports that directly.
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_DEGENERATE_CELLS", {})
+            patch.setattr(module, "_find_column", lambda *_a, **_k: None)
+            assert _degenerate("0101", 2) is None
+
 
 @pytest.mark.slow  # 1.9s: builds every generator to compare fill widths
 def test_fills_embed_a_zero_and_a_one_at_equal_width() -> None:
