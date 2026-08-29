@@ -293,9 +293,28 @@ form a **4-cycle**, so a row that drops below zero circles rather than
 settling, and the closing `3` alternates NOP and test with period 4.  The
 only rightward escapes from that region are `2` at `-3` (reads stdin, fatal
 for a parameterized program), `2` at `-2` (prints, and the endgame gets one
-shot), and `2` at `-1` (the sole free exit) — `notes/t123/cyclic.py`.  The
-non-affine half stays **open**: the route is identified and the obstruction
-characterised, but neither is a proof.
+shot), and `2` at `-1` (the sole free exit) — `notes/t123/cyclic.py`.
+
+**Under the termination convention the ceiling breaks.**  All of the above
+is about a program that *prints* its answer.  The halt-vs-loop convention
+already accepted here for ArrowQueue and Point Break (halt = 0, loop = 1,
+and output is not consulted) does not need the endgame at all, and the
+re-execution guard supplies exactly the input-dependent divergence it
+wants: `2113{X0}1111{X1}3` halts on rows `00` alone and loops on the rest,
+which is **OR** — a non-affine table, and the first reached here.  It is
+decided by `esolangs.vm.run_until_halt_or_cycle`, the same state-cycle
+detector the repo uses for Point Break, so the loops are proved rather than
+assumed from a fuel cap (`notes/t123/termconv.py`).
+
+That also corrects the impossibility sketch this section might invite.
+Position maps in `1`/`2` are tape-independent, which suggests rows entering
+a segment together must leave together and so share a halt verdict — but a
+row taking an extra pass has executed a different number of moves by the
+time it next reaches the closing `3`, and `notes/t123/entrytest.py` exhibits
+guards whose rows genuinely split on halting.  The printing route is still
+capped at the eight affine tables; the termination route is not, and how
+much of the remaining space it covers is a live question rather than a
+wall.
 
 **What is actually open.**  No *runtime* two-input table has been produced.  The exhaustive runtime sweep run here is uninformative and is
 not cited as evidence: the shortest program that can satisfy the contract at
