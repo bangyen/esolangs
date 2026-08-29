@@ -102,6 +102,27 @@ raw random characters) found no two-input AND/OR/XOR/NAND/NOR/XNOR under
 either bit-encoding.  The four one-input programs were too trivial to keep,
 so the boolean generator was removed and stays removed.
 
+**The parameterized case is also walled, on a third mechanism.**  Embedding
+each input at compile time (the WII2D-style convention) does clear both
+mechanisms above -- with no ``,`` there is no pointer-reset corruption and
+no re-read desync -- and it buys real input-dependent behavior the runtime
+case never reached: over templates to length 7 with each ``{Xi}`` placed
+exactly once and a same-width setter (``1`` for a one, an executed no-op
+for a zero), ``{X0}{X1}211`` emits for ``(1, 1)`` and stays silent
+otherwise, an AND.  What blocks a ``'0'``/``'1'`` generator is *output*.
+Location 0 is both the byte's MSB and the only cell the ``-4`` pointer wrap
+returns to, so the tape walk that builds a target byte is the same loop
+that would have to be stopped to print exactly once -- and ``3`` cannot
+stop it, since a TRUE ``3`` re-runs the segment it sits in rather than
+reaching an independent target.  Confirmed against the interpreter: no
+program over ``1``/``2`` to length 8 prints exactly ``"0"`` or exactly
+``"1"``, and every short program that writes byte 48 or 49 does so inside a
+loop that enumerates all 256 bytes, printing each -- the digits are
+incidental to the sweep, not selected.  What survives is emission-vs-silence,
+which is the termination convention (see below), not a printed answer;
+whether that convention covers all 16 two-input tables here is a separate
+assessment, unbuilt.
+
 ## RAM0, Bitdeque, Minsky Swap (parameterized template blocked — resolved)
 
 These three were once thought blocked because their jumps are *absolute*
