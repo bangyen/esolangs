@@ -17,7 +17,7 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from minifuck_joint_sim import Sim  # noqa: E402
+from minifuck_joint_sim import Sim
 
 TAPE = 4096
 
@@ -25,11 +25,10 @@ TAPE = 4096
 class Joint:
     """The 2**n instantiations, advanced in lockstep as code is emitted."""
 
-    def __init__(self, n):
+    def __init__(self, n: int) -> None:
+        """Start 2**n machines, one per row of the truth table."""
         self.n = n
-        self.rows = [
-            [(r >> (n - 1 - k)) & 1 for k in range(n)] for r in range(2**n)
-        ]
+        self.rows = [[(r >> (n - 1 - k)) & 1 for k in range(n)] for r in range(2**n)]
         self.ms = []
         for _ in self.rows:
             m = Sim()
@@ -37,7 +36,8 @@ class Joint:
             self.ms.append(m)
         self.parts = []
 
-    def emit(self, code):
+    def emit(self, code: str) -> None:
+        """Append code and run it on every row, keeping them in lockstep."""
         self.parts.append(code)
         for m in self.ms:
             for ch in code:
@@ -46,17 +46,20 @@ class Joint:
     def emit_setter(self, i):
         """Emit the {Xi} placeholder; simulate each row with its own bit."""
         self.parts.append("{X" + str(i) + "}")
-        for bits, m in zip(self.rows, self.ms):
-            for ch in ("[<" if bits[i] else "xx"):
+        for bits, m in zip(self.rows, self.ms, strict=True):
+            for ch in "[<" if bits[i] else "xx":
                 m.exec(ch)
 
-    def col(self, cell):
+    def col(self, cell: int) -> tuple[int, ...]:
+        """Return `cell`'s value across the rows -- the function it holds."""
         return tuple(m.tape[cell] for m in self.ms)
 
-    def ptrs(self):
+    def ptrs(self) -> tuple[int, ...]:
+        """Return each row's pointer, so callers can see divergence."""
         return tuple(m.ptr for m in self.ms)
 
-    def template(self):
+    def template(self) -> str:
+        """Return the emitted template, `{Xi}` placeholders included."""
         return "".join(self.parts)
 
 
@@ -101,7 +104,8 @@ def _pool_fix(j, walk_out):
     raise ValueError("could not set the pool pattern")
 
 
-def build(truth_table, bit_stride=4):
+def build(truth_table: str, bit_stride: int = 4):
+    """Emit a template for `truth_table`, simulating every row as it goes."""
     n = (len(truth_table) - 1).bit_length()
     if len(truth_table) != 2**n or set(truth_table) - set("01"):
         raise ValueError("truth_table must be a binary string of length 2**n")
@@ -170,7 +174,8 @@ def _endgame(j, acc):
     j.emit("[x.")
 
 
-def emit_program(truth_table):
+def emit_program(truth_table: str) -> str:
+    """Return a verified template, or raise if the rows do not print it."""
     j, _cells, _acc = build(truth_table)
     outs = ["".join(m.out) for m in j.ms]
     expect = list(truth_table)
