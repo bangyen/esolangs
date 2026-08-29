@@ -12,10 +12,11 @@ _HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(_HERE))
 sys.path.insert(0, str(_HERE.parent / "src"))
 
-from esolangs.interpreters.io import ScriptedIO  # noqa: E402
-from esolangs.interpreters.tape_based.minifuck import _Machine  # noqa: E402
 from minifuck_boolean_prototype import emit_program  # noqa: E402
 from minifuck_joint_sim import setter  # noqa: E402
+
+from esolangs.interpreters.io import ScriptedIO  # noqa: E402
+from esolangs.interpreters.tape_based.minifuck import _Machine  # noqa: E402
 
 TABLES = ("0000", "1000", "1100", "1110", "1111")
 
