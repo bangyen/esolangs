@@ -699,8 +699,16 @@ def bfpda(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
 
-    # load: push a constant-1 marker then the bit, so top = b0
-    head = "".join("<@{X" + str(i) + "}" for i in range(n - 1, -1, -1))
+    # Load: push a constant-1 marker then the bit, in name order, so the top
+    # of the stack is the *last* input and the tree tests it first.
+    #
+    # The load used to run reversed so the top was ``b0`` and level ``i``
+    # could test input ``i``.  That is the only thing the reversal bought,
+    # and testing the inputs bottom-up costs nothing: the stack is strictly
+    # LIFO either way, every level still consumes exactly one bit and one
+    # marker, and the tree is the same shape reflected.  Pushing in name
+    # order keeps the emitted template in ``{X0}``..``{Xn-1}`` sequence.
+    head = "".join("<@{X" + str(i) + "}" for i in range(n))
 
     def leaf(level: int, value: str) -> str:
         # consume the remaining pre-loaded bits, then print the answer
@@ -714,8 +722,11 @@ def bfpda(truth_table: str) -> str:
         results = {truth_table[r] for r in rows}
         if i == n or len(results) == 1:
             return leaf(i, results.pop() if i < n else truth_table[rows[0]])
-        zero = [r for r in rows if ((r >> (n - 1 - i)) & 1) == 0]
-        one = [r for r in rows if ((r >> (n - 1 - i)) & 1) == 1]
+        # The load pushes in name order, so the stack hands back the *last*
+        # input first: level ``i`` tests input ``n - 1 - i``, whose row bit
+        # is at position ``i``.
+        zero = [r for r in rows if ((r >> i) & 1) == 0]
+        one = [r for r in rows if ((r >> i) & 1) == 1]
         sub0 = node(i + 1, zero)
         sub1 = node(i + 1, one)
         # one-branch pops ~bi first (expose next bit); zero-branch has it popped
@@ -849,9 +860,18 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         return out
 
     # Simulate the deque to find each level's rotation.  The load pushes the
-    # most significant input first, so the tail -- what ``POP`` returns -- is
-    # input 0 and the head is input ``n - 1``.
-    deque = list(range(n - 1, -1, -1))
+    # inputs in name order, so the tail -- what ``POP`` returns -- is input
+    # ``n - 1`` and the head is input 0.
+    #
+    # Pushing in name order rather than reversed is free.  The reversed load
+    # was there to make the first ``POP`` the *most significant* bit, which
+    # only fixes which input a root-level test reaches first -- and the
+    # rotation search already brings any bit to either end, so both loads
+    # reach the same set of orders at the same cost.  Measured over every
+    # order at n = 2, 3 and 4, the rotation-length multisets are identical.
+    # Name order is the better default because it keeps the emitted template
+    # in ``{X0}``..``{Xn-1}`` sequence.
+    deque = list(range(n))
     rotations: list[list[str]] = []
     for level in range(n):
         want = perm[level]
@@ -874,9 +894,8 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         # the rotation, its consuming pop, and the node's own ``GOTO``
         return len(rotations[level]) + 1
 
-    # the load block, most significant placeholder first (so the first POP
-    # after the load is the MSB); each placeholder expands to two commands
-    head = ["{X" + str(i) + "}" for i in range(n - 1, -1, -1)]
+    # the load block, in name order; each placeholder expands to two commands
+    head = ["{X" + str(i) + "}" for i in range(n)]
 
     # A node spends its rotation, its pop and its ``GOTO`` before either
     # subtree, so the walker's ``at`` lands on this node and ``at +
