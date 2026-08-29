@@ -115,7 +115,8 @@ class _Machine:
                 self.reg[self.ptr] -= 1
             elif target := self.targets[self.ind]:
                 self.ind = target - 2
-        elif op == "*":
+        else:
+            # The parse strips everything but "+~*", so this is "*".
             self.ptr ^= 1
         self.ind += 1
 
