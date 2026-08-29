@@ -56,6 +56,7 @@ an accumulated *number* while the endgame below decodes a *bit*.
 outright rather than merely unfound.
 """
 
+import re
 from collections import deque
 from collections.abc import Callable
 from functools import cache
@@ -494,6 +495,47 @@ def _degenerate(truth_table: str, n: int) -> str | None:
     return None
 
 
+def _project(truth_table: str, essential: list[int], n: int) -> str:
+    """Rewrite the table over its essential inputs only.
+
+    A table that ignores some of its inputs is a smaller table wearing extra
+    ones.  Reading it at the essential positions gives that smaller table,
+    which is a ``len(essential)``-input problem however wide the original was.
+    """
+    k = len(essential)
+    rows = []
+    for row in range(2**k):
+        full = 0
+        for slot, i in enumerate(essential):
+            if (row >> (k - 1 - slot)) & 1:
+                full |= 1 << (n - 1 - i)
+        rows.append(truth_table[full])
+    return "".join(rows)
+
+
+def _lift(template: str, essential: list[int], n: int) -> str:
+    """Renumber a smaller table's placeholders back onto the wider arity.
+
+    The inner solve used ``{X0}..{Xk-1}``, which correspond to the original
+    inputs listed in ``essential``.  The renaming is done in a single pass, so
+    a rename cannot collide with a placeholder it has not rewritten yet.
+
+    Every input the function ignores still needs a placeholder, or the harness
+    would have a bit with nowhere to put it.  Those go on the end: the fill is
+    two characters whichever bit it is, so they cannot make the program's
+    length depend on the inputs, and by then the digit has been printed -- the
+    ``.`` has already run -- so whatever they do to the tape cannot matter.
+    """
+    rename = {f"X{slot}": f"X{i}" for slot, i in enumerate(essential)}
+    lifted = re.sub(
+        r"\{(X\d+)\}",
+        lambda m: "{" + rename[m.group(1)] + "}",
+        template,
+    )
+    ignored = "".join("{X" + str(i) + "}" for i in range(n) if i not in essential)
+    return lifted + ignored
+
+
 @cache
 def minifuck(truth_table: str) -> str:
     """Build a Minifuck template for the given truth table.
@@ -524,11 +566,20 @@ def minifuck(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     want = tuple(int(c) for c in truth_table)
 
-    # A table depending on at most one input has a closed form -- it is a
-    # constant or a (negated) projection, and the embed already holds those
-    # as columns.  Taking it first skips the ladder entirely, and it is the
-    # part that composes: the same case handles such a table at any arity.
-    if len(_essential_inputs(truth_table, n)) <= 1:
+    # A table that ignores some of its inputs is a *smaller* table wearing
+    # extra ones, so solve it at the arity it actually uses and renumber the
+    # placeholders back.  This is the part of the construction that composes:
+    # what it costs depends on the essential inputs, not on ``n``, so a wide
+    # table with a narrow core is as cheap as that core.
+    essential = _essential_inputs(truth_table, n)
+    if len(essential) < n:
+        inner = minifuck(_project(truth_table, essential, n))
+        return _lift(inner, essential, n)
+
+    # At most one essential input means a constant or a (negated) projection,
+    # and the embed already holds every one of those as a column -- so the
+    # answer is a cell lookup rather than a search.
+    if len(essential) <= 1:
         degenerate = _degenerate(truth_table, n)
         if degenerate is not None:
             return degenerate
