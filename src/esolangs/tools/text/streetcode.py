@@ -400,8 +400,8 @@ def _streetcode_ring_serpentine(text: str, width: int) -> str | None:
 
     # The path is sized from the instruction count, so the cells always fit;
     # this refuses a fold rather than silently dropping the overflow.
-    if len(cells) > len(path):  # pragma: no cover - the path is sized to the cells
-        return None
+    if len(cells) > len(path):
+        return None  # pragma: no cover - the path is sized to the cells
 
     bottom_row = 1 + (pairs - 1) * 3 + 1
     for i, cell in enumerate(prefix):

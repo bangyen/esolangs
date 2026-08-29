@@ -173,8 +173,8 @@ def fold_groups(
             take += 1
             # Exactly filling the row ends it here rather than on the check
             # above; the groups so far always leave a cell short of it.
-            if used >= room:  # pragma: no cover - no group set fills a row exactly
-                break
+            if used >= room:
+                break  # pragma: no cover - no group set fills a row exactly
 
         for top, middle, bottom in groups[index : index + take]:
             for offset, char in enumerate(top):

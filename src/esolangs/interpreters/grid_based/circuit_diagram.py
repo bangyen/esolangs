@@ -582,7 +582,7 @@ class _Parser:
                 f"input(s), found {len(gate.inputs)}"
             )
         if gate.kind == _OUTPUT:
-            return
+            return  # pragma: no cover - step() skips these before firing
         wanted_out = 2 if gate.kind == _SPLIT else 1
         if len(gate.outputs) != wanted_out:
             raise ValueError(
@@ -788,11 +788,11 @@ class _Machine:
             ]
         if gate.kind == _COMBINE:
             return [(gate.outputs[0], inputs[0] + inputs[1])]
-        if gate.kind == _OUTPUT:  # pragma: no cover - step() skips these
+        if gate.kind == _OUTPUT:
             # An output gate drives nothing by definition, and ``step``
             # skips them before firing, so this is a shape rather than a
             # path: it is what lets _apply_gate take only logic gates.
-            return []
+            return []  # pragma: no cover - step() skips these before firing
         return [(gate.outputs[0], _apply_gate(gate.kind, inputs))]
 
     def _merge(self, driven: list[tuple[int, ...]]) -> tuple[int, ...]:

@@ -495,12 +495,12 @@ class _Machine:
         d = p.memory.get(self._anchor(row, col))
         if d is None or d not in allowed:
             return None
-        if d == (-p.d[0], -p.d[1]):  # pragma: no cover - no known grid reaches it
+        if d == (-p.d[0], -p.d[1]):
             # The spec's 180-degree decline.  Unlike the other pragmas here
             # this is not a proof: a brute-force sweep of ~3M small grids
             # never reached it, but the rule comes from the wiki's worked
             # examples, so it stays.
-            return None
+            return None  # pragma: no cover - no known grid reaches it
         return d
 
     def _move(self, p: _Pointer, d: tuple[int, int]) -> None:

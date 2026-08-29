@@ -116,7 +116,9 @@ def clockwise(text: str, width: int | None = None) -> str:
     if width is not None:
         width = max(width, _WEAVE_MIN_WIDTH)
     folded = _clockwise_weave(prog, width)
-    if folded is None:  # pragma: no cover - the floor always admits a weave
+    # The floor always admits a weave, so a miss is a bug in the width
+    # choice above rather than a program that cannot be folded.
+    if folded is None:
         raise AssertionError("no weave at _WEAVE_MIN_WIDTH")
     return folded
 
@@ -217,7 +219,7 @@ def _clockwise_weave(prog: str, width: int | None) -> str | None:
         while True:
             grid = _weave_template(units, body)
             slots = _weave_slots(grid)
-            if slots is None:  # pragma: no cover - every template so far closes
+            if slots is None:
                 break
             if len(slots) >= len(prog):
                 filled = [row[:] for row in grid]
@@ -228,11 +230,11 @@ def _clockwise_weave(prog: str, width: int | None) -> str | None:
                     best = drawn
                 break
             units += 1
-            if units > len(prog):  # pragma: no cover - slots outgrow the program
+            if units > len(prog):
                 # Each unit adds about six slots, so a template holds the
                 # program long before this; it stops a runaway search rather
                 # than ending a real one.
-                break
+                break  # pragma: no cover - the guard is never the one that ends it
     return best
 
 
@@ -684,12 +686,14 @@ def unsquare(text: str) -> str:
         # The band is connected, so the queue never empties first: over every
         # (start, value) pair the generator can ask for, the search either
         # finds a run or the parity guard above rejects it.
-        return None  # pragma: no cover - unreachable, see above
+        return None  # pragma: no cover - the band is connected; see above
 
     def seed(v: int) -> str:
         """Reload the parity constant and climb to ``v`` from there."""
         run = build(v % 2, v)
-        if run is None:  # pragma: no cover - a seed shares the target's parity
+        # A seed shares the target's parity, so a miss is a bug in the
+        # climb rather than an unreachable value.
+        if run is None:
             raise AssertionError(f"no run to {v} from its own parity")
         return ("I" if v % 2 else "O") + "A" + run
 

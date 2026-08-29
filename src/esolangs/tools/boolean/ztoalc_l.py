@@ -33,8 +33,8 @@ def _ztoalc_ok(lines: dict[int, str], n: int, inputs: str, expected: str) -> boo
     steps = 0
     while ptr != 1:
         steps += 1
-        if steps > 10**6:  # pragma: no cover - a pathological 10**6-step run
-            return False
+        if steps > 10**6:
+            return False  # pragma: no cover - a pathological 10**6-step run
         index = ptr - 1
         ins = lines.get(index, "")
         if ins:
@@ -120,8 +120,8 @@ def _ztoalc_symmetric(table: str, n: int) -> list[str] | None:
     cmds.append("r + 48")
     cmds.append("print r")
     size = 2 ** len(cmds)
-    if size > 2**22:  # pragma: no cover - would build >2**22 program lines
-        return None
+    if size > 2**22:
+        return None  # pragma: no cover - would build >2**22 program lines
     prog = [""] * size
     prog[0] = str(size)
     for j, cmd in enumerate(cmds):
