@@ -141,17 +141,16 @@ def _wii2d_compress(
     collides two values that need different bits; incrementing first pairs
     neighbours the other way round, which usually clears the collision.
     """
+    # This terminates on the guard alone.  While ``max|v| > 1`` either
+    # halving strictly lowers it -- ``|(v + shift) // 2| < |v|`` holds for
+    # every ``|v| > 1`` and both shifts -- so the loop descends a
+    # non-negative integer and cannot revisit a state.  There is no
+    # "made no progress" case to break out of.
     while max(abs(v) for v in values) > 1:
         for shift in (0, 1):
             candidate = [(v + shift) // 2 for v in values]
             if _wii2d_points(candidate, bits) is None:
                 continue
-            if set(candidate) == set(values):  # pragma: no cover - see below
-                # Unreachable while the loop guard holds: halving strictly
-                # shrinks any magnitude above 1, so the set cannot come back
-                # equal.  Kept because the guard and this check are separate
-                # claims, and a change to either would need it.
-                continue  # no progress; a further halving would not help
             ops += "+" * shift + "/"
             values = candidate
             break
@@ -224,13 +223,10 @@ def _wii2d_folds(
                     break
                 merged[folded] = live[value]
             else:
-                if len(merged) >= len(points):  # pragma: no cover - see below
-                    # Unreachable: a centre is the exact midpoint of two
-                    # live points (only even sums are offered), so those two
-                    # always square to the same value and at least one merge
-                    # always happens.  Kept as the guard for a future centre
-                    # that is not a midpoint.
-                    continue  # nothing merged; the fold buys no progress
+                # Every centre offered here is the exact midpoint of two live
+                # points -- only even sums are collected above -- so that pair
+                # always squares to one value and the fold always merges at
+                # least once.  There is no "merged nothing" case to reject.
                 fragment = ("*" if scale else "") + _wii2d_offset(centre) + "s"
                 folded_values = [(v - centre) ** 2 for v in scaled]
                 folded_values, fragment = _wii2d_compress(folded_values, bits, fragment)
@@ -250,7 +246,7 @@ def _wii2d_decode_at(pattern: list[int], beam: int) -> str | None:
         nxt: list[tuple[list[int], str]] = []
         for state_values, state_ops in states:
             live = _wii2d_points(state_values, bits)
-            if live is None:  # pragma: no cover - folds only return live states
+            if live is None:
                 continue
             if len(live) <= 2:
                 return state_ops + _wii2d_threshold(live)
@@ -342,7 +338,7 @@ def _wii2d_routes(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | Non
         return None  # a decode this wide is not worth emitting; see the constant
     branch0 = _wii2d_decode([int(table[2 * q]) for q in range(half)])
     branch1 = _wii2d_decode([int(table[2 * q + 1]) for q in range(half)])
-    if branch0 is None or branch1 is None:  # pragma: no cover - every branch decodes
+    if branch0 is None or branch1 is None:
         return None
     return 0, [("*", "*+")] * (n - 1) + [(branch0, branch1)]
 

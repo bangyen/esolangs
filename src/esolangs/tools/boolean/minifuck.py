@@ -307,11 +307,11 @@ def _search(
                 clone = m.copy()
                 clone.exec(ch)
                 new.append(clone)
-            if any(m.dead for m in new):  # pragma: no cover - see below
-                # Unreachable from here: only a print kills a row, and the
-                # alphabet this search explores has none.  Kept because the
-                # prune is a property of the state, not of the alphabet, and
-                # a search over ``.`` would need it.
+            # A dead row can no longer be steered, so a state holding one is
+            # not worth expanding.  Nothing in the alphabet below kills a row
+            # -- only a print does -- so this fires on a state that arrived
+            # dead, not on one this search killed.
+            if any(m.dead for m in new):
                 continue
             key = tuple(m.key() for m in new)
             if key in seen:
@@ -374,14 +374,15 @@ def _endgame(j: _Joint, acc: int, read: str, cell7: int) -> None:
     _walk_to(j, acc - 1)
     j.emit(read)
     j.emit("<" * (acc - 7))
+    # ``_find_pool`` accepts a code only after checking the pool *past* the
+    # walk out, which is the state reached here -- so this is that check
+    # restated on what was actually emitted rather than on a simulated walk.
+    # It is an AssertionError rather than a ValueError deliberately: the two
+    # disagreeing is a bug in the pair, and ``_try_print`` swallows every
+    # ValueError, which would turn it into a silently skipped accumulator.
     for cell in range(8):
-        if len(set(j.col(cell))) != 1:  # pragma: no cover - see below
-            # Unreachable as things stand: ``_find_pool`` accepts a code
-            # only after checking the pool *past* the walk out, which is
-            # this same state.  Kept as the assertion that pairs the two --
-            # the check there is on a simulated walk, and this one is on
-            # what was actually emitted.
-            raise ValueError(f"pool cell {cell} is input-dependent")
+        if len(set(j.col(cell))) != 1:
+            raise AssertionError(f"pool cell {cell} is input-dependent")
     j.emit("[x.")
 
 
