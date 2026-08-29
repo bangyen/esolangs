@@ -126,7 +126,7 @@ total however good the gadgets; and **harvesting** — sweeping embed variants
 for a table that lands in a cell — finds all 16 at `n == 2` but 105/256 at
 `n == 3`, making it a shortcut rather than a totality argument.
 
-## 123 (four one-input functions)
+## 123 (open — the recorded wall's arguments were refuted)
 
 A decision tree needs the `3` jump, which on a TRUE/FALSE bit jumps to the
 *nearest* preceding/following `3` (not bracket-matched): FALSE always lands
@@ -136,44 +136,89 @@ segment already being executed.  So the only constructible pattern is
 "repeat the region before the `3` while TRUE," never a jump to an
 independent branch target.
 
-Re-examined after the tape was corrected from a single capped byte to
-genuinely unbounded bit storage (see the pointer-cap fix in
-`one_two_three.py`): the wall is not the tape size, it is two mechanisms
-that survive the fix unchanged. First, `1` flips the bit under the pointer
-*before* moving, and a read always resets the pointer to location 0 (the
-byte's MSB); reaching the write position at -2 requires passing through
-location 0 via `1`, so the read result is corrupted en route on every
-attempt — confirmed by tracing a read-then-navigate-to-write program, whose
-output byte differs from the input by exactly its MSB. Second, since a
-`3` that can ever evaluate TRUE must re-run the segment before it, and that
-segment is the only place a second input's read could plausibly follow the
-first's, a TRUE evaluation re-reads stdin and desyncs every input read
-after it — so no read can safely precede a `3` capable of going TRUE.  A
-structured search (400k+ programs built from read/march/jump blocks, not
-raw random characters) found no two-input AND/OR/XOR/NAND/NOR/XNOR under
-either bit-encoding.  The four one-input programs were too trivial to keep,
-so the boolean generator was removed and stays removed.
+**This section previously recorded three mechanisms as walls.  Two of them
+are false and the third is stated too strongly; all three were refuted by
+execution against the shipped interpreter.**  The scripts are in
+`notes/t123/`.  What remains is an *open* question, not a wall — no
+two-input witness has been found, but no correct obstruction is known
+either.
 
-**The parameterized case is also walled, on a third mechanism.**  Embedding
-each input at compile time (the WII2D-style convention) does clear both
-mechanisms above -- with no ``,`` there is no pointer-reset corruption and
-no re-read desync -- and it buys real input-dependent behavior the runtime
-case never reached: over templates to length 7 with each ``{Xi}`` placed
-exactly once and a same-width setter (``1`` for a one, an executed no-op
-for a zero), ``{X0}{X1}211`` emits for ``(1, 1)`` and stays silent
-otherwise, an AND.  What blocks a ``'0'``/``'1'`` generator is *output*.
-Location 0 is both the byte's MSB and the only cell the ``-4`` pointer wrap
-returns to, so the tape walk that builds a target byte is the same loop
-that would have to be stopped to print exactly once -- and ``3`` cannot
-stop it, since a TRUE ``3`` re-runs the segment it sits in rather than
-reaching an independent target.  Confirmed against the interpreter: no
-program over ``1``/``2`` to length 8 prints exactly ``"0"`` or exactly
-``"1"``, and every short program that writes byte 48 or 49 does so inside a
-loop that enumerates all 256 bytes, printing each -- the digits are
-incidental to the sweep, not selected.  What survives is emission-vs-silence,
-which is the termination convention (see below), not a printed answer;
-whether that convention covers all 16 two-input tables here is a separate
-assessment, unbuilt.
+**Refuted: "a read is corrupted en route to the write position."**  The
+claim was that `1` flips the bit under the pointer before moving, so
+reaching the write position at -2 from location 0 always corrupts the MSB
+— "confirmed by tracing a read-then-navigate-to-write program, whose
+output byte differs from the input by exactly its MSB."  That trace took
+the shortest path only.  The flip at location 0 has **parity**: the
+`-4 -> 0` wrap lets the pointer lap the negative region, and an even number
+of leftward departures from 0 restores the bit.  `111211111121` is a clean
+echo — input `'A'`, output `'A'`, halt in 13 steps, with the MSB flipped at
+step 5 and flipped back at step 9.  Reads reach the write position intact.
+
+**Refuted: "no `1`/`2` program prints exactly `'0'` or `'1'`."**  The
+original sweep stopped at length 8.  Both digits are printable: `'0'` at
+length 14 (`12212221111121`) and `'1'` at length 28
+(`1221222212212212211111111121`), each verified to print exactly one
+character and halt cleanly — not a 256-byte sweep with an incidental digit,
+as the section claimed.  In fact **every** byte 0-255 is printable.  That is
+settled exactly rather than by length cap: with no `3` a program is
+straight-line, so the reachable configurations are a finite graph over
+(pointer, bits at 0-7), and BFS over its 5120 states reaches all 256 output
+values (`notes/t123/bfs.py`).  This is the same failure mode already
+recorded for %^2^-1's NOT — a length-bounded sweep stopping short of where
+constant-building finishes.
+
+**Overstated: "the only constructible pattern is repeat-the-region, so no
+useful selection exists."**  The description of `3` is accurate — TRUE jumps
+back past the previous `3`, FALSE skips forward past the next one — and the
+claim that a jump to an *independent* branch target is unreachable also
+holds up.  What does not follow is that nothing can be selected.
+Substitution selects between two different outputs without any independent
+branch target: `113{X0}1213`, instantiated with `2` for a one and `1` for a
+zero, prints `'@'` (byte 64) for an embedded 0 and `'\x80'` (byte 128) for a
+1 — both instantiations length 8, so nothing leaks through `len()`, and both
+halt cleanly.
+
+The mechanism is *not* a forward skip, and the distinction matters because
+this section's failure history is mechanisms asserted without tracing.
+`notes/t123/trace_sel.py` traces both instantiations: for the one-bit the
+substituted `2` lands at pos -2 and is itself the write, printing on the
+first pass with every `3` a no-op below location 0; for the zero-bit the
+substituted `1` shifts the pointer phase so that the `3` at ip 7 evaluates
+at pos 0 on a TRUE bit and jumps *backward*, and the write fires on the
+second pass with a different byte.  So the selection rides on pointer-phase
+divergence plus exactly the repeat-the-region pattern the old text named —
+which is enough, because the two passes write different bytes.  Whether a
+FALSE-forward skip is separately usable is untested.
+
+Two further mechanisms the prose treated as exhaustive were also missed:
+`3` is a control-flow no-op at `pos < 0` (it still shifts instruction
+positions, which is what desynchronizes naive splices), and a program
+ending with `pos >= 0` restarts from ip 0 with the tape intact and the input
+cursor advanced, so one `2` at -3 can read a different byte on each pass.
+
+The narrower re-read claim does survive in weakened form: a TRUE `3` re-runs
+only back to the *previous* `3`, so a read placed before that `3` is never
+re-executed — the desync applies within a segment, not to every read in the
+program.
+
+**What is actually open.**  No two-input table has been produced, runtime or
+parameterized.  The exhaustive runtime sweep run here is uninformative and is
+not cited as evidence: the shortest program that can satisfy the contract at
+all is the length-12 echo (one read costs 4 characters, a parity-safe print
+7, the halt 1), and a genuinely two-input program needs a second read, so any
+sweep capped below that floor returns zero by construction rather than by
+obstruction.  Exhaustive search past ~15 characters is not feasible in
+Python, and the digit-valued selector a generator needs is plausibly ~30,
+since `'1'` alone costs 28: `notes/t123/digits.py` swept one-input templates
+fully through length 8 and found none, which is far below that estimate and
+so decides nothing.  Closing this needs the Minifuck playbook
+(74f1ee6) — emit a template and lockstep-simulate all `2**n` instantiations,
+accepting only a program seen to print the table — not a longer brute-force
+sweep.  Until then the honest status is **open, with the prior arguments
+withdrawn**.
+
+The four one-input programs were too trivial to keep, so the boolean
+generator was removed; that decision is unaffected.
 
 ## RAM0, Bitdeque, Minsky Swap (parameterized template blocked — resolved)
 
