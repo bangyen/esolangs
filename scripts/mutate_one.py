@@ -55,6 +55,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -79,6 +80,20 @@ _NOT_REWRITTEN = ("vm", "registry", "tools")
 # classes are the *only* ones a score may legitimately leave out, which is
 # what ``_score`` checks its exclusions against.
 _INLINED = ("esolangs.exceptions", "esolangs.interpreters.io")
+
+# How far past the unmutated baseline a single test may run before the alarm
+# in ``_CONFTEST`` fails it.  Both numbers are deliberately generous: the
+# only job here is to come in under mutmut's ``(estimate + 1) * 30``
+# CPU-second RLIMIT, and the cost of being too tight (a passing test failed,
+# scored as a kill nothing earned) is far worse than being too loose.
+_ALARM_FACTOR = 10.0
+_MIN_ALARM = 2.0
+
+# Below this share of mutants killed, the run is treated as broken rather
+# than reported.  The lowest score this harness has ever legitimately
+# produced is 76.7%, and a suite good enough to be worth mutating does not
+# miss nine mutants in ten -- so a figure down here means they never ran.
+_MIN_KILL_RATE = 0.1
 
 
 def _test_file(module: str) -> Path:
@@ -193,18 +208,35 @@ def _rewrite_imports(src: str, stem: str, module: str = "") -> str:
     )
 
 
-_CONFTEST = '''"""mutmut workarounds, both of which otherwise fail silently.
+_CONFTEST = '''"""mutmut workarounds, all of which otherwise fail silently.
 
 1. ``set_start_method`` raises on the second call under macOS + Python 3.12,
    which aborts the run rather than the mutant.
 2. mutmut names a mutant without the module prefix while the trampoline
    builds its qualname from ``__module__``, which has it.  Without the
    prefix the selected mutant never activates and every one "passes".
+3. A mutant that turns a loop condition around does not fail the suite, it
+   hangs it, and mutmut only reclaims a hung mutant at its RLIMIT_CPU of
+   ``(estimate + 1) * 30`` CPU-seconds.  Such a mutant is killed either way
+   -- an interpreter that never halts is a caught bug -- but at ~30
+   CPU-seconds instead of the ~0.2s an ordinary kill costs.  Over brainfuck
+   18 of 68 mutants hung, and capping each test below the RLIMIT reproduced
+   the identical verdict in 5s where the run had taken 33s.
+
+   The budget is passed in rather than hardcoded, because "too long" is a
+   property of the suite: a fixed cap would fail the languages whose tests
+   legitimately run for seconds (Minifuck's is a generator build).  The
+   caller derives it from the measured baseline, and when the variable is
+   absent no alarm is installed -- which is what leaves the harness's own
+   baseline run, and any other use of these tests, untouched.
 """
 
 import contextlib
 import multiprocessing
 import os
+import signal
+
+import pytest
 
 _orig = multiprocessing.set_start_method
 
@@ -219,6 +251,25 @@ multiprocessing.set_start_method = _patched
 _mut = os.environ.get("MUTANT_UNDER_TEST", "")
 if _mut and "__mutmut_" in _mut and not _mut.startswith("{stem}"):
     os.environ["MUTANT_UNDER_TEST"] = "{stem}" + _mut
+
+_budget = float(os.environ.get("MUTATE_ONE_ALARM", "0"))
+
+
+def _expired(signum, frame):
+    raise TimeoutError(f"exceeded the {_budget:g}s per-test budget")
+
+
+if _budget:
+
+    @pytest.hookimpl(hookwrapper=True)
+    def pytest_runtest_protocol(item, nextitem):
+        """Fail a test that outruns the budget instead of hanging on it."""
+        signal.signal(signal.SIGALRM, _expired)
+        signal.setitimer(signal.ITIMER_REAL, _budget)
+        try:
+            yield
+        finally:
+            signal.setitimer(signal.ITIMER_REAL, 0)
 '''
 
 # mutmut parses each file into an AST to build its mutants, and the parsing
@@ -473,6 +524,7 @@ def main() -> int:
         if dropped:
             print(f"[note] dropped {dropped} test(s) needing the VM or registry")
 
+        started = time.monotonic()
         baseline = subprocess.run(
             [sys.executable, "-m", "pytest", "-q", "tests/test_bundled.py"],
             cwd=proj,
@@ -480,11 +532,27 @@ def main() -> int:
             text=True,
             check=False,
         )
+        elapsed = time.monotonic() - started
         if baseline.returncode != 0:
             print(baseline.stdout[-2000:])
             raise SystemExit("the bundled tests fail before any mutation")
 
-        env = {"PYTHONPATH": str(work), "PYTHONDONTWRITEBYTECODE": "1"}
+        # What every test does unmutated, times a wide factor: the alarm only
+        # has to come in under mutmut's ``(estimate + 1) * 30`` CPU-second
+        # RLIMIT to pay off, so it is set loose on purpose.  An alarm too
+        # loose still turns a 30-second burn into a couple of seconds; an
+        # alarm too tight would fail a slow-but-passing test and report a
+        # kill that no mutation earned.  The whole file's wall time is used
+        # rather than any one test's, and the floor covers the languages
+        # whose suites are dominated by interpreter startup.
+        budget = max(_MIN_ALARM, elapsed * _ALARM_FACTOR)
+        print(f"[note] baseline {elapsed:.2f}s; capping each test at {budget:.1f}s")
+
+        env = {
+            "PYTHONPATH": str(work),
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "MUTATE_ONE_ALARM": f"{budget:.3f}",
+        }
         mutation = subprocess.run(
             [sys.executable, "-m", "mutmut", "run", "--max-children", str(args.jobs)],
             cwd=proj,
@@ -497,16 +565,20 @@ def main() -> int:
         killed, total, survivors = _score(proj, stem, classes)
         if not total:
             raise SystemExit("no mutants were generated")
-        if not killed:
-            # Every exit code still at its initial 0 means no mutant run ever
+        if killed < total * _MIN_KILL_RATE:
+            # An exit code still at its initial 0 means that mutant never
             # reported, which a suite that passes its baseline cannot cause.
-            # It reads as a perfect survivor sweep, so say what it is instead.
+            # Testing for *zero* killed was too narrow: a run of this same
+            # brainfuck suite reported 2 of 68, which is the same failure --
+            # the mutants did not run -- but printed a plausible 2.9% instead
+            # of tripping the check.  A real score does not live down here;
+            # the suites this harness targets kill most of what they see.
             print(mutation.stdout[-3000:] or mutation.stderr[-3000:])
             raise SystemExit(
-                f"0 of {total} mutants killed with a passing baseline: the "
-                "mutants did not run.  Check the output above -- usually the "
-                "suite fails inside mutants/, where it runs from a different "
-                "directory than the baseline."
+                f"only {killed} of {total} mutants killed with a passing "
+                "baseline: the mutants did not run.  Check the output above "
+                "-- usually the suite fails inside mutants/, where it runs "
+                "from a different directory than the baseline."
             )
         print(
             f"\n{args.language}: {killed}/{total} killed ({100 * killed / total:.1f}%)"
