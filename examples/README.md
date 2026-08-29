@@ -113,7 +113,7 @@ Notes:
   forever instead, so the `1` branch is not executed.
 - `cod.txt` is a two-input XOR with both inputs one, printing `0`.  COD has
   no runtime input and no I/O other than a printed number, so this is the
-  whole boolean story for the language (see `docs/cod_boolean_generator.md`).
+  whole boolean story for the language (see `esolangs.tools.boolean.cod`).
 - `nevermind.txt` and `bitdeque.txt` print their bit followed by a newline.
 - `container.txt` halts by exiting with status 0.
 - `suffolk.txt` must be run with the loop count set to one.
