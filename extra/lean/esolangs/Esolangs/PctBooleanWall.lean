@@ -729,4 +729,183 @@ theorem lockstep_two (code : List Cmd) :
                 by rw [hxeq, hox, List.append_assoc],
                 by rw [hyeq, hoy, List.append_assoc]⟩
 
+/-- The two-byte analogue of `lockstep_two`: from a common cursor and
+accumulator, two runs whose *second* bytes may differ agree up to the first
+read, and afterwards continue from `⟨q + 1, b₁, [b₂]⟩` — the same accumulator
+`b₁` in both, with only the remaining byte differing. -/
+theorem lockstep_first (code : List Cmd) :
+    ∀ (fuel : ℕ) (i : ℕ) (a b₁ x y : ℤ) (rx ry : State × List ℤ),
+      run code fuel ⟨i, a, [b₁, x]⟩ = some rx →
+      run code fuel ⟨i, a, [b₁, y]⟩ = some ry →
+      rx.1.inp = [] →
+      ∃ (q : ℕ) (pre : List ℤ) (f' : ℕ) (tx ty : State × List ℤ),
+        run code f' ⟨q + 1, b₁, [x]⟩ = some tx ∧
+        run code f' ⟨q + 1, b₁, [y]⟩ = some ty ∧
+        tx.1.inp = [] ∧
+        rx.2 = pre ++ tx.2 ∧ ry.2 = pre ++ ty.2 := by
+  intro fuel
+  induction fuel with
+  | zero => intro i a b₁ x y rx ry hx _ _; simp [run] at hx
+  | succ k ih =>
+    intro i a b₁ x y rx ry hx hy hnil
+    rw [run] at hx hy
+    cases hc : code[i]? with
+    | none =>
+      rw [hc] at hx
+      simp only [Option.some.injEq] at hx
+      rw [← hx] at hnil
+      simp at hnil
+    | some c =>
+      rw [hc] at hx hy
+      simp only at hx hy
+      cases hstepx : stepCmd c ⟨i, a, [b₁, x]⟩ with
+      | eof => rw [hstepx] at hx; simp at hx
+      | next sx ox =>
+        cases hstepy : stepCmd c ⟨i, a, [b₁, y]⟩ with
+        | eof => rw [hstepy] at hy; simp at hy
+        | next sy oy =>
+          rw [hstepx] at hx; rw [hstepy] at hy
+          simp only [Option.map_eq_some_iff] at hx hy
+          obtain ⟨px, hpx, hrx⟩ := hx
+          obtain ⟨py, hpy, hry⟩ := hy
+          have hnil' : px.1.inp = [] := by rw [← hrx] at hnil; simpa using hnil
+          have hxeq : rx.2 = ox ++ px.2 := by rw [← hrx]
+          have hyeq : ry.2 = oy ++ py.2 := by rw [← hry]
+          cases c
+          case read =>
+            simp only [stepCmd] at hstepx hstepy
+            cases hstepx; cases hstepy
+            exact ⟨i, [], k, px, py, hpx, hpy, hnil',
+              by simpa using hxeq, by simpa using hyeq⟩
+          case sub2 | sub3 | dbl | neg | zero | printNum | printChr =>
+            simp only [stepCmd] at hstepx hstepy
+            cases hstepx; cases hstepy
+            obtain ⟨q, pre, f', tx, ty, htx, hty, htn, hox, hoy⟩ :=
+              ih _ _ b₁ x y px py hpx hpy hnil'
+            exact ⟨q, _ ++ pre, f', tx, ty, htx, hty, htn,
+              by rw [hxeq, hox, List.append_assoc],
+              by rw [hyeq, hoy, List.append_assoc]⟩
+          case rewind =>
+            by_cases hz : (if a > 3003 then (0 : ℤ) else a) ≠ 0
+            · rw [stepCmd, if_pos hz] at hstepx hstepy
+              cases hstepx; cases hstepy
+              obtain ⟨q, pre, f', tx, ty, htx, hty, htn, hox, hoy⟩ :=
+                ih _ _ b₁ x y px py hpx hpy hnil'
+              exact ⟨q, _ ++ pre, f', tx, ty, htx, hty, htn,
+                by rw [hxeq, hox, List.append_assoc],
+                by rw [hyeq, hoy, List.append_assoc]⟩
+            · rw [stepCmd, if_neg hz] at hstepx hstepy
+              cases hstepx; cases hstepy
+              obtain ⟨q, pre, f', tx, ty, htx, hty, htn, hox, hoy⟩ :=
+                ih _ _ b₁ x y px py hpx hpy hnil'
+              exact ⟨q, _ ++ pre, f', tx, ty, htx, hty, htn,
+                by rw [hxeq, hox, List.append_assoc],
+                by rw [hyeq, hoy, List.append_assoc]⟩
+
+/-! ### 9. The contract, and the wall
+
+A boolean program for two inputs must, on each of the four combinations, halt
+cleanly having consumed both bits and printed exactly the table's character. -/
+
+/-- The initial state for a two-bit combination. -/
+def start (b₁ b₂ : ℤ) : State := ⟨0, 0, [b₁, b₂]⟩
+
+/-- `Bit b` says `b` is one of the two input bytes `'0'` / `'1'`. -/
+def Bit (b : ℤ) : Prop := b = 48 ∨ b = 49
+
+/-- `code` computes `f` on two bits: for each combination it halts cleanly,
+consumes both inputs, and prints exactly the one character `f b₁ b₂`. -/
+def Computes (code : List Cmd) (f : ℤ → ℤ → ℤ) : Prop :=
+  ∀ b₁ b₂, Bit b₁ → Bit b₂ →
+    ∃ (fuel : ℕ) (r : State × List ℤ),
+      run code fuel (start b₁ b₂) = some r ∧ r.1.inp = [] ∧ r.2 = [f b₁ b₂]
+
+/-- A function of two bits that ignores its first argument. -/
+def IgnoresFirst (f : ℤ → ℤ → ℤ) : Prop :=
+  ∀ b b' c, Bit b → Bit b' → Bit c → f b c = f b' c
+
+/-- A function of two bits that ignores its second argument. -/
+def IgnoresSecond (f : ℤ → ℤ → ℤ) : Prop :=
+  ∀ b c c', Bit b → Bit c → Bit c' → f b c = f b c'
+
+/-- Runs with different fuel that both halt cleanly agree: extra fuel is never
+consumed once the cursor has left the program. -/
+theorem run_fuel_agree (code : List Cmd) :
+    ∀ (f₁ f₂ : ℕ) (s : State) (r₁ r₂ : State × List ℤ),
+      run code f₁ s = some r₁ → run code f₂ s = some r₂ → r₁ = r₂ := by
+  intro f₁
+  induction f₁ with
+  | zero => intro f₂ s r₁ r₂ h₁ _; simp [run] at h₁
+  | succ k ih =>
+    intro f₂ s r₁ r₂ h₁ h₂
+    cases f₂ with
+    | zero => simp [run] at h₂
+    | succ m =>
+      rw [run] at h₁ h₂
+      cases hc : code[s.ind]? with
+      | none => rw [hc] at h₁ h₂; simp only [Option.some.injEq] at h₁ h₂; rw [← h₁, ← h₂]
+      | some c =>
+        rw [hc] at h₁ h₂
+        simp only at h₁ h₂
+        cases hstep : stepCmd c s with
+        | eof => rw [hstep] at h₁; simp at h₁
+        | next s' o =>
+          rw [hstep] at h₁ h₂
+          simp only [Option.map_eq_some_iff] at h₁ h₂
+          obtain ⟨p₁, hp₁, hr₁⟩ := h₁
+          obtain ⟨p₂, hp₂, hr₂⟩ := h₂
+          rw [← hr₁, ← hr₂, ih m s' p₁ p₂ hp₁ hp₂]
+
+/-- Extra fuel does not change a clean halt. -/
+theorem run_fuel_pad (code : List Cmd) :
+    ∀ (f₁ f₂ : ℕ) (s : State) (r : State × List ℤ),
+      run code f₁ s = some r → f₁ ≤ f₂ → run code f₂ s = some r := by
+  intro f₁
+  induction f₁ with
+  | zero => intro f₂ s r h _; simp [run] at h
+  | succ k ih =>
+    intro f₂ s r h hle
+    cases f₂ with
+    | zero => omega
+    | succ m =>
+      rw [run] at h
+      rw [run]
+      cases hc : code[s.ind]? with
+      | none => rw [hc] at h; exact h
+      | some c =>
+        rw [hc] at h
+        simp only at h ⊢
+        cases hstep : stepCmd c s with
+        | eof => rw [hstep] at h; simp at h
+        | next s' o =>
+          rw [hstep] at h
+          simp only [Option.map_eq_some_iff] at h ⊢
+          obtain ⟨p, hp, hr⟩ := h
+          exact ⟨p, ih m s' p hp (by omega), hr⟩
+
+/-- **The decomposition.**  A program meeting the contract prints
+`pre b₁ ++ tail b₂`: a prefix fixed by the first bit, then a suffix fixed by
+the second.  The read position `q` is the same for all four combinations, so
+the split is uniform. -/
+theorem computes_splits (code : List Cmd) (f : ℤ → ℤ → ℤ) (hf : Computes code f) :
+    ∀ b₁, Bit b₁ →
+      ∃ (pre tail48 tail49 : List ℤ),
+        [f b₁ 48] = pre ++ tail48 ∧ [f b₁ 49] = pre ++ tail49 := by
+  intro b₁ hb₁
+  obtain ⟨fx, rx, hrx, hnx, hox⟩ := hf b₁ 48 hb₁ (Or.inl rfl)
+  obtain ⟨fy, ry, hry, hny, hoy⟩ := hf b₁ 49 hb₁ (Or.inr rfl)
+  -- align the fuels: pad both runs to `fx + fy`, which still halts cleanly
+  have hpadx : run code (fx + fy) (start b₁ 48) = some rx :=
+    run_fuel_pad code fx (fx + fy) _ rx hrx (by omega)
+  have hpady : run code (fx + fy) (start b₁ 49) = some ry :=
+    run_fuel_pad code fy (fx + fy) _ ry hry (by omega)
+  -- lockstep to the first read, then to the second
+  obtain ⟨q, pre, f', tx, ty, htx, hty, htn, hpx, hpy⟩ :=
+    lockstep_first code (fx + fy) 0 0 b₁ 48 49 rx ry hpadx hpady hnx
+  obtain ⟨q2, pre2, f2, ux, uy, -, hux, huy, hqx, hqy⟩ :=
+    lockstep_two code f' (q + 1) b₁ 48 49 tx ty htx hty htn
+  refine ⟨pre ++ pre2, ux.2, uy.2, ?_, ?_⟩
+  · rw [hox] at hpx; rw [hpx, hqx, List.append_assoc]
+  · rw [hoy] at hpy; rw [hpy, hqy, List.append_assoc]
+
 end PctBooleanWall
