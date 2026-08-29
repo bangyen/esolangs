@@ -37,6 +37,36 @@ class TestBrainIfBasicCommands:
         code = ["if 0 left", "if 0 increment", "if 1 output"]
         assert run_and_capture(code) == "\x01"
 
+    def test_the_walk_out_and_back(self) -> None:
+        """Walk out to cell 3 and back, marking each cell on the return.
+
+        Every move here is from a cell other than the origin, which is what
+        makes it worth its length: from cell 0 a relative ``right`` and an
+        absolute jump to cell 1 agree, and a ``left`` that moves one and
+        one that moves two both clamp to 0.  Walking out first separates
+        them, and reading two cells at the end shows where the pointer
+        actually landed rather than only that it moved.
+        """
+        code = [
+            "if 0 right",  # cell 1
+            "if 0 right",  # cell 2
+            "if 0 right",  # cell 3
+            "if 0 increment",  # cell 3 = 1
+            "if 1 left",  # cell 2
+            "if 0 increment",  # cell 2 = 1
+            "if 1 left",  # cell 1
+            "if 0 increment",  # cell 1 = 1
+            "if 1 left",  # cell 0, untouched
+            "if 0 output",
+            "if 0 right",  # cell 1 again
+            "if 1 output",
+        ]
+        assert run_and_capture(code) == "\x00\x01"
+
+    def test_a_new_cell_starts_at_zero(self) -> None:
+        """Moving right onto fresh tape appends a zero, not a one."""
+        assert run_and_capture(["if 0 right", "if 0 output"]) == "\x00"
+
 
 class TestBrainIfGeneratedHelloWorld:
     def test_generated_hello_world(self) -> None:
@@ -70,17 +100,30 @@ class TestBrainIfGeneratedHelloWorld:
         assert run_and_capture(code) == "\x01"
 
     def test_missing_value_rejected(self) -> None:
-        """A line without a value operand is malformed."""
+        """A line without a value operand is malformed.
+
+        The message is matched in full, and with its casing: a loose
+        substring lets the wording drift without any test objecting.
+        """
         import pytest
 
-        with pytest.raises(ValueError, match="malformed"):
+        with pytest.raises(ValueError, match=r"^malformed BrainIf line: if$"):
             run_and_capture(["if"])
+
+    def test_a_value_with_no_command_is_well_formed(self) -> None:
+        """Two tokens are enough: ``if 0`` names a value and does nothing.
+
+        This is the other side of the arity guard.  Only a line of fewer
+        than two tokens is malformed, so a two-token line has to run --
+        and it is the case that separates ``< 2`` from ``< 3``.
+        """
+        assert run_and_capture(["if 0", "if 0 output"]) == "\x00"
 
     def test_goto_missing_target_rejected(self) -> None:
         """A goto without a target line is malformed."""
         import pytest
 
-        with pytest.raises(ValueError, match="goto requires"):
+        with pytest.raises(ValueError, match=r"^goto requires a target line$"):
             run_and_capture(["if 0 goto"])
 
 
@@ -132,5 +175,14 @@ def test_a_blank_line_is_skipped() -> None:
     Blank lines are how a BrainIf program is spaced out, so they have to be
     stepped over rather than raising the malformed-line error a one-token
     line gets.
+
+    Where the blank sits matters, in two ways.  A blank at the top of the
+    program is stepped identically by an advance, a reset to line 1, and a
+    double advance, so it has to follow a line that has already run.  And a
+    run of consecutive blanks hides a double advance -- skipping two blanks
+    still lands on a line that does nothing -- so a single blank is put
+    directly before the output, where skipping two would skip the output
+    itself.  The run of blanks is kept as its own case.
     """
+    assert run_and_capture(["if 0 increment", "", "if 1 output"]) == "\x01"
     assert run_and_capture(["if 0 increment", "", "   ", "if 1 output"]) == "\x01"
