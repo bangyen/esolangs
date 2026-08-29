@@ -458,11 +458,14 @@ def minifuck(truth_table: str) -> str:
 
     frontier = _BASE + n * _SPAN + 6
 
+    # The scans first, across *both* separators, because they are by far the
+    # cheapest route and a good share of tables land in one of them: the
+    # embed's carry chain computes AND, NOR and XOR as a byproduct, so the
+    # answer is often already sitting in a cell.  Interleaving them with the
+    # searches (one separator fully, then the next) made tables that only the
+    # second separator's scan reaches pay for three failed searches first --
+    # measured at 69-82s each, against about 35s for the searches that do hit.
     for sep in _SEPS:
-        # First try the answer where the embed's own carry chain already put
-        # it: the chain computes AND, NOR and XOR as a byproduct, so a plain
-        # scan covers a good share of the tables and emits the shortest
-        # programs.
         base = _embed(n, sep=sep)
         _clamp(base)
         for acc in range(9, frontier):
@@ -470,6 +473,7 @@ def minifuck(truth_table: str) -> str:
             if hit is not None:
                 return hit.template()
 
+    for sep in _SEPS:
         # Otherwise search for the answer column outright.  The search has to
         # launch from the frontier, with the pointer already in the data: a
         # depth-``d`` walk from the origin never reaches cell ``_BASE``, so
@@ -492,9 +496,13 @@ def minifuck(truth_table: str) -> str:
                 if hit is not None:
                     return hit.template()
 
-        # Last: park the pointer on the answer as part of what is searched
-        # for, so no walk intervenes between producing the column and reading
-        # it -- a walk back would re-cross, and so change, that very cell.
+    # Last, and only if everything cheaper failed: park the pointer on the
+    # answer as part of what is searched for, so no walk intervenes between
+    # producing the column and reading it -- a walk back would re-cross, and
+    # so change, that very cell.  This is the most expensive route, and it
+    # earns its place at n == 2 (it is the only one reaching the XOR family)
+    # while contributing no hits at all in an n == 3 sample, so it goes last.
+    for sep in _SEPS:
         for code, _cell in _find_parked(
             _embed(n, settle=_SETTLE, sep=sep),
             want,
