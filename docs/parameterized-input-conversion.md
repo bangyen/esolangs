@@ -87,9 +87,24 @@ fork-box decision-tree machinery has a real value to branch on, and
 "each input read exactly once" is satisfiable by giving each input its own
 crossing.
 
-## Minifuck — convertible, with a storage question
+## Minifuck — convertible, verified end to end
 
 `.` reads a byte, but only when cells 0–7 are all zero **after** its flip.
+
+**Wiki-spec conformant**, verified against <https://esolangs.org/wiki/Minifuck>.
+The spec's own command list matches the interpreter on every op relied on here:
+
+- `.` — "Move to next bit and invert it and output letter stored in first 8
+  bits, **if none then input**" — i.e. print when the pool holds something,
+  read when it is empty. That is exactly the pool-is-zero read condition.
+- `[` — "Move to next bit and invert it, skip next instruction and invert next
+  bit if zero" — the `[`-cascade used below to clear both ASCII bits.
+- `<` — "Same as Brainfuck" (move left); storage is a right-infinite tape of
+  binary bits.
+
+The spec's example program `<[<.[<.` runs correctly on this interpreter
+(reads one bit, echoes it), so the shipped implementation agrees with the
+wiki on its own sample.
 
 - One bit: `[<.` reads a bit with no spurious output and lands it in **cell 7**
   (ASCII `'0'`=00110000, `'1'`=00110001) — the cell the existing notes already
@@ -99,20 +114,43 @@ crossing.
   triggers the bonus flip of cell 3, clearing **both** ASCII bits and
   re-zeroing the pool.
 
-**27 programs read twice on a uniform, input-independent schedule** for all
-four 2-bit inputs, e.g. `[<..[<[<[<..` (length 12). The final tape depends on
-both bits, so bit 1's information survives read 2.
+**54 programs read twice on a uniform, input-independent schedule** at length
+12, e.g. `[<..[<[<[<..`, and at length 13 **54 of them separate all four
+2-bit inputs by output alone** — the property a boolean generator actually
+needs, since it must *print* the answer.
 
-Open question before building: read 2 overwrites cells 0–7, and bit 1 lives in
-cell 7, so bit 1 likely has to be banked in cells >= 8 first (per the
-rightward-flow constraint). That is the design problem — not a wall.
+Worked example, `[<..[<[<[<...` (length 13):
+
+| input | output bytes | last byte |
+|---|---|---|
+| `00` | `10 31 31` | `'1'` |
+| `01` | `10 30 30` | `'0'` |
+| `10` | `11 01 30` | `'0'` |
+| `11` | `11 01 31` | `'1'` |
+
+The final byte is clean ASCII and is exactly **XNOR** of the two input bits.
+So Minifuck computes a real two-input boolean function from actual stdin.
+
+The banking question is **resolved, and the answer is that no banking is
+needed**: across all 27 uniform two-read programs of the `[<..` shape, nothing
+in cells >= 8 depends on bit 1 (checked directly). Bit 1 is never stored past
+cell 7 — read 2 does overwrite cell 7, but bit 1's influence has already been
+committed to the *output stream* by then, which read 2 cannot touch. The
+earlier worry that bit 1 "must be banked in cells >= 8" assumed the answer had
+to survive on the tape; it survives in the output instead.
+
+Remaining work for a real generator is scale, not feasibility: these are
+n=2 results, and whether the read schedule stays uniform and
+output-separating for n>=3 is unmeasured.
 
 > Caution: an earlier sweep here concluded "no program reads twice, exhaustive
 > to length 13". That was a **harness artifact** — `input_char` reads a whole
 > *line*, so `ScriptedIO("01")` supplied one line and every genuine two-read
 > program EOF'd and was discarded. Feed one bit per line (`"0\n1\n"`), and
 > count reads by subclassing `input_char`. The uniform two-read programs also
-> start at length 12, just past a length-11 sweep.
+> start at length 12, just past a length-11 sweep, and the *output-separating*
+> ones start at length 13 — two separate off-by-one cliffs, each of which
+> would have produced a false wall on its own.
 
 ## Second tier — unresolved
 
