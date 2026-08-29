@@ -35,6 +35,11 @@ Two structural facts drive it.
    diverging at a `t`: the branch that rewinds must pay for the reads it
    re-crosses.
 
+`no_xor` and `no_and` are stated for the byte-valued encoding a program
+prints with `e`.  A program that answered with `l` instead (printing the
+decimal digits `0`/`1`) is covered too: `computes_ignores` quantifies over
+*every* `f`, so the `l`-valued XOR is impossible by the same theorem.
+
 Note on the one-input case: all four one-input functions *are* expressible
 (identity is `ne`; NOT is `nss` followed by 31 `i`s then `pe`, computing
 `x ↦ -x + 97`, which sends 48 ↦ 49 and 49 ↦ 48).  The wall is exactly at
