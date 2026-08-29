@@ -115,130 +115,23 @@ def brainif(truth_table: str) -> str:
     digits however it is entered.  Two climbs is 48 + 49 lines, which used
     to dominate: a ``11110000`` program was 97 increments out of 153 lines.
 
-    **Every line is gated on an exact cell value, which constrains how the
-    pointer may move.**  A step whose starting digit is unknown needs both
-    guards, and the two lines test *different* cells -- the second runs after
-    the first has already moved -- so a guarded pair over written cells fires
-    twice whenever the neighbouring digits differ.  The pair is sound only
-    when the destination is still zero, which is why the original
-    construction reads on the way out and tests on the way back: every cell
-    the pointer lands on during the tree phase is unwritten.
+    Building first also fixes which way the tape runs.  The pointer steps
+    out over cells that are still zero, where one ``if 0 move right``
+    advances exactly one cell -- no digit is around to fire the next line
+    too -- and the tree then reads its inputs from that far cell back down
+    toward the answer.  So a level is a read, two branch tests, and a step
+    left, and a leaf is simply *there*: the reads have already carried the
+    pointer home, and it adds one iff its entry is a ``1`` before joining a
+    two-line tail.
 
-    Two spellings escape that.  A cell whose digit the code *knows* -- the
-    arm of a branch that just tested it -- moves in one line.  A cell that is
-    **dead** (already tested, never tested again) moves in two by
-    normalizing first::
-
-        if 48 increment   # 48 -> 49, a 49 is untouched: the cell is now 49
-        if 49 move left   # so exactly one move fires
-
-    Cell 0 is the one exception: it holds the answer byte, which must stay 48
-    until a leaf increments it, so the walk home never normalizes it.
-
-    **The tree splits on its inputs in whichever order the language can
-    reach**, which is not all ``n!`` of them.  Reads happen in input order,
-    and a written cell cannot be crossed without destroying it, so the
-    pointer's placement is monotone: the reachable orders are exactly the
-    ``n + 1`` *j-splits* -- hoist inputs ``0..j-1`` into cells while walking
-    out, node-read inputs ``j..n-1`` as before, and the test order is then
-    ``(j, ..., n-1, j-1, ..., 0)``.  ``j = 0`` is the node-read construction
-    and ``j = n`` hoists everything.  Like Unsquare, the reachable set *is*
-    the candidate list rather than a filter over a larger one.
-
-    All ``n + 1`` are built and the shortest kept, the node-read build first
-    so a tie preserves today's emission.  Measured 5.2% at n=3 (194 of 256
-    tables improved, none grown) and 7.4% at n=4.
-    """
-    n = _validate_truth_table(truth_table)
-    candidates = [_brainif_node_read(truth_table)]
-    candidates += [_brainif_jsplit(truth_table, j) for j in range(1, n + 1)]
-    return min(candidates, key=lambda program: len(program.splitlines()))
-
-
-def _brainif_jsplit(truth_table: str, j: int) -> str:
-    """Emit the j-split BrainIf program; see :func:`brainif`.
-
-    Inputs ``0..j-1`` are read up front into cells ``1..j`` while the pointer
-    walks out over still-zero cells; inputs ``j..n-1`` are read at their
-    nodes as the tree walks back down.  The test order is therefore
-    ``(j, ..., n-1, j-1, ..., 0)``.
-    """
-    n = _validate_truth_table(truth_table)
-    order = list(range(j, n)) + list(range(j - 1, -1, -1))
-    entries: list[_Entry] = [_Cmd(f"if {v} increment") for v in range(_ASCII_ZERO)]
-    entries.append(_Cmd(f"if {_ASCII_ZERO} move right"))
-    # The read-out pair is sound because each step lands on an unwritten cell.
-    for i in range(j):
-        entries.append(_Cmd("if 0 input"))
-        if i < j - 1 or j < n:
-            entries.append(_Cmd(f"if {_ASCII_ZERO} move right"))
-            entries.append(_Cmd(f"if {_ASCII_ONE} move right"))
-    entries += [_Cmd("if 0 move right") for _ in range(max(0, n - j - 1))]
-
-    counter = [0]
-
-    def build(rows: list[int], k: int, pos: int) -> list[_Entry]:
-        """Emit the subtree testing ``order[k]``, pointer on that input's cell."""
-        if k == n or len({truth_table[row] for row in rows}) == 1:
-            out: list[_Entry] = []
-            cell = pos
-            # Consume the reads this path skipped; a skipped node-read lands
-            # on a zero cell, so its step is the sound guarded pair.
-            for level in range(k, n):
-                if order[level] < j:
-                    continue
-                out.append(_Cmd("if 0 input"))
-                if cell > 0:
-                    out.append(_Cmd(f"if {_ASCII_ZERO} move left"))
-                    out.append(_Cmd(f"if {_ASCII_ONE} move left"))
-                    cell -= 1
-            # The rest of the walk crosses dead cells, which normalize first;
-            # the final step onto cell 0 must not, so it stays a plain pair.
-            while cell > 1:
-                out.append(_Cmd(f"if {_ASCII_ZERO} increment"))
-                out.append(_Cmd(f"if {_ASCII_ONE} move left"))
-                cell -= 1
-            if cell == 1:
-                out.append(_Cmd(f"if {_ASCII_ZERO} move left"))
-                out.append(_Cmd(f"if {_ASCII_ONE} move left"))
-            if int(truth_table[rows[0]]):
-                out.append(_Cmd(f"if {_ASCII_ZERO} increment"))
-            out.append(_Cmd(f"if {_ASCII_ZERO} goto OUT0"))
-            out.append(_Cmd(f"if {_ASCII_ONE} goto OUT0"))
-            return out
-        pre: list[_Entry] = []
-        if order[k] >= j:
-            pre.append(_Cmd("if 0 input"))
-        l0, l1 = counter[0], counter[0] + 1
-        counter[0] += 2
-        bit = n - 1 - order[k]
-        g0 = [row for row in rows if not ((row >> bit) & 1)]
-        g1 = [row for row in rows if (row >> bit) & 1]
-        return [
-            *pre,
-            _If(_ASCII_ZERO, l0),
-            _If(_ASCII_ONE, l1),
-            _MoveLeft(_ASCII_ZERO, l0),
-            *build(g0, k + 1, pos - 1),
-            _MoveLeft(_ASCII_ONE, l1),
-            *build(g1, k + 1, pos - 1),
-        ]
-
-    entries += build(list(range(2**n)), 0, n if j < n else j)
-    entries.append(_Out(0))
-    entries.append(_Cmd(f"if {_ASCII_ZERO} output"))
-    entries.append(_Cmd(f"if {_ASCII_ONE} output"))
-    entries.append(_End())
-    return _brainif_render(entries)
-
-
-def _brainif_node_read(truth_table: str) -> str:
-    """Emit the node-read BrainIf program; see :func:`brainif`.
-
-    Every input is read at the node that tests it, so the reads carry the
-    pointer home and a leaf is already standing on the answer cell.  This is
-    the ``j = 0`` member of the j-split family, kept first in the dispatch so
-    a tie preserves the emission this generator has always produced.
+    That is what makes the tree foldable.  A subtree whose rows all agree
+    becomes a leaf rather than branching on bits that cannot change the
+    answer -- and because a leaf spends no moves getting to the answer, the
+    saving is not handed back.  The skipped levels' *reads* still happen:
+    consumption must not depend on the table, or a caller feeding several
+    programs from one stream would desync.  An earlier arrangement built
+    the answer past the inputs and had each leaf walk out to it, which cost
+    two lines per skipped level and cancelled the fold exactly.
     """
     n = _validate_truth_table(truth_table)
     entries: list[_Entry] = []
@@ -298,11 +191,6 @@ def _brainif_node_read(truth_table: str) -> str:
     entries.append(_Cmd(f"if {_ASCII_ONE} output"))
     entries.append(_End())
 
-    return _brainif_render(entries)
-
-
-def _brainif_render(entries: list[_Entry]) -> str:
-    """Resolve labels and emit the program text for a BrainIf entry list."""
     # resolve labels from the actual line sequence (the "out" markers emit
     # no line, so the marker's target is the next line that does)
     labels: dict[int, int] = {}

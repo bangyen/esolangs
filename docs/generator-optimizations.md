@@ -220,7 +220,7 @@ fill slots is not a reorder — an identical program booking a saving against
 the harness's fill order is a redefined benchmark.
 
 **Shipped:** `six_five`, `jaune`, `eval`, `circlefuck`, `unsquare`, `sbleq`,
-`brainif`, `three_x`, `forth`, `sophie`, `polynomial`, `addsubjump` (via
+`three_x`, `forth`, `sophie`, `polynomial`, `addsubjump` (via
 `best_input_order`; `six_five` and `forth` roll their own).
 
 **Not applicable — sum-of-minterms**, where the minterm count does not depend
@@ -246,10 +246,45 @@ Four rules worth carrying into the remaining candidates:
   permutes the **store target** each `?` writes to, leaving the tree
   untouched, and delivered its screened 4.5%/5.4% to the character.
 - **Reachable orders are often far fewer than `n!`** — stack- and pointer-bound
-  generators reach a structured subset (Forþ and Unsquare a product, BrainIf
-  `n+1` j-splits). Enumerate the reachable set; don't search `n!`.
+  generators reach a structured subset (Forþ and Unsquare a product; BrainIf
+  only `n+1` j-splits, since a written cell cannot be crossed without
+  destroying it). Enumerate the reachable set; don't search `n!`.
 - **A size comparison is meaningless until both builds compute the function.**
   Measure only correct programs.
+
+**When a candidate is worth building.** The screen figure alone does not
+decide it; what it costs to reach does. Two questions settle almost every
+case, and both are answerable before writing any code:
+
+1. **Are the reads already hoisted into addressable, named storage?** If so
+   the reorder is a rename — a `best_input_order` wrapper and a permuted
+   operand — and the screen is reliable. Worth doing down to about 5%,
+   because the change is a few lines (`three_x` at 4.5% is ~38 lines;
+   brainfuck and dimensional inherit theirs from
+   `decision_tree_program` for about four).
+2. **If the reads sit at the nodes, what does the hoist buy?** Read the
+   interpreter and estimate it before building. A hoist that deletes a
+   per-leaf drain is usually large (`sbleq` screened 8.3%, delivered 24.7%;
+   `addsubjump` 16.7% → 31.7%). A hoist that merely relocates a cost is not,
+   and a restructuring generator costs one to two hundred lines carrying a
+   language invariant — so proceed only when the estimate plausibly clears
+   **10%**.
+
+`brainif` is the worked counter-example, and it was reverted rather than
+kept. It screened 4.9% and delivered 5.2% at n=3 / 8.0% at n=4, verified by
+11000 interpreter runs — the win was real. But its reads sit at its nodes,
+so reaching it took ~146 lines resting on a language invariant subtle enough
+to be worth stating: BrainIf gates every line on an exact cell value, and the
+two lines of a guarded move test *different* cells, so a guarded pair over
+written cells fires **twice** whenever the neighbouring digits differ. The
+sound spellings are a destination that is still zero, a cell whose digit is
+known (one line), or normalizing a dead cell first (`if 48 increment` then
+`if 49 move left`, never on cell 0, which holds the answer byte). The
+existing node-read construction is built entirely inside that law — its leaf
+drain *is* the walk home — which is why the hoist relocated cost instead of
+deleting it, and why 5.2% was the whole of the return. Rule 2 would have
+closed it before the first line was written; the commit history has the
+build if the trade is ever worth revisiting.
 
 **Not yet done.** The grid generators (`dig` 19.8%, `flowchart` 17.1%,
 `streetcode` 16.8%, `laserfuck` 16.3%, `back` 12.0%, `clockwise` 1.3%,
@@ -266,7 +301,9 @@ is a redefined benchmark rather than a smaller program. **The bar is that
 the emitted program changes and still consumes its inputs in the same
 order.**
 
-Likewise `taglate` (3.1%), `minsky_swap` (2.8%), `bio` (1.5%), `decleq` (1.4%),
+Likewise `brainif` (4.9% screened, 5.2% delivered and reverted — see the
+rule above), `taglate` (3.1%), `minsky_swap` (2.8%), `bio` (1.5%),
+`decleq` (1.4%),
 `nocomment` (0.7%), `painfuck` (0.5%), `rotfuck` (0.4%) and `bfstack` (0.2%)
 remain unexamined candidates. Read each figure as a **lower
 bound**: any of these whose reads sit at its nodes gains the hoist as well as
