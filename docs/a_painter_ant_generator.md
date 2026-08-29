@@ -101,37 +101,15 @@ It supports **all sixteen two-input tables**, exact and cycle-stable
 same piecewise head with more bits, and every arity is exact and
 cycle-stable (see "The general construction" below).
 
-### The flow
-
-1. **Head** — walks out to each white leaf by its bits, paints it (`P` for a
-   one entry, space for a zero), and returns to the origin.
-2. **`{X0}..{Xn-2}`** — the first `n-1` inputs each route the ant by their
-   weight (`2 ** (n-i)` cells along the index-parity axis, west/north for a
-   one bit, east/south for a zero) to the canonical point beside the output
-   leaf's star.
-3. **Body** — paints the two stars around the ant's position and returns it
-   to the shared cell.
-4. **`{Xn-1}`** — the final input's `WWwWWEEe`/`NENEESWw` dance closes the
-   walk onto the output leaf.
-
 ### The two-star body (generated)
 
-The body (`_body()`) paints **two stars**: one around the output leaf and
-one around its **y-mirror**, so the final input never has to be re-embedded
-— it only routes to whichever star is already painted.  The two stars share
-the cell at `(0,±2)` (the right axis cell of the west star and the left
-axis cell of the east star), which is also the canonical point the body
-starts and ends on.
-
-Each star is walked as a **clockwise spiral** of `P` paints: the east ring
-cell first, then the ring steps and L-shaped detours out to the axis cells,
-with blocked-uppercase returns from the axis cells (the `E`/`WW`/`SS` no-ops
-are the anchors of the cycle-2 dance).  The two spirals are connected by
-the **black gap** between the stars' rings: the star centers are four cells
-apart and each ring reaches one cell toward the other, so the gap is
-`4 - 2` east moves on the row above.  The west star's spiral ends on its
-south-east diagonal, the gap runs east, and the east star's spiral (its
-mirror) ends on the shared cell.
+`_body()` paints **two stars** — one around the output leaf and one around
+its y-mirror — so the final input never has to be re-embedded; it only
+routes to whichever star is already painted.  The stars share the cell at
+`(0,±2)`, which is the canonical point the body starts and ends on.  The
+spiral order and the anchor no-ops are in the code; the rule worth keeping
+is the **gap**: the black moves between two stars are the center distance
+minus 2, because each ring reaches one cell toward the other.
 
 ### The cycle-2 dance
 
@@ -175,26 +153,22 @@ every instantiated program is a cycle-stable fixed point.
 
 ### The piecewise head
 
-The head walks each white leaf out and back **piecewise** — one weighted
-move per input bit, most-significant first.  Bit ``k`` contributes
-``2 ** (n-k)`` cells on the axis chosen by index parity (``k % 2 != n % 2``
--> horizontal, else vertical); a set bit moves west/north, a cleared bit
-east/south (``_bit_move``).  The routing walks the same moves, so the head
-and the read-back always agree on where each leaf is.
+The head walks each white leaf out and back **piecewise**, one weighted
+move per input bit, most-significant first (`_bit_move`); the routing walks
+the same moves, so head and read-back always agree on where each leaf is.
+Two invariants make it work, and both are easy to break when editing:
 
-- The outbound path never crosses a previously painted leaf: the
-  intermediate cells (the partial-bit prefixes of each path) are never
-  leaf positions, so only the final cell — the leaf itself — is painted.
-- After ``P`` the head retraces the exact same path back to the origin
-  (``_reverse_moves``), so it returns cleanly without re-entering any
-  painted cell.
+- The outbound path never crosses a previously painted leaf — the
+  intermediate cells are never leaf positions, so only the final cell is
+  painted.
+- After `P` the head retraces the same path back (`_reverse_moves`), so it
+  never re-enters a painted cell.
 
-For ``n >= 2`` each move segment carries an uppercase **anchor** — ``WS``
-before an n/s segment, ``NE`` before a w/e segment — plus a move-less
-leading ``WS`` when ``n`` is odd.  These are the cycle-2 launchers: on the
-empty first cycle they are blocked (no-ops), and from cycle 2 on they fire
-the ant off the leaf onto the painted ring, turning the whole re-run into
-a closed zero-paint dance back to the leaf.
+For `n >= 2` each segment carries an uppercase **anchor** (`WS` before an
+n/s segment, `NE` before a w/e segment).  These are the cycle-2 launchers:
+blocked no-ops on the empty first cycle, and from cycle 2 on they fire the
+ant off the leaf onto the painted ring, turning the re-run into a closed
+zero-paint dance.
 
 ### The flow (any n)
 

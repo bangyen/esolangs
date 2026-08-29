@@ -224,7 +224,7 @@ Languages that don't fit into the above categories.
 <details>
 <!-- EXTRA:START -->
 
-<summary>Show all 13 implementations</summary>
+<summary>Show all 5 implementations</summary>
 
 Implementations written in languages other than Python, used as cross-check references in CI: most generators are round-trip verified against them.  The cross-checks share an exit-code convention mirroring the Python interpreters: 0 = success, 2 = malformed program, 3 = invalid runtime operation.
 
@@ -235,17 +235,6 @@ Implementations written in languages other than Python, used as cross-check refe
 - [Minsky Swap](https://esolangs.org/wiki/Minsky_Swap)
 - [NoComment](https://esolangs.org/wiki/NoComment)
 - [RAM0](https://esolangs.org/wiki/RAM0)
-
-### Rust Implementations
-
-- [%^2^-1](https://esolangs.org/wiki/%25%5E2%5E-1)
-- [3x](https://esolangs.org/wiki/3x)
-- [Basicfuck](https://esolangs.org/wiki/Basicfuck)
-- [bit~](https://esolangs.org/wiki/Bit~)
-- [Forþ](https://esolangs.org/wiki/For%C3%BE)
-- [LaserFuck](https://esolangs.org/wiki/LaserFuck)
-- [Painfuck](https://esolangs.org/wiki/Painfuck)
-- [Unsquare](https://esolangs.org/wiki/Unsquare)
 
 <!-- EXTRA:END -->
 
@@ -401,7 +390,7 @@ check the [roadmap](docs/roadmap.md) and [limitations](docs/limitations.md)
 first, and read [CONTRIBUTING.md](CONTRIBUTING.md) — including whether the
 language is worth adding — before proposing one.  New languages are
 registered in `src/esolangs/registry.py`.  Run `just test` (the full local
-check: lint, pytest, bandit, cargo, and the Python verify scripts) to verify
+check: lint, pytest, bandit, and the Python verify scripts) to verify
 a change.
 
 To run that check automatically on every push:

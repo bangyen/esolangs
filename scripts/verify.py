@@ -3,12 +3,12 @@
 Everything that can be checked on a dev machine without a Linux host:
 
 1. pre-commit (lint, format, types) and pytest (the test suite)
-2. bandit (via uv), cargo fmt/test (the Rust cross-checks), the ``extra/line``
-   suites (via uv, which supplies the image libraries the package itself does
-   not depend on), and the interpreter-vs-native differential corpora
-3. unicorn-based round-trips (RISC-V assembly compilers, RISC-V cross-check
-   generators, and the differential corpora) — skipped when unicorn or the
-   RISC-V cross-compiler is missing
+2. bandit (via uv), the ``extra/line`` suites (via uv, which supplies the
+   image libraries the package itself does not depend on), and the
+   interpreter-vs-native differential corpora
+3. unicorn-based round-trips (RISC-V assembly compilers and the
+   differential corpora) — skipped when unicorn or the RISC-V
+   cross-compiler is missing
 
 The native qemu-riscv64 checks need Linux, so they run only in CI (see
 .github/workflows/ci.yml).  ``.githooks/pre-push`` and ``just test`` both run
@@ -29,14 +29,16 @@ still runs the complete suite on every push regardless.
 
 A default run also leaves work to CI where CI already covers it: the steps in
 ``FULL_ONLY`` (the differential corpora, which CI runs twice with ``--fuzz
-50``) and pytest's ``slow`` marker (the fuzzers' divergence-detection tests,
+50``; the ZTOALC anchor table, which CI's lint job re-derives; and the
+RISC-V unicorn round-trip, which CI's assembly job runs) and
+pytest's ``slow`` marker (the fuzzers' divergence-detection tests,
 which CI runs by that same marker and errors on if they skip).  ``--full``,
 ``just test-full``, and an explicit ``--only`` all still run them.
 
 Usage:
     python scripts/verify.py [--only STEPS] [--skip STEPS] [--full] [--list]
     python scripts/verify.py --full                       # every step, whole tree
-    python scripts/verify.py --only pytest,"cargo test"   # comma-separated STEPS names
+    python scripts/verify.py --only pytest,bandit         # comma-separated STEPS names
     python scripts/verify.py --only pre-commit,pytest --skip bandit
 """
 
@@ -76,7 +78,19 @@ PY = python_cmd()
 # they save at push time, and CI already runs them on every push -- the
 # differential twice, and with --fuzz 50, so more thoroughly than here.  They
 # still run under --full, under an explicit --only, and via `just test-full`.
-FULL_ONLY = frozenset({"interpreter vs native differential corpora"})
+FULL_ONLY = frozenset(
+    {
+        "interpreter vs native differential corpora",
+        # Re-deriving the table costs ~3.2s and only guards two files that
+        # rarely move; CI's lint job runs it on every push instead.
+        "ztoalc anchor table is reproducible",
+        # Assembling and emulating every compiler's output is the slowest
+        # non-pytest step (~8s, a third of the rest put together), and its
+        # scope includes all of src/esolangs/, so it fires on any interpreter
+        # edit.  CI's assembly job runs the identical script on every push.
+        "RISC-V assembly under unicorn (compilers + cross-checks)",
+    }
+)
 
 # Which paths each step actually guards.  A step whose prefixes the branch did
 # not touch cannot have been broken by that branch, so a scoped run skips it.
@@ -84,9 +98,6 @@ FULL_ONLY = frozenset({"interpreter vs native differential corpora"})
 # matter or it guards the whole tree.  Prefixes are repo-relative.
 STEP_SCOPE: dict[str, tuple[str, ...]] = {
     "bandit": ("src/",),
-    "cargo fmt": ("extra/rust/",),
-    "cargo build": ("extra/rust/",),
-    "cargo test": ("extra/rust/",),
     "extra/line suites (uv)": ("extra/line/",),
     # The check re-derives the anchor table and diffs it against the committed
     # file, importing nothing from the interpreters -- so the only things that
@@ -101,10 +112,6 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
         "extra/assembly/",
         "src/esolangs/",
         "scripts/verify_riscv_unicorn.py",
-    ),
-    "extra cross-check generators": (
-        "extra/",
-        "scripts/verify_extra_generators.py",
     ),
     "duplicate-code check (pylint)": ("src/esolangs/", "scripts/", "tests/"),
     "single-interpreter installer": (
@@ -122,18 +129,6 @@ STEPS = [
     ("mypy (src + scripts)", [*PY, "-m", "mypy"]),
     ("pytest", [*PY, "-m", "pytest", "-q"]),
     ("bandit", ["uv", "run", "--with", "bandit", "bandit", "-r", "src", "-q"]),
-    (
-        "cargo fmt",
-        ["cargo", "fmt", "--manifest-path", "extra/rust/Cargo.toml", "--check"],
-    ),
-    (
-        "cargo build",
-        ["cargo", "build", "--manifest-path", "extra/rust/Cargo.toml"],
-    ),
-    (
-        "cargo test",
-        ["cargo", "test", "--manifest-path", "extra/rust/Cargo.toml"],
-    ),
     (
         # Run from extra/line: its modules import each other as flat top-level
         # names, and it needs image libraries the package does not depend on,
@@ -170,10 +165,6 @@ STEPS = [
     (
         "RISC-V assembly under unicorn (compilers + cross-checks)",
         [*PY, "scripts/verify_riscv_unicorn.py"],
-    ),
-    (
-        "extra cross-check generators",
-        [*PY, "scripts/verify_extra_generators.py"],
     ),
     (
         "interpreter vs native differential corpora",
@@ -259,7 +250,7 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
     localisable -- a new interpreter with no test module yet, or a source file
     whose tests live somewhere this cannot predict -- so everything runs rather
     than guessing.  An empty list means the branch touched nothing the Python
-    tests cover (docs, Rust, CI config), so there is nothing to run.
+    tests cover (docs, assembly, CI config), so there is nothing to run.
     """
     paths: set[str] = set()
     for f in changed:
@@ -426,9 +417,6 @@ def main() -> int:
             continue
         if shutil.which("uv") is None and ("bandit" in name or "(uv)" in name):
             print(f"[skip] {name}: uv not installed")
-            continue
-        if shutil.which("cargo") is None and "cargo" in name:
-            print(f"[skip] {name}: Rust toolchain (cargo) not installed")
             continue
         if not have_pylint and "(pylint)" in name:
             print(f"[skip] {name}: pylint not installed (pip install pylint)")

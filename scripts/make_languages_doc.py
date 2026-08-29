@@ -75,25 +75,10 @@ _EXTRA_DIRS = [
         },
         "RISC-V Assembly Implementations",
     ),
-    (
-        ROOT / "extra" / "rust",
-        "*.rs",
-        {
-            "basicfuck": "Basicfuck",
-            "bit_tilde": "bit~",
-            "forth": "Forþ",
-            "laserfuck": "LaserFuck",
-            "painfuck": "Painfuck",
-            "pct_squared_minus_one": "%^2^-1",
-            "three_x": "3x",
-            "unsquare": "Unsquare",
-        },
-        "Rust Implementations",
-    ),
 ]
 
 # Display names of the languages with a cross-check implementation in extra/
-# (Rust, Lean, or RISC-V assembly).  These interpreters run as
+# (Lean or RISC-V assembly).  These interpreters run as
 # standalone programs rather than through the Python package.
 NATIVE = {name for _, _, names, _ in _EXTRA_DIRS for name in names.values()}
 
@@ -193,7 +178,7 @@ def render() -> str:
         "",
         "Python means an in-repo interpreter under `esolangs.interpreters`;",
         "Cross-check means an implementation in `extra/` that runs as a",
-        "standalone program (Rust, Lean, or RISC-V assembly), used to",
+        "standalone program (Lean or RISC-V assembly), used to",
         "differentially verify the Python interpreter.  The Boolean",
         "column marks the boolean-function generators; the no-input "
         "languages (Back, BIO, NoComment, BF-PDA, Lamfunc, Bitdeque, RAM0, "

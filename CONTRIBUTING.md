@@ -117,8 +117,8 @@ just test            # or: python scripts/verify.py
 ```
 
 runs the full local check: pre-commit (lint, format, types), pytest, bandit,
-cargo fmt + tests, the `extra/line` suites (via uv, skipped when uv is
-missing), and the Python verify scripts (including `check_docstrings.py`).
+the `extra/line` suites (via uv, skipped when uv is missing), and the Python
+verify scripts (including `check_docstrings.py`).
 To run it automatically on every push:
 
 ```sh

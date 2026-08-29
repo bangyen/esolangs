@@ -7,16 +7,24 @@ structural reason it cannot be lifted.  Completed constructions (the
 working generators, and how they work) live in the commit history, not
 here.
 
-## 6-5 (constant program size is impossible)
+## 6-5 (35 branch labels bound the tree)
 
-A generator that must work for any table has to embed the table, and the
-single-integer representation 6-5 requires (the pointer cannot net-advance,
-so there is no computed array indexing) costs O(`2**(2**n)`) characters for
-dense tables.  A ~2 MB setup guard rejects the `n > 5` and large-`T` region
-(AND-n is the pathological case), and runtime is O(x*T) — minutes at the
-size guard.  The shipped decision tree stays primary (total through
-`n <= 5`); the arithmetic kernel is the fallback for small-`T` tables past
-that.
+The generator is a decision tree that folds its constant subtrees, and 6-5
+has exactly 35 branch labels (`0..9`, `A..Z`), one spent per internal node
+the fold leaves standing.  That makes the limit a property of the *table*,
+not of `n`: the fold's worst case is an alternating table, which folds
+nothing and spends `2**n - 1`, so the tree is total through `n == 5` (31)
+and begins refusing at `n == 6` (63).  Tables that fold hard still render at
+any width — AND-`n` needs only `n` labels.
+
+An arithmetic kernel used to catch the `n > 5` region by embedding the table
+as a single integer (6-5's pointer cannot net-advance, so there is no
+computed array indexing), at O(`2**(2**n)`) characters for dense tables
+behind a ~2 MB setup guard.  It was **retired**: a buildable `T` confines
+the ones to low indices, which leaves the rest of the table constant, which
+folds well inside the label budget — so it never covered a table the tree
+could not.  A search over contiguous families at n=6,7,8 and ~18000 random
+tables found no counterexample.
 
 ## ZTOALC L (dense non-symmetric n > 3 wall, re-verified)
 
@@ -94,6 +102,27 @@ raw random characters) found no two-input AND/OR/XOR/NAND/NOR/XNOR under
 either bit-encoding.  The four one-input programs were too trivial to keep,
 so the boolean generator was removed and stays removed.
 
+**The parameterized case is also walled, on a third mechanism.**  Embedding
+each input at compile time (the WII2D-style convention) does clear both
+mechanisms above -- with no ``,`` there is no pointer-reset corruption and
+no re-read desync -- and it buys real input-dependent behavior the runtime
+case never reached: over templates to length 7 with each ``{Xi}`` placed
+exactly once and a same-width setter (``1`` for a one, an executed no-op
+for a zero), ``{X0}{X1}211`` emits for ``(1, 1)`` and stays silent
+otherwise, an AND.  What blocks a ``'0'``/``'1'`` generator is *output*.
+Location 0 is both the byte's MSB and the only cell the ``-4`` pointer wrap
+returns to, so the tape walk that builds a target byte is the same loop
+that would have to be stopped to print exactly once -- and ``3`` cannot
+stop it, since a TRUE ``3`` re-runs the segment it sits in rather than
+reaching an independent target.  Confirmed against the interpreter: no
+program over ``1``/``2`` to length 8 prints exactly ``"0"`` or exactly
+``"1"``, and every short program that writes byte 48 or 49 does so inside a
+loop that enumerates all 256 bytes, printing each -- the digits are
+incidental to the sweep, not selected.  What survives is emission-vs-silence,
+which is the termination convention (see below), not a printed answer;
+whether that convention covers all 16 two-input tables here is a separate
+assessment, unbuilt.
+
 ## RAM0, Bitdeque, Minsky Swap (parameterized template blocked — resolved)
 
 These three were once thought blocked because their jumps are *absolute*
@@ -129,28 +158,80 @@ contains a quote or backtick, so the strings need no escaping and the tree
 grows to any ``n``.  It is a parameterized generator, total for any arity
 and table, and embeds each input exactly once.
 
-## SLOW ACV MAMMALIAN (general n-bit open)
+## SLOW ACV MAMMALIAN (resolved: the tree lives in code space)
 
-The n-bit case is blocked by three mutually conflicting constraints:
+The wall recorded here held that the n-bit case was blocked by three
+mutually conflicting constraints: that `ACCEPT` appends the bit to `lst[0]`
+and consuming it needs `ptr == 0`, while routing `SPRINT`s move the pointer
+away, so a bit could not be both read and routed; that the only constant
+source accumulates rather than resets, so the `[48, C, m]` triple a branch
+needs cannot be assembled; and that `DIGEST` recovers a buried bit only as
+part of a sum.
 
-- `ACCEPT` unconditionally appends the normalized bit to `lst[0]`, and
-  consuming that bit needs `ptr == 0`, but routing `SPRINT`s move the
-  pointer to a node — so the bit cannot be both read and routed without a
-  way to return the pointer to 0.
-- The read's clean normalization needs `lst[0][0] == 48` (the `^ 48` base),
-  and `SEED` skips empty arrays, so the only constant source is `K SEEDs
-  CONSUME` starting from `lst[0] = [0]` — which empties the array, so every
-  later constant **accumulates** on the previous one (`42 + 5 = 47`, never a
-  clean `5`).  The `[48, C, m]` triple a branch needs therefore cannot be
-  assembled in one array.
-- `DIGEST` normalizes by XORing the *sum* of `lst[ptr]`, so a bit buried
-  among previous bits is only recoverable as part of a sum, and `48 ^ (48 +
-  m1 + m2)` is not `m1 ^ m2` when both bits are set.
+**The first constraint is false, and it was load-bearing.**  `ACCEPT`
+appends to `lst[0]` *whatever the pointer holds* — the interpreter's `n == 8`
+arm writes `self.lst[0]`, not `self.lst[self.ptr]` — so nothing has to be
+routed to be read.  The branch is `LEAPFROG`, which jumps exactly when
+`curr[-1]` is nonzero, and the just-appended bit *is* `curr[-1]`.  Entering
+with `acc % 256 == 48` normalizes the digit to a clean `0`/`1`, so
 
-Re-verified against the interpreter: a search over the branch-free tails
-after the `b1`-normalize prefix reaches only the 0-preserving two-input
-tables, matching the structural argument.  (Unlike Minifuck, this wall
-holds.)
+```
+ACCEPT DIGEST LEAPFROG
+```
+
+is a decision-tree node three tokens long: a `0` falls through, a `1` jumps.
+The pointer never leaves array 0 and the tree lives in code space.
+
+The earlier re-verification searched only the *branch-free* tails, so it
+never contained `LEAPFROG` — the language's one conditional — and its
+"0-preserving tables only" result describes the branch-free fragment rather
+than the language.  The other two constraints dissolve once the tree exists:
+every path has already branched on the bits it read, so the whole machine
+state is a generation-time constant, and an accumulating constant is not a
+problem when the generator knows exactly what accumulated.
+
+The shipped generator
+(:func:`esolangs.tools.boolean.slow_acv_mammalian.slow_acv_mammalian_boolean`)
+aims each jump by *measuring* rather than solving.  Every arithmetic knob
+here ties the array head to the array sum — `SEED` bumps both — so offsets
+that look independent cancel, and each state reaches only a handful of token
+indices.  What makes that enough is that a subtree ends in a halting leaf,
+so the tokens after it are unreachable: the generator emits the node,
+measures where the 1-branch actually lands, and pads the dead gap out to
+meet it.  `EXCRETE` stashes bytes to raise the reachable band and `CONSUME`
+pops them back to lower it; both directions are needed, since a 0-subtree
+inherits its parent's array and a grow-only sum would track the layout it
+has to clear, which is what stops the tree converging past two levels.
+
+The tree is uniform depth `n`, so a constant table still reads all `n`
+inputs.  Verified against the interpreter: every table through `n == 3`
+(4 at `n == 1`, 16 at `n == 2`, all 256 at `n == 3`, zero failures), plus
+an `n == 4` spot check.  Programs run 2697-5776 tokens at `n == 3`.
+
+**Generation cost, not a cap.**  Aligning a node rebuilds its 0-subtree
+once per candidate landing, so the builds compound with depth: 10 at
+`n == 1`, 155 at `n == 2`, 5504 at `n == 3`.  A table takes ~3.5s at
+`n == 3` and ~18 minutes at `n == 4` (10880 tokens), which is slow but not
+a wall -- memoizing `_subtree` on its state would flatten it if `n == 4`
+ever needs to be routine.
+
+**Where this leans on undefined behaviour.**  The wiki is explicit about
+the fact the wall got wrong — `ACCEPT` pushes "onto the top of array 0",
+while every other array instruction says "the array under the pointer", so
+the read genuinely is pointer-independent — and about the branch:
+`LEAPFROG` jumps "if the last value in the array under the pointer is not
+0".  It says nothing, though, about what a *negative* jump target does, or
+about halting at all.  The leaves here end with `EXCRETE LEAPFROG`, which
+fires with a negative target and so halts under this interpreter's reading
+of that gap (see the interpreter's module docstring).  A reading that
+clamped or wrapped instead would need a different leaf.
+
+The generator also inherits the repo-wide `% 256`, where the wiki says
+`EXCRETE`/`PRONOUNCE` are "modulo 255" — almost certainly a typo, since a
+cell holds 0-255, and the same choice is already baked into the text
+generator's `gcd(q + 1, 256) == 1` walk.  It is load-bearing here: leaves
+normalize the accumulator mod 256, and under a strict mod-255 `PRONOUNCE`
+they would print `0`-`@` rather than `0`/`1`.
 
 ## NoComment, BF-PDA (a `{Ci}` embed was not actually needed)
 
@@ -272,18 +353,37 @@ linear scan rather than a genuine representation limit.  See
 
 ## Assessed boolean candidates that fell through
 
-- **%^2^-1**: its only control flow is `t` — rewind to the program start
-  when the accumulator is nonzero — with the accumulator preserved across
-  the rewind.  A program is therefore a whole-program `while` loop, and each
-  `n` in the body consumes one input line, so a `t` loop iterates over the
-  input bits.  It cannot count them: there is no increment-by-1 for an
-  arbitrary value, and a counter in the rewind path grows without bound (the
-  `acc > 3003` reset only fires on huge magnitudes), so the loop stops only
-  when a body pass ends with `acc == 0` — a uniform predicate that cannot
-  tell pass 1 from pass n.  The all-ones row of any truth table therefore
-  either stops the loop early or rewinds past the input.  Exhaustive search:
-  of the four one-input functions only identity and the two constants are
-  expressible; NOT and every two-input table fail even at length 8.
+- **%^2^-1** (wall at `n >= 2`, proved in Lean): its only control flow is
+  `t` — rewind to the program start when the accumulator is nonzero — with
+  the accumulator preserved across the rewind.  There is no forward jump and
+  no way to branch over code, so a program cannot route two inputs to
+  different tails.
+
+  **All four one-input functions are expressible**, which an earlier
+  length-8 search missed: identity is `ne`, the constants go through `'`,
+  and NOT is `nss` + `i` * 31 + `pe` (36 commands), which computes
+  `x -> -x + 97` and so maps 48 -> 49 and 49 -> 48.  A NOT program needs
+  ~20+ commands to build the additive constant out of `s`/`i`, well outside
+  a length-8 sweep — the old entry's claim that NOT fails was wrong.
+
+  The real wall is at two inputs, and it holds at *any* program length:
+  `extra/lean/esolangs/Esolangs/PctBooleanWall.lean` proves
+  `computes_ignores` — every program meeting the boolean contract (halt
+  cleanly, consume both bits, print one character) computes a function that
+  ignores one of its two inputs — so `no_xor` and `no_and` follow.  Two
+  structural facts drive it: `n` *overwrites* the accumulator, so the state
+  at the last read is a function of the last bit alone; and `t` jumps only
+  to position 0, so a run that halts must have input enough for every read
+  ahead of the cursor (`count_le_of_halts`), which forbids the two runs from
+  diverging at a `t`.  Output therefore factors as `A(b1) ++ B(b2)`, and a
+  one-character output forces one factor empty.
+
+  This is an induction over unbounded length, not a bounded search: the
+  axiom audit (`PctWallCheck.lean`) reports only `propext`,
+  `Classical.choice`, and `Quot.sound` — no `sorryAx`, and no
+  `Lean.ofReduceBool` (so no `native_decide`).  The Lean `stepCmd` was
+  differentially tested against the shipped interpreter over 44,280
+  program/input pairs with zero mismatches.
 - **The Temporary Stack**: the auto-drain is the only output, and it prints
   `front - 1` for the *oldest* stack element when `sum(rest) / 2 > front`.
   An input-dependent `'0'`/`'1'` (48/49) output therefore needs the input to
@@ -307,44 +407,49 @@ linear scan rather than a genuine representation limit.  See
   two branches are op strings that transform the accumulator before re-merging
   ahead of the next junction; the final accumulator is the table entry.  The
   ops are not monotone (`s` sends -1 to 1), so the decoding works for any
-  table at small arity (every table through four inputs is verified against
-  the interpreter — exhaustively through three, sampled dense at four; two
-  inputs use a closed form — bit 0 packed as -1/0, each column decoded by a
-  single op).  The search tries op strings of length 2
-  through 6 with a growing budget and generally fails past `n == 5` for dense
-  non-symmetric tables.  Symmetric tables (AND/OR/XOR/majority/threshold-k of
-  any arity) get their own closed forms first: parity/XNOR is exact and O(1)
-  at any `n` (pack bit 0, then fold every later bit with `-s`, which flips
-  0/1 since `(v-1)**2` sends 0->1 and 1->0), and other symmetric tables
-  reduce to a popcount-accumulator prefix plus a decode search over `n`
-  points instead of the full `2**n` rows — see `_wii2d_search`'s docstring
-  for the counting-bound proof that the general (non-symmetric) search must
-  eventually fail at high arity regardless of tuning, and why parity's exact
-  case is a speed win rather than a reachability one.  When the search
-  cannot fit a table in its budget the generator raises :class:`ValueError`
-  — a genuine cap, not a representation limit: the counting bound shows no
-  chain with bounded op strings can represent every table once ``n`` is
-  large, so large dense non-symmetric tables (past ``n == 5``) are out of
+  table at small arity (two inputs use a closed form — bit 0 packed as -1/0,
+  each column decoded by a single op).  The op strings are **constructed, not
+  searched**: because no cell's behaviour can depend on the accumulator, a
+  junction's two op strings are shared by every prefix that reaches it, which
+  leaves exactly one shape.  The first `n - 1` junctions accumulate the bits
+  into an index by Horner's rule (`('*', '*+')`), and the last junction's two
+  branches decode that index into the table's two columns.  The decode is
+  built out of *folds*: `s` is the only op that is not order-preserving, and
+  `'-' * c + 's'` merges exactly the pairs equidistant from `c`, so folding
+  drives the live values together until two remain — which a threshold
+  `'-' * t + '/' * k + '+'` = `[x >= t]` reads out.  Compression (`/`,
+  steered with `+` when a plain halving would collide two values needing
+  different bits) keeps the fold centres narrow enough to spell out in the
+  grid.  Every 0/1 pattern on 16 points (the `n == 5` decode domain) folds,
+  so every table through five inputs is reachable, and dense non-symmetric
+  tables reach `n == 6`.  Symmetric tables (AND/OR/XOR/majority/threshold-k
+  of any arity) get their own routes first: parity/XNOR is exact and O(1) at
+  any `n` (pack bit 0, then fold every later bit with `-s`, which flips 0/1
+  since `(v-1)**2` sends 0->1 and 1->0), and other symmetric tables take a
+  popcount-accumulator prefix plus the same fold decode over `n` points
+  instead of the full `2**n` rows — majority-of-20 constructs in a fraction
+  of a second.  Past `n == 6` the general (non-symmetric) path raises
+  :class:`ValueError`: the decode domain doubles with each input and the op
+  strings it produces grow past any width worth emitting (a 64-point decode
+  measured 187243 cells), so large dense non-symmetric tables are out of
   reach, and there is no universal fallback (a tree would need each input
   re-embedded at every node, which WII2D has no way to store).
 
-  **A search-free chain (no BFS/DFS at all, just a formula) was assessed and
-  found not to generalize.**  The idea: pack the first `n - 1` bits into a
-  single non-negative integer with a fixed, table-independent prefix
-  (`("*", "*+")` per junction — double on a 0 bit, double-and-increment on a
-  1 bit), leaving only the last junction's two op-strings to depend on the
-  table.  At `n == 3` this is total (a decode search up to length 7 covers
-  all 256 tables, including non-monotone ones like XOR3, since the *decode
-  string* can dip negative even though the packing prefix stays
-  non-negative).  It collapses fast past that: the decode step must hit one
-  specific function out of `2**(2**(n-1))` possible 0/1-valued functions on
-  the `2**(n-1)`-point packed domain, and the count of *usable* (pure
-  0/1-output) op-strings up to length 6 barely grows with length (8, 15, 24
-  at lengths 4, 5, 6) while the target count doubles-of-doubles — coverage
-  falls from 94% at `n == 3` to 9% at `n == 4` to 0.04% at `n == 5`.  Moving
-  the hard part into a single final decode junction does not avoid the
-  counting-bound wall; it relocates a smaller copy of the same pigeonhole
-  problem (arbitrary lookup table, short formula) to that junction.
+  **This replaced an earlier chain search.**  A previous note here recorded a
+  search-free chain as "assessed and found not to generalize", on the ground
+  that the final decode must hit one specific function out of
+  `2**(2**(n-1))`, while the count of *usable* (pure 0/1-output) op-strings
+  up to length 6 barely grows with length (8, 15, 24 at lengths 4, 5, 6) --
+  coverage falling from 94% at `n == 3` to 0.04% at `n == 5`.
+  That measurement was of the wrong thing.  It counted how many decodes could
+  be *drawn from a fixed pool of short op-strings*, which is a real bound on
+  picking a decode but not on **building** one: the fold construction above
+  composes a decode of whatever length the pattern needs, so the pool never
+  has to contain the answer.  Every one of the 65536 patterns on the 16-point
+  `n == 5` domain folds -- the case the old note put at 0.04% coverage.  The
+  counting bound is still real, and it is why the general path stops at
+  `n == 6`; it just binds at a much higher arity than a fixed-length pool
+  suggests.
 
 ## 2dFish (the WII2D-style merging chain is affine-only; a decision tree is the universal construction)
 
@@ -362,10 +467,9 @@ accumulator, and there is no runtime conditional nor a way to combine two
 technique transfers almost verbatim — junction cells filled `/` (bit 0,
 continue east) or `v` (bit 1, detour onto a lower row and remerge ahead),
 branch op strings from the fish alphabet `i d s` (increment, decrement,
-square) transforming the accumulator, and the BFS behavior-dedup /
-backward requirement-set search
-(:func:`esolangs.tools.boolean.wii2d`'s `_wii2d_sequences` /
-`_wii2d_domain` / `_wii2d_search_start`) is op-agnostic — but the chain is
+square) transforming the accumulator, and the fold decode
+(:func:`esolangs.tools.boolean.wii2d`'s `_wii2d_decode`) is written against
+an op alphabet rather than a specific one — but the chain is
 **strictly weaker** than WII2D's.
 
 The chain must finish with the accumulator **exactly** 0 or 1 (`o` prints
@@ -611,6 +715,31 @@ stayed except the six later removed outright (2 Bits 1 Byte, Trash, Number
 Seventy-Four, Kak, Brainpocalypse, Stun Step — see the assessed-and-rejected
 ledger in `docs/limitations.md`); only the redundant cross-checks went for
 the rest.  Live candidates for new cross-checks are in `docs/roadmap.md`.
+
+### The Rust cross-checks (all eight, removed)
+
+The whole `extra/rust` directory later went the same way, for the same
+independence reason applied to its provenance rather than its breadth.
+Six of the eight (Forþ, Basicfuck, Painfuck, 3x, bit~, %^2^-1) were
+written in one sitting alongside — and in several cases in the same
+commits as — the Python interpreters they checked, as ports of earlier
+C++/Ruby references; a cross-check that shares its author's reading of
+the spec catches transcription slips but not spec misreadings, which was
+the value being claimed for them.  The remaining two (`unsquare.rs`,
+`laserfuck.rs`, both 2022) predated the Python by four years and were
+genuinely independent, but keeping two binaries would have retained the
+entire toolchain cost — cargo, rustfmt, clippy, a dedicated CI job, and
+the Rust half of `verify_differential.py` — for a fraction of the
+coverage, so the removal was all-or-nothing and went with all.
+
+What this costs: differential coverage for those eight languages, which
+keep their Python interpreters, unit tests, and generator round-trips.
+Unlike the RISC-V ports, the Rust toolchain served nothing else in the
+repo — `extra/assembly` shares `_riscv_common.py`, `riscv_elf_runner.py`,
+and the qemu/unicorn CI setup with the thirteen RISC-V compilers under
+`src/esolangs/compilers/`, so its marginal cost is near zero and it
+stays.  `scripts/verify_extra_generators.py` was Rust-only end to end
+and went with it.
 
 ## State-cycle detection coverage (hang detection without a wall-clock timeout)
 

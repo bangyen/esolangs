@@ -82,8 +82,9 @@ the full {1 turns left, 1 turns right} x {empty prints nothing, empty is
 zero} matrix leaves the tail period-4 in all four variants (only the
 shipped combination passes the truth machine and the cat at all).  The
 remaining possibility is that the diagram simply does not produce the
-Kolakoski sequence as drawn; confirming that needs the diagram's author, so
-a talk-page question is the cheapest way to settle it.
+Kolakoski sequence as drawn; confirming that needs the diagram's author,
+which is outside what this repo can settle.  The characterization test
+stands as the record.
 
 **Circuit Diagram is implemented**, interpreter and boolean generator both,
 their judgment calls derived in the module docstrings of
@@ -101,9 +102,8 @@ where they belong — for `~c` it already draws the two `=` crossovers that
 the missing diagonal would cross, so the diagram carries a diagonal's
 crossings without the diagonal itself.  Both the repaired circuit (replayed
 over all sixteen inputs against the primes) and the as-drawn silence are
-pinned in `tests/interpreters/test_circuit_diagram.py`.  Reporting this on
-the talk page is the cheapest way to settle it, as with Flowchart's
-Kolakoski example.
+pinned in `tests/interpreters/test_circuit_diagram.py`, which is the record
+this repo keeps of it.
 
 **The obvious execution model is falsified by the page's own flip-flop.**
 Reading wirings as holding their value until overwritten, and halting once
@@ -204,13 +204,13 @@ deliberately rather than by default.
 `extra/` holds two different kinds of thing, and they are integrated
 differently on purpose:
 
-- **Cross-check ports** (`extra/rust`, `extra/assembly`) are second
+- **Cross-check ports** (`extra/assembly`) are second
   implementations of languages the package already interprets, so every one
   of them is in `registry.py`.  Being differentially testable against the
   Python is the whole reason they exist, so the root-level harnesses
-  (`scripts/verify_differential.py`, `scripts/verify_riscv_unicorn.py`,
-  `scripts/verify_extra_generators.py`) and two suites under `tests/` drive
-  them directly.  The rest of this section is about these.
+  (`scripts/verify_differential.py`, `scripts/verify_riscv_unicorn.py`)
+  and a suite under `tests/` drive them directly.  The rest of this
+  section is about these.
 - **Unsupported-medium implementations** (`extra/line`) are the *only*
   implementation of their language, kept out of `registry.py` because their
   programs are not text the registry's pipeline can carry (Line's are PNGs).
@@ -219,7 +219,7 @@ differently on purpose:
   pytest suites next to the code, and runs from CI's `line` job.  This is a
   different category, not an integration gap.
 
-The `extra/` cross-checks (Rust and RISC-V ports of the interpreters, run
+The `extra/` cross-checks (RISC-V ports of the interpreters, run
 against the Python ones by `scripts/verify_differential.py`) earn their keep
 only where they are *broad* and *independent*: the reference is written from
 the spec rather than ported from the Python, and the differential can fuzz
@@ -236,25 +236,27 @@ nothing new.
 
 **Toolchain follows the model.**  RISC-V assembly fits the machine-model
 languages (a tape/pointer/instruction-counter maps 1:1 onto cells,
-registers, and jumps); Rust fits the semantic ones (stacks, typed registers,
-bit manipulation, 2D grids, where hand-written assembly would be unreadable).
+registers, and jumps).  The semantic languages (stacks, typed registers,
+bit manipulation, 2D grids) have no cross-check toolchain today: the Rust
+ports that covered them were removed (see `docs/limitations.md`), and
+hand-written assembly for them would be unreadable.
 
 **No input in RISC-V.**  RISC-V cross-checks are for no-input/output-only
 languages only.  The fuzzer feeds the generated *program* to the RISC-V ELF
 as its stdin (`scripts/verify_differential.py`), and the Python side reads
 whole lines while the unicorn runner does raw byte reads, so an input-reading
 port would need to rewire input-bit passing and match the line-delimited
-`input_char` semantics.  Languages whose generators read input belong in the
-Rust column, where the reference gets input bits directly.
+`input_char` semantics.  Languages whose generators read input therefore
+have no cross-check route today.
 
-**Worth adding (audited).**  These languages have complex-output generators
+**Worth adding (audited).**  Languages with complex-output generators
 (arithmetic encodings, branch-and-goto OISCs, runtime state carried across
-characters) that a random differential fuzz would exercise beyond the
-round-trip corpus, so a cross-check would add real verification.
-
-| Toolchain | Languages |
-| --- | --- |
-| Rust | AddSubJump (branch-and-goto OISC), Collatz Multiverse (runtime odd/even rules), Polynomial (integer roots encoding a command stream), Dig (2D mole grid with runtime segment counts), Container (threshold-rule firing), ZTOALC L (Collatz-trajectory-driven execution), Factor (a giant integer whose prime factors re-encode a looped brainfuck program), Back (2D beam reflection routing), A Painter Ant (2D cycle-stable routing), Bitdeque (deque + register + goto).  Those that read input — and the 2D grid models — belong in Rust under the no-input RISC-V rule above. |
+characters) are where a random differential fuzz would exercise beyond the
+round-trip corpus.  The audited candidates — AddSubJump, Collatz
+Multiverse, Polynomial, Dig, Container, ZTOALC L, Factor, Back, A Painter
+Ant, Bitdeque — are all semantic or input-reading models, so under the two
+rules above none of them has a toolchain today.  The list is kept here as
+the audit's result, not as a queue.
 
 **Judgment call (borderline).**  The generator is stateful or looped, but
 its output is a fixed pattern the round-trip already covers, so a cross-check
@@ -268,8 +270,8 @@ the brainfuck generator's output with ``>``/``<`` renamed to ``n``/``s``.
 **Circuit Diagram is unassessed on this axis.**  Its generator's output is
 not a fixed pattern — the gate network's shape, its crossovers, and its
 fan-out all vary with the truth table — so it does not belong in the
-borderline class above, and on the toolchain rule a 2D grid model would go
-to Rust.  What holds it back from the worth-adding table is that its
+borderline class above.  What holds it back from the worth-adding list is
+that its
 verification is already unusually strong without one: the generator is
 replayed through the interpreter over each table's *entire* input space, so
 a random differential would mostly re-cover ground the exhaustive replay
@@ -298,14 +300,14 @@ artifact stands alone).  The candidates below are on the intrinsic axis;
 their round-trip and hand cases are their verification, so they are not
 blocked on the harness note below.
 
-- **ZTOALC L stays in the Rust column.**  Heterogeneous int-or-array
+- **ZTOALC L is not a RISC-V candidate.**  Heterogeneous int-or-array
   values, arrays-of-arrays, bounds checks, and trajectory-driven dispatch
-  are the semantic class the toolchain rule sends to Rust; even on the
-  intrinsic axis, the one genuinely interesting piece (computed-goto
+  are the semantic class the toolchain rule keeps out of assembly; even on
+  the intrinsic axis, the one genuinely interesting piece (computed-goto
   dispatch over the Collatz trajectory) is a small fraction of the emitted
   code — the bulk would be an expression interpreter over heterogeneous
-  arrays, so emitting that in assembly would be strictly harder and no more
-  verifiable than the Rust port already on the worth-adding table.
+  arrays, so emitting that in assembly would be strictly harder than it is
+  worth.
 
 **Harness note (build only if a fuzz-dependent candidate lands).**  The
 differential (`scripts/verify_differential.py`) never compiles, and the
@@ -384,58 +386,103 @@ rest.  What remains:
   handles both languages correctly, so this is only worth building if the
   "always hangs" guarantee is specifically needed.
 
+## Input reordering (remainder)
+
+A decision tree may split on its inputs in any order, so the generators
+build under every order and keep the shortest.  Seventeen have landed;
+`docs/generator-optimizations.md`'s "Not yet done" carries the screen
+figures, the hoist caveat, and the frame-mapping trap.  What is still on
+the table, in two groups:
+
+- **Unexamined, no layout work** — sbleq, brainif, three_x, taglate,
+  minsky_swap, bio, decleq, nocomment, painfuck, rotfuck, bfstack.  Each
+  screen figure is a **lower bound**: the screen prices the reorder alone,
+  so a generator whose reads sit at its nodes gains the hoist as well
+  (AddSubJump screened 16.7% and delivered 31.7%).
+- **Blocked on 2D layout surgery** — Dig, Flowchart, Streetcode, LaserFuck,
+  Back, Clockwise, WII2D, and ArrowQueue, whose queue-fed template needs
+  re-enqueue gadgets.  Their trees are placements on a plane rather than
+  token sequences.  The bar for any of these: the emitted program changes
+  and still consumes its inputs in the same order.
+
+## Mutation-testing sweep
+
+`scripts/mutate_one.py`'s four harness bugs are fixed, so the sweep that
+audit gated is now runnable past the six smallest interpreters.  Survivors
+are the point — the two that scored (89.9% and 76.7%) each pointed at a
+real coverage gap rather than an equivalent mutant.
+
 ## Boolean generators that still emit a full decision tree
 
 A generator "folds" when a subtree whose table rows all agree becomes a
-leaf instead of branching on bits that cannot change the answer.  Most of
-the tree generators do; the ones below still spend a branch per level on
-every path, and each is recorded with what it would take, because the
-reason differs per language and reasoning from the shape of the code
+leaf instead of branching on bits that cannot change the answer.  **Every
+tree generator now folds** — ArrowQueue, the last holdout, landed with the
+drain described below.  This is measured rather than read off the source:
+a ones-count-controlled length test (`11110000` against `10010110`, equal
+ones-counts so nothing shrinks for the wrong reason) shows every one of
+them strictly shorter on the constant table.
+
+Each entry is recorded with what it took or what it would take, because
+the reason differs per language and reasoning from the shape of the code
 proved unreliable — Between, LaserFuck, BrainIf, Dig, Modulous, Unsquare
 and Nevermind were each written off on structural grounds and each folded
-once actually probed.
+once actually probed, as later did Clockwise, Forþ and Eval below.
 
 The rule that did hold: folding pays when a folded leaf's cost does not
 scale with the depth it skipped.  Where a leaf has to make up work per
 skipped level, the fold cancels.
 
-**Still open, in rough order of promise.**
+**None left — every tree generator folds.**  Note how the "ruled out"
+entries went: Clockwise, Forþ and Eval were each closed with a specific
+structural argument, and all three were wrong, in the same way as ArrowQueue
+turned out to be — the arguments were about *removing* a node, when the fold
+only needs the node *replaced* or its skipped work *carried*.  Treat a
+structural impossibility claim here as a hypothesis to probe, not a result.
 
-- **Circlefuck** (and `circlefuck_byte`) — the closest.  A folded leaf
-  must clear the cell the skipped `[[-]` would have cleared and make up
-  the `<` moves those levels walked; adding the clear alone fixes `n == 1`
-  and leaves `n >= 2` wrong, so the pointer bookkeeping needs a real trace
-  of the interpreter rather than another guess.
-- **Streetcode** — the tree itself folds (`_streetcode_tree` recurses on
-  table halves, and a constant slice is a leaf).  Two things break: the
-  hall that joins two subtrees is sized `height * 2` from `len(top)` and
-  assumes both children are the same height, and a folded leaf arrives
-  with CP short by the `=` each skipped hall would have spent, since the
-  leaf prints from the loader loop's cell.  Compensating the CP inside the
-  leaf widens it, and `_streetcode_combine` pads blocks to a common height
-  but assumes a uniform width, so the collapsed tree then misaligns
-  against the input loops beside it.  Wants the hall and the combine
-  reworked together.
-- **Decleq** — folds correctly with a one-line change, and gains 1.3%.
-  Its size is dominated by fixed data cells and the read preamble rather
-  than by the tree, so the saving is real but not worth the change on its
-  own.
+**Done** (each verified by a ones-count-controlled length test, `11110000`
+against `10010110` at n=3 unless noted):
 
-**Ruled out, with the reason.**
+- **Circlefuck** / `circlefuck_byte` — 263 vs 594 (byte form 219 vs 733).
+  Subtrees are *strides*, not runs — it branches on the last input first —
+  and a folded leaf must emit its own `[-]`, since the clear a full-depth
+  leaf relies on lives inside each `[` on the way down.
+- **Forþ** — 35 vs 119.  Heap indices were not the obstacle: the
+  interpreter keys scopes in a `dict` and calls with `.get()`, so a gap is
+  just a scope that never exists.  The catch was orphans — marking only a
+  folded node's two children leaves its grandchildren emitted but
+  unreachable.
+- **Decleq** — 1746 vs 1920.  Modest at small `n` because the 47-step
+  normalize chains are a fixed `47n` cost, but 44% at n=6.
+- **Eval** — 55 vs 127.  A folded subtree cannot be *removed* (the heap is
+  positional) but can be *replaced*: the node becomes its leaf and the
+  descendants become empty strings, so every index stays put.
+- **Clockwise** — 411 vs 621.  Needed a leaf test plus two geometry
+  corrections.
+- **Streetcode** — 389 vs 1439.  Needed an interpreter fix first
+  (`_junction_choices` dropped a road that was sighted but not yet
+  drivable), not the geometry rework this section used to predict.
+- **ArrowQueue** — 93 vs 275, and 130 vs 1434 at n=5.  A `0` leaf folds to
+  nothing (it halts by leaving the grid, which the queue cannot stop); a `1`
+  leaf needs its skipped bits **drained**, or its ring's corner pops find
+  them instead of `R, D, L, U`.  The drain works because `+` erases arrival
+  direction, so the two exits only have to reach the same *cell*, not the
+  same heading — a 4-glyph gadget stepping one row down and one column right
+  per bit.  Draining `0` leaves as well was a real cost (AND-2's example
+  went 124→128 before that case was carved out; it is 110 now), so the
+  no-growth property is pinned by a test against the pre-fold construction.
 
-- **Clockwise** — its reads are *inside* the tree: `S` plus seven `.` down
-  a column, nine rows per level.  A folded leaf still has to consume the
-  inputs it skipped, at nine rows each, which is exactly what the
-  branching cost.  The cancellation is arithmetic, not a layout artifact.
-- **Forþ** — each level does two paired things: consumes an input bit
-  through the dispatch arithmetic, and pops one definition index with
-  `;`, which is the only way to pop and also dispatches.  The stack holds
-  the definition indices, so a folded node leaves both a bit unread and an
-  index unpopped and the next dispatch reads the wrong value.
-- **Eval** — a node's code *is* its heap index: `~=~?` then `i + 1`
-  semicolons.  Dropping a node renumbers every node after it.
-- **6-5** — the `n <= 5` path is the non-folding tree, but above that the
-  generator already delegates to `six_five_arithmetic`, which folds.
+  A **reusable** drain — one cell that keeps popping until the queue is
+  spent, so the leaf is a fixed block rather than a staircase — is verified
+  correct (0/2120 at n≤3, plus n=5..7 in both entry modes) and written up in
+  `docs/generator-optimizations.md`.  It is not shipped: the two cross at five
+  skipped levels, so it only wins from n≥5, past where anything exercises
+  folding.  Worth revisiting if deep tables start mattering.
+- **6-5** — 44 vs 226.  Since folding is what spends the 35 branch labels,
+  the generator now picks the tree by counting them rather than by `n`,
+  which renders tables the old `n <= 5` gate refused (AND-6 needs 6
+  labels).  That left `six_five_arithmetic` unreachable — a buildable `T`
+  confines the ones to low indices, which leaves the rest constant, which
+  folds — so it was retired.
 
 The generators that are not decision trees at all — the sum-of-minterms
 group (bit~, Suptiftam, Suffolk, Collatz Multiverse, Qoibl, Point Break,
@@ -445,28 +492,86 @@ Painter Ant's grid placement, and WII2D's searched op-chain — have no
 constant subtree to fold and are not candidates.  The minterm group has its
 own optimization, below.
 
-## Suffolk's minterm complement (open, ~5%)
+## Polarity: Suffolk and Container — done
 
 A sum-of-minterms program costs one term per row it selects, so a table
 with more ones than zeros is cheaper evaluated complemented and inverted.
-Every generator in that family takes this through `_maybe_complement`
-except Suffolk, where a measured 5.1% is still on the table.
+Suffolk was the last generator in that family not taking it; it does now,
+worth **5.1% averaged over every table at n == 3** and up to **45% on the
+densest tables at n == 4** (1977 characters down to 1081 for fifteen ones
+of sixteen).
 
-It is not a language limit, though it reads like one at first.  `<` only
-*adds* the cell under the pointer to the accumulator, so the result
-`48 + sum` looks uninvertible — but `!` is
-`tape[ptr] = max(0, tape[ptr] + 1 - acc)`, which subtracts the
-accumulator from a cell.  With the minterm sum in `acc`, a cell holding
-48 becomes `49 - sum`: exactly the complement, and the clamp never bites
-because the sum is 0 or 1.
+The apparent language limit was not one.  `<` only *adds* the cell under
+the pointer to the accumulator, so `48 + sum` looks uninvertible — but `!`
+is `tape[ptr] = max(0, tape[ptr] + 1 - acc)`, which subtracts the
+accumulator from a cell.  Preload cell 1 with 49, add the sum `S` into the
+accumulator, `!` that cell to get `50 - S`, read it back and print: `.`
+emits `chr(acc - 1)`, so the program prints `chr(49 - S)`, which is `'1'`
+when `S == 0` and `'0'` when `S == 1`.  The clamp never bites, since `S`
+is 0 or 1.  Preloading 48 is the earlier attempt's off-by-one that printed
+`/` — the print's `- 1` and `!`'s `+ 1` both have to be counted.
 
-**What is left is the arithmetic around it.**  A first attempt printed
-one too low (`/` where `0` was wanted), because `.` emits `chr(acc - 1)`
-and `!`'s own `+ 1` has to be accounted for in the constant the cell is
-preloaded with.  Getting that right is a matter of picking the preload,
-not of finding a new primitive — worth doing when the 5% is worth the
-care, and recorded here so the next attempt starts from `!` rather than
-re-deriving that `<` alone cannot do it.
+Two things were worth getting right beyond the arithmetic.  The flip
+constant has to live at **cell 1**: `const` re-walks the gap once per
+unit, so 49 units cost 98 characters there but several hundred out past
+the minterm cells, which is enough to swamp the saving and make the
+dispatch never choose it.  And the generator builds **both** polarities
+and returns the shorter rather than counting rows, because the two are not
+symmetric — a complement literal sits at a nearer cell than a raw one, so
+row counts alone do not decide which is smaller.
+
+`_maybe_complement` is deliberately not used: its all-ones case
+complements to *no* minterms, which Suffolk's constant-table branch
+already handles better.
+
+**Container took the same optimization**, and an audit that first cleared
+it was wrong.  Its length curve looked flat next to the minterm
+generators', so it was written off as "per-row enumeration, every row costs
+the same".  It is not: the survivor blocks are indeed per-row and fixed,
+but `OUT` spends one `+1 S{row}>=Gout` line per row the table sends to 1 —
+12 characters each.  Summing the **zero** rows instead starts `OUT` at 49
+and subtracts, printing `49 - S`; the clamp at zero never bites because the
+value stays at 48 or 49.  Worth 12.7% on the densest table at `n == 4`, and
+the length curve is now symmetric about half ones
+(`636 648 660 672 684 672 660 648 636` at `n == 3`).
+
+**Taglate genuinely cannot**, and that one was checked properly: its
+selectors are `bd` for a one and `bb` for a zero, both two characters, so
+every table of a given `n` is byte-identical in length — all 256 tables at
+`n == 3` are 451 characters.  Polarity cannot change what does not vary.
+
+The lesson worth keeping: a flat-*looking* length curve is not evidence.
+Container's rose 636 → 732 across the ones-count, which is a real slope;
+reading it as flat next to a generator whose curve doubles is what hid a
+12% saving.  Measure the slope, do not eyeball the shape.
+
+## Dependency reduction (taglate done; gapped sets open)
+
+A table that ignores some of its inputs is a smaller table.  Where a
+generator's cost scales with the *input count* rather than the row count,
+emitting the reduced table is worth far more than any per-row saving.
+Taglate is the extreme case — nothing there costs per row, so every table of
+a given `n` was byte-identical — and it now reduces: 451 characters down to
+21 for a constant table or one depending on a single input, and 17 at
+`n == 4`.  The ignored inputs are read and discarded (`h` to the queue tail,
+`e` once per queued cell to rotate it to the front, `f` to drop it), so the
+queue is untouched and the rotation count is computed from the seed length
+rather than searched.
+
+**Two shapes remain open on taglate.**  A *gapped* dependency set (inputs 0
+and 2 but not 1) needs a discard between the reduced program's own reads,
+where the queue is not what the following reduce block assumes; the output
+comes out arithmetically corrupted rather than permuted, so this is a real
+obstacle and not an off-by-one.  That is 10 of the 40 reducible tables at
+`n == 3`.  An *odd-sized* dependency set is sidestepped by widening the
+window, which costs a tier back — narrowing it properly would need the
+reduced program's own ghost handling to be suppressed.
+
+**Worth checking elsewhere.**  Any generator whose fixed cost scales with
+`n` admits the same reduction — decleq's `47n` normalize chains and
+clockwise's per-level rows are the obvious candidates.  Neither has been
+measured; a table ignoring an input would shorten both if the reads can be
+consumed as cheaply as taglate's rotate-and-discard.
 
 ## Severely constrained boolean generators (remove or lift)
 
@@ -491,10 +596,17 @@ of evidence classes, each minted only by the validator that proves it and
 demanded by the next.
 
 ```python
-class WalledGrid: ...      # >=1 wall character, >1 open cell
-class TwoWide: ...         # + every reachable cell is two-wide
-class Enclosed(TwoWide): ...   # + no reachable cell on the border
+class WalledGrid: ...  # >=1 wall character, >1 open cell
+
+
+class TwoWide: ...  # + every reachable cell is two-wide
+
+
+class Enclosed(TwoWide): ...  # + no reachable cell on the border
+
+
 class WellFormed(Enclosed): ...  # + walls, glyphs, connectivity
+
 
 def _flood(g: WalledGrid, start: tuple[int, int]) -> TwoWide | WallLess: ...
 def _check_enclosed(w: TwoWide) -> Enclosed: ...

@@ -2,7 +2,7 @@
 
 The full local stack takes ~97s, and most of that is spent re-proving things
 the current branch cannot have broken: a change to one tape interpreter does
-not need the Rust cross-checks for twelve other languages re-run.  This module
+not need the native cross-checks for the other languages re-run.  This module
 supplies the shared "what changed?" query that ``verify.py`` and
 ``verify_differential.py`` scope themselves with.
 

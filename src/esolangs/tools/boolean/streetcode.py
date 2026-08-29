@@ -184,8 +184,20 @@ _HALLWAY_SHAPE: _Shape = ("~=I^", "~=^", _streetcode_hallway)
 _RING_SHAPE: _Shape = ("~=I^=^", "~=^=^", _streetcode_ring_block)
 
 
-def _streetcode_leaf(bit: int) -> list[str]:
-    """Build a leaf that prints ``bit``, reusing the loader loop's cell.
+def _streetcode_constant(block: list[str]) -> bool:
+    """Whether every leaf in a rendered subtree prints the same digit.
+
+    Read off the drawing rather than the table, so the same test works at
+    any depth: a leaf is ``~O;`` for a zero and ``` O;``` for a one, so a
+    block is all-zeros when its ``~`` and ``O`` counts match and all-ones
+    when it carries no ``~`` at all.
+    """
+    text = "".join(block)
+    return text.count("~") == text.count("O") or text.count("~") == 0
+
+
+def _streetcode_leaf(bit: int, skipped: int = 0) -> list[str]:
+    r"""Build a leaf that prints ``bit``, reusing the loader loop's cell.
 
     The car arrives with CP already on the cell ``_streetcode_populate``'s
     closing loop ramped to ASCII ``'0'`` + 1 (one more than 48, from that
@@ -193,9 +205,21 @@ def _streetcode_leaf(bit: int) -> list[str]:
     ``'0'`` for a 0 leaf, or a no-op leaves it at ``'1'`` for a 1 leaf, and
     ``O`` prints whichever digit results.  Both loop shapes leave the same
     49 here, so the leaf is shared.
+
+    ``skipped`` is how many levels folded away above this leaf.  Every hall
+    advances CP by one ``=`` on the way down, so a leaf reached without
+    them has to spend those advances itself or it prints from the wrong
+    cell -- an all-zeros table came out as ``'\x00'`` before this was
+    threaded through.
     """
     op = " " if bit else "~"
-    return ["---+", "   |", f"{op}O;|", "---+"]
+    body = "=" * skipped + f"{op}O;"
+    return [
+        "-" * len(body) + "+",
+        " " * len(body) + "|",
+        body + "|",
+        "-" * len(body) + "+",
+    ]
 
 
 def _streetcode_tree(table: str) -> list[str]:
@@ -206,6 +230,20 @@ def _streetcode_tree(table: str) -> list[str]:
     matching subtree -- the same leftmost/second-leftmost ambiguous-turn
     rule the loops use, now keyed on the bit ``_streetcode_collect`` left
     behind instead of a byte fresh off ``I``.
+
+    A subtree whose rows all agree folds to a leaf rather than driving the
+    car down halls to identical answers: a constant table is 428 characters
+    against 1439 at three inputs.  The reads are unaffected --
+    :func:`_streetcode_populate` makes them all before the tree -- so a
+    folded program consumes its input exactly as an unfolded one does; only
+    the ``=`` advances the skipped halls would have spent move into the
+    leaf.  Constancy is read off the rendered block rather than the table:
+    a block is constant when every leaf in it is a ``0`` leaf
+    (``count("~") == count("O")``) or every leaf is a ``1`` leaf (no ``~``
+    at all), which is the same test at any depth.
+
+    Siblings are then padded to a common width, since the two are stacked
+    and share one wall.
     """
     size = len(table)
     if size == 1:
@@ -214,10 +252,19 @@ def _streetcode_tree(table: str) -> list[str]:
     half = size // 2
     top = _streetcode_tree(table[:half])
     bot = _streetcode_tree(table[half:])
+    if _streetcode_constant(top):
+        top = _streetcode_leaf(int(table[0]), half.bit_length() - 1)
+    if _streetcode_constant(bot):
+        bot = _streetcode_leaf(int(table[half]), half.bit_length() - 1)
+    width = max(max(len(row) for row in top), max(len(row) for row in bot))
+    top = [row.ljust(width) for row in top]
+    bot = [row.ljust(width) for row in bot]
     height = len(top)
 
     hall = []
-    for k in range(height * 2):
+    # The hall spans both children.  ``height * 2`` said the same thing
+    # while siblings were always the same height, which folding ends.
+    for k in range(len(top) + len(bot)):
         if k == 0:
             row = "----"
         elif k == 1:
@@ -227,7 +274,11 @@ def _streetcode_tree(table: str) -> list[str]:
         elif k == 3:
             row = "+  +"
         elif k == 4:
-            row = "|  +" if size == 2 else "|  |"
+            # This used to test ``size == 2``, which in an unfolded tree
+            # meant the children are bare leaves -- four rows tall.  A fold
+            # makes a four-row child at any size, so the height is what it
+            # was always really asking about.
+            row = "|  +" if height == 4 else "|  |"
         elif k < height:
             row = "|  |"
         elif k == height:
@@ -499,7 +550,10 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     # code that has run.  No ordering of the seeds avoids that: the cells CP
     # walks over are exactly the ones the prefix has not reached.
     shared = _streetcode_combine([_streetcode_shared(n), tree])
-    programs.append("\n".join(shared))
+    # Padding siblings to a common width leaves trailing blanks on the
+    # shorter one's rows; they are outside the walls and never driven, so
+    # trim them the way :func:`_streetcode_lift` trims its own.
+    programs.append("\n".join(row.rstrip() for row in shared))
     if width is not None:
         fitting = [p for p in programs if _streetcode_columns(p) <= width]
         if fitting:

@@ -1,10 +1,15 @@
 """Boolean-function generators for stack-based languages."""
 
+from functools import cache
+from itertools import permutations, product
+
 from esolangs.tools.boolean.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
+    _ORDER_SEARCH_MAX,
     _validate_truth_table,
     minterm_literals,
+    permute_truth_table,
 )
 
 
@@ -105,16 +110,6 @@ def _forth_const(value: int) -> str:
     return prog
 
 
-def _forth_combo(m: int) -> int:
-    """Combo index of the leaf at heap position ``m`` (odd = left child)."""
-    path = []
-    while m > 0:
-        path.append(0 if m % 2 else 1)
-        m = (m - 1) // 2
-    path.reverse()
-    return sum(b << i for i, b in enumerate(path))
-
-
 def forth(truth_table: str) -> str:
     """Build a Forþ program computing the given truth table.
 
@@ -131,17 +126,184 @@ def forth(truth_table: str) -> str:
     The definition indices are left on the stack below the result; the
     ``{ }`` construct reads (but does not pop) the top index, and ``;`` pops
     it, so the stale indices never get in the way of the dispatch arithmetic.
+
+    A subtree whose rows all agree answers in place -- the node pushes the
+    result byte instead of dispatching, and its whole subtree goes
+    unemitted.  That costs nothing to arrange because Forþ keys its scope
+    table by the number pushed before ``{`` and looks it up with a default,
+    so a gap in the numbering is simply a scope that never exists; no index
+    has to move.  The reads sit outside the tree, so a folded program
+    consumes its input exactly as an unfolded one does.
+
+    **The tree splits on its inputs in whichever order emits the shortest
+    program.**  ``;`` pops the stack, so the *natural* order tests the last
+    input at the root -- Forþ's decision tree is stack-ordered, not
+    input-ordered.  Other orders are reachable because the stack can be
+    rearranged: ``v`` swaps the top two and ``c`` rotates the third to the
+    top (``o`` reverses the whole stack and is unusable here, since the
+    scope indices sit below the bits and would come with it).
+
+    **The rotations are interleaved with the reads, not run after them.**
+    ``v``/``c`` reach only the top three cells, so a preamble after all
+    ``n`` reads can only permute the last three bits -- 6 arrangements at
+    any width, which collapses the saving to 2.4% at n == 4 and nothing at
+    n == 5.  Moving a bit *while it is still near the top*, before later
+    reads bury it, reaches 18 of 24 arrangements at n == 4 and 54 of 120 at
+    n == 5 for a median of 2-3 extra characters
+    (:func:`_forth_stack_programs`).
+
+    Every rotation costs characters, so an order pays for the folds it wins
+    or loses to the natural one; the search measures rather than assumes.
+    Measured over all 256 tables at n == 3 the saving is 13.8% (112
+    improved), with 13.2% and 14.3% over samples at n == 4 and n == 5.
     """
     n = _validate_truth_table(truth_table)
+    # ``;`` pops, so the tree tests the *last* input at the root: the order
+    # this generator has always emitted is the reversal, not the identity.
+    # It goes first and ties keep it, so a table no reorder helps emits
+    # exactly what it emitted before.
+    natural = tuple(reversed(range(n)))
+    best = _forth_ordered(permute_truth_table(truth_table, natural), natural)
+    for perm in permutations(range(n)):
+        if perm == natural:
+            continue
+        candidate = _forth_ordered(permute_truth_table(truth_table, perm), perm)
+        # An empty candidate means the stack cannot be rearranged into this
+        # order, so it is skipped rather than winning on length 0.
+        if candidate and (not best or len(candidate) < len(best)):
+            best = candidate
+    return best
+
+
+# The read that pushes one normalized input bit.
+_FORTH_READ = ",68*-"
+
+
+def _forth_sink_top(stack: tuple[int, ...], places: int) -> tuple[int, ...]:
+    """Move the top bit down by ``places``, leaving the others in order."""
+    *below, top = stack
+    at = len(below) - places
+    return (*below[:at], top, *below[at:])
+
+
+# How far a freshly-read bit can sink, and the ops that put it there.  ``v``
+# swaps the top two and ``c`` rotates the third up, so two ``c``s bury the
+# new bit under the two below it.  ``o`` is unusable and absent deliberately:
+# it reverses the *whole* stack, which would drag the scope indices sitting
+# under the bits up with them.
+_FORTH_SINKS = ((0, ""), (1, "v"), (2, "cc"))
+
+
+@cache
+def _forth_stack_programs(n: int) -> dict[tuple[int, ...], str]:
+    """Read-and-rotate program for each reachable stack arrangement.
+
+    Returns the arrangement (bottom to top, by input index) mapped to the
+    program producing it; an absent arrangement is one the ops cannot reach.
+
+    **The reachable set is a product, not a search.**  A read leaves its bit
+    on top, and the only choice that outlasts the next read is how far that
+    bit sinks -- 0, 1 or 2 places, since ``v`` and ``c`` reach no deeper.
+    Composing one choice per read therefore enumerates every arrangement,
+    ``2 * 3**(n - 2)`` of them, which a test pins.
+
+    **Interleaving the sinks with the reads is what makes this worth doing.**
+    Rotating only after all ``n`` reads would permute just the last three
+    bits -- 6 arrangements at every width, which collapses the saving to
+    2.4% at n == 4 and nothing at n == 5.  Sinking each bit as it arrives,
+    before later reads bury it, reaches 18 at n == 4 and 54 at n == 5.
+
+    A breadth-first search over (arrangement, reads done) finds op strings
+    that are shorter on some arrangements, because they compose across reads
+    -- a late ``c`` can do work several per-read ``v``s would each repeat.
+    It is not used: the difference is 1-2 characters on an intermediate
+    string, and since :func:`forth` keeps the shortest program over every
+    order, a longer rotation usually loses to a different order instead.
+    Measured over the emitted programs the whole effect is +0.13% at n == 3
+    and +0.03% at n == 5, which does not pay for a search in a generator
+    meant to be read.
+    """
+    reached: dict[tuple[int, ...], str] = {}
+    for sinks in product(_FORTH_SINKS, repeat=n):
+        stack: tuple[int, ...] = ()
+        text = ""
+        for read_index, (places, ops) in enumerate(sinks):
+            stack = (*stack, read_index)
+            text += _FORTH_READ
+            if places >= len(stack):
+                break  # nothing below to sink under
+            stack = _forth_sink_top(stack, places)
+            text += ops
+        else:
+            if stack not in reached or len(text) < len(reached[stack]):
+                reached[stack] = text
+    return reached
+
+
+def _forth_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's Forþ program; see :func:`forth`.
+
+    ``truth_table`` is already permuted, so the tree is a plain contiguous
+    most-significant-first walk and every row index here is self-consistent.
+    ``perm`` surfaces only in the stack arrangement the reads must produce:
+    the tree pops its test bit, so level ``k`` needs ``perm[k]`` on top and
+    the stack bottom-to-top is ``perm`` reversed.
+
+    Returns ``""`` when the ops cannot reach that arrangement, which is a
+    signal to try another order rather than a failure.
+    """
+    n = _validate_truth_table(truth_table)
+    wanted = tuple(reversed(perm))
+    reads = _forth_stack_programs(n).get(wanted)
+    if reads is None:
+        return ""
+
+    last_internal = 2**n - 2
+
+    def rows_under(m: int) -> list[int]:
+        """Return the table rows the subtree rooted at heap index ``m`` covers.
+
+        The table is permuted, so the tree splits it most-significant-first
+        and a node covers a contiguous run -- the leaf at heap index ``m``
+        is row ``m - last_internal - 1``.
+        """
+        if m > last_internal:
+            return [m - last_internal - 1]
+        return rows_under(2 * m + 1) + rows_under(2 * m + 2)
+
     prog = []
+    folded: set[int] = set()
     for m in range(1, 2 ** (n + 1) - 1):
-        if m <= 2**n - 2:  # internal node: dispatch on the top bit
-            body = _forth_const(2 * m + 1) + "+;"
+        if m in folded:
+            # An ancestor already answered for this subtree, so its scope is
+            # never called.  Forþ stores scopes in a dict keyed by the
+            # pushed number and looks them up with a default, so a gap in
+            # the numbering costs nothing -- the node simply never exists.
+            continue
+        if m <= last_internal:
+            rows = rows_under(m)
+            if len({truth_table[row] for row in rows}) == 1:
+                # Every row under this node agrees, so the bits it would
+                # branch on cannot change the answer: answer here and drop
+                # the whole subtree.  The inputs are read up front, outside
+                # the tree, so a folded program still consumes its input
+                # exactly as an unfolded one does.
+                body = _forth_const(_ASCII_ZERO + int(truth_table[rows[0]]))
+                # Drop the *whole* subtree, not just the two children: a
+                # grandchild is just as unreachable, and marking one level
+                # leaves the deeper nodes emitted but never called.
+                below = [2 * m + 1, 2 * m + 2]
+                while below:
+                    child = below.pop()
+                    folded.add(child)
+                    if child <= last_internal:
+                        below += [2 * child + 1, 2 * child + 2]
+            else:  # internal node: dispatch on the top bit
+                body = _forth_const(2 * m + 1) + "+;"
         else:  # leaf: push the result byte
-            result = int(truth_table[_forth_combo(m)])
-            body = _forth_const(_ASCII_ZERO + result)
+            body = _forth_const(_ASCII_ZERO + int(truth_table[m - last_internal - 1]))
         prog.append(_forth_const(m) + "{" + body + "}")
-    prog.append(",68*-" * n)  # read and normalize each input
+    prog.append(reads)  # the reads, with this order's rotations woven in
     prog.append("1+;.")  # root dispatch, then print the result
     return "".join(prog)
 
@@ -243,13 +405,146 @@ def unsquare(truth_table: str) -> str:
     becomes 2) and its negation by a stack-clean flip ``x->IA<`` (``0`` swaps
     to 1, ``1`` to 0).  Each input is read and reduced to 0/1 by ``>-<``
     (subtracting 2 until parity) and pushed; the decision tree then pops bits
-    from the stack top (the last input first) and branches.  A branch that
-    runs ends with ``IA`` (leaving acc = 1 so the sibling's ``FLIP x > <``
-    guard skips), and each leaf pushes ``48 + entry`` and leaves acc = 0, so
-    the final ``o`` prints exactly the matching row's entry.
+    from the stack top and branches.  A branch that runs ends with ``IA``
+    (leaving acc = 1 so the sibling's ``FLIP x > <`` guard skips), and each
+    leaf pushes ``48 + entry`` and leaves acc = 0, so the final ``o`` prints
+    exactly the matching row's entry.
+
+    **The tree splits on its inputs in whichever order emits the shortest
+    program.**  ``A`` pops, so the *natural* order tests the last input at
+    the root -- Unsquare's tree is stack-ordered, not input-ordered, exactly
+    as Forþ's is.
+
+    This generator was long excluded from reordering on the reading that
+    ``S`` swaps only the top two and there is one accumulator, so nothing
+    rotates to depth.  That reads the ops singly.  Together they rotate,
+    because **the accumulator is the second place to hold a bit**: ``A``
+    pops the top into it, ``S`` swaps the two now exposed, and ``P`` pushes
+    it back, which sinks a bit two places (:data:`_UNSQUARE_SINKS`).
+
+    **The sinks are interleaved with the reads, not run after them.**  A bit
+    stashed in the accumulator does not survive a read block -- the block's
+    own ``A`` overwrites it -- so a bit has to be moved while it is still
+    near the top, before later reads bury it.  Every sink costs characters,
+    so an order pays for the folds it wins or loses to the natural one and
+    the search measures rather than assumes.  Measured saving: 15.6% over
+    all 256 tables at n == 3 (112 improved, none grown), 18.0% and 13.8%
+    over samples at n == 4 and n == 5.
     """
     n = _validate_truth_table(truth_table)
+    # ``A`` pops, so the tree tests the *last* input at the root: the order
+    # this generator has always emitted is the identity *arrangement* (no
+    # sinks), which is the reversal as an input order.  It goes first and ties
+    # keep it, so a table no reorder helps emits exactly what it emitted
+    # before.
+    arrangements = _unsquare_stack_programs(n)
 
+    def build_from(arrangement: tuple[int, ...]) -> str:
+        """Emit the program whose stack ends in ``arrangement``."""
+        # The tree pops LIFO, so an arrangement tests its inputs in reverse.
+        # ``permute_truth_table`` puts the input tested at level ``k`` in the
+        # table's ``k``-th *most* significant bit, but this tree splits on
+        # ``row >> k`` -- least significant first, because that is the order
+        # the pops arrive in.  Passing the arrangement itself converts between
+        # the two frames; without it a table is read against the wrong axis
+        # and the program computes a different function.
+        table = permute_truth_table(truth_table, arrangement)
+        return arrangements[arrangement] + _unsquare_tree(table, n)
+
+    # The natural order is the identity arrangement, which the product always
+    # reaches (every sink can be zero), so this needs no reachability check.
+    best = build_from(tuple(range(n)))
+    # Iterate the *reachable* arrangements rather than all ``n!`` orders:
+    # only ``2 * 3**(n - 2)`` of them can be built, so this is the candidate
+    # set rather than a filter over a much larger one.  (The unreachable
+    # orders are exactly the ones ``candidate`` would return ``None`` for.)
+    #
+    # Still capped, because ``3**n`` builds of an ``O(2**n)`` program is the
+    # same cost shape the shared helper caps for, just with a smaller base:
+    # n == 10 is 18 seconds of a call that is milliseconds at n == 6.  Above
+    # the cap only the natural order is emitted, which is what this generator
+    # produced before reordering existed -- never worse, just unimproved.
+    if n > _ORDER_SEARCH_MAX:
+        return best
+    for arrangement in arrangements:
+        if arrangement == tuple(range(n)):
+            continue
+        other = build_from(arrangement)
+        if len(other) < len(best):
+            best = other
+    return best
+
+
+# The read that pushes one normalized input bit.
+_UNSQUARE_READ = "iA>-<P"
+
+# How far a freshly-read bit can sink, and the ops that put it there.  ``S``
+# swaps the top two.  Sinking two places is ``SASP``, not ``ASP``: ``A``
+# lifts the *top* out and ``S`` then swaps the pair beneath it, so ``ASP``
+# reorders those two and puts the bit back where it started.  The leading
+# ``S`` is what moves the bit down first, so the pair it must cross ends up
+# above it.  Nothing reaches three places: ``S`` sees only the top two and
+# the accumulator holds one value, so a third would need somewhere to put
+# the bit already in it.
+_UNSQUARE_SINKS = ((0, ""), (1, "S"), (2, "SASP"))
+
+
+def _unsquare_sink_top(stack: tuple[int, ...], places: int) -> tuple[int, ...]:
+    """Move the top bit down by ``places``, leaving the others in order."""
+    *below, top = stack
+    at = len(below) - places
+    return (*below[:at], top, *below[at:])
+
+
+@cache
+def _unsquare_stack_programs(n: int) -> dict[tuple[int, ...], str]:
+    """Read-and-sink program for each reachable stack arrangement.
+
+    Returns the arrangement (bottom to top, by input index) mapped to the
+    program producing it; an absent arrangement is one the ops cannot reach.
+
+    **The reachable set is a product, not a search.**  A read leaves its bit
+    on top, and the only choice that outlasts the next read is how far that
+    bit sinks -- 0, 1 or 2 places, since ``S`` and the one accumulator reach
+    no deeper.  Composing one choice per read enumerates every arrangement,
+    ``2 * 3**(n - 2)`` of them, which a test pins.  Forþ's stack has the same
+    count for the same reason, reached through different ops.
+
+    Forþ enumerates for the same reason and records a breadth-first search as
+    the rejected alternative: there the search *does* find shorter op strings
+    on some arrangements, because a late ``c`` composes across reads, and it
+    is dropped as a trade -- 1-2 characters that mostly do not survive to the
+    output, against code a reader can follow.  Here there is no trade to make.
+    A search over (arrangement, reads done) finds the *same* set with the
+    *same* shortest string at every width through n == 7, because these sinks
+    do not compose across reads at all, so the enumeration is both the simpler
+    code and the optimal one.
+    """
+    reached: dict[tuple[int, ...], str] = {}
+    for sinks in product(_UNSQUARE_SINKS, repeat=n):
+        stack: tuple[int, ...] = ()
+        text = ""
+        for read_index, (places, ops) in enumerate(sinks):
+            stack = (*stack, read_index)
+            text += _UNSQUARE_READ
+            if places >= len(stack):
+                break  # nothing below to sink under
+            stack = _unsquare_sink_top(stack, places)
+            text += ops
+        else:
+            if stack not in reached or len(text) < len(reached[stack]):
+                reached[stack] = text
+    return reached
+
+
+def _unsquare_tree(truth_table: str, n: int) -> str:
+    """Emit the decision tree for an already-permuted table; see :func:`unsquare`.
+
+    ``truth_table`` is in the permuted frame, so bit ``k`` of a row index is
+    the input tested at level ``k`` and the tree needs no reference to the
+    order that produced it -- the stack prefix has already put the bits where
+    the pops will find them.
+    """
     flip = "x->IA<"
 
     def leaf(row: int) -> str:
@@ -263,4 +558,4 @@ def unsquare(truth_table: str) -> str:
         g0 = [row for row in rows if ((row >> k) & 1) == 0]
         return f"Ax>{build(g1, k + 1)}IA<{flip}x>{build(g0, k + 1)}OA<"
 
-    return "iA>-<P" * n + build(list(range(2**n)), 0) + "o"
+    return build(list(range(2**n)), 0) + "o"

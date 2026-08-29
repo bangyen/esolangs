@@ -92,7 +92,7 @@ local wall shape actually marks an intersection rather than a plain corner:
   road relative to the chosen heading, *then* turns; after turning it
   keeps driving straight, suppressing the ordinary right-hand-hug re-turn,
   until the new road's own right-hand wall actually picks up.  This two-
-  phase suppression (`_merge_target` then `_merging_heading` in
+  phase suppression (`_merge` then `_merging_heading` in
   `_choose_heading`) is derived from a single hand-drawn, user-confirmed
   ground-truth trace (see "How the lane-merge rule was derived" below)
   rather than
@@ -339,7 +339,7 @@ This is now encoded as
 
 ### Naming, and independent corroboration
 
-The two phases are `_merge_target` (approach: keep driving straight until
+The two phases are `_merge` (approach: keep driving straight until
 the car reaches the new road's right-hand lane, derived from the mouth's own
 `+` pair via `_road_mouth`, then turn) and `_merging_heading` (merge-out:
 after turning, keep driving straight until the new road's right-hand wall

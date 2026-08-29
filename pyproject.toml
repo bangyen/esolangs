@@ -165,10 +165,12 @@ addopts = [
     "--strict-config",
     "--verbose",
     "--tb=short",
-    # Run in parallel across all CPUs: ~4x faster plain, ~2.7x faster with
-    # coverage (pytest-cov combines worker data into a single .coverage).
+    # Run in parallel, but leave cores free: "auto" claims every CPU and
+    # starves the rest of the machine.  4 workers keeps most of the speedup
+    # (pytest-cov still combines worker data into a single .coverage).
+    # Override per-run with "-n auto" or "-n 0" on the command line.
     "-n",
-    "auto",
+    "4",
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
