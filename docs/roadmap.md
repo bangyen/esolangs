@@ -407,10 +407,39 @@ the table, in two groups:
 
 ## Mutation-testing sweep
 
-`scripts/mutate_one.py`'s four harness bugs are fixed, so the sweep that
-audit gated is now runnable past the six smallest interpreters.  Survivors
-are the point — the two that scored (89.9% and 76.7%) each pointed at a
-real coverage gap rather than an equivalent mutant.
+The twelve smallest interpreters are done: nine at 100%, and the other
+three hold nothing but a mutant argued equivalent on the record (Decleq's
+`run` limit default, which every test overrides; BrainIf's `s = ""` →
+`None`, both falsey to the `while not s` that overwrites them;
+ArrowQueue's `_Machine(None)`, the same empty-grid branch as
+`_Machine([])`).  A whole sweep of the twelve now costs under a minute,
+so re-running it is the regression check for anything that touches them.
+
+What is left:
+
+- **The other ~59 interpreters.**  Nothing gates them; it is throughput.
+  Expect the same four patterns to recur, all mechanical: `pytest.raises`
+  matched by a substring rather than the whole message; a `bool` flag read
+  only for truth, so it can start as `None`; an attribute written and
+  never read; and an assertion on a value that is constant across every
+  input (ArrowQueue's suite asserted `== ""` on a language with no
+  output).  The findings worth the run are the other kind — Minifuck's
+  input splice boundary, %^2^-1's `t` rewind, which the suite had tested
+  every character *except*.
+- **Re-check the scores recorded before the harness fixes.**  Qoibl,
+  Streetcode and Forbin have numbers in the commit history that predate
+  `_drop_unbundled_tests` learning to stop at a module-level `def`.  A
+  suite laid out with tests after its last class had them silently
+  dropped, so those scores may be understated and their survivors partly
+  phantom.
+
+Two things to keep in mind while doing it.  A survivor is not evidence of
+a gap until the harness is trusted: tests that import `esolangs.vm` are
+dropped from the bundle *correctly*, so behaviour only they cover reads as
+a survivor (Back's padding was tested all along).  And the score is a
+means — a suite at 100% notices the edits mutmut makes, which is not the
+same as describing the language.  Stop where the survivors stop teaching
+anything.
 
 ## Boolean generators that still emit a full decision tree
 
