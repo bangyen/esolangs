@@ -574,6 +574,98 @@ class TestWII2D:
         assert [_wii2d_apply(ops, v) for v in (2, 3)] == values
         assert "+" in ops
 
+    def test_compress_stops_when_halving_stops_moving(self) -> None:
+        """Values a halving cannot separate end the compression.
+
+        ``0`` and ``-1`` are both fixpoints of ``(v + shift) // 2``, so
+        neither shift makes progress and there is nothing further to try.
+        Returning the values as they stand lets the caller decide; looping
+        on them would not terminate.
+        """
+        from esolangs.tools.boolean.wii2d import _wii2d_compress
+
+        values, ops = _wii2d_compress([-1, -1], [1, 1], "")
+        assert values == [-1, -1]
+        assert ops == "", "a stalled compression emits no ops"
+
+    def test_a_fold_that_merges_nothing_is_not_offered(self) -> None:
+        """A centre that leaves every point distinct buys no progress.
+
+        The fold exists to shrink the live set; one that returns as many
+        values as it was given has cost the ops for nothing, so it is
+        dropped rather than ranked.
+        """
+        from esolangs.tools.boolean.wii2d import _wii2d_folds
+
+        assert _wii2d_folds([0, 1], [0, 1]) == []
+        # A state that already collides has no live map at all, so neither
+        # the plain nor the doubled scaling offers a fold.
+        assert _wii2d_folds([2, 2], [0, 1]) == []
+
+    def test_the_beam_search_gives_up_when_no_fold_survives(self) -> None:
+        """With every fold rejected the search has nowhere to go.
+
+        Reaching this naturally needs a pattern no beam width can decode,
+        and none is known -- every pattern tried up to sixteen inputs
+        decodes.  Emptying the fold list is the same dead end seen from
+        inside, and it pins that the answer is ``None`` rather than a
+        wrong decode.
+        """
+        import importlib
+
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.boolean.wii2d")
+        from esolangs.tools.boolean.wii2d import _wii2d_decode, _wii2d_decode_at
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_wii2d_folds", lambda *_: [])
+            assert _wii2d_decode_at([0, 1, 1, 0], 4) is None
+            assert _wii2d_decode([0, 1, 1, 0]) is None
+
+    def test_folds_that_never_shrink_run_the_search_out(self) -> None:
+        """A fold that returns its own state exhausts the iteration cap.
+
+        The loop is bounded so a non-shrinking fold cannot spin forever.
+        Past the cap the surviving states get one last look -- a state that
+        did reach two live values still answers -- and anything else is
+        ``None``.
+        """
+        import importlib
+
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.boolean.wii2d")
+        from esolangs.tools.boolean.wii2d import _wii2d_decode_at
+
+        def stuck(
+            values: list[int], _bits: list[int]
+        ) -> list[tuple[int, int, str, list[int]]]:
+            return [(len(set(values)), 1, "+", list(values))]
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_wii2d_folds", stuck)
+            # four distinct live values, so the two-value exit never fires
+            assert _wii2d_decode_at([0, 1, 1, 0, 1, 0, 0, 1], 4) is None
+
+        # A state that only reaches two live values as the cap expires is
+        # still answered, from that last look rather than from the loop.
+        bits = [0, 1, 1, 0]
+        collapse_at = 4 * len(bits) + 8
+
+        def late(
+            values: list[int], _bits: list[int]
+        ) -> list[tuple[int, int, str, list[int]]]:
+            calls.append(None)
+            if len(calls) >= collapse_at:
+                return [(2, 1, "", [0, 1, 1, 0])]
+            return [(len(set(values)), 1, "", list(values))]
+
+        calls: list[None] = []
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_wii2d_folds", late)
+            assert _wii2d_decode_at(bits, 1) is not None
+
     def test_chain_is_an_index_chain_then_a_decode(self) -> None:
         """The constructed routes have the shape the docstring claims."""
         from esolangs.tools.boolean.wii2d import _wii2d_routes
@@ -658,6 +750,28 @@ class TestWII2D:
 
         table = "0001011001101001"
         assert _wii2d_routes(4, table) == _wii2d_routes(4, table)
+
+    def test_a_dense_wide_table_is_refused_on_decode_width(self) -> None:
+        """Past six inputs the index chain's decode domain is too wide.
+
+        The chain decodes over ``2 ** (n - 1)`` points, so n == 7 is 64 --
+        past the limit worth spelling out in the grid.  A symmetric table
+        escapes through the popcount chain, which decodes over ``n`` points
+        instead; this one is neither symmetric nor foldable, so the width
+        check is what stops it, and the caller sees the documented refusal.
+        """
+        table = (
+            "0011001100111000100001011111101000101111111010101001100110101001"
+            "1100011100100000111001110111101101111101101001111110001111101011"
+        )
+        assert len(table) == 128  # n == 7
+
+        from esolangs.tools.boolean.wii2d import _wii2d_routes
+
+        assert _wii2d_routes(7, table) is None
+
+        with pytest.raises(ValueError, match="out of reach"):
+            boolean.wii2d(table)
 
     def test_wii2d_raises_when_the_construction_finds_no_route(self) -> None:
         """``wii2d`` surfaces a construction failure as a ``ValueError``."""

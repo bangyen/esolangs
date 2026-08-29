@@ -501,6 +501,26 @@ class TestZtoalc:
             bits = [str((combo >> (3 - i)) & 1) for i in range(4)]
             assert run_ztoalc(program, bits) == table[combo], f"inputs {bits}"
 
+    def test_when_no_order_places_the_identity_raises(self) -> None:
+        """A table no order can place reports the placement failure.
+
+        The search swallows each order's ``ValueError`` so one refusal does
+        not end it, which leaves nothing to re-raise when every order
+        fails.  The identity is then re-run outside the search so the
+        caller gets the generator's own message, with no mention of the
+        search that happened first.
+        """
+        import importlib
+
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.boolean.ztoalc_l")
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "best_input_order", lambda *_: "")
+            with pytest.raises(ValueError, match="no collision-free placement"):
+                module.ztoalc_l_boolean("1010001000011000")
+
     def test_wrong_length_rejected(self) -> None:
         """A truth table of the wrong length is malformed."""
         with pytest.raises(ValueError, match="entries"):
@@ -712,6 +732,32 @@ class TestTaglate:
     )
     def test_reduced_tables_compute_past_three_inputs(self, table: str, n: int) -> None:
         """The reduction stays correct deeper than the exhaustive sweep."""
+        program = boolean.taglate(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            ghost = ["0"] if n % 2 == 1 and n > 1 else []
+            got = run_taglate(program, ghost + [str(b) for b in bits])
+            assert got == table[combo], f"inputs {bits}"
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            # depends on inputs 0-2, so the window widens rightward to 0-3
+            ("0000000000000011", 4),
+            # depends on inputs 1-3, which has no room on the right, so the
+            # window widens leftward to 0-3 instead
+            ("0000000100000001", 4),
+        ],
+    )
+    def test_odd_dependency_sets_widen_to_stay_even(self, table: str, n: int) -> None:
+        """An odd-sized window takes one more ignored input, either side.
+
+        The reduced program ghost-pads itself at odd arity, so it would
+        expect an input the caller's stream does not carry.  Widening the
+        window by one adjacent *ignored* input keeps the reduced table even
+        and the read count honest -- and it has to work at both ends, since
+        a set already touching the last input has no room on the right.
+        """
         program = boolean.taglate(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]

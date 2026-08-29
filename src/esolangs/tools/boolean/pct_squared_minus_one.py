@@ -354,7 +354,7 @@ def _derive(truth_table: str) -> tuple[list[tuple[str, str]], str] | None:
                             width = sum(len(z) for z, _ in setters) + len(tail)
                             if best is None or width < best[0]:
                                 best = (width, setters, tail)
-    if best is None:
+    if best is None:  # pragma: no cover - every two-input table finds a solution
         return None
     return best[1], best[2]
 

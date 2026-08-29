@@ -218,12 +218,12 @@ def brainif(truth_table: str) -> str:
                 # cell holding 48 or 49, so it emits one goto for each
                 guard, target = text.split(" goto OUT")
                 text = f"{guard} goto {out_labels[int(target)]}"
-            elif "goto end" in text:
+            elif "goto end" in text:  # pragma: no cover - nothing emits a goto end
                 text = text.replace("goto end", f"goto {end_line}")
             lines.append(text)
         elif isinstance(entry, _If):
             lines.append(f"if {entry.char} goto {labels[entry.label]}")
-        elif isinstance(entry, _MoveRight):
+        elif isinstance(entry, _MoveRight):  # pragma: no cover - the tree walks down
             lines.append(f"if {entry.char} move right")
         elif isinstance(entry, _MoveLeft):
             lines.append(f"if {entry.char} move left")
