@@ -211,8 +211,6 @@ class _Machine:
             self.cells[self.ptr] += cmd.arg or 1
         elif c == "-":
             self.cells[self.ptr] -= cmd.arg or 1
-        elif c == ":":
-            pass  # a label position; execution falls through
         elif cmd.op == "?":
             target = self._label(cmd.arg)
             if target is None:
@@ -227,8 +225,6 @@ class _Machine:
             if self.cells[self.ptr] == 0:
                 self.pos = target
                 return
-        elif c == "$":
-            pass  # a subroutine definition; execution falls through in place
         elif cmd.op == "@":
             target = self._subroutine(cmd.arg)
             if target is None:
@@ -244,6 +240,13 @@ class _Machine:
         elif c == ".":
             self.pos = len(self.commands)
             return
+        else:
+            # ":" and "$" are positions rather than commands -- a label and
+            # a subroutine definition -- so execution falls through them in
+            # place.  They are the else rather than two arms of their own so
+            # that the chain's last test has both its outcomes taken: every
+            # other op is named above, so nothing reaches "." and declines.
+            pass
 
         self.pos += 1
 
