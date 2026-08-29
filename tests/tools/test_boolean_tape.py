@@ -476,6 +476,66 @@ class TestStreetcode:
             bits = [(combo >> (2 - i)) & 1 for i in range(3)]
             assert run_streetcode(program, [str(b) for b in bits]) == "0"
 
+    def test_input_reordering_folds_a_scattered_table(self) -> None:
+        """The tree splits in whichever order folds most, not input order.
+
+        ``10101010`` depends on the last input alone, so it folds nothing
+        splitting most-significant-first and everything once that input is
+        tested at the root.  Reordering is what lets it be emitted as the
+        cheap shape, and it costs only the walk that puts the bit in the
+        cell the root's hall tests.
+        """
+        scattered = len(boolean.streetcode("10101010"))
+        aligned = len(boolean.streetcode("11110000"))
+        parity = len(boolean.streetcode("01101001"))
+        # Both are one-dependency tables, so reordering brings the scattered
+        # one down to the aligned one's shape.  It stays a few characters
+        # longer, and those characters are the walk that puts its bit in the
+        # cell the root's hall tests -- the price of the reorder, paid once
+        # in the prefix rather than per hall.
+        assert aligned < scattered < parity
+        assert scattered - aligned < 0.05 * aligned
+
+    def test_input_reordering_never_grows_a_program(self) -> None:
+        """The identity order is built first and ties keep it.
+
+        A table no reorder improves has to emit exactly what it emitted
+        before, so reordering can only ever shrink a program.  ``01101001``
+        is parity, which folds under no order at all.
+        """
+        parity = boolean.streetcode("01101001")
+        # Parity is the table where every order is equally bad, so the
+        # program is the identity one and carries no reordering walks.
+        assert "_I" not in parity
+
+    @pytest.mark.parametrize(
+        "table",
+        ["10101010", "11001100", "01011010", "00111100", "10010110"],
+    )
+    def test_reordered_programs_compute_the_table(self, table: str) -> None:
+        """A reordered program still computes its function.
+
+        The cell an input is read into is the *inverse* of the split order --
+        level ``k`` tests cell ``k + 1`` and must test input ``perm[k]`` -- so
+        reading it forward stores the right bits in the wrong cells and
+        computes a different function.  Only running it catches that.
+        """
+        program = boolean.streetcode(table)
+        for combo in range(8):
+            bits = [(combo >> (2 - i)) & 1 for i in range(3)]
+            got = run_streetcode(program, [str(b) for b in bits])
+            assert got == table[combo], f"{table} inputs {bits}"
+
+    def test_reordering_keeps_the_reads_in_stream_order(self) -> None:
+        """Reordering moves where a bit is stored, never when it is read.
+
+        The program consumes its input stream exactly as it did before: one
+        ``I`` per input, in input order.  What moves is the cell each lands
+        in, so the count of reads is what pins this down.
+        """
+        for table in ("10101010", "11110000", "01101001"):
+            assert boolean.streetcode(table).count("I") == 3
+
     def test_width_is_a_shape_choice(self) -> None:
         """A width picks a narrower shape, and that shape still computes.
 
