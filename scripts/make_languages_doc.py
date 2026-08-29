@@ -184,7 +184,11 @@ def render() -> str:
         "languages (Back, BIO, NoComment, BF-PDA, Lamfunc, Bitdeque, RAM0, "
         "Minsky Swap, Eval, ArrowQueue, A Painter Ant, WII2D) use "
         "parameterized generators (the harness substitutes input bits into "
-        "a template).",
+        "a template).  Minifuck and %^2^-1 use parameterized generators too, "
+        "for a different reason: both *have* an input command, but neither "
+        "can branch on what it reads, so their reading models are walled "
+        "(the %^2^-1 wall is proved in Lean) and embedding is what reaches "
+        "the two-input tables.",
         "",
         "| Language | Text generator | Python | Cross-check | Boolean | Compiler |",
         "| --- | :---: | :---: | :---: | :---: | :---: |",
