@@ -148,7 +148,7 @@ committed to the *output stream* by then, which read 2 cannot touch. The
 earlier worry that bit 1 "must be banked in cells >= 8" assumed the answer had
 to survive on the tape; it survives in the output instead.
 
-### A working reading generator (n=1 shipped, n=2 in progress)
+### A working reading generator (n <= 2; prototype only, nothing shipped)
 
 The contract-valid construction is a **prologue swap**, not a rewrite. Three
 verified pieces, composed once per input:
@@ -232,10 +232,34 @@ so nothing here is a wall — and given that four "walls" in this session turned
 out to be artifacts of how the search was framed, that distinction is the
 point.
 
-### Which generator to keep
+### One generator, two prologues
 
-**Keep the parameterized one for now; the reading one is the better result
-but is not yet a replacement.**
+**Neither — they are not two generators.** Calling them that (as an earlier
+draft of this file did) overstates the split. The reading path replaces
+exactly **one** function, `_embed` (21 lines of 650), plus a `_Sim` subclass
+whose `.` on a zero pool reads instead of setting `dead`. `_Joint`,
+`_walk_to`, `_clamp`, `_search`, `_find_pool`, `_endgame`, `_try_print`,
+`_find_column`, `_find_parked` and the whole degenerate/project/lift layer
+were reused **verbatim** by the prototype.
+
+So the natural shape is one generator with two front ends:
+
+    _prologue(n) -> _Joint -> [ shared ladder: clamp, column, parked, endgame ]
+         ^
+      embed (bits from the template)  or  read (bits from stdin)
+
+That is a better structure than today's, because it names the thing that
+actually varies, and it dissolves the "which do we keep" question: you keep
+both **prologues**, and the n=3 gap stops being an argument for duplication —
+it is the reading prologue not covering n >= 3 yet, with the embed prologue as
+the fallback inside one code path.
+
+Caveats before acting on this: the refactor is **not built**. The reuse was
+demonstrated by swapping a `_Joint` in a prototype, which shows the seam
+exists, not that a merged version passes the repo's tests. And the `_Sim`
+change needs care — the shipped `dead` flag exists precisely to stop a
+parameterized program from reading, so it has to become conditional on the
+active prologue.
 
 Reading is the stronger *kind* of result. A parameterized generator emits a
 template that the harness compiles once per input combination — the input
@@ -246,7 +270,7 @@ generator docstring claims the read "cannot be used without destroying the
 pool it is about to print", which is exactly what the gadgets above disprove.
 Minifuck was misclassified.
 
-What blocks the swap is coverage, not principle:
+What blocks making reading the default is coverage, not principle:
 
 | | parameterized (shipped) | reading |
 |---|---|---|
@@ -254,17 +278,17 @@ What blocks the swap is coverage, not principle:
 | n=2 | 16/16 | 16/16 |
 | n=3 | 8 of 14 orbits | not reached |
 
-Deleting a generator that handles n=3 for one that does not would be a
-regression. Note also that the reading generator unlocks no *table* that was
-otherwise unavailable — the parameterized one already builds XNOR/NAND/NOR by
-embedding. Its contribution is the falsified wall and the capability class,
-not new coverage.
+Making reading the *only* prologue would regress n=3, so the embed prologue
+stays as the fallback until a reading prologue reaches n=3. Note also that
+reading unlocks no *table* that was otherwise unavailable — the embed path
+already builds XNOR/NAND/NOR. Its contribution is the falsified wall and the
+capability class, not new coverage.
 
-If n=3 is solved, the swap becomes worthwhile, and it is more than a file
-edit: Minifuck would leave the parameterized family, changing its registry
-entry, `parameterized.py`'s `__all__` and re-export, and enrolling it in the
+Switching Minifuck's default to reading is more than a file edit: it would
+leave the parameterized family, changing its registry entry,
+`parameterized.py`'s `__all__` and re-export, and enrolling it in the
 input-reading contract tests (`test_every_table_reads_the_same_number_of_inputs`,
-which the current 2-reads-per-run behaviour already satisfies).
+which the current n-reads-per-run behaviour already satisfies).
 
 ### How to rebuild it
 
