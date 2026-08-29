@@ -39,6 +39,7 @@ def _parameterized_generators():
     ]
 
 
+@pytest.mark.slow  # 2.8s: builds every generator, up to n=4
 def test_parameterized_generators_embed_each_input_once() -> None:
     """Every no-input generator embeds each input exactly once.
 
@@ -1668,6 +1669,7 @@ class TestParameterizedMinifuck:
             parameterized.minifuck("011")
 
 
+@pytest.mark.slow  # 1.9s: builds every generator to compare fill widths
 def test_fills_embed_a_zero_and_a_one_at_equal_width() -> None:
     """No fill may spell a 0 shorter than a 1, or the length leaks the input.
 
@@ -1743,8 +1745,11 @@ class TestParameterizedPctSquaredMinusOne:
         [
             ("10", 1),  # NOT
             ("01", 1),  # identity
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
+            # The two constant tables are the slow ones to derive -- 1.1s
+            # and 1.0s against 0.04s for NOT -- putting them alone over
+            # the fast run's one-second budget.
+            pytest.param("00", 1, marks=pytest.mark.slow),  # constant zero
+            pytest.param("11", 1, marks=pytest.mark.slow),  # constant one
             ("0001", 2),  # AND
             ("0110", 2),  # XOR -- the function the Lean wall forbids a reader
             ("1001", 2),  # XNOR
@@ -1762,6 +1767,10 @@ class TestParameterizedPctSquaredMinusOne:
             got = self.run_pct(self.instantiate(template, bits))
             assert got == table[combo], f"inputs {bits}"
 
+    # Derives every table at that arity: 2.0s at n=1 and 5.3s at n=2, both
+    # over the fast run's one-second budget.  No single table dominates --
+    # the cost is the count -- so the whole sweep is marked, not a case.
+    @pytest.mark.slow
     @pytest.mark.parametrize("n", [1, 2])
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to two inputs produces the right result."""
@@ -1793,6 +1802,7 @@ class TestParameterizedPctSquaredMinusOne:
         assert "{X0}" in template
         assert "{X1}" in template
 
+    @pytest.mark.slow  # 5.3s: derives all sixteen two-input tables
     def test_programs_never_read_input(self) -> None:
         """No emitted program contains ``n``, the input command.
 
