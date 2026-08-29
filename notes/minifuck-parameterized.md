@@ -60,11 +60,16 @@ every emitted fragment is executed against all `2**n` rows as it is emitted,
 so the affine bookkeeping is never hand-tracked, and the generator raises
 rather than emitting a program it has not verified.
 
-It currently covers the tables whose answer appears directly in a tape cell
-after the embed — at `n == 2` that is `0000`, `1000`, `1100`, `1110`, `1111`
-(5/16), each verified end-to-end through the real interpreter with equal
+It covers the tables whose answer appears directly in a tape cell after the
+embed — at `n == 2` that is `0000`, `1000`, `1100`, `1110`, `1111` (5/16),
+each verified end-to-end through the real interpreter with equal
 instantiation lengths.  The embed's carry chain computes AND, NOR and XOR as
 a byproduct, which is why the scan finds anything at all.
+
+`minifuck_glue.py` adds a second route — parked search plus an
+execution-checked endgame scan — that reaches **14/16** on its own.  The two
+are complementary: `1000` builds through the direct scan but not the parked
+route, so combining them is worth doing (see below).
 
 ## What is still open, and what is settled about it
 
@@ -160,15 +165,26 @@ holds the answer column *and* the pointer already sits immediately left of
 it, so `[<` reads it with no walk in between.  All 16 tables at `n == 2`
 reach such a state at depth <= 15 (`minifuck_parked_search.py`, 97s).
 
-What is left is the last hand-off, and it is now a sequencing problem rather
-than a reachability one.  The pool has to read `0011000` at print time, but
-`pool_fix` chooses its correction for a *particular* walk-out that the parked
-search then does not perform — so the pool it leaves is wrong for this route
-(it produced `01101001` in a direct test), and searching after the fix from
-that state finds nothing.  Pool correction and the parked search have to be
-solved together — either by folding the pool's final state into the search's
-acceptance too, or by correcting the pool after the search along a route that
-does not disturb the parked pointer.
+The last hand-off is glued by execution rather than reasoned about.  Trying
+to satisfy both constraints in one search does not work — producing the
+answer at the frontier *and* writing the pool at the origin needs the pointer
+at both ends, which is far beyond feasible depth.  Instead: run the parked
+search from the embed state, clamp, then hand **every** candidate cell to the
+existing endgame in a copy and accept whichever actually prints the table.
+`find_parked` enumerating several candidates rather than one is the degree of
+freedom that a single-candidate version lacked.  This generates **14 of the
+16 two-input tables** in about five minutes (`minifuck_glue.py`), AND
+(`0001`) among them — a table no earlier route reached.
+
+`0111` and `1000` resist this route even with 40 candidates at depth 15.
+`1000` does build through the original direct scan, so the two routes are
+complementary rather than one dominating the other.
+
+One correction to an earlier reading: `pool_fix` is not buggy.  Its contract
+is *pool correct after the walk out to the given cell*, which is why direct
+inspection shows `01101001` and why the original 5/16 path works.  The
+failure was a caller asking it to prepare for a walk that the parked code
+never performs.
 
 ## Dead ends worth not repeating
 
@@ -187,6 +203,15 @@ does not disturb the parked pointer.
   the pointer converged *and* clean residue) does not exist, across ~2400
   states achieving the deposit.  Neither condition is actually needed: `<`
   reconverges for free afterwards.
+* **Launching a joint search from a clamped origin.**  A depth-`d` BFS from
+  pointer 0 touches only cells `<= d`, but the first input-dependent cell is
+  at 16 — so every reachable state is input-*independent*, every column in
+  the window is constant, and a non-constant target can never appear.  Four
+  searches in one round failed on this alone, each looking like an
+  independent negative.  (The 70-states-at-depth-10 count that suggested "the
+  search space collapsed" is the same fact: near the origin all rows are
+  identical, so the joint machine degenerates to one machine.)  Launch joint
+  searches from the frontier, with the pointer already in the data.
 * **Reading a fixed cell index while the rows are diverged.** Divergence is
   the mechanism *and* it desynchronizes the machines: the same emitted
   instruction lands on different cells in different rows, so any bookkeeping
