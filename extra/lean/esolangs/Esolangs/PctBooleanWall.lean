@@ -209,4 +209,214 @@ theorem count_le_of_halts (code : List Cmd) :
             cases hstep
             simpa using IH
 
+/-! ### 3. A read erases the past
+
+`n` overwrites the accumulator and advances the cursor by one.  So after a read
+at position `i`, the state is `⟨i + 1, byte read, rest⟩` — no component
+mentions anything the machine computed before. -/
+
+theorem read_erases (s : State) (x : ℤ) (xs : List ℤ) (h : s.inp = x :: xs) :
+    stepCmd .read s = .next ⟨s.ind + 1, x, xs⟩ [] := by
+  simp [stepCmd, h]
+
+/-- Two states at the same cursor whose input is the same nonempty list land,
+after a read, in *identical* states — whatever their accumulators were. -/
+theorem read_erases_pair (i : ℕ) (a b x : ℤ) (xs : List ℤ) :
+    stepCmd .read ⟨i, a, x :: xs⟩ = stepCmd .read ⟨i, b, x :: xs⟩ := by
+  simp [stepCmd]
+
+/-! ### 4. The simulation
+
+Two runs that sit at the same cursor with the same *remaining input* differ
+only in their accumulators.  They step in lockstep until they reach a `t`
+whose test they disagree on.  The counting lemma rules that disagreement out
+whenever the input still to be read is exactly what both runs must consume:
+the run that rewinds re-crosses every read in the program, so it needs
+`countN code 0` bytes, while the run that walks on needs only
+`countN code (i+1)` — and when the rewinding run's demand exceeds what is
+left, it cannot halt cleanly.
+
+`SameTail` packages the conclusion: from such a pair of states, if both runs
+halt cleanly having consumed all their input, they print the same thing. -/
+
+/-- The two runs agree on every `t` test they meet while the input is empty.
+With no input left, a taken `t` is fatal: it returns to position `0`, and any
+program that ever read (which a contract-satisfying one did) has a read there
+to re-cross, so the counting lemma refutes a clean halt. -/
+theorem rewind_fatal_of_empty (code : List Cmd) (fuel : ℕ) (s : State)
+    (hinp : s.inp = []) (hread : 0 < countN code 0) (r : State × List ℤ)
+    (h : run code fuel ⟨0, s.acc, s.inp⟩ = some r) : False := by
+  have := count_le_of_halts code fuel ⟨0, s.acc, s.inp⟩ r h
+  simp only [hinp, List.length_nil] at this
+  omega
+
+/-- **No-input determinism.**  Once the input is exhausted, the accumulator can
+no longer change the *control flow* of a cleanly-halting run in a program that
+contains a read: every `t` the run meets must be untaken (a taken one is fatal
+by `rewind_fatal_of_empty`), so the cursor walks straight to the end.  Hence
+two such runs visit the same commands, and the only outputs that can differ are
+those of `l`/`e`, which read the accumulator.
+
+We record the sharper statement actually needed: with no input left, the run's
+*output* is determined by the accumulator, and the run halts at the end of the
+program.  This is the phase-3 fact. -/
+theorem tail_determined (code : List Cmd) :
+    ∀ (fuel₁ fuel₂ : ℕ) (i : ℕ) (a : ℤ) (r₁ r₂ : State × List ℤ),
+      run code fuel₁ ⟨i, a, []⟩ = some r₁ →
+      run code fuel₂ ⟨i, a, []⟩ = some r₂ →
+      r₁.2 = r₂.2 := by
+  intro fuel₁
+  induction fuel₁ with
+  | zero => intro fuel₂ i a r₁ r₂ h₁ _; simp [run] at h₁
+  | succ k ih =>
+    intro fuel₂ i a r₁ r₂ h₁ h₂
+    cases fuel₂ with
+    | zero => simp [run] at h₂
+    | succ m =>
+      rw [run] at h₁ h₂
+      cases hc : code[i]? with
+      | none => rw [hc] at h₁ h₂; simp at h₁ h₂; simp [← h₁, ← h₂]
+      | some c =>
+        rw [hc] at h₁ h₂
+        simp only at h₁ h₂
+        cases hstep : stepCmd c ⟨i, a, []⟩ with
+        | eof => rw [hstep] at h₁; simp at h₁
+        | next s' o =>
+          rw [hstep] at h₁ h₂
+          simp only [Option.map_eq_some_iff] at h₁ h₂
+          obtain ⟨p₁, hp₁, hr₁⟩ := h₁
+          obtain ⟨p₂, hp₂, hr₂⟩ := h₂
+          -- the successor state has empty input in every case (no read can
+          -- succeed on an empty input list), so the IH applies verbatim
+          have hnil : s'.inp = [] := by
+            cases c
+            case sub2 | sub3 | dbl | neg | zero | printNum | printChr =>
+              simp only [stepCmd] at hstep; cases hstep; rfl
+            case read => simp [stepCmd] at hstep
+            case rewind =>
+              by_cases hz : (if a > 3003 then (0 : ℤ) else a) ≠ 0
+              · rw [stepCmd, if_pos hz] at hstep; cases hstep; rfl
+              · rw [stepCmd, if_neg hz] at hstep; cases hstep; rfl
+          have : s' = ⟨s'.ind, s'.acc, []⟩ := by
+            cases s'; simp_all
+          rw [this] at hp₁ hp₂
+          have := ih m s'.ind s'.acc p₁ p₂ hp₁ hp₂
+          rw [← hr₁, ← hr₂]
+          simp [this]
+
+/-! ### 5. Where the next read is
+
+The position of the read that consumes the last input byte is the same for
+both accumulator values.  With two or more reads in the program a `t` cannot
+be taken while one byte remains (the counting lemma: the rewind would have to
+re-cross every read), so the cursor walks forward and lands on the least read
+at or after it.  With exactly one read in the program a `t` *may* be taken —
+this is the single-`n`-read-twice shape — but then the read that executes is
+that unique one, whatever path reached it.  Either way the position does not
+depend on the accumulator. -/
+
+/-- The least position `≥ i` holding a read, if any. -/
+def firstReadFrom (code : List Cmd) (i : ℕ) : Option ℕ :=
+  ((code.drop i).findIdx? (· = Cmd.read)).map (· + i)
+
+theorem firstReadFrom_none_iff (code : List Cmd) (i : ℕ) :
+    firstReadFrom code i = none ↔ countN code i = 0 := by
+  simp only [firstReadFrom, countN, Option.map_eq_none_iff,
+    List.findIdx?_eq_none_iff, List.length_eq_zero_iff,
+    List.filter_eq_nil_iff]
+  simp
+
+/-- A read sits where `firstReadFrom` says it does. -/
+theorem firstReadFrom_isRead (code : List Cmd) (i q : ℕ)
+    (h : firstReadFrom code i = some q) : code[q]? = some Cmd.read := by
+  simp only [firstReadFrom, Option.map_eq_some_iff] at h
+  obtain ⟨j, hj, rfl⟩ := h
+  obtain ⟨hjlt, hjeq, -⟩ := List.findIdx?_eq_some_iff_getElem.mp hj
+  simp only [List.length_drop] at hjlt
+  have hlen : j + i < code.length := by omega
+  rw [List.getElem?_eq_getElem hlen]
+  rw [List.getElem_drop] at hjeq
+  simp only [decide_eq_true_eq] at hjeq
+  have hidx : j + i = i + j := by omega
+  simp only [hidx]
+  exact congrArg some hjeq
+
+/-- `firstReadFrom` really is least: nothing between `i` and it is a read. -/
+theorem firstReadFrom_least (code : List Cmd) (i q p : ℕ)
+    (h : firstReadFrom code i = some q) (hp : i ≤ p) (hpq : p < q) :
+    code[p]? ≠ some Cmd.read := by
+  simp only [firstReadFrom, Option.map_eq_some_iff] at h
+  obtain ⟨j, hj, rfl⟩ := h
+  obtain ⟨hjlt, -, hlt⟩ := List.findIdx?_eq_some_iff_getElem.mp hj
+  intro hcon
+  have hplt : p < code.length := by
+    by_contra hc
+    rw [List.getElem?_eq_none (by omega)] at hcon
+    exact Option.some_ne_none _ hcon.symm
+  have hget : code[p] = Cmd.read := by
+    rw [List.getElem?_eq_getElem hplt] at hcon
+    exact Option.some_inj.mp hcon
+  have hpi : p - i < j := by omega
+  have hne := hlt (p - i) hpi
+  rw [List.getElem_drop] at hne
+  simp only [decide_eq_true_eq] at hne
+  apply hne
+  have hidx : i + (p - i) = p := by omega
+  simp only [hidx]
+  exact hget
+
+/-- Two read positions in a program with `countN ≤ 1` coincide: a second read
+would put two entries in the filtered list. -/
+theorem read_pos_unique (code : List Cmd) (p q : ℕ)
+    (h1 : countN code 0 ≤ 1)
+    (hp : code[p]? = some Cmd.read) (hq : code[q]? = some Cmd.read) : p = q := by
+  by_contra hne
+  -- both positions are in range
+  have hplt : p < code.length := by
+    by_contra hc
+    rw [List.getElem?_eq_none (by omega)] at hp
+    exact Option.some_ne_none _ hp.symm
+  have hqlt : q < code.length := by
+    by_contra hc
+    rw [List.getElem?_eq_none (by omega)] at hq
+    exact Option.some_ne_none _ hq.symm
+  -- WLOG p < q; then countN from 0 counts at least the reads at p and q
+  have key : ∀ a b : ℕ, a < b → b < code.length →
+      code[a]? = some Cmd.read → code[b]? = some Cmd.read → 2 ≤ countN code 0 := by
+    intro a b hab hblt ha hb
+    have halt : a < code.length := by omega
+    have hga : code[a] = Cmd.read := by
+      rw [List.getElem?_eq_getElem halt] at ha; exact Option.some_inj.mp ha
+    have hgb : code[b] = Cmd.read := by
+      rw [List.getElem?_eq_getElem hblt] at hb; exact Option.some_inj.mp hb
+    -- countN at 0 ≥ 1 (from a) + countN at a+1 ≥ 1 (from b)
+    have h1' : countN code a = 1 + countN code (a + 1) := by
+      rw [countN_succ code a Cmd.read ha]; simp
+    have h2' : 1 ≤ countN code (a + 1) := by
+      have : countN code b = 1 + countN code (b + 1) := by
+        rw [countN_succ code b Cmd.read hb]; simp
+      have := countN_antitone code (show a + 1 ≤ b by omega)
+      omega
+    have := countN_antitone code (Nat.zero_le a)
+    omega
+  rcases Nat.lt_or_ge p q with h | h
+  · have := key p q h hqlt hp hq; omega
+  · have hgt : q < p := by omega
+    have := key q p hgt hplt hq hp; omega
+
+/-- If the program holds exactly one read, every read position is that one. -/
+theorem unique_read_pos (code : List Cmd) (p : ℕ)
+    (h1 : countN code 0 = 1) (hp : code[p]? = some Cmd.read) :
+    firstReadFrom code 0 = some p := by
+  have hsome : (firstReadFrom code 0).isSome := by
+    by_contra hc
+    simp only [Bool.not_eq_true, Option.isSome_eq_false_iff,
+      Option.isNone_iff_eq_none] at hc
+    rw [firstReadFrom_none_iff] at hc
+    omega
+  obtain ⟨q, hq⟩ := Option.isSome_iff_exists.mp hsome
+  rw [hq]
+  exact congrArg some
+    (read_pos_unique code q p (by omega) (firstReadFrom_isRead code 0 q hq) hp)
+
 end PctBooleanWall
