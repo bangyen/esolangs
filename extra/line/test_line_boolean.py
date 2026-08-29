@@ -69,6 +69,7 @@ class TestLineBoolean:
         """The regression case: a 3-deep tree with an inward-turning arm."""
         _check_truth_table("00010111", 3, tmp_path)
 
+    @pytest.mark.slow  # 5.2s: 32 input combinations through the renderer
     def test_parity_n5(self, tmp_path: Path) -> None:
         """5-input parity, past the ceiling this generator used to document.
 

@@ -30,9 +30,13 @@ _TABLES = ["00000000", "01101001"]
 # Generators that search rather than emit, and so cost seconds per table
 # instead of milliseconds.  The rule is a one-second budget per entry in this
 # sweep: over that, the case carries ``slow`` and sits out the fast run.
-# Measured at the time of writing (``pytest --durations``, one worker):
-# minifuck 35.9s, slow_acv_mammalian 4.9s, ztoalc_l_boolean 2.7s, and the
-# next entry down is polynomial at 0.5s, with the median around 0.03s.
+# Measured at the time of writing (``pytest --durations -n 0``, one worker):
+# minifuck 41.1s, slow_acv_mammalian 5.5s, and the next entry down is
+# polynomial at 0.5s, with the median around 0.03s.
+#
+# ``ztoalc_l_boolean`` used to be listed here at 2.8s and now runs in 0.02s,
+# so it is no longer marked -- the cost moved to the *reordering* sweeps
+# below, which is why the two sets are kept separate rather than shared.
 #
 # ``pct_squared_minus_one`` was briefly in this set, at 4.6s: it searched
 # setter assignments and this sweep's parity table is ``n == 3``, which it
@@ -45,9 +49,16 @@ _TABLES = ["00000000", "01101001"]
 # the selected test set depend on how loaded the machine is, so a run could
 # silently cover less than the last one.  Re-measure and edit this set when
 # a generator's cost changes.
-_SEARCHING_GENERATORS = frozenset(
-    {"minifuck", "slow_acv_mammalian_boolean", "ztoalc_l_boolean"}
-)
+_SEARCHING_GENERATORS = frozenset({"minifuck", "slow_acv_mammalian_boolean"})
+
+# The same one-second rule, applied to the two reordering sweeps.  Those call
+# the ``_*_ordered`` builder once per input order for every table up to three
+# inputs, so a generator that *searches* pays that cost repeatedly.  Measured
+# one worker, ztoalc_l_boolean is 3.0s in test_reordering_never_grows_a_program
+# against 0.02s in the read-count sweep above, and the next entry down is
+# streetcode at 0.06s.  A generator can be cheap in one sweep and expensive in
+# the other, so this set is maintained independently of the one above.
+_SLOW_REORDERING_GENERATORS = frozenset({"ztoalc_l_boolean"})
 
 
 def _input_reading_generators() -> list[object]:
@@ -206,7 +217,7 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
 
 # The tree generators that pick their input split order by measuring, and the
 # builder that emits one fixed order, so a test can compare the two.
-def _reordering_generators() -> list[tuple[str, object, object]]:
+def _reordering_generators() -> list[object]:
     from esolangs.tools.boolean.helpers import _decision_tree_program
     from esolangs.tools.boolean.other import (
         _between_ordered,
@@ -227,7 +238,7 @@ def _reordering_generators() -> list[tuple[str, object, object]]:
     )
     from esolangs.tools.boolean.ztoalc_l import _ztoalc_ordered
 
-    return [
+    entries: list[tuple[str, object, object]] = [
         (
             "brainfuck",
             boolean.brainfuck,
@@ -256,6 +267,14 @@ def _reordering_generators() -> list[tuple[str, object, object]]:
         ),
         ("forbin_boolean", boolean.forbin_boolean, _forbin_ordered),
         ("jaune", boolean.jaune, _jaune_ordered),
+    ]
+    return [
+        (
+            pytest.param(name, fn, ordered, marks=pytest.mark.slow)
+            if name in _SLOW_REORDERING_GENERATORS
+            else (name, fn, ordered)
+        )
+        for name, fn, ordered in entries
     ]
 
 

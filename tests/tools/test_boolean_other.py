@@ -470,6 +470,7 @@ class TestZtoalc:
         assert any("jump" in line for line in lines)
         assert any(line.strip().startswith("print") for line in lines)
 
+    @pytest.mark.slow  # 4.0s: searches, over the one-second fast-run budget
     def test_xor4_linear_fallback(self) -> None:
         """Dense symmetric tables fall back to a huge linear program."""
         program = boolean.ztoalc_l_boolean("0110100110010110")  # XOR4 = parity
@@ -479,6 +480,7 @@ class TestZtoalc:
             got = run_ztoalc(program, [str(b) for b in bits])
             assert got == str(int("0110100110010110"[combo])), f"inputs {bits}"
 
+    @pytest.mark.slow  # 2.9s: searches every input order
     def test_dense_non_symmetric_places_under_a_reordered_tree(self) -> None:
         """A table the identity order cannot place is rendered by another order.
 
@@ -895,7 +897,9 @@ class TestLaserFuck:
                 got = run_laserfuck(program, [str(b) for b in bits], heading)
                 assert got == str(int(table[combo])), f"inputs {bits} heading {heading}"
 
-    @pytest.mark.parametrize("n", [1, 2, 3])
+    # n=3 is 256 tables at 2.0s, over the fast run's one-second budget;
+    # n=1 and n=2 are 16 tables between them and stay well under it.
+    @pytest.mark.parametrize("n", [1, 2, pytest.param(3, marks=pytest.mark.slow)])
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
         for table_int in range(2 ** (2**n)):
