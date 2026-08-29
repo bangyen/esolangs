@@ -271,13 +271,24 @@ rewrite:
 ## Lean proofs (kept set)
 
 The Lean project keeps only the proofs of facts the tests cannot establish:
-SLOW ACV MAMMALIAN's generator search totality and Factor's Dirichlet-based
+SLOW ACV MAMMALIAN's generator search totality, Factor's Dirichlet-based
 prime-search totality plus the encode/decode round-trip
 (`extra/lean/esolangs/Esolangs.lean`, `FactorCorrect.lean`), and the
-self-contained brainfuck-minterm boolean proof (`BfMintermCorrect.lean`).
-Every other proof (the ported interpreters, their equivalence proofs, and
-the generator/boolean correctness proofs) was dropped as redundant with the
-round-trip test suite.  The one open theorem, if more Lean work is ever
-wanted, is the Minifuck boolean reachability characterization: a
-language-power statement (exactly the four one-input functions plus the
-eight 0-preserving two-input tables), not a generator-correctness proof.
+`%^2^-1` two-input boolean wall (`PctBooleanWall.lean`, audited by
+`PctWallCheck.lean`).  Every other proof (the ported interpreters, their
+equivalence proofs, and the generator correctness proofs) was dropped as
+redundant with the round-trip test suite.
+
+`BfMintermCorrect.lean` was removed for both reasons at once: its subject,
+the branch-free `_bf_minterm` construction, was itself deleted when folding
+made it unreachable (`brainfuck` is now just `bf_tree`), and the file had
+rotted into 35 elaboration errors -- reaching the main theorem -- because
+nothing built it.  The default `lake build` target covers only the root
+`Esolangs.lean`, so a proof outside it is checked by no automation; that is
+the gap the removal exposed rather than the proof's own failing.
+
+The one open theorem, if more Lean work is ever wanted, is the Minifuck
+boolean reachability characterization: a language-power statement (exactly
+the four one-input functions plus the eight 0-preserving two-input tables),
+not a generator-correctness proof -- the same shape as the `%^2^-1` wall,
+which is the worked precedent for it.
