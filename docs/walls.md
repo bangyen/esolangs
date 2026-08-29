@@ -154,6 +154,18 @@ Input *permutation* carries no such problem: reordering which placeholder is
 emitted where is entirely inside the template.  It was tested, and reaches
 none of the six.
 
+What the enumeration does explain is *why* those six are hard, and it is not
+for want of complements.  Listing what each cell computes: separator
+`[x<[x` leaves the six degenerate functions (`const0/1`, `b0`, `~b0`, `b1`,
+`~b1`), and separator `[x[x[x` leaves NOR, XOR and AND.  The four hard
+AND-like tables are the *mixed-polarity* conjunctions -- `b0 AND ~b1` and its
+relatives -- and no cell holds one under either separator, even though both
+literals do.  They are reachable by the column search from the frontier, at
+park `_BASE`, but only when the *exact* polarity is targeted: `_find_column`
+accepts the target or its complement, and the pool walk transforms the column
+between the search and the read, so a complement hit is not interchangeable
+with the target one.
+
 So the orbit structure is real and mostly useless.  What survives is the
 degenerate case, which composes upward because a table with `k` essential
 inputs is a `k`-input problem at any arity, and that one is built.
