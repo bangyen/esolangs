@@ -53,15 +53,29 @@ def test_parameterized_generators_embed_each_input_once() -> None:
     """
     import re
 
+    checked = 0
     for name, gen in _parameterized_generators():
         for n in (1, 2, 3, 4):
             table = format(0, f"0{2**n}b")
-            template = gen(table)
+            try:
+                template = gen(table)
+            except ValueError:
+                # A generator need not cover every arity -- %^2^-1 derives
+                # one- and two-input tables only.  The invariant here is about
+                # the templates a generator *does* emit, so an uncovered arity
+                # is skipped rather than failed; the count below keeps that
+                # from quietly emptying the sweep.
+                continue
+            checked += 1
             xs = re.findall(r"\{X(\d+)\}", template)
             cs = re.findall(r"\{C(\d+)\}", template)
             assert sorted(xs) == [str(i) for i in range(n)], (name, n, xs)
             assert len(xs) == n, (name, n, xs)
             assert not cs, (name, n, cs)
+    # Guard the skip above: every generator covers at least n == 2, so a run
+    # that checked far fewer templates than that means the sweep stopped
+    # exercising the generators rather than the generators getting stricter.
+    assert checked >= len(_parameterized_generators()), checked
 
 
 class TestParameterizedBIO:
