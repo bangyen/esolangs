@@ -47,7 +47,7 @@ dev = [
     # mangled_name_from_mutant_name(), which strips the class part, so
     # class-method mutants can never be selected and are silently reported
     # as killed.  3.3.1 uses orig.__name__ and works.  See scripts/mutate_one.py.
-    "mutmut==3.3.1",
+    "mutmut==3.7.0",
 ]
 
 [project.urls]
