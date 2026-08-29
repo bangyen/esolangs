@@ -544,6 +544,25 @@ theorem firstReadFrom_step (code : List Cmd) (i q : ℕ) (c : Cmd)
   simp only [decide_eq_true_eq, if_neg hne, hj]
   rfl
 
+/-- The converse shift: if `i` is not a read, the first read from `i` is also
+the first read from `i + 1`. -/
+theorem firstReadFrom_step' (code : List Cmd) (i m : ℕ) (c : Cmd)
+    (hc : code[i]? = some c) (hne : c ≠ Cmd.read)
+    (h : firstReadFrom code i = some m) : firstReadFrom code (i + 1) = some m := by
+  have hi : i < code.length := by
+    by_contra hcc
+    rw [List.getElem?_eq_none (by omega)] at hc
+    exact Option.some_ne_none _ hc.symm
+  have hget : code[i] = c := by
+    rw [List.getElem?_eq_getElem hi] at hc; exact Option.some_inj.mp hc
+  simp only [firstReadFrom, Option.map_eq_some_iff] at h ⊢
+  obtain ⟨j, hj, rfl⟩ := h
+  rw [List.drop_eq_getElem_cons hi, List.findIdx?_cons, hget] at hj
+  simp only [decide_eq_true_eq, if_neg hne] at hj
+  simp only [Option.map_eq_some_iff] at hj
+  obtain ⟨j', hj', hje⟩ := hj
+  exact ⟨j', hj', by omega⟩
+
 /-- With one byte left and at least two reads in the program, a `t` is never
 taken on a cleanly-halting run: the rewind cannot pay for the reads it would
 re-cross. -/
@@ -754,21 +773,23 @@ theorem lockstep_two (code : List Cmd) :
 accumulator, two runs whose *second* bytes may differ agree up to the first
 read, and afterwards continue from `⟨q + 1, b₁, [b₂]⟩` — the same accumulator
 `b₁` in both, with only the remaining byte differing. -/
-theorem lockstep_first (code : List Cmd) :
+theorem lockstep_first (code : List Cmd) (m : ℕ)
+    (h0 : firstReadFrom code 0 = some m) :
     ∀ (fuel : ℕ) (i : ℕ) (a b₁ x y : ℤ) (rx ry : State × List ℤ),
       run code fuel ⟨i, a, [b₁, x]⟩ = some rx →
       run code fuel ⟨i, a, [b₁, y]⟩ = some ry →
       rx.1.inp = [] →
-      ∃ (q : ℕ) (pre : List ℤ) (f' : ℕ) (tx ty : State × List ℤ),
-        run code f' ⟨q + 1, b₁, [x]⟩ = some tx ∧
-        run code f' ⟨q + 1, b₁, [y]⟩ = some ty ∧
+      firstReadFrom code i = some m →
+      ∃ (pre : List ℤ) (f' : ℕ) (tx ty : State × List ℤ),
+        run code f' ⟨m + 1, b₁, [x]⟩ = some tx ∧
+        run code f' ⟨m + 1, b₁, [y]⟩ = some ty ∧
         tx.1.inp = [] ∧
         rx.2 = pre ++ tx.2 ∧ ry.2 = pre ++ ty.2 := by
   intro fuel
   induction fuel with
-  | zero => intro i a b₁ x y rx ry hx _ _; simp [run] at hx
+  | zero => intro i a b₁ x y rx ry hx _ _ _; simp [run] at hx
   | succ k ih =>
-    intro i a b₁ x y rx ry hx hy hnil
+    intro i a b₁ x y rx ry hx hy hnil hinv
     rw [run] at hx hy
     cases hc : code[i]? with
     | none =>
@@ -796,30 +817,35 @@ theorem lockstep_first (code : List Cmd) :
           case read =>
             simp only [stepCmd] at hstepx hstepy
             cases hstepx; cases hstepy
-            exact ⟨i, [], k, px, py, hpx, hpy, hnil',
+            have him : i = m :=
+              Option.some_inj.mp ((firstReadFrom_self code i hc).symm.trans hinv)
+            subst him
+            exact ⟨[], k, px, py, hpx, hpy, hnil',
               by simpa using hxeq, by simpa using hyeq⟩
           case sub2 | sub3 | dbl | neg | zero | printNum | printChr =>
             simp only [stepCmd] at hstepx hstepy
             cases hstepx; cases hstepy
-            obtain ⟨q, pre, f', tx, ty, htx, hty, htn, hox, hoy⟩ :=
+            obtain ⟨pre, f', tx, ty, htx, hty, htn, hox, hoy⟩ :=
               ih _ _ b₁ x y px py hpx hpy hnil'
-            exact ⟨q, _ ++ pre, f', tx, ty, htx, hty, htn,
+                (firstReadFrom_step' code i m _ hc (by simp) hinv)
+            exact ⟨_ ++ pre, f', tx, ty, htx, hty, htn,
               by rw [hxeq, hox, List.append_assoc],
               by rw [hyeq, hoy, List.append_assoc]⟩
           case rewind =>
             by_cases hz : (if a > 3003 then (0 : ℤ) else a) ≠ 0
             · rw [stepCmd, if_pos hz] at hstepx hstepy
               cases hstepx; cases hstepy
-              obtain ⟨q, pre, f', tx, ty, htx, hty, htn, hox, hoy⟩ :=
-                ih _ _ b₁ x y px py hpx hpy hnil'
-              exact ⟨q, _ ++ pre, f', tx, ty, htx, hty, htn,
+              obtain ⟨pre, f', tx, ty, htx, hty, htn, hox, hoy⟩ :=
+                ih _ _ b₁ x y px py hpx hpy hnil' h0
+              exact ⟨_ ++ pre, f', tx, ty, htx, hty, htn,
                 by rw [hxeq, hox, List.append_assoc],
                 by rw [hyeq, hoy, List.append_assoc]⟩
             · rw [stepCmd, if_neg hz] at hstepx hstepy
               cases hstepx; cases hstepy
-              obtain ⟨q, pre, f', tx, ty, htx, hty, htn, hox, hoy⟩ :=
+              obtain ⟨pre, f', tx, ty, htx, hty, htn, hox, hoy⟩ :=
                 ih _ _ b₁ x y px py hpx hpy hnil'
-              exact ⟨q, _ ++ pre, f', tx, ty, htx, hty, htn,
+                  (firstReadFrom_step' code i m _ hc (by simp) hinv)
+              exact ⟨_ ++ pre, f', tx, ty, htx, hty, htn,
                 by rw [hxeq, hox, List.append_assoc],
                 by rw [hyeq, hoy, List.append_assoc]⟩
 
@@ -904,30 +930,120 @@ theorem run_fuel_pad (code : List Cmd) :
           obtain ⟨p, hp, hr⟩ := h
           exact ⟨p, ih m s' p hp (by omega), hr⟩
 
+/-- A program with no read never consumes input. -/
+theorem no_read_keeps_input (code : List Cmd) (h0 : countN code 0 = 0) :
+    ∀ (fuel : ℕ) (s : State) (r : State × List ℤ),
+      run code fuel s = some r → r.1.inp = s.inp := by
+  intro fuel
+  induction fuel with
+  | zero => intro s r h; simp [run] at h
+  | succ k ih =>
+    intro s r h
+    rw [run] at h
+    cases hc : code[s.ind]? with
+    | none => rw [hc] at h; simp only [Option.some.injEq] at h; rw [← h]
+    | some c =>
+      rw [hc] at h
+      simp only at h
+      cases hstep : stepCmd c s with
+      | eof => rw [hstep] at h; simp at h
+      | next s' o =>
+        rw [hstep] at h
+        simp only [Option.map_eq_some_iff] at h
+        obtain ⟨p, hp, hr⟩ := h
+        have IH := ih s' p hp
+        rw [← hr]
+        simp only
+        rw [IH]
+        -- no command other than `read` changes the input, and `read` is absent
+        cases c
+        case sub2 | sub3 | dbl | neg | zero | printNum | printChr =>
+          simp only [stepCmd] at hstep; cases hstep; rfl
+        case read =>
+          -- a read here would make countN positive, contradicting `h0`
+          exfalso
+          have : countN code s.ind = 1 + countN code (s.ind + 1) := by
+            rw [countN_succ code s.ind Cmd.read hc]; simp
+          have := countN_antitone code (Nat.zero_le s.ind)
+          omega
+        case rewind =>
+          by_cases hz : (if s.acc > 3003 then (0 : ℤ) else s.acc) ≠ 0
+          · rw [stepCmd, if_pos hz] at hstep; cases hstep; rfl
+          · rw [stepCmd, if_neg hz] at hstep; cases hstep; rfl
+
+/-- A program meeting the contract contains at least one read (it consumes
+both input bytes). -/
+theorem computes_has_read (code : List Cmd) (f : ℤ → ℤ → ℤ)
+    (hf : Computes code f) : 1 ≤ countN code 0 := by
+  by_contra hc
+  have h0 : countN code 0 = 0 := by omega
+  obtain ⟨fuel, r, hr, hnil, -⟩ := hf 48 48 (Or.inl rfl) (Or.inl rfl)
+  have := no_read_keeps_input code h0 fuel _ r hr
+  rw [hnil] at this
+  simp [start] at this
+
 /-- **The decomposition.**  A program meeting the contract prints
-`pre b₁ ++ tail b₂`: a prefix fixed by the first bit, then a suffix fixed by
-the second.  The read position `q` is the same for all four combinations, so
-the split is uniform. -/
+`A b₁ ++ B b₂`: a prefix determined by the first bit, then a suffix determined
+by the second.
+
+The split is at the canonical read positions `m = firstReadFrom code 0` and
+`Q` (the read reached from `m + 1`), which are functions of the program alone.
+That is what makes `B` independent of `b₁`: the tail run starts from
+`⟨Q + 1, b₂, []⟩`, a state naming only `b₂`. -/
 theorem computes_splits (code : List Cmd) (f : ℤ → ℤ → ℤ) (hf : Computes code f) :
-    ∀ b₁, Bit b₁ →
-      ∃ (pre tail48 tail49 : List ℤ),
-        [f b₁ 48] = pre ++ tail48 ∧ [f b₁ 49] = pre ++ tail49 := by
-  intro b₁ hb₁
-  obtain ⟨fx, rx, hrx, hnx, hox⟩ := hf b₁ 48 hb₁ (Or.inl rfl)
-  obtain ⟨fy, ry, hry, hny, hoy⟩ := hf b₁ 49 hb₁ (Or.inr rfl)
-  -- align the fuels: pad both runs to `fx + fy`, which still halts cleanly
-  have hpadx : run code (fx + fy) (start b₁ 48) = some rx :=
-    run_fuel_pad code fx (fx + fy) _ rx hrx (by omega)
-  have hpady : run code (fx + fy) (start b₁ 49) = some ry :=
-    run_fuel_pad code fy (fx + fy) _ ry hry (by omega)
-  -- lockstep to the first read, then to the second
-  obtain ⟨q, pre, f', tx, ty, htx, hty, htn, hpx, hpy⟩ :=
-    lockstep_first code (fx + fy) 0 0 b₁ 48 49 rx ry hpadx hpady hnx
-  obtain ⟨q2, pre2, f2, ux, uy, -, hux, huy, hqx, hqy⟩ :=
-    lockstep_two code f' (q + 1) b₁ 48 49 tx ty htx hty htn
-  refine ⟨pre ++ pre2, ux.2, uy.2, ?_, ?_⟩
-  · rw [hox] at hpx; rw [hpx, hqx, List.append_assoc]
-  · rw [hoy] at hpy; rw [hpy, hqy, List.append_assoc]
+    ∃ (A B : ℤ → List ℤ),
+      ∀ b₁ b₂, Bit b₁ → Bit b₂ → [f b₁ b₂] = A b₁ ++ B b₂ := by
+  -- the first read position `m` is canonical
+  have hread := computes_has_read code f hf
+  have hsome : (firstReadFrom code 0).isSome := by
+    by_contra hcon
+    simp only [Bool.not_eq_true, Option.isSome_eq_false_iff,
+      Option.isNone_iff_eq_none] at hcon
+    rw [firstReadFrom_none_iff] at hcon
+    omega
+  obtain ⟨m, hm⟩ := Option.isSome_iff_exists.mp hsome
+  -- for each first bit, split twice: at `m`, then at the canonical `Q`
+  have key : ∀ b₁, Bit b₁ →
+      ∃ (pre : List ℤ) (q : ℕ) (f2 : ℕ) (ux uy : State × List ℤ),
+        (if 2 ≤ countN code 0 then firstReadFrom code (m + 1) = some q
+                              else firstReadFrom code 0 = some q) ∧
+        run code f2 ⟨q + 1, 48, []⟩ = some ux ∧
+        run code f2 ⟨q + 1, 49, []⟩ = some uy ∧
+        [f b₁ 48] = pre ++ ux.2 ∧ [f b₁ 49] = pre ++ uy.2 := by
+    intro b₁ hb₁
+    obtain ⟨fx, rx, hrx, hnx, hox⟩ := hf b₁ 48 hb₁ (Or.inl rfl)
+    obtain ⟨fy, ry, hry, hny, hoy⟩ := hf b₁ 49 hb₁ (Or.inr rfl)
+    have hpadx : run code (fx + fy) (start b₁ 48) = some rx :=
+      run_fuel_pad code fx (fx + fy) _ rx hrx (by omega)
+    have hpady : run code (fx + fy) (start b₁ 49) = some ry :=
+      run_fuel_pad code fy (fx + fy) _ ry hry (by omega)
+    obtain ⟨pre, f', tx, ty, htx, hty, htn, hpx, hpy⟩ :=
+      lockstep_first code m hm (fx + fy) 0 0 b₁ 48 49 rx ry hpadx hpady hnx hm
+    obtain ⟨q, pre2, f2, ux, uy, hq, hux, huy, hqx, hqy⟩ :=
+      lockstep_two code f' (m + 1) b₁ 48 49 tx ty htx hty htn
+    exact ⟨pre ++ pre2, q, f2, ux, uy, hq, hux, huy,
+      by rw [hox] at hpx; rw [hpx, hqx, List.append_assoc],
+      by rw [hoy] at hpy; rw [hpy, hqy, List.append_assoc]⟩
+  -- the position `q` is the same for both first bits, so the tails are too
+  obtain ⟨pre48, q48, f48, u48x, u48y, hq48, hu48x, hu48y, e48x, e48y⟩ :=
+    key 48 (Or.inl rfl)
+  obtain ⟨pre49, q49, f49, u49x, u49y, hq49, hu49x, hu49y, e49x, e49y⟩ :=
+    key 49 (Or.inr rfl)
+  have hqq : q48 = q49 := by
+    split at hq48
+    · next hge => rw [if_pos hge] at hq49; exact Option.some_inj.mp (hq48.symm.trans hq49)
+    · next hlt => rw [if_neg hlt] at hq49; exact Option.some_inj.mp (hq48.symm.trans hq49)
+  subst hqq
+  -- the two tail runs start from identical states, so they print identically
+  have htx : u48x.2 = u49x.2 := by
+    have := run_fuel_agree code f48 f49 ⟨q48 + 1, 48, []⟩ u48x u49x hu48x hu49x
+    rw [this]
+  have hty : u48y.2 = u49y.2 := by
+    have := run_fuel_agree code f48 f49 ⟨q48 + 1, 49, []⟩ u48y u49y hu48y hu49y
+    rw [this]
+  refine ⟨fun b => if b = 48 then pre48 else pre49,
+          fun b => if b = 48 then u48x.2 else u48y.2, ?_⟩
+  rintro b₁ b₂ (rfl | rfl) (rfl | rfl) <;> simp_all
 
 /-- XOR on the input bytes `'0'` / `'1'`. -/
 def xorFn (b c : ℤ) : ℤ := if b = c then 48 else 49
