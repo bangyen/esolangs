@@ -952,6 +952,22 @@ class TestGeneratorRoundTrips:
         assert gen.addsubjump("") == ""
         assert gen.decleq("") == ""
 
+    def test_addsubjump_emits_a_nul_byte(self) -> None:
+        """A NUL is a legal byte, and its value is the one built by no doubling.
+
+        The generator builds each byte by doubling up from 1, which needs
+        the value to have a leading bit; zero has none, so it takes the
+        cleared register as it stands.  NUL passes the byte-range check, so
+        this is a text a caller can really ask for.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.addsubjump import run
+
+        program = gen.addsubjump("a\0b")
+        io_ = ScriptedIO("")
+        run(program, io_)
+        assert io_.getvalue() == "a\0b"
+
     def test_nevermind_unsupported(self) -> None:
         """Nevermind cannot print multiline text or a leading $."""
         with pytest.raises(ValueError, match="single line"):
