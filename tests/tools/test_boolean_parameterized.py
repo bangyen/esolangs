@@ -264,6 +264,75 @@ class TestParameterizedBack:
         assert "+\\" in template  # a decision node
         assert "*" in template  # leaves halt
 
+    def test_input_reordering_folds_a_scattered_table(self) -> None:
+        """The tree splits in whichever order folds most, not load order.
+
+        ``10101010`` depends on its last input alone, so it folds nothing
+        loaded in order and everything once that input sits in cell 0.  It
+        stays longer than the already-aligned table, because Back pays for
+        a reorder in *rows* -- each pointer move is its own load row -- but
+        it comes in far under the table that folds under no order at all.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        scattered = len(parameterized.back("10101010"))
+        aligned = len(parameterized.back("11110000"))
+        parity = len(parameterized.back("01101001"))
+        assert aligned <= scattered < parity
+
+    def test_input_reordering_never_grows_a_template(self) -> None:
+        """The identity order is built first and ties keep it.
+
+        Parity folds under no order, so it emits exactly the load it always
+        did: each input's unit pair separated by a single ``>``, with no
+        walk back and forth.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.back("01101001")
+        assert "<<" not in template.split("\n")[0]  # no long homing walk added
+        assert len(template) == len(parameterized.back("01101001"))
+
+    @pytest.mark.parametrize(
+        "table",
+        ["10101010", "11001100", "01011010", "00111100", "10010110"],
+    )
+    def test_reordered_templates_compute_the_table(self, table: str) -> None:
+        """A reordered template still computes its function.
+
+        Back's node is ``+\\>`` -- test the current cell, *then* advance --
+        so level ``k`` tests cell ``k``, one lower than the generators whose
+        node steps first.  Loading an input into the wrong cell computes a
+        different function rather than failing to draw, so only running it
+        catches the slip.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.back(table)
+        for combo in range(8):
+            bits = [(combo >> (2 - i)) & 1 for i in range(3)]
+            got = self.run_back(self.instantiate(template, bits), 3)
+            assert got == table[combo], f"{table} inputs {bits}"
+
+    def test_reordering_keeps_the_equal_width_embedding(self) -> None:
+        """Reordered loads still cost the same for either bit.
+
+        The walk goes before an input's ``-``/``{Xi}`` pair and never
+        between its halves, so the primer and the placeholder stay one
+        unit and both bits still cost the same two rows.  Splitting them
+        would let the template's height reveal an input.
+        """
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.examples import _fill_back
+
+        for table in ("10101010", "11001100", "01101001"):
+            template = parameterized.back(table)
+            sizes = {
+                len(_fill_back(template, [(c >> (2 - i)) & 1 for i in range(3)]))
+                for c in range(8)
+            }
+            assert len(sizes) == 1, f"{table} sizes {sorted(sizes)}"
+
 
 class TestParameterizedNoComment:
     """Input-by-substitution boolean generator for the no-input language NoComment."""

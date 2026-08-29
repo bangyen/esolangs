@@ -365,13 +365,51 @@ def back(truth_table: str) -> str:
     nothing -- a leaf spends one ``-`` instead of one extra pointer move --
     and makes the dump self-describing.
     """
+    return best_input_order(truth_table, _back_ordered)
+
+
+def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    r"""Build one Back template, loading its inputs in ``perm`` order.
+
+    ``truth_table`` is already permuted, so every row index here is in the
+    permuted frame.  ``perm`` is spent in exactly one place: the cell each
+    ``{Xi}`` unit loads into.
+
+    A node is ``+\>`` -- test the current cell, *then* advance -- so level
+    ``k`` tests cell ``k``, and input ``perm[k]`` is the one that has to be
+    loaded there.  That is one cell lower than the generators whose node
+    steps before it tests (Streetcode's halls and LaserFuck's ``>#v)`` both
+    test cell ``k + 1``), and getting it wrong computes a different
+    function rather than failing to draw.
+
+    **The reorder is the moves between the units, not the units.**  Each
+    ``{Xi}`` keeps its place in fill order and the harness fills it exactly
+    as before; what changes is the ``>``/``<`` runs that separate them, so
+    the emitted template genuinely differs.  That distinction is what makes
+    this a reorder rather than a relabelling -- ``eval`` is the precedent,
+    rearranging its stack between the staging and the tree.
+
+    Keeping the ``-``/``{Xi}`` pairs intact is also what preserves the
+    equal-width embedding: the primer and the placeholder are one unit and
+    are never separated, so both bits still cost the same two rows and the
+    template's height cannot leak an input.
+    """
     n = _validate_truth_table(truth_table)
 
-    # The load: fill cells 0..n-1 with the inputs, then '>' to open the answer
-    # cell at n and n '<' to walk the pointer back to cell 0 for the tree's
-    # first test.  Held as units because a '{Xi}' is one grid cell but four
-    # template characters.
+    # The load: fill the input cells, then '>' to open the answer cell at n
+    # and walk the pointer back to cell 0 for the tree's first test.  Held as
+    # units because a '{Xi}' is one grid cell but four template characters --
+    # and because a unit is a *row*, which is what a permuted load spends.
+    cells = [0] * n
+    for level, i in enumerate(perm):
+        cells[i] = level
+
+    def walk(frm: int, to: int) -> list[str]:
+        """Move the pointer from cell ``frm`` to cell ``to``, one per row."""
+        return [">" if to >= frm else "<"] * abs(to - frm)
+
     units: list[str] = []
+    at = 0
     for i in range(n):
         # Two units per input, so neither bit has to be written as a blank:
         # the beam reads one cell per row in column 0, so the setter's second
@@ -384,11 +422,17 @@ def back(truth_table: str) -> str:
         # Putting the bit on the trailing row rather than the leading one is
         # what makes every load row execute -- see the fill for why the older
         # '{Xi}' + '+' order skipped a row instead.
+        #
+        # The walk that puts this input in its cell goes *before* the pair,
+        # never between the two halves of it.
+        units.extend(walk(at, cells[i]))
         units.append("-")
         units.append("{X" + str(i) + "}")
-        if i < n - 1:
-            units.append(">")
-    units.append(">")
+        at = cells[i]
+    # Open the answer cell at n, then home to cell 0 for the tree's first
+    # test.  Under the identity order the last input sits at cell n-1 and
+    # this is the single '>' the load always ended on.
+    units.extend(walk(at, n))
     units.extend("<" * n)
 
     # The load occupies column 0 and the tree everything from column 1, so the
