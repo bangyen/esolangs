@@ -141,11 +141,18 @@ straight from the embed at cells 20-21.  The other four (`0010`, `0100`,
 XOR-like tables.
 
 Each hard table is a solvable one with an input negated, so the group
-relates them --- but that relation is not expressible.  Input negation would
-need the harness to fill `{Xi}` with the *complement* of its bit, and the
-harness fills placeholders with the bit it is given; a generator cannot ask
-for a flip.  Input *permutation* is expressible (emit the placeholders in a
-different order) and was tested: it reaches none of the six.
+relates them --- but taking that route would move the computation out of the
+language.  Negating an input means the harness fills `{Xi}` with the
+*complement* of its bit, so the emitted program no longer computes the
+requested table; it computes a different one the caller pre-transformed for
+it.  That is the same objection the removed `{Ci}` placeholder answers to:
+this package used to offer an embedded complement and dropped it, because a
+generator should derive a complement *at runtime from its own `{Xi}`* --- as
+`nocomment` does with its `s`-as-NOT gate --- or do without.
+
+Input *permutation* carries no such problem: reordering which placeholder is
+emitted where is entirely inside the template.  It was tested, and reaches
+none of the six.
 
 So the orbit structure is real and mostly useless.  What survives is the
 degenerate case, which composes upward because a table with `k` essential
