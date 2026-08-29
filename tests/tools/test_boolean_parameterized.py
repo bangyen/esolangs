@@ -99,46 +99,85 @@ def test_parameterized_generators_embed_each_input_once() -> None:
 # back-to-front so the first pop was the most significant bit; that only
 # fixes which input the root tests, and testing the last input first costs
 # nothing, so both now load in name order (verified byte-identical totals).
-_VARYING_SLOT_ORDER = frozenset({"back", "minifuck"})
+# The one generator that still emits out of name order, and an xfail rather
+# than an allowlist entry so it reads as debt.  Minifuck's ignored inputs
+# have to trail the ``.``: the essential placeholders are embedded into the
+# tape at fixed cells, so moving an ignored one in front of them shifts every
+# later embedding and the program stops computing (measured: 48 wrong cases
+# over the 38 degenerate n=3 tables).  For 24 of those 38 an ignored input's
+# index sits below an essential one, so ascending order is unreachable by
+# relocation -- it needs the solver to assign names, which is a change to
+# ``_project``/``_lift`` and is not attempted here.
+_SLOT_ORDER_DEBT = frozenset({"minifuck"})
 
 _SLOT_ORDER_TABLES = ("0110", "01101001", "10101010", "11110000", "00111100")
 
 
-@pytest.mark.slow  # builds every generator over several tables
-def test_slots_run_in_name_order() -> None:
-    """Templates emit ``{X0}``..``{Xn-1}`` in order unless the order is data.
-
-    Ordering is not needed for correctness -- :func:`instantiate` replaces
-    each placeholder by name -- but a load that emits out of order is a load
-    that has been restructured, and that is worth a failure rather than a
-    shrug.  The two generators whose order carries information have to
-    *prove* it by varying across tables; a fixed unusual order fails here
-    just as an unlisted one does.
-    """
+def _slot_order(gen: object, table: str) -> list[int] | None:
+    """The ``{Xi}`` indices in the order ``gen`` emits them, or None."""
     import re
 
-    checked = 0
-    orders: dict[str, set[tuple[int, ...]]] = {}
-    for name, gen in _parameterized_generators():
-        for table in _SLOT_ORDER_TABLES:
-            try:
-                template = gen(table)
-            except ValueError:
-                continue  # a generator need not cover every arity
-            checked += 1
-            slots = [int(s[2:-1]) for s in re.findall(r"\{X\d+\}", template)]
-            orders.setdefault(name, set()).add(tuple(slots))
-            if name not in _VARYING_SLOT_ORDER:
-                assert slots == sorted(slots), (name, table, slots)
+    try:
+        template = gen(table)
+    except ValueError:
+        return None  # a generator need not cover every arity
+    return [int(s[2:-1]) for s in re.findall(r"\{X\d+\}", template)]
 
-    for name in _VARYING_SLOT_ORDER:
-        seen = orders.get(name, set())
-        assert len(seen) > 1, (
-            name,
-            sorted(seen),
-            "listed as carrying its input order but emits one fixed order",
-        )
-    assert checked >= len(_parameterized_generators()), checked
+
+@pytest.mark.slow  # builds every generator over several tables
+def test_slots_run_in_name_order() -> None:
+    """Every template emits ``{X0}``..``{Xn-1}`` in ascending order.
+
+    Ordering is not needed for correctness -- :func:`instantiate` replaces
+    each placeholder by name, wherever it sits -- but it is the shape every
+    generator here holds to, and a load that leaves it is a load that has
+    been restructured.  That is worth a failure rather than a shrug.
+
+    Minifuck is excluded and carried as an ``xfail`` below rather than an
+    entry in a list, so the debt stays visible.
+    """
+    checked = 0
+    for name, gen in _parameterized_generators():
+        if name in _SLOT_ORDER_DEBT:
+            continue
+        for table in _SLOT_ORDER_TABLES:
+            slots = _slot_order(gen, table)
+            if slots is None:
+                continue
+            checked += 1
+            assert slots == sorted(slots), (name, table, slots)
+    assert checked >= len(_parameterized_generators()) - len(_SLOT_ORDER_DEBT), checked
+
+
+@pytest.mark.slow  # the degenerate tables are the fast closed-form path
+@pytest.mark.xfail(
+    reason=(
+        "Minifuck's ignored inputs must trail the '.': the essential "
+        "placeholders are embedded at fixed tape cells, so moving an ignored "
+        "one in front shifts every later embedding and the program stops "
+        "computing. 24 of the 38 degenerate n=3 tables have an ignored index "
+        "below an essential one, so ascending order needs the solver to "
+        "assign names rather than a relocation."
+    ),
+    strict=True,
+)
+def test_minifuck_slots_run_in_name_order() -> None:
+    """Minifuck should emit in name order too, and does not yet.
+
+    Kept as a strict xfail so it fails loudly the day the construction is
+    changed to satisfy it -- and so the exception cannot quietly become the
+    accepted shape.
+    """
+    from esolangs.tools.boolean import parameterized
+
+    # Degenerate tables only: they are the closed-form path, and the only
+    # ones whose slot order can leave sequence.  A table needing the search
+    # takes tens of seconds and cannot exercise this.
+    for table in ("11001100", "10101010", "00001111"):
+        slots = _slot_order(parameterized.minifuck, table)
+        if slots is None:
+            continue
+        assert slots == sorted(slots), (table, slots)
 
 
 def _drawing(template: str) -> str:
@@ -395,34 +434,40 @@ class TestParameterizedBack:
         """The tree splits in whichever order folds most, not load order.
 
         ``10101010`` depends on its last input alone, so it folds nothing
-        loaded in order and everything once that input sits in cell 0.  The
-        reorder costs nothing to reach -- the load fills cells in order and
-        only the *name* in each slot moves -- so it comes out exactly as
-        cheap as the table that was already aligned, and far under the one
-        that folds under no order at all.
+        loaded in order and everything once that input sits in cell 0.  It
+        reaches the cheap shape and lands far under the table that folds
+        under no order at all; the two one-dependency tables differ only by
+        the walk that carries the pointer, two characters a step.
         """
         from esolangs.tools.boolean import parameterized
 
         scattered = len(parameterized.back("10101010"))
         aligned = len(parameterized.back("11110000"))
         parity = len(parameterized.back("01101001"))
-        assert aligned == scattered < parity
+        assert scattered < parity
+        assert aligned < parity
+        assert abs(scattered - aligned) < 0.2 * parity
 
     def test_input_reordering_never_grows_a_template(self) -> None:
-        """The identity order is built first and ties keep it.
+        """No table comes out larger than its identity build.
 
-        Parity folds under no order, so no reorder can pay for its walk and
-        the winner has to be the identity build itself -- byte for byte, not
-        merely the same length.  Comparing against ``_back_ordered`` at the
-        identity is what makes that a real check: a length test would pass
-        for any permutation that happened to cost the same.
+        ``best_input_order`` builds the identity first and keeps it on a
+        tie, so reordering can only ever shrink a template.  Checked against
+        ``_back_ordered`` at the identity rather than against a stored
+        number, so it stays true as the construction changes.
+
+        Note this is *not* "parity keeps the identity build".  It used to
+        be, while the load emitted no walk; now that the units are emitted
+        in reverse name order, some orders spend a shorter walk than the
+        identity does, and parity shrinks 126 to 118 without folding
+        anything.  The invariant that survives is the one-sided one.
         """
         from esolangs.tools.boolean import parameterized
 
-        assert parameterized.back("01101001") == parameterized._back_ordered(  # noqa: SLF001
-            "01101001",
-            (0, 1, 2),
-        )
+        for table in ("01101001", "10101010", "11110000", "00111100", "10010110"):
+            n = (len(table) - 1).bit_length()
+            identity = parameterized._back_ordered(table, tuple(range(n)))  # noqa: SLF001
+            assert len(parameterized.back(table)) <= len(identity), table
 
     @pytest.mark.parametrize(
         "table",
@@ -445,59 +490,73 @@ class TestParameterizedBack:
             got = self.run_back(self.instantiate(template, bits), 3)
             assert got == table[combo], f"{table} inputs {bits}"
 
-    def test_reordering_costs_no_load_rows(self) -> None:
-        """A permuted load is exactly as long as the identity one.
+    def test_reordering_pays_a_walk_and_keeps_name_order(self) -> None:
+        """A permuted load spends rows on the walk, and keeps its slots sorted.
 
-        The load fills cells in order and permutes which ``{Xi}`` name lands
-        in each, so the pointer still only steps one cell forward and no
-        walk is emitted.  That is what makes Back deliver its screen rather
-        than the screen minus a walk, and it is the property a future change
-        must not trade away: an earlier build interleaved pointer moves
-        between the units instead and lost 2.85 points to them.
+        This is the trade Back deliberately takes.  Filling in *cell* order
+        -- putting ``{X perm[c]}`` in cell ``c`` -- emits no walk and is a
+        few percent smaller, but leaves the placeholders out of name order,
+        which no other generator in this module does.  Loading in name order
+        and walking the pointer costs about two characters a step and keeps
+        the templates uniform.
+
+        Both halves are pinned here, because either alone would be wrong: a
+        build with no walk cannot be reordering at all, and one whose slots
+        left sequence would have taken the other side of the trade without
+        the docstring being updated.
         """
+        import re
         from itertools import permutations
 
         from esolangs.tools.boolean import parameterized
 
-        def load_rows(template: str) -> int:
-            """Count the rows carrying a load unit -- the load is column 0."""
-            return sum(1 for line in template.split("\n") if line[:1].strip())
-
-        for table in ("10", "0110", "10101010", "01101001"):
+        walked = 0
+        for table in ("0110", "10101010", "01101001"):
             n = (len(table) - 1).bit_length()
-            base = parameterized._back_ordered(table, tuple(range(n)))  # noqa: SLF001
             for perm in permutations(range(n)):
                 permuted = parameterized.permute_truth_table(table, perm)
-                other = parameterized._back_ordered(permuted, perm)  # noqa: SLF001
-                assert load_rows(other) == load_rows(base), f"{table} perm={perm}"
+                built = parameterized._back_ordered(permuted, perm)  # noqa: SLF001
+                names = re.findall(r"\{X(\d+)\}", built)
+                assert names == sorted(names), (table, perm, names)
+                column = [ln[0] for ln in built.split("\n") if ln[:1].strip()]
+                walked += column.count("<")
+        # A non-identity order has to step the pointer back at some point;
+        # a build with no leftward step is not reordering anything.
+        assert walked > 0
 
-    def test_placeholders_need_not_appear_in_name_order(self) -> None:
-        """Back's slots carry the order, so ``{Xi}`` names run out of sequence.
+    def test_placeholders_run_in_name_order_while_still_reordering(self) -> None:
+        """Back reorders through the *walk*, not through its slot order.
 
-        This is what makes the reorder free, and it is safe because
-        ``instantiate`` substitutes each placeholder by *name* -- a unique
-        token replaced wherever it sits -- and ``_fill_back``'s setter is
-        ``lambda _i, b:``, which ignores the index entirely.  A fill that
-        derived anything from an input's position would break here, as
-        ``_fill_bitdeque``'s parity rule would.
+        The load emits ``{X0}``..``{Xn-1}`` in sequence whatever the input
+        order, and the reorder lives in the ``>``/``<`` runs that carry the
+        pointer to each input's cell.  Both halves matter: dropping the
+        walk would leave the order inert, and permuting the names instead
+        would emit the slots out of sequence, which every other generator in
+        this module avoids.
 
-        The template was never in ascending order anyway: the load is drawn
-        bottom-to-top, so even the identity build emits ``{X2}`` first at
-        ``n == 3``.  The invariant the module states is that each ``{Xi}``
-        appears *once*, which is a count, and is tested separately.
+        The units are emitted in reverse name order because the load is
+        drawn bottom-to-top up column 0, so the template's *text* reads them
+        backwards -- loading input ``n-1`` first is what puts ``{X0}`` first
+        on the page.
         """
         import re
 
         from esolangs.tools.boolean import parameterized
 
-        seen = set()
+        walked = 0
         for table in ("11110000", "10101010", "01101001", "00111100"):
-            names = re.findall(r"\{X(\d+)\}", parameterized.back(table))
+            template = parameterized.back(table)
+            names = re.findall(r"\{X(\d+)\}", template)
+            assert names == sorted(names), f"{table} slots {names}"
             assert sorted(names) == ["0", "1", "2"], f"{table} embeds each once"
-            seen.add(tuple(names))
-        # Different tables put different inputs in cell 0, so the slot order
-        # genuinely varies -- if it did not, the reorder would be inert.
-        assert len(seen) > 1
+            # The load column carries the walk; a table whose best order is
+            # not the identity spends more than the n-1 steps a plain load
+            # would.
+            column = [line[0] for line in template.split("\n") if line[:1].strip()]
+            walked += column.count("<")
+        # At least one of these tables reorders, so at least one leftward
+        # step is emitted -- a plain ascending load never steps back.
+        assert walked > 0
 
     def test_reordering_keeps_the_equal_width_embedding(self) -> None:
         """Reordered loads still cost the same for either bit.

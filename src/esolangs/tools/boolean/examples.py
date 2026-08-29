@@ -568,10 +568,11 @@ def _register() -> None:
             "tape_based.back",
             _fill_back,
             split=True,
-            expected="0 1 0",
+            expected="1 0 0",
             note=(
                 "Back has no output instruction and dumps its tape at halt; "
-                "the answer is cell n, past the n input cells"
+                "the answer is cell n, past the n input cells -- which the "
+                "reorder may hold in either order, so only cell n is pinned"
             ),
         ),
         "bf-pda": _embedded(b.bfpda, "stack_based.bf_pda", _fill_bfpda),
