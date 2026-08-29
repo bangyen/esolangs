@@ -1668,6 +1668,104 @@ class TestParameterizedMinifuck:
         with pytest.raises(ValueError, match="power-of-two"):
             parameterized.minifuck("011")
 
+    def test_the_simulator_mirrors_the_interpreter_at_its_edges(self) -> None:
+        """The search's model of a row has to match what Minifuck does.
+
+        The search prunes on simulated state, so a divergence here would
+        make it reason about tapes the interpreter never produces.  The
+        edges are the ones a mid-tape step never shows: a dead row ignores
+        everything after it, a spent skip eats one instruction, ``<`` is
+        pinned at cell 0, the tape grows on demand, and a print reads the
+        first eight cells as one byte -- emitting that character, or
+        killing the row if the byte is zero.
+        """
+        from esolangs.tools.boolean.minifuck import _Sim
+
+        dead = _Sim(16)
+        dead.dead = True
+        dead.exec("[")
+        assert dead.ptr == 0, "a dead row executes nothing"
+
+        skipping = _Sim(16)
+        skipping.skip = True
+        skipping.exec("[")
+        assert skipping.ptr == 0, "the skipped instruction does nothing"
+        assert not skipping.skip, "and the skip is spent"
+
+        pinned = _Sim(16)
+        pinned.exec("<")
+        assert pinned.ptr == 0, "there is nothing to the left of cell 0"
+
+        growing = _Sim(3)
+        for _ in range(5):
+            growing.exec("[")
+        assert len(growing.tape) > 3, "the tape grows to meet the pointer"
+
+        # The print flips the cell it steps onto first, so a print inside
+        # the byte writes its own 1: cell 1 makes 0b01000000 == 64.
+        printing = _Sim(16)
+        printing.exec(".")
+        assert printing.out == ["@"]
+        assert not printing.dead
+
+        # Past cell 8 the flip lands outside the byte, which stays zero.
+        zero = _Sim(16)
+        zero.ptr = 9
+        zero.exec(".")
+        assert zero.dead, "printing a zero byte ends the row"
+        assert zero.out == []
+
+    def test_the_walk_needs_a_converged_pointer_going_right(self) -> None:
+        """``[x`` walks are only safe rightward from one shared position.
+
+        Every row runs the same program, so a walk emitted while the rows
+        disagree about where the pointer is would move them different
+        distances.  And ``[x`` only advances -- the pointer is Minifuck's
+        one leftward channel, and it is not this one -- so a leftward
+        target is refused rather than silently ignored.
+        """
+        from esolangs.tools.boolean.minifuck import _clamp, _embed, _walk_to
+
+        spread = _embed(2)
+        with pytest.raises(ValueError, match="converged pointer"):
+            _walk_to(spread, 0)
+
+        clamped = _embed(2)
+        _clamp(clamped)
+        with pytest.raises(ValueError, match="cannot walk left"):
+            _walk_to(clamped, -5)
+
+    def test_the_parked_search_finds_a_column_under_the_pointer(self) -> None:
+        """The last route asks for the answer *and* the pointer that reads it.
+
+        Producing the column is not enough on its own: walking back to it
+        re-crosses, and so changes, that very cell.  So a hit is a state
+        whose rows agree on the pointer, with the wanted column (or its
+        complement) immediately to the right of it, inside the window.
+        """
+        from esolangs.tools.boolean.minifuck import (
+            _BASE,
+            _SETTLE,
+            _SPAN,
+            _embed,
+            _find_parked,
+        )
+
+        want = (0, 1, 1, 0)  # XOR's column
+        window = _BASE + 2 * _SPAN + 14
+
+        hits = _find_parked(_embed(2, settle=_SETTLE), want, window, 6, 3)
+        assert hits, "the XOR column should be parked on within six steps"
+        for code, cell in hits:
+            assert set(code) <= set("<[x")
+            assert 8 <= cell < window
+
+        # The limit stops the collection early rather than filling it.
+        assert len(_find_parked(_embed(2, settle=_SETTLE), want, window, 8, 1)) == 1
+
+        # A window that excludes the answer's cell yields nothing.
+        assert _find_parked(_embed(2, settle=_SETTLE), want, 10, 6, 3) == []
+
 
 @pytest.mark.slow  # 1.9s: builds every generator to compare fill widths
 def test_fills_embed_a_zero_and_a_one_at_equal_width() -> None:
