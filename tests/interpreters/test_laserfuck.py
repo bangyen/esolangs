@@ -128,3 +128,42 @@ class TestLaserFuck:
         machine = _Machine(["oo"], IO(), heading=3)
         assert machine.halted
         machine.step()  # must not raise
+
+
+class TestUncoveredSteering:
+    r"""``(``, ``\`` and ``{``, which no other program here reaches.
+
+    Instrumenting the suite -- recording the cell under the beam at every
+    step, over every program and all four headings -- shows fifteen of the
+    eighteen commands running and these three never.  Each has a covered
+    sibling that hides it: ``_`` is the same mirror as ``(`` but
+    unconditional, and ``}`` is the same absolute steer as ``{`` but
+    rightward, so a mutation to the uncovered half changed nothing any
+    program could see.
+
+    All three grids cage the laser in mirrors, so they halt whatever
+    heading it starts on -- which matters because the heading is otherwise
+    drawn at random.  Reaching these commands the naive way does not
+    terminate: a bare ``\`` bounces the beam between the reverse and
+    whatever sent it there, and a bare ``{`` walks off the grid to the left
+    while the tape grows to meet it, which is the unbounded-growth case the
+    cycle detector documents itself as unable to prove.
+    """
+
+    def test_conditional_horizontal_mirror(self) -> None:
+        r"""``(`` deflects a horizontal beam only when the cell is nonzero.
+
+        The ``#`` skips the cell after it, so the beam arrives at the ``(``
+        with the tape already incremented; the deflection sends it back
+        over the ``+`` a second time, and the two increments are what
+        separates a mirror that consulted the tape from one that did not.
+        """
+        assert run_and_capture([" _", "/o\\", "\\v/", " #", " }x", " +", " ("]) == "2"
+
+    def test_reverse(self) -> None:
+        r"""``\`` turns the beam around: ``d`` becomes ``(d + 2) % 4``."""
+        assert run_and_capture([" _", "/o\\", "\\v/", " \\+x"]) == "1"
+
+    def test_absolute_steer_left(self) -> None:
+        """``{`` sets the heading to left, as ``}`` sets it to right."""
+        assert run_and_capture([" /\\", "|o}\\", " \\/", " x+{"]) == "1"
