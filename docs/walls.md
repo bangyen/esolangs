@@ -126,6 +126,31 @@ total however good the gadgets; and **harvesting** — sweeping embed variants
 for a table that lands in a cell — finds all 16 at `n == 2` but 105/256 at
 `n == 3`, making it a shortcut rather than a totality argument.
 
+### Why the symmetry group does not collapse the cases
+
+The sixteen two-input tables fall into four orbits under the natural group
+(permute inputs, negate inputs, negate the output), and it is tempting to
+build one construction per orbit and transform.  Enumerating *every* program
+for each table -- rather than taking the search's first hit -- shows why that
+does not work here.
+
+Two of the four orbits are handled: the degenerate one has a closed form, and
+of the eight AND-like tables, four (`0001`, `1000`, `1110`, `0111`) print
+straight from the embed at cells 20-21.  The other four (`0010`, `0100`,
+`1101`, `1011`) admit **no** direct solution at all, and neither do the two
+XOR-like tables.
+
+Each hard table is a solvable one with an input negated, so the group
+relates them --- but that relation is not expressible.  Input negation would
+need the harness to fill `{Xi}` with the *complement* of its bit, and the
+harness fills placeholders with the bit it is given; a generator cannot ask
+for a flip.  Input *permutation* is expressible (emit the placeholders in a
+different order) and was tested: it reaches none of the six.
+
+So the orbit structure is real and mostly useless.  What survives is the
+degenerate case, which composes upward because a table with `k` essential
+inputs is a `k`-input problem at any arity, and that one is built.
+
 ### Where a construction would have to start
 
 The shipped generator is a search, and searches are what this repo replaces:
