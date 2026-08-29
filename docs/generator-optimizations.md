@@ -220,7 +220,7 @@ fill slots is not a reorder — an identical program booking a saving against
 the harness's fill order is a redefined benchmark.
 
 **Shipped:** `six_five`, `jaune`, `eval`, `circlefuck`, `unsquare`, `sbleq`,
-`brainif`, `forth`, `sophie`, `polynomial`, `addsubjump` (via
+`brainif`, `three_x`, `forth`, `sophie`, `polynomial`, `addsubjump` (via
 `best_input_order`; `six_five` and `forth` roll their own).
 
 **Not applicable — sum-of-minterms**, where the minterm count does not depend
@@ -239,8 +239,12 @@ Four rules worth carrying into the remaining candidates:
   was excluded on the latter and turned out to be one of the largest wins.
 - **The screen is neither a floor nor a ceiling.** It prices only the reorder,
   so a generator whose reads sit at its nodes gains a hoist too and beats it
-  (addsubjump screened 16.7%, delivered 31.7%); a node testing a *position*
-  rather than naming an input owes a walk and comes in under it.
+  (addsubjump screened 16.7%, delivered 31.7%; sbleq 8.3% → 24.7%); a node
+  testing a *position* rather than naming an input owes a walk and comes in
+  under it (circlefuck 10.47% → 10.42%). It is *exact* only when the reads
+  already sit in named storage and the reorder is a rename — `three_x`
+  permutes the **store target** each `?` writes to, leaving the tree
+  untouched, and delivered its screened 4.5%/5.4% to the character.
 - **Reachable orders are often far fewer than `n!`** — stack- and pointer-bound
   generators reach a structured subset (Forþ and Unsquare a product, BrainIf
   `n+1` j-splits). Enumerate the reachable set; don't search `n!`.
@@ -262,8 +266,7 @@ is a redefined benchmark rather than a smaller program. **The bar is that
 the emitted program changes and still consumes its inputs in the same
 order.**
 
-Likewise `three_x` (4.5%),
-`taglate` (3.1%), `minsky_swap` (2.8%), `bio` (1.5%), `decleq` (1.4%),
+Likewise `taglate` (3.1%), `minsky_swap` (2.8%), `bio` (1.5%), `decleq` (1.4%),
 `nocomment` (0.7%), `painfuck` (0.5%), `rotfuck` (0.4%) and `bfstack` (0.2%)
 remain unexamined candidates. Read each figure as a **lower
 bound**: any of these whose reads sit at its nodes gains the hoist as well as
