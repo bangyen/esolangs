@@ -62,20 +62,13 @@ class _If:
 
 
 @dataclass
-class _MoveRight:
-    """An ``if <char> move right`` line that also *defines* ``label``."""
-
-    char: int
-    label: int
-
-
-@dataclass
 class _MoveLeft:
     """An ``if <char> move left`` line that also *defines* ``label``.
 
-    The mirror of :class:`_MoveRight`, for a tree whose branches walk *down*
-    the tape: BrainIf reads its inputs from the far cell back toward the
-    answer, so a branch steps left onto the next input rather than right.
+    BrainIf reads its inputs from the far cell back toward the answer, so a
+    branch steps *left* onto the next input.  There is no rightward mirror:
+    the build walks out over zeroed cells before the tree runs, and every
+    branch after that walks down, so one direction is all the tree needs.
     """
 
     char: int
@@ -94,7 +87,7 @@ class _End:
     """The trailing blank line every program ends on."""
 
 
-_Entry = _Cmd | _If | _MoveRight | _MoveLeft | _Out | _End
+_Entry = _Cmd | _If | _MoveLeft | _Out | _End
 
 
 def brainif(truth_table: str) -> str:
@@ -205,9 +198,8 @@ def brainif(truth_table: str) -> str:
         if pending is not None:
             out_labels[pending] = line_no
             pending = None
-        if isinstance(entry, _MoveRight | _MoveLeft):
+        if isinstance(entry, _MoveLeft):
             labels[entry.label] = line_no
-    end_line = line_no + 1
 
     lines: list[str] = []
     for entry in entries:
@@ -218,18 +210,19 @@ def brainif(truth_table: str) -> str:
                 # cell holding 48 or 49, so it emits one goto for each
                 guard, target = text.split(" goto OUT")
                 text = f"{guard} goto {out_labels[int(target)]}"
-            elif "goto end" in text:  # pragma: no cover - nothing emits a goto end
-                text = text.replace("goto end", f"goto {end_line}")
             lines.append(text)
         elif isinstance(entry, _If):
             lines.append(f"if {entry.char} goto {labels[entry.label]}")
-        elif isinstance(entry, _MoveRight):  # pragma: no cover - the tree walks down
-            lines.append(f"if {entry.char} move right")
         elif isinstance(entry, _MoveLeft):
             lines.append(f"if {entry.char} move left")
         elif isinstance(entry, _Out):
             continue
         else:
+            # _End, the trailing blank line.  Spelled as the fallback rather
+            # than a fifth ``isinstance`` so that adding a variant to
+            # ``_Entry`` without a branch here is a type error: mypy narrows
+            # this to ``_End``, and a wider union would not narrow.
+            _: _End = entry
             lines.append("")
     return "\n".join(lines)
 

@@ -648,6 +648,17 @@ class TestWII2D:
             # four distinct live values, so the two-value exit never fires
             assert _wii2d_decode_at([0, 1, 1, 0, 1, 0, 0, 1], 4) is None
 
+        # A fold that collides two inputs needing different bits leaves a
+        # state with no live map at all; that branch is dropped, not decoded.
+        def collides(
+            _values: list[int], _bits: list[int]
+        ) -> list[tuple[int, int, str, list[int]]]:
+            return [(1, 1, "", [2, 2, 2, 2])]
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_wii2d_folds", collides)
+            assert _wii2d_decode_at([0, 1, 1, 0], 4) is None
+
         # A state that only reaches two live values as the cap expires is
         # still answered, from that last look rather than from the loop.
         bits = [0, 1, 1, 0]
@@ -772,6 +783,24 @@ class TestWII2D:
 
         with pytest.raises(ValueError, match="out of reach"):
             boolean.wii2d(table)
+
+    def test_a_branch_that_will_not_decode_refuses_the_chain(self) -> None:
+        """Both halves of the index chain have to decode, or there is no route.
+
+        The chain splits the table into the even and odd rows and decodes
+        each as its own pattern; a half that cannot be decoded leaves the
+        junction with nothing to branch on.  Every pattern tried decodes,
+        so the refusal is reached by taking the decoder away.
+        """
+        module = importlib.import_module("esolangs.tools.boolean.wii2d")
+        from esolangs.tools.boolean.wii2d import _wii2d_routes
+
+        # n == 2 has a closed form and a symmetric table has the popcount
+        # chain, neither of which consults the branch decoder -- so this
+        # takes a non-symmetric table at the smallest arity that does.
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_wii2d_decode", lambda *_a, **_k: None)
+            assert _wii2d_routes(3, "00010111") is None
 
     def test_wii2d_raises_when_the_construction_finds_no_route(self) -> None:
         """``wii2d`` surfaces a construction failure as a ``ValueError``."""
