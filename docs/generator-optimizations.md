@@ -478,6 +478,34 @@ are real emitted characters, so its reorder is priced like any other walk.
 one — which is why it delivers its screen to two decimals. Ask which case a
 candidate is in before assuming a reorder must be paid for.
 
+**Back turned out to be the outlier, not the pattern.** The obvious follow-up
+was to apply its trick to every generator that pays for its reorder, so each
+was measured against a *free-reorder ceiling*: the same fold, built with the
+identity emission on a permuted table. The headroom is what a Back-style
+reorder would take off the shipped size, and there is none worth having
+(n=3, all 256 tables):
+
+| generator | shipped | ceiling | headroom |
+|---|---|---|---|
+| `lamfunc` | 11.71% | 11.71% | **0.00%** — already free |
+| `bitdeque` | 14.90% | 15.67% | 0.90% |
+| `ram0` | 14.75% | 13.31% | **−1.69%** |
+
+`lamfunc` was already in Back's regime: each input is stored once and read
+back by name, so its reorder is a pure rename with nothing to pay. `bitdeque`
+pays rotations (`EJECT PUSH` / `POP INJECT`) but they are cheap against its
+programs, and removing them is blocked in the *harness* rather than the
+language — `_fill_bitdeque` derives each setter's `INVERT PUSH` / `PUSH
+INVERT` parity from the input's **name**, assuming input *i* sits at load
+position `n−1−i`, so permuting names between slots would desync every fill
+site. Fixing that is fill-harness surgery for 0.9%.
+
+`ram0` is the interesting one: its shipped reorder **beats** the free
+ceiling, so permuting is doing something folding alone cannot. That is the
+per-language cost `best_input_order`'s docstring predicts — RAM0 spells an
+address as a run of `A`, so a good order also wants the deep levels on low
+addresses. A "free" reorder there would be a *worse* one.
+
 `arrowqueue` (12.4%) is separate: it is
 a *queue*-fed grid template, so a real reorder needs re-enqueue gadgets to
 bring a bit to the front. Permuting which `{Xi}` name sits in each header
