@@ -131,8 +131,8 @@ jobs:
     - name: Regenerate the coverage badge
       run: |
         uv run python scripts/make_coverage_badge.py
-        if ! git diff --exit-code coverage-badge.svg; then
-          echo "coverage-badge.svg is out of date. Run:"
+        if ! git diff --exit-code docs/coverage-badge.svg; then
+          echo "docs/coverage-badge.svg is out of date. Run:"
           echo "  uv run pytest --cov --cov-report=xml"
           echo "  uv run python scripts/make_coverage_badge.py"
           exit 1
