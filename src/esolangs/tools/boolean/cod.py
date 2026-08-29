@@ -68,8 +68,8 @@ def _cod_fork_box(n: int, k: int) -> str:
     horizontal concatenation (see :func:`_cod_combine`) with no risk of one
     box's cod re-entering another box's cells from an unexpected direction
     (the failure mode that blocked a general-``n`` construction before;
-    see ``docs/cod_boolean_generator.md``, "Why the earlier n <= 3 merge
-    design didn't generalize").
+    see :func:`cod` for why the shared-cell merge it replaces could not be
+    proven safe past ``n == 3``).
     The leading ``?`` marks the box's own entry cell, replaced by the
     previous box's exit (or ``>`` for the first box) when boxes are joined.
     """
@@ -194,10 +194,29 @@ def cod(truth_table: str) -> str:
     contained grid blocks joined by plain horizontal concatenation
     (:func:`_cod_combine`) -- no block's cells are reused by another
     block's routing, which is what makes this generalize past the
-    hand-built ``n <= 3`` construction it replaces (see
-    ``docs/cod_boolean_generator.md``, "Why the earlier n <= 3 merge design
-    didn't generalize", for the re-entry failure mode that blocked a
-    general-``n`` version before):
+    hand-built ``n <= 3`` construction it replaces:
+
+    The design this supersedes built ``n == 3`` as a single fused row whose
+    forks' merge cells reused the *same physical cells* as the forward
+    gauntlets, walked backwards (a "sacrificial retrace") to unwind a
+    rejoining cod's value to 0.  It could not be proven safe past
+    ``n == 3``: a merge cell could be re-entered from more than one
+    direction across different steps -- from the west via the forward path,
+    from the south via the side path's shaft, and, once a west-bound
+    retrace from a *later* merge passed back through an *earlier* merge's
+    own cell, from the east too.  The wiki's ``+`` rule excludes a
+    different "came from" direction per entry, so a cell acting as a clean
+    2-way fork from one entry direction acts as a 3-way fork from another,
+    and cods accumulate instead of being consumed -- an exploding
+    population rather than a clean halt.  ``n == 3`` never triggers it (its
+    one two-stage retrace never passes through another merge cell), but
+    nothing guaranteed that for ``n >= 4``.  The private-cell construction
+    below sidesteps the problem rather than solving it.
+
+    A ``_``-gate decision tree was also considered and rejected: it needs a
+    seeded-randomness convention for ``_``'s junctions, where the
+    ``+``-fork-and-gauntlet idiom uses no ``_`` gate and no random
+    junctions at all.
 
     Phase 1 assembles the input combo's numeric index ``V = sum(bit_i *
     2**(n-1-i))``: bits ``0..n-2`` each get their own fork-and-gauntlet box
