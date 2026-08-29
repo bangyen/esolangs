@@ -407,38 +407,50 @@ the table, in two groups:
 
 ## Mutation-testing sweep
 
-The twelve smallest interpreters are done: nine at 100%, and the other
-three hold nothing but a mutant argued equivalent on the record (Decleq's
-`run` limit default, which every test overrides; BrainIf's `s = ""` →
-`None`, both falsey to the `while not s` that overwrites them;
-ArrowQueue's `_Machine(None)`, the same empty-grid branch as
-`_Machine([])`).  A whole sweep of the twelve now costs under a minute,
-so re-running it is the regression check for anything that touches them.
+Every language is measured.  Ten are at 100%, nine are below 85%, and a
+whole-repo sweep costs a few minutes — so re-running one is the regression
+check for anything that touches an interpreter.
 
-What is left:
+The weakest suites, by score and then by how many mutants survive:
 
-- **The other ~59 interpreters.**  Nothing gates them; it is throughput.
-  Expect the same four patterns to recur, all mechanical: `pytest.raises`
-  matched by a substring rather than the whole message; a `bool` flag read
-  only for truth, so it can start as `None`; an attribute written and
-  never read; and an assertion on a value that is constant across every
-  input (ArrowQueue's suite asserted `== ""` on a language with no
-  output).  The findings worth the run are the other kind — Minifuck's
-  input splice boundary, %^2^-1's `t` rewind, which the suite had tested
-  every character *except*.
-- **Re-check the scores recorded before the harness fixes.**  Qoibl,
-  Streetcode and Forbin have numbers in the commit history that predate
-  `_drop_unbundled_tests` learning to stop at a module-level `def`.  A
-  suite laid out with tests after its last class had them silently
-  dropped, so those scores may be understated and their survivors partly
-  phantom.
+| language | score | survivors |
+| --- | --- | --- |
+| LaserFuck | 66.7% | 82 |
+| AddSubJump | 80.2% | 23 |
+| WII2D | 80.2% | 33 |
+| Point Break | 80.4% | 94 |
+| Painfuck | 80.9% | 49 |
+| Forbin | 81.4% | 216 |
+| Basicfuck | 82.8% | 119 |
+| 3x | 83.4% | 29 |
+| Dimensional | 83.5% | 56 |
 
-Two things to keep in mind while doing it.  A survivor is not evidence of
-a gap until the harness is trusted: tests that import `esolangs.vm` are
-dropped from the bundle *correctly*, so behaviour only they cover reads as
-a survivor (Back's padding was tested all along).  And the score is a
-means — a suite at 100% notices the edits mutmut makes, which is not the
-same as describing the language.  Stop where the survivors stop teaching
+LaserFuck is the outlier on score; Forbin, Basicfuck, Streetcode (98) and
+Suptiftam (93) carry the most survivors in absolute terms.
+
+Triaging one goes faster from the test file than from the diffs.  Six
+shapes recur, and all six are mechanical:
+
+- `pytest.raises` matched by a substring rather than the whole message;
+- a comment-character test whose letters are outside the command set
+  however that set is spelled, so it cannot catch the set widening;
+- a `bool` flag only ever read for truth, which can start as `None`;
+- a boundary never approached from both sides;
+- an attribute written and never read;
+- an assertion on something constant — ArrowQueue's suite asserted
+  `== ""` on a language with no output, so it proved only termination.
+
+The findings worth the run are the other kind: Minifuck's input splice
+boundary, %^2^-1's `t` rewind (the suite tested every character *except*
+the one that rewinds), 3D Brainfuck using only three of its six
+directions, Clockwise never once using a `!`.
+
+Two cautions.  A survivor is not evidence of a gap until the harness is
+trusted — tests reaching the VM or the registry are dropped from the
+bundle *correctly*, so behaviour only they cover reads as a survivor
+(Back's padding was tested all along).  And a score is a means: a suite
+at 100% notices the edits mutmut makes, which is not the same as
+describing the language.  Stop where the survivors stop teaching
 anything.
 
 ## Boolean generators that still emit a full decision tree
