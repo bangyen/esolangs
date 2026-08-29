@@ -3,7 +3,7 @@
 Copy this file to ``src/esolangs/interpreters/<category>/<name>.py`` and fill
 in the instruction dispatch.  ``<category>`` is one of ``tape_based``,
 ``stack_based``, ``register_based``, or ``other``; ``<name>`` is the language
-name (lowercase, hyphens allowed).  See ``CONTRIBUTING.md`` for how to wire
+name (lowercase, hyphens allowed).  See ``docs/CONTRIBUTING.md`` for how to wire
 the finished interpreter into the suite.
 
 Every interpreter follows the same conventions:
