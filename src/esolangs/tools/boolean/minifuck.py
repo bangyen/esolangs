@@ -46,10 +46,14 @@ anything is unreachable.
 That makes this generator weaker than the repo's better ones, and the
 comparison is worth stating: ``bfpda`` is a closed-form decision tree at any
 arity, and ``wii2d`` *was* a capped search before it was replaced by a
-construction (a Horner index chain plus a fold decode).  The open question
-here is whether Minifuck's position-accumulation can be constructed the same
-way -- see ``docs/walls.md`` for what is known, including which piece of that
-chain does not yet compose.
+construction (a Horner index chain plus a fold decode).  Whether Minifuck's
+position-accumulation can be constructed the same way was investigated and
+is, for now, answered no: the chain's doubling stage does not compose past
+width four (48 configurations, depth 13), and even a chain that did would
+still need a decode this language does not have, since wii2d's fold inverts
+an accumulated *number* while the endgame below decodes a *bit*.
+``docs/walls.md`` records both gaps, and the one mechanism that is disproved
+outright rather than merely unfound.
 """
 
 from collections import deque
