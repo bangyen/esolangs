@@ -751,11 +751,45 @@ linear scan rather than a genuine representation limit.  See
 
 ## Assessed boolean candidates that fell through
 
-- **%^2^-1** (wall at `n >= 2`, proved in Lean): its only control flow is
+- **%^2^-1** (wall at `n >= 2`, proved in Lean — **resolved by
+  parameterizing**): its only control flow is
   `t` — rewind to the program start when the accumulator is nonzero — with
   the accumulator preserved across the rewind.  There is no forward jump and
   no way to branch over code, so a program cannot route two inputs to
   different tails.
+
+  **The wall below is real, and it is a statement about the *runtime-read*
+  model.**  It does not carry over to embedded inputs: the parameterized
+  generator (:func:`esolangs.tools.boolean.pct_squared_minus_one`) builds
+  every two-input table, XOR and XNOR included, each verified through the
+  shipped interpreter at a single instantiation length so no program leaks
+  its inputs through `len()`.  The original argument is kept because it
+  remains true of the language it describes.
+
+  What parameterizing changes is the input path, and with it the erasure the
+  proof turns on: no `n` ever runs, so nothing overwrites the accumulator
+  and the "state at the last read depends on the last bit alone" step has no
+  object to apply to.  The construction needs *no branch at all*, which is
+  what lets it fit a language whose only jump target is position 0.  Three
+  properties carry it, each checked against the interpreter rather than
+  argued from the spec: `l` prints the accumulator in **decimal**, so an
+  accumulator holding 0 or 1 prints `"0"`/`"1"` and the answer never has to
+  be routed to a print site; command strings compose as affine maps
+  (`p` negates, `'` zeroes, `m` doubles, `s`/`i` translate), so chaining one
+  per input makes the accumulator a *product-weighted* — genuinely
+  nonlinear — function of the bits; and the over-3003 reset fires before
+  every command, an implicit comparator the endgame uses to fold a parked
+  zero-class onto 0.
+
+  The nonlinearity is the load-bearing part.  A purely *additive* weighting
+  gives each row a distinct consecutive value, and every affine-plus-clamp
+  tail is then monotone in the row index, so `{00, 11}` can never be split
+  from `{01, 10}` — a 3M-vector BFS over that family reaches only the two
+  constant tables.  A later `p` negating what earlier bits contributed is
+  what breaks the monotonicity and reaches XOR.  Coverage is total at
+  `n <= 2`; at `n == 3` the solver separates only a minority of tables
+  within its budget (2 of a 24-table sample), and it *raises* rather than
+  emitting a program for a table it could not separate.
 
   **All four one-input functions are expressible**, which an earlier
   length-8 search missed: identity is `ne`, the constants go through `'`,
