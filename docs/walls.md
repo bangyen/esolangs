@@ -256,8 +256,28 @@ live guards and genuinely divergent rows, but found no non-affine table over
 2340 templates — and that sweep's coverage is thin, since a classification
 of the same space shows the overwhelming majority of candidates disqualified
 by a hang or a read before their table matters
-(`notes/t123/rejects.py`).  So the non-affine half is **open**: not walled,
-and not closed by any search run here.
+(`notes/t123/rejects.py`).
+
+**The non-affine operator is conditional re-execution, and it collides with
+termination.**  Flips are XOR, so no arrangement of them leaves the affine
+class however it is routed; the one operator in 123 that is not a flip is a
+TRUE-backward `3`, which *re-runs* its segment.  Put the `{X1}` setter
+inside that segment and its flip executes a number of times that depends on
+the guard cell — b0 = 0 runs it once (cell holds b1), b0 = 1 runs it twice
+(cell holds 0), i.e. `b1 AND NOT b0`, a genuine minterm from which the
+affine endgame reaches the whole AND/OR class.
+
+The mechanism is real and abundant: 74 of 90 layouts in one family have an
+input-dependent re-execution count, and `132{X0}1{X1}3` re-executes only on
+row `11`.  What blocks it is exit.  The loop ends only if the re-run clears
+the cell the closing `3` tests, but the segment that clears it clears it on
+*every* pass, so the guard alternates TRUE/FALSE forever — traced directly
+in `notes/t123/whyloop.py`.  Across 1560 layouts, 744 have divergent
+re-execution counts but never halt, 220 halt but never diverge, and **none
+do both** (`notes/t123/joint.py`).  Both properties are individually common,
+so that is a real negative about this family rather than an empty sweep —
+but it is one family, and no argument here rules out a cleverer exit.  The
+non-affine half stays **open**.
 
 **What is actually open.**  No *runtime* two-input table has been produced.  The exhaustive runtime sweep run here is uninformative and is
 not cited as evidence: the shortest program that can satisfy the contract at
