@@ -31,7 +31,7 @@ three.
 | 8 | **Literal batching** | print a whole string in one statement rather than per character | `text/helpers.py` `_literal_chunks` |
 | 9 | **Equal-width embedding** | *anti*-optimization: pad both bits to equal width so length can't leak inputs | `boolean/helpers.py:97` `instantiate` |
 | 10 | **Dependency reduction** | a table that ignores an input is emitted as the *smaller* table, reading and discarding the rest | `boolean/other.py` `_taglate_dependencies` |
-| 11 | **Input reordering** | the tree splits on its inputs in whichever order emits the shortest program, so more subtrees fold — the bar is that the **emitted program changes** and still **consumes its inputs in the same order**, which rules out permuting a parameterized template's fill slots | `boolean/helpers.py` `best_input_order` (`six_five` and `forth` roll their own) |
+| 11 | **Input reordering** | the tree splits on its inputs in whichever order emits the shortest program, so more subtrees fold — the bar is that the **emitted program changes** and still **consumes its inputs in the same order**, which rules out permuting a parameterized template's fill slots | `boolean/helpers.py` `best_input_order` (`six_five`, `forth` and `streetcode` roll their own) |
 
 ## Which shape a boolean generator is
 
@@ -220,8 +220,10 @@ fill slots is not a reorder — an identical program booking a saving against
 the harness's fill order is a redefined benchmark.
 
 **Shipped:** `six_five`, `jaune`, `eval`, `circlefuck`, `unsquare`, `sbleq`,
-`three_x`, `forth`, `sophie`, `polynomial`, `addsubjump` (via
-`best_input_order`; `six_five` and `forth` roll their own).
+`three_x`, `forth`, `sophie`, `polynomial`, `addsubjump`, `streetcode` (via
+`best_input_order`; `six_five`, `forth` and `streetcode` roll their own —
+streetcode because its `width` has to choose among *every* candidate, and
+`best_input_order` returns only the shortest one).
 
 **Not applicable — sum-of-minterms**, where the minterm count does not depend
 on split order: `a_painter_ant`, `circlefuck_byte`, `circuit_diagram`, `cod`,
@@ -286,12 +288,45 @@ deleting it, and why 5.2% was the whole of the return. Rule 2 would have
 closed it before the first line was written; the commit history has the
 build if the trade is ever worth revisiting.
 
-**Not yet done.** The grid generators (`dig` 19.8%, `flowchart` 17.1%,
-`streetcode` 16.8%, `laserfuck` 16.3%, `back` 12.0%, `clockwise` 1.3%,
-`wii2d` 3.4%) all screen with real upside, but their trees are placements on
-a plane rather than token sequences, so reordering them is 2D layout surgery
-rather than renaming a branch operand. The upside is measured and recorded;
-the work is not attempted here — and `arrowqueue` (12.4%) joins them: it is
+**The grid tier is not all layout surgery — streetcode was the first one
+opened.** It screened 16.8% and **delivered 16.76%** at n=3 (258872 → 215478
+characters over all 256 tables, 112 of them improved, none grown; every one
+verified against the interpreter, plus 57 tables at n=4 over 912 runs). It
+came in a shade *under* its screen — 16.8% → 16.76%, the same 0.04pp shave
+circlefuck took at 10.47% → 10.42% — which is what the rule predicts for a
+node testing a **position** rather than naming an input: the walk that puts
+each bit in its cell is the difference. Its halls test cells positionally: every
+hall spends one `=`, so level *k* tests cell *k+1* whatever is in it. That
+makes the reorder a **placement** rather than a walk. Only the shared
+shape's prefix changes, from stepping one cell per read to walking to each
+input's target: at two inputs a swap reads `==I_I` where the identity reads
+`=I=I`. The tree, the fold, the leaf's `skipped` advances and the lap are
+untouched, and the reads stay in stream order.
+
+Three things that decided the build, worth carrying to the rest of the tier:
+
+- **The cell map is the inverse of the permutation.** Level *k* tests cell
+  *k+1* and must test input `perm[k]`, so input *i* is stored at
+  `perm.index(i) + 1`. Reading it forward stores the right bits in the wrong
+  cells and every non-identity order computes a different function.
+- **Only one shape needed touching.** The shared shape wins *every* table at
+  n=1..4, so the ring and hallway survive only as `width` fallbacks and are
+  built at the identity order alone. Their labels thread the `+1` hand-off
+  between neighbouring loops, which a permuted placement would have to
+  re-derive for no measured gain — measured, not assumed.
+- **The walks are junction-free.** The prefix runs down the shaft, not along
+  the street, so no mouth is crossed while CP names an arbitrary cell — which
+  is what makes a permuted prefix as safe as the identity one under the
+  gap-junction law. The fixed seeding suffix is relative to cell *n*, so the
+  prefix walks CP back there after the last read rather than assuming it
+  landed there.
+
+**Not yet done.** The remaining grid generators (`dig` 19.8%, `flowchart`
+17.1%, `laserfuck` 16.3%, `back` 12.0%, `clockwise` 1.3%, `wii2d` 3.4%) all
+screen with real upside. Whether each is a placement like streetcode or
+genuine 2D layout surgery is the question to ask first, and it is answered by
+whether its nodes test a *position* — if they do, moving the data is enough.
+The upside is measured and recorded — and `arrowqueue` (12.4%) is separate: it is
 a *queue*-fed grid template, so a real reorder needs re-enqueue gadgets to
 bring a bit to the front. Permuting which `{Xi}` name sits in each header
 slot is not an alternative: `_header_rows` fills the header positionally
