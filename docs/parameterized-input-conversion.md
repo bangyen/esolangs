@@ -129,7 +129,16 @@ Worked example, `[<..[<[<[<...` (length 13):
 | `11` | `11 01 31` | `'1'` |
 
 The final byte is clean ASCII and is exactly **XNOR** of the two input bits.
-So Minifuck computes a real two-input boolean function from actual stdin.
+
+> **This program is contract-invalid**, and the XNOR claim above needs that
+> caveat: it emits three bytes including `\x10`/`\x11` junk, and the XNOR only
+> appears if you post-select the last one. The boolean contract wants the
+> program's whole output to be `"0"` or `"1"` exactly. Every `.` firing on a
+> nonzero pool prints, so a valid program may use only `[` and `<` between its
+> reads and a single final print. This does **not** contradict walls.md's
+> Minifuck entry (XNOR unreachable in the read model): that wall is about
+> clean-output programs, and its parity constraint lives "at the print stage".
+> The working construction below is what actually clears the contract.
 
 The banking question is **resolved, and the answer is that no banking is
 needed**: across all 27 uniform two-read programs of the `[<..` shape, nothing
@@ -139,9 +148,40 @@ committed to the *output stream* by then, which read 2 cannot touch. The
 earlier worry that bit 1 "must be banked in cells >= 8" assumed the answer had
 to survive on the tape; it survives in the output instead.
 
-Remaining work for a real generator is scale, not feasibility: these are
-n=2 results, and whether the read schedule stays uniform and
-output-separating for n>=3 is unmeasured.
+### A working reading generator (n=1 shipped, n=2 in progress)
+
+The contract-valid construction is a **prologue swap**, not a rewrite. Three
+verified pieces, composed once per input:
+
+| piece | code | what it does |
+|---|---|---|
+| READ | `[<.` | reads one bit, no junk output |
+| GADGET | `[[[<[[[[[[[[[[[<<<[<[[[<` | re-zeroes the pool, banks the bit at cells 8/10 |
+| SPLIT | `<[<` | turns the banked bit into a ±1 **pointer** offset |
+
+GADGET came from a joint lockstep BFS over state *pairs* (both bits run the
+same instruction stream — `[`'s skip diverges state, never the stream), so it
+cannot produce the unrunnable paths a single-state BFS did. It leaves the pool
+all-zero with the pointer identical for both bits, and the next `.`'s pre-flip
+lands on cell 9, which is not the bank — so read 2 does not clobber read 1.
+
+SPLIT is the bridge to the existing machinery: it reproduces `_set_bit`'s ±1
+position encoding, so a bit read from stdin lands in the same representation
+the embed/tree/endgame already consume. That means the whole downstream
+pipeline (`_clamp`, `_try_print`, `_find_column`, `_find_parked`) works
+**unchanged** — the only swap is a `_Joint` whose rows are advanced by the
+reading prologue instead of by `_embed(n)`.
+
+**Verified at n=1: all four tables** (`01`, `10`, `00`, `11`) build and run
+correctly on the shipped interpreter — clean `"0"`/`"1"` output, exactly one
+read each. The constant tables still consume their input (running const-1 with
+empty stdin raises `EOFError`), which is what the contract's uniform-read rule
+demands. That `10` (NOT) and `11` (const-1) build agrees with walls.md, which
+records the single-input case as *not* 0-preserving-bound.
+
+The n=2 sweep is the open question, and it is the one that matters: walls.md
+puts the read model at the 8 zero-preserving two-input tables, so anything
+above 8/16 here would move that wall.
 
 > Caution: an earlier sweep here concluded "no program reads twice, exhaustive
 > to length 13". That was a **harness artifact** — `input_char` reads a whole
