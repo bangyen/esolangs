@@ -660,7 +660,8 @@ theorem lockstep_two (code : List Cmd) :
       run code fuel ⟨i, a, [y]⟩ = some ry →
       rx.1.inp = [] →
       ∃ (q : ℕ) (pre : List ℤ) (f' : ℕ) (tx ty : State × List ℤ),
-        code[q]? = some Cmd.read ∧
+        (if 2 ≤ countN code 0 then firstReadFrom code i = some q
+                              else firstReadFrom code 0 = some q) ∧
         run code f' ⟨q + 1, x, []⟩ = some tx ∧
         run code f' ⟨q + 1, y, []⟩ = some ty ∧
         rx.2 = pre ++ tx.2 ∧ ry.2 = pre ++ ty.2 := by
@@ -701,33 +702,53 @@ theorem lockstep_two (code : List Cmd) :
           case read =>
             simp only [stepCmd] at hstepx hstepy
             cases hstepx; cases hstepy
-            exact ⟨i, [], k, px, py, hc, hpx, hpy,
+            refine ⟨i, [], k, px, py, ?_, hpx, hpy,
               by simpa using hxeq, by simpa using hyeq⟩
+            split
+            · exact firstReadFrom_self code i hc
+            · next hlt =>
+              have hpos : 1 ≤ countN code 0 := by
+                have h1 : countN code i = 1 + countN code (i + 1) := by
+                  rw [countN_succ code i Cmd.read hc]; simp
+                have := countN_antitone code (Nat.zero_le i)
+                omega
+              exact unique_read_pos code i (by omega) hc
           -- every other command behaves identically on both runs
           case sub2 | sub3 | dbl | neg | zero | printNum | printChr =>
             simp only [stepCmd] at hstepx hstepy
             cases hstepx; cases hstepy
             obtain ⟨q, pre, f', tx, ty, hq, htx, hty, hox, hoy⟩ :=
               ih _ _ x y px py hpx hpy hnil'
-            exact ⟨q, _ ++ pre, f', tx, ty, hq, htx, hty,
+            refine ⟨q, _ ++ pre, f', tx, ty, ?_, htx, hty,
               by rw [hxeq, hox, List.append_assoc],
               by rw [hyeq, hoy, List.append_assoc]⟩
+            split at hq
+            · next hge =>
+              exact if_pos hge ▸ firstReadFrom_step code i q _ hc (by simp) hq
+            · next hlt => rw [if_neg hlt]; exact hq
           case rewind =>
             by_cases hz : (if a > 3003 then (0 : ℤ) else a) ≠ 0
             · rw [stepCmd, if_pos hz] at hstepx hstepy
               cases hstepx; cases hstepy
-              obtain ⟨q, pre, f', tx, ty, hq, htx, hty, hox, hoy⟩ :=
-              ih _ _ x y px py hpx hpy hnil'
-              exact ⟨q, _ ++ pre, f', tx, ty, hq, htx, hty,
-                by rw [hxeq, hox, List.append_assoc],
-                by rw [hyeq, hoy, List.append_assoc]⟩
+              by_cases h2 : 2 ≤ countN code 0
+              · exact absurd hpx (fun hcon => rewind_not_taken code k _ x h2 px hcon)
+              · obtain ⟨q, pre, f', tx, ty, hq, htx, hty, hox, hoy⟩ :=
+                  ih _ _ x y px py hpx hpy hnil'
+                rw [if_neg h2] at hq
+                exact ⟨q, _ ++ pre, f', tx, ty, by rw [if_neg h2]; exact hq, htx, hty,
+                  by rw [hxeq, hox, List.append_assoc],
+                  by rw [hyeq, hoy, List.append_assoc]⟩
             · rw [stepCmd, if_neg hz] at hstepx hstepy
               cases hstepx; cases hstepy
               obtain ⟨q, pre, f', tx, ty, hq, htx, hty, hox, hoy⟩ :=
               ih _ _ x y px py hpx hpy hnil'
-              exact ⟨q, _ ++ pre, f', tx, ty, hq, htx, hty,
+              refine ⟨q, _ ++ pre, f', tx, ty, ?_, htx, hty,
                 by rw [hxeq, hox, List.append_assoc],
                 by rw [hyeq, hoy, List.append_assoc]⟩
+              split at hq
+              · next hge =>
+                exact if_pos hge ▸ firstReadFrom_step code i q _ hc (by simp) hq
+              · next hlt => rw [if_neg hlt]; exact hq
 
 /-- The two-byte analogue of `lockstep_two`: from a common cursor and
 accumulator, two runs whose *second* bytes may differ agree up to the first
@@ -907,5 +928,11 @@ theorem computes_splits (code : List Cmd) (f : ℤ → ℤ → ℤ) (hf : Comput
   refine ⟨pre ++ pre2, ux.2, uy.2, ?_, ?_⟩
   · rw [hox] at hpx; rw [hpx, hqx, List.append_assoc]
   · rw [hoy] at hpy; rw [hpy, hqy, List.append_assoc]
+
+/-- XOR on the input bytes `'0'` / `'1'`. -/
+def xorFn (b c : ℤ) : ℤ := if b = c then 48 else 49
+
+/-- AND on the input bytes. -/
+def andFn (b c : ℤ) : ℤ := if b = 49 ∧ c = 49 then 49 else 48
 
 end PctBooleanWall
