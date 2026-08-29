@@ -223,15 +223,41 @@ and XNOR, all eight verified against the shipped interpreter in
 `notes/t123/affine_all.py`, each input embedded exactly once and every
 instantiation the same length.
 
-**The other eight need `3`.**  Flipping is XOR, so a straight-line `1`/`2`
-program is affine by construction and AND/OR/NAND/NOR and their relatives
-are out of reach — confirmed by a lockstep search over 567 paired-setter
-embeds, which finds the affine tables and nothing else.  `3` is the way out
-(it is what makes the length-7 selector above input-dependent), but its jump
-target depends on the position of every other `3`, so it cannot be appended
-one character at a time against a running simulation the way the affine
-suffix is; a `3`-bearing search needs whole-template re-simulation.  That is
-unbuilt, so the non-affine half is **open**, not walled.
+**The other eight need `3`, and remain open.**  Flipping is XOR, so a
+straight-line `1`/`2` program is affine by construction and AND/OR/NAND/NOR
+and their relatives are out of reach — confirmed by a lockstep search over
+567 paired-setter embeds, which finds the affine tables and nothing else.
+`3` is the way out, since it is what makes the length-7 selector above
+input-dependent.  Whole-template evaluation for `3`-bearing candidates is
+built (`notes/t123/tmpl.py`); what follows are two facts worth keeping,
+neither of which closes the question.
+
+**A `3` never falls into the segment after it.**  At `pos >= 0` a `3` either
+jumps back past the previous `3` or forward past the next one, so the body
+between a `3`-pair is entered only when the opening `3` is a NOP — which
+requires `pos < 0` — or by the second `3`'s backward jump.  Guards placed in
+the walk home therefore sit at `pos >= 0` and are **dead code**: instrumented
+runs show their bodies executing zero times across all four rows, while the
+working selector's body executes 4–8 times because it reaches its first `3`
+at `pos == -2` (`notes/t123/guardentry.py`).  Four separate guard sweeps
+here returned nothing for exactly this reason, and none of them is evidence
+about the language.
+
+**Reconvergent guards stay affine.**  If a guard's TRUE and FALSE paths
+rejoin at the same cursor *and* the same pointer, its whole contribution is
+`t · (difference in flips)` for the tested cell `t`; `t` is affine in the
+inputs, so the tape stays affine and no arrangement of such guards can build
+AND.  Escaping that needs the two paths to exit at *different pointer
+positions*, so later code reads a cell selected by the first bit — the
+pointer carrying the indicator that tape XOR cannot.  A two-channel design
+along those lines (`{X0}` with the ±1 setter so position encodes b0, `{X1}`
+with the neutral pair so tape encodes b1, guard entered from below zero) has
+live guards and genuinely divergent rows, but found no non-affine table over
+2340 templates — and that sweep's coverage is thin, since a classification
+of the same space shows the overwhelming majority of candidates disqualified
+by a hang or a read before their table matters
+(`notes/t123/rejects.py`).  So the non-affine half is **open**: not walled,
+and not closed by any search run here.
 
 **What is actually open.**  No *runtime* two-input table has been produced.  The exhaustive runtime sweep run here is uninformative and is
 not cited as evidence: the shortest program that can satisfy the contract at
