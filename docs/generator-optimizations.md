@@ -224,10 +224,10 @@ ships it, and it is what puts `back` in scope (see the grid tier below).
 
 **Shipped:** `six_five`, `jaune`, `eval`, `circlefuck`, `unsquare`, `sbleq`,
 `three_x`, `forth`, `sophie`, `polynomial`, `addsubjump`, `streetcode`,
-`laserfuck` (via `best_input_order`; `six_five`, `forth`, `streetcode` and
-`laserfuck` roll their own — the two grid ones because their `width` has to
-choose among *every* candidate, and `best_input_order` returns only the
-shortest).
+`laserfuck`, `back` (via `best_input_order`; `six_five`, `forth`,
+`streetcode` and `laserfuck` roll their own — the two grid ones because their
+`width` has to choose among *every* candidate, and `best_input_order` returns
+only the shortest. `back` has no width, so it uses the wrapper).
 
 **Not applicable — sum-of-minterms**, where the minterm count does not depend
 on split order: `a_painter_ant`, `circlefuck_byte`, `circuit_diagram`, `cod`,
@@ -247,7 +247,14 @@ Four rules worth carrying into the remaining candidates:
   so a generator whose reads sit at its nodes gains a hoist too and beats it
   (addsubjump screened 16.7%, delivered 31.7%; sbleq 8.3% → 24.7%); a node
   testing a *position* rather than naming an input owes a walk and comes in
-  under it (circlefuck 10.47% → 10.42%). It is *exact* only when the reads
+  under it (circlefuck 10.47% → 10.42%, streetcode 16.8% → 16.76%, laserfuck
+  16.3% → 16.08%). **How far under is set by what a pointer move costs in
+  that language**, and it is not always a rounding error: Back spends a whole
+  *row* per move and came in at 9.15% against a 12.0% screen. Rebuilding its
+  permuted tables with an identity load isolates the two — the fold win alone
+  measures 11.99%, the screen to two decimals — so treat the screen as the
+  gross figure and subtract the walk yourself where moves are expensive. It
+  is *exact* only when the reads
   already sit in named storage and the reorder is a rename — `three_x`
   permutes the **store target** each `?` writes to, leaving the tree
   untouched, and delivered its screened 4.5%/5.4% to the character.
@@ -348,18 +355,34 @@ on a `>`). Deriving the identity spelling first and checking it reproduces
 what the generator already emitted catches an off-by-one before any table is
 run.
 
-**Not yet done.** The remaining grid generators split by *where the node
-reads*, which is the same question the token-sequence tier answers, not by
-being 2D:
+**Back is the third, and it is where the screen's blind spot finally
+bites.** It screened 12.0% and **delivered 9.15%** at n=3 (23119 → 21003
+characters, 112 of 256 tables improved, none grown; 2048 fill-and-run
+verifications, equal-width embedding checked on every one). Node `+\>` tests
+the current cell and *then* advances, so level *k* tests cell **k** — one
+lower than streetcode's halls and LaserFuck's `>#v)`, both of which step
+first. The load's `>` between units becomes a walk; the `-`/`{Xi}` pairs are
+never separated.
 
-- **`back` (12.0%) — a placement, and the next one to build.** Tape with
-  `<`/`>`, node `+\>`, load is `-`, `{Xi}`, `>` per input: generalizing that
-  `>` into a walk is streetcode's edit. Being a parameterized template does
-  *not* block it — see the note below on what the fill-slot bar actually
-  rules out. Mind two things: its inputs sit at cells `0..n-1` with the
-  answer at `n`, so level *k* tests cell **k**, off by one from the other
-  two; and the equal-width embed (constant `-` primer, then `{Xi}`) must
-  survive, so reorder whole units and never split one.
+The 2.85-point shortfall was measured rather than guessed, and it is worth
+recording because it is the first case where the circlefuck effect is
+*material* rather than a rounding error. Rebuilding every permuted table with
+an identity load — the fold win with the walks made free — gives **11.99%**,
+which is the screen figure to two decimal places. So the screen is exactly
+right about what reordering buys and silent about what it costs, and in Back
+the cost is large because **a pointer move is a whole load row**, not a
+character. Where a generator spends rows per move rather than characters,
+discount the screen before deciding.
+
+Back is also the case that settles the fill-slot question: it is a
+parameterized template and it reorders anyway, because what moves is the
+`>`/`<` runs *between* the `{Xi}` units, not which name sits in which slot.
+Keeping each `-`/`{Xi}` pair intact is what preserves the equal-width
+embedding (9) — split one and the template's height would leak the bit.
+
+**Not yet done.** What is left splits by *where the node reads*, which is the
+same question the token-sequence tier answers, not by being 2D:
+
 - **`dig` (19.8%) and `flowchart` (17.1%) read at the node**, so both need a
   hoist and rule 2's 10% estimate before either is worth writing. `dig`'s
   `_DIG_BRANCH` is `>2$~;#@` — read, store and turn in one fixed block, with
