@@ -383,17 +383,44 @@ embedding (9) — split one and the template's height would leak the bit.
 **Not yet done.** What is left splits by *where the node reads*, which is the
 same question the token-sequence tier answers, not by being 2D:
 
-- **`dig` (19.8%) and `flowchart` (17.1%) read at the node**, so both need a
-  hoist and rule 2's 10% estimate before either is worth writing. `dig`'s
-  `_DIG_BRANCH` is `>2$~;#@` — read, store and turn in one fixed block, with
-  the `;` store feeding only its own adjacent `#`. `flowchart` is the more
-  interesting miss: the *language* has the richest tape of the group (a deque
-  per cell, `< ]`/`[ >`, push and pop at both ends) and the generator never
-  touches it, feeding every `< >` switch from its own `/ /` directly above.
-  Read the generator, not the language, before classifying — and note this is
-  the same mistake that once excluded `bitdeque` for the opposite reason.
 - **`clockwise` (1.3%, a lone accumulator) and `wii2d` (3.4%)** have nothing
   to place into and sit below the threshold anyway.
+
+**`dig` (19.8%) and `flowchart` (17.1%) both read at the node, and both
+close.** Each was costed against rule 2 before any code was written, and
+neither clears the 10% bar — the screen figures are the largest left in the
+tier and are still not worth reaching.
+
+**`dig` closes on the language, not the arithmetic.** `_DIG_BRANCH` is
+`>2$~;#@`: read, store and turn in one fixed block. The store looks like
+somewhere to park a bit, and it is not — `_value()` reads only the cells
+*adjacent to the mole*, taking the first digit in a fixed direction order,
+and the mole has a single accumulator. So a hoisted bit is readable only
+while the mole stands beside it, and a tree has many nodes testing the same
+input from different squares. That leaves re-embedding per node (the
+`wii2d_tree` wall) or walking the mole back past each stored digit
+(relocation, which is what made `brainif` deliver only its screen). Neither
+is a hoist that deletes work.
+
+**`flowchart` closes on a count, and it is negative before the hard part is
+counted.** The setup is the promising one: today every skipped level still
+pays a `/ /` box on a folded leaf's rail, because the reads are the
+interface, so a hoist that reads all `n` inputs once in staging should
+delete those — the pattern that made `addsubjump` beat its screen. Counted
+over all 256 tables at n=3, it does not: 1724 `/ /` boxes against 1214
+`< >` switches, so folding saves only ~2 rail boxes per table. Removing
+every read box recovers 6896 characters; staging `n` inputs costs 6144
+(`/ /` plus `\[ ]/` per input) and popping instead of reading at each node
+costs 2428 more. That is **−1676 characters, −1.43%, before a single
+`< ]`/`[ >` deque select is counted** — and the selects are the dominant
+term left, since each node must walk the cursor to its own input at three
+characters a step.
+
+The deques are real and the pops would work (only one root-to-leaf path
+runs per execution, so each input is popped at most once). The construction
+is simply not cheaper than the reads it replaces. Worth keeping as the case
+where the *language* has the richest storage in the tier and the hoist still
+loses — read the generator to classify, then count before building.
 
 **What the fill-slot bar rules out, precisely.** "Permuting a parameterized
 template's fill slots is not a reorder" excludes *relabelling* — swapping
@@ -433,7 +460,19 @@ re-screening them would only reproduce the numbers below.
 | `rotfuck` | 0.4% | minterm-shaped |
 | `bfstack` | 0.2% | minterm-shaped |
 
-What is left is the grid tier above, where the upside actually is.
+**The queue is now closed in both tiers.** The grid tier's three placements
+(`streetcode`, `laserfuck`, `back`) are shipped, and its two read-at-node
+candidates (`dig`, `flowchart`) were costed and closed above. Nothing with a
+measured screen is left unbuilt and unexplained.
+
+The tier's lesson is that "2D" was never the dividing line. What decides the
+cost is **where the node reads** — the same question the sequential tier
+answers — and the grid generators split on it exactly as the token-sequence
+ones do. Three of them hoist their reads into a tape and test a *position*,
+which makes reordering a placement: change which cell each input lands in and
+every node tests something different, with the tree, the fold and the leaves
+untouched. Two read at the node and would need a restructuring hoist, which
+neither earns.
 
 `factor` and `three_d_brainfuck` reuse brainfuck's output and inherit the
 saving unchanged; a shorter program also shrinks factor's set of tables
