@@ -186,8 +186,9 @@ subtrees, since that collects the easiest case and leaves the general one.
 The signature is a table depending on a single input costing the same as
 parity — a full tree either way — while the constant is tiny. Screening all
 59 generators on `00000000` / `11110000` / `01101001` flags twelve, but eight
-of those fold under a *different* split order (Modulous, Forth, Circlefuck
-and Unsquare branch last-input-first, so `10101010` is their folding case,
+of those fold under a *different* split order (Modulous, Forth and Unsquare
+branch last-input-first, so `10101010` is their folding case, and Circlefuck
+did until it started choosing its order,
 not `11110000`), and the comparison has to allow for that: measured against
 the best of all six one-dependency tables, they save 56–77%.
 
@@ -250,8 +251,13 @@ a leaf test plus whatever index bookkeeping the language needs.
 - `circlefuck` — Reads are unconditional and up front,
   and each leaf halts with `@`, so there was no sibling bookkeeping for a fold
   to disturb. `circlefuck` is a thin wrapper over `circlefuck_byte`, so the one
-  fold serves both. Measured at n=3: `11111111` 594→203, `10101010` 594→263,
-  `11001100` 594→384 characters.
+  fold serves both. Measured at n=3 before reordering: `11111111` 594→203,
+  `10101010` 594→263, `11001100` 594→384 characters. Reordering then took
+  every one-dependency table down to the same shape: measured now,
+  `11111111` 203, `10101010` 261, `11110000` 263 and `11001100` 262, against
+  594 for a table like `10010110` that no order folds. The spread across the
+  three one-dependency tables is the walk — 261 for the table already under
+  the pointer, 2 more for the one that must reach cell 0.
 
   Two things were only visible from the code. Its subtrees are **strides**, not
   contiguous runs — it branches on the last input first, like Modulous — so the
@@ -284,7 +290,8 @@ a leaf test plus whatever index bookkeeping the language needs.
 - `decleq` — Same self-modifying-memory family as
   `sbleq`. Unlike the other two it splits **most-significant-first**, so its
   subtrees are contiguous runs and `11110000` folds here (to a single branch)
-  where it folds nothing in circlefuck or forth.
+  where it folds nothing in forth, and did not in circlefuck until that
+  generator started choosing its split order.
 
   The twist is that `data_base` is computed *before* emitting — the output
   cells sit above the code, so their addresses depend on how long the tree
@@ -708,6 +715,7 @@ what it emitted before — this can only shrink a program, never churn one.
 | `between` | 11.4% | 12.1% | 112/256 |
 | `brainfuck` | 8.6% | 7.8% | 114/256 |
 | `dimensional` | 7.6% | 5.9% | 114/256 |
+| `circlefuck` | 10.4% | **12.8%** | 112/256 |
 
 `factor` and `three_d_brainfuck` inherit brainfuck's output unchanged.
 
@@ -733,7 +741,6 @@ not a verdict:
 | `polynomial` | 25.1% | **no addressable storage at all** — one register, no tape or variables, so a bit that is read can only be branched on before the next read overwrites it. The 25.1% is unreachable as a reorder; [residual merging](#polynomial--merging-beats-reordering-and-the-gate-is-instructions) collects it instead |
 | `modulous` | 16.4% | stack reaches top two only; variables store and print but never load back |
 | `sophie` | 16.4% | `;`/`:` **assign** to the accumulator, `#` loads only a literal, and nothing else writes it, so a bit can only be branched on before the next read. Verified against the interpreter; the 16.4% is unreachable as a reorder, and [residual merging](#sophie--the-merge-transfers-and-the-saving-grows-with-n) collects what it was measuring |
-| `unsquare` | 15.7% | reads up front but pops LIFO; `S` swaps the top two and there is one accumulator, so no rotation to depth |
 
 **Two of these were wrong, and both are now done.** `six_five` and `jaune`
 were excluded for "reading at the node" — but that describes what their
@@ -760,10 +767,10 @@ pointer:
   way.
 
 Reordering them meant restructuring each generator to hoist its reads, which
-is more than renaming a branch operand. **"Reads at the node" has now been
-read off the generator instead of the interpreter four times** — `bitdeque`,
-`six_five`, `jaune`, `addsubjump` — and every one turned out reorderable,
-three of them among the largest wins in the table. Treat that phrase in any
+is more than renaming a branch operand. **An exclusion phrased as a property of the
+language has now been read off the generator instead of the interpreter five
+times** — `bitdeque`, `six_five`, `jaune`, `addsubjump`, `unsquare` — and every
+one turned out reorderable, three of them among the largest wins in the table. Treat that phrase in any
 remaining exclusion as unverified until the interpreter says so: a
 generator's current emission is evidence about the generator, never about
 the language.
@@ -836,10 +843,10 @@ is a redefined benchmark rather than a smaller program. **The bar is that
 the emitted program changes and still consumes its inputs in the same
 order.**
 
-Likewise `circlefuck` (10.5%), `sbleq` (8.3%), `brainif` (4.9%),
-`three_x` (4.5%), `taglate` (3.1%), `minsky_swap` (2.8%), `bio` (1.5%),
-`decleq` (1.4%), `nocomment` (0.7%), `painfuck` (0.5%), `rotfuck` (0.4%) and
-`bfstack` (0.2%) remain unexamined candidates. Read each figure as a **lower
+Likewise `sbleq` (8.3%), `brainif` (4.9%), `three_x` (4.5%),
+`taglate` (3.1%), `minsky_swap` (2.8%), `bio` (1.5%), `decleq` (1.4%),
+`nocomment` (0.7%), `painfuck` (0.5%), `rotfuck` (0.4%) and `bfstack` (0.2%)
+remain unexamined candidates. Read each figure as a **lower
 bound**: any of these whose reads sit at its nodes gains the hoist as well as
 the reorder, and the screen prices only the reorder.
 
@@ -899,6 +906,67 @@ so the no-ops candidate is not the identity permutation.
 
 Delivered 9.3% at n=3 (114 of 256), 9.9% at n=4, 11.8% at n=5, against a
 screened 11.8% — the rotation-cost case, same direction as Forþ.
+
+### Circlefuck — the node does not name its input, so the order is a walk
+
+Every other generator in the reorder table has a node that *names* the input
+it tests, which is why reordering them is a renaming and the screen prices it
+correctly. A Circlefuck node names nothing: it tests whatever cell the pointer
+is over. The inputs sit in cells `0..n-1` in stream order, so an order is a
+route, and level `k` pays `|previous cell - perm[k]|` move characters to reach
+the cell it wants.
+
+That makes the screen figure an **upper** bound here, the opposite of the
+hoist case. Circlefuck's reads were already hoisted above the tree, so there
+was no hoist saving to collect on top; what the screen missed was a cost. The
+delivered figure came in at 10.42% against a screened 10.47%, which is close
+only because of where the walk lands: **the moves are emitted inside each arm
+rather than once before the branch**, so an arm that folds to a leaf pays no
+moves at all. A future change that hoists the walk out of the arms to
+"share" it would make every fold pay for a route it does not take.
+
+The identity order is the one the walk is free for — it steps left one cell
+per level, which is exactly the single `<` the unordered build emitted — so
+every other order has to fold enough to buy its moves. `test_constant_subtrees_fold`
+pins the residue: `11110000` and `10101010` are the same function up to
+renaming, both now fold to one branch, and the first costs exactly 2
+characters more because it walks to cell 0 while the second is already
+aligned. Pinned as that constant rather than as equality, so a walk that
+stopped being emitted reads as a failure instead of an improvement.
+
+### Unsquare — the accumulator is the second place to hold a bit
+
+Unsquare was excluded on the reading that it "reads up front but pops LIFO;
+`S` swaps the top two and there is one accumulator, so no rotation to depth."
+The op set says otherwise, and this is the fifth time an exclusion phrased as
+a property of the language turned out to be a property of the generator.
+
+`A` pops the stack into the accumulator, `P` pushes the accumulator, and `S`
+swaps the top two. Taken singly none of them reaches depth; taken together
+they are a rotation, because **the accumulator is the second place to hold a
+bit** the exclusion says does not exist. `A S A S` walks a value down past two
+neighbours and `P` puts it back.
+
+Two facts bound what that buys, and both come from the read block `iA>-<P`:
+
+- A bit stashed in the accumulator **does not survive a read block** — the
+  block's own `A` overwrites it. So a shuffle window cannot carry a live
+  accumulator across a read.
+- After each read block the accumulator **still holds a copy of the bit just
+  read**, because `P` pushes a copy rather than moving it. Every window there-
+  fore opens with one free live register.
+
+Interleaving the shuffles with the reads is what makes the difference, exactly
+as it did for Forþ: post-hoc shuffling reaches 6 of 24 arrangements at n=4,
+interleaved reaches 12. Pricing each reachable arrangement by its shortest
+`A`/`P`/`S` sequence and charging the tree for it gives **15.36% at n=3 (112
+of 256 tables) and 16.93% at n=4** — a *net* figure with every shuffle
+character paid for, not a screen. Verified by replaying each arrangement's op
+sequence on the interpreter: 224 runs, no mismatches, so every arrangement the
+search claims is reachable really is.
+
+The build is not done here. What is settled is that the exclusion's stated
+reason is false and the upside survives being priced.
 
 ### Forþ — the natural order is the reversal, and rotations go between the reads
 
@@ -1121,8 +1189,10 @@ making the program's *height* reveal the input.
   the wrong reason, so a strictly shorter program on the folding table means
   the generator folds. **Compare against every one-dependency table, not
   just `11110000`:** a generator that branches last-input-first (modulous,
-  unsquare, circlefuck, forth) folds `10101010` instead, and testing only
-  the MSB-aligned table reports those four as non-folding when they save
-  56–77%.
+  unsquare, forth) folds `10101010` instead, and testing only the
+  MSB-aligned table reports those as non-folding when they save 56–77%. A
+  generator that picks its own split order — circlefuck since it started
+  reordering — folds every one-dependency table, so it is the reorder rather
+  than the fold that the MSB-aligned table now measures there.
 - Everything else: generator docstrings and bodies under
   `src/esolangs/tools/{text,boolean}/`
