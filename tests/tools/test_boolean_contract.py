@@ -27,6 +27,23 @@ from esolangs.vm import run_until_halt_or_cycle
 _TABLES = ["00000000", "01101001"]
 
 
+# Generators that search rather than emit, and so cost seconds per table
+# instead of milliseconds.  The rule is a one-second budget per entry in this
+# sweep: over that, the case carries ``slow`` and sits out the fast run.
+# Measured at the time of writing (``pytest --durations``, one worker):
+# minifuck 35.9s, slow_acv_mammalian 5.0s, ztoalc_l_boolean 2.8s, and the
+# next entry down is polynomial at 0.5s, with the median around 0.03s.
+#
+# Naming the languages rather than timing them at collection time is
+# deliberate: a wall-clock threshold evaluated during collection would make
+# the selected test set depend on how loaded the machine is, so a run could
+# silently cover less than the last one.  Re-measure and edit this set when
+# a generator's cost changes.
+_SEARCHING_GENERATORS = frozenset(
+    {"minifuck", "slow_acv_mammalian_boolean", "ztoalc_l_boolean"}
+)
+
+
 def _input_reading_generators() -> list[object]:
     """Every boolean generator whose language actually reads input.
 
@@ -51,10 +68,7 @@ def _input_reading_generators() -> list[object]:
             ).run
         except Exception:  # pragma: no cover - interpreter lives outside the pkg
             continue
-        if name == "minifuck":
-            # ~36s of the sweep's runtime sits in this one language: its
-            # generator simulates every row as it emits.  The other entries
-            # are milliseconds each, so only this one is marked.
+        if name in _SEARCHING_GENERATORS:
             found.append(pytest.param(name, (fn, lang, run), marks=pytest.mark.slow))
         else:
             found.append((name, (fn, lang, run)))
