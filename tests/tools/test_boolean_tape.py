@@ -30,6 +30,7 @@ from tests.tools.boolean_runners import (
     run_sbleq,
     run_six_five,
     run_six_five_from,
+    run_slow_acv_mammalian,
     run_streetcode,
     run_suffolk,
     run_three_d_brainfuck,
@@ -867,6 +868,70 @@ class TestFactor:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.factor("02")
+
+
+class TestSlowAcvMammalian:
+    """The decision tree LEAPFROG makes possible.
+
+    ``ACCEPT`` appends the bit to array 0 whatever the pointer holds, and
+    ``LEAPFROG`` jumps exactly when the array's last element is nonzero, so
+    the bit just read is the branch condition and nothing has to be routed.
+    """
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.slow_acv_mammalian_boolean(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_slow_acv_mammalian(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_constant_tables_still_read_every_input(self) -> None:
+        """A constant table consumes all ``n`` inputs.
+
+        The tree is uniform depth, so there is no folding to skip a read --
+        the reads are the language's interface, and leaving a caller's bits
+        on the input stream would break whatever runs next.  What counts is
+        the reads a *run* makes, not the ``ACCEPT`` tokens in the source:
+        preorder emits one per internal node, so a depth-``n`` tree carries
+        ``2**n - 1`` of them and executes ``n``.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        for table in ("0000", "1111", "0110"):
+            program = boolean.slow_acv_mammalian_boolean(table)
+            assert program.split().count("ACCEPT") == 3  # 2**2 - 1 nodes
+            io_obj = ScriptedIO("0\n" * 8)
+            run_until_halt_or_cycle(_Machine(program, io_obj))
+            assert io_obj.position() == 2
+
+    def test_pointer_never_leaves_array_zero(self) -> None:
+        """No ``SPRINT``: the tree lives in code space, not in array space.
+
+        The wall this generator resolves argued that a bit could not be both
+        read and routed, since ``ACCEPT`` needs ``ptr == 0`` to consume one
+        while routing needs ``SPRINT`` to move away.  The construction never
+        routes at all, and this pins that.
+        """
+        program = boolean.slow_acv_mammalian_boolean("01101001")
+        assert "SPRINT" not in program
+        assert "CONFLAGRATE" not in program
 
 
 class TestSuffolk:

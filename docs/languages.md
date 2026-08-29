@@ -60,7 +60,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | RAM0 |  | yes | yes | yes | yes |
 | ROTfuck | yes | yes |  | yes |  |
 | S*bleq | yes | yes |  | yes | yes |
-| SLOW ACV MAMMALIAN | yes | yes |  |  |  |
+| SLOW ACV MAMMALIAN | yes | yes |  | yes |  |
 | Sophie | yes | yes |  | yes |  |
 | Streetcode | yes | yes |  | yes |  |
 | Suffolk | yes | yes |  | yes | yes |

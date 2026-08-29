@@ -352,6 +352,7 @@ LANGUAGES: dict[str, Language] = {
         _generate.slow_acv_mammalian,
         "tape_based.slow_acv_mammalian",
         id="slow_acv_mammalian",
+        boolean=_boolean.slow_acv_mammalian_boolean,
     ),
     "Minifuck": Language(
         "Minifuck",
