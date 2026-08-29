@@ -38,7 +38,6 @@ class _Machine:
 
     def __init__(self, code: list[str]) -> None:
         """Pad ``code`` to a rectangle and reset the machine to the corner."""
-        self.code = code
         self._done = False
         self.row = self.col = self.d = 0
         self.queue: list[int] = []
