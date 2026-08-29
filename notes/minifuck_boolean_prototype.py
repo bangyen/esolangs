@@ -132,16 +132,23 @@ def build(truth_table: str, bit_stride: int = 4):
     clamp(j)
 
     acc = None
+    chosen_read = READS[0]
     for cell in range(base - 4, frontier):
         probe = Joint(n)
         probe.parts = list(j.parts)
         probe.ms = [m.copy() for m in j.ms]
-        try:
-            endgame(probe, cell)
-        except (ValueError, AssertionError):
-            continue
-        if ["".join(m.out) for m in probe.ms] == list(truth_table):
-            acc = cell
+        for read in READS:
+            probe = Joint(n)
+            probe.parts = list(j.parts)
+            probe.ms = [m.copy() for m in j.ms]
+            try:
+                endgame(probe, cell, read)
+            except (ValueError, AssertionError):
+                continue
+            if ["".join(m.out) for m in probe.ms] == list(truth_table):
+                acc, chosen_read = cell, read
+                break
+        if acc is not None:
             break
     if acc is None:
         raise ValueError(
@@ -149,28 +156,41 @@ def build(truth_table: str, bit_stride: int = 4):
             "the minterm loop, which is not built yet (see the notes)"
         )
 
-    endgame(j, acc)
+    endgame(j, acc, chosen_read)
     return j, cells, acc
 
 
-def endgame(j, acc):
+# The two reads.  `[<` leaves the pointer at (acc-1) + the cell's value;
+# `[x<[<` leaves it at (acc-1) + the complement, restoring the cell and
+# flipping its neighbour unconditionally.  The printed digit is
+# NOT(value XOR cell7), and the reachable pools fix that XOR -- so the read
+# polarity is the free variable that makes a table and its complement both
+# printable.
+READS = ("[<", "[x<[<")
+
+
+def endgame(j, acc, read=READS[0]):
     """Pool fix, relay the acc cell into the pointer, and print.
 
-    `[<` leaves the pointer at (acc-1) + the cell's value, a constant walk
-    lands it on 6 or 7, and `[x.` prints one ASCII digit.  Which digit each
-    position yields depends on cell 7, so the caller checks the output rather
-    than assuming an orientation.
+    A constant walk lands the pointer on 6 or 7 and `[x.` prints one ASCII
+    digit.  Which digit each position yields depends on cell 7 and on which
+    read was used, so the caller checks the printed output rather than
+    assuming an orientation.
     """
     pool_fix(j, acc - 1)
     walk_to(j, acc - 1)
-    live = j.col(acc)
-    j.emit("[<")
-    assert j.ptrs() == tuple(acc - 1 + v for v in live), (j.ptrs(), live)
+    j.emit(read)
+    # The walk is measured from the read's *entry*, not from where it left
+    # the pointer: a column that is constant-1 diverges every row alike, so
+    # `min(ptrs)` is one cell further right than for a column with a zero row
+    # and would short the walk by one.
+    if acc - 7 < 0:
+        raise ValueError("accumulator is too close to the pool to walk back")
     j.emit("<" * (acc - 7))
-    assert j.ptrs() == tuple(6 + v for v in live), j.ptrs()
     for cell in range(8):
         col = j.col(cell)
-        assert len(set(col)) == 1, f"pool cell {cell} is input-dependent: {col}"
+        if len(set(col)) != 1:
+            raise ValueError(f"pool cell {cell} is input-dependent: {col}")
     j.emit("[x.")
 
 
