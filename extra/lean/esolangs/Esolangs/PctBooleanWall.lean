@@ -867,14 +867,6 @@ def Computes (code : List Cmd) (f : ℤ → ℤ → ℤ) : Prop :=
     ∃ (fuel : ℕ) (r : State × List ℤ),
       run code fuel (start b₁ b₂) = some r ∧ r.1.inp = [] ∧ r.2 = [f b₁ b₂]
 
-/-- A function of two bits that ignores its first argument. -/
-def IgnoresFirst (f : ℤ → ℤ → ℤ) : Prop :=
-  ∀ b b' c, Bit b → Bit b' → Bit c → f b c = f b' c
-
-/-- A function of two bits that ignores its second argument. -/
-def IgnoresSecond (f : ℤ → ℤ → ℤ) : Prop :=
-  ∀ b c c', Bit b → Bit c → Bit c' → f b c = f b c'
-
 /-- Runs with different fuel that both halt cleanly agree: extra fuel is never
 consumed once the cursor has left the program. -/
 theorem run_fuel_agree (code : List Cmd) :
@@ -1045,10 +1037,95 @@ theorem computes_splits (code : List Cmd) (f : ℤ → ℤ → ℤ) (hf : Comput
           fun b => if b = 48 then u48x.2 else u48y.2, ?_⟩
   rintro b₁ b₂ (rfl | rfl) (rfl | rfl) <;> simp_all
 
+/-! ### 10. The wall
+
+The decomposition says the single printed character is `A b₁ ++ B b₂`.  Taking
+lengths, `1 = |A b₁| + |B b₂|` for all four combinations, so `|B 48| = |B 49|`
+and the whole character comes from exactly one side:
+
+* `|B| = 1` forces every `A b₁ = []`, so the character is `B b₂` — the first
+  bit is ignored;
+* `|B| = 0` forces `B ≡ []`, so the character is `A b₁` — the second bit is
+  ignored.
+
+Either way a two-input program ignores one of its inputs, and XOR and AND
+depend on both. -/
+
+/-- A function of two bits that ignores its first argument. -/
+def IgnoresFirst (f : ℤ → ℤ → ℤ) : Prop :=
+  ∀ b b' c, Bit b → Bit b' → Bit c → f b c = f b' c
+
+/-- A function of two bits that ignores its second argument. -/
+def IgnoresSecond (f : ℤ → ℤ → ℤ) : Prop :=
+  ∀ b c c', Bit b → Bit c → Bit c' → f b c = f b c'
+
+/-- **The wall.**  Any two-input `%^2^-1` program that meets the boolean
+generator contract computes a function that ignores one of its two inputs. -/
+theorem computes_ignores (code : List Cmd) (f : ℤ → ℤ → ℤ)
+    (hf : Computes code f) : IgnoresFirst f ∨ IgnoresSecond f := by
+  obtain ⟨A, B, hAB⟩ := computes_splits code f hf
+  -- lengths: 1 = |A b₁| + |B b₂| on all four combinations
+  have hlen : ∀ b₁ b₂, Bit b₁ → Bit b₂ →
+      (A b₁).length + (B b₂).length = 1 := by
+    intro b₁ b₂ h₁ h₂
+    have := congrArg List.length (hAB b₁ b₂ h₁ h₂)
+    simpa using this.symm
+  have h4848 := hlen 48 48 (Or.inl rfl) (Or.inl rfl)
+  have h4849 := hlen 48 49 (Or.inl rfl) (Or.inr rfl)
+  have h4948 := hlen 49 48 (Or.inr rfl) (Or.inl rfl)
+  by_cases hB : (B 48).length = 1
+  · -- the character is the b₂-side; every A is empty
+    left
+    have hA48 : A 48 = [] := List.length_eq_zero_iff.mp (by omega)
+    have hA49 : A 49 = [] := List.length_eq_zero_iff.mp (by omega)
+    intro b b' c hb hb' hc
+    have e1 := hAB b c hb hc
+    have e2 := hAB b' c hb' hc
+    rcases hb with rfl | rfl <;> rcases hb' with rfl | rfl <;>
+      simp only [hA48, hA49, List.nil_append] at e1 e2 <;>
+      exact List.head_eq_of_cons_eq (e1.trans e2.symm)
+  · -- the character is the b₁-side; every B is empty
+    right
+    have hB48 : B 48 = [] := List.length_eq_zero_iff.mp (by omega)
+    have hB49 : B 49 = [] := List.length_eq_zero_iff.mp (by omega)
+    intro b c c' hb hc hc'
+    have e1 := hAB b c hb hc
+    have e2 := hAB b c' hb hc'
+    rcases hc with rfl | rfl <;> rcases hc' with rfl | rfl <;>
+      simp only [hB48, hB49, List.append_nil] at e1 e2 <;>
+      exact List.head_eq_of_cons_eq (e1.trans e2.symm)
+
 /-- XOR on the input bytes `'0'` / `'1'`. -/
 def xorFn (b c : ℤ) : ℤ := if b = c then 48 else 49
 
 /-- AND on the input bytes. -/
 def andFn (b c : ℤ) : ℤ := if b = 49 ∧ c = 49 then 49 else 48
+
+/-- **No XOR at any length.**  XOR depends on both inputs, so it falls outside
+what `computes_ignores` allows. -/
+theorem no_xor (code : List Cmd) : ¬ Computes code xorFn := by
+  intro hf
+  rcases computes_ignores code xorFn hf with h | h
+  · have := h 48 49 48 (Or.inl rfl) (Or.inr rfl) (Or.inl rfl)
+    simp [xorFn] at this
+  · have := h 48 48 49 (Or.inl rfl) (Or.inl rfl) (Or.inr rfl)
+    simp [xorFn] at this
+
+/-- **No AND at any length.** -/
+theorem no_and (code : List Cmd) : ¬ Computes code andFn := by
+  intro hf
+  rcases computes_ignores code andFn hf with h | h
+  · have := h 48 49 49 (Or.inl rfl) (Or.inr rfl) (Or.inr rfl)
+    simp [andFn] at this
+  · have := h 49 48 49 (Or.inr rfl) (Or.inl rfl) (Or.inr rfl)
+    simp [andFn] at this
+
+/-- **No boolean generator.**  There is no `%^2^-1` program for XOR, hence no
+generator total over the two-input truth tables. -/
+theorem no_two_input_generator :
+    ¬ ∃ (build : (ℤ → ℤ → ℤ) → List Cmd),
+        ∀ f, (f = xorFn ∨ f = andFn) → Computes (build f) f := by
+  rintro ⟨build, hbuild⟩
+  exact no_xor (build xorFn) (hbuild xorFn (Or.inl rfl))
 
 end PctBooleanWall
