@@ -386,7 +386,7 @@ python scripts/bundle_one.py Nevermind
 
 Contributions are welcome!  If you find a bug or want to add a language,
 check the [roadmap](docs/roadmap.md) and [limitations](docs/limitations.md)
-first, and read [CONTRIBUTING.md](CONTRIBUTING.md) — including whether the
+first, and read [CONTRIBUTING.md](docs/CONTRIBUTING.md) — including whether the
 language is worth adding — before proposing one.  New languages are
 registered in `src/esolangs/registry.py`.  Run `just test` (the full local
 check: lint, pytest, bandit, and the Python verify scripts) to verify
