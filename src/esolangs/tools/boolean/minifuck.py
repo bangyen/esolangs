@@ -33,6 +33,23 @@ Because that bookkeeping is affine but fiddly, nothing here is hand-tracked:
 is emitted, every choice is made against the simulated truth, and
 :func:`minifuck` raises rather than returning a program it has not seen
 print the table.
+
+**Coverage: every two-input table, and roughly a third of the three-input
+ones.**  This is a *search* -- three routes across two embed separators --
+so its reach is bounded by the depth caps below rather than by an argument.
+At ``n == 3`` a random 12-table sample built 4, median 82 seconds, the rest
+raising after about two minutes; structured tables (constants, AND, OR,
+parity, majority) do build, which is why a hand-picked sample badly
+overstates the coverage.  The failures are cap exhaustion, not a proof that
+anything is unreachable.
+
+That makes this generator weaker than the repo's better ones, and the
+comparison is worth stating: ``bfpda`` is a closed-form decision tree at any
+arity, and ``wii2d`` *was* a capped search before it was replaced by a
+construction (a Horner index chain plus a fold decode).  The open question
+here is whether Minifuck's position-accumulation can be constructed the same
+way -- see ``docs/walls.md`` for what is known, including which piece of that
+chain does not yet compose.
 """
 
 from collections import deque

@@ -126,6 +126,35 @@ total however good the gadgets; and **harvesting** — sweeping embed variants
 for a table that lands in a cell — finds all 16 at `n == 2` but 105/256 at
 `n == 3`, making it a shortcut rather than a totality argument.
 
+### Where a construction would have to start
+
+The shipped generator is a search, and searches are what this repo replaces:
+`wii2d` was a capped search before it became a Horner index chain plus a fold
+decode, and `bfpda` is a closed-form tree at any arity.  Minifuck has the
+property that makes wii2d's shape plausible here — values cannot travel left,
+so the answer must arrive as a *pointer position*, which is exactly "reduce
+the inputs to one number, then decode it".
+
+Two pieces of that are known, and one is missing:
+
+- **The decode exists.**  The pool-plus-read-polarity endgame turns a
+  position into the printed digit, and covers both orientations.
+- **The first doubling exists.**  A stage taking pointer offset `s` to
+  `2s + b` — Horner's step — is findable on prepared scratch:
+  `[x[<<<<[<` does width 2 to 4.  (On a *blank* tape the pointer spread is
+  pinned at 1, which is why an early search called this impossible.)
+- **It does not compose.**  No width 4 to 8 stage was found at depth 14, so
+  the chain stalls after the first junction, and a two-input index is all it
+  builds.
+
+The other candidate mechanism — chaining `[<` reads across planted
+indicators, so disjoint minterms accumulate into the pointer — is **disproved**
+rather than merely unfound.  `[<` sets the cell to its *right*, and the pad
+walk between reads carries that residue forward, so the second read reads the
+first read's debris rather than the planted indicator.  A sweep of every gap
+1..9 at chain lengths 2 and 3 found no layout that accumulates the indicator
+sum; guard cells cannot fix it, since the pads write over the guards.
+
 ## 123 (parameterized: 8 affine tables built; the rest open)
 
 A decision tree needs the `3` jump, which on a TRUE/FALSE bit jumps to the
