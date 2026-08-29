@@ -28,6 +28,12 @@ class TestBrainfuck:
     def test_cell_wraps(self) -> None:
         assert run_and_capture("+" * 256 + ".") == "\x00"
 
+    def test_cell_wraps_below_zero(self) -> None:
+        # The upward wrap above lands on zero for any modulus, so it pins
+        # neither the wrap's direction nor its width.  Decrementing from
+        # zero does: it is 255 only under a modulus of exactly 256.
+        assert run_and_capture("-.") == "\xff"
+
     def test_empty_program(self) -> None:
         assert run_and_capture("") == ""
 
