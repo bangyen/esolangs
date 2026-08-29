@@ -115,12 +115,20 @@ def _drop_unbundled_tests(src: str) -> tuple[str, int]:
     Cutting from the ``def`` alone leaves a ``@pytest.mark.parametrize``
     stranded on whichever test follows, and pytest rejects the file at
     collection: "function uses no argument 'text'".
+
+    "Whole" also has to *stop* at the next top-level statement.  The match
+    ended at the next method, the next class, or the end of the file, which
+    for the last method of the last class meant the end of the file --
+    taking every module-level test below it along with the one being cut.
+    BrainIf's suite is laid out that way, and its blank-line test was
+    silently dropped: the three mutants that only it kills read as
+    survivors, and no count said three tests had gone missing.
     """
     dropped = 0
     for name in re.findall(r"\n    def (test_\w+)\(", src):
         body = re.search(
             rf"\n(?:    @[^\n]*\n(?:        [^\n]*\n)*)*    def {name}\("
-            rf".*?(?=\n    @|\n    def |\nclass |\Z)",
+            rf".*?(?=\n    @|\n    def |\nclass |\n@|\ndef |\Z)",
             src,
             re.S,
         )
