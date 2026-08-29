@@ -65,7 +65,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 # Tests that reach past the interpreter -- into the VM or the registry --
 # cannot run against a bundle, which inlines neither.  They are dropped from
 # the copied test file, so the score is over the tests that can run.
-_UNBUNDLED = ("esolangs.vm", "esolangs.registry")
+#
+# ``esolangs.run(`` is the same reach by another spelling: it dispatches
+# through the registry, so it runs the *installed* interpreter rather than
+# the bundle.  A bare ``import esolangs`` is not an import the rewrite can
+# repoint, so these calls were left pointing at the real package -- which
+# only shows when a test asserts the exception it raises.  Point Break's
+# error suite does, and failed its baseline outright, taking the whole
+# language's score with it.
+_UNBUNDLED = ("esolangs.vm", "esolangs.registry", "esolangs.run(")
 
 # Packages the bundle does not inline, whose imports must therefore keep
 # resolving against the installed package.  This is deliberately *not*
@@ -126,8 +134,21 @@ def _drop_unbundled_tests(src: str) -> tuple[str, int]:
     """
     dropped = 0
     for name in re.findall(r"\n    def (test_\w+)\(", src):
+        # The lines above the ``def`` that belong to it: a decorator ``@``,
+        # any continuation of one (more indented than the ``def``), and the
+        # bracket that closes a multi-line decorator, which lines up with
+        # the ``@``.  Matching only 8-space continuations stopped early on a
+        # ``@pytest.mark.parametrize`` whose list closes at four -- Point
+        # Break's malformed-program table -- leaving the tail behind as an
+        # unindented fragment, and the copied file no longer parsed.
+        #
+        # These are one flat alternation rather than a repetition nested in
+        # another.  Nested, the two ``*`` can carve the same run of lines
+        # more ways than there are lines, and a ``def`` that fails to match
+        # then backtracks through all of them: Point Break's suite hung the
+        # run inside ``sre_search``, before any test had been collected.
         body = re.search(
-            rf"\n(?:    @[^\n]*\n(?:        [^\n]*\n)*)*    def {name}\("
+            rf"\n(?:    @[^\n]*\n|     [^\n]*\n|    [)\]][^\n]*\n)*    def {name}\("
             rf".*?(?=\n    @|\n    def |\nclass |\n@|\ndef |\Z)",
             src,
             re.S,
@@ -135,6 +156,16 @@ def _drop_unbundled_tests(src: str) -> tuple[str, int]:
         if body and any(mod in body.group(0) for mod in _UNBUNDLED):
             src = src.replace(body.group(0), "\n")
             dropped += 1
+
+    # A class can lose every test it had -- Point Break's TestErrors is four
+    # assertions on what ``esolangs.run`` raises, and all four go -- which
+    # leaves a class statement with no body at all, and the copied file does
+    # not parse.  Give any such class a ``pass``.
+    src = re.sub(
+        r"(\nclass \w+[^\n]*:\n)(?=\s*\n*(?:class |def |@|\Z))",
+        r"\1    pass\n",
+        src,
+    )
     return src, dropped
 
 
@@ -370,6 +401,14 @@ def _prepare(language: str, work: Path) -> tuple[Path, str, int, set[str]]:
     # Link rather than copy: nothing outside ``bundled.py`` is mutated.
     (work / "examples").symlink_to(ROOT / "examples")
     (proj / "examples").symlink_to(ROOT / "examples")
+    # The same for ``tests/fixtures``, which SLOW ACV MAMMALIAN reads its
+    # hello-world program from.  Without it that suite fails its baseline
+    # outright -- not one mutant, the whole run -- and the language cannot
+    # be scored at all.  ``tests/`` here is the directory built above, so
+    # only the fixtures need linking into it.
+    (work / "tests").mkdir(exist_ok=True)
+    for tests_dir in (work / "tests", proj / "tests"):
+        (tests_dir / "fixtures").symlink_to(ROOT / "tests" / "fixtures")
     (proj / "pyproject.toml").write_text(
         "[tool.mutmut]\n"
         f'paths_to_mutate = ["{out.name}"]\n'
