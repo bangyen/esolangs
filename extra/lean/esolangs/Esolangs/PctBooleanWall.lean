@@ -498,4 +498,145 @@ theorem run_splits (code : List Cmd) :
             exact ⟨q, _ ++ pre, f', r', hq, hrun,
               by rw [hout_eq, hout, List.append_assoc]⟩
 
+/-! ### 7. The split position does not depend on the accumulator
+
+`run_splits` produces *some* read position.  To compare two runs we need the
+*same* position, and this is where the two structural cases separate.
+
+* **Two or more reads.**  While one byte remains a `t` can never be taken: the
+  rewind lands at position `0` and would have to re-cross every read in the
+  program, needing `countN code 0 ≥ 2` bytes when only one is left.  So the
+  cursor advances one step at a time and stops at `firstReadFrom code i`.
+* **Exactly one read.**  A `t` may well be taken (the single-`n`-read-twice
+  shape), but then the read that eventually fires is the unique one, by
+  `read_pos_unique`.
+
+In both cases the position is a function of `code` and `i` only. -/
+
+/-- A position holding a read is its own `firstReadFrom`. -/
+theorem firstReadFrom_self (code : List Cmd) (i : ℕ)
+    (hc : code[i]? = some Cmd.read) : firstReadFrom code i = some i := by
+  have hi : i < code.length := by
+    by_contra hcc
+    rw [List.getElem?_eq_none (by omega)] at hc
+    exact Option.some_ne_none _ hc.symm
+  have hget : code[i] = Cmd.read := by
+    rw [List.getElem?_eq_getElem hi] at hc; exact Option.some_inj.mp hc
+  simp only [firstReadFrom, Option.map_eq_some_iff]
+  refine ⟨0, ?_, by omega⟩
+  rw [List.drop_eq_getElem_cons hi]
+  simp [List.findIdx?_cons, hget]
+
+/-- Stepping over a non-read position shifts `firstReadFrom` by one. -/
+theorem firstReadFrom_step (code : List Cmd) (i q : ℕ) (c : Cmd)
+    (hc : code[i]? = some c) (hne : c ≠ Cmd.read)
+    (h : firstReadFrom code (i + 1) = some q) : firstReadFrom code i = some q := by
+  have hi : i < code.length := by
+    by_contra hcc
+    rw [List.getElem?_eq_none (by omega)] at hc
+    exact Option.some_ne_none _ hc.symm
+  have hget : code[i] = c := by
+    rw [List.getElem?_eq_getElem hi] at hc; exact Option.some_inj.mp hc
+  simp only [firstReadFrom, Option.map_eq_some_iff] at h ⊢
+  obtain ⟨j, hj, rfl⟩ := h
+  refine ⟨j + 1, ?_, by omega⟩
+  rw [List.drop_eq_getElem_cons hi, List.findIdx?_cons, hget]
+  simp only [decide_eq_true_eq, if_neg hne, hj]
+  rfl
+
+/-- With one byte left and at least two reads in the program, a `t` is never
+taken on a cleanly-halting run: the rewind cannot pay for the reads it would
+re-cross. -/
+theorem rewind_not_taken (code : List Cmd) (fuel : ℕ) (a b : ℤ)
+    (h2 : 2 ≤ countN code 0) (r : State × List ℤ)
+    (h : run code fuel ⟨0, a, [b]⟩ = some r) : False := by
+  have := count_le_of_halts code fuel ⟨0, a, [b]⟩ r h
+  simp only [List.length_cons, List.length_nil] at this
+  omega
+
+/-- **The split position is determined.**  Under the same hypotheses as
+`run_splits`, the read position is `firstReadFrom code i` when the program has
+two or more reads, and the unique read position when it has one. -/
+theorem run_splits_pos (code : List Cmd) :
+    ∀ (fuel : ℕ) (i : ℕ) (a b : ℤ) (r : State × List ℤ),
+      run code fuel ⟨i, a, [b]⟩ = some r → r.1.inp = [] →
+      ∃ (q : ℕ) (pre : List ℤ) (f' : ℕ) (r' : State × List ℤ),
+        (if 2 ≤ countN code 0 then firstReadFrom code i = some q
+                              else firstReadFrom code 0 = some q) ∧
+        run code f' ⟨q + 1, b, []⟩ = some r' ∧
+        r.2 = pre ++ r'.2 := by
+  intro fuel
+  induction fuel with
+  | zero => intro i a b r h _; simp [run] at h
+  | succ k ih =>
+    intro i a b r h hnil
+    rw [run] at h
+    cases hc : code[i]? with
+    | none =>
+      rw [hc] at h
+      simp only [Option.some.injEq] at h
+      rw [← h] at hnil
+      simp at hnil
+    | some c =>
+      rw [hc] at h
+      simp only at h
+      cases hstep : stepCmd c ⟨i, a, [b]⟩ with
+      | eof => rw [hstep] at h; simp at h
+      | next s' o =>
+        rw [hstep] at h
+        simp only [Option.map_eq_some_iff] at h
+        obtain ⟨p, hp, hr⟩ := h
+        have hnil' : p.1.inp = [] := by rw [← hr] at hnil; simpa using hnil
+        have hout_eq : r.2 = o ++ p.2 := by rw [← hr]
+        cases c
+        case read =>
+          simp only [stepCmd] at hstep
+          cases hstep
+          -- the read is here, so it *is* the first read from `i`
+          refine ⟨i, [], k, p, ?_, hp, by simpa using hout_eq⟩
+          split
+          · exact firstReadFrom_self code i hc
+          · next hlt =>
+            -- a read fires at `i`, so the program holds at least one; with
+            -- fewer than two that makes exactly one
+            have hpos : 1 ≤ countN code 0 := by
+              have h1 : countN code i = 1 + countN code (i + 1) := by
+                rw [countN_succ code i Cmd.read hc]; simp
+              have := countN_antitone code (Nat.zero_le i)
+              omega
+            exact unique_read_pos code i (by omega) hc
+        case sub2 | sub3 | dbl | neg | zero | printNum | printChr =>
+          simp only [stepCmd] at hstep
+          cases hstep
+          obtain ⟨q, pre, f', r', hq, hrun, hout⟩ := ih _ _ b p hp hnil'
+          refine ⟨q, _ ++ pre, f', r', ?_, hrun,
+            by rw [hout_eq, hout, List.append_assoc]⟩
+          -- `i` is not a read, so the least read from `i` is the one from `i+1`
+          split at hq
+          · next hge =>
+            exact if_pos hge ▸ firstReadFrom_step code i q _ hc (by simp) hq
+          · next hlt => rw [if_neg hlt]; exact hq
+        case rewind =>
+          by_cases hz : (if a > 3003 then (0 : ℤ) else a) ≠ 0
+          · -- taken: with two or more reads this is unreachable
+            rw [stepCmd, if_pos hz] at hstep
+            cases hstep
+            by_cases h2 : 2 ≤ countN code 0
+            · exact absurd hp (fun hcon => rewind_not_taken code k _ b h2 p hcon)
+            · obtain ⟨q, pre, f', r', hq, hrun, hout⟩ := ih _ _ b p hp hnil'
+              refine ⟨q, _ ++ pre, f', r', ?_, hrun,
+                by rw [hout_eq, hout, List.append_assoc]⟩
+              rw [if_neg h2]
+              rw [if_neg h2] at hq
+              exact hq
+          · rw [stepCmd, if_neg hz] at hstep
+            cases hstep
+            obtain ⟨q, pre, f', r', hq, hrun, hout⟩ := ih _ _ b p hp hnil'
+            refine ⟨q, _ ++ pre, f', r', ?_, hrun,
+              by rw [hout_eq, hout, List.append_assoc]⟩
+            split at hq
+            · next hge =>
+              exact if_pos hge ▸ firstReadFrom_step code i q _ hc (by simp) hq
+            · next hlt => rw [if_neg hlt]; exact hq
+
 end PctBooleanWall
