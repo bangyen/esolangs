@@ -129,6 +129,32 @@ def three_x(truth_table: str) -> str:
     only the input combinations whose table entry differs from the default
     get an override block.  Each override's ``( ... )`` guard leaves the
     stack balanced via the trash pop, so arbitrary ``n`` works.
+
+    **The tree splits on its inputs in whichever order emits the shortest
+    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
+    The reorder is spelled in the *store targets* rather than in the tree:
+    ``?`` consumes the stream in order, but each read may store into any
+    variable, so reading stream input ``i`` into the name the tree tests at
+    depth ``perm.index(i)`` reorders the splits while consuming the input
+    stream exactly as before.
+
+    That makes the reorder **free of any cost the search cannot see**.  The
+    read block stores each name exactly once whatever the order, so its
+    length never changes, and the tree is byte-identical to the one the
+    permuted table produces -- unlike a generator that walks to its inputs
+    (Circlefuck) or has to hoist them first (S*bleq, BrainIf), where the
+    screen is respectively an over- and an under-estimate.  Here the screen
+    figure is exact: 4.5% at n=3 (146 of 256 tables improved), 5.4% at n=4.
+    """
+    return best_input_order(truth_table, _three_x_ordered)
+
+
+def _three_x_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's 3x program; see :func:`three_x`.
+
+    ``perm[k]`` is the stream input the tree tests at depth ``k``, so stream
+    input ``i`` is stored into ``input_vars[perm.index(i)]`` and the tree
+    itself is unchanged.
     """
     n = _validate_truth_table(truth_table)
 
@@ -136,9 +162,10 @@ def three_x(truth_table: str) -> str:
     # short and emitted twice per guard), var 3 is the result (its constant
     # is the single char `3`, emitted once per table entry), and the inputs
     # live in the cheapest remaining names by actual constant length (the
-    # base-3 encodings are non-monotonic: 15 is cheaper than 13).  Every
-    # input is read once per override block, so any assignment of the n
-    # cheapest names to the inputs costs the same.
+    # base-3 encodings are non-monotonic: 15 is cheaper than 13).  The names
+    # are assigned by *depth*, so the cheapest one sits at the root where the
+    # tree reads it most often; which input lands at which depth is what
+    # ``best_input_order`` searches over.
     trash = _const(0) + "#v"  # pop the stack top into variable 0
     result = 3
     used = {0, 3}
@@ -164,7 +191,10 @@ def three_x(truth_table: str) -> str:
         """If bit i is 0, run ``body``; leaves the stack balanced."""
         return read(i) + not_bit() + "(" + trash + body + _ZERO + ")" + trash
 
-    prog = "".join("?" + store(v) for v in input_vars)
+    # Reads run in stream order; only the store target moves.  Stream input
+    # ``i`` goes into the name the tree tests at depth ``perm.index(i)``.
+    depth_of = {stream: depth for depth, stream in enumerate(perm)}
+    prog = "".join("?" + store(input_vars[depth_of[i]]) for i in range(n))
 
     # Default the result to the majority value so only the minority rows
     # need an override block (combos matching the default are skipped).

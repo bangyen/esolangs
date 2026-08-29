@@ -735,6 +735,70 @@ class TestThreeX:
         assert program.startswith("?")
         assert program.endswith("!")
 
+    def test_reordering_only_shrinks(self) -> None:
+        """No table comes out longer than the identity order's program."""
+        from esolangs.tools.boolean.other import _three_x_ordered
+
+        for i in range(256):
+            table = format(i, "08b")
+            identity = _three_x_ordered(table, (0, 1, 2))
+            assert len(boolean.three_x(table)) <= len(identity)
+
+    def test_unimproved_tables_keep_their_emission(self) -> None:
+        """A table no reorder helps emits exactly what it emitted before.
+
+        ``best_input_order`` tries the identity first and keeps it on a tie,
+        so reordering can only shrink a program, never churn one.  A constant
+        table has no override blocks at all, so no order can beat it.
+        """
+        from esolangs.tools.boolean.other import _three_x_ordered
+
+        for table in ("0" * 8, "1" * 8):
+            assert boolean.three_x(table) == _three_x_ordered(table, (0, 1, 2))
+
+    def test_reads_stay_in_stream_order(self) -> None:
+        """Only the store target moves, so the input stream is consumed the same.
+
+        The reorder is spelled in which variable each ``?`` stores into, not
+        in when the reads happen: every build reads its ``n`` inputs up front,
+        one ``?`` each, whatever order the tree tests them in.
+        """
+        from esolangs.tools.boolean.other import _three_x_ordered
+
+        table = "00010111"
+        for perm in ((0, 1, 2), (2, 1, 0), (1, 2, 0)):
+            program = _three_x_ordered(table, perm)
+            head = program[: program.index("(")] if "(" in program else program
+            assert head.count("?") == 3
+            # the reads are the first thing the program does
+            assert program.startswith("?")
+
+    def test_every_input_order_computes_the_table(self) -> None:
+        """The permuted build computes the original table on the original stream."""
+        import itertools
+
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.three_x import run
+        from esolangs.tools.boolean.other import _three_x_ordered
+
+        def permuted(table: str, perm: tuple[int, ...]) -> str:
+            out = []
+            for row in range(8):
+                src = 0
+                for k in range(3):
+                    src |= ((row >> (2 - k)) & 1) << (2 - perm[k])
+                out.append(table[src])
+            return "".join(out)
+
+        for table in ("00010111", "01101001", "11110000", "10101010"):
+            for perm in itertools.permutations(range(3)):
+                program = _three_x_ordered(permuted(table, perm), perm)
+                for combo in range(8):
+                    bits = [(combo >> (2 - k)) & 1 for k in range(3)]
+                    io = ScriptedIO("\n".join(str(b) for b in bits) + "\n")
+                    run(program, io)
+                    assert io.getvalue().strip() == table[combo], f"{table} {perm}"
+
     def test_wrong_length_truth_table_rejected(self) -> None:
         """A truth table of the wrong length is malformed."""
         with pytest.raises(ValueError, match="entries"):
