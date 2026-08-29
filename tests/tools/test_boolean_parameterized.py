@@ -1715,6 +1715,31 @@ class TestParameterizedMinifuck:
         assert zero.dead, "printing a zero byte ends the row"
         assert zero.out == []
 
+    def test_a_search_from_a_dead_row_expands_nothing(self) -> None:
+        """A state holding a dead row is pruned rather than explored.
+
+        A dead row cannot be steered back, so every state below it is one
+        the generator could never use.  Nothing in the search's own
+        alphabet kills a row -- only a print does -- so the prune exists
+        for a state that arrived dead, which is what this hands it.
+        """
+        from esolangs.tools.boolean.minifuck import _clamp, _embed, _search
+
+        joint = _embed(2)
+        _clamp(joint)
+        # A print reads cells 0..7 as one byte and dies when it is zero, so
+        # clear the byte and print from past it, where the flip lands outside.
+        row = joint.ms[0]
+        row.tape[:8] = [0] * 8
+        row.ptr = 9
+        row.exec(".")
+        assert row.dead
+
+        def accept(_new: list[object], _code: str) -> str | None:
+            raise AssertionError("a pruned state must never reach accept")
+
+        assert _search(joint, accept, 3) is None
+
     def test_the_walk_needs_a_converged_pointer_going_right(self) -> None:
         """``[x`` walks are only safe rightward from one shared position.
 
@@ -2148,6 +2173,28 @@ class TestParameterizedPctSquaredMinusOne:
         assert _apply(7, code) == 5
         assert _apply(0, code) == 5
 
+    def test_the_model_mirrors_every_command_the_language_has(self) -> None:
+        """``_apply`` stands in for the interpreter, so it owes it every op.
+
+        The emitted tails only ever translate, so ``m`` and the over-3003
+        reset are not on the path a built program takes -- but they are
+        what the *language* does, and a model that quietly disagreed with
+        the interpreter would let a future tail shape be validated against
+        a machine that does not exist.
+        """
+        from esolangs.tools.boolean.pct_squared_minus_one import _LIMIT, _apply
+
+        assert _apply(10, "s") == 8  # s subtracts 2
+        assert _apply(10, "i") == 7  # i subtracts 3
+        assert _apply(10, "m") == 20  # m doubles
+        assert _apply(10, "p") == -10  # p negates
+        assert _apply(10, "'") == 0  # ' erases
+
+        # The reset fires *before* a command, not after: one past the limit
+        # is zeroed and the command then applies to that zero.
+        assert _apply(_LIMIT + 1, "s") == -2
+        assert _apply(_LIMIT, "s") == _LIMIT - 2, "at the limit nothing resets"
+
     def test_a_tail_is_not_always_available(self) -> None:
         """Not every pair of class values can be printed apart.
 
@@ -2160,3 +2207,26 @@ class TestParameterizedPctSquaredMinusOne:
 
         assert _tail_for(-5, -5) is None
         assert _tail_for(1, 0) is not None, "the trivial pair still works"
+        # Two classes further apart than a step have no tail either: the
+        # translation moves both together, so it cannot close a wider gap.
+        assert _tail_for(5, 0) is None
+
+    def test_a_table_no_candidate_realizes_is_reported(self) -> None:
+        """With every parameter set rejected the derivation reports nothing.
+
+        The enumeration is small and structural -- the constants input 0
+        contributes, the spelling, and the class pair -- and some candidate
+        always works out for a two-input table.  Rejecting all of them is
+        what exercises the empty answer, which the caller turns into its
+        own refusal rather than emitting a program for the wrong function.
+        """
+        import importlib
+
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        from esolangs.tools.boolean.pct_squared_minus_one import _derive
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_solution", lambda *_a, **_k: None)
+            assert _derive("0110") is None

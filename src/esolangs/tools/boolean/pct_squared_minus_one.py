@@ -37,8 +37,9 @@ rises with input 0 and ``-1`` where it falls.  Choosing the two accumulator
 values the answers land on then *forces* both offsets --
 :func:`_offset_for` solves them, and a column whose two rows disagree about
 the offset simply is not realisable that way.  :func:`_tail_for` prints,
-using the over-3003 reset (which fires before every command) as the
-comparator that collapses the zero class.
+translating the two class values onto ``1`` and ``0`` -- ``l`` prints the
+accumulator in decimal, so no branch is needed and the over-3003 reset
+never has to act as a comparator.
 
 What remains enumerated is small and structural: the two constants input 0
 contributes, whether it spells them with an explicit ``'`` erase, and the
@@ -91,8 +92,8 @@ _OFFSETS = range(-10, 11)
 
 #: Accumulator values the answers ``(0, 1)`` may land on before the tail runs.
 #: The tail has to move these onto ``0``/``1``, and :func:`_tail_for` does that
-#: with one translation when they sit a step apart and with the over-3003
-#: clamp otherwise, so nearby pairs are the ones worth offering.
+#: with one translation, which needs the pair a step apart -- so nearby pairs
+#: are not merely the ones worth offering, they are the only ones that print.
 _CLASS_PAIRS = tuple(
     (zero, one) for zero in range(-9, 10) for one in range(-9, 10) if zero != one
 )
@@ -194,12 +195,20 @@ def _tail_for(one_value: int, zero_value: int) -> str | None:
     first, so the tail has to land the one-class on exactly 1 and the
     zero-class on 0 -- or above 3003, which the reset folds onto 0.
 
-    Two shapes are tried, cheapest first.  A bare translation moves both
-    classes at once when they differ by one, optionally after a ``p`` so a
-    reversed pair works too.  Failing that, the classes are separated by
-    amplification: scaling by ``2**j`` drives one class past the limit while
-    the other stays below, and the reset then collapses it -- the language's
-    only comparator, used as the endgame's branch.
+    One shape does it: a bare translation, moving both classes at once when
+    they differ by one, optionally after a ``p`` so a reversed pair works
+    too.  Two classes further apart than that have no tail at all.
+
+    An amplify-then-clamp shape used to follow this one -- scale by
+    ``2**j`` to drive the zero-class past the reset while the one-class is
+    translated onto 1 -- and it never once fired.  It could not: every move
+    it composed was a translation and ``m`` scales both classes alike, so
+    such a body sends the class gap to ``2**j * (one - zero)``, negated by
+    ``p``.  Landing on 1 and 0 needs a gap of exactly 1, which only
+    ``j == 0`` gives, and that is the bare translation already tried above.
+    Reaching the reset really would need a move that is not affine in the
+    accumulator; the loop was scanning about two thousand bodies per call
+    to rediscover the shape it started from.
     """
     for pre in ("", "p"):
         head_one = -one_value if pre else one_value
@@ -214,28 +223,6 @@ def _tail_for(one_value: int, zero_value: int) -> str | None:
         if _apply(one_value, body) == 1 and _apply(zero_value, body) == 0:
             return body + "l"
 
-    # Amplify-then-clamp: push the zero-class over the limit so ``l``'s own
-    # pre-reset zeroes it, while the one-class is translated onto 1.
-    for pre in ("", "p"):
-        for amp in range(0, 13):
-            for offset in range(-40, 41):
-                move = _sub_code(-offset) if offset <= 0 else _affine_code(1, offset)
-                if move is None:
-                    continue
-                body = pre + "m" * amp + move
-                if (
-                    _apply(one_value, body) == 1
-                    and _apply(zero_value, body) == 0  # pragma: no cover - see below
-                ):
-                    # Unreachable as the moves stand.  Every ``move`` here is
-                    # a translation, and ``m`` scales both classes alike, so
-                    # this body sends the gap to ``2**amp * (one - zero)``
-                    # (negated by ``p``).  Landing on 1 and 0 needs a gap of
-                    # exactly 1, which only ``amp == 0`` gives -- and that is
-                    # the bare translation the first shape already tried.
-                    # The clamp this loop was written for would need a move
-                    # that is not affine in the accumulator.
-                    return body + "l"
     return None
 
 
@@ -365,7 +352,7 @@ def _derive(truth_table: str) -> tuple[list[tuple[str, str]], str] | None:
                             width = sum(len(z) for z, _ in setters) + len(tail)
                             if best is None or width < best[0]:
                                 best = (width, setters, tail)
-    if best is None:  # pragma: no cover - every two-input table finds a solution
+    if best is None:
         return None
     return best[1], best[2]
 
