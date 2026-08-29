@@ -28,15 +28,101 @@ class TestClockwise:
         code = ["+-?.;.;.;.;.;.;.;?R", "  R              R", "R                 R"]
         assert run_and_capture(code, inputs=["0"]) == "0"
 
+    def test_the_accumulator_counts_past_one(self) -> None:
+        """``+`` adds rather than sets, and ``;`` emits the low bit of a count.
+
+        Every ring here incremented from zero and emitted before
+        incrementing again, so the accumulator never held more than one at
+        an output -- where adding one and assigning one agree, and taking
+        it modulo 2 agrees with any larger modulus.  Two increments before
+        the emit separate all three: the bit is 0, since 2 is even.
+        """
+        assert run_and_capture(["++;S;S;S;S;S;+;R", "R              R"]) == "\x01"
+        assert run_and_capture(["+;S;S;S;S;S;++;R", "R              R"]) == "@"
+
+    def test_every_input_character_contributes_its_bits(self) -> None:
+        """The bits of a second character are appended, not substituted.
+
+        Input is read up front and flattened into a bit list, and every
+        program here was given a single character -- where appending to the
+        list and replacing it outright come to the same thing.  Two
+        characters separate them: the program echoes both only if the first
+        one's bits are still there when it gets to them.
+        """
+        code = ["+-?.;.;.;.;.;.;.;?R", "  R              R", "R                 R"]
+        assert run_and_capture(code, inputs=["AB"]) == "AB"
+
+    def test_a_bang_turns_when_the_accumulator_is_zero(self) -> None:
+        """``!`` is the inverse of ``?``, and no program here used one.
+
+        The truth machine covers ``?``, which turns on a *set* accumulator;
+        nothing covered the corner that turns on a clear one.  With the
+        accumulator left at zero a ``!`` steers exactly as an ``R`` does,
+        so a ring built from them closes -- and stops closing the moment
+        the condition is read the other way round.
+        """
+        assert run_and_capture(["  !", "! !"]) == ""
+        # mixed with R corners, the ring still closes
+        assert run_and_capture(["  !", "R R"]) == ""
+
     def test_empty_program_rejected(self) -> None:
         """An empty program is malformed."""
-        with pytest.raises(ValueError, match="empty"):
+        with pytest.raises(ValueError, match=r"^Clockwise program cannot be empty$"):
             run_and_capture([])
 
     def test_unclosed_ring_rejected(self) -> None:
         """A pointer that walks off the ring is a malformed program."""
-        with pytest.raises(ValueError, match="not closed"):
+        with pytest.raises(ValueError, match=r"^Clockwise ring is not closed$"):
             run_and_capture(["+;S"])
+
+
+class TestMachineState:
+    def test_a_fresh_machine_reports_a_boolean(self) -> None:
+        """``halted`` starts as False itself, not merely as something falsey.
+
+        Every other read of it is a truthiness test, which ``None`` passes
+        just as well, so the flag could start un-set rather than unset and
+        nothing would object -- while ``halted`` is annotated a bool.
+        """
+        from esolangs.interpreters.grid_based.clockwise import _Machine
+
+        assert _Machine(["  R", "R R"], ScriptedIO()).halted is False
+
+
+class TestMove:
+    """``move`` decides the turn, the step, and whether the ring goes on.
+
+    Every other test drives it through a whole program, where a ring that
+    stays closed hides which of its answers were right.  These call it at
+    the positions a program cannot reach without already having failed.
+    """
+
+    def test_a_position_off_the_grid_is_a_malformed_ring(self) -> None:
+        """Each side of both bounds is rejected before the cell is read.
+
+        Reaching past the last row has to be refused rather than indexed:
+        a non-strict bound there raises IndexError from inside instead of
+        the ring's own error.
+        """
+        from esolangs.interpreters.grid_based.clockwise import move
+
+        grid = ["  R", "R R"]
+        for row, col in ((2, 0), (-1, 0), (0, 3), (0, -1)):
+            with pytest.raises(ValueError, match=r"^Clockwise ring is not closed$"):
+                move(row, col, 0, grid, 0)
+
+    def test_the_pointer_reports_when_it_is_back_at_the_origin(self) -> None:
+        """Returning to (0, 0) ends the run, except heading right.
+
+        The last of the three terms is what carves out that exception, and
+        a program only ever reaches it once -- at the end, where stopping
+        and having stopped look alike.  Called directly, all four headings
+        say which of them keeps going.
+        """
+        from esolangs.interpreters.grid_based.clockwise import move
+
+        grid = ["RR", "RR"]
+        assert [move(0, 0, r, grid, 0)[4] for r in range(4)] == [1, -1, -1, 1]
 
 
 class TestStepMachine:
