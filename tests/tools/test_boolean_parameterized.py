@@ -2173,6 +2173,11 @@ class TestParameterizedPctSquaredMinusOne:
         assert _apply(7, code) == 5
         assert _apply(0, code) == 5
 
+        # Only four multipliers have a spelling; anything else has no code.
+        assert _affine_code(3, 0) is None
+        # The offset needs one too: 1 is the gap `s`/`i` cannot express.
+        assert _affine_code(1, -1) is None
+
     def test_the_model_mirrors_every_command_the_language_has(self) -> None:
         """``_apply`` stands in for the interpreter, so it owes it every op.
 

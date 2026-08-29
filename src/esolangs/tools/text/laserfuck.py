@@ -119,8 +119,8 @@ def _laserfuck_base_factor(base: int) -> tuple[int, int, int] | None:
     cost = base
     for outer in range(2, base):
         inner, rest = divmod(base, outer)
-        if inner < 1:  # pragma: no cover - outer < base keeps inner at least 1
-            break
+        if inner < 1:
+            break  # pragma: no cover - outer < base keeps inner at least 1
         candidate = outer + inner + rest
         if candidate < cost:
             cost, best = candidate, (outer, inner, rest)
@@ -161,8 +161,8 @@ def _laserfuck_base_ring(
     reached = [0] * count
     stages: list[tuple[int, tuple[int, int, int] | None, list[int]]] = []
     for band in bands:
-        if not band:  # pragma: no cover - the grouper never emits an empty band
-            continue
+        if not band:
+            continue  # pragma: no cover - the grouper emits no empty band
         members = set(band)
         base = min(range(1, 128), key=lambda m: sum(abs(m - v) for v in band))
         owned = [i for i, v in enumerate(values) if v in members]
@@ -422,8 +422,8 @@ def _laserfuck_snake_ring(text: str, width: int) -> str | None:
         # drop the beam into this block's entry '}', directly below
         put(row, spine, "v")
         block = _laserfuck_snake(body, spine, right)
-        if block is None:  # pragma: no cover - the spine guard above covers it
-            return None
+        if block is None:
+            return None  # pragma: no cover - the spine guard above covers it
         for offset, line in enumerate(block):
             for index, char in enumerate(line):
                 put(row + 1 + offset, index, char)

@@ -253,6 +253,27 @@ class TestGeneratorRoundTrips:
             code = sum(1 for c in program if not c.isspace())
             assert code / len(program) > floor, f"{text!r}: sparse grid"
 
+    def test_clockwise_gives_up_on_a_template_that_does_not_close(self) -> None:
+        """A grid whose walk never comes home ends that size's search.
+
+        The slots are the cells the pointer runs exactly once, so a
+        template the walk cannot complete has none to offer.  Every
+        template the builder actually produces closes -- the geometry is
+        fixed -- so the branch is reached by handing it one that does not.
+        """
+        import importlib
+
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.text.other")
+        from esolangs.tools.text.other import _clockwise_weave
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_weave_template", lambda *_a: [[" "]])
+            # Nothing weaves, so the caller falls back to the ring rather
+            # than looping on a template that can never hold the program.
+            assert _clockwise_weave("abc", 12) is None
+
     def test_clockwise_clamps_a_width_below_the_weave_floor(self) -> None:
         """A width under the floor gets the narrowest weave, not an error.
 

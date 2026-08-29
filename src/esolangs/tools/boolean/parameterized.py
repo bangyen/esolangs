@@ -1276,8 +1276,8 @@ def _compact(rows: list[str]) -> str:
     width = max((len(row) for row in rows), default=0)
     padded = [row.ljust(width) for row in rows]
     kept = [row for row in padded if row.strip()]
-    if not kept:  # pragma: no cover - every table lays down at least one cell
-        return ""
+    if not kept:
+        return ""  # pragma: no cover - every table lays a cell
     columns = [x for x in range(width) if any(row[x] != " " for row in kept)]
     return "\n".join("".join(row[x] for x in columns).rstrip() for row in kept)
 

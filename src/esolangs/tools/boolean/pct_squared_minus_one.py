@@ -128,7 +128,7 @@ def _affine_code(a: int, b: int) -> str | None:
     positive offset is spelled as a negated subtraction, ``-(-x - b)``.
     """
     head = {1: "", -1: "p", 0: "'", 2: "m"}.get(a)
-    if head is None:  # pragma: no cover - _A_VALS holds no other multiplier
+    if head is None:
         return None
     if b == 0:
         tail: str | None = ""
@@ -390,8 +390,11 @@ def pct_squared_minus_one(truth_table: str) -> str:
     # present in the derivation but cannot change the answer.
     widened = truth_table if n == 2 else "".join(bit * 2 for bit in truth_table)
     derived = _derive(widened)
-    if derived is None:  # pragma: no cover - every such table derives
-        raise ValueError(f"no %^2^-1 derivation for truth table {truth_table!r}")
+    # Every one- and two-input table derives -- the enumeration always
+    # finds a realisable parameter set -- so a miss is a bug in the
+    # derivation rather than a table this generator cannot serve.
+    if derived is None:
+        raise AssertionError(f"no %^2^-1 derivation for truth table {truth_table!r}")
     setters, tail = derived
     if n == 1:
         # A widened table cannot depend on its second input, so that setter's
@@ -400,8 +403,12 @@ def pct_squared_minus_one(truth_table: str) -> str:
         # silently dropping a branch that *did* differ would emit a program
         # for the wrong function.
         zero, one = setters[1]
-        if zero != one:  # pragma: no cover - a widened table cannot reach this
-            raise ValueError(f"one-input derivation split on input 1: {truth_table!r}")
+        # The widened table repeats each entry, so input 1 cannot change
+        # the answer and its two branches must come out identical.
+        if zero != one:
+            raise AssertionError(
+                f"one-input derivation split on input 1: {truth_table!r}"
+            )
         setters, tail = setters[:1], zero + tail
     header = ";".join(f"{k}={zero}|{one}" for k, (zero, one) in enumerate(setters))
     body = "".join("{X" + str(k) + "}" for k in range(n)) + tail

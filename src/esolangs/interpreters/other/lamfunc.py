@@ -83,7 +83,7 @@ class _Func:
         arity: int,
         body: list[str] | None = None,
         params: list[str] | None = None,
-        given: list[object] | None = None,
+        given: list[_Value] | None = None,
         orig: _Func | None = None,
     ) -> None:
         self.name = name
@@ -121,10 +121,8 @@ def _to_binary(value: int) -> str:
     return bin(value)[2:] if value else "0"
 
 
-def _as_int(value: object) -> int:
+def _as_int(value: _Value) -> int:
     """Coerce a Lamfunc value to an integer (the bit-builtins' operand)."""
-    if isinstance(value, bool):
-        return int(value)  # pragma: no cover - Lamfunc never produces a bool
     if isinstance(value, int):
         return value
     raise HaltError(f"expected a number, got {value!r}")
@@ -139,6 +137,19 @@ class _Thunk:
         self.tokens = tokens
         self.start = start
         self.end = end
+
+
+#: Everything that can sit in an argument list, a variable, or a frame's
+#: result.  Numbers and functions are the values a program computes with;
+#: a bare token that names nothing stays a ``str`` so ``vs``/``vg`` can use
+#: it as a variable name, and an unevaluated ``i`` branch rides along as a
+#: ``_Thunk`` until it is selected.
+#:
+#: Spelling it out is what keeps ``bool`` from smuggling itself in through
+#: ``bool`` being a subclass of ``int``: the values below are produced by
+#: parsing and by the builtins, none of which returns one, so the coercions
+#: need no defensive ``bool`` arm.
+_Value = int | str | _Func | _Thunk
 
 
 @dataclass
@@ -160,9 +171,11 @@ class _Frame:
     start: int = 0
     phase: _Phase = "scan"
     fn: _Func | None = None
-    args: list[object] = field(default_factory=list)
-    result: object = 0
-    saved: dict[str, object] = field(default_factory=dict)
+    args: list[_Value] = field(default_factory=list)
+    result: _Value = 0
+    # ``None`` marks a name that was unbound before the call, so the
+    # restore below removes it rather than writing a value back.
+    saved: dict[str, _Value | None] = field(default_factory=dict)
     awaiting: bool = False
     awaiting_result: bool = False
 
@@ -173,7 +186,7 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
         self.defs, self.main = _parse_program(code)
-        self.vars: dict[str, object] = {}
+        self.vars: dict[str, _Value] = {}
         self.ind = 0
         self.frames: list[_Frame] = []
         if self.main:
@@ -229,9 +242,10 @@ class _Machine:
         if name in self.defs:
             d = self.defs[name]
             return _Func(name, len(d.params), d.body, d.params)
-        raise HaltError(  # pragma: no cover - callers only look up known names
-            f"calling undefined function {name!r}"
-        )
+        # Both call sites test membership before calling, so an unknown name
+        # here is a bug in that guard rather than a program calling something
+        # undefined -- which is reported, as a HaltError, where it is noticed.
+        raise AssertionError(f"_lookup of unknown name {name!r}")
 
     def _scan(self, tokens: list[str], i: int) -> int:
         """Return how many tokens the expression at ``i`` occupies."""
@@ -255,7 +269,7 @@ class _Machine:
         d = self.defs.get(name)
         return (d.body if d else None, d.params if d else None)
 
-    def _partial(self, fn: _Func, given: list[object]) -> _Func:
+    def _partial(self, fn: _Func, given: list[_Value]) -> _Func:
         """Build a lambda that, when called with the remaining args, calls fn."""
         return _Func(
             fn.name + "..",
@@ -266,7 +280,7 @@ class _Machine:
             orig=fn,
         )
 
-    def _apply_builtin(self, fn: _Func, args: list[object]) -> object:
+    def _apply_builtin(self, fn: _Func, args: list[_Value]) -> _Value:
         """Apply a non-``i``, non-user builtin to its evaluated arguments.
 
         Never recurses: every one of these builtins is a single, bounded
@@ -279,8 +293,13 @@ class _Machine:
             return 1 if args[0] == args[1] else 0
         if fn.name == "cb":
             x, y = _as_int(args[0]), _as_int(args[1])
-            if x < 0 or y < 0:  # pragma: no cover - Lamfunc values are never negative
-                raise HaltError("cb of a negative number is undefined")
+            # No Lamfunc value is ever negative: a literal has to be all
+            # digits to parse, and the arithmetic builtins are ``>>``, ``&``
+            # and a binary concatenation, which are closed over the
+            # non-negatives.  So a negative here is a bug in this file, not a
+            # program asking for something undefined.
+            if x < 0 or y < 0:
+                raise AssertionError("cb of a negative number is undefined")
             return int(bin(x)[2:] + bin(y)[2:], 2) if (x or y) else 0
         if fn.name == "lb":
             return _as_int(args[0]) & 1
@@ -291,7 +310,8 @@ class _Machine:
             return args[1]
         if fn.name == "vg":
             return self.vars.get(str(args[0]), 0)
-        # pragma: no cover - callers only pass a name from _BUILTINS
+        # Callers only reach this with a name from _BUILTINS, so a miss is a
+        # bug in the dispatch above rather than a malformed program.
         raise AssertionError(f"unexpected non-user builtin {fn.name!r}")
 
     def _push_scan(self, tokens: list[str], pos: int) -> None:
@@ -410,9 +430,9 @@ class _Machine:
         frame.awaiting = True
         self._push_scan(frame.tokens, frame.pos)
 
-    def _finish(self, frame: _Frame, value: object, consumed: int) -> None:
+    def _finish(self, frame: _Frame, value: _Value, consumed: int) -> None:
         """Pop ``frame`` (already the top of the stack) and deliver its value."""
-        if self.frames[-1] is not frame:  # pragma: no cover - internal invariant
+        if self.frames[-1] is not frame:
             raise AssertionError("_finish called on a frame that is not on top")
         self.frames.pop()
         if not self.frames:
@@ -435,10 +455,12 @@ class _Machine:
             caller.awaiting = False
             caller.result = value
             caller.pos += consumed
-        else:  # pragma: no cover - "scan" never awaits a pushed child
+        else:
+            # "scan" never awaits a pushed child, so this is a bug in the
+            # phase bookkeeping rather than anything a program can cause.
             raise AssertionError(f"unexpected caller phase {caller.phase!r}")
 
-    def _toplevel_result(self, value: object, consumed: int) -> None:
+    def _toplevel_result(self, value: _Value, consumed: int) -> None:
         """Resolve one top-level call's value, advancing the cursor.
 
         A partial application absorbs the remaining top-level tokens as
@@ -474,9 +496,7 @@ class _Machine:
             self._step_body(frame)
 
 
-def _print_value(value: object) -> str:
-    if isinstance(value, bool):
-        return "1" if value else "0"  # pragma: no cover - Lamfunc never produces a bool
+def _print_value(value: _Value) -> str:
     if isinstance(value, int):
         return _to_binary(value)
     if isinstance(value, _Func):
