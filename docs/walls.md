@@ -481,20 +481,51 @@ linear scan rather than a genuine representation limit.  See
   `Lean.ofReduceBool` (so no `native_decide`).  The Lean `stepCmd` was
   differentially tested against the shipped interpreter over 44,280
   program/input pairs with zero mismatches.
-- **The Temporary Stack**: the auto-drain is the only output, and it prints
-  `front - 1` for the *oldest* stack element when `sum(rest) / 2 > front`.
-  An input-dependent `'0'`/`'1'` (48/49) output therefore needs the input to
-  select a 49/50 constant, but the only value-to-length conversion — the
-  front element popping — requires `front < input / 2 < 24`, so the front is
-  at most 24 and prints garbage, while the raw input at the front prints
-  `input - 1` (47/48).  Neither is a `'0'`/`'1'`.  Exhaustive search to
-  length 5 finds no identity or NOT program, and `\` (while nonempty) never
-  terminates except via the fixed 15-command stack reset, so there is no
-  input-dependent branch either.  The language was removed: its text
-  generator is a literal-embed (the text is pushed as a `*` string literal)
-  and, with the boolean generator walled, it had no computational generator
-  to stand on — see the tightened generator-story criterion in
-  `docs/limitations.md`.
+- **The Temporary Stack** (**this entry's argument is refuted; the removal
+  should be revisited**).  The entry read: the auto-drain is the only output
+  and prints `front - 1` for the oldest element when `sum(rest) / 2 > front`,
+  so an input-dependent `'0'`/`'1'` needs the input to select a 49/50
+  constant, which no value-to-length conversion can reach; and `\` never
+  terminates except via the 15-command reset, "so there is no
+  input-dependent branch either."  Both halves are false, checked against
+  the interpreter restored from `06687a2^` (scripts in `notes/tts/`).
+
+  **There is an input-dependent branch: the drain condition itself.**  The
+  entry considers only the `\` and `:` loops and the fixed reset, but
+  `sum(stk[1:]) / 2 > stk[0]` is evaluated against stack *values*, so an
+  input byte in the tail decides whether the drain fires at all.
+  `o v49 @ v50` prints `'0'` for input `'1'` and stays silent for `'0'` —
+  input-gated emission under the standard `'0'`/`'1'` encoding, no
+  re-encoding needed.  It is a real comparator, not a coincidence of two
+  constants: sweeping the trailing constant over 48-52 matches the
+  prediction from `(input + tail) / 2 > front` on all ten cases, with `v50`
+  discriminating and `v48`/`v52` pinned false/true
+  (`notes/tts/verify_branch.py`).  Emission-vs-silence is the
+  termination-based convention documented above, under which ArrowQueue and
+  Point Break are generators.
+
+  **And the printed answer does not need a 49/50 constant.**  In numeric
+  mode the drain prints the *number* `front - 1` as text, so a front of 1 or
+  2 prints the character `'0'` or `'1'` directly: `v1 v99` prints `'0'`,
+  `v2 v99` prints `'1'`.  The premise that the answer must arrive as byte
+  48/49 through `chr()` is what made the value-to-length conversion look
+  necessary.
+
+  In byte mode (`o`; note `O` is the *numeric* mode in this interpreter)
+  `o @ v999` is a three-word identity printing exactly `'0'` or `'1'` and
+  halting — reading its bits as `'1'`/`'2'`, since the drain's `front - 1`
+  shifts the alphabet down.  A per-language input alphabet has precedent:
+  Grapheme's generator reads `%`/`A` for the same kind of reason
+  (`tests/tools/boolean_runners.py`).
+
+  What is *not* re-established is a full generator: no two-input table was
+  attempted here, and the entry's "exhaustive search to length 5" is not
+  contradicted (it does not say whether length counts characters or words,
+  and the sweeps here were over words).  The point is narrower and enough to
+  matter — the two structural claims the removal rested on are both wrong,
+  so the language was removed on a bad negative.  The removal itself (see
+  `docs/limitations.md`) also cited the literal-embed text generator, which
+  this does not address.
 - **WII2D**: the accumulator never affects control flow (`^v<>` set the
   direction, `@` jumps unconditionally to the closest `@`), so there is no
   value-testable branch to route a decision tree on.  **Resolved by the
