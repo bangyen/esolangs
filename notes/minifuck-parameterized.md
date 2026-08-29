@@ -94,11 +94,36 @@ attempts failed on exactly this:
 
 The discipline that should fix it is to never hold divergence across an
 unverified operation: create it, take one verified step, bank it back into a
-tape cell (`[x` deposits `acc ^= s`), and clamp.  Between banks everything is
-converged and position-safe.  A relay-copy composite (`[<`, then a
-**fixed-count** `[x` walk, then `[x`) does leave a one-hot pair in isolation —
-verified — but not yet from the live joint state, because the walk to the
-source cell re-crosses and rewrites the region on the way.
+tape cell, and clamp.  Between banks everything is converged and
+position-safe.  That much works:
+
+* **Banking is a reliable value transfer.**  `[<` at `cell-1`, then a
+  **fixed-count** `[x` walk (fixed count, not a walk to a target — that is
+  what keeps the rows in step), then `[x`, delivers the cell's value or its
+  complement to clean ground: 108/108 across arities, source cells and
+  landing distances.  The polarity is set by the walk's row-dependent carry
+  and cannot be predicted by hand, so the emitter reads what was delivered
+  instead of predicting it.
+* **Both polarities are available.**  Re-banking a *recorded* landing cell
+  delivers the complement.  (Re-banking `high_water()` after the bank reads
+  the deposit's own mark instead and looks like the value was destroyed —
+  it is not.)
+
+What blocks the loop is that **banking is destructive in two ways at once**:
+`[<` consumes the cell it reads, and the walk out rewrites the region it
+crosses.  So neither obvious scheduling works:
+
+* *Greedy, one bank at a time* stalls — at `n == 2`, isolating row 0 spends
+  the only column separating rows 0 and 2, and no surviving column can
+  finish the job (2/4, 5/8, 11/16 at `n == 2, 3, 4`, and the misses are
+  always survivor pairs differing in one input bit).
+* *Plan the whole literal set first, then bank it* is worse (0/4) — the plan
+  is computed against columns that the first bank rewrites, so from the
+  second bank onward the planned cells hold something unrelated.
+
+The open problem is therefore scheduling banks against a region that each
+bank rewrites.  A non-destructive read, or a layout that keeps a spare copy
+of each literal, would resolve it.
 
 ## Dead ends worth not repeating
 
@@ -124,8 +149,9 @@ source cell re-crosses and rewrites the region on the way.
   divergence into the tape and clamp before doing anything that needs a
   shared coordinate system.
 
-Four separate "walls" in this investigation turned out to be artifacts of how
+Five separate "walls" in this investigation turned out to be artifacts of how
 the question was asked — blank-scratch searches, the width-2 ceiling read as
 a language limit, "information dies past the region" (it was this embed's
-region-XOR happening to be input-independent), and the isolation obstruction
-above.  Worth re-deriving a negative result before recording it as a wall.
+region-XOR happening to be input-independent), the isolation obstruction
+above, and "banking destroys the value" (it re-read the wrong cell).  Worth
+re-deriving a negative result before recording it as a wall.
