@@ -40,6 +40,18 @@ class TestClockwise:
         assert run_and_capture(["++;S;S;S;S;S;+;R", "R              R"]) == "\x01"
         assert run_and_capture(["+;S;S;S;S;S;++;R", "R              R"]) == "@"
 
+    def test_a_read_bit_leaves_the_accumulator_set(self) -> None:
+        """``.`` puts the bit *into* the accumulator, sign and all.
+
+        The read clears the low bit and adds the input one, and the only
+        program that exercised it emitted straight away -- where the parity
+        the ``;`` takes is the same whether the bit was added or subtracted
+        (-1 and 1 are both odd).  Truthiness is not: one ``+`` after the
+        read leaves 2 against 0, so a ``?`` corner turns in one case and
+        walks off the ring in the other.  The first bit of ``A`` is 1.
+        """
+        assert run_and_capture([".+?", "R  "], inputs=["A"]) == ""
+
     def test_every_input_character_contributes_its_bits(self) -> None:
         """The bits of a second character are appended, not substituted.
 
