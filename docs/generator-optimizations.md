@@ -31,7 +31,7 @@ three.
 | 8 | **Literal batching** | print a whole string in one statement rather than per character | `text/helpers.py` `_literal_chunks` |
 | 9 | **Equal-width embedding** | *anti*-optimization: pad both bits to equal width so length can't leak inputs | `boolean/helpers.py:97` `instantiate` |
 | 10 | **Dependency reduction** | a table that ignores an input is emitted as the *smaller* table, reading and discarding the rest | `boolean/other.py` `_taglate_dependencies` |
-| 11 | **Input reordering** | the tree splits on its inputs in whichever order emits the shortest program, so more subtrees fold — the bar is that the **emitted program changes** and still **consumes its inputs in the same order**, which rules out permuting a parameterized template's fill slots | `boolean/helpers.py` `best_input_order` (`six_five`, `forth` and `streetcode` roll their own) |
+| 11 | **Input reordering** | the tree splits on its inputs in whichever order emits the shortest program, so more subtrees fold — the bar is that the **emitted program changes** and still **consumes its inputs in the same order**, which rules out *relabelling* a parameterized template's fill slots but not interleaving ops between them | `boolean/helpers.py` `best_input_order` (`six_five`, `forth`, `streetcode` and `laserfuck` roll their own) |
 
 ## Which shape a boolean generator is
 
@@ -215,15 +215,19 @@ discarding the rest (`_taglate_dependencies`). Note `taglate`'s own
 
 The tree splits on inputs in whichever order emits the shortest program, so
 more subtrees fold. **The bar: the emitted program must change and still
-consume its inputs in the same order.** Permuting a parameterized template's
-fill slots is not a reorder — an identical program booking a saving against
-the harness's fill order is a redefined benchmark.
+consume its inputs in the same order.** *Relabelling* a parameterized
+template's fill slots — swapping which `{Xi}` name sits in which slot — is not
+a reorder, because the emitted program is identical and booking a saving
+against the harness's fill order is a redefined benchmark. Interleaving
+runtime ops *between* the slots is a different thing and does qualify; `eval`
+ships it, and it is what puts `back` in scope (see the grid tier below).
 
 **Shipped:** `six_five`, `jaune`, `eval`, `circlefuck`, `unsquare`, `sbleq`,
-`three_x`, `forth`, `sophie`, `polynomial`, `addsubjump`, `streetcode` (via
-`best_input_order`; `six_five`, `forth` and `streetcode` roll their own —
-streetcode because its `width` has to choose among *every* candidate, and
-`best_input_order` returns only the shortest one).
+`three_x`, `forth`, `sophie`, `polynomial`, `addsubjump`, `streetcode`,
+`laserfuck` (via `best_input_order`; `six_five`, `forth`, `streetcode` and
+`laserfuck` roll their own — the two grid ones because their `width` has to
+choose among *every* candidate, and `best_input_order` returns only the
+shortest).
 
 **Not applicable — sum-of-minterms**, where the minterm count does not depend
 on split order: `a_painter_ant`, `circlefuck_byte`, `circuit_diagram`, `cod`,
@@ -321,12 +325,65 @@ Three things that decided the build, worth carrying to the rest of the tier:
   prefix walks CP back there after the last read rather than assuming it
   landed there.
 
-**Not yet done.** The remaining grid generators (`dig` 19.8%, `flowchart`
-17.1%, `laserfuck` 16.3%, `back` 12.0%, `clockwise` 1.3%, `wii2d` 3.4%) all
-screen with real upside. Whether each is a placement like streetcode or
-genuine 2D layout surgery is the question to ask first, and it is answered by
-whether its nodes test a *position* — if they do, moving the data is enough.
-The upside is measured and recorded — and `arrowqueue` (12.4%) is separate: it is
+**LaserFuck is the second, and it confirms the rule.** It screened 16.3% and
+**delivered 16.08%** at n=3 (99527 → 83527 characters, 112 of 256 tables
+improved, none grown; verified over 8192 interpreter runs — every table, every
+row, all four initial headings — plus 47 tables at n=4 over 3008 runs). Its
+node is `>#v)`: step the pointer, then `)` tests the cell under it, so level
+*k* tests cell *k+1* exactly as streetcode's halls do. Only the reader's read
+section changes, from `,>,>,<<<` to a walk between each `,`.
+
+It was *easier* than streetcode, and the reason is worth stating: the read
+section sits between the two rings, past `multiply`'s `)` and before
+`retire`'s `}`, so it holds no conditional characters at all. A walk there
+cannot steer the beam, so there is no analogue of the gap-junction law to
+design around — the whole hazard budget streetcode spent was language-
+specific. Check where a candidate's reads sit relative to its conditionals
+before assuming the same cost.
+
+The one shared trap is the frame: **the cell map is the inverse of the
+permutation** in both, and both start their walk from wherever the preceding
+block left the pointer (streetcode cell 0, LaserFuck cell 1 — `multiply` ends
+on a `>`). Deriving the identity spelling first and checking it reproduces
+what the generator already emitted catches an off-by-one before any table is
+run.
+
+**Not yet done.** The remaining grid generators split by *where the node
+reads*, which is the same question the token-sequence tier answers, not by
+being 2D:
+
+- **`back` (12.0%) — a placement, and the next one to build.** Tape with
+  `<`/`>`, node `+\>`, load is `-`, `{Xi}`, `>` per input: generalizing that
+  `>` into a walk is streetcode's edit. Being a parameterized template does
+  *not* block it — see the note below on what the fill-slot bar actually
+  rules out. Mind two things: its inputs sit at cells `0..n-1` with the
+  answer at `n`, so level *k* tests cell **k**, off by one from the other
+  two; and the equal-width embed (constant `-` primer, then `{Xi}`) must
+  survive, so reorder whole units and never split one.
+- **`dig` (19.8%) and `flowchart` (17.1%) read at the node**, so both need a
+  hoist and rule 2's 10% estimate before either is worth writing. `dig`'s
+  `_DIG_BRANCH` is `>2$~;#@` — read, store and turn in one fixed block, with
+  the `;` store feeding only its own adjacent `#`. `flowchart` is the more
+  interesting miss: the *language* has the richest tape of the group (a deque
+  per cell, `< ]`/`[ >`, push and pop at both ends) and the generator never
+  touches it, feeding every `< >` switch from its own `/ /` directly above.
+  Read the generator, not the language, before classifying — and note this is
+  the same mistake that once excluded `bitdeque` for the opposite reason.
+- **`clockwise` (1.3%, a lone accumulator) and `wii2d` (3.4%)** have nothing
+  to place into and sit below the threshold anyway.
+
+**What the fill-slot bar rules out, precisely.** "Permuting a parameterized
+template's fill slots is not a reorder" excludes *relabelling* — swapping
+which `{Xi}` name sits in which slot, which leaves the emitted program
+identical. It does not exclude **interleaving runtime ops between the
+slots**, which changes the program. `eval` is the shipped precedent and says
+so in `_eval_stack_programs`: the `{Xi}` blocks keep their slots and the
+harness fills them exactly as before, while the emitted ops rearrange the
+stack the nodes pop from. `instantiate` substitutes by *name*, so a named
+input still reaches its named slot however the moves around it change. This
+is what puts `back` in scope.
+
+`arrowqueue` (12.4%) is separate: it is
 a *queue*-fed grid template, so a real reorder needs re-enqueue gadgets to
 bring a bit to the front. Permuting which `{Xi}` name sits in each header
 slot is not an alternative: `_header_rows` fills the header positionally

@@ -962,6 +962,62 @@ class TestLaserFuck:
         for heading in range(4):
             assert run_laserfuck(program, ["1", "0"], heading) == "1"
 
+    def test_input_reordering_folds_a_scattered_table(self) -> None:
+        """The tree splits in whichever order folds most, not input order.
+
+        ``10101010`` depends on its last input alone, so it folds nothing
+        splitting most-significant-first and everything once that input is
+        tested at the root.  The reorder costs only the walk that puts the
+        bit in the cell the root tests, which is paid once in the reader
+        rather than per node -- so the two one-dependency tables come out
+        the same size.
+        """
+        scattered = len(boolean.laserfuck("10101010"))
+        aligned = len(boolean.laserfuck("11110000"))
+        parity = len(boolean.laserfuck("01101001"))
+        assert scattered == aligned
+        assert aligned < parity
+
+    def test_input_reordering_never_grows_a_program(self) -> None:
+        """The identity order is built first and ties keep it.
+
+        Parity folds under no order at all, so it has to emit exactly the
+        program it emitted before reordering existed -- which is the plain
+        read section, one ``,`` per cell stepping rightwards with no walk
+        back and forth.
+        """
+        assert ",>,>," in boolean.laserfuck("01101001")
+
+    @pytest.mark.parametrize(
+        "table",
+        ["10101010", "11001100", "01011010", "00111100", "10010110"],
+    )
+    def test_reordered_programs_compute_the_table(self, table: str) -> None:
+        """A reordered program still computes its function, at every heading.
+
+        The cell an input is read into is the *inverse* of the split order:
+        a node steps then tests, so level ``k`` tests cell ``k + 1`` and has
+        to be handed input ``perm[k]``.  Reading that forward stores the
+        right bits in the wrong cells and computes a different function,
+        which only running the program catches.
+        """
+        program = boolean.laserfuck(table)
+        for combo in range(8):
+            bits = [(combo >> (2 - i)) & 1 for i in range(3)]
+            for heading in range(4):
+                got = run_laserfuck(program, [str(b) for b in bits], heading)
+                assert got == table[combo], f"{table} inputs {bits} heading {heading}"
+
+    def test_reordering_keeps_the_reads_in_stream_order(self) -> None:
+        """Reordering moves where a bit is stored, never when it is read.
+
+        The program consumes its input stream exactly as it did before: one
+        ``,`` per input, in input order.  What moves is the cell each lands
+        in, so the count of reads is what pins this down.
+        """
+        for table in ("10101010", "11110000", "01101001"):
+            assert boolean.laserfuck(table).count(",") == 3
+
     def test_decimal_output_mode(self) -> None:
         """No ``\\xff`` marker, so the tape dumps as numbers, not bytes.
 

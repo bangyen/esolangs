@@ -9,10 +9,15 @@ that file that lays out a grid, builds a looping input reader, and rotates
 a block on end to meet a width.
 """
 
+from itertools import permutations
 from typing import NamedTuple
 
 from esolangs.tools import laserfuck_layout
-from esolangs.tools.boolean.helpers import _validate_truth_table
+from esolangs.tools.boolean.helpers import (
+    _ORDER_SEARCH_MAX,
+    _validate_truth_table,
+    permute_truth_table,
+)
 
 __all__ = ["laserfuck"]
 
@@ -26,7 +31,54 @@ _LASER_OUTER = 8
 _LASER_INNER = 6
 
 
-def _laserfuck_ring_reader(n: int) -> tuple[list[str], int]:
+def _laserfuck_walk(frm: int, to: int) -> str:
+    """Spell the tape walk from cell ``frm`` to cell ``to``."""
+    return ">" * (to - frm) if to >= frm else "<" * (frm - to)
+
+
+def _laserfuck_cells(n: int, perm: tuple[int, ...]) -> list[int]:
+    """Return the cell each stream input is read into, indexed by input.
+
+    A node is ``>#v)``: it steps the pointer and then tests the cell under
+    it, so level ``k`` tests cell ``k + 1`` whatever is in it.  Level ``k``
+    has to test original input ``perm[k]``, so that input is the one read
+    into cell ``k + 1`` -- the *inverse* of ``perm``.  Reading it forward
+    puts the right bits in the wrong cells and computes a different
+    function.
+    """
+    cells = [0] * n
+    for level, i in enumerate(perm):
+        cells[i] = level + 1
+    return cells
+
+
+def _laserfuck_reads(n: int, perm: tuple[int, ...]) -> str:
+    """Spell the reader's read section, placing the inputs in ``perm`` order.
+
+    ``multiply`` ends on cell 1, so that is where the pointer starts; the
+    section ends back on cell 0, the counter the second ring spends.  Under
+    the identity order this is the plain ``,>,>,<<<`` the reader always
+    emitted -- each read steps one cell on -- and a permuted order only
+    changes the walks between the ``,``.
+
+    Nothing here is conditional.  The read section sits between the two
+    rings, past ``multiply``'s ``)`` and before ``retire``'s ``}``, so it
+    is a straight run the beam crosses once: a walk cannot steer it, which
+    is what makes the placement free of the steering hazards a ring body
+    would carry.
+    """
+    cells = _laserfuck_cells(n, perm)
+    out = ""
+    at = 1
+    for cell in cells:
+        out += _laserfuck_walk(at, cell) + ","
+        at = cell
+    return out + _laserfuck_walk(at, 0)
+
+
+def _laserfuck_ring_reader(
+    n: int, perm: tuple[int, ...] | None = None
+) -> tuple[list[str], int]:
     r"""Build the looping input reader, and say how wide it is.
 
     Returns the reader's rows and the column the beam leaves them on, moving
@@ -58,12 +110,9 @@ def _laserfuck_ring_reader(n: int) -> tuple[list[str], int]:
     """
     preload = ">" + "+" * _LASER_OUTER
     multiply = "<" + "+" * _LASER_INNER + ">" + "-#/)"
-    reads = ""
-    for i in range(n):
-        reads += ","
-        if i < n - 1:
-            reads += ">"
-    reads += "<" * n  # back to the counter
+    # The reads land the inputs in cells 1..n and end back on the counter.
+    # Which input goes in which cell is the reorder (see _laserfuck_reads).
+    reads = _laserfuck_reads(n, tuple(range(n)) if perm is None else perm)
     # one '-' for the counter and one for each input, then home again
     retire = "".join("->" for _ in range(n)) + "-" + "<" * n + "#/)"
 
@@ -143,9 +192,12 @@ def _laserfuck_flip(rows: list[str]) -> list[str]:
     return [line.ljust(width)[::-1].translate(_LASER_FLIP_H) for line in rows]
 
 
-def _laserfuck_reader_blocks(n: int) -> list[list[str]]:
+def _laserfuck_reader_blocks(
+    n: int,
+    perm: tuple[int, ...] | None = None,
+) -> list[list[str]]:
     """Cut the flat reader into rectangles, padded so a rotation is exact."""
-    rows, _ = _laserfuck_ring_reader(n)
+    rows, _ = _laserfuck_ring_reader(n, perm)
     width = max(len(line) for line in rows)
     padded = [line.ljust(width) for line in rows]
     starts = [col for col, char in enumerate(padded[0]) if char == "}"]
@@ -206,7 +258,11 @@ def _laserfuck_place(block: list[str], upright: str) -> _LaserBlock:
     return _LaserBlock(turned, 1, connectors, below, entry + 1)
 
 
-def _laserfuck_assemble_reader(n: int, orientation: str) -> tuple[list[str], int, int]:
+def _laserfuck_assemble_reader(
+    n: int,
+    orientation: str,
+    perm: tuple[int, ...] | None = None,
+) -> tuple[list[str], int, int]:
     """Chain the reader's blocks, each flat (``F``) or on end (``R``).
 
     Each block is placed by :func:`_laserfuck_place`, which declares where
@@ -220,7 +276,11 @@ def _laserfuck_assemble_reader(n: int, orientation: str) -> tuple[list[str], int
             cells[(row, col)] = char
 
     row = col = 0
-    for block, upright in zip(_laserfuck_reader_blocks(n), orientation, strict=True):
+    for block, upright in zip(
+        _laserfuck_reader_blocks(n, perm),
+        orientation,
+        strict=True,
+    ):
         placed = _laserfuck_place(block, upright)
         for offset, line in enumerate(placed.rows):
             for index, char in enumerate(line):
@@ -239,11 +299,16 @@ def _laserfuck_assemble_reader(n: int, orientation: str) -> tuple[list[str], int
     return lines, row, col
 
 
-def laserfuck(truth_table: str, width: int | None = None) -> str:
-    r"""Build a LaserFuck program computing the given truth table.
+def _laserfuck_build(
+    truth_table: str,
+    perm: tuple[int, ...],
+    width: int | None = None,
+) -> str:
+    r"""Build one LaserFuck program, reading its inputs in ``perm`` order.
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
+    ``truth_table`` is already permuted, so every row index here is in the
+    permuted frame; ``perm`` is spent in exactly one place, the read section
+    that decides which cell each input lands in.
 
     The laser starts at ``o`` with a random heading, so a mirror funnel
     (``|``/``^``/``_`` plus two ``}`` on the row above) sends every heading
@@ -306,11 +371,11 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     # The tree adds only a column or two past the reader, so the reader is
     # what a width has to bargain with: side by side the rings are one row
     # and forty-odd columns, stacked they are seven rows and under twenty.
-    count = len(_laserfuck_reader_blocks(n))
+    count = len(_laserfuck_reader_blocks(n, perm))
     candidates = []
     for choice in range(2**count):
         orientation = "".join("R" if choice >> b & 1 else "F" for b in range(count))
-        rows_of, exit_row, exit_col = _laserfuck_assemble_reader(n, orientation)
+        rows_of, exit_row, exit_col = _laserfuck_assemble_reader(n, orientation, perm)
         span = max(len(line) for line in rows_of)
         candidates.append((len(rows_of), span, rows_of, exit_row, exit_col))
     candidates.sort(key=lambda item: (item[0], item[1]))
@@ -465,3 +530,44 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     while lines and not lines[-1]:
         lines.pop()  # pragma: no cover - the grid ends on content
     return "\n".join(lines)
+
+
+def laserfuck(truth_table: str, width: int | None = None) -> str:
+    """Build a LaserFuck program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.
+    :func:`_laserfuck_build` is the construction and its docstring is the
+    account of it; this is the search over input orders around it.
+
+    The tree splits on its inputs in whichever order emits the shortest
+    program, so more subtrees fold.  That is a *placement*: a node is
+    ``>#v)``, which steps the pointer and tests the cell under it, so level
+    ``k`` tests cell ``k + 1`` whatever is in it, and moving which cell an
+    input is read into is enough to change what every node tests.  Only the
+    reader's read section changes (see :func:`_laserfuck_reads`); the tree,
+    the fold, the leaf sweeps and the retire ring are untouched, and the
+    reads stay in stream order -- one ``,`` per input, left to right.
+
+    The identity order is built first and ties keep it, so a table no
+    reorder improves emits exactly what it emitted before.
+
+    A width is applied to every candidate rather than to the winner: the
+    reader's orientations and the tree's placement already trade rows
+    against columns, so the narrowest program is often not the shortest,
+    and the choice has to be made over the whole pool.
+    """
+    n = _validate_truth_table(truth_table)
+    identity = tuple(range(n))
+    orders = [identity]
+    if n <= _ORDER_SEARCH_MAX:
+        orders += [p for p in permutations(range(n)) if p != identity]
+
+    best = _laserfuck_build(truth_table, identity, width)
+    for perm in orders[1:]:
+        candidate = _laserfuck_build(
+            permute_truth_table(truth_table, perm), perm, width
+        )
+        if len(candidate) < len(best):
+            best = candidate
+    return best
