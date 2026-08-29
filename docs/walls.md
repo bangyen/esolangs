@@ -353,18 +353,37 @@ linear scan rather than a genuine representation limit.  See
 
 ## Assessed boolean candidates that fell through
 
-- **%^2^-1**: its only control flow is `t` — rewind to the program start
-  when the accumulator is nonzero — with the accumulator preserved across
-  the rewind.  A program is therefore a whole-program `while` loop, and each
-  `n` in the body consumes one input line, so a `t` loop iterates over the
-  input bits.  It cannot count them: there is no increment-by-1 for an
-  arbitrary value, and a counter in the rewind path grows without bound (the
-  `acc > 3003` reset only fires on huge magnitudes), so the loop stops only
-  when a body pass ends with `acc == 0` — a uniform predicate that cannot
-  tell pass 1 from pass n.  The all-ones row of any truth table therefore
-  either stops the loop early or rewinds past the input.  Exhaustive search:
-  of the four one-input functions only identity and the two constants are
-  expressible; NOT and every two-input table fail even at length 8.
+- **%^2^-1** (wall at `n >= 2`, proved in Lean): its only control flow is
+  `t` — rewind to the program start when the accumulator is nonzero — with
+  the accumulator preserved across the rewind.  There is no forward jump and
+  no way to branch over code, so a program cannot route two inputs to
+  different tails.
+
+  **All four one-input functions are expressible**, which an earlier
+  length-8 search missed: identity is `ne`, the constants go through `'`,
+  and NOT is `nss` + `i` * 31 + `pe` (36 commands), which computes
+  `x -> -x + 97` and so maps 48 -> 49 and 49 -> 48.  A NOT program needs
+  ~20+ commands to build the additive constant out of `s`/`i`, well outside
+  a length-8 sweep — the old entry's claim that NOT fails was wrong.
+
+  The real wall is at two inputs, and it holds at *any* program length:
+  `extra/lean/esolangs/Esolangs/PctBooleanWall.lean` proves
+  `computes_ignores` — every program meeting the boolean contract (halt
+  cleanly, consume both bits, print one character) computes a function that
+  ignores one of its two inputs — so `no_xor` and `no_and` follow.  Two
+  structural facts drive it: `n` *overwrites* the accumulator, so the state
+  at the last read is a function of the last bit alone; and `t` jumps only
+  to position 0, so a run that halts must have input enough for every read
+  ahead of the cursor (`count_le_of_halts`), which forbids the two runs from
+  diverging at a `t`.  Output therefore factors as `A(b1) ++ B(b2)`, and a
+  one-character output forces one factor empty.
+
+  This is an induction over unbounded length, not a bounded search: the
+  axiom audit (`PctWallCheck.lean`) reports only `propext`,
+  `Classical.choice`, and `Quot.sound` — no `sorryAx`, and no
+  `Lean.ofReduceBool` (so no `native_decide`).  The Lean `stepCmd` was
+  differentially tested against the shipped interpreter over 44,280
+  program/input pairs with zero mismatches.
 - **The Temporary Stack**: the auto-drain is the only output, and it prints
   `front - 1` for the *oldest* stack element when `sum(rest) / 2 > front`.
   An input-dependent `'0'`/`'1'` (48/49) output therefore needs the input to
