@@ -27,9 +27,24 @@ Usage:
     python scripts/mutate_one.py Qoibl
     python scripts/mutate_one.py Grapheme --keep   # leave the work dir
 
-Requires: mutmut==3.3.1.  Newer versions build the trampoline qualname with
-mangled_name_from_mutant_name(), which strips the class part, so class-method
-mutants can never be selected and are silently reported as killed.
+Requires: mutmut==3.7.0.  It was pinned to 3.3.1 for a long stretch, against
+a bug where the trampoline built its qualname with
+mangled_name_from_mutant_name(), stripping the class part so that
+class-method mutants could never be selected and were silently reported as
+killed.  3.7.0 does not have it: it carries the class through the mangled
+name itself (``mangle_function_name`` joins it with a ``CLASS_NAME_SEPARATOR``
+and ``orig_function_and_class_names_from_key`` reads it back), and a run over
+Minifuck selects and reports all four of its surviving ``_Machine`` mutants,
+which the bug would have hidden.
+
+3.7.0 also drops a class of mutant 3.3.1 emitted: bodies textually identical
+to the original.  Bitdeque had one, and it read as a survivor -- no test can
+kill code that changes nothing -- so 3.3.1 scored it 83/84 where 3.7.0 scores
+the same suite 83/83.  The higher number is the true one.
+
+Note when comparing against older notes: mutants are numbered per function in
+generation order, so an ID like ``__init____mutmut_15`` does not refer to the
+same edit across the two versions.
 """
 
 import argparse
