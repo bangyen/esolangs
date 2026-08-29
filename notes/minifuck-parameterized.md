@@ -152,13 +152,23 @@ holds the wanted column, and it reaches **all 16 tables at `n == 2` in about
 a second** from the embed alone; at `n == 3` it reaches 9 of a 24-table
 sample at depth 11, with the rest wanting the intermediate ladder.
 
-The gap is that the search leaves the pointer wherever it finished, while the
+The gap was that the search left the pointer wherever it finished, while the
 endgame needs it parked at the answer cell — and walking back there
-re-crosses, and so changes, that cell.  Ordering the pool fix before the
-search and reading wherever the column lands gets 4/16 printed end to end;
-folding the read into the search's own acceptance (demand a state where the
-pointer is *already* parked to read the answer) is the next step, and is what
-would turn 16/16-as-columns into 16/16-as-programs.
+re-crosses, and so changes, that cell.  **Making the parking part of what is
+searched for closes that**: `find_parked` accepts only states where a cell
+holds the answer column *and* the pointer already sits immediately left of
+it, so `[<` reads it with no walk in between.  All 16 tables at `n == 2`
+reach such a state at depth <= 15 (`minifuck_parked_search.py`, 97s).
+
+What is left is the last hand-off, and it is now a sequencing problem rather
+than a reachability one.  The pool has to read `0011000` at print time, but
+`pool_fix` chooses its correction for a *particular* walk-out that the parked
+search then does not perform — so the pool it leaves is wrong for this route
+(it produced `01101001` in a direct test), and searching after the fix from
+that state finds nothing.  Pool correction and the parked search have to be
+solved together — either by folding the pool's final state into the search's
+acceptance too, or by correcting the pool after the search along a route that
+does not disturb the parked pointer.
 
 ## Dead ends worth not repeating
 
