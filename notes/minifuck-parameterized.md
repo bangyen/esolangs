@@ -109,21 +109,34 @@ position-safe.  That much works:
   the deposit's own mark instead and looks like the value was destroyed —
   it is not.)
 
-What blocks the loop is that **banking is destructive in two ways at once**:
-`[<` consumes the cell it reads, and the walk out rewrites the region it
-crosses.  So neither obvious scheduling works:
+What blocked the loop was that **banking is destructive in two ways at
+once**: `[<` consumes the cell it reads, and the walk out rewrites the region
+it crosses.  Greedy banking therefore spent the columns a later step needed
+(2/4, 5/8, 11/16 at `n == 2, 3, 4`), and planning the set up front was worse
+(0/4), because the first bank invalidated the plan.
 
-* *Greedy, one bank at a time* stalls — at `n == 2`, isolating row 0 spends
-  the only column separating rows 0 and 2, and no surviving column can
-  finish the job (2/4, 5/8, 11/16 at `n == 2, 3, 4`, and the misses are
-  always survivor pairs differing in one input bit).
-* *Plan the whole literal set first, then bank it* is worse (0/4) — the plan
-  is computed against columns that the first bank rewrites, so from the
-  second bank onward the planned cells hold something unrelated.
+**Both halves of that are now fixed** (`minifuck_shelf.py`):
 
-The open problem is therefore scheduling banks against a region that each
-bank rewrites.  A non-destructive read, or a layout that keeps a spare copy
-of each literal, would resolve it.
+* **Reads need not be destructive.**  A gadget exists that diverges the
+  pointer by a cell's value and leaves the cell standing.  `[<<[[<` does it
+  on a blank tape — verified on the shipped interpreter — but only in 729 of
+  3000 random neighbourhoods, because its precondition (both neighbours zero)
+  belongs to *that* gadget rather than to the problem.  Searching for a read
+  from the **live joint state**, with the junk in place as part of the
+  starting condition, finds one per use in well under a second.
+* **The shelf is as wide as the emitter wants.**  Literals are banked out of
+  the dense region onto spaced ground, and re-banking an entry delivers its
+  complement — the second polarity the one-sided tests need.  With two or
+  three rounds, a conjunction of `== 0` tests separates **every** row at
+  `n == 2, 3, 4` (4/4, 8/8, 16/16).  The earlier stalls were probe depth, not
+  exhausted material.
+
+What remains is **executing** a plan.  Chaining the reads means holding
+divergence across steps, but clamping between steps to keep the rows in step
+discards the divergence being accumulated — so the conjunction has to be
+banked into a cell after each read rather than carried in the pointer.  That
+is the next thing to build, and it is the last piece: isolation, reads, the
+shelf, the deposit and the endgame are all verified.
 
 ## Dead ends worth not repeating
 
