@@ -9,6 +9,7 @@ from esolangs.tools.boolean.helpers import (
     _validate_truth_table,
     best_input_order,
     minterm_literals,
+    stored_inputs,
 )
 from esolangs.tools.text.helpers import _cm_constants
 
@@ -229,20 +230,7 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     values["D48"] = _ASCII_ZERO
     values["D49"] = _ASCII_ONE
 
-    # Which levels can branch, computed in *level* space over the permuted
-    # table and translated to the *stream* inputs the read block runs over:
-    # level ``k`` reads input ``perm[k]``, and mixing the frames stores the
-    # wrong bits.
-    branching = {
-        k
-        for k in range(n)
-        if any(
-            truth_table[r] != truth_table[r | (1 << (n - 1 - k))]
-            for r in range(2**n)
-            if not r & (1 << (n - 1 - k))
-        )
-    }
-    stored = {perm[k] for k in branching}
+    stored = stored_inputs(truth_table, perm)
 
     # The reads, in stream order.  An input no node tests is read into
     # write-only scratch: the contract is that every input is *consumed*,

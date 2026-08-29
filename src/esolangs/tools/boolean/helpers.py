@@ -163,6 +163,33 @@ def permute_truth_table(truth_table: str, perm: tuple[int, ...]) -> str:
     return "".join(rows)
 
 
+def stored_inputs(truth_table: str, perm: tuple[int, ...]) -> set[int]:
+    """Return the *stream* inputs a decision tree over ``perm`` has to keep.
+
+    A level whose two halves agree everywhere cannot change the answer, so
+    the tree never tests it and the read that fetched it can be discarded.
+    What survives is everything else.
+
+    The subtlety is the two frames.  ``truth_table`` is already permuted, so
+    the fold is computed in *level* space -- level ``k`` splits on bit
+    ``n - 1 - k`` of the permuted table -- while the reads run in *stream*
+    order, over the inputs as the program consumes them.  Level ``k`` reads
+    input ``perm[k]``, so the answer is translated back through ``perm``
+    before it is returned; mixing the frames stores the wrong bits.
+    """
+    n = _validate_truth_table(truth_table)
+    branching = {
+        k
+        for k in range(n)
+        if any(
+            truth_table[r] != truth_table[r | (1 << (n - 1 - k))]
+            for r in range(2**n)
+            if not r & (1 << (n - 1 - k))
+        )
+    }
+    return {perm[k] for k in branching}
+
+
 def best_input_order(
     truth_table: str,
     build: Callable[[str, tuple[int, ...]], str],
