@@ -336,7 +336,17 @@ jobs:
           exit 1
         fi
 
+  # Temporarily disabled.  The Lean project is mid-restructure: the proofs
+  # are being moved out of the `Esolangs.lean` root into their own modules so
+  # that the default `lake build` target covers all of them rather than just
+  # MAMMALIAN.  Re-enable by deleting the `if: false` line below.
+  #
+  # Note the cache key and the `sources_hash` below both enumerate
+  # `Esolangs.lean` and `Esolangs/*.lean` explicitly; they keep working across
+  # the restructure, but a proof added outside those paths would be invisible
+  # to both.
   lean:
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
