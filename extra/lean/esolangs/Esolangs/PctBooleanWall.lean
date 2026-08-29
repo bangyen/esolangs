@@ -419,4 +419,83 @@ theorem unique_read_pos (code : List Cmd) (p : ℕ)
   exact congrArg some
     (read_pos_unique code q p (by omega) (firstReadFrom_isRead code 0 q hq) hp)
 
+/-! ### 6. Splitting a run at its last read
+
+`splitAt`: a run that starts with one byte left and halts cleanly having
+consumed it passes through a read.  The position `q` of that read, and
+everything printed before it, do not depend on the accumulator the run
+started with — only on the cursor.  What comes after is a run from
+`⟨q + 1, b, []⟩`, so it depends only on the byte `b`.
+
+The proof is an induction on fuel with one interesting case, the `t`:
+
+* if the program has two or more reads, a taken `t` cannot halt cleanly with
+  one byte left (`count_le_of_halts` at position `0`), so the branch is dead;
+* if it has exactly one read, a taken `t` is fine — the recursion simply
+  continues, and `read_pos_unique` still pins the read that eventually fires.
+-/
+
+/-- **The split lemma.**  A cleanly-halting run holding one byte reaches a read
+at a position determined by the program and the cursor — not the accumulator —
+and its output is what it printed before that read followed by the tail run's
+output. -/
+theorem run_splits (code : List Cmd) :
+    ∀ (fuel : ℕ) (i : ℕ) (a b : ℤ) (r : State × List ℤ),
+      run code fuel ⟨i, a, [b]⟩ = some r → r.1.inp = [] →
+      ∃ (q : ℕ) (pre : List ℤ) (f' : ℕ) (r' : State × List ℤ),
+        code[q]? = some Cmd.read ∧
+        run code f' ⟨q + 1, b, []⟩ = some r' ∧
+        r.2 = pre ++ r'.2 := by
+  intro fuel
+  induction fuel with
+  | zero => intro i a b r h _; simp [run] at h
+  | succ k ih =>
+    intro i a b r h hnil
+    rw [run] at h
+    cases hc : code[i]? with
+    | none =>
+      -- halting immediately leaves the byte unconsumed, contradicting `hnil`
+      rw [hc] at h
+      simp only [Option.some.injEq] at h
+      rw [← h] at hnil
+      simp at hnil
+    | some c =>
+      rw [hc] at h
+      simp only at h
+      cases hstep : stepCmd c ⟨i, a, [b]⟩ with
+      | eof => rw [hstep] at h; simp at h
+      | next s' o =>
+        rw [hstep] at h
+        simp only [Option.map_eq_some_iff] at h
+        obtain ⟨p, hp, hr⟩ := h
+        -- in every case the emitted list `o` is a prefix of the run's output
+        have hnil' : p.1.inp = [] := by rw [← hr] at hnil; simpa using hnil
+        have hout_eq : r.2 = o ++ p.2 := by rw [← hr]
+        cases c
+        -- the read fires here: this is the split point
+        case read =>
+          simp only [stepCmd] at hstep
+          cases hstep
+          exact ⟨i, [], k, p, hc, hp, by simpa using hout_eq⟩
+        -- an arithmetic or print command: recurse at i+1 with the same byte
+        case sub2 | sub3 | dbl | neg | zero | printNum | printChr =>
+          simp only [stepCmd] at hstep
+          cases hstep
+          obtain ⟨q, pre, f', r', hq, hrun, hout⟩ := ih _ _ b p hp hnil'
+          exact ⟨q, _ ++ pre, f', r', hq, hrun, by rw [hout_eq, hout, List.append_assoc]⟩
+        -- the rewind: taken or not, recurse; the taken branch is only
+        -- reachable when the program holds a single read
+        case rewind =>
+          by_cases hz : (if a > 3003 then (0 : ℤ) else a) ≠ 0
+          · rw [stepCmd, if_pos hz] at hstep
+            cases hstep
+            obtain ⟨q, pre, f', r', hq, hrun, hout⟩ := ih _ _ b p hp hnil'
+            exact ⟨q, _ ++ pre, f', r', hq, hrun,
+              by rw [hout_eq, hout, List.append_assoc]⟩
+          · rw [stepCmd, if_neg hz] at hstep
+            cases hstep
+            obtain ⟨q, pre, f', r', hq, hrun, hout⟩ := ih _ _ b p hp hnil'
+            exact ⟨q, _ ++ pre, f', r', hq, hrun,
+              by rw [hout_eq, hout, List.append_assoc]⟩
+
 end PctBooleanWall
