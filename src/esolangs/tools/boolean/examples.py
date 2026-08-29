@@ -432,6 +432,21 @@ def _fill_minifuck(template: str, bits: list[int]) -> str:
     )
 
 
+def _fill_pct_squared_minus_one(template: str, bits: list[int]) -> str:
+    """Substitute each bit's setter, named by the template's own header.
+
+    %^2^-1 solves its setters per truth table rather than fixing them by the
+    language, so there is no table-independent spelling of "set input i to
+    this bit" to pass to :func:`instantiate`.  The template carries the two
+    branches for each input in a header, and the generator's own filler
+    reads it -- the same structure-aware arrangement ArrowQueue needs.  Both
+    branches are equal width, so the instantiations share a length.
+    """
+    from esolangs.tools.boolean.pct_squared_minus_one import fill
+
+    return fill(template, bits)
+
+
 def _fill_arrowqueue(template: str, bits: list[int]) -> str:
     # ArrowQueue rebuilds its whole header rather than substituting in place
     return _instantiate_arrowqueue(template, bits)
