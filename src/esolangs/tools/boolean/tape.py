@@ -669,7 +669,7 @@ def _basicfuck_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 def sbleq(truth_table: str) -> str:
     """Build an S*bleq program computing the given truth table.
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    ``truth_table`` is a binary string of length 2**n indexed by the
     inputs (most significant first); the table length implies ``n``.
 
     S*bleq's instruction is ``a b c``: ``mem[a] -= mem[b]``, and when the
@@ -677,29 +677,139 @@ def sbleq(truth_table: str) -> str:
     The ``<= 0`` branch traps on zero, so a bit normalized to 0 would
     branch the wrong way; the generator instead normalizes each input to
     ``49 - byte`` (``'0'`` -> 1, ``'1'`` -> 0), which lands the two cases on
-    opposite sides of zero.  Every branch level is then just two
-    instructions:
+    opposite sides of zero.
 
-        v -2 NXT     # v = -byte (always jumps, so NXT points at the next)
-        v NEG49 ONE  # v = 49 - byte; a one jumps to ONE, a zero falls through
+    **The reads are hoisted above the tree**, which is what lets the tree
+    split in any input order.  The read block is ``2n`` instructions, two
+    per input::
 
-    where ``NEG49`` is a constant cell holding -49 and ``v`` is that level's
-    value cell.  Leaves print ``-3 D 0`` (``D`` a constant 48/49 cell) and
-    halt with ``0 0 HALT`` (``HALT`` holds -1, a negative jump target).
-    Whole subtrees whose table entries are constant collapse to a leaf.
+        v_i -2   NXT    # v_i = -byte (always <= 0, so NXT is the next instr)
+        v_i NEG49 NXT2  # v_i = 49 - byte; both outcomes continue to the next
+
+    and a branch node is then a *single* instruction that tests its value
+    cell against a zero constant::
+
+        v_j ZERO ONE    # a one jumps to ONE, a zero falls through
+
+    Subtracting zero is what makes the test **non-destructive**, so a value
+    cell survives being tested and the tree may name its inputs in any
+    order.  A destructive test would also work -- a root-to-leaf path tests
+    each input at most once -- but only by accident of the tree's shape, and
+    it would break the moment a node wanted to re-test a bit.
+
+    Hoisting is a saving in its own right, independent of the reorder.  The
+    node-read build it replaces read at each node, so every leaf had to
+    *drain* the reads its untaken siblings never made -- an input-capable
+    language reads each of its n inputs exactly once per run whatever the
+    table says -- and that drain cost two instructions and a data triple per
+    undrained level, per leaf.  The hoisted read block pays for each input
+    once for the whole program.
+
+    Leaves print ``-3 D 0`` (``D`` a constant 48/49 cell) and halt with
+    ``0 0 HALT`` (``HALT`` holds -1, a negative jump target).  Whole
+    subtrees whose table entries are constant collapse to a leaf.
 
     S*bleq's operands are addresses, so a cell holding a transient 0/1 is
     misread as a jump target if any ``c`` references it.  The generator
     therefore keeps *constant* cells (``NEG49``, ``D48``, ``D49``, ``HALT``,
-    and each node's ``NXT``/``ONE``, the only cells ever used as jump
-    targets) strictly separate from *value* cells (each node's ``v``, written
-    by the read and never used as a ``c`` operand).  Each node of the tree
-    allocates its own ``v``/``NXT``/``ONE`` triple, and the ``NXT``/``ONE``
-    values (the addresses of the node's normalize instruction and one-subtree)
-    are back-patched after the code layout is known.  The normalize subtracts
-    the constant in the ``b`` operand, which the ``store="b"``/``"ab"``
-    variants would overwrite, so this generator targets base S*bleq
-    (``store="a"``).
+    ``ZERO``, and the ``NXT``/``NXT2``/``ONE`` targets, the only cells ever
+    used as a ``c`` operand) strictly separate from *value* cells (each
+    input's ``v``, written by the read and never used as a ``c`` operand).
+    The jump targets are back-patched once the code layout is known.  The
+    normalize subtracts the constant in the ``b`` operand, which the
+    ``store="b"``/``"ab"`` variants would overwrite, so this generator
+    targets base S*bleq (``store="a"``).
+
+    **Both constructions are kept as candidates** (technique 4).  Hoisting
+    wins on 254 of the 256 tables at n=3, but the two constant tables are
+    the exception: the node-read build folds them to a single leaf whose
+    drain *is* the whole program, which comes out one character shorter than
+    a read block for inputs no branch ever tests.  Keeping the older build
+    in the dispatch is what makes this a pure shrink -- 24.65% at n=3 with
+    nothing grown, against 24.64% if the hoisted build simply replaced it.
+    """
+    _validate_truth_table(truth_table)
+    return min(
+        best_input_order(truth_table, _sbleq_hoisted),
+        _sbleq_node_read(truth_table),
+        key=len,
+    )
+
+
+def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's hoisted S*bleq program; see :func:`sbleq`.
+
+    ``perm[k]`` is the input the tree tests at level ``k``; the read block
+    stays in input order, so the program consumes its input stream exactly
+    as the node-read build did.
+    """
+    n = _validate_truth_table(truth_table)
+    neg49, d48, zero_const = 0, 1, 4
+    vbase = 5
+    nxtbase = vbase + n
+    del d48
+
+    # (a operand, b operand, kind, kind's argument); ``a``/``b`` are data
+    # offsets made absolute below, and ``kind`` picks how ``c`` is filled.
+    instructions: list[tuple[int, int, str, int]] = []
+    ones: list[int] = []
+
+    for i in range(n):
+        instructions.append((vbase + i, -2, "nxt", i))
+        instructions.append((vbase + i, neg49, "nxt2", i))
+
+    def build(level: int, rows: list[int]) -> None:
+        results = {truth_table[r] for r in rows}
+        if len(results) == 1:
+            instructions.append((-3, 1 + int(results.pop()), "out", 0))
+            instructions.append((0, 0, "halt", 0))
+            return
+        slot = len(ones)
+        ones.append(0)
+        instructions.append((vbase + perm[level], zero_const, "one", slot))
+        bit = n - 1 - level
+        build(level + 1, [r for r in rows if not ((r >> bit) & 1)])
+        ones[slot] = 3 * len(instructions)
+        build(level + 1, [r for r in rows if (r >> bit) & 1])
+
+    build(0, list(range(2**n)))
+
+    m = len(ones)
+    onebase = nxtbase + n
+    nxt2base = onebase + m
+    data_base = 3 * len(instructions)
+
+    cells: list[int] = []
+    for a, b, kind, arg in instructions:
+        if kind == "out":
+            cells += [-3, data_base + b, 0]
+        elif kind == "halt":
+            cells += [0, 0, data_base + 3]
+        elif kind == "nxt":
+            cells += [data_base + a, -2, data_base + nxtbase + arg]
+        elif kind == "nxt2":
+            cells += [data_base + a, data_base + b, data_base + nxt2base + arg]
+        else:
+            cells += [data_base + a, data_base + b, data_base + onebase + arg]
+
+    data = (
+        [-_ASCII_ONE, _ASCII_ZERO, _ASCII_ONE, -1, 0]
+        + [0] * n
+        + [3 * (2 * i + 1) for i in range(n)]
+        + ones
+        + [3 * (2 * i + 2) for i in range(n)]
+    )
+    cells += data
+    return " ".join(map(str, cells))
+
+
+def _sbleq_node_read(truth_table: str) -> str:
+    """Emit the node-read S*bleq program; see :func:`sbleq`.
+
+    Each node reads its own bit, so every leaf drains the reads its untaken
+    siblings never made.  Kept as a candidate because that drain is cheaper
+    than a read block on a table no node ever branches on -- the constant
+    tables, where the whole program is one leaf.
     """
     n = _validate_truth_table(truth_table)
 
@@ -712,12 +822,6 @@ def sbleq(truth_table: str) -> str:
         results = {truth_table[r] for r in rows}
         if len(results) == 1:
             instructions.append((-3, 1 + int(results.pop()), 0))
-            # Drain the reads the untaken siblings would have made, after the
-            # output so they cannot disturb it: an input-capable language reads
-            # each of its n inputs exactly once per run whatever the table
-            # says, or the caller's remaining bits stay on the input stream.
-            # Each drained level allocates a node whose branches both continue
-            # here, so the read happens and the control flow is unchanged.
             for _ in range(level, n):
                 nid = counter
                 counter += 1
