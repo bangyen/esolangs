@@ -960,12 +960,15 @@ Two facts from the read block `iA>-<P` bound what that buys:
 **The reachable set is a product, not a search**, and it is exactly Forþ's:
 after each read the new bit is on top and its only lasting freedom is how far
 it sinks — 0, 1 or 2 places — so the count is `2 * 3**(n - 2)`, pinned by a
-test at n=2..7 and reached through entirely different ops. Unlike Forþ, no
-breadth-first search beats the product here: a search over
+test at n=2..7 and reached through entirely different ops. Forþ enumerates too
+— `eed765c` replaced its search once the per-read pattern was clear — but it
+records the breadth-first search as a *rejected* alternative rather than a
+useless one: there the search does find shorter op strings, because a late `c`
+composes across reads, and it was dropped as a trade worth 1-2 characters
+against code a reader can follow. Here there is no trade. A search over
 `(arrangement, reads done)` finds the same set with the same shortest string at
-every width through n=7, because unsquare's sinks do not compose across reads
-the way a late `c` does there. So the enumeration is both the simpler code and
-the optimal one.
+every width through n=7, because these sinks do not compose across reads at
+all, so the enumeration is both the simpler code and the optimal one.
 
 **Sinking two places is `SASP`, not `ASP`.** `A` lifts the *top* out, so a
 following `S` swaps the pair beneath it and `P` returns the bit to where it
