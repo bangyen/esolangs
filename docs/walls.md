@@ -60,13 +60,42 @@ share the prefix too — dropping the test would misclassify them.  The sibling
 idea (pre-negating stored input bits to halve `not_bit`) remains open but is
 marginal.
 
-## Minifuck (0-preserving functions, n <= 3 — resolved by parameterizing)
+## Minifuck (0-preserving functions, n <= 3 — the read-model cap is FALSE)
 
-**The wall below is real, and it is a statement about the *runtime-read*
-model.**  It does not carry over to embedded inputs: the parameterized
-generator (`esolangs.tools.boolean.minifuck`) builds every two-input table,
-XNOR, NAND and NOR included.  The original argument is kept because it
-remains true of the language it describes.
+**Superseded: the runtime-read cap below does not hold.**  A reading
+construction builds and verifies all four one-input and **all sixteen**
+two-input tables on the shipped interpreter, with clean `"0"`/`"1"` output and
+exactly `n` reads per run (constant tables included) — XNOR, NAND and NOR
+among them.
+
+Why the original searches missed it: they were **length-bounded** (no
+complemented read-prefix to length 11, full-program search to 14,
+re-verification to 34), and they enumerated *bare programs*.  The working
+construction is 88-148 characters — a read/re-zero prologue composed with the
+existing tree and endgame — so it lies outside every one of those bounds.
+This is the length-bounded-search failure mode: an enumeration cap is
+evidence about the cap, not about the language.
+
+The mechanism the cap rested on is real but escapable.  Each read leaves ASCII
+residue in the pool, which is why a naive second `.` prints instead of
+reading; a re-zero gadget after each read clears it, and the bit survives as a
+pointer offset rather than in the pool.  Two gadgets are needed, because one
+searched from blank tape re-zeroes only the *first* read — after a bit is
+banked the tape is populated and the later reads need a gadget searched from
+that frontier.
+
+What remains true: the parameterized generator
+(`esolangs.tools.boolean.minifuck`) builds every two-input table by embedding,
+and it still covers eight of the fourteen three-input orbits, which the
+reading prologue does **not** yet reach.  So the parameterized path stays as
+the default.  `n == 3` under the reading model is open, not walled: the
+pointer must cross the banked bits to leave the pool, and `[`'s skip on a
+differing cell desynchronizes the rows.  A joint search for a gadget avoiding
+that ran 2.48M states without a hit, but timed out rather than exhausting.
+Full detail in `docs/parameterized-input-conversion.md`.
+
+The original argument is kept below, as a record of what was believed and of
+exactly which step failed.
 
 The two-input limitation is structural: the decode suffix flips the pool LSB
 only when the pointer sits at cell 7, and `[`'s skip always maps bit 0 to

@@ -1,11 +1,20 @@
 """Boolean-function generator for Minifuck (parameterized convention).
 
 Minifuck's only input is ``.`` reading a byte when the eight-cell pool is
-zero, which a boolean program cannot use without destroying the pool it is
-about to print.  So this follows the parameterized convention described in
+zero.  This follows the parameterized convention described in
 :mod:`esolangs.tools.boolean.parameterized`: the template's ``{Xi}``
 placeholders are filled with ``[<`` (bit 1) or ``xx`` (bit 0), one program
 per input combination.
+
+That read *is* usable without destroying the pool, contrary to what this
+docstring used to claim: a re-zero gadget after each read leaves the pool
+input-independent while the bit survives as a pointer offset, and a prototype
+swapping :func:`_embed` for such a reading prologue -- reusing everything
+below it verbatim -- builds and verifies all four one-input and all sixteen
+two-input tables with clean output.  The parameterized path is kept because
+that prologue does not yet reach ``n == 3``, where the pointer must cross the
+banked bits to leave the pool and ``[``'s skip desynchronizes the rows.  See
+``docs/parameterized-input-conversion.md``.
 
 ``docs/walls.md`` records Minifuck as reaching only the four one-input
 functions plus the eight 0-preserving two-input tables.  **That
