@@ -163,9 +163,17 @@ generator in the catalogue now folds**; the classification is measured, not
 inherited, by `test_generator_shape_is_what_the_catalogue_says`.
 
 The seven that never fold — `point_break`, `collatz_multiverse`, `suptiftam`,
-`bit_tilde`, `a_painter_ant`, `qoibl`, `suffolk` — are all sum-of-minterms,
-which has no subtrees to fold. A constant table is small there because the sum
-is *empty*. **Nothing is left to convert.**
+`bit_tilde`, `a_painter_ant`, `qoibl`, `suffolk` — all cost one term per
+one-row, so there are no subtrees to fold. A constant table is small there
+because the sum is *empty*. **Nothing is left to convert.**
+
+Six of the seven are literally sums of minterms. `a_painter_ant` is the
+exception and is worth naming, because reading "sum-of-minterms" as a
+statement about its *structure* is wrong: it paints a decision tree, one leaf
+per input combination. It belongs here anyway because a one-leaf costs a
+paint-and-return walk and a zero-leaf costs a single space, so its size
+tracks the ones-count and nothing folds — every ones-count-4 table at n=3
+costs exactly 268 characters, whether it depends on one input or is parity.
 
 Two constraints a future change must respect:
 
@@ -177,12 +185,39 @@ Two constraints a future change must respect:
   own clear, advance what the walk would have advanced, drain what would have
   drained. Skipping levels without carrying that is the recurring fold bug.
 
-Two generators have headroom, and it is a missing *complement* (6), not a
-missing fold: `a_painter_ant` (all-0 92, all-1 444) and `rotfuck` (1404, 1740)
-are cheap on all-zeros and expensive on all-ones, and neither calls
-`_maybe_complement`. Mind the trap that docstring records: an all-ones table
-complements to the same empty sum an all-zeros table has, which is wrong for
-`circuit_diagram`, which special-cases constants to a single self-fed gate.
+Two generators look like they have headroom, and it is a missing
+*complement* (6) rather than a missing fold: `a_painter_ant` (all-0 92,
+all-1 444) and `rotfuck` (1404, 1740) are cheap on all-zeros and expensive
+on all-ones, and neither calls `_maybe_complement`. Taking the cheaper
+polarity of every n=3 table would be 17.96% for `a_painter_ant` and 2.99%
+for `rotfuck`.
+
+**`a_painter_ant`'s share of that is not reachable, and the reason is the
+output convention rather than the construction.** Its answer is *the colour
+of the cell the ant lands on* — white is one, black is zero — read directly
+by `landing_colour`. A complement build paints the zero leaves and would
+then have to report the **opposite** of the landing colour, and there is no
+output instruction, no NOT, and nowhere to put the inversion: the polarity
+is baked into how the answer is read. The 17.96% is `min(cost(table),
+cost(~table))`, real as an arithmetic bound and unbuildable as a program.
+It is the same shape as `123`, whose affine ceiling turned out to belong to
+its printing route rather than to the language: **when a measured ceiling
+will not build, suspect the output convention before the construction.**
+
+Mind also the trap that `_maybe_complement`'s docstring records: an all-ones
+table complements to the same empty sum an all-zeros table has, which is
+wrong for `circuit_diagram`, which special-cases constants to a single
+self-fed gate.
+
+**A note on `a_painter_ant`'s classification, since it reads oddly.** It
+*builds a tree* — `_head` paints one leaf per input combination and the ant
+is routed to the leaf its inputs select — but it is listed as minterm-shaped
+above, and that is right, because the classification is about **what the size
+depends on**. Each one-leaf emits a paint-and-return walk and each zero-leaf
+emits a single space, so the cost tracks the ones-count and is blind to which
+inputs the table depends on: measured, every ones-count-4 table at n=3 costs
+exactly 268 characters, one-dependency and parity alike. Structure and cost
+model can disagree, and the catalogue tracks the latter.
 
 An unshipped alternative for deep folds — a single reusable drain cell rather
 than one gadget per skipped bit — is verified correct but not shipped: the two
