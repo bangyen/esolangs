@@ -295,16 +295,37 @@ only rightward escapes from that region are `2` at `-3` (reads stdin, fatal
 for a parameterized program), `2` at `-2` (prints, and the endgame gets one
 shot), and `2` at `-1` (the sole free exit) — `notes/t123/cyclic.py`.
 
-**Under the termination convention the ceiling breaks.**  All of the above
-is about a program that *prints* its answer.  The halt-vs-loop convention
-already accepted here for ArrowQueue and Point Break (halt = 0, loop = 1,
-and output is not consulted) does not need the endgame at all, and the
-re-execution guard supplies exactly the input-dependent divergence it
-wants: `2113{X0}1111{X1}3` halts on rows `00` alone and loops on the rest,
-which is **OR** — a non-affine table, and the first reached here.  It is
-decided by `esolangs.vm.run_until_halt_or_cycle`, the same state-cycle
-detector the repo uses for Point Break, so the loops are proved rather than
-assumed from a fuel cap (`notes/t123/termconv.py`).
+**Under the termination convention the ceiling breaks, and the new bound is
+monotonicity.**  All of the above is about a program that *prints* its
+answer.  The halt-vs-loop convention already accepted here for ArrowQueue
+and Point Break (halt = 0, loop = 1, and output is not consulted) does not
+need the endgame at all, and the re-execution guard supplies exactly the
+input-dependent divergence it wants.  `13{X0}{X1}3` — seven characters per
+instantiation, all the same length — halts only on row `00`, which is
+**OR**, a non-affine table.  It is decided by
+`esolangs.vm.run_until_halt_or_cycle`, the same state-cycle detector the
+repo uses for Point Break, so the loops are proved by state revisit rather
+than assumed from a fuel cap (`notes/t123/shortor.py`).
+
+The route has its own ceiling, and it is a clean one.  A row halts exactly
+when it reaches the closing `3` at `pos < 0`, and how many passes it makes
+is decided by the bits under the guard — where a *set* bit can only add a
+pass, never remove one.  So the looping set is upward-closed and the
+computed table is **monotone**.  Surveying 1428 templates of the family
+bears that out exactly: five distinct tables, all monotone — const0,
+const1, OR, b0, b1 — and not one of the ten non-monotone tables
+(`notes/t123/whichrows.py`, `notes/t123/monotone.py`).  AND is the sixth
+monotone table and the only one unreached, so it is the honest target; XOR,
+XNOR, NAND, NOR and every negated table are predicted out of reach on this
+route by the mechanism rather than by search exhaustion.
+
+So the two routes are complementary and both bounded: printing reaches the
+eight **affine** tables, termination the **monotone** ones.  They overlap on
+const0, const1, b0 and b1, so the verified union is **9 of 16**
+(`notes/t123/union2.py`) — XOR and XNOR come only from printing, OR only
+from termination.  The seven still unreached are AND, NAND, NOR, both
+`AND NOT` tables and both `OR NOT` tables; of those only AND is monotone,
+so only AND is predicted reachable without a third construction.
 
 That also corrects the impossibility sketch this section might invite.
 Position maps in `1`/`2` are tape-independent, which suggests rows entering
