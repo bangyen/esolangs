@@ -43,11 +43,9 @@ dev = [
     "pre-commit>=3.0.0",
     "types-requests",
     "types-setuptools",
-    # Pinned: mutmut >=3.4 builds the trampoline qualname with
-    # mangled_name_from_mutant_name(), which strips the class part, so
-    # class-method mutants can never be selected and are silently reported
-    # as killed.  3.3.1 uses orig.__name__ and works.  See scripts/mutate_one.py.
-    "mutmut==3.3.1",
+    # Was pinned to 3.3.1 against a class-method selection bug; 3.7.0 does not
+    # have it, and fixes one of its own.  See scripts/mutate_one.py.
+    "mutmut==3.7.0",
 ]
 
 [project.urls]
