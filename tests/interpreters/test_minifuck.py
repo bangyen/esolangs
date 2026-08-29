@@ -91,6 +91,69 @@ class TestStepMachine:
         assert machine.tape == [0, 1, 1, 1, 1, 0, 0, 1, 0]
         assert machine.ptr == 5
 
+    def test_the_tape_starts_eight_cells_wide(self) -> None:
+        """Eight is the width the print window reads, so it is asserted.
+
+        Every other test looks at the tape after something has run, by
+        which point growth has already changed its length -- so the tape
+        could start one cell too long and only the untouched trailing zero
+        would show it.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.minifuck import _Machine
+
+        assert _Machine("", ScriptedIO()).tape == [0] * 8
+
+    def test_only_the_two_commands_reach_the_pointer(self) -> None:
+        """A character that is neither ``<`` nor ``.`` nor ``[`` does nothing.
+
+        ``test_comment_characters_ignored`` uses ``abc``, and every letter
+        in it is outside the command set no matter how that set is spelled.
+        A stray ``X`` is the same kind of comment, but it catches a command
+        set widened to include it: as a command it would advance the
+        pointer and flip a cell, so the byte the following ``.`` prints
+        changes.
+        """
+        assert run_and_capture("X.") == "@"
+        assert run_and_capture("X") == ""
+
+    def test_the_skip_passes_exactly_one_instruction(self) -> None:
+        """``[`` that flips a cell to 0 skips one instruction, not two.
+
+        The skip is an ``ind`` bump on top of the one every step does, so
+        skipping two lands a whole instruction further on.  It needs a
+        program where the difference is reachable: the ``<`` after the skip
+        moves the pointer only if it is executed, so where the pointer ends
+        up says how far the skip went.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.minifuck import _Machine
+
+        machine = _Machine("[<[<<", ScriptedIO())
+        while not machine.halted:
+            machine.step()
+        assert machine.ptr == 0
+        assert machine.tape == [0, 0, 1, 0, 0, 0, 0, 0]
+
+    def test_a_read_keeps_the_tape_past_the_print_window(self) -> None:
+        """Reading input replaces cells 0-7 and keeps everything after them.
+
+        The eight bits of the byte are spliced in front of ``tape[8:]``, so
+        the boundary is exactly the print window: taking the tail from 9
+        instead would silently drop cell 8.  It only shows on a program
+        that reads while the tape has already grown past the window, which
+        needs the pointer to walk out and the first eight cells to be zero
+        again by the time a ``.`` comes round.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.minifuck import _Machine
+
+        machine = _Machine(".<<[<<<.[<<.<<<..[<[.[.[..", ScriptedIO("ABCDEFGH"))
+        while not machine.halted:
+            machine.step()
+        assert machine.io.getvalue() == "@`p0\x10"
+        assert machine.tape == [0, 1, 0, 0, 0, 0, 0, 1, 0]
+
     def test_snapshot_is_hashable(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.minifuck import _Machine
