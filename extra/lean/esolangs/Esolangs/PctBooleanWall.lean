@@ -639,4 +639,94 @@ theorem run_splits_pos (code : List Cmd) :
               exact if_pos hge ▸ firstReadFrom_step code i q _ hc (by simp) hq
             · next hlt => rw [if_neg hlt]; exact hq
 
+/-! ### 8. Lockstep before the first read
+
+Only `read` inspects the input, so two runs at the same cursor with the same
+accumulator take exactly the same branches — including every `t` test —
+regardless of what the input *contains*.  They therefore print the same thing
+and reach the same read at the same position, differing afterwards only in the
+byte each one read.
+
+This is the phase-1 fact, and the phase-2 fact as well: after the first read
+both runs hold the *same* accumulator (the byte read is `b₁` in both), so the
+lemma applies a second time. -/
+
+/-- Two runs from the same cursor and accumulator whose inputs are two
+one-byte lists produce outputs that share a common prefix, splitting at a
+common read position, after which each continues on its own byte. -/
+theorem lockstep_two (code : List Cmd) :
+    ∀ (fuel : ℕ) (i : ℕ) (a x y : ℤ) (rx ry : State × List ℤ),
+      run code fuel ⟨i, a, [x]⟩ = some rx →
+      run code fuel ⟨i, a, [y]⟩ = some ry →
+      rx.1.inp = [] →
+      ∃ (q : ℕ) (pre : List ℤ) (f' : ℕ) (tx ty : State × List ℤ),
+        code[q]? = some Cmd.read ∧
+        run code f' ⟨q + 1, x, []⟩ = some tx ∧
+        run code f' ⟨q + 1, y, []⟩ = some ty ∧
+        rx.2 = pre ++ tx.2 ∧ ry.2 = pre ++ ty.2 := by
+  intro fuel
+  induction fuel with
+  | zero => intro i a x y rx ry hx _ _; simp [run] at hx
+  | succ k ih =>
+    intro i a x y rx ry hx hy hnil
+    rw [run] at hx hy
+    cases hc : code[i]? with
+    | none =>
+      -- halting here leaves the byte unread, contradicting `hnil`
+      rw [hc] at hx
+      simp only [Option.some.injEq] at hx
+      rw [← hx] at hnil
+      simp at hnil
+    | some c =>
+      rw [hc] at hx hy
+      simp only at hx hy
+      cases hstepx : stepCmd c ⟨i, a, [x]⟩ with
+      | eof => rw [hstepx] at hx; simp at hx
+      | next sx ox =>
+        cases hstepy : stepCmd c ⟨i, a, [y]⟩ with
+        | eof => rw [hstepy] at hy; simp at hy
+        | next sy oy =>
+          rw [hstepx] at hx; rw [hstepy] at hy
+          simp only [Option.map_eq_some_iff] at hx hy
+          obtain ⟨px, hpx, hrx⟩ := hx
+          obtain ⟨py, hpy, hry⟩ := hy
+          have hnil' : px.1.inp = [] := by rw [← hrx] at hnil; simpa using hnil
+          -- the two runs emit the same list here (the command is the same and
+          -- only `read` looks at the input), which the per-case `cases` makes
+          -- definitional; `hxeq`/`hyeq` keep it usable after substitution
+          have hxeq : rx.2 = ox ++ px.2 := by rw [← hrx]
+          have hyeq : ry.2 = oy ++ py.2 := by rw [← hry]
+          cases c
+          -- the read: both runs split here, each taking its own byte
+          case read =>
+            simp only [stepCmd] at hstepx hstepy
+            cases hstepx; cases hstepy
+            exact ⟨i, [], k, px, py, hc, hpx, hpy,
+              by simpa using hxeq, by simpa using hyeq⟩
+          -- every other command behaves identically on both runs
+          case sub2 | sub3 | dbl | neg | zero | printNum | printChr =>
+            simp only [stepCmd] at hstepx hstepy
+            cases hstepx; cases hstepy
+            obtain ⟨q, pre, f', tx, ty, hq, htx, hty, hox, hoy⟩ :=
+              ih _ _ x y px py hpx hpy hnil'
+            exact ⟨q, _ ++ pre, f', tx, ty, hq, htx, hty,
+              by rw [hxeq, hox, List.append_assoc],
+              by rw [hyeq, hoy, List.append_assoc]⟩
+          case rewind =>
+            by_cases hz : (if a > 3003 then (0 : ℤ) else a) ≠ 0
+            · rw [stepCmd, if_pos hz] at hstepx hstepy
+              cases hstepx; cases hstepy
+              obtain ⟨q, pre, f', tx, ty, hq, htx, hty, hox, hoy⟩ :=
+              ih _ _ x y px py hpx hpy hnil'
+              exact ⟨q, _ ++ pre, f', tx, ty, hq, htx, hty,
+                by rw [hxeq, hox, List.append_assoc],
+                by rw [hyeq, hoy, List.append_assoc]⟩
+            · rw [stepCmd, if_neg hz] at hstepx hstepy
+              cases hstepx; cases hstepy
+              obtain ⟨q, pre, f', tx, ty, hq, htx, hty, hox, hoy⟩ :=
+              ih _ _ x y px py hpx hpy hnil'
+              exact ⟨q, _ ++ pre, f', tx, ty, hq, htx, hty,
+                by rw [hxeq, hox, List.append_assoc],
+                by rw [hyeq, hoy, List.append_assoc]⟩
+
 end PctBooleanWall
