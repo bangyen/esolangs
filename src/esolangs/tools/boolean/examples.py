@@ -411,6 +411,27 @@ def _fill_wii2d(template: str, bits: list[int]) -> str:
     )
 
 
+def _fill_minifuck(template: str, bits: list[int]) -> str:
+    """Write each bit at ``ptr+1``: ``[<`` for a one, ``xx`` for a zero.
+
+    ``[`` steps right and flips the cell it lands on, and ``<`` steps back,
+    so ``[<`` leaves a one beside the pointer without moving it.  ``xx`` is
+    two no-ops -- characters outside ``<.[`` are ignored -- so it leaves the
+    cell zero and the pointer likewise unmoved.
+
+    Both spellings are two characters, which is the point: an unequal embed
+    would make the program's *length* a function of its inputs, leaking the
+    very bits it is meant to be evaluating.  The pad is a no-op the language
+    executes rather than one it merely ignores, so a cleanup pass that
+    stripped dead characters could not reintroduce the leak.
+    """
+    return instantiate(
+        template,
+        bits,
+        lambda _i, b: "[<" if b else "xx",
+    )
+
+
 def _fill_arrowqueue(template: str, bits: list[int]) -> str:
     # ArrowQueue rebuilds its whole header rather than substituting in place
     return _instantiate_arrowqueue(template, bits)
@@ -606,8 +627,11 @@ _register()
 
 # Committed programs that no current generator produces, so they are run as
 # behaviour tests but exempt from the generator-match check.  Minifuck's
-# boolean generator covered the 0-preserving two-input tables and has since
-# been removed; the program is kept as a record of that construction.
+# entry is kept for a different reason than it was written: the language now
+# has a generator again, but that one is *parameterized* and embeds its
+# inputs, while this program reads them at runtime -- the construction the
+# old, removed generator used.  It is the only committed record of that
+# reading model, which `docs/walls.md` still characterizes.
 HAND_WRITTEN: dict[str, tuple[str, tuple[str, ...], str, bool]] = {
     # stem -> (interpreter, inputs, expected, split)
     "minifuck": ("tape_based.minifuck", ("0", "1"), "0", False),

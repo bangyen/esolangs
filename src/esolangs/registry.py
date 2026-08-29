@@ -358,6 +358,7 @@ LANGUAGES: dict[str, Language] = {
         "Minifuck",
         _generate.minifuck,
         "tape_based.minifuck",
+        boolean=_boolean.minifuck,
         id="minifuck",
     ),
     "Minsky Swap": Language(

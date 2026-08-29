@@ -369,8 +369,14 @@ _MINTERM_SHAPED = {
 # appended -- so collapsing a constant subtree would drop that subtree's
 # reads and break the read-count contract above.  The tree therefore stays
 # uniform depth ``n`` and its size tracks ``2**n`` whatever the table says.
+#
+# ``minifuck`` is a search too, and of the same kind as ``wii2d``: it emits
+# whatever code it can *see* produce the table's column, so the program has
+# no per-row structure to fold and its size tracks the search rather than the
+# table's shape.
 _UNSHAPED = {
     "wii2d",
+    "minifuck",
     "jaune_multiply",
     "circlefuck_byte",
     "slow_acv_mammalian_boolean",

@@ -59,6 +59,7 @@ from esolangs.tools.boolean.helpers import (
     instantiate,
     permute_truth_table,
 )
+from esolangs.tools.boolean.minifuck import minifuck
 from esolangs.tools.boolean.wii2d import wii2d
 
 __all__ = [
@@ -72,6 +73,7 @@ __all__ = [
     "eval",
     "instantiate",
     "lamfunc",
+    "minifuck",
     "minsky_swap",
     "nocomment",
     "ram0",
