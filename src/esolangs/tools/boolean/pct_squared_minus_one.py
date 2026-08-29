@@ -288,9 +288,7 @@ def pct_squared_minus_one(truth_table: str) -> str:
     if solved is None:
         raise ValueError(f"no %^2^-1 separation found for truth table {truth_table!r}")
     setters, tail = solved
-    header = ";".join(
-        f"{k}={zero}|{one}" for k, (zero, one) in enumerate(setters)
-    )
+    header = ";".join(f"{k}={zero}|{one}" for k, (zero, one) in enumerate(setters))
     body = "".join("{X" + str(k) + "}" for k in range(n)) + tail
     return header + _HEADER_END + body
 
@@ -305,8 +303,7 @@ def fill(template: str, bits: list[int]) -> str:
     """
     header, _, body = template.partition(_HEADER_END)
     branches = {
-        int(m.group(1)): (m.group(2), m.group(3))
-        for m in _DECL_RE.finditer(header)
+        int(m.group(1)): (m.group(2), m.group(3)) for m in _DECL_RE.finditer(header)
     }
     for index, bit in enumerate(bits):
         zero, one = branches[index]
