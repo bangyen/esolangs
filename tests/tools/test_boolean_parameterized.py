@@ -79,6 +79,90 @@ def test_parameterized_generators_embed_each_input_once() -> None:
     assert checked >= len(_parameterized_generators()), checked
 
 
+# Slot order is not part of the parameterized contract: :func:`instantiate`
+# substitutes each ``{Xi}`` by name, replacing a unique token wherever it
+# sits, so a generator orders its slots however its construction wants.
+# Four do not run ascending, all correctly:
+#
+# * ``bfpda`` and ``bitdeque`` are LIFO -- bits are pushed in reverse so the
+#   first ``POP`` yields the most significant one -- so their loads run
+#   ``{Xn-1}``..``{X0}``, descending but fixed.
+# * ``back`` draws its load bottom-to-top up column 0, so its identity
+#   template already ran descending; its slot order now also carries the
+#   input order, so it varies by table.
+# * ``minifuck`` appends the inputs its table does not depend on after the
+#   ones it does, so its order varies by table too.
+#
+# What *is* a contract is the pairing below: a generator whose slot order
+# carries information must emit a different drawing for a different order,
+# or the permutation is a relabelling and its saving is fictitious.
+
+
+def _drawing(template: str) -> str:
+    """The template with every placeholder *name* erased.
+
+    What the reorder bar tests is the emitted drawing, so comparing
+    templates directly would count a mere relabelling as a change.  Erasing
+    the names leaves exactly what a relabelling cannot alter.
+    """
+    import re
+
+    return re.sub(r"\{X\d+\}", "{X}", template)
+
+
+@pytest.mark.slow  # builds every permuting generator over several tables
+def test_a_permuting_generator_changes_its_drawing() -> None:
+    """A generator that permutes its slots must emit a different *drawing*.
+
+    This is the reorder bar, and it is the one thing that could make a
+    template's slot permutation a redefined benchmark rather than a smaller
+    program.  ``instantiate`` substitutes by name, and ``_fill_back``'s
+    setter is ``lambda _i, b:`` -- it ignores the index -- so if two input
+    orders produced the same drawing they would emit *byte-identical
+    programs* and any "saving" between them would be booked against the
+    harness's fill order alone.
+
+    They do not.  Back's tree is built on the permuted table, so a different
+    order folds differently and draws a different program: at ``10101010``
+    the identity order draws 115 characters and the winning order 44.  The
+    permuted slot names are a consequence of choosing the order, not the
+    source of the saving -- orders that share a drawing measure exactly the
+    same size.
+
+    Asserting that is what gives this teeth.  A future change that made the
+    reorder cosmetic -- permuting names while emitting one drawing -- would
+    still pass every correctness test in this class and fail here.
+    """
+    from itertools import permutations
+
+    from esolangs.tools.boolean import parameterized
+    from esolangs.tools.boolean.helpers import permute_truth_table
+
+    checked = 0
+    for name in ("back",):
+        build = parameterized._back_ordered  # noqa: SLF001
+        for table in ("10101010", "11001100", "00111100"):
+            n = 3
+            builds: dict[str, set[int]] = {}
+            for perm in permutations(range(n)):
+                built = build(permute_truth_table(table, perm), perm)
+                builds.setdefault(_drawing(built), set()).add(len(built))
+            checked += 1
+            # The orders must not all collapse onto one drawing, or the
+            # reorder is a relabelling.
+            assert len(builds) > 1, (
+                name,
+                table,
+                "every input order draws the same program, so permuting the "
+                "slots emits an identical program and books a fake saving",
+            )
+            # And size must be a function of the drawing, not of the labels:
+            # orders sharing a drawing are the same program.
+            for drawing, sizes in builds.items():
+                assert len(sizes) == 1, (name, table, len(drawing), sorted(sizes))
+    assert checked >= 3, checked
+
+
 class TestParameterizedBIO:
     """Input-by-substitution generators for the no-input language BIO."""
 
@@ -343,6 +427,34 @@ class TestParameterizedBack:
                 permuted = parameterized.permute_truth_table(table, perm)
                 other = parameterized._back_ordered(permuted, perm)  # noqa: SLF001
                 assert load_rows(other) == load_rows(base), f"{table} perm={perm}"
+
+    def test_placeholders_need_not_appear_in_name_order(self) -> None:
+        """Back's slots carry the order, so ``{Xi}`` names run out of sequence.
+
+        This is what makes the reorder free, and it is safe because
+        ``instantiate`` substitutes each placeholder by *name* -- a unique
+        token replaced wherever it sits -- and ``_fill_back``'s setter is
+        ``lambda _i, b:``, which ignores the index entirely.  A fill that
+        derived anything from an input's position would break here, as
+        ``_fill_bitdeque``'s parity rule would.
+
+        The template was never in ascending order anyway: the load is drawn
+        bottom-to-top, so even the identity build emits ``{X2}`` first at
+        ``n == 3``.  The invariant the module states is that each ``{Xi}``
+        appears *once*, which is a count, and is tested separately.
+        """
+        import re
+
+        from esolangs.tools.boolean import parameterized
+
+        seen = set()
+        for table in ("11110000", "10101010", "01101001", "00111100"):
+            names = re.findall(r"\{X(\d+)\}", parameterized.back(table))
+            assert sorted(names) == ["0", "1", "2"], f"{table} embeds each once"
+            seen.add(tuple(names))
+        # Different tables put different inputs in cell 0, so the slot order
+        # genuinely varies -- if it did not, the reorder would be inert.
+        assert len(seen) > 1
 
     def test_reordering_keeps_the_equal_width_embedding(self) -> None:
         """Reordered loads still cost the same for either bit.
