@@ -204,7 +204,16 @@ inherits its parent's array and a grow-only sum would track the layout it
 has to clear, which is what stops the tree converging past two levels.
 
 The tree is uniform depth `n`, so a constant table still reads all `n`
-inputs.
+inputs.  Verified against the interpreter: every table through `n == 3`
+(4 at `n == 1`, 16 at `n == 2`, all 256 at `n == 3`, zero failures), plus
+an `n == 4` spot check.  Programs run 2697-5776 tokens at `n == 3`.
+
+**Generation cost, not a cap.**  Aligning a node rebuilds its 0-subtree
+once per candidate landing, so the builds compound with depth: 10 at
+`n == 1`, 155 at `n == 2`, 5504 at `n == 3`.  A table takes ~3.5s at
+`n == 3` and ~18 minutes at `n == 4` (10880 tokens), which is slow but not
+a wall -- memoizing `_subtree` on its state would flatten it if `n == 4`
+ever needs to be routine.
 
 **Where this leans on undefined behaviour.**  The wiki is explicit about
 the fact the wall got wrong — `ACCEPT` pushes "onto the top of array 0",
