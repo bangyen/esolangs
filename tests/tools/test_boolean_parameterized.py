@@ -1581,8 +1581,13 @@ class TestParameterizedMinifuck:
             ("01", 1),  # identity
             ("0001", 2),  # AND
             ("0110", 2),  # XOR
-            ("0111", 2),  # OR
-            ("1000", 2),  # NOR -- unreachable in the reading model
+            # OR and NOR cost ~45s each -- the generator searches hardest for
+            # these two -- so they carry the slow marker while the rest of
+            # the battery, a second or less apiece, stays in the fast run.
+            pytest.param("0111", 2, marks=pytest.mark.slow),  # OR
+            pytest.param(
+                "1000", 2, marks=pytest.mark.slow
+            ),  # NOR -- unreachable in the reading model
             ("1001", 2),  # XNOR -- likewise
             ("1110", 2),  # NAND -- likewise
         ],
@@ -1597,6 +1602,7 @@ class TestParameterizedMinifuck:
             got = self.run_minifuck(self.instantiate(template, bits))
             assert got == table[combo], f"{table} inputs {bits}"
 
+    @pytest.mark.slow
     def test_all_two_input_tables(self) -> None:
         """Every two-input table builds, including the ones the wall named.
 
