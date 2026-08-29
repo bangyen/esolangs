@@ -20,6 +20,17 @@ class Test3DBrainfuck:
         assert run_program("+" * 255 + ".") == "\xff"
         assert run_program("+" * 256 + ".") == "\x00"
 
+    def test_cell_wraps_below_zero(self) -> None:
+        """One decrement from 0 is 255, which pins the width and direction.
+
+        Wrapping upward lands on 0 under any modulus, and the decrement was
+        only ever run on a cell holding more than it subtracts -- so the
+        step down could have been an addition, or the modulus anything at
+        all, and every program still agreed.
+        """
+        assert run_program("-.") == "\xff"
+        assert run_program("--.") == "\xfe"
+
     def test_array_moves(self) -> None:
         # n/e/u move the array pointer along the X/Z/Y axes
         assert run_program("n+.") == "\x01"
@@ -30,9 +41,68 @@ class Test3DBrainfuck:
         # n, e, u point at three distinct array cells; each + sets that cell
         assert run_program("n+.e+.u+.") == "\x01\x01\x01"
 
+    def test_each_axis_has_an_inverse(self) -> None:
+        """s, w and d undo n, e and u.
+
+        Only the three positive directions were used anywhere, and every
+        program walked outward from the origin -- so which axis a move
+        actually took never mattered, the cells being distinct either way.
+        Marking the origin and returning to it says the move came back to
+        the same cell, and reading a neighbour says it went somewhere else
+        on the way.
+        """
+        assert run_program("+ns.") == "\x01"
+        assert run_program("+ew.") == "\x01"
+        assert run_program("+ud.") == "\x01"
+        # the cell stepped onto is not the origin: marking it leaves the
+        # origin alone
+        assert run_program("n+s.") == "\x00"
+        assert run_program("e+w.") == "\x00"
+        assert run_program("u+d.") == "\x00"
+
     def test_loop(self) -> None:
         assert run_program("++[-].") == "\x00"
         assert run_program("n+[-].") == "\x00"
+
+    def test_a_zero_cell_skips_the_loop_body(self) -> None:
+        """``[`` jumps past its ``]`` when the cell is 0, rather than in.
+
+        Every loop tested entered its body at least once, so a ``[`` that
+        stopped jumping entirely -- or jumped somewhere other than one past
+        the match -- still produced the same output.  These two say where
+        it went: the body must not run, and what follows the loop must.
+        """
+        assert run_program("[+].") == "\x00"
+        assert run_program("[.]") == ""
+        # The jump reads the bracket table at the *instruction pointer's*
+        # index.  A `[` at index 0 is the one case where any other index
+        # into it happens to give the same answer, so the skip is also
+        # tested from further along the line.
+        assert run_program("n[+].") == "\x00"
+        assert run_program("+-[+].") == "\x00"
+
+    def test_an_untouched_cell_reads_as_zero(self) -> None:
+        """Cells are created on demand, and one never written holds 0.
+
+        The array is a dict, so every read needs a default; without one it
+        yields None and the print raises instead of emitting a NUL.  Only a
+        cell the program has never written reaches that path.
+        """
+        assert run_program(".") == "\x00"
+        assert run_program("n.") == "\x00"
+        assert run_program("nu.") == "\x00"
+
+    def test_a_loop_ends_on_a_cell_it_never_wrote(self) -> None:
+        """``]`` reads the same on-demand default that everything else does.
+
+        Every loop so far closed over the cell it had been counting down,
+        which is written by definition.  Moving the array pointer inside
+        the body leaves ``]`` reading a cell that was never written, and
+        the loop only terminates if that reads as 0 -- a missing or
+        non-zero default spins here forever.
+        """
+        assert run_program("+[n].") == "\x00"
+        assert run_program("++[-n].") == "\x00"
 
     def test_input(self) -> None:
         assert run_program(",.", "X\n") == "X"
@@ -51,6 +121,10 @@ class Test3DBrainfuck:
 
     def test_comment_characters_are_noops(self) -> None:
         assert run_program("a+b.c") == "\x01"
+        # An X is a comment too.  The letters above are outside the command
+        # set however it is spelled, so they do not catch a set widened to
+        # include one -- and as a command X would read input and raise.
+        assert run_program("X+X.X") == "\x01"
 
     def test_malformed_brackets(self) -> None:
         with pytest.raises(ValueError, match="unmatched"):
