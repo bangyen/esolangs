@@ -324,11 +324,12 @@ class TestStreetcodeAmbiguousTurns:
         every reachable drive state of the committed examples, every road
         offered is open ahead.
         """
+        root = Path(__file__).resolve().parents[2]
         for path in (
             "examples/hello-world/streetcode.txt",
             "examples/boolean/streetcode.txt",
         ):
-            code = Path(path).read_text().split("\n")
+            code = (root / path).read_text().split("\n")
             if code and code[-1] == "":
                 code = code[:-1]
             machine = _Machine(code, IO())
@@ -1673,7 +1674,12 @@ class TestStreetcodeDriveInvariants:
         drive-state graph of each example is clean -- not just the paths
         a particular input drives.
         """
-        for path in sorted(Path("examples").glob("**/streetcode.txt")):
+        root = Path(__file__).resolve().parents[2]
+        paths = sorted((root / "examples").glob("**/streetcode.txt"))
+        # A relative glob silently matches nothing from another working
+        # directory, which would leave this passing over no programs at all.
+        assert paths
+        for path in paths:
             _Machine(path.read_text().split("\n"), IO())
 
 
