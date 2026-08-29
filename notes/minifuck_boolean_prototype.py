@@ -63,7 +63,7 @@ class Joint:
         return "".join(self.parts)
 
 
-def _walk_to(j, target):
+def walk_to(j, target):
     """Walk right to `target` with `[x` (position-safe over any junk)."""
     ptrs = set(j.ptrs())
     assert len(ptrs) == 1, f"walk needs a converged pointer, got {ptrs}"
@@ -72,14 +72,14 @@ def _walk_to(j, target):
     j.emit("[x" * (target - cur))
 
 
-def _clamp(j):
+def clamp(j):
     """Clamp every row's pointer to 0 (`<` never writes)."""
     hi = max(j.ptrs())
     j.emit("<" * (hi + 1))
     assert set(j.ptrs()) == {0}
 
 
-def _pool_fix(j, walk_out):
+def pool_fix(j, walk_out):
     """Leave the pool so that the walk out to `walk_out` lands on 0011000.
 
     The pool is input-independent here, so this is pure bookkeeping: try
@@ -94,12 +94,12 @@ def _pool_fix(j, walk_out):
             probe.ms = [m.copy() for m in j.ms]
             for k in (a, b):
                 probe.emit("[x" * k)
-                _clamp(probe)
-            _walk_to(probe, walk_out)
+                clamp(probe)
+            walk_to(probe, walk_out)
             if [probe.col(c)[0] for c in range(7)] == target:
                 for k in (a, b):
                     j.emit("[x" * k)
-                    _clamp(j)
+                    clamp(j)
                 return
     raise ValueError("could not set the pool pattern")
 
@@ -113,7 +113,7 @@ def build(truth_table: str, bit_stride: int = 4):
     j = Joint(n)
     # --- embed: bit i at BASE + i*stride, companion derived by the crossing
     base = 16
-    _walk_to(j, base - 1)
+    walk_to(j, base - 1)
     cells = []
     for i in range(n):
         j.emit_setter(i)  # writes at ptr+1, no net move
@@ -129,7 +129,7 @@ def build(truth_table: str, bit_stride: int = 4):
     # it -- run the whole endgame in a copy per candidate and accept the cell
     # only if the copy actually prints the table.
     frontier = max(j.ptrs()) + 2
-    _clamp(j)
+    clamp(j)
 
     acc = None
     for cell in range(base - 4, frontier):
@@ -137,7 +137,7 @@ def build(truth_table: str, bit_stride: int = 4):
         probe.parts = list(j.parts)
         probe.ms = [m.copy() for m in j.ms]
         try:
-            _endgame(probe, cell)
+            endgame(probe, cell)
         except (ValueError, AssertionError):
             continue
         if ["".join(m.out) for m in probe.ms] == list(truth_table):
@@ -149,11 +149,11 @@ def build(truth_table: str, bit_stride: int = 4):
             "the minterm loop, which is not built yet (see the notes)"
         )
 
-    _endgame(j, acc)
+    endgame(j, acc)
     return j, cells, acc
 
 
-def _endgame(j, acc):
+def endgame(j, acc):
     """Pool fix, relay the acc cell into the pointer, and print.
 
     `[<` leaves the pointer at (acc-1) + the cell's value, a constant walk
@@ -161,8 +161,8 @@ def _endgame(j, acc):
     position yields depends on cell 7, so the caller checks the output rather
     than assuming an orientation.
     """
-    _pool_fix(j, acc - 1)
-    _walk_to(j, acc - 1)
+    pool_fix(j, acc - 1)
+    walk_to(j, acc - 1)
     live = j.col(acc)
     j.emit("[<")
     assert j.ptrs() == tuple(acc - 1 + v for v in live), (j.ptrs(), live)
