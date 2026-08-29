@@ -9,6 +9,7 @@ from esolangs.tools.boolean.helpers import (
     _ASCII_ZERO,
     _maybe_complement,
     _validate_truth_table,
+    best_input_order,
     minterm_literals,
 )
 from esolangs.tools.boolean.laserfuck import laserfuck
@@ -76,7 +77,17 @@ def myscript(truth_table: str) -> str:
     The program reads all ``n`` input lines up front into ``b0..b(n-1)``,
     then walks a ``check`` decision tree: at level ``i`` it branches on
     ``b_i`` and the leaves ``say`` the table value for the combination.
+
+    **The tree splits on its inputs in whichever order emits the shortest
+    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
+    The ``var b{i} is ask`` reads stay in input order, so only the variable
+    a ``check`` names moves.
     """
+    return best_input_order(truth_table, _myscript_ordered)
+
+
+def _myscript_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's MyScript program; see :func:`myscript`."""
     n = _validate_truth_table(truth_table)
     lines = [f"var b{i} is ask" for i in range(n)]
 
@@ -88,7 +99,7 @@ def myscript(truth_table: str) -> str:
         one = build(i + 1, combo | (1 << (n - 1 - i)), pad + "    ")
         zero = build(i + 1, combo, pad + "    ")
         return [
-            f"{pad}check b{i}?",
+            f"{pad}check b{perm[i]}?",
             f'{pad}  if "1",',
             *one,
             f"{pad}  else,",
@@ -118,6 +129,32 @@ def three_x(truth_table: str) -> str:
     only the input combinations whose table entry differs from the default
     get an override block.  Each override's ``( ... )`` guard leaves the
     stack balanced via the trash pop, so arbitrary ``n`` works.
+
+    **The tree splits on its inputs in whichever order emits the shortest
+    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
+    The reorder is spelled in the *store targets* rather than in the tree:
+    ``?`` consumes the stream in order, but each read may store into any
+    variable, so reading stream input ``i`` into the name the tree tests at
+    depth ``perm.index(i)`` reorders the splits while consuming the input
+    stream exactly as before.
+
+    That makes the reorder **free of any cost the search cannot see**.  The
+    read block stores each name exactly once whatever the order, so its
+    length never changes, and the tree is byte-identical to the one the
+    permuted table produces -- unlike a generator that walks to its inputs
+    (Circlefuck) or has to hoist them first (S*bleq, BrainIf), where the
+    screen is respectively an over- and an under-estimate.  Here the screen
+    figure is exact: 4.5% at n=3 (146 of 256 tables improved), 5.4% at n=4.
+    """
+    return best_input_order(truth_table, _three_x_ordered)
+
+
+def _three_x_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's 3x program; see :func:`three_x`.
+
+    ``perm[k]`` is the stream input the tree tests at depth ``k``, so stream
+    input ``i`` is stored into ``input_vars[perm.index(i)]`` and the tree
+    itself is unchanged.
     """
     n = _validate_truth_table(truth_table)
 
@@ -125,9 +162,10 @@ def three_x(truth_table: str) -> str:
     # short and emitted twice per guard), var 3 is the result (its constant
     # is the single char `3`, emitted once per table entry), and the inputs
     # live in the cheapest remaining names by actual constant length (the
-    # base-3 encodings are non-monotonic: 15 is cheaper than 13).  Every
-    # input is read once per override block, so any assignment of the n
-    # cheapest names to the inputs costs the same.
+    # base-3 encodings are non-monotonic: 15 is cheaper than 13).  The names
+    # are assigned by *depth*, so the cheapest one sits at the root where the
+    # tree reads it most often; which input lands at which depth is what
+    # ``best_input_order`` searches over.
     trash = _const(0) + "#v"  # pop the stack top into variable 0
     result = 3
     used = {0, 3}
@@ -153,7 +191,10 @@ def three_x(truth_table: str) -> str:
         """If bit i is 0, run ``body``; leaves the stack balanced."""
         return read(i) + not_bit() + "(" + trash + body + _ZERO + ")" + trash
 
-    prog = "".join("?" + store(v) for v in input_vars)
+    # Reads run in stream order; only the store target moves.  Stream input
+    # ``i`` goes into the name the tree tests at depth ``perm.index(i)``.
+    depth_of = {stream: depth for depth, stream in enumerate(perm)}
+    prog = "".join("?" + store(input_vars[depth_of[i]]) for i in range(n))
 
     # Default the result to the majority value so only the minority rows
     # need an override block (combos matching the default are skipped).
@@ -199,7 +240,17 @@ def nevermind(truth_table: str) -> str:
     Nevermind reads each input with ``input,?`` into its own variable, then a
     decision tree of nested ``if``/``endif`` blocks prints the result for the
     matching combination.
+
+    **The tree splits on its inputs in whichever order emits the shortest
+    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
+    The ``input,?`` reads stay in input order, so only the variable an
+    ``if`` names moves.
     """
+    return best_input_order(truth_table, _nevermind_ordered)
+
+
+def _nevermind_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's Nevermind program; see :func:`nevermind`."""
     n = _validate_truth_table(truth_table)
     lines: list[str] = []
     for i in range(n):
@@ -216,7 +267,7 @@ def nevermind(truth_table: str) -> str:
             lines.append(f"{indent}print,{truth_table[lo]}")
             return
         for bit in (0, 1):
-            lines.append(f"{indent}if,${chr(ord('a') + k)},==,{bit}")
+            lines.append(f"{indent}if,${chr(ord('a') + perm[k])},==,{bit}")
             build(k + 1, row * 2 + bit)
             lines.append(f"{indent}endif")
 
@@ -322,6 +373,25 @@ def between(truth_table: str) -> str:
     of the path alone -- ``constant`` -- so both walks stop in the same
     places; a check either walk applied and the other did not would leave
     every branch below it naming the wrong line.
+
+    **The tree splits on its inputs in whichever order emits the shortest
+    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`),
+    since which rows a subtree covers -- and so whether it folds -- is what
+    the split order decides.  The reads stay put: the ``'i'v.``/``[i]i.``
+    block above the tree still stores input ``i`` in variable ``[i]`` in
+    stream order, and only the variable a branch line *names* moves.
+    """
+    return best_input_order(truth_table, _between_ordered)
+
+
+def _between_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's Between program; see :func:`between`.
+
+    ``truth_table`` is already permuted, so the rows and the ``path``
+    indexing them are in the permuted frame.  ``perm`` is spent only on the
+    variable a branch tests, ``[perm[len(path)]]`` -- a substitution that
+    changes no line count, so ``size`` and ``emit`` still fold in the same
+    places and every branch address stays right.
     """
     n = _validate_truth_table(truth_table)
 
@@ -366,7 +436,7 @@ def between(truth_table: str) -> str:
             lines.append(".x.")
             return offset + 2
         zero_addr = offset + 1 + size([*path, 1])
-        lines.append(f"|{zero_addr}|f([{len(path)}]=|0|)")
+        lines.append(f"|{zero_addr}|f([{perm[len(path)]}]=|0|)")
         offset += 1
         offset = emit([*path, 1], offset)
         return emit([*path, 0], offset)
@@ -414,6 +484,39 @@ def _odd_reduce(pairs: int, level: int, n: int) -> str:
     return "e" * rot + zero + swap + bring + er
 
 
+def _taglate_dependencies(truth_table: str, n: int) -> list[int]:
+    """Which input positions the table's value actually depends on.
+
+    Input ``i`` matters when some row's value changes if only that bit is
+    flipped; a table where none does is constant in ``i``.
+    """
+    used = []
+    for i in range(n):
+        bit = 1 << (n - 1 - i)
+        if any(
+            truth_table[row] != truth_table[row | bit]
+            for row in range(2**n)
+            if not row & bit
+        ):
+            used.append(i)
+    return used
+
+
+def _taglate_reduced_table(truth_table: str, n: int, used: list[int]) -> str:
+    """Rewrite the function over just the inputs in ``used``."""
+    width = len(used)
+    return "".join(
+        truth_table[
+            sum(
+                1 << (n - 1 - i)
+                for slot, i in enumerate(used)
+                if (row >> (width - 1 - slot)) & 1
+            )
+        ]
+        for row in range(2**width)
+    )
+
+
 def taglate(truth_table: str) -> str:
     r"""Build a Taglate program computing the given truth table.
 
@@ -440,8 +543,69 @@ def taglate(truth_table: str) -> str:
     the queue into the 8-cell ``[0, v0, 0, v1, 48, 48, prev, curr]``
     layout, and ``_SEL1_N2`` selects between the last two candidate
     values on the two remaining inputs and prints ``48 + bit``.
+
+    **A table that ignores some of its inputs is emitted as the smaller
+    table.**  Nothing here costs anything per *row* -- a one and a zero are
+    both two characters (``bd``/``bb``) -- but almost everything costs per
+    *input*, and the seed alone is ``2**(n_eff + 2)`` cells, so dropping one
+    input drops a whole tier: a constant table goes from 451 characters to
+    21, and ``11110000`` (which depends only on its first input) to 21 as
+    well.  The ignored inputs are still read, then discarded: ``h`` appends
+    the character to the queue's tail, ``e`` repeated once per queued cell
+    rotates it back to the front, and ``f`` drops it, leaving the queue
+    exactly as it was so the reduces' positional arithmetic is undisturbed.
+    The rotation count is the queue length at that point, which before any
+    command has run is the seed's -- computed, not searched.
+
+    Two shapes are left alone.  A *gapped* dependency set (a table needing
+    inputs 0 and 2 but not 1) would want a discard between the reduced
+    program's own reads, where the queue is not what the following reduce
+    block assumes.  And an odd-sized dependency set would make the reduced
+    program ghost-pad itself and expect an input the stream does not carry,
+    so the window is widened by one adjacent ignored input to keep it even.
     """
     n = _validate_truth_table(truth_table)
+
+    # A table that ignores some of its inputs is really a smaller table, and
+    # taglate's cost is almost all fixed overhead scaled by the input count
+    # -- the seed alone is ``2**(n_eff + 2)`` cells -- so dropping one input
+    # drops a whole tier.  Emit the reduced table's program and read the
+    # ignored inputs anyway, discarding each: ``h`` appends the character to
+    # the queue's tail, ``e`` rotated once per queued cell brings it back to
+    # the front, and ``f`` drops it, leaving the queue exactly as it was so
+    # the reduces' positional arithmetic is undisturbed.
+    #
+    # Only a *contiguous* run of used inputs is handled.  A gapped set (a
+    # table depending on inputs 0 and 2, say) would need a discard between
+    # the reduced program's own reads, and the queue there is not what the
+    # following reduce block assumes -- the output comes out arithmetically
+    # corrupted rather than merely permuted.
+    used = _taglate_dependencies(truth_table, n)
+    # A constant table depends on nothing, so it reduces to the smallest
+    # valid table there is -- a one-input constant, never the length-1
+    # table, which is not a valid shape.
+    if not used and n > 1:
+        used = [0]
+    if used == list(range(used[0], used[0] + len(used))) if used else False:
+        # An odd-sized dependency set would make the *reduced* program
+        # ghost-pad itself and expect an input the stream does not carry,
+        # so widen the window by one adjacent ignored input to keep it even.
+        if len(used) % 2 == 1 and len(used) > 1:
+            if used[-1] + 1 < n:
+                used = [*used, used[-1] + 1]
+            elif used[0] > 0:
+                used = [used[0] - 1, *used]
+        if 0 < len(used) < n and (len(used) % 2 == 0 or len(used) == 1):
+            reduced = _taglate_reduced_table(truth_table, n, used)
+            seed, commands = taglate(reduced).split("\n", 1)
+            discard = "h" + "e" * len(seed) + "f"
+            # Odd ``n`` above 1 is called with a leading ghost digit, which
+            # is one more input to read and throw away before the real ones.
+            ghost = 1 if n % 2 == 1 and n > 1 else 0
+            leading = used[0] + ghost
+            trailing = n - len(used) - used[0]
+            return seed + "\n" + discard * leading + commands + "h" * trailing
+
     if n == 1:
         base = _ASCII_ZERO + int(truth_table[0])
         coeff = (int(truth_table[1]) - int(truth_table[0])) % 65536
@@ -534,12 +698,37 @@ def clockwise(truth_table: str) -> str:
     free columns left of the root, i.e. ``2 ** (n + 1) >= 7``, so ``n == 1``
     (four columns) keeps the spine; widening that ring would cost more than
     the rows save.
+
+    A subtree whose rows all agree stops branching, which narrows the ring:
+    the width is the sum of the displacements its nodes spend, and a folded
+    node spends none.  Since that width grows as ``2 ** (n + 1)``, the
+    saving is real -- a constant table is 411 characters against 621 at
+    ``n == 3`` and 863 against 1479 at ``n == 4``.
+
+    Two things the fold does *not* get to do.  It cannot drop the reads:
+    Clockwise reads inside the tree, seven ``.`` per level, so a folded
+    column still spends them (and an ``S`` where the ``?`` would have been,
+    keeping every column the same height so each leaf's exit lands on the
+    shared bottom row the ring closes through).  And it cannot narrow past
+    the hoist: at ``n == 2`` a tree folded to seven columns loses those
+    seven hoisted rows and comes out *larger* than the unfolded program,
+    263 characters against 255, so the width floors at what the hoist
+    needs.
     """
     n = _validate_truth_table(truth_table)
     cells: dict[tuple[int, int], str] = {}
-    # Seven free columns left of the root are what the hoist needs; see above.
-    hoist = 2 ** (n + 1) >= 7
-    shift = 7 if hoist else 0
+
+    def constant(bit: int, combo: int) -> bool:
+        """Whether every row this subtree covers agrees.
+
+        Rows split most-significant-first, so the subtree entered at
+        ``bit`` with prefix ``combo`` covers the contiguous run of
+        ``2 ** (n - bit)`` rows starting at ``combo << (n - bit)``.
+        """
+        span = 2 ** (n - bit)
+        start = combo << (n - bit)
+        return len(set(truth_table[start : start + span])) == 1
+
     # The spine starts far enough right that the tree's leftward branches
     # clear column 0, which holds the closing corner.  A node at ``bit``
     # displaces its one-branch ``2**(n - bit)`` to the left and puts two
@@ -548,7 +737,35 @@ def clockwise(truth_table: str) -> str:
     # and ``2**(n + 1)`` leaves exactly one free column at the left edge.
     # Anything wider is dead space: the turns are relative, so the tree's
     # absolute column never matters.
-    root = 2 ** (n + 1)
+    #
+    # A folded node spends no displacement, since it has no one-branch to
+    # send anywhere -- so the span is summed over the nodes that actually
+    # branch rather than assumed full.  This is where the fold pays: the
+    # full width grows as ``2 ** (n + 1)``, and a table whose subtrees
+    # collapse needs only the columns its surviving branches displace.
+    def tree_span(bit: int, combo: int) -> int:
+        if bit == n or (bit > 0 and constant(bit, combo)):
+            return 0
+        below: int = max(
+            tree_span(bit + 1, combo << 1),
+            tree_span(bit + 1, (combo << 1) | 1),
+        )
+        displacement: int = 2 ** (n - bit)
+        return displacement + below
+
+    # Never narrow past the hoist's own requirement.  The hoist puts the
+    # root's seven reads on row 0, left of the corner, which retires seven
+    # rows of spine -- worth more than the columns narrowing below it would
+    # save, and at ``n == 2`` a tree folded to seven columns loses the
+    # hoist and comes out *larger* than the unfolded program (263 against
+    # 255 characters).  So the tree may shrink only down to the width the
+    # hoist needs, and a table whose fold would go further simply keeps
+    # those columns blank.
+    root = max(tree_span(0, 0) + 2, 8 if 2 ** (n + 1) >= 8 else 0)
+    # Seven free columns left of the root are what the hoist needs; see
+    # above.
+    hoist = root >= 8
+    shift = 7 if hoist else 0
 
     def place(node: tuple[int, int], ch: str) -> None:
         cells[node] = ch
@@ -556,6 +773,28 @@ def clockwise(truth_table: str) -> str:
     def build(bit: int, x: int, y: int, combo: int) -> None:
         if bit == n:
             leaf(x, y, combo)
+            return
+        if bit > 0 and constant(bit, combo):
+            # Every row below here agrees, so the remaining bits cannot
+            # change the answer and this column needs no more branching.
+            # The reads are not optional, though: a program whose input
+            # count depended on its table would desync a caller feeding
+            # several from one stream, and unlike the tape generators
+            # clockwise reads *inside* the tree.  So the skipped levels
+            # still spend their ``S`` and seven ``.`` -- everything but
+            # the ``?`` that would have turned the pointer.
+            # A skipped level spends 9 rows in an unfolded column (``S``,
+            # seven ``.``, ``?``) and only 8 here, since nothing turns.  The
+            # ninth is padded with an ``S`` -- a no-op on an accumulator the
+            # reads leave at 0 or 1, and the reads reset it anyway -- so the
+            # column still ends on the shared bottom row.  Every leaf's exit
+            # has to land there or the ring does not close.
+            for level in range(n - bit):
+                place((x, y + 9 * level), "S")
+                for i in range(7):
+                    place((x, y + 9 * level + 1 + i), ".")
+                place((x, y + 9 * level + 8), "S")
+            leaf(x, y + 9 * (n - bit), combo << (n - bit))
             return
         if bit == 0 and hoist:
             # The seven reads sit on row 0, left of the corner ``R``; the
@@ -606,6 +845,10 @@ def clockwise(truth_table: str) -> str:
     # tree starts that much higher and every row below rides up with it.
     build(0, root, 1 - shift, 0)
 
+    # A folded column pads its skipped levels to the same 9 rows an
+    # unfolded one spends, so every column is the same height however much
+    # of it folded and the bottom row is where it always was.  The fold
+    # buys columns, not rows: the width is what grows as ``2 ** (n + 1)``.
     bottom = 1 + 9 * n + _CLOCKWISE_LEAF - 1 - shift
     for (x, y), ch in list(cells.items()):
         if ch == "?" and y == bottom:
@@ -649,6 +892,13 @@ def container(truth_table: str) -> str:
     * At tick ``2n`` a gate ``Gout`` dips to 1, so ``+1 S_r>=Gout`` adds the
       table entry of the surviving row to ``OUT``; ``PRINT`` fires and
       ``EXIT`` halts.
+
+    That last block costs one line per row the table sends to 1, so a dense
+    table is summed from its **zero** rows instead: ``OUT`` starts at 49 and
+    each surviving zero row subtracts one, printing ``49 - S``.  The clamp
+    at zero never bites, since the value stays at 48 or 49.  Worth up to
+    12.7% at ``n == 4`` (1356 characters down to 1184 for fifteen ones of
+    sixteen); the per-row survivor blocks above are fixed and unaffected.
     """
     n = _validate_truth_table(truth_table)
 
@@ -680,12 +930,22 @@ def container(truth_table: str) -> str:
     lines.append("Gout=2:")
     lines.append(f"-1 T>={2 * n - 1}")
     lines.append(f"+1 T>={2 * n}")
+    # OUT is 48 plus one ``+1`` per row the table sends to 1, so a dense
+    # table pays for nearly every row.  Evaluating the *zero* rows instead
+    # costs one line each and starts from 49, subtracting: ``49 - S`` is the
+    # complement, and since ``S`` is 0 or 1 the value stays at 48 or 49, so
+    # the container's clamp at zero never bites.  Whichever row-set is
+    # smaller wins; ties keep the plain form.
+    ones = truth_table.count("1")
+    invert = ones > 2**n - ones
     lines.append("OUT:")
-    lines.append(f"+48 T>={2 * n}")
-    lines.append(f"-48 T>={2 * n + 1}")
+    lines.append(f"+{_ASCII_ZERO + 1 if invert else _ASCII_ZERO} T>={2 * n}")
+    lines.append(f"-{_ASCII_ZERO + 1 if invert else _ASCII_ZERO} T>={2 * n + 1}")
+    wanted = "0" if invert else "1"
+    delta = "-1" if invert else "+1"
     for row in range(2**n):
-        if truth_table[row] == "1":
-            lines.append(f"+1 S{row}>=Gout")
+        if truth_table[row] == wanted:
+            lines.append(f"{delta} S{row}>=Gout")
     lines.append("PRINT:")
     lines.append(f"+1 T>={2 * n}")
     lines.append("EXIT=1:")
@@ -826,7 +1086,17 @@ def forbin_boolean(truth_table: str) -> str:
     body once when ``b`` is 1 (the ``return`` cuts the second iteration)
     and falls through when ``b`` is 0, so each node emits the 1-subtree then
     the 0-subtree and every leaf prints the result byte and returns.
+
+    **The tree splits on its inputs in whichever order emits the shortest
+    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
+    The ``(in 0)`` reads stay in input order -- all ``8n`` of them -- so
+    only the bit a ``for`` names moves.
     """
+    return best_input_order(truth_table, _forbin_ordered)
+
+
+def _forbin_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's Forbin program; see :func:`forbin_boolean`."""
     n = _validate_truth_table(truth_table)
 
     lines: list[str] = ["main {"]
@@ -843,7 +1113,8 @@ def forbin_boolean(truth_table: str) -> str:
             lines.append(f"{indent}out {','.join(format(byte, '08b'))};")
             lines.append(f"{indent}return 0;")
             return
-        lines.append(f"{indent}for _:!{bits[level]}..{bits[level]} {{")
+        bit = bits[perm[level]]
+        lines.append(f"{indent}for _:!{bit}..{bit} {{")
         emit(level + 1, row + 2 ** (n - 1 - level), depth + 1)
         lines.append(f"{indent}}}")
         emit(level + 1, row, depth)
@@ -989,10 +1260,19 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
             # depth, so the rail from the switch above covers the levels
             # this fold skipped: the rows are a fixed grid and only the
             # branching goes away.
+            #
+            # The *reads* those levels would have done do not go away.  A
+            # program must consume its ``n`` inputs whatever the table says
+            # -- the reads are the interface, and a folded run that skipped
+            # them left the caller's remaining bits on the stream -- so each
+            # skipped level puts its ``/ /`` on the rail, where the pointer
+            # runs straight through it into the leaf below.
             middle = leaf(slots[0], truth_table[lo])
             slots[0] += 1
             for y in range(4 * depth + 2, leaf_top):
                 cells.setdefault((middle, y), "│")
+            for skipped in range(depth, n):
+                put(middle - 1, 4 * skipped + 2, "/ /")
             return middle
         half = (hi - lo) // 2
         west = walk(lo, lo + half, depth + 1)
@@ -1045,7 +1325,12 @@ def flowchart(truth_table: str) -> str:
     **The tree holds many ``/ /`` nodes but reads each input once.**  A
     depth-``n`` tree draws ``2**n - 1`` read nodes, one per internal node,
     yet any single run walks one root-to-leaf path and so executes exactly
-    ``n`` of them -- the duplication is spatial, the way an unrolled
+    ``n`` of them -- which is why a *folded* leaf carries the reads of the
+    levels it skipped on its own rail.  Without them a run that folded
+    early would consume fewer inputs than one that did not, making the
+    program's stream consumption a function of its truth table; only the
+    branching may fold away, never the reads.  The duplication is spatial,
+    the way an unrolled
     brainfuck branch repeats ``,`` in each arm of a nested ``[ ]`` without
     any one execution reading twice.  This is deliberately *not* the
     once-only embedding rule that ``tools.boolean.parameterized`` documents:

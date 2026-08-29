@@ -8,6 +8,7 @@ generated program's output without repeating the capture plumbing.
 import importlib
 import io
 import random
+from collections.abc import Iterator
 from contextlib import redirect_stdout, suppress
 from unittest.mock import patch
 
@@ -30,6 +31,40 @@ def run_six_five(program: str, inputs: list[str]) -> str:
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
         run(program, io=IO())
     return buffer.getvalue()
+
+
+def _run_from(module: str, program: str, feed: Iterator[str]) -> str:
+    """Run ``program`` against an iterator, leaving what it did not read.
+
+    The plain ``run_*`` helpers take a list, so a caller cannot tell an
+    exact read from an under-read.  Draining a shared iterator instead lets
+    the caller assert it came back empty, which is how the "every path
+    consumes exactly ``n`` inputs" contract is checked without parsing the
+    emission -- an over-read already raises, so the two together pin it.
+    """
+    run = importlib.import_module(module).run
+    buffer = io.StringIO()
+    with (
+        patch("builtins.input", side_effect=lambda *_: next(feed)),
+        redirect_stdout(buffer),
+    ):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
+def run_six_five_from(program: str, feed: Iterator[str]) -> str:
+    """Run a 6-5 program against an iterator; see :func:`_run_from`."""
+    return _run_from("esolangs.interpreters.tape_based.six_five", program, feed)
+
+
+def run_addsubjump_from(program: str, feed: Iterator[str]) -> str:
+    """Run an AddSubJump program against an iterator; see :func:`_run_from`."""
+    return _run_from("esolangs.interpreters.register_based.addsubjump", program, feed)
+
+
+def run_sophie_from(program: str, feed: Iterator[str]) -> str:
+    """Run a Sophie program against an iterator; see :func:`_run_from`."""
+    return _run_from("esolangs.interpreters.register_based.sophie", program, feed)
 
 
 def run_dimensional(program: str, inputs: list[str]) -> str:
@@ -88,6 +123,15 @@ def run_painfuck(program: str, inputs: list[str]) -> str:
 
 def run_rotfuck(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.rotfuck import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
+def run_forth(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.stack_based.forth import run
 
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
@@ -194,8 +238,22 @@ def run_polynomial(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+def run_polynomial_from(program: str, feed: Iterator[str]) -> str:
+    """Run a Polynomial program against an iterator; see :func:`_run_from`."""
+    return _run_from("esolangs.interpreters.register_based.polynomial", program, feed)
+
+
 def run_bfstack(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.stack_based.bfstack import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
+def run_slow_acv_mammalian(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import run
 
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):

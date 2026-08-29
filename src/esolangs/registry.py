@@ -352,6 +352,7 @@ LANGUAGES: dict[str, Language] = {
         _generate.slow_acv_mammalian,
         "tape_based.slow_acv_mammalian",
         id="slow_acv_mammalian",
+        boolean=_boolean.slow_acv_mammalian_boolean,
     ),
     "Minifuck": Language(
         "Minifuck",
@@ -530,6 +531,20 @@ GENERATORS: dict[str, Generator] = {
 # the name of its function (e.g. ``six_five`` for "6-5").
 BY_FUNCTION: dict[str, Language] = {
     lang.text.__name__: lang for lang in LANGUAGES.values() if lang.text is not None
+}
+
+# The same, for the *boolean* generators.  ``BY_FUNCTION`` is keyed by the
+# text generator's name, so a language with a boolean generator and no text
+# one is absent from it entirely -- and a sweep written over ``BY_FUNCTION``
+# silently skips those languages rather than failing.  That is how Jaune's
+# table-dependent input count survived: it is a boolean-only language, so
+# the read-count contract test never saw it.  Sixteen boolean generators
+# were invisible this way (Bitdeque, RAM0, Lamfunc, Flowchart, Jaune and
+# the rest of the boolean-only set).
+BY_BOOLEAN: dict[str, Language] = {
+    lang.boolean.__name__: lang
+    for lang in LANGUAGES.values()
+    if lang.boolean is not None
 }
 
 # Display name -> (interpreter module, split lines, run() keyword arguments).

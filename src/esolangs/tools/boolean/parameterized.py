@@ -42,6 +42,8 @@ from ``{Xi}`` at runtime with its ``s``-as-NOT-gate.  The placeholder and
 the ``set_comp`` argument that filled it are gone.
 """
 
+from collections import deque
+from functools import cache
 from typing import TypeAlias
 
 # Re-exported so this module stays the import site for the whole
@@ -52,8 +54,10 @@ from esolangs.tools.boolean.cod import cod
 from esolangs.tools.boolean.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
+    best_input_order,
     decision_tree_tokens,
     instantiate,
+    permute_truth_table,
 )
 from esolangs.tools.boolean.wii2d import wii2d
 
@@ -118,6 +122,77 @@ def bio(truth_table: str) -> str:
     return pack + " " + init + inner + "0oy;" * _ASCII_ZERO + "1iy;"
 
 
+# Eval's two stacks and the ops that move values between them.  ``~`` swaps
+# which stack is active, ``*`` reverses the active one, and ``=`` pops the
+# active stack onto the other.  The pair is a spindle: moving values across
+# reverses them, so composing the three reaches essentially any arrangement.
+_EVAL_TREE_STACK, _EVAL_READ_STACK = 0, 1
+# Longest op string worth building.  Costs run to roughly 3 characters per
+# displaced input, and an arrangement that expensive has already lost to the
+# folds it was meant to buy; the cap keeps the search finite.
+_EVAL_MAX_OPS = 16
+# (tree stack, input stack, which stack is active), each stack listed
+# bottom to top by the input index it carries.
+_EvalState: TypeAlias = tuple[tuple[int, ...], tuple[int, ...], int]
+
+
+@cache
+def _eval_stack_programs(n: int) -> dict[tuple[int, ...], str]:
+    """Shortest ops rearranging the staged bits into each arrangement.
+
+    Returns the input stack (bottom to top, by input index) mapped to the
+    ops producing it.  The staging blocks leave the bits on the input stack
+    and nothing else, so these ops run between the staging and the tree and
+    are free to reverse or shuttle them.
+
+    A breadth-first walk over (tree stack, input stack, active stack) finds
+    the shortest.  Only states that end back on the tree stack with nothing
+    left staged are usable, since the tree expects to start there.
+
+    **This is a runtime reorder, not a relabelling.**  The ``{Xi}`` blocks
+    keep their slots and the harness fills them exactly as before; what
+    changes is the emitted program, which now rearranges the stack the nodes
+    pop from.  The nodes themselves name no input -- each is ``~=~?`` plus a
+    semicolon run fixed by its heap index -- so the arrangement is the only
+    thing that decides which input a level tests.
+    """
+    start: _EvalState = ((), tuple(range(n)), _EVAL_TREE_STACK)
+    seen = {start: ""}
+    frontier = deque([start])
+    reached: dict[tuple[int, ...], str] = {}
+    while frontier:
+        state = frontier.popleft()
+        tree, read, active = state
+        ops = seen[state]
+        if active == _EVAL_TREE_STACK and not tree and read not in reached:
+            reached[read] = ops
+        if len(ops) >= _EVAL_MAX_OPS:
+            continue
+
+        stacks = {_EVAL_TREE_STACK: tree, _EVAL_READ_STACK: read}
+        moves: list[tuple[_EvalState, str]] = [((tree, read, 1 - active), "~")]
+        flipped = tuple(reversed(stacks[active]))
+        moves.append(
+            ((flipped, read, active), "*")
+            if active == _EVAL_TREE_STACK
+            else ((tree, flipped, active), "*")
+        )
+        if stacks[active]:
+            moved, rest = stacks[active][-1], stacks[active][:-1]
+            other = (*stacks[1 - active], moved)
+            moves.append(
+                ((rest, other, active), "=")
+                if active == _EVAL_TREE_STACK
+                else ((other, rest, active), "=")
+            )
+
+        for next_state, op in moves:
+            if next_state not in seen:
+                seen[next_state] = ops + op
+                frontier.append(next_state)
+    return reached
+
+
 def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
     """Build an Eval template for the given truth table.
 
@@ -147,6 +222,49 @@ def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
     is on top, and ``!`` evaluates it; each path keeps popping bits until a
     leaf prints.  No node or leaf contains a quote or backtick, so the
     strings need no escaping and the tree grows to any ``n``.
+
+    A node whose rows all agree becomes the leaf it would have reached, and
+    its descendants become empty strings.  The fold has to work that way
+    round: the heap is *positional*, so the ``;`` run is a function of the
+    node's own index and every child sits at a pinned ``2i+1``/``2i+2``, and
+    deleting a subtree the way a token-stream generator does would shift
+    every later index and misroute the whole tree.  Emptying the slots
+    instead leaves the arithmetic untouched, and an emptied slot is never
+    popped because the only node that routed into it has become a leaf.  A
+    constant table goes from 127 to 47 characters at ``n == 3``.
+    """
+    n = _validate_truth_table(truth_table)
+    # The staging leaves the input stack holding only the bits and nothing
+    # else, so the tree can be preceded by ops that rearrange them.  Every
+    # reachable arrangement is a candidate, including the one staging
+    # already produces, which costs no ops.
+    #
+    # The tree pops the input stack top-first, so an arrangement listed
+    # bottom-to-top tests its *last* entry at the root: the split order is
+    # the arrangement reversed.  Staging pushes X0 first, so the free
+    # arrangement is ``(0, ..., n-1)`` and its split order is the reversal
+    # -- which is why the no-ops candidate is not the identity permutation.
+    best = ""
+    for arrangement, ops in sorted(
+        _eval_stack_programs(n).items(), key=lambda item: len(item[1])
+    ):
+        perm = tuple(reversed(arrangement))
+        candidate = _eval_ordered(permute_truth_table(truth_table, perm), ops)
+        # Sorted by op cost with the free arrangement first, and the
+        # comparison is strict, so a table no reorder helps emits exactly
+        # what it emitted before.
+        if not best or len(candidate) < len(best):
+            best = candidate
+    return best
+
+
+def _eval_ordered(truth_table: str, ops: str) -> str:
+    """Emit one input order's Eval template; see :func:`eval`.
+
+    ``truth_table`` is already permuted, so the heap walk below is unchanged
+    from the single-order construction.  What the emitted program does
+    differently is run ``ops`` between the staging blocks and the tree,
+    rearranging the input stack so the nodes pop the bits in this order.
     """
     n = _validate_truth_table(truth_table)
 
@@ -158,16 +276,47 @@ def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
             leaf = (leaf - 1) // 2
         return tuple(reversed(path))
 
+    def rows_under(i: int) -> list[int]:
+        """Table rows reachable from heap node ``i``."""
+        if i >= 2**n - 1:
+            return [sum(b << (n - 1 - k) for k, b in enumerate(combo(i)))]
+        return rows_under(2 * i + 1) + rows_under(2 * i + 2)
+
+    # A node whose rows all agree is replaced, *in its own slot*, by the leaf
+    # it would have reached.  The heap is positional -- every node's children
+    # are pinned at 2i+1/2i+2 and its own ``;`` run is a function of ``i`` --
+    # so a folded subtree cannot be deleted the way a token-stream tree's
+    # can, or every later index would shift.  Leaving the slots in place and
+    # emptying them keeps all of that arithmetic untouched: an empty string
+    # is never popped, because the only node that routed into it is gone.
+    dead: set[int] = set()
     tree: list[str] = []
     for i in range(2 ** (n + 1) - 1):
-        if i < 2**n - 1:  # internal node: test the next input
+        if i in dead:
+            tree.append("")
+            continue
+        rows = rows_under(i)
+        values = {truth_table[row] for row in rows}
+        if i < 2**n - 1 and len(values) == 1:
+            tree.append("0+." if values.pop() == "1" else "0.")
+            below = [2 * i + 1, 2 * i + 2]
+            while below:  # the whole subtree, not just the two children
+                child = below.pop()
+                dead.add(child)
+                if child < 2**n - 1:
+                    below += [2 * child + 1, 2 * child + 2]
+        elif i < 2**n - 1:  # internal node: test the next input
             tree.append("~=~?" + ";" * (i + 1) + "!")
         else:  # leaf: print the table entry for this path
-            index = sum(b << (n - 1 - k) for k, b in enumerate(combo(i)))
-            tree.append("0+." if truth_table[index] == "1" else "0.")
+            tree.append("0+." if truth_table[rows[0]] == "1" else "0.")
 
-    bits = "".join("{X" + str(i) + "}" for i in range(n - 1, -1, -1))
-    return bits + "".join(f'"{t}"' for t in tree) + "*!"
+    # Staged forward, like every other parameterized generator.  The order
+    # is a free choice rather than a constraint: it decides only *which*
+    # arrangement costs no ops, and the reachable set and every other
+    # arrangement's cost are identical either way, because ``*`` is an
+    # involution -- staging one way and reversing is the other way exactly.
+    bits = "".join("{X" + str(i) + "}" for i in range(n))
+    return bits + ops + "".join(f'"{t}"' for t in tree) + "*!"
 
 
 def back(truth_table: str) -> str:
@@ -530,6 +679,24 @@ def lamfunc(truth_table: str) -> str:
     nonzero else ``z`` — with ``p 0``/``p 1`` at the leaves printing the
     table's result as binary.  A subtree whose table slice is a constant
     collapses to a single leaf, so constant rows emit no branching.
+
+    **The tree splits on its inputs in whichever order emits the shortest
+    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`),
+    since whether a subtree collapses depends on which rows it covers, and
+    that is what the split order decides.  Reading a bit back is by *name*,
+    so the reorder costs nothing here: the ``vs v{i} {Xi}`` head still
+    stores input ``i`` in ``v{i}``, and only the variable a node names
+    changes.
+    """
+    return best_input_order(truth_table, _lamfunc_ordered)
+
+
+def _lamfunc_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's Lamfunc template; see :func:`lamfunc`.
+
+    ``truth_table`` is already permuted, so the ``lo``/``hi`` row span is
+    in the permuted frame; ``perm`` is spent only on the variable a node
+    reads back, ``v{perm[level]}``.
     """
     n = _validate_truth_table(truth_table)
 
@@ -539,7 +706,9 @@ def lamfunc(truth_table: str) -> str:
             return f"p {results.pop()}"
         mid = (lo + hi) // 2
         # i x y z returns y when x is nonzero else z: y is the one-case
-        return f"i vg v{level} {node(level + 1, mid, hi)} {node(level + 1, lo, mid)}"
+        return (
+            f"i vg v{perm[level]} {node(level + 1, mid, hi)} {node(level + 1, lo, mid)}"
+        )
 
     head = " ".join(f"vs v{i} {{X{i}}}" for i in range(n))
     return head + " " + node(0, 0, 2**n)
@@ -570,6 +739,39 @@ def bitdeque(truth_table: str) -> str:
     a trailing ``INVERT``, and ``GOTO``s past the program end to halt -- so
     every leaf always routes and the deque printed at halt holds exactly the
     answer.
+
+    **The tree splits on its inputs in whichever order emits the shortest
+    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
+    Bitdeque is a *deque*, not a stack: ``INJECT``/``EJECT`` work the head
+    where ``PUSH``/``POP`` work the tail, so a node can bring any bit to an
+    end with ``EJECT PUSH`` (head to tail) or ``POP INJECT`` (tail to head)
+    and is not restricted to the order the load pushed.  Rotation costs two
+    commands per position, so an order pays for its folds; the search
+    measures rather than models, and an order whose rotations outweigh its
+    savings simply loses to the identity.
+
+    The rotations happen *inside the tree*, never in the load block: the
+    ``{Xi}`` setter's ``INVERT PUSH``/``PUSH INVERT`` choice depends on the
+    register parity at its position, so moving the head would desync every
+    fill site.  The emitted load is byte-identical whatever the order.
+    """
+    return best_input_order(truth_table, _bitdeque_ordered)
+
+
+def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's Bitdeque template; see :func:`bitdeque`.
+
+    ``truth_table`` is already permuted, so the rows are in the permuted
+    frame.  ``perm`` is spent on the rotations a node runs before it
+    consumes its bit -- and those are a function of the *level* alone, not
+    of the node: both branches of a level have rotated and consumed exactly
+    the same bits on the way down, so the deque layout at a level is the
+    same on every path through it.  That is what keeps a node's width
+    well-defined for the walker's index arithmetic.
+
+    Under the identity order every bit is already at the tail when it is
+    wanted, so no rotation is emitted and the output is byte-identical to
+    what the unordered generator produced.
     """
     n = _validate_truth_table(truth_table)
 
@@ -583,25 +785,51 @@ def bitdeque(truth_table: str) -> str:
         out.append("GOTO@END")
         return out
 
+    # Simulate the deque to find each level's rotation.  The load pushes the
+    # most significant input first, so the tail -- what ``POP`` returns -- is
+    # input 0 and the head is input ``n - 1``.
+    deque = list(range(n - 1, -1, -1))
+    rotations: list[list[str]] = []
+    for level in range(n):
+        want = perm[level]
+        index = deque.index(want)
+        from_tail = len(deque) - 1 - index
+        if from_tail <= index:
+            # Nearer the tail: rotate the tail round to the head, then POP.
+            rotations.append(["POP", "INJECT"] * from_tail + ["POP"])
+            for _ in range(from_tail):
+                deque.insert(0, deque.pop())
+            deque.pop()
+        else:
+            # Nearer the head: rotate the head round to the tail, then EJECT.
+            rotations.append(["EJECT", "PUSH"] * index + ["EJECT"])
+            for _ in range(index):
+                deque.append(deque.pop(0))
+            deque.pop(0)
+
+    def width(level: int) -> int:
+        # the rotation, its consuming pop, and the node's own ``GOTO``
+        return len(rotations[level]) + 1
+
     # the load block, most significant placeholder first (so the first POP
     # after the load is the MSB); each placeholder expands to two commands
     head = ["{X" + str(i) + "}" for i in range(n - 1, -1, -1)]
 
-    # A node spends ``POP`` and its ``GOTO`` before either subtree, so the
-    # walker's ``at`` lands on this node and ``at + 2`` on the zero subtree.
-    # The load block occupies ``2n`` commands ahead of the tree, which is
-    # where the indices start, so the ``GOTO`` operands are right after
-    # substitution.
+    # A node spends its rotation, its pop and its ``GOTO`` before either
+    # subtree, so the walker's ``at`` lands on this node and ``at +
+    # width(level)`` on the zero subtree.  The load block occupies ``2n``
+    # commands ahead of the tree, which is where the indices start, so the
+    # ``GOTO`` operands are right after substitution.
     tree = decision_tree_tokens(
         truth_table,
         lambda _level, row: leaf(truth_table[row]),
-        lambda _level, zero, one, at: [
-            "POP",
-            f"GOTO {at + 2 + len(zero)}",
+        lambda level, zero, one, at: [
+            *rotations[level],
+            f"GOTO {at + width(level) + len(zero)}",
             *zero,
             *one,
         ],
-        parent_width=2,
+        parent_width=width,
         start=2 * n,
         collapse=True,
     )
@@ -609,14 +837,17 @@ def bitdeque(truth_table: str) -> str:
     return " ".join(head + ["GOTO " + str(end) if t == "GOTO@END" else t for t in tree])
 
 
-def _ram0_width(level: int) -> int:
+def _ram0_width(address: int) -> int:
     """Commands a RAM0 tree node spends before its subtrees.
 
-    ``Z``, an ``A`` per level (the cell address), ``L``, ``C``, and the
-    ``goto`` that reaches the one-subtree -- so the width grows with depth,
-    which is why the walker takes a callable rather than a constant.
+    ``Z``, an ``A`` per unit of the cell address, ``L``, ``C``, and the
+    ``goto`` that reaches the one-subtree -- so the width varies from node
+    to node, which is why the walker takes a callable rather than a
+    constant.  The address is the *input* the node tests, which is its
+    level only under the identity order; :func:`_ram0_ordered` maps one to
+    the other.
     """
-    return level + 4
+    return address + 4
 
 
 def ram0(truth_table: str) -> str:
@@ -642,8 +873,34 @@ def ram0(truth_table: str) -> str:
     ``z`` to the answer and uses RAM0's *unconditional* ``goto`` to run off
     the program end, so the final ``z`` read from the state dump is the
     answer.
+
+    **The tree splits on its inputs in whichever order emits the shortest
+    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
+    Folding a subtree needs the rows it covers to agree, and which rows a
+    subtree covers is what the split order decides; RAM0 also spells an
+    input as a run of ``A`` as long as its *address*, so a cheap order here
+    additionally wants the low addresses at the deep, oft-repeated levels.
+    Both effects come out of measuring the emitted candidates rather than
+    modelling either.  The load phase still stores bit ``i`` in cell ``i``
+    in input order, so the ``{Xi}`` placeholders and their positions are
+    untouched -- only which cell a node loads moves.
+    """
+    return best_input_order(truth_table, _ram0_ordered)
+
+
+def _ram0_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's RAM0 template; see :func:`ram0`.
+
+    ``truth_table`` is already permuted, so every row index here is in the
+    permuted frame.  ``perm`` is spent on the address a node names: the
+    ``A`` run is ``perm[level]`` long, which is also what makes the node's
+    width -- and therefore every absolute ``goto`` operand below it --
+    depend on the order.
     """
     n = _validate_truth_table(truth_table)
+
+    def width(level: int) -> int:
+        return _ram0_width(perm[level])
 
     tokens: list[str] = []
     pos = 0  # instantiated command index of the next command
@@ -668,10 +925,10 @@ def ram0(truth_table: str) -> str:
         # therefore starts a further ``len(zero)`` along, 1-based.
         return [
             "Z",
-            *("A" for _ in range(level)),
+            *("A" for _ in range(perm[level])),
             "L",
             "C",
-            f"ONE@{at + _ram0_width(level) + len(zero) + 1}",
+            f"ONE@{at + width(level) + len(zero) + 1}",
             *zero,
             *one,
         ]
@@ -682,7 +939,7 @@ def ram0(truth_table: str) -> str:
         truth_table,
         leaf_tokens,
         node,
-        parent_width=_ram0_width,
+        parent_width=width,
         start=pos,
         collapse=True,
     )
@@ -871,14 +1128,62 @@ def _connect(t0: list[str], t1: list[str]) -> list[str]:
     return ["".join(row) for row in grid]
 
 
-def _tree(values: list[str]) -> list[str]:
-    """Build the full decision tree for the ``2**n`` table values.
+def _drained_leaf(value: str, skipped: int) -> list[str]:
+    """Build a folded leaf that drains the ``skipped`` bits it never popped.
 
-    The tree is full (it never collapses a constant slice): every path pops
-    all ``n`` bits, so the queue holds exactly the four loop components at
-    every leaf, which both leaf types rely on (the ring's corner pops must
-    be R, D, L, U in order).
+    Folding a constant subtree skips its ``+`` branches, which would leave
+    those bits queued *ahead* of the four loop components.  A ``0`` leaf
+    does not care -- it halts by running off the grid, and no queue content
+    prevents that -- but a ``1`` leaf's ring pops a direction at each corner
+    and needs to find exactly ``R, D, L, U``.
+
+    So each skipped bit gets a drain: a ``+`` whose two exits reconverge on
+    one cell.  Popping a ``0`` sends the IP right into a ``*`` that turns it
+    down; popping a ``1`` sends it down around three ``*`` that walk it back
+    up and right.  Both arrive at the same cell -- with *different* headings,
+    which is fine, because a ``+`` pops on arrival regardless of direction.
+    Chaining them steps one row down and one column right per bit::
+
+         +*        the ``+`` pops a stale bit
+        *  *       0 goes right then down, 1 goes down then round
+        ** +*      both land on the next ``+``
+
+    The drains push nothing, so the ring receives the queue it expects.
     """
+    # A ``0`` leaf halts by running off the grid, which no queue content can
+    # prevent, so it needs no drain at all -- and paying for one costs real
+    # characters: the staircase sits a column right of the branches it
+    # replaced, leaving ``_compact`` fewer all-blank columns to drop.
+    if value != "1":
+        return list(_TREE_0)
+    # The leaf is 3x3 placed at (skipped, skipped + 1), so the grid needs
+    # ``skipped + 3`` rows and one more column than that.
+    grid = [[" "] * (skipped + 4) for _ in range(skipped + 3)]
+    for i in range(skipped):
+        grid[i][i + 1] = "+"
+        grid[i][i + 2] = "*"
+        grid[i + 1][i] = "*"
+        grid[i + 2][i] = "*"
+        grid[i + 2][i + 1] = "*"
+    leaf = _TREE_1 if value == "1" else _TREE_0
+    for r, line in enumerate(leaf):
+        for c, char in enumerate(line):
+            if char != " ":
+                grid[skipped + r][skipped + 1 + c] = char
+    return ["".join(row) for row in grid]
+
+
+def _tree(values: list[str]) -> list[str]:
+    """Build the decision tree for the ``2**n`` table values.
+
+    A subtree whose values all agree folds to a single leaf rather than the
+    branches that would all reach it.  The slice's own length says how many
+    bits the leaf must drain -- see :func:`_drained_leaf`, which is what
+    lets a ``1`` leaf fold at all.
+    """
+    if len(set(values)) == 1:
+        skipped = len(values).bit_length() - 1
+        return _drained_leaf(values[0], skipped)
     if len(values) == 2:
         return _connect(
             _TREE_1 if values[0] == "1" else _TREE_0,
@@ -904,10 +1209,18 @@ def arrowqueue(truth_table: str) -> str:
 
     The construction embeds each bit once in the header rows (a ``1`` bit
     pushes down, a ``0`` bit pushes right), queues the right/down/left/up
-    loop components, and routes a full decision tree by popping the bits at
+    loop components, and routes a decision tree by popping the bits at
     ``+`` branches.  Each leaf is a 3x3 block: a ``1`` entry is a
     self-sustaining ring and a ``0`` entry is empty (the pointer runs off
     the grid, which halts).
+
+    A constant subtree folds to a single leaf, which drains the bits the
+    skipped branches would have popped -- see :func:`_drained_leaf`.  A
+    constant table is 93 characters against 275 at n == 3, and 130 against
+    1434 at n == 5.  No program grows: only a ``1`` leaf is drained, since a
+    ``0`` leaf halts by running off the grid whatever is queued, and draining
+    it anyway cost more than the branches it replaced (AND-2 briefly went
+    124 to 128 bytes that way -- it is 109 now).
     """
     n = _validate_truth_table(truth_table)
     header = ["{X0}"]

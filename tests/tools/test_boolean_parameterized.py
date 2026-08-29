@@ -790,6 +790,142 @@ class TestParameterizedArrowQueue:
         with pytest.raises(ValueError, match="power-of-two"):
             parameterized.arrowqueue("011")
 
+    @pytest.mark.parametrize(
+        ("table", "mixed"),
+        [
+            ("1111", "1010"),
+            ("11110000", "10010110"),
+            ("1111111100000000", "1001011001101001"),
+        ],
+    )
+    def test_constant_subtrees_fold(self, table: str, mixed: str) -> None:
+        """A constant subtree emits one drained leaf, not a full branch set.
+
+        The comparison table has the same ones-count, so a shorter template
+        means the tree folded rather than that something else shrank.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        assert len(parameterized.arrowqueue(table)) < len(
+            parameterized.arrowqueue(mixed)
+        )
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("1" * 16, 4),
+            ("0" * 16, 4),
+            ("1111111100000000", 4),
+            ("1111000000000000", 4),
+            ("1" * 32, 5),
+            ("1" * 16 + "0" * 16, 5),
+        ],
+    )
+    def test_folded_tables_past_three_inputs(self, table: str, n: int) -> None:
+        """Folded leaves stay correct deeper than the exhaustive n <= 3 sweep."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.arrowqueue(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_arrowqueue(self.instantiate(template, bits))
+            assert got == table[combo], f"inputs {bits}"
+
+    def test_folded_one_leaf_drains_the_bits_it_skipped(self) -> None:
+        """The drain is load-bearing: a ring needs the queue it expects.
+
+        A folded ``1`` leaf pops a direction at each of its ring's corners
+        and requires exactly ``R, D, L, U``.  Without the drains, the bits
+        the skipped branches never popped sit ahead of those components, the
+        corners pop the wrong directions, the ring does not close, and the
+        program halts -- reporting ``0`` for a ``1`` entry.  Dropping the
+        drains here must therefore break the table.
+        """
+        from esolangs.tools.boolean.parameterized import _TREE_1, _drained_leaf
+
+        undrained = _drained_leaf("1", 0)  # no drains at all
+        assert [row.strip() for row in undrained if row.strip()] == [
+            row.strip() for row in _TREE_1
+        ]
+
+        # With two levels skipped the drained leaf is strictly taller than
+        # the bare ring, and that extra height is the drain chain.
+        drained = _drained_leaf("1", 2)
+        assert len(drained) == len(_TREE_1) + 2
+        assert sum(row.count("+") for row in drained) == 4 + 2  # ring + drains
+
+    def test_folded_zero_leaf_needs_no_drain(self) -> None:
+        """A ``0`` leaf halts by leaving the grid, which the queue cannot stop."""
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.parameterized import _TREE_0, _drained_leaf
+
+        # It carries no drain at all.  Paying for one is not free: the
+        # staircase sits a column right of the branches it replaces, so
+        # ``_compact`` finds fewer all-blank columns and the instantiated
+        # program grows -- which is what made AND-2 larger than before the
+        # fold until this case was carved out.
+        assert _drained_leaf("0", 3) == list(_TREE_0)
+        for table, n in (("0000", 2), ("0" * 8, 3)):
+            template = parameterized.arrowqueue(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                assert self.run_arrowqueue(self.instantiate(template, bits)) == "0"
+
+    def test_folding_never_grows_a_program(self) -> None:
+        """No instantiated program is larger than its unfolded equivalent.
+
+        A fold that costs characters is not a fold.  AND-2 briefly regressed
+        (124 to 128 bytes) when ``0`` leaves were drained too: a folded
+        ``00`` half gained a staircase where the branch pair it replaced was
+        cheaper, and the extra column blocked ``_compact``.  This pins the
+        whole n <= 2 space, where such a regression showed up.
+        """
+        from esolangs.tools.boolean.parameterized import (
+            _TREE_0,
+            _TREE_1,
+            _connect,
+            _tree,
+        )
+
+        def unfolded(values: list[str]) -> list[str]:
+            """The pre-fold construction: a branch per level, never collapsed."""
+            if len(values) == 2:
+                return _connect(
+                    _TREE_1 if values[0] == "1" else _TREE_0,
+                    _TREE_1 if values[1] == "1" else _TREE_0,
+                )
+            half = len(values) // 2
+            return _connect(unfolded(values[:half]), unfolded(values[half:]))
+
+        for n in (1, 2, 3):
+            for value in range(2 ** (2**n)):
+                table = format(value, f"0{2**n}b")
+                folded = _tree(list(table))
+                plain = unfolded(list(table))
+                assert sum(len(r.rstrip()) for r in folded) <= sum(
+                    len(r.rstrip()) for r in plain
+                ), table
+
+    def test_fold_keeps_equal_width_embedding(self) -> None:
+        """Every instantiation of a folded template is the same length.
+
+        The fold shrinks the tree, which is shared by all instantiations, so
+        the program's size still cannot leak which bits were embedded.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        for table, n in (("1111", 2), ("1100", 2), ("11110000", 3)):
+            template = parameterized.arrowqueue(table)
+            sizes = {
+                len(
+                    self.instantiate(
+                        template, [(c >> (n - 1 - i)) & 1 for i in range(n)]
+                    )
+                )
+                for c in range(2**n)
+            }
+            assert len(sizes) == 1, f"{table}: {sizes}"
+
 
 class TestParameterizedBfpda:
     """Input-by-substitution boolean generator for the no-input language BF-PDA."""
@@ -1258,6 +1394,46 @@ class TestEvalBoolean:
                 got = self.run_eval(self.instantiate(template, bits))
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
+    def test_constant_subtrees_fold_in_place(self) -> None:
+        """A constant subtree becomes a leaf; its slots empty but remain.
+
+        The heap is positional -- a node's ``;`` run is a function of its
+        own index and its children sit at pinned offsets -- so the folded
+        subtree cannot be *removed* without shifting every later index.
+        The slots stay and are emptied instead, which is why the string
+        count never changes while the program still gets shorter.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        full = parameterized.eval("10010110")
+        folded = parameterized.eval("11111111")
+        assert len(folded) < len(full)
+        # every heap slot is still present, just empty
+        assert folded.count('"') == full.count('"')
+        assert '""' in folded
+
+    def test_folding_keeps_both_bits_equal_width(self) -> None:
+        """Folding shrinks the template, never one instantiation.
+
+        The embedding's whole point is that ``len(program)`` cannot reveal
+        the inputs.  A fold that depended on the bits would reintroduce
+        exactly that leak, so this pins equal width on folded tables too.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        for table in ("11111111", "11110000", "11001100", "0001"):
+            n = len(table).bit_length() - 1
+            template = parameterized.eval(table)
+            widths = {
+                len(
+                    self.instantiate(
+                        template, [(c >> (n - 1 - i)) & 1 for i in range(n)]
+                    )
+                )
+                for c in range(2**n)
+            }
+            assert len(widths) == 1, f"{table} leaks its inputs: {widths}"
+
     def test_template_is_input_independent(self) -> None:
         """The template has {Xi} placeholders, not hardcoded bits."""
         from esolangs.tools.boolean import parameterized
@@ -1271,8 +1447,11 @@ class TestEvalBoolean:
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.eval("0110")
-        # inputs MSB-first, staged on the tree stack and moved by each `=`
-        assert template.startswith("{X1}{X0}")
+        # Staged forward, like every other parameterized generator: each
+        # block pushes its bit on the tree stack and `=` moves it across.
+        # Which order they are staged in only decides *which* arrangement
+        # costs no reorder ops, since `*` reverses either way.
+        assert template.startswith("{X0}{X1}")
         assert template.endswith("*!")
         assert '"~=~?;!"' in template  # root node: one discard
         assert '"~=~?;;!"' in template  # BFS index 1: two discards
@@ -1280,6 +1459,68 @@ class TestEvalBoolean:
         assert template.count('"0+.') + template.count('"0.') == 4  # leaves
         # leaves are the XOR table in heap order: 0 1 1 0
         assert template.endswith('"0.""0+.""0+.""0."*!')
+
+    def test_reordering_only_shrinks(self) -> None:
+        """No table is longer than the arrangement staging already produces.
+
+        The candidates are sorted by op cost with the free arrangement
+        first and the comparison is strict, so a table no reorder helps
+        emits exactly what it emitted before.
+        """
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.helpers import permute_truth_table
+        from esolangs.tools.boolean.parameterized import _eval_ordered
+
+        # Staging pushes X0 first, so the free arrangement's split order is
+        # the reversal -- the no-ops build is not the identity permutation.
+        free = tuple(reversed(range(3)))
+        improved = 0
+        for value in range(256):
+            table = format(value, "08b")
+            dispatched = len(parameterized.eval(table))
+            staged = len(_eval_ordered(permute_truth_table(table, free), ""))
+            assert dispatched <= staged, table
+            improved += dispatched < staged
+        assert improved == 114
+
+    def test_reorder_ops_run_outside_the_placeholders(self) -> None:
+        """The rearrangement is emitted code, not a change to the fills.
+
+        This is what makes it a reorder rather than a relabelling: the
+        ``{Xi}`` blocks keep their slots and the harness fills them exactly
+        as before, while the emitted program gains ops that rearrange the
+        stack its nodes pop from.  Equal-width embedding therefore still
+        holds, since nothing inside a placeholder moved.
+        """
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.examples import _fill_eval
+
+        # A table whose cheapest order is not the free one.
+        table = "00001101"
+        template = parameterized.eval(table)
+        assert template.startswith("{X0}{X1}{X2}")  # slots unmoved
+        widths = {
+            len(_fill_eval(template, [(c >> (2 - i)) & 1 for i in range(3)]))
+            for c in range(8)
+        }
+        assert len(widths) == 1  # every fill the same length
+
+    def test_stack_ops_reach_every_arrangement(self) -> None:
+        """Two stacks with a reverse and a cross-move permute the bits.
+
+        ``~`` switches stacks, ``*`` reverses the active one and ``=`` moves
+        its top across; the pair is a spindle, so the three compose to reach
+        every arrangement at n <= 4.  Unlike Forþ's ``o``, ``*`` is usable
+        here because the staging leaves the bits alone on that stack.
+        """
+        from math import factorial
+
+        from esolangs.tools.boolean.parameterized import _eval_stack_programs
+
+        for n in (2, 3, 4):
+            assert len(_eval_stack_programs(n)) == factorial(n)
+        # The free arrangement is the one staging produces, and costs nothing.
+        assert _eval_stack_programs(3)[(0, 1, 2)] == ""
 
     def test_scales_to_more_inputs(self) -> None:
         """The heap tree grows to any n (spot-checked at n = 6)."""

@@ -7,8 +7,10 @@ Forþ, Modulous, BFStack, and Unsquare.
 import pytest
 
 from esolangs.tools import boolean
+from esolangs.tools.boolean.helpers import permute_truth_table
 from tests.tools.boolean_runners import (
     run_bfstack,
+    run_forth,
     run_grapheme,
     run_modulous,
 )
@@ -57,10 +59,14 @@ class TestGrapheme:
 
 class TestForth:
     def test_program_structure(self) -> None:
-        """The program defines one function per tree node and reads n bits."""
+        """The program defines one function per surviving node, reading n bits.
+
+        AND's zero-side subtree is constant, so it folds to a leaf: four
+        nodes rather than the full six.
+        """
         program = boolean.forth("0001")
         assert program.endswith("1+;.")
-        assert program.count("{") == program.count("}") == 6  # 6 nodes
+        assert program.count("{") == program.count("}") == 4
         assert program.count(",68*-") == 2  # read and normalize 2 inputs
 
     def test_leaf_results_are_the_byte(self) -> None:
@@ -70,10 +76,130 @@ class TestForth:
         assert "3F*4+" in program  # the '1' leaf pushes 49 = 3*15+4
 
     def test_scales(self) -> None:
-        """More inputs mean more tree functions."""
-        program = boolean.forth("0" * 16 + "1" * 16)
+        """More inputs mean more tree functions, and every input is read."""
+        # Parity folds nothing under any order, so it spends the full tree.
+        parity = "".join(str(bin(row).count("1") % 2) for row in range(32))
+        program = boolean.forth(parity)
         assert program.count("{") == 2 ** (5 + 1) - 2
         assert program.count(",68*-") == 5
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_truth_table(self, n: int) -> None:
+        """Every table up to three inputs produces the right result.
+
+        The other Forþ tests assert program structure only; this runs the
+        program, which is what pins the fold's behaviour rather than its
+        shape.
+        """
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            program = boolean.forth(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = run_forth(program, [str(b) for b in bits])
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant subtree answers in place and drops its descendants.
+
+        Forþ stores each scope in a dict keyed by the number pushed before
+        ``{`` and calls it with a default, so an unemitted node simply
+        never exists -- folding is skip-emission with no renumbering.
+
+        Which subtrees are constant depends on the order the tree splits
+        in, and the order is chosen per table: ``00001111`` depends on the
+        first input alone and ``01010101`` on the last, so each collapses to
+        the two root children under the order that tests its input first.
+        A stack-ordered tree could only fold the second.
+
+        Parity is what folds under no order at all, so it is the witness
+        that the fold is doing work rather than the search hiding it.
+        """
+        assert boolean.forth("1" * 8).count("{") == 2
+        assert boolean.forth("01" * 4).count("{") == 2
+        assert boolean.forth("0" * 4 + "1" * 4).count("{") == 2
+        parity = "".join(str(bin(row).count("1") % 2) for row in range(8))
+        assert boolean.forth(parity).count("{") == 2 ** (3 + 1) - 2
+
+    def test_folded_subtree_leaves_no_orphans(self) -> None:
+        """Folding drops the whole subtree, not just the two children.
+
+        A grandchild below a folded node is just as unreachable; emitting
+        it would be dead code the program never calls, so the node count
+        must fall to exactly the surviving frontier.
+        """
+        from esolangs.tools.boolean.stack import _forth_const
+
+        program = boolean.forth("1" * 8)
+        for m in range(3, 15):  # every node below the two root children
+            assert _forth_const(m) + "{" not in program
+
+    def test_reordering_only_shrinks(self) -> None:
+        """No table comes out longer than the stack-ordered program.
+
+        The natural order here is the *reversal* -- ``;`` pops, so the tree
+        has always tested the last input at the root -- and it is tried
+        first with ties keeping it.  Pinning against that build is what
+        proves the search cannot churn an emission it does not shorten.
+        """
+        from esolangs.tools.boolean.stack import _forth_ordered
+
+        natural = (2, 1, 0)
+        improved = 0
+        for value in range(256):
+            table = format(value, "08b")
+            dispatched = len(boolean.forth(table))
+            stack_ordered = len(
+                _forth_ordered(permute_truth_table(table, natural), natural)
+            )
+            assert dispatched <= stack_ordered, table
+            improved += dispatched < stack_ordered
+        assert improved == 112
+
+    def test_rotations_are_interleaved_with_the_reads(self) -> None:
+        """Weaving the rotations into the reads reaches more arrangements.
+
+        ``v`` and ``c`` touch only the top three cells, so rotating after
+        all ``n`` reads can only permute the last three bits -- 6
+        arrangements however wide the table.  Moving a bit while it is
+        still near the top reaches three times as many at n == 4 and nine
+        times as many at n == 5, which is what keeps the saving from
+        collapsing as ``n`` grows.
+        """
+        from esolangs.tools.boolean.stack import _forth_stack_programs
+
+        # The reachable *set* has a closed form, which is what pins the
+        # search: after each read the new bit is on top, and the only
+        # lasting freedom is how far it sinks -- 0, 1 or 2 places, one
+        # independent choice per read past the first.
+        for n in range(2, 7):
+            assert len(_forth_stack_programs(n)) == 2 * 3 ** (n - 2)
+        assert len(_forth_stack_programs(3)) == 6  # all of 3!
+        assert len(_forth_stack_programs(4)) == 18  # of 24
+        assert len(_forth_stack_programs(5)) == 54  # of 120
+
+        # The reads themselves are still one per input, whatever the weave.
+        for n in (3, 4, 5):
+            for program in _forth_stack_programs(n).values():
+                assert program.count(",68*-") == n
+
+    def test_sinking_a_bit_deeper_than_the_stack_is_skipped(self) -> None:
+        """A sink needs values below it, so early reads have fewer choices.
+
+        The first read cannot sink at all and the second can sink at most
+        one place, which is why the arrangement count is ``2 * 3**(n - 2)``
+        rather than ``3**n``: the enumeration walks every combination and
+        drops the ones that would sink a bit past the bottom of the stack.
+        """
+        from esolangs.tools.boolean.stack import _forth_sink_top, _forth_stack_programs
+
+        assert len(_forth_stack_programs(1)) == 1  # nothing to rearrange
+        assert len(_forth_stack_programs(2)) == 2  # the second bit may swap
+
+        # The sink itself keeps everything but the moved bit in order.
+        assert _forth_sink_top((0, 1, 2), 0) == (0, 1, 2)
+        assert _forth_sink_top((0, 1, 2), 1) == (0, 2, 1)
+        assert _forth_sink_top((0, 1, 2), 2) == (2, 0, 1)
 
     def test_const_large(self) -> None:
         """Constants above 225 need multiple base-15 digits."""
@@ -151,11 +277,104 @@ class TestBfstack:
 
 class TestUnsquare:
     def test_program_shape(self) -> None:
-        """The program reads n inputs and prints once."""
+        """The program reads n inputs and prints once.
+
+        The reads are no longer necessarily consecutive: a sink that
+        reorders the tree is emitted *between* them, because a bit has to
+        be moved while it is still near the top.  What stays invariant is
+        that there is one read per input and the program still consumes its
+        input stream in order.
+        """
         program = boolean.unsquare("0110")
-        assert program.startswith("iA>-<P" * 2)
+        assert program.startswith("iA>-<P")
         assert program.count("iA>-<P") == 2  # one read per input
         assert program.endswith("o")
+
+        # A table whose best order needs a sink still reads once per input.
+        for value in range(256):
+            assert boolean.unsquare(format(value, "08b")).count("iA>-<P") == 3
+
+    def test_reordering_never_grows_a_program(self) -> None:
+        """Choosing the stack arrangement can only shrink the program.
+
+        The natural order here is the *reversal* -- ``A`` pops, so the tree
+        has always tested the last input at the root -- and it is tried
+        first with ties keeping it, so a table no reorder helps emits
+        exactly what it emitted before.
+        """
+        from esolangs.tools.boolean.stack import (
+            _unsquare_stack_programs,
+            _unsquare_tree,
+        )
+
+        n = 3
+        natural = tuple(reversed(range(n)))
+        prefix = _unsquare_stack_programs(n)[tuple(reversed(natural))]
+        improved = 0
+        for value in range(256):
+            table = format(value, "08b")
+            reordered = len(boolean.unsquare(table))
+            stack_ordered = len(
+                prefix
+                + _unsquare_tree(
+                    permute_truth_table(table, tuple(reversed(natural))), n
+                )
+            )
+            assert reordered <= stack_ordered, table
+            improved += reordered < stack_ordered
+        assert improved == 112
+
+    def test_sinks_are_interleaved_with_the_reads(self) -> None:
+        """Weaving the sinks into the reads is what reaches the arrangements.
+
+        A bit stashed in the accumulator does not survive a read block --
+        the block's own ``A`` overwrites it -- so a bit has to be sunk while
+        it is still near the top, before later reads bury it.
+
+        The reachable *set* has a closed form, which is why no search is
+        needed: after each read the new bit is on top and the only lasting
+        freedom is how far it sinks (0, 1 or 2 places), one independent
+        choice per read past the first.  Forþ's stack has the same count for
+        the same reason, reached through different ops.
+        """
+        from esolangs.tools.boolean.stack import _unsquare_stack_programs
+
+        for n in range(2, 7):
+            assert len(_unsquare_stack_programs(n)) == 2 * 3 ** (n - 2)
+        assert len(_unsquare_stack_programs(3)) == 6  # all of 3!
+        assert len(_unsquare_stack_programs(4)) == 18  # of 24
+        assert len(_unsquare_stack_programs(5)) == 54  # of 120
+
+        # The reads themselves are still one per input, whatever the weave.
+        for n in (3, 4, 5):
+            for program in _unsquare_stack_programs(n).values():
+                assert program.count("iA>-<P") == n
+
+    def test_two_place_sink_needs_the_leading_swap(self) -> None:
+        """Sinking two places is ``SASP``; ``ASP`` alone does something else.
+
+        ``A`` lifts the *top* out, so the ``S`` that follows swaps the pair
+        beneath it and ``P`` returns the bit to where it started -- which
+        reorders the wrong two cells.  The leading ``S`` is what moves the
+        bit down first so the pair it must cross ends up above it.  This is
+        pinned because the difference is invisible in the arrangement count
+        (both spellings reach the same number of arrangements) and shows up
+        only as a program computing the wrong function.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.unsquare import _Machine
+
+        def apply(ops: str) -> list[int]:
+            machine = _Machine(ops, ScriptedIO(""))
+            machine.stack = [10, 20, 30]
+            for _ in range(100):
+                if machine.halted:
+                    break
+                machine.step()
+            return machine.stack
+
+        assert apply("SASP") == [30, 10, 20]  # the top sank two places
+        assert apply("ASP") == [20, 10, 30]  # the top never moved
 
     def test_decision_tree(self) -> None:
         """Each internal node branches on a bit with the flip primitive."""

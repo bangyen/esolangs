@@ -64,6 +64,8 @@ predictable across languages:
 | Back | Prints the tape as a number list. |
 | BF-PDA | `.` prints the top bit as the `'0'`/`'1'` character, so the output alphabet is just the two digits. |
 | Bitdeque | No I/O in the spec; this interpreter prints the deque contents as numbers when the program ends. |
+| COD | The ``---`` sink prints the cod's value as a decimal integer with no separator, so only digits are spellable — the same output-alphabet wall as Jaune. Has a parameterized boolean generator (its leaves print a single `0`/`1`, which the digit alphabet does spell); no text generator. |
+| Circuit Diagram | The ``:`` output emits its gate's value as a bit string, so the output alphabet is just `'0'`/`'1'` — Flowchart's wall, reached by a different route: here the bits are a whole generation's worth per output rather than one per node, but nothing in the spec turns them into a byte. Has a boolean generator; no text generator. |
 | Flowchart | The only output node emits one bit, and the byte-packing convention the other bit-output languages use (Clockwise buffers seven bits and flushes a character) cannot apply: the wiki's truth machine reads one bit, writes one bit, and halts, so under any packing its single output bit would never flush and the example would print nothing at all. Character-per-bit is forced by the spec's own example, and it is what makes text output unreachable. Has an uncapped boolean generator; no text generator. |
 | Grapheme | Strings cannot contain `E` (terminates stringmode) and there is no concatenation, so even "HELLO" is unspellable. |
 | Jaune | `^` prints the current cell as a decimal integer, so only digits are spellable. |
@@ -96,9 +98,8 @@ per-character encoding can be meaningfully shortened:
 
 | Language | Why it cannot compute a truth table |
 | --- | --- |
-| 123 | The `3`-jump is nearest-match, not bracket-matched, so TRUE always re-runs the segment already executing rather than reaching an independent branch target — and `1` flips the bit under the pointer before moving, so navigating from the post-read position (0) to the write position (-2) corrupts the byte's MSB en route. Only the four one-input functions are reachable via runtime `,` reads (too trivial to keep as a generator); a structured search found no two-input function under either bit-encoding. A parameterized generator (embedding each input in the program at compile time, as WII2D's does) has not been assessed. Full argument in `docs/walls.md`. |
+| 123 | The `3`-jump is nearest-match, not bracket-matched, so TRUE always re-runs the segment already executing rather than reaching an independent branch target — and `1` flips the bit under the pointer before moving, so navigating from the post-read position (0) to the write position (-2) corrupts the byte's MSB en route. Only the four one-input functions are reachable via runtime `,` reads (too trivial to keep as a generator); a structured search found no two-input function under either bit-encoding. A parameterized generator (embedding each input at compile time, as WII2D's does) was assessed and is also walled, on a third mechanism: it does clear both mechanisms above and reaches real input-dependent behavior (an AND by emission), but location 0 is both the byte's MSB and the only cell the pointer wrap returns to, so the loop that builds a byte is the one that would have to be stopped to print once, and `3` cannot stop it -- no program over `1`/`2` to length 8 prints exactly `"0"` or `"1"`. Full argument in `docs/walls.md`. |
 | %^2^-1 | Only control flow is `t` (rewind on a nonzero accumulator); a whole-program while loop that cannot count passes. |
-| SLOW ACV MAMMALIAN | `ACCEPT` forces `ptr == 0` to consume a bit, but routing needs `SPRINT` to move the pointer away — reading and routing can't coexist; the constant source (`SEED` from an emptied array) accumulates rather than resets; `DIGEST` only recovers a bit as part of a sum. An exhaustive search over the branch-free tails reaches only 0-preserving two-input tables — the same class already removed for Minifuck as too weak to keep. Full argument in `docs/walls.md`. |
 
 ## Generator caps (shipped)
 
@@ -106,7 +107,7 @@ per-character encoding can be meaningfully shortened:
 | --- | --- | --- |
 | NoComment | `n <= 8` | Genuine wall: the `s` skip is byte-indexed, capping every jump at 255. |
 | Polynomial | `n <= 4` | Performance cap: exact factorization of huge coefficients is impractical past `n == 4`. |
-| 6-5 | `n <= 5` exact; dense large-`T` tables (e.g. AND-6) rejected past that | Genuine wall: the decision tree is total through `n == 5` (35 branch labels); the arithmetic fallback needs the table (or its complement) as a single integer, so a dense table with no cheap complement needs an unbuildable ~O(2**(2**n))-character setup. |
+| 6-5 | `n <= 5` exact; past that, tables whose folded tree needs more than 35 branch labels are rejected (AND-6 and other well-folding tables *do* render) | Genuine wall: 6-5 has 35 branch labels (`0..9`, `A..Z`), and the decision tree spends one per internal node its constant-subtree fold leaves standing. The fold's worst case is an alternating table, which folds nothing and spends `2**n - 1` — 31 at `n == 5`, so every table renders there; 63 at `n == 6`, so refusals begin. What survives past `n == 5` is tables that fold hard: ~1% of random `n == 6` tables, but structured ones like AND-`n` at any width (they need only `n` labels). The former arithmetic fallback was retired — it needed the table as a single buildable integer, which confines the ones to low indices, which leaves the rest constant, which folds well inside the budget, so it never covered a table the tree could not. |
 | ZTOALC L | `n <= 3` exact; popcount-symmetric tables lifted further (e.g. XOR4 at `n == 4`); dense non-symmetric `n == 4` rejected | Genuine wall: every Collatz trajectory converges to the `16, 8, 4, 2, 1` tail, so a dense non-symmetric tree has leaf collisions past `n == 3`; symmetric tables fall back to a branch-free linear program instead. |
 | WII2D | `n <= 4` exact (exhaustive through three, sampled dense at four); symmetric tables of any arity via closed forms; dense non-symmetric past `n == 5` rejected | Genuine wall: the single-embedding chain's branch op strings are bounded, so the counting bound rules out representing every table once `n` is large; the search raises for dense non-symmetric tables past `n == 5`. |
 | Factor | program-size cap, not `n`-driven: sparse tables (e.g. constant-0/1) stay under the cap at any tested `n`, dense tables (e.g. XOR4, AND4 at `n == 4`) don't | Liftable by host config: the encoded integer's decimal length is checked against `sys.get_int_max_str_digits()` (CPython's int-to-string DoS guard, default 4300 digits) before rendering — the Factor *interpreter* parses its program the same way, so a caller who raises the process-wide limit gets both the generator and the interpreter working past it. |
@@ -233,6 +234,14 @@ cross-check that added nothing over the round-trip tests.  The languages
 themselves mostly stayed; the full reasoning and the per-cross-check list
 is in [`docs/walls.md`](walls.md#cross-check-removals-why-seven-were-dropped).
 
+The remaining eight Rust cross-checks were then removed outright, along
+with the cargo toolchain and `scripts/verify_extra_generators.py`: six
+were written alongside the Python interpreters they checked (so their
+agreement was not independent evidence), and retaining the two that were
+genuinely independent would have kept the full toolchain cost for a
+fraction of the coverage.  `extra/assembly` stays — it shares its
+toolchain with the RISC-V compilers in `src/esolangs/compilers/`.
+
 ## Hang detection
 
 Wall-clock timeouts (SIGALRM, instruction-count caps) bound hanging
@@ -270,13 +279,24 @@ rewrite:
 ## Lean proofs (kept set)
 
 The Lean project keeps only the proofs of facts the tests cannot establish:
-SLOW ACV MAMMALIAN's generator search totality and Factor's Dirichlet-based
+SLOW ACV MAMMALIAN's generator search totality, Factor's Dirichlet-based
 prime-search totality plus the encode/decode round-trip
 (`extra/lean/esolangs/Esolangs.lean`, `FactorCorrect.lean`), and the
-self-contained brainfuck-minterm boolean proof (`BfMintermCorrect.lean`).
-Every other proof (the ported interpreters, their equivalence proofs, and
-the generator/boolean correctness proofs) was dropped as redundant with the
-round-trip test suite.  The one open theorem, if more Lean work is ever
-wanted, is the Minifuck boolean reachability characterization: a
-language-power statement (exactly the four one-input functions plus the
-eight 0-preserving two-input tables), not a generator-correctness proof.
+`%^2^-1` two-input boolean wall (`PctBooleanWall.lean`, audited by
+`PctWallCheck.lean`).  Every other proof (the ported interpreters, their
+equivalence proofs, and the generator correctness proofs) was dropped as
+redundant with the round-trip test suite.
+
+`BfMintermCorrect.lean` was removed for both reasons at once: its subject,
+the branch-free `_bf_minterm` construction, was itself deleted when folding
+made it unreachable (`brainfuck` is now just `bf_tree`), and the file had
+rotted into 35 elaboration errors -- reaching the main theorem -- because
+nothing built it.  The default `lake build` target covers only the root
+`Esolangs.lean`, so a proof outside it is checked by no automation; that is
+the gap the removal exposed rather than the proof's own failing.
+
+The one open theorem, if more Lean work is ever wanted, is the Minifuck
+boolean reachability characterization: a language-power statement (exactly
+the four one-input functions plus the eight 0-preserving two-input tables),
+not a generator-correctness proof -- the same shape as the `%^2^-1` wall,
+which is the worked precedent for it.

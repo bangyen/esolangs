@@ -76,9 +76,10 @@ Notes:
   one (`python -m esolangs.interpreters.tape_based.suffolk examples/hello-world/suffolk.txt 1`).
 - `container.txt` halts by exiting with status 0.
 - Some languages have a second, non-Python implementation under `extra/`
-  (Forþ, LaserFuck, Painfuck, 123 in `extra/rust/`).  These still have an
-  example here, verified against the Python interpreter like every other; the
-  `extra/` version is an additional implementation, not the only one.
+  (NoComment, BF-PDA, RAM0, BIO, Minsky Swap in `extra/assembly/`).  These
+  still have an example here, verified against the Python interpreter like
+  every other; the `extra/` version is an additional implementation, not the
+  only one.
 
 ## boolean
 
@@ -113,7 +114,7 @@ Notes:
   forever instead, so the `1` branch is not executed.
 - `cod.txt` is a two-input XOR with both inputs one, printing `0`.  COD has
   no runtime input and no I/O other than a printed number, so this is the
-  whole boolean story for the language (see `docs/cod_boolean_generator.md`).
+  whole boolean story for the language (see `esolangs.tools.boolean.cod`).
 - `nevermind.txt` and `bitdeque.txt` print their bit followed by a newline.
 - `container.txt` halts by exiting with status 0.
 - `suffolk.txt` must be run with the loop count set to one.

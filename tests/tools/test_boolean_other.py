@@ -165,12 +165,31 @@ class TestFlowchart:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
+        """Every input combination produces the truth-table result.
+
+        The read count is checked alongside the answer: a folded leaf
+        carries the reads of the levels it skipped, so a heavily folding
+        table (the constants, AND4) must still consume all ``n`` inputs.
+        Without those the drawing would be correct and the program would
+        still leave the caller's remaining bits on the stream.
+        """
+        import contextlib
+
+        from esolangs.interpreters.grid_based.flowchart import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.vm import run_until_halt_or_cycle
+
         program = boolean.flowchart(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_flowchart(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
+        io = ScriptedIO("0\n" * (n + 4))
+        with contextlib.suppress(Exception, SystemExit):
+            run_until_halt_or_cycle(_Machine(program.splitlines(), io))
+        assert io.position() == n, (
+            f"table {table} consumed {io.position()} inputs, expected {n}"
+        )
 
     def test_tree_depth_matches_input_count(self) -> None:
         """One ``/ /`` read node sits on each path from entry to a leaf."""
@@ -371,6 +390,34 @@ class TestContainer:
         assert program.count("S") >= 4  # a survivor per row
         assert program.count("PRINT:") == 1
 
+    def test_dense_tables_evaluate_the_complement(self) -> None:
+        """A dense table is summed from its zero rows and inverted.
+
+        ``OUT`` costs one ``+1 S{row}>=Gout`` line per row the table sends
+        to 1, so before this the length rose with the ones-count all the way
+        to the all-ones table.  Now it peaks at half and falls back
+        symmetrically, which is the signature of taking whichever row-set is
+        smaller.
+        """
+        lengths = [len(boolean.container("1" * k + "0" * (8 - k))) for k in range(9)]
+        assert lengths[4] == max(lengths)  # four ones is the worst case
+        assert lengths == lengths[::-1]  # and the curve is symmetric
+
+    @pytest.mark.parametrize("table", ["11111110", "11111111", "1110", "0111"])
+    def test_complemented_tables_still_compute(self, table: str) -> None:
+        """The inverted form answers the original table.
+
+        It starts ``OUT`` at 49 and subtracts one per surviving zero row, so
+        the printed byte is ``49 - S``; the container clamp at zero never
+        bites, since the value stays at 48 or 49.
+        """
+        n = (len(table) - 1).bit_length()
+        program = boolean.container(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_container(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
         with pytest.raises(ValueError, match="entries"):
@@ -432,12 +479,25 @@ class TestZtoalc:
             got = run_ztoalc(program, [str(b) for b in bits])
             assert got == str(int("0110100110010110"[combo])), f"inputs {bits}"
 
-    def test_dense_non_symmetric_raises(self) -> None:
-        """A dense non-symmetric n=4 tree cannot be placed and is rejected."""
-        with pytest.raises(ValueError, match="no collision-free placement"):
-            # tree fails, and the table is not popcount-symmetric, so the
-            # linear fallback cannot help either
-            boolean.ztoalc_l_boolean("1010001000011000")
+    def test_dense_non_symmetric_places_under_a_reordered_tree(self) -> None:
+        """A table the identity order cannot place is rendered by another order.
+
+        This table used to be refused: its tree found no collision-free
+        placement and it is not popcount-symmetric, so the linear fallback
+        could not help either.  Choosing the input split order gives the
+        search a differently-shaped tree to place, and one of the orders
+        fits -- the same effect that shrinks factor's unrenderable set.
+        """
+        from esolangs.tools.boolean.ztoalc_l import _ztoalc_ordered
+
+        table = "1010001000011000"
+        assert not _ztoalc_ordered(table, (0, 1, 2, 3)), (
+            "the identity order should still fail to place this table"
+        )
+        program = boolean.ztoalc_l_boolean(table)
+        for combo in range(16):
+            bits = [str((combo >> (3 - i)) & 1) for i in range(4)]
+            assert run_ztoalc(program, bits) == table[combo], f"inputs {bits}"
 
     def test_wrong_length_rejected(self) -> None:
         """A truth table of the wrong length is malformed."""
@@ -497,6 +557,58 @@ class TestClockwise:
         assert not dead, f"dead columns {dead}"
         assert width == 2 ** (n + 1) + 1
 
+    def test_constant_subtrees_narrow_the_ring(self) -> None:
+        """A folded subtree spends no displacement, so the grid narrows.
+
+        Width grows as ``2 ** (n + 1)``, and a node only displaces its
+        one-branch when it actually branches -- so a table whose subtrees
+        collapse needs fewer columns.  A scattered table folds nothing and
+        must be unchanged.
+        """
+        scattered = boolean.clockwise("10010110")
+        for table in ("11111111", "11110000"):
+            folded = boolean.clockwise(table)
+            assert len(folded) < len(scattered), table
+        assert len(boolean.clockwise("11001100")) < len(scattered)
+
+    def test_folded_column_still_reads_every_input(self) -> None:
+        """A folded column keeps the reads it skipped branching on.
+
+        Clockwise reads *inside* the tree -- seven ``.`` per level -- so a
+        folded leaf that dropped them would consume fewer inputs than an
+        unfolded one and desync a caller feeding several programs from one
+        stream.  Every column therefore carries ``7 * n`` reads.
+        """
+        for table in ("11111111", "11110000", "11001100"):
+            n = len(table).bit_length() - 1
+            program = boolean.clockwise(table)
+            rows = program.splitlines()
+            width = max(len(row) for row in rows)
+            grid = [row.ljust(width) for row in rows]
+            columns = [sum(1 for row in grid if row[x] == ".") for x in range(width)]
+            # the deepest column reads every input; none reads more
+            assert max(columns) <= 7 * n, table
+            for combo in range(2**n):
+                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                assert run_clockwise(program, bits) == table[combo], (table, bits)
+
+    def test_folding_never_grows_the_program(self) -> None:
+        """The hoist floor: narrowing must not cost more than it saves.
+
+        Hoisting the root's seven reads onto row 0 retires seven rows, but
+        needs seven free columns left of the root.  At ``n == 2`` a tree
+        folded to seven columns loses that and comes out *larger* than the
+        unfolded program, so the width never narrows below what the hoist
+        needs.
+        """
+        for n in (1, 2, 3):
+            # the alternating table folds nothing at any level, so it is the
+            # full-size program every other table must come in at or under
+            unfolded = len(boolean.clockwise("10" * (2 ** (n - 1))))
+            for table_int in range(2 ** (2**n)):
+                table = format(table_int, f"0{2**n}b")
+                assert len(boolean.clockwise(table)) <= unfolded, table
+
 
 class TestTaglate:
     @pytest.mark.parametrize(
@@ -555,6 +667,56 @@ class TestTaglate:
                         )
         assert failures == 0, f"{failures} failures out of 2048 combos"
 
+    def test_tables_ignoring_inputs_shrink(self) -> None:
+        """A table that ignores inputs is emitted as the smaller table.
+
+        Taglate's cost is almost all fixed overhead scaled by the input
+        count -- the seed alone is ``2**(n_eff + 2)`` cells -- so dropping
+        an input drops a whole tier.  Every table of a given ``n`` used to
+        be the same length; now the ones that depend on fewer inputs are
+        dramatically shorter.
+        """
+        full = len(boolean.taglate("10010110"))  # depends on all three
+        for table in ("11110000", "11001100", "10101010", "00000000"):
+            assert len(boolean.taglate(table)) < full // 10, table
+
+    def test_reduced_programs_still_read_every_input(self) -> None:
+        """A reduced program consumes the inputs it no longer uses.
+
+        The ignored ones are read and discarded (``h`` appends to the
+        queue's tail, ``e`` once per queued cell rotates it to the front,
+        ``f`` drops it), so the queue is left exactly as it was and a caller
+        feeding several programs from one stream stays in sync.  Odd ``n``
+        above 1 also takes a leading ghost digit, which is one more read.
+        """
+        for n in (1, 2, 3, 4):
+            expected = n + (1 if n % 2 == 1 and n > 1 else 0)
+            for table in (
+                "1" * 2**n,
+                "1" * 2 ** (n - 1) + "0" * 2 ** (n - 1),
+                ("10" * 2**n)[: 2**n],
+            ):
+                program = boolean.taglate(table)
+                assert program.count("h") == expected, (n, table)
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("1111111100000000", 4),  # depends on input 0
+            ("1111000011110000", 4),  # input 1
+            ("1010101010101010", 4),  # input 3
+            ("1111111111111111", 4),  # none at all
+        ],
+    )
+    def test_reduced_tables_compute_past_three_inputs(self, table: str, n: int) -> None:
+        """The reduction stays correct deeper than the exhaustive sweep."""
+        program = boolean.taglate(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            ghost = ["0"] if n % 2 == 1 and n > 1 else []
+            got = run_taglate(program, ghost + [str(b) for b in bits])
+            assert got == table[combo], f"inputs {bits}"
+
     def test_wrong_length_truth_table_rejected(self) -> None:
         """A truth table of the wrong length is malformed."""
         with pytest.raises(ValueError, match="entries"):
@@ -572,6 +734,70 @@ class TestThreeX:
         program = boolean.three_x("01")
         assert program.startswith("?")
         assert program.endswith("!")
+
+    def test_reordering_only_shrinks(self) -> None:
+        """No table comes out longer than the identity order's program."""
+        from esolangs.tools.boolean.other import _three_x_ordered
+
+        for i in range(256):
+            table = format(i, "08b")
+            identity = _three_x_ordered(table, (0, 1, 2))
+            assert len(boolean.three_x(table)) <= len(identity)
+
+    def test_unimproved_tables_keep_their_emission(self) -> None:
+        """A table no reorder helps emits exactly what it emitted before.
+
+        ``best_input_order`` tries the identity first and keeps it on a tie,
+        so reordering can only shrink a program, never churn one.  A constant
+        table has no override blocks at all, so no order can beat it.
+        """
+        from esolangs.tools.boolean.other import _three_x_ordered
+
+        for table in ("0" * 8, "1" * 8):
+            assert boolean.three_x(table) == _three_x_ordered(table, (0, 1, 2))
+
+    def test_reads_stay_in_stream_order(self) -> None:
+        """Only the store target moves, so the input stream is consumed the same.
+
+        The reorder is spelled in which variable each ``?`` stores into, not
+        in when the reads happen: every build reads its ``n`` inputs up front,
+        one ``?`` each, whatever order the tree tests them in.
+        """
+        from esolangs.tools.boolean.other import _three_x_ordered
+
+        table = "00010111"
+        for perm in ((0, 1, 2), (2, 1, 0), (1, 2, 0)):
+            program = _three_x_ordered(table, perm)
+            head = program[: program.index("(")] if "(" in program else program
+            assert head.count("?") == 3
+            # the reads are the first thing the program does
+            assert program.startswith("?")
+
+    def test_every_input_order_computes_the_table(self) -> None:
+        """The permuted build computes the original table on the original stream."""
+        import itertools
+
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.three_x import run
+        from esolangs.tools.boolean.other import _three_x_ordered
+
+        def permuted(table: str, perm: tuple[int, ...]) -> str:
+            out = []
+            for row in range(8):
+                src = 0
+                for k in range(3):
+                    src |= ((row >> (2 - k)) & 1) << (2 - perm[k])
+                out.append(table[src])
+            return "".join(out)
+
+        for table in ("00010111", "01101001", "11110000", "10101010"):
+            for perm in itertools.permutations(range(3)):
+                program = _three_x_ordered(permuted(table, perm), perm)
+                for combo in range(8):
+                    bits = [(combo >> (2 - k)) & 1 for k in range(3)]
+                    io = ScriptedIO("\n".join(str(b) for b in bits) + "\n")
+                    run(program, io)
+                    assert io.getvalue().strip() == table[combo], f"{table} {perm}"
 
     def test_wrong_length_truth_table_rejected(self) -> None:
         """A truth table of the wrong length is malformed."""
@@ -1049,10 +1275,13 @@ class TestGeneratorEdgePaths:
             boolean.dimensional_tree("0123")
 
     def test_six_five_helper_edges(self) -> None:
-        """Same-cell navigation and the +5 tail of the constant encoder."""
-        from esolangs.tools.boolean.six_five import _six_five_const, _six_five_nav
+        """The +5 tail of the constant encoder.
 
-        assert _six_five_nav(3, 3) == ""
+        ``_six_five_nav`` was retired with the arithmetic kernel; the folded
+        leaf's own hop to cell 1 is a literal ``13``.
+        """
+        from esolangs.tools.boolean.six_five import _six_five_const
+
         assert _six_five_const(5) == "5"
         assert _six_five_const(11) == "65"
 
