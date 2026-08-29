@@ -6,8 +6,7 @@ character that appears in one of the two cycles ``pevkjzwr`` and
 ``yuctsobqihald`` is replaced by the character ``k`` steps further along
 that cycle, where ``k`` is the number of characters translated so far (so
 the substitution is a position-dependent Caesar shift per cycle); characters
-in no cycle are dropped.  This mirrors the Rust cross-check
-(``extra/rust/painfuck.rs``) exactly and is
+in no cycle are dropped.  This is
 the inverse of the generator's own cycle rotation, so a generated program
 round-trips.
 

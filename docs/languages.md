@@ -6,16 +6,16 @@ hand.
 
 Python means an in-repo interpreter under `esolangs.interpreters`;
 Cross-check means an implementation in `extra/` that runs as a
-standalone program (Rust, Lean, or RISC-V assembly), used to
+standalone program (Lean or RISC-V assembly), used to
 differentially verify the Python interpreter.  The Boolean
 column marks the boolean-function generators; the no-input languages (Back, BIO, NoComment, BF-PDA, Lamfunc, Bitdeque, RAM0, Minsky Swap, Eval, ArrowQueue, A Painter Ant, WII2D) use parameterized generators (the harness substitutes input bits into a template).
 
 | Language | Text generator | Python | Cross-check | Boolean | Compiler |
 | --- | :---: | :---: | :---: | :---: | :---: |
-| %^2^-1 | yes | yes | yes |  |  |
+| %^2^-1 | yes | yes |  |  |  |
 | 123 | yes | yes |  |  |  |
 | 3D Brainfuck | yes | yes |  | yes |  |
-| 3x | yes | yes | yes | yes |  |
+| 3x | yes | yes |  | yes |  |
 | 6-5 | yes | yes |  | yes |  |
 | A Painter Ant |  | yes |  | yes |  |
 | AddSubJump | yes | yes |  | yes | yes |
@@ -24,7 +24,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | BFStack | yes | yes |  | yes | yes |
 | BIO | yes | yes | yes | yes |  |
 | Back |  | yes |  | yes |  |
-| Basicfuck | yes | yes | yes | yes |  |
+| Basicfuck | yes | yes |  | yes |  |
 | Between | yes | yes |  | yes |  |
 | Bitdeque |  | yes |  | yes |  |
 | BrainIf | yes | yes |  | yes |  |
@@ -41,19 +41,19 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | Factor | yes | yes |  | yes |  |
 | Flowchart |  | yes |  | yes |  |
 | Forbin | yes | yes |  | yes |  |
-| Forþ | yes | yes | yes | yes | yes |
+| Forþ | yes | yes |  | yes | yes |
 | Grapheme |  | yes |  | yes |  |
 | Home Row | yes | yes |  | yes | yes |
 | Jaune |  | yes |  | yes | yes |
 | Lamfunc |  | yes |  | yes |  |
-| LaserFuck | yes | yes | yes | yes |  |
+| LaserFuck | yes | yes |  | yes |  |
 | Minifuck | yes | yes |  |  |  |
 | Minsky Swap |  | yes | yes | yes |  |
 | Modulous | yes | yes |  | yes |  |
 | MyScript | yes | yes |  | yes |  |
 | Nevermind | yes | yes |  | yes |  |
 | NoComment | yes | yes | yes | yes |  |
-| Painfuck | yes | yes | yes | yes |  |
+| Painfuck | yes | yes |  | yes |  |
 | Point Break |  | yes |  | yes |  |
 | Polynomial | yes | yes |  | yes |  |
 | Qoibl | yes | yes |  | yes |  |
@@ -66,10 +66,10 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | Suffolk | yes | yes |  | yes | yes |
 | Suptiftam | yes | yes |  | yes |  |
 | Taglate | yes | yes |  | yes |  |
-| Unsquare | yes | yes | yes | yes | yes |
+| Unsquare | yes | yes |  | yes | yes |
 | WII2D | yes | yes |  | yes |  |
 | ZTOALC L | yes | yes |  | yes |  |
-| bit~ | yes | yes | yes | yes |  |
+| bit~ | yes | yes |  | yes |  |
 | brainfuck | yes | yes |  | yes |  |
 
 The `esolangs` command lists the languages with Python support:
