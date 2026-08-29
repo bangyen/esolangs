@@ -25,6 +25,7 @@ from esolangs.tools.boolean.helpers import (
     _greedy_input_order,
     _validate_truth_table,
     permute_truth_table,
+    stored_inputs,
 )
 from esolangs.tools.transpilers import _six_five_label
 
@@ -185,20 +186,7 @@ def _six_five_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
     n = _validate_truth_table(truth_table)
     if _six_five_markers(truth_table) > 35:
         return ""
-    # Which levels the tree can branch on, computed in *level* space over the
-    # permuted table and then translated to the *stream* inputs the read
-    # block runs over -- level ``k`` reads input ``perm[k]``, and mixing the
-    # two frames stores the wrong bits.
-    branching = {
-        k
-        for k in range(n)
-        if any(
-            truth_table[r] != truth_table[r | (1 << (n - 1 - k))]
-            for r in range(2**n)
-            if not r & (1 << (n - 1 - k))
-        )
-    }
-    stored = {perm[k] for k in branching}
+    stored = stored_inputs(truth_table, perm)
     # Reads run in input order; only a stored input claims a cell, so the
     # kept bits occupy a contiguous block from cell 0 and every clobbered
     # read reuses the one cell past it.

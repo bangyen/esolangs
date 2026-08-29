@@ -17,6 +17,7 @@ from esolangs.tools.boolean.helpers import (
     _validate_truth_table,
     best_input_order,
     decision_tree_program,
+    stored_inputs,
 )
 from esolangs.tools.boolean.rotfuck import rotfuck
 from esolangs.tools.boolean.six_five import six_five
@@ -870,20 +871,7 @@ def _jaune_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     def move(frm: int, to: int) -> str:
         return ">" * (to - frm) if to >= frm else "<" * (frm - to)
 
-    # Which levels the tree can branch on.  ``truth_table`` is already
-    # permuted, so this is computed in *level* space and then translated to
-    # the *stream* inputs the read block runs over -- level ``k`` reads
-    # input ``perm[k]``, and mixing the two frames stores the wrong bits.
-    branching = {
-        k
-        for k in range(n)
-        if any(
-            truth_table[r] != truth_table[r | (1 << (n - 1 - k))]
-            for r in range(2**n)
-            if not r & (1 << (n - 1 - k))
-        )
-    }
-    stored = {perm[k] for k in branching}
+    stored = stored_inputs(truth_table, perm)
     # Reads run in input order; only a stored input advances the pointer, so
     # the kept bits occupy a contiguous block from cell 0.
     cell_of: dict[int, int] = {}
