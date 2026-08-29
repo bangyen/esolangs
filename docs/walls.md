@@ -307,17 +307,34 @@ instantiation, all the same length — halts only on row `00`, which is
 repo uses for Point Break, so the loops are proved by state revisit rather
 than assumed from a fuel cap (`notes/t123/shortor.py`).
 
-The route has its own ceiling, and it is a clean one.  A row halts exactly
-when it reaches the closing `3` at `pos < 0`, and how many passes it makes
-is decided by the bits under the guard — where a *set* bit can only add a
-pass, never remove one.  So the looping set is upward-closed and the
-computed table is **monotone**.  Surveying 1428 templates of the family
+Two things make that work, and they are worth separating.  The answer is
+not a cell read: every tape cell ends as a fixed XOR of the setters that
+touched it, so the reachable cell patterns are affine and `(0, 0, 0, 1)` —
+an AND indicator — never appears among them (`notes/t123/andcheck.py`).
+What the guard actually decides is *where the pointer is* when the closing
+`3` is reached, tested once per pass; tracing the OR witness shows row `00`
+arriving at `pos -1` (a NOP, so it falls through and halts) while the other
+three arrive at `pos 0` and re-enter (`notes/t123/whyor.py`).  A verdict
+accumulated over passes is not a single affine read, which is how the route
+escapes the affine bound that caps printing.
+
+It has its own ceiling instead.  How many passes a row makes is decided by
+the bits under the guard, where a *set* bit can only add a pass and never
+remove one, so the looping set is upward-closed and the computed table is
+**monotone**.  Surveying 1428 templates of the family
 bears that out exactly: five distinct tables, all monotone — const0,
 const1, OR, b0, b1 — and not one of the ten non-monotone tables
-(`notes/t123/whichrows.py`, `notes/t123/monotone.py`).  AND is the sixth
-monotone table and the only one unreached, so it is the honest target; XOR,
-XNOR, NAND, NOR and every negated table are predicted out of reach on this
-route by the mechanism rather than by search exhaustion.
+(`notes/t123/whichrows.py`, `notes/t123/monotone.py`).  XOR, XNOR, NAND,
+NOR and every negated table are predicted out of reach on this route by the
+mechanism rather than by search exhaustion.
+
+AND is the sixth monotone table and the only one unreached, and the cell
+analysis says why it is harder than its monotonicity suggests: AND needs
+the extra pass to appear only when *both* bits are set, but a guard reads
+one cell at a time and no cell is an AND indicator.  It would have to come
+from the interaction of several passes rather than from any single test,
+which is a different construction than the one-guard family swept here.  So
+AND is neither reached nor ruled out.
 
 So the two routes are complementary and both bounded: printing reaches the
 eight **affine** tables, termination the **monotone** ones.  They overlap on
