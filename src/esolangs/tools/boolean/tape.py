@@ -2,8 +2,8 @@
 
 import sys
 from collections.abc import Sequence
-from itertools import permutations
 from dataclasses import dataclass
+from itertools import permutations
 
 # rotfuck and six_five each own a file because their construction (a
 # per-position rotation, an assembler) dwarfs the rest of the category, and
@@ -280,9 +280,7 @@ def circlefuck_byte(truth_table: Sequence[int]) -> str:
     return _best_byte_order(truth_table, n)
 
 
-def _permute_byte_table(
-    truth_table: Sequence[int], perm: tuple[int, ...]
-) -> list[int]:
+def _permute_byte_table(truth_table: Sequence[int], perm: tuple[int, ...]) -> list[int]:
     """Return ``truth_table`` re-indexed so input ``perm[i]`` sits at position ``i``.
 
     Row ``r`` of the result holds the value the original table gives when
