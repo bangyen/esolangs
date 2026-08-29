@@ -93,6 +93,39 @@ leaves the pointer at `(acc-1) + v`, `[x<[<` leaves it at `(acc-1) + NOT v`
 while restoring the cell, and swapping the two flips the printed digit.  That
 is what makes a table printable whenever its complement is.
 
+Five apparent walls found on the way here were artifacts of how the question
+was asked, and each cost a round to re-derive:
+
+- **Searching on blank scratch.**  Pointer spread is pinned at 1 on an
+  all-zero tape (exhaustive to length 10), which makes a width-doubling stage
+  look structurally impossible.  It is not: with the scratch pattern as a free
+  parameter, stages are found readily.  A negative on blank scratch proves
+  nothing about the language.
+- **Launching a joint search from a clamped origin.**  A depth-`d` search from
+  pointer 0 touches only cells `<= d`, while the first input-dependent cell is
+  at 16 — so every reachable state is input-*independent* and a non-constant
+  target can never appear in the window.  Four searches failed on this alone,
+  each looking like a separate negative.  Launch from the frontier, with the
+  pointer already in the data.
+- **Reading a fixed cell index while the rows are diverged.**  Divergence is
+  the branch mechanism *and* it desynchronizes the machines: one emitted
+  instruction lands on different cells in different rows, so bookkeeping keyed
+  to a cell number is wrong from the first test onward.
+- **Demanding too much of one gadget.**  A "converging deposit" (`acc ^= s`
+  with the pointer converged *and* clean residue) does not exist across ~2400
+  states achieving the deposit — and neither condition is needed, since `<`
+  reconverges for free afterwards.
+- **Chasing a pool the walk-and-clamp fix cannot reach.**  Two patterns were
+  recorded as unreachable; both were limits of that fix's *shape*.  A direct
+  search over `<[x` finds `0011000|0` at depth 16.
+
+Two constructions were also ruled out for real, and should not be revisited:
+fixed **width-2 stage chains** reach only 88/256 tables at `n == 3`
+(majority-of-3 is unreachable) and 520/65536 at `n == 4`, so they cannot be
+total however good the gadgets; and **harvesting** — sweeping embed variants
+for a table that lands in a cell — finds all 16 at `n == 2` but 105/256 at
+`n == 3`, making it a shortcut rather than a totality argument.
+
 ## 123 (four one-input functions)
 
 A decision tree needs the `3` jump, which on a TRUE/FALSE bit jumps to the
