@@ -518,14 +518,52 @@ linear scan rather than a genuine representation limit.  See
   Grapheme's generator reads `%`/`A` for the same kind of reason
   (`tests/tools/boolean_runners.py`).
 
-  What is *not* re-established is a full generator: no two-input table was
-  attempted here, and the entry's "exhaustive search to length 5" is not
-  contradicted (it does not say whether length counts characters or words,
-  and the sweeps here were over words).  The point is narrower and enough to
-  matter — the two structural claims the removal rested on are both wrong,
-  so the language was removed on a bad negative.  The removal itself (see
-  `docs/limitations.md`) also cited the literal-embed text generator, which
-  this does not address.
+  **Two inputs reach 9 of the 16 tables.**  The input convention matters:
+  `@` consumes one *line* and pushes every character's byte code, and the
+  language's own tests drive it with one line per `input()` call, so a
+  two-bit program uses two `@` words.  Under that convention and the
+  emission convention, nine tables come out by length 5 — const0/const1,
+  AND (`v49 @ @ v1`), OR (`v48 @ @`), b0 (`v96 @ + @ v47`),
+  b1 (`v96 @ @ + v47`), NOT b0 (`@ @ v49`), `b1 AND NOT b0` (`@ @ +`) and
+  `NOT b0 OR b1` (`@ @ v50`) — swept in `notes/tts/sweep5.py`.
+
+  Every gate has the form `(w0·b0 + w1·b1 + C) / 2 > front`, with `front`
+  either a constant or b0 itself.  `+` duplicates the *top*, so which
+  weights are free depends on when each bit is read: if both bits arrive in
+  one line b1 always lands above b0 and b0's weight is pinned at 1, but with
+  one bit per line `@ + @` duplicates b0 while it is still on top and frees
+  it.  (A length-4 multiline sweep missed this and made b0 look unreachable;
+  the witness is at length 5.)
+
+  **The seven missing tables split into two causes, one of them a real
+  wall.**  `NOT b1`, `b0 AND NOT b1` and `NOT b1 OR b0` need b1 negated,
+  i.e. b1 at the front of the comparison, which it cannot reach without b0
+  popping first — and that pop emits.  Reading the bits in the other order
+  would move this; whether the contract allows a generator to choose its
+  input order is a separate judgement, not assumed here.
+
+  NAND, NOR, XOR and XNOR need an input-gated *silent* death, and none
+  exists.  A death occurs when a popped value leaves byte mode's
+  `0 <= n <= 0x10FFFF` range, and it is silent only at depth 1, since any
+  deeper pop prints the values above the killer on the way down — and under
+  emission-vs-silence a printing death is an emission.  But a depth-1 kill
+  needs `front <= 0`, which makes its condition `sum(tail) / 2 > 0`, true
+  on every row once input has landed.  So every death is either
+  input-independent or noisy, confirmed both ways in
+  `notes/tts/silentkill.py`.  Inversion via the 15-word reset was built and
+  works mechanically (`comm % 15 == 0` clears the stack, confirmed at pad 10
+  in `notes/tts/boundary.py`), but with no silent gate to invert it adds no
+  tables.
+
+  So the language supports a *partial* generator of roughly ArrowQueue's
+  threshold class, not a total one.  The entry's "exhaustive search to
+  length 5" is still neither confirmed nor contradicted — it does not say
+  whether length counts characters or words, and these sweeps were over
+  words.  What is settled is that the two structural claims the removal
+  rested on are both wrong, so the language was removed on a bad negative;
+  whether a partial generator clears the bar is a separate judgement, and
+  the removal's other ground (the literal-embed text generator, see
+  `docs/limitations.md`) is untouched.
 - **WII2D**: the accumulator never affects control flow (`^v<>` set the
   direction, `@` jumps unconditionally to the closest `@`), so there is no
   value-testable branch to route a decision tree on.  **Resolved by the
