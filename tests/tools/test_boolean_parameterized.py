@@ -1758,9 +1758,7 @@ class TestParameterizedPctSquaredMinusOne:
 
         template = parameterized.pct_squared_minus_one("0110")
         lengths = {
-            len(self.instantiate(template, [a, b]))
-            for a in (0, 1)
-            for b in (0, 1)
+            len(self.instantiate(template, [a, b])) for a in (0, 1) for b in (0, 1)
         }
         assert len(lengths) == 1, lengths
 
