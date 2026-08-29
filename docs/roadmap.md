@@ -82,8 +82,9 @@ the full {1 turns left, 1 turns right} x {empty prints nothing, empty is
 zero} matrix leaves the tail period-4 in all four variants (only the
 shipped combination passes the truth machine and the cat at all).  The
 remaining possibility is that the diagram simply does not produce the
-Kolakoski sequence as drawn; confirming that needs the diagram's author, so
-a talk-page question is the cheapest way to settle it.
+Kolakoski sequence as drawn; confirming that needs the diagram's author,
+which is outside what this repo can settle.  The characterization test
+stands as the record.
 
 **Circuit Diagram is implemented**, interpreter and boolean generator both,
 their judgment calls derived in the module docstrings of
@@ -101,9 +102,8 @@ where they belong — for `~c` it already draws the two `=` crossovers that
 the missing diagonal would cross, so the diagram carries a diagonal's
 crossings without the diagonal itself.  Both the repaired circuit (replayed
 over all sixteen inputs against the primes) and the as-drawn silence are
-pinned in `tests/interpreters/test_circuit_diagram.py`.  Reporting this on
-the talk page is the cheapest way to settle it, as with Flowchart's
-Kolakoski example.
+pinned in `tests/interpreters/test_circuit_diagram.py`, which is the record
+this repo keeps of it.
 
 **The obvious execution model is falsified by the page's own flip-flop.**
 Reading wirings as holding their value until overwritten, and halting once
