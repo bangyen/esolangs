@@ -37,6 +37,7 @@ print the table.
 
 from collections import deque
 from collections.abc import Callable
+from functools import cache
 from typing import TypeVar
 
 from esolangs.tools.boolean.helpers import _validate_truth_table
@@ -404,6 +405,7 @@ def _find_parked(
     return _search(j, accept, maxlen) or hits
 
 
+@cache
 def minifuck(truth_table: str) -> str:
     """Build a Minifuck template for the given truth table.
 
@@ -422,6 +424,13 @@ def minifuck(truth_table: str) -> str:
     simulated against all ``2**n`` rows as it is emitted, and a
     :class:`ValueError` is raised rather than returning a program that has
     not been seen to print the table.
+
+    Cached, because that simulated search is what this module costs: about
+    26s per two-input table, against effectively zero to *run* the program it
+    returns.  The search is deterministic in ``truth_table`` and the result
+    is an immutable string, so repeat calls are free.  Callers that build the
+    same table more than once -- the test suite sweeps all sixteen two-input
+    tables and separately spot-checks several of them -- pay the search once.
     """
     n = _validate_truth_table(truth_table)
     want = tuple(int(c) for c in truth_table)
