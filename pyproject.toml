@@ -165,9 +165,12 @@ addopts = [
     "--strict-config",
     "--verbose",
     "--tb=short",
-    # Serial by default for now.  pytest-xdist is still a dev dependency, so
-    # a parallel run stays one flag away: add "-n 4" (or "-n auto") on the
-    # command line, which pytest-cov still combines into a single .coverage.
+    # Two workers.  Measured on the fast run ("-m 'not slow'"), the first two
+    # workers do nearly all the work -- 94s serial, 50.7s at 2, 45.8s at 4 --
+    # so the third and fourth buy 5s while claiming twice the machine.
+    # Override per-run with "-n 4", "-n auto", or "-n 0" on the command line.
+    "-n",
+    "2",
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",

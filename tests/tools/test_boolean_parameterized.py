@@ -1581,15 +1581,13 @@ class TestParameterizedMinifuck:
             ("01", 1),  # identity
             ("0001", 2),  # AND
             ("0110", 2),  # XOR
-            # OR and NOR cost ~45s each -- the generator searches hardest for
-            # these two -- so they carry the slow marker while the rest of
-            # the battery, a second or less apiece, stays in the fast run.
-            pytest.param("0111", 2, marks=pytest.mark.slow),  # OR
-            pytest.param(
-                "1000", 2, marks=pytest.mark.slow
-            ),  # NOR -- unreachable in the reading model
-            ("1001", 2),  # XNOR -- likewise
+            ("1001", 2),  # XNOR -- unreachable in the reading model
             ("1110", 2),  # NAND -- likewise
+            # OR ("0111") and NOR ("1000") are not listed: they cost ~48s and
+            # ~47s here, and test_all_two_input_tables below already runs all
+            # sixteen two-input tables through the same assertion.  The cases
+            # that remain are the two one-input tables, which it does not
+            # cover, plus four two-input tables at a second or less apiece.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
