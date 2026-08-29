@@ -929,6 +929,8 @@ class TestSlowAcvMammalian:
             ("0110", 2),  # XOR
             ("0001", 2),  # AND
             ("1110", 2),  # NAND
+            ("0", 0),  # zero inputs: a bare constant, with no tree at all
+            ("1", 0),
             # The three-input tables search: 3.5s and 3.3s at one worker,
             # over the one-second budget the fast run holds to.
             pytest.param("11111110", 3, marks=pytest.mark.slow),  # NAND3
@@ -976,6 +978,87 @@ class TestSlowAcvMammalian:
         program = boolean.slow_acv_mammalian_boolean("01101001")
         assert "SPRINT" not in program
         assert "CONFLAGRATE" not in program
+
+    def test_the_read_gadget_needs_room_above_the_array_sum(self) -> None:
+        """A target index below the array sum cannot be reached by seeding.
+
+        The gadget only moves the sum *up* (``SEED`` increments the head),
+        so an index the sum has already passed is out of reach and the
+        gadget declines rather than emitting something that lands wrong.
+        """
+        from esolangs.tools.boolean.slow_acv_mammalian import _read_gadget
+
+        assert _read_gadget([200, 100], 0, 0) is None
+        assert _read_gadget([10], 0, 3) is not None, "room above still works"
+
+    def test_a_landing_past_every_band_cannot_be_aligned(self) -> None:
+        """A base past any reachable landing exhausts the search.
+
+        A node's reachable indices sit in a band around the array sum, and
+        the sum is moved by stashing and consuming bytes.  A base far past
+        anything those adjustments can reach leaves no candidate, which is
+        reported rather than papered over with a jump that lands wrong.
+        """
+        from esolangs.tools.boolean.slow_acv_mammalian import _subtree
+
+        with pytest.raises(ValueError, match="no array adjustment aligned"):
+            _subtree("01", 1, 0, "", [0], 0, 100_000)
+
+    @pytest.mark.parametrize("refused", ["0", "1"])
+    def test_a_refused_subtree_is_backtracked_not_fatal(self, refused: str) -> None:
+        """One candidate failing to align sends the search to the next.
+
+        Either child can be the one that cannot be placed, and each is
+        caught where it is built: the 0-subtree before the 1-subtree's cost
+        is known, the 1-subtree after the best candidate is chosen.  Both
+        arms have to resume the loop rather than propagate, or a table
+        would be refused over a single unlucky landing.
+        """
+        import importlib
+
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.boolean.slow_acv_mammalian")
+        from esolangs.tools.boolean.slow_acv_mammalian import _subtree as real
+
+        refusals: list[str] = []
+
+        def flaky(
+            table: str,
+            n: int,
+            depth: int,
+            row: str,
+            array: list[int],
+            acc: int,
+            base: int,
+        ) -> list[str]:
+            if row == refused and not refusals:
+                refusals.append(row)
+                raise ValueError("forced: this landing is refused")
+            return real(table, n, depth, row, array, acc, base)
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_subtree", flaky)
+            program = boolean.slow_acv_mammalian_boolean("0110")
+
+        assert refusals == [refused], "the forced refusal never fired"
+        for combo in range(4):
+            bits = [(combo >> (1 - i)) & 1 for i in range(2)]
+            got = run_slow_acv_mammalian(program, [str(b) for b in bits])
+            assert got == "0110"[combo], f"inputs {bits}"
+
+    def test_a_token_the_model_does_not_cover_is_refused(self) -> None:
+        """The array model refuses an instruction it does not implement.
+
+        The construction only emits the four tokens the model tracks, so a
+        fifth would mean the emitted program and the model had drifted
+        apart -- and a silently-ignored token would leave the search
+        reasoning about an array the interpreter never produces.
+        """
+        from esolangs.tools.boolean.slow_acv_mammalian import _apply
+
+        with pytest.raises(ValueError, match="unmodelled token: SPRINT"):
+            _apply("SPRINT", [0], 0)
 
 
 class TestSuffolk:
