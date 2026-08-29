@@ -11,13 +11,11 @@ description = "A comprehensive collection of esoteric programming language inter
 authors = [{name = "Bangyen Pham", email = "bangyenp@gmail.com"}]
 license = "GPL-3.0-or-later"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Interpreters",
@@ -65,7 +63,7 @@ exclude = ["tests*", "examples*", "docs*"]
 esolangs = ["py.typed"]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py312"
 line-length = 88
 
 [tool.ruff.lint]
@@ -115,7 +113,7 @@ ignore = [
 
 [tool.mypy]
 strict = true
-python_version = "3.10"
+python_version = "3.12"
 # scripts/ is CI infrastructure (the differential, unicorn, and installer
 # checks), so it is type-checked alongside the package itself.
 files = ["src", "scripts"]

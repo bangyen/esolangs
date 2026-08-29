@@ -44,7 +44,6 @@ the ``set_comp`` argument that filled it are gone.
 
 from collections import deque
 from functools import cache
-from typing import TypeAlias
 
 # Re-exported so this module stays the import site for the whole
 # parameterized family; each of these owns a file because its
@@ -84,7 +83,7 @@ __all__ = [
 
 # A decision-tree node: ("leaf", leaf_id, value, None, None) or
 # ("node", node_id, level, zero_subtree, one_subtree).
-_Node: TypeAlias = "tuple[str, int, int, _Node | None, _Node | None]"
+type _Node = tuple[str, int, int, _Node | None, _Node | None]
 
 
 def bio(truth_table: str) -> str:
@@ -137,7 +136,7 @@ _EVAL_TREE_STACK, _EVAL_READ_STACK = 0, 1
 _EVAL_MAX_OPS = 16
 # (tree stack, input stack, which stack is active), each stack listed
 # bottom to top by the input index it carries.
-_EvalState: TypeAlias = tuple[tuple[int, ...], tuple[int, ...], int]
+type _EvalState = tuple[tuple[int, ...], tuple[int, ...], int]
 
 
 @cache
