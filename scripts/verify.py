@@ -30,10 +30,12 @@ still runs the complete suite on every push regardless.
 A default run also leaves work to CI where CI already covers it: the steps in
 ``FULL_ONLY`` (the differential corpora, which CI runs twice with ``--fuzz
 50``; the ZTOALC anchor table, which CI's lint job re-derives; and the
-RISC-V unicorn round-trip, which CI's assembly job runs) and
-pytest's ``slow`` marker (the fuzzers' divergence-detection tests,
-which CI runs by that same marker and errors on if they skip).  ``--full``,
-``just test-full``, and an explicit ``--only`` all still run them.
+RISC-V unicorn round-trip, which CI's assembly job runs) and the ``slow``
+marker in both test suites -- pytest's (the fuzzers' divergence-detection
+tests, which CI runs by that same marker and errors on if they skip) and
+extra/line's (its two 5.2s render round trips, which CI's ``line`` job runs
+unfiltered).  ``--full``, ``just test-full``, and an explicit ``--only`` all
+still run them.
 
 Usage:
     python scripts/verify.py [--only STEPS] [--skip STEPS] [--full] [--list]
@@ -92,13 +94,36 @@ FULL_ONLY = frozenset(
     }
 )
 
+# Named once: the step table, STEP_SCOPE and the slow-marker filter all refer
+# to this step, and a typo in any of them would silently stop matching.
+LINE_STEP = "extra/line suites (uv)"
+
+
+def _line_addopts(env: dict[str, str]) -> str:
+    """``PYTEST_ADDOPTS`` for the line step, deselecting the slow tests.
+
+    Composed with whatever the caller already set rather than replacing it,
+    so `PYTEST_ADDOPTS=-x just test` keeps its own flag.  A caller who has
+    already chosen a `-m` expression is left alone: two `-m` flags would let
+    the last one win, silently discarding theirs.
+
+    Both spellings count as a choice -- pytest takes the marker attached
+    (`-mslow`) as readily as separated (`-m slow`), and only the separated
+    form survives a plain membership test.
+    """
+    existing = env.get("PYTEST_ADDOPTS", "")
+    if any(word.startswith("-m") for word in existing.split()):
+        return existing
+    return f"{existing} -m 'not slow'".strip()
+
+
 # Which paths each step actually guards.  A step whose prefixes the branch did
 # not touch cannot have been broken by that branch, so a scoped run skips it.
 # A step absent from this table is always run: it is either cheap enough not to
 # matter or it guards the whole tree.  Prefixes are repo-relative.
 STEP_SCOPE: dict[str, tuple[str, ...]] = {
     "bandit": ("src/",),
-    "extra/line suites (uv)": ("extra/line/",),
+    LINE_STEP: ("extra/line/",),
     # The check re-derives the anchor table and diffs it against the committed
     # file, importing nothing from the interpreters -- so the only things that
     # can break it are the generator script and the table itself.  Scoping to
@@ -133,7 +158,7 @@ STEPS = [
         # Run from extra/line: its modules import each other as flat top-level
         # names, and it needs image libraries the package does not depend on,
         # so they are supplied ad hoc rather than from the project env.
-        "extra/line suites (uv)",
+        LINE_STEP,
         [
             "uv",
             "run",
@@ -407,8 +432,23 @@ def main() -> int:
         # trades no coverage.  This is keyed on --full rather than on scoping
         # because a run that widens back to everything -- a tooling change, an
         # unreadable diff -- should still not pay for them.
-        if name == "pytest" and only is None and not full:
-            cmd = [*cmd, "-m", "not slow"]
+        #
+        # The extra/line suites carry the same marker on their two 5.2s tests
+        # (the eight-level nesting round trip and the n=5 parity table), which
+        # are 10.4s of that step's 12.8s.  CI's `line` job runs that suite
+        # unfiltered on every push, so deselecting them here trades no
+        # coverage either.
+        step_env = env
+        if only is None and not full:
+            if name == "pytest":
+                cmd = [*cmd, "-m", "not slow"]
+            elif name == LINE_STEP:
+                # Not argv: the command ends in `pytest . -q` under `uv run
+                # --isolated`, so an appended flag would land after the path
+                # argument and be read by uv's pytest, not composed with the
+                # rest of the step's own options.  PYTEST_ADDOPTS is applied
+                # by pytest itself wherever it ends up running.
+                step_env = dict(env, PYTEST_ADDOPTS=_line_addopts(env))
         if not have_unicorn and "unicorn" in name:
             print(f"[skip] {name}: unicorn not installed (pip install unicorn)")
             continue
@@ -426,7 +466,7 @@ def main() -> int:
         if quiet:
             result = subprocess.run(
                 cmd,
-                env=env,
+                env=step_env,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -434,7 +474,7 @@ def main() -> int:
             if result.returncode != 0 and result.stdout:
                 print(result.stdout, end="")
         else:
-            result = subprocess.run(cmd, env=env)
+            result = subprocess.run(cmd, env=step_env)
         elapsed = time.time() - start
         timings.append((name, elapsed))
         ok = result.returncode == 0
