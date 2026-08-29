@@ -60,7 +60,13 @@ share the prefix too — dropping the test would misclassify them.  The sibling
 idea (pre-negating stored input bits to halve `not_bit`) remains open but is
 marginal.
 
-## Minifuck (0-preserving functions, n <= 3)
+## Minifuck (0-preserving functions, n <= 3 — resolved by parameterizing)
+
+**The wall below is real, and it is a statement about the *runtime-read*
+model.**  It does not carry over to embedded inputs: the parameterized
+generator (`esolangs.tools.boolean.minifuck`) builds every two-input table,
+XNOR, NAND and NOR included.  The original argument is kept because it
+remains true of the language it describes.
 
 The two-input limitation is structural: the decode suffix flips the pool LSB
 only when the pointer sits at cell 7, and `[`'s skip always maps bit 0 to
@@ -71,8 +77,21 @@ length 14 finds none, and a re-verification search to length 34 still finds
 none).  The n == 4 walker stage additionally cannot reach the 8 distinct
 pointer positions a third bit needs.  The single-input case is *not*
 0-preserving-bound (a re-verification found NOT and const-1 at lengths
-17-18), so the generator covers the four one-input functions plus the
-0-preserving two-input tables, and nothing past `n == 3`.
+17-18), so a *reading* generator covers the four one-input functions plus
+the 0-preserving two-input tables, and nothing past `n == 3`.
+
+What parameterizing changes is the input path, and with it the orientation
+argument: the bits are embedded as `[<`/`xx` rather than decoded, so the
+decode suffix never runs and the pointer orientation it fixed is free.  The
+generator computes the table in cells past the pool, relays the answer into
+the *pointer* (values cannot travel left in this language, but the pointer
+can), and prints one ASCII digit.  Two facts make the last step work: the
+printed digit is `NOT(v XOR cell7)` for accumulator value `v`, and every
+pool the walk-and-clamp fix can reach conserves `v XOR cell7` — so the free
+variable is the **read polarity**, not the pool.  Alongside `[<`, which
+leaves the pointer at `(acc-1) + v`, `[x<[<` leaves it at `(acc-1) + NOT v`
+while restoring the cell, and swapping the two flips the printed digit.  That
+is what makes a table printable whenever its complement is.
 
 ## 123 (four one-input functions)
 

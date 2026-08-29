@@ -33,6 +33,7 @@ def _parameterized_generators():
             "ram0",
             "minsky_swap",
             "eval",
+            "minifuck",
         )
     ]
 
@@ -1546,6 +1547,97 @@ class TestEvalBoolean:
 
         with pytest.raises(ValueError, match="only '0' and '1'"):
             parameterized.eval("02")
+
+
+class TestParameterizedMinifuck:
+    """Input-by-substitution boolean generator for Minifuck.
+
+    Minifuck's only read is ``.`` pulling a byte when the eight-cell pool is
+    zero, which a boolean program cannot use without destroying the pool it
+    is about to print -- so the inputs are embedded instead.  The generator
+    simulates every row as it emits and raises rather than returning a
+    program it has not seen print the table, so these tests are checking the
+    *interpreter* agrees with that simulation.
+    """
+
+    def run_minifuck(self, prog: str) -> str:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.minifuck import run
+
+        io_ = ScriptedIO("")
+        run(prog, io_)
+        return io_.getvalue()
+
+    def instantiate(self, tpl: str, bits: list[int]) -> str:
+        """Fill the template the way the example harness does."""
+        from esolangs.tools.boolean.examples import _fill_minifuck
+
+        return _fill_minifuck(tpl, bits)
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR
+            ("0111", 2),  # OR
+            ("1000", 2),  # NOR -- unreachable in the reading model
+            ("1001", 2),  # XNOR -- likewise
+            ("1110", 2),  # NAND -- likewise
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every instantiated input produces the truth-table result."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.minifuck(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_minifuck(self.instantiate(template, bits))
+            assert got == table[combo], f"{table} inputs {bits}"
+
+    def test_all_two_input_tables(self) -> None:
+        """Every two-input table builds, including the ones the wall named.
+
+        ``docs/walls.md`` records NAND, NOR and XNOR as unreachable.  That
+        is true of programs that *read* their inputs; embedding them lifts
+        it, and this is the check that says so.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        for table_int in range(16):
+            table = format(table_int, "04b")
+            template = parameterized.minifuck(table)
+            for combo in range(4):
+                bits = [(combo >> (1 - i)) & 1 for i in range(2)]
+                got = self.run_minifuck(self.instantiate(template, bits))
+                assert got == table[combo], f"{table} inputs {bits}"
+
+    def test_instantiations_have_equal_length(self) -> None:
+        """No instantiation leaks its inputs through the program's length."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.minifuck("0110")
+        lengths = {
+            len(self.instantiate(template, [a, b])) for a in (0, 1) for b in (0, 1)
+        }
+        assert len(lengths) == 1, f"unequal instantiation lengths: {lengths}"
+
+    def test_template_is_input_independent(self) -> None:
+        """The template has {Xi} placeholders, not hardcoded bits."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.minifuck("0110")
+        assert "{X0}" in template
+        assert "{X1}" in template
+
+    def test_bad_table_rejected(self) -> None:
+        """A table whose length is not a power of two is rejected."""
+        from esolangs.tools.boolean import parameterized
+
+        with pytest.raises(ValueError, match="power-of-two"):
+            parameterized.minifuck("011")
 
 
 def test_fills_embed_a_zero_and_a_one_at_equal_width() -> None:
