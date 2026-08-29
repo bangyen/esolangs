@@ -47,13 +47,26 @@ Geometry rules established empirically:
 - the dot run must be **exactly 3** and capped by a wall; a 4th dot voids it
   (`_edge_dot_cells`) — this is the spec's "without any waves or other
   characters in between"
-- a cod **crossing horizontally** reads exactly once. Note this interpreter
-  treats each of the three dot cells as a read cell, so a cod entering more
-  than one of them reads more than once; the spec describes `...` as a
-  *single* command, so the per-cell behaviour is implementation detail rather
-  than spec, and a generator should not lean on it
+- **the approach angle decides the read count.** This interpreter treats each
+  of the three dot cells as its own read cell, so:
+
+  | approach | reads |
+  |---|---|
+  | crossing horizontally (one cell entered) | 1 |
+  | turning *into* the column, then exiting to a printer | **3** |
+  | turning in with a dead end above | loops until EOF |
+
+  The spec describes `...` as a **single** input command, so three reads for
+  one command is an interpreter artifact, not COD semantics. A generator must
+  therefore route every input crossing **horizontally** — "each input read
+  exactly once" is satisfiable, but only under that discipline, and it is a
+  constraint on the layout rather than something COD gives for free.
 - extra reads come from the cod bouncing in dead ends; an unbroken corridor
   into an edge `---` printer terminates cleanly after one read
+- **whitespace is open water.** `_is_open` is `cell != "~"`, so spaces used as
+  visual padding are navigable, not walls. The wiki truth-machine relies on
+  this (column 1 is spaces at rows 4-7). Any generated grid must pad with `~`,
+  not spaces, or cods will swim through the margins.
 
 ### Stale caveat in the interpreter docstring
 
@@ -63,6 +76,11 @@ written". That is **wrong about the example it cites**: the wiki's
 truth-machine has a genuine three-dot run in column 2, rows 0-2, touching the
 top edge, and this interpreter's own `_edge_dot_cells` detects it as a valid
 input command. Worth correcting alongside the `cod.py` generator docstring.
+
+There *are* dots in the columns either side of the run, but the spec's
+"without any waves or other characters in between" constrains the run along
+its own column; column 2 reads `. . . ~ ~ ~ ~ ~`, and the verdict is stable
+whether the ragged rows are padded with spaces or with `~`.
 
 COD's value is an unbounded signed integer, so the existing gauntlet /
 fork-box decision-tree machinery has a real value to branch on, and
