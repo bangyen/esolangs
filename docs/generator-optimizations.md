@@ -180,17 +180,13 @@ characters and flowchart 166 vs 632 on `11110000` against `10010110`.
 `arrowqueue` were all on this list and now fold — see below. **Every tree
 generator in the catalogue folds its constant subtrees.**
 
-**Re-checked by measurement 2026-08-28, and it still holds.** The worry is a
-generator that special-cases a *whole-table* constant without folding
-subtrees, since that collects the easiest case and leaves the general one.
-The signature is a table depending on a single input costing the same as
-parity — a full tree either way — while the constant is tiny. Screening all
-59 generators on `00000000` / `11110000` / `01101001` flags twelve, but eight
-of those fold under a *different* split order (Modulous, Forth and Unsquare
-branch last-input-first, so `10101010` is their folding case, and Circlefuck
-did until it started choosing its order,
-not `11110000`), and the comparison has to allow for that: measured against
-the best of all six one-dependency tables, they save 56–77%.
+**Re-checked by measurement 2026-08-28, and it still holds.**  The worry is
+a generator that special-cases a *whole-table* constant without folding
+subtrees, collecting the easiest case and leaving the general one.  Screening
+all 59 generators on `00000000` / `11110000` / `01101001` flags twelve, but
+eight fold under a *different* split order and save 56–77% measured against
+the best of all six one-dependency tables — the comparison has to allow for
+split order (see Sources).
 
 The seven that genuinely never fold — `point_break`, `collatz_multiverse`,
 `suptiftam`, `bit_tilde`, `a_painter_ant`, `qoibl`, `suffolk` — are all
@@ -199,37 +195,26 @@ one term per selected row, so a constant table is small because the sum is
 *empty*, not because anything was collapsed. That is a different technique
 (6, complement/polarity), not a missing one. **Nothing is left to convert.**
 
-`point_break` is the one to look at if this seems too neat, since it *does*
-carry an explicit constant short-circuit. Both constants complement to zero
-selected rows, so the general path would emit an empty sum — the reads, the
-complement setup and the loop scaffolding wrapped around nothing. The
-short-circuit skips that scaffolding; it is not standing in for a fold,
-because there is no tree underneath it to fold. What it must still do is
-read its inputs, which it did not until this branch fixed it.
+`point_break` carries an explicit constant short-circuit, which is not a
+stand-in for a fold: both constants complement to zero selected rows, so the
+general path would emit the reads, complement setup and loop scaffolding
+wrapped around an empty sum.  There is no tree underneath it to fold.
 
 **Should the other minterm generators get the same short-circuit?** Measured
-2026-08-28: no, because eight of the thirteen already emit their *smallest*
-program on a constant table, with nothing left to strip — `bit_tilde`,
-`cod`, `collatz_multiverse`, `container`, `qoibl`, `suffolk`, `suptiftam`
-and `point_break` itself, whose 35 and 71 characters sit well under the 164
-its other tables need. An empty sum is already the cheap case; the
-short-circuit only earns its place where the scaffolding *around* the sum is
-what costs, which is Point Break's loop guard and nobody else's.
+2026-08-28: no.  Eight of the thirteen already emit their *smallest* program
+on a constant table — `bit_tilde`, `cod`, `collatz_multiverse`, `container`,
+`qoibl`, `suffolk`, `suptiftam` and `point_break` itself (35 and 71
+characters, against the 164 its other tables need).  An empty sum is already
+the cheap case; the short-circuit only earns its place where the scaffolding
+*around* the sum costs, which is Point Break's loop guard and nobody else's.
 
-Two do have headroom, and it is **not** a missing constant case:
-`a_painter_ant` (all-0 92, all-1 444) and `rotfuck` (1404, 1740) are cheap
-on all-zeros and expensive on all-ones. That asymmetry is the signature of a
-missing *complement* (technique 6) — neither calls `_maybe_complement`, so a
-dense table is summed over all its one-rows instead of its zero rows, and
-all-ones is the extreme case. Worth doing, but as polarity, not as a
-constant special-case; mind the trap `_maybe_complement`'s docstring
-records, that an all-ones table complements to the same empty sum an
-all-zeros table has.
-
-Their read counts were checked at the same time, since an empty sum can drop
-the reads the way a folded tree can: all seven consume every input on a
-constant table. The note below that `suffolk`'s "constant tables need no
-reads at all" is stale — it reads all 8.
+Two have headroom, and it is **not** a missing constant case: `a_painter_ant`
+(all-0 92, all-1 444) and `rotfuck` (1404, 1740) are cheap on all-zeros and
+expensive on all-ones — the signature of a missing *complement* (technique 6),
+since neither calls `_maybe_complement`.  Worth doing as polarity, not as a
+constant special-case; mind the all-ones trap that `_maybe_complement`'s
+docstring records.  Read counts were checked at the same time: all seven
+consume every input on a constant table.
 
 Each was written off at some point on structural grounds, and each of those
 arguments was wrong in the same way: they described why a folded node could
