@@ -172,16 +172,67 @@ pipeline (`_clamp`, `_try_print`, `_find_column`, `_find_parked`) works
 **unchanged** — the only swap is a `_Joint` whose rows are advanced by the
 reading prologue instead of by `_embed(n)`.
 
-**Verified at n=1: all four tables** (`01`, `10`, `00`, `11`) build and run
-correctly on the shipped interpreter — clean `"0"`/`"1"` output, exactly one
-read each. The constant tables still consume their input (running const-1 with
-empty stdin raises `EOFError`), which is what the contract's uniform-read rule
-demands. That `10` (NOT) and `11` (const-1) build agrees with walls.md, which
-records the single-input case as *not* 0-preserving-bound.
+One gadget is not enough. `GADGET` was found by a BFS from the *blank-tape*
+post-read state, so it re-zeroes only the **first** read; once bit 1 is banked
+the tape is populated and the same string leaves cell 7 holding bit 2 as
+`(0,1,0,1)`. `_endgame` requires all eight pool cells to be input-independent,
+so every accumulator was rejected and n=2 came back 0/16. A second BFS
+launched from the *actual* post-second-read joint state gives
 
-The n=2 sweep is the open question, and it is the one that matters: walls.md
-puts the read model at the 8 zero-preserving two-input tables, so anything
-above 8/16 here would move that wall.
+    GADGET2 = <[[<<<[<<[<[<<<<<<<[
+
+after which the pool is input-independent and the rows stay distinct.
+
+### Results
+
+**n=1 — 4/4.** All four tables build and run correctly on the shipped
+interpreter, one read each. The constant tables still consume their input
+(const-1 with empty stdin raises `EOFError`), satisfying the uniform-read rule.
+
+**n=2 — 16/16 built, 16/16 verified**, clean `"0"`/`"1"` output and exactly
+two reads for every table, constants included. Lengths 88-148; four tables
+(`0101`, `0110`, `1001`, `1010`) come out of the cheap scan, the rest via the
+column search at ~7s each.
+
+That set includes **XNOR (`1001`), NAND (`1110`) and NOR (`1000`)** — the
+tables walls.md records as unreachable in the runtime-read model, where the
+model is capped at the 8 zero-preserving tables. No relaxed output convention
+was needed: the wall's parity constraint sits at the print stage, and this
+construction reaches the print stage with an input-independent pool.
+
+**n=3 — blocked.** The prologue leaves only 4 of 8 rows distinct (the third
+bit is lost) and emits a stray `' '`. `GADGET2` was searched from the n=2
+frontier and does not generalize; n=3 would need its own frontier-launched
+gadget, and possibly a per-level one.
+
+### How to rebuild it
+
+The prototype is not kept (notes/ is for work in progress, per `bc33fa8`), so
+the reconstruction recipe is the deliverable:
+
+1. Subclass `_Sim` so `.` on a zero pool consumes a scripted bit instead of
+   setting `dead` — that flag exists to stop a *parameterized* program from
+   reading, which is exactly what a reading generator must do.
+2. Build a `_Joint` whose rows are advanced by
+   `READ + GADGET1 + SPLIT` for input 0, then `READ + GADGET2` for each later
+   input, each row consuming its own bit.
+3. Hand that `_Joint` to the shipped ladder unchanged — `_clamp`,
+   `_try_print`, `_find_column`. Nothing downstream needs to know the bits
+   came from stdin rather than from `_set_bit`.
+
+The load-bearing invariant is the one `_endgame` checks: all eight pool cells
+must be input-independent when the endgame starts. Every failure in this
+build traced back to violating it.
+
+### Why the brute-force sweeps were the wrong instrument
+
+Two length-capped sweeps here were dead ends worth recording. A sweep over
+`<[.` programs is `3^n` candidates times four interpreter runs — ~6.4M runs at
+length 13 — and it can only ever find *bare* programs. The working generator
+composes a prologue with the tree and endgame into 88-148 characters, which no
+length-capped enumeration reaches. Both real breakthroughs (GADGET, GADGET2)
+came from **state BFS launched from the live frontier**, exploring hundreds of
+states rather than millions of programs.
 
 > Caution: an earlier sweep here concluded "no program reads twice, exhaustive
 > to length 13". That was a **harness artifact** — `input_char` reads a whole
