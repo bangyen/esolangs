@@ -48,6 +48,7 @@ same edit across the two versions.
 """
 
 import argparse
+import ast
 import json
 import os
 import re
@@ -97,6 +98,9 @@ _INLINED = ("esolangs.exceptions", "esolangs.interpreters.io")
 _ALARM_FACTOR = 10.0
 _MIN_ALARM = 2.0
 
+# How long the unmutated suite may take before the run is called stuck.
+_BASELINE_TIMEOUT = 120.0
+
 # Below this share of mutants killed, the run is treated as broken rather
 # than reported.  The lowest score this harness has ever legitimately
 # produced is 76.7%, and a suite good enough to be worth mutating does not
@@ -110,6 +114,35 @@ def _test_file(module: str) -> Path:
     if not path.exists():
         raise SystemExit(f"no test file for {module}: expected {path}")
     return path
+
+
+def _reaching_helpers(src: str) -> list[str]:
+    """Return call markers for helpers that themselves reach past the bundle.
+
+    A helper is any non-test function or method whose body names one of
+    ``_UNBUNDLED``.  What comes back is what a *caller* looks like -- with
+    the parenthesis, and for a method also the ``self.`` form -- so the
+    caller can be matched by the same substring test as everything else.
+
+    Only one level is followed.  A helper calling a helper does not occur
+    in this suite set, and resolving it properly wants a call graph rather
+    than a scan; if one ever appears, the test stays and its score is
+    deflated, which is the same failure this fixes rather than a new one.
+    """
+    try:
+        tree = ast.parse(src)
+    except SyntaxError:  # pragma: no cover - the suite is a valid module
+        return []
+
+    lines = src.splitlines()
+    markers: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.FunctionDef) or node.name.startswith("test_"):
+            continue
+        body = "\n".join(lines[node.lineno - 1 : node.end_lineno])
+        if any(mod in body for mod in _UNBUNDLED):
+            markers += [f"{node.name}(", f".{node.name}("]
+    return markers
 
 
 def _drop_unbundled_tests(src: str) -> tuple[str, int]:
@@ -131,8 +164,17 @@ def _drop_unbundled_tests(src: str) -> tuple[str, int]:
     BrainIf's suite is laid out that way, and its blank-line test was
     silently dropped: the three mutants that only it kills read as
     survivors, and no count said three tests had gone missing.
+
+    The reach can also be one call deep.  A test that calls a *helper* --
+    Point Break's ``run_until_halt``, Forbin's ``_verdict`` -- carries no
+    marker of its own, so it stayed in the bundle while the helper it calls
+    went to the registry or the VM.  Such a test runs the installed
+    interpreter, cannot fail for any mutant, and quietly deflates the score
+    with mutants nothing can catch.  Helpers whose own body reaches past
+    the interpreter are found first, and their names become markers too.
     """
     dropped = 0
+    markers = (*_UNBUNDLED, *_reaching_helpers(src))
     for name in re.findall(r"\n    def (test_\w+)\(", src):
         # The lines above the ``def`` that belong to it: a decorator ``@``,
         # any continuation of one (more indented than the ``def``), and the
@@ -153,7 +195,7 @@ def _drop_unbundled_tests(src: str) -> tuple[str, int]:
             src,
             re.S,
         )
-        if body and any(mod in body.group(0) for mod in _UNBUNDLED):
+        if body and any(mod in body.group(0) for mod in markers):
             src = src.replace(body.group(0), "\n")
             dropped += 1
 
@@ -571,14 +613,28 @@ def main() -> int:
         if dropped:
             print(f"[note] dropped {dropped} test(s) needing the VM or registry")
 
+        # The per-test alarm belongs to the mutation runs; the baseline has
+        # none, so anything that does not finish here waits forever instead
+        # of saying so.  Every baseline measured across the 46 languages is
+        # under a second, so a cap two orders of magnitude above that costs
+        # nothing and turns a hang into a message.
         started = time.monotonic()
-        baseline = subprocess.run(
-            [sys.executable, "-m", "pytest", "-q", "tests/test_bundled.py"],
-            cwd=proj,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        try:
+            baseline = subprocess.run(
+                [sys.executable, "-m", "pytest", "-q", "tests/test_bundled.py"],
+                cwd=proj,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=_BASELINE_TIMEOUT,
+            )
+        except subprocess.TimeoutExpired:
+            raise SystemExit(
+                f"the bundled tests did not finish in {_BASELINE_TIMEOUT:g}s.  "
+                "Either a test loops without the bound its helper gave it, or "
+                "the harness itself is stuck before pytest -- sample the "
+                "process to tell which."
+            ) from None
         elapsed = time.monotonic() - started
         if baseline.returncode != 0:
             print(baseline.stdout[-2000:])
