@@ -39,47 +39,29 @@ concatenation.
 
 ### Two phases, built from private, self-contained blocks
 
-Two phases, each assembled from small grid blocks with their own interior
-walls, joined left-to-right by `_cod_combine` (which pads shorter blocks
-with blank rows so every block's row 0 lines up):
+Both phases are assembled from small grid blocks with their own interior
+walls, joined left-to-right by `_cod_combine`.  The block layout is in the
+code (`_cod_fork_box`, `_cod_gauntlet`, `_cod_cascade`, `_cod_tree`,
+`_cod_leaf`); what matters for editing it is the **privacy invariant** that
+replaced the old merge design:
 
-**Phase 1 — index assembly.**  Bits `0..n-2` each get their own 5-row box
-(`_cod_fork_box`), self-contained but for a single entry cell on its left
-edge (marked `?`, filled with `{Xi}` or the previous box's own exit) and a
-single exit cell on its right (feeding the next box's entry).  Inside a
-box for bit `k` (weight `2**(n-1-k)`):
+- **Phase 1 — index assembly.**  Bits `0..n-2` each get their own box with a
+  single entry cell on the left edge and a single exit on the right.  A box's
+  two branches (forward gauntlet for a `0` bit, private lower row plus
+  vertical shaft for a `1`) rejoin at that box's **own** exit `+`, entered
+  only from the west or from its own shaft — never from another box's cells.
+  The last bit needs no box: weight `2**0` is already contributed by a bare
+  placeholder.  After all `n` bits the cod's value is
+  `V = sum(bit_i * 2**(n-1-i))`, the input combo's numeric index.
+- **Phase 2 — the leaf cascade.**  A chain of `2**n - 1` `"+<("` blocks each
+  send one copy north into a leaf row and continue the other east, one
+  decrement lower.  Leaf `k` fires iff `V == k` and prints the table's
+  embedded answer.  Its left column is a pre-built shaft down to the cascade
+  row, which is what lets Phase 1's last exit feed in with no wall-carving.
 
-- **Forward branch** (bit `k == 0`): a net-zero gauntlet, built from
-  `_cod_gauntlet` gate chains — a value entering already 0 stays 0 to reach
-  the exit fork.
-- **Side branch** (bit `k == 1`, on the box's own private lower row):
-  starts at 1 (the placeholder set it), gauntlets up to the branch's full
-  weight, then a private vertical shaft carries it back up to the same
-  exit fork.
-
-Both branches rejoin at the box's own exit `+`, entered either from the
-west (forward) or south (the box's own shaft) — never from any other
-box's cells, since every box's gauntlet and shaft columns belong to that
-box alone.  The last bit (`n-1`, weight `2**0 == 1`) gets no box of its
-own: it is a bare placeholder cell whose increment already contributes the
-right weight, sitting directly before Phase 2's entry.  After all `n` bits,
-the surviving cod's value is `V = sum(bit_i * 2**(n-1-i))`, the input
-combo's numeric index.
-
-**Phase 2 — the leaf cascade** (`_cod_cascade`, built from `_cod_tree` /
-`_cod_leaf` / `_cod_cascade_row`) is unchanged from the earlier `n == 3`
-version: reached with the cod's value equal to `V`, a dedicated row holds
-a chain of `2**n - 1` `"+<("` blocks that each send one copy north into a
-leaf row and continue the other copy east, decremented by one.  Leaf `k`'s
-own gate chain only lets a cod carrying exactly `2**n - 1 - k` decrements
-survive, so leaf `k` fires iff `V == k`; it prints the table's answer for
-that leaf (embedded directly — `)` for a `1` entry, nothing for a `0`)
-and halts.  `_cod_cascade`'s own left column is a pre-built vertical shaft
-from its entry row straight down to the cascade row, which is what lets
-Phase 1's last exit feed in with no extra wall-carving needed —
-`_cod_combine` places Phase 2 directly after the last Phase 1 box (or
-after the bare `>` entry, for `n == 1`) and the shaft columns already
-line up.
+The invariant to preserve: **every box owns all the cells both its branches
+use**, so no box's routing is ever re-entered by another's, and boxes compose
+by plain concatenation with no cross-box interference to reason about.
 
 ### `n == 1`
 
