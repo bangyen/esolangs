@@ -433,29 +433,27 @@ def unsquare(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     # ``A`` pops, so the tree tests the *last* input at the root: the order
-    # this generator has always emitted is the reversal, not the identity.
-    # It goes first and ties keep it, so a table no reorder helps emits
-    # exactly what it emitted before.
-    natural = tuple(reversed(range(n)))
+    # this generator has always emitted is the identity *arrangement* (no
+    # sinks), which is the reversal as an input order.  It goes first and ties
+    # keep it, so a table no reorder helps emits exactly what it emitted
+    # before.
     arrangements = _unsquare_stack_programs(n)
 
-    def candidate(perm: tuple[int, ...]) -> str | None:
-        # The tree pops LIFO, so testing ``perm`` means the bits must sit on
-        # the stack in the reverse of that order.
-        prefix = arrangements.get(tuple(reversed(perm)))
-        if prefix is None:
-            return None
+    def build_from(arrangement: tuple[int, ...]) -> str:
+        """Emit the program whose stack ends in ``arrangement``."""
+        # The tree pops LIFO, so an arrangement tests its inputs in reverse.
         # ``permute_truth_table`` puts the input tested at level ``k`` in the
         # table's ``k``-th *most* significant bit, but this tree splits on
         # ``row >> k`` -- least significant first, because that is the order
-        # the pops arrive in.  Reversing the permutation converts between the
-        # two frames; without it a table is read against the wrong axis and
-        # the program computes a different function.
-        table = permute_truth_table(truth_table, tuple(reversed(perm)))
-        return prefix + _unsquare_tree(table, n)
+        # the pops arrive in.  Passing the arrangement itself converts between
+        # the two frames; without it a table is read against the wrong axis
+        # and the program computes a different function.
+        table = permute_truth_table(truth_table, arrangement)
+        return arrangements[arrangement] + _unsquare_tree(table, n)
 
-    best = candidate(natural)
-    assert best is not None, "the natural order is always reachable"
+    # The natural order is the identity arrangement, which the product always
+    # reaches (every sink can be zero), so this needs no reachability check.
+    best = build_from(tuple(range(n)))
     # Iterate the *reachable* arrangements rather than all ``n!`` orders:
     # only ``2 * 3**(n - 2)`` of them can be built, so this is the candidate
     # set rather than a filter over a much larger one.  (The unreachable
@@ -469,11 +467,10 @@ def unsquare(truth_table: str) -> str:
     if n > _ORDER_SEARCH_MAX:
         return best
     for arrangement in arrangements:
-        perm = tuple(reversed(arrangement))
-        if perm == natural:
+        if arrangement == tuple(range(n)):
             continue
-        other = candidate(perm)
-        if other is not None and len(other) < len(best):
+        other = build_from(arrangement)
+        if len(other) < len(best):
             best = other
     return best
 
