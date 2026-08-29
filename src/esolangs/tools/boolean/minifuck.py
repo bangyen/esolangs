@@ -307,7 +307,11 @@ def _search(
                 clone = m.copy()
                 clone.exec(ch)
                 new.append(clone)
-            if any(m.dead for m in new):
+            if any(m.dead for m in new):  # pragma: no cover - see below
+                # Unreachable from here: only a print kills a row, and the
+                # alphabet this search explores has none.  Kept because the
+                # prune is a property of the state, not of the alphabet, and
+                # a search over ``.`` would need it.
                 continue
             key = tuple(m.key() for m in new)
             if key in seen:
@@ -371,7 +375,12 @@ def _endgame(j: _Joint, acc: int, read: str, cell7: int) -> None:
     j.emit(read)
     j.emit("<" * (acc - 7))
     for cell in range(8):
-        if len(set(j.col(cell))) != 1:
+        if len(set(j.col(cell))) != 1:  # pragma: no cover - see below
+            # Unreachable as things stand: ``_find_pool`` accepts a code
+            # only after checking the pool *past* the walk out, which is
+            # this same state.  Kept as the assertion that pairs the two --
+            # the check there is on a simulated walk, and this one is on
+            # what was actually emitted.
             raise ValueError(f"pool cell {cell} is input-dependent")
     j.emit("[x.")
 
