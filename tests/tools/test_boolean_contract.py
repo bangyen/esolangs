@@ -31,13 +31,14 @@ _TABLES = ["00000000", "01101001"]
 # instead of milliseconds.  The rule is a one-second budget per entry in this
 # sweep: over that, the case carries ``slow`` and sits out the fast run.
 # Measured at the time of writing (``pytest --durations``, one worker):
-# minifuck 35.9s, slow_acv_mammalian 5.0s, pct_squared_minus_one 4.6s,
-# ztoalc_l_boolean 2.8s, and the next entry down is polynomial at 0.5s, with
-# the median around 0.03s.
+# minifuck 35.9s, slow_acv_mammalian 4.9s, ztoalc_l_boolean 2.7s, and the
+# next entry down is polynomial at 0.5s, with the median around 0.03s.
 #
-# ``pct_squared_minus_one`` searches setter assignments, a product whose size
-# is ``len(_OPTIONS) ** (2 * n)``; the parity table here is ``n == 3``, which
-# it cannot separate, so it pays its whole budget before raising.
+# ``pct_squared_minus_one`` was briefly in this set, at 4.6s: it searched
+# setter assignments and this sweep's parity table is ``n == 3``, which it
+# could not separate, so it paid a whole search budget before raising.  It
+# now derives its programs instead and rejects that arity outright, which
+# puts it below the measurement floor.
 #
 # Naming the languages rather than timing them at collection time is
 # deliberate: a wall-clock threshold evaluated during collection would make
@@ -45,12 +46,7 @@ _TABLES = ["00000000", "01101001"]
 # silently cover less than the last one.  Re-measure and edit this set when
 # a generator's cost changes.
 _SEARCHING_GENERATORS = frozenset(
-    {
-        "minifuck",
-        "slow_acv_mammalian_boolean",
-        "pct_squared_minus_one",
-        "ztoalc_l_boolean",
-    }
+    {"minifuck", "slow_acv_mammalian_boolean", "ztoalc_l_boolean"}
 )
 
 
@@ -102,10 +98,12 @@ def _reads(entry: tuple, table: str) -> int:
     try:
         program = str(fn(table))
     except ValueError:
-        # A generator that cannot build this table emits no program, and a
+        # A generator that does not cover this table emits no program, and a
         # program that does not exist reads nothing.  Reporting 0 routes the
-        # caller into its "does not read input" skip rather than failing on
-        # a coverage gap, which is not what this test measures.
+        # caller into its "does not read input" skip rather than failing on a
+        # coverage gap, which is not what this test measures.  %^2^-1 is the
+        # case in hand: it derives two-input tables only, and the sweep's
+        # parity table has three.
         return 0
     io = ScriptedIO("0\n" * 8)
     source = program.splitlines() if lang.split else program
