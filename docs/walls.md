@@ -204,9 +204,25 @@ inherits its parent's array and a grow-only sum would track the layout it
 has to clear, which is what stops the tree converging past two levels.
 
 The tree is uniform depth `n`, so a constant table still reads all `n`
-inputs.  Verified against the interpreter: every table through `n == 3`
-(4 at `n == 1`, 16 at `n == 2`, all 256 at `n == 3`), plus `n == 4` spot
-checks.
+inputs.
+
+**Where this leans on undefined behaviour.**  The wiki is explicit about
+the fact the wall got wrong — `ACCEPT` pushes "onto the top of array 0",
+while every other array instruction says "the array under the pointer", so
+the read genuinely is pointer-independent — and about the branch:
+`LEAPFROG` jumps "if the last value in the array under the pointer is not
+0".  It says nothing, though, about what a *negative* jump target does, or
+about halting at all.  The leaves here end with `EXCRETE LEAPFROG`, which
+fires with a negative target and so halts under this interpreter's reading
+of that gap (see the interpreter's module docstring).  A reading that
+clamped or wrapped instead would need a different leaf.
+
+The generator also inherits the repo-wide `% 256`, where the wiki says
+`EXCRETE`/`PRONOUNCE` are "modulo 255" — almost certainly a typo, since a
+cell holds 0-255, and the same choice is already baked into the text
+generator's `gcd(q + 1, 256) == 1` walk.  It is load-bearing here: leaves
+normalize the accumulator mod 256, and under a strict mod-255 `PRONOUNCE`
+they would print `0`-`@` rather than `0`/`1`.
 
 ## NoComment, BF-PDA (a `{Ci}` embed was not actually needed)
 
