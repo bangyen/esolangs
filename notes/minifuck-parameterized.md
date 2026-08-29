@@ -66,24 +66,39 @@ after the embed — at `n == 2` that is `0000`, `1000`, `1100`, `1110`, `1111`
 instantiation lengths.  The embed's carry chain computes AND, NOR and XOR as
 a byproduct, which is why the scan finds anything at all.
 
-## The open obstruction
+## What is still open, and what is settled about it
 
-A total generator needs the minterm loop, and that is blocked on one point:
+A total generator needs the minterm loop.  Two things about it are settled:
 
 * Only `s AND (cell == 0)` exists as a literal stage.  The `== 1` form is
   **unreachable** — exhaustive over all 113 distinct pointer patterns in the
-  131k reachable joint states, not a bounded-search miss.
-* One-sided tests constrain prefix parities to 1 only, so they isolate just
-  one row of `2**n`.  Every input needs both polarities.
-* The complement is derivable at runtime (`[x` leaves `NOT b` in the tested
-  cell — this is the `nocomment` pattern, and it does **not** need a `{Ci}`
-  embed), but the current embed does not leave both polarities standing in
-  the region at the same time.  Greedy isolation reaches 4/4 rows at
-  `n == 2`, 6/8 at `n == 3` (rows 5 and 6 resist), and 3/16 at `n == 4`.
+  131k reachable joint states, not a bounded-search miss.  So the tests are
+  one-sided, and every input needs both polarities available.
+* **Row isolation is not the blocker.**  With the separator `[x<[x` and two
+  settling crossings, one-sided `== 0` tests isolate every row at
+  `n == 2, 3, 4, 5` (4/4, 8/8, 16/16, 32/32) — a fixed separator and a fixed
+  pass count, so the property is compositional rather than per-table.  An
+  earlier note here called this an obstruction on the strength of a *different*
+  embed, which reached only 6/8 at `n == 3`; that was a layout artifact.
 
-Re-crossing the region to refresh the columns helps but does not close the
-gap.  The next step is a layout that keeps a companion complement cell alive
-per input across passes, so both polarities are testable at every pass.
+What is actually open is **scheduling the tests under divergence**.  The
+moment the pointer diverges the rows stop sharing a coordinate system, so one
+emitted fragment executes against different cells in different rows.  Two
+attempts failed on exactly this:
+
+* choosing test cells from the columns *before* the crossing — the crossing
+  rewrites every cell it passes, so a cell chosen for its column no longer
+  holds that column when it is reached;
+* choosing greedily at each step from a fixed cell index — after the first
+  divergence that index is not the cell the diverged rows are standing on.
+
+The discipline that should fix it is to never hold divergence across an
+unverified operation: create it, take one verified step, bank it back into a
+tape cell (`[x` deposits `acc ^= s`), and clamp.  Between banks everything is
+converged and position-safe.  A relay-copy composite (`[<`, then a
+**fixed-count** `[x` walk, then `[x`) does leave a one-hot pair in isolation —
+verified — but not yet from the live joint state, because the walk to the
+source cell re-crosses and rewrites the region on the way.
 
 ## Dead ends worth not repeating
 
@@ -102,3 +117,15 @@ per input across passes, so both polarities are testable at every pass.
   the pointer converged *and* clean residue) does not exist, across ~2400
   states achieving the deposit.  Neither condition is actually needed: `<`
   reconverges for free afterwards.
+* **Reading a fixed cell index while the rows are diverged.** Divergence is
+  the mechanism *and* it desynchronizes the machines: the same emitted
+  instruction lands on different cells in different rows, so any bookkeeping
+  keyed to a cell number is wrong the moment the first test fires.  Bank
+  divergence into the tape and clamp before doing anything that needs a
+  shared coordinate system.
+
+Four separate "walls" in this investigation turned out to be artifacts of how
+the question was asked — blank-scratch searches, the width-2 ceiling read as
+a language limit, "information dies past the region" (it was this embed's
+region-XOR happening to be input-independent), and the isolation obstruction
+above.  Worth re-deriving a negative result before recording it as a wall.
