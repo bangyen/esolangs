@@ -210,6 +210,7 @@ class TestPolynomial:
         with pytest.raises(ValueError, match="one instruction per prime"):
             boolean.polynomial(scattered)
 
+    @pytest.mark.slow  # 2.3s
     def test_state_machine_renders_past_the_old_input_gate(self) -> None:
         """Tables the ``n <= 4`` gate refused outright now render and run.
 
