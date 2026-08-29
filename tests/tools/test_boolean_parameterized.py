@@ -34,6 +34,7 @@ def _parameterized_generators():
             "minsky_swap",
             "eval",
             "minifuck",
+            "pct_squared_minus_one",
         )
     ]
 
@@ -1685,3 +1686,109 @@ def test_fills_embed_a_zero_and_a_one_at_equal_width() -> None:
             assert len(lengths) == 1, (
                 f"{name} embeds bits at unequal width for n={n}: {sorted(lengths)}"
             )
+
+
+class TestParameterizedPctSquaredMinusOne:
+    """Input-by-substitution boolean generator for %^2^-1.
+
+    The Lean proof in ``Esolangs.PctBooleanWall`` shows no %^2^-1 program
+    that *reads* its inputs computes XOR or AND at any length.  That bounds
+    the reading model, not the language: these programs embed their bits
+    instead, so the read that erases the accumulator never happens, and
+    every two-input table builds.
+
+    ``l`` prints the accumulator in decimal, so the answer is read straight
+    off stdout as ``"0"`` or ``"1"`` -- no branch is needed, which suits a
+    language whose only jump target is position 0.
+    """
+
+    def run_pct(self, prog: str) -> str:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.pct_squared_minus_one import run
+
+        io = ScriptedIO()
+        run(prog, io)
+        return io.getvalue()
+
+    def instantiate(self, tpl: str, bits: list[int]) -> str:
+        from esolangs.tools.boolean.examples import _fill_pct_squared_minus_one
+
+        return _fill_pct_squared_minus_one(tpl, bits)
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR -- the function the Lean wall forbids a reader
+            ("1001", 2),  # XNOR
+            ("0111", 2),  # OR
+            ("1110", 2),  # NAND
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every instantiated input produces the truth-table result."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.pct_squared_minus_one(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_pct(self.instantiate(template, bits))
+            assert got == table[combo], f"inputs {bits}"
+
+    @pytest.mark.parametrize("n", [1, 2])
+    def test_all_small_tables(self, n: int) -> None:
+        """Every table up to two inputs produces the right result."""
+        from esolangs.tools.boolean import parameterized
+
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            template = parameterized.pct_squared_minus_one(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_pct(self.instantiate(template, bits))
+                assert got == table[combo], f"{table} inputs {bits}"
+
+    def test_instantiations_share_a_length(self) -> None:
+        """All four programs are the same length, so none leaks its inputs."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.pct_squared_minus_one("0110")
+        lengths = {
+            len(self.instantiate(template, [a, b]))
+            for a in (0, 1)
+            for b in (0, 1)
+        }
+        assert len(lengths) == 1, lengths
+
+    def test_template_is_input_independent(self) -> None:
+        """The template has {Xi} placeholders, not hardcoded bits."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.pct_squared_minus_one("0110")
+        assert "{X0}" in template
+        assert "{X1}" in template
+
+    def test_programs_never_read_input(self) -> None:
+        """No emitted program contains ``n``, the input command.
+
+        This is what separates the generator from the model the Lean wall
+        bounds: the bits arrive by substitution, so the read that overwrites
+        the accumulator never runs.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        for table_int in range(16):
+            template = parameterized.pct_squared_minus_one(format(table_int, "04b"))
+            for a in (0, 1):
+                for b in (0, 1):
+                    assert "n" not in self.instantiate(template, [a, b])
+
+    def test_bad_table_rejected(self) -> None:
+        from esolangs.tools.boolean import parameterized
+
+        with pytest.raises(ValueError, match="power-of-two"):
+            parameterized.pct_squared_minus_one("011")

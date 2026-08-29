@@ -44,6 +44,7 @@ from esolangs.tools.boolean.parameterized import (
     minifuck,
     minsky_swap,
     nocomment,
+    pct_squared_minus_one,
     ram0,
     wii2d,
 )
@@ -124,6 +125,7 @@ __all__ = [
     "myscript",
     "nevermind",
     "nocomment",
+    "pct_squared_minus_one",
     "painfuck",
     "point_break",
     "polynomial",

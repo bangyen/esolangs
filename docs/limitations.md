@@ -99,7 +99,7 @@ per-character encoding can be meaningfully shortened:
 | Language | Why it cannot compute a truth table |
 | --- | --- |
 | 123 | The `3`-jump is nearest-match, not bracket-matched, so TRUE always re-runs the segment already executing rather than reaching an independent branch target — and `1` flips the bit under the pointer before moving, so navigating from the post-read position (0) to the write position (-2) corrupts the byte's MSB en route. Only the four one-input functions are reachable via runtime `,` reads (too trivial to keep as a generator); a structured search found no two-input function under either bit-encoding. A parameterized generator (embedding each input at compile time, as WII2D's does) was assessed and is also walled, on a third mechanism: it does clear both mechanisms above and reaches real input-dependent behavior (an AND by emission), but location 0 is both the byte's MSB and the only cell the pointer wrap returns to, so the loop that builds a byte is the one that would have to be stopped to print once, and `3` cannot stop it -- no program over `1`/`2` to length 8 prints exactly `"0"` or `"1"`. Full argument in `docs/walls.md`. |
-| %^2^-1 | Only control flow is `t` (rewind on a nonzero accumulator); a whole-program while loop that cannot count passes. |
+| %^2^-1 | Only control flow is `t` (rewind on a nonzero accumulator); a whole-program while loop that cannot count passes. No program that *reads* its inputs computes any two-input function (proved in Lean), but the shipped boolean generator is parameterized and builds all sixteen: it embeds the bits, composes one affine setter per input into a product-weighted accumulator, and prints with `l`, which spells the accumulator in decimal so `0`/`1` need no branch. Total at `n <= 2`; partial at `n == 3`, where it raises rather than emitting a wrong program. |
 
 ## Generator caps (shipped)
 
@@ -290,6 +290,14 @@ prime-search totality plus the encode/decode round-trip
 `PctWallCheck.lean`).  Every other proof (the ported interpreters, their
 equivalence proofs, and the generator correctness proofs) was dropped as
 redundant with the round-trip test suite.
+
+Note the scope of the `%^2^-1` wall, which is the same scope the Minifuck
+statement carries: `Computes` binds one program across all four bit
+combinations and feeds the bits in through `start`'s input list, so the
+theorem is about programs that *read* their inputs.  The shipped generator
+is parameterized and builds every two-input table, so the theorem bounds the
+reading model, not the language, and it needed no change when that generator
+landed.
 
 `BfMintermCorrect.lean` was removed for both reasons at once: its subject,
 the branch-free `_bf_minterm` construction, was itself deleted when folding
