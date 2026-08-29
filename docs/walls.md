@@ -170,6 +170,35 @@ So the orbit structure is real and mostly useless.  What survives is the
 degenerate case, which composes upward because a table with `k` essential
 inputs is a `k`-input problem at any arity, and that one is built.
 
+### What stops the remaining three-input tables
+
+Mapping the fourteen `n == 3` orbits one representative at a time: eight
+build (the four degenerate ones instantly, then AND3, majority, parity and
+one more), and six do not.  The six are not failing for want of a computable
+answer, which is what makes them worth recording.
+
+For every one of the six, the exact-polarity column search *finds the answer
+column* -- at park `_BASE`, usually in cell 23, in a couple of seconds.  The
+column is correct there, and it survives both the clamp and the pool fix.
+What it does not survive is the journey to an accumulator the endgame can
+read.  Tracked cell by cell for `00011000`: the column reads `00011000` after
+the pool fix and `10000010` after the walk out, and at the far end 31 of the
+45 candidate accumulators hold the *same* value, `01111101`, with none
+holding the target.
+
+So the walk homogenizes the tape.  That is the prefix-XOR law acting over a
+long crossing --- each step folds the running parity into the next cell, and
+after enough steps the distinctions that made the columns different are gone.
+Placing the column at or past the accumulator does not help (tested on all
+six): the walk that sets up the read is what does the damage, so the answer
+cannot simply be put out of its way.
+
+The endgame's requirements are all *met* here --- the pool is settable, the
+pointer converges, cells 0..7 stay input-independent.  Nothing errors.  The
+answer is computed and then washed out in transit, which is a different
+problem from the ones above and would need a way to read a cell without
+first walking to it.
+
 ### Where a construction would have to start
 
 The shipped generator is a search, and searches are what this repo replaces:
