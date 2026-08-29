@@ -126,7 +126,7 @@ total however good the gadgets; and **harvesting** — sweeping embed variants
 for a table that lands in a cell — finds all 16 at `n == 2` but 105/256 at
 `n == 3`, making it a shortcut rather than a totality argument.
 
-## 123 (open — the recorded wall's arguments were refuted)
+## 123 (parameterized: 8 affine tables built; the rest open)
 
 A decision tree needs the `3` jump, which on a TRUE/FALSE bit jumps to the
 *nearest* preceding/following `3` (not bracket-matched): FALSE always lands
@@ -201,8 +201,39 @@ only back to the *previous* `3`, so a read placed before that `3` is never
 re-executed — the desync applies within a segment, not to every read in the
 program.
 
-**What is actually open.**  No two-input table has been produced, runtime or
-parameterized.  The exhaustive runtime sweep run here is uninformative and is
+**The parameterized case reaches the eight affine tables, by construction.**
+The setter is the load-bearing choice.  A one-character setter (`1` for a
+one, `2` for a zero) displaces the pointer by -1 and +1, so instantiations
+drift apart by bit *count* and never print together — an earlier pass here
+mistook that for a property of the language.  The two-character setter `12`
+(one) / `21` (zero) is displacement-*neutral*: both return the pointer to
+where they started, so every instantiation stays in position lockstep and
+they differ only in which cell was flipped (`12` flips the current cell,
+`21` the one to its right).
+
+With that setter the construction needs no search.  Nine `1`s from location
+7 reach the write position, flipping locations 7..0 on the way, so the tape
+must hold `target XOR 0xFF` beforehand — 0xCF prints `'0'`, 0xCE prints
+`'1'`, and the two differ only at location 7 (the byte is MSB-first, so
+location `i` is bit `7 - i`).  Embedding an input *at* location 7 makes its
+bit toggle the answer; embedding it past location 8 makes it inert, since
+`byte()` never reads there.  The reachable set is therefore exactly
+`c XOR (subset of the inputs)`: const0, const1, b0, b1, NOT b0, NOT b1, XOR
+and XNOR, all eight verified against the shipped interpreter in
+`notes/t123/affine_all.py`, each input embedded exactly once and every
+instantiation the same length.
+
+**The other eight need `3`.**  Flipping is XOR, so a straight-line `1`/`2`
+program is affine by construction and AND/OR/NAND/NOR and their relatives
+are out of reach — confirmed by a lockstep search over 567 paired-setter
+embeds, which finds the affine tables and nothing else.  `3` is the way out
+(it is what makes the length-7 selector above input-dependent), but its jump
+target depends on the position of every other `3`, so it cannot be appended
+one character at a time against a running simulation the way the affine
+suffix is; a `3`-bearing search needs whole-template re-simulation.  That is
+unbuilt, so the non-affine half is **open**, not walled.
+
+**What is actually open.**  No *runtime* two-input table has been produced.  The exhaustive runtime sweep run here is uninformative and is
 not cited as evidence: the shortest program that can satisfy the contract at
 all is the length-12 echo (one read costs 4 characters, a parity-safe print
 7, the halt 1), and a genuinely two-input program needs a second read, so any
