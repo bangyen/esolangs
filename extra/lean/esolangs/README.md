@@ -66,6 +66,50 @@ sanity-checked with `native_decide` round-trips.  This proof is kept
 self-contained rather than part of the main `lake build` (which now holds
 only the totality proofs).
 
+## %^2^-1 boolean-generator wall
+
+A proof that `%^2^-1` has **no two-input boolean generator, at any program
+length** (`Esolangs/PctBooleanWall.lean`).  The language has one accumulator
+and one control-flow command, `t` (rewind to position 0 when the accumulator
+is nonzero) — no forward jump, no skip.
+
+`computes_ignores` is the wall: every program meeting the boolean contract
+(on all four combinations: halt cleanly, consume both bits, print exactly one
+character) computes a function that **ignores one of its two inputs**, so
+`no_xor` and `no_and` follow.  Two structural facts carry it:
+
+1. **A read erases the past** (`read_erases`): `n` overwrites the
+   accumulator, so the state at the last read is a function of the last bit
+   alone.
+2. **Reads cannot be skipped** (`count_le_of_halts`): `t` jumps only to
+   position `0`, so a cleanly-halting run needs at least as much remaining
+   input as there are reads ahead of the cursor.  This refutes the two runs
+   diverging at a `t` — the branch that rewinds must pay for the reads it
+   re-crosses.
+
+Those give a *canonical* split position (`firstReadFrom`, plus
+`read_pos_unique` for the single-`n`-read-twice shape), so the output factors
+as `A b₁ ++ B b₂`; a one-character output forces one factor empty.
+
+This is an induction on the execution, **not** a bounded search — the claim
+quantifies over unbounded program length, and non-termination of a `t` loop
+is not decidable by simulation.  `Esolangs/PctWallCheck.lean` audits the
+axioms: only `propext`, `Classical.choice`, and `Quot.sound` — no `sorryAx`
+and no `Lean.ofReduceBool`, so nothing rests on `native_decide`.  The model's
+`stepCmd` was differentially tested against the shipped Python interpreter
+over 44,280 program/input pairs (status, exact output, input consumed) with
+zero mismatches.
+
+Note the `n == 1` case is *not* walled: all four one-input functions are
+expressible (identity `ne`; NOT is `nss` + `i`×31 + `pe`, computing
+`x ↦ -x + 97`).  The wall is exactly at `n ≥ 2`.  Like `BfMintermCorrect`,
+this file is self-contained rather than part of the default `lake build`:
+
+```
+lake env lean Esolangs/PctBooleanWall.lean
+lake env lean Esolangs/PctWallCheck.lean     # axiom audit
+```
+
 ## Building
 
 Requires [elan](https://github.com/leanprover/elan) and mathlib:
