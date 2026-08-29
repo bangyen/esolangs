@@ -138,8 +138,8 @@ independent branch target.
 
 **This section previously recorded three mechanisms as walls.  Two of them
 are false and the third is stated too strongly; all three were refuted by
-execution against the shipped interpreter.**  The scripts are in
-`notes/t123/`.  What remains is an *open* question, not a wall — no
+execution against the shipped interpreter.**  What remains is an *open*
+question, not a wall — no
 two-input witness has been found, but no correct obstruction is known
 either.
 
@@ -163,7 +163,7 @@ as the section claimed.  In fact **every** byte 0-255 is printable.  That is
 settled exactly rather than by length cap: with no `3` a program is
 straight-line, so the reachable configurations are a finite graph over
 (pointer, bits at 0-7), and BFS over its 5120 states reaches all 256 output
-values (`notes/t123/bfs.py`).  This is the same failure mode already
+values.  This is the same failure mode already
 recorded for %^2^-1's NOT — a length-bounded sweep stopping short of where
 constant-building finishes.
 
@@ -180,7 +180,7 @@ halt cleanly.
 
 The mechanism is *not* a forward skip, and the distinction matters because
 this section's failure history is mechanisms asserted without tracing.
-`notes/t123/trace_sel.py` traces both instantiations: for the one-bit the
+Tracing both instantiations shows that for the one-bit the
 substituted `2` lands at pos -2 and is itself the write, printing on the
 first pass with every `3` a no-op below location 0; for the zero-bit the
 substituted `1` shifts the pointer phase so that the `3` at ip 7 evaluates
@@ -220,7 +220,7 @@ bit toggle the answer; embedding it past location 8 makes it inert, since
 `byte()` never reads there.  The reachable set is therefore exactly
 `c XOR (subset of the inputs)`: const0, const1, b0, b1, NOT b0, NOT b1, XOR
 and XNOR, all eight verified against the shipped interpreter in
-`notes/t123/affine_all.py`, each input embedded exactly once and every
+verified against the interpreter, each input embedded exactly once and every
 instantiation the same length.
 
 **The other eight need `3`, and remain open.**  Flipping is XOR, so a
@@ -229,7 +229,7 @@ and their relatives are out of reach — confirmed by a lockstep search over
 567 paired-setter embeds, which finds the affine tables and nothing else.
 `3` is the way out, since it is what makes the length-7 selector above
 input-dependent.  Whole-template evaluation for `3`-bearing candidates is
-built (`notes/t123/tmpl.py`); what follows are two facts worth keeping,
+built; what follows are two facts worth keeping,
 neither of which closes the question.
 
 **A `3` never falls into the segment after it.**  At `pos >= 0` a `3` either
@@ -239,7 +239,7 @@ requires `pos < 0` — or by the second `3`'s backward jump.  Guards placed in
 the walk home therefore sit at `pos >= 0` and are **dead code**: instrumented
 runs show their bodies executing zero times across all four rows, while the
 working selector's body executes 4–8 times because it reaches its first `3`
-at `pos == -2` (`notes/t123/guardentry.py`).  Four separate guard sweeps
+at `pos == -2`.  Four separate guard sweeps
 here returned nothing for exactly this reason, and none of them is evidence
 about the language.
 
@@ -255,8 +255,7 @@ with the neutral pair so tape encodes b1, guard entered from below zero) has
 live guards and genuinely divergent rows, but found no non-affine table over
 2340 templates — and that sweep's coverage is thin, since a classification
 of the same space shows the overwhelming majority of candidates disqualified
-by a hang or a read before their table matters
-(`notes/t123/rejects.py`).
+by a hang or a read before their table matters.
 
 **The non-affine operator is conditional re-execution, and it collides with
 termination.**  Flips are XOR, so no arrangement of them leaves the affine
@@ -270,7 +269,7 @@ affine endgame reaches the whole AND/OR class.
 The mechanism is real and abundant: 74 of 90 layouts in one family have an
 input-dependent re-execution count, and `132{X0}1{X1}3` re-executes only on
 row `11`.  What blocks it is exit, in **two** distinct modes
-(`notes/t123/twomodes.py`).  A row reaching the closing `3` at `pos >= 0`
+in two distinct modes.  A row reaching the closing `3` at `pos >= 0`
 either tests TRUE and backjumps, or tests FALSE and skips forward off the
 end — and falling off the end with `pos >= 0` restarts the whole program
 with the tape intact.  Row `01` of the example does the latter six times
@@ -284,16 +283,16 @@ depend on the tape, so a segment's position map is a fixed translation
 position at the closing `3` is pass-invariant and the joint condition is
 impossible by construction.  That is why a cross-tabulation of 1560
 wrap-free layouts finds 744 that diverge but never halt, 220 that halt but
-never diverge, and **none that do both** (`notes/t123/joint.py`).
+never diverge, and **none that do both**.
 
 Wrap-crossing segments do have pass-dependent maps — `1111` sends 5 to 1
-and 1 to -3 (`notes/t123/wrapmap.py`) — but 288 such layouts still yield
+and 1 to -3 — but 288 such layouts still yield
 nothing, and the geometry says why.  Under `1` the positions `0, -1, -2, -3`
 form a **4-cycle**, so a row that drops below zero circles rather than
 settling, and the closing `3` alternates NOP and test with period 4.  The
 only rightward escapes from that region are `2` at `-3` (reads stdin, fatal
 for a parameterized program), `2` at `-2` (prints, and the endgame gets one
-shot), and `2` at `-1` (the sole free exit) — `notes/t123/cyclic.py`.
+shot), and `2` at `-1` (the sole free exit).
 
 **Under the termination convention the ceiling breaks, and the new bound is
 monotonicity.**  All of the above is about a program that *prints* its
@@ -305,16 +304,16 @@ instantiation, all the same length — halts only on row `00`, which is
 **OR**, a non-affine table.  It is decided by
 `esolangs.vm.run_until_halt_or_cycle`, the same state-cycle detector the
 repo uses for Point Break, so the loops are proved by state revisit rather
-than assumed from a fuel cap (`notes/t123/shortor.py`).
+than assumed from a fuel cap.
 
 Two things make that work, and they are worth separating.  The answer is
 not a cell read: every tape cell ends as a fixed XOR of the setters that
 touched it, so the reachable cell patterns are affine and `(0, 0, 0, 1)` —
-an AND indicator — never appears among them (`notes/t123/andcheck.py`).
+an AND indicator — never appears among them.
 What the guard actually decides is *where the pointer is* when the closing
 `3` is reached, tested once per pass; tracing the OR witness shows row `00`
 arriving at `pos -1` (a NOP, so it falls through and halts) while the other
-three arrive at `pos 0` and re-enter (`notes/t123/whyor.py`).  A verdict
+three arrive at `pos 0` and re-enter.  A verdict
 accumulated over passes is not a single affine read, which is how the route
 escapes the affine bound that caps printing.
 
@@ -324,7 +323,7 @@ remove one, so the looping set is upward-closed and the computed table is
 **monotone**.  Surveying 1428 templates of the family
 bears that out exactly: five distinct tables, all monotone — const0,
 const1, OR, b0, b1 — and not one of the ten non-monotone tables
-(`notes/t123/whichrows.py`, `notes/t123/monotone.py`).  XOR, XNOR, NAND,
+across 1428 templates.  XOR, XNOR, NAND,
 NOR and every negated table are predicted out of reach on this route by the
 mechanism rather than by search exhaustion.
 
@@ -339,7 +338,7 @@ AND is neither reached nor ruled out.
 So the two routes are complementary and both bounded: printing reaches the
 eight **affine** tables, termination the **monotone** ones.  They overlap on
 const0, const1, b0 and b1, so the verified union is **9 of 16**
-(`notes/t123/union2.py`) — XOR and XNOR come only from printing, OR only
+— XOR and XNOR come only from printing, OR only
 from termination.  The seven still unreached are AND, NAND, NOR, both
 `AND NOT` tables and both `OR NOT` tables; of those only AND is monotone,
 so only AND is predicted reachable without a third construction.
@@ -352,7 +351,7 @@ missing, six have complements that are *also* missing; the exception is NOR,
 whose complement OR the termination route does build.  NOR still cannot come
 from that route: it loops on row `00` alone, so its looping set is not
 upward-closed, which is exactly what the monotonicity argument forbids
-(`notes/t123/complement.py`).
+forbids.
 
 **So the generator is not total at `n == 2`.**  That is the bar
 `docs/limitations.md` records for the 2dFish removal — "affine-only with no
@@ -366,7 +365,7 @@ That also corrects the impossibility sketch this section might invite.
 Position maps in `1`/`2` are tape-independent, which suggests rows entering
 a segment together must leave together and so share a halt verdict — but a
 row taking an extra pass has executed a different number of moves by the
-time it next reaches the closing `3`, and `notes/t123/entrytest.py` exhibits
+time it next reaches the closing `3`, and there are
 guards whose rows genuinely split on halting.  The printing route is still
 capped at the eight affine tables; the termination route is not, and how
 much of the remaining space it covers is a live question rather than a
@@ -379,7 +378,7 @@ all is the length-12 echo (one read costs 4 characters, a parity-safe print
 sweep capped below that floor returns zero by construction rather than by
 obstruction.  Exhaustive search past ~15 characters is not feasible in
 Python, and the digit-valued selector a generator needs is plausibly ~30,
-since `'1'` alone costs 28: `notes/t123/digits.py` swept one-input templates
+since `'1'` alone costs 28; a sweep of one-input templates ran
 fully through length 8 and found none, which is far below that estimate and
 so decides nothing.  Closing this needs the Minifuck playbook
 (74f1ee6) — emit a template and lockstep-simulate all `2**n` instantiations,
@@ -658,7 +657,7 @@ linear scan rather than a genuine representation limit.  See
   constant, which no value-to-length conversion can reach; and `\` never
   terminates except via the 15-command reset, "so there is no
   input-dependent branch either."  Both halves are false, checked against
-  the interpreter restored from `06687a2^` (scripts in `notes/tts/`).
+  the interpreter restored from `06687a2^`.
 
   **There is an input-dependent branch: the drain condition itself.**  The
   entry considers only the `\` and `:` loops and the fixed reset, but
@@ -670,7 +669,7 @@ linear scan rather than a genuine representation limit.  See
   constants: sweeping the trailing constant over 48-52 matches the
   prediction from `(input + tail) / 2 > front` on all ten cases, with `v50`
   discriminating and `v48`/`v52` pinned false/true
-  (`notes/tts/verify_branch.py`).  Emission-vs-silence is the
+ .  Emission-vs-silence is the
   termination-based convention documented above, under which ArrowQueue and
   Point Break are generators.
 
@@ -695,7 +694,7 @@ linear scan rather than a genuine representation limit.  See
   emission convention, nine tables come out by length 5 — const0/const1,
   AND (`v49 @ @ v1`), OR (`v48 @ @`), b0 (`v96 @ + @ v47`),
   b1 (`v96 @ @ + v47`), NOT b0 (`@ @ v49`), `b1 AND NOT b0` (`@ @ +`) and
-  `NOT b0 OR b1` (`@ @ v50`) — swept in `notes/tts/sweep5.py`.
+  `NOT b0 OR b1` (`@ @ v50`), swept to length 5.
 
   Every gate has the form `(w0·b0 + w1·b1 + C) / 2 > front`, with `front`
   either a constant or b0 itself.  `+` duplicates the *top*, so which
@@ -720,9 +719,9 @@ linear scan rather than a genuine representation limit.  See
   needs `front <= 0`, which makes its condition `sum(tail) / 2 > 0`, true
   on every row once input has landed.  So every death is either
   input-independent or noisy, confirmed both ways in
-  `notes/tts/silentkill.py`.  Inversion via the 15-word reset was built and
+  confirmed both ways.  Inversion via the 15-word reset was built and
   works mechanically (`comm % 15 == 0` clears the stack, confirmed at pad 10
-  in `notes/tts/boundary.py`), but with no silent gate to invert it adds no
+  at pad 10), but with no silent gate to invert it adds no
   tables.
 
   So the language supports a *partial* generator of roughly ArrowQueue's
