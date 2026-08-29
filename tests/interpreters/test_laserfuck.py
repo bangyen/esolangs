@@ -168,6 +168,35 @@ class TestUncoveredSteering:
         """``{`` sets the heading to left, as ``}`` sets it to right."""
         assert run_and_capture([" /\\", "|o}\\", " \\/", " x+{"]) == "1"
 
+    def test_every_start_heading_reaches_its_own_arm(self) -> None:
+        """The heading is random, so a symmetric grid pins all four outcomes.
+
+        Every other test passes ``heading=`` to make the run repeatable,
+        which means the branch that *draws* a heading is never taken.  A
+        cross with a different number of ``+`` down each arm does not need
+        to: whichever direction the laser leaves in, it halts, and the
+        count it prints says which arm it took.
+        """
+        cross = ["   x", "   +", "x++o++++x", "   +", "   +", "   +", "   x"]
+        assert [run_and_capture(cross, heading=h) for h in range(4)] == [
+            "1",
+            "3",
+            "2",
+            "4",
+        ]
+
+    def test_a_split_beam_leaves_on_the_perpendicular_axis(self) -> None:
+        """``*`` splits the beam, and only its *direction* is random.
+
+        The new laser's axis is computed -- perpendicular to the incoming
+        beam -- and the random draw picks which way along it.  Putting an
+        ``x`` at both ends makes the two draws equivalent, so the program
+        is deterministic while the arithmetic that chose the axis is still
+        exercised.
+        """
+        split = [" /\\ x", "|o}+*+x", " \\/ x"]
+        assert [run_and_capture(split, heading=h) for h in range(4)] == ["2"] * 4
+
     def test_conditional_mirrors_pass_a_zero_cell(self) -> None:
         """The other half of each conditional mirror: it does *not* deflect.
 
