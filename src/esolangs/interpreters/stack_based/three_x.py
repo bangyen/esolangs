@@ -8,7 +8,7 @@ popped key, ``^`` pushes the value of a popped key (3 if unassigned), ``#``
 swaps the top two, ``(``/``)`` loop while the top is nonzero, and ``[``
 prints the literal up to the next ``]`` and skips past it.
 
-Semantics match the Rust cross-check (``extra/rust/three_x.rs``):
+Semantics:
 - an empty-stack pop, a swap or ``x`` with too few items, a ``(``/``)`` on
   an empty stack, an unmatched ``(``, a ``)`` with no pending ``(``, or a
   division by zero raise :class:`HaltError`;

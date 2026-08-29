@@ -234,6 +234,14 @@ cross-check that added nothing over the round-trip tests.  The languages
 themselves mostly stayed; the full reasoning and the per-cross-check list
 is in [`docs/walls.md`](walls.md#cross-check-removals-why-seven-were-dropped).
 
+The remaining eight Rust cross-checks were then removed outright, along
+with the cargo toolchain and `scripts/verify_extra_generators.py`: six
+were written alongside the Python interpreters they checked (so their
+agreement was not independent evidence), and retaining the two that were
+genuinely independent would have kept the full toolchain cost for a
+fraction of the coverage.  `extra/assembly` stays — it shares its
+toolchain with the RISC-V compilers in `src/esolangs/compilers/`.
+
 ## Hang detection
 
 Wall-clock timeouts (SIGALRM, instruction-count caps) bound hanging

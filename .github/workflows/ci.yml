@@ -159,50 +159,6 @@ jobs:
     - name: Audit dependencies with pip-audit
       run: uv run --with pip-audit pip-audit --local
 
-  rust:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-    - uses: actions/checkout@v7
-
-    - name: Build extra/ Rust implementations
-      run: |
-        cargo build --manifest-path extra/rust/Cargo.toml
-        cargo fmt --manifest-path extra/rust/Cargo.toml --check
-
-    - name: Run extra/ Rust unit tests
-      run: |
-        cargo test --manifest-path extra/rust/Cargo.toml
-
-    - name: Smoke test extra/ Rust implementations
-      run: |
-        set -e
-        : > /tmp/empty.txt
-        ./extra/rust/target/debug/laserfuck /tmp/empty.txt
-        ./extra/rust/target/debug/unsquare /tmp/empty.txt
-        printf 'l' > /tmp/pct.txt
-        [ "$(./extra/rust/target/debug/pct_squared_minus_one /tmp/pct.txt)" = "0" ]
-        printf '~(' > /tmp/bit_tilde.txt
-        ./extra/rust/target/debug/bit_tilde /tmp/bit_tilde.txt >/dev/null
-        printf 'F4*5+.' > /tmp/forth.txt
-        [ "$(./extra/rust/target/debug/forth /tmp/forth.txt)" = "A" ]
-        printf '#basicfuck t=1 r=0~255 o=nearest\n#allocate a\na += 65;\nwrite <- a ;' \
-          > /tmp/basicfuck.txt
-        [ "$(./extra/rust/target/debug/basicfuck /tmp/basicfuck.txt)" = "A" ]
-        printf 'pyr' > /tmp/painfuck.txt
-        ./extra/rust/target/debug/painfuck /tmp/painfuck.txt >/dev/null
-        printf '3!' > /tmp/three_x.txt
-        [ "$(./extra/rust/target/debug/three_x /tmp/three_x.txt)" = "3" ]
-        echo "All extra/ Rust smoke tests passed"
-
-    - name: Verify generator-only languages against the Rust references
-      run: |
-        PYTHONPATH=src python3 scripts/verify_extra_generators.py
-
-    - name: Differential-test the interpreters against the native cross-checks
-      run: |
-        PYTHONPATH=src python3 scripts/verify_differential.py --fuzz 50 --seed 1
-
   line:
     # extra/line is a standalone spike: its modules import each other as flat
     # top-level names, and it needs image libraries the package itself does
@@ -284,8 +240,7 @@ jobs:
       run: |
         python3 -m pip install -q unicorn
         # the differential (Python vs the RISC-V references, corpus + fuzz)
-        # needs unicorn and the RISC-V compiler, which the rust job lacks;
-        # LaserFuck's runs there instead.
+        # needs unicorn and the RISC-V compiler.
         PYTHONPATH=src python3 scripts/verify_differential.py --fuzz 50 --seed 1
         # the reference interpreter must execute and halt; feed each a valid
         # program (an empty stdin is malformed for some, e.g. BF-PDA, and
@@ -313,12 +268,8 @@ jobs:
     # TestDivergenceDetection tampers with a native reference and asserts the
     # fuzzer reports the divergence -- the tests that establish the
     # differential fuzzer (and the weekly fuzz job) can catch a bug at all.
-    # Their skipifs need the RISC-V toolchain or a built Rust reference, and
-    # the `test` matrix job has neither, so all ten skipped on every run.
-    # This job already has the RISC-V half; cargo build supplies the rest.
-    - name: Build the Rust references
-      run: cargo build --manifest-path extra/rust/Cargo.toml
-
+    # Their skipifs need the RISC-V toolchain, which the `test` matrix job
+    # lacks, so they skipped on every run there.  This job has it.
     - name: Install uv
       uses: astral-sh/setup-uv@v7
 

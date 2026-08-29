@@ -204,13 +204,13 @@ deliberately rather than by default.
 `extra/` holds two different kinds of thing, and they are integrated
 differently on purpose:
 
-- **Cross-check ports** (`extra/rust`, `extra/assembly`) are second
+- **Cross-check ports** (`extra/assembly`) are second
   implementations of languages the package already interprets, so every one
   of them is in `registry.py`.  Being differentially testable against the
   Python is the whole reason they exist, so the root-level harnesses
-  (`scripts/verify_differential.py`, `scripts/verify_riscv_unicorn.py`,
-  `scripts/verify_extra_generators.py`) and two suites under `tests/` drive
-  them directly.  The rest of this section is about these.
+  (`scripts/verify_differential.py`, `scripts/verify_riscv_unicorn.py`)
+  and a suite under `tests/` drive them directly.  The rest of this
+  section is about these.
 - **Unsupported-medium implementations** (`extra/line`) are the *only*
   implementation of their language, kept out of `registry.py` because their
   programs are not text the registry's pipeline can carry (Line's are PNGs).
@@ -219,7 +219,7 @@ differently on purpose:
   pytest suites next to the code, and runs from CI's `line` job.  This is a
   different category, not an integration gap.
 
-The `extra/` cross-checks (Rust and RISC-V ports of the interpreters, run
+The `extra/` cross-checks (RISC-V ports of the interpreters, run
 against the Python ones by `scripts/verify_differential.py`) earn their keep
 only where they are *broad* and *independent*: the reference is written from
 the spec rather than ported from the Python, and the differential can fuzz
@@ -236,25 +236,27 @@ nothing new.
 
 **Toolchain follows the model.**  RISC-V assembly fits the machine-model
 languages (a tape/pointer/instruction-counter maps 1:1 onto cells,
-registers, and jumps); Rust fits the semantic ones (stacks, typed registers,
-bit manipulation, 2D grids, where hand-written assembly would be unreadable).
+registers, and jumps).  The semantic languages (stacks, typed registers,
+bit manipulation, 2D grids) have no cross-check toolchain today: the Rust
+ports that covered them were removed (see `docs/limitations.md`), and
+hand-written assembly for them would be unreadable.
 
 **No input in RISC-V.**  RISC-V cross-checks are for no-input/output-only
 languages only.  The fuzzer feeds the generated *program* to the RISC-V ELF
 as its stdin (`scripts/verify_differential.py`), and the Python side reads
 whole lines while the unicorn runner does raw byte reads, so an input-reading
 port would need to rewire input-bit passing and match the line-delimited
-`input_char` semantics.  Languages whose generators read input belong in the
-Rust column, where the reference gets input bits directly.
+`input_char` semantics.  Languages whose generators read input therefore
+have no cross-check route today.
 
-**Worth adding (audited).**  These languages have complex-output generators
+**Worth adding (audited).**  Languages with complex-output generators
 (arithmetic encodings, branch-and-goto OISCs, runtime state carried across
-characters) that a random differential fuzz would exercise beyond the
-round-trip corpus, so a cross-check would add real verification.
-
-| Toolchain | Languages |
-| --- | --- |
-| Rust | AddSubJump (branch-and-goto OISC), Collatz Multiverse (runtime odd/even rules), Polynomial (integer roots encoding a command stream), Dig (2D mole grid with runtime segment counts), Container (threshold-rule firing), ZTOALC L (Collatz-trajectory-driven execution), Factor (a giant integer whose prime factors re-encode a looped brainfuck program), Back (2D beam reflection routing), A Painter Ant (2D cycle-stable routing), Bitdeque (deque + register + goto).  Those that read input — and the 2D grid models — belong in Rust under the no-input RISC-V rule above. |
+characters) are where a random differential fuzz would exercise beyond the
+round-trip corpus.  The audited candidates — AddSubJump, Collatz
+Multiverse, Polynomial, Dig, Container, ZTOALC L, Factor, Back, A Painter
+Ant, Bitdeque — are all semantic or input-reading models, so under the two
+rules above none of them has a toolchain today.  The list is kept here as
+the audit's result, not as a queue.
 
 **Judgment call (borderline).**  The generator is stateful or looped, but
 its output is a fixed pattern the round-trip already covers, so a cross-check
@@ -268,8 +270,8 @@ the brainfuck generator's output with ``>``/``<`` renamed to ``n``/``s``.
 **Circuit Diagram is unassessed on this axis.**  Its generator's output is
 not a fixed pattern — the gate network's shape, its crossovers, and its
 fan-out all vary with the truth table — so it does not belong in the
-borderline class above, and on the toolchain rule a 2D grid model would go
-to Rust.  What holds it back from the worth-adding table is that its
+borderline class above.  What holds it back from the worth-adding list is
+that its
 verification is already unusually strong without one: the generator is
 replayed through the interpreter over each table's *entire* input space, so
 a random differential would mostly re-cover ground the exhaustive replay
@@ -298,14 +300,14 @@ artifact stands alone).  The candidates below are on the intrinsic axis;
 their round-trip and hand cases are their verification, so they are not
 blocked on the harness note below.
 
-- **ZTOALC L stays in the Rust column.**  Heterogeneous int-or-array
+- **ZTOALC L is not a RISC-V candidate.**  Heterogeneous int-or-array
   values, arrays-of-arrays, bounds checks, and trajectory-driven dispatch
-  are the semantic class the toolchain rule sends to Rust; even on the
-  intrinsic axis, the one genuinely interesting piece (computed-goto
+  are the semantic class the toolchain rule keeps out of assembly; even on
+  the intrinsic axis, the one genuinely interesting piece (computed-goto
   dispatch over the Collatz trajectory) is a small fraction of the emitted
   code — the bulk would be an expression interpreter over heterogeneous
-  arrays, so emitting that in assembly would be strictly harder and no more
-  verifiable than the Rust port already on the worth-adding table.
+  arrays, so emitting that in assembly would be strictly harder than it is
+  worth.
 
 **Harness note (build only if a fuzz-dependent candidate lands).**  The
 differential (`scripts/verify_differential.py`) never compiles, and the

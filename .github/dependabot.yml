@@ -28,14 +28,3 @@ updates:
       actions:
         patterns:
           - "*"
-
-  # The Rust reference interpreters the differential fuzzer runs against.
-  - package-ecosystem: cargo
-    directory: /extra/rust
-    schedule:
-      interval: monthly
-    open-pull-requests-limit: 5
-    groups:
-      rust:
-        patterns:
-          - "*"

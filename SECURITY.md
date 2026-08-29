@@ -15,8 +15,8 @@ In scope for a security report is anything that escapes the interpreter:
 
 - executing arbitrary code on the host, or reading or writing files outside
   what a run was given
-- a crash in a native reference interpreter (`extra/rust/`) that indicates
-  memory unsafety
+- a crash in a native reference interpreter (`extra/assembly/`) that
+  indicates memory unsafety
 - code execution through the CLI's file or language arguments
 - a compromise in the release pipeline or a published artifact
 

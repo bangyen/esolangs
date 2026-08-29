@@ -76,9 +76,10 @@ Notes:
   one (`python -m esolangs.interpreters.tape_based.suffolk examples/hello-world/suffolk.txt 1`).
 - `container.txt` halts by exiting with status 0.
 - Some languages have a second, non-Python implementation under `extra/`
-  (Forþ, LaserFuck, Painfuck, 123 in `extra/rust/`).  These still have an
-  example here, verified against the Python interpreter like every other; the
-  `extra/` version is an additional implementation, not the only one.
+  (NoComment, BF-PDA, RAM0, BIO, Minsky Swap in `extra/assembly/`).  These
+  still have an example here, verified against the Python interpreter like
+  every other; the `extra/` version is an additional implementation, not the
+  only one.
 
 ## boolean
 

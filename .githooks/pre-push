@@ -6,7 +6,7 @@
 #     git config core.hooksPath .githooks
 #
 # The script runs the local-checkable subset of the CI workflow (lint,
-# pytest, bandit, cargo, the Python-only verify scripts) so failures are
+# pytest, bandit, the Python-only verify scripts) so failures are
 # caught before pushing rather than in GitHub Actions.
 #
 # verify.py scopes itself to the files the branch touched, so a push that

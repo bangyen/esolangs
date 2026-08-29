@@ -10,7 +10,7 @@ the stack, ``;`` calls the stored scope, ``o`` reverses the stack, ``c``
 rotates the top three, and ``v`` swaps the top two.  Any other character is
 ignored.
 
-Semantics match the Rust cross-check (``extra/rust/forth.rs``):
+Semantics:
 - arithmetic wraps to signed 32-bit integers, and ``/``/``%`` truncate
   toward zero (C++11 semantics), so negative operands match;
 - an empty-stack pop halts the whole program with :class:`HaltError`, while
@@ -23,7 +23,7 @@ Semantics match the Rust cross-check (``extra/rust/forth.rs``):
   status 3;
 - ``,`` pushes each character's byte value (the cross-check's signed ``char``
   would push negative values for bytes above 127);
-- ``.`` prints the top's low byte (``& 0xFF``), matching the Rust cross-check,
+- ``.`` prints the top's low byte (``& 0xFF``),
   rather than the wiki's "print as a unicode character" -- the byte model is
   baked into the arithmetic (``~`` complements, so ``.`` on ``-1`` prints the
   byte 0xFF).
