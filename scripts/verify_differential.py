@@ -66,7 +66,7 @@ import sys
 from collections.abc import Callable, Iterator, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Any
 
 ROOT = Path(__file__).parents[1]
 
@@ -75,21 +75,17 @@ ROOT = Path(__file__).parents[1]
 _WORKERS = 8
 
 
-_T = TypeVar("_T")
-_R = TypeVar("_R")
-
-
-def _run_parallel(fn: Callable[[_T], _R], tasks: Sequence[_T]) -> list[_R]:
+def _run_parallel[T, R](fn: Callable[[T], R], tasks: Sequence[T]) -> list[R]:
     """Run ``fn`` over ``tasks`` concurrently, returning results in order."""
     with ThreadPoolExecutor(max_workers=_WORKERS) as executor:
         return list(executor.map(fn, tasks))
 
 
-def _fuzz_boolean(
+def _fuzz_boolean[R](
     name: str,
     builder: Callable[[str], str],
-    native: Callable[[str, bytes], _R | None],
-    python: Callable[[str, bytes], _R | None],
+    native: Callable[[str, bytes], R | None],
+    python: Callable[[str, bytes], R | None],
     rng: random.Random,
     count: int,
 ) -> tuple[int, int]:
@@ -127,11 +123,11 @@ def _fuzz_boolean(
     return failures, checked
 
 
-def _fuzz_text(
+def _fuzz_text[R](
     name: str,
     generator: Callable[[str], str],
-    native: Callable[[str, bytes], _R | None],
-    python: Callable[[str, bytes], _R | None],
+    native: Callable[[str, bytes], R | None],
+    python: Callable[[str, bytes], R | None],
     rng: random.Random,
     count: int,
 ) -> tuple[int, int]:
