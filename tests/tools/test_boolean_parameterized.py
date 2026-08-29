@@ -79,23 +79,66 @@ def test_parameterized_generators_embed_each_input_once() -> None:
     assert checked >= len(_parameterized_generators()), checked
 
 
-# Slot order is not part of the parameterized contract: :func:`instantiate`
-# substitutes each ``{Xi}`` by name, replacing a unique token wherever it
-# sits, so a generator orders its slots however its construction wants.
-# Four do not run ascending, all correctly:
+# Slot order is not needed for correctness -- :func:`instantiate` substitutes
+# each ``{Xi}`` by name, replacing a unique token wherever it sits -- but it
+# is worth holding to, because an out-of-order load is a restructured load.
 #
-# * ``bfpda`` and ``bitdeque`` are LIFO -- bits are pushed in reverse so the
-#   first ``POP`` yields the most significant one -- so their loads run
-#   ``{Xn-1}``..``{X0}``, descending but fixed.
-# * ``back`` draws its load bottom-to-top up column 0, so its identity
-#   template already ran descending; its slot order now also carries the
-#   input order, so it varies by table.
-# * ``minifuck`` appends the inputs its table does not depend on after the
-#   ones it does, so its order varies by table too.
+# Only two generators leave name order, and in both the order is *data*:
+# ``back``'s slot order is its input order (which is what makes its reorder
+# cost nothing) and ``minifuck`` appends the inputs its table ignores after
+# the ones it uses.  A generator whose order carries information must also
+# emit a different *drawing* for a different order, or the permutation is a
+# relabelling and its saving is fictitious -- the pairing below.
+# Every generator emits its slots in name order, except the ones whose slot
+# order *is* data: Back's carries its input order and Minifuck appends the
+# inputs its table ignores after the ones it uses.  Those two are not
+# excused -- they must actually vary, which is a stronger claim than being
+# allowed to differ, and one a fixed order fails.
 #
-# What *is* a contract is the pairing below: a generator whose slot order
-# carries information must emit a different drawing for a different order,
-# or the permutation is a relabelling and its saving is fictitious.
+# There is no "reversed" category.  Bitdeque and BF-PDA used to push
+# back-to-front so the first pop was the most significant bit; that only
+# fixes which input the root tests, and testing the last input first costs
+# nothing, so both now load in name order (verified byte-identical totals).
+_VARYING_SLOT_ORDER = frozenset({"back", "minifuck"})
+
+_SLOT_ORDER_TABLES = ("0110", "01101001", "10101010", "11110000", "00111100")
+
+
+@pytest.mark.slow  # builds every generator over several tables
+def test_slots_run_in_name_order() -> None:
+    """Templates emit ``{X0}``..``{Xn-1}`` in order unless the order is data.
+
+    Ordering is not needed for correctness -- :func:`instantiate` replaces
+    each placeholder by name -- but a load that emits out of order is a load
+    that has been restructured, and that is worth a failure rather than a
+    shrug.  The two generators whose order carries information have to
+    *prove* it by varying across tables; a fixed unusual order fails here
+    just as an unlisted one does.
+    """
+    import re
+
+    checked = 0
+    orders: dict[str, set[tuple[int, ...]]] = {}
+    for name, gen in _parameterized_generators():
+        for table in _SLOT_ORDER_TABLES:
+            try:
+                template = gen(table)
+            except ValueError:
+                continue  # a generator need not cover every arity
+            checked += 1
+            slots = [int(s[2:-1]) for s in re.findall(r"\{X\d+\}", template)]
+            orders.setdefault(name, set()).add(tuple(slots))
+            if name not in _VARYING_SLOT_ORDER:
+                assert slots == sorted(slots), (name, table, slots)
+
+    for name in _VARYING_SLOT_ORDER:
+        seen = orders.get(name, set())
+        assert len(seen) > 1, (
+            name,
+            sorted(seen),
+            "listed as carrying its input order but emits one fixed order",
+        )
+    assert checked >= len(_parameterized_generators()), checked
 
 
 def _drawing(template: str) -> str:
@@ -679,16 +722,13 @@ class TestParameterizedBitdeque:
         return io.getvalue().strip()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools.boolean import parameterized
+        # Deliberately the shipped fill rather than a copy of its rule: an
+        # earlier duplicate here kept passing after the load order changed
+        # under it, so the suite disagreed with the harness it is meant to
+        # mirror.
+        from esolangs.tools.boolean.examples import _fill_bitdeque
 
-        n = len(bits)
-        # The register flips after every load block, so bit i is pushed at
-        # load position n-1-i with incoming register (n-1-i) % 2.
-        return parameterized.instantiate(
-            tpl,
-            bits,
-            lambda i, b: "PUSH INVERT" if b == (n - 1 - i) % 2 else "INVERT PUSH",
-        )
+        return _fill_bitdeque(tpl, bits)
 
     @pytest.mark.parametrize(
         ("table", "n"),
