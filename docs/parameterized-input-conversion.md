@@ -200,10 +200,71 @@ model is capped at the 8 zero-preserving tables. No relaxed output convention
 was needed: the wall's parity constraint sits at the print stage, and this
 construction reaches the print stage with an input-independent pool.
 
-**n=3 — blocked.** The prologue leaves only 4 of 8 rows distinct (the third
-bit is lost) and emits a stray `' '`. `GADGET2` was searched from the n=2
-frontier and does not generalize; n=3 would need its own frontier-launched
-gadget, and possibly a per-level one.
+**n=3 — not reached, and the obstruction is now located.** The prologue leaves
+only 4 of 8 rows distinct, collapsing them in pairs by their *last* bit
+(`000`/`001`, `010`/`011`, …) and emitting a stray `' '`.
+
+The chain of diagnosis is worth recording, because the first three readings
+were wrong:
+
+1. *"`GADGET2` doesn't generalize."* No — the collapse happens **before** read
+   3. Read 3 never fires at all.
+2. *Why it doesn't fire:* `GADGET2` parks the pointer at cell 2, so read 3's
+   pre-flip lands on cell 3 — **inside** the pool. The pool goes nonzero and
+   `.` prints `\x10` rather than reading. A read needs `ptr + 1 >= 8`.
+3. *"Crossing the pool structurally dirties it."* No — an exhaustive sweep of
+   the reduced `(pool, ptr)` space finds 3136 reachable states, **15** of them
+   with a zero pool and the pointer outside. A third read is reachable in
+   principle.
+4. *The actual obstruction:* every such path fails when replayed on the real
+   rows — the pool comes back nonzero and the **pointers diverge**
+   (`{9,10}`, `{10,11,12}`, …). Pools and pointers are identical across rows
+   *before* the walk, so the cause is not per-row pool state: leaving the pool
+   means crossing cells 8+, which hold the banked bits and therefore differ by
+   row, and `[`'s skip on a differing cell desynchronizes the pointer. This is
+   the divergence-desynchronization effect — bank divergence has to be clamped
+   before any cell-indexed bookkeeping.
+
+So n=3 needs a gadget that leaves the pool **without crossing the banked
+bits**, or that re-clamps the rows afterwards. A joint 4-row BFS for one ran
+2.48M states without a hit, but that was a **budget timeout, not exhaustion**,
+so nothing here is a wall — and given that four "walls" in this session turned
+out to be artifacts of how the search was framed, that distinction is the
+point.
+
+### Which generator to keep
+
+**Keep the parameterized one for now; the reading one is the better result
+but is not yet a replacement.**
+
+Reading is the stronger *kind* of result. A parameterized generator emits a
+template that the harness compiles once per input combination — the input
+never enters the running program. A reading generator emits one program that
+computes the function on any input. `parameterized.py` says that family is
+"useful exactly for the no-input languages", and Minifuck is not one: its own
+generator docstring claims the read "cannot be used without destroying the
+pool it is about to print", which is exactly what the gadgets above disprove.
+Minifuck was misclassified.
+
+What blocks the swap is coverage, not principle:
+
+| | parameterized (shipped) | reading |
+|---|---|---|
+| n=1 | 4/4 | 4/4 |
+| n=2 | 16/16 | 16/16 |
+| n=3 | 8 of 14 orbits | not reached |
+
+Deleting a generator that handles n=3 for one that does not would be a
+regression. Note also that the reading generator unlocks no *table* that was
+otherwise unavailable — the parameterized one already builds XNOR/NAND/NOR by
+embedding. Its contribution is the falsified wall and the capability class,
+not new coverage.
+
+If n=3 is solved, the swap becomes worthwhile, and it is more than a file
+edit: Minifuck would leave the parameterized family, changing its registry
+entry, `parameterized.py`'s `__all__` and re-export, and enrolling it in the
+input-reading contract tests (`test_every_table_reads_the_same_number_of_inputs`,
+which the current 2-reads-per-run behaviour already satisfies).
 
 ### How to rebuild it
 
