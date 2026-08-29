@@ -8,7 +8,7 @@ negates (reciprocate), ``'`` zeroes it (set to 1), ``l``/``e`` print it
 the start of the program when the magnitude is nonzero.  The magnitude is
 reset to zero whenever it exceeds 3003 (before each command).
 
-Semantics match the Rust cross-check (``extra/rust/pct.rs``):
+Semantics:
 - ``e`` prints the low byte, and ``l`` prints the signed magnitude;
 - ``n`` raises :class:`EOFError` when input runs out, where the cross-check
   exits with status 3;

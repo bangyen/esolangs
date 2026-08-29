@@ -48,17 +48,13 @@ jobs:
       with:
         python-version: "3.12"
 
-    # Both native sides are needed.  The Rust references cover LaserFuck,
-    # Forth, Basicfuck, Painfuck, unsquare, and 3x; the RISC-V ones cover
-    # NoComment, BF-PDA, RAM0, BIO, and Minsky-Swap.
+    # The RISC-V references cover NoComment, BF-PDA, RAM0, BIO, and
+    # Minsky-Swap.
     - name: Install the RISC-V toolchain and unicorn
       run: |
         sudo apt-get update
         sudo apt-get install -y gcc-riscv64-linux-gnu
         python3 -m pip install -q unicorn
-
-    - name: Build the Rust references
-      run: cargo build --manifest-path extra/rust/Cargo.toml
 
     # verify_differential.py treats a missing toolchain as a skip, not a
     # failure -- correct locally, but here it would let the job fuzz a
@@ -71,10 +67,6 @@ jobs:
           || { echo "::error::unicorn missing; RISC-V fuzzers would silently skip"; exit 1; }
         command -v riscv64-linux-gnu-gcc >/dev/null \
           || { echo "::error::riscv64 gcc missing; RISC-V fuzzers would silently skip"; exit 1; }
-        for b in laserfuck forth basicfuck painfuck unsquare three_x; do
-          test -x "extra/rust/target/debug/$b" \
-            || { echo "::error::extra/rust/target/debug/$b missing; its fuzzer would silently skip"; exit 1; }
-        done
         echo "all native references present"
 
     - name: Fuzz
@@ -86,7 +78,6 @@ jobs:
         echo "::notice::seed=$SEED count=$COUNT commit=${{ github.sha }}"
         echo "Reproduce this run with:"
         echo "  git checkout ${{ github.sha }}"
-        echo "  cargo build --manifest-path extra/rust/Cargo.toml"
         echo "  PYTHONPATH=src python3 scripts/verify_differential.py --fuzz $COUNT --seed $SEED"
         PYTHONPATH=src python3 scripts/verify_differential.py \
           --fuzz "$COUNT" --seed "$SEED"

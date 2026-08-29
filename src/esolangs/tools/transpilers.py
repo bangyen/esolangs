@@ -149,7 +149,7 @@ def bf_to_three_d_brainfuck(program: str) -> str:
 
 
 # Painfuck's two substitution cycles, in the order the interpreter (and the
-# Rust cross-check) scan them: a source character in a cycle is rewritten to
+# reference) scan them: a source character in a cycle is rewritten to
 # the character ``k`` steps further along it, where ``k`` counts the
 # characters translated so far.
 _PAINFUCK_CYCLES = ("pevkjzwr", "yuctsobqihald")

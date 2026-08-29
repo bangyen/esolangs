@@ -6,23 +6,19 @@ PYTHON := `command -v uv >/dev/null 2>&1 && echo "uv run python" || echo "python
 # Tool paths
 HOMEBREW_BIN := "/opt/homebrew/bin"
 LLVM_BIN := `command -v brew >/dev/null 2>&1 && echo "$(brew --prefix llvm)/bin" || echo ""`
-CARGO_BIN := "$HOME/.cargo/bin"
 
 # Help
 help:
     @echo "Available targets:"
     @echo "  lint-python  - Lint Python files with Ruff and MyPy"
-    @echo "  lint-rust    - Lint Rust files with rustfmt and clippy"
     @echo "  lint-lean    - Lint Lean files with lean linter"
     @echo "  lint         - Run all linting targets"
     @echo "  test         - Local check, scoped to this branch; slow/differential left to CI"
     @echo "  test-full    - Every check incl. the differential, whole tree"
-    @echo "  test-quick   - Fast dev loop: pre-commit + pytest (skip slow) + cargo (~6s pytest, ~12s total)"
+    @echo "  test-quick   - Fast dev loop: pre-commit + pytest (skip slow) (~6s pytest)"
     @echo "  test-py      - pytest only (~16s, 3325 tests, -n auto; skip slow with -m 'not slow')"
-    @echo "  test-rust    - cargo fmt + cargo test (~1s)"
     @echo "  test-differential - interpreter vs native differential corpora (~51s)"
     @echo "  test-unicorn - RISC-V assembly under unicorn (~10s)"
-    @echo "  test-generators - extra cross-check generators (~2.6s)"
     @echo "  test-line    - extra/line suites via uv (~3s)"
     @echo "  test-anchor  - ztoalc anchor table check (~3.2s)"
     @echo "  mutate LANG  - mutation-test one interpreter (e.g. just mutate Qoibl)"
@@ -44,7 +40,7 @@ install-dev:
         pip install -e ".[dev]"
     fi
     # Enable the pre-push gate (scripts/verify.py) so every push runs the
-    # full local check: lint, pytest, bandit, cargo, and the verify scripts.
+    # full local check: lint, pytest, bandit, and the verify scripts.
     git config core.hooksPath .githooks
 
 # lint python
@@ -59,24 +55,6 @@ lint-python:
 # code is unclean, and skips cleanly (exit 0) when the tool is missing, so a
 # local `just lint` degrades gracefully without silently swallowing failures.
 
-# lint rust
-lint-rust:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    export PATH="{{CARGO_BIN}}:$PATH"
-    if command -v rustfmt >/dev/null 2>&1; then
-        fail=0
-        while IFS= read -r f; do
-            rustfmt --check "$f" || fail=1
-        done < <(find extra/rust -name "*.rs")
-        exit $fail
-    fi
-    if command -v cargo >/dev/null 2>&1; then
-        (cd extra/rust && cargo clippy)
-    else
-        echo "skip: cargo not found"
-    fi
-
 # lint lean
 lint-lean:
     #!/usr/bin/env bash
@@ -88,10 +66,10 @@ lint-lean:
     fi
 
 # lint all code
-lint: lint-python lint-rust lint-lean
+lint: lint-python lint-lean
     @echo "All lint checks completed!"
 
-# test (local check: lint, pytest, bandit, cargo, verify scripts)
+# test (local check: lint, pytest, bandit, verify scripts)
 # Scoped to the files this branch touched; widens to everything when the diff
 # is unreadable or shared machinery moved.  Use `just test-full` to force the
 # whole tree.  Pass --quiet to suppress successful step output.
@@ -102,17 +80,14 @@ test *args:
 test-full *args:
     {{PYTHON}} scripts/verify.py --full {{args}}
 
-# fast dev loop: pre-commit + pytest (skip slow) + cargo (skips 32s differential + 10s unicorn) — quiet by default
+# fast dev loop: pre-commit + pytest (skip slow) (skips 32s differential + 10s unicorn) — quiet by default
 test-quick *args:
-    PYTEST_ADDOPTS="-m 'not slow'" {{PYTHON}} scripts/verify.py --quiet --only pre-commit,pytest,"cargo fmt","cargo build","cargo test" {{args}}
+    PYTEST_ADDOPTS="-m 'not slow'" {{PYTHON}} scripts/verify.py --quiet --only pre-commit,pytest {{args}}
 
 # granular targets — each maps to one STEPS entry in scripts/verify.py (see verify.py --list)
 # add --quiet to any of these for terse output (e.g. just test-py --quiet)
 test-py *args:
     {{PYTHON}} scripts/verify.py --only pytest {{args}}
-
-test-rust *args:
-    {{PYTHON}} scripts/verify.py --only "cargo fmt","cargo build","cargo test" {{args}}
 
 test-line *args:
     {{PYTHON}} scripts/verify.py --only "extra/line suites (uv)" {{args}}
@@ -123,14 +98,11 @@ test-anchor *args:
 test-unicorn *args:
     {{PYTHON}} scripts/verify.py --only "RISC-V assembly under unicorn (compilers + cross-checks)" {{args}}
 
-test-generators *args:
-    {{PYTHON}} scripts/verify.py --only "extra cross-check generators" {{args}}
-
 test-differential *args:
     {{PYTHON}} scripts/verify.py --only "interpreter vs native differential corpora" {{args}}
 
 test-lint *args:
-    {{PYTHON}} scripts/verify.py --only pre-commit,"docstring check","duplicate-code check (pylint)",bandit,"cargo fmt" {{args}}
+    {{PYTHON}} scripts/verify.py --only pre-commit,"docstring check","duplicate-code check (pylint)",bandit {{args}}
 
 test-bandit *args:
     {{PYTHON}} scripts/verify.py --only bandit {{args}}

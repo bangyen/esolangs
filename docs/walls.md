@@ -716,6 +716,31 @@ Seventy-Four, Kak, Brainpocalypse, Stun Step — see the assessed-and-rejected
 ledger in `docs/limitations.md`); only the redundant cross-checks went for
 the rest.  Live candidates for new cross-checks are in `docs/roadmap.md`.
 
+### The Rust cross-checks (all eight, removed)
+
+The whole `extra/rust` directory later went the same way, for the same
+independence reason applied to its provenance rather than its breadth.
+Six of the eight (Forþ, Basicfuck, Painfuck, 3x, bit~, %^2^-1) were
+written in one sitting alongside — and in several cases in the same
+commits as — the Python interpreters they checked, as ports of earlier
+C++/Ruby references; a cross-check that shares its author's reading of
+the spec catches transcription slips but not spec misreadings, which was
+the value being claimed for them.  The remaining two (`unsquare.rs`,
+`laserfuck.rs`, both 2022) predated the Python by four years and were
+genuinely independent, but keeping two binaries would have retained the
+entire toolchain cost — cargo, rustfmt, clippy, a dedicated CI job, and
+the Rust half of `verify_differential.py` — for a fraction of the
+coverage, so the removal was all-or-nothing and went with all.
+
+What this costs: differential coverage for those eight languages, which
+keep their Python interpreters, unit tests, and generator round-trips.
+Unlike the RISC-V ports, the Rust toolchain served nothing else in the
+repo — `extra/assembly` shares `_riscv_common.py`, `riscv_elf_runner.py`,
+and the qemu/unicorn CI setup with the thirteen RISC-V compilers under
+`src/esolangs/compilers/`, so its marginal cost is near zero and it
+stays.  `scripts/verify_extra_generators.py` was Rust-only end to end
+and went with it.
+
 ## State-cycle detection coverage (hang detection without a wall-clock timeout)
 
 `esolangs.vm.run_until_halt_or_cycle` proves a hang immediately for

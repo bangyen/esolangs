@@ -9,7 +9,7 @@ and loop (with an optional ``!`` negating the condition), ``write <- X``
 prints X as a byte, ``read -> X`` stores the next input byte, and ``X->n``
 indexes into an allocated array.  ``//`` comments are stripped.
 
-Semantics match the Rust cross-check (``extra/rust/basicfuck.rs``):
+Semantics:
 - malformed programs (a bad directive, identifier, token, syntax, or a tape
   too small for the allocations) raise :class:`ValueError`;
 - a ``halt`` underflow/overflow raises :class:`HaltError`, while ``wrap``
@@ -131,7 +131,7 @@ def _lexer(program: str) -> list[str]:
 def _parser(tokens: list[str], var: list[tuple[str, int]]) -> tuple[int, ...]:
     """Compile the tokens to the flat instruction tuple the machine runs.
 
-    Prefix notation mirrors the Rust cross-check: ``+=`` -1, ``-=`` -2, ``if``
+    Prefix notation: ``+=`` -1, ``-=`` -2, ``if``
     -3, ``while`` -4, ``write`` -5, ``read`` -6, ``!`` -7, ``{`` -8, ``}``
     -9; nonnegative numbers are variable tape offsets and constants below -9
     are encoded as ``-2n-9`` (odd) / ``2n-10`` (even) for positive/negative
