@@ -117,6 +117,26 @@ class TestOperandRange:
         code = memory([[5, 20, 6], [0, 0, 0], [-2, 19, 0], [0, 0, 999]], {5: 1})
         assert _run(code) == "\x00"
 
+    def test_growth_stops_at_the_cell_it_was_for(self) -> None:
+        # Growth reaches exactly the cell being written and no further, and
+        # the length that leaves is what decides the halt: memory is six
+        # cells, writing cell 6 makes it seven, and the jump to 7 is then
+        # one past the end.  Growing even one cell further would leave an
+        # instruction there for the pointer to land on, so the program
+        # would run on instead of stopping.  The cells' *values* cannot
+        # show this -- a surplus cell is zero, and reading past the end
+        # gives zero too -- so it is the halt that pins it.
+        assert _run("-2 5 0 9 6 7") == "\x07"
+
+    def test_input_growth_stops_at_the_cell_it_was_for(self) -> None:
+        # The input branch grows memory with its own copy of the code, so
+        # it needs the same boundary as the countdown above.  Memory is
+        # five cells; reading into cell 5 makes it exactly six, the output
+        # at pc 3 prints what was read, and the fall-through to pc 6 is
+        # then one past the end.  Growing further would leave cells for the
+        # pointer to keep walking through instead of halting.
+        assert _run("-1 5 0 -2 5", "Z") == "Z"
+
     def test_input_grows_memory_to_reach_its_cell(self) -> None:
         # b == len(memory) exactly: one past the last cell, so the growth
         # has to fire here rather than only beyond it.
