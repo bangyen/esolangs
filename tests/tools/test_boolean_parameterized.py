@@ -283,15 +283,18 @@ class TestParameterizedBack:
     def test_input_reordering_never_grows_a_template(self) -> None:
         """The identity order is built first and ties keep it.
 
-        Parity folds under no order, so it emits exactly the load it always
-        did: each input's unit pair separated by a single ``>``, with no
-        walk back and forth.
+        Parity folds under no order, so no reorder can pay for its walk and
+        the winner has to be the identity build itself -- byte for byte, not
+        merely the same length.  Comparing against ``_back_ordered`` at the
+        identity is what makes that a real check: a length test would pass
+        for any permutation that happened to cost the same.
         """
         from esolangs.tools.boolean import parameterized
 
-        template = parameterized.back("01101001")
-        assert "<<" not in template.split("\n")[0]  # no long homing walk added
-        assert len(template) == len(parameterized.back("01101001"))
+        assert parameterized.back("01101001") == parameterized._back_ordered(  # noqa: SLF001
+            "01101001",
+            (0, 1, 2),
+        )
 
     @pytest.mark.parametrize(
         "table",
