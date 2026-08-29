@@ -29,15 +29,36 @@ language whose only jump target is position 0:
   distinct consecutive value and every affine-plus-threshold tail is
   monotone in it, so ``{00, 11}`` and ``{01, 10}`` can never be split.
 
-Coverage: every table at ``n <= 2``, the sixteen two-input functions with
-XOR and XNOR included.  At ``n == 3`` the solver separates only a minority
-within its budget -- 2 of a 24-table sample -- and
-:func:`pct_squared_minus_one` raises :class:`ValueError` rather than
-returning a program for a table it could not separate, so a caller never
-receives one that computes the wrong function.
+**The solution is derived, not searched.**  Input 0 leaves one of two
+constants in the accumulator; input 1 applies an affine map to it.  So for a
+fixed value of input 1, the accumulator is affine in input 0, and the *slope*
+is read straight off that column of the truth table: ``+1`` where the column
+rises with input 0 and ``-1`` where it falls.  Choosing the two accumulator
+values the answers land on then *forces* both offsets --
+:func:`_offset_for` solves them, and a column whose two rows disagree about
+the offset simply is not realisable that way.  :func:`_tail_for` prints,
+using the over-3003 reset (which fires before every command) as the
+comparator that collapses the zero class.
+
+What remains enumerated is small and structural: the two constants input 0
+contributes, whether it spells them with an explicit ``'`` erase, and the
+pair of class values.  None of that is a search over *programs* -- the
+multipliers come from the table and the offsets are solved -- so the emitted
+program can be reasoned about rather than merely measured.
+
+An earlier version enumerated setter assignments instead, a product of size
+``len(options) ** (2 * n)`` guarded by a budget.  The derivation replaced it
+outright and needs no budget.
+
+Coverage: every table at ``n <= 2``, the sixteen two-input functions with XOR
+and XNOR included; a one-input table is derived as the two-input table that
+ignores its second input.  Higher arities are not supported -- the
+derivation reads one slope per column of a two-input table and does not
+generalise -- and :func:`pct_squared_minus_one` raises :class:`ValueError`
+for them rather than returning a program that computes the wrong function.
 
 Unlike the other parameterized generators, *which* command strings a setter
-uses is solved per table rather than fixed by the language, so a bare
+uses is derived per table rather than fixed by the language, so a bare
 ``{Xi}`` cannot be filled by a table-independent lambda.  The template
 therefore carries a header naming each setter's two branches, followed by
 the ``{Xi}`` placeholders themselves; :func:`fill` reads the header and
@@ -52,7 +73,6 @@ leaks its inputs through ``len()``.
 
 import re
 from functools import cache
-from itertools import product
 
 from esolangs.tools.boolean.helpers import _validate_truth_table
 
@@ -64,15 +84,18 @@ _LIMIT = 3003
 #: Affine multipliers a setter may realise: identity, negate, erase, double.
 _A_VALS = (1, -1, 0, 2)
 
-#: Additive offsets searched for each setter branch, smallest magnitude
-#: first so the solver reaches a short program before a long one.  Widening
-#: this past ``+/-8`` was measured: it bought no extra ``n == 3`` table and
-#: cost roughly 50x on the ``n == 2`` sweep, because the assignment count
-#: grows as ``len(_OPTIONS) ** (2 * n)``.
-_B_VALS = (0, -2, -3, 2, 3, -4, -5, -6, -7, -8)
+#: Offsets considered for a setter branch.  The derived solutions never need a
+#: magnitude past 8 (XOR's ``+/-8`` is the extreme), so this window is a
+#: statement about the construction rather than a search budget.
+_OFFSETS = range(-10, 11)
 
-#: Setter assignments the solver will try before giving up on a table.
-_BUDGET = 2_000_000
+#: Accumulator values the answers ``(0, 1)`` may land on before the tail runs.
+#: The tail has to move these onto ``0``/``1``, and :func:`_tail_for` does that
+#: with one translation when they sit a step apart and with the over-3003
+#: clamp otherwise, so nearby pairs are the ones worth offering.
+_CLASS_PAIRS = tuple(
+    (zero, one) for zero in range(-9, 10) for one in range(-9, 10) if zero != one
+)
 
 #: Separates the setter header from the program body in a template.
 _HEADER_END = "\n"
@@ -138,13 +161,12 @@ def _apply(acc: int, code: str) -> int:
     return acc
 
 
-def _row_bits(row: int, n: int) -> list[int]:
-    """Return ``row``'s input bits, most significant first."""
-    return [(row >> (n - 1 - i)) & 1 for i in range(n)]
-
-
-def _pad_pair(zero: str, one: str) -> tuple[str, str] | None:
+def _pad_pair(zero: str | None, one: str | None) -> tuple[str, str] | None:
     """Pad two setter branches to equal width, preserving each one's value.
+
+    Either branch may be ``None``, meaning the caller's arithmetic had no
+    spelling in ``s``/``i``; that propagates as ``None`` rather than needing a
+    guard at every call site.
 
     A program whose length depends on its inputs leaks them through
     ``len()``, so both branches of a setter must be the same width.  The pad
@@ -154,26 +176,14 @@ def _pad_pair(zero: str, one: str) -> tuple[str, str] | None:
     shortfall can be padded this way; an odd one returns ``None`` and the
     caller moves on to a different offset.
     """
+    if zero is None or one is None:
+        return None
     gap = len(one) - len(zero)
     if gap % 2:
         return None
     if gap > 0:
         return zero + "p" * gap, one
     return zero, one + "p" * (-gap)
-
-
-def _setter_options() -> list[str]:
-    """Return every setter branch the solver may use, shortest first."""
-    seen: dict[str, None] = {}
-    for a in _A_VALS:
-        for b in _B_VALS:
-            code = _affine_code(a, b)
-            if code is not None:
-                seen.setdefault(code, None)
-    return sorted(seen, key=len)
-
-
-_OPTIONS = _setter_options()
 
 
 @cache
@@ -184,7 +194,7 @@ def _tail_for(one_value: int, zero_value: int) -> str | None:
     first, so the tail has to land the one-class on exactly 1 and the
     zero-class on 0 -- or above 3003, which the reset folds onto 0.
 
-    Three shapes are tried, cheapest first.  A bare translation moves both
+    Two shapes are tried, cheapest first.  A bare translation moves both
     classes at once when they differ by one, optionally after a ``p`` so a
     reversed pair works too.  Failing that, the classes are separated by
     amplification: scaling by ``2**j`` drives one class past the limit while
@@ -218,76 +228,183 @@ def _tail_for(one_value: int, zero_value: int) -> str | None:
     return None
 
 
-def _solve(truth_table: str, n: int) -> tuple[list[tuple[str, str]], str] | None:
-    """Search for setters and a tail realising ``truth_table``.
+def _column_slopes(rows: dict[tuple[int, int], int]) -> list[list[int]]:
+    """Return the admissible slopes per column, read straight off the table.
 
-    Each input gets one affine map per bit value; composing them left to
-    right makes the accumulator a product-weighted function of the bits.  A
-    table is realisable when every row answering 1 reaches one accumulator
-    value and every row answering 0 reaches another.
+    Holding input 1 fixed, the accumulator is affine in input 0, so that
+    column of the table decides the multiplier input 1's setter must apply:
+    ``+1`` where the column rises with input 0 and ``-1`` where it falls.
+    This is the step that replaces a search -- the multipliers are read from
+    the table, not tried.
 
-    The search is capped: the assignment count grows as
-    ``len(_OPTIONS) ** (2 * n)``, so an uncapped sweep at ``n >= 3`` spends
-    minutes proving a negative.  Exhausting the budget returns ``None``, the
-    same as a genuine exhaustion -- the caller raises either way, so a table
-    is never given a program that computes the wrong function.
+    A column that does *not* depend on input 0 pins nothing, so every
+    multiplier stays admissible for it.  Spelling then decides: ``0`` needs a
+    leading ``'`` while ``1`` needs no character at all, and which is shorter
+    depends on the rest of the program, so the choice is priced rather than
+    guessed.  Listing the options here keeps that local to the derivation.
     """
-    rows = range(2**n)
-    budget = _BUDGET
-    for combo in product(product(_OPTIONS, repeat=2), repeat=n):
-        budget -= 1
-        if budget < 0:
-            return None
-        padded: list[tuple[str, str]] = []
-        for zero_code, one_code in combo:
-            pair = _pad_pair(zero_code, one_code)
-            if pair is None:
-                break
-            padded.append(pair)
+    slopes = []
+    for x1 in (0, 1):
+        low, high = rows[(0, x1)], rows[(1, x1)]
+        if low == high:
+            slopes.append(list(_A_VALS))
         else:
-            values = []
-            for row in rows:
-                acc = 0
-                for k, bit in enumerate(_row_bits(row, n)):
-                    acc = _apply(acc, padded[k][bit])
-                values.append(acc)
-            ones = {values[r] for r in rows if truth_table[r] == "1"}
-            zeros = {values[r] for r in rows if truth_table[r] == "0"}
-            if len(ones) > 1 or len(zeros) > 1 or (ones & zeros):
-                continue
-            # A constant table leaves one class empty; any value distinct
-            # from the live class serves as the absent one.
-            one_value = next(iter(ones)) if ones else next(iter(zeros)) + 1
-            zero_value = next(iter(zeros)) if zeros else next(iter(ones)) - 1
-            tail = _tail_for(one_value, zero_value)
-            if tail is not None:
-                return padded, tail
-    return None
+            slopes.append([1 if high > low else -1])
+    return slopes
+
+
+def _offset_for(
+    column: tuple[int, int],
+    slope: int,
+    values: tuple[int, int],
+    classes: tuple[int, int],
+) -> int | None:
+    """Solve the offset a column needs, or ``None`` if it is inconsistent.
+
+    For a fixed input 1, the accumulator is ``slope * v + offset`` where ``v``
+    is what input 0 left behind.  Each row of the column therefore *forces*
+    ``offset = target - slope * v``, and the column is realisable exactly when
+    both its rows force the same value.  Nothing is searched here.
+    """
+    solved = None
+    for x0 in (0, 1):
+        target = classes[column[x0]]
+        candidate = target - slope * values[x0]
+        if solved is None:
+            solved = candidate
+        elif solved != candidate:
+            return None
+    return solved
+
+
+def _solution(
+    rows: dict[tuple[int, int], int],
+    first: tuple[str, str],
+    values: tuple[int, int],
+    slopes: list[int],
+    classes: tuple[int, int],
+) -> tuple[list[tuple[str, str]], str] | None:
+    """Assemble a full program from one candidate parameter set, or reject it.
+
+    ``values`` is what input 0's two branches leave in the accumulator, and
+    ``classes`` is the pair of accumulator values the answers 0 and 1 must
+    land on.  Both offsets follow by :func:`_offset_for`; the candidate is
+    rejected when either column cannot be made consistent.
+    """
+    offsets = []
+    for x1 in (0, 1):
+        column = (rows[(0, x1)], rows[(1, x1)])
+        offset = _offset_for(column, slopes[x1], values, classes)
+        if offset is None:
+            return None
+        offsets.append(offset)
+    second = _pad_pair(
+        _affine_code(slopes[0], offsets[0]), _affine_code(slopes[1], offsets[1])
+    )
+    if second is None:
+        return None
+    tail = _tail_for(classes[1], classes[0])
+    if tail is None:
+        return None
+    return [first, second], tail
+
+
+def _derive(truth_table: str) -> tuple[list[tuple[str, str]], str] | None:
+    """Derive the shortest program for a two-input table.
+
+    Input 0's setter leaves one of two constants in the accumulator, spelled
+    either as a bare translation (the accumulator is already 0 at program
+    start) or with an explicit ``'`` erase, which costs a character but frees
+    the pair to be anything.  Both spellings are tried because neither
+    dominates: the erase wins on constant tables, the bare form on XOR.
+
+    The multipliers come from :func:`_column_slopes` -- read off the table,
+    not searched -- and the offsets are then solved by :func:`_offset_for`,
+    so what is enumerated here is only the constants input 0 contributes and
+    the pair of class values.  Every candidate is priced and the shortest
+    kept, so the result does not depend on enumeration order.
+    """
+    rows = {
+        (x0, x1): int(truth_table[(x0 << 1) | x1]) for x0 in (0, 1) for x1 in (0, 1)
+    }
+    options = _column_slopes(rows)
+    best: tuple[int, list[tuple[str, str]], str] | None = None
+    for erase in (False, True):
+        lead = 0 if erase else 1
+        for zero_value in _OFFSETS:
+            for one_value in _OFFSETS:
+                first = _pad_pair(
+                    _affine_code(lead, zero_value), _affine_code(lead, one_value)
+                )
+                if first is None:
+                    continue
+                for zero_slope in options[0]:
+                    for one_slope in options[1]:
+                        for classes in _CLASS_PAIRS:
+                            found = _solution(
+                                rows,
+                                first,
+                                (zero_value, one_value),
+                                [zero_slope, one_slope],
+                                classes,
+                            )
+                            if found is None:
+                                continue
+                            setters, tail = found
+                            width = sum(len(z) for z, _ in setters) + len(tail)
+                            if best is None or width < best[0]:
+                                best = (width, setters, tail)
+    if best is None:
+        return None
+    return best[1], best[2]
 
 
 def pct_squared_minus_one(truth_table: str) -> str:
     """Build a %^2^-1 template for the given truth table.
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
+    ``truth_table`` is a binary string of length ``2`` or ``4``, indexed by
+    the inputs (most significant first); the table length implies ``n``.
 
     %^2^-1 has no usable branch -- ``t`` only ever jumps to position 0 -- so
     this generator computes the answer arithmetically instead of routing a
-    decision tree.  Each ``{Xk:<zero>|<one>}`` placeholder holds the two
-    equal-width command strings that input may contribute; they compose as
-    affine maps whose product weighting is nonlinear in the bits, and the
-    shared tail moves the one-class to 1 and the zero-class to 0 before a
-    single ``l`` prints it in decimal.
+    decision tree.  Each input contributes one affine map, composed into a
+    product-weighted accumulator, and a single ``l`` prints it in decimal.
+    The maps are *derived* from the table rather than searched: each column's
+    slope is read off the table directly, leaving only the class values to
+    place, from which both offsets are solved.
 
-    Raises :class:`ValueError` when the solver cannot separate the table
-    within its search budget, rather than emitting a program that would
-    compute the wrong function.
+    A one-input table is derived as the two-input table that ignores its
+    second input, and the unused setter is then dropped, so ``n == 1`` shares
+    the derivation rather than needing a second path.
+
+    Raises :class:`ValueError` above two inputs: the derivation reads one
+    slope per column of a two-input table and does not generalise, and
+    emitting nothing is better than emitting a program that computes the
+    wrong function.
     """
     n = _validate_truth_table(truth_table)
-    solved = _solve(truth_table, n)
-    if solved is None:
-        raise ValueError(f"no %^2^-1 separation found for truth table {truth_table!r}")
-    setters, tail = solved
+    if n > 2:
+        raise ValueError(
+            f"%^2^-1 supports one- and two-input tables; got {n} inputs "
+            f"({truth_table!r})"
+        )
+    # Widen a one-input table by repeating each entry, so the second input is
+    # present in the derivation but cannot change the answer.
+    widened = truth_table if n == 2 else "".join(bit * 2 for bit in truth_table)
+    derived = _derive(widened)
+    if derived is None:  # pragma: no cover - every such table derives
+        raise ValueError(f"no %^2^-1 derivation for truth table {truth_table!r}")
+    setters, tail = derived
+    if n == 1:
+        # A widened table cannot depend on its second input, so that setter's
+        # two branches carry the same code; fold it into the tail and keep one
+        # placeholder.  The equality is checked rather than assumed, because
+        # silently dropping a branch that *did* differ would emit a program
+        # for the wrong function.
+        zero, one = setters[1]
+        if zero != one:  # pragma: no cover - a widened table cannot reach this
+            raise ValueError(f"one-input derivation split on input 1: {truth_table!r}")
+        setters, tail = setters[:1], zero + tail
     header = ";".join(f"{k}={zero}|{one}" for k, (zero, one) in enumerate(setters))
     body = "".join("{X" + str(k) + "}" for k in range(n)) + tail
     return header + _HEADER_END + body

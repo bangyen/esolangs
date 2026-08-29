@@ -786,10 +786,23 @@ linear scan rather than a genuine representation limit.  See
   tail is then monotone in the row index, so `{00, 11}` can never be split
   from `{01, 10}` — a 3M-vector BFS over that family reaches only the two
   constant tables.  A later `p` negating what earlier bits contributed is
-  what breaks the monotonicity and reaches XOR.  Coverage is total at
-  `n <= 2`; at `n == 3` the solver separates only a minority of tables
-  within its budget (2 of a 24-table sample), and it *raises* rather than
-  emitting a program for a table it could not separate.
+  what breaks the monotonicity and reaches XOR.
+
+  **The generator derives its programs; it does not search for them.**  For a
+  fixed value of input 1 the accumulator is affine in input 0, so the slope
+  input 1's setter must apply is read straight off that column of the table
+  (`+1` where it rises with input 0, `-1` where it falls).  Choosing the two
+  accumulator values the answers land on then *forces* both offsets, so a
+  column whose rows disagree about the offset is simply not realisable that
+  way.  What is left to enumerate is structural and tiny — the two constants
+  input 0 contributes, and the class-value pair.  An earlier version swept
+  setter assignments (`len(options) ** (2n)`, budget-capped); the derivation
+  replaced it outright, matching or beating it on every table and needing no
+  budget.  Coverage is total at `n <= 2`, a one-input table being derived as
+  the two-input table that ignores its second input.  Higher arities are
+  rejected: the derivation reads one slope per column of a two-input table
+  and does not generalise, so the generator *raises* rather than emitting a
+  program that computes the wrong function.
 
   **All four one-input functions are expressible**, which an earlier
   length-8 search missed: identity is `ne`, the constants go through `'`,
