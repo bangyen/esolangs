@@ -59,6 +59,39 @@ class TestSixFive:
         """3 moves the pointer left."""
         assert run_and_capture("313A0") == "\x00"
 
+    def test_the_two_moves_are_different_sizes(self) -> None:
+        """``1`` goes right by two, ``3`` left by one, and the tape follows.
+
+        Both moves were only ever made in combinations that return to the
+        cell they started from -- ``313`` is right two, left one, left one
+        -- so neither step size was pinned, and neither was how far the
+        tape grows to meet the pointer.  Writing a distinct value either
+        side of one move says where it landed.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.six_five import _Machine
+
+        # 1 lands on cell 2, growing the tape to three; 3 steps back to 1
+        machine = _Machine("166666666A366666666A0", ScriptedIO())
+        while not machine.halted:
+            machine.step()
+        assert machine.io.getvalue() == "00"
+        assert (machine.cell, machine.tape) == (1, [0, 48, 48])
+
+        # two moves right compound rather than landing on a fixed cell
+        twice = _Machine("11", ScriptedIO())
+        while not twice.halted:
+            twice.step()
+        assert (twice.cell, len(twice.tape)) == (4, 5)
+
+    def test_zero_halts_before_the_rest_of_the_program(self) -> None:
+        """``0`` halts, so nothing after it runs.
+
+        Every program ends with ``0``, where halting and simply running out
+        of tokens look the same.  Putting it first says which one happened.
+        """
+        assert run_and_capture("066666666A0") == ""
+
     def test_multiple_outputs(self) -> None:
         assert run_and_capture("5A5A0") == "\x05\n"
 
@@ -86,6 +119,54 @@ class TestSixFive:
 
         with pytest.raises(HaltError):
             run_and_capture("2A")
+
+
+class TestComments:
+    """``C`` starts a comment, unless it is the operand of a ``7`` or ``8``.
+
+    No test used a ``C`` at all, so the whole comment path in the tokenizer
+    ran only on programs that had none: the pattern could have matched a
+    different letter, or nothing, and every program still agreed.
+    """
+
+    def test_a_comment_hides_the_rest_of_its_line(self) -> None:
+        # without the strip, the commented-out program would run and print
+        assert run_and_capture("6C66666666A0") == ""
+        assert run_and_capture("66666666A0C66666666A0") == "0"
+
+    def test_a_comment_ends_at_the_newline(self) -> None:
+        assert run_and_capture("6C hidden\n66666666A0") == "6"
+
+    def test_c_after_a_skip_is_its_operand(self) -> None:
+        """A ``C`` following ``7``/``8`` is the value 12, not a comment.
+
+        ``66`` leaves the cell at 12, so ``7C`` skips the instruction after
+        it -- which is what distinguishes the operand reading from the
+        comment one, since a comment would swallow the rest instead.
+        """
+        assert run_and_capture("667C66666666A0") == "6"
+
+    def test_the_tokenizer_pairs_an_operand_with_its_skip(self) -> None:
+        """Directly, because the pairing is invisible in the output.
+
+        A ``7``/``8`` takes the single character after it, and a trailing
+        one with nothing after it stands alone.  Reading two characters
+        instead, or refusing to pair at the end of the program, changes the
+        token list without changing what any program prints.
+        """
+        from esolangs.interpreters.tape_based.six_five import _tokens
+
+        assert _tokens("7C") == ["7C"]
+        assert _tokens("78") == ["78"]
+        assert _tokens("7") == ["7"]
+        assert _tokens("8") == ["8"]
+        assert _tokens("7C1") == ["7C", "1"]
+        assert _tokens("6C hidden") == ["6"]
+        # Only 7 and 8 take an operand.  Any other character stands alone,
+        # however the pair is spelled -- a wider set would swallow the
+        # command after it.
+        assert _tokens("X6") == ["X", "6"]
+        assert run_and_capture("X66666666A0") == "0"
 
 
 class TestStepMachine:
