@@ -10,6 +10,13 @@ an invalid runtime operation and halts the program with
 :class:`~esolangs.exceptions.HaltError`; an empty program is malformed and
 rejected with :class:`ValueError`.
 
+``#`` reads its steer from an adjacent digit and the wiki covers every case
+("Rotates Mole to left when value beside it is 0, and right when 1.  When
+it's neither of those, keep straight.").  ``%`` is specified only for 0 and
+1 ("Overrides current value with space when 0, and newline when 1"); the
+other eight digits leave the mole unchanged here rather than being assigned
+a meaning the wiki does not give them.
+
 Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
@@ -92,10 +99,17 @@ class _Machine:
         char = self.code[self.row][self.col]
         if self.num:
             if char == "%":
+                # "Overrides current value with space when 0, and newline
+                # when 1."  The wiki stops there, unlike ``#`` below, which
+                # spells out its third case -- so the other eight digits are
+                # a gap in the spec, and the choice here is to leave the mole
+                # alone rather than invent a meaning for them.
                 if (n := self._value()) == 1:
                     self.mole = 10
                 elif n == 0:
                     self.mole = 32
+                else:
+                    pass  # 2..9: unspecified, so inert
             elif char in "=~":
                 temp = self.io.input_str()
 
@@ -137,10 +151,16 @@ class _Machine:
         elif char in "^>'<":
             self.move = "^>'<".find(char)
         elif char == "#":
+            # The adjacent digit steers, and the wiki spells out all three
+            # cases: "Rotates Mole to left when value beside it is 0, and
+            # right when 1.  When it's neither of those, keep straight."  So
+            # the third arm is specified behaviour, not a fall-through.
             if (n := self._value()) == 1:
                 self.move += 1
             elif n == 0:
                 self.move -= 1
+            else:
+                pass  # 2..9: hold the current heading
             self.move %= 4
         elif char == "$":
             if self.func():
