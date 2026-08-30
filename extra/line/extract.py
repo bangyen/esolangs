@@ -30,7 +30,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import jpeg
 import lattice
 import mask as mask_module
 import png
@@ -72,12 +71,12 @@ from mask import Mask
 #   since a drawing that has been through an image editor comes back in
 #   whatever that editor preferred and is still the same drawing.
 #
-#   JPEG (``jpeg.py``) is the one place this pattern does not hold, and the
-#   module says so itself: the format *is* Huffman coding over quantized DCT
-#   coefficients, so reading it means implementing that rather than noticing
-#   a shortcut.  It is here because dropping Pillow otherwise left the
-#   pipeline reading strictly less than it had before, which was the only
-#   real regression the whole exercise introduced.
+#   The narrowing that stands: only PNG.  A baseline JPEG decoder was written
+#   -- it worked, and is recorded in WIP.md -- and then deliberately dropped,
+#   because 300 lines for *partial* JPEG support was the least defensible of
+#   the three available positions (all of it, none of it, or an awkward
+#   middle).  ``render(scale=)`` solves the underlying problem in 20 lines by
+#   making drawings survive lossy pipelines whoever decodes them.
 #
 #   numpy looked like the one with a real cost, since the masks reach 9Mpx and
 #   pure-Python per-pixel loops over that would be minutes.  The answer was to
@@ -90,16 +89,25 @@ from mask import Mask
 
 
 def load_binary(path: str) -> Mask:
-    """Load a PNG or baseline JPEG as an ink mask (True = black/foreground).
+    """Load a PNG as a boolean ink mask (True = black/foreground).
 
-    Prefer PNG.  JPEG is read because a drawing that has been through a lossy
-    pipeline should still load, but the format is actively hostile to Line's
-    1px strokes -- see :mod:`jpeg` and ``render.render``'s ``scale``.
+    PNG only, deliberately -- see the dependency notes above.  A file in any
+    other format is refused with a message naming what to do about it rather
+    than a bare signature complaint, since "convert it to PNG" is the whole
+    of the fix and a lossy format was never a good home for 1px strokes
+    anyway.
     """
     with open(path, "rb") as handle:
         data = handle.read()
-    reader = jpeg.read_grey if jpeg.looks_like_jpeg(data) else png.read_grey
-    return mask_module.from_grey(reader(data))
+    if data[:3] == b"\xff\xd8\xff":
+        raise ValueError(
+            f"{path} is a JPEG; Line drawings must be PNG. JPEG is lossy and "
+            "its block quantization erases pixels out of 1px strokes -- "
+            "convert with e.g. `sips -s format png in.jpg --out out.png`, "
+            "and see render()'s `scale` for drawings that must survive a "
+            "lossy pipeline."
+        )
+    return mask_module.from_grey(png.read_grey(data))
 
 
 def crop_to_content(mask: Mask, margin: int = 2) -> Mask:

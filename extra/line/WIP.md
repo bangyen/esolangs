@@ -24,10 +24,7 @@ exercises `render.py`'s loop-drawing geometry (`_layout`/
 distinction matters. `test_png.py` covers `png.py`, the stdlib PNG codec
 that replaced Pillow: the checked-in fixtures against the values Pillow
 decoded them to, round-trips, every row filter, bit depths through 16,
-interlacing, the colour types, and the rejections; `test_jpeg.py` covers
-`jpeg.py` through a hand-assembled baseline file (a DC-only block, whose
-flat output the IDCT's definition fixes without needing a reference
-decoder) plus every refusal; `test_mask.py` covers
+interlacing, the colour types, and the rejections; `test_mask.py` covers
 `mask.py`'s row-bitmask image type, concentrating on the two things that
 representation makes easy to get wrong -- unbounded Python ints leaking
 bits past the canvas width, and the edge cases in the bit-twiddling
@@ -795,52 +792,53 @@ round-trip check for `extract()` alone.
   **What an end user can observe**, since "no dependencies" is not the same
   as "no change":
 
-  - **PNG and baseline JPEG are readable; BMP, GIF and TIFF are not.** Those
-    three went with Pillow and were never exercised. JPEG was, so it came
-    back as `jpeg.py` -- see below.
+  - **Only PNG is readable.** JPEG, BMP, GIF and TIFF went with Pillow.
+    JPEG is the only one that was ever exercised, and it was exercised as a
+    hazard rather than a feature -- see the recompression entry above.
   - Every *PNG* is readable: all five colour types, all bit depths
     1-16, interlaced or not, verified against a Pillow oracle across 120
     combinations of colour type x depth x interlacing x image size. The one
     deliberate departure is 16-bit greyscale, where Pillow's `I;16 -> L`
     *clips* at 255 (blanking any drawing whose ink exceeds 255) and `png.py`
     scales instead.
-  - **JPEG is readable again**, via `jpeg.py`: baseline sequential DCT,
-    greyscale and YCbCr, any subsampling. This is the one component in the
-    subtree that genuinely reimplements a library's algorithm rather than
-    discovering the call never needed one -- JPEG *is* Huffman coding over
-    quantized DCT coefficients, and there is no shortcut past that. It came
-    to about 300 lines, against a first estimate of 400+ that shrank every
-    time it was examined (the Huffman decoder is ~30 lines, the inverse DCT
-    17). Verified against a Pillow oracle across qualities 10-95, all three
-    subsampling modes, odd sizes with partial MCUs, and both colour models;
-    greyscale agrees to within one level everywhere.
+  - **JPEG is not readable**, and that is now a decision rather than an
+    accident. A baseline decoder was written (~300 lines: marker parsing,
+    canonical Huffman, dequantization, inverse DCT, YCbCr reduction,
+    restart markers) and verified against a Pillow oracle across qualities
+    10-95, all three subsampling modes, odd sizes with partial MCUs, and
+    both colour models -- greyscale agreed within one level everywhere, and
+    the wiki addition drawing computed 12+30=42 from a JPEG. It was then
+    **removed deliberately**, because it supported only *baseline* JPEG:
+    progressive files, which are common on the web, would have needed
+    another ~100-130 lines and a restructuring (coefficients accumulate
+    across scans by frequency band and bit plane, so a single IDCT runs at
+    the end rather than per block as they decode). 300 lines for partial
+    support was the least defensible of the three positions available --
+    all of it, none of it, or an awkward middle whose contract is hard to
+    state. `render(scale=)` addresses the underlying need in 20 lines by
+    making drawings survive a lossy round trip regardless of who decodes
+    them. A JPEG now raises a message naming the format and the fix.
 
-    Restart markers work, and the bug that nearly saw them refused is worth
-    recording because of how it hid. A literal 0xFF in the entropy data is
-    written stuffed as `FF 00`; when one lands immediately before a restart
-    marker, aligning to the byte boundary has to step over *both* bytes.
-    Stepping over one lands on the stuffing zero and reads everything after
-    it a byte early. That happened at exactly **one of 360 boundaries** in
-    the test image -- enough to corrupt the second half of the drawing,
-    rare enough that three separate probes looked straight past it. The
-    diagnosis that finally worked was checking whether the decoder consumed
-    *exactly* the scan data (it did: +0 bytes over-read, confirming the
-    entropy loop was fine and narrowing the fault to the skipping path).
-    The fix is two lines.
+    Two findings from that work are worth keeping, since both cost real
+    time to reach:
 
-    **Progressive JPEG is refused**, loudly. It is not a patch on this
-    decoder but a restructuring: a progressive file splits coefficients
-    across several scans by frequency band (spectral selection) and bit
-    plane (successive approximation), so coefficients must accumulate in a
-    buffer across every scan before a single IDCT runs at the end, where
-    this transforms each block as it decodes. Roughly 100-130 lines, and
-    unnecessary for anything this repo produces.
+    - **Measure what the decoder consumes, do not re-read its code.**
+      Restart markers appeared deeply broken (correct for ~180 MCUs, then
+      noise). Three probes inspecting the marker logic found nothing,
+      because the marker logic was right. Checking whether the decoder
+      consumed *exactly* the scan data settled it in one step: it did (+0
+      bytes over-read), which cleared the entropy loop entirely and left
+      only the skipping path, where the failing boundary was immediately
+      visible as `ff00ff`. The bug was two lines -- a stuffed `FF 00`
+      before a restart marker must be stepped over as a pair -- and it
+      fired at exactly 1 of 360 boundaries.
+    - **An oracle can be wrong before the code is.** Colour JPEG looked
+      broken at a 36-level difference. The cause was the reference:
+      Pillow's `convert("L")` on a colour JPEG is *not* the Y plane, it
+      converts YCbCr to RGB (with clipping) and then applies luma weights.
+      Matching that path dropped the difference to 1. A correct decoder was
+      nearly "fixed" against a bad reference.
 
-    One bounded divergence: chroma planes are box-upsampled where Pillow
-    interpolates, so a *saturated colour* photograph can differ by up to ~17
-    levels along colour edges. On black-and-white drawings -- the only thing
-    this reads -- the two agree within one level and produce byte-identical
-    ink masks at every quality and subsampling mode tested.
   - **Extracted coordinates shifted** toward the origin -- the exact
     bounding box replacing the quadtree's 64px-padded one. Tree shape,
     opcodes and relative geometry are identical; only absolute positions
