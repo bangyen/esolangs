@@ -108,7 +108,7 @@ per-character encoding can be meaningfully shortened:
 | NoComment | `n <= 8` | Genuine wall: the `s` skip is byte-indexed, capping every jump at 255. |
 | Polynomial | instruction-count cap, not `n`-driven: a table needing more than 138 instructions under *both* constructions is rejected, so well-merging tables render at any width (parity through `n == 8` at 106 instructions) while random dense tables refuse from `n == 6` | Performance cap: the interpreter recovers instructions by factoring the polynomial, and that is what becomes impractical — so the bound is on instructions, not inputs. This row used to claim `n <= 4`, which measured the wrong thing: the old `n`-gate refused parity from `n == 5` even though it costs only 13 instructions per input. Adding the residual-merge state machine alongside the decision tree (the shorter of the two wins) made the real bound visible. |
 | %^2^-1 | all tables at `n <= 2`; conjunctions and disjunctions of literals at any `n` (48/256 at `n == 3`, 154/65536 at `n == 4`) | Partly lifted, and the rest is **open, not walled**.  The derived path composes one affine map per input into a shared value, which forces each cofactor of the table to be constant or an affine image of one shared function -- only 88 of the 256 three-input tables satisfy that, which is why it capped at two.  The subcube cascade escapes that constraint by making the *erase position* input-dependent, a branch realised arithmetically in a language whose only jump target is 0.  What is not yet reached is tables needing an OR of several disjoint subcubes: chaining indicator gadgets needs a running total to survive a gadget that erases, and there is one register -- but that is an argument about one gadget shape, not a proof about the model.  Bounded searches over repeated setters reached about 100/256 at `n == 3` and were still climbing when stopped (window `|acc| <= 5..8`, offsets `+/-3`, depth `<= 3`), so the true reachable set is larger than what ships.  The printing tail is likewise only bounded, not settled: reset-free tails are affine hence injective and so separate exactly two values, and a sweep of every tail to length 10 over inputs `[-30, 30]` never separated more than two -- but the over-3003 reset merges values into one class, and a longer tail that drives one class past the reset while landing another on 1 is not excluded.  Reaching the reset needs about seven doublings before any adjustment, so such a tail would live past length 10 if it exists.  %^2^-1's own NOT is 36 commands and a length-8 sweep missed it, which is the precedent for not reading this sweep as a wall. |
-| 6-5 | `n <= 5` exact; past that, tables whose folded tree needs more than 35 branch labels are rejected (AND-6 and other well-folding tables *do* render) | Genuine wall: 6-5 has 35 branch labels (`0..9`, `A..Z`), and the decision tree spends one per internal node its constant-subtree fold leaves standing. The fold's worst case is an alternating table, which folds nothing and spends `2**n - 1` — 31 at `n == 5`, so every table renders there; 63 at `n == 6`, so refusals begin. What survives past `n == 5` is tables that fold hard: ~1% of random `n == 6` tables, but structured ones like AND-`n` at any width (they need only `n` labels). The former arithmetic fallback was retired — it needed the table as a single buildable integer, which confines the ones to low indices, which leaves the rest constant, which folds well inside the budget, so it never covered a table the tree could not. |
+| 6-5 | `n <= 5` exact; past that, tables whose folded tree needs more than 35 branch labels are rejected (AND-6 and other well-folding tables *do* render) | Genuine wall, and the 35 is the **language's** number, not the generator's encoder: the [wiki spec](https://esolangs.org/wiki/6-5) defines operand notation as "Numbers beyond 9 denoted using letters. (A=10, B=11 etc.)", and letters are `A..Z` — so `0..9A..Z` names 1..35 and an `8n` jump cannot address a marker past the 35th. Labels also cannot be reused: `8n` resolves its target by scanning the token list *from the start* for the n-th `4`, so a label is a global ordinal fixed by position, never a scoped name a finished subtree could free — which makes the budget a total-standing-nodes count rather than a tree-depth one. The decision tree spends one label per internal node its constant-subtree fold leaves standing; the fold's worst case is an alternating table, which folds nothing and spends `2**n - 1` — 31 at `n == 5`, so every table renders there; 63 at `n == 6`, so refusals begin. What survives past `n == 5` is tables that fold hard: ~1% of random `n == 6` tables, but structured ones like AND-`n` at any width (they need only `n` labels). The former arithmetic fallback was retired — it needed the table as a single buildable integer, which confines the ones to low indices, which leaves the rest constant, which folds well inside the budget, so it never covered a table the tree could not. A lift built on operands past `Z` (`[` = 36, `{` = 68) was tried and **reverted**: those decode only through an unguarded `ord(c.upper()) - 55` fallthrough in this repo's interpreter, which is undefined behaviour rather than a language property — see `docs/walls.md` and the conformance gap below. |
 | ZTOALC L | every table, bounded only by size: the anchor table reaches 1132 commands and the emitted program must stay under the `2**22` line gate | Not a capability wall. The generator constructs a branch-free array lookup -- the row index is built by double-and-add (`s += s`; `s += x{i}`, no multiply needed), the table is one-hot encoded into a `2**n` array, and `t[s]` selects the answer -- placed on a Collatz trajectory, which is collision-free because a trajectory visits distinct values until it reaches 1. The former "dense non-symmetric `n >= 4`" wall fell with the tree it was a property of; see `docs/walls.md`. Sparse tables reach further than dense ones, since the array init is one command per selected row. |
 | Minifuck | `n == 2` complete (all 16 tables, interpreter-verified); `n == 3` partial -- eight of the fourteen orbits, the other six raising after about two minutes | Liftable, and the weakest generator here: it is a *search* over three routes and two embed separators, so the reach is set by its depth caps rather than by an argument, and the n == 3 failures are cap exhaustion rather than unreachability. Structured tables (constants, AND, OR, parity, majority) do build, so hand-picked samples overstate coverage badly. The route a fix would take is a *construction* in wii2d's shape -- see `docs/walls.md` for which piece of it does not yet compose. |
 | WII2D | `n <= 4` exact (exhaustive through three, sampled dense at four); symmetric tables of any arity via closed forms; dense non-symmetric sampled built at `n == 5` and `n == 6`, rejected from `n == 7` | Genuine wall: the single-embedding chain's branch op strings are bounded, so the counting bound rules out representing every table once `n` is large; the search raises for dense non-symmetric tables past `n == 6`. The boundary is measured, not argued — three random dense non-symmetric tables build at each of `n == 5` and `n == 6` and all three refuse at `n == 7`, matching the raise's own message. An earlier "past `n == 5`" here understated the reach. |
@@ -133,6 +133,69 @@ complement too), but neither actually needed it — `nocomment` computes the
 complement from the bit at runtime, and `bfpda`'s second push is a
 bit-independent constant, not a complement.  The per-language reasoning
 is in [`docs/walls.md`](walls.md).
+
+## Interpreter conformance gaps
+
+Known places where an interpreter here is more permissive than its language's
+spec.  These are **not** capability findings: a generator must not build on
+them, because behaviour outside the spec is undefined rather than available.
+
+### 6-5: `num` accepts operands the spec does not define
+
+The [wiki spec](https://esolangs.org/wiki/6-5) defines operand notation as
+"Numbers beyond 9 denoted using letters. (A=10, B=11 etc.)", so a `7n`/`8n`
+operand is `0..9` or `A..Z` and its value is `0..35`.  The interpreter
+instead decodes with an unguarded arithmetic fallthrough and validates
+nothing:
+
+```python
+def num(char: str) -> int:
+    if char.isdigit():
+        return int(char)
+    return ord(char.upper()) - 55
+```
+
+Three ways that exceeds the spec:
+
+- **Values past 35 become addressable.** `[` decodes as 36, `{` as 68, DEL
+  as 72, and the range continues indefinitely.  Nothing in the language
+  defines a 36th marker as a jump target.
+- **The decode is not injective.** `.upper()` folds case, so
+  `num("a") == num("A") == 10`; punctuation aliases onto digit values too,
+  with `num(":") == 3`.  Two distinct program texts become the same program.
+- **It is unbounded below.** `num("\n") == -45` and `num(" ") == -23`, and
+  no check rejects them.
+
+The interpreter's own docstring meanwhile states a *narrower* contract than
+the spec — "Decode a 6-5 operand digit: 0-9 literal, A-F hexadecimal" — so
+the documented contract, the spec, and the behaviour are three different
+things.
+
+**Audit of what we actually ship.** Both examples
+(`examples/hello-world/6-5.txt`, `examples/boolean/6-5.txt`) conform, with a
+maximum operand of 8; all 276 boolean programs the generator emits at
+`n <= 3` conform, also topping out at 8; and `bf_to_six_five` conforms
+through 17 loops.  The **one** shipped path that depends on the
+non-conforming region is the BF-to-6-5 transpiler at exactly 18 loops: it
+allows "18 loops (36 markers total)", but only 35 markers are addressable,
+so the 18th loop's end label is emitted as `8[` (operand 36) and the jump
+executes whenever that loop is entered.  Its cap is therefore off by one
+against the spec — the conforming maximum is **17 loops**.  (This corrects an
+earlier note in this repo's history claiming that cap was *liftable* by
+reading operands past `Z`; it is the reverse — the cap is already one too
+generous.)
+
+**Why no fix is applied here.** A conforming `num` would reject anything
+outside `0..9A..Z`, which is a contained guard, but it cannot land alone:
+it would immediately break the 18-loop transpile above.  The two changes are
+one unit, and a fix would touch the loop-count constant and the "18 loops
+(36 markers total)" docstring in `src/esolangs/tools/transpilers.py`, the
+guard in `num` plus its docstring in
+`src/esolangs/interpreters/tape_based/six_five.py`, and
+`test_six_five_loop_cap` in `tests/tools/test_transpilers.py` (whose
+rejection threshold moves from 19 loops to 18).  Deciding whether 6-5
+programs using undefined operands should hard-error is a behaviour change
+for callers, not a bug fix, so it is recorded here rather than made.
 
 ## Divergent example outputs
 
