@@ -55,6 +55,8 @@ uniform depth ``n``: constant tables are not folded, because the reads are
 the interface and every table has to consume all ``n`` inputs.
 """
 
+import itertools
+
 from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
 
 __all__ = ["slow_acv_mammalian_boolean"]
@@ -85,34 +87,16 @@ _MAX_RELAXATIONS = 8
 # gap fell by at least 248 tokens every time with no exceptions.
 _WINDOW = 2
 
-# The slowest the gap is allowed to close, *per chunk*, with the slack a
-# node is allowed on top for the prologue spike and for the distance
-# between a gap closing and some candidate actually fitting.  Together they
-# turn the descent into a bound: a node opening with a gap of ``g`` places
-# within ``g / _CHUNK_DROP + _CHUNK_SLACK`` chunks, and a loop still running
-# past that descended slower than the invariant permits even though no
-# individual window violated it.
-#
-# Both carry margin deliberately.  Against every node of every table
-# through ``n == 3`` (172452 of them) the worst ratio was an opening gap of
-# 419 placed in 7 chunks, which the measured per-window rate alone (248
-# over two chunks, so 124 each) would have allowed exactly 7 -- a fit with
-# no room, and this bound has to hold for tables nobody has measured.  The
-# rate is loosened and the slack doubled, which leaves the worst observed
-# case five chunks of headroom.
-_CHUNK_DROP = 100
-_CHUNK_SLACK = 8
-
-# The largest budget a caller can legitimately present, in chunks.  This is
-# *input validation*, not part of the termination argument: ``base`` is a
+# An upper bound on what one leaf's worth of the tree can cost, used only
+# to reject a ``base`` no emission could have produced.  This is *input
+# validation*, not part of the termination argument above: ``base`` is a
 # partial sum of the lengths already emitted, so it cannot exceed the
-# finished program, and a base past that describes a tree no emission could
-# have produced.  The worst opening gap over every real node through
-# ``n == 3`` was 3267, a budget of 40; gaps track subtree size, which
-# roughly doubles per input, so this leaves room for far more arity than
-# the generator can build while still rejecting a nonsense base at once
-# instead of after tens of thousands of chunks.
-_BUDGET_CEILING = 10_000
+# finished program, and a depth-``n`` tree has ``2**n`` leaves.  Measured
+# per-leaf cost is 377 at ``n == 1``, 492 at ``n == 2`` and 565 at
+# ``n == 3``, and a sampled ``n == 4`` came to 601, so this leaves room for
+# the slow growth while still rejecting a nonsense base at once rather than
+# after tens of thousands of chunks that cannot help.
+_TOKENS_PER_LEAF = 1024
 
 # How far the reach has to clear the 0-arm before a refusal to place is
 # treated as a contradiction rather than a node that needs another chunk.
@@ -309,24 +293,18 @@ def _subtree(
     # spikes once at the start; the descent below is checked over what
     # follows that prologue rather than over the spike.
     window: list[int] = []
-    opening = _placement_gap(
-        table, n, depth, row, prefix, _candidates(cursor, value), base
-    )
-    # The gap the node opens with, and the rate the window check enforces,
-    # together say how long placing it can legitimately take.  Running past
-    # that means the gap descended slower than every window individually
-    # claimed -- a contradiction the per-window check cannot see, since it
-    # only ever compares neighbours.  It is also what rejects a ``base``
-    # beyond anything an emission could have produced: those present a gap
-    # so large that no run of chunks could close it, which is worth saying
-    # at once rather than after tens of thousands of them.
-    budget = max(0, opening) // _CHUNK_DROP + _CHUNK_SLACK
-    if budget > _BUDGET_CEILING:
+    # ``base`` is a partial sum of what has already been emitted, so it
+    # cannot outrun the finished program.  One past that describes a tree no
+    # emission could have produced, and its gap is too large for any run of
+    # chunks to close -- worth saying at once rather than after tens of
+    # thousands of them.  This is the only bound the loop needs beyond the
+    # two invariants below, and it is validation rather than termination.
+    if base > _TOKENS_PER_LEAF * 2**n:
         raise ValueError(
             f"the subtree at depth {depth}, row {row!r} starts at token {base}, "
-            f"which opens a gap of {opening} that no run of chunks could close"
+            f"past anything a {n}-input tree could emit"
         )
-    for spent in range(budget + 1):
+    for spent in itertools.count():
         candidates = _candidates(cursor, value)
         gap = _placement_gap(table, n, depth, row, prefix, candidates, base)
         if spent:
@@ -370,9 +348,8 @@ def _subtree(
             return placed
         chunk, cursor, value = _stash_chunk(cursor, value)
         prefix = [*prefix, *chunk]
-    raise ValueError(
-        f"the stash loop outran its descent at depth {depth}, row {row!r}: "
-        f"{budget} chunks bought less than the {opening} gap they opened with"
+    raise AssertionError(  # pragma: no cover - the loop only leaves by return
+        "the stash loop fell out of an endless counter"
     )
 
 
