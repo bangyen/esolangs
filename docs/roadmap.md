@@ -405,13 +405,15 @@ saving.  Taglate reduces (451 characters → 21).  What is open:
   its wall was a property of the decision tree it built, not of the
   language, and a branch-free array lookup placed on a Collatz trajectory
   renders every table small enough to materialize (`docs/walls.md`).
-- **NoComment's tape size** — the boolean generator now reaches `n <= 11`,
-  and what stops it there is `_TAPE = 4096` in the interpreter, not the
-  language: the wiki says the memory space is static but never gives a size,
-  so 4096 is a host choice matching the RISC-V cross-check's buffer.  `n ==
-  12` needs cell 4650.  Raising it is a one-constant change, deliberately not
-  made here because the cross-check's buffer would have to move with it or
-  the two implementations would disagree about where the tape ends — and
-  that divergence is exactly what the cross-check exists to catch.  Worth
-  doing together with a decision about how wide the programs may get: an
-  `n == 11` build is already ~27k characters.
+- **NoComment's tape size** — *resolved by parameter, not by moving the
+  constant.*  The boolean generator reaches `n <= 11` at the default size,
+  and what stopped it there was `_TAPE = 4096`, not the language: the wiki
+  requires the memory space to be static but never gives a size, so 4096 is a
+  host choice matching the RISC-V cross-check's buffer.  Both `run` and
+  `nocomment` now take a `tape` argument defaulting to it, so a caller who
+  wants `n == 12` (cell 4650) builds and runs at a larger size while every
+  existing program keeps the 4096 the cross-check agrees with.  Raising the
+  *default* is still declined for the reason first noted here — the buffers
+  would disagree about where the tape ends, which is what the cross-check
+  exists to catch.  The open question is unchanged and is about width, not
+  memory: an `n == 11` build is already ~27k characters.

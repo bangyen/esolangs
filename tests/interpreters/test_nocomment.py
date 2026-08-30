@@ -53,6 +53,37 @@ class TestNoComment:
         assert run_and_capture("c" + "i" * 65 + "l" + "o") == "\x00"
         assert run_and_capture("c" + "i" * 65 + "r" + "l" + "o") == "A"
 
+    def test_tape_size_is_configurable(self) -> None:
+        """The wiki fixes the wrap but not the size, so the size is a knob.
+
+        The size is observable through that wrap -- cell 0 steps left to
+        ``tape - 1`` -- so this pins the argument reaching *both* wrap sites
+        rather than only the allocation.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.nocomment import _TAPE, _Machine
+
+        assert _TAPE == 4096  # the default stays put; moving it moves behaviour
+
+        for size in (2, 512, 8192):
+            left = _Machine("l", ScriptedIO(), size)
+            left.step()
+            assert left.ptr == size - 1
+
+            right = _Machine("r" * size, ScriptedIO(), size)
+            while not right.halted:
+                right.step()
+            assert right.ptr == 0  # a full lap returns to the origin
+
+    def test_tape_size_must_be_positive(self) -> None:
+        """A tape with no cells has no cell to point at."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.nocomment import _Machine
+
+        for size in (0, -1):
+            with pytest.raises(ValueError, match="at least one cell"):
+                _Machine("i", ScriptedIO(), size)
+
     def test_stack_push_pop(self) -> None:
         """n pushes the cell; f pops into it."""
         assert run_and_capture("c" + "i" * 65 + "n" + "f" + "o") == "A"

@@ -48,6 +48,7 @@ from functools import cache
 # Re-exported so this module stays the import site for the whole
 # parameterized family; each of these owns a file because its
 # construction (a search or a grid layout) dwarfs the others.
+from esolangs.interpreters.tape_based.nocomment import _TAPE
 from esolangs.tools.boolean.a_painter_ant import a_painter_ant
 from esolangs.tools.boolean.cod import cod
 from esolangs.tools.boolean.helpers import (
@@ -583,7 +584,7 @@ def _nocomment_summand_plan(n: int, room: int) -> list[list[tuple[int, int]]]:
     return parts
 
 
-def _nocomment_wide(truth_table: str, n: int) -> str:
+def _nocomment_wide(truth_table: str, n: int, tape: int) -> str:
     """Build a NoComment template for a table too wide for one byte-sized skip.
 
     The narrow generator lands the pointer on ``table[index]`` with a single
@@ -615,13 +616,12 @@ def _nocomment_wide(truth_table: str, n: int) -> str:
 
     What binds instead is the tape.  The layout needs the ``2**n`` output
     cells plus an apron of nonzero cells for the stages' guards to test, and
-    :mod:`~esolangs.interpreters.tape_based.nocomment` gives a static tape,
-    so the generator refuses when the top cell it needs does not fit.  The
-    wiki does not specify a tape size, so that bound is the interpreter's
-    configuration rather than a property of the language.
+    the wiki requires the memory space to be static, so the generator refuses
+    when the top cell it needs does not fit in ``tape``.  The wiki does not
+    specify a *size*, though, so that bound is the interpreter's configuration
+    rather than a property of the language: pass a larger ``tape`` here and run
+    the program on an interpreter given the same size.
     """
-    from esolangs.interpreters.tape_based.nocomment import _TAPE
-
     cap = _NOCOMMENT_SKIP_MAX
     k = 2**n
     comp_base = n  # comp_i = 1 - bit_i
@@ -644,10 +644,10 @@ def _nocomment_wide(truth_table: str, n: int) -> str:
     # testing, so the guard apron must cover one staircase past the table,
     # and the walk itself reaches one staircase past that.
     top = apron + 2 * cap + 1
-    if top >= _TAPE:
+    if top >= tape:
         raise ValueError(
             f"the NoComment boolean generator needs cell {top} for n == {n}, "
-            f"past the interpreter's {_TAPE}-cell tape"
+            f"past the interpreter's {tape}-cell tape"
         )
 
     out: list[str] = []
@@ -754,11 +754,16 @@ def _nocomment_wide(truth_table: str, n: int) -> str:
     return "".join(out)
 
 
-def nocomment(truth_table: str) -> str:
+def nocomment(truth_table: str, tape: int = _TAPE) -> str:
     """Build a NoComment template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
+
+    ``tape`` is the cell count the emitted program is allowed to use; it
+    defaults to the interpreter's own default, so a program built here runs
+    on a default interpreter.  Raising it lifts the arity bound (``n == 12``
+    needs 4650 cells), but the runner must then be given the same size.
 
     NoComment has no input command, so this is a parameterized generator: the
     template's ``{Xi}`` placeholders become a constant-length setter for each
@@ -785,11 +790,11 @@ def nocomment(truth_table: str) -> str:
     needs the whole index to fit a byte and works through ``n == 8``.  That
     is a property of the *one-skip* decode, not of the language: past eight
     inputs :func:`_nocomment_wide` composes several byte-sized skips instead,
-    and the binding constraint becomes the interpreter's tape size.
+    and the binding constraint becomes the tape size.
     """
     n = _validate_truth_table(truth_table)
     if n > _NOCOMMENT_NARROW_MAX:
-        return _nocomment_wide(truth_table, n)
+        return _nocomment_wide(truth_table, n, tape)
 
     k = 2**n
     index = 2 * n
