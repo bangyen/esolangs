@@ -45,6 +45,8 @@ class _Machine:
 
     def step(self) -> None:
         """Execute one command, advancing the code position."""
+        if self.halted:
+            return
         char = self.code[self.ind]
         if char == ">":
             self.ptr += 1

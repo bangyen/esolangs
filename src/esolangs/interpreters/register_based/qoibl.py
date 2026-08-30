@@ -263,6 +263,8 @@ class State:
 
     def step(self) -> None:
         """Execute one statement, advancing the cursor."""
+        if self.halted:
+            return
         tokens = self.code[self.ind]
         self.ind += 1
         if tokens:

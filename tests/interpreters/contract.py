@@ -29,6 +29,10 @@ from typing import Any, ClassVar
 
 import pytest
 
+# Every halting_program in the suite halts in well under this; the bound
+# turns a mistaken entry into a readable failure rather than a hang.
+_HALT_BUDGET = 100_000
+
 
 class EmptyProgramContract:
     """What a language does with a program containing no instructions.
@@ -143,3 +147,27 @@ class CycleContract:
         if self.looping_program is None:
             pytest.skip("no looping program written for this language yet")
         assert not run_until_halt_or_cycle(type(self).machine(self.looping_program))
+
+    def test_stepping_past_the_halt_does_not_raise(self) -> None:
+        """A halted machine ignores a further step instead of failing.
+
+        Every ``step()`` guards on ``halted`` and returns, which is what
+        lets a caller drive a machine without checking first.  Nine
+        interpreters were missing that guard and raised ``IndexError`` off
+        the end of their own program; this is what holds the line once
+        they have it.
+
+        Only "did not raise, and is still halted" is asserted.  Minsky Swap
+        and RAM0 legitimately *write* on the step after their halt -- that
+        is where their final register dump comes from -- so pinning the
+        output here would contradict a documented convention.
+        """
+        machine = type(self).machine(self.halting_program)
+        for _ in range(_HALT_BUDGET):
+            if machine.halted:
+                break
+            machine.step()
+        else:
+            raise AssertionError("halting_program did not halt")
+        machine.step()  # must not raise
+        assert machine.halted
