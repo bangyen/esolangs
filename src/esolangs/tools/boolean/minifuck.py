@@ -47,17 +47,24 @@ print the table.
 
 **Slot order.**  Every generator in this family emits ``{X0}``..``{Xn-1}`` in
 ascending order, and :func:`_embed` does so by construction -- so any table
-solved at its full arity is in name order for free.  The exception is the
+solved at its full arity is in name order for free.  The exception was the
 projection path: a table ignoring some of its inputs is solved smaller and
 :func:`_lift` appends the ignored placeholders, which leaves the order
-whenever an ignored index sits below an essential one.  Those tables now try
-the full-arity route first (see :func:`_lift_leaves_name_order`), which
-leaves exactly two out of order across the whole space -- ``01010101`` and
-``10101010``, the projections onto the *last* input, where the answer stands
-in no cell under either separator and the complete pipeline fails after some
-158 seconds.  Relocating a placeholder instead is not an option and it is
-measured, not assumed: a fill writes the live tape, so moving the trailing
-fills to the front makes 2 rows wrong at ``n == 2`` and 6 at ``n == 3``.
+whenever an ignored index sits below an essential one.
+
+Two routes close that, and neither is the obvious one.  Relocating a
+placeholder does *not* work, measured rather than assumed: a fill writes the
+live tape, so moving the trailing fills to the front makes 2 rows wrong at
+``n == 2`` and 6 at ``n == 3``.  What works is
+
+* declining to project, so the table is solved at full arity and ascending
+  by construction (see :func:`_lift_leaves_name_order`); and
+* for the tables that cannot reach -- ``01010101`` and ``10101010``, the
+  projections onto the *last* input, whose answer stands in no cell after
+  the embed under either separator -- emitting the ignored setters first and
+  then erasing them (see :func:`_reconverged`).
+
+Together they leave nothing out of order.
 
 **Coverage: every two-input table, and eight of the fourteen three-input
 orbits.**  This is a *search* -- three routes across two embed separators --
@@ -558,6 +565,87 @@ def _project(truth_table: str, essential: list[int], n: int) -> str:
     return "".join(rows)
 
 
+# How far to search for a reconverging reset, and how many to try.  The
+# first one is found at length 12 and is the one that builds, but the cap is
+# a little higher so the search is not pinned to that exact string.
+_RESET_DEPTH = 13
+_RESET_LIMIT = 4
+
+
+def _find_reset(ignored: int, maxlen: int = _RESET_DEPTH) -> list[str]:
+    """Find code after which the ignored inputs leave no trace.
+
+    The setters for the inputs a table ignores still have to be emitted --
+    the harness has a bit for every input -- and emitting them first is what
+    keeps the placeholders in name order.  They do write the tape, though,
+    so what follows must erase the difference: this searches for a suffix
+    after which all ``2**ignored`` rows are in *identical* states.
+
+    Identical, not blank.  A blank tape is unreachable -- the all-ones row
+    ends a cell to the right of the others and ``<`` clamps without writing,
+    so the rows cannot be driven back to the origin together -- but they can
+    be driven to a common non-blank state, which is all the rest of the
+    construction needs.
+    """
+    j = _Joint(ignored)
+    for i in range(ignored):
+        j.emit_setter(i)
+    hits: list[str] = []
+
+    def accept(new: list[_Sim], code: str) -> list[str] | None:
+        if len({m.key() for m in new}) != 1:
+            return None
+        hits.append(code)
+        return hits if len(hits) >= _RESET_LIMIT else None
+
+    _search(j, accept, maxlen)
+    return hits
+
+
+def _reconverged(truth_table: str, essential: list[int], n: int) -> str | None:
+    """Build by emitting the ignored inputs first, then erasing them.
+
+    ``_lift`` puts the ignored placeholders last, which leaves name order.
+    The alternative is to emit them *first* -- ``{X0}``..``{Xn-1}`` stays
+    ascending -- and then reconverge the rows so nothing downstream can tell
+    which bits they were.  After that the table is a one-input problem in its
+    single essential input, and the rest is the embed geometry every other
+    degenerate table uses.
+
+    The walk to ``_BASE - 1`` before the essential setter is what makes this
+    cheap rather than a fresh search: it reproduces the standard embed, so
+    the essential input lands on the cells :data:`_DEGENERATE_CELLS` already
+    names and the fixed-cell lookup decides in a fraction of a second.  The
+    junk the reset leaves behind is not a problem -- the rows are identical
+    by then, so it is a constant starting condition, which is exactly what
+    the searches here are built to run from.
+    """
+    if len(essential) != 1:
+        return None
+    ignored = [i for i in range(n) if i not in essential]
+    if ignored != list(range(len(ignored))):
+        # The ignored inputs have to be the *leading* ones for emitting them
+        # first to keep the order ascending.
+        return None
+
+    for reset in _find_reset(len(ignored)):
+        j = _Joint(n)
+        for i in ignored:
+            j.emit_setter(i)
+        j.emit(reset)
+        if len({m.key() for m in j.ms}) != 1:
+            continue
+        _walk_to(j, _BASE - 1)
+        j.emit_setter(essential[0])
+        j.emit("[x")
+        _clamp(j)
+        for acc in _DEGENERATE_CELLS.values():
+            hit = _try_print(j, truth_table, acc)
+            if hit is not None:
+                return hit.template()
+    return None
+
+
 def _lift_leaves_name_order(essential: list[int], n: int) -> bool:
     """Whether lifting would emit the ``{Xi}`` out of ascending order.
 
@@ -647,6 +735,9 @@ def minifuck(truth_table: str) -> str:
             in_order = _degenerate(truth_table, n, fixed_cells_only=True)
             if in_order is not None:
                 return in_order
+            reconverged = _reconverged(truth_table, essential, n)
+            if reconverged is not None:
+                return reconverged
         inner = minifuck(_project(truth_table, essential, n))
         return _lift(inner, essential, n)
 
