@@ -282,4 +282,15 @@ saving.  Taglate reduces (451 characters → 21).  What is open:
   and marker classes are erased at runtime.  Revisit only if the module is
   restructured anyway, or a validator lands whose ordering is non-obvious.
 - **Severely constrained boolean generators** — caps are tracked so removal
-  or lifting is deliberate.  No language is currently on this list.
+  or lifting is deliberate.  No language is currently a *removal* candidate:
+  every shipped generator covers `n <= 2` at minimum.
+- **Minifuck's three-input coverage** — the one cap here that is liftable
+  rather than a wall.  It builds all sixteen two-input tables but only
+  eight of the fourteen three-input orbits, the other six raising after
+  about two minutes; the failures are depth-cap exhaustion, not an
+  argument, so the reach is set by the search rather than by the language.
+  The route is a *construction* in wii2d's shape instead of a search —
+  `docs/walls.md` has the piece that does not yet compose.  The other seven
+  refusing generators stay off this list: NoComment, 6-5, ZTOALC L, WII2D
+  and %^2^-1 are documented walls (`docs/limitations.md`), and Polynomial
+  and Factor are resource knobs, Factor's liftable by host config.
