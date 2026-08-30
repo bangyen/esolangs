@@ -1,6 +1,5 @@
 """Unit tests for the BFStack interpreter."""
 
-
 import pytest
 
 from esolangs.exceptions import HaltError
