@@ -95,8 +95,10 @@ that frontier.
 
 What remains true: the parameterized generator
 (`esolangs.tools.boolean.minifuck`) builds every two-input table by embedding,
-and it still covers eight of the fourteen three-input orbits, which the
-reading prologue does **not** yet reach.  So the parameterized path stays as
+and covers 28 of the 40 three-input orbits (under input permutation and
+complement) — up from the eight the searches alone reached, since the staged
+route below builds tables the searches fail on. The reading prologue reaches
+**none** of the three-input arity.  So the parameterized path stays as
 the default.  `n == 3` under the reading model is open, not walled: the
 pointer must cross the banked bits to leave the pool, and `[`'s skip on a
 differing cell desynchronizes the rows.  A joint search for a gadget avoiding
@@ -321,7 +323,17 @@ free, and **118 of the 256 three-input tables need no search at all**.
 
 The remaining 138 still search, so the plan is a *fast path*, not a
 replacement — a table with no staging falls through unchanged, and the
-searches stay exactly where they were. What follows is about those.
+searches stay exactly where they were.
+
+**And it is not only a speedup: the staged route reaches tables the searches
+cannot.** Sampling 8 of the 80, three (`01101000`, `10100001`, `11100110`)
+fail after ~130 seconds of searching and build in under 0.08s from a staging,
+correct on every row. The reason is the same transform the n=2 derivation
+turns on: the searches hunt for a cell *holding* the answer and then lose it
+to the prefix-XOR on the walk out, while the staging selects on the column as
+the read sees it. Orbit coverage is therefore 28 of 40, not the 8 of 14 this
+file recorded when the searches were the only route. What follows is about
+the rest.
 
 ### Where a construction would have to start
 
