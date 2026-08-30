@@ -2034,21 +2034,34 @@ class TestParameterizedMinifuck:
         # And the public entry point still agrees with what it built.
         assert parameterized.minifuck("0110").count("{X") == 2
 
-    def test_two_input_plan_covers_every_complement_pair(self) -> None:
-        """The plan is keyed by complement pair, and covers all sixteen.
+    @pytest.mark.slow  # derives a staging for all sixteen
+    def test_the_derivation_reaches_every_two_input_table(self) -> None:
+        """Every two-input table gets a staging from the enumeration alone.
+
+        There is no stored two-input plan to check against, so what this pins
+        is the property that plan used to guarantee: the enumeration reaches
+        all sixteen, and reaches them within its own caps rather than by
+        running off the end.
 
         A table and its complement share a staging -- the endgame tries both
         read polarities, and the printed digit is ``NOT(v XOR cell7)`` -- so
-        eight entries suffice.  This pins that reasoning: if an entry were
-        dropped, or the keying changed, some table would have no plan.
+        the pair costs one derivation between them, which is why the sweep
+        finds the second member of each pair as readily as the first.
         """
-        from esolangs.tools.boolean.minifuck import _TWO_INPUT_PLAN
+        import importlib
 
-        assert len(_TWO_INPUT_PLAN) == 8, _TWO_INPUT_PLAN
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
         for table_int in range(16):
             table = format(table_int, "04b")
-            complement = "".join(str(1 - int(c)) for c in table)
-            assert min(table, complement) in _TWO_INPUT_PLAN, table
+            plan = module._derive_staging(table, 2)  # noqa: SLF001
+            assert plan is not None, table
+            sep_index, settle, brackets, acc = plan
+            assert 0 <= sep_index < len(module._SEPS), (table, plan)  # noqa: SLF001
+            assert settle in (0, 1), (table, plan)
+            assert isinstance(brackets, int), (table, plan)
+            assert 0 <= brackets <= module._MAX_BRACKETS, (table, plan)  # noqa: SLF001
+            assert 9 <= acc <= module._MAX_ACC, (table, plan)  # noqa: SLF001
 
     @pytest.mark.slow  # builds all 38 degenerate three-input tables
     def test_degenerate_three_input_tables_never_search(self) -> None:
@@ -2099,21 +2112,23 @@ class TestParameterizedMinifuck:
         instead of failing outright.
         """
         from esolangs.tools.boolean import parameterized
-        from esolangs.tools.boolean.minifuck import _PLANS, _THREE_INPUT_PLAN, _staged
+        from esolangs.tools.boolean.minifuck import _STAGED_ARITIES, _staged
 
-        assert _THREE_INPUT_PLAN, "the plan should not be empty"
-        assert 4 not in _PLANS, "four inputs are expected to have no plan"
+        assert 4 not in _STAGED_ARITIES, "four inputs are expected to be ungated"
+        # The gate is what makes the miss cheap: without it a four-input
+        # table would grind through the whole enumeration before giving up.
         assert _staged("1" * 16, 4) is None
-        # A table the plan does cover is built from it, not searched.
-        for key in sorted(_THREE_INPUT_PLAN)[:4]:
+        # A table the derivation does reach is built from it, not searched.
+        for table_int in range(4):
+            key = format(table_int, "08b")
             template = _staged(key, 3)
             assert template is not None, key
             for combo in range(8):
                 bits = [(combo >> (2 - i)) & 1 for i in range(3)]
                 got = self.run_minifuck(self.instantiate(template, bits))
                 assert got == key[combo], f"{key} inputs {bits}"
-        # ...and the public entry point still builds a planned table.
-        assert parameterized.minifuck(sorted(_THREE_INPUT_PLAN)[0])
+        # ...and the public entry point still builds one.
+        assert parameterized.minifuck("00000001")
 
     @pytest.mark.slow  # builds and runs all 256 three-input tables
     def test_every_three_input_table_is_search_free(self) -> None:
@@ -2167,8 +2182,13 @@ class TestParameterizedMinifuck:
 
         assert module._SEPS[:2] == module._SCAN_SEPS, module._SCAN_SEPS  # noqa: SLF001
         assert len(module._SEPS) > len(module._SCAN_SEPS), module._SEPS  # noqa: SLF001
-        # Every separator index a plan entry names must exist.
-        for plan in module._PLANS.values():  # noqa: SLF001
+        # Every separator index the enumeration yields must exist, and it
+        # must offer all of them -- the ten stragglers that need separators
+        # past the scanned pair are the whole reason ``_SEPS`` is wider.
+        offered = {sep_index for sep_index, *_rest in module._stagings(3)}  # noqa: SLF001
+        assert offered == set(range(len(module._SEPS))), offered  # noqa: SLF001
+        # ...as must the index the one stored exception names.
+        for plan in module._EXCEPTIONS.values():  # noqa: SLF001
             for key, (sep_index, *_rest) in plan.items():
                 assert 0 <= sep_index < len(module._SEPS), (key, sep_index)  # noqa: SLF001
 
@@ -2191,24 +2211,70 @@ class TestParameterizedMinifuck:
             table = format(table_int, "04b")
             assert module.minifuck.__wrapped__(table), table
 
-    @pytest.mark.slow  # re-simulates every planned staging
-    def test_plans_are_derived_not_asserted(self) -> None:
-        """Every planned staging really does deliver its table's column.
+    def test_the_enumeration_and_the_derivation_agree(self) -> None:
+        """``_stagings`` states the order ``_derived_plans`` actually walks.
 
-        The plans are tables of numbers, and a table of numbers rots.  This
-        recomputes what each staging leaves at its accumulator *as the read
-        sees it* -- after the pool code and the walk out, which is where the
-        running prefix-XOR applies -- and checks it against the table the
-        entry claims.  Selecting on the pre-walk column instead is the
-        mistake that covered 10 of 16 at two inputs, so the transform is the
-        point rather than an implementation detail.
+        The derivation interleaves the four loops with the machines it is
+        advancing, so a bracket count costs one instruction rather than a
+        rebuild -- which means the order is written out twice, once as a
+        generator and once as nested loops.  This checks they match, since a
+        drift between them would silently change which staging each table
+        gets while every other test still passed.
         """
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
-        for n, plan in sorted(module._PLANS.items()):  # noqa: SLF001
-            for key, (sep_index, settle, suffix, acc) in sorted(plan.items()):
+        expected = [
+            (sep_index, settle, brackets, acc)
+            for sep_index in range(len(module._SEPS))  # noqa: SLF001
+            for settle in (0, 1)
+            for brackets in range(module._MAX_BRACKETS + 1)  # noqa: SLF001
+            for acc in range(9, module._MAX_ACC + 1)  # noqa: SLF001
+        ]
+        assert list(module._stagings(3)) == expected  # noqa: SLF001
+        # Every staging the derivation hands back is one the enumeration
+        # offers -- so the caps and the loops cannot have drifted apart.
+        offered = set(expected)
+        for table, staging in module._derived_plans(2).items():  # noqa: SLF001
+            assert staging in offered, (table, staging)
+
+    @pytest.mark.slow  # re-simulates a derived staging for every table
+    def test_stagings_deliver_the_column_the_read_sees(self) -> None:
+        """Every staging really does deliver its table's column at the read.
+
+        This recomputes what a staging leaves at its accumulator *as the read
+        sees it* -- after the pool code and the walk out, which is where the
+        running prefix-XOR applies -- and checks it against the table it was
+        derived for.  Selecting on the pre-walk column instead is the mistake
+        that covered 10 of 16 at two inputs, so the transform is the point
+        rather than an implementation detail.
+
+        The derivation accepts a staging by *printing*, which is a stronger
+        test than this one and would catch a broken staging on its own.  What
+        this adds is the reason: it pins that the column arrives at the read,
+        so a future change that made the printing accidental rather than
+        earned would show up here.  It also covers the one stored exception,
+        which is the entry no enumeration re-derives.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        plans = {
+            2: {
+                format(t, "04b"): module._derive_staging(format(t, "04b"), 2)  # noqa: SLF001
+                for t in range(16)
+            },
+            3: {
+                key: module._derive_staging(key, 3)  # noqa: SLF001
+                for key in ("00000001", "01111111", "01101101", "00010111")
+            },
+        }
+        for n, plan in sorted(plans.items()):
+            for key, staging in sorted(plan.items()):
+                assert staging is not None, (n, key)
+                sep_index, settle, suffix, acc = staging
                 joint = module._embed(  # noqa: SLF001
                     n,
                     settle=settle,
