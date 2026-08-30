@@ -1987,9 +1987,9 @@ class TestParameterizedMinifuck:
         is true of programs that *read* their inputs; embedding them lifts
         it, and this is the check that says so.
 
-        No longer marked ``slow``: two inputs are derived from
-        ``_TWO_INPUT_PLAN`` rather than searched, so all sixteen build in
-        well under a second where they used to cost 2.5-9s each.
+        No longer marked ``slow``: two inputs come from a derived staging
+        rather than a search, so all sixteen build in about a second
+        together where they used to cost 2.5-9s each.
         """
         from esolangs.tools.boolean import parameterized
 
