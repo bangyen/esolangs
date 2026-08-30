@@ -471,11 +471,20 @@ _MINTERM_SHAPED = {
 # constants the solver happens to find, not the table's shape, so the
 # folding discriminator has nothing to measure.  It also raises on the
 # ``n == 3`` tables this test uses, which it cannot separate.
+#
+# ``one_two_three`` emits no tree either, and for a related reason: 123's
+# answer is whether the program halts, and what decides that is the pointer
+# phase the embeds leave behind, so the generator emits a flat plan whose
+# length tracks the modulo-four decode rather than any table shape.  It also
+# raises on the ``n == 3`` tables this test uses -- an ignored input still
+# has to be embedded, and every fill moves the pointer that carries the
+# answer, so the projection this test's folding measures cannot happen.
 _UNSHAPED = {
     "wii2d",
     "minifuck",
     "ztoalc_l_boolean",
     "pct_squared_minus_one",
+    "one_two_three",
     "jaune_multiply",
     "circlefuck_byte",
     "slow_acv_mammalian_boolean",

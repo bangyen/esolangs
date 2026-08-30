@@ -13,7 +13,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | Language | Text generator | Python | Cross-check | Boolean | Compiler |
 | --- | :---: | :---: | :---: | :---: | :---: |
 | %^2^-1 | yes | yes |  | yes |  |
-| 123 | yes | yes |  |  |  |
+| 123 | yes | yes |  | yes |  |
 | 3D Brainfuck | yes | yes |  | yes |  |
 | 3x | yes | yes |  | yes |  |
 | 6-5 | yes | yes |  | yes |  |
