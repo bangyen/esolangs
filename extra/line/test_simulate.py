@@ -1,6 +1,6 @@
 """Tests for simulate.py.
 
-Run via: uv run --with numpy --with pytest pytest test_simulate.py
+Run via: uv run --with pytest pytest test_simulate.py
 
 Captures the checks this module's own development relied on ad hoc (see
 WIP.md's "Runtime simulation" entry for the full history): opcode basics

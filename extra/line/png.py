@@ -1,5 +1,9 @@
 """A minimal PNG reader and writer, so Line's tooling needs no image library.
 
+Images are passed as one ``bytearray`` of greyscale levels per row -- the
+same shape ``render.Canvas`` keeps its pixels in, and what
+``mask.from_grey`` thresholds into an ink mask.
+
 Only what ``extract.py`` and ``render.py`` actually exchange is supported:
 non-interlaced images that are 1/2/4/8-bit greyscale or palette-indexed on
 the way in, and 8-bit greyscale on the way out.  That covers the wiki
@@ -22,8 +26,6 @@ from __future__ import annotations
 import struct
 import zlib
 from collections.abc import Iterator
-
-import numpy as np
 
 _SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
@@ -118,18 +120,31 @@ def _unfilter(raw: bytes, height: int, stride: int, step: int) -> bytearray:
 
 def _unpack_bits(
     rows: bytearray, height: int, width: int, stride: int, depth: int
-) -> np.ndarray:
-    """Expand sub-byte samples to one array element each, dropping row padding."""
-    packed = np.frombuffer(bytes(rows), dtype=np.uint8).reshape(height, stride)
+) -> list[bytearray]:
+    """Expand sub-byte samples to one byte each, dropping each row's padding.
+
+    Every byte expands the same way regardless of where it sits, so the 256
+    possible expansions are tabulated once and the per-row work becomes a
+    lookup and a join rather than a shift per sample.
+    """
     per_byte = 8 // depth
-    # Most-significant bits first, per the spec.
-    shifts = np.arange(per_byte - 1, -1, -1, dtype=np.uint8) * depth
-    expanded = (packed[:, :, None] >> shifts) & ((1 << depth) - 1)
-    return expanded.reshape(height, stride * per_byte)[:, :width]
+    mask = (1 << depth) - 1
+    # Most-significant sample first, per the spec.
+    table = [
+        bytes(
+            (value >> (shift * depth)) & mask for shift in range(per_byte - 1, -1, -1)
+        )
+        for value in range(256)
+    ]
+    out = []
+    for y in range(height):
+        packed = rows[y * stride : (y + 1) * stride]
+        out.append(bytearray(b"".join([table[byte] for byte in packed])[:width]))
+    return out
 
 
-def read_grey(data: bytes) -> np.ndarray:
-    """Decode PNG bytes to a 2-D ``uint8`` array of greyscale values.
+def read_grey(data: bytes) -> list[bytearray]:
+    """Decode PNG bytes to one ``bytearray`` of greyscale levels per row.
 
     Palette images are resolved through their PLTE entries; because the only
     palettes this needs to handle are black-and-white, the RGB triple is
@@ -166,44 +181,52 @@ def read_grey(data: bytes) -> np.ndarray:
         raise ValueError(f"unsupported PNG bit depth {depth}")
 
     stride = (width * depth + 7) // 8
-    rows = _unfilter(zlib.decompress(bytes(idat)), height, stride, step=1)
-    samples = (
-        np.frombuffer(bytes(rows), dtype=np.uint8).reshape(height, stride)[:, :width]
-        if depth == 8
-        else _unpack_bits(rows, height, width, stride, depth)
-    )
+    raw = _unfilter(zlib.decompress(bytes(idat)), height, stride, step=1)
+    if depth == 8:
+        samples = [
+            bytearray(raw[y * stride : y * stride + width]) for y in range(height)
+        ]
+    else:
+        samples = _unpack_bits(raw, height, width, stride, depth)
 
     if colour == _PALETTE:
         if palette is None:
             raise ValueError("palette PNG has no PLTE chunk")
-        table = np.frombuffer(palette, dtype=np.uint8).reshape(-1, 3).astype(np.uint32)
-        # ITU-R 601-2 luma, matching Pillow's RGB -> L conversion.
-        luma = (table[:, 0] * 299 + table[:, 1] * 587 + table[:, 2] * 114) // 1000
-        return np.asarray(luma.astype(np.uint8)[samples], dtype=np.uint8)
+        entries = [palette[i : i + 3] for i in range(0, len(palette), 3)]
+        # ITU-R 601-2 luma, matching Pillow's RGB -> L conversion.  Padded out
+        # to a full 256 entries because that is what bytes.translate wants; a
+        # sample indexing past the palette is a malformed file, and mapping it
+        # to black is as good as any other answer for one.
+        luma = bytes(
+            (red * 299 + green * 587 + blue * 114) // 1000
+            for red, green, blue in entries
+        ).ljust(256, b"\x00")
+        return [row.translate(luma) for row in samples]
     if depth != 8:
         # Scale a narrow greyscale range up to full 0-255 (1-bit 1 -> 255).
-        scaled = samples * (255 // ((1 << depth) - 1))
-        return np.asarray(scaled, dtype=np.uint8)
-    return np.asarray(samples, dtype=np.uint8)
+        factor = 255 // ((1 << depth) - 1)
+        scale = bytes((value * factor) & 0xFF for value in range(256))
+        return [row.translate(scale) for row in samples]
+    return samples
 
 
-def write_grey(pixels: np.ndarray) -> bytes:
-    """Encode a 2-D ``uint8`` array as 8-bit greyscale PNG bytes.
+def write_grey(pixels: list[bytearray]) -> bytes:
+    """Encode one ``bytearray`` of greyscale levels per row as 8-bit PNG bytes.
 
     Every row is written with filter type 0 (None).  Filtering exists to help
     the compressor, and these drawings are near-empty white canvases that zlib
     already collapses; picking a filter per row would add a heuristic for no
     benefit anyone here can see.
     """
-    array = np.ascontiguousarray(pixels, dtype=np.uint8)
-    if array.ndim != 2:
-        raise ValueError("expected a 2-D greyscale array")
-    height, width = array.shape
+    height = len(pixels)
+    width = len(pixels[0]) if height else 0
+    if any(len(row) != width for row in pixels):
+        raise ValueError("expected a 2-D greyscale image with equal-length rows")
 
     raw = bytearray()
-    for row in array:
+    for row in pixels:
         raw.append(0)  # filter type: None
-        raw += row.tobytes()
+        raw += row
 
     def chunk(kind: bytes, body: bytes) -> bytes:
         return (
@@ -222,13 +245,13 @@ def write_grey(pixels: np.ndarray) -> bytes:
     )
 
 
-def read_grey_file(path: str) -> np.ndarray:
-    """Read a PNG file from ``path`` as a 2-D ``uint8`` greyscale array."""
+def read_grey_file(path: str) -> list[bytearray]:
+    """Read a PNG file from ``path`` as one ``bytearray`` of levels per row."""
     with open(path, "rb") as handle:
         return read_grey(handle.read())
 
 
-def write_grey_file(path: str, pixels: np.ndarray) -> None:
-    """Write a 2-D ``uint8`` greyscale array to ``path`` as a PNG."""
+def write_grey_file(path: str, pixels: list[bytearray]) -> None:
+    """Write greyscale rows to ``path`` as a PNG."""
     with open(path, "wb") as handle:
         handle.write(write_grey(pixels))

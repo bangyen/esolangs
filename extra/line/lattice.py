@@ -57,7 +57,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import numpy as np
+from mask import Mask
 
 # 8 directions in (dy, dx) form, indexed 0..7 as N, NE, E, SE, S, SW, W, NW --
 # the same indexing render.py's headings would map onto, so a direction index
@@ -77,7 +77,7 @@ _DIRS: list[tuple[int, int]] = [
 ]
 
 
-def _ink(mask: np.ndarray, y: int, x: int) -> bool:
+def _ink(mask: Mask, y: int, x: int) -> bool:
     h, w = mask.shape
     return 0 <= y < h and 0 <= x < w and bool(mask[y, x])
 
@@ -102,7 +102,7 @@ UNIT = 20
 _MAX_SEGMENT = UNIT * 20
 
 
-def _band_lit(mask: np.ndarray, y: int, x: int, direction: int) -> bool:
+def _band_lit(mask: Mask, y: int, x: int, direction: int) -> bool:
     """Whether any of the 3 parallel rays (center + 1px either side) is ink.
 
     The 3 rays run parallel to ``direction`` but are offset from ``(y, x)``
@@ -114,7 +114,7 @@ def _band_lit(mask: np.ndarray, y: int, x: int, direction: int) -> bool:
     return any(_ink(mask, y + pdy * k, x + pdx * k) for k in (-1, 0, 1))
 
 
-def star(mask: np.ndarray, y: int, x: int, length: int = 15) -> set[int]:
+def star(mask: Mask, y: int, x: int, length: int = 15) -> set[int]:
     """Which of the 8 directions have a real band segment from this vertex.
 
     ``length`` only needs to be shorter than the shortest real segment
@@ -145,7 +145,7 @@ def star(mask: np.ndarray, y: int, x: int, length: int = 15) -> set[int]:
 _SNAP_CONFIRM = 6
 
 
-def _snap(mask: np.ndarray, y: int, x: int, direction: int) -> tuple[int, int]:
+def _snap(mask: Mask, y: int, x: int, direction: int) -> tuple[int, int]:
     """Find which of ``(y, x)``'s band offsets is the true centerline for ``direction``.
 
     A vertex's own recorded position can be a pixel off the true corner of
@@ -176,7 +176,7 @@ def _snap(mask: np.ndarray, y: int, x: int, direction: int) -> tuple[int, int]:
     return y, x
 
 
-def _walk_segment(mask: np.ndarray, y: int, x: int, direction: int) -> tuple[int, int]:
+def _walk_segment(mask: Mask, y: int, x: int, direction: int) -> tuple[int, int]:
     """Follow a stroke's own center pixels to this segment's true endpoint.
 
     Advances pixel by pixel while the exact next pixel (not the wider band
@@ -201,7 +201,7 @@ def _walk_segment(mask: np.ndarray, y: int, x: int, direction: int) -> tuple[int
 
 
 def find_start(
-    mask: np.ndarray, approx_y: int, approx_x: int, heading: int
+    mask: Mask, approx_y: int, approx_x: int, heading: int
 ) -> tuple[int, int]:
     """Return the path-start vertex for a caller already holding one.
 
@@ -309,7 +309,7 @@ def _classify(lit: set[int], back: int) -> tuple[str, list[int]]:
     return "merge", []
 
 
-def _resnap_dead_end(mask: np.ndarray, y: int, x: int, heading: int) -> tuple[int, int]:
+def _resnap_dead_end(mask: Mask, y: int, x: int, heading: int) -> tuple[int, int]:
     """Recover a vertex :func:`_walk_segment` stopped a column short of.
 
     ``_walk_segment`` advances in exactly one direction, so if the true
@@ -345,7 +345,7 @@ def _resnap_dead_end(mask: np.ndarray, y: int, x: int, heading: int) -> tuple[in
 
 
 def walk_tree(
-    mask: np.ndarray,
+    mask: Mask,
     start: tuple[int, int],
     heading: int,
     visited: set[tuple[int, int]] | None = None,
