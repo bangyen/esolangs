@@ -155,10 +155,10 @@ STEPS = [
     ("pytest", [*PY, "-m", "pytest", "-q"]),
     ("bandit", ["uv", "run", "--with", "bandit", "bandit", "-r", "src", "-q"]),
     (
-        # Run from extra/line: its modules import each other as flat top-level
-        # names, so it runs from its own directory rather than the project env.
-        # It has no third-party dependencies of its own -- only pytest to run
-        # the suites with.
+        # These also run under the plain `pytest` step above.  Repeated here
+        # under `--isolated --no-project`, which installs only pytest, so a
+        # green run proves the subtree pulls in no third-party dependency.
+        # The in-project run cannot show that.
         LINE_STEP,
         [
             "uv",

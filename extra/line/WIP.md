@@ -30,11 +30,14 @@ representation makes easy to get wrong -- unbounded Python ints leaking
 bits past the canvas width, and the edge cases in the bit-twiddling
 shortcuts. Run any of them with `uv run --with pytest --with pytest-xdist
 pytest test_simulate.py` (or `test_line_boolean.py`, `test_bf_to_line.py`,
-`test_png.py`, `test_mask.py`) from this directory -- the modules import
-each other as flat top-level names, so this directory has to be on
-`sys.path`. None is under the repo root's `tests/` `testpaths`, so a bare
-`pytest` from the repo root will not find them; CI runs them all via the
-`line` job in `.github/workflows/ci.yml`. `verify.py` remains the separate, narrower
+`test_png.py`, `test_mask.py`) from this directory. They are also under the
+repo root's `testpaths`, so a bare `pytest` from the root collects them
+along with everything else -- the modules import each other as flat
+top-level names, which resolves either way because pytest puts a test
+file's own directory on `sys.path`. CI additionally runs them via the
+`line` job under `--isolated --no-project`, which installs only pytest and
+is therefore the standing proof that this subtree has no third-party
+dependencies; the in-project run cannot show that. `verify.py` remains the separate, narrower
 round-trip check for `extract()` alone.
 
 ## Settled and tested
