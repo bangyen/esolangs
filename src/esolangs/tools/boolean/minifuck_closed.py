@@ -310,6 +310,18 @@ def _plan(
     The move set is derived from the measured tape, not from enumerating
     programs: what varies is which of a cell's two columns is chosen, and
     that choice is realised afterwards by :func:`_solve`.
+
+    The accepted end state is the zero class exactly one cell above the one
+    class.  That orientation is forced rather than chosen: the closing walk
+    puts the one class on cell 6, and a row *below* 6 would write into the
+    pool and spell some other byte, while a row above 7 is harmless.  The
+    other orientation is therefore not merely unhandled -- swapping the two
+    classes would need the walk to land the one class below the zero one,
+    which the pool geometry does not allow.
+
+    The floor is ``_LAND_ONE + 1`` rather than ``_LAND_ZERO + 1``: the rows
+    may stop one cell lower than the old bound allowed, since only the one
+    class needs to reach 6.
     """
     rows = 2**n
     initial = tuple(start for _ in range(rows))
@@ -323,9 +335,12 @@ def _plan(
         if len(by_class) == 2 and all(len(v) == 1 for v in by_class.values()):
             zero = min(by_class[0])
             one = min(by_class[1])
-            # The zero class must sit one cell above the one class, so the
-            # closing walk drops them onto cells 7 and 6 respectively.
-            if zero - one == 1 and one >= _LAND_ZERO + 1:
+            # The one class must land on cell 6 and the zero class above it.
+            # Cells 7 and 8 both print '0' (a row past the pool writes cell 8
+            # and leaves the pool alone), but a row *below* 6 writes cell 6
+            # and spells a different byte -- so the zero class has slack above
+            # and none below, which fixes the orientation to zero-above-one.
+            if zero - one == 1 and one >= _LAND_ONE + 1:
                 return history
         if len(history) >= depth:
             continue
@@ -432,8 +447,12 @@ def minifuck_closed(truth_table: str, depth: int = 5) -> str:
         by_class.setdefault(table[r], set()).add(joint.ms[r].ptr)
     if len(by_class) != 2 or any(len(v) != 1 for v in by_class.values()):
         raise ValueError(f"{truth_table!r} did not separate: {by_class}")
-    zero = min(by_class[0])
-    joint.emit("<" * (zero - _LAND_ZERO))
+    # A row on cell 6 writes cell 7 and leaves the pool spelling '1'; a row
+    # on 7 writes cell 8, outside the pool, and spells '0'.  Only the one
+    # class needs an exact landing, so the walk is anchored on it -- a row
+    # below 6 would write into the pool and spell some third byte, which is
+    # what anchoring on the zero class risked.
+    joint.emit("<" * (min(by_class[1]) - _LAND_ONE))
     joint.emit("[x.")
 
     printed = ["".join(m.out) for m in joint.ms]
