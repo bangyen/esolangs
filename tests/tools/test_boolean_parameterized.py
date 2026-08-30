@@ -722,7 +722,19 @@ class TestParameterizedNoComment:
             got = self.run_nocomment(self.instantiate(template, bits))
             assert got == str(int("1010101010101010"[combo])), f"inputs {bits}"
 
-    @pytest.mark.parametrize("n", [9, 10, 11])
+    # The decode is exponential in the arity, so the cost is all in the two
+    # widest cases: measured 4.1s at n=9, 13.0s at n=10 and 43.5s at n=11,
+    # against a one-second budget.  n=9 stays in the fast run as the case
+    # that still exercises the composed skip past a byte-sized index; the
+    # two above it prove the same mechanism and sit out.
+    @pytest.mark.parametrize(
+        "n",
+        [
+            9,
+            pytest.param(10, marks=pytest.mark.slow),
+            pytest.param(11, marks=pytest.mark.slow),
+        ],
+    )
     def test_wide_arity_is_exact(self, n: int) -> None:
         """Past a byte-sized index the composed-skip decode still computes the table.
 
@@ -2174,6 +2186,7 @@ class TestParameterizedMinifuck:
                     assert got == table[combo], f"{table} inputs {bits}"
         assert checked == 38, checked
 
+    @pytest.mark.slow  # 15.4s: the derivation runs for every staged arity
     def test_a_table_with_no_staging_falls_through(self) -> None:
         """An unplanned table returns None from ``_staged`` rather than raising.
 

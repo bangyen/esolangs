@@ -56,6 +56,21 @@ _TABLES = ["00000000", "01101001"]
 # 0.68s, which is under the budget but not by much -- the tree still carries
 # ``2**n`` leaves and the padding between them.
 #
+# ``minifuck`` is back, at 14.9s of this sweep's 18.0s across sixty
+# generators -- and this is a *regression*, not the cost the construction
+# ought to carry.  Bisected 2026-08-30 by checking out
+# ``src/esolangs/tools/boolean/minifuck.py`` alone at each commit that
+# touched it: the parity table costs 0.08s at ef651aa1 and c48b1cdf, 0.00s
+# at 2a91ab70, and 14.71s from 32f5638c ("derive the stagings instead of
+# storing 117 of them") onwards, unchanged through HEAD.  Deriving what was
+# stored is cheap to *build* and expensive to *run*.
+#
+# The mark keeps the fast run fast; it does not make the cost acceptable.
+# When the derivation is made to pay for itself, re-measure and drop the
+# entry rather than leaving this comment to rot the way the 0.09s claim
+# above did.
+_SEARCHING_GENERATORS_REGRESSED: frozenset[str] = frozenset({"minifuck"})
+
 # Naming the languages rather than timing them at collection time is
 # deliberate: a wall-clock threshold evaluated during collection would make
 # the selected test set depend on how loaded the machine is, so a run could
@@ -103,7 +118,7 @@ def _input_reading_generators() -> list[object]:
             ).run
         except Exception:  # pragma: no cover - interpreter lives outside the pkg
             continue
-        if name in _SEARCHING_GENERATORS:
+        if name in _SEARCHING_GENERATORS | _SEARCHING_GENERATORS_REGRESSED:
             found.append(pytest.param(name, (fn, lang, run), marks=pytest.mark.slow))
         else:
             found.append((name, (fn, lang, run)))
