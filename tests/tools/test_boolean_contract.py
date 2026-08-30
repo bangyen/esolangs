@@ -49,12 +49,19 @@ _TABLES = ["00000000", "01101001"]
 # table up to three inputs comes from a staging table -- and this sweep's
 # parity case now costs 0.09s, two orders of magnitude under the budget.
 #
+# ``slow_acv_mammalian_boolean`` left it last, at 5.5s.  It no longer
+# searches at all: a read node's landing point is now solved from the array
+# sum rather than found by measuring where a candidate jumped, so building a
+# table is arithmetic plus a bounded relaxation pass.  Its parity case costs
+# 0.68s, which is under the budget but not by much -- the tree still carries
+# ``2**n`` leaves and the padding between them.
+#
 # Naming the languages rather than timing them at collection time is
 # deliberate: a wall-clock threshold evaluated during collection would make
 # the selected test set depend on how loaded the machine is, so a run could
 # silently cover less than the last one.  Re-measure and edit this set when
 # a generator's cost changes.
-_SEARCHING_GENERATORS = frozenset({"slow_acv_mammalian_boolean"})
+_SEARCHING_GENERATORS: frozenset[str] = frozenset()
 
 # The same one-second rule, applied to the two reordering sweeps.  Those call
 # the ``_*_ordered`` builder once per input order for every table up to three

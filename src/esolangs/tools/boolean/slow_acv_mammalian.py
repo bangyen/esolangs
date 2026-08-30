@@ -1,12 +1,9 @@
 """Boolean-function generator for SLOW ACV MAMMALIAN.
 
 The language reads a byte with ``ACCEPT``, which appends ``byte ^ acc`` to
-array 0 *whatever the pointer holds*.  That is what makes a decision tree
-possible: the older reading of the instruction set had the bit needing to be
-routed to the pointer before it could be tested, which conflicts with using
-``SPRINT`` to move the pointer anywhere else.  Nothing needs routing.  The
-pointer stays on array 0 for the whole program and the tree lives in code
-space, built out of the one conditional the language has:
+array 0 *whatever the pointer holds*, so nothing needs routing: the pointer
+stays on array 0 for the whole program and the tree lives in code space,
+built out of the one conditional the language has:
 
 ``ACCEPT DIGEST LEAPFROG``
     ``ACCEPT`` appends the bit (entering with ``acc % 256 == 48``, the digit
@@ -14,237 +11,248 @@ space, built out of the one conditional the language has:
     array sum into the accumulator, and ``LEAPFROG`` jumps exactly when the
     array's last element -- the bit just read -- is nonzero.  So a 0 falls
     through to the next token and a 1 jumps: one node of a binary decision
-    tree, three tokens long.
+    tree.
 
-Bits are never popped off the array, so on any path the machine state is a
-constant known while generating, and every jump can be aimed by choosing
-what the array holds.  Aiming is done by *measuring*, not by solving: every
-arithmetic knob here ties the array head to the array sum (``SEED`` bumps
-both), so the offsets that look independent cancel, and each state reaches
-only a handful of token indices.  What makes that enough is that a subtree
-ends in a halting leaf -- the tokens after it are unreachable, so the
-generator emits the node, measures where the 1-branch actually lands, and
-pads the dead gap out to meet it.  Stashed bytes move the landing point
-about 220 tokens per chunk against roughly 40 tokens of added layout, so the
-jump overtakes the layout within a few rounds.
+Every landing point is *computed*, never measured.  Bits are never popped
+off the array on the branch that matters, so on any path the machine state
+is known while generating, and the whole node is a closed form:
 
-The tree is uniform depth ``n``: constant tables are not folded, because the
-reads are the interface and every table has to consume all ``n`` inputs.
+``SEED*wrap EXCRETE SEED*j1 DIGEST SEED*j2 DIGEST ACCEPT DIGEST LEAPFROG``
+    ``wrap = (256 - head) % 256`` puts the head at 0 so a later ``SEED`` run
+    cannot drop the sum by 256 partway through.  ``EXCRETE`` appends
+    ``acc % 256`` and *clears* the accumulator, which is what makes the rest
+    exact: the following ``DIGEST`` leaves ``acc`` equal to the sum rather
+    than XORed against an unknown.  Writing ``S1`` for the sum after the
+    ``j1`` run, ``j2 = ((S1 ^ 48) - S1) % 256`` forces the second ``DIGEST``
+    to exit with ``acc = S1 ^ (S1 + j2)``, whose low byte is exactly 48 --
+    the clean digit ``ACCEPT`` needs.
+
+The high bytes of that accumulator are the aiming knob.  ``ACCEPT`` only
+reads ``acc`` modulo 256, so ``acc = 48 + 256*H`` feeds the same clean digit
+whatever ``H`` is, while ``H`` survives into the closing ``DIGEST`` and moves
+the jump target in ~256-token steps *without touching the array*.  Sweeping
+``j1`` over its 256 values enumerates the ``H`` band arithmetically -- no
+program is ever run to find out where a jump goes.
+
+Two identities make the tree compose.  A node's 0-branch exits with ``acc``
+equal to the array sum exactly (``opening ^ second`` with the bit 0
+appended), which is the same normal form the node itself starts from, and
+the leaf that follows therefore needs no ``SEED``s at all.  So a subtree's
+shape does not depend on how its parent aimed, only on how much ballast it
+inherits.
+
+Ballast is the other half.  A 0-subtree inherits its parent's array, and if
+the sum could only grow, a child would convert every token its parent
+stashed into padding of its own and the two would lock together one for
+one.  ``CONSUME`` breaks the lock: the 0-arm sheds the stashed bytes back
+off before its subtree builds, so the child starts from a small array
+whatever the parent had to do to reach it.
+
+What is left is assembler-style branch relaxation, not a search: sizes
+depend on offsets and offsets on sizes, so the emitter sizes the 0-arm
+once, picks the landing arithmetically, commits, and rechecks.  The tree is
+uniform depth ``n``: constant tables are not folded, because the reads are
+the interface and every table has to consume all ``n`` inputs.
 """
 
 from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
 
 __all__ = ["slow_acv_mammalian_boolean"]
 
-# How large a byte a stash chunk aims to append.  The chunk pays about 40
-# tokens of layout for it, so a big byte is what makes the jump's reach grow
-# faster than the program it has to jump over.
-_STASH_BYTE = 220
+# The byte a stash chunk appends.  It is what raises the sum, and the sum is
+# what puts a distant token index within a jump's reach, so the chunk buys
+# the most reach per token by appending the largest byte there is.
+_STASH_BYTE = 255
 
-# ``j1`` cancels out of the landing point, so sweeping it past one period of
-# the mod-256 correction enumerates every gadget a state admits.
-_J1_PERIOD = 64
+# Stashed bytes a shed run leaves in place.  ``CONSUME`` pops the *middle*
+# element, so the array has to keep the head plus one element for the next
+# pop to have something to take.
+_SHED_KEEP = 2
 
-# Stash chunks tried before the generator gives up on a node.  Reach grows
-# ~220 tokens a chunk against ~40 of layout, so a node that has not converged
-# in this many rounds is not going to.
-_MAX_CHUNKS = 64
+# Candidates tried past the one the sizing pass picked.  The 0-arm's length
+# is re-derived for whichever candidate is committed, and that length can
+# differ from the sizing estimate, so the emitter walks a few neighbours.
+# Exceeding this means the estimate and the rebuild disagree by more than
+# the band is wide, which is a bug in the formulas rather than a table that
+# needs more effort.
+_MAX_RELAXATIONS = 8
+
+# Stash chunks tried before a node gives up.  Each chunk buys ~255 tokens of
+# reach against a handful of layout, so this bounds the program size a node
+# can aim past rather than standing in for a search.
+_MAX_CHUNKS = 400
+
+# ``DIGEST PRONOUNCE EXCRETE LEAPFROG``: the fixed tail every leaf ends with,
+# which :func:`_zero_arm_length` has to account for without building one.
+_LEAF_TAIL = 4
 
 
-def _apply(op: str, array: list[int], acc: int) -> tuple[list[int], int]:
-    """Apply one token to array 0, mirroring the interpreter.
+def _seeded(array: list[int], count: int) -> list[int]:
+    """``array`` after ``count`` ``SEED``s, which only move the head."""
+    out = list(array)
+    out[0] = (out[0] + count) % 256
+    return out
 
-    Only the three ops the generator emits outside a node are modelled:
-    ``SEED`` bumps array 0's head by one (the array's index plus one, and
-    this array is index 0), ``DIGEST`` XORs the array sum into the
-    accumulator, and ``EXCRETE`` appends ``acc % 256`` and clears it.
+
+def _stash_chunk(array: list[int], acc: int) -> tuple[list[str], list[int], int]:
+    """``SEED*k DIGEST EXCRETE``, appending exactly ``_STASH_BYTE``.
+
+    ``SEED`` advances the sum by one per token, and a head wrap drops it by
+    256, so the sum's *low byte* advances by exactly one either way.  Only
+    the low byte is spent -- ``EXCRETE`` appends ``acc % 256`` -- so the
+    count solves in one step instead of a scan.
     """
-    if op == "SEED":
-        out = list(array)
-        out[0] = (out[0] + 1) % 256
-        return out, acc
-    if op == "DIGEST":
-        return list(array), acc ^ sum(array)
-    if op == "EXCRETE":
-        out = list(array)
-        out.append(acc % 256)
-        return out, 0
-    if op == "CONSUME":
-        # Pops the middle element, which is what lets a node *lower* its
-        # landing band: without it the array sum only ever grows, so every
-        # node's reachable indices track the layout one-for-one and a node
-        # can never jump over a subtree bigger than the fixed slack.
-        out = list(array)
-        return out, out.pop((len(out) - 1) // 2)
-    raise ValueError(f"unmodelled token: {op}")
+    count = (((acc % 256) ^ _STASH_BYTE) - sum(array)) % 256
+    return (
+        [*["SEED"] * count, "DIGEST", "EXCRETE"],
+        [*_seeded(array, count), _STASH_BYTE],
+        0,
+    )
 
 
-def _run(tokens: list[str], array: list[int], acc: int) -> tuple[list[int], int]:
-    """Fold ``tokens`` over the state."""
-    for op in tokens:
-        array, acc = _apply(op, array, acc)
-    return array, acc
+def _shed(array: list[int], acc: int) -> tuple[list[str], list[int], int]:
+    """``CONSUME``s dropping the stashed ballast back off the array.
 
-
-def _reach_acc(array: list[int], acc: int, want: int) -> list[str] | None:
-    """Tokens landing the accumulator in ``want``'s residue class mod 256.
-
-    Only ``acc % 256`` is ever spent: ``ACCEPT`` appends ``byte ^ acc`` and
-    ``PRONOUNCE`` prints ``chr(acc % 256)``.  Asking for the residue rather
-    than the value keeps the search bounded once the array sum runs into the
-    thousands, where an exact match may need more than 255 ``SEED``s.
-
-    Each family ends in ``DIGEST`` so the accumulator picks up the sum; the
-    prefixes differ in how they move the sum first.  Stored bits survive all
-    of them -- ``SEED`` only touches the head, ``EXCRETE`` only appends.
+    ``CONSUME`` pops the middle element *into* the accumulator, clobbering
+    it rather than XORing, and the node that follows opens with ``EXCRETE``
+    -- which appends ``acc % 256`` straight back.  So the last pop rides
+    back aboard and a lone ``CONSUME`` sheds nothing; a run sheds every
+    value it pops but the last.
     """
-    best: list[str] | None = None
-    for prefix in ([], ["DIGEST"], ["EXCRETE"], ["DIGEST", "EXCRETE"]):
-        cursor, value = _run(prefix, array, acc)
-        for count in range(256):
-            if (value ^ sum(cursor)) % 256 == want % 256:
-                candidate = [*prefix, *["SEED"] * count, "DIGEST"]
-                if best is None or len(candidate) < len(best):
-                    best = candidate
-                break
-            cursor, value = _apply("SEED", cursor, value)
-    return best
+    out, value, tokens = list(array), acc, []
+    while len(out) > _SHED_KEEP + 1:
+        value = out.pop((len(out) - 1) // 2)
+        tokens.append("CONSUME")
+    return tokens, out, value
 
 
-def _leaf(array: list[int], acc: int, bit: int) -> list[str]:
-    """Print the table entry, then halt."""
-    tokens = _reach_acc(array, acc, _ASCII_ZERO + bit)
-    # Stays a ValueError, and stays excluded rather than becoming an
-    # assertion: _subtree calls this through a recursion whose arms catch
-    # ValueError to try the next candidate, so escalating it would turn a
-    # recoverable backtrack into a crash.
-    if tokens is None:
-        raise ValueError(  # pragma: no cover - a residue is always reachable
-            "no accumulator normalizer for a leaf"
-        )
-    # ``EXCRETE`` appends the printed byte (48 or 49, so nonzero: ``LEAPFROG``
-    # fires) and clears the accumulator, which makes the jump target
-    # ``0 - head - 1``.  That is negative, which the interpreter halts on.
-    return [*tokens, "PRONOUNCE", "EXCRETE", "LEAPFROG"]
+_Node = tuple[list[str], tuple[list[int], int], tuple[list[int], int], int]
 
 
-def _stash_chunk(array: list[int], acc: int) -> list[str]:
-    """``SEED*j DIGEST EXCRETE``, appending as large a byte as it can find.
+def _candidates(array: list[int], acc: int) -> list[_Node]:
+    """Every read node this state admits, with where each one's jump lands.
 
-    The appended byte is what grows the array sum, and the sum is what puts
-    a distant token index within the jump's reach.
+    One entry per ``j1``: the tokens, the state the 0-branch falls through
+    with, the state the 1-branch jumps with, and the index the jump resumes
+    at.  All four are arithmetic in the sum -- nothing here runs a program.
     """
-    cursor, value = list(array), acc
-    for count in range(256):
-        if (value ^ sum(cursor)) % 256 >= _STASH_BYTE:
-            return [*["SEED"] * count, "DIGEST", "EXCRETE"]
-        cursor, value = _apply("SEED", cursor, value)
-    return ["DIGEST", "EXCRETE"]  # pragma: no cover - a byte is always found
-
-
-def _shed_chunk(array: list[int]) -> list[str] | None:
-    """One ``CONSUME``, dropping the array's middle element.
-
-    The counterpart to :func:`_stash_chunk`.  Growing the sum raises where a
-    node can jump to, and a 0-subtree inherits its parent's array, so without
-    a way *down* every node's reach tracks the layout it has to clear and the
-    tree stops converging past two levels.  Shedding lowers the band instead.
-
-    The head and the last element are what ``LEAPFROG`` reads, and a middle
-    pop touches neither; the bits already branched on are ballast, since
-    their values are known to the generator on this path.
-    """
-    if len(array) < 3:  # keep the head plus one element to pop next time
-        return None
-    return ["CONSUME"]
-
-
-def _read_gadget(array: list[int], acc: int, first: int) -> list[str] | None:
-    """``EXCRETE SEED*j1 DIGEST SEED*j2 DIGEST``, leaving ``acc % 256 == 48``.
-
-    A gadget ending in a single ``DIGEST`` always exits with the accumulator
-    *equal* to the sum, and the node's ``acc ^ (sum + 1)`` then collapses to
-    1 however large the sum grew.  Loading the accumulator before the last
-    ``SEED`` run breaks that tie: the run leaves ``acc = S1 ^ S2`` against a
-    sum of ``S2``, and ``j2`` is forced by ``ACCEPT``'s convention that the
-    accumulator read a clean digit.
-
-    A ``SEED`` run that carries the head past 255 drops the sum by 256
-    partway through, so the head is wrapped to 0 first when the room left is
-    too small.
-    """
-    for wrap in (False, True):
-        prefix = ["SEED"] * ((256 - array[0]) % 256) if wrap else []
-        cursor, value = _run(prefix, array, acc)
-        excreted, _ = _apply("EXCRETE", cursor, value)
-        start, head = sum(excreted), excreted[0]
-        j1 = first - start
-        if j1 < 0:
+    wrap = (256 - array[0]) % 256
+    opened = [*_seeded(array, wrap), acc % 256]
+    start = sum(opened)
+    found: list[_Node] = []
+    for j1 in range(256):
+        first = start + j1
+        j2 = ((first ^ _ASCII_ZERO) - first) % 256
+        # The head sits at ``j1 + j2`` after both runs; letting that pass 255
+        # would wrap it and drop the sum out from under the arithmetic.
+        if j1 + j2 > 255:
             continue
-        j2 = (((start + j1) ^ _ASCII_ZERO) - (start + j1)) % 256
-        if head + j1 + j2 > 255:
+        second = first + j2
+        opening = first ^ second
+        # ``ACCEPT`` reads the accumulator modulo 256 and wants a clean
+        # digit.  The high bytes are free, and are exactly the aiming knob.
+        if opening % 256 != _ASCII_ZERO:
             continue
+        loaded = _seeded(opened, j1 + j2)
         tokens = [
-            *prefix,
+            *["SEED"] * wrap,
             "EXCRETE",
             *["SEED"] * j1,
             "DIGEST",
             *["SEED"] * j2,
             "DIGEST",
+            "ACCEPT",
+            "DIGEST",
+            "LEAPFROG",
         ]
-        if _run(tokens, array, acc)[1] % 256 == _ASCII_ZERO:
-            return tokens
-    return None
-
-
-def _landing_points(array: list[int], acc: int) -> dict[int, list[str]]:
-    """Every ``(landing token, gadget)`` this state can reach.
-
-    ``j1`` cancels out of the landing point -- each ``SEED`` moves the head
-    and the sum together -- so the reachable set is small and sweeping one
-    period of the correction enumerates all of it.
-    """
-    excreted, _ = _apply("EXCRETE", array, acc)
-    start = sum(excreted)
-    found: dict[int, list[str]] = {}
-    for j1 in range(_J1_PERIOD):
-        gadget = _read_gadget(array, acc, start + j1)
-        if gadget is None:
-            continue
-        cursor, value = _run(gadget, array, acc)
-        taken = [*cursor, 1]
-        found.setdefault((value ^ sum(taken)) - taken[0], gadget)
+        # ``LEAPFROG`` sets the cursor to ``acc - head - 1`` and the step
+        # then advances it, so the token that runs next is one past that.
+        landing = (opening ^ (second + 1)) - (j1 + j2) % 256
+        found.append(
+            (
+                tokens,
+                ([*loaded, 0], opening ^ second),
+                ([*loaded, 1], opening ^ (second + 1)),
+                landing,
+            )
+        )
+    found.sort(key=lambda entry: (entry[3], len(entry[0])))
     return found
 
 
-def _sum_prefixes(array: list[int], acc: int) -> list[list[str]]:
-    """Array adjustments to try before a node's read gadget, nearest first.
+def _leaf_seeds(array: list[int], acc: int, bit: int) -> int:
+    """``SEED``s bringing the accumulator onto the digit's residue class.
 
-    Each entry moves the array sum, which is what moves the band of token
-    indices the node's jump can reach: ``CONSUME`` pops a stashed byte to
-    lower it, a stash chunk appends one to raise it.  Trying the empty
-    adjustment first keeps a node that already aligns from paying for one.
+    Only ``acc % 256`` is ever printed, so this is the same one-step solve
+    the stash chunk uses rather than a scan over 256 counts.
     """
-    out: list[list[str]] = [[]]
+    return (((acc % 256) ^ (_ASCII_ZERO + bit)) - sum(array)) % 256
 
-    sheds: list[str] = []
-    cursor, value = list(array), acc
-    while True:
-        chunk = _shed_chunk(cursor)
-        if chunk is None or len(sheds) >= _MAX_CHUNKS:
-            break
-        sheds = [*sheds, *chunk]
-        cursor, value = _run(chunk, cursor, value)
-        out.append(list(sheds))
 
-    grows: list[str] = []
-    cursor, value = list(array), acc
-    for _ in range(_MAX_CHUNKS):
-        chunk = _stash_chunk(cursor, value)
-        grows = [*grows, *chunk]
-        cursor, value = _run(chunk, cursor, value)
-        out.append(list(grows))
-    return out
+def _leaf(array: list[int], acc: int, bit: int) -> list[str]:
+    """Print the table entry, then halt.
+
+    ``EXCRETE`` appends the printed byte (48 or 49, so nonzero: ``LEAPFROG``
+    fires) and clears the accumulator, which makes the jump target
+    ``0 - head - 1``.  That is negative, which the interpreter halts on.
+    """
+    count = _leaf_seeds(array, acc, bit)
+    return [*["SEED"] * count, "DIGEST", "PRONOUNCE", "EXCRETE", "LEAPFROG"]
+
+
+def _entry(table: str, row: str) -> int:
+    """Read the table's value on the path ``row``."""
+    return int(table[int(row, 2) if row else 0])
+
+
+def _zero_arm(
+    table: str,
+    n: int,
+    depth: int,
+    row: str,
+    state: tuple[list[int], int],
+    at: int,
+) -> list[str]:
+    """Shed the inherited ballast, then build the 0-branch's subtree."""
+    tokens, array, acc = _shed(*state)
+    return [
+        *tokens,
+        *_subtree(table, n, depth + 1, f"{row}0", array, acc, at + len(tokens)),
+    ]
+
+
+def _zero_arm_length(table: str, row: str, state: tuple[list[int], int]) -> int:
+    """Measure :func:`_zero_arm` without building it.
+
+    Only correct one level above the leaves, where the arm is a shed run and
+    a leaf and both are closed forms.  That is half the tree's nodes, and
+    knowing the length exactly is what lets those nodes take the first
+    candidate that fits instead of rebuilding to find out.
+    """
+    tokens, array, acc = _shed(*state)
+    return len(tokens) + _leaf_seeds(array, acc, _entry(table, f"{row}0")) + _LEAF_TAIL
+
+
+def _emit(
+    table: str,
+    n: int,
+    depth: int,
+    row: str,
+    prefix: list[str],
+    node: _Node,
+    base: int,
+    zero: list[str],
+) -> list[str]:
+    """Lay a committed node out: node, 0-arm, dead padding, 1-arm.
+
+    The padding lands after the 0-arm's halting leaf, so it never executes;
+    it only pushes the 1-subtree out to where the jump already goes.
+    """
+    tokens, _, taken, landing = node
+    start = base + len(prefix) + len(tokens)
+    one = _subtree(table, n, depth + 1, f"{row}1", *taken, landing)
+    pad = landing - start - len(zero)
+    return [*prefix, *tokens, *zero, *["SEED"] * pad, *one]
 
 
 def _subtree(
@@ -252,62 +260,91 @@ def _subtree(
 ) -> list[str]:
     """Build the subtree rooted here, knowing it starts at token ``base``."""
     if depth == n:
-        return _leaf(array, acc, int(table[int(row, 2) if row else 0]))
+        return _leaf(array, acc, _entry(table, row))
 
-    # A node's reachable indices sit in a band around the array sum, so
-    # aligning the jump is a matter of moving the sum: stash bytes to raise
-    # the band, CONSUME them back to lower it.  Both directions are needed --
-    # a 0-subtree inherits its parent's array, so if the sum could only grow
-    # its landings would track the layout it has to clear and nothing past
-    # two levels would converge.
-    for prefix in _sum_prefixes(array, acc):
-        cursor, value = _run(prefix, array, acc)
-        best: tuple[int, list[str], list[str], int, list[int], int, int] | None = None
-        for landing, gadget in sorted(_landing_points(cursor, value).items()):
-            after, folded = _run(gadget, cursor, value)
-            node = [*prefix, *gadget, "ACCEPT", "DIGEST", "LEAPFROG"]
-            fell = [*after, 0]
-            try:
-                zero = _subtree(
-                    table,
-                    n,
-                    depth + 1,
-                    row + "0",
-                    fell,
-                    folded ^ sum(fell),
-                    base + len(node),
-                )
-            except ValueError:
-                continue
-            one_base = base + len(node) + len(zero)
-            if landing < one_base:
-                continue
-            taken = [*after, 1]
-            cost = len(node) + len(zero) + (landing - one_base)
-            if best is None or cost < best[0]:
-                best = (
-                    cost,
-                    node,
-                    zero,
-                    landing - one_base,
-                    taken,
-                    folded ^ sum(taken),
-                    landing,
-                )
-        if best is not None:
-            _, node, zero, pad, taken, taken_acc, landing = best
-            try:
-                one = _subtree(
-                    table, n, depth + 1, row + "1", taken, taken_acc, landing
-                )
-            except ValueError:
-                continue
-            # The pad lands after the 0-subtree's halting leaf, so it is never
-            # executed; it only pushes the 1-subtree out to where the jump goes.
-            return [*node, *zero, *["SEED"] * pad, *one]
-    raise ValueError(
-        f"no array adjustment aligned the jump at depth {depth}, row {row!r}"
+    prefix: list[str] = []
+    cursor, value = list(array), acc
+    for _ in range(_MAX_CHUNKS):
+        candidates = _candidates(cursor, value)
+        placed = (
+            _place_above_leaves(table, n, depth, row, prefix, candidates, base)
+            if depth + 1 == n
+            else _place_inner(table, n, depth, row, prefix, candidates, base)
+        )
+        if placed is not None:
+            return placed
+        chunk, cursor, value = _stash_chunk(cursor, value)
+        prefix = [*prefix, *chunk]
+    raise ValueError(f"no landing reached the subtree at depth {depth}, row {row!r}")
+
+
+def _place_above_leaves(
+    table: str,
+    n: int,
+    depth: int,
+    row: str,
+    prefix: list[str],
+    candidates: list[_Node],
+    base: int,
+) -> list[str] | None:
+    """Place a node whose 0-arm is a shed run and a leaf.
+
+    Both are closed forms, so the arm's length is known before it is built
+    and the first candidate that clears it is the one to take.
+    """
+    for node in candidates:
+        tokens, fell, _, landing = node
+        start = base + len(prefix) + len(tokens)
+        if landing < start + _zero_arm_length(table, row, fell):
+            continue
+        zero = _zero_arm(table, n, depth, row, fell, start)
+        return _emit(table, n, depth, row, prefix, node, base, zero)
+    return None
+
+
+def _place_inner(
+    table: str,
+    n: int,
+    depth: int,
+    row: str,
+    prefix: list[str],
+    candidates: list[_Node],
+    base: int,
+) -> list[str] | None:
+    """Place a node whose 0-arm has to be built to be measured.
+
+    Sizing it against one candidate is enough to pick the landing, but the
+    arm's length shifts a little between candidates, so the committed one is
+    rebuilt and a few neighbours are tried when the two disagree.
+    """
+    sized, _, _, _ = candidates[0]
+    estimate = len(
+        _zero_arm(
+            table, n, depth, row, candidates[0][1], base + len(prefix) + len(sized)
+        )
     )
+    reach = base + len(prefix)
+    if candidates[-1][3] < reach + len(sized) + estimate:
+        return None
+
+    first = next(
+        (
+            index
+            for index, (tokens, _, _, landing) in enumerate(candidates)
+            if landing >= reach + len(tokens) + estimate
+        ),
+        0,
+    )
+    for node in candidates[first : first + _MAX_RELAXATIONS]:
+        tokens, fell, _, landing = node
+        start = reach + len(tokens)
+        if landing < start:
+            continue
+        zero = _zero_arm(table, n, depth, row, fell, start)
+        if landing < start + len(zero):
+            continue
+        return _emit(table, n, depth, row, prefix, node, base, zero)
+    return None
 
 
 def slow_acv_mammalian_boolean(truth_table: str) -> str:
