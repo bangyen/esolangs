@@ -2799,16 +2799,63 @@ class TestParameterizedPctSquaredMinusOne:
         }
         assert len(widths) == 1
 
-    def test_multi_minterm_table_refused_not_miscomputed(self) -> None:
-        """A table the cascade cannot build is refused rather than served wrong.
+    @pytest.mark.parametrize("n", [3, 4, 5])
+    def test_cascade_builds_or_and_nand_by_complement(self, n: int) -> None:
+        """``ips`` maps a 0/1 accumulator to ``1 - r``, so complements are free.
 
-        OR-ing minterm indicators needs a running total to survive a gadget
-        that erases, and there is only one register, so tables with several
-        ones are outside this construction.
+        ``AND``-``n`` and single minterms are subcubes and build directly;
+        ``OR``-``n`` and ``NAND``-``n`` are the complements of subcubes and
+        build by appending that one three-character negation.
         """
         from esolangs.tools.boolean import parameterized
 
-        with pytest.raises(ValueError, match="single-minterm"):
+        tables = {
+            "and": "0" * (2**n - 1) + "1",
+            "nand": "1" * (2**n - 1) + "0",
+            "or": "0" + "1" * (2**n - 1),
+            "nor": "1" + "0" * (2**n - 1),
+        }
+        for table in tables.values():
+            template = parameterized.pct_squared_minus_one(table)
+            for row in range(2**n):
+                bits = [(row >> (n - 1 - k)) & 1 for k in range(n)]
+                assert self.run_pct(self.instantiate(template, bits)) == table[row]
+
+    def test_cascade_covers_every_subcube_at_three_inputs(self) -> None:
+        """Every conjunction of literals builds, free inputs included.
+
+        A subcube leaves the inputs its conjunction does not mention free, and
+        their setters are the identity on both branches -- which is what makes
+        the coverage wider than the single-minterm family.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        built = 0
+        for value in range(256):
+            table = format(value, "08b")
+            try:
+                template = parameterized.pct_squared_minus_one(table)
+            except ValueError:
+                continue
+            built += 1
+            for row in range(8):
+                bits = [(row >> (2 - k)) & 1 for k in range(3)]
+                assert self.run_pct(self.instantiate(template, bits)) == table[row]
+        # The subcubes on three inputs and their complements, counted once
+        # each: 48 of the 256 tables, against the 2 the single-minterm family
+        # alone would reach.  Pinned as a number so a coverage regression in
+        # the acceptor is caught rather than passing quietly.
+        assert built == 48
+
+    def test_non_subcube_table_refused_not_miscomputed(self) -> None:
+        """A table the cascade cannot build is refused rather than served wrong.
+
+        ``00000110`` is neither a conjunction of literals nor the complement
+        of one, so no cascade computes it and the generator says so.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        with pytest.raises(ValueError, match="conjunction or disjunction"):
             parameterized.pct_squared_minus_one("00000110")
 
     def test_slope_zero_forgets_the_accumulator(self) -> None:
