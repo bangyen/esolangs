@@ -798,18 +798,25 @@ _TWO_INPUT_PLAN: dict[str, _Staging] = {
 # cost of longer programs.  Every version of that was measured and fails:
 #
 # * **One fixed staging: impossible**, and by counting rather than by search.
-#   A staging exposes at most one column per accumulator and orientation,
-#   about 2 x 26 = 52 of them, against 109 pairs to place.  The best single
-#   ``(separator, settle)`` reaches 60.
+#   A staging offers one column per accumulator and orientation -- 52 slots
+#   over the ranges used here -- but those collapse badly, because the walk's
+#   prefix-XOR is many-to-one and different accumulators keep arriving at the
+#   same column.  Measured over every staging in the family, **the best
+#   single one delivers 13 pairs and the mean is 5.8**, against 109 to place.
+#   So this is short by a factor of eight, not marginally.
 # * **Two separators: 99 of 109**, and *not* for want of room -- re-running
 #   with bracket counts to 70 and accumulators to 60 reaches the same 99.
 #   The ten stragglers need a different separator, not a longer program.
 # * **Dropping the settle field: 99 of 109.**  Ten pairs are reachable only
 #   at ``settle == 1``, so the staging cannot shrink to three fields.
-# * **Consolidating stagings:** the 109 entries use 63; a greedy cover needs
-#   35, and a rebuild avoiding separator 0 entirely lands on 51 at +1.4%
-#   size.  All of those churn verified constants to change a count no caller
-#   sees, so none is worth doing.
+# * **Consolidating stagings: bounded, and the bound is close.**  The 109
+#   entries use 63 stagings.  The 13-pair maximum above puts a floor of
+#   ``ceil(109 / 13) = 9`` on any cover, and a greedy search over all 406
+#   useful stagings -- then a pruning pass that found nothing redundant --
+#   gets to 33.  So the achievable range is 33 to 63 against a floor of 9
+#   that nothing approaches: the pairs simply do not clump.  A rebuild
+#   avoiding separator 0 lands on 51 at +1.4% program size, gated clean.
+#   None of these removes anything a caller sees, so the constants stay.
 #
 # Separator 0 is the one curiosity: no *three-input* entry needs it, since
 # separators 1 to 4 reach 108 of the 109 between them.  It stays because the
