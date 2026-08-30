@@ -294,6 +294,12 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.factor,
         id="factor",
     ),
+    "Fargo": Language(
+        "Fargo",
+        boolean=_boolean.fargo,
+        id="fargo",
+        interpreter="other.fargo",
+    ),
     "Flowchart": Language(
         "Flowchart",
         boolean=_boolean.flowchart,

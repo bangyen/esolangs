@@ -5,6 +5,9 @@ Covers the generators in :mod:`esolangs.tools.boolean.other` and
 helper edge paths exercised across generator modules.
 """
 
+import itertools
+import random
+
 import pytest
 
 from esolangs.interpreters.io import IO
@@ -13,6 +16,7 @@ from tests.tools.boolean_runners import (
     run_between,
     run_clockwise,
     run_container,
+    run_fargo,
     run_flowchart,
     run_forbin_boolean,
     run_laserfuck,
@@ -142,6 +146,77 @@ class TestForbinBoolean:
     def test_rejects_non_binary(self) -> None:
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.forbin_boolean("02")
+
+
+class TestFargo:
+    """The Fargo boolean generator: an algebraic normal form, not a tree."""
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_every_table_at_small_arity(self, n: int) -> None:
+        """Exhaustive: every table, every input combination."""
+        for value in range(2 ** (2**n)):
+            table = format(value, f"0{2**n}b")
+            program = boolean.fargo(table)
+            for combo in range(2**n):
+                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                got = run_fargo(program, bits)
+                assert got == table[combo], f"table {table} inputs {bits}"
+
+    @pytest.mark.parametrize("n", [4, 5, 8])
+    def test_higher_arity_tables(self, n: int) -> None:
+        """The construction is uncapped: no arity limit, no search."""
+        rng = random.Random(20260830 + n)
+        for _ in range(4):
+            table = "".join(rng.choice("01") for _ in range(2**n))
+            program = boolean.fargo(table)
+            for _ in range(10):
+                combo = rng.randrange(2**n)
+                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                assert run_fargo(program, bits) == table[combo]
+
+    def test_constant_tables_need_no_reads(self) -> None:
+        """A constant table is its degree-zero coefficient alone."""
+        assert boolean.fargo("00000000") == "% 0 0\n$\n"
+        assert boolean.fargo("11111111") == "% 0 1\n$\n"
+
+    def test_parity_is_one_term_per_input(self) -> None:
+        """Parity's ANF is the sum of the single-variable terms."""
+        assert boolean.fargo("01101001") == "% 0 ^ ^ @ 0 @ 1 @ 10\n$\n"
+
+    def test_parity_grows_linearly_not_exponentially(self) -> None:
+        """The size tracks algebraic complexity, so parity is O(n log n).
+
+        This is the property that makes Fargo's generator unlike the
+        tree-shaped ones: a decision tree spends O(2**n) on parity, the
+        table that folds nothing.  Parity's ANF is one single-variable
+        term per input, so each extra input adds one ``^ @ i`` -- a
+        constant plus the index's own binary width, which is why the
+        steps widen by one every time ``i`` gains a digit rather than
+        staying exactly equal.
+        """
+        sizes = [
+            len(boolean.fargo("".join(str(bin(r).count("1") % 2) for r in range(2**n))))
+            for n in (2, 4, 6, 8)
+        ]
+        gaps = [b - a for a, b in itertools.pairwise(sizes)]
+        # Each step of two inputs costs a bounded amount, nowhere near the
+        # doubling per input a decision tree would pay.
+        assert all(12 <= gap <= 20 for gap in gaps), f"not linear: {sizes}"
+        # A decision tree over n == 8 would be thousands of characters.
+        assert sizes[-1] < 100, f"growing too fast: {sizes}"
+
+    def test_a_one_dependency_table_folds(self) -> None:
+        """One term whatever the arity, which is what the catalogue checks."""
+        assert boolean.fargo("11110000") == "% 0 ^ 1 @ 10\n$\n"
+        assert len(boolean.fargo("11110000")) < len(boolean.fargo("01101001"))
+
+    def test_rejects_bad_table(self) -> None:
+        with pytest.raises(ValueError, match="entries"):
+            boolean.fargo("011")
+
+    def test_rejects_non_binary(self) -> None:
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.fargo("02")
 
 
 class TestFlowchart:

@@ -231,6 +231,10 @@ def _empty_machine(module: str, io: IO) -> object:
         from esolangs.interpreters.other.lamfunc import _Machine
 
         return _Machine("", io)
+    if module == "esolangs.interpreters.other.fargo":
+        from esolangs.interpreters.other.fargo import _Machine
+
+        return _Machine("", io)
     if module == "esolangs.interpreters.other.forbin":
         from esolangs.interpreters.other.forbin import _Machine
 
@@ -291,6 +295,7 @@ _STEP_MACHINES = {
     "esolangs.interpreters.register_based.between",
     "esolangs.interpreters.register_based.myscript",
     "esolangs.interpreters.other.lamfunc",
+    "esolangs.interpreters.other.fargo",
     "esolangs.interpreters.other.forbin",
     "esolangs.interpreters.other.suptiftam",
 }
