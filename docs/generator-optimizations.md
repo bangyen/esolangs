@@ -22,7 +22,7 @@ three.
 | # | Technique | What it buys | Lives in |
 |---|---|---|---|
 | 1 | **Delta encoding** | each character costs its distance from the previous one, not its full code point | `text/helpers.py:28` `delta_program` |
-| 2 | **Multiply/factor loops** | a byte costs `O(sqrt(v))` instead of `O(v)` via `a*b + r`; the per-language cost of a run is an argument, so brainfuck/home_row minimize `a+b+r` and suffolk `a+2b+2r` | `text/helpers.py:71` `factor_triple` |
+| 2 | **Multiply/factor loops** | a byte costs `O(sqrt(v))` instead of `O(v)` via `a*b + r`; the per-language cost of a run is an argument, so brainfuck/home_row minimize `a+b+r` and suffolk `a+b+2r` | `text/helpers.py:71` `factor_triple` |
 | 3 | **Binary doubling** | a byte costs `O(log v)` by walking its bit expansion | addsubjump, unsquare |
 | 4 | **Shortest-of-N dispatch** | build two constructions, measure, return the smaller | `wrap.py:114` `shortest` (laserfuck, streetcode, %^2^-1, unsquare, brainfuck, bfstack) |
 | 5 | **Constant-subtree folding** | a subtree whose rows agree emits a leaf, not a branch | `boolean/helpers.py` (both walkers) |
@@ -132,7 +132,7 @@ Each character costs only its distance from the previous one.
 | Generator | Optimization |
 |---|---|
 | `home_row` | `a*b+r` counter loop, `a` searched near `sqrt` → `O(sqrt)` |
-| `suffolk` | factors minimizing `a + 2b + 2r` — *not* `sqrt`, because `>!` and `><` cost two characters each |
+| `suffolk` | factors minimizing `a + b + 2r` — *not* `sqrt`, because `r` is spelled `>!` at two characters a unit. It minimized `a + 2b + 2r` until 2026-08-30, counting the one `><` separator as a per-`b` price; the emitted line measures `12 + a + b + 2r`, and the correction is shorter on 37 of the 256 byte values and longer on none |
 | `addsubjump` | binary doubling → `O(log byte)` |
 | `collatz_multiverse` | two-line multiply-add per constant; **only the bytes actually referenced** are built (`_PLAN` / `_extend_plans`), reaching large values in `O(log)` constants |
 | `wii2d` | per character picks cheapest of literal digit / square / double / combination |
