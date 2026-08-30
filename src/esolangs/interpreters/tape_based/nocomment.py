@@ -2,14 +2,13 @@
 
 The full wiki language (not a subset): a byte tape with a movable pointer,
 plus a byte stack.  ``i``/``d`` increment/decrement the current cell, ``c``
-clears it, ``l``/``r`` move the pointer (``l`` is a no-op at cell 0, ``r``
-extends the tape), ``n`` pushes the current cell onto the stack, ``f`` pops
-the stack into the current cell, ``s``/``b`` jump forward/backward by a
-peeked stack value when the current cell is nonzero (``s`` skips X
-instructions, ``b`` jumps back X-1), and ``o`` prints the current cell as a
-byte.  The tape is a static 4096 bytes and the pointer wraps at both ends
-(per the wiki, pointer overflow is legal and moves to the opposite end),
-matching the RISC-V cross-check.
+clears it, ``l``/``r`` move the pointer left/right, ``n`` pushes the current
+cell onto the stack, ``f`` pops the stack into the current cell, ``s``/``b``
+jump forward/backward by a peeked stack value when the current cell is
+nonzero (``s`` skips X instructions, ``b`` jumps back X-1), and ``o`` prints
+the current cell as a byte.  The tape is a static 4096 bytes and the pointer
+wraps at both ends (per the wiki, pointer overflow is legal and moves to the
+opposite end), matching the RISC-V cross-check.
 
 Per the wiki, any character that is not a command is an error (there are no
 comments), and popping an empty stack is an error.  A malformed program
@@ -28,8 +27,14 @@ import sys
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-# The static tape size: the wiki says the memory space is static but does not
-# give its size, so 4096 (matching the RISC-V cross-check's buffer) is used.
+# The static tape size.  The tape is finite by specification, not for want of an
+# unbounded Python list: the wiki makes pointer overflow and underflow legal and
+# defines them as moving "to the opposite end of memory", then says outright that
+# "this is the reason why the memory space needs to be static".  A tape with no
+# opposite end could not implement that wrap.  What the wiki leaves open is the
+# size, so 4096 (matching the RISC-V cross-check's buffer) is used -- and because
+# the size is observable through the wrap, changing it changes what wrapping
+# programs do.
 _TAPE = 4096
 
 
