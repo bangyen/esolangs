@@ -127,6 +127,7 @@ LANGUAGES: dict[str, Language] = {
         "123",
         _generate.one_two_three,
         "tape_based.one_two_three",
+        boolean=_boolean.one_two_three,
         id="one_two_three",
     ),
     "6-5": Language(
