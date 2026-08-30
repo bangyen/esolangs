@@ -10,6 +10,7 @@ programs verifies that class.
 """
 
 import random
+import string
 
 import pytest
 
@@ -621,9 +622,32 @@ def test_six_five_transpiles_generated_program() -> None:
 
 
 def test_six_five_loop_cap() -> None:
-    """More than 18 loops (36 markers) cannot be labelled."""
-    with pytest.raises(ValueError, match="18 loops"):
-        esolangs.transpile("brainfuck", "6-5", "[-]" * 19)
+    """More than 17 loops cannot be labelled within the spec's alphabet.
+
+    The bound is derived from the operand alphabet (digits then ``A``..``Z``,
+    so 35 is the highest named marker), not hardcoded: an 18th loop would
+    need marker 36, which the spec names no character for.
+    """
+    from esolangs.tools.transpilers import _SIX_FIVE_MAX_LABEL
+
+    cap = _SIX_FIVE_MAX_LABEL // 2
+    with pytest.raises(ValueError, match=f"{cap} loops"):
+        esolangs.transpile("brainfuck", "6-5", "[-]" * (cap + 1))
+
+
+def test_six_five_transpile_stays_in_the_spec_alphabet() -> None:
+    """Every 7n/8n operand emitted is a digit or an uppercase letter.
+
+    At the cap the transpiler used to emit ``8[`` -- operand 36 -- which only
+    worked through the interpreter's undefined decode.
+    """
+    from esolangs.interpreters.tape_based.six_five import _tokens
+    from esolangs.tools.transpilers import _SIX_FIVE_MAX_LABEL
+
+    code = esolangs.transpile("brainfuck", "6-5", "[-]" * (_SIX_FIVE_MAX_LABEL // 2))
+    operands = [t[1] for t in _tokens(code) if t[0] in "78" and len(t) > 1]
+    assert operands, "expected the transpile to emit 7n/8n tokens"
+    assert all(c.isdigit() or c in string.ascii_uppercase for c in operands)
 
 
 def test_six_five_unbalanced_brackets_rejected() -> None:

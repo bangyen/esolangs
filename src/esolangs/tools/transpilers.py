@@ -9,6 +9,7 @@ own, and the outputs must agree.
 """
 
 import re
+import string
 from collections.abc import Callable
 from typing import Any, Literal, get_args
 
@@ -271,7 +272,10 @@ def bf_to_six_five(program: str) -> str:
     the ``8(n-1)`` jump back if the cell is zero, else takes it -- so the
     body runs while the cell is nonzero, exactly like brainfuck.  Each loop
     consumes two ``4`` markers, and the marker labels are the digits 0..9
-    then A..Z, so a program is limited to 18 loops (36 markers total).
+    then A..Z -- the [wiki spec](https://esolangs.org/wiki/6-5)'s "numbers
+    beyond 9 denoted using letters", so the highest addressable marker is
+    ``Z`` == 35.  A program is therefore limited to 17 loops (34 markers);
+    an 18th loop would need marker 36, which no spec-defined operand names.
     """
     markers = 0
     res: list[str] = []
@@ -295,9 +299,10 @@ def bf_to_six_five(program: str) -> str:
             elif c == ".":
                 out.append("A")
             elif c == "[":
-                if markers + 2 > 36:
+                if markers + 2 > _SIX_FIVE_MAX_LABEL:
                     raise ValueError(
-                        "the BF-to-6-5 transpiler supports 18 loops at most",
+                        "the BF-to-6-5 transpiler supports "
+                        f"{_SIX_FIVE_MAX_LABEL // 2} loops at most",
                     )
                 depth = 1
                 j = i + 1
@@ -326,8 +331,18 @@ def bf_to_six_five(program: str) -> str:
     return "".join(res)
 
 
+# The highest 7n/8n operand the 6-5 spec names: the digits 0..9 and then the
+# letters A..Z ("numbers beyond 9 denoted using letters", A=10), so ``Z`` ==
+# 35.  Past this the interpreter's ``ord(c.upper()) - 55`` decode keeps going
+# over undefined characters (``[`` for 36) -- see the conformance note in
+# ``docs/limitations.md``; the transpiler must not emit into that region.
+_SIX_FIVE_MAX_LABEL = 10 + len(string.ascii_uppercase) - 1
+
+
 def _six_five_label(value: int) -> str:
     """Return the single character 6-5 reads as ``value`` for a 7n/8n operand."""
+    if not 0 <= value <= _SIX_FIVE_MAX_LABEL:
+        raise ValueError(f"6-5 has no operand character for {value}")
     return str(value) if value < 10 else chr(value + 55)
 
 
