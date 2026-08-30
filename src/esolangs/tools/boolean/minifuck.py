@@ -72,7 +72,7 @@ reconvergence works by driving every row to a single state and so cannot
 collapse one input while preserving another.  Sorting those needs the solver
 to assign names, which is a change to :func:`_project` and :func:`_lift`.
 
-**Coverage: every two-input table, and 30 of the 40 three-input orbits**
+**Coverage: every two-input table, and 34 of the 40 three-input orbits**
 (under input permutation and complement).  That is up from the eight orbits
 the search alone reached, and the increase is not a speedup -- the staged
 route builds tables the searches *fail* on: ``01101000``, ``10100001`` and
@@ -85,7 +85,7 @@ tenth of one.  How much of the arity is derived rather than searched:
 * **Three inputs, at most two of them essential: all of it, for free.**  Such
   a table is a smaller table wearing extra inputs, so it projects onto the
   two-input construction; all 38 build without searching.
-* **Three essential inputs: 98 of 218 tables**, via
+* **Three essential inputs: 216 of 218 tables**, via
   :data:`_THREE_INPUT_PLAN`, parity and majority among them.  The rest still
   search, so the plan is a fast path rather than a replacement and a miss
   falls through unchanged.
@@ -130,8 +130,23 @@ _BASE = 16
 # What separates one embedded bit from the next.  A plain ``[x`` run leaves
 # the prefix-XORs too correlated for the one-sided tests the endgame makes;
 # the ``<`` steps back over a cell so the parities stay distinguishable.
-_SEPS = ("[x<[x", "[x[x[x")
+#
+# The separator decides the affine picture the whole construction reads from,
+# and the first two here were picked by hand.  That turned out to be the
+# binding constraint rather than a detail: between them they leave only 92
+# distinct columns standing, and 112 of the 120 tables the searches could not
+# reach were absent from the tape entirely rather than merely hard to print.
+# Enumerating short strings over the same alphabet fixed that -- the three
+# added below carry 118 of those 120, and the searches never had to change.
+# Only the first two are used by the routes that scan separators (the
+# degenerate path and the fallback searches); the rest are reached by name
+# from :data:`_THREE_INPUT_PLAN`, so adding one costs those routes nothing.
+_SEPS = ("[x<[x", "[x[x[x", "[<[<[", "[[[[[", "[x[<[")
 _SEP = _SEPS[0]
+
+# The separators the scanning routes try.  Widening this would multiply every
+# search's cost; the plan reaches the others directly instead.
+_SCAN_SEPS = _SEPS[:2]
 
 # How far the bits and their working area reach, for sizing the windows.
 _SPAN = 6
@@ -772,12 +787,16 @@ _TWO_INPUT_PLAN: dict[str, _Staging] = {
     "0100": (0, 0, 6, 20),  # NOT b0 AND b1
 }
 
-# The same construction at three inputs.  It does not cover the arity -- 49
-# of the 109 complement pairs are here, the rest still search -- so this is a
-# fast path rather than a replacement, and a miss falls through unchanged.
-# The pairs it does cover include the expensive ones: ``01101001`` is parity
-# and ``00010111`` is majority, both of which the search takes tens of
-# seconds to reach.
+# The same construction at three inputs.  It very nearly covers the arity --
+# 108 of the 109 complement pairs are here -- but a miss still falls through
+# to the searches rather than raising, so coverage cannot regress and the one
+# remaining pair (``01101101`` / ``10010010``) is built as it always was.
+#
+# What closed the gap was not a better search but a wider *separator* set.
+# See the note on :data:`_SEPS`: the first two separators leave only 92
+# distinct columns standing, and 112 of the 120 tables the searches could not
+# reach did not stand as a column at all.  Three more separators carry 118 of
+# those 120, every one of which builds, computes and emits in name order.
 #
 # The bracket axis is *exhausted*, not capped, and that is checkable rather
 # than assumed.  Nothing in this language writes leftward -- ``[`` writes at
@@ -846,6 +865,66 @@ _THREE_INPUT_PLAN: dict[str, _Staging] = {
     "01100001": (1, 0, 21, 28),
     "01100111": (1, 0, 17, 25),
     "01101111": (1, 0, 22, 28),
+    # Reached by the three added separators; see the _SEPS note.
+    "00000010": (3, 0, 20, 27),
+    "00000100": (2, 0, 14, 26),
+    "00001001": (2, 0, 19, 28),
+    "00001011": (2, 0, 21, 28),
+    "00001101": (2, 0, 11, 24),
+    "00010000": (3, 0, 20, 29),
+    "00010011": (2, 0, 3, 21),
+    "00011010": (2, 0, 13, 27),
+    "00011011": (2, 0, 15, 24),
+    "00011100": (3, 1, 10, 27),
+    "00011101": (2, 0, 7, 24),
+    "00100000": (3, 1, 15, 27),
+    "00100011": (2, 0, 1, 21),
+    "00100100": (3, 0, 12, 29),
+    "00100101": (2, 0, 13, 26),
+    "00100111": (2, 0, 3, 23),
+    "00101010": (2, 1, 13, 24),
+    "00101011": (2, 1, 9, 23),
+    "00101100": (2, 0, 0, 21),
+    "00101111": (2, 0, 7, 21),
+    "00110001": (3, 0, 1, 24),
+    "00110010": (3, 0, 1, 22),
+    "00110100": (3, 1, 12, 24),
+    "00110101": (3, 1, 6, 26),
+    "00111000": (3, 1, 13, 29),
+    "00111001": (3, 0, 1, 26),
+    "00111010": (2, 0, 9, 25),
+    "00111011": (2, 0, 14, 27),
+    "00111101": (2, 1, 14, 25),
+    "01000010": (2, 0, 3, 22),
+    "01000101": (2, 0, 11, 25),
+    "01000110": (2, 0, 14, 25),
+    "01001001": (2, 0, 10, 23),
+    "01001100": (3, 0, 24, 30),
+    "01001101": (2, 0, 9, 24),
+    "01001110": (3, 1, 22, 32),
+    "01010001": (2, 0, 9, 22),
+    "01010011": (4, 0, 16, 26),
+    "01010100": (3, 0, 21, 28),
+    "01011000": (3, 0, 24, 28),
+    "01011001": (3, 0, 1, 28),
+    "01011011": (2, 1, 11, 24),
+    "01011100": (3, 0, 22, 28),
+    "01011101": (4, 0, 10, 22),
+    "01100010": (2, 0, 11, 22),
+    "01100011": (3, 1, 10, 28),
+    "01100100": (2, 0, 7, 23),
+    "01100101": (2, 0, 13, 25),
+    "01101010": (2, 0, 19, 27),
+    "01101011": (2, 1, 12, 24),
+    "01101100": (2, 1, 17, 30),
+    "01110001": (3, 0, 17, 28),
+    "01110010": (2, 0, 1, 22),
+    "01110011": (3, 1, 15, 28),
+    "01110101": (4, 0, 14, 23),
+    "01111001": (4, 0, 15, 23),
+    "01111010": (2, 0, 13, 23),
+    "01111100": (2, 1, 19, 30),
+    "01111101": (2, 0, 0, 22),
 }
 
 _PLANS: dict[int, dict[str, _Staging]] = {
@@ -982,7 +1061,7 @@ def minifuck(truth_table: str) -> str:
 
     # A planned staging is the cheapest route by far, so it goes first.  At
     # two inputs the plan is complete and no search ever runs; at three it
-    # covers 49 of the 109 complement pairs, and a miss falls through to the
+    # covers 108 of the 109 complement pairs, and a miss falls through to the
     # searches below.
     derived = _staged(truth_table, n)
     if derived is not None:
@@ -997,7 +1076,7 @@ def minifuck(truth_table: str) -> str:
     # searches (one separator fully, then the next) made tables that only the
     # second separator's scan reaches pay for three failed searches first --
     # measured at 69-82s each, against about 35s for the searches that do hit.
-    for sep in _SEPS:
+    for sep in _SCAN_SEPS:
         base = _embed(n, sep=sep)
         _clamp(base)
         for acc in range(9, frontier):
@@ -1005,7 +1084,7 @@ def minifuck(truth_table: str) -> str:
             if hit is not None:
                 return hit.template()
 
-    for sep in _SEPS:
+    for sep in _SCAN_SEPS:
         # Otherwise search for the answer column outright.  The search has to
         # launch from the frontier, with the pointer already in the data: a
         # depth-``d`` walk from the origin never reaches cell ``_BASE``, so
@@ -1034,7 +1113,7 @@ def minifuck(truth_table: str) -> str:
     # so change, that very cell.  This is the most expensive route, and it
     # earns its place at n == 2 (it is the only one reaching the XOR family)
     # while contributing no hits at all in an n == 3 sample, so it goes last.
-    for sep in _SEPS:
+    for sep in _SCAN_SEPS:
         for code, _cell in _find_parked(
             _embed(n, settle=_SETTLE, sep=sep),
             want,
