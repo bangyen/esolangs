@@ -357,6 +357,71 @@ def _derive(truth_table: str) -> tuple[list[tuple[str, str]], str] | None:
     return best[1], best[2]
 
 
+#: Setter branches for the arbitrary-arity minterm cascade.  Both are two
+#: characters wide, so a setter leaks nothing through ``len()`` and the pad
+#: parity problem never arises: a bare ``'`` erase is one character, and the
+#: odd shortfall against an empty identity branch has no ``pp`` padding.
+#: ``pp`` is two negations, which compose to the identity; ``'p`` zeroes and
+#: then negates zero, which is still zero.
+_CASCADE_IDENT = "pp"
+_CASCADE_ERASE = "'p"
+
+#: Loads 1 into the accumulator from 0: ``i`` subtracts 3, ``p`` negates to
+#: 3, ``s`` subtracts 2.  The direct ``+1`` has no spelling -- ``_sub_code``
+#: has no representation for 1 -- so the constant is built by this detour.
+_CASCADE_ONE = "ips"
+
+
+def _minterm_of(truth_table: str, n: int) -> tuple[int, ...] | None:
+    """Return the single row ``truth_table`` accepts, or ``None``.
+
+    The cascade computes a *minterm indicator*: one row of the table is 1 and
+    every other row is 0.  A table with no ones, or with more than one, is not
+    of that shape and is not this construction's to build.
+    """
+    ones = [i for i, bit in enumerate(truth_table) if bit == "1"]
+    if len(ones) != 1:
+        return None
+    index = ones[0]
+    return tuple((index >> (n - 1 - k)) & 1 for k in range(n))
+
+
+def _cascade(truth_table: str, n: int) -> str | None:
+    """Build a minterm-cascade template, or ``None`` if the table is not one.
+
+    The accumulator is loaded with 1 and then passed through one setter per
+    input.  A setter is the identity when its bit matches the minterm and an
+    erase when it does not, so the accumulator survives as 1 exactly when
+    every bit matches and is 0 the moment one does not.  ``l`` then prints it
+    in decimal, needing no branch -- the same printing route the two-input
+    derivation uses.
+
+    This is what lifts the two-input cap.  The derived path composes one
+    affine map per input into a shared value, which forces each cofactor of
+    the table to be constant or an affine image of one shared function; that
+    constraint is what stops it at two inputs.  The cascade escapes it by
+    using the erase multiplier as a conditional: the position at which the
+    accumulator is wiped depends on the inputs, which is a genuine branch
+    realised arithmetically in a language whose only jump target is 0.
+
+    Coverage is the minterm family at every arity, not every table --
+    ``AND``-``n`` and, by relabelling which rows the polarity accepts, every
+    single-row table.  Tables with several ones are not reachable this way:
+    OR-ing indicators needs a running total to survive a gadget that erases,
+    and there is only one register.
+    """
+    minterm = _minterm_of(truth_table, n)
+    if minterm is None:
+        return None
+    setters = [
+        (_CASCADE_ERASE, _CASCADE_IDENT) if bit else (_CASCADE_IDENT, _CASCADE_ERASE)
+        for bit in minterm
+    ]
+    header = ";".join(f"{k}={zero}|{one}" for k, (zero, one) in enumerate(setters))
+    body = _CASCADE_ONE + "".join("{X" + str(k) + "}" for k in range(n)) + "l"
+    return header + _HEADER_END + body
+
+
 def pct_squared_minus_one(truth_table: str) -> str:
     """Build a %^2^-1 template for the given truth table.
 
@@ -382,10 +447,17 @@ def pct_squared_minus_one(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     if n > 2:
-        raise ValueError(
-            f"%^2^-1 supports one- and two-input tables; got {n} inputs "
-            f"({truth_table!r})"
-        )
+        # Above two inputs the derivation below does not apply -- it reads one
+        # slope per column of a two-input table -- but the minterm cascade
+        # does, at any arity.  A table it cannot build is still refused rather
+        # than served by a program computing the wrong function.
+        cascade = _cascade(truth_table, n)
+        if cascade is None:
+            raise ValueError(
+                f"%^2^-1 builds two-input tables and single-minterm tables at "
+                f"any arity; got {n} inputs ({truth_table!r})"
+            )
+        return cascade
     # Widen a one-input table by repeating each entry, so the second input is
     # present in the derivation but cannot change the answer.
     widened = truth_table if n == 2 else "".join(bit * 2 for bit in truth_table)
