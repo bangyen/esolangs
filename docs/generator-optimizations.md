@@ -22,7 +22,7 @@ three.
 | # | Technique | What it buys | Lives in |
 |---|---|---|---|
 | 1 | **Delta encoding** | each character costs its distance from the previous one, not its full code point | `text/helpers.py:28` `delta_program` |
-| 2 | **Multiply/factor loops** | a byte costs `O(sqrt(v))` instead of `O(v)` via `a*b + r` | `text/helpers.py:71` `_factor_triple` |
+| 2 | **Multiply/factor loops** | a byte costs `O(sqrt(v))` instead of `O(v)` via `a*b + r`; the per-language cost of a run is an argument, so brainfuck/home_row minimize `a+b+r` and suffolk `a+2b+2r` | `text/helpers.py:71` `factor_triple` |
 | 3 | **Binary doubling** | a byte costs `O(log v)` by walking its bit expansion | addsubjump, unsquare |
 | 4 | **Shortest-of-N dispatch** | build two constructions, measure, return the smaller | `wrap.py:114` `shortest` (laserfuck, streetcode, %^2^-1, unsquare, brainfuck, bfstack) |
 | 5 | **Constant-subtree folding** | a subtree whose rows agree emits a leaf, not a branch | `boolean/helpers.py` (both walkers) |
