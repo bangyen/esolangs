@@ -292,19 +292,19 @@ def suffolk(text: str) -> str:
     prints.  Cell 2 is sized so ``!`` zeroes the working cells and they can
     be reused per character.
 
-    The factorization is :func:`factor_triple` under the weighting this
-    generator has always used, ``a + 2b + 2r``.
+    The factorization is :func:`factor_triple` under the length this
+    generator actually emits.  The line below is twelve constant characters
+    (``>><!>><>!``, the ``><`` separator and the ``.``) plus ``'!' * a``,
+    ``'>!' * r`` and ``'<' * b``, so a character costs ``12 + a + b + 2r``
+    and the search minimizes ``a + b + 2r``.
 
-    **That weighting does not match what the line above emits**, which runs
-    to ``12 + a + b + 2r``: ``r`` does cost two characters a unit (``>!``),
-    but ``b`` costs one (``<``) -- the ``><`` is a single separator, not a
-    per-unit price.  Over-weighting ``b`` picks a worse factorization for 37
-    of the 256 byte values (``value = 36`` takes ``9 * 4`` at 25 characters
-    where ``6 * 6`` spells it in 24), about 0.61% of total output.  The
-    weighting is kept because correcting it changes the emitted program, so
-    it wants an execution check rather than the byte-diff that guarded the
-    move to the shared search -- and because the choice also feeds the
-    ``big`` prologue above, which the cost model does not model at all.
+    It used to minimize ``a + 2b + 2r``, on the reasoning that ``>!`` and
+    ``><`` are two characters each.  That is right for ``r`` and wrong for
+    ``b``: the ``><`` is one separator, not a price paid per unit of ``b``,
+    which is spelled ``<``.  Over-weighting ``b`` picked a worse
+    factorization for 37 of the 256 byte values -- ``value = 36`` took
+    ``9 * 4`` at 25 characters where ``6 * 6`` spells it in 24 -- costing
+    about 0.61% of total output.
     """
     if not text:
         return ""
@@ -315,7 +315,7 @@ def suffolk(text: str) -> str:
     for c in text:
         a, b, r = factor_triple(
             ord(c) + 1,
-            lambda mul, add, rem: mul + 2 * add + 2 * rem,
+            lambda mul, add, rem: mul + add + 2 * rem,
         )
         res.append(f">><!>><>!{'!' * a}{'>!' * r}><{'<' * b}.")
     return ">>!" * big + "".join(res)
