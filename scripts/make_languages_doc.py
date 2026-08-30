@@ -188,7 +188,9 @@ def render() -> str:
         "for a different reason: both *have* an input command, but neither "
         "can branch on what it reads, so their reading models are walled "
         "(the %^2^-1 wall is proved in Lean) and embedding is what reaches "
-        "the two-input tables.",
+        "the two-input tables.  %^2^-1 goes further: a subcube cascade "
+        "builds every conjunction or disjunction of literals at any arity "
+        "(see `docs/limitations.md`).",
         "",
         "| Language | Text generator | Python | Cross-check | Boolean | Compiler |",
         "| --- | :---: | :---: | :---: | :---: | :---: |",
