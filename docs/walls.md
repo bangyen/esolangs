@@ -287,9 +287,35 @@ This is also why the language needs no hang detector, and why the
 `run_until_halt_or_cycle` machinery that makes the convention testable
 elsewhere has nothing to detect here.
 
+### Two inputs are constructed, not searched
+
+**This section's premise no longer holds at n=2.** All sixteen two-input
+tables are now derived from an eight-entry staging table
+(`_TWO_INPUT_PLAN`), and build in well under a second together against
+2.5-9s each before. The derivation is short enough to state:
+
+- The embed leaves an **affine picture** — every cell holds `a*b0 ^ b*b1 ^ c`
+  plus the one nonlinear term the `[` cascade computes — and a plain run of
+  `k` brackets from `_BASE - 1` sweeps that picture forward, exposing a
+  different function at each step. The whole search space collapses to
+  (separator, bracket count, accumulator).
+- **Select on the accumulator's value at the read, not on the cell holding
+  the answer.** These differ: the walk out applies the running prefix-XOR, so
+  at `acc=22` after separator 1, AND `(0,0,0,1)` *arrives* as the constant
+  `(1,1,1,1)` and XOR `(0,1,1,0)` arrives as `b1`. Selecting pre-walk covers
+  10 of 16; selecting post-walk covers all of them. This is the same lesson
+  as "test cells as-they-are against transformed targets", and it is what an
+  earlier reading of this problem got backwards.
+- **Eight entries suffice for sixteen tables** because a table and its
+  complement share a staging — the endgame tries both read polarities and
+  the printed digit is `NOT(v XOR cell7)`, so the complement is free.
+
+What follows is about **n≥3**, where the generator is still a search.
+
 ### Where a construction would have to start
 
-The shipped generator is a search, and searches are what this repo replaces:
+The shipped generator is a search at n≥3, and searches are what this repo
+replaces:
 `wii2d` was a capped search before it became a Horner index chain plus a fold
 decode, and `bfpda` is a closed-form tree at any arity.  Minifuck has the
 property that makes wii2d's shape plausible here — values cannot travel left,

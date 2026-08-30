@@ -1970,13 +1970,16 @@ class TestParameterizedMinifuck:
             got = self.run_minifuck(self.instantiate(template, bits))
             assert got == table[combo], f"{table} inputs {bits}"
 
-    @pytest.mark.slow
     def test_all_two_input_tables(self) -> None:
         """Every two-input table builds, including the ones the wall named.
 
         ``docs/walls.md`` records NAND, NOR and XNOR as unreachable.  That
         is true of programs that *read* their inputs; embedding them lifts
         it, and this is the check that says so.
+
+        No longer marked ``slow``: two inputs are derived from
+        ``_TWO_INPUT_PLAN`` rather than searched, so all sixteen build in
+        well under a second where they used to cost 2.5-9s each.
         """
         from esolangs.tools.boolean import parameterized
 
@@ -1987,6 +1990,54 @@ class TestParameterizedMinifuck:
                 bits = [(combo >> (1 - i)) & 1 for i in range(2)]
                 got = self.run_minifuck(self.instantiate(template, bits))
                 assert got == table[combo], f"{table} inputs {bits}"
+
+    def test_two_inputs_never_search(self) -> None:
+        """No two-input table reaches the searches.
+
+        The construction's value is that it is a *derivation*: every table
+        has a staging, so the column and parked searches -- which is what
+        made this generator cost tens of seconds -- must never run at this
+        arity.  Asserting on the templates alone would not catch a
+        regression that quietly fell through to the search and got the same
+        answer slowly, so the searches themselves are stubbed to fail.
+        """
+        import importlib
+
+        from esolangs.tools.boolean import parameterized
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        def forbidden(*args: object, **kwargs: object) -> object:
+            raise AssertionError("a two-input table reached the search")
+
+        with (
+            patch.object(module, "_find_column", forbidden),
+            patch.object(module, "_find_parked", forbidden),
+        ):
+            for table_int in range(16):
+                table = format(table_int, "04b")
+                # ``minifuck`` is cached, so go through the wrapped function
+                # to be sure the build actually runs under the patch.
+                template = module.minifuck.__wrapped__(format(table_int, "04b"))
+                assert "{X0}" in template and "{X1}" in template, table
+        # And the public entry point still agrees with what it built.
+        assert parameterized.minifuck("0110").count("{X") == 2
+
+    def test_two_input_plan_covers_every_complement_pair(self) -> None:
+        """The plan is keyed by complement pair, and covers all sixteen.
+
+        A table and its complement share a staging -- the endgame tries both
+        read polarities, and the printed digit is ``NOT(v XOR cell7)`` -- so
+        eight entries suffice.  This pins that reasoning: if an entry were
+        dropped, or the keying changed, some table would have no plan.
+        """
+        from esolangs.tools.boolean.minifuck import _TWO_INPUT_PLAN
+
+        assert len(_TWO_INPUT_PLAN) == 8, _TWO_INPUT_PLAN
+        for table_int in range(16):
+            table = format(table_int, "04b")
+            complement = "".join(str(1 - int(c)) for c in table)
+            assert min(table, complement) in _TWO_INPUT_PLAN, table
 
     @pytest.mark.slow  # 7.8s: builds the searching two-input template
     def test_instantiations_have_equal_length(self) -> None:
