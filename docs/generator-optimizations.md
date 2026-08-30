@@ -24,7 +24,7 @@ three.
 | 1 | **Delta encoding** | each character costs its distance from the previous one, not its full code point | `text/helpers.py:28` `delta_program` |
 | 2 | **Multiply/factor loops** | a byte costs `O(sqrt(v))` instead of `O(v)` via `a*b + r` | `text/helpers.py:71` `_factor_triple` |
 | 3 | **Binary doubling** | a byte costs `O(log v)` by walking its bit expansion | addsubjump, unsquare |
-| 4 | **Shortest-of-N dispatch** | build two constructions, measure, return the smaller | laserfuck, streetcode, %^2^-1, brainfuck |
+| 4 | **Shortest-of-N dispatch** | build two constructions, measure, return the smaller | `wrap.py:114` `shortest` (laserfuck, streetcode, %^2^-1, unsquare, brainfuck, bfstack) |
 | 5 | **Constant-subtree folding** | a subtree whose rows agree emits a leaf, not a branch | `boolean/helpers.py` (both walkers) |
 | 6 | **Complement / polarity** | a dense table is evaluated from its zero rows and inverted | `boolean/helpers.py:44` `_maybe_complement` |
 | 7 | **Shape-aware width** | honour a width by building a *different* shape, not by reflowing | `laserfuck_layout.py`, `wrap.py` |
@@ -123,7 +123,7 @@ Each character costs only its distance from the previous one.
 | `one_two_three` | running **XOR** in `edi`; emits only the differing bits |
 | `bit_tilde` | tracks the tape, toggles only bits that must change |
 | `brainfuck` | **hybrid**: delta when close, else `[-]` + multiply-loop rebuild |
-| `bfstack` | same hybrid, with a measured threshold |
+| `bfstack` | same hybrid; both pick with `shortest`, but `bfstack` breaks a tie toward the rebuild where `brainfuck` keeps the walk |
 | `unsquare` | delta chain off the retained accumulator (~21% on "Hello, World!"), **bounded by parity** — `x` can't restore oddness, so odd targets off an even accumulator reseed |
 | `cvnc` | `ci`/`cə` runs via shared `delta_program`, at **2 characters per unit**: every command needs a partner of the other class to form a CV syllable, and `c` (function reset) is the only consonant that touches neither accumulator nor deque while an invalid `u` is the only such vowel, so the pairing is forced rather than chosen — no other pairing undercuts the factor of two |
 
