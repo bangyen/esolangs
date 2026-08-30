@@ -32,20 +32,12 @@ from dataclasses import dataclass
 
 import lattice
 import numpy as np
+import png
 from lattice import _DIRS, _ink
 
-try:
-    from PIL import Image
-except ImportError as _exc:  # pragma: no cover - environment guard
-    raise ImportError(
-        "Extracting Line programs requires Pillow: pip install Pillow"
-    ) from _exc
-
-# Dependency-reduction notes.  scipy and scikit-image were both dropped; what
-# is left is Pillow (image decode only, see load_binary) and numpy.
-#
-# The two that went, and why they turned out not to be needed at all rather
-# than merely reimplementable:
+# Dependency notes.  This started on four undeclared third-party libraries
+# (Pillow, numpy, scipy, scikit-image); numpy is the only one left, and the
+# recurring lesson was that a call did not need the library's actual algorithm.
 #
 #   scipy.ndimage.distance_transform_edt was previously called "the one hard
 #   piece to replace" -- a brute-force replacement is O(ink x background) and
@@ -59,21 +51,27 @@ except ImportError as _exc:  # pragma: no cover - environment guard
 #
 #   scikit-image's skeletonize() only ever fed a scalar length into
 #   detect_scale()'s ink/skeleton-length ratio, a ~5%-accurate estimate of the
-#   stroke width.  normalize_scale's docstring already states the real
+#   stroke width.  normalize_scale's docstring already stated the real
 #   invariant -- input is "an integer pixel-replication blow-up of a 1px-wide
 #   drawing, not a resampled photograph" -- so detect_scale now tests that
-#   invariant directly (:func:`detect_scale`, block uniformity), which is
-#   exact rather than approximate.  Verified to agree with the old ratio on
-#   both fixtures at 1x-5x.
+#   invariant directly (block uniformity), which is exact rather than
+#   approximate.  Verified to agree with the old ratio on both fixtures at
+#   1x-5x.
 #
-# Pillow is the remaining hard one: Image.resize(NEAREST) is trivial
-# (mask[::scale, ::scale]), but Image.open is real PNG codec work.
+#   Pillow was expected to be the hard one, since Image.open is real codec
+#   work.  But the only images that pass through here are PNGs this repo's own
+#   render.py wrote or the wiki reference drawings in fixtures/, and PNG's
+#   container is length-tagged chunks over zlib, both in the standard library
+#   -- so ``png.py`` decodes them outright, matching Pillow byte-for-byte on
+#   all five fixtures.  Image.resize(NEAREST) was the triviality it looked
+#   like (a strided slice), with one wrinkle about grid alignment recorded in
+#   normalize_scale.  The narrowing: JPEG and the rest of Pillow's formats are
+#   no longer readable, which nothing here ever relied on.
 
 
 def load_binary(path: str) -> np.ndarray:
-    """Load an image as a boolean ink mask (True = black/foreground)."""
-    image = Image.open(path).convert("L")
-    return np.array(image) < 128
+    """Load a PNG as a boolean ink mask (True = black/foreground)."""
+    return png.read_grey_file(path) < 128
 
 
 # Below this size a quadrant is a leaf: its full bounding box is used as-is
@@ -196,36 +194,39 @@ def detect_scale(mask: np.ndarray) -> int:
 def normalize_scale(mask: np.ndarray) -> np.ndarray:
     """Downscale ``mask`` to 1px-wide strokes if it was rendered larger.
 
-    Detects the drawing's stroke width (:func:`detect_scale`) and, if
-    greater than 1, downscales the mask by that exact factor with
-    nearest-neighbor resampling -- confirmed to recover the *exact* original
-    pixel-for-pixel mask when reversing a nearest-neighbor upscale, which is
-    what every scale this function needs to handle in practice looks like
-    (an integer pixel-replication blow-up of a 1px-wide drawing, not a
-    resampled photograph).  A mask already at native scale is returned
-    unchanged.
+    Detects the drawing's stroke width (:func:`detect_scale`) and, if greater
+    than 1, takes one pixel per block of the upscale grid -- confirmed to
+    recover the *exact* original pixel-for-pixel mask when reversing a
+    nearest-neighbor upscale, which is what every scale this function needs to
+    handle in practice looks like (an integer pixel-replication blow-up of a
+    1px-wide drawing, not a resampled photograph).  A mask already at native
+    scale is returned unchanged.
 
-    Pads up to the next multiple of ``scale`` on each axis before dividing,
-    rather than truncating a possibly-uneven size down: :func:`crop_to_content`
+    The subtlety is *where* the block grid starts.  :func:`crop_to_content`
     only guarantees a bounding box loosely containing the drawing (padded to
-    quadtree-leaf boundaries, plus its own margin), not one already aligned
-    to the stroke width, and confirmed truncating instead of padding silently
-    drops a fractional row/column of real content at that boundary -- caught
-    directly on the wiki addition example scaled 4x, where the crop's
-    non-scale-aligned width (1054, not a multiple of 4) otherwise lost ink at
-    the edge before the walker ever ran.
+    quadtree-leaf boundaries, plus its own margin), so neither the array's
+    origin nor its extent is aligned to the stroke width; sampling from index 0
+    can therefore slice across blocks instead of through them, and a version of
+    this that divided the array up from its corner silently dropped a
+    fractional row/column of real content at the far edge -- caught directly on
+    the wiki addition example scaled 4x, whose crop width (1054) is not a
+    multiple of 4.  Anchoring the grid to the drawing's first ink pixel instead
+    sidesteps both ends: the sample always lands inside a block, and there is
+    no ragged remainder to lose.
     """
     scale = detect_scale(mask)
     if scale <= 1:
         return mask
-    h, w = mask.shape
-    pad_h, pad_w = (-h) % scale, (-w) % scale
-    if pad_h or pad_w:
-        mask = np.pad(mask, ((0, pad_h), (0, pad_w)))
-        h, w = mask.shape
-    image = Image.fromarray((~mask * 255).astype(np.uint8))
-    small = image.resize((w // scale, h // scale), Image.NEAREST)
-    return np.array(small) < 128
+    # Sample one pixel per block of the upscale grid.  That grid is anchored to
+    # the drawing's own first ink pixel, not to the array's corner: the blank
+    # border crop_to_content leaves is arbitrary (see detect_scale), so
+    # subsampling from index 0 can cut across blocks rather than through them.
+    # Every block is uniform -- detect_scale returned this scale precisely
+    # because they all are -- so which pixel within the block is taken does not
+    # matter, only that the sample lands inside one.
+    ys, xs = np.nonzero(mask)
+    off_y, off_x = int(ys.min()) % scale, int(xs.min()) % scale
+    return mask[off_y::scale, off_x::scale]
 
 
 def _ink_neighbor_count(mask: np.ndarray, y: int, x: int) -> int:
@@ -320,9 +321,12 @@ class Cursor:
 _BLOB_NEIGHBOR_MIN = 3
 
 # Fraction of its own bounding box a real arrowhead blob fills.  Measured by
-# rendering render.py's own arrowhead at all 8 possible headings: 0.41-0.55
+# rendering render.py's own arrowhead at all 8 possible headings: 0.46-0.61
 # depending on rotation (a diagonal heading's axis-aligned bbox is larger
-# relative to the triangle it bounds).  The bracket here is deliberately
+# relative to the triangle it bounds, so those sit at the low end).  Was
+# 0.41-0.55 when the triangle came from Pillow's polygon fill; render.py now
+# rasterizes it itself, which paints a few more edge pixels.  The bracket is
+# unchanged, and was already deliberately
 # wide of that measured range -- it exists to catch a blob that is not
 # triangular at all (a solid square rejects at 1.0; two crossing strokes at
 # a shallow angle either erode away entirely or produce a long

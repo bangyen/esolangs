@@ -1,7 +1,6 @@
 """Tests for line_boolean.py: render -> extract -> simulate round-trips.
 
-Run via: uv run --with pillow --with numpy --with scipy --with scikit-image
---with pytest pytest test_line_boolean.py
+Run via: uv run --with numpy --with pytest pytest test_line_boolean.py
 
 Covers n=1 through n=3 across every input combination, plus the specific
 geometry bug this module's development caught: render.py's `_layout` used
