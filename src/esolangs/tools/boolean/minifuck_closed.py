@@ -506,11 +506,12 @@ def _plan(
                     # what the solver planted.  Every offered step is three
                     # or more, so ``1 - step + bit`` is negative and each row
                     # strictly advances leftward -- the property holds by
-                    # construction rather than by filtering, and this asserts
+                    # construction rather than by filtering, and this checks
                     # it rather than silently relying on it.
-                    assert all(moved[r] < positions[r] for r in range(rows)), (
-                        f"a row failed to advance: {positions} -> {moved}"
-                    )
+                    if not all(moved[r] < positions[r] for r in range(rows)):
+                        raise AssertionError(
+                            f"a row failed to advance: {positions} -> {moved}"
+                        )
                     seen.add(moved)
                     queue.append(
                         (
