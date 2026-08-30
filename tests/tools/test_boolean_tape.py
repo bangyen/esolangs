@@ -13,6 +13,7 @@ import pytest
 from esolangs.tools import boolean
 from esolangs.tools.boolean.helpers import permute_truth_table
 from esolangs.tools.boolean.six_five import (
+    _label_for,
     _six_five_hoisted,
     _six_five_markers,
     _six_five_node_read,
@@ -47,10 +48,25 @@ def _markers(program: str) -> int:
 
     Counting ``4`` characters overcounts: a ``8n`` jump whose operand is
     ``4`` contributes one, so this tokenizes the way the interpreter does.
+
+    This counts *every* marker, so a program that padded past an unnameable
+    ordinal reports the pads too -- the count is the last label's ordinal,
+    not the number of standing internal nodes.  Below the first gap the two
+    agree, which is why the small-table tests can compare it against
+    :func:`_six_five_markers` directly.
     """
     from esolangs.interpreters.tape_based.six_five import _tokens
 
     return sum(1 for token in _tokens(program) if token == "4")
+
+
+def _live_ordinals(limit: int) -> list[int]:
+    """Ordinals in ``1..limit`` a single operand character can name.
+
+    Derived from the interpreter's own decoder rather than pinned, so the
+    tests move with it.
+    """
+    return [v for v in range(1, limit + 1) if _label_for(v) is not None]
 
 
 def _leaves(table: str) -> int:
@@ -229,44 +245,81 @@ class TestSixFive:
             table = format(value, "08b")
             assert _markers(boolean.six_five(table)) <= _six_five_markers(table)
 
-    def test_wide_table_is_refused(self) -> None:
-        """A table no input order can fold has no representation.
+    def test_lift_never_grows_a_program(self) -> None:
+        """Opening the operand range only adds builds; it changes no old one.
 
-        The budget is spent per *order*, so overflowing in stream order is
-        not a refusal: the table must overflow under all ``n!`` of them.
-        Parity is the shape that does -- any permutation of parity is parity
-        -- so it needs the full 63 internal nodes however its inputs are
-        renamed.
+        Below the first unnameable ordinal nothing pads, so a table that
+        rendered before renders byte-identically -- the emitted label
+        characters are the same ones the old fixed alphabet chose.  The one
+        thing that *does* change is which candidates survive to be measured:
+        the node-read build used to raise on any table over the old ceiling,
+        so a table between that ceiling and the first gap lost a candidate it
+        should have had, and now sometimes wins with it.
+        """
+        first_gap = next(v for v in range(1, 1000) if _label_for(v) is None)
+        # A table in the band the old ceiling refused but no pad is needed.
+        table = "1100011011000000001000001011010000000010000110100111000000100001"
+        assert 35 < _six_five_markers(table) < first_gap
 
-        The arithmetic kernel that used to catch these was retired: it needs
-        ``T`` (or its complement) small enough to build, which confines the
-        ones to low indices, which leaves the rest of the table constant --
-        the shape that folds well inside the budget.  So it never covered a
-        table the tree could not.
+        stream = _six_five_node_read(table)
+        assert _markers(stream) == _six_five_markers(table)  # no pads yet
+        program = boolean.six_five(table)
+        assert len(program) <= len(stream)
+        for combo in range(64):
+            bits = [str((combo >> (5 - i)) & 1) for i in range(6)]
+            assert run_six_five(program, bits) == table[combo], f"inputs {bits}"
+
+    def test_widest_unfoldable_table_still_builds(self) -> None:
+        """The table no input order folds renders anyway -- it is just long.
+
+        Parity is the shape no renaming improves (any permutation of parity
+        is parity), so it stands every one of its ``2**n - 1`` internal
+        nodes.  That was the refusal witness while the generator believed
+        the operand alphabet stopped at ``Z``; it is now merely the longest
+        build, because an ``8n`` operand is decoded as
+        ``ord(c.upper()) - 55`` over every character rather than looked up
+        in a fixed alphabet.
+
+        The arithmetic kernel that used to be offered for these was retired:
+        it needs ``T`` (or its complement) small enough to build, which
+        confines the ones to low indices, which leaves the rest of the table
+        constant -- the shape the tree folds anyway.  So it never covered a
+        table the tree could not, and now the tree covers everything.
         """
         parity = "".join(str(bin(row).count("1") % 2) for row in range(64))
-        assert _six_five_markers(parity) == 63 > 35
+        standing = 2**6 - 1
+        assert _six_five_markers(parity) == standing
         for perm in permutations(range(6)):
-            assert _six_five_markers(permute_truth_table(parity, perm)) == 63
-        with pytest.raises(ValueError, match="35 branch labels"):
-            boolean.six_five(parity)
+            assert _six_five_markers(permute_truth_table(parity, perm)) == standing
 
-    def test_reordering_widens_what_renders(self) -> None:
-        """A table that overflows in stream order can fold under another.
+        program = boolean.six_five(parity)
+        # More labels than any single-character alphabet run offers, so this
+        # program can only exist by padding past the unnameable ordinals.
+        live = _live_ordinals(standing)
+        assert len(live) < standing, "parity must outrun the contiguous run"
+        assert _markers(program) > standing  # the pads are real markers
+        for combo in range(64):
+            bits = [str((combo >> (5 - i)) & 1) for i in range(6)]
+            assert run_six_five(program, bits) == parity[combo], f"inputs {bits}"
 
-        These two were the refusal witnesses before the tree could split in
-        any input order, and neither is one any more: the scattered table is
-        an XNOR of the last three inputs, and the alternating table is NOT
-        of the last input, so the order that tests those inputs first folds
-        each well inside the budget.  Both still compute their function.
+    def test_reordering_shrinks_what_stream_order_cannot_fold(self) -> None:
+        """A table that folds nothing in stream order can fold under another.
+
+        These two were refusal witnesses back when the tree was stuck with
+        stream order and believed in a label ceiling.  Neither is even long
+        now: the scattered table is an XNOR of the last three inputs and the
+        alternating table is NOT of the last input, so the order that tests
+        those inputs first collapses each to a handful of labels.  The point
+        is the *reorder*, which is why the emitted label count is checked
+        against the best order rather than the stream one.
         """
         for table, folded in (("10010110" * 8, 7), (("10" * 64)[:64], 1)):
-            assert _six_five_markers(table) == 63 > 35  # refused in stream order
+            assert _six_five_markers(table) == 2**6 - 1  # folds nothing in order
             best = min(
                 _six_five_markers(permute_truth_table(table, perm))
                 for perm in permutations(range(6))
             )
-            assert best == folded <= 35
+            assert best == folded
             program = boolean.six_five(table)
             assert _markers(program) == folded
             for combo in range(64):
@@ -274,60 +327,102 @@ class TestSixFive:
                 got = run_six_five(program, [str(b) for b in bits])
                 assert got == table[combo], f"inputs {bits}"
 
-    def test_greedy_order_can_be_the_only_renderable_one(self) -> None:
-        """Past the search cap, the greedy pick alone can carry a table.
+    def test_greedy_order_carries_a_table_past_the_search_cap(self) -> None:
+        """Past the search cap, the greedy pick is what keeps a table short.
 
-        This is the one path where nothing else can render: at n == 7 an
-        alternating table spends 127 labels in stream order, so the
-        node-read build raises *and* the hoisted identity order returns
-        ``""``, leaving the greedy order as the sole candidate.  Every
-        smaller case is covered by the exhaustive search and every larger
-        table the tests render (AND-8) comes out of the node-read build, so
-        without this the fallback is never exercised as the only survivor.
+        At n == 7 an alternating table stands all 127 of its internal nodes
+        in stream order, so both stream-order builds are enormous; the
+        greedy order tests the last input first and collapses the whole
+        table to one label.  Above ``_ORDER_SEARCH_MAX`` the greedy pick is
+        the *only* alternative order tried, so this is where that fallback
+        is exercised as the thing that decides the build.
+
+        Both stream-order builds are constructed here too, to pin that they
+        render rather than refuse: the label count no longer gates anything,
+        so a 127-label tree is a legal program, just a long one.
         """
         n = 7
         alternating = ("10" * 128)[: 2**n]
-        assert _six_five_markers(alternating) == 2**n - 1 > 35
-        with pytest.raises(ValueError, match="35 branch labels"):
-            _six_five_node_read(alternating)
-        assert _six_five_hoisted(alternating, tuple(range(n))) == ""
+        assert _six_five_markers(alternating) == 2**n - 1
+
+        # Stream order builds -- and computes -- despite standing every node.
+        stream = _six_five_node_read(alternating)
+        assert _six_five_hoisted(alternating, tuple(range(n)))
+        for combo in range(2**n):
+            bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+            assert run_six_five(stream, bits) == alternating[combo], f"inputs {bits}"
 
         program = boolean.six_five(alternating)
         assert _markers(program) == 1  # greedy tests the last input first
+        assert len(program) < len(stream)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             feed = iter([str(b) for b in bits])
             assert run_six_five_from(program, feed) == alternating[combo]
             assert not list(feed), f"inputs {bits} left input unread"
 
-    @pytest.mark.parametrize("n", [1, 2, 3, 4, 5])
-    def test_total_through_five_inputs(self, n: int) -> None:
-        """Every table up to five inputs renders: the worst case still fits.
+    @pytest.mark.parametrize("n", [1, 2, 3, 4, 5, 6, 7])
+    def test_the_generator_is_total(self, n: int) -> None:
+        """Every table renders at every width -- there is no refusal path.
 
-        An alternating table folds nothing, so it spends the full ``2**n - 1``
-        internal nodes -- 31 at n == 5, inside the 35-label budget.  The
-        refusals therefore begin at n == 6, where that worst case is 63.
+        Parity is the worst case (no renaming folds it), so if parity builds
+        at a width every table at that width does.  ``n == 6`` and ``n == 7``
+        are the interesting ones: 63 and 127 standing nodes, both past the
+        longest run of ordinals a single character can name, so both can only
+        exist by padding.
         """
-        alternating = ("10" * 2**n)[: 2**n]
-        assert _six_five_markers(alternating) == 2**n - 1 <= 35
-        boolean.six_five(alternating)  # renders rather than raising
+        parity = "".join(str(bin(row).count("1") % 2) for row in range(2**n))
+        standing = 2**n - 1
+        assert _six_five_markers(parity) == standing
+        program = boolean.six_five(parity)
+        for combo in range(2**n):
+            bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+            assert run_six_five(program, bits) == parity[combo], f"inputs {bits}"
 
-    def test_refusals_begin_at_six_inputs(self) -> None:
-        """n == 6 is the first width whose worst case overflows the budget.
+    def test_padding_bridges_the_unnameable_ordinals(self) -> None:
+        """The only gaps in the operand range are case-aliased, and are padded.
 
-        The worst case is the table no renaming folds, which is parity --
-        an alternating table is only the worst case for a tree stuck with
-        stream order, and reordering renders it (see
-        :meth:`test_reordering_widens_what_renders`).
+        ``num`` decodes a ``7n``/``8n`` operand as ``ord(c.upper()) - 55``, so
+        an ordinal is nameable exactly when ``chr(ordinal + 55)`` is not a
+        character that upper-cases onto a smaller one.  The lowercase letters
+        are, which knocks out a contiguous block; everything else round-trips.
+        The generator walks past a dead ordinal by emitting an inert ``4`` --
+        a no-op the marker scan still counts -- so no ordinal is ever lost,
+        only skipped.
+
+        The counts here are derived from the interpreter's decoder, so
+        nothing in this test needs updating if that decoder changes.
         """
-        parity5 = "".join(str(bin(row).count("1") % 2) for row in range(32))
-        assert _six_five_markers(parity5) == 31 <= 35
-        boolean.six_five(parity5)  # renders rather than raising
+        first_gap = next(v for v in range(1, 1000) if _label_for(v) is None)
+        assert first_gap > 1  # some contiguous run exists to start from
 
-        parity6 = "".join(str(bin(row).count("1") % 2) for row in range(64))
-        assert _six_five_markers(parity6) == 63 > 35
-        with pytest.raises(ValueError, match="35 branch labels"):
-            boolean.six_five(parity6)
+        # A table needing more labels than the opening run must pad.
+        needed = first_gap + 4
+        n = next(k for k in range(1, 12) if 2**k - 1 >= needed)
+        parity = "".join(str(bin(row).count("1") % 2) for row in range(2**n))
+        standing = _six_five_markers(parity)
+        assert standing > first_gap
+
+        program = boolean.six_five(parity)
+        # Every marker is either a standing node or a pad, and the last
+        # label's ordinal is what the marker count reports.
+        assert _markers(program) > standing
+        gaps_crossed = sum(
+            1 for v in range(1, _markers(program) + 1) if _label_for(v) is None
+        )
+        assert _markers(program) == standing + gaps_crossed
+
+        # Every operand the program actually jumps with is nameable, and
+        # names a marker that exists.
+        from esolangs.interpreters.tape_based.six_five import _tokens, num
+
+        tokens = _tokens(program)
+        total = sum(1 for token in tokens if token == "4")
+        for token in tokens:
+            if token[0] == "8":
+                value = num(token[1])
+                assert _label_for(value) == token[1]
+                assert 1 <= value <= total
 
     def test_reordering_only_shrinks(self) -> None:
         """No table comes out longer than the node-read build alone.
