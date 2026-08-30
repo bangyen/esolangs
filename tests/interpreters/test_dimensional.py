@@ -117,3 +117,27 @@ class TestDimensional:
             dim.run("=4", IO())
         with pytest.raises(ValueError, match="character"):
             dim.run(":", IO())
+
+
+class TestStepMachine:
+    def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
+        from esolangs.interpreters.tape_based.dimensional import _Machine
+
+        machine = _Machine("+" * 3 + ".", IO())
+        before = machine.snapshot()
+        hash(before)  # must not raise
+        machine.step()
+        assert machine.snapshot() != before
+
+    def test_snapshot_freezes_a_higher_dimensional_tape(self) -> None:
+        """A tape raised past 2D nests levels, each frozen into the key."""
+        from esolangs.interpreters.tape_based.dimensional import _Machine
+
+        machine = _Machine("^^>+.", IO())
+        seen = set()
+        for _ in range(50):
+            if machine.halted:
+                break
+            seen.add(machine.snapshot())
+            machine.step()
+        assert len(seen) > 1

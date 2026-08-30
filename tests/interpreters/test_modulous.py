@@ -210,3 +210,22 @@ class TestModulous:
     def test_missing_random_operand_rejected(self) -> None:
         with pytest.raises(ValueError, match="missing operand"):
             run("[RND]", IO())
+
+
+class TestStepMachine:
+    def test_a_token_less_state_starts_halted(self) -> None:
+        from esolangs.interpreters.stack_based.modulous import State
+
+        # `step` has no halted guard of its own -- the caller checks first,
+        # which is what the VM's run loop does.
+        assert State(io=IO()).halted
+
+    def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
+        from esolangs.interpreters.stack_based.modulous import State
+
+        state = State(io=IO())
+        state.tokens = ["PSH INT 5", "PRT INT", "END"]
+        before = state.snapshot()
+        hash(before)  # must not raise
+        state.step()
+        assert state.snapshot() != before

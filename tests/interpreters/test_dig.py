@@ -258,3 +258,16 @@ class TestStepMachine:
         from esolangs.vm import run_until_halt_or_cycle
 
         assert run_until_halt_or_cycle(_Machine([">'", "^<"], IO())) is False
+
+    def test_step_after_halt_is_a_noop(self) -> None:
+        from esolangs.interpreters.grid_based.dig import _Machine
+
+        machine = _Machine([">"], io=IO())
+        for _ in range(200):
+            if machine.halted:
+                break
+            machine.step()
+        assert machine.halted
+        state = machine.snapshot()
+        machine.step()  # stepping a halted machine must not raise
+        assert machine.snapshot() == state
