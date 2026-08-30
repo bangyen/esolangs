@@ -8,7 +8,7 @@ Python means an in-repo interpreter under `esolangs.interpreters`;
 Cross-check means an implementation in `extra/` that runs as a
 standalone program (Lean or RISC-V assembly), used to
 differentially verify the Python interpreter.  The Boolean
-column marks the boolean-function generators; the no-input languages (Back, BIO, NoComment, BF-PDA, Lamfunc, Bitdeque, RAM0, Minsky Swap, Eval, ArrowQueue, A Painter Ant, WII2D) use parameterized generators (the harness substitutes input bits into a template).  Minifuck and %^2^-1 use parameterized generators too, for a different reason: both *have* an input command, but neither can branch on what it reads, so their reading models are walled (the %^2^-1 wall is proved in Lean) and embedding is what reaches the two-input tables.
+column marks the boolean-function generators; the no-input languages (Back, BIO, NoComment, BF-PDA, Lamfunc, Bitdeque, RAM0, Minsky Swap, Eval, ArrowQueue, A Painter Ant, WII2D) use parameterized generators (the harness substitutes input bits into a template).  Minifuck and %^2^-1 use parameterized generators too, for a different reason: both *have* an input command, but neither can branch on what it reads, so their reading models are walled (the %^2^-1 wall is proved in Lean) and embedding is what reaches the two-input tables.  %^2^-1 goes further: a subcube cascade builds every conjunction or disjunction of literals at any arity (see `docs/limitations.md`).
 
 | Language | Text generator | Python | Cross-check | Boolean | Compiler |
 | --- | :---: | :---: | :---: | :---: | :---: |
