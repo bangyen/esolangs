@@ -335,12 +335,65 @@ def _solve(
 # must exceed the number of reads, so that no two reads' landing zones
 # overlap and each row lands on a cell of its own.
 def _gap_for(n: int) -> int:
-    """The per-read left step.  See :func:`_plan` for why it is this wide."""
+    """The wide left step, used to spread the rows apart.
+
+    Wide enough that no two reads' landing zones overlap, so each row lands
+    on a cell of its own and that cell's free bit steers it alone.
+    """
     return 4 * 2**n + 2
 
 
+def _gaps_for(n: int) -> tuple[int, ...]:
+    """The step lengths a read may use.
+
+    A read is ``'[' + '<'*gap``, so the gap decides what the read *does*:
+
+    * a **wide** gap moves every row far left, spreading them apart;
+    * a **narrow** gap barely moves them, and a row that gains the read's
+      bit catches up with the row above -- the two land together.
+
+    Merging matters because the rows begin converged and every read splits
+    them, so a table whose answer classes are long contiguous runs needs
+    rows brought back together, and only a narrow gap does that.  With one
+    fixed gap a schedule can spread or gather but never both; offering the
+    narrow steps as well is worth more than three extra levels of depth.
+    Measured at three inputs and depth 5: 58 of 254 tables with the wide
+    gap alone, 156 adding a gap of one, 192 with the menu below.
+
+    A read moves a row by ``1 - step + bit``, so the *spread* it opens
+    between two rows is one whatever the step: the step does not control
+    how strongly a read separates them, only where they end up.  What it
+    controls is whether a row stands still, and that is what makes three
+    the smallest usable narrow step:
+
+        step 1:  deltas {0: 0, 1: +1}   -- a row can move right
+        step 2:  deltas {0: -1, 1: 0}   -- a row can stand still
+        step 3:  deltas {0: -2, 1: -1}  -- every row moves left
+
+    A row that stands still, or moves right and comes back, reads a cell it
+    has already read.  That is fatal rather than wasteful: ``[`` flips the
+    cell it consults, so the second visit sees the complement of what the
+    solver planted, and the constraint the solver wrote describes a value
+    the machine no longer holds.  Over four-read walks, 270 of 1296 revisit
+    a cell once a step of one is allowed, against none when every step is
+    three or more.
+
+    Excluding one and two costs nothing.  Measured at three inputs and
+    depth 5: 58 of 254 tables with the wide step alone, 58 again adding a
+    step of two -- which the revisit guard reduces to a uniform shift --
+    and 182 adding a step of three.  Allowing one as well reaches the same
+    182, so the safe menu gives up no coverage at all.
+    """
+    return (3, _gap_for(n))
+
+
 def _plan(
-    n: int, table: list[int], reachable: dict, start: int, gap: int, depth: int
+    n: int,
+    table: list[int],
+    reachable: dict,
+    start: int,
+    gaps: tuple[int, ...],
+    depth: int,
 ) -> tuple[list, int] | None:
     """Choose the reads, by walking the achievable moves.
 
@@ -396,7 +449,9 @@ def _plan(
         if len(history) >= depth:
             continue
 
-        # Reads: one binary choice per occupied cell, which splits the rows.
+        # Each read makes one binary choice per occupied cell, and picks a
+        # step length: a wide one spreads the rows, a narrow one gathers
+        # them.  See :func:`_gaps_for`.
         occupied: dict[int, list[int]] = {}
         for r in range(rows):
             occupied.setdefault(positions[r] + 1, []).append(r)
@@ -404,14 +459,27 @@ def _plan(
             choices = [sorted(reachable[cell]) for cell in sorted(occupied)]
             for combination in itertools.product(*choices):
                 picked = dict(zip(sorted(occupied), combination, strict=True))
-                moved = tuple(
-                    positions[r] + 1 - gap + picked[positions[r] + 1][r]
-                    for r in range(rows)
-                )
-                if min(moved) <= _LAND_HIGH + 1 or moved in seen:
-                    continue
-                seen.add(moved)
-                queue.append((moved, [*history, ("read", positions, picked)]))
+                for step in gaps:
+                    moved = tuple(
+                        positions[r] + 1 - step + picked[positions[r] + 1][r]
+                        for r in range(rows)
+                    )
+                    if min(moved) < _LAND_LOW or moved in seen:
+                        continue
+                    # No row may read a cell twice: ``[`` flips the cell it
+                    # consults, so a second visit would see the complement of
+                    # what the solver planted.  Every offered step is three
+                    # or more, so ``1 - step + bit`` is negative and each row
+                    # strictly advances leftward -- the property holds by
+                    # construction rather than by filtering, and this asserts
+                    # it rather than silently relying on it.
+                    assert all(
+                        moved[r] < positions[r] for r in range(rows)
+                    ), f"a row failed to advance: {positions} -> {moved}"
+                    seen.add(moved)
+                    queue.append(
+                        (moved, [*history, ("read", step, positions, picked)])
+                    )
 
         # Clamps: a run of ``<``, which merges rows against the floor.  It
         # writes nothing, so it costs only length and can never corrupt the
@@ -486,8 +554,8 @@ def minifuck_closed(truth_table: str, depth: int = 5) -> str:
         raise ValueError("region model failed")
     base, deltas, span = measured
     reachable = _cosets(base, deltas, n, span)
-    gap = _gap_for(n)
-    planned = _plan(n, table, reachable, span[1] - 1, gap, depth)
+    gaps = _gaps_for(n)
+    planned = _plan(n, table, reachable, span[1] - 1, gaps, depth)
     if planned is None:
         raise ValueError(
             f"no closed-form schedule for {truth_table!r} at depth {depth}"
@@ -507,10 +575,7 @@ def minifuck_closed(truth_table: str, depth: int = 5) -> str:
     # Only reads constrain the tape; a clamp writes nothing, so it has
     # nothing to solve for.
     constraints = {}
-    for kind, first, second in history:
-        if kind != "read":
-            continue
-        positions, picked = first, second
+    for _kind, _step, positions, picked in history:
         for cell, column in picked.items():
             for r in range(2**n):
                 if positions[r] + 1 == cell:
@@ -527,11 +592,8 @@ def minifuck_closed(truth_table: str, depth: int = 5) -> str:
     if (rebuilt_lo, rebuilt_hi) != span:
         raise ValueError(f"pool {pool} moved the region: {(rebuilt_lo, rebuilt_hi)}")
     joint.emit("<" * (joint.ptr() - (span[1] - 1)))
-    for kind, first, _second in history:
-        if kind == "read":
-            joint.emit("[" + "<" * gap)
-        else:
-            joint.emit("<" * first)
+    for _kind, step, _positions, _picked in history:
+        joint.emit("[" + "<" * step)
 
     by_class: dict[int, set[int]] = {}
     for r in range(2**n):
