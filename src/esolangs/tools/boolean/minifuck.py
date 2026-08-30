@@ -66,8 +66,12 @@ live tape, so moving the trailing fills to the front makes 2 rows wrong at
 
 Together they leave nothing out of order.
 
-**Coverage: every two-input table, and eight of the fourteen three-input
-orbits.**  How much of that is *derived* rather than searched:
+**Coverage: every two-input table, and 28 of the 40 three-input orbits**
+(under input permutation and complement).  That is up from the eight orbits
+the search alone reached, and the increase is not a speedup -- the staged
+route builds tables the searches *fail* on: ``01101000``, ``10100001`` and
+``11100110`` each cost about 130 seconds to fail and now build in under a
+tenth of one.  How much of the arity is derived rather than searched:
 
 * **Two inputs: all of it.**  :data:`_TWO_INPUT_PLAN` stages every table, so
   no search runs at this arity and all sixteen build in well under a second
@@ -79,12 +83,13 @@ orbits.**  How much of that is *derived* rather than searched:
   :data:`_THREE_INPUT_PLAN`, parity and majority among them.  The rest still
   search, so the plan is a fast path rather than a replacement and a miss
   falls through unchanged.
-Measuring by orbit rather than by sampling tables: the four degenerate orbits
-are immediate, and AND3, majority, parity and one more build in 7-40 seconds.
-The six that fail do so after about two minutes, and not for want of a
-computable answer -- the column search finds the answer for all six in
-seconds; it is the walk to an accumulator that washes it out.  See
-``docs/walls.md``.
+What remains unreached is bounded by the searches, which is where the cost
+also lives: a table with no staging that the searches cannot build spends
+about two minutes failing, and not for want of a computable answer -- the
+column search finds the answer in seconds; it is the walk to an accumulator
+that washes it out.  That is exactly the effect the staged route sidesteps by
+selecting on the column *as the read sees it*, which is why it reaches
+tables the searches do not.  See ``docs/walls.md``.
 
 That makes this generator weaker than the repo's better ones, and the
 comparison is worth stating: ``bfpda`` is a closed-form decision tree at any
