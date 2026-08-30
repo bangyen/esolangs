@@ -308,9 +308,11 @@ elsewhere has nothing to detect here.
 ### Two inputs are constructed, not searched
 
 **This section's premise no longer holds at n=2.** All sixteen two-input
-tables are now derived from an eight-entry staging table
-(`_TWO_INPUT_PLAN`), and build in well under a second together against
-2.5-9s each before. The derivation is short enough to state:
+tables now come from a staging rather than a search, and build in 0.9s
+together against 2.5-9s each before. The staging is not stored either: the
+product is enumerated and the first entry that prints a table is the one it
+gets (see "the plan is derived, not stored" below). The derivation is short
+enough to state:
 
 - The embed leaves an **affine picture** — every cell holds `a*b0 ^ b*b1 ^ c`
   plus the one nonlinear term the `[` cascade computes — and a plain run of
@@ -408,8 +410,10 @@ any sweep.** Of the 65536 four-input tables, only **942 (1.4%) are
 degenerate** — those project onto the completed n≤3 plans and are already
 search-free, verified on a sample. The other **64594 are fully essential**,
 and that is where the method breaks down: a staging still offers only ~52
-slots, and at the hit rate measured at n=3 (13 pairs per staging) a per-table
-plan would need **≥2484 stagings** against the 63 in use today.
+slots, and at the hit rate measured at n=3 (13 pairs per staging) covering
+the arity would need **≥2484 distinct stagings** against the 63 that suffice
+at n=3. Deriving rather than storing does not change this: the enumeration
+would still have to *reach* those stagings, and it is the reach that fails.
 
 Measured rather than extrapolated: sweeping every separator and settle at
 n=4 reaches **1200 distinct 16-bit columns, 1012 of them fully essential** —
@@ -418,11 +422,34 @@ technique by construction. Closing n=4 would need a mechanism that produces
 columns in bulk rather than one staging at a time, which is a different
 design, not more sweeping.
 
+**The plan is derived, not stored.** The staging product is small enough to
+walk — 5 separators × 2 settle counts × 29 bracket counts × 26 accumulators —
+so the shipped code enumerates it in a fixed order and gives each table the
+first entry that prints it. The 8- and 109-entry tables this file used to
+describe are gone; **one** entry remains, and it is `01101101` / `10010010`,
+whose suffix interleaves two `<` into the bracket run and so is not
+expressible as any `'[' * k`. That is a proven gap rather than an unfound
+one: bracket runs were taken to exhaustion for that pair over every
+separator, settle count and accumulator, and the search that found the
+working suffix ran 29 minutes.
+
+The cost of deriving is a loop-order question, and getting it wrong is
+expensive. A staging is costly to *build* and cheap to *test against a
+table*, and the table does not enter until the printed column is compared —
+so the derivation runs a whole arity at once, staging-major: one embed per
+`(separator, settle)`, the bracket run extended one instruction at a time,
+the endgame emitted once per `(k, accumulator, read, orientation)` whatever
+the table. That is **0.9s at n=2 and 15s at n=3** for the entire arity. The
+table-major spelling of the identical search costs *minutes*, because it
+rebuilds every staging once per table — the same "the expensive object is
+the staging, not the table" lesson recorded above, met a second time at a
+different layer.
+
 **A simpler form of the plan does not exist, and that is measured rather than
-assumed** — worth recording here because the natural next question is whether
-109 staging entries can collapse into a rule, and the answer is a set of
-numbers rather than an opinion. Each of these accepts a *longer* program as
-the price of a simpler form, and none of them buys it:
+assumed** — this is what the enumeration replaced the stored tables with, and
+not what it could have been. The wish was a *uniform* rule: one staging, or
+one field fewer, accepting a longer program as the price. None of them buys
+it, which is why all four coordinates are still enumerated:
 
 | attempt | reach |
 |---|---|
@@ -441,12 +468,14 @@ The fourth row is the one that answers "would a bigger program help?" — no.
 The ten tables missing from two separators stay missing with far more room,
 so they need a different *separator*, not a longer walk.
 
-Consolidating stagings is possible and bounded: the 109 entries use 63, the
-13-pair maximum puts a floor of `ceil(109/13) = 9` on any cover, and a greedy
-search over all 406 useful stagings followed by a pruning pass reaches 33 with
-nothing redundant left. So 33–63 is the real range against a floor of 9 that
-nothing approaches — the pairs do not clump. None of it removes anything a
-caller sees, so the shipped constants stay.
+Consolidating stagings is possible and bounded: the 109 pairs used 63
+distinct stagings, the 13-pair maximum puts a floor of `ceil(109/13) = 9` on
+any cover, and a greedy search over all 406 useful stagings followed by a
+pruning pass reaches 33 with nothing redundant left. So 33–63 is the real
+range against a floor of 9 that nothing approaches — the pairs do not clump.
+This mattered while the stagings were written down; now that they are
+derived, the count is an observation about the family rather than a size to
+minimise.
 
 **And it is not only a speedup: the staged route reaches tables the searches
 cannot.** Sampling 8 of the 80, three (`01101000`, `10100001`, `11100110`)
