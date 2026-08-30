@@ -2383,6 +2383,60 @@ class TestParameterizedMinifuck:
         }
         assert answered == {0}, f"expected only cell7==0 to be served, got {answered}"
 
+    def test_the_pool_codes_are_one_construction(self) -> None:
+        """Each pool code is a mark, shifted three cells by a shared core.
+
+        The five read as unrelated strings -- edit distance 2 to 7, and an
+        exact regex factors *longer* than it lists -- but that measures
+        spelling.  Behaviourally every code is ``prefix + '[[[<[' + suffix``
+        with the core appearing exactly once, and for three of the five the
+        prefix plants a single 1 that the core then shifts three cells right.
+
+        Three, not five, and the exception is the point: the shift is clean
+        only when the prefix leaves the pointer *on* its mark.  The code with
+        an empty prefix has no mark to shift, and ``'[<[<[<<'`` arrives at
+        cell 3 with the pointer at 1 rather than 2, so the core spreads marks
+        instead of moving one.  The decomposition is shared; the tidy shift
+        is a special case of it.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        core = "[[[<["
+
+        def run(code: str) -> object:
+            machine = module._Sim(64)  # noqa: SLF001
+            for char in code:
+                machine.exec(char)
+            return machine
+
+        shifted = 0
+        for code in module._POOL_CODES:  # noqa: SLF001
+            # The decomposition itself holds for every code.
+            assert code.count(core) == 1, code
+            prefix = code[: code.find(core)]
+
+            # The prefix plants at most one mark and writes nothing else.
+            before = run(prefix)
+            marks = [i for i in range(32) if before.tape[i]]  # type: ignore[attr-defined]
+            assert len(marks) <= 1, (code, marks)
+
+            # Where the prefix leaves the pointer on its mark, the core moves
+            # that mark three cells right and takes the pointer with it.
+            after = run(prefix + core)
+            moved = [i for i in range(32) if after.tape[i]]  # type: ignore[attr-defined]
+            if marks and before.ptr == marks[0] - 1:  # type: ignore[attr-defined]
+                assert moved == [marks[0] + 3], (code, marks, moved)
+                assert after.ptr == marks[0] + 2, (code, after.ptr)  # type: ignore[attr-defined]
+                shifted += 1
+        assert shifted == 3, shifted
+
+        # And ``'[<' * n`` is what plants a mark at cell n -- the parameter.
+        for n in range(1, 6):
+            machine = run("[<" * n)
+            marks = [i for i in range(32) if machine.tape[i]]  # type: ignore[attr-defined]
+            assert marks == [n], (n, marks)
+
     @pytest.mark.slow  # one full three-input ablation per code
     def test_dropping_a_pool_code_is_measured_not_assumed(self) -> None:
         """What each pool code is worth, ablated rather than argued.
