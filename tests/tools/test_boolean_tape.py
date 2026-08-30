@@ -1184,6 +1184,23 @@ class TestSlowAcvMammalian:
         assert gap == proxy + arm, "the gap must account for the 0-arm"
         assert arm > 0, "an arm of zero length would make the two identical"
 
+    def test_narrowing_the_window_refuses_tables_that_build(self) -> None:
+        """The window's width is load-bearing, not a spare knob.
+
+        The test above pins the sawtooth as a property of the gap; this
+        pins the consequence, which is what a later simplification would
+        actually break.  Checking each step against the one before it
+        instead of the one two back turns the sawtooth into a false stall,
+        and tables that build stop building -- 16 of the 20 through
+        ``n == 2`` when this was measured.
+        """
+        import esolangs.tools.boolean.slow_acv_mammalian as module
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_WINDOW", 1)
+            with pytest.raises(ValueError, match="stopped converging"):
+                module.slow_acv_mammalian_boolean("0110")
+
     def test_the_gap_falls_over_every_two_chunk_window(self) -> None:
         """Progress is windowed and skips a prologue; this pins both.
 
