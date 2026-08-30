@@ -355,11 +355,23 @@ def _search[Hit](
 # test the search applied, so a code is accepted on exactly the evidence it
 # always was.
 #
-# The list is not minimal against the *staged* route -- two of these cover
-# every staging it derives -- but it is not trimmed to those two, because
-# the degenerate and reconverged routes reach the endgame from states the
-# staged route never produces, and three two-input tables lose their pool
-# if the rest are dropped.  Ordered shortest first, so the emitted program
+# The list is not minimal, and the shape of the redundancy is worth stating
+# because an earlier version of this comment had it backwards.  Measured over
+# a build of both arities -- 34510 calls, 31 of which find no code -- all ten
+# codes get used, four of them (indices 4, 6, 7, 9) serving the staged route
+# and the rest only the degenerate and reconverged ones.
+#
+# But "used" is not "needed".  Dropping any single code breaks nothing: all
+# ten were removed one at a time and every table at both arities still built.
+# The claim this comment used to make -- that trimming to what the staged
+# route needs costs three two-input tables -- was measured against the
+# *stored* stagings and does not survive deriving; cutting to those four
+# breaks nothing either.  The codes overlap, so which one answers a given
+# call is a matter of order rather than of necessity.
+#
+# The full list stays because there is no reason to prune it: the acceptance
+# test decides every call, so a redundant candidate costs one check and can
+# never produce a wrong pool.  Ordered shortest first, so the emitted program
 # is no longer than before.
 _POOL_CODES = (
     "[[[<[<<<<",
