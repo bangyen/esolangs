@@ -387,6 +387,36 @@ No three-input table searches now. The searches are kept as the fallback for
 a *wider* table, and as the reason a missing staging degrades instead of
 raising.
 
+**A simpler form of the plan does not exist, and that is measured rather than
+assumed** — worth recording here because the natural next question is whether
+109 staging entries can collapse into a rule, and the answer is a set of
+numbers rather than an opinion. Each of these accepts a *longer* program as
+the price of a simpler form, and none of them buys it:
+
+| attempt | reach |
+|---|---|
+| one fixed staging | **13 pairs**, the measured maximum over the family (mean 5.8) |
+| best single `(separator, settle)` over all its `k` and accumulators | 60 of 109 |
+| two separators | 99 of 109 |
+| the same, with `k` to 70 and accumulators to 60 | **still 99** |
+| dropping the settle field | 99 of 109 |
+
+The first row is a counting argument, not a sweep: a staging offers one column
+per accumulator and orientation — 52 slots — but they collapse, because the
+walk's prefix-XOR is many-to-one and different accumulators keep arriving at
+the same column. One staging is short by a factor of eight.
+
+The fourth row is the one that answers "would a bigger program help?" — no.
+The ten tables missing from two separators stay missing with far more room,
+so they need a different *separator*, not a longer walk.
+
+Consolidating stagings is possible and bounded: the 109 entries use 63, the
+13-pair maximum puts a floor of `ceil(109/13) = 9` on any cover, and a greedy
+search over all 406 useful stagings followed by a pruning pass reaches 33 with
+nothing redundant left. So 33–63 is the real range against a floor of 9 that
+nothing approaches — the pairs do not clump. None of it removes anything a
+caller sees, so the shipped constants stay.
+
 **And it is not only a speedup: the staged route reaches tables the searches
 cannot.** Sampling 8 of the 80, three (`01101000`, `10100001`, `11100110`)
 fail after ~130 seconds of searching and build in under 0.08s from a staging,
