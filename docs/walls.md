@@ -966,6 +966,98 @@ generator's `gcd(q + 1, 256) == 1` walk.  It is load-bearing here: leaves
 normalize the accumulator mod 256, and under a strict mod-255 `PRONOUNCE`
 they would print `0`-`@` rather than `0`/`1`.
 
+## NoComment's arity cap (the 255 bounded one jump, not a composition)
+
+The blocker table used to record `n <= 8` for the NoComment boolean
+generator as a "genuine wall: the `s` skip is byte-indexed, capping every
+jump at 255."  That one sentence was the entire argument on record, and it
+does not survive: **255 bounds a single skip, and skips compose.**  The cap
+was a property of the generator's decode, not of the language.  It is now
+`n <= 11`, and what binds there is the tape.
+
+### What actually broke at nine inputs
+
+The old construction computed the input's numeric index into one cell, then
+spent a single `s` skipping by that index into a staircase of `2**n` `l`
+moves, landing on a pre-loaded cell holding `48 + table[index]`.  Two
+separate things break past `n == 8`, and reading them apart matters:
+
+- the index itself exceeds a byte and wraps mod 256 (`2**9 - 1 == 511`), and
+- each bit's guarded contribution adds `2**w` in unary, so from `w == 8` the
+  guarded *block* is longer than the 255 its own skip can cover (the first
+  over-long block appears at `n == 9`, at 274 commands).
+
+Neither is a statement about NoComment.  Both are statements about using
+exactly one skip for a job.
+
+### The two compositions
+
+Read off the interpreter (`src/esolangs/interpreters/tape_based/nocomment.py`),
+`s` does three things worth naming: it **peeks** the stack rather than
+popping it, it **does not move the pointer**, and a skip amount of zero is a
+plain no-op.  Those give:
+
+**Chained guards — a guarded region may be any length.**  After a skip
+fires, the guard cell is still under the pointer and still nonzero, so it
+can be tested again immediately.  A guarded region of length `L` is emitted
+as `ceil(L / 255)` chunks, each preceded by glue that rebuilds that chunk's
+length in a scratch cell, pushes it, returns to the guard, and skips.  The
+glue runs on *both* paths, so it can only be emitted from one position —
+which is why every chunk must end with the pointer back on the guard.  With
+that invariant the chain is exact: a 700-command guarded region was run
+through the interpreter on both the taken and untaken paths and behaved as
+one guarded block.
+
+**Additive staircases — a displacement may be any size.**  Entering a
+staircase of `L` copies of `l` by skipping `c` executes `L - c` of them, so
+pre-walking `L` right and then skipping `c` is a net move of `+c`.
+Displacements *add* across consecutive staircases, so an index far past 255
+is reached by `q` stages whose skip amounts sum to it.  Crucially the index
+is split into **summands, not digits**: each summand is a plain sum of
+per-bit contributions, so each contribution stays an ordinary guarded
+increment and no rescaling by 256 is ever needed — which is what kills the
+obvious "high digit needs a `hi * 256` skip" dead end.
+
+Between stages the stack top must advance, and `f` is the only pop — it
+writes the popped value into the cell under the pointer.  That clobber is
+survivable because it always lands mid-corridor, but only with one extra
+piece: a **constant** trailing summand of `1`, so the final landing is
+strictly right of every clobbered cell.  Without it the all-zero input
+(every input-driven summand zero) lands exactly on a clobbered cell and
+prints the popped summand instead of the answer.  That input is the
+canonical failure of this construction and is worth keeping in mind for any
+re-derivation.
+
+### What binds now, and why it is not a wall either
+
+The layout needs `2**n` output cells, plus an apron of nonzero cells past
+the table for the stages' guards to land on, plus the walk's own reach.  The
+interpreter's tape is a static 4096 cells, so `n == 12` needs cell 4650 and
+is refused.  The wiki does not specify a memory size — the 4096 is this
+interpreter's choice, matching the RISC-V cross-check's buffer — so this is
+a configuration bound in the same sense as the Factor row's
+`sys.get_int_max_str_digits()`, not a property of NoComment.  A larger tape
+moves the cap; nothing in the language argues for a particular `n`.
+
+### Evidence
+
+`n <= 8` still takes the original single-skip path and renders
+**byte-identical** programs, so the committed examples and the narrow tests
+are untouched.  The wide path was checked by running every generated
+program through the interpreter itself, not merely rendering it: at each of
+`n == 9`, `10`, and `11`, five tables (alternating, parity, a random dense
+table, constant zero, and AND-`n`) were evaluated on **all** `2**n` input
+combinations through the same `instantiate` path the harness uses, and every
+output matched the table.  The tests keep this as a parameterized case and
+derive the cap by asking the generator where it stops rather than pinning a
+literal, so the bound tracks the interpreter's tape if that changes.
+
+This is the same shape of error as the two already on record here: `%^2^-1`'s
+NOT needed 36 commands so a length-8 sweep missed it, and ZTOALC's
+positional-index wall fell to `s += s` because the sweep only searched trees.
+In all three the claim bounded one primitive and was read as bounding what
+could be built out of it.
+
 ## NoComment, BF-PDA (a `{Ci}` embed was not actually needed)
 
 Both generators previously embedded a second placeholder (`{Ci}`) alongside

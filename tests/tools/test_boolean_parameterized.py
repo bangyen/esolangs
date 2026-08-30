@@ -722,12 +722,72 @@ class TestParameterizedNoComment:
             got = self.run_nocomment(self.instantiate(template, bits))
             assert got == str(int("1010101010101010"[combo])), f"inputs {bits}"
 
-    def test_cap_rejected(self) -> None:
-        """n > 8 needs an index beyond a byte and is rejected."""
+    @pytest.mark.parametrize("n", [9, 10, 11])
+    def test_wide_arity_is_exact(self, n: int) -> None:
+        """Past a byte-sized index the composed-skip decode still computes the table.
+
+        A single ``s`` cannot carry an index past 255, which is what caps
+        the narrow path at eight inputs.  Composing skips lifts that, so
+        these arities must be exactly right on *every* input, not merely
+        renderable -- each table below is run through the interpreter for
+        all ``2**n`` combinations.
+        """
         from esolangs.tools.boolean import parameterized
 
-        with pytest.raises(ValueError, match="n <= 8"):
-            parameterized.nocomment("0" * (2**9))
+        tables = {
+            "alternating": "01" * (2 ** (n - 1)),
+            "parity": "".join(str(bin(r).count("1") % 2) for r in range(2**n)),
+            "constant": "0" * (2**n),
+            "and": "0" * (2**n - 1) + "1",
+        }
+        for name, table in tables.items():
+            template = parameterized.nocomment(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_nocomment(self.instantiate(template, bits))
+                assert got == table[combo], f"{name} n={n} inputs {bits}"
+
+    def test_narrow_path_needs_a_byte_sized_index(self) -> None:
+        """The single-skip decode covers exactly the arities whose index fits a byte.
+
+        Derived from the interpreter's cell range rather than pinned: the
+        skip amount is peeked off the stack and everything there came from a
+        byte-sized cell, so the widest single-skip index is 255.
+        """
+        from esolangs.tools.boolean.parameterized import (
+            _NOCOMMENT_NARROW_MAX,
+            _NOCOMMENT_SKIP_MAX,
+        )
+
+        assert 2**_NOCOMMENT_NARROW_MAX - 1 <= _NOCOMMENT_SKIP_MAX
+        assert 2 ** (_NOCOMMENT_NARROW_MAX + 1) - 1 > _NOCOMMENT_SKIP_MAX
+
+    def test_cap_is_the_tape_not_the_skip(self) -> None:
+        """The remaining cap is the interpreter's tape, and it is derived.
+
+        The refusal must name the tape, and the boundary must be wherever
+        the layout stops fitting -- so the largest arity that builds is
+        found by asking, not asserted as a literal, and the next one up
+        must raise.
+        """
+        from esolangs.interpreters.tape_based.nocomment import _TAPE
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.parameterized import _NOCOMMENT_NARROW_MAX
+
+        widest = 0
+        for n in range(1, 16):
+            try:
+                parameterized.nocomment("0" * (2**n))
+            except ValueError:
+                break
+            widest = n
+
+        # The cap is past the byte-sized-index bound the narrow path has,
+        # which is the whole point of the composed-skip decode.
+        assert widest > _NOCOMMENT_NARROW_MAX
+        with pytest.raises(ValueError, match=str(_TAPE)) as caught:
+            parameterized.nocomment("0" * (2 ** (widest + 1)))
+        assert "tape" in str(caught.value)
 
     def test_bad_table_rejected(self) -> None:
         from esolangs.tools.boolean import parameterized
