@@ -431,9 +431,13 @@ def _plan(
     rows = 2**n
     initial = tuple(start for _ in range(rows))
     seen = {initial}
-    queue = deque([(initial, [])])
+    # Each state carries the cells its reads have already consumed, so a
+    # later read cannot land on one of them.  See the note at the point of
+    # use: rows advance leftward and so never re-read a cell themselves,
+    # but two *different* rows can reach the same cell at different reads.
+    queue = deque([(initial, [], frozenset())])
     while queue:
-        positions, history = queue.popleft()
+        positions, history, used = queue.popleft()
         by_class: dict[int, set[int]] = {}
         for r in range(rows):
             by_class.setdefault(table[r], set()).add(positions[r])
@@ -455,6 +459,18 @@ def _plan(
         occupied: dict[int, list[int]] = {}
         for r in range(rows):
             occupied.setdefault(positions[r] + 1, []).append(r)
+        # A cell any earlier read consumed is off limits.  ``[`` flips the
+        # cell it consults, so a second read of it sees the complement of
+        # what the solver planted -- and because the solver writes one
+        # constraint per ``(cell, row)``, it would believe both readings at
+        # once.  Rows advance leftward and so never re-read a cell of their
+        # own, but two different rows can arrive at one cell at different
+        # reads, which is the case this excludes.  Measured at three inputs:
+        # every plan whose reads shared a cell either failed the solve or
+        # had to be caught later, while none of the 110 plans with disjoint
+        # cells was inconsistent.
+        if occupied.keys() & used:
+            continue
         if not any(cell not in reachable for cell in occupied):
             choices = [sorted(reachable[cell]) for cell in sorted(occupied)]
             for combination in itertools.product(*choices):
@@ -478,7 +494,11 @@ def _plan(
                     ), f"a row failed to advance: {positions} -> {moved}"
                     seen.add(moved)
                     queue.append(
-                        (moved, [*history, ("read", step, positions, picked)])
+                        (
+                            moved,
+                            [*history, ("read", step, positions, picked)],
+                            used | occupied.keys(),
+                        )
                     )
 
         # Clamps: a run of ``<``, which merges rows against the floor.  It
