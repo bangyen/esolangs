@@ -1,8 +1,8 @@
 """A minimal baseline JPEG reader, so a photographed or re-saved drawing loads.
 
 Reading only, and only baseline sequential DCT -- the mode every ordinary
-encoder produces by default.  Progressive JPEG, arithmetic coding, and 12-bit
-samples raise rather than being guessed at.
+encoder produces by default -- including restart markers.  Progressive JPEG,
+arithmetic coding, and 12-bit samples raise rather than being guessed at.
 
 This is the one piece of Line's tooling that genuinely reimplements a
 library's algorithm rather than discovering it never needed one (see the
@@ -177,10 +177,18 @@ class _BitReader:
         raise ValueError("bad Huffman code in JPEG entropy data")
 
     def align(self) -> None:
-        """Skip to the next byte boundary, as a restart marker requires."""
+        """Skip to the next byte boundary, as a restart marker requires.
+
+        A partially-read byte that was a stuffed ``FF 00`` has to be stepped
+        over as the pair it is, not as one byte -- otherwise aligning lands on
+        the stuffing zero and everything after reads one byte early.  This is
+        rare enough to hide: it needs a literal 0xFF in the entropy data
+        immediately before a restart marker, which happened at exactly one of
+        360 boundaries in the image that first exposed it.
+        """
         if self.bit:
             self.bit = 0
-            self.pos += 1
+            self.pos += 2 if self.data[self.pos] == 0xFF else 1
 
     def skip_restart(self) -> bool:
         """Consume a restart marker if one is next, reporting whether it was.
@@ -315,20 +323,6 @@ def _parse_segments(
                 index += 17 + total
         elif marker == _DRI:
             restart_interval = (body[0] << 8) | body[1]
-            if restart_interval:
-                # Refused rather than decoded: an implementation that got this
-                # subtly wrong was tried and produced desynchronised garbage
-                # partway down the image (correct for ~180 MCUs, then noise
-                # where the reference is flat white), which is the worst
-                # possible outcome -- a plausible-looking wrong drawing.
-                # Restart markers are an error-resilience feature for lossy
-                # transports; no encoder writes them by default, and nothing
-                # that produces a Line drawing has reason to. Refusing keeps
-                # the failure loud until someone has a real file that needs it.
-                raise ValueError(
-                    "JPEGs with restart markers are not supported "
-                    f"(restart interval {restart_interval})"
-                )
         elif marker in _SOF_NAMES:
             if marker not in _SUPPORTED_SOF:
                 raise ValueError(
