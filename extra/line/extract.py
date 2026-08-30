@@ -33,7 +33,6 @@ from dataclasses import dataclass
 import lattice
 import numpy as np
 from lattice import _DIRS, _ink
-from scipy import ndimage
 
 try:
     from PIL import Image
@@ -42,36 +41,33 @@ except ImportError as _exc:  # pragma: no cover - environment guard
         "Extracting Line programs requires Pillow: pip install Pillow"
     ) from _exc
 
-try:
-    from skimage.morphology import skeletonize
-except ImportError as _exc:  # pragma: no cover - environment guard
-    raise ImportError(
-        "Extracting Line programs requires scikit-image: pip install scikit-image"
-    ) from _exc
-
-# Dependency-reduction notes, if these 4 undeclared deps (Pillow, numpy, scipy,
-# scikit-image) are ever worth trimming: scikit-image is easiest to drop --
-# skeletonize() here only feeds a scalar length into detect_scale()'s
-# ink/skeleton-length ratio, and a pure-numpy repeated-erosion step-count
-# (erode with padded[1:-1,1:-1] & padded[:-2,1:-1] & ... until the shape
-# vanishes) reproduces the same scale detection, confirmed against both
-# fixtures at 1x-4x. scipy.ndimage's center_of_mass/ndimage.sum are one-
-# liners with nonzero().mean()/bincount; ndimage.label is a ~20-line BFS
-# (this file already has one similar BFS loop) confirmed to match scipy
-# exactly on real fixtures.
-# distance_transform_edt is the one hard piece to replace -- load-bearing in
-# find_cursor, and a brute-force replacement, while exactly correct, is
-# O(ink x background) and took 2.6s on a 500x500 fixture vs scipy's near-
-# instant separable algorithm; only worth it with a real two-pass EDT.
-# Pillow's Image.resize(NEAREST) is trivial (mask[::scale, ::scale]), but
-# Image.open is real PNG/JPEG codec work with no numpy/scipy/skimage
-# equivalent -- the hardest of the four to actually eliminate.
-
-# Cursor arrowhead blobs measured from the wiki's reference images are ~13px
-# (a small filled triangle); any solid region above this distance-transform
-# threshold is treated as ink thick enough to be the cursor marker rather
-# than a 1px-wide path stroke.
-_THICK_THRESHOLD = 1.5
+# Dependency-reduction notes.  scipy and scikit-image were both dropped; what
+# is left is Pillow (image decode only, see load_binary) and numpy.
+#
+# The two that went, and why they turned out not to be needed at all rather
+# than merely reimplementable:
+#
+#   scipy.ndimage.distance_transform_edt was previously called "the one hard
+#   piece to replace" -- a brute-force replacement is O(ink x background) and
+#   took 2.6s on a 500x500 fixture.  But find_cursor never wanted a distance
+#   transform: its only use was the threshold ``dist > 1.5``.  No pixel with a
+#   non-ink 8-neighbor can exceed sqrt(2) ~ 1.414, so that test is exactly "all
+#   8 neighbors are ink" -- a 3x3 binary erosion (:func:`_erode`).  Confirmed
+#   bit-identical to the scipy threshold on every fixture, cropped and
+#   normalized.  label/sum/center_of_mass were the easy remainder: a BFS
+#   (:func:`_largest_thick_region`) and a plain coordinate mean.
+#
+#   scikit-image's skeletonize() only ever fed a scalar length into
+#   detect_scale()'s ink/skeleton-length ratio, a ~5%-accurate estimate of the
+#   stroke width.  normalize_scale's docstring already states the real
+#   invariant -- input is "an integer pixel-replication blow-up of a 1px-wide
+#   drawing, not a resampled photograph" -- so detect_scale now tests that
+#   invariant directly (:func:`detect_scale`, block uniformity), which is
+#   exact rather than approximate.  Verified to agree with the old ratio on
+#   both fixtures at 1x-5x.
+#
+# Pillow is the remaining hard one: Image.resize(NEAREST) is trivial
+# (mask[::scale, ::scale]), but Image.open is real PNG codec work.
 
 
 def load_binary(path: str) -> np.ndarray:
@@ -152,30 +148,49 @@ def crop_to_content(mask: np.ndarray, margin: int = 2) -> np.ndarray:
     return mask[top:bottom, left:right]
 
 
+# No Line drawing this reads is scaled past a handful of pixels per stroke
+# (the wiki's own reference images are 1x, and the fixtures here go to 3x), and
+# every candidate scale costs a full pass over the mask, so the search stops
+# well short of anything a real drawing would use.
+_MAX_SCALE = 16
+
+
 def detect_scale(mask: np.ndarray) -> int:
-    """Estimate the uniform stroke width a Line drawing was rendered at.
+    """Find the integer factor a Line drawing was scaled up by.
 
     Line's own strokes are always 1px wide in the wiki's reference images
     (see ``render.py``'s module docstring); an image scaled up by some
-    integer factor keeps every stroke uniformly that many pixels wide.  For
-    a thin stroke, ink area is approximately width times length, so
-    ``ink_pixel_count / skeleton_length`` recovers that width -- confirmed
-    accurate to within ~5% against 1x/2x/3x/4x scaled copies of both wiki
-    reference images, and unaffected by how much blank border surrounds the
-    drawing (border pixels are not ink, so they affect neither the
-    numerator nor the denominator).
+    integer factor keeps every stroke uniformly that many pixels wide.
 
-    Skeletonizing is not used to *do* the width correction (tried directly:
-    it introduces a systematic off-center bias on diagonal strokes, and
-    reduces the cursor's arrowhead -- a solid 2D shape rather than a thin
-    stroke -- to a small messy cluster instead of leaving it recognizable),
-    only to measure it; :func:`normalize_scale` corrects for it by plain
-    downscaling instead.
+    Rather than estimating that width from ink area, this tests the property
+    :func:`normalize_scale` actually relies on: a ``k``-times upscaled drawing
+    is a *pixel replication*, so every ``k``x``k`` block of it (aligned to the
+    ink's own top-left corner, since the surrounding blank border is arbitrary
+    -- see :func:`crop_to_content`) is uniform, all ink or all blank.  The
+    largest such ``k`` is the scale.  This is exact for the nearest-neighbor
+    blow-ups the function exists to undo, where the older
+    ``ink_pixel_count / skeleton_length`` ratio was a ~5% approximation; the
+    two agree on both wiki reference images at 1x-5x.
+
+    A mask with no ink has no scale to detect and returns 1.
     """
-    skeleton_length = int(skeletonize(mask).sum())
-    if skeleton_length == 0:
+    ys, xs = np.nonzero(mask)
+    if len(ys) == 0:
         return 1
-    return max(1, round(int(mask.sum()) / skeleton_length))
+    # Anchor to the ink itself: crop_to_content pads the bounding box out to
+    # quadtree-leaf boundaries plus a margin, so the array's own origin is not
+    # aligned to the upscale grid, but the drawing's first ink pixel is.
+    sub = mask[int(ys.min()) :, int(xs.min()) :]
+    h, w = sub.shape
+    best = 1
+    for k in range(2, _MAX_SCALE + 1):
+        pad_h, pad_w = (-h) % k, (-w) % k
+        padded = np.pad(sub, ((0, pad_h), (0, pad_w))) if pad_h or pad_w else sub
+        blocks = padded.reshape(padded.shape[0] // k, k, padded.shape[1] // k, k)
+        # Uniform block <=> "any pixel set" agrees with "all pixels set".
+        if np.array_equal(blocks.any(axis=(1, 3)), blocks.all(axis=(1, 3))):
+            best = k
+    return best
 
 
 def normalize_scale(mask: np.ndarray) -> np.ndarray:
@@ -232,6 +247,63 @@ def _ink_neighbor_count(mask: np.ndarray, y: int, x: int) -> int:
     return count
 
 
+def _erode(mask: np.ndarray) -> np.ndarray:
+    """Binary 3x3 erosion: keep only ink whose whole 8-neighborhood is ink.
+
+    Equivalently, on a boolean mask, exactly ``distance_transform_edt(mask) >
+    sqrt(2)`` -- a pixel with any non-ink 8-neighbor is at Euclidean distance
+    at most sqrt(2) from background, and one without is strictly farther.
+    That is what makes this an exact stand-in for the thresholded distance
+    transform :func:`find_cursor` used to take from scipy.
+    """
+    h, w = mask.shape
+    padded = np.zeros((h + 2, w + 2), dtype=bool)
+    padded[1:-1, 1:-1] = mask
+    out = np.ones((h, w), dtype=bool)
+    for dy in range(3):
+        for dx in range(3):
+            out &= padded[dy : dy + h, dx : dx + w]
+    return out
+
+
+def _largest_thick_region(thick: np.ndarray) -> np.ndarray:
+    """Find the biggest 8-connected component of ``thick``, as a mask.
+
+    Replaces ``ndimage.label`` plus an argmax over ``ndimage.sum``: only the
+    single largest component is ever wanted, so the components are flood-filled
+    one at a time and only the best-so-far is kept.
+    """
+    h, w = thick.shape
+    seen = np.zeros((h, w), dtype=bool)
+    best: list[tuple[int, int]] = []
+    for sy, sx in zip(*np.nonzero(thick), strict=True):
+        if seen[sy, sx]:
+            continue
+        component = []
+        frontier = [(int(sy), int(sx))]
+        seen[sy, sx] = True
+        while frontier:
+            y, x = frontier.pop()
+            component.append((y, x))
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    ny, nx = y + dy, x + dx
+                    if (
+                        0 <= ny < h
+                        and 0 <= nx < w
+                        and thick[ny, nx]
+                        and not seen[ny, nx]
+                    ):
+                        seen[ny, nx] = True
+                        frontier.append((ny, nx))
+        if len(component) > len(best):
+            best = component
+    core = np.zeros((h, w), dtype=bool)
+    for y, x in best:
+        core[y, x] = True
+    return core
+
+
 @dataclass
 class Cursor:
     """The arrowhead's location, heading, and shape, isolated from a mask."""
@@ -253,7 +325,7 @@ _BLOB_NEIGHBOR_MIN = 3
 # relative to the triangle it bounds).  The bracket here is deliberately
 # wide of that measured range -- it exists to catch a blob that is not
 # triangular at all (a solid square rejects at 1.0; two crossing strokes at
-# a shallow angle either fail _THICK_THRESHOLD entirely or produce a long
+# a shallow angle either erode away entirely or produce a long
 # thin sliver well under 0.25), not to pick between two genuinely
 # arrowhead-shaped candidates, which this check cannot and does not attempt
 # to disambiguate (see find_cursor's docstring).
@@ -269,11 +341,11 @@ def _fill_ratio(blob: np.ndarray) -> float:
 
 
 def find_cursor(mask: np.ndarray) -> Cursor:
-    """Isolate the whole arrowhead shape via distance transform + growth.
+    """Isolate the whole arrowhead shape via erosion + growth.
 
     The arrowhead is the only solid (multi-pixel-thick) region in a
-    correctly-drawn Line image; every path stroke is 1px wide.  The distance
-    transform picks out its thick *interior*, which is enough to locate and
+    correctly-drawn Line image; every path stroke is 1px wide.  Eroding
+    (:func:`_erode`) picks out its thick *interior*, which is enough to locate and
     identify it (the largest such region, so a stray thick artifact
     elsewhere in the image does not get mistaken for the cursor) but is
     narrower than its full silhouette -- the outline and pointed tips are
@@ -305,15 +377,12 @@ def find_cursor(mask: np.ndarray) -> Cursor:
     (see :data:`_FILL_RATIO_RANGE`), so that case raises instead of
     returning a silently wrong cursor.
     """
-    dist = ndimage.distance_transform_edt(mask)
-    thick = dist > _THICK_THRESHOLD
+    thick = _erode(mask)
     if not thick.any():
         raise ValueError("no cursor (thick/filled region) found in image")
-    thick_labeled, thick_count = ndimage.label(thick)
-    sizes = ndimage.sum(thick, thick_labeled, range(1, thick_count + 1))
-    cursor_label = int(np.argmax(sizes)) + 1
-    core = thick_labeled == cursor_label
-    cy, cx = ndimage.center_of_mass(core)
+    core = _largest_thick_region(thick)
+    core_ys, core_xs = np.nonzero(core)
+    cy, cx = float(core_ys.mean()), float(core_xs.mean())
 
     h, w = mask.shape
     visited = {(int(y), int(x)) for y, x in zip(*np.nonzero(core), strict=True)}
