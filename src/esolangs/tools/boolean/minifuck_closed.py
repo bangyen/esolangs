@@ -37,18 +37,27 @@ Why the reads can separate the rows
 -----------------------------------
 
 Every cell of the region holds an *affine* function of the inputs, and a
-read adds that function to the pointer.  Relative to each other a read moves
-rows by 0 or -1, so rows **merge but never cross**.  Were the cells
-*constant*, the reachable groupings would be exactly the contiguous blocks
-of the row order, and only tables whose class sequence has at most two runs
-would build -- 16 of 256 at three inputs.  Affine cells escape that, because
-two rows sharing a position can still receive different bits.
+read adds that function to the pointer.  The rows start **converged**, so
+every read splits them; they merge only by landing together.
 
-A second consequence of affineness shapes the schedule: a non-constant
-affine function on ``GF(2)^n`` is *balanced*, so a read taken while the rows
-are still converged adds the same amount to every row.  Separation must come
-first; only afterwards is each row alone on a cell, where that cell's free
-bit steers it independently.
+Affineness is what makes the split possible.  Were the cells *constant*,
+every row would gain the same amount and the rows could never come apart at
+all; and the reachable groupings would be the contiguous blocks of the row
+order, so only tables whose class sequence has at most two runs could build
+-- 16 of 256 at three inputs.
+
+The same fact bounds what a read can do at the start.  A non-constant affine
+function on ``GF(2)^n`` is *balanced*, so the first read splits the rows
+evenly however it is chosen; only once they are apart does each row sit
+alone on a cell whose free bit steers it independently.
+
+What this costs is the *coarse* tables.  Splitting reads naturally produce
+finely divided arrangements, so a table whose answer classes are long
+contiguous runs is the hard case, not the easy one -- at three inputs and
+depth 6, none of the fourteen two-run tables is reachable while 44 of the
+seventy five-run tables are.  The intuition runs backwards from the
+constant-cell picture, which is worth stating because it is easy to import
+the wrong model from that analysis.
 
 The pattern is solved, not searched
 -----------------------------------
@@ -348,13 +357,23 @@ def _plan(
     The accepted end state is the zero class exactly one cell above the one
     class.  That orientation is forced rather than chosen: the closing walk
     puts the one class on cell 6, and a row *below* 6 would write into the
-    pool and spell some other byte, while a row above 7 is harmless.  The
-    other orientation is therefore not merely unhandled -- swapping the two
-    classes would need the walk to land the one class below the zero one,
-    which the pool geometry does not allow.
+    pool and spell some other byte, while a row above 7 is harmless.  Either
+    arrangement is accepted, because there are two pools; ``upper`` says
+    which one came out so the caller can write the matching pool.
 
-    Returns ``(history, upper)`` where ``upper`` names the class that came
-    out on top; the caller uses it to choose the pool.
+    The rows begin **converged** -- one crossing per input leaves every
+    pointer equal -- and each read *splits* them, since it adds a cell's
+    affine value and the rows differ in that value.  Merging happens only
+    when two rows happen to land together.
+
+    That asymmetry decides which tables build.  Reads produce finely-split
+    arrangements, so the *coarse* tables -- those whose answer classes are
+    long contiguous runs -- are the ones that go unbuilt.  Measured at three
+    inputs and depth 6: of the fourteen two-run tables, none is reachable,
+    while 44 of the seventy five-run tables are.  The language offers no
+    remedy; see the note below on why the clamp cannot supply one.
+
+    Returns ``(history, upper)``, the history being the moves to replay.
     """
     rows = 2**n
     initial = tuple(start for _ in range(rows))
@@ -377,22 +396,38 @@ def _plan(
         if len(history) >= depth:
             continue
 
+        # Reads: one binary choice per occupied cell, which splits the rows.
         occupied: dict[int, list[int]] = {}
         for r in range(rows):
             occupied.setdefault(positions[r] + 1, []).append(r)
-        if any(cell not in reachable for cell in occupied):
-            continue
-        choices = [sorted(reachable[cell]) for cell in sorted(occupied)]
-        for combination in itertools.product(*choices):
-            picked = dict(zip(sorted(occupied), combination, strict=True))
-            moved = tuple(
-                positions[r] + 1 - gap + picked[positions[r] + 1][r]
-                for r in range(rows)
-            )
-            if min(moved) <= _LAND_HIGH + 1 or moved in seen:
-                continue
-            seen.add(moved)
-            queue.append((moved, [*history, (positions, picked)]))
+        if not any(cell not in reachable for cell in occupied):
+            choices = [sorted(reachable[cell]) for cell in sorted(occupied)]
+            for combination in itertools.product(*choices):
+                picked = dict(zip(sorted(occupied), combination, strict=True))
+                moved = tuple(
+                    positions[r] + 1 - gap + picked[positions[r] + 1][r]
+                    for r in range(rows)
+                )
+                if min(moved) <= _LAND_HIGH + 1 or moved in seen:
+                    continue
+                seen.add(moved)
+                queue.append((moved, [*history, ("read", positions, picked)]))
+
+        # Clamps: a run of ``<``, which merges rows against the floor.  It
+        # writes nothing, so it costs only length and can never corrupt the
+        # tape -- the only reason to bound ``k`` is the state count.
+        # There is deliberately no clamp move.  ``'<'*k`` is the language's
+        # only merging primitive -- it sends every row to ``max(p - k, 0)``
+        # -- but the merge and the answer are mutually exclusive: rows
+        # collapse only once the run drives them to cell 0, and cell 0 is
+        # far below the landing cells, so a merged row can no longer be
+        # printed.  Measured on an eight-row spread, the first merge leaves
+        # one row of eight at or above cell 6.  A clamp short of the floor
+        # is a uniform shift, which changes nothing.
+        #
+        # This is worth stating because a clamp modelled as stopping at the
+        # landing cells looks *very* good -- it nearly doubles the reachable
+        # tables -- and that model is simply wrong about the machine.
     return None
 
 
@@ -469,8 +504,13 @@ def minifuck_closed(truth_table: str, depth: int = 5) -> str:
     # did not move.
     pool = _POOL_ZERO_LOW if upper == 0 else _POOL_ZERO_HIGH
 
+    # Only reads constrain the tape; a clamp writes nothing, so it has
+    # nothing to solve for.
     constraints = {}
-    for positions, picked in history:
+    for kind, first, second in history:
+        if kind != "read":
+            continue
+        positions, picked = first, second
         for cell, column in picked.items():
             for r in range(2**n):
                 if positions[r] + 1 == cell:
@@ -487,8 +527,11 @@ def minifuck_closed(truth_table: str, depth: int = 5) -> str:
     if (rebuilt_lo, rebuilt_hi) != span:
         raise ValueError(f"pool {pool} moved the region: {(rebuilt_lo, rebuilt_hi)}")
     joint.emit("<" * (joint.ptr() - (span[1] - 1)))
-    for _ in history:
-        joint.emit("[" + "<" * gap)
+    for kind, first, _second in history:
+        if kind == "read":
+            joint.emit("[" + "<" * gap)
+        else:
+            joint.emit("<" * first)
 
     by_class: dict[int, set[int]] = {}
     for r in range(2**n):
