@@ -105,6 +105,12 @@ FULL_ONLY = frozenset(
 # to this step, and a typo in any of them would silently stop matching.
 LINE_STEP = "extra/line suites (uv)"
 
+# Not a STEPS entry: it reads the coverage data file `pytest` writes, and
+# `pytest` is LONG_STEP -- launched with Popen and left running while the
+# short steps go by.  A sibling step would race it and read a half-written
+# file, so the gate is run by _run_steps once the long step has exited.
+DIFF_COVERAGE_STEP = "changed-line coverage"
+
 
 def _line_addopts(env: dict[str, str]) -> str:
     """``PYTEST_ADDOPTS`` for the line step, deselecting the slow tests.
@@ -159,7 +165,12 @@ STEPS = [
     # pre-commit's mypy hook is scoped to src/ (its isolated env lacks the
     # scripts' imports), so scripts/ is type-checked here, in the project env.
     ("mypy (src + scripts)", [*PY, "-m", "mypy"]),
-    ("pytest", [*PY, "-m", "pytest", "-q"]),
+    # `--cov-report=` writes no report: the run is here for the data file,
+    # which the changed-line gate reads afterwards.  Line coverage keeps
+    # coverage on its sysmon core (~0.9s over this suite); asking for branch
+    # coverage would silently drop it back to the settrace tracer, which
+    # costs several times that -- see docs, and pyproject's `core` setting.
+    ("pytest", [*PY, "-m", "pytest", "-q", "--cov", "--cov-report="]),
     ("bandit", ["uv", "run", "--with", "bandit", "bandit", "-r", "src", "-q"]),
     (
         # These also run under the plain `pytest` step above.  Repeated here
@@ -392,12 +403,17 @@ def _report(name: str, elapsed: float, returncode: int, output: str | None) -> b
 
 
 def _run_steps(
-    runnable: list[tuple[str, list[str], dict[str, str]]], *, quiet: bool
+    runnable: list[tuple[str, list[str], dict[str, str]]],
+    *,
+    quiet: bool,
+    gate: tuple[str, list[str], dict[str, str]] | None = None,
 ) -> tuple[int, list[tuple[str, float]], float]:
     """Run the planned steps, overlapping the long one with the short ones.
 
     ``pytest`` is longer than everything else combined, so it is launched
-    first and left running while the short steps go by in order.  Its output
+    first and left running while the short steps go by in order.  *gate* is
+    the changed-line coverage check, which reads the data file ``pytest``
+    writes and so can only run once it has exited.  Its output
     is captured either way -- two live subprocesses writing to one terminal
     interleave into nonsense -- so unlike the short steps it does not stream
     even outside ``--quiet``.  ``pre-commit`` rewrites files, so it is run to
@@ -462,7 +478,13 @@ def _run_steps(
         output, _ = proc.communicate()
         elapsed = time.time() - long_start
         timings.append((LONG_STEP, elapsed))
-        failures += not _report(LONG_STEP, elapsed, proc.returncode, output)
+        pytest_ok = _report(LONG_STEP, elapsed, proc.returncode, output)
+        failures += not pytest_ok
+        # Only meaningful once the data file is complete, and only if the run
+        # that wrote it passed: coverage from a failed suite records which
+        # lines ran before the failure, not which are tested.
+        if pytest_ok and gate is not None:
+            run_serial(*gate)
 
     return failures, timings, time.time() - wall_start
 
@@ -570,7 +592,28 @@ def main() -> int:
             continue
         runnable.append((name, cmd, step_env))
 
-    failures, timings, wall = _run_steps(runnable, quiet=quiet)
+    # The gate speaks only for the suite that actually ran.  A default local
+    # run deselects the `slow` tests, so a line covered only by one of those
+    # would read as uncovered; --partial makes the gate report it rather than
+    # fail on evidence it does not have.  A --full run has no such excuse.
+    #
+    # The deselection has two sources, and both have to be caught.  This file
+    # appends `-m "not slow"` itself, but `just test-quick` instead exports
+    # PYTEST_ADDOPTS and passes --only, which suppresses the append while
+    # pytest still reads the env var and runs the subset.  Keying on --only
+    # alone would leave that path strict-gating subset data -- the exact
+    # false failure --partial exists to prevent, on the blessed fast loop.
+    gate: tuple[str, list[str], dict[str, str]] | None = None
+    if any(name == "pytest" for name, _, _ in runnable):
+        gate_cmd = [*PY, "scripts/check_diff_coverage.py"]
+        selected = any(
+            word.startswith("-m") for word in env.get("PYTEST_ADDOPTS", "").split()
+        )
+        if selected or (only is None and not full):
+            gate_cmd.append("--partial")
+        gate = (DIFF_COVERAGE_STEP, gate_cmd, env)
+
+    failures, timings, wall = _run_steps(runnable, quiet=quiet, gate=gate)
 
     if timings:
         print("-" * 40)
