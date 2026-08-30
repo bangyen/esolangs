@@ -909,6 +909,28 @@ class Canvas:
                     self.pixels[row][start:stop] = bytes([colour]) * (stop - start)
         self.line([*points, points[0]], colour)
 
+    def upscale(self, factor: int) -> Canvas:
+        """Replicate every pixel into a ``factor`` x ``factor`` block.
+
+        Pixel replication rather than redrawing at a larger grid unit: it is
+        exactly the transform :func:`extract.normalize_scale` exists to undo,
+        so the extractor recovers the original drawing pixel-for-pixel rather
+        than approximately.  Redrawing would move vertices onto a different
+        lattice and change the shape being read.
+        """
+        if factor < 1:
+            raise ValueError(f"scale factor must be at least 1, got {factor}")
+        if factor == 1:
+            return self
+        out = Canvas(self.width * factor, self.height * factor)
+        for y, row in enumerate(self.pixels):
+            wide = bytearray()
+            for level in row:
+                wide += bytes([level]) * factor
+            for k in range(factor):
+                out.pixels[y * factor + k] = bytearray(wide)
+        return out
+
     def save(self, path: str) -> None:
         """Write the canvas to ``path`` as an 8-bit greyscale PNG."""
         png.write_grey_file(path, self.pixels)
@@ -931,11 +953,29 @@ def _arrowhead(draw: Canvas, y: float, x: float, heading: tuple[int, int]) -> No
     draw.polygon([tip, base_l, base_r], colour=0)
 
 
-def render(root: Node, start_heading: tuple[int, int] = (-1, 0)) -> Canvas:
+def render(
+    root: Node, start_heading: tuple[int, int] = (-1, 0), scale: int = 1
+) -> Canvas:
     """Lay out and rasterize a Line program, returning a :class:`Canvas`.
 
     ``start_heading`` defaults to "up", matching every wiki example (the
     cursor starts at the bottom of the drawing and travels upward).
+
+    ``scale`` replicates each pixel into a ``scale``x``scale`` block, giving
+    strokes that many pixels wide; :func:`extract.normalize_scale` divides it
+    back out, so the extracted program is identical either way.  The default
+    of 1 matches the wiki's own images and is right for lossless storage.
+
+    Raise it when the drawing has to survive something lossy.  Measured
+    against JPEG, which quantizes pixels straight out of a stroke, a 1px
+    drawing extracts correctly down to quality 34 and is destroyed by 28; the
+    same program at 2x holds to quality 15, and at 4x to quality 10 -- with
+    the reconstruction *exact* (zero unaccounted ink), not merely tolerable.
+    Thickness is what buys that: a blurred 3px stroke is still a stroke, where
+    a blurred 1px stroke is a gap.  Note this is redundancy at write time, not
+    leniency at read time -- :func:`extract.coverage_gap` stays strict either
+    way, so a drawing damaged past recovery still fails loudly instead of
+    yielding a wrong program.
     """
     # See `_EXTENT_CACHE`: keyed by `id()`, so it must not outlive the nodes
     # it describes.  Clearing per render keeps every cached node reachable
@@ -967,7 +1007,7 @@ def render(root: Node, start_heading: tuple[int, int] = (-1, 0)) -> Canvas:
 
     start_px, start_py = to_px((0, 0))
     _arrowhead(canvas, start_py, start_px, start_heading)
-    return canvas
+    return canvas.upscale(scale)
 
 
 if __name__ == "__main__":

@@ -21,7 +21,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from extract import extract
+from extract import crop_to_content, detect_scale, extract, load_binary
 from lattice import _DIRS, Stroke, Vertex
 from render import Node, chain, render
 from simulate import IO, run
@@ -54,6 +54,55 @@ class TestBasicOps:
         tape = run(extract(path))
         assert tape.get(0, 0) == 1
         assert tape.get(1, 0) == 2
+
+
+class TestRenderScale:
+    """`render(scale=k)` thickens strokes without changing the program.
+
+    The point of the parameter is surviving lossy storage (see render()'s
+    docstring for the measured JPEG quality cliffs), which these cannot test
+    without an image library -- so what is guarded here is the invariant that
+    makes it safe to use at all: a scaled drawing must extract to exactly the
+    program the 1x drawing does.
+    """
+
+    @pytest.mark.parametrize("scale", [1, 2, 3, 4])
+    def test_scaled_render_extracts_the_same_program(
+        self, scale: int, tmp_path: Path
+    ) -> None:
+        """Every scale round-trips to the same tape as 1x."""
+        path = str(tmp_path / f"scaled{scale}.png")
+        render(chain(">", "+", "+", "<", "+"), scale=scale).save(path)
+        tape = run(extract(path))
+        assert tape.get(0, 0) == 1
+        assert tape.get(1, 0) == 2
+
+    @pytest.mark.parametrize("scale", [2, 3])
+    def test_scale_multiplies_the_canvas_exactly(self, scale: int) -> None:
+        """Pixel replication, so dimensions are an exact integer multiple."""
+        base = render(chain("+", "+", "+"))
+        scaled = render(chain("+", "+", "+"), scale=scale)
+        assert (scaled.width, scaled.height) == (
+            base.width * scale,
+            base.height * scale,
+        )
+
+    def test_scale_is_recoverable_by_the_extractor(self, tmp_path: Path) -> None:
+        """detect_scale reads back the exact factor rendered at.
+
+        This is the property the whole parameter rests on: normalize_scale
+        divides out what detect_scale finds, so an off-by-one here would feed
+        the walker a drawing at the wrong resolution.
+        """
+        path = str(tmp_path / "three_x.png")
+        render(chain("+", "+", "+"), scale=3).save(path)
+        assert detect_scale(crop_to_content(load_binary(path))) == 3
+
+    @pytest.mark.parametrize("bad", [0, -1])
+    def test_a_nonsense_scale_is_refused(self, bad: int) -> None:
+        """Zero or negative would silently produce an empty or absurd canvas."""
+        with pytest.raises(ValueError, match="at least 1"):
+            render(chain("+"), scale=bad)
 
 
 class TestConditionalBranch:
