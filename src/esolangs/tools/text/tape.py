@@ -9,6 +9,7 @@ from esolangs.tools.text.helpers import (
     delta_program,
     run_step,
 )
+from esolangs.tools.wrap import shortest
 
 __all__ = [
     "_MAMMALIAN_WALK",
@@ -88,6 +89,14 @@ def brainfuck(text: str) -> str:
     rebuilding it: the program emits the +/- run and prints in place.
     Otherwise the cell is zeroed with ``[-]`` and rebuilt with a multiply
     loop (``_bf_set``), so large values cost O(sqrt) instead of O(value).
+
+    The choice is made by :func:`shortest` over the two finished candidates
+    rather than by comparing their costs, because a cost comparison has to
+    restate each shape's length and then drift from it: this used to read
+    ``len(inc) + 1 <= len(_bf_set(v)) + 3``, where the ``+ 1`` and ``+ 3``
+    were the print and the ``[-]`` counted a second time, by hand.  The walk
+    is passed first, so a tie keeps it -- 453 of the 65536 (previous, next)
+    byte pairs are exact ties, so which side wins one is not academic.
     """
     _require_bytes(text, "Brainfuck")
     res: list[str] = []
@@ -96,12 +105,8 @@ def brainfuck(text: str) -> str:
         v = ord(c)
         delta = v - cur
         inc = "+" * delta if delta >= 0 else "-" * -delta
-        if len(inc) + 1 <= len(_bf_set(v)) + 3:
-            res.append(inc + ".")
-            cur = v
-        else:
-            res.append("[-]" + _bf_set(v))
-            cur = v
+        res.append(shortest(inc + ".", "[-]" + _bf_set(v)))
+        cur = v
     return "".join(res)
 
 
@@ -198,6 +203,13 @@ def bfstack(text: str) -> str:
     The top of the stack is driven from the previous character's value; a
     small delta uses ``+``/``-`` and a large one zeroes the cell with
     ``[-]`` and builds the code from scratch, printing each with ``.``.
+
+    As in :func:`brainfuck`, the two shapes are built and the shorter kept.
+    **The rebuild is passed first here**, because this generator breaks a
+    tie the other way: its threshold was ``abs(n) < ord(c) + 3`` -- strict,
+    where brainfuck's was ``<=`` -- so an equal-length pair rebuilt rather
+    than walked.  127 of the 65536 byte pairs tie, so preserving the
+    direction is what keeps the emitted program byte-identical.
     """
     _require_bytes(text, "BFStack")
     res = ">"
@@ -205,12 +217,8 @@ def bfstack(text: str) -> str:
 
     for c in text:
         n = ord(c) - acc
-        if abs(n) < ord(c) + 3:
-            o = "+" if n > 0 else "-"
-            res += o * abs(n) + "."
-        else:
-            o = "+" * ord(c)
-            res += f"[-]{o}."
+        o = "+" if n > 0 else "-"
+        res += shortest("[-]" + "+" * ord(c) + ".", o * abs(n) + ".")
         acc = ord(c)
 
     return res
