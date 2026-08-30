@@ -151,29 +151,86 @@ screen figures, the hoist caveat, and the frame-mapping trap.
 
 ## Mutation-testing sweep
 
-Every language is measured.  Ten are at 100%, six are below 85%, and a
-whole-repo sweep costs a few minutes — so re-running one is the regression
-check for anything that touches an interpreter.
+All 59 are measured, and the whole sweep was re-run language by language
+on 2026-08-29 — one at a time on an idle machine, since a contended run
+lets the per-test alarm score slow-but-passing tests as kills.  **Every
+figure the table had recorded came back exactly**, which is what the
+harness commits `800f071` and `86c89b9` needed: they were only ever
+validated one language at a time, and nothing had checked that the others
+still scored what they claimed.
 
-The weakest suites, by score and then by how many mutants survive:
+Ten suites are at 100% — `%^2^-1`, Back, BFStack, Bitdeque, brainfuck,
+Factor, Home Row, Minifuck, RAM0 and Suffolk — and six are below 85%.
+1525 mutants survive across the repo.
 
 | language | score | survivors |
 | --- | --- | --- |
-| AddSubJump | 80.2% | 23 |
 | WII2D | 80.2% | 33 |
+| AddSubJump | 80.2% | 23 |
 | Point Break | 80.4% | 94 |
 | Painfuck | 80.9% | 49 |
 | 3x | 83.4% | 29 |
 | Dimensional | 83.5% | 56 |
+| Lamfunc | 85.0% | 82 |
+| S*bleq | 85.3% | 14 |
+| Grapheme | 86.1% | 60 |
+| ROTfuck | 86.3% | 20 |
+| COD | 86.6% | 38 |
+| Nevermind | 86.8% | 36 |
+| SLOW ACV MAMMALIAN | 87.4% | 23 |
+| Between | 88.1% | 77 |
+| MyScript | 88.5% | 71 |
+| Container | 88.5% | 16 |
+| Forbin | 89.0% | 128 |
+| Polynomial | 89.4% | 38 |
+| Flowchart | 89.9% | 51 |
+| Minsky Swap | 89.9% | 14 |
+| Sophie | 90.1% | 23 |
+| ZTOALC L | 90.7% | 29 |
+| Circlefuck | 90.7% | 17 |
+| Circuit Diagram | 90.9% | 53 |
+| Dig | 90.9% | 15 |
+| LaserFuck | 91.1% | 22 |
+| Taglate | 91.7% | 14 |
+| Suptiftam | 91.8% | 93 |
+| Streetcode | 91.9% | 98 |
+| BIO | 92.2% | 9 |
+| 6-5 | 92.7% | 10 |
+| Basicfuck | 92.8% | 50 |
+| Jaune | 92.9% | 18 |
+| Forþ | 93.0% | 17 |
+| A Painter Ant | 93.1% | 7 |
+| 123 | 93.2% | 8 |
+| bit~ | 93.3% | 8 |
+| Collatz Multiverse | 93.4% | 7 |
+| BF-PDA | 93.8% | 9 |
+| Eval | 94.6% | 6 |
+| Qoibl | 94.7% | 26 |
+| 3D Brainfuck | 94.9% | 6 |
+| NoComment | 95.4% | 5 |
+| Modulous | 95.6% | 11 |
+| Unsquare | 96.1% | 6 |
+| Clockwise | 98.0% | 3 |
+| ArrowQueue | 98.5% | 1 |
+| Decleq | 98.7% | 1 |
+| BrainIf | 98.9% | 1 |
 
-Streetcode (98) and Suptiftam (93) now carry the most survivors in
-absolute terms.
+(The ten named above complete the list at 100% / 0.)
 
-Three of these figures have been re-measured since the harness commits
-`800f071` and `86c89b9`, which were only ever validated one language at a
-time, and all three came back exactly as recorded: AddSubJump at 80.2% /
-23, Forbin at 81.4% / 216, and Basicfuck at 82.8% / 119, each before the
-work below.  A full re-sweep of all 59 is still outstanding.
+Three of those rows are *post*-triage: LaserFuck, Forbin and Basicfuck
+started at 76.0% / 59, 81.4% / 216 and 82.8% / 119 before the work below.
+The other 56 are the sweep's own measurements, and 15 of them had never
+been recorded per-language at all.
+
+Forbin's 128 is now the largest surviving pool, ahead of Streetcode (98),
+Point Break (94) and Suptiftam (93) — but Forbin's residue is categorised
+and argued, while Lamfunc (82), Between (77), MyScript (71) and Grapheme
+(60) are untriaged and were invisible before this sweep.
+
+On cost: 55 of the 59 finish in under half a minute, most in under ten
+seconds.  Only Streetcode and Forbin are minutes rather than seconds, so
+"re-run the one you touched" is nearly always free, and re-running
+everything is worth doing after any change to the shared machinery.
 
 LaserFuck has left this table.  It was the outlier at 66.7% / 82; the four
 commits ending at `0a5f42b` took it to 76.0% / 59, and categorising all 59
