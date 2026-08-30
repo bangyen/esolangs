@@ -169,19 +169,19 @@ recorded came back exactly** — which is what the harness commits
 `800f071` and `86c89b9` needed, each having been validated against a
 single language while nothing checked the rest.
 
-Fifteen suites are at 100% — `%^2^-1`, ArrowQueue, Back, BFStack, Bitdeque,
+Sixteen suites are at 100% — `%^2^-1`, ArrowQueue, Back, BFStack, Bitdeque,
 brainfuck, BrainIf, Clockwise, Decleq, Factor, Home Row, Minifuck, NoComment,
-RAM0 and Suffolk.  1514 mutants survive across the repo; the rest of the
-field, worst first:
+RAM0, Suffolk and Unsquare.  1496 mutants survive across the repo; the rest
+of the field, worst first:
 
 | language | score | survivors |
 | --- | --- | --- |
 | WII2D | 80.2% | 33 |
 | AddSubJump | 80.2% | 23 |
 | Point Break | 80.4% | 94 |
-| Painfuck | 80.9% | 49 |
-| 3x | 83.4% | 29 |
+| Painfuck | 81.7% | 46 |
 | Dimensional | 83.5% | 56 |
+| 3x | 84.8% | 26 |
 | Lamfunc | 85.0% | 82 |
 | S*bleq | 85.3% | 14 |
 | Grapheme | 86.1% | 60 |
@@ -209,23 +209,26 @@ field, worst first:
 | 6-5 | 92.7% | 10 |
 | Basicfuck | 92.8% | 50 |
 | Jaune | 92.9% | 18 |
-| Forþ | 93.0% | 17 |
 | A Painter Ant | 93.1% | 7 |
 | 123 | 93.2% | 8 |
 | bit~ | 93.3% | 8 |
-| Collatz Multiverse | 93.4% | 7 |
 | BF-PDA | 93.8% | 9 |
+| Forþ | 94.1% | 14 |
 | Eval | 94.6% | 6 |
 | Qoibl | 94.7% | 26 |
 | 3D Brainfuck | 94.9% | 6 |
 | Modulous | 95.6% | 11 |
-| Unsquare | 96.1% | 6 |
+| Collatz Multiverse | 96.1% | 4 |
 
 LaserFuck, Forbin and Basicfuck are post-triage rows (they began at 66.7%,
 81.4% and 82.8%); four more — ArrowQueue, Decleq, BrainIf and Clockwise —
 carried one to three survivors each, were closed to 100%, and have left the
-table; NoComment (5) left it the same way.  The other 51 rows are the
-sweep's own numbers, 15 of which had never been recorded per-language.  **Lamfunc (82), Between (77), MyScript
+table; NoComment (5) and Unsquare (6) left it the same way.  Painfuck, 3x,
+Forþ and Collatz Multiverse are post-triage too — the prompt-argument
+deletion below cut each one's survivors without ending its triage — so
+their rows are re-measured, not swept.  That leaves 36 of the table's 43
+rows carrying the sweep's own numbers, 15 of which had never been recorded
+per-language.  **Lamfunc (82), Between (77), MyScript
 (71) and Grapheme (60) are the largest untriaged pools** and were invisible
 before this sweep.
 
@@ -254,6 +257,18 @@ first:
   the pool from 150 mutants to 140.  Reach for the interpreter first when
   the mutated construct carries no information: a construct that cannot be
   observed is usually one that need not exist.
+- **A redundant argument is unkillable by construction.**  Five
+  interpreters passed `input_str("Input: ")` (and one `input_num`) when
+  that string is already the parameter's default, so the argument changed
+  nothing — and `ScriptedIO._read` discards the prompt, so no test under
+  the harness could ever see it.  Each call site therefore carried three
+  permanently surviving mutants (the `XX` sentinel and two re-casings),
+  alongside a fourth the tests already killed.  Deleting the argument
+  removed 24 mutants across Painfuck, 3x, Forþ, Collatz Multiverse and
+  Unsquare, **18 of them survivors** — closing Unsquare outright, since
+  all six of its survivors were the two call sites'.  The interactive `IO`
+  path prints the identical prompt either way.  Prefer the default over
+  restating it: a restated default is slack that mutation testing counts.
 - **Two copies of a check can each be half dead.**  NoComment's `s` and `b`
   bounds-checked their jump target separately, and each copy had an
   unreachable half: a forward target is always at least 1, so `s` could

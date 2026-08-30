@@ -151,7 +151,7 @@ class _Machine:
                 if self.ptr:
                     self.ptr -= 1
             elif c == "i":
-                line = self.io.input_str("Input: ")
+                line = self.io.input_str()
                 try:
                     self.tape[self.ptr] = int(line)
                 except ValueError:
