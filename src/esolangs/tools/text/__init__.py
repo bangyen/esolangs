@@ -75,6 +75,7 @@ __all__ = [
     "clockwise",
     "collatz_multiverse",
     "container",
+    "cvnc",
     "decleq",
     "dig",
     "dimensional",

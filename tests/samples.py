@@ -159,6 +159,9 @@ SAMPLES: dict[str, tuple[str, str]] = {
     # VM test asserts exactly that of "A=0:\n+1 A>=0"); the empty program
     # is the one that reaches a halt.
     "Container": ("", ""),
+    # The wiki's truth machine, which halts only on a zero: the "1"
+    # branch loops forever, so the halting input is the one to sweep.
+    "CV(N)(C)": ("soθɰ̊oθʋi", "0\n"),
     "Decleq": ("-2 5 9 9 9 65 0 0", ""),
     "Dig": (">$5:\n 2 ", ""),
     "Dimensional": ("+.+.+.", ""),
