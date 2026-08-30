@@ -387,6 +387,21 @@ No three-input table searches now. The searches are kept as the fallback for
 a *wider* table, and as the reason a missing staging degrades instead of
 raising.
 
+**The staging method does not scale to n=4, and the arithmetic says so before
+any sweep.** Of the 65536 four-input tables, only **942 (1.4%) are
+degenerate** — those project onto the completed n≤3 plans and are already
+search-free, verified on a sample. The other **64594 are fully essential**,
+and that is where the method breaks down: a staging still offers only ~52
+slots, and at the hit rate measured at n=3 (13 pairs per staging) a per-table
+plan would need **≥2484 stagings** against the 63 in use today.
+
+Measured rather than extrapolated: sweeping every separator and settle at
+n=4 reaches **1200 distinct 16-bit columns, 1012 of them fully essential** —
+**1.6%** of the arity even if every one were usable. So this is a small-arity
+technique by construction. Closing n=4 would need a mechanism that produces
+columns in bulk rather than one staging at a time, which is a different
+design, not more sweeping.
+
 **A simpler form of the plan does not exist, and that is measured rather than
 assumed** — worth recording here because the natural next question is whether
 109 staging entries can collapse into a rule, and the answer is a set of
