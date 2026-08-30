@@ -52,6 +52,15 @@ would show as a timeout, not a fast, complete exhaustion.  The wall holds;
 `n <= 3` exact plus popcount-symmetric tables at higher `n` is the ceiling
 for the tree-shaped construction.
 
+**Narrowed since:** that sweep varied `b1` under one *fixed* input order, so
+it measured a wall around the tree that order builds, not around the table.
+Choosing the input split order gives the search a differently-shaped tree,
+and `1010001000011000` — a dense non-symmetric `n == 4` table this section's
+sweep refused — now places (`test_dense_non_symmetric_places_under_a_reordered
+_tree`).  The counting argument above is untouched and the wall still stands
+for tables no order rescues, but the refused set is *some*, not all, dense
+non-symmetric tables at `n >= 4`.
+
 ## 3x (constant-bit guard skip is unsafe)
 
 A guard that separates differing rows from default rows sharing the same bit
