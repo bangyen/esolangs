@@ -991,10 +991,11 @@ class TestSlowAcvMammalian:
             ("1110", 2),  # NAND
             ("0", 0),  # zero inputs: a bare constant, with no tree at all
             ("1", 0),
-            # The three-input tables search: 3.5s and 3.3s at one worker,
-            # over the one-second budget the fast run holds to.
-            pytest.param("11111110", 3, marks=pytest.mark.slow),  # NAND3
-            pytest.param("01101001", 3, marks=pytest.mark.slow),  # XOR3
+            # The three-input tables cost 0.68s each now that the landings
+            # are solved rather than searched, down from 3.5s and 3.3s at
+            # one worker, so they no longer sit out the fast run.
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -1026,7 +1027,6 @@ class TestSlowAcvMammalian:
             run_until_halt_or_cycle(_Machine(program, io_obj))
             assert io_obj.position() == 2
 
-    @pytest.mark.slow  # 3.3s: builds a searching generator per table
     def test_pointer_never_leaves_array_zero(self) -> None:
         """No ``SPRINT``: the tree lives in code space, not in array space.
 
@@ -1039,86 +1039,77 @@ class TestSlowAcvMammalian:
         assert "SPRINT" not in program
         assert "CONFLAGRATE" not in program
 
-    def test_the_read_gadget_needs_room_above_the_array_sum(self) -> None:
-        """A target index below the array sum cannot be reached by seeding.
+    def test_every_candidate_opens_the_accumulator_on_a_clean_digit(self) -> None:
+        """``ACCEPT`` is entered with ``acc % 256 == 48``, whatever ``j1``.
 
-        The gadget only moves the sum *up* (``SEED`` increments the head),
-        so an index the sum has already passed is out of reach and the
-        gadget declines rather than emitting something that lands wrong.
+        The whole construction rests on this: a node normalizes the
+        accumulator so ``'0'``/``'1'`` XORs down to a bare ``0``/``1``, and
+        the *high* bytes are then free to aim the jump.  A candidate whose
+        low byte drifted off 48 would append a junk byte and the branch
+        would test something other than the bit just read.
         """
-        from esolangs.tools.boolean.slow_acv_mammalian import _read_gadget
+        from esolangs.tools.boolean.slow_acv_mammalian import _candidates
 
-        assert _read_gadget([200, 100], 0, 0) is None
-        assert _read_gadget([10], 0, 3) is not None, "room above still works"
+        for array, acc in (([0], 0), ([3, 255, 255], 0), ([200, 17, 9], 128)):
+            candidates = _candidates(array, acc)
+            assert candidates, "a state with no read node at all"
+            for _, fell, taken, _ in candidates:
+                # The opening accumulator is what ``ACCEPT`` reads; the two
+                # exits differ only by the bit that was appended to the sum.
+                assert (fell[1] ^ sum(fell[0])) % 256 == 48
+                assert (taken[1] ^ sum(taken[0])) % 256 == 48
 
-    def test_a_landing_past_every_band_cannot_be_aligned(self) -> None:
-        """A base past any reachable landing exhausts the search.
+    def test_a_zero_branch_leaf_never_needs_a_seed(self) -> None:
+        """The leaf under a 0-branch normalizes in zero ``SEED``s.
 
-        A node's reachable indices sit in a band around the array sum, and
-        the sum is moved by stashing and consuming bytes.  A base far past
-        anything those adjustments can reach leaves no candidate, which is
+        This is the identity that makes subtrees composable.  A node exits
+        its fallthrough with ``acc`` already carrying the residue the next
+        digit is measured against, so what the 0-arm costs does not depend
+        on which candidate the parent committed to -- which is exactly what
+        lets a node one level above the leaves compute its 0-arm's length
+        instead of building the arm to find out.
+        """
+        from esolangs.tools.boolean.slow_acv_mammalian import (
+            _candidates,
+            _leaf_seeds,
+        )
+
+        for array, acc in (([0], 0), ([3, 255, 255], 0), ([200, 17, 9], 128)):
+            for _, fell, _, _ in _candidates(array, acc):
+                assert _leaf_seeds(*fell, 0) == 0
+                # The 1-arm has no such guarantee: it is aimed at, not
+                # fallen into, so it pays for its own normalization.
+                assert 0 <= _leaf_seeds(*fell, 1) < 256
+
+    def test_a_lone_consume_sheds_nothing(self) -> None:
+        """The last popped value rides back aboard, so sheds come in runs.
+
+        ``CONSUME`` pops the middle element *into* the accumulator, and the
+        node that follows opens with ``EXCRETE``, which appends
+        ``acc % 256`` straight back.  A shed that stopped after one pop
+        would cost a token and move the sum nowhere, which is why
+        :func:`_shed` drains down to a floor instead.
+        """
+        from esolangs.tools.boolean.slow_acv_mammalian import _shed
+
+        tokens, array, acc = _shed([5, 255, 255, 255, 255], 0)
+        assert tokens == ["CONSUME"] * 2
+        # What the following EXCRETE will re-append is the last pop, so the
+        # sum the next node opens on is the shed array plus that byte.
+        assert sum(array) + acc % 256 < sum([5, 255, 255, 255, 255])
+        assert _shed([0], 0) == ([], [0], 0), "nothing to shed is not an error"
+
+    def test_a_landing_past_every_band_is_reported(self) -> None:
+        """A base past anything the stashing can reach raises.
+
+        Each stash chunk buys a bounded amount of reach, so a base far past
+        what ``_MAX_CHUNKS`` of them can cover leaves no candidate.  That is
         reported rather than papered over with a jump that lands wrong.
         """
         from esolangs.tools.boolean.slow_acv_mammalian import _subtree
 
-        with pytest.raises(ValueError, match="no array adjustment aligned"):
-            _subtree("01", 1, 0, "", [0], 0, 100_000)
-
-    @pytest.mark.parametrize("refused", ["0", "1"])
-    def test_a_refused_subtree_is_backtracked_not_fatal(self, refused: str) -> None:
-        """One candidate failing to align sends the search to the next.
-
-        Either child can be the one that cannot be placed, and each is
-        caught where it is built: the 0-subtree before the 1-subtree's cost
-        is known, the 1-subtree after the best candidate is chosen.  Both
-        arms have to resume the loop rather than propagate, or a table
-        would be refused over a single unlucky landing.
-        """
-        import importlib
-
-        # The package re-exports the generator under the submodule's own
-        # name, so import the module explicitly rather than by attribute.
-        module = importlib.import_module("esolangs.tools.boolean.slow_acv_mammalian")
-        from esolangs.tools.boolean.slow_acv_mammalian import _subtree as real
-
-        refusals: list[str] = []
-
-        def flaky(
-            table: str,
-            n: int,
-            depth: int,
-            row: str,
-            array: list[int],
-            acc: int,
-            base: int,
-        ) -> list[str]:
-            if row == refused and not refusals:
-                refusals.append(row)
-                raise ValueError("forced: this landing is refused")
-            return real(table, n, depth, row, array, acc, base)
-
-        with pytest.MonkeyPatch.context() as patch:
-            patch.setattr(module, "_subtree", flaky)
-            program = boolean.slow_acv_mammalian_boolean("0110")
-
-        assert refusals == [refused], "the forced refusal never fired"
-        for combo in range(4):
-            bits = [(combo >> (1 - i)) & 1 for i in range(2)]
-            got = run_slow_acv_mammalian(program, [str(b) for b in bits])
-            assert got == "0110"[combo], f"inputs {bits}"
-
-    def test_a_token_the_model_does_not_cover_is_refused(self) -> None:
-        """The array model refuses an instruction it does not implement.
-
-        The construction only emits the four tokens the model tracks, so a
-        fifth would mean the emitted program and the model had drifted
-        apart -- and a silently-ignored token would leave the search
-        reasoning about an array the interpreter never produces.
-        """
-        from esolangs.tools.boolean.slow_acv_mammalian import _apply
-
-        with pytest.raises(ValueError, match="unmodelled token: SPRINT"):
-            _apply("SPRINT", [0], 0)
+        with pytest.raises(ValueError, match="no landing reached the subtree"):
+            _subtree("01", 1, 0, "", [0], 0, 10_000_000)
 
 
 class TestSuffolk:
