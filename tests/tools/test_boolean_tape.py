@@ -1102,30 +1102,31 @@ class TestSlowAcvMammalian:
     def test_a_landing_past_every_band_is_reported(self) -> None:
         """A base past anything the stashing can reach raises.
 
-        Each stash chunk buys a bounded amount of reach, so a base far past
-        what ``_MAX_CHUNKS`` of them can cover leaves no candidate.  That is
-        reported rather than papered over with a jump that lands wrong.
+        ``base`` is a partial sum of what has already been emitted, so it
+        cannot outrun the finished program; one far past that describes a
+        tree no emission could have produced.  The loop prices that at
+        entry rather than discovering it a chunk at a time -- the gap
+        implies tens of thousands of them, and grinding through those to
+        reach the same answer would be a hang in all but name.
         """
         from esolangs.tools.boolean.slow_acv_mammalian import _subtree
 
-        with pytest.raises(ValueError, match="no landing reached the subtree"):
+        with pytest.raises(ValueError, match="no run of chunks could close"):
             _subtree("01", 1, 0, "", [0], 0, 10_000_000)
 
     def test_a_stash_loop_that_stops_closing_the_gap_raises(self) -> None:
-        """A shortfall that stops falling is reported as a formula failure.
+        """A gap that stops falling is reported as a formula failure.
 
         The loop's whole justification is that a chunk buys more reach than
-        the layout it adds, so the shortfall falls until the jump clears the
-        0-arm.  If a chunk ever stopped buying reach -- the parent/child
-        lock the 0-arm's shed exists to break -- the loop would spin to
-        ``_MAX_CHUNKS`` and report a budget problem, hiding a wrong model
-        behind a number that looks tunable.  Neutering the stash freezes the
-        shortfall, which is exactly that failure, and it has to name itself.
+        the layout it adds, so the placement gap falls until a landing
+        clears the 0-arm.  A chunk that stopped buying reach would spin
+        forever, since nothing caps the iterations -- the convergence check
+        is what makes an unbounded loop safe, so it has to fire.
         """
         import esolangs.tools.boolean.slow_acv_mammalian as module
 
         def barren(array: list[int], acc: int) -> tuple[list[str], list[int], int]:
-            # Costs layout and buys nothing: the shortfall cannot improve.
+            # Costs layout and buys nothing: the gap cannot improve.
             return ["SEED"], list(array), acc
 
         with pytest.MonkeyPatch.context() as patch:
@@ -1133,38 +1134,89 @@ class TestSlowAcvMammalian:
             with pytest.raises(ValueError, match="stopped converging"):
                 module.slow_acv_mammalian_boolean("0110")
 
-    def test_the_shortfall_falls_over_every_two_chunk_window(self) -> None:
-        """Progress is windowed, not per-step, and this pins which.
+    def test_the_lock_the_shed_exists_to_break_is_caught_not_hung(self) -> None:
+        """Without the 0-arm's shed, the loop reports rather than spins.
 
-        A chunk's layout can outrun the reach it buys for a single
-        iteration, so the shortfall sawtooths up a few tokens before
-        resuming its fall -- asserting a per-step decrease would be false.
-        What holds is that any two chunks together close the gap, measured
-        at 88 tokens minimum over every node of every table through
-        ``n == 3``.  The convergence check is built on that, so a change
-        making the sawtooth deeper than one step has to fail here rather
-        than turn into a spurious "stopped converging" on a real table.
+        A child that keeps its inherited ballast converts every token its
+        parent stashed into padding of its own, so reach and subtree grow
+        together and the gap never closes -- the failure this construction
+        is built to avoid.  With no iteration cap, that has to surface as
+        the convergence error; a regression that let it run away would hang
+        the generator instead of failing it.
+
+        The table has to have three inputs.  At ``n <= 2`` the arrays never
+        grow enough to carry ballast worth shedding, so every table there
+        builds with the shed disabled and a smaller case would pass without
+        exercising anything.
+        """
+        import esolangs.tools.boolean.slow_acv_mammalian as module
+
+        def no_shed(array: list[int], acc: int) -> tuple[list[str], list[int], int]:
+            return [], list(array), acc
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_shed", no_shed)
+            with pytest.raises(ValueError, match="stopped converging"):
+                module.slow_acv_mammalian_boolean("01101001")
+
+    def test_the_placement_gap_is_what_forces_a_placement(self) -> None:
+        """The gap includes the 0-arm, and the cheaper proxy does not work.
+
+        Windowing the shortfall against the *node* alone is tempting and
+        wrong: its zero region does not force a placement, so a loop
+        descending it can fall arbitrarily far while every candidate still
+        refuses -- 13512 such iterations were measured over the tables
+        through ``n == 3``.  The gap the loop actually descends adds the
+        0-arm's length, which is the quantity placement turns on.
         """
         from esolangs.tools.boolean.slow_acv_mammalian import (
             _candidates,
+            _placement_gap,
+            _zero_arm_length,
+        )
+
+        candidates = _candidates([0], 0)
+        gap = _placement_gap("0110", 2, 1, "0", [], candidates, 0)
+        proxy = len(candidates[0][0]) - candidates[-1][3]
+        arm = _zero_arm_length("0110", "0", candidates[0][1])
+
+        assert gap == proxy + arm, "the gap must account for the 0-arm"
+        assert arm > 0, "an arm of zero length would make the two identical"
+
+    def test_the_gap_falls_over_every_two_chunk_window(self) -> None:
+        """Progress is windowed and skips a prologue; this pins both.
+
+        A chunk's layout can outrun the reach it buys, so the gap sawtooths
+        up on single steps -- and the *first* chunk always spikes it, since
+        the layout lands before the reach does.  Asserting a per-step fall,
+        or checking from the very first iteration, would both be false.
+        What holds is that any two chunks after the prologue close the gap,
+        measured at 248 tokens minimum over every node of every table
+        through ``n == 3``.
+        """
+        from esolangs.tools.boolean.slow_acv_mammalian import (
+            _candidates,
+            _placement_gap,
             _stash_chunk,
         )
 
-        cursor, value, prefix = [0], 0, 0
-        shortfalls = []
+        cursor, value, prefix = [0], 0, []
+        gaps = []
         for _ in range(8):
             candidates = _candidates(cursor, value)
-            shortfalls.append(
-                prefix + len(candidates[0][0]) - candidates[-1][3],
-            )
+            gaps.append(_placement_gap("0110", 2, 1, "0", prefix, candidates, 0))
             chunk, cursor, value = _stash_chunk(cursor, value)
-            prefix += len(chunk)
+            prefix = [*prefix, *chunk]
 
-        assert any(after > before for before, after in pairwise(shortfalls)), (
+        assert gaps[1] > gaps[0], (
+            "no prologue spike: the loop's skip of the first step is stale"
+        )
+        body = gaps[1:]
+        assert any(after > before for before, after in pairwise(body)), (
             "no sawtooth: a per-step check would have done, so this test is stale"
         )
-        for start, end in zip(shortfalls, shortfalls[2:], strict=False):
-            assert start - end >= 88, f"two-chunk window closed only {start - end}"
+        for start, end in zip(body, body[2:], strict=False):
+            assert start - end >= 248, f"two-chunk window closed only {start - end}"
 
 
 class TestSuffolk:
