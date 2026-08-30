@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.tape_based.circlefuck import run
+from tests.interpreters.contract import CycleContract, SnapshotContract
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
@@ -70,27 +71,6 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 2
 
-    def test_snapshot_is_hashable(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.circlefuck import _Machine
-
-        assert hash(_Machine("><", ScriptedIO()).snapshot()) is not None
-
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.circlefuck import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine("+.@", ScriptedIO())) is True
-
-    def test_pointer_orbit_is_detected_as_a_cycle(self) -> None:
-        """A ``><`` orbit never halts, so the repeated state proves a loop."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.circlefuck import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine("><", ScriptedIO())) is False
-
     def test_move_right(self) -> None:
         """> moves the data pointer to the next cell (wrap-around)."""
         assert run_and_capture("{>[.>]@") == "{>[.>]@"
@@ -141,3 +121,19 @@ class TestStepMachine:
         # leaking an IndexError
         with pytest.raises(HaltError):
             run_and_capture("<}}@")
+
+
+def _machine(code: str) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.circlefuck import _Machine
+
+    return _Machine(code, ScriptedIO())
+
+
+class TestContract(SnapshotContract, CycleContract):
+    """The shared shapes. ``><`` orbits the pointer forever; ``+.@`` halts."""
+
+    machine = staticmethod(_machine)
+    stepping_program = "><"
+    halting_program = "+.@"
+    looping_program = "><"
