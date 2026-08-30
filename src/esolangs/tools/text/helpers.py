@@ -68,19 +68,41 @@ def delta_program(
     return "".join(out)
 
 
-def _factor_triple(value: int) -> tuple[int, int, int]:
-    """Return ``(a, b, r)`` with ``value == a * b + r`` and minimal ``a + b + r``.
+def factor_triple(
+    value: int,
+    cost: Callable[[int, int, int], int] = lambda a, b, r: a + b + r,
+) -> tuple[int, int, int]:
+    """Return ``(a, b, r)`` with ``value == a * b + r`` and minimal ``cost``.
 
     The generators use a multiplication loop to build a byte value: a run of
     ``a`` then a run of ``b`` multiplies (``a * b``), and a final run of
-    ``r`` tops the product up.  The ``a`` that minimizes ``a + b + r`` is
-    found by scanning ``a`` up to ``sqrt(value)``, so the program is
-    O(sqrt) rather than O(value).
+    ``r`` tops the product up.  What one of those runs *costs* is the
+    language's own business -- Brainfuck and Home Row spend one character
+    per unit, so their cost is the default ``a + b + r``, while Suffolk
+    reaches ``b`` and ``r`` through two-character moves (``><`` and ``>!``)
+    and so minimizes ``a + 2b + 2r``.  Passing the cost in is what lets one
+    search serve all three.
+
+    ``a`` is scanned over the whole range rather than up to ``sqrt(value)``.
+    The square-root bound is only sound for a *symmetric* cost, where ``a``
+    and ``b`` are interchangeable and every factorization has a mirror in
+    the lower half; under Suffolk's weighting that mirror is not equivalent
+    and the short scan picks the wrong triple for 251 of the first 299
+    values.  Rather than make each caller declare which regime it is in, the
+    search is simply exact for all of them -- it costs 256 iterations per
+    character instead of 16, on a call that runs once per output byte, and
+    it returns the same triple the bounded scan did for every symmetric
+    caller (checked over 0..999).
+
+    The range runs to ``max(value, 1)`` so that ``value == 0`` still offers
+    one candidate: a NUL byte is a character the text generators are asked
+    for, and an empty scan would raise out of ``min`` rather than return
+    the ``1 * 0 + 0`` that spells it.
     """
     best = min(
         (
-            (a + b + r, a, b, r)
-            for a in range(1, int(value**0.5) + 2)
+            (cost(a, b, r), a, b, r)
+            for a in range(1, max(value, 1) + 1)
             for b, r in (divmod(value, a),)
         ),
     )
