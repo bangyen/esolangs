@@ -9,7 +9,6 @@ Arithmetic on a non-numeric top, or ``!`` on a non-string value, is an invalid
 operation and halts the program with :class:`~esolangs.exceptions.HaltError`.
 """
 
-import re
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -89,8 +88,10 @@ class State:
                 raise HaltError
             self._run(val)
         elif char in "\"'":
-            match = re.match('[^"]*', sym[ind + 1 :])
-            s = match[0].replace("`", '"') if match else ""
+            # A literal runs to the next quote, or to the end of the program
+            # when there is none -- which is what ``partition`` returns
+            # either way, with no unmatched case to fall back on.
+            s = sym[ind + 1 :].partition('"')[0].replace("`", '"')
             ind += len(s) + 1
             if char == "'":
                 s = f'"{s}"'

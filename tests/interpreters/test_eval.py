@@ -6,8 +6,8 @@ from contextlib import redirect_stdout
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO
-from esolangs.interpreters.stack_based.eval import run
+from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.interpreters.stack_based.eval import State, run
 
 
 def run_and_capture(code: str) -> str:
@@ -31,6 +31,55 @@ class TestEval:
     def test_charmode(self) -> None:
         """' wraps the string in double quotes."""
         assert run_and_capture("'ab\".") == '"ab"'
+
+    def test_a_literal_advances_the_cursor_from_where_it_started(self) -> None:
+        """A literal moves the cursor *on* by its length, not *to* it.
+
+        Every other literal here is the program's first command, where the
+        cursor starts at 0 and advancing by the length coincides with being
+        set to it.  Placed later the two diverge, and setting the cursor
+        rewinds it -- the prefix then runs again forever, so the assertion
+        is on the index rather than on output that never arrives.
+        """
+        state = State(io=ScriptedIO(), sym='0+."a".')
+        for _ in range(3):
+            state.step()
+        assert state.ind == 3
+
+        state.step()  # the literal at index 3: past the closing quote
+        assert state.ind == 6
+        assert state.stk[state.ptr] == ["a"]
+
+    def test_only_the_two_quotes_start_a_literal(self) -> None:
+        """No other character opens stringmode -- the rest are commands or no-ops.
+
+        The two quote forms share a branch, so they are a set, and a widened
+        one would swallow a character that should have done something else.
+        Pinning that with one chosen stand-in would only pin that stand-in,
+        so this sweeps the printable range: every character outside the
+        quotes and the command set must leave the stack alone.
+        """
+        commands = set("`^0+-.=;~*?!\"'")
+        for char in map(chr, range(0x20, 0x7F)):
+            if char in commands:
+                continue
+            state = State(io=ScriptedIO(), sym=char)
+            state.step()
+            assert state.stk == [[], []], f"{char!r} was not a no-op"
+            assert state.ind == 1
+
+    def test_output_goes_to_the_supplied_io(self) -> None:
+        """``run`` writes through its ``io`` argument, not a fresh default one.
+
+        ``run_and_capture`` redirects stdout and passes a plain ``IO``, so a
+        machine built with the *default* ``IO`` prints to the same redirected
+        stream and looks identical.  Handing in a ``ScriptedIO`` separates
+        them: it collects what the program prints, and stays empty if the
+        argument was dropped on the way through.
+        """
+        scripted = ScriptedIO("")
+        run("0+.", scripted)
+        assert scripted.getvalue() == "1"
 
     def test_move_between_stacks(self) -> None:
         """= moves a value to the other stack; ~ switches the current stack."""
@@ -85,6 +134,26 @@ class TestEval:
         and finding it only after ``~`` shows where it went.
         """
         assert run_and_capture("0+=~.") == "1"
+
+    def test_move_targets_the_other_stack_from_either_side(self) -> None:
+        """``=`` reads which stack is current; it does not always mean stack 1.
+
+        The test above moves only from stack 0, where "the other stack" and
+        "stack 1" coincide.  Switching first makes the move go the other
+        way, to stack 0 -- an index computed by adding rather than
+        subtracting runs off the end of the pair instead.
+        """
+        assert run_and_capture("~0+=~.") == "1"
+
+    def test_switching_twice_returns_to_the_first_stack(self) -> None:
+        """``~`` toggles the current stack rather than selecting the second.
+
+        Every other program switches at most once, starting from stack 0,
+        where a toggle and an assignment to 1 agree.  Coming back is what
+        separates them: the value pushed before the switches has to still
+        be there afterwards.
+        """
+        assert run_and_capture("0+~~.") == "1"
 
     def test_output_on_empty_stack_halts(self) -> None:
         """Reading a value that is not there is an invalid operation."""
