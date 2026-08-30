@@ -180,7 +180,7 @@ def _strip_comment(line: str) -> str:
 
 def _is_literal(token: str) -> bool:
     """Whether ``token`` is a binary literal (the regex ``/[0-1]+/``)."""
-    return token != "" and all(c in "01" for c in token)
+    return token != "" and all(c in "01" for c in token)  # nosec B105
 
 
 def _bare_name(token: str) -> str:
@@ -191,7 +191,7 @@ def _bare_name(token: str) -> str:
     empty string and make the language's only conditional look like an
     ordinary name, so it is returned untouched.
     """
-    return token if token == ":" else token.removeprefix(":")
+    return token if token == ":" else token.removeprefix(":")  # nosec B105
 
 
 def _parse_program(code: str) -> tuple[dict[str, _Def], list[tuple[str, ...]]]:
@@ -401,7 +401,7 @@ class _Machine:
         if _is_literal(token):
             self._supply(frame, int(token, 2))
             return
-        if token.startswith(":") and token != ":":
+        if token.startswith(":") and token != ":":  # nosec B105
             name = token.removeprefix(":")
             self._supply(frame, self._lookup(name, frame))
             return
