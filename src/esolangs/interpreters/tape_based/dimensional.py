@@ -76,8 +76,14 @@ class _Level:
         )
 
 
-class _Machine:
-    """The pointer hierarchy, current axis, and the byte it addresses."""
+class _Tape:
+    """The pointer hierarchy, current axis, and the byte it addresses.
+
+    Not the steppable machine -- that is :class:`_Machine`, which holds one
+    of these.  This is the language's memory: a chain of :class:`_Level`
+    pointers, each selecting either the byte (at level 2) or the level
+    below it.
+    """
 
     def __init__(self) -> None:
         self.axis = 2
@@ -166,14 +172,20 @@ def _number(code: str, ind: int, default: int | None) -> tuple[int | None, int]:
     return default, ind
 
 
-class _Runner:
-    """One Dimensional run: the code position, comment mode, and machine."""
+class _Machine:
+    """One Dimensional run: the code position, comment mode, and tape.
+
+    The steppable machine, named as every other interpreter names it, so
+    that the class carrying ``step``/``halted``/``snapshot`` is the one a
+    reader finds by looking for ``_Machine``.  The pointer hierarchy it
+    runs on is :class:`_Tape`.
+    """
 
     def __init__(self, code: str, io: IO) -> None:
         self.code = code
         self.io = io
         self.m = _matches(code)
-        self.machine = _Machine()
+        self.tape = _Tape()
         self.ind = 0
         self.comment = False
 
@@ -186,16 +198,16 @@ class _Runner:
         return (
             self.ind,
             self.comment,
-            self.machine.axis,
-            self.machine.top.level,
-            self.machine.top.freeze(),
+            self.tape.axis,
+            self.tape.top.level,
+            self.tape.top.freeze(),
             self.io.position(),
         )
 
     def step(self) -> None:
         """Execute one command (or comment character), advancing the position."""
         code = self.code
-        machine = self.machine
+        tape = self.tape
         c = code[self.ind]
         self.ind += 1
         if self.comment:
@@ -206,32 +218,32 @@ class _Runner:
             self.comment = True
         elif c == ">":
             dim, self.ind = _number(code, self.ind, None)
-            machine.move(machine.value() if dim is None else dim, 1)
+            tape.move(tape.value() if dim is None else dim, 1)
         elif c == "<":
             dim, self.ind = _number(code, self.ind, None)
-            machine.move(machine.value() if dim is None else dim, -1)
+            tape.move(tape.value() if dim is None else dim, -1)
         elif c == "+":
-            machine.set_value(machine.value() + 1)
+            tape.set_value(tape.value() + 1)
         elif c == "-":
-            machine.set_value(machine.value() - 1)
+            tape.set_value(tape.value() - 1)
         elif c == ".":
-            self.io.print_char(chr(machine.value()))
+            self.io.print_char(chr(tape.value()))
         elif c == ",":
-            machine.set_value(self.io.input_char())
+            tape.set_value(self.io.input_char())
         elif c == "d":
-            machine.set_value(self.io.input_num())
+            tape.set_value(self.io.input_num())
         elif c == "x":
-            machine.set_value(int(self.io.input_str(), 16))
+            tape.set_value(int(self.io.input_str(), 16))
         elif c == ":":
             if self.ind >= len(code):
                 raise ValueError("':' must be followed by a character")
-            machine.set_value(ord(code[self.ind]))
+            tape.set_value(ord(code[self.ind]))
             self.ind += 1
         elif c == "=":
             if self.ind + 2 > len(code):
                 raise ValueError("'=' must be followed by two hex digits")
             try:
-                machine.set_value(int(code[self.ind : self.ind + 2], 16))
+                tape.set_value(int(code[self.ind : self.ind + 2], 16))
             except ValueError as exc:
                 raise ValueError(
                     f"invalid hex literal {code[self.ind : self.ind + 2]!r}"
@@ -239,33 +251,33 @@ class _Runner:
             self.ind += 2
         elif c == "$":
             axis, self.ind = _number(code, self.ind, 2)
-            machine.axis = max(2, axis if axis is not None else 2)
+            tape.axis = max(2, axis if axis is not None else 2)
         elif c == "[":
-            if machine.value() == 0:
+            if tape.value() == 0:
                 self.ind = self.m[self.ind - 1] + 1
         elif c == "]":
             self.ind = self.m[self.ind - 1]
         elif c == "{":
             open_i = self.ind - 1
             dim, self.ind = _number(code, self.ind, 0)
-            if machine.coord(dim if dim is not None else 0) == 0:
+            if tape.coord(dim if dim is not None else 0) == 0:
                 self.ind = self.m[open_i] + 1
         elif c == "}":
             self.ind = self.m[self.ind - 1]
         elif c == "?":
             dim, self.ind = _number(code, self.ind, 0)
-            machine.set_value(machine.coord(dim if dim is not None else 0) % 256)
+            tape.set_value(tape.coord(dim if dim is not None else 0) % 256)
         elif c == "!":
             dim, self.ind = _number(code, self.ind, 0)
-            machine.clear(dim if dim is not None else 0)
+            tape.clear(dim if dim is not None else 0)
         # any other character is not a command and is ignored
 
 
 def run(code: str, io: IO) -> None:
     """Run a Dimensional v3.0 program."""
-    runner = _Runner(code, io)
-    while not runner.halted:
-        runner.step()
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

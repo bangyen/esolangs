@@ -1088,20 +1088,20 @@ class TestRunUntilHaltOrCycle:
 
     def test_dimensional_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.dimensional import _Runner
+        from esolangs.interpreters.tape_based.dimensional import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
-        runner = _Runner("+.", ScriptedIO())
-        assert run_until_halt_or_cycle(runner) is True
+        machine = _Machine("+.", ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is True
 
     def test_dimensional_looping_run_is_detected_as_a_cycle(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.dimensional import _Runner
+        from esolangs.interpreters.tape_based.dimensional import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
         # cell starts nonzero and the loop body never changes it, so it never exits
-        runner = _Runner("+[]", ScriptedIO())
-        assert run_until_halt_or_cycle(runner) is False
+        machine = _Machine("+[]", ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is False
 
     def test_modulous_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO

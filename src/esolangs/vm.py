@@ -312,25 +312,25 @@ class _DimensionalVM(_BaseVM):
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
-        from esolangs.interpreters.tape_based.dimensional import _Runner
+        from esolangs.interpreters.tape_based.dimensional import _Machine
 
-        self._runner = _Runner(program, self._io)
+        self._machine = _Machine(program, self._io)
 
     @property
     def halted(self) -> bool:
-        return self._runner.halted
+        return self._machine.halted
 
     def step(self) -> None:
-        self._runner.step()
+        self._machine.step()
 
     @property
     def ip(self) -> int:
-        return self._runner.ind
+        return self._machine.ind
 
     @property
     def memory(self) -> list[int]:
         # the single byte the pointer hierarchy currently addresses
-        return [self._runner.machine.value()]
+        return [self._machine.tape.value()]
 
     @property
     def stack(self) -> list[object]:
