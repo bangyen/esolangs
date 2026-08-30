@@ -723,63 +723,99 @@ class TestZtoalc:
                 assert run_ztoalc(program, [str(b) for b in bits]) == table[combo]
 
     def test_structure(self) -> None:
-        """The program rides a Collatz descent with jumps and prints."""
+        """The program is a branch-free array lookup on a Collatz trajectory."""
         program = boolean.ztoalc_l_boolean("0110")
         lines = program.splitlines()
         assert lines[0].strip().isdigit()  # line 1 is the starting value
-        assert any("jump" in line for line in lines)
+        assert any(line.strip().startswith("t = [") for line in lines)
         assert any(line.strip().startswith("print") for line in lines)
+        # The construction branches on nothing, so the tree's jumps are gone.
+        assert not any("jump" in line for line in lines)
 
-    @pytest.mark.slow  # 4.0s: searches, over the one-second fast-run budget
-    def test_xor4_linear_fallback(self) -> None:
-        """Dense symmetric tables fall back to a huge linear program."""
-        program = boolean.ztoalc_l_boolean("0110100110010110")  # XOR4 = parity
-        assert len(program.splitlines()) > 100_000  # linear, not the small tree
-        for combo in range(16):
-            bits = [(combo >> (3 - i)) & 1 for i in range(4)]
-            got = run_ztoalc(program, [str(b) for b in bits])
-            assert got == str(int("0110100110010110"[combo])), f"inputs {bits}"
+    def test_commands_are_placed_without_collisions(self) -> None:
+        """Every command occupies its own line, in trajectory order.
 
-    @pytest.mark.slow  # 2.9s: searches every input order
-    def test_dense_non_symmetric_places_under_a_reordered_tree(self) -> None:
-        """A table the identity order cannot place is rendered by another order.
-
-        This table used to be refused: its tree found no collision-free
-        placement and it is not popcount-symmetric, so the linear fallback
-        could not help either.  Choosing the input split order gives the
-        search a differently-shaped tree to place, and one of the orders
-        fits -- the same effect that shrinks factor's unrenderable set.
+        This is the placement guarantee stated directly: a Collatz
+        trajectory visits distinct values until it reaches 1, so the
+        commands land on distinct lines and each executes exactly once.
         """
-        from esolangs.tools.boolean.ztoalc_l import _ztoalc_ordered
+        from esolangs.tools.boolean.ztoalc_l import _collatz_prefix, _commands
 
+        for table in ("0110", "1010001000011000", "0110100110010110"):
+            n = len(table).bit_length() - 1
+            cmds = _commands(table, n)
+            program = boolean.ztoalc_l_boolean(table)
+            start = int(program.splitlines()[0])
+            values = _collatz_prefix(start, len(cmds))
+            assert len(set(values)) == len(values), table
+            assert 1 not in values, table
+            emitted = program.splitlines()
+            assert [emitted[v - 1] for v in values] == cmds, table
+
+    def test_xor4_is_small(self) -> None:
+        """XOR4 renders compactly, where the old linear fallback was huge.
+
+        The removed fallback placed a branch-free program on the pure
+        power-of-two descent, so its ``2**L`` lines put XOR4 at 524,288.  A
+        trajectory's peak grows far slower, and the same program fits in
+        hundreds of lines.
+        """
+        table = "0110100110010110"
+        program = boolean.ztoalc_l_boolean(table)
+        assert len(program.splitlines()) < 1000
+        for combo in range(16):
+            bits = [str((combo >> (3 - i)) & 1) for i in range(4)]
+            assert run_ztoalc(program, bits) == table[combo], f"inputs {bits}"
+
+    def test_dense_non_symmetric_table(self) -> None:
+        """A dense non-symmetric table renders; it once could not be placed.
+
+        Neither the tree (under any input order) nor the popcount-symmetric
+        fallback could place this table, so the generator refused it.  The
+        lookup construction has no placement problem to fail at.
+        """
         table = "1010001000011000"
-        assert not _ztoalc_ordered(table, (0, 1, 2, 3)), (
-            "the identity order should still fail to place this table"
-        )
         program = boolean.ztoalc_l_boolean(table)
         for combo in range(16):
             bits = [str((combo >> (3 - i)) & 1) for i in range(4)]
             assert run_ztoalc(program, bits) == table[combo], f"inputs {bits}"
 
-    def test_when_no_order_places_the_identity_raises(self) -> None:
-        """A table no order can place reports the placement failure.
+    def test_constant_table_skips_the_lookup(self) -> None:
+        """A constant table prints its constant, still draining its inputs."""
+        for n, bit in ((2, "0"), (3, "1")):
+            table = bit * (2**n)
+            program = boolean.ztoalc_l_boolean(table)
+            assert "t = [" not in program
+            for combo in range(2**n):
+                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                assert run_ztoalc(program, bits) == bit
 
-        The search swallows each order's ``ValueError`` so one refusal does
-        not end it, which leaves nothing to re-raise when every order
-        fails.  The identity is then re-run outside the search so the
-        caller gets the generator's own message, with no mention of the
-        search that happened first.
-        """
+    def test_zero_input_table(self) -> None:
+        """A single-entry table is a constant with no inputs to read."""
+        for bit in ("0", "1"):
+            assert run_ztoalc(boolean.ztoalc_l_boolean(bit), []) == bit
+
+    def test_table_past_the_anchor_table_is_refused(self) -> None:
+        """A table needing more steps than any committed anchor is refused."""
         import importlib
 
-        # The package re-exports the generator under the submodule's own
-        # name, so import the module explicitly rather than by attribute.
         module = importlib.import_module("esolangs.tools.boolean.ztoalc_l")
 
         with pytest.MonkeyPatch.context() as patch:
-            patch.setattr(module, "best_input_order", lambda *_: "")
-            with pytest.raises(ValueError, match="no collision-free placement"):
-                module.ztoalc_l_boolean("1010001000011000")
+            patch.setattr(module, "ANCHORS", [(1, 2), (8, 6)])
+            with pytest.raises(ValueError, match="longest committed anchor"):
+                module.ztoalc_l_boolean("0110")
+
+    def test_table_needing_too_many_lines_is_refused(self) -> None:
+        """A table whose trajectory peaks past the line limit is refused."""
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.ztoalc_l")
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_MAX_LINES", 8)
+            with pytest.raises(ValueError, match="past the"):
+                module.ztoalc_l_boolean("0110")
 
     def test_wrong_length_rejected(self) -> None:
         """A truth table of the wrong length is malformed."""
@@ -1650,16 +1686,3 @@ class TestGeneratorEdgePaths:
 
         assert _six_five_const(5) == "5"
         assert _six_five_const(11) == "65"
-
-    def test_ztoalc_simulator_rejects_bad_program(self) -> None:
-        """An empty or non-numeric first line fails the fast simulator."""
-        from esolangs.tools.boolean.ztoalc_l import _ztoalc_ok
-
-        assert _ztoalc_ok({}, 0, "", "") is False
-        assert _ztoalc_ok({0: "not-a-number"}, 0, "", "") is False
-
-    def test_ztoalc_simulator_input_exhausted(self) -> None:
-        """A '=' instruction with no input left fails the fast simulator."""
-        from esolangs.tools.boolean.ztoalc_l import _ztoalc_ok
-
-        assert _ztoalc_ok({0: "2", 1: "a = 1"}, 1, "", "") is False

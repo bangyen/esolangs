@@ -58,12 +58,18 @@ _SEARCHING_GENERATORS = frozenset({"slow_acv_mammalian_boolean"})
 
 # The same one-second rule, applied to the two reordering sweeps.  Those call
 # the ``_*_ordered`` builder once per input order for every table up to three
-# inputs, so a generator that *searches* pays that cost repeatedly.  Measured
-# one worker, ztoalc_l_boolean is 3.0s in test_reordering_never_grows_a_program
-# against 0.02s in the read-count sweep above, and the next entry down is
-# streetcode at 0.06s.  A generator can be cheap in one sweep and expensive in
-# the other, so this set is maintained independently of the one above.
-_SLOW_REORDERING_GENERATORS = frozenset({"ztoalc_l_boolean"})
+# inputs, so a generator that *searches* pays that cost repeatedly.
+#
+# ``ztoalc_l_boolean`` was this set's only member, at 3.0s in
+# test_reordering_never_grows_a_program against 0.02s in the read-count sweep
+# above.  It no longer reorders at all -- it constructs one branch-free
+# lookup whose length is permutation-invariant -- so it left both the sweep
+# and this set.  The next entry down was streetcode at 0.06s, comfortably
+# under budget, which is why the set is now empty rather than re-pointed.
+#
+# A generator can be cheap in one sweep and expensive in the other, so this
+# set is maintained independently of the one above.
+_SLOW_REORDERING_GENERATORS: frozenset[str] = frozenset()
 
 
 def _input_reading_generators() -> list[object]:
@@ -241,7 +247,6 @@ def _reordering_generators() -> list[object]:
         _circlefuck_ordered,
         _jaune_ordered,
     )
-    from esolangs.tools.boolean.ztoalc_l import _ztoalc_ordered
 
     entries: list[tuple[str, object, object]] = [
         (
@@ -258,7 +263,6 @@ def _reordering_generators() -> list[object]:
         ("between", boolean.between, _between_ordered),
         ("lamfunc", boolean.lamfunc, _lamfunc_ordered),
         ("bitdeque", boolean.bitdeque, _bitdeque_ordered),
-        ("ztoalc_l_boolean", boolean.ztoalc_l_boolean, _ztoalc_ordered),
         ("myscript", boolean.myscript, _myscript_ordered),
         ("nevermind", boolean.nevermind, _nevermind_ordered),
         ("basicfuck", boolean.basicfuck, _basicfuck_ordered),
@@ -425,6 +429,19 @@ _MINTERM_SHAPED = {
 # no per-row structure to fold and its size tracks the search rather than the
 # table's shape.
 #
+# ``ztoalc_l_boolean`` emits no tree either, and for a reason the folding
+# discriminator cannot see.  It builds one branch-free array lookup: the
+# inputs' row index is accumulated arithmetically and the table is one-hot
+# encoded into an array, so there are no subtrees to collapse and the
+# program's size tracks the number of rows it encodes, not the table's
+# shape.  Every table this test measures has ones-count 4, so they all
+# render to *exactly* the same length -- a 0% fold that is a property of the
+# construction rather than a regression in it.  (It is not minterm-shaped
+# either: a minterm sum's cost is one term per selected row, and while the
+# array init is one command per row, the emitted program's length is set by
+# the Collatz trajectory's peak, which is a lookup in a committed anchor
+# table rather than a function of the row count.)
+#
 # ``pct_squared_minus_one`` emits no tree at all.  %^2^-1's only branch is
 # ``t``, which jumps to position 0 and nowhere else, so the generator
 # computes the answer *arithmetically* -- one affine setter per input and a
@@ -435,6 +452,7 @@ _MINTERM_SHAPED = {
 _UNSHAPED = {
     "wii2d",
     "minifuck",
+    "ztoalc_l_boolean",
     "pct_squared_minus_one",
     "jaune_multiply",
     "circlefuck_byte",
