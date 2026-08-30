@@ -169,10 +169,10 @@ recorded came back exactly** — which is what the harness commits
 `800f071` and `86c89b9` needed, each having been validated against a
 single language while nothing checked the rest.
 
-Fourteen suites are at 100% — `%^2^-1`, ArrowQueue, Back, BFStack, Bitdeque,
-brainfuck, BrainIf, Clockwise, Decleq, Factor, Home Row, Minifuck, RAM0 and
-Suffolk.  1519 mutants survive across the repo; the rest of the field, worst
-first:
+Fifteen suites are at 100% — `%^2^-1`, ArrowQueue, Back, BFStack, Bitdeque,
+brainfuck, BrainIf, Clockwise, Decleq, Factor, Home Row, Minifuck, NoComment,
+RAM0 and Suffolk.  1514 mutants survive across the repo; the rest of the
+field, worst first:
 
 | language | score | survivors |
 | --- | --- | --- |
@@ -218,15 +218,14 @@ first:
 | Eval | 94.6% | 6 |
 | Qoibl | 94.7% | 26 |
 | 3D Brainfuck | 94.9% | 6 |
-| NoComment | 95.4% | 5 |
 | Modulous | 95.6% | 11 |
 | Unsquare | 96.1% | 6 |
 
 LaserFuck, Forbin and Basicfuck are post-triage rows (they began at 66.7%,
 81.4% and 82.8%); four more — ArrowQueue, Decleq, BrainIf and Clockwise —
 carried one to three survivors each, were closed to 100%, and have left the
-table.  The other 52 rows are the sweep's own numbers, 15 of which had never
-been recorded per-language.  **Lamfunc (82), Between (77), MyScript
+table; NoComment (5) left it the same way.  The other 51 rows are the
+sweep's own numbers, 15 of which had never been recorded per-language.  **Lamfunc (82), Between (77), MyScript
 (71) and Grapheme (60) are the largest untriaged pools** and were invisible
 before this sweep.
 
@@ -255,6 +254,15 @@ first:
   the pool from 150 mutants to 140.  Reach for the interpreter first when
   the mutated construct carries no information: a construct that cannot be
   observed is usually one that need not exist.
+- **Two copies of a check can each be half dead.**  NoComment's `s` and `b`
+  bounds-checked their jump target separately, and each copy had an
+  unreachable half: a forward target is always at least 1, so `s` could
+  never fail the floor, while `b` almost never reaches the ceiling.  Three
+  of its five survivors sat on those dead halves.  Merging the two into one
+  check over a signed delta leaves every fragment live through at least one
+  command — the floor via a `b` landing on index 0, the ceiling via `s` —
+  which turned two equivalent mutants into deleted code and the third into
+  an ordinary boundary test.  Pool 108 → 95, suite to 100%.
 - **`pytest.raises(match=...)` is a substring search.**  Passing the whole
   message still matches a mutant that widened it; only
   `assert str(caught.value) == message` catches that.

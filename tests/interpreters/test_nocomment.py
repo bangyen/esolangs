@@ -117,6 +117,35 @@ class TestNoComment:
         with pytest.raises(HaltError):
             run_and_capture("nib")
 
+    def test_a_backward_jump_landing_on_the_first_command_is_allowed(self) -> None:
+        """Zero is a legal target: the jump lands on the first command.
+
+        ``test_backward_jump_of_zero_leaves_the_code`` names the low edge but
+        does not reach it -- jumping back by zero targets ``ind + 1``, which
+        is above it.  The edge is reached only when the stacked value is one
+        more than the jump's own index, and it is a *valid* landing: the
+        program continues from the top and runs to completion, printing 6.
+        A floor of 1, or an exclusive comparison, halts here instead.
+        """
+        assert run_and_capture("iisbinbo") == "\x06"
+
+    def test_every_non_command_character_is_rejected(self) -> None:
+        """No character outside the ten commands is executable -- no no-ops exist.
+
+        The jump commands share one branch, so ``s`` and ``b`` form a set,
+        and a set can be widened to swallow a character that should have
+        been malformed.  Pinning that with one chosen sentinel would only
+        pin the sentinel, so this sweeps the whole printable range against
+        the command set itself: whatever a widened set admits, it is in here.
+        The preceding ``iin`` leaves a nonzero cell and a stacked value, so
+        a character wrongly read as a jump would act rather than be ignored.
+        """
+        for char in map(chr, range(0x20, 0x7F)):
+            if char in "idclrnfsbo":
+                continue
+            with pytest.raises(ValueError, match="unrecognized NoComment command"):
+                run_and_capture("iin" + char + "o")
+
     def test_unrecognized_command_is_error(self) -> None:
         """The wiki allows no comments; a non-command is a malformed program."""
         with pytest.raises(ValueError, match="unrecognized NoComment command"):
