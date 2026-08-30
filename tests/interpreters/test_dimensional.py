@@ -1,9 +1,6 @@
 """Unit tests for the Dimensional v3.0 interpreter."""
 
 import importlib
-import io
-from contextlib import redirect_stdout
-from unittest.mock import patch
 
 import pytest
 
@@ -11,15 +8,13 @@ from esolangs.interpreters.io import IO
 from esolangs.tools.boolean.tape import dimensional as bool_gen
 from esolangs.tools.text.other import dimensional as text_gen
 from tests.interpreters.contract import SnapshotContract
+from tests.interpreters.runner import run_program
 
 dim = importlib.import_module("esolangs.interpreters.tape_based.dimensional")
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        dim.run(code, IO())
-    return buffer.getvalue()
+    return run_program(dim.run, code, "".join(f"{line}\n" for line in inputs or []))
 
 
 class TestDimensional:

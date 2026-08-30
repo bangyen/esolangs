@@ -1,21 +1,15 @@
 """Unit tests for the 6-5 interpreter."""
 
 import importlib
-import io
-from contextlib import redirect_stdout
-from unittest.mock import patch
 
-from esolangs.interpreters.io import IO
 from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.interpreters.runner import run_program
 
 sixfive = importlib.import_module("esolangs.interpreters.tape_based.six_five")
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        sixfive.run(code, IO())
-    return buffer.getvalue()
+    return run_program(sixfive.run, code, "".join(f"{line}\n" for line in inputs or []))
 
 
 HELLO_WORLD = "\n".join(
