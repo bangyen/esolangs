@@ -498,7 +498,7 @@ def _essential_inputs(truth_table: str, n: int) -> list[int]:
 
 
 def _degenerate(
-    truth_table: str, n: int, fixed_cells_only: bool = False
+    truth_table: str, n: int, *, fixed_cells_only: bool = False
 ) -> str | None:
     """Build a table depending on at most one input, without the ladder.
 
