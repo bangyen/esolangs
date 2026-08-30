@@ -169,10 +169,10 @@ recorded came back exactly** — which is what the harness commits
 `800f071` and `86c89b9` needed, each having been validated against a
 single language while nothing checked the rest.
 
-Eighteen suites are at 100% — `%^2^-1`, ArrowQueue, Back, BFStack, Bitdeque,
-brainfuck, BrainIf, Clockwise, Collatz Multiverse, Decleq, Eval, Factor,
-Home Row, Minifuck, NoComment, RAM0, Suffolk and Unsquare.  1486 mutants
-survive across the repo; the rest of the field, worst first:
+Nineteen suites are at 100% — `%^2^-1`, 3D Brainfuck, ArrowQueue, Back,
+BFStack, Bitdeque, brainfuck, BrainIf, Clockwise, Collatz Multiverse, Decleq,
+Eval, Factor, Home Row, Minifuck, NoComment, RAM0, Suffolk and Unsquare.
+1480 mutants survive across the repo; the rest of the field, worst first:
 
 | language | score | survivors |
 | --- | --- | --- |
@@ -215,18 +215,17 @@ survive across the repo; the rest of the field, worst first:
 | BF-PDA | 93.8% | 9 |
 | Forþ | 94.1% | 14 |
 | Qoibl | 94.7% | 26 |
-| 3D Brainfuck | 94.9% | 6 |
 | Modulous | 95.6% | 11 |
 
 LaserFuck, Forbin and Basicfuck are post-triage rows (they began at 66.7%,
 81.4% and 82.8%); four more — ArrowQueue, Decleq, BrainIf and Clockwise —
 carried one to three survivors each, were closed to 100%, and have left the
-table; NoComment (5), Unsquare (6), Collatz Multiverse (7) and Eval (6) left
-it the same way.  Painfuck, 3x and Forþ are post-triage too — the
-prompt-argument deletion below cut each one's survivors without ending its
-triage — so their rows are re-measured, not swept.  That leaves 36 of the
-table's 41 rows carrying the sweep's own numbers, 15 of which had never been
-recorded per-language.  **Lamfunc (82), Between (77), MyScript
+table; NoComment (5), Unsquare (6), Collatz Multiverse (7), Eval (6) and
+3D Brainfuck (6) left it the same way.  Painfuck, 3x and Forþ are
+post-triage too — the prompt-argument deletion below cut each one's
+survivors without ending its triage — so their rows are re-measured, not
+swept.  That leaves 36 of the table's 40 rows carrying the sweep's own
+numbers, 15 of which had never been recorded per-language.  **Lamfunc (82), Between (77), MyScript
 (71) and Grapheme (60) are the largest untriaged pools** and were invisible
 before this sweep.
 
@@ -283,6 +282,20 @@ first:
   empty string anywhere (300,000 random inputs, never `None`).  Replacing
   the whole thing with `partition('"')[0]` says the same thing with no
   unmatched case, and retires the `re` import with it.
+- **"Symmetric table" is not an equivalence argument on its own.**  3D
+  Brainfuck's direction tables are closed under negation, which was long
+  cited as making its axis mutants unkillable.  They are not: `snapshot()`
+  carries `ap`, `ip` and `heading`, so a relabelled axis is visible even
+  when output and step count match.  All 23 non-identity permutations of
+  the four off-axis headings are distinguishable, and each array sign-flip
+  dies to a program as short as `n+`.  Five of its six survivors were
+  ordinary gaps — the tests asserted output only, and every move walked out
+  and back, where direction cancels.  Assert the *coordinate*.
+  The sixth was real: `ip[1]` read as `ip[2]` is undetectable because the
+  instruction pointer never leaves the `y = z = 0` line alive (a heading
+  block walks it off the source and halts it), so both are always 0 there —
+  44,680 programs found no witness.  Unpacking the triple into named
+  components removes the index that could be wrong.
 - **A rewrite can install a gap where it removed slack.**  That same
   `partition` swap introduced a survivor the regex version never had:
   `partition` and `rpartition` agree on every program holding a *single*
@@ -291,6 +304,12 @@ first:
   `"a"."b".` prints `ab`, or `a"."b` if the split takes the last quote.
   So re-measure after every rewrite rather than assuming the score only
   improves: this one went 6 survivors → 1, and the 1 was newly created.
+  3D Brainfuck showed the sharper version: factoring the pointer move into
+  a `zip`-based helper traded one equivalent mutant for **three**, because
+  ruff's B905 requires an explicit `strict=` and both operands are always
+  3-tuples, so that argument can never fire.  A lint rule can mandate
+  slack.  Unpacking the two triples instead satisfies the linter with no
+  extra argument, and took the pool 117 → 114.
 - **`uv run` can measure the wrong tree, silently.**  Three runs of the
   same command reported an unchanged 6 survivors — including a mutant of
   a line that had already been deleted — because `uv run` reinstalls the

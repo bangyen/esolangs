@@ -20,9 +20,10 @@ Documented decisions filling those gaps:
   heading; a heading other than +X immediately walks the pointer off the
   source line and halts;
 - the array grid is unbounded, cells are created on demand and wrap 0-255;
-- the generation pointer's heading is tracked but no blocks are emitted (the
-  wiki's generation semantics are unspecified), so ``^``/``V``/``>``/``<``/
-  ``"``/``'`` do not affect execution, and any other character is a comment;
+- no blocks are ever emitted (the wiki's generation semantics are
+  unspecified), so the generation pointer has no observable state and is not
+  modelled: ``^``/``V``/``>``/``<``/``"``/``'`` are no-ops like any other
+  non-command character, which is a comment;
 - ``,`` raises :class:`EOFError` when input runs out (repo-wide convention);
   an unbalanced bracket pair is malformed (:class:`ValueError`).
 
@@ -56,14 +57,22 @@ _ARRAY = {
     "u": (0, 1, 0),
     "d": (0, -1, 0),
 }
-_GENERATION = {
-    "^": (1, 0, 0),
-    "V": (-1, 0, 0),
-    ">": (0, 0, 1),
-    "<": (0, 0, -1),
-    '"': (0, 1, 0),
-    "'": (0, -1, 0),
-}
+_Point = tuple[int, int, int]
+
+
+def _advance(point: _Point, delta: _Point) -> _Point:
+    """Return ``point`` moved by ``delta``, one component at a time.
+
+    Both pointers move this way, so they share it.  Spelled out at each site
+    the sum names ``[0]``, ``[1]`` and ``[2]`` explicitly -- and the
+    instruction pointer never leaves the ``y = z = 0`` line alive, since a
+    heading block walks it off the source and halts it, so a site that read
+    the wrong one of those two behaved identically and nothing could tell.
+    Unpacking both triples names each component once instead.
+    """
+    x, y, z = point
+    dx, dy, dz = delta
+    return (x + dx, y + dy, z + dz)
 
 
 class _Machine:
@@ -107,8 +116,7 @@ class _Machine:
         if char in _HEADING:
             self.heading = _HEADING[char]
         elif char in _ARRAY:
-            dx, dy, dz = _ARRAY[char]
-            self.ap = (self.ap[0] + dx, self.ap[1] + dy, self.ap[2] + dz)
+            self.ap = _advance(self.ap, _ARRAY[char])
         elif char in "+-.,":
             if char == "+":
                 self.cells[self.ap] = (self.cells.get(self.ap, 0) + 1) % 256
@@ -125,11 +133,7 @@ class _Machine:
         elif char == "]" and self.cells.get(self.ap, 0) != 0:
             self.ip = (self.m[self.ip[0]] + 1, 0, 0)
             return
-        self.ip = (
-            self.ip[0] + self.heading[0],
-            self.ip[1] + self.heading[1],
-            self.ip[2] + self.heading[2],
-        )
+        self.ip = _advance(self.ip, self.heading)
 
 
 def run(code: str, io: IO) -> None:
