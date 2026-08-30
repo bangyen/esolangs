@@ -6,7 +6,11 @@ from unittest.mock import patch
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.tape_based.minifuck import run
-from tests.interpreters.contract import EmptyProgramContract
+from tests.interpreters.contract import (
+    CycleContract,
+    EmptyProgramContract,
+    SnapshotContract,
+)
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
@@ -152,22 +156,18 @@ class TestStepMachine:
         assert machine.io.getvalue() == "@`p0\x10"
         assert machine.tape == [0, 1, 0, 0, 0, 0, 0, 1, 0]
 
-    def test_snapshot_is_hashable(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.minifuck import _Machine
 
-        assert hash(_Machine(".", ScriptedIO()).snapshot()) is not None
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.minifuck import _Machine
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.minifuck import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        # the tape never rewinds, so every Minifuck program halts
-        assert run_until_halt_or_cycle(_Machine(".", ScriptedIO())) is True
+    return _Machine(code, ScriptedIO())
 
 
-class TestContract(EmptyProgramContract):
+class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
     """The shared empty-program shape, with this language's data."""
 
     run = staticmethod(run_and_capture)
+    machine = staticmethod(_machine)
+    stepping_program = "."
+    halting_program = "."

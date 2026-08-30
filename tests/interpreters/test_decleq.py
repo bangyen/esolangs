@@ -10,7 +10,11 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.decleq import run
-from tests.interpreters.contract import EmptyProgramContract
+from tests.interpreters.contract import (
+    CycleContract,
+    EmptyProgramContract,
+    SnapshotContract,
+)
 from tests.interpreters.oisc import memory, run_program
 
 
@@ -209,23 +213,18 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.pc == 65
 
-    def test_snapshot_is_hashable(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.decleq import _Machine
 
-        assert hash(_Machine("-2 5 9 9 9 65 0 0", ScriptedIO()).snapshot()) is not None
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.register_based.decleq import _Machine
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.decleq import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert (
-            run_until_halt_or_cycle(_Machine("-2 5 9 9 9 65 0 0", ScriptedIO())) is True
-        )
+    return _Machine(code, ScriptedIO())
 
 
-class TestContract(EmptyProgramContract):
+class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
     """The shared empty-program shape, with this language's data."""
 
     run = staticmethod(_run)
+    machine = staticmethod(_machine)
+    stepping_program = "-2 5 9 9 9 65 0 0"
+    halting_program = "-2 5 9 9 9 65 0 0"
