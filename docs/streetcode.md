@@ -449,7 +449,7 @@ artifact of the interpreter's road detection, not of the language.
 The text generator (`esolangs.tools.text.streetcode`) emits a straight
 corridor whose size is `O(sum of |code point deltas|)` -- unary, unlike
 the repo's other text generators, which compress with multiplication
-loops (`_factor_triple` gets the brainfuck family to `O(sqrt(value))`).
+loops (`factor_triple` gets the brainfuck family to `O(sqrt(value))`).
 Closing that gap needs `while (cell) { ... }`: a body the car
 re-traverses under the control of a counter. The two halves of that
 primitive were both demonstrated, but no ring composing
