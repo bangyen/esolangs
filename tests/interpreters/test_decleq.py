@@ -64,6 +64,31 @@ class TestHaltAndErrors:
         with pytest.raises(HaltError):
             run(code, io, limit=100)
 
+    def test_the_default_limit_is_ten_thousand(self) -> None:
+        """The default cuts a run off at exactly 10,000 instructions.
+
+        Every other test passes ``limit=`` explicitly, so the default was
+        never the bound under test and could take any nearby value unnoticed.
+        ``run_with_limit`` checks ``halted`` at the *top* of each pass, so a
+        program taking exactly ``limit`` steps still exhausts the loop and
+        raises -- which makes 10,000 the count that separates the real
+        default from one a single step larger, and 9,998 the companion that
+        pins it from below.
+
+        The program is a countdown of ``n`` passes behind a one-instruction
+        prologue, so it runs 2n steps: cell 11 counts down and jumps off the
+        end at zero, while the cell-12 source keeps the loop's tail
+        instruction jumping back to it.
+        """
+
+        def countdown(n: int) -> str:
+            mem = [9, 10, 0, 11, 11, 99, 12, 13, 3, 5, 0, n, 0, 0]
+            return " ".join(map(str, mem))
+
+        with pytest.raises(HaltError):
+            run(countdown(5000), ScriptedIO(""))
+        run(countdown(4999), ScriptedIO(""))
+
     def test_malformed_token(self) -> None:
         with pytest.raises(ValueError, match="malformed memory token"):
             _run("10 10 x")

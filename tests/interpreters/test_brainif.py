@@ -29,6 +29,19 @@ class TestBrainIfBasicCommands:
     def test_input(self) -> None:
         assert run_and_capture(["if 0 input", "if 65 output"], inputs=["A"]) == "A"
 
+    def test_input_retries_past_blank_lines(self) -> None:
+        """A blank line is read again, not stored as the newline it ended.
+
+        ``input`` reads whole lines, and an empty one carries no character
+        to take -- so the read repeats until a line has one.  Nothing else
+        in the suite feeds a blank line, and the retry is the loop's only
+        observable: without it the first empty string would be indexed and
+        raise, and a loop entered on the wrong condition would either skip
+        the read or never leave it.
+        """
+        code = ["if 0 input", "if 65 output"]
+        assert run_and_capture(code, inputs=["", "", "A"]) == "A"
+
     def test_move_right(self) -> None:
         code = ["if 0 right", "if 0 increment", "if 1 output"]
         assert run_and_capture(code) == "\x01"

@@ -38,16 +38,11 @@ class _Machine:
 
     def __init__(self, code: list[str]) -> None:
         """Pad ``code`` to a rectangle and reset the machine to the corner."""
-        self._done = False
         self.row = self.col = self.d = 0
         self.queue: list[int] = []
-        if code:
-            self.width = max(len(line) for line in code)
-            self.grid = [line.ljust(self.width) for line in code]
-        else:
-            self.width = 0
-            self.grid = []
-            self._done = True
+        self.width = max(map(len, code), default=0)
+        self.grid = [line.ljust(self.width) for line in code]
+        self._done = not self.grid
 
     @property
     def halted(self) -> bool:
