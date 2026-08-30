@@ -21,9 +21,12 @@ decision trees end-to-end (render -> extract -> simulate) for n = 1-3 plus
 `bf_to_line.py` through the same full pipeline, and is the only suite that
 exercises `render.py`'s loop-drawing geometry (`_layout`/
 `_loop_return_legs`) at all -- see the nested-loop entry below for why that
-distinction matters. Run any of them with `uv run --with pillow --with
-numpy --with pytest --with pytest-xdist
-pytest test_simulate.py` (or `test_line_boolean.py`, or
+distinction matters. `test_png.py` covers `png.py`, the stdlib PNG codec
+that replaced Pillow: the checked-in fixtures against the values Pillow
+decoded them to, round-trips, every row filter, the sub-byte depths, and
+the rejections. Run any of them with `uv run --with numpy --with
+pytest --with pytest-xdist pytest test_simulate.py` (or
+`test_line_boolean.py`, or
 `test_bf_to_line.py`) from this directory -- the modules import each other
 as flat top-level names, so this directory has to be on `sys.path`. None is
 under the repo root's `tests/` `testpaths`, so a bare `pytest` from the repo
@@ -713,19 +716,34 @@ round-trip check for `extract()` alone.
   `run(code, io)` convention every other language in `src/esolangs/` uses.
   Stays a standalone `extra/` tool.
 
-- Dependency footprint: 2 undeclared deps (Pillow, numpy), informal by
-  design matching how `extra/` keeps other subtrees' toolchains out of
-  `pyproject.toml`. Down from 4: scipy and scikit-image were both dropped,
-  each because the call turned out not to need the library's actual
-  algorithm rather than because it was reimplemented. `find_cursor` only
-  ever *thresholded* `distance_transform_edt` at 1.5, and `> sqrt(2)` on a
-  boolean mask is exactly a 3x3 erosion; `detect_scale` only wanted the
-  integer upscale factor, which is a direct block-uniformity test rather
-  than skeletonize's ~5% ink-length ratio. Both were confirmed against the
-  fixtures before the imports came out (bit-identical `thick` masks;
-  identical extraction trees). The remaining two, and why Pillow's
-  `Image.open` is the hard one, are written up in a comment block in
-  `extract.py` just above the imports.
+- Dependency footprint: 1 undeclared dep (numpy), informal by design
+  matching how `extra/` keeps other subtrees' toolchains out of
+  `pyproject.toml`. Down from 4 -- Pillow, scipy and scikit-image are all
+  gone, each because the call turned out not to need the library's actual
+  algorithm rather than because it was laboriously reimplemented:
+
+  - `find_cursor` only ever *thresholded* `distance_transform_edt` at 1.5,
+    and `> sqrt(2)` on a boolean mask is exactly a 3x3 erosion. This was
+    the piece an earlier note here called the hard one to replace.
+  - `detect_scale` only wanted the integer upscale factor, which is a
+    direct block-uniformity test rather than skeletonize's ~5% ink-length
+    ratio -- exact where the old one was approximate.
+  - Pillow was only ever decoding PNGs this repo wrote or the fixtures,
+    and PNG is length-tagged chunks over zlib, both in the stdlib. `png.py`
+    reads and writes them in ~200 lines; `render.py` gained a `Canvas`
+    with the two primitives it needs (Bresenham polyline, scanline fill).
+
+  Every step was gated on execution, not reasoning: bit-identical `thick`
+  masks, extraction trees unchanged across all five fixtures, `png.py`
+  matching Pillow byte-for-byte in both directions, and the rasterizer's
+  strokes pixel-identical to Pillow's (the arrowhead differs by ~8 interior
+  pixels, which moved the measured fill ratio from 0.41-0.55 to 0.46-0.61,
+  still well inside `_FILL_RATIO_RANGE`). The full reasoning is in a
+  comment block in `extract.py` just above the imports.
+
+  Two deliberate narrowings: only PNG is readable now (Pillow's other
+  formats were never used), and only non-interlaced greyscale/palette PNGs
+  at 1/2/4/8 bits -- anything else raises rather than guessing.
 
 ## Resolved
 

@@ -192,7 +192,7 @@ jobs:
       run: |
         cd extra/line
         uv run --isolated --no-project \
-          --with pillow --with numpy \
+          --with numpy \
           --with pytest --with pytest-xdist \
           pytest . -q
 
@@ -206,7 +206,7 @@ jobs:
         cd extra/line
         run_line() {
           uv run --isolated --no-project \
-            --with pillow --with numpy \
+            --with numpy \
             python "$@"
         }
         run_line render.py "+++" /tmp/line_render.png
