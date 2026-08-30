@@ -1,6 +1,6 @@
 """Tests for png.py.
 
-Run via: uv run --with numpy --with pytest pytest test_png.py
+Run via: uv run --with pytest pytest test_png.py
 
 png.py replaced Pillow (see the dependency notes in extract.py), so what
 needs guarding is that it still reads the checked-in wiki fixtures the way
@@ -16,11 +16,11 @@ than decode something plausible-looking but wrong.
 
 from __future__ import annotations
 
+import random
 import struct
 import zlib
 from pathlib import Path
 
-import numpy as np
 import png
 import pytest
 
@@ -43,29 +43,32 @@ def test_reads_wiki_fixtures_as_pillow_did(
     name: str, expected: tuple[tuple[int, int], int]
 ) -> None:
     """Each fixture decodes to the shape and ink count Pillow reported."""
-    shape, ink = expected
+    (height, width), ink = expected
     grey = png.read_grey_file(str(FIXTURES / name))
-    assert grey.shape == shape
-    assert grey.dtype == np.uint8
-    assert int((grey < 128).sum()) == ink
+    assert len(grey) == height
+    assert {len(row) for row in grey} == {width}
+    assert sum(level < 128 for row in grey for level in row) == ink
     # These are 1-bit black-and-white images: nothing in between.
-    assert set(np.unique(grey).tolist()) == {0, 255}
+    assert {level for row in grey for level in row} == {0, 255}
 
 
 @pytest.mark.parametrize("shape", [(1, 1), (3, 7), (64, 65), (200, 133)])
 def test_roundtrip_preserves_every_byte(shape: tuple[int, int]) -> None:
-    """Writing then reading an arbitrary greyscale array is the identity."""
-    rng = np.random.default_rng(0)
-    original = rng.integers(0, 256, size=shape, dtype=np.uint8)
-    assert np.array_equal(png.read_grey(png.write_grey(original)), original)
+    """Writing then reading arbitrary greyscale rows is the identity."""
+    height, width = shape
+    rng = random.Random(0)
+    original = [
+        bytearray(rng.randrange(256) for _ in range(width)) for _ in range(height)
+    ]
+    assert png.read_grey(png.write_grey(original)) == original
 
 
 def test_roundtrip_through_a_file(tmp_path: Path) -> None:
     """The file-level helpers agree with the in-memory pair."""
     path = tmp_path / "out.png"
-    original = np.array([[0, 128], [255, 7]], dtype=np.uint8)
+    original = [bytearray([0, 128]), bytearray([255, 7])]
     png.write_grey_file(str(path), original)
-    assert np.array_equal(png.read_grey_file(str(path)), original)
+    assert png.read_grey_file(str(path)) == original
 
 
 def _encode(
@@ -108,24 +111,21 @@ def test_every_row_filter_decodes(filter_type: int) -> None:
     Weakening it to ``<`` is an equivalent mutation over all 256^3 inputs
     (checked exhaustively), not a gap in these cases.
     """
-    want = np.array(
-        [
-            [3, 200, 3, 255],
-            [200, 3, 100, 0],
-            [7, 250, 130, 130],
-            [130, 130, 4, 251],
-        ],
-        dtype=np.uint8,
-    )
-    height, width = want.shape
+    want = [
+        bytearray([3, 200, 3, 255]),
+        bytearray([200, 3, 100, 0]),
+        bytearray([7, 250, 130, 130]),
+        bytearray([130, 130, 4, 251]),
+    ]
+    height, width = len(want), len(want[0])
     rows = []
     for y in range(height):
         row = bytearray()
         for x in range(width):
-            value = int(want[y, x])
-            left = int(want[y, x - 1]) if x else 0
-            up = int(want[y - 1, x]) if y else 0
-            upleft = int(want[y - 1, x - 1]) if y and x else 0
+            value = want[y][x]
+            left = want[y][x - 1] if x else 0
+            up = want[y - 1][x] if y else 0
+            upleft = want[y - 1][x - 1] if y and x else 0
             if filter_type == 0:
                 row.append(value)
             elif filter_type == 1:
@@ -137,7 +137,7 @@ def test_every_row_filter_decodes(filter_type: int) -> None:
             else:
                 row.append((value - png._paeth(left, up, upleft)) & 0xFF)  # noqa: SLF001
         rows.append(bytes([filter_type]) + bytes(row))
-    assert np.array_equal(png.read_grey(_encode(rows, width, height)), want)
+    assert png.read_grey(_encode(rows, width, height)) == want
 
 
 @pytest.mark.parametrize(
@@ -157,7 +157,7 @@ def test_sub_byte_depths_unpack_and_scale(
     """Narrow greyscale depths expand to the full 0-255 range."""
     width = len(expected)
     blob = _encode([bytes([0, packed])], width, 1, depth=depth)
-    assert png.read_grey(blob).tolist() == [expected]
+    assert png.read_grey(blob) == [bytearray(expected)]
 
 
 def test_palette_is_resolved_through_plte() -> None:
@@ -182,7 +182,7 @@ def test_palette_is_resolved_through_plte() -> None:
         + chunk(b"IDAT", zlib.compress(bytes([0, 0b01000000])))
         + chunk(b"IEND", b"")
     )
-    assert png.read_grey(blob).tolist() == [[255, 0]]
+    assert png.read_grey(blob) == [bytearray([255, 0])]
 
 
 def test_rejects_a_non_png() -> None:
@@ -211,7 +211,7 @@ def test_rejects_an_unknown_row_filter() -> None:
         png.read_grey(_encode([bytes([9, 0])], 1, 1))
 
 
-def test_rejects_a_non_2d_array_on_write() -> None:
-    """The writer takes greyscale only; a colour array is a caller mistake."""
-    with pytest.raises(ValueError, match="2-D"):
-        png.write_grey(np.zeros((2, 2, 3), dtype=np.uint8))
+def test_rejects_ragged_rows_on_write() -> None:
+    """Rows of differing lengths are not an image; the writer must say so."""
+    with pytest.raises(ValueError, match="equal-length rows"):
+        png.write_grey([bytearray([0, 0]), bytearray([0])])
