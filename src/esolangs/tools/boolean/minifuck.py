@@ -1,31 +1,15 @@
 """Boolean-function generator for Minifuck (parameterized convention).
 
 Minifuck's only input is ``.`` reading a byte when the eight-cell pool is
-zero.  This follows the parameterized convention described in
+zero, which a boolean program cannot use without disturbing the pool it is
+about to print.  So this follows the parameterized convention described in
 :mod:`esolangs.tools.boolean.parameterized`: the template's ``{Xi}``
-placeholders are filled with ``[<`` (bit 1) or ``xx`` (bit 0), one program
-per input combination.
+placeholders become ``[<`` (bit 1) or ``xx`` (bit 0) -- equal width, so no
+instantiation leaks its inputs through its length -- and the harness builds
+one program per input combination.
 
-That read *is* usable without destroying the pool, contrary to what this
-docstring used to claim: a re-zero gadget after each read leaves the pool
-input-independent while the bit survives as a pointer offset, and a prototype
-swapping :func:`_embed` for such a reading prologue -- reusing everything
-below it verbatim -- builds and verifies all four one-input and all sixteen
-two-input tables with clean output.  The parameterized path is kept because
-that prologue does not yet reach ``n == 3``, where the pointer must cross the
-banked bits to leave the pool and ``[``'s skip desynchronizes the rows.  See
-``docs/walls.md``, and ``docs/parameterized-input-conversion.md`` for the
-full detail -- removed in 2615cd4, readable with
-``git show 2615cd4^:docs/parameterized-input-conversion.md``.
-
-``docs/walls.md`` records Minifuck as reaching only the four one-input
-functions plus the eight 0-preserving two-input tables.  **That
-characterization is about the runtime-read model and remains true as stated**
--- it does not carry over to embedded inputs, where every two-input table is
-reachable, NAND, NOR and XNOR included.
-
-The construction rests on four facts about the language, each checked against
-the interpreter rather than argued from the spec:
+Four facts about the language carry the whole construction, each checked
+against the interpreter rather than argued from the spec:
 
 * ``[`` on a 1-cell clears it, XORs into ``ptr+1``, and skips one
   instruction; control flow rejoins after that single slot, so only *state*
@@ -39,79 +23,41 @@ the interpreter rather than argued from the spec:
 * ``<`` never writes and clamps at 0, so a long enough run of ``<``
   reconverges every path for free.
 
-Because that bookkeeping is affine but fiddly, nothing here is hand-tracked:
-:class:`_Joint` runs all ``2**n`` instantiations in lockstep as the template
-is emitted, every choice is made against the simulated truth, and
-:func:`minifuck` raises rather than returning a program it has not seen
-print the table.
+**How a program is built.**  Embed each input once, separated by one of
+:data:`_SEPS`; walk to ``_BASE - 1``; emit a suffix (a run of ``[``, or for
+one table a string with ``<`` interleaved); then run the endgame, which sets
+the pool, relays a cell's value into the *pointer* -- values cannot travel
+left in this language, but the pointer can -- and prints one ASCII digit.
 
-**Slot order.**  Every generator in this family emits ``{X0}``..``{Xn-1}`` in
-ascending order, and :func:`_embed` does so by construction -- so any table
-solved at its full arity is in name order for free.  The exception was the
-projection path: a table ignoring some of its inputs is solved smaller and
-:func:`_lift` appends the ignored placeholders, which leaves the order
-whenever an ignored index sits below an essential one.
+The choice of ``(separator, settle count, suffix, accumulator)`` is what
+makes a table build, and :data:`_PLANS` records one per truth table.  The
+selection rule is the load-bearing part: pick the accumulator whose column
+reads correctly **at the read**, not the cell that holds the answer
+beforehand.  Those differ, because the walk out applies the running
+prefix-XOR -- an AND column can arrive as a constant, and XOR can arrive as a
+projection.  Choosing pre-walk covers 10 of the 16 two-input tables and looks
+nearly right, which is the trap.
 
-Two routes close that, and neither is the obvious one.  Relocating a
-placeholder does *not* work, measured rather than assumed: a fill writes the
-live tape, so moving the trailing fills to the front makes 2 rows wrong at
-``n == 2`` and 6 at ``n == 3``.  What works is
+A table and its complement share a staging, so the plans are keyed by the
+lexicographically smaller of the two: the endgame tries both read polarities
+and prints ``NOT(v XOR cell7)``, so the complement costs nothing.
 
-* declining to project, so the table is solved at full arity and ascending
-  by construction (see :func:`_lift_leaves_name_order`); and
-* for the tables that cannot reach -- ``01010101`` and ``10101010``, the
-  projections onto the *last* input, whose answer stands in no cell after
-  the embed under either separator -- emitting the ignored setters first and
-  then erasing them (see :func:`_reconverged`).
+**Coverage.**  Every table at ``n <= 3`` builds from a staging, with no
+search: 16 of 16 at two inputs, 256 of 256 at three, the whole three-input
+arity in about ten seconds.  Wider tables fall through to the searches below,
+which is why those remain -- a missing staging degrades rather than raises.
+A table that ignores some inputs is solved at the arity it uses and renumbered
+back, so a wide table with a narrow core is as cheap as that core.
 
-Together they leave nothing out of order at ``n == 2``, and ten tables at
-``n == 3``.  All ten ignore their *middle* input, which is the one shape the
-reconvergence cannot sort: emitting the ignored setter first does not help
-when it already follows ``{X0}``, and no reset repairs it either, because
-reconvergence works by driving every row to a single state and so cannot
-collapse one input while preserving another.  Sorting those needs the solver
-to assign names, which is a change to :func:`_project` and :func:`_lift`.
+Nothing here is hand-tracked: :class:`_Joint` runs all ``2**n`` instantiations
+in lockstep as the template is emitted, every choice is made against the
+simulated truth, and :func:`minifuck` raises rather than returning a program
+it has not seen print the table.
 
-**Coverage: every two-input table, and 34 of the 40 three-input orbits**
-(under input permutation and complement).  That is up from the eight orbits
-the search alone reached, and the increase is not a speedup -- the staged
-route builds tables the searches *fail* on: ``01101000``, ``10100001`` and
-``11100110`` each cost about 130 seconds to fail and now build in under a
-tenth of one.  How much of the arity is derived rather than searched:
-
-* **Two inputs: all of it.**  :data:`_TWO_INPUT_PLAN` stages every table, so
-  no search runs at this arity and all sixteen build in well under a second
-  where they used to cost 2.5-9s each.
-* **Three inputs, at most two of them essential: all of it, for free.**  Such
-  a table is a smaller table wearing extra inputs, so it projects onto the
-  two-input construction; all 38 build without searching.
-* **Three essential inputs: all 218**, via :data:`_THREE_INPUT_PLAN`, parity
-  and majority among them.
-
-So no three-input table searches, and the whole arity builds in about ten
-seconds.  The searches are kept regardless: they are what a *wider* table
-falls through to, and they are the reason a missing staging degrades rather
-than raises.
-
-Why the staged route reaches what the searches do not is one idea.  A search
-looks for a cell *holding* the answer and then loses it walking to the read,
-because the walk's prefix-XOR rewrites that very cell; a staging selects on
-the column **as the read sees it**, so the walk is priced in rather than
-fought.  The hardest pair here, ``01101101`` / ``10010010``, shows the effect
-at its sharpest: the searches find its column and still cannot print it, and
-they raise after about 96 seconds.  See ``docs/walls.md``.
-
-That makes this generator weaker than the repo's better ones, and the
-comparison is worth stating: ``bfpda`` is a closed-form decision tree at any
-arity, and ``wii2d`` *was* a capped search before it was replaced by a
-construction (a Horner index chain plus a fold decode).  Whether Minifuck's
-position-accumulation can be constructed the same way was investigated and
-is, for now, answered no: the chain's doubling stage does not compose past
-width four (48 configurations, depth 13), and even a chain that did would
-still need a decode this language does not have, since wii2d's fold inverts
-an accumulated *number* while the endgame below decodes a *bit*.
-``docs/walls.md`` records both gaps, and the one mechanism that is disproved
-outright rather than merely unfound.
+``docs/walls.md`` carries the history this docstring used to: which
+mechanisms were disproved outright, which were merely unfound, what the
+runtime-read model reaches, and how the staged route came to cover tables the
+searches fail on.
 """
 
 import re
@@ -846,6 +792,19 @@ _TWO_INPUT_PLAN: dict[str, _Staging] = {
 # The other two axes were *sampled* rather than exhausted and came back
 # empty -- settle counts 3 to 5 and accumulators 36 to 47 reached nothing the
 # shipped stagings did not.  That is evidence they are barren, not proof.
+#
+# **This table is close to its natural size, which was measured rather than
+# assumed.**  The 109 entries use 63 distinct ``(separator, settle, suffix)``
+# stagings; a greedy minimum cover needs 35, and it still needs *all five*
+# separators and both settle counts, with twelve stagings carrying a single
+# pair each.  So there is no smaller vocabulary hiding here, and rewriting
+# 108 verified entries to consolidate stagings would churn working constants
+# for a count no caller sees.  Declined deliberately.
+#
+# Two related things also look removable and are not.  ``_SETTLE`` is unused
+# by both plans but parameterises the parked search, which still serves
+# ``n >= 4``; and the searches themselves are unreachable at ``n <= 3`` yet
+# are what a wider table falls through to.  Neither is dead.
 _THREE_INPUT_PLAN: dict[str, _Staging] = {
     "00000001": (0, 0, 10, 23),
     "00000110": (1, 1, 11, 27),
