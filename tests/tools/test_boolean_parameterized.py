@@ -33,10 +33,13 @@ def _parameterized_generators():
             "ram0",
             "minsky_swap",
             "eval",
+            "minifuck",
+            "pct_squared_minus_one",
         )
     ]
 
 
+@pytest.mark.slow  # 2.8s: builds every generator, up to n=4
 def test_parameterized_generators_embed_each_input_once() -> None:
     """Every no-input generator embeds each input exactly once.
 
@@ -51,15 +54,232 @@ def test_parameterized_generators_embed_each_input_once() -> None:
     """
     import re
 
+    checked = 0
     for name, gen in _parameterized_generators():
         for n in (1, 2, 3, 4):
             table = format(0, f"0{2**n}b")
-            template = gen(table)
+            try:
+                template = gen(table)
+            except ValueError:
+                # A generator need not cover every arity -- %^2^-1 derives
+                # one- and two-input tables only.  The invariant here is about
+                # the templates a generator *does* emit, so an uncovered arity
+                # is skipped rather than failed; the count below keeps that
+                # from quietly emptying the sweep.
+                continue
+            checked += 1
             xs = re.findall(r"\{X(\d+)\}", template)
             cs = re.findall(r"\{C(\d+)\}", template)
             assert sorted(xs) == [str(i) for i in range(n)], (name, n, xs)
             assert len(xs) == n, (name, n, xs)
             assert not cs, (name, n, cs)
+    # Guard the skip above: every generator covers at least n == 2, so a run
+    # that checked far fewer templates than that means the sweep stopped
+    # exercising the generators rather than the generators getting stricter.
+    assert checked >= len(_parameterized_generators()), checked
+
+
+# Slot order is not needed for correctness -- :func:`instantiate` substitutes
+# each ``{Xi}`` by name, replacing a unique token wherever it sits -- but it
+# is worth holding to, because an out-of-order load is a restructured load.
+#
+# Every generator emits its slots in name order.  A generator whose order
+# carried information would also have to emit a different *drawing* for a
+# different order, or the permutation is a relabelling and its saving is
+# fictitious -- the pairing below, which now covers ``back`` alone.
+#
+# There is no "reversed" category.  Bitdeque and BF-PDA used to push
+# back-to-front so the first pop was the most significant bit; that only
+# fixes which input the root tests, and testing the last input first costs
+# nothing, so both now load in name order (verified byte-identical totals).
+# Minifuck used to be the exception, carried as a strict xfail.  It no longer
+# is, and how it was closed is worth keeping, because the obvious fix is the
+# one that does not work.
+#
+# Its ignored inputs trailed the ``.``, which left name order whenever an
+# ignored index sat below an essential one -- 24 of the 38 degenerate n=3
+# tables.  *Relocating* an ignored fill does not fix that, measured rather
+# than argued: a fill writes the live tape (``[<`` flips a cell), so moving
+# one in front of the essential embeddings shifts every later one and the
+# program stops computing -- 2 wrong rows at n == 2 and 6 at n == 3.
+#
+# Two routes closed it instead, neither of them a relocation:
+#
+# * Decline to project.  ``_embed`` lays every slot down in ascending order,
+#   so a table solved at its *full* arity is in name order by construction.
+#   That covers most of them.
+# * Emit the ignored inputs first, then erase them.  The setters still have
+#   to appear -- the harness has a bit for every input -- but a reconverging
+#   suffix drives every row to one identical state, after which nothing
+#   downstream can tell which bits they were, and the table is a one-input
+#   problem in its single essential input.  That covers ``01010101`` and
+#   ``10101010``, the projections onto the *last* input, which the first
+#   route cannot reach: x2 stands in no cell after the embed under either
+#   separator.  Note the reconvergence is to a common *non-blank* state --
+#   a blank tape is unreachable, since the all-ones row ends a cell right of
+#   the others and ``<`` clamps without writing.
+#
+# The two-essential tables keep projecting deliberately.  Full-arity solving
+# is not merely unnecessary there, it is worse: ``00000101`` and
+# ``00001010`` fail after about 130 seconds each against seconds to project,
+# and a cheap scan-only attempt hits 1 table in 8 while costing ~9s per miss.
+# Coverage and build cost both come before slot order.
+
+_SLOT_ORDER_TABLES = ("0110", "01101001", "10101010", "11110000", "00111100")
+
+
+def _slot_order(gen: object, table: str) -> list[int] | None:
+    """The ``{Xi}`` indices in the order ``gen`` emits them, or None."""
+    import re
+
+    try:
+        template = gen(table)
+    except ValueError:
+        return None  # a generator need not cover every arity
+    return [int(s[2:-1]) for s in re.findall(r"\{X\d+\}", template)]
+
+
+@pytest.mark.slow  # builds every generator over several tables
+def test_slots_run_in_name_order() -> None:
+    """Every template emits ``{X0}``..``{Xn-1}`` in ascending order.
+
+    Ordering is not needed for correctness -- :func:`instantiate` replaces
+    each placeholder by name, wherever it sits -- but it is the shape every
+    generator here holds to, and a load that leaves it is a load that has
+    been restructured.  That is worth a failure rather than a shrug.
+
+    Every generator is swept, with no exceptions carried -- Minifuck was the
+    last one and is covered in its own test below, which pins the specific
+    tables that used to leave sequence.
+    """
+    checked = 0
+    for name, gen in _parameterized_generators():
+        for table in _SLOT_ORDER_TABLES:
+            slots = _slot_order(gen, table)
+            if slots is None:
+                continue
+            checked += 1
+            assert slots == sorted(slots), (name, table, slots)
+    assert checked >= len(_parameterized_generators()), checked
+
+
+@pytest.mark.slow  # the degenerate tables are the fast closed-form path
+def test_minifuck_slots_run_in_name_order() -> None:
+    """Minifuck emits in name order, including the tables that once did not.
+
+    This was a strict ``xfail``.  The tables listed here are the ones that
+    used to leave sequence, kept as the regression: ``11001100`` is closed by
+    solving at full arity rather than projecting, and ``01010101`` /
+    ``10101010`` -- the projections onto the *last* input, which full arity
+    cannot reach -- by emitting the ignored setters first and reconverging
+    the rows before the essential one.
+
+    Degenerate tables only: they are the closed-form path, and the only ones
+    whose slot order can leave sequence.  A table needing the search takes
+    tens of seconds and cannot exercise this.
+    """
+    from esolangs.tools.boolean import parameterized
+
+    for table in ("11001100", "10101010", "01010101", "00001111"):
+        slots = _slot_order(parameterized.minifuck, table)
+        if slots is None:
+            continue
+        assert slots == sorted(slots), (table, slots)
+
+
+@pytest.mark.slow  # two closed-form builds plus eight interpreter runs each
+def test_minifuck_reconverged_tables_compute_their_function() -> None:
+    """The reconvergence route computes, not merely emits in order.
+
+    ``01010101`` and ``10101010`` are built by emitting the inputs the table
+    ignores *first* and then erasing them, which is a different construction
+    from every other table's -- so ordering alone is not evidence it works.
+    Only running every row is, and a wrong build here would otherwise look
+    exactly like a right one to the test above.
+    """
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.minifuck import run
+    from esolangs.tools.boolean import parameterized
+    from esolangs.tools.boolean.examples import _fill_minifuck
+
+    for table in ("01010101", "10101010"):
+        template = parameterized.minifuck(table)
+        widths = set()
+        for combo in range(8):
+            bits = [(combo >> (2 - i)) & 1 for i in range(3)]
+            program = _fill_minifuck(template, bits)
+            widths.add(len(program))
+            io_ = ScriptedIO("")
+            run(program, io_)
+            assert io_.getvalue() == table[combo], f"{table} inputs {bits}"
+        # The ignored setters are emitted rather than dropped, so they must
+        # not make the program's length depend on the bits it is given.
+        assert len(widths) == 1, (table, widths)
+
+
+def _drawing(template: str) -> str:
+    """The template with every placeholder *name* erased.
+
+    What the reorder bar tests is the emitted drawing, so comparing
+    templates directly would count a mere relabelling as a change.  Erasing
+    the names leaves exactly what a relabelling cannot alter.
+    """
+    import re
+
+    return re.sub(r"\{X\d+\}", "{X}", template)
+
+
+@pytest.mark.slow  # builds every permuting generator over several tables
+def test_a_permuting_generator_changes_its_drawing() -> None:
+    """A generator that permutes its slots must emit a different *drawing*.
+
+    This is the reorder bar, and it is the one thing that could make a
+    template's slot permutation a redefined benchmark rather than a smaller
+    program.  ``instantiate`` substitutes by name, and ``_fill_back``'s
+    setter is ``lambda _i, b:`` -- it ignores the index -- so if two input
+    orders produced the same drawing they would emit *byte-identical
+    programs* and any "saving" between them would be booked against the
+    harness's fill order alone.
+
+    They do not.  Back's tree is built on the permuted table, so a different
+    order folds differently and draws a different program: at ``10101010``
+    the identity order draws 115 characters and the winning order 44.  The
+    permuted slot names are a consequence of choosing the order, not the
+    source of the saving -- orders that share a drawing measure exactly the
+    same size.
+
+    Asserting that is what gives this teeth.  A future change that made the
+    reorder cosmetic -- permuting names while emitting one drawing -- would
+    still pass every correctness test in this class and fail here.
+    """
+    from itertools import permutations
+
+    from esolangs.tools.boolean import parameterized
+    from esolangs.tools.boolean.helpers import permute_truth_table
+
+    checked = 0
+    for name in ("back",):
+        build = parameterized._back_ordered  # noqa: SLF001
+        for table in ("10101010", "11001100", "00111100"):
+            n = 3
+            builds: dict[str, set[int]] = {}
+            for perm in permutations(range(n)):
+                built = build(permute_truth_table(table, perm), perm)
+                builds.setdefault(_drawing(built), set()).add(len(built))
+            checked += 1
+            # The orders must not all collapse onto one drawing, or the
+            # reorder is a relabelling.
+            assert len(builds) > 1, (
+                name,
+                table,
+                "every input order draws the same program, so permuting the "
+                "slots emits an identical program and books a fake saving",
+            )
+            # And size must be a function of the drawing, not of the labels:
+            # orders sharing a drawing are the same program.
+            for drawing, sizes in builds.items():
+                assert len(sizes) == 1, (name, table, len(drawing), sorted(sizes))
+    assert checked >= 3, checked
 
 
 class TestParameterizedBIO:
@@ -246,6 +466,153 @@ class TestParameterizedBack:
         template = parameterized.back("0110")
         assert "+\\" in template  # a decision node
         assert "*" in template  # leaves halt
+
+    def test_input_reordering_folds_a_scattered_table(self) -> None:
+        """The tree splits in whichever order folds most, not load order.
+
+        ``10101010`` depends on its last input alone, so it folds nothing
+        loaded in order and everything once that input sits in cell 0.  It
+        reaches the cheap shape and lands far under the table that folds
+        under no order at all; the two one-dependency tables differ only by
+        the walk that carries the pointer, two characters a step.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        scattered = len(parameterized.back("10101010"))
+        aligned = len(parameterized.back("11110000"))
+        parity = len(parameterized.back("01101001"))
+        assert scattered < parity
+        assert aligned < parity
+        assert abs(scattered - aligned) < 0.2 * parity
+
+    def test_input_reordering_never_grows_a_template(self) -> None:
+        """No table comes out larger than its identity build.
+
+        ``best_input_order`` builds the identity first and keeps it on a
+        tie, so reordering can only ever shrink a template.  Checked against
+        ``_back_ordered`` at the identity rather than against a stored
+        number, so it stays true as the construction changes.
+
+        Note this is *not* "parity keeps the identity build".  It used to
+        be, while the load emitted no walk; now that the units are emitted
+        in reverse name order, some orders spend a shorter walk than the
+        identity does, and parity shrinks 126 to 118 without folding
+        anything.  The invariant that survives is the one-sided one.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        for table in ("01101001", "10101010", "11110000", "00111100", "10010110"):
+            n = (len(table) - 1).bit_length()
+            identity = parameterized._back_ordered(table, tuple(range(n)))  # noqa: SLF001
+            assert len(parameterized.back(table)) <= len(identity), table
+
+    @pytest.mark.parametrize(
+        "table",
+        ["10101010", "11001100", "01011010", "00111100", "10010110"],
+    )
+    def test_reordered_templates_compute_the_table(self, table: str) -> None:
+        """A reordered template still computes its function.
+
+        Back's node is ``+\\>`` -- test the current cell, *then* advance --
+        so level ``k`` tests cell ``k``, one lower than the generators whose
+        node steps first.  Loading an input into the wrong cell computes a
+        different function rather than failing to draw, so only running it
+        catches the slip.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.back(table)
+        for combo in range(8):
+            bits = [(combo >> (2 - i)) & 1 for i in range(3)]
+            got = self.run_back(self.instantiate(template, bits), 3)
+            assert got == table[combo], f"{table} inputs {bits}"
+
+    def test_reordering_pays_a_walk_and_keeps_name_order(self) -> None:
+        """A permuted load spends rows on the walk, and keeps its slots sorted.
+
+        This is the trade Back deliberately takes.  Filling in *cell* order
+        -- putting ``{X perm[c]}`` in cell ``c`` -- emits no walk and is a
+        few percent smaller, but leaves the placeholders out of name order,
+        which no other generator in this module does.  Loading in name order
+        and walking the pointer costs about two characters a step and keeps
+        the templates uniform.
+
+        Both halves are pinned here, because either alone would be wrong: a
+        build with no walk cannot be reordering at all, and one whose slots
+        left sequence would have taken the other side of the trade without
+        the docstring being updated.
+        """
+        import re
+        from itertools import permutations
+
+        from esolangs.tools.boolean import parameterized
+
+        walked = 0
+        for table in ("0110", "10101010", "01101001"):
+            n = (len(table) - 1).bit_length()
+            for perm in permutations(range(n)):
+                permuted = parameterized.permute_truth_table(table, perm)
+                built = parameterized._back_ordered(permuted, perm)  # noqa: SLF001
+                names = re.findall(r"\{X(\d+)\}", built)
+                assert names == sorted(names), (table, perm, names)
+                column = [ln[0] for ln in built.split("\n") if ln[:1].strip()]
+                walked += column.count("<")
+        # A non-identity order has to step the pointer back at some point;
+        # a build with no leftward step is not reordering anything.
+        assert walked > 0
+
+    def test_placeholders_run_in_name_order_while_still_reordering(self) -> None:
+        """Back reorders through the *walk*, not through its slot order.
+
+        The load emits ``{X0}``..``{Xn-1}`` in sequence whatever the input
+        order, and the reorder lives in the ``>``/``<`` runs that carry the
+        pointer to each input's cell.  Both halves matter: dropping the
+        walk would leave the order inert, and permuting the names instead
+        would emit the slots out of sequence, which every other generator in
+        this module avoids.
+
+        The units are emitted in reverse name order because the load is
+        drawn bottom-to-top up column 0, so the template's *text* reads them
+        backwards -- loading input ``n-1`` first is what puts ``{X0}`` first
+        on the page.
+        """
+        import re
+
+        from esolangs.tools.boolean import parameterized
+
+        walked = 0
+        for table in ("11110000", "10101010", "01101001", "00111100"):
+            template = parameterized.back(table)
+            names = re.findall(r"\{X(\d+)\}", template)
+            assert names == sorted(names), f"{table} slots {names}"
+            assert sorted(names) == ["0", "1", "2"], f"{table} embeds each once"
+            # The load column carries the walk; a table whose best order is
+            # not the identity spends more than the n-1 steps a plain load
+            # would.
+            column = [line[0] for line in template.split("\n") if line[:1].strip()]
+            walked += column.count("<")
+        # At least one of these tables reorders, so at least one leftward
+        # step is emitted -- a plain ascending load never steps back.
+        assert walked > 0
+
+    def test_reordering_keeps_the_equal_width_embedding(self) -> None:
+        """Reordered loads still cost the same for either bit.
+
+        The walk goes before an input's ``-``/``{Xi}`` pair and never
+        between its halves, so the primer and the placeholder stay one
+        unit and both bits still cost the same two rows.  Splitting them
+        would let the template's height reveal an input.
+        """
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.examples import _fill_back
+
+        for table in ("10101010", "11001100", "01101001"):
+            template = parameterized.back(table)
+            sizes = {
+                len(_fill_back(template, [(c >> (2 - i)) & 1 for i in range(3)]))
+                for c in range(8)
+            }
+            assert len(sizes) == 1, f"{table} sizes {sorted(sizes)}"
 
 
 class TestParameterizedNoComment:
@@ -451,16 +818,13 @@ class TestParameterizedBitdeque:
         return io.getvalue().strip()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools.boolean import parameterized
+        # Deliberately the shipped fill rather than a copy of its rule: an
+        # earlier duplicate here kept passing after the load order changed
+        # under it, so the suite disagreed with the harness it is meant to
+        # mirror.
+        from esolangs.tools.boolean.examples import _fill_bitdeque
 
-        n = len(bits)
-        # The register flips after every load block, so bit i is pushed at
-        # load position n-1-i with incoming register (n-1-i) % 2.
-        return parameterized.instantiate(
-            tpl,
-            bits,
-            lambda i, b: "PUSH INVERT" if b == (n - 1 - i) % 2 else "INVERT PUSH",
-        )
+        return _fill_bitdeque(tpl, bits)
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -1548,6 +1912,444 @@ class TestEvalBoolean:
             parameterized.eval("02")
 
 
+class TestParameterizedMinifuck:
+    """Input-by-substitution boolean generator for Minifuck.
+
+    Minifuck's only read is ``.`` pulling a byte when the eight-cell pool is
+    zero, which a boolean program cannot use without destroying the pool it
+    is about to print -- so the inputs are embedded instead.  The generator
+    simulates every row as it emits and raises rather than returning a
+    program it has not seen print the table, so these tests are checking the
+    *interpreter* agrees with that simulation.
+    """
+
+    def run_minifuck(self, prog: str) -> str:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.minifuck import run
+
+        io_ = ScriptedIO("")
+        run(prog, io_)
+        return io_.getvalue()
+
+    def instantiate(self, tpl: str, bits: list[int]) -> str:
+        """Fill the template the way the example harness does."""
+        from esolangs.tools.boolean.examples import _fill_minifuck
+
+        return _fill_minifuck(tpl, bits)
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            # ``parameterized.minifuck`` searches, and it is the *build*
+            # that costs, not the assertion: measured at one worker, a
+            # two-input table takes 2.7s (NAND) to 9.0s (XOR) to emit while
+            # a one-input table takes ~0.03s.  So the two-input cases carry
+            # ``slow`` -- as does every other test in this class that builds
+            # one -- and the one-input cases above stay in the fast run.
+            pytest.param("0001", 2, marks=pytest.mark.slow),  # AND
+            pytest.param("0110", 2, marks=pytest.mark.slow),  # XOR
+            # XNOR and NAND -- unreachable in the reading model
+            pytest.param("1001", 2, marks=pytest.mark.slow),
+            pytest.param("1110", 2, marks=pytest.mark.slow),
+            # OR ("0111") and NOR ("1000") are not listed: they cost ~48s and
+            # ~47s here, and test_all_two_input_tables below already runs all
+            # sixteen two-input tables through the same assertion.  The cases
+            # that remain are the two one-input tables, which it does not
+            # cover.
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every instantiated input produces the truth-table result."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.minifuck(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_minifuck(self.instantiate(template, bits))
+            assert got == table[combo], f"{table} inputs {bits}"
+
+    @pytest.mark.slow
+    def test_all_two_input_tables(self) -> None:
+        """Every two-input table builds, including the ones the wall named.
+
+        ``docs/walls.md`` records NAND, NOR and XNOR as unreachable.  That
+        is true of programs that *read* their inputs; embedding them lifts
+        it, and this is the check that says so.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        for table_int in range(16):
+            table = format(table_int, "04b")
+            template = parameterized.minifuck(table)
+            for combo in range(4):
+                bits = [(combo >> (1 - i)) & 1 for i in range(2)]
+                got = self.run_minifuck(self.instantiate(template, bits))
+                assert got == table[combo], f"{table} inputs {bits}"
+
+    @pytest.mark.slow  # 7.8s: builds the searching two-input template
+    def test_instantiations_have_equal_length(self) -> None:
+        """No instantiation leaks its inputs through the program's length."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.minifuck("0110")
+        lengths = {
+            len(self.instantiate(template, [a, b])) for a in (0, 1) for b in (0, 1)
+        }
+        assert len(lengths) == 1, f"unequal instantiation lengths: {lengths}"
+
+    @pytest.mark.slow  # 9.0s: builds the searching two-input template
+    def test_template_is_input_independent(self) -> None:
+        """The template has {Xi} placeholders, not hardcoded bits."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.minifuck("0110")
+        assert "{X0}" in template
+        assert "{X1}" in template
+
+    def test_bad_table_rejected(self) -> None:
+        """A table whose length is not a power of two is rejected."""
+        from esolangs.tools.boolean import parameterized
+
+        with pytest.raises(ValueError, match="power-of-two"):
+            parameterized.minifuck("011")
+
+    def test_the_simulator_mirrors_the_interpreter_at_its_edges(self) -> None:
+        """The search's model of a row has to match what Minifuck does.
+
+        The search prunes on simulated state, so a divergence here would
+        make it reason about tapes the interpreter never produces.  The
+        edges are the ones a mid-tape step never shows: a dead row ignores
+        everything after it, a spent skip eats one instruction, ``<`` is
+        pinned at cell 0, the tape grows on demand, and a print reads the
+        first eight cells as one byte -- emitting that character, or
+        killing the row if the byte is zero.
+        """
+        from esolangs.tools.boolean.minifuck import _Sim
+
+        dead = _Sim(16)
+        dead.dead = True
+        dead.exec("[")
+        assert dead.ptr == 0, "a dead row executes nothing"
+
+        skipping = _Sim(16)
+        skipping.skip = True
+        skipping.exec("[")
+        assert skipping.ptr == 0, "the skipped instruction does nothing"
+        assert not skipping.skip, "and the skip is spent"
+
+        pinned = _Sim(16)
+        pinned.exec("<")
+        assert pinned.ptr == 0, "there is nothing to the left of cell 0"
+
+        growing = _Sim(3)
+        for _ in range(5):
+            growing.exec("[")
+        assert len(growing.tape) > 3, "the tape grows to meet the pointer"
+
+        # The print flips the cell it steps onto first, so a print inside
+        # the byte writes its own 1: cell 1 makes 0b01000000 == 64.
+        printing = _Sim(16)
+        printing.exec(".")
+        assert printing.out == ["@"]
+        assert not printing.dead
+
+        # Past cell 8 the flip lands outside the byte, which stays zero.
+        zero = _Sim(16)
+        zero.ptr = 9
+        zero.exec(".")
+        assert zero.dead, "printing a zero byte ends the row"
+        assert zero.out == []
+
+    def test_a_search_from_a_dead_row_expands_nothing(self) -> None:
+        """A state holding a dead row is pruned rather than explored.
+
+        A dead row cannot be steered back, so every state below it is one
+        the generator could never use.  Nothing in the search's own
+        alphabet kills a row -- only a print does -- so the prune exists
+        for a state that arrived dead, which is what this hands it.
+        """
+        from esolangs.tools.boolean.minifuck import _clamp, _embed, _search
+
+        joint = _embed(2)
+        _clamp(joint)
+        # A print reads cells 0..7 as one byte and dies when it is zero, so
+        # clear the byte and print from past it, where the flip lands outside.
+        row = joint.ms[0]
+        row.tape[:8] = [0] * 8
+        row.ptr = 9
+        row.exec(".")
+        assert row.dead
+
+        def accept(_new: list[object], _code: str) -> str | None:
+            raise AssertionError("a pruned state must never reach accept")
+
+        assert _search(joint, accept, 3) is None
+
+    def test_the_walk_needs_a_converged_pointer_going_right(self) -> None:
+        """``[x`` walks are only safe rightward from one shared position.
+
+        Every row runs the same program, so a walk emitted while the rows
+        disagree about where the pointer is would move them different
+        distances.  And ``[x`` only advances -- the pointer is Minifuck's
+        one leftward channel, and it is not this one -- so a leftward
+        target is refused rather than silently ignored.
+        """
+        from esolangs.tools.boolean.minifuck import _clamp, _embed, _walk_to
+
+        spread = _embed(2)
+        with pytest.raises(ValueError, match="converged pointer"):
+            _walk_to(spread, 0)
+
+        clamped = _embed(2)
+        _clamp(clamped)
+        with pytest.raises(ValueError, match="cannot walk left"):
+            _walk_to(clamped, -5)
+
+    def test_the_parked_search_finds_a_column_under_the_pointer(self) -> None:
+        """The last route asks for the answer *and* the pointer that reads it.
+
+        Producing the column is not enough on its own: walking back to it
+        re-crosses, and so changes, that very cell.  So a hit is a state
+        whose rows agree on the pointer, with the wanted column (or its
+        complement) immediately to the right of it, inside the window.
+        """
+        from esolangs.tools.boolean.minifuck import (
+            _BASE,
+            _SETTLE,
+            _SPAN,
+            _embed,
+            _find_parked,
+        )
+
+        want = (0, 1, 1, 0)  # XOR's column
+        window = _BASE + 2 * _SPAN + 14
+
+        hits = _find_parked(_embed(2, settle=_SETTLE), want, window, 6, 3)
+        assert hits, "the XOR column should be parked on within six steps"
+        for code, cell in hits:
+            assert set(code) <= set("<[x")
+            assert 8 <= cell < window
+
+        # The limit stops the collection early rather than filling it.
+        assert len(_find_parked(_embed(2, settle=_SETTLE), want, window, 8, 1)) == 1
+
+        # A window that excludes the answer's cell yields nothing.
+        assert _find_parked(_embed(2, settle=_SETTLE), want, 10, 6, 3) == []
+
+    def test_the_pool_search_needs_the_rows_to_agree_on_the_pointer(self) -> None:
+        """A pool is only a pool if every row reads it from one place.
+
+        The embed leaves the rows on different cells -- that spread is what
+        carries the inputs -- so the pool search declines outright until a
+        clamp has brought them back together.
+        """
+        from esolangs.tools.boolean.minifuck import _clamp, _embed, _find_pool
+
+        spread = _embed(2)
+        assert len(set(spread.ptrs())) > 1, "the embed should leave rows apart"
+        assert _find_pool(spread, 0, 12, 4) is None
+
+        clamped = _embed(2)
+        _clamp(clamped)
+        assert len(set(clamped.ptrs())) == 1
+
+    def test_the_endgame_refuses_an_impossible_setup(self) -> None:
+        """Two ways the endgame cannot run, reported rather than emitted.
+
+        The pool occupies cells 0..7, so an accumulator inside it would be
+        overwritten by the digit it is supposed to carry.  And the pool has
+        to be *built*: if no pattern reaches it from here, there is nothing
+        to print, and emitting the read anyway would print a junk byte.
+        """
+        import importlib
+
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        from esolangs.tools.boolean.minifuck import _clamp, _embed, _endgame
+
+        joint = _embed(2)
+        _clamp(joint)
+
+        with pytest.raises(ValueError, match="must sit past the pool"):
+            _endgame(joint.fork(), 3, "[<", 0)
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_find_pool", lambda *_a, **_k: None)
+            with pytest.raises(ValueError, match="no pool pattern"):
+                _endgame(joint.fork(), 12, "[<", 0)
+
+    def test_the_routes_are_tried_in_order_and_then_give_up(self) -> None:
+        """With every route failing the generator refuses rather than guesses.
+
+        The three routes are ordered by cost -- the scans, the column
+        search, then the parked search -- and the cheap ones answer every
+        table at this arity, so the later ones are never reached by a real
+        build.  Blocking each in turn is what runs them: the column search
+        is stubbed away and the parked search shrunk to a depth it cannot
+        succeed at, leaving the final refusal.
+
+        ``__wrapped__`` steps around the cache, so a stubbed build cannot
+        be handed to a later caller as if it were real.
+        """
+        import importlib
+
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_try_print", lambda *_a, **_k: None)
+            patch.setattr(module, "_find_column", lambda *_a, **_k: None)
+            patch.setattr(module, "_PARKED_DEPTH", 6)
+            patch.setattr(module, "_PARKED_LIMIT", 2)
+            with pytest.raises(ValueError, match="could not build"):
+                module.minifuck.__wrapped__("0110")
+
+    def test_the_parked_route_returns_the_program_it_prints(self) -> None:
+        """A parked candidate that prints ends the search there.
+
+        Which of the collected candidates survives the endgame is settled
+        by running it, so the route tries each in turn and returns the
+        first that prints the table -- it does not rank them or keep
+        looking once one works.
+        """
+        import importlib
+
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        from esolangs.tools.boolean.minifuck import _find_parked as real_parked
+
+        parked = {"fired": False}
+
+        def spy(*args: object, **kwargs: object) -> list[tuple[str, int]]:
+            parked["fired"] = True
+            return real_parked(*args, **kwargs)  # type: ignore[arg-type]
+
+        class _Printed:
+            def template(self) -> str:
+                return "SENTINEL"
+
+        def only_after_parking(*_a: object, **_k: object) -> object:
+            return _Printed() if parked["fired"] else None
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_find_parked", spy)
+            patch.setattr(module, "_try_print", only_after_parking)
+            patch.setattr(module, "_find_column", lambda *_a, **_k: None)
+            patch.setattr(module, "_PARKED_DEPTH", 6)
+            patch.setattr(module, "_PARKED_LIMIT", 2)
+            assert module.minifuck.__wrapped__("0110") == "SENTINEL"
+
+        assert parked["fired"], "the parked route never ran"
+
+    def test_a_found_column_is_walked_out_and_printed_from(self) -> None:
+        """The column route emits its find, re-clamps, and scans for the print.
+
+        A column is only half an answer -- the pointer still has to reach
+        it -- so the route emits the search's code, clamps the rows back
+        together, and then tries the accumulators in turn.  Stubbing the
+        search to a cell it can reach is what exercises that body without
+        paying for the search that normally finds it.
+        """
+        import importlib
+
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_try_print", lambda *_a, **_k: None)
+            patch.setattr(module, "_find_column", lambda *_a, **_k: ("", 20))
+            patch.setattr(module, "_PARKED_DEPTH", 4)
+            patch.setattr(module, "_PARKED_LIMIT", 1)
+            with pytest.raises(ValueError, match="could not build"):
+                module.minifuck.__wrapped__("0110")
+
+    def test_a_park_the_walk_refuses_is_skipped(self) -> None:
+        """The column route walks to each park in turn; some cannot be reached.
+
+        ``_walk_to`` refuses a target it cannot reach rightward from a
+        converged pointer, and that is a reason to try the next park rather
+        than to fail the build.
+        """
+        import importlib
+
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        from esolangs.tools.boolean.minifuck import _BASE
+        from esolangs.tools.boolean.minifuck import _walk_to as real_walk
+
+        refused = {"n": 0}
+
+        def refuse_first(joint: object, target: int) -> None:
+            # The embed walks too, and to a fixed target; the route's parks
+            # start one cell below it, so that is the one to refuse.
+            if refused["n"] == 0 and target == _BASE - 2:
+                refused["n"] += 1
+                raise ValueError("forced: this park is unreachable")
+            real_walk(joint, target)  # type: ignore[arg-type]
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_try_print", lambda *_a, **_k: None)
+            patch.setattr(module, "_find_column", lambda *_a, **_k: None)
+            patch.setattr(module, "_walk_to", refuse_first)
+            patch.setattr(module, "_PARKED_DEPTH", 4)
+            patch.setattr(module, "_PARKED_LIMIT", 1)
+            with pytest.raises(ValueError, match="could not build"):
+                module.minifuck.__wrapped__("0110")
+
+        assert refused["n"] == 1, "the forced refusal never fired"
+
+    @pytest.mark.slow  # 2.4s: the XOR arm scans every accumulator and fails
+    def test_a_degenerate_table_falls_back_to_searching_for_its_column(self) -> None:
+        """Past the fixed cells the degenerate route searches, then reports.
+
+        A table depending on at most one input is a constant, a projection,
+        or a negated projection, and each of those already stands as a
+        column somewhere after the embed -- at a known cell for the first
+        two inputs, and at a searched one beyond that.  Every table at this
+        arity is answered by the known cells, so the search below them only
+        runs when those are taken away.
+        """
+        import importlib
+
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        from esolangs.tools.boolean.minifuck import _DEGENERATE_CELLS, _degenerate
+
+        # b1's cell carries "0101" at n == 2, so pointing the stubbed search
+        # at it stands in for a search that succeeded.
+        b1_cell = _DEGENERATE_CELLS["b1"]
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_DEGENERATE_CELLS", {})
+            patch.setattr(module, "_find_column", lambda *_a, **_k: ("", b1_cell))
+            found = _degenerate("0101", 2)
+        assert found is not None, "the searched column should still print"
+        assert "{X0}" in found
+        assert "{X1}" in found
+
+        # XOR is not degenerate, so no accumulator prints it however the
+        # search claims to have gone: the scan runs out and reports that.
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_DEGENERATE_CELLS", {})
+            patch.setattr(module, "_find_column", lambda *_a, **_k: ("", b1_cell))
+            assert _degenerate("0110", 2) is None
+
+        # And a search that finds nothing at all reports that directly.
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_DEGENERATE_CELLS", {})
+            patch.setattr(module, "_find_column", lambda *_a, **_k: None)
+            assert _degenerate("0101", 2) is None
+
+
+@pytest.mark.slow  # 1.9s: builds every generator to compare fill widths
 def test_fills_embed_a_zero_and_a_one_at_equal_width() -> None:
     """No fill may spell a 0 shorter than a 1, or the length leaks the input.
 
@@ -1589,3 +2391,194 @@ def test_fills_embed_a_zero_and_a_one_at_equal_width() -> None:
             assert len(lengths) == 1, (
                 f"{name} embeds bits at unequal width for n={n}: {sorted(lengths)}"
             )
+
+
+class TestParameterizedPctSquaredMinusOne:
+    """Input-by-substitution boolean generator for %^2^-1.
+
+    The Lean proof in ``Esolangs.PctBooleanWall`` shows no %^2^-1 program
+    that *reads* its inputs computes XOR or AND at any length.  That bounds
+    the reading model, not the language: these programs embed their bits
+    instead, so the read that erases the accumulator never happens, and
+    every two-input table builds.
+
+    ``l`` prints the accumulator in decimal, so the answer is read straight
+    off stdout as ``"0"`` or ``"1"`` -- no branch is needed, which suits a
+    language whose only jump target is position 0.
+    """
+
+    def run_pct(self, prog: str) -> str:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.pct_squared_minus_one import run
+
+        io = ScriptedIO()
+        run(prog, io)
+        return io.getvalue()
+
+    def instantiate(self, tpl: str, bits: list[int]) -> str:
+        from esolangs.tools.boolean.examples import _fill_pct_squared_minus_one
+
+        return _fill_pct_squared_minus_one(tpl, bits)
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            # The two constant tables are the slow ones to derive -- 1.1s
+            # and 1.0s against 0.04s for NOT -- putting them alone over
+            # the fast run's one-second budget.
+            pytest.param("00", 1, marks=pytest.mark.slow),  # constant zero
+            pytest.param("11", 1, marks=pytest.mark.slow),  # constant one
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR -- the function the Lean wall forbids a reader
+            ("1001", 2),  # XNOR
+            ("0111", 2),  # OR
+            ("1110", 2),  # NAND
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every instantiated input produces the truth-table result."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.pct_squared_minus_one(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_pct(self.instantiate(template, bits))
+            assert got == table[combo], f"inputs {bits}"
+
+    # Derives every table at that arity: 2.0s at n=1 and 5.3s at n=2, both
+    # over the fast run's one-second budget.  No single table dominates --
+    # the cost is the count -- so the whole sweep is marked, not a case.
+    @pytest.mark.slow
+    @pytest.mark.parametrize("n", [1, 2])
+    def test_all_small_tables(self, n: int) -> None:
+        """Every table up to two inputs produces the right result."""
+        from esolangs.tools.boolean import parameterized
+
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            template = parameterized.pct_squared_minus_one(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_pct(self.instantiate(template, bits))
+                assert got == table[combo], f"{table} inputs {bits}"
+
+    def test_instantiations_share_a_length(self) -> None:
+        """All four programs are the same length, so none leaks its inputs."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.pct_squared_minus_one("0110")
+        lengths = {
+            len(self.instantiate(template, [a, b])) for a in (0, 1) for b in (0, 1)
+        }
+        assert len(lengths) == 1, lengths
+
+    def test_template_is_input_independent(self) -> None:
+        """The template has {Xi} placeholders, not hardcoded bits."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.pct_squared_minus_one("0110")
+        assert "{X0}" in template
+        assert "{X1}" in template
+
+    @pytest.mark.slow  # 5.3s: derives all sixteen two-input tables
+    def test_programs_never_read_input(self) -> None:
+        """No emitted program contains ``n``, the input command.
+
+        This is what separates the generator from the model the Lean wall
+        bounds: the bits arrive by substitution, so the read that overwrites
+        the accumulator never runs.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        for table_int in range(16):
+            template = parameterized.pct_squared_minus_one(format(table_int, "04b"))
+            for a in (0, 1):
+                for b in (0, 1):
+                    assert "n" not in self.instantiate(template, [a, b])
+
+    def test_bad_table_rejected(self) -> None:
+        from esolangs.tools.boolean import parameterized
+
+        with pytest.raises(ValueError, match="power-of-two"):
+            parameterized.pct_squared_minus_one("011")
+
+    def test_slope_zero_forgets_the_accumulator(self) -> None:
+        """``'`` is the constant map: it discards whatever it was given.
+
+        The setters are affine maps ``x -> a*x + b``, and ``a == 0`` is the
+        one that cannot be reached by scaling -- it needs the reset command.
+        Both inputs must land on the same value, which is what makes it a
+        constant rather than merely a steep slope.
+        """
+        from esolangs.tools.boolean.pct_squared_minus_one import _affine_code, _apply
+
+        code = _affine_code(0, 5)
+        assert code is not None
+        assert "'" in code, "a constant map has to reset the accumulator"
+        assert _apply(7, code) == 5
+        assert _apply(0, code) == 5
+
+        # Only four multipliers have a spelling; anything else has no code.
+        assert _affine_code(3, 0) is None
+        # The offset needs one too: 1 is the gap `s`/`i` cannot express.
+        assert _affine_code(1, -1) is None
+
+    def test_the_model_mirrors_every_command_the_language_has(self) -> None:
+        """``_apply`` stands in for the interpreter, so it owes it every op.
+
+        The emitted tails only ever translate, so ``m`` and the over-3003
+        reset are not on the path a built program takes -- but they are
+        what the *language* does, and a model that quietly disagreed with
+        the interpreter would let a future tail shape be validated against
+        a machine that does not exist.
+        """
+        from esolangs.tools.boolean.pct_squared_minus_one import _LIMIT, _apply
+
+        assert _apply(10, "s") == 8  # s subtracts 2
+        assert _apply(10, "i") == 7  # i subtracts 3
+        assert _apply(10, "m") == 20  # m doubles
+        assert _apply(10, "p") == -10  # p negates
+        assert _apply(10, "'") == 0  # ' erases
+
+        # The reset fires *before* a command, not after: one past the limit
+        # is zeroed and the command then applies to that zero.
+        assert _apply(_LIMIT + 1, "s") == -2
+        assert _apply(_LIMIT, "s") == _LIMIT - 2, "at the limit nothing resets"
+
+    def test_a_tail_is_not_always_available(self) -> None:
+        """Not every pair of class values can be printed apart.
+
+        The tail has to land the one-class on exactly 1 and the zero-class
+        on 0 (or past the reset limit).  Two classes that share a value are
+        the clearest case that no tail can separate -- ``l`` prints one
+        accumulator, so identical inputs cannot print differently.
+        """
+        from esolangs.tools.boolean.pct_squared_minus_one import _tail_for
+
+        assert _tail_for(-5, -5) is None
+        assert _tail_for(1, 0) is not None, "the trivial pair still works"
+        # Two classes further apart than a step have no tail either: the
+        # translation moves both together, so it cannot close a wider gap.
+        assert _tail_for(5, 0) is None
+
+    def test_a_table_no_candidate_realizes_is_reported(self) -> None:
+        """With every parameter set rejected the derivation reports nothing.
+
+        The enumeration is small and structural -- the constants input 0
+        contributes, the spelling, and the class pair -- and some candidate
+        always works out for a two-input table.  Rejecting all of them is
+        what exercises the empty answer, which the caller turns into its
+        own refusal rather than emitting a program for the wrong function.
+        """
+        import importlib
+
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        from esolangs.tools.boolean.pct_squared_minus_one import _derive
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_solution", lambda *_a, **_k: None)
+            assert _derive("0110") is None

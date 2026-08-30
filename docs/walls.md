@@ -60,7 +60,73 @@ share the prefix too — dropping the test would misclassify them.  The sibling
 idea (pre-negating stored input bits to halve `not_bit`) remains open but is
 marginal.
 
-## Minifuck (0-preserving functions, n <= 3)
+## Minifuck (0-preserving functions, n <= 3 — the read-model cap is FALSE)
+
+**Superseded: the runtime-read cap below does not hold.**  A reading
+construction builds and verifies all four one-input and **all sixteen**
+two-input tables on the shipped interpreter, with clean `"0"`/`"1"` output and
+exactly `n` reads per run (constant tables included) — XNOR, NAND and NOR
+among them.
+
+Why the original searches missed it: they were **length-bounded** (no
+complemented read-prefix to length 11, full-program search to 14,
+re-verification to 34), and they enumerated *bare programs*.  The working
+construction is 88-148 characters — a read/re-zero prologue composed with the
+existing tree and endgame — so it lies outside every one of those bounds.
+This is the length-bounded-search failure mode: an enumeration cap is
+evidence about the cap, not about the language.
+
+The mechanism the cap rested on is real but escapable.  Each read leaves ASCII
+residue in the pool, which is why a naive second `.` prints instead of
+reading; a re-zero gadget after each read clears it, and the bit survives as a
+pointer offset rather than in the pool.  Two gadgets are needed, because one
+searched from blank tape re-zeroes only the *first* read — after a bit is
+banked the tape is populated and the later reads need a gadget searched from
+that frontier.
+
+What remains true: the parameterized generator
+(`esolangs.tools.boolean.minifuck`) builds every two-input table by embedding,
+and it still covers eight of the fourteen three-input orbits, which the
+reading prologue does **not** yet reach.  So the parameterized path stays as
+the default.  `n == 3` under the reading model is open, not walled: the
+pointer must cross the banked bits to leave the pool, and `[`'s skip on a
+differing cell desynchronizes the rows.  A joint search for a gadget avoiding
+that ran 2.48M states without a hit, but timed out rather than exhausting.
+Full detail in `docs/parameterized-input-conversion.md`, removed in 2615cd4
+and readable with `git show 2615cd4^:docs/parameterized-input-conversion.md`.
+
+That coverage is also what settles the slot-order question, which is worth
+recording because the two look connected and are not. The `{Xi}` placeholders
+must be emitted in ascending order, and `_embed` does that by construction, so
+every table solved at its *full* arity is in order for free — AND3, XOR3 and
+majority all emit `{X0}{X1}{X2}`, verified. The violation came only from the
+projection path, where a table ignoring some inputs is solved smaller and the
+ignored placeholders are appended. So the n=3 coverage was never the debt, and
+swapping to a reading generator would not have discharged it — a reading
+generator emits no placeholders, so it is *exempt* from the invariant rather
+than satisfying it, while losing every n=3 orbit.
+
+The debt is now closed, and the route that closed the last of it is worth
+recording because the obvious one fails. Relocating an ignored placeholder
+does **not** work: a fill writes the live tape, so moving the trailing fills
+to the front makes 2 rows wrong at n=2 and 6 at n=3. Solving at full arity
+covers most tables. The remainder — `01010101` and `10101010`, the
+projections onto the *last* input, whose answer stands in no cell after the
+embed under either separator — are built by emitting the ignored setters
+**first** and then reconverging: a searched suffix drives every row to one
+identical state, after which nothing downstream can tell which bits they
+were, and the table is a one-input problem in its single essential input.
+Walking to `_BASE - 1` before that setter reproduces the standard embed
+geometry, so the answer lands on the cells `_DEGENERATE_CELLS` already names
+and the fixed-cell lookup finds it in ~0.1s.
+
+The reconvergence is to a common **non-blank** state, and it has to be: a
+blank tape is unreachable, since the all-ones row ends a cell to the right of
+the others and `<` clamps without writing. Aiming at a blank tape finds
+nothing; aiming at agreement finds a suffix at length 12.
+
+The original argument is kept below, as a record of what was believed and of
+exactly which step failed.
 
 The two-input limitation is structural: the decode suffix flips the pool LSB
 only when the pointer sits at cell 7, and `[`'s skip always maps bit 0 to
@@ -71,10 +137,188 @@ length 14 finds none, and a re-verification search to length 34 still finds
 none).  The n == 4 walker stage additionally cannot reach the 8 distinct
 pointer positions a third bit needs.  The single-input case is *not*
 0-preserving-bound (a re-verification found NOT and const-1 at lengths
-17-18), so the generator covers the four one-input functions plus the
-0-preserving two-input tables, and nothing past `n == 3`.
+17-18), so a *reading* generator covers the four one-input functions plus
+the 0-preserving two-input tables, and nothing past `n == 3`.
 
-## 123 (four one-input functions)
+What parameterizing changes is the input path, and with it the orientation
+argument: the bits are embedded as `[<`/`xx` rather than decoded, so the
+decode suffix never runs and the pointer orientation it fixed is free.  The
+generator computes the table in cells past the pool, relays the answer into
+the *pointer* (values cannot travel left in this language, but the pointer
+can), and prints one ASCII digit.  Two facts make the last step work: the
+printed digit is `NOT(v XOR cell7)` for accumulator value `v`, and every
+pool the walk-and-clamp fix can reach conserves `v XOR cell7` — so the free
+variable is the **read polarity**, not the pool.  Alongside `[<`, which
+leaves the pointer at `(acc-1) + v`, `[x<[<` leaves it at `(acc-1) + NOT v`
+while restoring the cell, and swapping the two flips the printed digit.  That
+is what makes a table printable whenever its complement is.
+
+Five apparent walls found on the way here were artifacts of how the question
+was asked, and each cost a round to re-derive:
+
+- **Searching on blank scratch.**  Pointer spread is pinned at 1 on an
+  all-zero tape (exhaustive to length 10), which makes a width-doubling stage
+  look structurally impossible.  It is not: with the scratch pattern as a free
+  parameter, stages are found readily.  A negative on blank scratch proves
+  nothing about the language.
+- **Launching a joint search from a clamped origin.**  A depth-`d` search from
+  pointer 0 touches only cells `<= d`, while the first input-dependent cell is
+  at 16 — so every reachable state is input-*independent* and a non-constant
+  target can never appear in the window.  Four searches failed on this alone,
+  each looking like a separate negative.  Launch from the frontier, with the
+  pointer already in the data.
+- **Reading a fixed cell index while the rows are diverged.**  Divergence is
+  the branch mechanism *and* it desynchronizes the machines: one emitted
+  instruction lands on different cells in different rows, so bookkeeping keyed
+  to a cell number is wrong from the first test onward.
+- **Demanding too much of one gadget.**  A "converging deposit" (`acc ^= s`
+  with the pointer converged *and* clean residue) does not exist across ~2400
+  states achieving the deposit — and neither condition is needed, since `<`
+  reconverges for free afterwards.
+- **Chasing a pool the walk-and-clamp fix cannot reach.**  Two patterns were
+  recorded as unreachable; both were limits of that fix's *shape*.  A direct
+  search over `<[x` finds `0011000|0` at depth 16.
+
+Two constructions were also ruled out for real, and should not be revisited:
+fixed **width-2 stage chains** reach only 88/256 tables at `n == 3`
+(majority-of-3 is unreachable) and 520/65536 at `n == 4`, so they cannot be
+total however good the gadgets; and **harvesting** — sweeping embed variants
+for a table that lands in a cell — finds all 16 at `n == 2` but 105/256 at
+`n == 3`, making it a shortcut rather than a totality argument.
+
+### Why the symmetry group does not collapse the cases
+
+The sixteen two-input tables fall into four orbits under the natural group
+(permute inputs, negate inputs, negate the output), and it is tempting to
+build one construction per orbit and transform.  Enumerating *every* program
+for each table -- rather than taking the search's first hit -- shows why that
+does not work here.
+
+Two of the four orbits are handled: the degenerate one has a closed form, and
+of the eight AND-like tables, four (`0001`, `1000`, `1110`, `0111`) print
+straight from the embed at cells 20-21.  The other four (`0010`, `0100`,
+`1101`, `1011`) admit **no** direct solution at all, and neither do the two
+XOR-like tables.
+
+Each hard table is a solvable one with an input negated, so the group
+relates them --- but taking that route would move the computation out of the
+language.  Negating an input means the harness fills `{Xi}` with the
+*complement* of its bit, so the emitted program no longer computes the
+requested table; it computes a different one the caller pre-transformed for
+it.  That is the same objection the removed `{Ci}` placeholder answers to:
+this package used to offer an embedded complement and dropped it, because a
+generator should derive a complement *at runtime from its own `{Xi}`* --- as
+`nocomment` does with its `s`-as-NOT gate --- or do without.
+
+Input *permutation* carries no such problem: reordering which placeholder is
+emitted where is entirely inside the template.  It was tested, and reaches
+none of the six.
+
+What the enumeration does explain is *why* those six are hard, and it is not
+for want of complements.  Listing what each cell computes: separator
+`[x<[x` leaves the six degenerate functions (`const0/1`, `b0`, `~b0`, `b1`,
+`~b1`), and separator `[x[x[x` leaves NOR, XOR and AND.  The four hard
+AND-like tables are the *mixed-polarity* conjunctions -- `b0 AND ~b1` and its
+relatives -- and no cell holds one under either separator, even though both
+literals do.  They are reachable by the column search from the frontier, at
+park `_BASE`, but only when the *exact* polarity is targeted: `_find_column`
+accepts the target or its complement, and the pool walk transforms the column
+between the search and the read, so a complement hit is not interchangeable
+with the target one.
+
+So the orbit structure is real and mostly useless.  What survives is the
+degenerate case, which composes upward because a table with `k` essential
+inputs is a `k`-input problem at any arity, and that one is built.
+
+### What stops the remaining three-input tables
+
+Mapping the fourteen `n == 3` orbits one representative at a time: eight
+build (the four degenerate ones instantly, then AND3, majority, parity and
+one more), and six do not.  The six are not failing for want of a computable
+answer, which is what makes them worth recording.
+
+For every one of the six, the exact-polarity column search *finds the answer
+column* -- at park `_BASE`, usually in cell 23, in a couple of seconds.  The
+column is correct there, and it survives both the clamp and the pool fix.
+What it does not survive is the journey to an accumulator the endgame can
+read.  Tracked cell by cell for `00011000`: the column reads `00011000` after
+the pool fix and `10000010` after the walk out, and at the far end 31 of the
+45 candidate accumulators hold the *same* value, `01111101`, with none
+holding the target.
+
+So the walk homogenizes the tape.  That is the prefix-XOR law acting over a
+long crossing --- each step folds the running parity into the next cell, and
+after enough steps the distinctions that made the columns different are gone.
+Placing the column at or past the accumulator does not help (tested on all
+six): the walk that sets up the read is what does the damage, so the answer
+cannot simply be put out of its way.
+
+The endgame's requirements are all *met* here --- the pool is settable, the
+pointer converges, cells 0..7 stay input-independent.  Nothing errors.  The
+answer is computed and then washed out in transit, which is a different
+problem from the ones above and would need a way to read a cell without
+first walking to it.
+
+### The termination convention is not an option here
+
+Point Break's boolean generator sidesteps having no output by halting for a
+0 and looping for a 1, and that convention would suit the obstruction above
+exactly: it consumes the answer *where it stands*, with none of the transit
+that washes the column out.
+
+Minifuck cannot use it.  The instruction pointer is only ever incremented --
+once in `[`'s skip branch, once at the end of `step` -- with no decrement, no
+assignment and no jump anywhere in the interpreter, so every program halts
+within `len(code)` steps.  "Loops forever" is not a reachable state, which
+makes the convention unavailable rather than merely unattractive.  Confirmed
+over 4000 random programs: none failed to halt, and the step count never
+exceeded the program length.
+
+This is also why the language needs no hang detector, and why the
+`run_until_halt_or_cycle` machinery that makes the convention testable
+elsewhere has nothing to detect here.
+
+### Where a construction would have to start
+
+The shipped generator is a search, and searches are what this repo replaces:
+`wii2d` was a capped search before it became a Horner index chain plus a fold
+decode, and `bfpda` is a closed-form tree at any arity.  Minifuck has the
+property that makes wii2d's shape plausible here — values cannot travel left,
+so the answer must arrive as a *pointer position*, which is exactly "reduce
+the inputs to one number, then decode it".
+
+Two pieces of that are known, and one is missing:
+
+- **The decode exists.**  The pool-plus-read-polarity endgame turns a
+  position into the printed digit, and covers both orientations.
+- **The first doubling exists.**  A stage taking pointer offset `s` to
+  `2s + b` — Horner's step — is findable on prepared scratch:
+  `[x[<<<<[<` does width 2 to 4.  (On a *blank* tape the pointer spread is
+  pinned at 1, which is why an early search called this impossible.)
+- **It does not compose.**  No width 4 to 8 stage exists over 48
+  configurations at depth 13 — both embed separators at three settle counts,
+  plus an alternating and an all-ones tape, each against six bit-cell offsets.
+  So the chain stalls after the first junction, and a two-input index is all
+  it builds.
+
+And the chain would not be enough on its own, because the two languages
+decode different things.  wii2d's junctions accumulate a *number* and its
+fold decode inverts that number; Minifuck's endgame decodes a *bit* —
+`_walk_to(acc - 1)` wants a converged pointer, and `[<` turns one cell's
+value into the ±1 offset the print consumes.  An index chain would therefore
+need a second construction that does not exist here: a decode from an
+accumulated *position* back to a cell the endgame can read.  Both pieces are
+missing, not one.
+
+The other candidate mechanism — chaining `[<` reads across planted
+indicators, so disjoint minterms accumulate into the pointer — is **disproved**
+rather than merely unfound.  `[<` sets the cell to its *right*, and the pad
+walk between reads carries that residue forward, so the second read reads the
+first read's debris rather than the planted indicator.  A sweep of every gap
+1..9 at chain lengths 2 and 3 found no layout that accumulates the indicator
+sum; guard cells cannot fix it, since the pads write over the guards.
+
+## 123 (parameterized: 8 affine tables built; the rest open)
 
 A decision tree needs the `3` jump, which on a TRUE/FALSE bit jumps to the
 *nearest* preceding/following `3` (not bracket-matched): FALSE always lands
@@ -84,44 +328,258 @@ segment already being executed.  So the only constructible pattern is
 "repeat the region before the `3` while TRUE," never a jump to an
 independent branch target.
 
-Re-examined after the tape was corrected from a single capped byte to
-genuinely unbounded bit storage (see the pointer-cap fix in
-`one_two_three.py`): the wall is not the tape size, it is two mechanisms
-that survive the fix unchanged. First, `1` flips the bit under the pointer
-*before* moving, and a read always resets the pointer to location 0 (the
-byte's MSB); reaching the write position at -2 requires passing through
-location 0 via `1`, so the read result is corrupted en route on every
-attempt — confirmed by tracing a read-then-navigate-to-write program, whose
-output byte differs from the input by exactly its MSB. Second, since a
-`3` that can ever evaluate TRUE must re-run the segment before it, and that
-segment is the only place a second input's read could plausibly follow the
-first's, a TRUE evaluation re-reads stdin and desyncs every input read
-after it — so no read can safely precede a `3` capable of going TRUE.  A
-structured search (400k+ programs built from read/march/jump blocks, not
-raw random characters) found no two-input AND/OR/XOR/NAND/NOR/XNOR under
-either bit-encoding.  The four one-input programs were too trivial to keep,
-so the boolean generator was removed and stays removed.
+**This section previously recorded three mechanisms as walls.  Two of them
+are false and the third is stated too strongly; all three were refuted by
+execution against the shipped interpreter.**  What remains is an *open*
+question, not a wall — no
+two-input witness has been found, but no correct obstruction is known
+either.
 
-**The parameterized case is also walled, on a third mechanism.**  Embedding
-each input at compile time (the WII2D-style convention) does clear both
-mechanisms above -- with no ``,`` there is no pointer-reset corruption and
-no re-read desync -- and it buys real input-dependent behavior the runtime
-case never reached: over templates to length 7 with each ``{Xi}`` placed
-exactly once and a same-width setter (``1`` for a one, an executed no-op
-for a zero), ``{X0}{X1}211`` emits for ``(1, 1)`` and stays silent
-otherwise, an AND.  What blocks a ``'0'``/``'1'`` generator is *output*.
-Location 0 is both the byte's MSB and the only cell the ``-4`` pointer wrap
-returns to, so the tape walk that builds a target byte is the same loop
-that would have to be stopped to print exactly once -- and ``3`` cannot
-stop it, since a TRUE ``3`` re-runs the segment it sits in rather than
-reaching an independent target.  Confirmed against the interpreter: no
-program over ``1``/``2`` to length 8 prints exactly ``"0"`` or exactly
-``"1"``, and every short program that writes byte 48 or 49 does so inside a
-loop that enumerates all 256 bytes, printing each -- the digits are
-incidental to the sweep, not selected.  What survives is emission-vs-silence,
-which is the termination convention (see below), not a printed answer;
-whether that convention covers all 16 two-input tables here is a separate
-assessment, unbuilt.
+**Refuted: "a read is corrupted en route to the write position."**  The
+claim was that `1` flips the bit under the pointer before moving, so
+reaching the write position at -2 from location 0 always corrupts the MSB
+— "confirmed by tracing a read-then-navigate-to-write program, whose
+output byte differs from the input by exactly its MSB."  That trace took
+the shortest path only.  The flip at location 0 has **parity**: the
+`-4 -> 0` wrap lets the pointer lap the negative region, and an even number
+of leftward departures from 0 restores the bit.  `111211111121` is a clean
+echo — input `'A'`, output `'A'`, halt in 13 steps, with the MSB flipped at
+step 5 and flipped back at step 9.  Reads reach the write position intact.
+
+**Refuted: "no `1`/`2` program prints exactly `'0'` or `'1'`."**  The
+original sweep stopped at length 8.  Both digits are printable: `'0'` at
+length 14 (`12212221111121`) and `'1'` at length 28
+(`1221222212212212211111111121`), each verified to print exactly one
+character and halt cleanly — not a 256-byte sweep with an incidental digit,
+as the section claimed.  In fact **every** byte 0-255 is printable.  That is
+settled exactly rather than by length cap: with no `3` a program is
+straight-line, so the reachable configurations are a finite graph over
+(pointer, bits at 0-7), and BFS over its 5120 states reaches all 256 output
+values.  This is the same failure mode already
+recorded for %^2^-1's NOT — a length-bounded sweep stopping short of where
+constant-building finishes.
+
+**Overstated: "the only constructible pattern is repeat-the-region, so no
+useful selection exists."**  The description of `3` is accurate — TRUE jumps
+back past the previous `3`, FALSE skips forward past the next one — and the
+claim that a jump to an *independent* branch target is unreachable also
+holds up.  What does not follow is that nothing can be selected.
+Substitution selects between two different outputs without any independent
+branch target: `113{X0}1213`, instantiated with `2` for a one and `1` for a
+zero, prints `'@'` (byte 64) for an embedded 0 and `'\x80'` (byte 128) for a
+1 — both instantiations length 8, so nothing leaks through `len()`, and both
+halt cleanly.
+
+The mechanism is *not* a forward skip, and the distinction matters because
+this section's failure history is mechanisms asserted without tracing.
+Tracing both instantiations shows that for the one-bit the
+substituted `2` lands at pos -2 and is itself the write, printing on the
+first pass with every `3` a no-op below location 0; for the zero-bit the
+substituted `1` shifts the pointer phase so that the `3` at ip 7 evaluates
+at pos 0 on a TRUE bit and jumps *backward*, and the write fires on the
+second pass with a different byte.  So the selection rides on pointer-phase
+divergence plus exactly the repeat-the-region pattern the old text named —
+which is enough, because the two passes write different bytes.  Whether a
+FALSE-forward skip is separately usable is untested.
+
+Two further mechanisms the prose treated as exhaustive were also missed:
+`3` is a control-flow no-op at `pos < 0` (it still shifts instruction
+positions, which is what desynchronizes naive splices), and a program
+ending with `pos >= 0` restarts from ip 0 with the tape intact and the input
+cursor advanced, so one `2` at -3 can read a different byte on each pass.
+
+The narrower re-read claim does survive in weakened form: a TRUE `3` re-runs
+only back to the *previous* `3`, so a read placed before that `3` is never
+re-executed — the desync applies within a segment, not to every read in the
+program.
+
+**The parameterized case reaches the eight affine tables, by construction.**
+The setter is the load-bearing choice.  A one-character setter (`1` for a
+one, `2` for a zero) displaces the pointer by -1 and +1, so instantiations
+drift apart by bit *count* and never print together — an earlier pass here
+mistook that for a property of the language.  The two-character setter `12`
+(one) / `21` (zero) is displacement-*neutral*: both return the pointer to
+where they started, so every instantiation stays in position lockstep and
+they differ only in which cell was flipped (`12` flips the current cell,
+`21` the one to its right).
+
+With that setter the construction needs no search.  Nine `1`s from location
+7 reach the write position, flipping locations 7..0 on the way, so the tape
+must hold `target XOR 0xFF` beforehand — 0xCF prints `'0'`, 0xCE prints
+`'1'`, and the two differ only at location 7 (the byte is MSB-first, so
+location `i` is bit `7 - i`).  Embedding an input *at* location 7 makes its
+bit toggle the answer; embedding it past location 8 makes it inert, since
+`byte()` never reads there.  The reachable set is therefore exactly
+`c XOR (subset of the inputs)`: const0, const1, b0, b1, NOT b0, NOT b1, XOR
+and XNOR, all eight verified against the shipped interpreter in
+verified against the interpreter, each input embedded exactly once and every
+instantiation the same length.
+
+**The other eight need `3`, and remain open.**  Flipping is XOR, so a
+straight-line `1`/`2` program is affine by construction and AND/OR/NAND/NOR
+and their relatives are out of reach — confirmed by a lockstep search over
+567 paired-setter embeds, which finds the affine tables and nothing else.
+`3` is the way out, since it is what makes the length-7 selector above
+input-dependent.  Whole-template evaluation for `3`-bearing candidates is
+built; what follows are two facts worth keeping,
+neither of which closes the question.
+
+**A `3` never falls into the segment after it.**  At `pos >= 0` a `3` either
+jumps back past the previous `3` or forward past the next one, so the body
+between a `3`-pair is entered only when the opening `3` is a NOP — which
+requires `pos < 0` — or by the second `3`'s backward jump.  Guards placed in
+the walk home therefore sit at `pos >= 0` and are **dead code**: instrumented
+runs show their bodies executing zero times across all four rows, while the
+working selector's body executes 4–8 times because it reaches its first `3`
+at `pos == -2`.  Four separate guard sweeps
+here returned nothing for exactly this reason, and none of them is evidence
+about the language.
+
+**Reconvergent guards stay affine.**  If a guard's TRUE and FALSE paths
+rejoin at the same cursor *and* the same pointer, its whole contribution is
+`t · (difference in flips)` for the tested cell `t`; `t` is affine in the
+inputs, so the tape stays affine and no arrangement of such guards can build
+AND.  Escaping that needs the two paths to exit at *different pointer
+positions*, so later code reads a cell selected by the first bit — the
+pointer carrying the indicator that tape XOR cannot.  A two-channel design
+along those lines (`{X0}` with the ±1 setter so position encodes b0, `{X1}`
+with the neutral pair so tape encodes b1, guard entered from below zero) has
+live guards and genuinely divergent rows, but found no non-affine table over
+2340 templates — and that sweep's coverage is thin, since a classification
+of the same space shows the overwhelming majority of candidates disqualified
+by a hang or a read before their table matters.
+
+**The non-affine operator is conditional re-execution, and it collides with
+termination.**  Flips are XOR, so no arrangement of them leaves the affine
+class however it is routed; the one operator in 123 that is not a flip is a
+TRUE-backward `3`, which *re-runs* its segment.  Put the `{X1}` setter
+inside that segment and its flip executes a number of times that depends on
+the guard cell — b0 = 0 runs it once (cell holds b1), b0 = 1 runs it twice
+(cell holds 0), i.e. `b1 AND NOT b0`, a genuine minterm from which the
+affine endgame reaches the whole AND/OR class.
+
+The mechanism is real and abundant: 74 of 90 layouts in one family have an
+input-dependent re-execution count, and `132{X0}1{X1}3` re-executes only on
+row `11`.  What blocks it is exit, in **two** distinct modes
+in two distinct modes.  A row reaching the closing `3` at `pos >= 0`
+either tests TRUE and backjumps, or tests FALSE and skips forward off the
+end — and falling off the end with `pos >= 0` restarts the whole program
+with the tape intact.  Row `01` of the example does the latter six times
+running; row `11` alternates the two.  Only a closing `3` reached at
+`pos < 0` is a NOP, falls through, and lets the row halt.
+
+So a terminating, diverging guard needs the segment to deliver `pos >= 0`
+on pass one and `pos < 0` on pass two.  Pointer motion in `1`/`2` does not
+depend on the tape, so a segment's position map is a fixed translation
+*except* across the `-4 -> 0` wrap — which means for wrap-free segments the
+position at the closing `3` is pass-invariant and the joint condition is
+impossible by construction.  That is why a cross-tabulation of 1560
+wrap-free layouts finds 744 that diverge but never halt, 220 that halt but
+never diverge, and **none that do both**.
+
+Wrap-crossing segments do have pass-dependent maps — `1111` sends 5 to 1
+and 1 to -3 — but 288 such layouts still yield
+nothing, and the geometry says why.  Under `1` the positions `0, -1, -2, -3`
+form a **4-cycle**, so a row that drops below zero circles rather than
+settling, and the closing `3` alternates NOP and test with period 4.  The
+only rightward escapes from that region are `2` at `-3` (reads stdin, fatal
+for a parameterized program), `2` at `-2` (prints, and the endgame gets one
+shot), and `2` at `-1` (the sole free exit).
+
+**Under the termination convention the ceiling breaks, and the new bound is
+monotonicity.**  All of the above is about a program that *prints* its
+answer.  The halt-vs-loop convention already accepted here for ArrowQueue
+and Point Break (halt = 0, loop = 1, and output is not consulted) does not
+need the endgame at all, and the re-execution guard supplies exactly the
+input-dependent divergence it wants.  `13{X0}{X1}3` — seven characters per
+instantiation, all the same length — halts only on row `00`, which is
+**OR**, a non-affine table.  It is decided by
+`esolangs.vm.run_until_halt_or_cycle`, the same state-cycle detector the
+repo uses for Point Break, so the loops are proved by state revisit rather
+than assumed from a fuel cap.
+
+Two things make that work, and they are worth separating.  The answer is
+not a cell read: every tape cell ends as a fixed XOR of the setters that
+touched it, so the reachable cell patterns are affine and `(0, 0, 0, 1)` —
+an AND indicator — never appears among them.
+What the guard actually decides is *where the pointer is* when the closing
+`3` is reached, tested once per pass; tracing the OR witness shows row `00`
+arriving at `pos -1` (a NOP, so it falls through and halts) while the other
+three arrive at `pos 0` and re-enter.  A verdict
+accumulated over passes is not a single affine read, which is how the route
+escapes the affine bound that caps printing.
+
+It has its own ceiling instead.  How many passes a row makes is decided by
+the bits under the guard, where a *set* bit can only add a pass and never
+remove one, so the looping set is upward-closed and the computed table is
+**monotone**.  Surveying 1428 templates of the family
+bears that out exactly: five distinct tables, all monotone — const0,
+const1, OR, b0, b1 — and not one of the ten non-monotone tables
+across 1428 templates.  XOR, XNOR, NAND,
+NOR and every negated table are predicted out of reach on this route by the
+mechanism rather than by search exhaustion.
+
+AND is the sixth monotone table and the only one unreached, and the cell
+analysis says why it is harder than its monotonicity suggests: AND needs
+the extra pass to appear only when *both* bits are set, but a guard reads
+one cell at a time and no cell is an AND indicator.  It would have to come
+from the interaction of several passes rather than from any single test,
+which is a different construction than the one-guard family swept here.  So
+AND is neither reached nor ruled out.
+
+So the two routes are complementary and both bounded: printing reaches the
+eight **affine** tables, termination the **monotone** ones.  They overlap on
+const0, const1, b0 and b1, so the verified union is **9 of 16**
+— XOR and XNOR come only from printing, OR only
+from termination.  The seven still unreached are AND, NAND, NOR, both
+`AND NOT` tables and both `OR NOT` tables; of those only AND is monotone,
+so only AND is predicted reachable without a third construction.
+
+Complementation does not close the gap either.  The printing route's answer
+digit is set by the prologue constant (0xCF prints `'0'`, 0xCE prints
+`'1'`), which is why its reachable set is closed under complement — but that
+maps affine tables to affine tables and adds nothing.  Of the seven
+missing, six have complements that are *also* missing; the exception is NOR,
+whose complement OR the termination route does build.  NOR still cannot come
+from that route: it loops on row `00` alone, so its looping set is not
+upward-closed, which is exactly what the monotonicity argument forbids
+forbids.
+
+**So the generator is not total at `n == 2`.**  That is the bar
+`docs/limitations.md` records for the 2dFish removal — "affine-only with no
+total once-embedding construction" — and 123 clears the first clause
+without clearing the second.  What keeps 123 in the repo is unrelated and
+untouched: unlike 2dFish, whose generator floor was a literal-embed in
+disguise, 123's text generator is genuinely computational (a running XOR
+across characters, emitting only per-character bit differences).
+
+That also corrects the impossibility sketch this section might invite.
+Position maps in `1`/`2` are tape-independent, which suggests rows entering
+a segment together must leave together and so share a halt verdict — but a
+row taking an extra pass has executed a different number of moves by the
+time it next reaches the closing `3`, and there are
+guards whose rows genuinely split on halting.  The printing route is still
+capped at the eight affine tables; the termination route is not, and how
+much of the remaining space it covers is a live question rather than a
+wall.
+
+**What is actually open.**  No *runtime* two-input table has been produced.  The exhaustive runtime sweep run here is uninformative and is
+not cited as evidence: the shortest program that can satisfy the contract at
+all is the length-12 echo (one read costs 4 characters, a parity-safe print
+7, the halt 1), and a genuinely two-input program needs a second read, so any
+sweep capped below that floor returns zero by construction rather than by
+obstruction.  Exhaustive search past ~15 characters is not feasible in
+Python, and the digit-valued selector a generator needs is plausibly ~30,
+since `'1'` alone costs 28; a sweep of one-input templates ran
+fully through length 8 and found none, which is far below that estimate and
+so decides nothing.  Closing this needs the Minifuck playbook
+(74f1ee6) — emit a template and lockstep-simulate all `2**n` instantiations,
+accepting only a program seen to print the table — not a longer brute-force
+sweep.  Until then the honest status is **open, with the prior arguments
+withdrawn**.
+
+The four one-input programs were too trivial to keep, so the boolean
+generator was removed; that decision is unaffected.
 
 ## RAM0, Bitdeque, Minsky Swap (parameterized template blocked — resolved)
 
@@ -353,11 +811,58 @@ linear scan rather than a genuine representation limit.  See
 
 ## Assessed boolean candidates that fell through
 
-- **%^2^-1** (wall at `n >= 2`, proved in Lean): its only control flow is
+- **%^2^-1** (wall at `n >= 2`, proved in Lean — **resolved by
+  parameterizing**): its only control flow is
   `t` — rewind to the program start when the accumulator is nonzero — with
   the accumulator preserved across the rewind.  There is no forward jump and
   no way to branch over code, so a program cannot route two inputs to
   different tails.
+
+  **The wall below is real, and it is a statement about the *runtime-read*
+  model.**  It does not carry over to embedded inputs: the parameterized
+  generator (:func:`esolangs.tools.boolean.pct_squared_minus_one`) builds
+  every two-input table, XOR and XNOR included, each verified through the
+  shipped interpreter at a single instantiation length so no program leaks
+  its inputs through `len()`.  The original argument is kept because it
+  remains true of the language it describes.
+
+  What parameterizing changes is the input path, and with it the erasure the
+  proof turns on: no `n` ever runs, so nothing overwrites the accumulator
+  and the "state at the last read depends on the last bit alone" step has no
+  object to apply to.  The construction needs *no branch at all*, which is
+  what lets it fit a language whose only jump target is position 0.  Three
+  properties carry it, each checked against the interpreter rather than
+  argued from the spec: `l` prints the accumulator in **decimal**, so an
+  accumulator holding 0 or 1 prints `"0"`/`"1"` and the answer never has to
+  be routed to a print site; command strings compose as affine maps
+  (`p` negates, `'` zeroes, `m` doubles, `s`/`i` translate), so chaining one
+  per input makes the accumulator a *product-weighted* — genuinely
+  nonlinear — function of the bits; and the over-3003 reset fires before
+  every command, an implicit comparator the endgame uses to fold a parked
+  zero-class onto 0.
+
+  The nonlinearity is the load-bearing part.  A purely *additive* weighting
+  gives each row a distinct consecutive value, and every affine-plus-clamp
+  tail is then monotone in the row index, so `{00, 11}` can never be split
+  from `{01, 10}` — a 3M-vector BFS over that family reaches only the two
+  constant tables.  A later `p` negating what earlier bits contributed is
+  what breaks the monotonicity and reaches XOR.
+
+  **The generator derives its programs; it does not search for them.**  For a
+  fixed value of input 1 the accumulator is affine in input 0, so the slope
+  input 1's setter must apply is read straight off that column of the table
+  (`+1` where it rises with input 0, `-1` where it falls).  Choosing the two
+  accumulator values the answers land on then *forces* both offsets, so a
+  column whose rows disagree about the offset is simply not realisable that
+  way.  What is left to enumerate is structural and tiny — the two constants
+  input 0 contributes, and the class-value pair.  An earlier version swept
+  setter assignments (`len(options) ** (2n)`, budget-capped); the derivation
+  replaced it outright, matching or beating it on every table and needing no
+  budget.  Coverage is total at `n <= 2`, a one-input table being derived as
+  the two-input table that ignores its second input.  Higher arities are
+  rejected: the derivation reads one slope per column of a two-input table
+  and does not generalise, so the generator *raises* rather than emitting a
+  program that computes the wrong function.
 
   **All four one-input functions are expressible**, which an earlier
   length-8 search missed: identity is `ne`, the constants go through `'`,
@@ -384,20 +889,89 @@ linear scan rather than a genuine representation limit.  See
   `Lean.ofReduceBool` (so no `native_decide`).  The Lean `stepCmd` was
   differentially tested against the shipped interpreter over 44,280
   program/input pairs with zero mismatches.
-- **The Temporary Stack**: the auto-drain is the only output, and it prints
-  `front - 1` for the *oldest* stack element when `sum(rest) / 2 > front`.
-  An input-dependent `'0'`/`'1'` (48/49) output therefore needs the input to
-  select a 49/50 constant, but the only value-to-length conversion — the
-  front element popping — requires `front < input / 2 < 24`, so the front is
-  at most 24 and prints garbage, while the raw input at the front prints
-  `input - 1` (47/48).  Neither is a `'0'`/`'1'`.  Exhaustive search to
-  length 5 finds no identity or NOT program, and `\` (while nonempty) never
-  terminates except via the fixed 15-command stack reset, so there is no
-  input-dependent branch either.  The language was removed: its text
-  generator is a literal-embed (the text is pushed as a `*` string literal)
-  and, with the boolean generator walled, it had no computational generator
-  to stand on — see the tightened generator-story criterion in
-  `docs/limitations.md`.
+- **The Temporary Stack** (**this entry's argument is refuted; the removal
+  should be revisited**).  The entry read: the auto-drain is the only output
+  and prints `front - 1` for the oldest element when `sum(rest) / 2 > front`,
+  so an input-dependent `'0'`/`'1'` needs the input to select a 49/50
+  constant, which no value-to-length conversion can reach; and `\` never
+  terminates except via the 15-command reset, "so there is no
+  input-dependent branch either."  Both halves are false, checked against
+  the interpreter restored from `06687a2^`.
+
+  **There is an input-dependent branch: the drain condition itself.**  The
+  entry considers only the `\` and `:` loops and the fixed reset, but
+  `sum(stk[1:]) / 2 > stk[0]` is evaluated against stack *values*, so an
+  input byte in the tail decides whether the drain fires at all.
+  `o v49 @ v50` prints `'0'` for input `'1'` and stays silent for `'0'` —
+  input-gated emission under the standard `'0'`/`'1'` encoding, no
+  re-encoding needed.  It is a real comparator, not a coincidence of two
+  constants: sweeping the trailing constant over 48-52 matches the
+  prediction from `(input + tail) / 2 > front` on all ten cases, with `v50`
+  discriminating and `v48`/`v52` pinned false/true
+ .  Emission-vs-silence is the
+  termination-based convention documented above, under which ArrowQueue and
+  Point Break are generators.
+
+  **And the printed answer does not need a 49/50 constant.**  In numeric
+  mode the drain prints the *number* `front - 1` as text, so a front of 1 or
+  2 prints the character `'0'` or `'1'` directly: `v1 v99` prints `'0'`,
+  `v2 v99` prints `'1'`.  The premise that the answer must arrive as byte
+  48/49 through `chr()` is what made the value-to-length conversion look
+  necessary.
+
+  In byte mode (`o`; note `O` is the *numeric* mode in this interpreter)
+  `o @ v999` is a three-word identity printing exactly `'0'` or `'1'` and
+  halting — reading its bits as `'1'`/`'2'`, since the drain's `front - 1`
+  shifts the alphabet down.  A per-language input alphabet has precedent:
+  Grapheme's generator reads `%`/`A` for the same kind of reason
+  (`tests/tools/boolean_runners.py`).
+
+  **Two inputs reach 9 of the 16 tables.**  The input convention matters:
+  `@` consumes one *line* and pushes every character's byte code, and the
+  language's own tests drive it with one line per `input()` call, so a
+  two-bit program uses two `@` words.  Under that convention and the
+  emission convention, nine tables come out by length 5 — const0/const1,
+  AND (`v49 @ @ v1`), OR (`v48 @ @`), b0 (`v96 @ + @ v47`),
+  b1 (`v96 @ @ + v47`), NOT b0 (`@ @ v49`), `b1 AND NOT b0` (`@ @ +`) and
+  `NOT b0 OR b1` (`@ @ v50`), swept to length 5.
+
+  Every gate has the form `(w0·b0 + w1·b1 + C) / 2 > front`, with `front`
+  either a constant or b0 itself.  `+` duplicates the *top*, so which
+  weights are free depends on when each bit is read: if both bits arrive in
+  one line b1 always lands above b0 and b0's weight is pinned at 1, but with
+  one bit per line `@ + @` duplicates b0 while it is still on top and frees
+  it.  (A length-4 multiline sweep missed this and made b0 look unreachable;
+  the witness is at length 5.)
+
+  **The seven missing tables split into two causes, one of them a real
+  wall.**  `NOT b1`, `b0 AND NOT b1` and `NOT b1 OR b0` need b1 negated,
+  i.e. b1 at the front of the comparison, which it cannot reach without b0
+  popping first — and that pop emits.  Reading the bits in the other order
+  would move this; whether the contract allows a generator to choose its
+  input order is a separate judgement, not assumed here.
+
+  NAND, NOR, XOR and XNOR need an input-gated *silent* death, and none
+  exists.  A death occurs when a popped value leaves byte mode's
+  `0 <= n <= 0x10FFFF` range, and it is silent only at depth 1, since any
+  deeper pop prints the values above the killer on the way down — and under
+  emission-vs-silence a printing death is an emission.  But a depth-1 kill
+  needs `front <= 0`, which makes its condition `sum(tail) / 2 > 0`, true
+  on every row once input has landed.  So every death is either
+  input-independent or noisy, confirmed both ways in
+  confirmed both ways.  Inversion via the 15-word reset was built and
+  works mechanically (`comm % 15 == 0` clears the stack, confirmed at pad 10
+  at pad 10), but with no silent gate to invert it adds no
+  tables.
+
+  So the language supports a *partial* generator of roughly ArrowQueue's
+  threshold class, not a total one.  The entry's "exhaustive search to
+  length 5" is still neither confirmed nor contradicted — it does not say
+  whether length counts characters or words, and these sweeps were over
+  words.  What is settled is that the two structural claims the removal
+  rested on are both wrong, so the language was removed on a bad negative;
+  whether a partial generator clears the bar is a separate judgement, and
+  the removal's other ground (the literal-embed text generator, see
+  `docs/limitations.md`) is untouched.
 - **WII2D**: the accumulator never affects control flow (`^v<>` set the
   direction, `@` jumps unconditionally to the closest `@`), so there is no
   value-testable branch to route a decision tree on.  **Resolved by the

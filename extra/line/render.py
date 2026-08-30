@@ -40,12 +40,7 @@ import itertools
 import sys
 from dataclasses import dataclass, field
 
-try:
-    from PIL import Image, ImageDraw
-except ImportError as _exc:  # pragma: no cover - environment guard
-    raise ImportError(
-        "Rendering Line programs requires Pillow: pip install Pillow"
-    ) from _exc
+import png
 
 # One grid unit in output pixels.  The wiki's own images use roughly this
 # scale for a single straight run between kinks.
@@ -845,14 +840,108 @@ def _layout(
     cursor.finish()
 
 
-def _arrowhead(
-    draw: ImageDraw.ImageDraw, y: float, x: float, heading: tuple[int, int]
-) -> None:
+class Canvas:
+    """An 8-bit greyscale raster with the two drawing primitives Line needs.
+
+    Line drawings are 1px strokes plus one small filled triangle, so this is
+    Bresenham and a scanline fill over one ``bytearray`` per row -- the
+    shape :mod:`png` writes directly -- rather than anything general.  What
+    matters is not matching a particular graphics library pixel-for-pixel
+    but that :mod:`extract` can read the result back: strokes
+    stay exactly 1px wide (:func:`extract.detect_scale` infers the drawing's
+    scale from that), and the arrowhead stays the only region thick enough to
+    survive an erosion, with a fill ratio inside
+    :data:`extract._FILL_RATIO_RANGE`.
+    """
+
+    def __init__(self, width: int, height: int, colour: int = 255) -> None:
+        """Create a ``width`` x ``height`` canvas filled with ``colour``."""
+        self.width = width
+        self.height = height
+        self.pixels = [bytearray([colour]) * width for _ in range(height)]
+
+    def line(self, points: list[tuple[float, float]], colour: int = 0) -> None:
+        """Stroke a 1px-wide polyline through ``points`` given as ``(x, y)``."""
+        for (x0, y0), (x1, y1) in itertools.pairwise(points):
+            self._segment(round(x0), round(y0), round(x1), round(y1), colour)
+
+    def _segment(self, x0: int, y0: int, x1: int, y1: int, colour: int) -> None:
+        """Bresenham's line algorithm, plotting one pixel per step."""
+        height, width = self.height, self.width
+        dx, dy = abs(x1 - x0), -abs(y1 - y0)
+        step_x = 1 if x0 < x1 else -1
+        step_y = 1 if y0 < y1 else -1
+        error = dx + dy
+        while True:
+            if 0 <= y0 < height and 0 <= x0 < width:
+                self.pixels[y0][x0] = colour
+            if x0 == x1 and y0 == y1:
+                return
+            doubled = 2 * error
+            if doubled >= dy:
+                error += dy
+                x0 += step_x
+            if doubled <= dx:
+                error += dx
+                y0 += step_y
+
+    def polygon(self, points: list[tuple[float, float]], colour: int = 0) -> None:
+        """Fill the polygon through ``points`` given as ``(x, y)``.
+
+        A scanline fill: for each row crossing the shape, find where its edges
+        cross that row's centre and paint between consecutive crossings.  The
+        outline is stroked too, so a triangle thinner than a pixel in places
+        still comes out connected rather than dotted.
+        """
+        height, width = self.height, self.width
+        ys = [y for _, y in points]
+        for row in range(max(0, int(min(ys))), min(height, int(max(ys)) + 2)):
+            centre = row + 0.5
+            crossings = []
+            for (x0, y0), (x1, y1) in itertools.pairwise([*points, points[0]]):
+                if (y0 > centre) != (y1 > centre):
+                    crossings.append(x0 + (centre - y0) / (y1 - y0) * (x1 - x0))
+            crossings.sort()
+            for left, right in zip(crossings[::2], crossings[1::2], strict=False):
+                start = max(0, round(left))
+                stop = min(width, round(right) + 1)
+                if stop > start:
+                    self.pixels[row][start:stop] = bytes([colour]) * (stop - start)
+        self.line([*points, points[0]], colour)
+
+    def upscale(self, factor: int) -> Canvas:
+        """Replicate every pixel into a ``factor`` x ``factor`` block.
+
+        Pixel replication rather than redrawing at a larger grid unit: it is
+        exactly the transform :func:`extract.normalize_scale` exists to undo,
+        so the extractor recovers the original drawing pixel-for-pixel rather
+        than approximately.  Redrawing would move vertices onto a different
+        lattice and change the shape being read.
+        """
+        if factor < 1:
+            raise ValueError(f"scale factor must be at least 1, got {factor}")
+        if factor == 1:
+            return self
+        out = Canvas(self.width * factor, self.height * factor)
+        for y, row in enumerate(self.pixels):
+            wide = bytearray()
+            for level in row:
+                wide += bytes([level]) * factor
+            for k in range(factor):
+                out.pixels[y * factor + k] = bytearray(wide)
+        return out
+
+    def save(self, path: str) -> None:
+        """Write the canvas to ``path`` as an 8-bit greyscale PNG."""
+        png.write_grey_file(path, self.pixels)
+
+
+def _arrowhead(draw: Canvas, y: float, x: float, heading: tuple[int, int]) -> None:
     """Draw the filled triangular cursor marker at (y, x), pointing ``heading``.
 
-    Shape matches the arrowhead isolated from the wiki's reference images via
-    distance-transform (a small filled triangle distinct from the 1px-wide
-    path strokes), scaled to this renderer's ``_UNIT``.
+    Shape matches the arrowhead isolated from the wiki's reference images (a
+    small filled triangle distinct from the 1px-wide path strokes), scaled to
+    this renderer's ``_UNIT``.
     """
     hy, hx = heading
     ly, lx = _turn_left(heading)
@@ -861,14 +950,32 @@ def _arrowhead(
     tip = (x + hx * size, y + hy * size)
     base_l = (x - hx * back + lx * back, y - hy * back + ly * back)
     base_r = (x - hx * back - lx * back, y - hy * back - ly * back)
-    draw.polygon([tip, base_l, base_r], fill="black")
+    draw.polygon([tip, base_l, base_r], colour=0)
 
 
-def render(root: Node, start_heading: tuple[int, int] = (-1, 0)) -> Image.Image:
-    """Lay out and rasterize a Line program, returning a Pillow ``Image``.
+def render(
+    root: Node, start_heading: tuple[int, int] = (-1, 0), scale: int = 1
+) -> Canvas:
+    """Lay out and rasterize a Line program, returning a :class:`Canvas`.
 
     ``start_heading`` defaults to "up", matching every wiki example (the
     cursor starts at the bottom of the drawing and travels upward).
+
+    ``scale`` replicates each pixel into a ``scale``x``scale`` block, giving
+    strokes that many pixels wide; :func:`extract.normalize_scale` divides it
+    back out, so the extracted program is identical either way.  The default
+    of 1 matches the wiki's own images and is right for lossless storage.
+
+    Raise it when the drawing has to survive something lossy.  Measured
+    against JPEG, which quantizes pixels straight out of a stroke, a 1px
+    drawing extracts correctly down to quality 34 and is destroyed by 28; the
+    same program at 2x holds to quality 15, and at 4x to quality 10 -- with
+    the reconstruction *exact* (zero unaccounted ink), not merely tolerable.
+    Thickness is what buys that: a blurred 3px stroke is still a stroke, where
+    a blurred 1px stroke is a gap.  Note this is redundancy at write time, not
+    leniency at read time -- :func:`extract.coverage_gap` stays strict either
+    way, so a drawing damaged past recovery still fails loudly instead of
+    yielding a wrong program.
     """
     # See `_EXTENT_CACHE`: keyed by `id()`, so it must not outlive the nodes
     # it describes.  Clearing per render keeps every cached node reachable
@@ -894,14 +1001,13 @@ def render(root: Node, start_heading: tuple[int, int] = (-1, 0)) -> Image.Image:
         y, x = pt
         return (x - min_x) * _UNIT + margin, (y - min_y) * _UNIT + margin
 
-    image = Image.new("L", (width, height), color=255)
-    draw = ImageDraw.Draw(image)
+    canvas = Canvas(width, height)
     for stroke in cursor.strokes:
-        draw.line([to_px(p) for p in stroke], fill=0, width=1)
+        canvas.line([to_px(p) for p in stroke])
 
     start_px, start_py = to_px((0, 0))
-    _arrowhead(draw, start_py, start_px, start_heading)
-    return image
+    _arrowhead(canvas, start_py, start_px, start_heading)
+    return canvas.upscale(scale)
 
 
 if __name__ == "__main__":

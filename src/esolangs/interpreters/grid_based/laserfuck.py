@@ -84,8 +84,8 @@ class _Machine:
             row += 1
         elif d == 2:
             col -= 1
-        elif d == 3:
-            col += 1
+        else:
+            col += 1  # d == 3, the only heading left
 
         self.pos = (row, col, d)
 

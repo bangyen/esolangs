@@ -287,7 +287,7 @@ def _scan_math(line: str, i: int) -> tuple[_Math, int]:
 def _scan_if(line: str, i: int) -> tuple[_If, int]:
     """Parse ``if(<value>)`` after the ident ``if`` at position ``i``."""
     j = _skip_spaces(line, i)
-    if j >= len(line) or line[j] != "(":  # pragma: no cover - only called with '('
+    if j >= len(line) or line[j] != "(":
         raise ValueError(f"malformed if at position {i}")
     j += 1
     j = _skip_spaces(line, j)

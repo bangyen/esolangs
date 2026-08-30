@@ -209,13 +209,13 @@ def _fill_lamfunc(template: str, bits: list[int]) -> str:
 
 
 def _fill_bitdeque(template: str, bits: list[int]) -> str:
-    n = len(bits)
-    # The register flips after every load block, so bit i is pushed at load
-    # position n-1-i with incoming register (n-1-i) % 2.
+    # The register flips after every load block, and the load pushes the
+    # inputs in name order, so bit i is pushed at load position i with the
+    # incoming register at i % 2.
     return instantiate(
         template,
         bits,
-        lambda i, b: "PUSH INVERT" if b == (n - 1 - i) % 2 else "INVERT PUSH",
+        lambda i, b: "PUSH INVERT" if b == i % 2 else "INVERT PUSH",
     )
 
 
@@ -411,6 +411,42 @@ def _fill_wii2d(template: str, bits: list[int]) -> str:
     )
 
 
+def _fill_minifuck(template: str, bits: list[int]) -> str:
+    """Write each bit at ``ptr+1``: ``[<`` for a one, ``xx`` for a zero.
+
+    ``[`` steps right and flips the cell it lands on, and ``<`` steps back,
+    so ``[<`` leaves a one beside the pointer without moving it.  ``xx`` is
+    two no-ops -- characters outside ``<.[`` are ignored -- so it leaves the
+    cell zero and the pointer likewise unmoved.
+
+    Both spellings are two characters, which is the point: an unequal embed
+    would make the program's *length* a function of its inputs, leaking the
+    very bits it is meant to be evaluating.  The pad is a no-op the language
+    executes rather than one it merely ignores, so a cleanup pass that
+    stripped dead characters could not reintroduce the leak.
+    """
+    return instantiate(
+        template,
+        bits,
+        lambda _i, b: "[<" if b else "xx",
+    )
+
+
+def _fill_pct_squared_minus_one(template: str, bits: list[int]) -> str:
+    """Substitute each bit's setter, named by the template's own header.
+
+    %^2^-1 solves its setters per truth table rather than fixing them by the
+    language, so there is no table-independent spelling of "set input i to
+    this bit" to pass to :func:`instantiate`.  The template carries the two
+    branches for each input in a header, and the generator's own filler
+    reads it -- the same structure-aware arrangement ArrowQueue needs.  Both
+    branches are equal width, so the instantiations share a length.
+    """
+    from esolangs.tools.boolean.pct_squared_minus_one import fill
+
+    return fill(template, bits)
+
+
 def _fill_arrowqueue(template: str, bits: list[int]) -> str:
     # ArrowQueue rebuilds its whole header rather than substituting in place
     return _instantiate_arrowqueue(template, bits)
@@ -532,10 +568,11 @@ def _register() -> None:
             "tape_based.back",
             _fill_back,
             split=True,
-            expected="0 1 0",
+            expected="1 0 0",
             note=(
                 "Back has no output instruction and dumps its tape at halt; "
-                "the answer is cell n, past the n input cells"
+                "the answer is cell n, past the n input cells -- which the "
+                "reorder may hold in either order, so only cell n is pinned"
             ),
         ),
         "bf-pda": _embedded(b.bfpda, "stack_based.bf_pda", _fill_bfpda),
@@ -606,8 +643,11 @@ _register()
 
 # Committed programs that no current generator produces, so they are run as
 # behaviour tests but exempt from the generator-match check.  Minifuck's
-# boolean generator covered the 0-preserving two-input tables and has since
-# been removed; the program is kept as a record of that construction.
+# entry is kept for a different reason than it was written: the language now
+# has a generator again, but that one is *parameterized* and embeds its
+# inputs, while this program reads them at runtime -- the construction the
+# old, removed generator used.  It is the only committed record of that
+# reading model, which `docs/walls.md` still characterizes.
 HAND_WRITTEN: dict[str, tuple[str, tuple[str, ...], str, bool]] = {
     # stem -> (interpreter, inputs, expected, split)
     "minifuck": ("tape_based.minifuck", ("0", "1"), "0", False),

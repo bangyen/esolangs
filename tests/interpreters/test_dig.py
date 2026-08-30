@@ -163,6 +163,54 @@ class TestDigEdgeCases:
         """An empty input line stores 0 in the mole."""
         assert run_and_capture([">$=:", " 2 "], inputs=[""]) == "0"
 
+    def test_a_steer_digit_outside_zero_and_one_goes_straight(self) -> None:
+        """``#`` turns on 1 and 0; every other digit holds the heading.
+
+        The wiki spells out all three cases -- "Rotates Mole to left when
+        value beside it is 0, and right when 1.  When it's neither of those,
+        keep straight." -- so going straight is specified behaviour, and a
+        change to the two arms above must not quietly take it away.
+        """
+        from esolangs.interpreters.grid_based.dig import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        def heading_after(digit: str) -> int:
+            # "#" steers overground, so no "$" -- the mole starts at (0, 0)
+            # heading right and reads the cell below the "#" at (0, 1).
+            machine = _Machine([" #  ", f" {digit}  "], ScriptedIO(""))
+            machine.step()  # the blank the mole starts on
+            machine.step()  # "#"
+            return machine.move
+
+        straight = heading_after("2")
+        assert heading_after("1") == (straight + 1) % 4, "1 turns right"
+        assert heading_after("0") == (straight - 1) % 4, "0 turns left"
+        for digit in "23456789":
+            assert heading_after(digit) == straight, digit
+
+    def test_a_whitespace_digit_outside_zero_and_one_is_inert(self) -> None:
+        """``%`` loads a newline for 1 and a space for 0, nothing otherwise.
+
+        Unlike ``#``, the wiki gives ``%`` only those two cases, so the rest
+        are a gap it does not fill.  Leaving the mole alone is this
+        interpreter's choice, and pinning it keeps the choice deliberate.
+        """
+        from esolangs.interpreters.grid_based.dig import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        def mole_after(digit: str) -> int:
+            # "%" is a work command, so "$" has to open the underground
+            # budget first; it reads the 1 below it, leaving room for one.
+            machine = _Machine(["$%  ", f"1{digit}  "], ScriptedIO(""))
+            machine.step()  # "$" loads the work budget
+            machine.step()  # "%" selects
+            return machine.mole
+
+        assert mole_after("1") == 10  # newline
+        assert mole_after("0") == 32  # space
+        for digit in "23456789":
+            assert mole_after(digit) == 0, digit
+
     def test_func_callback_breaks_out(self) -> None:
         """A func callback returning True halts the run at the next ``$``."""
         from esolangs.interpreters.grid_based.dig import run

@@ -470,6 +470,7 @@ class TestZtoalc:
         assert any("jump" in line for line in lines)
         assert any(line.strip().startswith("print") for line in lines)
 
+    @pytest.mark.slow  # 4.0s: searches, over the one-second fast-run budget
     def test_xor4_linear_fallback(self) -> None:
         """Dense symmetric tables fall back to a huge linear program."""
         program = boolean.ztoalc_l_boolean("0110100110010110")  # XOR4 = parity
@@ -479,6 +480,7 @@ class TestZtoalc:
             got = run_ztoalc(program, [str(b) for b in bits])
             assert got == str(int("0110100110010110"[combo])), f"inputs {bits}"
 
+    @pytest.mark.slow  # 2.9s: searches every input order
     def test_dense_non_symmetric_places_under_a_reordered_tree(self) -> None:
         """A table the identity order cannot place is rendered by another order.
 
@@ -498,6 +500,26 @@ class TestZtoalc:
         for combo in range(16):
             bits = [str((combo >> (3 - i)) & 1) for i in range(4)]
             assert run_ztoalc(program, bits) == table[combo], f"inputs {bits}"
+
+    def test_when_no_order_places_the_identity_raises(self) -> None:
+        """A table no order can place reports the placement failure.
+
+        The search swallows each order's ``ValueError`` so one refusal does
+        not end it, which leaves nothing to re-raise when every order
+        fails.  The identity is then re-run outside the search so the
+        caller gets the generator's own message, with no mention of the
+        search that happened first.
+        """
+        import importlib
+
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.boolean.ztoalc_l")
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "best_input_order", lambda *_: "")
+            with pytest.raises(ValueError, match="no collision-free placement"):
+                module.ztoalc_l_boolean("1010001000011000")
 
     def test_wrong_length_rejected(self) -> None:
         """A truth table of the wrong length is malformed."""
@@ -717,6 +739,32 @@ class TestTaglate:
             got = run_taglate(program, ghost + [str(b) for b in bits])
             assert got == table[combo], f"inputs {bits}"
 
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            # depends on inputs 0-2, so the window widens rightward to 0-3
+            ("0000000000000011", 4),
+            # depends on inputs 1-3, which has no room on the right, so the
+            # window widens leftward to 0-3 instead
+            ("0000000100000001", 4),
+        ],
+    )
+    def test_odd_dependency_sets_widen_to_stay_even(self, table: str, n: int) -> None:
+        """An odd-sized window takes one more ignored input, either side.
+
+        The reduced program ghost-pads itself at odd arity, so it would
+        expect an input the caller's stream does not carry.  Widening the
+        window by one adjacent *ignored* input keeps the reduced table even
+        and the read count honest -- and it has to work at both ends, since
+        a set already touching the last input has no room on the right.
+        """
+        program = boolean.taglate(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            ghost = ["0"] if n % 2 == 1 and n > 1 else []
+            got = run_taglate(program, ghost + [str(b) for b in bits])
+            assert got == table[combo], f"inputs {bits}"
+
     def test_wrong_length_truth_table_rejected(self) -> None:
         """A truth table of the wrong length is malformed."""
         with pytest.raises(ValueError, match="entries"):
@@ -895,7 +943,9 @@ class TestLaserFuck:
                 got = run_laserfuck(program, [str(b) for b in bits], heading)
                 assert got == str(int(table[combo])), f"inputs {bits} heading {heading}"
 
-    @pytest.mark.parametrize("n", [1, 2, 3])
+    # n=3 is 256 tables at 2.0s, over the fast run's one-second budget;
+    # n=1 and n=2 are 16 tables between them and stay well under it.
+    @pytest.mark.parametrize("n", [1, 2, pytest.param(3, marks=pytest.mark.slow)])
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
         for table_int in range(2 ** (2**n)):
@@ -911,6 +961,62 @@ class TestLaserFuck:
         program = boolean.laserfuck("0110")
         for heading in range(4):
             assert run_laserfuck(program, ["1", "0"], heading) == "1"
+
+    def test_input_reordering_folds_a_scattered_table(self) -> None:
+        """The tree splits in whichever order folds most, not input order.
+
+        ``10101010`` depends on its last input alone, so it folds nothing
+        splitting most-significant-first and everything once that input is
+        tested at the root.  The reorder costs only the walk that puts the
+        bit in the cell the root tests, which is paid once in the reader
+        rather than per node -- so the two one-dependency tables come out
+        the same size.
+        """
+        scattered = len(boolean.laserfuck("10101010"))
+        aligned = len(boolean.laserfuck("11110000"))
+        parity = len(boolean.laserfuck("01101001"))
+        assert scattered == aligned
+        assert aligned < parity
+
+    def test_input_reordering_never_grows_a_program(self) -> None:
+        """The identity order is built first and ties keep it.
+
+        Parity folds under no order at all, so it has to emit exactly the
+        program it emitted before reordering existed -- which is the plain
+        read section, one ``,`` per cell stepping rightwards with no walk
+        back and forth.
+        """
+        assert ",>,>," in boolean.laserfuck("01101001")
+
+    @pytest.mark.parametrize(
+        "table",
+        ["10101010", "11001100", "01011010", "00111100", "10010110"],
+    )
+    def test_reordered_programs_compute_the_table(self, table: str) -> None:
+        """A reordered program still computes its function, at every heading.
+
+        The cell an input is read into is the *inverse* of the split order:
+        a node steps then tests, so level ``k`` tests cell ``k + 1`` and has
+        to be handed input ``perm[k]``.  Reading that forward stores the
+        right bits in the wrong cells and computes a different function,
+        which only running the program catches.
+        """
+        program = boolean.laserfuck(table)
+        for combo in range(8):
+            bits = [(combo >> (2 - i)) & 1 for i in range(3)]
+            for heading in range(4):
+                got = run_laserfuck(program, [str(b) for b in bits], heading)
+                assert got == table[combo], f"{table} inputs {bits} heading {heading}"
+
+    def test_reordering_keeps_the_reads_in_stream_order(self) -> None:
+        """Reordering moves where a bit is stored, never when it is read.
+
+        The program consumes its input stream exactly as it did before: one
+        ``,`` per input, in input order.  What moves is the cell each lands
+        in, so the count of reads is what pins this down.
+        """
+        for table in ("10101010", "11110000", "01101001"):
+            assert boolean.laserfuck(table).count(",") == 3
 
     def test_decimal_output_mode(self) -> None:
         """No ``\\xff`` marker, so the tape dumps as numbers, not bytes.

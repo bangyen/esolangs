@@ -135,6 +135,7 @@ LANGUAGES: dict[str, Language] = {
         "%^2^-1",
         _generate.pct_squared_minus_one,
         "register_based.pct_squared_minus_one",
+        boolean=_boolean.pct_squared_minus_one,
         id="pct_squared_minus_one",
     ),
     "ArrowQueue": Language(
@@ -358,6 +359,7 @@ LANGUAGES: dict[str, Language] = {
         "Minifuck",
         _generate.minifuck,
         "tape_based.minifuck",
+        boolean=_boolean.minifuck,
         id="minifuck",
     ),
     "Minsky Swap": Language(
