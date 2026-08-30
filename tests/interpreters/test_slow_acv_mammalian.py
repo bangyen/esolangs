@@ -56,3 +56,55 @@ class TestStepMachine:
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
         assert machine.lst == [[0] for _ in range(23)]
+
+    def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
+        machine = _Machine("SEED PRONOUNCE", IO())
+        before = machine.snapshot()
+        hash(before)  # must not raise
+        machine.step()
+        assert machine.snapshot() != before
+
+
+class TestPartial:
+    """``partial`` applies one array op, and two of them need a non-empty array."""
+
+    def test_consume_of_an_empty_array_leaves_the_accumulator(self) -> None:
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import partial
+
+        curr: list[int] = []
+        assert partial(3, curr, 7) == 7
+        assert curr == []
+
+    def test_fission_of_an_empty_array_leaves_the_accumulator(self) -> None:
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import partial
+
+        curr: list[int] = []
+        assert partial(4, curr, 7) == 7
+        assert curr == []
+
+
+class TestLeapfrog:
+    """``LEAPFROG`` jumps the cursor, or halts when the target is negative."""
+
+    def test_a_negative_target_halts(self) -> None:
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
+        # acc 0 and a head of 0 give target -1, which halts instead of jumping.
+        machine = _Machine("LEAPFROG PRONOUNCE", IO())
+        machine.lst[0] = [0, 5]  # non-empty with a truthy tail: the branch fires
+        machine.step()
+        assert machine.halted
+
+    def test_a_non_negative_target_moves_the_cursor(self) -> None:
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
+        # acc 2, head 0 -> target 1; the step's trailing advance then makes
+        # it 2, so the jump is what puts the cursor there rather than at 1.
+        machine = _Machine("LEAPFROG PRONOUNCE PRONOUNCE", IO())
+        machine.lst[0] = [0, 5]
+        machine.acc = 2
+        machine.step()
+        assert not machine.halted
+        assert machine.ind == 2
