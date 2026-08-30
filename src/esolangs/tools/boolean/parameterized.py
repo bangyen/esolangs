@@ -541,6 +541,219 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     return "\n".join("".join(row).rstrip() for row in rows)
 
 
+# The largest value a NoComment cell can hold, hence the largest distance a
+# single ``s``/``b`` jump can cover: the skip amount is peeked off the stack,
+# and everything on that stack came from a byte-sized tape cell.
+_NOCOMMENT_SKIP_MAX = 255
+
+# Past this arity the *index* no longer fits one byte, so the single-skip
+# decode below stops working and :func:`_nocomment_wide` takes over.  It is
+# the largest ``n`` with ``2**n - 1 <= _NOCOMMENT_SKIP_MAX``.
+_NOCOMMENT_NARROW_MAX = (_NOCOMMENT_SKIP_MAX + 1).bit_length() - 1
+
+
+def _nocomment_summand_plan(n: int, room: int) -> list[list[tuple[int, int]]]:
+    """Split the index's bit weights into cells that cannot overflow a byte.
+
+    The index is ``sum(2**(n-1-i) for i where bit i is one)``, which exceeds
+    a byte past ``n == 8``.  Splitting it into *summands* rather than digits
+    keeps every part byte-sized and keeps each part a plain sum of per-bit
+    contributions, so each contribution stays a guarded increment.
+
+    Returns one list of ``(bit, amount)`` pairs per summand cell.  A cell's
+    amounts total at most ``_NOCOMMENT_SKIP_MAX``, so no input can push it
+    past a byte, and each single contribution is at most ``room`` so the
+    guarded block that adds it stays within one skip.
+    """
+    parts: list[list[tuple[int, int]]] = []
+    current: list[tuple[int, int]] = []
+    total = 0
+    for i in range(n):
+        remaining = 2 ** (n - 1 - i)
+        while remaining:
+            if total == _NOCOMMENT_SKIP_MAX:
+                parts.append(current)
+                current, total = [], 0
+            take = min(remaining, _NOCOMMENT_SKIP_MAX - total, room)
+            current.append((i, take))
+            total += take
+            remaining -= take
+    if current:
+        parts.append(current)
+    return parts
+
+
+def _nocomment_wide(truth_table: str, n: int) -> str:
+    """Build a NoComment template for a table too wide for one byte-sized skip.
+
+    The narrow generator lands the pointer on ``table[index]`` with a single
+    ``s`` whose skip amount *is* the index, which caps it at ``n == 8``.
+    Nothing about the language caps it there, though, because **skips
+    compose**.  Two compositions do the work:
+
+    *Chained guards.*  ``s`` peeks the stack rather than popping it and does
+    not move the pointer, so after a skip fires the guard cell is still under
+    the pointer and still nonzero.  A guarded region of any length is then a
+    run of chunks, each at most ``_NOCOMMENT_SKIP_MAX`` commands and each
+    preceded by glue that rebuilds the chunk's length and re-tests the same
+    guard.  Every chunk ends with the pointer back on the guard, so the glue
+    -- which runs on both paths -- is emitted from one known position.
+
+    *Additive staircases.*  Entering a staircase of ``L`` copies of ``l`` by
+    skipping ``c`` runs ``L - c`` of them, so pre-walking ``L`` right and
+    then skipping ``c`` is a net move of ``+c``.  Displacements add across
+    consecutive staircases, so a displacement far past 255 is reached by
+    ``q`` stages whose skip amounts sum to it, each stage's amount held in
+    its own byte-sized summand cell.
+
+    Between stages the stack top must advance, and ``f`` is the only way to
+    pop -- it writes the popped value into the cell under the pointer.  That
+    clobber is harmless because it always lands mid-corridor: a **constant**
+    trailing summand of ``1`` is appended so the final landing is strictly
+    right of every clobbered cell, which is what makes the all-zero input
+    (every input-driven summand zero) come out right.
+
+    What binds instead is the tape.  The layout needs the ``2**n`` output
+    cells plus an apron of nonzero cells for the stages' guards to test, and
+    :mod:`~esolangs.interpreters.tape_based.nocomment` gives a static tape,
+    so the generator refuses when the top cell it needs does not fit.  The
+    wiki does not specify a tape size, so that bound is the interpreter's
+    configuration rather than a property of the language.
+    """
+    from esolangs.interpreters.tape_based.nocomment import _TAPE
+
+    cap = _NOCOMMENT_SKIP_MAX
+    k = 2**n
+    comp_base = n  # comp_i = 1 - bit_i
+    sbase = 2 * n  # the summand cells
+
+    # The furthest summand cell sets how long a guarded contribution's
+    # move-add-return block is, which sets how much of one contribution fits
+    # in a single skip.  Planning with the worst-case distance keeps every
+    # emitted skip within a byte without a second pass.
+    plan = _nocomment_summand_plan(n, 1)
+    span = len(plan) + 1
+    room = cap - 2 * (sbase + span - 1 - comp_base)
+    if room > 0:
+        plan = _nocomment_summand_plan(n, room)
+    q = len(plan) + 1  # the input-driven summands plus the constant one
+    scratch = sbase + q
+    base = scratch + 1
+    apron = base + k
+    # Each stage pre-walks a full staircase right of its landing cell before
+    # testing, so the guard apron must cover one staircase past the table,
+    # and the walk itself reaches one staircase past that.
+    top = apron + 2 * cap + 1
+    if top >= _TAPE:
+        raise ValueError(
+            f"the NoComment boolean generator needs cell {top} for n == {n}, "
+            f"past the interpreter's {_TAPE}-cell tape"
+        )
+
+    out: list[str] = []
+    ptr = [0]
+
+    def move(dst: int) -> None:
+        while ptr[0] < dst:
+            out.append("r")
+            ptr[0] += 1
+        while ptr[0] > dst:
+            out.append("l")
+            ptr[0] -= 1
+
+    def guarded(guard: int, chunks: list[list[str]]) -> None:
+        """Emit a region that runs iff ``guard`` is zero, chunked to fit skips.
+
+        Each chunk must start and end with the pointer on ``guard``.  The
+        glue rebuilds the chunk's length in ``scratch``, pushes it, returns
+        to the guard, and skips -- so the skip path never leaves the guard
+        and the fall-through path is returned there by the chunk itself.
+        """
+        for chunk in chunks:
+            move(scratch)
+            out.append("c")
+            out.extend(["i"] * len(chunk))
+            out.append("n")
+            move(guard)
+            out.append("s")
+            out.extend(chunk)
+            ptr[0] = guard
+
+    for i in range(n):
+        out.append("{X" + str(i) + "}")
+        out.append("r")
+    ptr[0] = n
+
+    # comp_i = 1 - bit_i: the block runs exactly when bit i is zero.
+    for i in range(n):
+        dist = comp_base + i - i
+        guarded(i, [["r"] * dist + ["i"] + ["l"] * dist])
+
+    for j in range(q):
+        move(sbase + j)
+        out.append("c")
+
+    # The output table, then an apron of nonzero cells so every stage's
+    # pre-walk lands on a truthy guard.  Both are constants, so they go
+    # through one sorted diff chain: sorting by value makes each step a
+    # single push/pop plus the difference from the previous value.
+    cells: list[tuple[int, int]] = [
+        (base + j, _ASCII_ZERO + int(truth_table[j])) for j in range(k)
+    ]
+    cells += [(apron + t, _ASCII_ZERO) for t in range(2 * cap + 1)]
+    cells.sort(key=lambda cv: cv[1])
+    first_addr, first_value = cells[0]
+    move(first_addr)
+    out.extend(["i"] * first_value)
+    prev_value = first_value
+    for addr, value in cells[1:]:
+        out.append("n")
+        move(addr)
+        out.append("f")
+        diff = value - prev_value
+        out.extend(["i"] * diff if diff > 0 else ["d"] * -diff)
+        prev_value = value
+
+    # Bit i adds its share to each summand cell it feeds.  The guard is the
+    # complement, so the block runs exactly when the bit is one.
+    for j, part in enumerate(plan):
+        cell = sbase + j
+        for i, amount in part:
+            guard = comp_base + i
+            dist = cell - guard
+            chunks = []
+            remaining = amount
+            while remaining:
+                take = min(remaining, cap - 2 * dist)
+                chunks.append(["r"] * dist + ["i"] * take + ["l"] * dist)
+                remaining -= take
+            guarded(guard, chunks)
+
+    move(sbase + q - 1)
+    out.append("c")
+    out.append("i")  # the constant trailing summand
+
+    # Push the summands so the first stage sees the first one on top.
+    for j in reversed(range(q)):
+        move(sbase + j)
+        out.append("n")
+
+    # The trailing summand contributes the final ``+1``, so the walk starts
+    # one cell left of the table and ends on ``base + index``.
+    move(base - 1)
+    for j in range(q):
+        if j:
+            # Advance the stack top.  ``f`` writes the popped summand into
+            # the cell under the pointer, which is always a corridor cell at
+            # least one staircase left of any cell a later stage tests.
+            out.append("f")
+        out.extend(["r"] * cap)
+        out.append("s")
+        out.extend(["l"] * cap)
+    out.append("o")
+    return "".join(out)
+
+
 def nocomment(truth_table: str) -> str:
     """Build a NoComment template for the given truth table.
 
@@ -568,13 +781,15 @@ def nocomment(truth_table: str) -> str:
     The output is then a single ``o``.
 
     This is a straight-line program: no leaf chains, no interleaved stations,
-    no placement.  Every jump is byte-sized, so the index must fit a byte --
-    the generator covers every table up to eight inputs and raises
-    :class:`ValueError` beyond that.
+    no placement.  A single ``s`` skip is byte-sized, so this narrow form
+    needs the whole index to fit a byte and works through ``n == 8``.  That
+    is a property of the *one-skip* decode, not of the language: past eight
+    inputs :func:`_nocomment_wide` composes several byte-sized skips instead,
+    and the binding constraint becomes the interpreter's tape size.
     """
     n = _validate_truth_table(truth_table)
-    if n > 8:
-        raise ValueError("the NoComment boolean generator supports n <= 8")
+    if n > _NOCOMMENT_NARROW_MAX:
+        return _nocomment_wide(truth_table, n)
 
     k = 2**n
     index = 2 * n
