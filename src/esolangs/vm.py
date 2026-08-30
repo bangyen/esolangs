@@ -1918,6 +1918,40 @@ class _LamfuncVM(_BaseVM):
         return []
 
 
+class _FargoVM(_BaseVM):
+    """Prefix-call evaluator; ``ip`` is the top-level line cursor.
+
+    ``memory`` is the language's whole state: the input number it was given
+    and the output number it has built so far.  ``stack`` is the live frame
+    stack, since Fargo's only loop is recursion.
+    """
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.other.fargo import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return [self._machine.number, self._machine.output]
+
+    @property
+    def stack(self) -> list[object]:
+        return list(self._machine.frames)
+
+
 class _ForbinVM(_BaseVM):
     """Call stack; ``ip`` is each frame's statement cursor, root-to-leaf."""
 
@@ -2165,6 +2199,7 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Between": _BetweenVM,
     "MyScript": _MyScriptVM,
     "Lamfunc": _LamfuncVM,
+    "Fargo": _FargoVM,
     "Forbin": _ForbinVM,
     "Suptiftam": _SuptiftamVM,
     "Streetcode": _StreetcodeVM,

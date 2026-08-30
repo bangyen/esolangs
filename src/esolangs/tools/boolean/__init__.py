@@ -13,6 +13,7 @@ module re-exports them for compatibility.
 """
 
 from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+from esolangs.tools.boolean.fargo import fargo
 from esolangs.tools.boolean.other import (
     between,
     bit_tilde,
@@ -109,6 +110,7 @@ __all__ = [
     "dimensional_tree",
     "eval",
     "factor",
+    "fargo",
     "flowchart",
     "forbin_boolean",
     "forth",

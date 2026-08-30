@@ -193,6 +193,23 @@ def run_decleq(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+def run_fargo(program: str, inputs: list[str]) -> str:
+    """Run a Fargo program, packing ``inputs`` into its one input number.
+
+    Fargo reads a single *number* before the program starts rather than a
+    stream of bits, so the boolean convention is to feed the row index:
+    the bits most-significant-first are the number's binary digits, which
+    is what makes input ``i`` the generator's ``@ (n - 1 - i)``.
+    """
+    from esolangs.interpreters.other.fargo import run
+
+    number = int("".join(inputs), 2) if inputs else 0
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=[str(number)]), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
 def run_forbin_boolean(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.other.forbin import run
 

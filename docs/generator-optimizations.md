@@ -65,6 +65,25 @@ table, because there is no subtree to collapse.
 slightly more than parity): its construction is a route search over a grid,
 so neither model describes it.
 
+**A third shape: algebraic (1).** `fargo` (added 2026-08-30) is neither a
+tree nor a minterm sum but an *algebraic normal form* — the XOR of the
+AND-products the Möbius transform selects. Its size tracks the function's
+algebraic degree, which makes it the only generator whose worst case is
+**linear** rather than exponential: parity, the table that folds nothing
+anywhere else, is its *cheapest* dense case at one term per input (10
+characters at `n == 1` growing to 62 at `n == 8`, against brainfuck's 225
+to 1649 by `n == 4` alone). It measures 56.5% folding on the
+one-dependency comparison, so the catalogue test files it tree-side, but
+the mechanism is different: a one-dependency table is one ANF term
+whatever its arity, and nothing about it is a subtree collapse.
+
+What makes it possible is the *interface*, not the language's power:
+Fargo's `@ i` indexes the input number's `i`th bit directly, so the
+generator pays nothing to read, normalize, or store bits before testing
+them. Input reordering is therefore vacuous here — there is no read order
+to permute. Worth checking for on any future candidate whose input is
+bit-addressable rather than streamed.
+
 Two entries sit near the boundary and are worth reading as measurements
 rather than labels. `circuit_diagram` folds only 12.6% yet special-cases a
 constant to 57 characters against 2756 — it is a minterm sum whose
