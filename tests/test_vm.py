@@ -18,6 +18,10 @@ def _run_all(vm: VM) -> str:
 # the CPth cell, ``O`` prints it, ``;`` halts.
 STREETCODE = "+-----+\n|     |\n|C^^O;|\n+-----+"
 
+# The same street, writing cells 0 and 2 and stepping over cell 1: "=" moves
+# CP right without touching the cell it leaves.
+STREETCODE_GAP = "+------+\n|      |\n|C^==^;|\n+------+"
+
 # The wiki's truth machine: read a bit, and on 0 print it once and halt.
 FLOWCHART_TRUTH_MACHINE = "\n".join(
     [
@@ -374,6 +378,16 @@ class TestStreetcode:
         vm.step()  # O prints it
         assert vm.output == "\x02"
         assert vm.stack == []
+
+    def test_memory_fills_the_gaps_between_written_cells(self) -> None:
+        """The tape is a sparse dict, so a skipped cell still reads as zero.
+
+        ``=`` moves CP right without writing, so incrementing either side of
+        two of them leaves cell 1 untouched between two written cells.
+        """
+        vm = esolangs.make_vm("Streetcode", STREETCODE_GAP)
+        assert _run_all(vm) == ""
+        assert vm.memory == [1, 0, 1]
 
     def test_run_matches_execute(self) -> None:
         assert _run_all(esolangs.make_vm("Streetcode", STREETCODE)) == esolangs.run(
@@ -1317,3 +1331,52 @@ def test_vm_output_matches_run(language: str, program: str) -> None:
         pytest.skip(f"{language} needs input")
     vm = esolangs.make_vm(language, program)
     assert _run_all(vm) == expected
+
+
+class TestEveryLanguageIsSteppable:
+    """The two whole-registry invariants, as tests rather than prose.
+
+    Both were true by habit before they were true by test: a new language
+    could land with a runner and no adapter, or with a state object whose
+    ``snapshot()`` nobody had written, and only a reader comparing two
+    lists would notice.
+    """
+
+    def test_every_registry_language_has_a_vm_adapter(self) -> None:
+        from esolangs.registry import RUNNERS
+        from esolangs.vm import _VM_ADAPTERS
+
+        assert set(RUNNERS) - set(_VM_ADAPTERS) == set()
+
+    def test_every_adapter_wraps_a_state_object_with_a_snapshot(self) -> None:
+        """``run_until_halt_or_cycle`` needs ``snapshot()`` on the machine.
+
+        The adapters wrap the interpreter class named in their own
+        ``__init__``, so read those imports back and check the classes
+        themselves: the alternative is building all 59, which needs a valid
+        program per language.  An adapter may import several names
+        (Grapheme takes its frame type alongside its machine), so the
+        requirement is that *one* of them carries the state -- a machine
+        without ``snapshot()`` cannot have a hang proven, which is the
+        cycle detector's real precondition.
+        """
+        import importlib
+        import inspect
+        import re
+
+        from esolangs.vm import _VM_ADAPTERS
+
+        without: list[str] = []
+        for name, adapter in sorted(_VM_ADAPTERS.items()):
+            source = inspect.getsource(adapter.__init__)
+            found = re.search(
+                r"from (esolangs\.interpreters\.[\w.]+) import "
+                r"\(?\s*([\w,\s]+?)\s*\)?\n",
+                source,
+            )
+            assert found is not None, f"{name}: adapter imports no interpreter"
+            module = importlib.import_module(found.group(1))
+            imported = [n.strip() for n in found.group(2).split(",") if n.strip()]
+            if not any(hasattr(getattr(module, n), "snapshot") for n in imported):
+                without.append(name)
+        assert without == []
