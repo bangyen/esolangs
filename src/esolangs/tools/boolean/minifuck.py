@@ -673,11 +673,23 @@ def _reconverged(truth_table: str, essential: list[int], n: int) -> str | None:
         plan = _derive_staging(inner, 2)
         if plan is None:
             return None
-        sep_index, _settle, brackets, acc = plan
+        sep_index, settle, brackets, acc = plan
         # Every two-input staging is a plain bracket run; the literal-suffix
         # form is only used by the one stored three-input exception, and
         # replaying it here would need the walk this route does not make.
         if not isinstance(brackets, int):
+            return None
+        # This route lays the embed down itself -- it has to, since the reset
+        # comes first -- and that hand-rolled embed does not re-cross the bit
+        # region, so it can only replay a staging that does not ask it to.
+        # Declining is safe: the caller falls through to the searches.  It is
+        # checked rather than assumed because the staging is *derived* now,
+        # and the enumeration does hand back ``settle == 1`` -- AND and NAND
+        # both come out that way, and six three-input tables project onto
+        # them.  Replaying those at settle 0 happened to still print, which is
+        # luck rather than a property, and the kind of luck that changes when
+        # a cap or the enumeration order moves.
+        if settle:
             return None
         setup = (sep_index, brackets, acc)
         accumulators = (acc,)
