@@ -5,21 +5,21 @@ loop semantics directly.
 """
 
 import importlib
-import io
-from contextlib import redirect_stdout
-from unittest.mock import patch
 
-from esolangs.interpreters.io import IO
 from tests.interpreters.contract import CycleContract, EmptyProgramContract
+from tests.interpreters.runner import run_program
 
 bf = importlib.import_module("esolangs.interpreters.tape_based.brainfuck")
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        bf.run(code, IO())
-    return buffer.getvalue()
+    """Run a Brainfuck program and return its stdout.
+
+    ``inputs`` stays a list of lines because that is what this file's
+    ``,`` tests read most naturally; the shared runner takes the joined
+    stdin, so the join happens here.
+    """
+    return run_program(bf.run, code, "".join(f"{line}\n" for line in inputs or []))
 
 
 def _machine(code: str) -> object:
