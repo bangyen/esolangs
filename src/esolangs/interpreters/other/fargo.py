@@ -47,12 +47,19 @@ Decisions for gaps in the wiki spec (documented):
   is taken as 0 (there is no EOF condition to signal: the number is
   established before execution, and every later ``@`` indexes that same
   number).
-- **Malformed programs** (:class:`ValueError`): redefining an existing
-  name, a definition whose code is not exactly one outer call, a line whose
-  first token is neither a definition nor a call, a call given too few
-  arguments, and a line with tokens left over after its outer call.
+- **Malformed programs** (:class:`ValueError`): a *definition* whose code
+  is not exactly one outer call -- either ending while a call still owes
+  arguments, or finishing one call with tokens to spare -- and a call left
+  wanting arguments when its frame ends.  The wiki also calls redefining
+  an existing name an error, but that is unreachable rather than checked:
+  a line whose first token is already defined parses as a *call*, so a
+  second definition of one name cannot be written.  The one-outer-call
+  rule is likewise a property of definitions only; a top-level line may
+  hold several complete calls (``$ $`` prints twice), since nothing in the
+  spec makes a call line a single expression.
 - **Invalid runtime operations**
   (:class:`~esolangs.exceptions.HaltError`): calling an undefined name,
+  giving ``:`` a body that takes arguments (there is nothing to pass it),
   indexing an array out of range or with a non-array, and shifting or
   combining an array where a number is required.  A *negative* bit index
   is not among them because no expression can build one (see
@@ -84,20 +91,40 @@ from esolangs.interpreters.io import IO
 _ZERO_WIDTH = "​"
 
 
-@dataclass(frozen=True)
 class _Func:
-    """A callable: a builtin or a user definition, with its arity."""
+    """A callable: a builtin or a user definition, with its arity.
 
-    name: str
-    arity: int
-    raw: tuple[int, ...] = ()
-    """Parameter positions taking a function unevaluated (``:``'s second)."""
+    Written out rather than declared a ``@dataclass`` because
+    :data:`_BUILTINS` instantiates it at module level, and
+    ``scripts/mutate_one.py`` rewrites a decorated class into
+    ``C = dataclass(C)`` *after* the class body -- which lands below that
+    dict and would leave the bundle constructing an undecorated class.
+    Three attributes do not need the generated ``__init__`` anyway.
+    """
+
+    __slots__ = ("arity", "name", "raw")
+
+    def __init__(self, name: str, arity: int, raw: tuple[int, ...] = ()) -> None:
+        self.name = name
+        self.arity = arity
+        #: Parameter positions taking a function unevaluated (``:``'s second).
+        self.raw = raw
 
 
 # Arrays nest (``+[] x y`` concatenates two of them), so the alias is
 # recursive; the ``type`` statement is lazily evaluated, which is what lets
 # it name itself.
 type _Value = int | tuple[_Value, ...] | _Func
+
+
+class _Pending:
+    """The "no value to deliver" marker returned by ``:`` (see below)."""
+
+
+# ``:`` alone can finish without a value of its own, because invoking its
+# body hands the delivery to that call instead.  A sentinel rather than
+# ``None`` so it cannot be confused with a legitimate result.
+_PENDING = _Pending()
 
 
 # The builtins, by name.  ``$`` alone takes no arguments, which is why a
@@ -156,6 +183,17 @@ def _is_literal(token: str) -> bool:
     return token != "" and all(c in "01" for c in token)
 
 
+def _bare_name(token: str) -> str:
+    """Return the name ``token`` refers to, without a raw-function mark.
+
+    A leading ``:`` marks a raw function -- except on the bare ``:``, which
+    is the conditional builtin itself.  Stripping that one would leave the
+    empty string and make the language's only conditional look like an
+    ordinary name, so it is returned untouched.
+    """
+    return token if token == ":" else token.removeprefix(":")
+
+
 def _parse_program(code: str) -> tuple[dict[str, _Def], list[tuple[str, ...]]]:
     """Split a program into its definitions and its top-level calls.
 
@@ -201,7 +239,7 @@ def _parse_definition(
     known = set(defs) | {name}
     index = 0
     for index, token in enumerate(rest):  # noqa: B007 - the cursor is the result
-        bare = token.removeprefix(":")
+        bare = _bare_name(token)
         if bare in _BUILTINS or bare in known or _is_literal(bare):
             break
         params.append(token)
@@ -320,15 +358,18 @@ class _Machine:
             raise ValueError(f"function {definition.name!r} has no outer call")
         owed = 1
         for index, token in enumerate(definition.code):
-            bare = token.removeprefix(":")
-            if token.startswith(":") or _is_literal(bare) or bare in definition.params:
+            bare = _bare_name(token)
+            # A raw reference (``:f``) is a value, not a call, so it owes
+            # nothing -- but the bare ``:`` is the conditional itself.
+            if bare != token or _is_literal(bare) or bare in definition.params:
                 arity = 0
             elif bare in _BUILTINS:
                 arity = _BUILTINS[bare].arity
             elif bare in self.defs:
+                # Including the definition being checked: parsing files it
+                # into ``defs`` before this runs, so a self-call resolves
+                # here and needs no separate arm.
                 arity = len(self.defs[bare].params)
-            elif bare == definition.name:
-                arity = len(definition.params)
             else:
                 arity = 0
             owed += arity - 1
@@ -395,12 +436,9 @@ class _Machine:
             frame.result = value
             return
         fn, args = frame.pending[-1]
-        if len(args) in fn.raw and not isinstance(value, _Func):
-            # A raw slot given a plain value keeps it as-is; ``:`` then has
-            # nothing to invoke and simply yields it.
-            args.append(value)
-        else:
-            args.append(value)
+        # A raw slot takes whatever arrives unchanged: a function to invoke
+        # later, or a plain value ``:`` will simply yield.
+        args.append(value)
         if len(args) == fn.arity:
             frame.pending.pop()
             self._invoke(frame, fn, args)
@@ -408,7 +446,9 @@ class _Machine:
     def _invoke(self, frame: _Frame, fn: _Func, args: list[_Value]) -> None:
         """Apply ``fn`` to ``args``, pushing a frame for a user function."""
         if fn.name in _BUILTINS and fn.name not in self.defs:
-            self._supply(frame, self._builtin(frame, fn, args))
+            result = self._builtin(frame, fn, args)
+            if not isinstance(result, _Pending):
+                self._supply(frame, result)
             return
         definition = self.defs[fn.name]
         pushed = _Frame(definition.code, fn_name=fn.name)
@@ -429,7 +469,9 @@ class _Machine:
             return value
         raise HaltError("expected a number, got an array or function")
 
-    def _builtin(self, frame: _Frame, fn: _Func, args: list[_Value]) -> _Value:
+    def _builtin(
+        self, frame: _Frame, fn: _Func, args: list[_Value]
+    ) -> _Value | _Pending:
         """Apply one builtin to its finished arguments."""
         name = fn.name
         if name == "<":
@@ -494,21 +536,36 @@ class _Machine:
         else:
             self.output &= ~(1 << pos)
 
-    def _conditional(self, frame: _Frame, args: list[_Value]) -> _Value:
+    def _conditional(self, frame: _Frame, args: list[_Value]) -> _Value | _Pending:
         """``: x y`` -- do ``y`` iff ``x`` is nonzero.
 
         ``y`` arrives unevaluated (see the module docstring): a function is
         invoked only when the guard is nonzero, and a plain value is simply
         returned.  A zero guard yields 0 without touching ``y`` at all,
         which is what stops the truth machine looping on input 0.
+
+        Invoking the body makes ``:`` *become* that call: its value is the
+        body's own, which for a user function arrives later, when the
+        pushed frame finishes and supplies whoever was waiting.  Returning
+        anything here as well would deliver two values into one argument
+        slot, so this returns :data:`_PENDING` to say "the frame will do
+        it" -- invisible unless the ``:`` sits nested inside another call,
+        which is exactly where the double-supply would fire.
         """
         if not self._number(args[0]):
             return 0
         body = args[1]
-        if isinstance(body, _Func):
-            self._invoke(frame, body, [])
-            return 0
-        return body
+        if not isinstance(body, _Func):
+            return body
+        if body.arity:
+            raise HaltError(
+                f"conditional body {body.name!r} takes {body.arity} argument(s)"
+            )
+        self._invoke(frame, body, [])
+        # Either way the value is already accounted for: a user function's
+        # arrives when its pushed frame finishes, and a zero-arity builtin
+        # body (``: 1 $``) was supplied by ``_invoke`` itself.
+        return _PENDING
 
 
 def run(code: str, io: IO) -> None:

@@ -64,6 +64,21 @@ class TestBuiltins:
     def test_conditional_returns_a_plain_value_unevaluated(self) -> None:
         assert run_program("% 0 : 1 1\n$") == "1"
 
+    def test_conditional_nested_in_a_call_yields_its_body_s_value(self) -> None:
+        """``:`` becomes the call it runs, so its value is that call's.
+
+        Only visible when the ``:`` sits *inside* another call: at the top
+        level a spare value has nowhere to go, but here ``%`` is waiting
+        for it and would otherwise fire on a stray 0 before ``g`` ran.
+        """
+        assert run_program("g | 1 0\n% 0 : 1 g\n$") == "1"
+        assert run_program("g | 1 0\n% 0 : 0 g\n$") == "0"
+
+    def test_conditional_with_a_builtin_body(self) -> None:
+        # ``$`` is zero-arity, so it is a legal body and prints when run.
+        assert run_program("% 0 1\n: 1 $\n") == "1"
+        assert run_program("% 0 1\n: 0 $\n") == ""
+
 
 class TestSyntax:
     def test_comments_and_blank_lines_are_ignored(self) -> None:
@@ -100,6 +115,40 @@ class TestSyntax:
     def test_raw_function_argument(self) -> None:
         assert run_program("setter % 0 1\n: 1 :setter\n$") == "1"
 
+    def test_a_bare_colon_is_the_builtin_not_a_parameter(self) -> None:
+        """``:`` names the conditional, so it starts the code.
+
+        Only ``:name`` marks a raw function; stripping the mark from a
+        bare ``:`` would leave nothing and make the language's only
+        conditional parse as an ordinary parameter name.
+        """
+        defs, _ = _parse_program("count n : n count < n\n$\n")
+        assert defs["count"].params == ("n",)
+        assert defs["count"].code == (":", "n", "count", "<", "n")
+
+    def test_a_parameter_can_hold_a_raw_function_and_be_called(self) -> None:
+        assert run_program("apply c : 1 c\nsetter % 0 1\napply :setter\n$") == "1"
+
+    def test_a_bound_zero_arity_function_runs_in_argument_position(self) -> None:
+        """Outside a raw slot, a bound function is called, not passed on.
+
+        ``c`` holds ``setter``, and ``|`` wants a value, so ``c`` runs and
+        its side effect lands before the ``$``.
+        """
+        assert run_program("use c | c 0\nsetter % 0 1\nuse :setter\n$") == "1"
+
+    def test_a_self_call_takes_its_own_arity(self) -> None:
+        """A recursive name is sized from the definition being parsed.
+
+        It is not in ``self.defs`` yet while its own body is checked, so
+        the one-outer-call count has to reach for the parameters it is in
+        the middle of gathering.
+        """
+        defs, _ = _parse_program("loop n | n loop n\n$\n")
+        assert defs["loop"].params == ("n",)
+        # Accepted: ``|`` owes 2, ``n`` and the self-call supply them.
+        run_program("loop n | n loop n\n$\n")
+
     def test_a_repeated_parameter_name_starts_the_code(self) -> None:
         # ``x`` is already a defined name by its second appearance, so it
         # begins the code rather than declaring a second parameter.
@@ -133,11 +182,55 @@ class TestWikiExamples:
         with pytest.raises(ValueError, match="no outer call"):
             run_program("myFn\n")
 
+    def test_a_body_still_owing_arguments_is_malformed(self) -> None:
+        # ``&`` wants two and the body supplies one.
+        with pytest.raises(ValueError, match="no outer call"):
+            run_program("f x & x\n$\n")
+
+    def test_an_undefined_name_in_a_body_supplies_a_value(self) -> None:
+        """It cannot be a call, so the count treats it as one value.
+
+        Whether it *resolves* is a runtime question -- here it completes
+        ``&``'s arguments, so the definition is well-formed and only a
+        call to ``f`` would raise.
+        """
+        run_program("f x & x nope\n$\n")
+
+    def test_redefinition_is_unreachable_rather_than_rejected(self) -> None:
+        """The wiki calls it an error; the grammar makes it unwritable.
+
+        A line whose first token is already defined parses as a *call*, so
+        the second ``f`` here calls the first rather than redefining it --
+        there is no way to express the error the spec names.
+        """
+        defs, calls = _parse_program("f | 1 0\nf | 0 0\n$\n")
+        assert list(defs) == ["f"]
+        assert calls == [("f", "|", "0", "0"), ("$",)]
+
+    def test_one_outer_call_binds_definitions_not_call_lines(self) -> None:
+        """A top-level line may hold several complete calls."""
+        assert run_program("% 0 1\n$ $\n") == "11"
+
 
 class TestErrors:
     def test_undefined_function(self) -> None:
         with pytest.raises(HaltError, match="undefined function"):
             run_program("% 0 nope 1\n")
+
+    def test_a_call_left_wanting_arguments(self) -> None:
+        # ``%`` takes two and the line supplies one.
+        with pytest.raises(ValueError, match="wants more args"):
+            run_program("% 0\n$\n")
+
+    def test_calling_a_parameter_bound_to_a_plain_value(self) -> None:
+        # ``c`` sits in ``:``'s body slot but was given the number 1.
+        with pytest.raises(HaltError, match="non-function argument"):
+            run_program("apply c : 1 c\napply 1\n$\n")
+
+    def test_conditional_body_taking_arguments(self) -> None:
+        # ``<`` needs an argument and ``:`` has none to give it.
+        with pytest.raises(HaltError, match="takes 1 argument"):
+            run_program("% 0 : 1 <\n$\n")
 
     def test_array_index_out_of_range(self) -> None:
         with pytest.raises(HaltError, match="out of range"):
