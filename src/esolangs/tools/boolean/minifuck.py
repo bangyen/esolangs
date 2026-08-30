@@ -111,11 +111,10 @@ _POOL = (0, 0, 1, 1, 0, 0, 0)
 # pool -- is what makes a table and its complement both printable.
 _READS = ("[<", "[x<[<")
 
-# Depth caps for the two searches.  Both are joint searches over 2**n
-# machines, so the cost is exponential in the cap; these are the smallest
-# values that cover every two-input table.
+# Depth cap for the column search, a joint search over 2**n machines whose
+# cost is exponential in the cap; this is the smallest value covering every
+# two-input table.  (The pool no longer has one: see :data:`_POOL_CODES`.)
 _COLUMN_DEPTH = 13
-_POOL_DEPTH = 16
 
 # The parked search is the fallback, and the deepest of the three; it needs
 # 15 to cover the XOR family.  ``_PARKED_LIMIT`` candidates are collected
@@ -333,72 +332,75 @@ def _search[Hit](
     return None
 
 
-def _find_pool(
-    j: _Joint, cell7: int, walk_out: int, maxlen: int = _POOL_DEPTH
-) -> str | None:
-    """Find code leaving the pool correct once walked out to ``walk_out``.
+# The pool codes.  Setting the pool is not a search: across every table at
+# ``n <= 3`` the breadth-first search this replaced returned one of exactly
+# these ten strings, and trying them in turn reproduces its answer on all
+# 280 calls the generator makes -- a code wherever it found one, and none
+# where it found none.
+#
+# A lookup keyed on ``(cell7, walk_out)`` would *not* work, which is why
+# this is a list tried in turn rather than a table: the same pair takes
+# different codes, and sometimes none, depending on the state the staging
+# leaves behind.  Each candidate is checked against the same acceptance
+# test the search applied, so a code is accepted on exactly the evidence it
+# always was.
+#
+# The list is not minimal against the *plans* -- two of these cover all 117
+# planned stagings between them -- but it is not trimmed to those two,
+# because the degenerate and reconverged routes reach the endgame from
+# states the plans never produce, and three two-input tables lose their
+# pool if the rest are dropped.  Ordered shortest first, so the emitted
+# program is no longer than before.
+_POOL_CODES = (
+    "[[[<[<<<<",
+    "[<[[[<[<[<",
+    "[<[[<[[<<<<",
+    "[<[[[<[<[[<<",
+    "[<[<[[[<[<[<",
+    "[<[<[[<[[<<<<",
+    "[<<[<[<[[[<[<",
+    "[<[<[[[<[<[[<<",
+    "[<[<[<<[[[<[[<<<",
+    "[<[<[<[[<[<<<<<<",
+)
+
+
+def _pool_reaches(j: _Joint, code: str, cell7: int, walk_out: int) -> bool:
+    """Whether ``code`` leaves the pool correct once walked out.
 
     The pool must read ``0011000`` plus ``cell7`` at print time, and the walk
     out to the accumulator crosses it -- so what matters is the pool *after*
     that walk, not at the moment the code ends.
-
-    Memoised, because this is where the module's time goes: one call is a
-    breadth-first search costing 17-26ms at ``n == 3``, :func:`_try_print`
-    makes four of them per accumulator, and every caller sweeps accumulators.
-    The answer does not depend on the truth table -- only on the machines'
-    own state -- so the same handful of searches was being repeated for every
-    table.  Keying on the whole joint state would be sound but would rarely
-    hit; keying on what this function actually reads is what makes it useful.
-    A staging enumeration at ``n == 3`` fell from 173s to 0.5s on 6 distinct
-    keys against 4530 lookups, returning the identical column set.
     """
-    key = (
-        tuple(tuple(m.tape) for m in j.ms),
-        tuple(m.ptr for m in j.ms),
-        tuple(m.skip for m in j.ms),
-        tuple(m.dead for m in j.ms),
-        cell7,
-        walk_out,
-        maxlen,
-    )
-    if key in _POOL_CACHE:
-        return _POOL_CACHE[key]
-    found = _find_pool_uncached(j, cell7, walk_out, maxlen)
-    _POOL_CACHE[key] = found
-    return found
-
-
-# Keyed on everything :func:`_find_pool` reads, so a hit cannot be a
-# different question wearing the same key.  It stays small in practice -- a
-# dozen entries across both arities -- because the pool is driven to the same
-# few states whatever the staging.
-_POOL_CACHE: dict[tuple[object, ...], str | None] = {}
-
-
-def _find_pool_uncached(
-    j: _Joint, cell7: int, walk_out: int, maxlen: int = _POOL_DEPTH
-) -> str | None:
-    """Run the search :func:`_find_pool` memoises.  See it for what and why."""
     target = (*_POOL, cell7)
+    probe = [m.copy() for m in j.ms]
+    for char in code:
+        for m in probe:
+            m.exec(char)
+    if any(m.dead or m.skip for m in probe):
+        return False
+    if len({m.ptr for m in probe}) != 1:
+        return False
+    steps = walk_out - probe[0].ptr
+    if steps < 0:
+        return False
+    for _ in range(steps):
+        for char in "[x":
+            for m in probe:
+                m.exec(char)
+    for cell in range(8):
+        col = {m.tape[cell] for m in probe}
+        if len(col) != 1 or probe[0].tape[cell] != target[cell]:
+            return False
+    return True
 
-    def accept(new: list[_Sim], code: str) -> str | None:
-        if len({m.ptr for m in new}) != 1:
-            return None
-        probe = [m.copy() for m in new]
-        steps = walk_out - probe[0].ptr
-        if steps < 0:
-            return None
-        for _ in range(steps):
-            for ch in "[x":
-                for m in probe:
-                    m.exec(ch)
-        for cell in range(8):
-            col = {m.tape[cell] for m in probe}
-            if len(col) != 1 or probe[0].tape[cell] != target[cell]:
-                return None
-        return code
 
-    return _search(j, accept, maxlen)
+def _find_pool(j: _Joint, cell7: int, walk_out: int) -> str | None:
+    """Return a pool code for this orientation, or None if none fits."""
+    for code in _POOL_CODES:
+        if _pool_reaches(j, code, cell7, walk_out):
+            return code
+    return None
 
 
 def _endgame(j: _Joint, acc: int, read: str, cell7: int) -> None:

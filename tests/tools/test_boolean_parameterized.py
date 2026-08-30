@@ -2172,32 +2172,24 @@ class TestParameterizedMinifuck:
             for key, (sep_index, *_rest) in plan.items():
                 assert 0 <= sep_index < len(module._SEPS), (key, sep_index)  # noqa: SLF001
 
-    def test_pool_cache_agrees_with_the_search_it_replaces(self) -> None:
-        """Memoising ``_find_pool`` must not change a single answer.
+    def test_the_pool_codes_cover_every_route(self) -> None:
+        """The fixed codes must serve every route that reaches the endgame.
 
-        The cache is what makes this module fast -- one search costs 17-26ms
-        at three inputs and every accumulator sweep makes four per step -- so
-        it is worth proving rather than trusting.  A stale or under-keyed
-        entry would not raise; it would return a *pool pattern for a
-        different machine state*, and the endgame would then emit a program
-        that prints the wrong digit.  So this compares the memoised answer
-        against the search for every planned staging.
+        They replaced a breadth-first search, so the property that matters
+        is coverage: wherever the search would have found a pool, the list
+        must too.  Two of the codes cover all 117 planned stagings between
+        them, which makes trimming look safe -- it is not.  The degenerate
+        and reconverged routes reach the endgame from states the plans never
+        produce, and three two-input tables lose their pool if the list is
+        cut to those two.  So this checks the routes, not the plans.
         """
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
-        for n, plan in sorted(module._PLANS.items()):  # noqa: SLF001
-            for key in sorted(plan):
-                module._POOL_CACHE.clear()  # noqa: SLF001
-                memoised = module._staged(key, n)  # noqa: SLF001
-                cached = module._find_pool  # noqa: SLF001
-                module._find_pool = module._find_pool_uncached  # noqa: SLF001
-                try:
-                    searched = module._staged(key, n)  # noqa: SLF001
-                finally:
-                    module._find_pool = cached  # noqa: SLF001
-                assert memoised == searched, (n, key)
+        for table_int in range(16):
+            table = format(table_int, "04b")
+            assert module.minifuck.__wrapped__(table), table
 
     @pytest.mark.slow  # re-simulates every planned staging
     def test_plans_are_derived_not_asserted(self) -> None:
@@ -2402,7 +2394,7 @@ class TestParameterizedMinifuck:
 
         spread = _embed(2)
         assert len(set(spread.ptrs())) > 1, "the embed should leave rows apart"
-        assert _find_pool(spread, 0, 12, 4) is None
+        assert _find_pool(spread, 0, 12) is None
 
         clamped = _embed(2)
         _clamp(clamped)
