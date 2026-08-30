@@ -83,7 +83,7 @@ class _Machine:
                 raise HaltError("division by zero")
             self.stack.append((c - b) / a)
         elif char == "?":
-            line = self.io.input_str("Input: ").strip()
+            line = self.io.input_str().strip()
             if not _RATIONAL.fullmatch(line):
                 raise ValueError("input must be an integer or a fraction")
             if "/" in line and int(line.rsplit("/", 1)[1]) == 0:
