@@ -172,6 +172,7 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Dimensional": ("+.+.+.", ""),
     "Eval": ("0+.", ""),
     "Factor": ("15", ""),
+    "Fargo": ("$", "0\n"),
     "Flowchart": (FLOWCHART_TRUTH_MACHINE, "0\n"),
     "Forbin": ("main { x = 1; }", ""),
     "Forþ": ("65.", ""),

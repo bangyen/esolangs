@@ -6,6 +6,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
+from tests.interpreters.contract import EmptyProgramContract
 
 run = importlib.import_module("esolangs.interpreters.tape_based.painfuck").run
 
@@ -112,9 +113,6 @@ class TestPainfuck:
         with pytest.raises(HaltError):
             run_program("b")  # loop close with an empty stack
 
-    def test_empty_program(self) -> None:
-        assert run_program("") == ""
-
 
 class TestStepMachine:
     def test_step_tracks_tape_and_cursor(self) -> None:
@@ -148,3 +146,9 @@ class TestStepMachine:
         # cell 0 is zero, so the outer 'a' skips forward; the inner 'a...b'
         # pair must be consumed as a unit, leaving 'u' to print cell 0.
         assert run_program("aabbue") == "\x00"
+
+
+class TestContract(EmptyProgramContract):
+    """The shared empty-program shape, with this language's data."""
+
+    run = staticmethod(run_program)

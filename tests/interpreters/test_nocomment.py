@@ -16,6 +16,7 @@ import pytest
 import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
+from tests.interpreters.contract import EmptyProgramContract
 
 nocomment = importlib.import_module("esolangs.interpreters.tape_based.nocomment")
 
@@ -163,9 +164,6 @@ class TestNoComment:
         with pytest.raises(HaltError):
             run_and_capture("c" + "i" * 10 + "n" + "b" + "o")
 
-    def test_empty_program(self) -> None:
-        assert run_and_capture("") == ""
-
     def test_generator_round_trips(self) -> None:
         for text in ("Hello, World!", "Hi", "\x00\x01"):
             assert (
@@ -210,3 +208,9 @@ class TestStepMachine:
         from esolangs.vm import run_until_halt_or_cycle
 
         assert run_until_halt_or_cycle(_Machine("inbb", ScriptedIO())) is False
+
+
+class TestContract(EmptyProgramContract):
+    """The shared empty-program shape, with this language's data."""
+
+    run = staticmethod(run_and_capture)

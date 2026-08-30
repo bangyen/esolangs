@@ -10,6 +10,7 @@ from contextlib import redirect_stdout
 from unittest.mock import patch
 
 from esolangs.interpreters.io import IO
+from tests.interpreters.contract import CycleContract, EmptyProgramContract
 
 bf = importlib.import_module("esolangs.interpreters.tape_based.brainfuck")
 
@@ -19,6 +20,22 @@ def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
     with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
         bf.run(code, IO())
     return buffer.getvalue()
+
+
+def _machine(code: str) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.brainfuck import _Machine
+
+    return _Machine(code, ScriptedIO())
+
+
+class TestContract(EmptyProgramContract, CycleContract):
+    """The shared shapes, with brainfuck's own programs. `+[]` loops."""
+
+    run = staticmethod(run_and_capture)
+    machine = staticmethod(_machine)
+    halting_program = "+++[>+++<-]>."
+    looping_program = "+[]"
 
 
 class TestBrainfuck:
@@ -33,9 +50,6 @@ class TestBrainfuck:
         # neither the wrap's direction nor its width.  Decrementing from
         # zero does: it is 255 only under a modulus of exactly 256.
         assert run_and_capture("-.") == "\xff"
-
-    def test_empty_program(self) -> None:
-        assert run_and_capture("") == ""
 
     def test_comments_ignored(self) -> None:
         assert run_and_capture("abc+++abc.abc") == "\x03"
@@ -64,15 +78,6 @@ class TestBrainfuck:
     def test_nested_loop(self) -> None:
         """A doubly-nested loop leaves a known value in the printed cell."""
         assert run_and_capture("+++[>++[>+<-]<-]>+++.") == "\x03"
-
-    def test_cycle_detection_proves_an_infinite_loop(self) -> None:
-        """`+[]` loops forever, decided deterministically by a state cycle."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.brainfuck import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        machine = _Machine("+[]", ScriptedIO())
-        assert run_until_halt_or_cycle(machine) is False
 
     def test_unmatched_bracket_rejected(self) -> None:
         """Unbalanced brackets are a malformed program, not a halt."""

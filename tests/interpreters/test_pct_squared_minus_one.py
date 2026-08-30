@@ -3,6 +3,7 @@
 import importlib
 
 from esolangs.interpreters.io import ScriptedIO
+from tests.interpreters.contract import EmptyProgramContract
 
 run = importlib.import_module(
     "esolangs.interpreters.register_based.pct_squared_minus_one"
@@ -57,9 +58,6 @@ class TestPct:
         assert run_program("ip" + "m" * 10 + "l") == "0"
         # just under the threshold: 3 * 2^9 = 1536 prints normally
         assert run_program("ip" + "m" * 9 + "l") == "1536"
-
-    def test_empty_program(self) -> None:
-        assert run_program("") == ""
 
     def test_unknown_characters_are_no_ops(self) -> None:
         """Characters outside the command set do nothing at all.
@@ -154,3 +152,9 @@ class TestStepMachine:
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
         assert machine.acc == 0
+
+
+class TestContract(EmptyProgramContract):
+    """The shared empty-program shape, with this language's data."""
+
+    run = staticmethod(run_program)

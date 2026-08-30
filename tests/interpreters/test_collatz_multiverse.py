@@ -11,6 +11,7 @@ import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.collatz_multiverse import run
+from tests.interpreters.contract import EmptyProgramContract
 
 
 def run_program(code: str, stdin: str = "") -> str:
@@ -218,9 +219,6 @@ class TestMalformed:
         with pytest.raises(ValueError, match="malformed"):
             run_program("hello world")
 
-    def test_empty_program(self) -> None:
-        assert run_program("") == ""
-
     def test_blank_lines_are_skipped(self) -> None:
         program = CONSTANTS + "\n\nx = negativeOne x + one, DO PRINT.\n"
         assert run_program(program) == "\x01"
@@ -302,3 +300,9 @@ class TestStepMachine:
             ]
         )
         assert run_until_halt_or_cycle(_Machine(program, ScriptedIO())) is False
+
+
+class TestContract(EmptyProgramContract):
+    """The shared empty-program shape, with this language's data."""
+
+    run = staticmethod(run_program)

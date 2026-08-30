@@ -223,7 +223,7 @@ class TestSnapshot:
     def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
         from esolangs.interpreters.register_based.myscript import _Machine
 
-        machine = _Machine('var a is 1\nsay a', IO())
+        machine = _Machine("var a is 1\nsay a", IO())
         before = machine.snapshot()
         hash(before)  # must not raise
         machine.step()
