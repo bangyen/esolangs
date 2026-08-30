@@ -288,11 +288,12 @@ def test_interlaced_reassembles_to_the_same_image(width: int, height: int) -> No
     include ones smaller than the 8x8 lattice, where whole passes are empty
     -- the case an off-by-one in the pass geometry shows up on first.
     """
-    pixels = [
-        [(x * 37 + y * 11) % 256 for x in range(width)] for y in range(height)
-    ]
+    pixels = [[(x * 37 + y * 11) % 256 for x in range(width)] for y in range(height)]
     plain = _encode(
-        [bytes([0, *row]) for row in pixels], width, height, colour=png._GREY  # noqa: SLF001
+        [bytes([0, *row]) for row in pixels],
+        width,
+        height,
+        colour=png._GREY,  # noqa: SLF001
     )
     interlaced = _adam7_encode(pixels, width, height)
     assert png.read_grey(interlaced) == png.read_grey(plain)

@@ -111,6 +111,39 @@ round-trip check for `extract()` alone.
     cliff at quality 32 and below (block quantization erases pixels
     directly out of a 1px stroke) is now caught by `extract()`'s coverage
     check rather than failing silently.
+
+    **That cliff belongs to the 1px stroke, not to the format**, which was
+    only established later. Rendering the same program thicker moves it a
+    long way down, because a blurred 3px stroke is still a stroke where a
+    blurred 1px stroke is a gap. Measured end to end (JPEG at each quality,
+    then the full extract pipeline, checking the recovered opcodes):
+
+    ===  ==========  ==========  ==========
+     k   stroke      correct to  destroyed
+    ===  ==========  ==========  ==========
+     1x   1px         q34         q28
+     2x   2px         q15         q10
+     3x   3px         q15         q10
+     4x   4px         q10         --
+    ===  ==========  ==========  ==========
+
+    At 2x and above the accepted cases reconstruct *exactly* -- coverage
+    gap 0, not merely under threshold -- so this is real redundancy rather
+    than tolerated damage. `render(scale=k)` exists for this; see its docstring.
+
+    Two things this measurement settled. First, **the coverage check is
+    correctly calibrated and should not be loosened**: every failure above
+    is a genuine one, with gaps of 57/58/290 pixels against a threshold of
+    2, and the program that would have come back had it been permissive is
+    wrong (a trailing `+` silently missing), not merely degraded. There is
+    no marginal band where leniency would recover anything -- gaps are 0 or
+    they are enormous. Second, redundancy at write time strictly beats
+    leniency at read time, because it preserves the signal instead of
+    guessing at it.
+
+    The 2x/q10 case fails in `find_cursor` rather than coverage: enough
+    blur that the arrowhead stops passing the fill-ratio check. Also a
+    correct refusal, just an earlier one.
   - Cursor misidentification: `find_cursor` rejects a winning candidate
     that isn't arrowhead-shaped (fill-ratio bracket), confirmed against a
     solid-square false positive. Does *not* resolve genuine ambiguity
