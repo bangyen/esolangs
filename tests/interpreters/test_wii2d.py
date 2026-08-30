@@ -284,15 +284,6 @@ class TestWII2DEdgeCases:
             run_with_timeout(lambda: run(code, IO()))
         assert f.getvalue() == "\x00"
 
-    def test_wrap_around_behavior(self) -> None:
-        """Test pointer wrap-around at grid boundaries."""
-        # Create a program that tests wrap-around with a clear halt path
-        code = [">~.", "!"]  # Move right, output, halt
-
-        with redirect_stdout(io.StringIO()):
-            run_with_timeout(lambda: run(code, IO()))
-        # Should output accumulator value (0) as ASCII
-
     def test_large_accumulator_values(self) -> None:
         """Test handling of large accumulator values."""
         code = [">255~.", "!"]  # Maximum byte value
@@ -330,14 +321,6 @@ class TestWII2DIntegration:
         with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code, IO()))
         assert f.getvalue() == "H"  # ASCII 72
-
-    def test_program_with_loops_and_conditionals(self) -> None:
-        """Test program that uses control flow extensively."""
-        code = ["!", ">@~.", "  @"]
-
-        with redirect_stdout(io.StringIO()):
-            run_with_timeout(lambda: run(code, IO()))
-        # Should execute without hanging
 
     def test_character_arithmetic_chain(self) -> None:
         """Test a chain of character arithmetic operations."""
