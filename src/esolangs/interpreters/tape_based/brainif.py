@@ -69,10 +69,8 @@ class _Machine:
                     raise ValueError("goto requires a target line")
                 self.ind = int(arr[3]) - 2
             elif "input" in line:
-                s = ""
-
-                while not s:
-                    s = self.io.input_str()
+                while not (s := self.io.input_str()):
+                    pass
 
                 self.cells[self.ptr] = ord(s[0])
             elif "output" in line:
