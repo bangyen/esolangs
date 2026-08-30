@@ -32,6 +32,17 @@ class TestEval:
         """' wraps the string in double quotes."""
         assert run_and_capture("'ab\".") == '"ab"'
 
+    def test_a_literal_ends_at_the_first_quote_not_the_last(self) -> None:
+        """Two literals in one program stay separate.
+
+        Every other program here holds a single literal, where the closing
+        quote is also the program's last one -- so ending at the first quote
+        and ending at the last are the same position.  With a second literal
+        after it they diverge: taking the last quote swallows the commands
+        in between and returns them as one long string.
+        """
+        assert run_and_capture('"a"."b".') == "ab"
+
     def test_a_literal_advances_the_cursor_from_where_it_started(self) -> None:
         """A literal moves the cursor *on* by its length, not *to* it.
 
