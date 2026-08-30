@@ -10,21 +10,18 @@ is the first digit adjacent to the command (up, right, down, left).
 import io
 from contextlib import redirect_stdout
 from typing import ClassVar
-from unittest.mock import patch
 
 import pytest
 
 from esolangs.interpreters.grid_based.dig import run
 from esolangs.interpreters.io import IO, ScriptedIO
 from tests.interpreters.contract import CycleContract
+from tests.interpreters.runner import run_program
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
-    """Run a Dig program (patching input) and return its stdout."""
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        run(code, io=IO())
-    return buffer.getvalue()
+    """Run a Dig program and return its stdout."""
+    return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
 
 
 class TestDigHaltAndMovement:
