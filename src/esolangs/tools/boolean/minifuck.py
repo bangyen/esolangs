@@ -85,18 +85,21 @@ tenth of one.  How much of the arity is derived rather than searched:
 * **Three inputs, at most two of them essential: all of it, for free.**  Such
   a table is a smaller table wearing extra inputs, so it projects onto the
   two-input construction; all 38 build without searching.
-* **Three essential inputs: 216 of 218 tables**, via
-  :data:`_THREE_INPUT_PLAN`, parity and majority among them.  The rest still
-  search, so the plan is a fast path rather than a replacement and a miss
-  falls through unchanged.
+* **Three essential inputs: all 218**, via :data:`_THREE_INPUT_PLAN`, parity
+  and majority among them.
 
-What remains unreached is bounded by the searches, which is where the cost
-also lives: a table with no staging that the searches cannot build spends
-about two minutes failing, and not for want of a computable answer -- the
-column search finds the answer in seconds; it is the walk to an accumulator
-that washes it out.  That is exactly the effect the staged route sidesteps by
-selecting on the column *as the read sees it*, which is why it reaches
-tables the searches do not.  See ``docs/walls.md``.
+So no three-input table searches, and the whole arity builds in about ten
+seconds.  The searches are kept regardless: they are what a *wider* table
+falls through to, and they are the reason a missing staging degrades rather
+than raises.
+
+Why the staged route reaches what the searches do not is one idea.  A search
+looks for a cell *holding* the answer and then loses it walking to the read,
+because the walk's prefix-XOR rewrites that very cell; a staging selects on
+the column **as the read sees it**, so the walk is priced in rather than
+fought.  The hardest pair here, ``01101101`` / ``10010010``, shows the effect
+at its sharpest: the searches find its column and still cannot print it, and
+they raise after about 96 seconds.  See ``docs/walls.md``.
 
 That makes this generator weaker than the repo's better ones, and the
 comparison is worth stating: ``bfpda`` is a closed-form decision tree at any
@@ -718,6 +721,11 @@ def _reconverged(truth_table: str, essential: list[int], n: int) -> str | None:
         if plan is None:
             return None
         sep_index, _settle, brackets, acc = plan
+        # Every two-input staging is a plain bracket run; the literal-suffix
+        # form is only used by one three-input entry, and replaying it here
+        # would need the walk this route does not make.
+        if not isinstance(brackets, int):
+            return None
         setup = (sep_index, brackets, acc)
         accumulators = (acc,)
 
@@ -774,7 +782,9 @@ def _reconverged(truth_table: str, essential: list[int], n: int) -> str | None:
 # search -- and every one is checked end to end by the test suite.
 # Each entry is ``(separator index, settle count, bracket count, accumulator)``
 # keyed by the lexicographically smaller of a table and its complement.
-_Staging = tuple[int, int, int, int]
+# The third field is a bracket *count* for all but one entry, and a literal
+# suffix string for that one.  See :func:`_staged`.
+_Staging = tuple[int, int, int | str, int]
 
 _TWO_INPUT_PLAN: dict[str, _Staging] = {
     "0000": (0, 0, 0, 9),  # constants
@@ -790,7 +800,17 @@ _TWO_INPUT_PLAN: dict[str, _Staging] = {
 # The same construction at three inputs.  It very nearly covers the arity --
 # 108 of the 109 complement pairs are here -- but a miss still falls through
 # to the searches rather than raising, so coverage cannot regress and the one
-# remaining pair (``01101101`` / ``10010010``) is built as it always was.
+# last pair (``01101101`` / ``10010010``) needed a staging the others do not.
+#
+# It is worth knowing why, because it was the hardest table here by some
+# margin and the searches never built it at all -- both members raise after
+# about 96 seconds.  Its answer column is not scarce: 14375 of 804600 sparse
+# suffixes leave it standing somewhere on the tape.  What is scarce is a
+# staging that also *carries* it to the read, because the walk's prefix-XOR
+# rewrites the very cell.  A pure bracket run never manages it; the suffix
+# below interleaves two ``<`` into the run, which is the vocabulary the
+# column search was already using when it found the column and still failed
+# to print it.
 #
 # That pair was looked for and not found, and the shape of the miss is worth
 # recording so it is not re-run blind.  Unlike the tables the new separators
@@ -880,6 +900,10 @@ _THREE_INPUT_PLAN: dict[str, _Staging] = {
     "01100001": (1, 0, 21, 28),
     "01100111": (1, 0, 17, 25),
     "01101111": (1, 0, 22, 28),
+    # The one entry whose suffix is not a plain bracket run.  Nothing else
+    # reaches this pair -- not the scans, not the column search, not the
+    # parked search.
+    "01101101": (2, 0, "[[<[<[[[[[[[[[", 22),
     # Reached by the three added separators; see the _SEPS note.
     "00000010": (3, 0, 20, 27),
     "00000100": (2, 0, 14, 26),
@@ -960,11 +984,14 @@ def _staged(truth_table: str, n: int) -> str | None:
     plan = _PLANS.get(n, {}).get(min(truth_table, complement))
     if plan is None:
         return None
-    sep_index, settle, brackets, acc = plan
+    sep_index, settle, suffix, acc = plan
     j = _embed(n, settle=settle, sep=_SEPS[sep_index])
     _clamp(j)
     _walk_to(j, _BASE - 1)
-    j.emit("[" * brackets + "<")
+    # A count is the common case -- a plain bracket run, which the ``<``
+    # terminates so the pointer lands where the endgame expects.  A literal
+    # string is the escape hatch for the one staging a run cannot express.
+    j.emit("[" * suffix + "<" if isinstance(suffix, int) else suffix)
     _clamp(j)
     hit = _try_print(j, truth_table, acc)
     return hit.template() if hit is not None else None
@@ -1076,7 +1103,7 @@ def minifuck(truth_table: str) -> str:
 
     # A planned staging is the cheapest route by far, so it goes first.  At
     # two inputs the plan is complete and no search ever runs; at three it
-    # covers 108 of the 109 complement pairs, and a miss falls through to the
+    # covers all 109 complement pairs, and a miss at another arity falls through to the
     # searches below.
     derived = _staged(truth_table, n)
     if derived is not None:
