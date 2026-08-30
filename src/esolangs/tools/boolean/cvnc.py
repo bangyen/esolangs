@@ -23,12 +23,25 @@ leaf to fall off its own arm it would run straight into the ``ʋ`` and loop
 back to the test it already passed -- the failure the first draft of this
 generator hit.  The halt is a *computed goto past the end of the program*::
 
-    ci ci cæ cæ cæ cæ ɹi
+    ci ci cæ cæ ɹi
 
-two increments to reach 2, four squarings to reach ``2**16``, then ``ɹ``,
-which jumps to that character offset; any offset past the end halts, and
-65536 characters is far beyond any program this generator emits.  ``ɹ``'s
-own syllable needs a vowel, and the jump makes that vowel dead code.
+The gadget runs *after* the leaf has printed, so the accumulator entering it
+is not zero: it still holds the ASCII digit, 48 or 49.  Two increments take
+that to 50, two squarings to 6,250,000, and ``ɹ`` jumps to that character
+offset; any offset past the end halts.  ``ɹ``'s own syllable needs a vowel,
+and the jump makes that vowel dead code.
+
+The squaring count is what *bounds the generator's arity*, so it is chosen
+against that rather than minimised.  One squaring already reaches 2500 and
+suffices through ``n == 4`` (1801 characters), but it caps the generator
+there: ``n == 5`` is 3673 characters and would have to be refused.  A second
+squaring costs two characters per leaf and carries the reach to 6,250,000,
+past ``n == 8``.  Zero squarings genuinely fails -- the gadget reaches only
+50 and lands back inside the program -- which is what makes this a measured
+floor and not a guess.  The margin is checked against the emitted program
+rather than assumed (see :data:`_HALT_REACH` and the guard in
+:func:`cvnc`), so an arity that outgrew it raises instead of emitting a
+program that silently re-enters itself.
 
 Because the then-arm always halts, the ``ʋ`` is never executed at all: it
 exists only so the ``ɰ̊`` has something to match against, which the language
@@ -84,15 +97,27 @@ _NORMALIZE = "cə"
 # parse and does nothing.
 _PRINT = "fu"
 
-# Jump past the end of the program, which halts.  Two increments reach 2 and
-# four squarings take that to 2**16; ``ɹ`` then jumps to that character
-# offset.  The ``i`` after ``ɹ`` is the vowel its syllable needs and is
-# unreachable, since the jump has already left.
-_HALT = _INCREMENT * 2 + "cæ" * 4 + "ɹi"
+# The accumulator entering the halt gadget: the leaf has just printed, so it
+# still holds the ASCII digit.  49 is the larger of the two, and starting
+# from the smaller (48) is what the reach must be computed against.
+_HALT_ENTRY = _ASCII_ZERO
+
+# Squarings in the gadget.  One is the measured floor (with none the gadget
+# reaches only 50 and lands back inside the program), but the count bounds
+# the generator's arity rather than just its correctness: one reaches 2500
+# and caps it at n == 4, two reach 6.25M and carry it past n == 8 for two
+# characters per leaf.  See the module docstring.
+_HALT_SQUARINGS = 2
+
+# Jump past the end of the program, which halts.  Two increments take the
+# digit to 50 and two squarings take that to 6,250,000; ``ɹ`` then jumps to
+# that character offset.  The ``i`` after ``ɹ`` is the vowel its syllable needs
+# and is unreachable, since the jump has already left.
+_HALT = _INCREMENT * 2 + "cæ" * _HALT_SQUARINGS + "ɹi"
 
 # The offset _HALT reaches, and so the longest program it can escape from.
-# Asserted against the emitted program rather than assumed.
-_HALT_REACH = 2 ** (2**4)
+# Checked against the emitted program rather than assumed.
+_HALT_REACH = (_HALT_ENTRY + 2) ** (2**_HALT_SQUARINGS)
 
 
 def _leaf(answer: str, accumulator: int) -> str:
@@ -156,6 +181,6 @@ def cvnc(truth_table: str) -> str:
         # whole program, printed from a fresh accumulator.
         return _leaf(truth_table, 0)
     program = _tree(truth_table, 0)
-    if len(program) >= _HALT_REACH:  # pragma: no cover - needs a 2**16 table
+    if len(program) >= _HALT_REACH:
         raise ValueError("program outgrew the halting goto's reach")
     return program

@@ -76,20 +76,24 @@ class TestSyllables:
         it, which strands the nasal with no syllable of its own to be the
         ``N`` of -- and a nasal can never be an onset.
         """
-        with pytest.raises(ValueError, match="consonant"):
+        with pytest.raises(ValueError, match="consonant") as caught:
             run_program("susŋ")
+        assert str(caught.value) == "syllable must start with a consonant: 'ŋ'"
 
     def test_a_syllable_needs_a_vowel(self) -> None:
-        with pytest.raises(ValueError, match="vowel"):
+        with pytest.raises(ValueError, match="vowel") as caught:
             run_program("s")
+        assert str(caught.value) == "syllable must have a vowel after its consonant"
 
     def test_a_syllable_starts_with_a_consonant(self) -> None:
-        with pytest.raises(ValueError, match="consonant"):
+        with pytest.raises(ValueError, match="consonant") as caught:
             run_program("is")
+        assert str(caught.value) == "syllable must start with a consonant: 'i'"
 
     def test_an_empty_program_is_malformed(self) -> None:
-        with pytest.raises(ValueError, match="empty"):
+        with pytest.raises(ValueError, match="empty") as caught:
             run_program("")
+        assert str(caught.value) == "program is empty"
 
     def test_a_non_ipa_symbol_is_malformed(self) -> None:
         with pytest.raises(ValueError, match="symbol"):
@@ -121,6 +125,22 @@ class TestFricatives:
 
     def test_input_character(self) -> None:
         assert run_program("ʒu" + "θi", "A\n") == "65"
+
+    @pytest.mark.parametrize(
+        ("char", "expected"),
+        [("\u0100", "0"), ("\u0101", "1"), ("\u4e2d", "45")],
+        ids=["256", "257", "cjk"],
+    )
+    def test_a_unicode_input_character_is_taken_modulo_256(
+        self, char: str, expected: str
+    ) -> None:
+        """The spec's own "if Unicode, then modulo it by 256".
+
+        Only a codepoint above 255 exercises the modulus at all: every
+        ASCII character is already its own residue, so an ASCII-only test
+        cannot tell 256 from any other divisor above 127.
+        """
+        assert run_program("ʒu" + "θi", char + "\n") == expected
 
     def test_an_unparseable_input_line_reads_as_zero(self) -> None:
         assert run_program("su" + "θi", "banana\n") == "0"
@@ -168,15 +188,41 @@ class TestDeque:
         """Push 1 to the front and 3 to the back, then pop the back."""
         assert run_program("cim" + "cicin" + "coɲ" + "θi") == "3"
 
+    @pytest.mark.parametrize(
+        ("push", "pop", "expected"),
+        [
+            ("m", "ŋ", "3"),  # front, front: the later push is in front
+            ("m", "ɲ", "1"),  # front, back: the earlier push is at the back
+            ("n", "ŋ", "1"),  # back, back-loaded: the earlier push is in front
+            ("n", "ɲ", "3"),  # back, back: the later push is at the back
+        ],
+        ids=["front-front", "front-back", "back-front", "back-back"],
+    )
+    def test_each_end_is_addressed_independently(
+        self, push: str, pop: str, expected: str
+    ) -> None:
+        """Two *different* values are what separate the four combinations.
+
+        With a single element on the deque, pushing to the front and to the
+        back leave the same deque and popping either end returns the same
+        number, so a test that stages one value cannot tell any of the four
+        apart -- it passes just as happily if both ends are the same end.
+        Staging 1 and then 3 gives each combination its own answer.
+        """
+        program = "ci" + push + "cici" + push + "co" + pop + "θi"
+        assert run_program(program) == expected
+
     @pytest.mark.parametrize("program", ["coŋ", "coɲ"], ids=["front", "back"])
     def test_popping_an_empty_deque_halts(self, program: str) -> None:
-        with pytest.raises(HaltError, match="empty deque"):
+        with pytest.raises(HaltError) as caught:
             run_program(program)
+        assert str(caught.value) == "pop from an empty deque"
 
     @pytest.mark.parametrize("program", ["pi", "ki"], ids=["front", "back"])
     def test_appending_from_an_empty_deque_halts(self, program: str) -> None:
-        with pytest.raises(HaltError, match="empty deque"):
+        with pytest.raises(HaltError) as caught:
             run_program(program)
+        assert str(caught.value) == "pop from an empty deque"
 
 
 class TestFunction:
@@ -210,8 +256,9 @@ class TestFunction:
 
     def test_dividing_by_zero_halts(self) -> None:
         program = "con" + "do" + "qo" + "po" + "su" + "θi"
-        with pytest.raises(HaltError, match="division by zero"):
+        with pytest.raises(HaltError) as caught:
             run_program(program, "7\n")
+        assert str(caught.value) == "division by zero in the function"
 
     def test_subtraction_floors_at_zero(self) -> None:
         """The accumulator is unsigned, so ``2 - a`` at a == 5 is 0."""
@@ -260,6 +307,25 @@ class TestFunction:
         inert -- which is what makes ``ci``/``fu`` a safe no-op pairing."""
         assert run_program("do" + "ɡo" + "do" + "co" + "su" + "θi", "5\n") == "5"
 
+    @pytest.mark.parametrize(
+        ("build", "stage", "stdin", "expected"),
+        [
+            ("do" + "\u0261o" + "do" + "\u0261o" + "do", "", "2\n", "8"),
+            ("do" + "\u0261o" + "do" + "qo" + "po", "cici" + "n", "6\n", "18"),
+        ],
+        ids=["a*a*a", "a*a/2"],
+    )
+    def test_a_chain_of_same_precedence_operators_keeps_going(
+        self, build: str, stage: str, stdin: str, expected: str
+    ) -> None:
+        """The term loop consumes *every* multiplicative operator, not one.
+
+        A two-operand function exercises the loop's body but not its
+        repetition, so stopping after the first factor looks identical
+        there; three operands is the shortest case that separates them.
+        """
+        assert run_program(stage + build + "su" + "\u03b8i", stdin) == expected
+
     def test_the_function_survives_until_it_is_reset(self) -> None:
         """It is applied twice, to two different arguments: 3 and then 9."""
         program = "do" + "ɡo" + "do" + "su" + "su" + "θi"
@@ -283,13 +349,37 @@ class TestControlFlow:
     def test_while_zero_enters_its_body_when_the_accumulator_is_clear(self) -> None:
         assert run_program("ɰu" + "ciθu" + "ʋu") == "1"
 
+    @pytest.mark.parametrize(
+        ("program", "expected"),
+        [
+            ("ci" * 3 + "ɰu" + "θu" + "ʋi" + "θi", "4"),
+            ("ɰ̊u" + "θu" + "ʋi" + "θi", "1"),
+        ],
+        ids=["while-zero", "while-nonzero"],
+    )
+    def test_a_skipped_loop_resumes_on_the_end_marker_s_own_vowel(
+        self, program: str, expected: str
+    ) -> None:
+        """The jump clears the ``ʋ`` and lands on the rest of its syllable.
+
+        ``ʋ`` is a consonant, so its syllable carries a vowel that is a
+        command in its own right and must still run.  Every other loop test
+        here happens to pair ``ʋ`` with a vowel that changes nothing, so
+        landing one command further would look identical; giving that
+        syllable an ``i`` makes the difference observable -- the increment
+        is skipped if the jump overshoots.
+        """
+        assert run_program(program) == expected
+
     def test_a_loop_end_with_no_start_is_malformed(self) -> None:
-        with pytest.raises(ValueError, match="no matching start"):
+        with pytest.raises(ValueError, match="no matching start") as caught:
             run_program("ʋi")
+        assert str(caught.value) == "loop end with no matching start"
 
     def test_a_loop_start_with_no_end_is_malformed(self) -> None:
-        with pytest.raises(ValueError, match="no matching end"):
+        with pytest.raises(ValueError, match="no matching end") as caught:
             run_program("ɰi")
+        assert str(caught.value) == "loop start with no matching end"
 
     def test_goto_lands_on_the_accumulator_th_character(self) -> None:
         """``su`` reads the target without disturbing it, so the jump is
@@ -318,6 +408,16 @@ class TestControlFlow:
 
     def test_a_syllable_goto_past_the_end_halts(self) -> None:
         assert run_program("su" + "ji" + "θi" + "θi", "99\n") == ""
+
+    def test_a_syllable_goto_to_the_count_itself_halts(self) -> None:
+        """The bound is exclusive, and off by one it indexes past the list.
+
+        ``suјiθiθi`` has four syllables, so 4 is the first index with no
+        syllable to land on.  Accepting it would read ``starts[4]`` and
+        raise ``IndexError`` rather than halting, which is a crash the
+        far-past-the-end case never reaches.
+        """
+        assert run_program("su" + "ji" + "θi" + "θi", "4\n") == ""
 
     def test_a_goto_to_its_own_offset_is_an_infinite_loop(self) -> None:
         """Nothing rescues a self-jump, and the cycle detector proves it."""
