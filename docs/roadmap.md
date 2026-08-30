@@ -159,7 +159,7 @@ generator that validates its own output needs that check frame-mapped too.
 
 ## Mutation-testing sweep
 
-All 59 are measured.  The whole sweep was re-run on 2026-08-29, one
+All 60 are measured.  The whole sweep was re-run on 2026-08-29, one
 language at a time on an idle machine, and **every figure previously
 recorded came back exactly** — which is what the harness commits
 `800f071` and `86c89b9` needed, each having been validated against a
@@ -168,7 +168,9 @@ single language while nothing checked the rest.
 Nineteen suites are at 100% — `%^2^-1`, 3D Brainfuck, ArrowQueue, Back,
 BFStack, Bitdeque, brainfuck, BrainIf, Clockwise, Collatz Multiverse, Decleq,
 Eval, Factor, Home Row, Minifuck, NoComment, RAM0, Suffolk and Unsquare.
-1480 mutants survive across the repo; the rest of the field, worst first:
+1512 mutants survive across the repo (Fargo, added 2026-08-30, is the
+forty-first row and the only one not from the 2026-08-29 sweep); the rest
+of the field, worst first:
 
 | language | score | survivors |
 | --- | --- | --- |
@@ -202,6 +204,7 @@ Eval, Factor, Home Row, Minifuck, NoComment, RAM0, Suffolk and Unsquare.
 | Suptiftam | 91.8% | 93 |
 | Streetcode | 91.9% | 98 |
 | BIO | 92.2% | 9 |
+| Fargo | 92.4% | 32 |
 | 6-5 | 92.7% | 10 |
 | Basicfuck | 92.8% | 50 |
 | Jaune | 92.9% | 18 |
@@ -225,7 +228,7 @@ numbers, 15 of which had never been recorded per-language.  **Lamfunc (82), Betw
 (71) and Grapheme (60) are the largest untriaged pools** and were invisible
 before this sweep.
 
-55 of the 59 finish in under half a minute; only Streetcode and Forbin run
+56 of the 60 finish in under half a minute; only Streetcode and Forbin run
 to minutes.  So re-running the language you touched is free, and re-running
 everything after a change to the shared machinery is worth the few minutes.
 
