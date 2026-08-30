@@ -2114,6 +2114,33 @@ class TestParameterizedMinifuck:
         # ...and the public entry point still builds a planned table.
         assert parameterized.minifuck(sorted(_THREE_INPUT_PLAN)[0])
 
+    def test_pool_cache_agrees_with_the_search_it_replaces(self) -> None:
+        """Memoising ``_find_pool`` must not change a single answer.
+
+        The cache is what makes this module fast -- one search costs 17-26ms
+        at three inputs and every accumulator sweep makes four per step -- so
+        it is worth proving rather than trusting.  A stale or under-keyed
+        entry would not raise; it would return a *pool pattern for a
+        different machine state*, and the endgame would then emit a program
+        that prints the wrong digit.  So this compares the memoised answer
+        against the search for every planned staging.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        for n, plan in sorted(module._PLANS.items()):  # noqa: SLF001
+            for key in sorted(plan):
+                module._POOL_CACHE.clear()  # noqa: SLF001
+                memoised = module._staged(key, n)  # noqa: SLF001
+                cached = module._find_pool  # noqa: SLF001
+                module._find_pool = module._find_pool_uncached  # noqa: SLF001
+                try:
+                    searched = module._staged(key, n)  # noqa: SLF001
+                finally:
+                    module._find_pool = cached  # noqa: SLF001
+                assert memoised == searched, (n, key)
+
     @pytest.mark.slow  # re-simulates every planned staging
     def test_plans_are_derived_not_asserted(self) -> None:
         """Every planned staging really does deliver its table's column.

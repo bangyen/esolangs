@@ -376,7 +376,44 @@ def _find_pool(
     The pool must read ``0011000`` plus ``cell7`` at print time, and the walk
     out to the accumulator crosses it -- so what matters is the pool *after*
     that walk, not at the moment the code ends.
+
+    Memoised, because this is where the module's time goes: one call is a
+    breadth-first search costing 17-26ms at ``n == 3``, :func:`_try_print`
+    makes four of them per accumulator, and every caller sweeps accumulators.
+    The answer does not depend on the truth table -- only on the machines'
+    own state -- so the same handful of searches was being repeated for every
+    table.  Keying on the whole joint state would be sound but would rarely
+    hit; keying on what this function actually reads is what makes it useful.
+    A staging enumeration at ``n == 3`` fell from 173s to 0.5s on 6 distinct
+    keys against 4530 lookups, returning the identical column set.
     """
+    key = (
+        tuple(tuple(m.tape) for m in j.ms),
+        tuple(m.ptr for m in j.ms),
+        tuple(m.skip for m in j.ms),
+        tuple(m.dead for m in j.ms),
+        cell7,
+        walk_out,
+        maxlen,
+    )
+    if key in _POOL_CACHE:
+        return _POOL_CACHE[key]
+    found = _find_pool_uncached(j, cell7, walk_out, maxlen)
+    _POOL_CACHE[key] = found
+    return found
+
+
+# Keyed on everything :func:`_find_pool` reads, so a hit cannot be a
+# different question wearing the same key.  It stays small in practice -- a
+# dozen entries across both arities -- because the pool is driven to the same
+# few states whatever the staging.
+_POOL_CACHE: dict[tuple[object, ...], str | None] = {}
+
+
+def _find_pool_uncached(
+    j: _Joint, cell7: int, walk_out: int, maxlen: int = _POOL_DEPTH
+) -> str | None:
+    """The search :func:`_find_pool` memoises.  See it for what and why."""
     target = (*_POOL, cell7)
 
     def accept(new: list[_Sim], code: str) -> str | None:
