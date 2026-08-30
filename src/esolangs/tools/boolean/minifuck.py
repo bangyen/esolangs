@@ -348,9 +348,14 @@ def _search[Hit](
 #
 #     PREFIX + '[[[<[' + SUFFIX
 #
-# with that core appearing exactly once.  ``'[<'`` repeated ``n`` times plants
-# a single 1 at cell ``n`` and nothing else, and for three of the five the core
-# then shifts that mark three cells right, carrying the pointer with it:
+# with that core appearing exactly once.  One law runs through all of it:
+#
+#     **a run of k brackets carries a mark right by ceil(k / 2) cells**,
+#     leaving a pending skip when k is odd
+#
+# -- verified from marks at cells 2 to 5 for runs of 1 to 8.  ``'[<'`` repeated
+# ``n`` times plants a single 1 at cell ``n`` and nothing else, so a code is
+# "plant a mark, then walk it right with bracket runs":
 #
 #     ''         + core + '<<<<'     no mark             ends at cell 0
 #     '[<'       + core + '<[<'      mark 1 -> 4         ends at cell 4
@@ -358,13 +363,26 @@ def _search[Hit](
 #     '[<<[<[<'  + core + '<'        mark 3 -> 6         ends at cell 5
 #     '[<[<[<<'  + core + '[<<<'     mark 3, spread      ends at cell 2
 #
-# Three, and the two exceptions say what the rule depends on.  The shift is
-# clean only when the prefix leaves the pointer *on* its mark: the first code
-# has no mark to move, and ``'[<[<[<<'`` reaches cell 3 with the pointer at 1
-# rather than 2, so the core spreads marks over cells 2..4 instead of moving
-# one.  A plain ``'[<[<[<'`` would mark cell 3 with the pointer at 2 and shift
-# cleanly -- what the irregular spelling buys is the pointer, which is the
-# second free variable and the one the end-position argument below is about.
+# Every piece is that law at a different ``k``: the core opens with three
+# brackets and moves a mark +2, the suffix ``'[<<<'`` opens with one and moves
+# it +1, and the suffixes that open with none (``'<[<'``, ``'<'``, ``'<<<<'``)
+# move no mark at all and only reposition the pointer.  Two codes share the
+# suffix ``'<[<'`` verbatim at different marks, which is what a law stated in
+# *displacements* rather than positions predicts.
+#
+# The one code that does not fit is ``'[<[<[<<'``, and it says what the law
+# depends on: the walk is clean only when the pointer sits just left of the
+# mark.  That prefix reaches cell 3 with the pointer at 1 rather than 2, so the
+# core spreads marks over cells 2..4 instead of carrying one.  A plain
+# ``'[<[<[<'`` would mark cell 3 and walk cleanly -- what the irregular
+# spelling buys is the pointer, which is the second free variable and the one
+# the end-position argument below is about.
+#
+# The same law is why the mirrors were derivable and why exactly two flips
+# existed.  A mirror is its setter plus a bracket run, and the two that work --
+# ``'[' * 4 + '<'`` and ``'[' * 6 + '<'`` -- are the runs displacing a mark by
+# +2 and +3, which is what the two end positions need.  Odd runs fail because
+# they leave the pending skip; that is the real reason, not the parity of k.
 #
 # This is worth stating because every surface measure says the opposite.
 # Pairwise edit distance runs 2 to 7, prefix-factoring an exact regex makes it
