@@ -1984,6 +1984,130 @@ class _SuptiftamVM(_BaseVM):
         return []
 
 
+class _StreetcodeVM(_BaseVM):
+    """2D street grid; ``ip`` is the car's (row, col, heading), ``memory`` the cells.
+
+    The heading is spelled ``"N"``/``"E"``/``"S"``/``"W"`` on the machine and
+    reported here as its index into that order, so ``ip`` stays all-integer
+    like every other 2D language's.  The tape is a sparse dict keyed by CP,
+    which never goes negative -- ``LEFT`` at zero halts -- so ``memory`` is
+    the dense prefix up to the highest cell touched.
+    """
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.grid_based.streetcode import _Machine
+
+        self._machine = _Machine(program.splitlines(), self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        machine = self._machine
+        return (machine.row, machine.col, "NESW".index(machine.heading))
+
+    @property
+    def memory(self) -> list[int]:
+        cells = self._machine.cells
+        if not cells:
+            return []
+        return [cells.get(i, 0) for i in range(max(cells) + 1)]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _FlowchartVM(_BaseVM):
+    """Forking 2D pointers; ``ip`` is the first live one, ``memory`` the deques.
+
+    A Flowchart program runs several pointers at once, so there is no single
+    cursor to report: ``ip`` is the first pointer still running, as
+    ``(row, col, drow, dcol)`` with the heading flattened, and ``None`` once
+    every pointer has stopped on an ``(( ))``.  ``memory`` is the shared tape
+    of deques concatenated in index order, which is what the pointers read
+    and write between them.
+    """
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.grid_based.flowchart import _Machine
+
+        self._machine = _Machine(program.splitlines(), self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> tuple[int, ...] | None:
+        for pointer in self._machine.pointers:
+            if not pointer.done:
+                return (pointer.row, pointer.col, *pointer.d)
+        return None
+
+    @property
+    def memory(self) -> list[int]:
+        deques = self._machine.deques
+        return [v for key in sorted(deques) for v in deques[key]]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _CircuitDiagramVM(_BaseVM):
+    """Generation-based circuit; ``ip`` is ``None``, ``memory`` the live wires.
+
+    Nothing moves through a Circuit Diagram -- ``step()`` advances one
+    generation of the whole drawing at once -- so there is no instruction
+    position to report and ``ip`` is always ``None``.  Wiring values are
+    per-generation events rather than stored charge, so ``memory`` is the
+    bits driven this generation, in wiring order; a wiring nothing drove is
+    Null and contributes nothing, which is why its length varies from one
+    step to the next.
+    """
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.grid_based.circuit_diagram import _Machine
+
+        self._machine = _Machine(program.splitlines(), self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> None:
+        return None
+
+    @property
+    def memory(self) -> list[int]:
+        return [
+            bit
+            for wiring in self._machine.wirings
+            if wiring.value is not None
+            for bit in wiring.value
+        ]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
 # Language name -> VM adapter.  Only interpreters with a step()/halted state
 # object are wrappable; the rest raise UnknownLanguageError.
 _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
@@ -2043,6 +2167,9 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Lamfunc": _LamfuncVM,
     "Forbin": _ForbinVM,
     "Suptiftam": _SuptiftamVM,
+    "Streetcode": _StreetcodeVM,
+    "Flowchart": _FlowchartVM,
+    "Circuit Diagram": _CircuitDiagramVM,
 }
 
 
