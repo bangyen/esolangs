@@ -86,7 +86,7 @@ class _Machine:
     def _read(self, spec: tuple[str, str | None]) -> int:
         name, index = spec
         if name == "input":
-            return self.io.input_num("Input: ")
+            return self.io.input_num()
         if name == "lineNumber":
             return self.ip
         if index is not None:

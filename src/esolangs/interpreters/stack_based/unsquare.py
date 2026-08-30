@@ -101,9 +101,9 @@ class _Machine:
             else:
                 self.io.print_num(value)
         elif char == "i":
-            line = self.io.input_str("Input: ")
+            line = self.io.input_str()
             while not line.strip():
-                line = self.io.input_str("Input: ")
+                line = self.io.input_str()
             self.stack.append(ord(line[0]))
         elif char == ">":
             if self.acc == 0 or self.acc == 1:
