@@ -135,19 +135,31 @@ wall-clock timeouts for step-capable deterministic machines; see
 
 ## Input reordering (remainder)
 
-Generators build under every input order and keep the shortest.  Seventeen
-have landed; `docs/generator-optimizations.md`'s "Not yet done" carries the
-screen figures, the hoist caveat, and the frame-mapping trap.
+Generators build under every input order and keep the shortest.  **The queue
+is closed in both tiers** — every candidate with a measured screen is shipped,
+built-and-declined, or costed and closed, and
+`docs/generator-optimizations.md` carries each verdict with its figure.  What
+is left is below the thresholds that section sets (about 5% for a rename,
+10% for a hoist that must restructure), so none of it is scheduled:
 
-- **Unexamined, no layout work** — sbleq, brainif, three_x, taglate,
-  minsky_swap, bio, decleq, nocomment, painfuck, rotfuck, bfstack.  Each
-  screen figure is a **lower bound**: it prices the reorder alone, so a
-  generator whose reads sit at its nodes gains the hoist too (AddSubJump
-  screened 16.7%, delivered 31.7%).
-- **Blocked on 2D layout surgery** — Dig, Flowchart, Streetcode, LaserFuck,
-  Back, Clockwise, WII2D, and ArrowQueue (whose queue-fed template needs
-  re-enqueue gadgets).  The bar: the emitted program changes and still
-  consumes its inputs in the same order.
+- **ArrowQueue's reorder (12.4%)** — the one unclaimed screen figure, and the
+  only item here above the bar.  Its queue-fed template needs re-enqueue
+  gadgets to bring a bit to the front; permuting which name sits in each
+  header slot is not an alternative, since `_header_rows` fills the header
+  positionally and the names are inert.
+- **Back's snaked load (+1.9%)** — the load runs up column 0 at one command
+  per row, so it is `2n+2` rows tall against the tree's ~7.5; snaking it into
+  two columns nets about 1.9% at `n == 3`.  Under the bar, and the turn-mirror
+  estimate is the soft part: a turn cell cannot also carry a load command.
+- **Bitdeque's free-reorder headroom (0.9%)** — blocked in the *harness*
+  rather than the language.  `_fill_bitdeque` derives each setter's parity
+  from the input's **name**, assuming input *i* sits at load position
+  `n-1-i`, so permuting names between slots desyncs every fill site.
+
+Before reopening any of these, read that section's four rules first — the
+screen is neither a floor nor a ceiling, reachable orders are usually far
+fewer than `n!`, the cell map is the inverse of the permutation, and a
+generator that validates its own output needs that check frame-mapped too.
 
 ## Mutation-testing sweep
 

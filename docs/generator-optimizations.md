@@ -454,8 +454,9 @@ cheap change, and the mirror estimate is the soft part: a turn cell cannot
 also carry a load command, and `+`'s conditional step interacts with the
 beam's direction at a mirror. Recorded rather than built.
 
-**Not yet done.** What is left splits by *where the node reads*, which is the
-same question the token-sequence tier answers, not by being 2D:
+**The rest of the tier, and why each closes.** What is left splits by *where
+the node reads*, which is the same question the token-sequence tier answers,
+not by being 2D:
 
 - **`clockwise` (1.3%, a lone accumulator) and `wii2d` (3.4%)** have nothing
   to place into and sit below the threshold anyway.
