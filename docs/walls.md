@@ -925,28 +925,42 @@ problem when the generator knows exactly what accumulated.
 
 The shipped generator
 (:func:`esolangs.tools.boolean.slow_acv_mammalian.slow_acv_mammalian_boolean`)
-aims each jump by *measuring* rather than solving.  Every arithmetic knob
-here ties the array head to the array sum — `SEED` bumps both — so offsets
-that look independent cancel, and each state reaches only a handful of token
-indices.  What makes that enough is that a subtree ends in a halting leaf,
-so the tokens after it are unreachable: the generator emits the node,
-measures where the 1-branch actually lands, and pads the dead gap out to
-meet it.  `EXCRETE` stashes bytes to raise the reachable band and `CONSUME`
-pops them back to lower it; both directions are needed, since a 0-subtree
-inherits its parent's array and a grow-only sum would track the layout it
-has to clear, which is what stops the tree converging past two levels.
+*solves* for each jump rather than measuring it.  Three identities do the
+work.  `EXCRETE` clears the accumulator, so the `DIGEST` after it leaves
+`acc` equal to the array sum rather than XORed against an unknown: writing
+`S1` for the sum after the first `SEED` run, `j2 = ((S1 ^ 48) - S1) % 256`
+forces the node to open on the clean digit `ACCEPT` needs.  `ACCEPT` reads
+`acc` only modulo 256, so the *high* bytes are free — they survive into the
+closing `DIGEST` and move the jump target in ~256-token steps without
+touching the array, which is the aiming band.  Sweeping `j1` over its 256
+values enumerates that band arithmetically.  And a node's 0-branch exits
+carrying the residue the next digit is measured against, so a 0-arm's leaf
+needs no `SEED`s at all, whichever candidate the parent committed to.
+
+`CONSUME` is still load-bearing, but as the 0-arm's opening rather than a
+candidate adjustment: a 0-subtree inherits its parent's array, and a child
+that kept the inherited ballast would convert every token its parent
+stashed into padding of its own, locking the two together one for one.
+Shedding first decouples them.  A lone `CONSUME` sheds nothing — the pop
+lands in the accumulator and the next node's `EXCRETE` appends it straight
+back — so sheds run in pairs.
+
+What remains is assembler-style branch relaxation, not a search: sizes
+depend on offsets and offsets on sizes, so the emitter sizes the 0-arm once,
+picks the landing arithmetically, commits, and rechecks.  No program is ever
+run to find out where a jump goes.
 
 The tree is uniform depth `n`, so a constant table still reads all `n`
 inputs.  Verified against the interpreter: every table through `n == 3`
 (4 at `n == 1`, 16 at `n == 2`, all 256 at `n == 3`, zero failures), plus
-an `n == 4` spot check.  Programs run 2697-5776 tokens at `n == 3`.
+sampled `n == 4`.  Programs run 754-4519 tokens at `n <= 3`.
 
-**Generation cost, not a cap.**  Aligning a node rebuilds its 0-subtree
-once per candidate landing, so the builds compound with depth: 10 at
-`n == 1`, 155 at `n == 2`, 5504 at `n == 3`.  A table takes ~3.5s at
-`n == 3` and ~18 minutes at `n == 4` (10880 tokens), which is slow but not
-a wall -- memoizing `_subtree` on its state would flatten it if `n == 4`
-ever needs to be routine.
+**Generation cost.**  One level above the leaves the 0-arm's length is a
+closed form, so those nodes take the first candidate that fits and rebuild
+nothing; deeper nodes size once and re-derive for the candidate they
+commit.  A table costs ~0.68s at `n == 3`, down from ~3.5s, which is under
+the boolean contract sweep's one-second budget — the language is no longer
+in that sweep's searching set.
 
 **Where this leans on undefined behaviour.**  The wiki is explicit about
 the fact the wall got wrong — `ACCEPT` pushes "onto the top of array 0",
