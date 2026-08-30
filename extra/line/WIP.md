@@ -22,7 +22,7 @@ decision trees end-to-end (render -> extract -> simulate) for n = 1-3 plus
 exercises `render.py`'s loop-drawing geometry (`_layout`/
 `_loop_return_legs`) at all -- see the nested-loop entry below for why that
 distinction matters. Run any of them with `uv run --with pillow --with
-numpy --with scipy --with scikit-image --with pytest --with pytest-xdist
+numpy --with pytest --with pytest-xdist
 pytest test_simulate.py` (or `test_line_boolean.py`, or
 `test_bf_to_line.py`) from this directory -- the modules import each other
 as flat top-level names, so this directory has to be on `sys.path`. None is
@@ -713,12 +713,19 @@ round-trip check for `extract()` alone.
   `run(code, io)` convention every other language in `src/esolangs/` uses.
   Stays a standalone `extra/` tool.
 
-- Dependency footprint: 4 undeclared deps (Pillow, numpy, scipy,
-  scikit-image), informal by design matching how `extra/` keeps other
-  subtrees' toolchains out of `pyproject.toml`. A ranked, tested plan for
-  which would be easiest to replace with hand-rolled numpy is recorded as
-  a comment block in `extract.py` just above the imports, if this is ever
-  worth revisiting.
+- Dependency footprint: 2 undeclared deps (Pillow, numpy), informal by
+  design matching how `extra/` keeps other subtrees' toolchains out of
+  `pyproject.toml`. Down from 4: scipy and scikit-image were both dropped,
+  each because the call turned out not to need the library's actual
+  algorithm rather than because it was reimplemented. `find_cursor` only
+  ever *thresholded* `distance_transform_edt` at 1.5, and `> sqrt(2)` on a
+  boolean mask is exactly a 3x3 erosion; `detect_scale` only wanted the
+  integer upscale factor, which is a direct block-uniformity test rather
+  than skeletonize's ~5% ink-length ratio. Both were confirmed against the
+  fixtures before the imports came out (bit-identical `thick` masks;
+  identical extraction trees). The remaining two, and why Pillow's
+  `Image.open` is the hard one, are written up in a comment block in
+  `extract.py` just above the imports.
 
 ## Resolved
 
