@@ -9,13 +9,33 @@ here.
 
 ## 6-5 (35 branch labels bound the tree)
 
-The generator is a decision tree that folds its constant subtrees, and 6-5
-has exactly 35 branch labels (`0..9`, `A..Z`), one spent per internal node
-the fold leaves standing.  That makes the limit a property of the *table*,
-not of `n`: the fold's worst case is an alternating table, which folds
-nothing and spends `2**n - 1`, so the tree is total through `n == 5` (31)
-and begins refusing at `n == 6` (63).  Tables that fold hard still render at
-any width — AND-`n` needs only `n` labels.
+**The 35 comes from the language, not from the generator's encoder.**  The
+[wiki spec](https://esolangs.org/wiki/6-5) defines operand notation as:
+
+> Numbers beyond 9 denoted using letters. (A=10, B=11 etc.)
+
+Letters are `A..Z`, so the operand alphabet is `0..9` then `A..Z` and the
+largest value an operand can name is **35**.  A `8n` jump names the n-th `4`
+marker, so 35 is the highest marker index any jump can reach: markers past
+that exist in the program text but are unaddressable.
+
+**Labels cannot be reused, so the budget is a total-nodes count and not a
+live-set one.**  This is the piece a resource argument needs and it holds on
+the interpreter's own semantics: `8n` resolves its target by scanning the
+token list *from the start* and counting `4` tokens until it reaches the
+n-th.  A label is therefore a global ordinal fixed by position in the
+emitted string — not a name bound in a scope, not a nearest-match, and not
+something a subtree can consume and free.  Two distinct jump targets need
+two distinct ordinals for the whole life of the program, so the tree cannot
+recycle a label once its subtree is finished.  The bound is `2**n - 1`
+standing nodes against 35, not tree depth against 35.
+
+Given both, the generator is a decision tree that folds its constant
+subtrees, one label per internal node the fold leaves standing.  That makes
+the limit a property of the *table*, not of `n`: the fold's worst case is an
+alternating table, which folds nothing and spends `2**n - 1`, so the tree is
+total through `n == 5` (31) and begins refusing at `n == 6` (63).  Tables
+that fold hard still render at any width — AND-`n` needs only `n` labels.
 
 An arithmetic kernel used to catch the `n > 5` region by embedding the table
 as a single integer (6-5's pointer cannot net-advance, so there is no
@@ -25,6 +45,51 @@ the ones to low indices, which leaves the rest of the table constant, which
 folds well inside the label budget — so it never covered a table the tree
 could not.  A search over contiguous families at n=6,7,8 and ~18000 random
 tables found no counterexample.
+
+### The attack that does not work: operands past `Z`
+
+This wall was once overturned and the lift was **reverted**.  Recording the
+attack so it is not retried: this repo's interpreter decodes an operand as
+
+```python
+def num(char: str) -> int:
+    if char.isdigit():
+        return int(char)
+    return ord(char.upper()) - 55
+```
+
+which is unguarded arithmetic over *any* character, so `[` reads as 36, `{`
+as 68, and DEL as 72.  Padding with inert `4`s (a no-op the marker scan
+still counts) bridges the values no character names, and on that basis every
+table renders at every `n` — parity at `n == 6/7/8` builds and executes
+correctly on all `2**n` inputs.
+
+**That is undefined behaviour, not a language property.**  The spec says
+*letters*, and `[`, `{` and DEL are not letters.  Three tells:
+
+1. `num`'s own docstring states a *narrower* contract than even `A..Z`:
+   "Decode a 6-5 operand digit: 0-9 literal, A-F hexadecimal."
+2. The decode is not injective outside the letters — `num("a") == num("A")
+   == 10` via `.upper()`.  The "unnameable" values 42–67 that padding had to
+   bridge are exactly that case-folding: a formula running outside its
+   intended domain, not a designed gap.
+3. Operands are unvalidated and not bounded below: `num("\n") == -45`,
+   `num(" ") == -23`.  Nothing rejects them.  Depending on values above 35
+   is depending on the *absence of validation*.
+
+The shipped examples (`examples/hello-world/6-5.txt`,
+`examples/boolean/6-5.txt`) reach a maximum operand of 8 and are entirely
+alphanumeric, so no ground-truth example exercises the region — and this
+repo's convention is that examples are ground truth and prose governs where
+examples are silent.  Both point the same way.
+
+The methodological lesson is worth more than the result: **executing a
+generated program proves nothing when the interpreter it runs on is the
+thing in question.**  The lift's verification passed on all `2**n` inputs at
+`n == 6/7/8` precisely because it ran against the permissive interpreter
+that admits the undefined region.  Execution is only evidence against a
+*conforming* interpreter.  See `docs/limitations.md` for the interpreter
+conformance gap this exposed.
 
 ## ZTOALC L (dense non-symmetric n > 3 wall) — **FALLEN**
 
