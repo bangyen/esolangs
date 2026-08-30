@@ -276,6 +276,18 @@ _BIO_COMMAND = r"[01][oOiI][xXyYzZ](?:\{|;)|\};| "
 # extend them with a digit argument (Dimensional's ``>0``/``<0``).
 _DIMENSIONAL_COMMAND = r"[<>]\d+|."
 
+# 6-5's ``7``/``8`` take the *next character* as their operand, whatever it
+# is -- the interpreter's own tokenizer merges the pair without inspecting
+# it, so the operand is not restricted to the digits and letters the spec
+# names.  Matching any character (rather than, say, ``[0-9A-Z]``) keeps the
+# wrapper's token stream identical to the interpreter's on every program,
+# including ones carrying operands outside the spec's alphabet.
+#
+# ``7n`` additionally swallows the instruction it guards -- including that
+# instruction's own operand when it is another ``7n``/``8n`` -- because a
+# newline between them would be skipped in its place.  See :func:`_six_five`.
+_SIX_FIVE_COMMAND = r"7[\s\S](?:[78][\s\S]|[\s\S])|8[\s\S]|[\s\S]"
+
 # The languages that print through a *literal*, where a newline dropped
 # inside the literal is not whitespace between commands but a character the
 # program goes on to print (or, in Sophie's case, prints *instead* of the
@@ -414,6 +426,29 @@ def _bio_indented(tokens: list[str], width: int) -> str:
 
 def _dimensional(program: str, width: int) -> str:
     return wrap_tokens(program, width, _DIMENSIONAL_COMMAND)
+
+
+def _six_five(program: str, width: int) -> str:
+    r"""Wrap 6-5, keeping each ``7n`` and the instruction it guards together.
+
+    6-5 is *almost* a single-character language, which is why it used to wrap
+    with :func:`wrap_chars`.  Two things make a plain character wrap wrong,
+    and the second is why the tokens here are not merely ``7n``/``8n``:
+
+    - ``7`` and ``8`` take the *next character* as their operand, and the
+      interpreter merges the pair without inspecting it.  A break between
+      them makes the newline the operand (``num("\n")`` is -45, a value no
+      cell can equal) and promotes the real operand to an instruction.
+    - ``7n`` skips *the next token*, and a newline is itself a token.  A
+      break between a ``7n`` and the instruction it guards makes the skip
+      consume the newline, so the guarded instruction runs either way --
+      ``706A`` leaves cell 0, but ``70\n6A`` leaves cell 6.
+
+    So a ``7n`` binds to whatever follows it, and that three-character group
+    is the unbreakable token.  ``8n`` needs no such pairing: its jump finds
+    the n-th ``4`` by counting markers, which newlines do not disturb.
+    """
+    return wrap_tokens(program, width, _SIX_FIVE_COMMAND)
 
 
 def _sophie(program: str, width: int) -> str:
@@ -679,6 +714,9 @@ WRAPPERS = {
     "bitdeque": wrap_space_delimited,
     "bio": _bio,
     "dimensional": _dimensional,
+    # Almost single-character, but 7n/8n are two-character tokens that a
+    # plain character wrap splits -- see :func:`_six_five`.
+    "six_five": _six_five,
     "brainfuck": wrap_chars,
     "three_d_brainfuck": wrap_chars,
     "circlefuck": wrap_chars,
@@ -687,7 +725,6 @@ WRAPPERS = {
     "home_row": wrap_chars,
     "painfuck": wrap_chars,
     "bit_tilde": wrap_chars,
-    "six_five": wrap_chars,
     "unsquare": wrap_chars,
     "pct_squared_minus_one": wrap_chars,
     "rotfuck": wrap_chars,
