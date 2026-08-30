@@ -262,3 +262,15 @@ class TestVariants:
                 break
             machine.step()
         return machine.mem
+
+
+class TestSnapshot:
+    def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.sbleq import _Machine
+
+        machine = _Machine(io=ScriptedIO(""), mem=[3, 4, 6, 1, 1, 0, 0, 0, 0])
+        before = machine.snapshot()
+        hash(before)  # must not raise
+        machine.step()
+        assert machine.snapshot() != before
