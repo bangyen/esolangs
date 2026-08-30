@@ -101,13 +101,31 @@ def test_parameterized_generators_embed_each_input_once() -> None:
 # nothing, so both now load in name order (verified byte-identical totals).
 # The one generator that still emits out of name order, and an xfail rather
 # than an allowlist entry so it reads as debt.  Minifuck's ignored inputs
-# have to trail the ``.``: the essential placeholders are embedded into the
-# tape at fixed cells, so moving an ignored one in front of them shifts every
-# later embedding and the program stops computing (measured: 48 wrong cases
-# over the 38 degenerate n=3 tables).  For 24 of those 38 an ignored input's
-# index sits below an essential one, so ascending order is unreachable by
-# relocation -- it needs the solver to assign names, which is a change to
-# ``_project``/``_lift`` and is not attempted here.
+# trail the ``.``, which leaves name order whenever an ignored index sits
+# below an essential one -- 24 of the 38 degenerate n=3 tables.
+#
+# Relocating an ignored fill does not fix it, and that is measured rather
+# than argued: a fill writes the live tape (``[<`` flips a cell), so moving
+# one in front of the essential embeddings shifts every later one and the
+# program stops computing -- 2 wrong rows at n == 2 and 6 at n == 3 when the
+# trailing fills are moved to the front.
+#
+# What *does* fix most of it is not relocating at all but declining to
+# project: ``_embed`` lays every slot down in ascending order, so a table
+# solved at its full arity is in name order by construction.  Minifuck now
+# takes that route for the tables a lift would disorder, and the residue is
+# down to two: ``01010101`` and ``10101010``, the projections onto the
+# *last* input.  Those are not a missing route but a fact about the embed --
+# x2 stands in no cell under either separator, and the complete pipeline
+# (column and parked searches included) fails on both after about 158
+# seconds.  Reaching them needs the solver to assign names, a change to
+# ``_project``/``_lift`` that is not attempted here.
+#
+# The two-essential tables keep projecting deliberately.  Full-arity solving
+# is not merely unnecessary there, it is worse: ``00000101`` and
+# ``00001010`` fail after about 130 seconds each against seconds to project,
+# and a cheap scan-only attempt hits 1 table in 8 while costing ~9s per miss.
+# Coverage and build cost both come before slot order.
 _SLOT_ORDER_DEBT = frozenset({"minifuck"})
 
 _SLOT_ORDER_TABLES = ("0110", "01101001", "10101010", "11110000", "00111100")
@@ -152,12 +170,17 @@ def test_slots_run_in_name_order() -> None:
 @pytest.mark.slow  # the degenerate tables are the fast closed-form path
 @pytest.mark.xfail(
     reason=(
-        "Minifuck's ignored inputs must trail the '.': the essential "
-        "placeholders are embedded at fixed tape cells, so moving an ignored "
-        "one in front shifts every later embedding and the program stops "
-        "computing. 24 of the 38 degenerate n=3 tables have an ignored index "
-        "below an essential one, so ascending order needs the solver to "
-        "assign names rather than a relocation."
+        "Minifuck now solves at full arity for the tables a lift would "
+        "disorder, which is in name order by construction, and the residue "
+        "is the two projections onto the *last* input ('01010101' and "
+        "'10101010'). Those are not a missing route: x2 stands in no cell "
+        "after the embed under either separator, and the complete pipeline "
+        "-- column and parked searches included -- fails on both after about "
+        "158 seconds. Reaching them needs the solver to assign names, a "
+        "change to _project/_lift. Relocating an ignored fill does not work "
+        "and is measured, not assumed: a fill writes the live tape, so "
+        "moving the trailing fills to the front makes 2 rows wrong at n == 2 "
+        "and 6 at n == 3."
     ),
     strict=True,
 )
