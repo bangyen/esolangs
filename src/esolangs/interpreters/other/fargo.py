@@ -456,9 +456,15 @@ class _Machine:
         self.frames.append(pushed)
 
     def _finish(self, frame: _Frame) -> None:
-        """Pop a finished frame, delivering its value to its caller."""
+        """Pop a finished frame, delivering its value to its caller.
+
+        A frame ending with an unfinished call is always a *top-level*
+        line: :meth:`_check_outer_call` has already rejected any
+        definition whose body could end that way, so a pushed frame
+        cannot reach here owing arguments and the message needs no name.
+        """
         if frame.pending:
-            raise ValueError(f"call in {frame.fn_name or 'program'!r} wants more args")
+            raise ValueError("call wants more args")
         self.frames.pop()
         if self.frames:
             self._supply(self.frames[-1], frame.result)
