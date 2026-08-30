@@ -103,18 +103,46 @@ def test_rejects_arithmetic_coding_by_name() -> None:
         jpeg.read_grey(_flat_grey_jpeg(mode=0xC9))
 
 
-def test_rejects_restart_markers() -> None:
-    """Restart markers are refused rather than decoded wrongly.
+def test_a_restart_interval_is_accepted() -> None:
+    """A DRI segment is honoured rather than refused.
 
-    An implementation that got this subtly wrong desynchronised partway down
-    the image and produced a plausible-looking but wrong drawing, which is
-    worse than refusing -- see the comment at the DRI branch.
+    The single-block image here never reaches its first restart boundary, so
+    what this pins is that declaring an interval does not itself break
+    decoding.  The alignment rule that makes multi-MCU restarts work is
+    covered by :func:`test_align_steps_over_a_stuffed_pair`.
     """
     blob = _flat_grey_jpeg()
     index = blob.index(bytes([0xFF, 0xDA]))
     with_dri = blob[:index] + _marker(0xDD, struct.pack(">H", 4)) + blob[index:]
-    with pytest.raises(ValueError, match="restart markers"):
-        jpeg.read_grey(with_dri)
+    rows = jpeg.read_grey(with_dri)
+    assert len({value for row in rows for value in row}) == 1
+
+
+def test_align_steps_over_a_stuffed_pair() -> None:
+    """Aligning past a partially-read ``FF 00`` skips both bytes, not one.
+
+    This is the whole of what made restart markers decode wrongly: a literal
+    0xFF in the entropy data immediately before a restart marker is written
+    stuffed, and treating it as a single byte lands the reader on the
+    stuffing zero, reading everything afterwards one byte early.  It occurred
+    at exactly one of 360 boundaries in the image that exposed it, so it is
+    worth pinning directly rather than hoping a fixture reproduces it.
+    """
+    # A stuffed FF, partially consumed, followed by a restart marker.
+    reader = jpeg._BitReader(bytes([0xFF, 0x00, 0xFF, 0xD0, 0xAB]), 0)  # noqa: SLF001
+    reader.read_bit()
+    assert reader.bit == 1
+    reader.align()
+    assert reader.pos == 2, "align must step over the whole stuffed pair"
+    # Landing on the marker is the point: skip_restart can now consume it.
+    assert reader.skip_restart() is True
+    assert reader.pos == 4
+
+    # And skip_restart does the aligning itself, from the same start.
+    reader = jpeg._BitReader(bytes([0xFF, 0x00, 0xFF, 0xD0, 0xAB]), 0)  # noqa: SLF001
+    reader.read_bit()
+    assert reader.skip_restart() is True
+    assert reader.pos == 4
 
 
 def test_rejects_a_twelve_bit_frame() -> None:
