@@ -30,6 +30,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import jpeg
 import lattice
 import mask as mask_module
 import png
@@ -67,12 +68,16 @@ from mask import Mask
 #   -- so ``png.py`` decodes them outright, matching Pillow byte-for-byte on
 #   all five fixtures.  Image.resize(NEAREST) was the triviality it looked
 #   like (a strided slice), with one wrinkle about grid alignment recorded in
-#   normalize_scale.  The narrowing: only PNG is readable now -- but every PNG
-#   is, including interlaced and 16-bit, since a drawing that has been through
-#   an image editor comes back in whatever that editor preferred and is still
-#   the same drawing.  JPEG is the real loss, and no loss worth mourning: the
-#   format erases pixels out of 1px strokes (see the coverage check, and
-#   WIP.md's quality-32 cliff).
+#   normalize_scale.  Every PNG is readable, including interlaced and 16-bit,
+#   since a drawing that has been through an image editor comes back in
+#   whatever that editor preferred and is still the same drawing.
+#
+#   JPEG (``jpeg.py``) is the one place this pattern does not hold, and the
+#   module says so itself: the format *is* Huffman coding over quantized DCT
+#   coefficients, so reading it means implementing that rather than noticing
+#   a shortcut.  It is here because dropping Pillow otherwise left the
+#   pipeline reading strictly less than it had before, which was the only
+#   real regression the whole exercise introduced.
 #
 #   numpy looked like the one with a real cost, since the masks reach 9Mpx and
 #   pure-Python per-pixel loops over that would be minutes.  The answer was to
@@ -85,8 +90,16 @@ from mask import Mask
 
 
 def load_binary(path: str) -> Mask:
-    """Load a PNG as a boolean ink mask (True = black/foreground)."""
-    return mask_module.from_grey(png.read_grey_file(path))
+    """Load a PNG or baseline JPEG as an ink mask (True = black/foreground).
+
+    Prefer PNG.  JPEG is read because a drawing that has been through a lossy
+    pipeline should still load, but the format is actively hostile to Line's
+    1px strokes -- see :mod:`jpeg` and ``render.render``'s ``scale``.
+    """
+    with open(path, "rb") as handle:
+        data = handle.read()
+    reader = jpeg.read_grey if jpeg.looks_like_jpeg(data) else png.read_grey
+    return mask_module.from_grey(reader(data))
 
 
 def crop_to_content(mask: Mask, margin: int = 2) -> Mask:
