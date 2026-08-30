@@ -389,9 +389,12 @@ saving.  Taglate reduces (451 characters → 21).  What is open:
   argument, so the reach is set by the search rather than by the language.
   The route is a *construction* in wii2d's shape instead of a search —
   `docs/walls.md` has the piece that does not yet compose.  The other six
-  refusing generators stay off this list: NoComment, 6-5, WII2D and %^2^-1
-  are documented walls (`docs/limitations.md`), and Polynomial and Factor
-  are resource knobs, Factor's liftable by host config.  ZTOALC L was on
+  refusing generators stay off this list: NoComment and 6-5 are documented
+  walls (`docs/limitations.md`), %^2^-1 is partly lifted with the rest open,
+  and Polynomial, Factor and WII2D are resource knobs — Factor's liftable by
+  host config, and WII2D's `n == 7` refusal is a cost guard that fires before
+  the fold is attempted (raising it builds interpreter-verified `n == 7`
+  programs, at a heavy build-time tail).  ZTOALC L was on
   this list and its refusals are now *size gates only* -- the anchor table's
   1132 commands and the `2**22` line limit -- rather than capability walls:
   its wall was a property of the decision tree it built, not of the
