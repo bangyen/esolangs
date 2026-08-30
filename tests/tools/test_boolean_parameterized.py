@@ -2047,12 +2047,13 @@ class TestParameterizedMinifuck:
         so it projects onto a two-input problem -- which is a closed form.
         Nothing here needed its own construction; the arity below carries it.
 
-        Twenty of these come out with their slots *not* in ascending order,
-        which is the known and deliberate remainder: ``_lift`` appends the
-        ignored placeholders, and the reconvergence route that would fix it
-        costs 2-16s a table against 0.04s here.  Slot order is not worth a
-        hundredfold build cost on tables no sweep checks, so the trade is
-        declined rather than overlooked.
+        Ten of these come out with their slots *not* in ascending order, and
+        all ten have the same shape: the ignored input is the *middle* one
+        (essential ``[0, 2]``).  Emitting it first cannot sort them, since it
+        already follows ``{X0}``, and no reset fixes it -- reconvergence
+        works by driving every row to one state, so it cannot collapse
+        ``x1`` while preserving ``x0``.  Searched to depth 14: none exists.
+        Sorting those needs the solver to assign names.
         """
         import importlib
 
