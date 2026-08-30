@@ -7,76 +7,24 @@ structural reason it cannot be lifted.  Completed constructions (the
 working generators, and how they work) live in the commit history, not
 here.
 
-## 6-5 (35 branch labels bound the tree) — **FALLEN**
+## 6-5 (35 branch labels bound the tree)
 
-This wall held that the boolean generator could not be total past `n == 5`.
-The argument ran: the generator is a decision tree that folds its constant
-subtrees, one branch label spent per internal node the fold leaves standing,
-and **"6-5 has exactly 35 branch labels (`0..9`, `A..Z`)"** — so the fold's
-worst case, an alternating table spending `2**n - 1`, fits at `n == 5` (31)
-and overflows at `n == 6` (63).
+The generator is a decision tree that folds its constant subtrees, and 6-5
+has exactly 35 branch labels (`0..9`, `A..Z`), one spent per internal node
+the fold leaves standing.  That makes the limit a property of the *table*,
+not of `n`: the fold's worst case is an alternating table, which folds
+nothing and spends `2**n - 1`, so the tree is total through `n == 5` (31)
+and begins refusing at `n == 6` (63).  Tables that fold hard still render at
+any width — AND-`n` needs only `n` labels.
 
-That parenthetical is the false step, and the label *accounting* around it
-was right the whole time.  Labels genuinely cannot be reused: `8n` scans the
-token list from the start for the n-th `4`, so a label is a global ordinal
-and two distinct targets need two distinct ordinals — the budget really is a
-total-nodes count, not a live-set one.  What was wrong is that there is no
-budget.  **The operand alphabet is not an alphabet.**  The interpreter
-decodes an operand with
-
-```python
-def num(char: str) -> int:
-    if char.isdigit():
-        return int(char)
-    return ord(char.upper()) - 55
-```
-
-which is an arithmetic decode over *every* character, not a lookup in a
-36-entry table.  `0..9A..Z` happens to name ordinals 1..35 because that is
-where `ord(c) - 55` lands for those characters; the punctuation immediately
-after `Z` names 36, 37, 38, and the range continues without end.  The
-tokenizer merges whatever follows a `7`/`8` without inspecting it, so any
-character at all is a legal operand.
-
-The one real irregularity is `.upper()`: where `chr(ordinal + 55)` is a
-lowercase letter, the fold aliases it down (`num("a") == 10`, not 42), so
-ordinals 42–67 are named by no character.  Those are **skipped, not lost** —
-a bare `4` is a no-op that the marker scan still counts, so emitting one
-inert `4` per dead ordinal walks the scan past the gap at one character
-each.  The pads sit between a node's left subtree and its own `4`, where they
-raise only that node's ordinal and no earlier one, and where no execution
-path reaches them (every leaf in the left subtree ends `A0`).
-
-`_label_for` decides nameability by round-tripping through the interpreter's
-own `num`, so the generator cannot drift from it, and there is no ceiling
-left to overflow: **every truth table renders at every `n`**.  One
-consequence worth knowing before diffing a generated program in an editor:
-the printable characters run out after ordinal 71 (`` ` `` at 41, then
-`{|}~` at 68–71), so from ordinal 72 up the label characters are control
-characters — 72 is DEL and the C1 range follows.
-That is interpreter-legal — `num` and the tokenizer inspect nothing about a
-character beyond its codepoint, and these are the exact programs the
-executed verification ran — but a parity build at `n >= 6` is not a
-text-clean file.  Parity, the
-shape no input reordering folds, is now simply the longest build rather than
-a refusal — verified by executing the generated programs through the
-interpreter on all `2**n` combinations at `n == 6` (63 standing nodes, 26
-pads), `n == 7` (127), and `n == 8` (255).
-
-The judgment call worth stating: the esolangs wiki presumably documents the
-label alphabet as `0..9A..Z`, and this repo's rule is that **capability comes
-from the interpreter, not from the prose** — the interpreter is what the
-generated programs must satisfy, and no cached wiki example contradicts
-`num`'s behaviour.  The input order search survives the lift unchanged, now
-purely as a size choice: a tree that folds harder is a shorter program.
-
-An arithmetic kernel used to be offered for the `n > 5` region, embedding the
-table as a single integer (6-5's pointer cannot net-advance, so there is no
+An arithmetic kernel used to catch the `n > 5` region by embedding the table
+as a single integer (6-5's pointer cannot net-advance, so there is no
 computed array indexing), at O(`2**(2**n)`) characters for dense tables
-behind a ~2 MB setup guard.  It was **retired** before this lift and stays
-retired: a buildable `T` confines the ones to low indices, which leaves the
-rest of the table constant, which folds well inside any budget — so it never
-covered a table the tree could not, and now the tree covers everything.
+behind a ~2 MB setup guard.  It was **retired**: a buildable `T` confines
+the ones to low indices, which leaves the rest of the table constant, which
+folds well inside the label budget — so it never covered a table the tree
+could not.  A search over contiguous families at n=6,7,8 and ~18000 random
+tables found no counterexample.
 
 ## ZTOALC L (dense non-symmetric n > 3 wall) — **FALLEN**
 
