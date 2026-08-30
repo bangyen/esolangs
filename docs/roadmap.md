@@ -157,9 +157,10 @@ recorded came back exactly** — which is what the harness commits
 `800f071` and `86c89b9` needed, each having been validated against a
 single language while nothing checked the rest.
 
-Thirteen suites are at 100% — `%^2^-1`, ArrowQueue, Back, BFStack, Bitdeque,
-brainfuck, BrainIf, Decleq, Factor, Home Row, Minifuck, RAM0 and Suffolk.
-1522 mutants survive across the repo; the rest of the field, worst first:
+Fourteen suites are at 100% — `%^2^-1`, ArrowQueue, Back, BFStack, Bitdeque,
+brainfuck, BrainIf, Clockwise, Decleq, Factor, Home Row, Minifuck, RAM0 and
+Suffolk.  1519 mutants survive across the repo; the rest of the field, worst
+first:
 
 | language | score | survivors |
 | --- | --- | --- |
@@ -208,12 +209,12 @@ brainfuck, BrainIf, Decleq, Factor, Home Row, Minifuck, RAM0 and Suffolk.
 | NoComment | 95.4% | 5 |
 | Modulous | 95.6% | 11 |
 | Unsquare | 96.1% | 6 |
-| Clockwise | 98.0% | 3 |
 
-LaserFuck, Forbin, Basicfuck, ArrowQueue, Decleq and BrainIf are post-triage
-rows (the first three began at 66.7%, 81.4% and 82.8%; the last three each
-carried a single survivor and now sit at 100%); the other 53 are the sweep's
-own numbers, 15 of which had never been recorded per-language.  **Lamfunc (82), Between (77), MyScript
+LaserFuck, Forbin and Basicfuck are post-triage rows (they began at 66.7%,
+81.4% and 82.8%); four more — ArrowQueue, Decleq, BrainIf and Clockwise —
+carried one to three survivors each, were closed to 100%, and have left the
+table.  The other 52 rows are the sweep's own numbers, 15 of which had never
+been recorded per-language.  **Lamfunc (82), Between (77), MyScript
 (71) and Grapheme (60) are the largest untriaged pools** and were invisible
 before this sweep.
 
@@ -234,8 +235,14 @@ first:
   mutate, and drops the pool 88→85), and ArrowQueue guarded its grid setup
   with `if code:` so that `_Machine(None)` took the empty-grid path and
   halted — indistinguishable from outside in a language with no output.
-  Consuming `code` unconditionally makes that mutant raise.  Reach for the
-  interpreter first when the mutated construct carries no information.
+  Consuming `code` unconditionally makes that mutant raise.  Clockwise is
+  the same lesson at its limit: its `if ins in "R?!"` early return was
+  *dead*, since the dispatch below has no branch for a turn cell and the
+  flush cannot fire on one, so both of its set-widening survivors sat on
+  code that did nothing.  Deleting the guard took the suite to 100% and
+  the pool from 150 mutants to 140.  Reach for the interpreter first when
+  the mutated construct carries no information: a construct that cannot be
+  observed is usually one that need not exist.
 - **`pytest.raises(match=...)` is a substring search.**  Passing the whole
   message still matches a mutant that widened it; only
   `assert str(caught.value) == message` catches that.
