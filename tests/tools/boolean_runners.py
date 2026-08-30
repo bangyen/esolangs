@@ -392,6 +392,24 @@ def point_break_result(program: str, inputs: list[str]) -> str:
     return "0" if run_until_halt_or_cycle(machine) else "1"
 
 
+def one_two_three_result(program: str) -> str:
+    """Run a 123 program; return "0" if it halts and "1" if it loops.
+
+    123's boolean generator answers with the termination convention, the
+    same one Point Break uses, so the verdict is a state revisit rather than
+    a fuel cap.  There are no ``inputs``: the generator is parameterized, so
+    the bits are already substituted into ``program`` and reaching the read
+    command would mean the template was wrong.  ``ScriptedIO`` with an empty
+    script supplies that -- a read raises instead of consuming real stdin.
+    """
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.one_two_three import _Machine
+    from esolangs.vm import run_until_halt_or_cycle
+
+    machine = _Machine(program, ScriptedIO(""))
+    return "0" if run_until_halt_or_cycle(machine) else "1"
+
+
 _PB_TABLES = {
     "10": 1,  # NOT
     "0110": 2,  # XOR

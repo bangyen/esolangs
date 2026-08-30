@@ -60,6 +60,7 @@ from esolangs.tools.boolean.helpers import (
     permute_truth_table,
 )
 from esolangs.tools.boolean.minifuck import minifuck
+from esolangs.tools.boolean.one_two_three import one_two_three
 from esolangs.tools.boolean.pct_squared_minus_one import pct_squared_minus_one
 from esolangs.tools.boolean.wii2d import wii2d
 
@@ -77,6 +78,7 @@ __all__ = [
     "minifuck",
     "minsky_swap",
     "nocomment",
+    "one_two_three",
     "pct_squared_minus_one",
     "ram0",
     "wii2d",

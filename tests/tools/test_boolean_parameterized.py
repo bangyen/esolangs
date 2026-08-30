@@ -15,6 +15,7 @@ import pytest
 
 from esolangs.interpreters.io import IO
 from esolangs.tools.boolean.parameterized import _instantiate_arrowqueue
+from tests.tools.boolean_runners import one_two_three_result
 
 
 def _parameterized_generators():
@@ -34,6 +35,7 @@ def _parameterized_generators():
             "minsky_swap",
             "eval",
             "minifuck",
+            "one_two_three",
             "pct_squared_minus_one",
         )
     ]
@@ -3143,3 +3145,134 @@ class TestParameterizedPctSquaredMinusOne:
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(module, "_solution", lambda *_a, **_k: None)
             assert _derive("0110") is None
+
+
+class TestParameterizedOneTwoThree:
+    """Input-by-substitution boolean generator for the no-input language 123.
+
+    123's ``2`` reads real stdin, so a decision tree cannot read its inputs;
+    the generator embeds them instead, ``1`` for a one and ``2`` for a zero.
+    Like ArrowQueue the answer is the termination convention -- halt for a
+    ``0`` entry, loop for a ``1`` -- decided by state-cycle detection.
+
+    ``docs/walls.md`` had this route capped at the monotone tables.  That
+    ceiling was the displacement-neutral ``12``/``21`` setter's, not the
+    language's: the +-1 fill used here breaks position lockstep, so XOR and
+    NAND come out too and all sixteen two-input tables are covered.
+    """
+
+    def run(self, program: str) -> str:
+        return one_two_three_result(program)
+
+    def instantiate(self, template: str, bits: list[int]) -> str:
+        from esolangs.tools.boolean.one_two_three import ONE, ZERO
+
+        for i, bit in enumerate(bits):
+            template = template.replace(f"{{X{i}}}", ONE if bit else ZERO)
+        return template
+
+    @pytest.mark.parametrize("n", [1, 2])
+    def test_all_small_tables(self, n: int) -> None:
+        """Every one- and two-input table halts or loops per its entry."""
+        from esolangs.tools.boolean import parameterized
+
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            template = parameterized.one_two_three(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run(self.instantiate(template, bits))
+                assert got == table[combo], (table, bits)
+
+    def test_the_tables_walls_md_called_unreachable(self) -> None:
+        """XOR and NAND build, against the recorded monotone ceiling.
+
+        These are the two the monotonicity argument specifically forbids: a
+        set bit can only add a pass under the neutral setter, so the looping
+        set is upward-closed and neither table can appear.  Both are here.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        for table in ("0110", "1110", "1001", "1000"):
+            template = parameterized.one_two_three(table)
+            got = "".join(
+                self.run(self.instantiate(template, [(c >> 1) & 1, c & 1]))
+                for c in range(4)
+            )
+            assert got == table
+
+    def test_no_row_diverges(self) -> None:
+        """No emitted row marches the pointer right forever.
+
+        ``run_until_halt_or_cycle`` never returns on unbounded growth, so a
+        plan with such a row would hang the suite rather than report a 1.
+        Every looping row must therefore revisit a state, which this checks
+        by bounding the pointer: a run that neither halts nor cycles within
+        the budget, while pushing the pointer past the program, is exactly
+        the shape that must not ship.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.one_two_three import _Machine
+        from esolangs.tools.boolean import parameterized
+
+        for n in (1, 2):
+            for table_int in range(2 ** (2**n)):
+                table = format(table_int, f"0{2**n}b")
+                template = parameterized.one_two_three(table)
+                for combo in range(2**n):
+                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    code = self.instantiate(template, bits)
+                    machine = _Machine(code, ScriptedIO(""))
+                    seen = set()
+                    for _ in range(10_000):
+                        if machine.halted:
+                            break
+                        state = machine.snapshot()
+                        if state in seen:
+                            break
+                        seen.add(state)
+                        machine.step()
+                    else:  # pragma: no cover - a diverging row would reach here
+                        pytest.fail(f"{code!r} neither halts nor revisits a state")
+
+    def test_slots_run_in_name_order(self) -> None:
+        """Every emitted template embeds {X0} before {X1}."""
+        from esolangs.tools.boolean import parameterized
+
+        for table_int in range(16):
+            table = format(table_int, "04b")
+            template = parameterized.one_two_three(table)
+            assert template.index("{X0}") < template.index("{X1}"), table
+
+    def test_both_bits_embed_at_the_same_width(self) -> None:
+        """A zero and a one embed at equal width, so length leaks nothing."""
+        from esolangs.tools.boolean import parameterized
+
+        for table_int in range(16):
+            table = format(table_int, "04b")
+            template = parameterized.one_two_three(table)
+            sizes = {
+                len(self.instantiate(template, [(c >> 1) & 1, c & 1])) for c in range(4)
+            }
+            assert len(sizes) == 1, (table, sizes)
+
+    def test_wider_tables_are_declined(self) -> None:
+        """A three-input table raises rather than emitting a wrong program."""
+        from esolangs.tools.boolean import parameterized
+
+        with pytest.raises(ValueError, match="one- and two-input tables"):
+            parameterized.one_two_three("01101001")
+
+    def test_each_input_is_embedded_once(self) -> None:
+        """Each placeholder appears exactly once, and no {Ci} appears."""
+        import re
+
+        from esolangs.tools.boolean import parameterized
+
+        for n in (1, 2):
+            for table_int in range(2 ** (2**n)):
+                table = format(table_int, f"0{2**n}b")
+                template = parameterized.one_two_three(table)
+                xs = re.findall(r"\{X(\d+)\}", template)
+                assert sorted(xs) == [str(i) for i in range(n)], (table, xs)
+                assert not re.findall(r"\{C(\d+)\}", template), table
