@@ -12,11 +12,13 @@ wall-clock bound.
 
 import io
 from contextlib import redirect_stdout
+from typing import ClassVar
 
 import esolangs
 from esolangs.interpreters.grid_based.arrowqueue import _Machine, run
 from esolangs.interpreters.io import IO
 from esolangs.vm import run_until_halt_or_cycle
+from tests.interpreters.contract import EmptyProgramContract
 
 
 def run_and_capture(code: list[str]) -> str:
@@ -27,9 +29,6 @@ def run_and_capture(code: list[str]) -> str:
 
 
 class TestArrowQueue:
-    def test_empty_program(self) -> None:
-        assert run_and_capture([]) == ""
-
     def test_empty_line_halts_immediately(self) -> None:
         assert run_and_capture([""]) == ""
 
@@ -170,3 +169,10 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine must not raise
         assert machine.halted
         assert machine.snapshot() == state
+
+
+class TestContract(EmptyProgramContract):
+    """The shared empty-program shape, with this language's data."""
+
+    run = staticmethod(run_and_capture)
+    empty_program: ClassVar[list[str]] = []

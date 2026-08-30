@@ -5,6 +5,7 @@ import importlib
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
+from tests.interpreters.contract import EmptyProgramContract
 
 run = importlib.import_module("esolangs.interpreters.tape_based.one_two_three").run
 
@@ -20,10 +21,6 @@ def run_program(code: str, stdin: str = "") -> str:
 
 
 class Test123:
-    def test_empty_program(self) -> None:
-        """The empty program halts with no output instead of looping."""
-        assert run_program("") == ""
-
     def test_nops_only(self) -> None:
         """Characters other than 1/2/3 are NOPs and are skipped."""
         assert run_program(" \n abc \n") == ""
@@ -161,3 +158,9 @@ class TestStepMachine:
         state = machine.snapshot()
         machine.step()  # stepping a halted machine must not raise
         assert machine.snapshot() == state
+
+
+class TestContract(EmptyProgramContract):
+    """The shared empty-program shape, with this language's data."""
+
+    run = staticmethod(run_program)

@@ -12,6 +12,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.grapheme import run
+from tests.interpreters.contract import EmptyProgramContract
 
 
 def run_program(code: str, stdin: str = "") -> str:
@@ -193,9 +194,6 @@ class TestErrors:
         with pytest.raises(ValueError, match="uppercase"):
             run_program("hello")
 
-    def test_empty_program(self) -> None:
-        assert run_program("") == ""
-
 
 class TestEdgeCases:
     def test_j_on_an_int_is_identity(self) -> None:
@@ -326,3 +324,9 @@ class TestNumberEncoding:
         from esolangs.interpreters.stack_based.grapheme import _to_int
 
         assert _to_int("") == 0
+
+
+class TestContract(EmptyProgramContract):
+    """The shared empty-program shape, with this language's data."""
+
+    run = staticmethod(run_program)

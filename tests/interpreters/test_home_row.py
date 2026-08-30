@@ -8,6 +8,7 @@ import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.home_row import run
+from tests.interpreters.contract import EmptyProgramContract
 
 
 def run_program(code: str) -> str:
@@ -32,9 +33,6 @@ class TestBasics:
 
     def test_end_of_source_halts(self) -> None:
         assert run_program("ak") == "\x01"
-
-    def test_empty_program(self) -> None:
-        assert run_program("") == ""
 
 
 class TestPointer:
@@ -184,3 +182,9 @@ class TestStepMachine:
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
         assert machine.grid[0] == 0
+
+
+class TestContract(EmptyProgramContract):
+    """The shared empty-program shape, with this language's data."""
+
+    run = staticmethod(run_program)
