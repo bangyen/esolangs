@@ -2079,19 +2079,21 @@ class TestParameterizedMinifuck:
                     assert got == table[combo], f"{table} inputs {bits}"
         assert checked == 38, checked
 
-    def test_three_input_plan_is_a_fast_path_not_a_replacement(self) -> None:
-        """The three-input plan covers part of the arity, and says so.
+    def test_a_table_with_no_staging_falls_through(self) -> None:
+        """An unplanned table returns None from ``_staged`` rather than raising.
 
-        Unlike two inputs, this plan is *incomplete* -- a missing table must
-        fall through to the searches rather than raise, or coverage would
-        regress.  Both halves are pinned: the plan really does cover the
-        tables it claims, and a table outside it is still built.
+        Both three-input plans are now complete, so the fall-through is
+        exercised at an arity that has no plan at all -- which is the case
+        that matters, since it is what lets a wider table reach the searches
+        instead of failing outright.
         """
         from esolangs.tools.boolean import parameterized
-        from esolangs.tools.boolean.minifuck import _THREE_INPUT_PLAN, _staged
+        from esolangs.tools.boolean.minifuck import _PLANS, _THREE_INPUT_PLAN, _staged
 
         assert _THREE_INPUT_PLAN, "the plan should not be empty"
-        # Every planned entry builds, computes, and keeps its slots in order.
+        assert 4 not in _PLANS, "four inputs are expected to have no plan"
+        assert _staged("1" * 16, 4) is None
+        # A table the plan does cover is built from it, not searched.
         for key in sorted(_THREE_INPUT_PLAN)[:4]:
             template = _staged(key, 3)
             assert template is not None, key
@@ -2099,32 +2101,21 @@ class TestParameterizedMinifuck:
                 bits = [(combo >> (2 - i)) & 1 for i in range(3)]
                 got = self.run_minifuck(self.instantiate(template, bits))
                 assert got == key[combo], f"{key} inputs {bits}"
-        # A table with no staging returns None here rather than raising, so
-        # the caller can fall through.
-        unplanned = next(
-            format(v, "08b")
-            for v in range(256)
-            if min(
-                format(v, "08b"),
-                "".join(str(1 - int(c)) for c in format(v, "08b")),
-            )
-            not in _THREE_INPUT_PLAN
-        )
-        assert _staged(unplanned, 3) is None, unplanned
         # ...and the public entry point still builds a planned table.
         assert parameterized.minifuck(sorted(_THREE_INPUT_PLAN)[0])
 
     @pytest.mark.slow  # builds and runs all 256 three-input tables
-    def test_almost_every_three_input_table_is_search_free(self) -> None:
-        """254 of the 256 three-input tables build without searching.
+    def test_every_three_input_table_is_search_free(self) -> None:
+        """All 256 three-input tables build without searching.
 
-        With ``_find_column`` and ``_find_parked`` stubbed to raise, all but
-        one complement pair still build -- and every row is run, because a
-        staging that emits without computing would otherwise pass silently.
+        With ``_find_column`` and ``_find_parked`` stubbed to raise, every
+        table still builds -- and every row is run, because a staging that
+        emits without computing would otherwise pass silently.
 
-        The exact remainder is pinned rather than a bound.  A staging that
-        stopped working would show up as a table falling through to the
-        search, and a bound like "at most a few" would hide that.
+        The searches are kept anyway.  They are the fallback for an arity
+        with no plan, and this assertion is what would notice if a staging
+        stopped working: the table would fall through and raise here rather
+        than quietly costing two minutes.
         """
         import importlib
 
@@ -2149,7 +2140,7 @@ class TestParameterizedMinifuck:
                     bits = [(combo >> (2 - i)) & 1 for i in range(3)]
                     got = self.run_minifuck(self.instantiate(template, bits))
                     assert got == table[combo], f"{table} inputs {bits}"
-        assert searched == ["01101101", "10010010"], searched
+        assert searched == [], searched
 
     def test_only_the_first_separators_are_scanned(self) -> None:
         """The searching routes scan two separators; the plan names the rest.
@@ -2214,13 +2205,15 @@ class TestParameterizedMinifuck:
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
         for n, plan in sorted(module._PLANS.items()):  # noqa: SLF001
-            for key, (sep_index, settle, brackets, acc) in sorted(plan.items()):
+            for key, (sep_index, settle, suffix, acc) in sorted(plan.items()):
                 joint = module._embed(  # noqa: SLF001
                     n, settle=settle, sep=module._SEPS[sep_index]  # noqa: SLF001
                 )
                 module._clamp(joint)  # noqa: SLF001
                 module._walk_to(joint, module._BASE - 1)  # noqa: SLF001
-                joint.emit("[" * brackets + "<")
+                joint.emit(
+                    "[" * suffix + "<" if isinstance(suffix, int) else suffix
+                )
                 module._clamp(joint)  # noqa: SLF001
                 arrived = None
                 for cell7 in (0, 1):

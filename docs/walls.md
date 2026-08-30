@@ -314,11 +314,11 @@ tables are now derived from an eight-entry staging table
 
 **The same staging works at n=3, for part of the arity.** Extending the
 enumeration to three inputs (adding the settle count as a fourth coordinate)
-covers **216 of the 218 three-essential tables** — all of which build, compute
+covers **all 218 three-essential tables** — every one of which builds, computes
 and emit in order, with no endgame losses. Parity (`01101001`) and majority
 (`00010111`) are among them, two of the orbits the search takes tens of
 seconds to reach. Add the 38 degenerate tables, which project onto the n=2
-construction and were already free, and **254 of the 256 three-input tables
+construction and were already free, and **all 256 three-input tables
 need no search at all**.
 
 **The binding constraint was the separator, and it was never searched.**
@@ -360,28 +360,32 @@ The other two axes were **sampled** rather than exhausted, and came back
 empty — settle counts 3–5 and accumulators 36–47 reached nothing already
 covered. Evidence they are barren, not proof.
 
-**The last pair is a gap, not a wall, and the distinction is evidenced.**
-`01101101` / `10010010` is the one complement pair still searching, and it
-fails differently from the 118 the new separators closed. Its answer *is*
-computed — it stands as a column at cell 24 under separator 2 at `k=15` — but
-no accumulator reads it intact; from that staging it arrives as `10011101` or
-`01100010`. So this is a carry failure, which is why widening the separator
-set again does not address it.
+**The last pair needed a suffix a bracket run cannot spell, and it is the
+one table the searches never built.** `01101101` / `10010010` resisted every
+route: the scans, the column search and the parked search all raise on it
+after about 96 seconds, so it was uncovered long before any of this staging
+work. It closes with `(separator 2, settle 0, "[[<[<[[[[[[[[[", acc 22)` —
+note the two `<` interleaved into the run, which is why no `k` ever found it.
 
-Searched and not found: 13 of the 15 (separator, settle) slices at `k ≤ 40`
-across every accumulator. The two skipped slices scored worst on a cheap
-Hamming-distance screen, and the five that scored *best* — reaching distance
-1 but never 0 — were all swept and all missed. That is a capped negative and
-is recorded as one.
+Its shape is worth recording, because "the column is missing" was the wrong
+guess. The column is **abundant**: 14375 of 804600 sparse suffixes leave it
+standing somewhere on the tape, and the column search finds it at cell 22 on
+its own. What is scarce is a staging that also *carries* it to the read —
+the walk's prefix-XOR rewrites the very cell, so the answer is produced
+easily and destroyed almost every time. Pure bracket runs never manage it: 13
+of the 15 (separator, settle) slices at `k ≤ 40` were swept over every
+accumulator, including all five that a Hamming screen ranked closest, and all
+missed.
 
-What rules out calling it a wall: 180 of the 256 possible columns arrive
-across the family, and **no affine invariant separates them from this one**
-(all 255 parity masks checked). Nothing in the construction forbids it; the
-stagings tried simply do not produce it.
+Two false negatives on the way are worth the warning. A length-8 enumeration
+of mixed suffixes returned zero candidates in 9 seconds — the working suffix
+is length 14, so the cap, not the language, produced the zero. And a
+candidate-major loop projected at 5.5 hours where a staging-major loop found
+the answer in 29 minutes; the expensive object is the staging, not the table.
 
-The remaining 2 still search, so the plan is a *fast path*, not a
-replacement — a table with no staging falls through unchanged, and the
-searches stay exactly where they were.
+No three-input table searches now. The searches are kept as the fallback for
+a *wider* table, and as the reason a missing staging degrades instead of
+raising.
 
 **And it is not only a speedup: the staged route reaches tables the searches
 cannot.** Sampling 8 of the 80, three (`01101000`, `10100001`, `11100110`)
