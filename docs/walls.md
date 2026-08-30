@@ -49,7 +49,15 @@ path reaches them (every leaf in the left subtree ends `A0`).
 
 `_label_for` decides nameability by round-tripping through the interpreter's
 own `num`, so the generator cannot drift from it, and there is no ceiling
-left to overflow: **every truth table renders at every `n`**.  Parity, the
+left to overflow: **every truth table renders at every `n`**.  One
+consequence worth knowing before diffing a generated program in an editor:
+the printable characters run out after ordinal 71 (`` ` `` at 41, then
+`{|}~` at 68–71), so from ordinal 72 up the label characters are control
+characters — 72 is DEL and the C1 range follows.
+That is interpreter-legal — `num` and the tokenizer inspect nothing about a
+character beyond its codepoint, and these are the exact programs the
+executed verification ran — but a parity build at `n >= 6` is not a
+text-clean file.  Parity, the
 shape no input reordering folds, is now simply the longest build rather than
 a refusal — verified by executing the generated programs through the
 interpreter on all `2**n` combinations at `n == 6` (63 standing nodes, 26
