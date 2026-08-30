@@ -37,6 +37,7 @@ SHARED_TOOLING = (
     "scripts/verify.py",
     "scripts/_scope.py",
     "scripts/verify_differential.py",
+    "scripts/check_diff_coverage.py",
     "pyproject.toml",
     ".pre-commit-config.yaml",
     "justfile",
