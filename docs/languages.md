@@ -29,6 +29,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | Bitdeque |  | yes |  | yes |  |
 | BrainIf | yes | yes |  | yes |  |
 | COD |  | yes |  | yes |  |
+| CV(N)(C) | yes | yes |  | yes |  |
 | Circlefuck | yes | yes |  | yes |  |
 | Circuit Diagram |  | yes |  | yes |  |
 | Clockwise | yes | yes |  | yes |  |
