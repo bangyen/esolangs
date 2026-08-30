@@ -56,9 +56,12 @@ painfuck, bf_tree, brainfuck, three_d_brainfuck, sbleq, dimensional,
 dimensional_tree, clockwise, brainif, three_x, circuit_diagram, minsky_swap,
 decleq, grapheme, bio — folding 95% (taglate) down to 5% (bio).
 
-`cvnc` was added after that sweep (2026-08-30) and measures 74.1% on the
+`cvnc` was added after that sweep (2026-08-30) and measures 74.5% on the
 same comparison, which is why the count above reads 44 against a sweep of
 59; the dated figures are left as they were measured rather than restated.
+It measured 74.1% when first added and 74.5% once its reorder shipped the
+same day — the one-dependency table it is scored on is exactly the case the
+reorder improves, so this figure moves when that build changes.
 
 **Minterm-shaped (13).** a_painter_ant, bfstack, bit_tilde, cod,
 collatz_multiverse, container, home_row, nocomment, point_break, qoibl,
@@ -285,7 +288,7 @@ which name fills each slot while building its tree on the permuted table.
 
 **Shipped:** `six_five`, `jaune`, `eval`, `circlefuck`, `unsquare`, `sbleq`,
 `three_x`, `forth`, `sophie`, `polynomial`, `addsubjump`, `streetcode`,
-`laserfuck`, `back` (via `best_input_order`; `six_five`, `forth`,
+`laserfuck`, `back`, `cvnc` (via `best_input_order`; `six_five`, `forth`,
 `streetcode` and `laserfuck` roll their own — the two grid ones because their
 `width` has to choose among *every* candidate, and `best_input_order` returns
 only the shortest. `back` has no width, so it uses the wrapper).
@@ -300,15 +303,39 @@ hold a read bit, so a bit can only be branched on before the next read:
 `polynomial` (25.1%), `modulous` (16.4%), `sophie` (16.4%). Residual merging
 collects what the screen was measuring for polynomial and sophie.
 
-**Measured, not yet built:** `cvnc` screens **15.2% mean** over sampled
-tables at `n = 2..4` (74.1% on the best single table), which clears the
-10% bar. Unlike polynomial and sophie it is *reachable*: the deque is
-addressable storage, so a read bit can be pushed with `m`/`n` and popped
-back with `ŋ`/`ɲ` rather than having to be branched on before the next
-read. The screen is a gross figure and the walk is not subtracted — the
-tree reads MSB-first in sequence, so a permuted order still has to reach
-each input in the order the harness feeds it. Build it only after
-subtracting that cost, per the rule in this file's reorder section.
+**Built 2026-08-30 — `cvnc`, and the walk cost turned out to be zero.** It
+screened **15.2% mean** at `n = 2..4` and *delivered* **13.8% at `n = 3`**
+(every table) and **17.9% at `n = 4`** (300 sampled), with **no table
+growing**. The screen was gross and the walk was supposed to be subtracted
+from it; the walk is instead free, which is why the delivered figure rises
+above the screen at `n = 4` rather than falling below it.
+
+What makes it free is that a deque has *two* ends. The obvious way to
+reconcile a permuted test order with a fixed read order is to rotate the
+bits into place, and rotations are what the screen was told to charge for.
+There is no need: each read is pushed to whichever **end** it will later be
+popped from (`m` or `n`, riding the read's own syllable for one character),
+and each node pops the end holding the bit it wants. `_deque_schedule`
+searches the `2**n` push assignments; what that reaches is exactly the
+**unimodal** permutations — all of them through `n = 3`, 20 of 24 at
+`n = 4`, 252 of 720 at `n = 6` — and unservable orders return the empty
+string, which `best_input_order` already reads as "not buildable" and
+skips.
+
+The hoist is not free, which is why it does not replace the node-read tree:
+a stored read costs one character more than a bare one and a fetch costs
+three where a node read costs two. What repays it is that a folded subtree
+then owes **nothing** — the node-read build still owes its remaining `so`
+runs and the `cə` that normalizes the bit they leave behind. So the two are
+built and the shorter returned, the `six_five` precedent. Parity keeps the
+node-read build; one-dependency tables take the hoist.
+
+**The generalizable part: count the ends before pricing a walk.** A reorder
+over storage with two addressable ends may need no walk at all, because the
+*push* side has a free choice that can pre-arrange the pop order. That is a
+different escape from `back`'s (whose harness substitutes its bits) and it
+applies to any deque-shaped store — `bitdeque`'s `INJECT`/`EJECT` pair is
+the other one in this repo.
 
 Four rules worth carrying into the remaining candidates:
 

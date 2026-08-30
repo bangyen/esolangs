@@ -194,13 +194,14 @@ class TestCvnc:
     def test_a_one_dependency_table_costs_two_leaves(self) -> None:
         """Depending on one input collapses the other two levels.
 
-        The read count is a property of each *path*, not of the text: both
-        arms fold and each emits the two reads below the root, so five
-        ``so`` appear while any single run consumes three.
+        This table is where the hoisted build wins, so the three reads are
+        the load block's and appear once each rather than once per folded
+        path.  Either way only the root branches and only two leaves remain.
         """
         program = boolean.cvnc("11110000")
         assert program.count("fu") == 2
         assert program.count("\u0270\u030ao") == 1  # only the root still branches
+        assert program.count("so") == 3  # three inputs, read once each
         for combo in range(8):
             bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
             assert run_cvnc(program, bits) == "11110000"[combo]
@@ -248,6 +249,88 @@ class TestCvnc:
         """With no inputs there is nothing to branch on."""
         assert "so" not in boolean.cvnc("1")
         assert run_cvnc(boolean.cvnc("1"), []) == "1"
+
+    def test_the_hoisted_build_reorders_a_table_the_stream_order_cannot_fold(
+        self,
+    ) -> None:
+        """A table folding only on its *last* input is what the reorder is for.
+
+        ``10101010`` is ``11110000``'s function with the inputs renamed, so
+        the node-read tree cannot fold it at the root while the hoisted one
+        tests input 2 first and folds after a single branch.  The win has to
+        show up as a shorter program, not merely a different one.
+        """
+        program = boolean.cvnc("10101010")
+        assert program.count("fu") == 2  # two leaves, as the reorder intends
+        assert program.count("ɰ̊o") == 1
+        # The unreordered node-read tree over the same table folds only at the
+        # bottom, so it costs a leaf per row.
+        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+        unreordered = module._tree("10101010", 0)  # noqa: SLF001
+        assert unreordered.count("fu") == 8
+        assert len(program) < len(unreordered)
+
+    def test_the_hoisted_build_stores_and_fetches_rather_than_rotating(self) -> None:
+        """The bridge between read order and test order is the deque's ends."""
+        program = boolean.cvnc("10101010")
+        # Every input is read once and pushed to an end in the same syllable.
+        assert program.count("so") == 3
+        assert program.count("som") + program.count("son") == 3
+        # The one surviving node fetches rather than reads.
+        assert program.count("cuŋ") + program.count("cuɲ") == 1
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_every_table_computes_its_function(self, n: int) -> None:
+        """Exhaustive over both constructions, since either may be returned."""
+        for value in range(2 ** (2**n)):
+            table = bin(value)[2:].zfill(2**n)
+            program = boolean.cvnc(table)
+            for combo in range(2**n):
+                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                assert run_cvnc(program, bits) == table[combo], f"{table} {bits}"
+
+    def test_choosing_between_the_builds_never_grows_a_program(self) -> None:
+        """The hoist has a price, so it is a candidate and not a replacement.
+
+        Parity is the table it loses on: nothing folds, so the load block's
+        nasals and the per-node fetch are paid for with no fold to show for
+        them, and the node-read tree must still be the one returned.
+        """
+        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+        for value in range(2**8):
+            table = bin(value)[2:].zfill(8)
+            assert len(boolean.cvnc(table)) <= len(module._tree(table, 0))  # noqa: SLF001
+        # and parity specifically keeps the node-read build
+        assert boolean.cvnc("01101001") == module._tree("01101001", 0)  # noqa: SLF001
+
+    def test_an_unservable_order_is_skipped_rather_than_mispriced(self) -> None:
+        """The deque serves the unimodal orders; the rest return no program.
+
+        ``best_input_order`` reads an empty candidate as "this order could
+        not be built" and skips it, so returning one is how an unservable
+        order declines. Substituting some other program would let it win on
+        a length it never paid.
+        """
+        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+        # (0, 2, 1, 3) is the smallest non-unimodal permutation.
+        assert module._deque_schedule((0, 2, 1, 3)) is None  # noqa: SLF001
+        assert module._hoisted_candidate("0" * 16, (0, 2, 1, 3)) == ""  # noqa: SLF001
+        # The identity is always unimodal, so a candidate always exists.
+        assert module._deque_schedule((0, 1, 2, 3)) is not None  # noqa: SLF001
+
+    def test_a_table_folding_at_its_root_normalizes_the_last_read(self) -> None:
+        """The hoisted build's folded root still holds an unpredictable bit.
+
+        No branch has run, so the accumulator is whatever the load block read
+        last rather than a bit the tree chose.  Without the ``cə`` the leaf
+        climbs from that and prints one too many for a 1 input.
+        """
+        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+        program = module._hoisted("00", (0,))  # noqa: SLF001
+        assert program is not None
+        assert "cə" in program
+        for bit in ("0", "1"):
+            assert run_cvnc(program, [bit]) == "0"
 
 
 class TestFargo:
