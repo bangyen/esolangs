@@ -401,6 +401,29 @@ def _search[Hit](
 # compression -- five strings become five strings plus five suffixes plus the
 # machinery to apply them.
 #
+# Normalising the pointer first does not rescue it, and the reason says what
+# a pool code *is*.  A suffix that lands every code on one cell does exist --
+# ``'<<<<<'`` drives all ten to cell 0, and ``<`` never writes, so it cannot
+# dirty the tape.  It destroys the codes anyway: 16754 of the 16758 answered
+# call sites are lost, nine of the ten codes dropping to nothing.  The walk
+# out to the accumulator is ``[x`` repeated from wherever the code stopped,
+# and every ``[x`` rewrites the cell it crosses -- so moving the end left
+# lengthens the walk and scribbles over the pool it just set.  Measured on one
+# site: the tape at the end of the code is identical either way, but a 3-step
+# walk leaves ``0011000`` and an 8-step walk leaves ``0101110``.
+#
+# So the end position is not incidental to a code, it is half of what the code
+# does -- set the pool *and* stop where the remaining walk will preserve it.
+# That is also why the codes end at four different positions rather than
+# converging: each is paired with the walk lengths it has to survive.
+#
+# The strings themselves are not near neighbours, which is consistent with all
+# of the above.  Between a code and its mirror the padded Hamming distance is
+# 3, 3, 8, 10 and 12 (edit distance 2, 2, 4, 6 and 5) -- the two 3s being the
+# pair that shares an end position.  Over all ten, padded Hamming runs 3 to 12
+# (mean 7.2) and edit distance 2 to 7 (mean 4.3); over the five cell7=0 codes
+# alone, 4 to 11 (mean 8.3) and 2 to 7 (mean 4.8).
+#
 # The full list stays because there is no reason to prune it: the acceptance
 # test decides every call, so a redundant candidate costs one check and can
 # never produce a wrong pool.  Ordered shortest first, so the emitted program
