@@ -115,10 +115,13 @@ ignore = [
 # THETA, the multiplication plosive U+0261 LATIN SMALL LETTER SCRIPT G, and
 # so on.  Here the confusable character is the correct one -- these rules
 # catch a homoglyph typed by mistake, and there is no non-IPA spelling to
-# prefer -- so they are off for the three files that spell the language.
+# prefer -- so they are off for the files that spell the language.  That
+# includes tests/samples.py, which is otherwise language-agnostic but
+# holds one CV(N)(C) program in its per-language table.
 "src/esolangs/interpreters/other/cvnc.py" = ["RUF001", "RUF002", "RUF003"]
 "src/esolangs/tools/boolean/cvnc.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/interpreters/test_cvnc.py" = ["D", "N802", "RUF001", "RUF002", "RUF003"]
+"tests/samples.py" = ["D", "N802", "RUF001", "RUF002", "RUF003"]
 
 [tool.mypy]
 strict = true

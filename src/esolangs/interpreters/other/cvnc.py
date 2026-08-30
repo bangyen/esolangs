@@ -227,7 +227,7 @@ def _match_loops(tokens: list[str]) -> dict[int, int]:
     for index, token in enumerate(tokens):
         if token in (_WHILE_ZERO, "ɰ"):
             stack.append(index)
-        elif token == "ʋ":
+        elif token == "ʋ":  # nosec B105
             if not stack:
                 raise ValueError("loop end with no matching start")
             start = stack.pop()
@@ -382,11 +382,11 @@ class _Machine:
 
     def _fricative(self, token: str) -> None:
         """Run one I/O command."""
-        if token == "θ":
+        if token == "θ":  # nosec B105
             self.io.print_num(self.accumulator)
-        elif token == "f":
+        elif token == "f":  # nosec B105
             self.io.print_char(chr(self.accumulator % 256))
-        elif token == "s":
+        elif token == "s":  # nosec B105
             # The accumulator is unsigned, so a negative line floors at zero,
             # and an empty line (a bare Enter) reads as 0 rather than raising.
             line = self.io.input_str().strip()
@@ -396,41 +396,41 @@ class _Machine:
 
     def _plosive(self, token: str) -> None:
         """Append to the function, or reset it."""
-        if token == "c":
+        if token == "c":  # nosec B105
             self.function = []
         elif token in _FUNCTION_SYMBOLS:
             self.function.append(_FUNCTION_SYMBOLS[token])
         else:
-            self.function.append(str(self._pop(front=token == "p")))
+            self.function.append(str(self._pop(front=token == "p")))  # nosec B105
 
     def _vowel(self, token: str) -> None:
         """Modify the accumulator."""
-        if token == "i":
+        if token == "i":  # nosec B105
             self.accumulator += 1
-        elif token == "ə":
+        elif token == "ə":  # nosec B105
             self.accumulator = max(self.accumulator - 1, 0)
-        elif token == "æ":
+        elif token == "æ":  # nosec B105
             self.accumulator *= self.accumulator
-        elif token == "o":
+        elif token == "o":  # nosec B105
             self.accumulator = math.isqrt(self.accumulator)
         else:
             self._apply()
 
     def _nasal(self, token: str) -> None:
         """Push to or pop from the deque."""
-        if token == "m":
+        if token == "m":  # nosec B105
             self.deque.insert(0, self.accumulator)
-        elif token == "n":
+        elif token == "n":  # nosec B105
             self.deque.append(self.accumulator)
         else:
-            self.accumulator = self._pop(front=token == "ŋ")
+            self.accumulator = self._pop(front=token == "ŋ")  # nosec B105
 
     def _approximant(self, token: str) -> None:
         """Jump: a goto, a loop test, or a loop end."""
-        if token == "ɹ":
+        if token == "ɹ":  # nosec B105
             # Past the end is a halt, which running off the end already is.
             self.pointer = self.offsets.get(self.accumulator, len(self.tokens))
-        elif token == "j":
+        elif token == "j":  # nosec B105
             self.pointer = (
                 self.starts[self.accumulator]
                 if self.accumulator < len(self.starts)
@@ -441,7 +441,7 @@ class _Machine:
             # loop end would run it and bounce straight back to the test.
             if self.accumulator == 0:
                 self.pointer = self.pairs[self.pointer - 1] + 1
-        elif token == "ɰ":
+        elif token == "ɰ":  # nosec B105
             if self.accumulator != 0:
                 self.pointer = self.pairs[self.pointer - 1] + 1
         else:
