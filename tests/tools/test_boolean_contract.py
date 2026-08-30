@@ -44,12 +44,17 @@ _TABLES = ["00000000", "01101001"]
 # now derives its programs instead and rejects that arity outright, which
 # puts it below the measurement floor.
 #
+# ``minifuck`` left the set for the same reason, having been its most
+# expensive member at 41.1s.  It no longer searches at ``n <= 3`` -- every
+# table up to three inputs comes from a staging table -- and this sweep's
+# parity case now costs 0.09s, two orders of magnitude under the budget.
+#
 # Naming the languages rather than timing them at collection time is
 # deliberate: a wall-clock threshold evaluated during collection would make
 # the selected test set depend on how loaded the machine is, so a run could
 # silently cover less than the last one.  Re-measure and edit this set when
 # a generator's cost changes.
-_SEARCHING_GENERATORS = frozenset({"minifuck", "slow_acv_mammalian_boolean"})
+_SEARCHING_GENERATORS = frozenset({"slow_acv_mammalian_boolean"})
 
 # The same one-second rule, applied to the two reordering sweeps.  Those call
 # the ``_*_ordered`` builder once per input order for every table up to three
