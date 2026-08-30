@@ -966,7 +966,7 @@ in that sweep's searching set.
 execution, but the fixpoint between sizes and offsets does iterate: a node
 whose reach falls short of its own 0-subtree prepends a stash chunk, which
 buys ~255 tokens of reach, and re-derives.  That loop carries no iteration
-cap.  It has four exits, each backed by a measurement over every node of
+cap.  It has three exits, each backed by a measurement over every node of
 every table through `n == 3` (172452 nodes):
 
 * **Place.**  Some candidate's landing clears the 0-arm.
@@ -979,8 +979,6 @@ every table through `n == 3` (172452 nodes):
   the reach it buys) and single steps sawtooth up a few tokens.  Measured
   that way the gap fell by at least 248 tokens every window, without
   exception.
-* **Overrun.**  The gap descended slower than the window check individually
-  claimed, which no sequence of legal windows permits.
 
 The quantity being descended has to include the 0-arm's length.  The
 cheaper proxy — the shortfall against the node alone — looks equivalent
@@ -989,9 +987,18 @@ iterations were measured where it had gone negative while every candidate
 still refused.
 
 Chunk use is small: the worst any node needed was 15 (2 at `n == 1`, 7 at
-`n == 2`, 15 at `n == 3`).  A fifth check rejects a `base` past anything an
-emission could have produced; that one is input validation rather than part
-of the termination argument.
+`n == 2`, 15 at `n == 3`).  How many a node needs is *not* predictable from
+what it opens with — one node closed a gap of 8 in two chunks while another
+closed 419 in seven — because the gap moves as the subtree it must clear
+moves, so a rate-derived iteration budget fits noise rather than bounding
+anything.  The loop does not carry one.
+
+A fourth check, at entry rather than in the loop, rejects a `base` past
+anything an emission could have produced: `base` is a partial sum of the
+lengths already emitted and a depth-`n` tree has `2**n` leaves to pay for,
+so `2**n` times a per-leaf bound is sound.  Measured per-leaf cost runs 377
+at `n == 1`, 492 at `n == 2`, 565 at `n == 3` and 601 at `n == 4`.  That
+check is input validation, not part of the termination argument.
 
 The shed is what makes this hold from `n == 3` on.  Disabling it still
 builds every table at `n <= 2` — the arrays there are too small to carry

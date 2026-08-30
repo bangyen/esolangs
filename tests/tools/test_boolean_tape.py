@@ -1103,15 +1103,16 @@ class TestSlowAcvMammalian:
         """A base past anything the stashing can reach raises.
 
         ``base`` is a partial sum of what has already been emitted, so it
-        cannot outrun the finished program; one far past that describes a
-        tree no emission could have produced.  The loop prices that at
-        entry rather than discovering it a chunk at a time -- the gap
-        implies tens of thousands of them, and grinding through those to
-        reach the same answer would be a hang in all but name.
+        cannot outrun the finished program, and a depth-``n`` tree has
+        ``2**n`` leaves to pay for.  One far past that describes a tree no
+        emission could have produced.  The loop rejects it at entry rather
+        than discovering it a chunk at a time: such a base needs tens of
+        thousands of them, and grinding through those to reach the same
+        answer would be a hang in all but name.
         """
         from esolangs.tools.boolean.slow_acv_mammalian import _subtree
 
-        with pytest.raises(ValueError, match="no run of chunks could close"):
+        with pytest.raises(ValueError, match="past anything a 1-input tree"):
             _subtree("01", 1, 0, "", [0], 0, 10_000_000)
 
     def test_a_stash_loop_that_stops_closing_the_gap_raises(self) -> None:
