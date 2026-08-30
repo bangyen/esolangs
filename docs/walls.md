@@ -26,40 +26,56 @@ folds well inside the label budget — so it never covered a table the tree
 could not.  A search over contiguous families at n=6,7,8 and ~18000 random
 tables found no counterexample.
 
-## ZTOALC L (dense non-symmetric n > 3 wall, re-verified)
+## ZTOALC L (dense non-symmetric n > 3 wall) — **FALLEN**
 
-All Collatz trajectories converge to the `16, 8, 4, 2, 1` tail, so a dense
-full tree like XOR4 has every leaf's tail sweep through another leaf.  For
-**popcount-symmetric** tables the generator falls back to a branch-free
-*linear* program: sum the input bits into one accumulator and look the
-result up in a small `n + 1`-entry table (XOR4's linear program is 524,288
-lines, `2**19`, under the `2**22` gate).  That shape does not carry over to
-dense **non-symmetric** tables, and not just because the result table is
-bigger: a non-symmetric table needs each combination's raw *position*
-(`0..2**n - 1`), not its popcount, and ZTOALC L's expression grammar has no
-multiply, so computing a positional index from `n` bits would need a
-weighted accumulation (`bit_i * 2**(n-1-i)`) that `+`/`-`/`=` cannot
-express in one step.  Even approximating it with repeated addition and a
-full `2**n`-entry result table (one distinct literal per combination,
-instead of the symmetric case's shared `n + 1` values) reaches `2**33`
-lines at `n == 4` — past the `2**22` gate by a wide margin, not under it.
+This wall held that dense non-symmetric tables past `n == 3` could not be
+rendered.  The argument ran: all Collatz trajectories converge to the
+`16, 8, 4, 2, 1` tail, so a dense tree has every leaf's tail sweep through
+another leaf; popcount-symmetric tables escape via a branch-free linear
+program, but a non-symmetric table needs each combination's raw *position*
+(`0..2**n - 1`) rather than its popcount, and **"ZTOALC L's expression
+grammar has no multiply, so computing a positional index from `n` bits would
+need a weighted accumulation (`bit_i * 2**(n-1-i)`) that `+`/`-`/`=` cannot
+express in one step."**
 
-Re-verified against the interpreter: sweeping the tree placement's search
-parameter (`b1`) to ~500,000 values per table (125x the shipped budget) found
-no collision-free placement for three independent dense, non-symmetric
-`n == 4` tables, each exhausting in under a minute — a search-budget problem
-would show as a timeout, not a fast, complete exhaustion.  The wall holds;
-`n <= 3` exact plus popcount-symmetric tables at higher `n` is the ceiling
-for the tree-shaped construction.
+That sentence is the false step, and it is false for a reason worth keeping:
+**doubling does not need multiplication.**  `s += s` is a legal command --
+the interpreter evaluates a command's target and its operand independently --
+so the positional index is built by double-and-add, `s += s` then
+`s += x{i}`, one pair per input.  No multiply, no weighted literals, `2n - 1`
+commands.  The rest of the wall was downstream of that one claim: with a
+positional index in hand, the table is a plain `2**n`-entry array, `t[s]`
+selects the answer, and *every* table -- dense, non-symmetric, any `n` --
+becomes the same branch-free program.
 
-**Narrowed since:** that sweep varied `b1` under one *fixed* input order, so
-it measured a wall around the tree that order builds, not around the table.
-Choosing the input split order gives the search a differently-shaped tree,
-and `1010001000011000` — a dense non-symmetric `n == 4` table this section's
-sweep refused — now places (`test_dense_non_symmetric_places_under_a_reordered
-_tree`).  The counting argument above is untouched and the wall still stands
-for tables no order rescues, but the refused set is *some*, not all, dense
-non-symmetric tables at `n >= 4`.
+The second half of the argument fell with it.  The section priced a
+positional lookup at `2**33` lines at `n == 4`, past the `2**22` gate,
+because it assumed the program had to sit on the pure power-of-two descent
+where a program of `L` commands costs `2**L` lines.  It does not: placing
+command `j` on the `j`-th value of *any* Collatz trajectory is collision-free
+for the same reason the tail argument was fatal to trees -- a trajectory
+visits distinct values until it reaches 1, since a repeat would be a cycle it
+never escapes.  Trajectory peaks grow far slower than `2**L`.  XOR4, quoted
+here at 524,288 lines, is now **484**; `1010001000011000`, the dense
+non-symmetric table this section's sweep refused, is **388**.
+
+The exhaustive re-verification that "confirmed" the wall was soundly run and
+correctly reported: sweeping `b1` to ~500,000 values per table really does
+find no collision-free placement.  It searched the wrong space.  Every
+candidate it tested was a *decision tree*, and the tree is what the
+convergent tail defeats; the branch-free lookup was never in the pool.  A
+completed search over a parameterized family bounds that family, not the
+language -- the same lesson a length-bounded sweep teaches when it misses a
+constant-building program that sits just past its cap.
+
+**Status:** the generator no longer searches, reorders, or caches.  It
+constructs one program per table.  The only remaining limits are size: a
+table needing more commands than the longest committed anchor covers
+(`ztoalc_starts.py`, reaching 1132 steps), or whose trajectory peaks past the
+`2**22` line gate.  Sparse tables reach further than dense ones, since the
+array init is one command per selected row.  Verified against the real
+interpreter for every table at `n <= 3` exhaustively, and for random and
+structured tables at `n == 4` through `n == 7`.
 
 ## 3x (constant-bit guard skip is unsafe)
 

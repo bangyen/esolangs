@@ -1,132 +1,109 @@
 """Boolean-function generator for Z-to-ALC (L variant).
 
-The generator searches line-numbered programs for one whose runtime
-behaviour matches the truth table, checking candidates with a small
-simulator (:func:`_ztoalc_ok`) rather than constructing them directly.
+The generator *constructs* its programs: there is no search, no simulator,
+and no cache.  A truth table becomes a branch-free array lookup, and the
+lookup's commands are placed on a Collatz trajectory taken from the
+committed anchor table, which makes the placement collision-free by
+construction rather than by trial.
 """
 
 from esolangs.tools.boolean.helpers import (
+    _ASCII_ONE,
     _ASCII_ZERO,
     _validate_truth_table,
-    best_input_order,
 )
+from esolangs.tools.ztoalc_starts import ANCHORS
 
 __all__ = ["ztoalc_l_boolean"]
 
+# Largest program the generator will materialize, in lines.  The emitted
+# string has one line per value up to the trajectory's peak, so a table
+# whose anchor peaks past this would be built as a multi-gigabyte string:
+# the peak grows far faster than the command count (n == 9 already peaks at
+# 1.2e7 and n == 11 at 3.2e14).  The old tree generator carried the same
+# 2**22 ceiling for the same reason.
+_MAX_LINES = 2**22
 
-def _ztoalc_ok(lines: dict[int, str], n: int, inputs: str, expected: str) -> bool:
-    """Fast ZTOALC L simulator: True iff ``inputs`` prints ``expected`` once.
 
-    Mirrors the interpreter's semantics exactly: the pointer follows the
-    Collatz step (halving evens, ``3n+1`` odds) unless a ``jump`` fires,
-    which advances the pointer by one.  A command line visited twice would
-    re-execute (re-read, re-branch, or re-print), so any such revisit fails.
+def _anchor_for(length: int) -> int:
+    """Return a Collatz start whose trajectory covers ``length`` commands.
+
+    The committed ``ANCHORS`` table maps a length interval to the start with
+    the smallest trajectory peak across that interval, so this is a lookup
+    rather than a search -- the same table the ZTOALC L *text* generator
+    uses to place its characters.
     """
-    try:
-        ptr = int(lines[0])
-    except (KeyError, ValueError):
-        return False
-    var = [0] * n
-    inp = list(inputs)
-    out: list[str] = []
-    visited: set[int] = set()
-    steps = 0
-    while ptr != 1:
-        steps += 1
-        if steps > 10**6:
-            return False  # pragma: no cover - a pathological 10**6-step run
-        index = ptr - 1
-        ins = lines.get(index, "")
-        if ins:
-            if index in visited:
-                return False
-            visited.add(index)
-            if ins.startswith("print"):
-                out.append(chr(int(ins.split()[1])))
-                if len(out) > 1:
-                    return False
-            elif ins.startswith("jump"):
-                if var[int(ins.split()[2][1])] != 0:
-                    ptr += 1
-                    continue
-            elif "=" in ins:
-                if not inp:
-                    return False
-                var[int(ins.split()[0][1])] = ord(inp.pop(0))
-            elif "-" in ins:
-                var[int(ins.split()[0][1])] -= int(ins.split()[2])
-        ptr = ptr // 2 if ptr % 2 == 0 else 3 * ptr + 1
-    return len(out) == 1 and out[0] == expected
+    for end, start in ANCHORS:
+        if end >= length:
+            return start
+    raise ValueError(
+        f"the ZTOALC L boolean generator needs a trajectory of {length} steps "
+        f"(the longest committed anchor reaches {ANCHORS[-1][0]})",
+    )
 
 
-def _ztoalc_lines(table: str, n: int, b1: int, perm: tuple[int, ...]) -> dict[int, str]:
-    """Place the reads, normalizes, branches, and leaves for ``table``.
+def _collatz_prefix(start: int, length: int) -> list[int]:
+    """Return the first ``length`` values of ``start``'s Collatz trajectory."""
+    values: list[int] = []
+    value = start
+    for _ in range(length):
+        values.append(value)
+        value = value // 2 if value % 2 == 0 else 3 * value + 1
+    return values
 
-    ``perm[depth]`` is the input the tree tests at ``depth``; the reads
-    stay in input order on the initial descent, so only the ``jump a x``
-    operand moves.
+
+def _commands(truth_table: str, n: int) -> list[str]:
+    """Return the command sequence computing ``truth_table``, in run order.
+
+    A constant table is answered by printing the constant, having consumed
+    its inputs so the program still drains the stream the way every other
+    generator's does.  Otherwise the table becomes an array lookup: the
+    inputs are read and normalized, their row index is accumulated by
+    double-and-add, the table is one-hot encoded into an array, and the
+    selected element is printed.
     """
-    start = b1 * 4**n
-    lines: dict[int, str] = {0: str(start)}
-    for i in range(n):
-        lines[start // 2 ** (2 * i) - 1] = f"x{i} = input"
-        lines[start // 2 ** (2 * i + 1) - 1] = f"x{i} - 48"
+    if len(set(truth_table)) == 1:
+        return [f"x{i} = input" for i in range(n)] + [
+            f"print {_ASCII_ZERO + int(truth_table[0])}",
+        ]
 
-    def build(combos: list[int], root: int, depth: int) -> None:
-        results = {table[c] for c in combos}
-        if len(results) == 1:
-            lines[root - 1] = f"print {_ASCII_ZERO + int(results.pop())}"
-            return
-        lines[root - 1] = f"jump a x{perm[depth]}"
-        bit = n - 1 - depth
-        zero = [c for c in combos if not (c >> bit) & 1]
-        one = [c for c in combos if (c >> bit) & 1]
-        build(zero, root // 2, depth + 1)
-        build(one, 3 * root + 4, depth + 1)
+    # The array is initialized one *selected* row at a time, so encoding
+    # whichever of the one-rows and zero-rows is the shorter list caps the
+    # init block at ``2**(n - 1)`` commands.  Selecting the zero-rows means
+    # the array holds the complement, which the tail inverts by printing
+    # ``'1' - r`` instead of ``'0' + r`` -- the same command count either
+    # way, so the saving is free.
+    ones = [c for c in range(2**n) if truth_table[c] == "1"]
+    zeros = [c for c in range(2**n) if truth_table[c] == "0"]
+    complemented = len(ones) > len(zeros)
+    rows = zeros if complemented else ones
 
-    build(list(range(2**n)), b1, 0)
-    return lines
-
-
-def _ztoalc_symmetric(table: str, n: int) -> list[str] | None:
-    """Build a branch-free linear program for a popcount-symmetric table.
-
-    If ``table[c]`` depends only on ``popcount(c)``, the result is computable
-    without a decision tree: sum the normalized input bits into ``s``, look
-    the result up in a small ``n + 1``-entry table, and print it.  Every
-    line sits on the pure power-of-two descent from ``2**L``, so the
-    trajectory never revisits a line and no placement search is needed.
-    The program is ``2**L`` lines (``L`` commands), so it is huge but
-    collision-free; returns ``None`` for non-symmetric tables.
-    """
-    value: dict[int, str] = {}
-    for combo in range(2**n):
-        count = bin(combo).count("1")
-        if count in value and value[count] != table[combo]:
-            return None
-        value[count] = table[combo]
     cmds: list[str] = []
     for i in range(n):
         cmds.append(f"x{i} = input")
-        cmds.append(f"x{i} - 48")
-    cmds.append("s = 0")
-    for i in range(n):
+        cmds.append(f"x{i} - {_ASCII_ZERO}")
+
+    # The row index, most significant input first: ``s`` is doubled and the
+    # next bit added, so ``s`` ends at ``sum(x_i << (n - 1 - i))``, which is
+    # exactly how the table is indexed.  ``s += s`` is a legal doubling --
+    # the interpreter evaluates a command's target and its operand
+    # independently -- so no scratch variable is needed.
+    cmds.append("s = x0")
+    for i in range(1, n):
+        cmds.append("s += s")
         cmds.append(f"s += x{i}")
-    cmds.append(f"t = [{n + 1}]")
-    for count in range(n + 1):
-        if value.get(count, "0") == "1":
-            cmds.append(f"t[{count}] = 1")
+
+    cmds.append(f"t = [{2**n}]")
+    cmds.extend(f"t[{row}] = 1" for row in rows)
     cmds.append("r = t[s]")
-    cmds.append("r + 48")
-    cmds.append("print r")
-    size = 2 ** len(cmds)
-    if size > 2**22:
-        return None  # pragma: no cover - would build >2**22 program lines
-    prog = [""] * size
-    prog[0] = str(size)
-    for j, cmd in enumerate(cmds):
-        prog[2 ** (len(cmds) - j) - 1] = cmd
-    return prog
+    if complemented:
+        cmds.append(f"q = {_ASCII_ONE}")
+        cmds.append("q -= r")
+        cmds.append("print q")
+    else:
+        cmds.append(f"r + {_ASCII_ZERO}")
+        cmds.append("print r")
+    return cmds
 
 
 def ztoalc_l_boolean(truth_table: str) -> str:
@@ -135,110 +112,71 @@ def ztoalc_l_boolean(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    ZTOALC L's control flow is the Collatz trajectory of line 1, so the
-    generator lays out a decision tree on `p * 2**k` descents: branching at
-    an even root lets a zero bit continue the descent (the Collatz step
-    halves it) while a one bit jumps to `root + 1`, whose Collatz step is
-    `3 * root + 4`.  When `root` is a multiple of four that lands on another
-    `4 * q`, so a `b1` divisible by four makes every branch child a clean
-    descent by construction.  That is sufficient but not necessary, and the
-    program is `b1 * 4**n` lines long, so every `b1` is tried in turn and
-    the simulator is the sole gate: a smaller start that happens to place
-    without a collision is kept, which is what keeps these programs as
-    short as they are.  The reads and normalizations ride the initial
-    `b1 * 4**n` descent.
+    **The program is constructed, not searched for.**  ZTOALC L's control
+    flow is the Collatz trajectory of the value on line 1, which used to
+    make placement the hard part: the generator laid a decision tree on
+    ``p * 2**k`` descents, and whether a tree's branch targets and its
+    leaves' Collatz tails collided was decidable only by simulating every
+    candidate.  So it tried each start in turn, and each input order on top
+    of that, with a simulator as the sole gate -- and still refused dense
+    non-symmetric tables past ``n == 3``, because for those no start and no
+    order placed.
 
-    When the tree search finds no collision-free placement (dense tables
-    like XOR4), a branch-free *linear* program is tried instead for
-    popcount-symmetric tables: sum the bits and look the result up in a
-    small table.  That program is guaranteed collision-free (a pure
-    power-of-two descent) but huge (``2**L`` lines), so it is gated by a
-    size limit and the generator raises :class:`ValueError` only for dense,
-    non-symmetric tables past ``n == 3`` that no input order can place --
-    reordering shrank that set, since a differently-shaped tree gives the
-    placement search a different problem, and some tables that were refused
-    outright now render.
+    Two changes remove the search entirely.
 
-    Verified exhaustively for every table at ``n <= 3`` and for structured
-    and symmetric tables at ``n == 4``; all tests run the real interpreter.
+    First, **the branching goes away.**  A truth table is an array lookup:
+    read and normalize the inputs, accumulate the row index by
+    double-and-add (``s += s`` then ``s += x{i}``), one-hot the table into
+    ``t = [2**n]``, and print ``t[s]``.  Nothing branches, so there are no
+    branch targets to collide and the commands form one straight run.
 
-    **The tree splits on its inputs in whichever order emits the shortest
-    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
-    The reads ride the initial descent in input order and a node names its
-    input as ``x{i}``, so only the ``jump a x`` operand moves.  Reordering
-    buys two things here: the usual extra constant subtrees, and -- because
-    the program is ``b1 * 4**n`` lines and every ``b1`` is tried in turn --
-    a shallower tree often places at a *smaller* ``b1``, which scales the
-    whole program down.
+    Second, **the run is placed on a trajectory, not a descent.**  A Collatz
+    trajectory visits distinct values until it reaches 1 -- a repeat would
+    be a cycle it never escapes -- so placing command ``j`` on the ``j``-th
+    value visited guarantees each command sits on its own line and executes
+    once, in order.  The start comes from the committed anchor table
+    (:mod:`esolangs.tools.ztoalc_starts`), chosen by command count, so it is
+    a lookup.  That is the whole placement argument, and it holds for every
+    table.
+
+    Reordering the inputs is gone with the search.  It bought two things
+    here, and the construction moots both: there is no tree to fold, and the
+    program's length depends only on the command count, which is
+    permutation-invariant (the table's one-count does not move when its
+    inputs are renamed).
+
+    The programs are also much shorter.  The old generator's fallback for a
+    dense symmetric table was a branch-free program on the pure
+    power-of-two descent, whose ``2**L`` lines meant XOR4 rendered as
+    524,288 lines; a trajectory's peak grows far slower than ``2**L``, and
+    XOR4 is now 484.  The dense table that previously needed a reordered
+    tree to place at all is 388 lines, down from 36,864.
+
+    Two limits remain, and both are size, not placement.  A table needing
+    more commands than the longest committed anchor covers, or whose
+    trajectory peaks past ``_MAX_LINES``, raises :class:`ValueError` rather
+    than building a program that cannot be materialized.  Sparse tables
+    reach further than dense ones, since the array init is one command per
+    selected row.
+
+    Verified against the real interpreter for every table at ``n <= 3``
+    exhaustively, and for random and structured tables at ``n == 4`` through
+    ``n == 7``.
     """
-    best = best_input_order(truth_table, _ztoalc_ordered)
-    if best:
-        return best
-    # Every order failed to place, so re-run the identity to raise the
-    # error the caller expects, with its own message and no mention of the
-    # search that happened first.
-    return _ztoalc_placed(truth_table, tuple(range(_validate_truth_table(truth_table))))
-
-
-def _ztoalc_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one input order's ZTOALC L program, or ``""`` if it cannot place.
-
-    An order that finds no collision-free placement is a candidate that
-    lost, not an error -- another order may well place.  Returning the
-    empty string keeps it out of :func:`best_input_order`'s comparison
-    without unwinding the search, and the caller re-raises from the
-    identity order when *every* order comes back empty.
-    """
-    try:
-        return _ztoalc_placed(truth_table, perm)
-    except ValueError:
-        return ""
-
-
-def _ztoalc_placed(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Place one input order's program, raising when it cannot."""
     n = _validate_truth_table(truth_table)
+    cmds = _commands(truth_table, n)
+    start = _anchor_for(len(cmds))
+    values = _collatz_prefix(start, len(cmds))
 
-    # Every ``b1`` is tried, not just the multiples of four.  A one-branch
-    # jumps to ``root + 1``, whose Collatz step is ``3 * root + 4`` -- a
-    # multiple of four only when ``root`` is, so the ``b1 % 4 == 0`` family
-    # is the one where every branch child is *constructively* another clean
-    # ``4q`` descent.  That is sufficient, not necessary: a smaller start
-    # outside it loses the guarantee but often still places without a
-    # collision, and the simulator below is what decides either way.  Since
-    # the program is ``b1 * 4**n`` lines long, those smaller starts are
-    # worth having -- AND drops from 384 lines to 96.
-    def expected(combo: int) -> str:
-        """Return the answer for stream input ``combo``, in the permuted frame.
+    size = max(max(values), 1)
+    if size > _MAX_LINES:
+        raise ValueError(
+            f"the ZTOALC L boolean generator would need {size} lines for this "
+            f"table at n == {n}, past the {_MAX_LINES}-line limit",
+        )
 
-        The tree tests input ``perm[k]`` at level ``k``, so the row of the
-        permuted table it walks to is ``combo``'s bits gathered in that
-        order.  Under the identity this is ``combo`` itself and the check
-        is the one it always was; under any other order, checking
-        ``truth_table[combo]`` would demand the program compute a
-        *different* function and reject every correct placement -- which
-        reads exactly like "no order helps here".
-        """
-        row = sum(((combo >> (n - 1 - perm[k])) & 1) << (n - 1 - k) for k in range(n))
-        return truth_table[row]
-
-    for b1 in range(1, 4000):
-        lines = _ztoalc_lines(truth_table, n, b1, perm)
-        if all(
-            _ztoalc_ok(
-                lines,
-                n,
-                "".join(str((c >> (n - 1 - i)) & 1) for i in range(n)),
-                expected(c),
-            )
-            for c in range(2**n)
-        ):
-            size = max(lines) + 1
-            return "\n".join(lines.get(i, "") for i in range(size))
-    linear = _ztoalc_symmetric(truth_table, n)
-    if linear is not None:
-        return "\n".join(linear)
-    raise ValueError(
-        "the ZTOALC L boolean generator found no collision-free placement for "
-        f"this table at n == {n}",
-    )
+    lines = [""] * size
+    lines[0] = str(start)
+    for value, cmd in zip(values, cmds, strict=True):
+        lines[value - 1] = cmd
+    return "\n".join(lines)
