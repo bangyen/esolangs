@@ -13,6 +13,69 @@ def _run_all(vm: VM) -> str:
     return vm.output
 
 
+# The wiki's street shape: a two-wide road with the instructions in the
+# southern lane, walled all round.  ``C`` starts the car, ``^`` increments
+# the CPth cell, ``O`` prints it, ``;`` halts.
+STREETCODE = "+-----+\n|     |\n|C^^O;|\n+-----+"
+
+# The wiki's truth machine: read a bit, and on 0 print it once and halt.
+FLOWCHART_TRUTH_MACHINE = "\n".join(
+    [
+        "       ( )──┐        ",
+        "           / /       ",
+        "            │        ",
+        "(( ))─\\ \\──< >┬─\\ \\─┐",
+        "              │     │",
+        "              └─────┘",
+    ]
+)
+
+# The wiki's cat: the upper loop reads bits onto a deque, the lower pops
+# them back off and prints them.
+FLOWCHART_CAT = "\n".join(
+    [
+        "( )──┐   ",
+        "  ┌─/ /─┐",
+        "  │  │  │",
+        "  │\\[ ]/│",
+        "  │  │  │",
+        "  └─< >─┘",
+        "     │   ",
+        "  ┌/{ }\\┐",
+        "  │  │  │",
+        "  │ \\ \\ │",
+        "  │  │  │",
+        "  └─< >─┘",
+        "     │   ",
+        "   (( )) ",
+    ]
+)
+
+# The wiki's prime tester, repaired: a four-bit input port drives a tree of
+# gates whose output bit is set for exactly the primes below 16.
+CIRCUIT_PRIME_TESTER = "\n".join(
+    [
+        "       .~..",
+        "      /    ..         .-.",
+        "     <.----=---------.   o.",
+        "    / .~. /.   .---.    .  >.",
+        "-4-<     =  >.=--.  o.-=--.  \\",
+        "    \\ . . .. /    ..  /       .",
+        "     < =    = .------=-----.   >.",
+        "      = .~..-=--.~.-.       .-.  a.-:",
+        "     / \\    / \\                 .",
+        "    .   .===.  .               /",
+        "     \\   o.  \\  o.------------.",
+        "      .-.     ..",
+    ]
+)
+
+
+def _bits_of(value: int) -> str:
+    """Return ``value`` as four input lines, most significant bit first."""
+    return "\n".join(format(value, "04b")) + "\n"
+
+
 class TestProtocol:
     def test_implements_vm_protocol(self) -> None:
         assert isinstance(esolangs.make_vm("brainfuck", "+"), VM)
@@ -295,6 +358,99 @@ class TestDig:
         assert _run_all(vm) == "5"
         vm.step()  # no-op
         assert vm.output == "5"
+
+
+class TestStreetcode:
+    def test_car_position_heading_and_cells(self) -> None:
+        vm = esolangs.make_vm("Streetcode", STREETCODE)
+        assert vm.ip == (2, 1, 1)  # on the C, heading east
+        assert vm.memory == []
+        vm.step()  # drives onto the first ^
+        assert vm.ip == (2, 2, 1)
+        vm.step()  # ^ increments the cell under CP
+        assert vm.memory == [1]
+        vm.step()  # ^ again
+        assert vm.memory == [2]
+        vm.step()  # O prints it
+        assert vm.output == "\x02"
+        assert vm.stack == []
+
+    def test_run_matches_execute(self) -> None:
+        assert _run_all(esolangs.make_vm("Streetcode", STREETCODE)) == esolangs.run(
+            "Streetcode", STREETCODE
+        )
+
+    def test_stepping_a_halted_vm_is_a_noop(self) -> None:
+        vm = esolangs.make_vm("Streetcode", STREETCODE)
+        assert _run_all(vm) == "\x02"
+        vm.step()  # no-op
+        assert vm.output == "\x02"
+
+
+class TestFlowchart:
+    def test_live_pointer_position_and_heading(self) -> None:
+        vm = esolangs.make_vm("Flowchart", FLOWCHART_TRUTH_MACHINE, "0\n")
+        assert vm.ip == (0, 10, 0, 1)  # on the opening ( ), heading east
+        assert vm.stack == []
+        vm.step()
+        assert vm.ip == (0, 11, 0, 1)  # moved on, still travelling east
+
+    def test_ip_is_none_once_every_pointer_has_stopped(self) -> None:
+        """``ip`` reports the first live pointer, so a finished run has none."""
+        vm = esolangs.make_vm("Flowchart", FLOWCHART_TRUTH_MACHINE, "0\n")
+        assert _run_all(vm) == "0"
+        assert vm.ip is None
+
+    def test_the_deque_holds_what_the_pointers_read(self) -> None:
+        """The cat reads its bits onto the shared tape before printing them."""
+        vm = esolangs.make_vm("Flowchart", FLOWCHART_CAT, "1\n")
+        while not vm.halted and not vm.memory:
+            vm.step()
+        assert vm.memory == [1]
+
+    def test_run_matches_execute(self) -> None:
+        vm = esolangs.make_vm("Flowchart", FLOWCHART_TRUTH_MACHINE, "0\n")
+        assert _run_all(vm) == esolangs.run("Flowchart", FLOWCHART_TRUTH_MACHINE, "0\n")
+
+    def test_stepping_a_halted_vm_is_a_noop(self) -> None:
+        vm = esolangs.make_vm("Flowchart", FLOWCHART_TRUTH_MACHINE, "0\n")
+        assert _run_all(vm) == "0"
+        vm.step()  # no-op
+        assert vm.output == "0"
+
+
+class TestCircuitDiagram:
+    def test_wire_values_are_per_generation_events(self) -> None:
+        vm = esolangs.make_vm("Circuit Diagram", CIRCUIT_PRIME_TESTER, _bits_of(3))
+        assert vm.ip is None  # nothing moves through a circuit
+        assert vm.stack == []
+        vm.step()
+        assert vm.memory == [0, 0, 1, 1]  # the input port, most significant first
+        assert _run_all(vm) == "1"
+
+    def test_stepping_detects_exactly_the_primes(self) -> None:
+        """The page's worked example, replayed a generation at a time."""
+        detected = {
+            n
+            for n in range(16)
+            if _run_all(
+                esolangs.make_vm("Circuit Diagram", CIRCUIT_PRIME_TESTER, _bits_of(n))
+            )
+            == "1"
+        }
+        assert detected == {2, 3, 5, 7, 11, 13}
+
+    def test_run_matches_execute(self) -> None:
+        vm = esolangs.make_vm("Circuit Diagram", CIRCUIT_PRIME_TESTER, _bits_of(7))
+        assert _run_all(vm) == esolangs.run(
+            "Circuit Diagram", CIRCUIT_PRIME_TESTER, _bits_of(7)
+        )
+
+    def test_stepping_a_halted_vm_is_a_noop(self) -> None:
+        vm = esolangs.make_vm("Circuit Diagram", CIRCUIT_PRIME_TESTER, _bits_of(7))
+        assert _run_all(vm) == "1"
+        vm.step()  # no-op
+        assert vm.output == "1"
 
 
 class TestWii2d:
@@ -1150,6 +1306,7 @@ class TestFactory:
         ("bit~", "~("),
         ("Collatz Multiverse", "x = negativeOne x + negativeOne, DO PRINT."),
         ("Polynomial", "f(x) = x^2+4"),
+        ("Streetcode", STREETCODE),
     ],
 )
 def test_vm_output_matches_run(language: str, program: str) -> None:
