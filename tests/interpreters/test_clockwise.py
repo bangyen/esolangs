@@ -186,6 +186,19 @@ class TestStepMachine:
         assert machine.snapshot() != before
         assert "".join(machine.inp) == "1100000"
 
+    def test_step_after_halt_is_a_noop(self) -> None:
+        from esolangs.interpreters.grid_based.clockwise import _Machine
+
+        machine = _Machine(["+;S;S;S;S;S;+;R", "R             R"], IO())
+        for _ in range(200):
+            if machine.halted:
+                break
+            machine.step()
+        assert machine.halted
+        state = machine.snapshot()
+        machine.step()  # stepping a halted machine must not raise
+        assert machine.snapshot() == state
+
 
 def test_reading_with_no_input_is_eof() -> None:
     """Bits are read up front, so an empty queue is exhausted input."""

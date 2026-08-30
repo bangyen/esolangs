@@ -149,3 +149,18 @@ class TestMachine:
         assert machine.io.getvalue() == "101"
         machine.step()  # stepping a halted machine is a no-op
         assert machine.io.getvalue() == "101"
+
+    def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
+        from esolangs.interpreters.other.lamfunc import _Machine
+
+        machine = _Machine("p 5", ScriptedIO())
+        before = machine.snapshot()
+        hash(before)  # must not raise
+        machine.step()
+        assert machine.snapshot() != before
+
+    def test_referencing_an_undefined_function_halts(self) -> None:
+        """``.name`` builds a function value, so an unknown name has no arity."""
+        with pytest.raises(HaltError) as caught:
+            run_program("p .nope")
+        assert str(caught.value) == "calling undefined function 'nope'"

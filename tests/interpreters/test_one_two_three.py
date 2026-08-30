@@ -146,3 +146,18 @@ class Test123:
             machine.step()
         assert machine.pos == 0
         assert machine.byte() == ord("Q")
+
+
+class TestStepMachine:
+    def test_step_after_halt_is_a_noop(self) -> None:
+        from esolangs.interpreters.tape_based.one_two_three import _Machine
+
+        machine = _Machine("", ScriptedIO())
+        for _ in range(200):
+            if machine.halted:
+                break
+            machine.step()
+        assert machine.halted
+        state = machine.snapshot()
+        machine.step()  # stepping a halted machine must not raise
+        assert machine.snapshot() == state

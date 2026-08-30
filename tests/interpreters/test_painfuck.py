@@ -142,3 +142,9 @@ class TestStepMachine:
         from esolangs.vm import run_until_halt_or_cycle
 
         assert run_until_halt_or_cycle(_Machine("pp", ScriptedIO())) is True
+
+    def test_skipping_a_loop_steps_over_a_nested_one(self) -> None:
+        """A zero cell skips to the loop's own 'b', not to a nested one."""
+        # cell 0 is zero, so the outer 'a' skips forward; the inner 'a...b'
+        # pair must be consumed as a unit, leaving 'u' to print cell 0.
+        assert run_program("aabbue") == "\x00"

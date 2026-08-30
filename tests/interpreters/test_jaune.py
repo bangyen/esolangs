@@ -174,3 +174,12 @@ class TestMachine:
         machine.step()
         assert machine.halted
         machine.step()  # must not raise
+
+    def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
+        from esolangs.interpreters.tape_based.jaune import _Machine
+
+        machine = _Machine("6+5+^.", ScriptedIO())
+        before = machine.snapshot()
+        hash(before)  # must not raise
+        machine.step()
+        assert machine.snapshot() != before
