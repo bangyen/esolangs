@@ -169,10 +169,10 @@ recorded came back exactly** — which is what the harness commits
 `800f071` and `86c89b9` needed, each having been validated against a
 single language while nothing checked the rest.
 
-Seventeen suites are at 100% — `%^2^-1`, ArrowQueue, Back, BFStack, Bitdeque,
-brainfuck, BrainIf, Clockwise, Collatz Multiverse, Decleq, Factor, Home Row,
-Minifuck, NoComment, RAM0, Suffolk and Unsquare.  1492 mutants survive across
-the repo; the rest of the field, worst first:
+Eighteen suites are at 100% — `%^2^-1`, ArrowQueue, Back, BFStack, Bitdeque,
+brainfuck, BrainIf, Clockwise, Collatz Multiverse, Decleq, Eval, Factor,
+Home Row, Minifuck, NoComment, RAM0, Suffolk and Unsquare.  1486 mutants
+survive across the repo; the rest of the field, worst first:
 
 | language | score | survivors |
 | --- | --- | --- |
@@ -214,7 +214,6 @@ the repo; the rest of the field, worst first:
 | bit~ | 93.3% | 8 |
 | BF-PDA | 93.8% | 9 |
 | Forþ | 94.1% | 14 |
-| Eval | 94.6% | 6 |
 | Qoibl | 94.7% | 26 |
 | 3D Brainfuck | 94.9% | 6 |
 | Modulous | 95.6% | 11 |
@@ -222,12 +221,12 @@ the repo; the rest of the field, worst first:
 LaserFuck, Forbin and Basicfuck are post-triage rows (they began at 66.7%,
 81.4% and 82.8%); four more — ArrowQueue, Decleq, BrainIf and Clockwise —
 carried one to three survivors each, were closed to 100%, and have left the
-table; NoComment (5), Unsquare (6) and Collatz Multiverse (7) left it the
-same way.  Painfuck, 3x and Forþ are post-triage too — the prompt-argument
-deletion below cut each one's survivors without ending its triage — so
-their rows are re-measured, not swept.  That leaves 36 of the table's 42
-rows carrying the sweep's own numbers, 15 of which had never been recorded
-per-language.  **Lamfunc (82), Between (77), MyScript
+table; NoComment (5), Unsquare (6), Collatz Multiverse (7) and Eval (6) left
+it the same way.  Painfuck, 3x and Forþ are post-triage too — the
+prompt-argument deletion below cut each one's survivors without ending its
+triage — so their rows are re-measured, not swept.  That leaves 36 of the
+table's 41 rows carrying the sweep's own numbers, 15 of which had never been
+recorded per-language.  **Lamfunc (82), Between (77), MyScript
 (71) and Grapheme (60) are the largest untriaged pools** and were invisible
 before this sweep.
 
@@ -284,6 +283,21 @@ first:
   empty string anywhere (300,000 random inputs, never `None`).  Replacing
   the whole thing with `partition('"')[0]` says the same thing with no
   unmatched case, and retires the `re` import with it.
+- **A rewrite can install a gap where it removed slack.**  That same
+  `partition` swap introduced a survivor the regex version never had:
+  `partition` and `rpartition` agree on every program holding a *single*
+  literal, because the closing quote is then also the program's last one,
+  and every test had exactly one.  Two literals separate them —
+  `"a"."b".` prints `ab`, or `a"."b` if the split takes the last quote.
+  So re-measure after every rewrite rather than assuming the score only
+  improves: this one went 6 survivors → 1, and the 1 was newly created.
+- **`uv run` can measure the wrong tree, silently.**  Three runs of the
+  same command reported an unchanged 6 survivors — including a mutant of
+  a line that had already been deleted — because `uv run` reinstalls the
+  package from the project root, so a worktree's edits never reached the
+  bundle.  `PYTHONPATH=$PWD/src` fixes it.  The tell is a survivor that
+  cannot exist in the source you are looking at, or a pool size that did
+  not move after deleting code.
 - **Two copies of a check can each be half dead.**  NoComment's `s` and `b`
   bounds-checked their jump target separately, and each copy had an
   unreachable half: a forward target is always at least 1, so `s` could
