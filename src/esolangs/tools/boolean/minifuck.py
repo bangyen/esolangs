@@ -342,7 +342,35 @@ def _search[Hit](
     return None
 
 
-# The pool codes: five strings, one per behaviour.
+# The pool codes: one construction at five parameters.
+#
+# They read as five unrelated strings and are not.  Every one of them is
+#
+#     PREFIX + '[[[<[' + SUFFIX
+#
+# with that core appearing exactly once.  ``'[<'`` repeated ``n`` times plants
+# a single 1 at cell ``n`` and nothing else, and for three of the five the core
+# then shifts that mark three cells right, carrying the pointer with it:
+#
+#     ''         + core + '<<<<'     no mark             ends at cell 0
+#     '[<'       + core + '<[<'      mark 1 -> 4         ends at cell 4
+#     '[<[<'     + core + '<[<'      mark 2 -> 5         ends at cell 5
+#     '[<<[<[<'  + core + '<'        mark 3 -> 6         ends at cell 5
+#     '[<[<[<<'  + core + '[<<<'     mark 3, spread      ends at cell 2
+#
+# Three, and the two exceptions say what the rule depends on.  The shift is
+# clean only when the prefix leaves the pointer *on* its mark: the first code
+# has no mark to move, and ``'[<[<[<<'`` reaches cell 3 with the pointer at 1
+# rather than 2, so the core spreads marks over cells 2..4 instead of moving
+# one.  A plain ``'[<[<[<'`` would mark cell 3 with the pointer at 2 and shift
+# cleanly -- what the irregular spelling buys is the pointer, which is the
+# second free variable and the one the end-position argument below is about.
+#
+# This is worth stating because every surface measure says the opposite.
+# Pairwise edit distance runs 2 to 7, prefix-factoring an exact regex makes it
+# *longer* (73 characters against 64), and the minimal DFA finds only one pair
+# converging.  All true, and all measuring spelling rather than behaviour: the
+# structure is in what the strings do to the tape.
 #
 # Setting the pool is not a search: across every table at ``n <= 3`` the
 # breadth-first search this replaced returned one of a handful of strings, and
@@ -402,13 +430,16 @@ def _search[Hit](
 #
 # Ordered shortest first, so the emitted program is no longer than before.
 #
-# The list is deliberately not minimal.  Ablated one at a time with the
-# searches stubbed, three of the five are load-bearing -- dropping the third,
-# fourth or fifth strands 22, 18 and 10 tables respectively -- while the first
-# two drop clean, answering only sites the endgame can recover from.  They stay
-# because the acceptance test decides every call, so a redundant candidate
-# costs one check and can never produce a wrong pool; trimming to three would
-# be a separate measured decision, not a free one.
+# The list is deliberately not minimal, and the trim was measured rather than
+# left open.  Ablated one at a time with the searches stubbed, three of the
+# five are load-bearing -- dropping the third, fourth or fifth strands 22, 18
+# and 10 tables.  The first two strand nothing, and removing both keeps every
+# table correct while cutting the build from 10.7s to 7.1s, which is the trap:
+# it also pushes eight tables off :func:`_reconverged` onto a route that cannot
+# sort their slots, taking the out-of-name-order count from ten to eighteen.
+# Coverage and correctness are the loud properties and slot order is the quiet
+# one, so all five stay.  ``test_dropping_a_pool_code_is_measured_not_assumed``
+# pins that, and will say so if the slot-order cost ever disappears.
 _POOL_CODES = (
     "[[[<[<<<<",
     "[<[[[<[<[<",
