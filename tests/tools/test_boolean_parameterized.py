@@ -2392,12 +2392,16 @@ class TestParameterizedMinifuck:
         with the core appearing exactly once, and for three of the five the
         prefix plants a single 1 that the core then shifts three cells right.
 
-        Three, not five, and the exception is the point: the shift is clean
-        only when the prefix leaves the pointer *on* its mark.  The code with
-        an empty prefix has no mark to shift, and ``'[<[<[<<'`` arrives at
-        cell 3 with the pointer at 1 rather than 2, so the core spreads marks
-        instead of moving one.  The decomposition is shared; the tidy shift
-        is a special case of it.
+        One law runs through it: a run of ``k`` brackets carries a mark right
+        by ``ceil(k / 2)``, leaving a pending skip when ``k`` is odd.  The
+        core opens with three brackets and so moves a mark +2; the suffixes
+        that open with none only reposition the pointer, which is why two
+        codes share the suffix ``'<[<'`` verbatim at different marks.
+
+        The exception is the point: the walk is clean only when the pointer
+        sits just left of the mark.  The code with an empty prefix has no
+        mark to carry, and ``'[<[<[<<'`` arrives at cell 3 with the pointer
+        at 1 rather than 2, so the core spreads marks instead of moving one.
         """
         import importlib
 
@@ -2409,6 +2413,16 @@ class TestParameterizedMinifuck:
             for char in code:
                 machine.exec(char)
             return machine
+
+        # The law the whole family rests on: a run of k brackets carries a
+        # mark right by ceil(k / 2).  Checked away from the codes first, so a
+        # failure here says "the language changed" rather than "a code did".
+        for start in (2, 3, 4, 5):
+            for brackets in range(1, 9):
+                machine = run("[<" * start + "[" * brackets)
+                marks = [i for i in range(32) if machine.tape[i]]  # type: ignore[attr-defined]
+                assert marks == [start + (brackets + 1) // 2], (start, brackets, marks)
+                assert machine.skip is bool(brackets % 2), (start, brackets)  # type: ignore[attr-defined]
 
         shifted = 0
         for code in module._POOL_CODES:  # noqa: SLF001
