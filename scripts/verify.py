@@ -37,6 +37,13 @@ extra/line's (its two 5.2s render round trips, which CI's ``line`` job runs
 unfiltered).  ``--full``, ``just test-full``, and an explicit ``--only`` all
 still run them.
 
+The steps do not all run one after another.  ``pytest`` takes longer than
+everything else put together, so it is launched first and the short steps run
+while it goes; ``pre-commit`` is the exception on the other side, run to
+completion before anything else starts because its fix hooks rewrite the very
+files the other steps read.  That makes the timing table's two totals differ:
+the sum is how much work ran, the wall is how long the push waited.
+
 Usage:
     python scripts/verify.py [--only STEPS] [--skip STEPS] [--full] [--list]
     python scripts/verify.py --full                       # every step, whole tree
@@ -364,6 +371,102 @@ def _parse_only_skip() -> tuple[set[str] | None, set[str] | None, bool, bool]:
     return only, skip, args.full, args.quiet
 
 
+# The step that mutates the working tree.  pre-commit's ruff/ruff-format and
+# whitespace hooks rewrite files in place, so anything that reads the tree has
+# to wait for it -- running it alongside pytest would race the edit against the
+# read.  It is the only such step: everything else only reads.
+MUTATES_TREE = "pre-commit"
+
+# The long pole.  Every other step put together is shorter than this one, so
+# the runner starts it first and fills its shadow with the rest.
+LONG_STEP = "pytest"
+
+
+def _report(name: str, elapsed: float, returncode: int, output: str | None) -> bool:
+    """Print one step's result, its captured output on failure.  Return ok."""
+    if returncode != 0 and output:
+        print(output, end="")
+    ok = returncode == 0
+    print(f"[{'ok' if ok else 'FAIL'}] {name} ({elapsed:.1f}s)")
+    return ok
+
+
+def _run_steps(
+    runnable: list[tuple[str, list[str], dict[str, str]]], *, quiet: bool
+) -> tuple[int, list[tuple[str, float]], float]:
+    """Run the planned steps, overlapping the long one with the short ones.
+
+    ``pytest`` is longer than everything else combined, so it is launched
+    first and left running while the short steps go by in order.  Its output
+    is captured either way -- two live subprocesses writing to one terminal
+    interleave into nonsense -- so unlike the short steps it does not stream
+    even outside ``--quiet``.  ``pre-commit`` rewrites files, so it is run to
+    completion *before* anything is launched against the tree it edits.
+
+    Returns the failure count, per-step CPU timings, and the wall time, which
+    concurrency makes smaller than the timings' sum.
+    """
+    failures = 0
+    timings: list[tuple[str, float]] = []
+    wall_start = time.time()
+
+    def run_serial(name: str, cmd: list[str], step_env: dict[str, str]) -> None:
+        nonlocal failures
+        start = time.time()
+        result: subprocess.CompletedProcess[Any]
+        # Only the captured branch has output to replay; the streaming one
+        # already wrote it straight to the terminal.
+        captured: str | None = None
+        if quiet:
+            result = subprocess.run(
+                cmd,
+                env=step_env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            captured = result.stdout
+        else:
+            result = subprocess.run(cmd, env=step_env)
+        elapsed = time.time() - start
+        timings.append((name, elapsed))
+        failures += not _report(name, elapsed, result.returncode, captured)
+
+    # Phase 1: the tree-mutating step, alone, before anything reads the tree.
+    for name, cmd, step_env in runnable:
+        if name == MUTATES_TREE:
+            run_serial(name, cmd, step_env)
+
+    # Phase 2: launch the long step, then run the short ones in its shadow.
+    rest = [s for s in runnable if s[0] != MUTATES_TREE]
+    long_step = next((s for s in rest if s[0] == LONG_STEP), None)
+    proc = None
+    long_start = 0.0
+    if long_step is not None:
+        _, cmd, step_env = long_step
+        long_start = time.time()
+        proc = subprocess.Popen(
+            cmd,
+            env=step_env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        print(f"[....] {LONG_STEP} (running alongside the remaining steps)")
+
+    for name, cmd, step_env in rest:
+        if name != LONG_STEP:
+            run_serial(name, cmd, step_env)
+
+    if proc is not None:
+        output, _ = proc.communicate()
+        elapsed = time.time() - long_start
+        timings.append((LONG_STEP, elapsed))
+        failures += not _report(LONG_STEP, elapsed, proc.returncode, output)
+
+    return failures, timings, time.time() - wall_start
+
+
 def main() -> int:
     """Compile and run every example, reporting failures."""
     import importlib.util
@@ -398,8 +501,11 @@ def main() -> int:
         or shutil.which("riscv64-linux-gnu-gcc") is not None
     )
 
-    failures = 0
-    timings: list[tuple[str, float]] = []
+    # Decide every step first, then run.  Deciding is pure bookkeeping (scope
+    # lookups, tool probes) while running is where the time goes, so keeping
+    # the two apart lets the runner overlap the long step with the short ones
+    # without the skip logic having to care.
+    runnable: list[tuple[str, list[str], dict[str, str]]] = []
     for name, cmd in STEPS:
         if only is not None and name not in only:
             continue
@@ -432,6 +538,14 @@ def main() -> int:
         # unfiltered on every push, so deselecting them here trades no
         # coverage either.
         step_env = env
+        if name == "pre-commit":
+            # Skip the config's mypy hook: the very next step runs mypy over
+            # src/ *and* scripts/ from the project env, against the same
+            # pyproject config, so the hook re-proves a strict subset -- and
+            # pays for its own isolated env to do it.  Only the local run
+            # skips it; CI runs `pre-commit run --all-files` with no SKIP
+            # (ci.yml:28), so the hook still guards the config itself.
+            step_env = dict(step_env, SKIP="mypy")
         if only is None and not full:
             if name == "pytest":
                 cmd = [*cmd, "-m", "not slow"]
@@ -454,32 +568,20 @@ def main() -> int:
         if not have_pylint and "(pylint)" in name:
             print(f"[skip] {name}: pylint not installed (pip install pylint)")
             continue
-        start = time.time()
-        result: subprocess.CompletedProcess[Any]
-        if quiet:
-            result = subprocess.run(
-                cmd,
-                env=step_env,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-            )
-            if result.returncode != 0 and result.stdout:
-                print(result.stdout, end="")
-        else:
-            result = subprocess.run(cmd, env=step_env)
-        elapsed = time.time() - start
-        timings.append((name, elapsed))
-        ok = result.returncode == 0
-        failures += not ok
-        print(f"[{'ok' if ok else 'FAIL'}] {name} ({elapsed:.1f}s)")
+        runnable.append((name, cmd, step_env))
+
+    failures, timings, wall = _run_steps(runnable, quiet=quiet)
 
     if timings:
         print("-" * 40)
         for name, elapsed in timings:
             print(f"{elapsed:5.1f}s  {name}")
         total = sum(t for _, t in timings)
-        print(f"{total:5.1f}s  TOTAL")
+        # Two totals, because they stopped being the same number once pytest
+        # started running alongside the rest: the sum is how much work was
+        # done, the wall is how long the push actually waited for it.
+        print(f"{total:5.1f}s  TOTAL (sum of steps)")
+        print(f"{wall:5.1f}s  WALL  (elapsed, steps overlap)")
     print("=" * 40)
     if failures:
         print(f"{failures} check(s) failed")
