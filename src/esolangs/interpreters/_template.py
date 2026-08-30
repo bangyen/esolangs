@@ -27,9 +27,13 @@ Every interpreter follows the same conventions:
   (e.g. division by zero, popping an empty stack).  Interpreters must
   terminate by construction -- the fuzz and robustness suites feed random
   and empty programs and assert they never crash.
-* Guard input lines before indexing them (``if val:``) when the language
-  reads a character: the library raises ``EOFError`` when input runs out and
-  an empty line is legal, so ``val[0]`` can fail without a guard.
+* Guard input lines before indexing them (``if val:``) whenever you take a
+  character off ``io.input_str`` -- the ``;`` branch below.  An empty line is
+  legal (the user pressed Enter and the terminator is stripped), so ``val[0]``
+  is an ``IndexError`` without the guard; the fuzz and robustness suites feed
+  exactly that.  ``io.input_char`` needs no guard, returning a newline for an
+  empty line itself.  Input running out is the separate case and raises
+  ``EOFError`` either way.
 * Keep the run state in a class named ``_Machine``, exposing ``step()``,
   ``halted``, and ``snapshot()``, and let ``run()`` build one and step it to
   completion -- the shape below.  That is the surface ``esolangs.vm`` wraps
@@ -119,6 +123,15 @@ class _Machine:
             self.io.print_char(chr(self.data))
         elif c == ",":  # placeholder: read a byte of input
             self.data = self.io.input_char()
+        elif c == ";":  # placeholder: read a line and take its first character
+            # ``input_char`` handles the empty line itself, but ``input_str``
+            # hands back the raw line: an empty one is legal (the user pressed
+            # Enter), so guard before indexing or a bare Enter is an
+            # IndexError.  Running out of input is the different case, and
+            # still raises EOFError.
+            val = self.io.input_str()
+            if val:
+                self.data = ord(val[0])
         # add the language's real instructions here
         self.ind += 1
 
