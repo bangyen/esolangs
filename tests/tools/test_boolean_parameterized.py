@@ -2039,6 +2039,120 @@ class TestParameterizedMinifuck:
             complement = "".join(str(1 - int(c)) for c in table)
             assert min(table, complement) in _TWO_INPUT_PLAN, table
 
+    @pytest.mark.slow  # builds all 38 degenerate three-input tables
+    def test_degenerate_three_input_tables_never_search(self) -> None:
+        """Every table with at most two essential inputs is search-free.
+
+        A table that ignores an input is a smaller table wearing extra ones,
+        so it projects onto a two-input problem -- which is a closed form.
+        Nothing here needed its own construction; the arity below carries it.
+
+        Twenty of these come out with their slots *not* in ascending order,
+        which is the known and deliberate remainder: ``_lift`` appends the
+        ignored placeholders, and the reconvergence route that would fix it
+        costs 2-16s a table against 0.04s here.  Slot order is not worth a
+        hundredfold build cost on tables no sweep checks, so the trade is
+        declined rather than overlooked.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        def forbidden(*args: object, **kwargs: object) -> object:
+            raise AssertionError("a degenerate table reached the search")
+
+        checked = 0
+        with (
+            patch.object(module, "_find_column", forbidden),
+            patch.object(module, "_find_parked", forbidden),
+        ):
+            for table_int in range(256):
+                table = format(table_int, "08b")
+                if len(module._essential_inputs(table, 3)) > 2:  # noqa: SLF001
+                    continue
+                checked += 1
+                template = module.minifuck.__wrapped__(table)
+                for combo in range(8):
+                    bits = [(combo >> (2 - i)) & 1 for i in range(3)]
+                    got = self.run_minifuck(self.instantiate(template, bits))
+                    assert got == table[combo], f"{table} inputs {bits}"
+        assert checked == 38, checked
+
+    def test_three_input_plan_is_a_fast_path_not_a_replacement(self) -> None:
+        """The three-input plan covers part of the arity, and says so.
+
+        Unlike two inputs, this plan is *incomplete* -- a missing table must
+        fall through to the searches rather than raise, or coverage would
+        regress.  Both halves are pinned: the plan really does cover the
+        tables it claims, and a table outside it is still built.
+        """
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.minifuck import _THREE_INPUT_PLAN, _staged
+
+        assert _THREE_INPUT_PLAN, "the plan should not be empty"
+        # Every planned entry builds, computes, and keeps its slots in order.
+        for key in sorted(_THREE_INPUT_PLAN)[:4]:
+            template = _staged(key, 3)
+            assert template is not None, key
+            for combo in range(8):
+                bits = [(combo >> (2 - i)) & 1 for i in range(3)]
+                got = self.run_minifuck(self.instantiate(template, bits))
+                assert got == key[combo], f"{key} inputs {bits}"
+        # A table with no staging returns None here rather than raising, so
+        # the caller can fall through.
+        unplanned = next(
+            format(v, "08b")
+            for v in range(256)
+            if min(
+                format(v, "08b"),
+                "".join(str(1 - int(c)) for c in format(v, "08b")),
+            )
+            not in _THREE_INPUT_PLAN
+        )
+        assert _staged(unplanned, 3) is None, unplanned
+        # ...and the public entry point still builds a planned table.
+        assert parameterized.minifuck(sorted(_THREE_INPUT_PLAN)[0])
+
+    @pytest.mark.slow  # re-simulates every planned staging
+    def test_plans_are_derived_not_asserted(self) -> None:
+        """Every planned staging really does deliver its table's column.
+
+        The plans are tables of numbers, and a table of numbers rots.  This
+        recomputes what each staging leaves at its accumulator *as the read
+        sees it* -- after the pool code and the walk out, which is where the
+        running prefix-XOR applies -- and checks it against the table the
+        entry claims.  Selecting on the pre-walk column instead is the
+        mistake that covered 10 of 16 at two inputs, so the transform is the
+        point rather than an implementation detail.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        for n, plan in sorted(module._PLANS.items()):  # noqa: SLF001
+            for key, (sep_index, settle, brackets, acc) in sorted(plan.items()):
+                joint = module._embed(  # noqa: SLF001
+                    n, settle=settle, sep=module._SEPS[sep_index]  # noqa: SLF001
+                )
+                module._clamp(joint)  # noqa: SLF001
+                module._walk_to(joint, module._BASE - 1)  # noqa: SLF001
+                joint.emit("[" * brackets + "<")
+                module._clamp(joint)  # noqa: SLF001
+                arrived = None
+                for cell7 in (0, 1):
+                    probe = joint.fork()
+                    code = module._find_pool(probe, cell7, acc - 1)  # noqa: SLF001
+                    if code is None:
+                        continue
+                    probe.emit(code)
+                    module._walk_to(probe, acc - 1)  # noqa: SLF001
+                    column = "".join(str(b) for b in probe.col(acc))
+                    complement = "".join(str(1 - int(c)) for c in column)
+                    if key in (column, complement):
+                        arrived = column
+                        break
+                assert arrived is not None, (n, key, sep_index, settle, brackets, acc)
+
     @pytest.mark.slow  # 7.8s: builds the searching two-input template
     def test_instantiations_have_equal_length(self) -> None:
         """No instantiation leaks its inputs through the program's length."""

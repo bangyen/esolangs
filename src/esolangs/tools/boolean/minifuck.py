@@ -67,11 +67,18 @@ live tape, so moving the trailing fills to the front makes 2 rows wrong at
 Together they leave nothing out of order.
 
 **Coverage: every two-input table, and eight of the fourteen three-input
-orbits.**  Two inputs are *derived* rather than searched -- see
-:data:`_TWO_INPUT_PLAN` -- so all sixteen build in well under a second where
-they used to cost 2.5-9s each.  Three inputs are still a *search*: three
-routes across two embed separators, so their reach is bounded by the depth
-caps below rather than by an argument.
+orbits.**  How much of that is *derived* rather than searched:
+
+* **Two inputs: all of it.**  :data:`_TWO_INPUT_PLAN` stages every table, so
+  no search runs at this arity and all sixteen build in well under a second
+  where they used to cost 2.5-9s each.
+* **Three inputs, at most two of them essential: all of it, for free.**  Such
+  a table is a smaller table wearing extra inputs, so it projects onto the
+  two-input construction; all 38 build without searching.
+* **Three essential inputs: 80 of 218 tables**, via
+  :data:`_THREE_INPUT_PLAN`, parity and majority among them.  The rest still
+  search, so the plan is a fast path rather than a replacement and a miss
+  falls through unchanged.
 Measuring by orbit rather than by sampling tables: the four degenerate orbits
 are immediate, and AND3, majority, parity and one more build in 7-40 seconds.
 The six that fail do so after about two minutes, and not for want of a
@@ -671,33 +678,90 @@ def _reconverged(truth_table: str, essential: list[int], n: int) -> str | None:
 # the complement costs nothing to reach.  Each entry was derived by running
 # the staging forward and reading off the arriving column -- no program
 # search -- and every one is checked end to end by the test suite.
-_TWO_INPUT_PLAN: dict[str, tuple[int, int, int]] = {
-    # table (and its complement): (separator index, bracket count, accumulator)
-    "0000": (0, 0, 9),  # constants
-    "0011": (0, 0, 16),  # b0
-    "0101": (0, 0, 19),  # b1
-    "0110": (0, 1, 19),  # XOR
-    "0111": (0, 4, 20),  # OR
-    "0001": (1, 0, 21),  # AND
-    "0010": (0, 5, 20),  # b0 AND NOT b1
-    "0100": (0, 6, 20),  # NOT b0 AND b1
+# Each entry is ``(separator index, settle count, bracket count, accumulator)``
+# keyed by the lexicographically smaller of a table and its complement.
+_Staging = tuple[int, int, int, int]
+
+_TWO_INPUT_PLAN: dict[str, _Staging] = {
+    "0000": (0, 0, 0, 9),  # constants
+    "0011": (0, 0, 0, 16),  # b0
+    "0101": (0, 0, 0, 19),  # b1
+    "0110": (0, 0, 1, 19),  # XOR
+    "0111": (0, 0, 4, 20),  # OR
+    "0001": (1, 0, 0, 21),  # AND
+    "0010": (0, 0, 5, 20),  # b0 AND NOT b1
+    "0100": (0, 0, 6, 20),  # NOT b0 AND b1
+}
+
+# The same construction at three inputs.  It does not cover the arity -- 40
+# of the 109 complement pairs are here, the rest still search -- so this is a
+# fast path rather than a replacement, and a miss falls through unchanged.
+# The pairs it does cover include the expensive ones: ``01101001`` is parity
+# and ``00010111`` is majority, both of which the search takes tens of
+# seconds to reach.
+_THREE_INPUT_PLAN: dict[str, _Staging] = {
+    "00000001": (0, 0, 10, 23),
+    "00000110": (1, 1, 11, 27),
+    "00001000": (0, 1, 8, 23),
+    "00001110": (1, 0, 1, 26),
+    "00010010": (0, 1, 6, 22),
+    "00010100": (0, 0, 9, 23),
+    "00010101": (0, 0, 9, 22),
+    "00010111": (1, 0, 0, 25),
+    "00011000": (1, 0, 1, 25),
+    "00011001": (0, 1, 8, 22),
+    "00011110": (0, 0, 1, 22),
+    "00100001": (0, 1, 7, 22),
+    "00100110": (1, 1, 12, 26),
+    "00101000": (1, 0, 7, 25),
+    "00101001": (1, 1, 12, 28),
+    "00101101": (0, 0, 5, 22),
+    "00101110": (0, 0, 4, 22),
+    "00110110": (1, 1, 10, 26),
+    "00110111": (1, 1, 10, 27),
+    "00111110": (1, 0, 7, 26),
+    "01000000": (1, 0, 7, 24),
+    "01000011": (0, 0, 8, 23),
+    "01000111": (0, 0, 8, 21),
+    "01001000": (0, 0, 4, 21),
+    "01001010": (0, 1, 10, 23),
+    "01001011": (0, 0, 5, 21),
+    "01001111": (1, 1, 10, 24),
+    "01010010": (0, 0, 8, 22),
+    "01010111": (1, 1, 13, 25),
+    "01011110": (0, 0, 10, 22),
+    "01101000": (1, 0, 13, 25),
+    "01101001": (1, 1, 13, 28),
+    "01101110": (0, 1, 9, 22),
+    "01110000": (1, 0, 1, 24),
+    "01110100": (0, 1, 6, 21),
+    "01110110": (1, 1, 13, 26),
+    "01111000": (0, 0, 1, 21),
+    "01111011": (0, 0, 7, 21),
+    "01111110": (1, 0, 13, 26),
+    "01111111": (1, 0, 0, 24),
+}
+
+_PLANS: dict[int, dict[str, _Staging]] = {
+    2: _TWO_INPUT_PLAN,
+    3: _THREE_INPUT_PLAN,
 }
 
 
-def _two_input(truth_table: str) -> str | None:
-    """Build a two-input table from :data:`_TWO_INPUT_PLAN`, without searching.
+def _staged(truth_table: str, n: int) -> str | None:
+    """Build from :data:`_PLANS` without searching, or None if unplanned.
 
     The plan is keyed by the lexicographically smaller of the table and its
-    complement, since the pair shares a staging.  Returns None rather than
-    raising if the endgame somehow declines, so the caller falls through to
-    the searches and coverage cannot regress.
+    complement, since the pair shares a staging.  None rather than an
+    exception on a miss, so the caller falls through to the searches and
+    coverage cannot regress.
     """
     complement = "".join(str(1 - int(c)) for c in truth_table)
-    plan = _TWO_INPUT_PLAN.get(min(truth_table, complement))
+    plan = _PLANS.get(n, {}).get(min(truth_table, complement))
     if plan is None:
         return None
-    sep_index, brackets, acc = plan
-    j = _embed(2, sep=_SEPS[sep_index])
+    sep_index, settle, brackets, acc = plan
+    j = _embed(n, settle=settle, sep=_SEPS[sep_index])
     _clamp(j)
     _walk_to(j, _BASE - 1)
     j.emit("[" * brackets + "<")
@@ -809,12 +873,13 @@ def minifuck(truth_table: str) -> str:
         if degenerate is not None:
             return degenerate
 
-    # Two inputs are solved outright: every two-input table has a staging in
-    # :data:`_TWO_INPUT_PLAN`, so no search runs at this arity at all.
-    if n == 2:
-        derived = _two_input(truth_table)
-        if derived is not None:
-            return derived
+    # A planned staging is the cheapest route by far, so it goes first.  At
+    # two inputs the plan is complete and no search ever runs; at three it
+    # covers 40 of the 109 complement pairs, and a miss falls through to the
+    # searches below.
+    derived = _staged(truth_table, n)
+    if derived is not None:
+        return derived
 
     frontier = _BASE + n * _SPAN + 6
 

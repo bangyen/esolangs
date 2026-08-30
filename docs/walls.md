@@ -310,7 +310,18 @@ tables are now derived from an eight-entry staging table
   complement share a staging — the endgame tries both read polarities and
   the printed digit is `NOT(v XOR cell7)`, so the complement is free.
 
-What follows is about **n≥3**, where the generator is still a search.
+**The same staging works at n=3, for part of the arity.** Extending the
+enumeration to three inputs (adding the settle count as a fourth coordinate)
+reaches 106 distinct 8-bit columns, covering **80 of the 218 three-essential
+tables** — and all 80 build, compute and emit in order, with no endgame
+losses. Parity (`01101001`) and majority (`00010111`) are among them, which
+are two of the orbits the search takes tens of seconds to reach. Add the 38
+degenerate tables, which project onto the n=2 construction and were already
+free, and **118 of the 256 three-input tables need no search at all**.
+
+The remaining 138 still search, so the plan is a *fast path*, not a
+replacement — a table with no staging falls through unchanged, and the
+searches stay exactly where they were. What follows is about those.
 
 ### Where a construction would have to start
 
