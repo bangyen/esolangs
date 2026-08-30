@@ -95,7 +95,7 @@ that frontier.
 
 What remains true: the parameterized generator
 (`esolangs.tools.boolean.minifuck`) builds every two-input table by embedding,
-and covers 28 of the 40 three-input orbits (under input permutation and
+and covers 30 of the 40 three-input orbits (under input permutation and
 complement) — up from the eight the searches alone reached, since the staged
 route below builds tables the searches fail on. The reading prologue reaches
 **none** of the three-input arity.  So the parameterized path stays as
@@ -314,14 +314,29 @@ tables are now derived from an eight-entry staging table
 
 **The same staging works at n=3, for part of the arity.** Extending the
 enumeration to three inputs (adding the settle count as a fourth coordinate)
-reaches 106 distinct 8-bit columns, covering **80 of the 218 three-essential
-tables** — and all 80 build, compute and emit in order, with no endgame
-losses. Parity (`01101001`) and majority (`00010111`) are among them, which
-are two of the orbits the search takes tens of seconds to reach. Add the 38
-degenerate tables, which project onto the n=2 construction and were already
-free, and **118 of the 256 three-input tables need no search at all**.
+covers **98 of the 218 three-essential tables** — all of which build, compute
+and emit in order, with no endgame losses. Parity (`01101001`) and majority
+(`00010111`) are among them, two of the orbits the search takes tens of
+seconds to reach. Add the 38 degenerate tables, which project onto the n=2
+construction and were already free, and **136 of the 256 three-input tables
+need no search at all**.
 
-The remaining 138 still search, so the plan is a *fast path*, not a
+**The bracket axis is exhausted, not capped**, which is worth stating in a
+file that has repeatedly mistaken one for the other. Nothing in this language
+writes leftward — `[` writes at `ptr+1` and, on the cascade, `ptr+2`, and the
+pointer only advances — so once every row's pointer has passed the
+accumulator window, no further bracket can change a staged column. Measured,
+the columns stop changing between `k=25` and `k=38` depending on separator and
+settle, so sweeping to 40 is exhaustive and anything beyond is provably
+redundant. The first sweep stopped at 13, and a second at 30 would still have
+been a cap: 9 of the 49 plan entries need `k` between 14 and 22, and they
+account for 18 tables.
+
+The other two axes were **sampled** rather than exhausted, and came back
+empty — settle counts 3–5 and accumulators 36–47 reached nothing already
+covered. Evidence they are barren, not proof.
+
+The remaining 120 still search, so the plan is a *fast path*, not a
 replacement — a table with no staging falls through unchanged, and the
 searches stay exactly where they were.
 
@@ -331,7 +346,7 @@ fail after ~130 seconds of searching and build in under 0.08s from a staging,
 correct on every row. The reason is the same transform the n=2 derivation
 turns on: the searches hunt for a cell *holding* the answer and then lose it
 to the prefix-XOR on the walk out, while the staging selects on the column as
-the read sees it. Orbit coverage is therefore 28 of 40, not the 8 of 14 this
+the read sees it. Orbit coverage is therefore 30 of 40, not the 8 of 14 this
 file recorded when the searches were the only route. What follows is about
 the rest.
 

@@ -72,7 +72,7 @@ reconvergence works by driving every row to a single state and so cannot
 collapse one input while preserving another.  Sorting those needs the solver
 to assign names, which is a change to :func:`_project` and :func:`_lift`.
 
-**Coverage: every two-input table, and 28 of the 40 three-input orbits**
+**Coverage: every two-input table, and 30 of the 40 three-input orbits**
 (under input permutation and complement).  That is up from the eight orbits
 the search alone reached, and the increase is not a speedup -- the staged
 route builds tables the searches *fail* on: ``01101000``, ``10100001`` and
@@ -85,10 +85,11 @@ tenth of one.  How much of the arity is derived rather than searched:
 * **Three inputs, at most two of them essential: all of it, for free.**  Such
   a table is a smaller table wearing extra inputs, so it projects onto the
   two-input construction; all 38 build without searching.
-* **Three essential inputs: 80 of 218 tables**, via
+* **Three essential inputs: 98 of 218 tables**, via
   :data:`_THREE_INPUT_PLAN`, parity and majority among them.  The rest still
   search, so the plan is a fast path rather than a replacement and a miss
   falls through unchanged.
+
 What remains unreached is bounded by the searches, which is where the cost
 also lives: a table with no staging that the searches cannot build spends
 about two minutes failing, and not for want of a computable answer -- the
@@ -771,12 +772,26 @@ _TWO_INPUT_PLAN: dict[str, _Staging] = {
     "0100": (0, 0, 6, 20),  # NOT b0 AND b1
 }
 
-# The same construction at three inputs.  It does not cover the arity -- 40
+# The same construction at three inputs.  It does not cover the arity -- 49
 # of the 109 complement pairs are here, the rest still search -- so this is a
 # fast path rather than a replacement, and a miss falls through unchanged.
 # The pairs it does cover include the expensive ones: ``01101001`` is parity
 # and ``00010111`` is majority, both of which the search takes tens of
 # seconds to reach.
+#
+# The bracket axis is *exhausted*, not capped, and that is checkable rather
+# than assumed.  Nothing in this language writes leftward -- ``[`` writes at
+# ``ptr + 1`` and, on the cascade, ``ptr + 2``, and the pointer only ever
+# advances -- so once every row's pointer has passed the accumulator window,
+# no further bracket can change a staged column.  Measured, the columns stop
+# changing between ``k == 25`` and ``k == 38`` depending on separator and
+# settle count, so the sweep ran to 40 and anything past it is provably
+# redundant.  Stopping at 30 would have been a cap rather than a bound, and
+# would have missed real tables: nine of the entries below need 14 to 22.
+#
+# The other two axes were *sampled* rather than exhausted and came back
+# empty -- settle counts 3 to 5 and accumulators 36 to 47 reached nothing the
+# shipped stagings did not.  That is evidence they are barren, not proof.
 _THREE_INPUT_PLAN: dict[str, _Staging] = {
     "00000001": (0, 0, 10, 23),
     "00000110": (1, 1, 11, 27),
@@ -818,6 +833,19 @@ _THREE_INPUT_PLAN: dict[str, _Staging] = {
     "01111011": (0, 0, 7, 21),
     "01111110": (1, 0, 13, 26),
     "01111111": (1, 0, 0, 24),
+    # Longer bracket runs, all on the second separator.  The first sweep
+    # stopped at 13 for no better reason than that it was enough; these need
+    # 14 to 22, and the axis is now taken to exhaustion rather than to a cap
+    # -- see the note below on where the columns freeze.
+    "00000111": (1, 0, 19, 30),
+    "00010110": (1, 1, 16, 26),
+    "00011111": (1, 0, 17, 28),
+    "01000001": (1, 0, 21, 30),
+    "01010110": (1, 1, 14, 26),
+    "01100000": (1, 0, 17, 27),
+    "01100001": (1, 0, 21, 28),
+    "01100111": (1, 0, 17, 25),
+    "01101111": (1, 0, 22, 28),
 }
 
 _PLANS: dict[int, dict[str, _Staging]] = {
@@ -954,7 +982,7 @@ def minifuck(truth_table: str) -> str:
 
     # A planned staging is the cheapest route by far, so it goes first.  At
     # two inputs the plan is complete and no search ever runs; at three it
-    # covers 40 of the 109 complement pairs, and a miss falls through to the
+    # covers 49 of the 109 complement pairs, and a miss falls through to the
     # searches below.
     derived = _staged(truth_table, n)
     if derived is not None:
