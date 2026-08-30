@@ -67,10 +67,12 @@ from mask import Mask
 #   -- so ``png.py`` decodes them outright, matching Pillow byte-for-byte on
 #   all five fixtures.  Image.resize(NEAREST) was the triviality it looked
 #   like (a strided slice), with one wrinkle about grid alignment recorded in
-#   normalize_scale.  The narrowing: only PNG is readable now.  Every PNG
-#   colour type is, though -- a drawing that has been through an image editor
-#   typically comes back as RGB, so refusing colour would refuse a file the
-#   user reasonably considers the same drawing.
+#   normalize_scale.  The narrowing: only PNG is readable now -- but every PNG
+#   is, including interlaced and 16-bit, since a drawing that has been through
+#   an image editor comes back in whatever that editor preferred and is still
+#   the same drawing.  JPEG is the real loss, and no loss worth mourning: the
+#   format erases pixels out of 1px strokes (see the coverage check, and
+#   WIP.md's quality-32 cliff).
 #
 #   numpy looked like the one with a real cost, since the masks reach 9Mpx and
 #   pure-Python per-pixel loops over that would be minutes.  The answer was to
