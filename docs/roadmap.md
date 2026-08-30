@@ -151,17 +151,15 @@ screen figures, the hoist caveat, and the frame-mapping trap.
 
 ## Mutation-testing sweep
 
-All 59 are measured, and the whole sweep was re-run language by language
-on 2026-08-29 — one at a time on an idle machine, since a contended run
-lets the per-test alarm score slow-but-passing tests as kills.  **Every
-figure the table had recorded came back exactly**, which is what the
-harness commits `800f071` and `86c89b9` needed: they were only ever
-validated one language at a time, and nothing had checked that the others
-still scored what they claimed.
+All 59 are measured.  The whole sweep was re-run on 2026-08-29, one
+language at a time on an idle machine, and **every figure previously
+recorded came back exactly** — which is what the harness commits
+`800f071` and `86c89b9` needed, each having been validated against a
+single language while nothing checked the rest.
 
 Ten suites are at 100% — `%^2^-1`, Back, BFStack, Bitdeque, brainfuck,
-Factor, Home Row, Minifuck, RAM0 and Suffolk — and six are below 85%.
-1525 mutants survive across the repo.
+Factor, Home Row, Minifuck, RAM0 and Suffolk.  1525 mutants survive across
+the repo; the rest of the field, worst first:
 
 | language | score | survivors |
 | --- | --- | --- |
@@ -215,121 +213,43 @@ Factor, Home Row, Minifuck, RAM0 and Suffolk — and six are below 85%.
 | Decleq | 98.7% | 1 |
 | BrainIf | 98.9% | 1 |
 
-(The ten named above complete the list at 100% / 0.)
+LaserFuck, Forbin and Basicfuck are post-triage rows (they began at 66.7%,
+81.4% and 82.8%); the other 56 are the sweep's own numbers, 15 of which had
+never been recorded per-language.  **Lamfunc (82), Between (77), MyScript
+(71) and Grapheme (60) are the largest untriaged pools** and were invisible
+before this sweep.
 
-Three of those rows are *post*-triage: LaserFuck, Forbin and Basicfuck
-started at 76.0% / 59, 81.4% / 216 and 82.8% / 119 before the work below.
-The other 56 are the sweep's own measurements, and 15 of them had never
-been recorded per-language at all.
+55 of the 59 finish in under half a minute; only Streetcode and Forbin run
+to minutes.  So re-running the language you touched is free, and re-running
+everything after a change to the shared machinery is worth the few minutes.
 
-Forbin's 128 is now the largest surviving pool, ahead of Streetcode (98),
-Point Break (94) and Suptiftam (93) — but Forbin's residue is categorised
-and argued, while Lamfunc (82), Between (77), MyScript (71) and Grapheme
-(60) are untriaged and were invisible before this sweep.
+What a triage pass has to get right, learned by getting each one wrong
+first:
 
-On cost: 55 of the 59 finish in under half a minute, most in under ten
-seconds.  Only Streetcode and Forbin are minutes rather than seconds, so
-"re-run the one you touched" is nearly always free, and re-running
-everything is worth doing after any change to the shared machinery.
+- **Measure on an idle machine.**  The per-test alarm fails a slow-but-
+  passing test and scores it as a kill, so a contended run *under*-reports
+  survivors — one reported 17 where a solo run reports 22.
+- **`pytest.raises(match=...)` is a substring search.**  Passing the whole
+  message still matches a mutant that widened it; only
+  `assert str(caught.value) == message` catches that.
+- **A survivor is only as tested as the observables you compare.**
+  Output and step count miss frame bookkeeping entirely: comparing
+  `snapshot()` killed seven Forbin mutants and four Basicfuck ones that
+  looked equivalent.
+- **A probe whose own baseline moves witnesses everything.**  An error
+  message interpolating an object with no `__repr__` carries its address,
+  and one such program was recorded as the sole witness for 114 mutants
+  that were not killable at all.
+- **Naming `esolangs.vm` in a docstring drops the test** from the bundle
+  exactly as an import would, silently.
 
-LaserFuck has left this table.  It was the outlier at 66.7% / 82; the four
-commits ending at `0a5f42b` took it to 76.0% / 59, and categorising all 59
-of those survivors -- each run against the mutated bundle, so that every
-claim is executed rather than read off the source -- turned most of them
-into tests.  It now scores **91.1%, 22 survivors**, and what remains is
-close to the equivalent-mutant floor: a dead attribute (`self.pos`, written
-three times and read nowhere in the repository), flags only ever tested for
-truth, and identities that no input can distinguish -- `(d + 2) % 4` is
-`(d - 2) % 4`, and `rfind` is `find` on a string whose characters are
-unique.  Three real gaps are left open deliberately: the two-laser
-scheduler needs three simultaneous beams doing order-dependent work, and
-one command-set mutant can only be caught by a program that *hangs*, which
-is worse as a test than the gap it closes.
-
-Two cautions about the measurement itself, both learned here.  A survivor
-count is only trustworthy from a run with nothing else on the machine: the
-per-test alarm fails a slow-but-passing test and scores it as a kill, so a
-contended run reported 17 survivors where a solo run reports 22, the
-difference being five mutants that are provably equivalent.  And a grid
-containing `*` splits in a random direction, so any test built on one must
-be symmetric about the split -- an asymmetric arm passes most runs and
-fails the rest.
-
-Three findings there generalise:
-
-- **A default argument can hide a whole branch.**  Every test passed a
-  heading because the suite's helper took `heading: int = 3`, so the branch
-  that *draws* one at random was never executed -- not even by the test
-  named for it, which loops `range(4)` and passes each value explicitly
-  while its docstring says the grid "does not need to".  An edit making the
-  draw raise on every call survived.
-- **Widening a command literal is invisible without a test that uses a
-  non-command character.**  Six survivors were of the form `"-"` becoming
-  `"XX-XX"`.  The sharpest turned `"^v{}"` into a set containing `X`, after
-  which `find` returns `-1` -- and a beam heading `-1` still moves rightward
-  but answers the mirror guards backwards.
-- **Command coverage is not branch coverage, twice over.**  Mirrors were
-  only ever met head-on, and the pointer only ever moved at an edge, so the
-  guards that refuse and the moves that do not grow the tape were both
-  unexercised.
-
-Forbin has left the table too, from 81.4% / 216 to **89.0% / 128** on
-sixteen tests.  Its pool was nothing like a tape interpreter's: 843 lines
-with a parser, and half the survivors were one shape -- an argument of
-`_eval(node, frame, globals_, reader, depth)` replaced by `None` at one
-call site.  That whole family is decidable rather than searchable, by
-asking what *forces* each parameter (a top-level function name forces
-`globals_`, an `in` forces `reader`, a local forces `frame`, a nested call
-forces `depth`), and the forcing construct has to sit **at** the position:
-assigning an `in` to a local and reading the local exercises `frame`, not
-the reader.  94 killable mutants needed only 35 programs to witness, one
-of which -- a two-wildcard iteration pattern -- accounts for fourteen.
-
-Three cautions from that run, all of them about instrumentation rather
-than about Forbin:
-
-- **A probe whose own baseline moves reads as a witness for everything.**
-  `_bound` interpolates `{value!r}`, and a `_Function` has no `__repr__`,
-  so its message ends in an address that differs between processes.  The
-  program that triggers it was recorded as the sole witness for 114
-  mutants that were not killable at all; the honest count was 70, not the
-  184 first reported.  Run the original battery twice in separate
-  processes and diff it against itself before trusting any verdict.
-- **Naming a dropped module in a docstring drops your test.**  The
-  harness matches `esolangs.vm` and friends against the test's *text*, so
-  a test written to cover `snapshot` without the VM was dropped for
-  explaining why VM tests are dropped.  Watch the `dropped N` line.
-- **"Never read" has to include "never operated on."**  `depth` is
-  threaded everywhere and compared nowhere, which looked like a dead
-  parameter; but `_call` does `depth + 1`, so eleven of the twenty-three
-  `depth=None` mutants die on a `TypeError`.  Only the two that change the
-  increment are equivalent.
-
-Basicfuck follows, 82.8% / 119 to **92.8% / 50** on twenty-eight tests.
-It is a small compiler rather than a tape language -- a directive parser,
-an allocator, a lexer, a parser and a frame machine -- and its survivors
-were spread across all five rather than concentrated.  A third of them
-widen or recase an error-message literal, which turns out to need more
-than the obvious fix:
-
-- **`pytest.raises(match=...)` is a substring search.**  Passing the
-  whole message still lets `"Invalid token."` match a mutant raising
-  `"XXInvalid token.XX"`; only `assert str(caught.value) == message`
-  kills the widened form.  A recased message dies to `match=` alone,
-  which is why half of that family looked covered.
-- **A survivor is only as tested as the observables the probe compares.**
-  Four `_Frame` mutants showed no difference in output or step count and
-  differ immediately in `snapshot()`, whose content no test asserted --
-  the same gap Forbin had, where it hid seven.
-
-Two language facts the suite now pins, both of which contradicted what
-the tests seemed to assume: `o=wrap` **clamps to the opposite bound**
-rather than wrapping modularly, and it requires a range closed at both
-ends -- the "invalid overflow directive" complaint is about that, not
-about a misspelled mode, which fails the directive pattern outright.
-
-Triaging one goes faster from the test file than from the diffs.  Six
-shapes recur, and all six are mechanical:
+Triage from the test file, not the diffs — six mechanical shapes recur
+(substring-matched `pytest.raises`, comment tests outside the command set,
+truth-only `bool` flags, one-sided boundaries, write-only attributes,
+assertions on a constant).  Two cautions: a survivor is not a gap until the
+harness is trusted (tests reaching the VM or registry are dropped from the
+bundle *correctly*), and a score is a means — stop where the survivors stop
+teaching anything.
 
 ## Dependency reduction
 
