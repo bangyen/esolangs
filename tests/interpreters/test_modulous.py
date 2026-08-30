@@ -1,6 +1,5 @@
 """Unit tests for the Modulous interpreter."""
 
-
 import pytest
 
 from esolangs.exceptions import HaltError

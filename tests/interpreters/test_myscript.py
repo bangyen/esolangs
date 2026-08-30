@@ -6,7 +6,6 @@ blocks and function bodies.  These tests pin the wiki's examples and the
 edge cases (undefined variables, out-of-range indexing, mismatched calls).
 """
 
-
 import pytest
 
 from esolangs.exceptions import HaltError
