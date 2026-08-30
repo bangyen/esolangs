@@ -2456,7 +2456,6 @@ class TestParameterizedMinifuck:
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(module, "_try_print", lambda *_a, **_k: None)
             patch.setattr(module, "_find_column", lambda *_a, **_k: None)
-            patch.setattr(module, "_closed_form", lambda *_a, **_k: None)
             patch.setattr(module, "_PARKED_DEPTH", 6)
             patch.setattr(module, "_PARKED_LIMIT", 2)
             with pytest.raises(ValueError, match="could not build"):
@@ -2494,7 +2493,6 @@ class TestParameterizedMinifuck:
             patch.setattr(module, "_find_parked", spy)
             patch.setattr(module, "_try_print", only_after_parking)
             patch.setattr(module, "_find_column", lambda *_a, **_k: None)
-            patch.setattr(module, "_closed_form", lambda *_a, **_k: None)
             patch.setattr(module, "_PARKED_DEPTH", 6)
             patch.setattr(module, "_PARKED_LIMIT", 2)
             assert module.minifuck.__wrapped__("0110") == "SENTINEL"
@@ -2519,7 +2517,6 @@ class TestParameterizedMinifuck:
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(module, "_try_print", lambda *_a, **_k: None)
             patch.setattr(module, "_find_column", lambda *_a, **_k: ("", 20))
-            patch.setattr(module, "_closed_form", lambda *_a, **_k: None)
             patch.setattr(module, "_PARKED_DEPTH", 4)
             patch.setattr(module, "_PARKED_LIMIT", 1)
             with pytest.raises(ValueError, match="could not build"):
@@ -2553,7 +2550,6 @@ class TestParameterizedMinifuck:
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(module, "_try_print", lambda *_a, **_k: None)
             patch.setattr(module, "_find_column", lambda *_a, **_k: None)
-            patch.setattr(module, "_closed_form", lambda *_a, **_k: None)
             patch.setattr(module, "_walk_to", refuse_first)
             patch.setattr(module, "_PARKED_DEPTH", 4)
             patch.setattr(module, "_PARKED_LIMIT", 1)
@@ -2603,7 +2599,6 @@ class TestParameterizedMinifuck:
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(module, "_DEGENERATE_CELLS", {})
             patch.setattr(module, "_find_column", lambda *_a, **_k: None)
-            patch.setattr(module, "_closed_form", lambda *_a, **_k: None)
             assert _degenerate("0101", 2) is None
 
 
