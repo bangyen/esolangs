@@ -5,6 +5,7 @@ Covers the generators in :mod:`esolangs.tools.boolean.other` and
 helper edge paths exercised across generator modules.
 """
 
+import importlib
 import itertools
 import random
 
@@ -206,6 +207,37 @@ class TestCvnc:
 
     def test_folding_shortens_the_program(self) -> None:
         assert len(boolean.cvnc("00000000")) < len(boolean.cvnc("01101001"))
+
+    def test_the_halting_goto_covers_every_arity_the_generator_emits(self) -> None:
+        """The gadget's reach is the generator's arity bound, and is checked.
+
+        The goto lands at a fixed offset, so a program longer than that
+        offset would jump back *into itself* instead of halting.  The
+        generator raises rather than emit one, and the reach is chosen so
+        that no arity it can practically be asked for trips the guard.
+        """
+        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+        reach = module._HALT_REACH  # noqa: SLF001
+
+        # parity is the table that folds nothing, so it is the worst case
+        for n in range(1, 9):
+            table = "01" * (2**n // 2)
+            assert len(boolean.cvnc(table)) < reach, f"n={n}"
+
+    def test_a_program_outgrowing_the_goto_is_refused(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The guard raises rather than emitting a self-re-entering program.
+
+        The reach is far past any table worth generating, so the guard is
+        reached by shrinking it rather than by building a vast table.
+        """
+        # ``esolangs.tools.boolean.cvnc`` resolves to the re-exported
+        # *function*, so the module has to be fetched by name.
+        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+        monkeypatch.setattr(module, "_HALT_REACH", 10)
+        with pytest.raises(ValueError, match="outgrew"):
+            module.cvnc("01")
 
     def test_every_leaf_ends_by_halting(self) -> None:
         """Without the halting goto a then-arm falls into its own loop end."""
