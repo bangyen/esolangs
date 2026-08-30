@@ -156,8 +156,9 @@ STEPS = [
     ("bandit", ["uv", "run", "--with", "bandit", "bandit", "-r", "src", "-q"]),
     (
         # Run from extra/line: its modules import each other as flat top-level
-        # names, and it needs image libraries the package does not depend on,
-        # so they are supplied ad hoc rather than from the project env.
+        # names, so it runs from its own directory rather than the project env.
+        # It has no third-party dependencies of its own -- only pytest to run
+        # the suites with.
         LINE_STEP,
         [
             "uv",
@@ -166,14 +167,6 @@ STEPS = [
             "--no-project",
             "--directory",
             "extra/line",
-            "--with",
-            "pillow",
-            "--with",
-            "numpy",
-            "--with",
-            "scipy",
-            "--with",
-            "scikit-image",
             "--with",
             "pytest",
             "--with",
