@@ -101,13 +101,29 @@ must be emitted in ascending order, and `_embed` does that by construction, so
 every table solved at its *full* arity is in order for free — AND3, XOR3 and
 majority all emit `{X0}{X1}{X2}`, verified. The violation came only from the
 projection path, where a table ignoring some inputs is solved smaller and the
-ignored placeholders are appended. Solving those at full arity instead leaves
-just two out of order in the whole space: `01010101` and `10101010`, the
-projections onto the *last* input, where the answer stands in no cell under
-either separator and the complete pipeline fails after ~158 seconds. So the
-n=3 coverage is not the debt, and swapping to a reading generator would not
-discharge it — a reading generator emits no placeholders, so it is *exempt*
-from the invariant rather than satisfying it, while losing every n=3 orbit.
+ignored placeholders are appended. So the n=3 coverage was never the debt, and
+swapping to a reading generator would not have discharged it — a reading
+generator emits no placeholders, so it is *exempt* from the invariant rather
+than satisfying it, while losing every n=3 orbit.
+
+The debt is now closed, and the route that closed the last of it is worth
+recording because the obvious one fails. Relocating an ignored placeholder
+does **not** work: a fill writes the live tape, so moving the trailing fills
+to the front makes 2 rows wrong at n=2 and 6 at n=3. Solving at full arity
+covers most tables. The remainder — `01010101` and `10101010`, the
+projections onto the *last* input, whose answer stands in no cell after the
+embed under either separator — are built by emitting the ignored setters
+**first** and then reconverging: a searched suffix drives every row to one
+identical state, after which nothing downstream can tell which bits they
+were, and the table is a one-input problem in its single essential input.
+Walking to `_BASE - 1` before that setter reproduces the standard embed
+geometry, so the answer lands on the cells `_DEGENERATE_CELLS` already names
+and the fixed-cell lookup finds it in ~0.1s.
+
+The reconvergence is to a common **non-blank** state, and it has to be: a
+blank tape is unreachable, since the all-ones row ends a cell to the right of
+the others and `<` clamps without writing. Aiming at a blank tape finds
+nothing; aiming at agreement finds a suffix at length 12.
 
 The original argument is kept below, as a record of what was believed and of
 exactly which step failed.

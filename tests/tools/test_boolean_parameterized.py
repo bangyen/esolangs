@@ -83,50 +83,47 @@ def test_parameterized_generators_embed_each_input_once() -> None:
 # each ``{Xi}`` by name, replacing a unique token wherever it sits -- but it
 # is worth holding to, because an out-of-order load is a restructured load.
 #
-# Only two generators leave name order, and in both the order is *data*:
-# ``back``'s slot order is its input order (which is what makes its reorder
-# cost nothing) and ``minifuck`` appends the inputs its table ignores after
-# the ones it uses.  A generator whose order carries information must also
-# emit a different *drawing* for a different order, or the permutation is a
-# relabelling and its saving is fictitious -- the pairing below.
-# Every generator emits its slots in name order, except the ones whose slot
-# order *is* data: Back's carries its input order and Minifuck appends the
-# inputs its table ignores after the ones it uses.  Those two are not
-# excused -- they must actually vary, which is a stronger claim than being
-# allowed to differ, and one a fixed order fails.
+# Every generator emits its slots in name order.  A generator whose order
+# carried information would also have to emit a different *drawing* for a
+# different order, or the permutation is a relabelling and its saving is
+# fictitious -- the pairing below, which now covers ``back`` alone.
 #
 # There is no "reversed" category.  Bitdeque and BF-PDA used to push
 # back-to-front so the first pop was the most significant bit; that only
 # fixes which input the root tests, and testing the last input first costs
 # nothing, so both now load in name order (verified byte-identical totals).
-# The one generator that still emits out of name order, and an xfail rather
-# than an allowlist entry so it reads as debt.  Minifuck's ignored inputs
-# trail the ``.``, which leaves name order whenever an ignored index sits
-# below an essential one -- 24 of the 38 degenerate n=3 tables.
+# Minifuck used to be the exception, carried as a strict xfail.  It no longer
+# is, and how it was closed is worth keeping, because the obvious fix is the
+# one that does not work.
 #
-# Relocating an ignored fill does not fix it, and that is measured rather
+# Its ignored inputs trailed the ``.``, which left name order whenever an
+# ignored index sat below an essential one -- 24 of the 38 degenerate n=3
+# tables.  *Relocating* an ignored fill does not fix that, measured rather
 # than argued: a fill writes the live tape (``[<`` flips a cell), so moving
 # one in front of the essential embeddings shifts every later one and the
-# program stops computing -- 2 wrong rows at n == 2 and 6 at n == 3 when the
-# trailing fills are moved to the front.
+# program stops computing -- 2 wrong rows at n == 2 and 6 at n == 3.
 #
-# What *does* fix most of it is not relocating at all but declining to
-# project: ``_embed`` lays every slot down in ascending order, so a table
-# solved at its full arity is in name order by construction.  Minifuck now
-# takes that route for the tables a lift would disorder, and the residue is
-# down to two: ``01010101`` and ``10101010``, the projections onto the
-# *last* input.  Those are not a missing route but a fact about the embed --
-# x2 stands in no cell under either separator, and the complete pipeline
-# (column and parked searches included) fails on both after about 158
-# seconds.  Reaching them needs the solver to assign names, a change to
-# ``_project``/``_lift`` that is not attempted here.
+# Two routes closed it instead, neither of them a relocation:
+#
+# * Decline to project.  ``_embed`` lays every slot down in ascending order,
+#   so a table solved at its *full* arity is in name order by construction.
+#   That covers most of them.
+# * Emit the ignored inputs first, then erase them.  The setters still have
+#   to appear -- the harness has a bit for every input -- but a reconverging
+#   suffix drives every row to one identical state, after which nothing
+#   downstream can tell which bits they were, and the table is a one-input
+#   problem in its single essential input.  That covers ``01010101`` and
+#   ``10101010``, the projections onto the *last* input, which the first
+#   route cannot reach: x2 stands in no cell after the embed under either
+#   separator.  Note the reconvergence is to a common *non-blank* state --
+#   a blank tape is unreachable, since the all-ones row ends a cell right of
+#   the others and ``<`` clamps without writing.
 #
 # The two-essential tables keep projecting deliberately.  Full-arity solving
 # is not merely unnecessary there, it is worse: ``00000101`` and
 # ``00001010`` fail after about 130 seconds each against seconds to project,
 # and a cheap scan-only attempt hits 1 table in 8 while costing ~9s per miss.
 # Coverage and build cost both come before slot order.
-_SLOT_ORDER_DEBT = frozenset({"minifuck"})
 
 _SLOT_ORDER_TABLES = ("0110", "01101001", "10101010", "11110000", "00111100")
 
@@ -151,56 +148,73 @@ def test_slots_run_in_name_order() -> None:
     generator here holds to, and a load that leaves it is a load that has
     been restructured.  That is worth a failure rather than a shrug.
 
-    Minifuck is excluded and carried as an ``xfail`` below rather than an
-    entry in a list, so the debt stays visible.
+    Every generator is swept, with no exceptions carried -- Minifuck was the
+    last one and is covered in its own test below, which pins the specific
+    tables that used to leave sequence.
     """
     checked = 0
     for name, gen in _parameterized_generators():
-        if name in _SLOT_ORDER_DEBT:
-            continue
         for table in _SLOT_ORDER_TABLES:
             slots = _slot_order(gen, table)
             if slots is None:
                 continue
             checked += 1
             assert slots == sorted(slots), (name, table, slots)
-    assert checked >= len(_parameterized_generators()) - len(_SLOT_ORDER_DEBT), checked
+    assert checked >= len(_parameterized_generators()), checked
 
 
 @pytest.mark.slow  # the degenerate tables are the fast closed-form path
-@pytest.mark.xfail(
-    reason=(
-        "Minifuck now solves at full arity for the tables a lift would "
-        "disorder, which is in name order by construction, and the residue "
-        "is the two projections onto the *last* input ('01010101' and "
-        "'10101010'). Those are not a missing route: x2 stands in no cell "
-        "after the embed under either separator, and the complete pipeline "
-        "-- column and parked searches included -- fails on both after about "
-        "158 seconds. Reaching them needs the solver to assign names, a "
-        "change to _project/_lift. Relocating an ignored fill does not work "
-        "and is measured, not assumed: a fill writes the live tape, so "
-        "moving the trailing fills to the front makes 2 rows wrong at n == 2 "
-        "and 6 at n == 3."
-    ),
-    strict=True,
-)
 def test_minifuck_slots_run_in_name_order() -> None:
-    """Minifuck should emit in name order too, and does not yet.
+    """Minifuck emits in name order, including the tables that once did not.
 
-    Kept as a strict xfail so it fails loudly the day the construction is
-    changed to satisfy it -- and so the exception cannot quietly become the
-    accepted shape.
+    This was a strict ``xfail``.  The tables listed here are the ones that
+    used to leave sequence, kept as the regression: ``11001100`` is closed by
+    solving at full arity rather than projecting, and ``01010101`` /
+    ``10101010`` -- the projections onto the *last* input, which full arity
+    cannot reach -- by emitting the ignored setters first and reconverging
+    the rows before the essential one.
+
+    Degenerate tables only: they are the closed-form path, and the only ones
+    whose slot order can leave sequence.  A table needing the search takes
+    tens of seconds and cannot exercise this.
     """
     from esolangs.tools.boolean import parameterized
 
-    # Degenerate tables only: they are the closed-form path, and the only
-    # ones whose slot order can leave sequence.  A table needing the search
-    # takes tens of seconds and cannot exercise this.
-    for table in ("11001100", "10101010", "00001111"):
+    for table in ("11001100", "10101010", "01010101", "00001111"):
         slots = _slot_order(parameterized.minifuck, table)
         if slots is None:
             continue
         assert slots == sorted(slots), (table, slots)
+
+
+@pytest.mark.slow  # two closed-form builds plus eight interpreter runs each
+def test_minifuck_reconverged_tables_compute_their_function() -> None:
+    """The reconvergence route computes, not merely emits in order.
+
+    ``01010101`` and ``10101010`` are built by emitting the inputs the table
+    ignores *first* and then erasing them, which is a different construction
+    from every other table's -- so ordering alone is not evidence it works.
+    Only running every row is, and a wrong build here would otherwise look
+    exactly like a right one to the test above.
+    """
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.minifuck import run
+    from esolangs.tools.boolean import parameterized
+    from esolangs.tools.boolean.examples import _fill_minifuck
+
+    for table in ("01010101", "10101010"):
+        template = parameterized.minifuck(table)
+        widths = set()
+        for combo in range(8):
+            bits = [(combo >> (2 - i)) & 1 for i in range(3)]
+            program = _fill_minifuck(template, bits)
+            widths.add(len(program))
+            io_ = ScriptedIO("")
+            run(program, io_)
+            assert io_.getvalue() == table[combo], f"{table} inputs {bits}"
+        # The ignored setters are emitted rather than dropped, so they must
+        # not make the program's length depend on the bits it is given.
+        assert len(widths) == 1, (table, widths)
 
 
 def _drawing(template: str) -> str:
