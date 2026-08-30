@@ -23,18 +23,18 @@ exercises `render.py`'s loop-drawing geometry (`_layout`/
 `_loop_return_legs`) at all -- see the nested-loop entry below for why that
 distinction matters. `test_png.py` covers `png.py`, the stdlib PNG codec
 that replaced Pillow: the checked-in fixtures against the values Pillow
-decoded them to, round-trips, every row filter, the sub-byte depths, the
-colour types, and the rejections; `test_mask.py` covers `mask.py`'s row-bitmask image type,
-concentrating on the two things that representation makes easy to get
-wrong -- unbounded Python ints leaking bits past the canvas width, and the
-edge cases in the bit-twiddling shortcuts. Run any of them with `uv run --with pytest
---with pytest-xdist pytest test_simulate.py` (or
-`test_line_boolean.py`, or
-`test_bf_to_line.py`, `test_png.py`, `test_mask.py`) from this directory -- the modules import each other
-as flat top-level names, so this directory has to be on `sys.path`. None is
-under the repo root's `tests/` `testpaths`, so a bare `pytest` from the repo
-root will not find them; CI runs all three via the `line` job in
-`.github/workflows/ci.yml`. `verify.py` remains the separate, narrower
+decoded them to, round-trips, every row filter, bit depths through 16,
+interlacing, the colour types, and the rejections; `test_mask.py` covers
+`mask.py`'s row-bitmask image type, concentrating on the two things that
+representation makes easy to get wrong -- unbounded Python ints leaking
+bits past the canvas width, and the edge cases in the bit-twiddling
+shortcuts. Run any of them with `uv run --with pytest --with pytest-xdist
+pytest test_simulate.py` (or `test_line_boolean.py`, `test_bf_to_line.py`,
+`test_png.py`, `test_mask.py`) from this directory -- the modules import
+each other as flat top-level names, so this directory has to be on
+`sys.path`. None is under the repo root's `tests/` `testpaths`, so a bare
+`pytest` from the repo root will not find them; CI runs them all via the
+`line` job in `.github/workflows/ci.yml`. `verify.py` remains the separate, narrower
 round-trip check for `extract()` alone.
 
 ## Settled and tested
@@ -756,20 +756,30 @@ round-trip check for `extract()` alone.
   still well inside `_FILL_RATIO_RANGE`). The full reasoning is in a
   comment block in `extract.py` just above the imports.
 
-  One deliberate narrowing: only PNG is readable now (Pillow's other formats
-  were never used here). Every PNG colour type is accepted -- greyscale,
-  palette, truecolour, with or without alpha, at 1/2/4/8 bits -- because a
-  drawing that has been through an image editor typically comes back as RGB
-  even when it is visually black and white; `png.py`'s greyscale reduction
-  is byte-identical to Pillow's `convert("L")` on all of them. Interlaced
-  and 16-bit images raise rather than being guessed at.
+  **What an end user can observe**, since "no dependencies" is not the same
+  as "no change":
 
-  One visible change: `crop_to_content` now returns an exact bounding box
-  where the quadtree returned one padded out to 64px leaf boundaries, so
-  extracted coordinates sit closer to the origin. Extracted *programs* are
-  unchanged -- same tree shape, same opcodes, same geometry relative to the
-  drawing, verified on all five fixtures -- and nothing downstream reads an
-  absolute position.
+  - **Only PNG is readable.** JPEG, BMP, GIF and TIFF are gone with Pillow.
+    JPEG is the only one that was ever exercised, and it was exercised as a
+    hazard rather than a feature -- see the recompression entry above: below
+    quality 32 the format quantizes pixels straight out of a 1px stroke and
+    severs it. A non-PNG now raises rather than being silently mangled.
+  - Every *PNG* is readable, though: all five colour types, all bit depths
+    1-16, interlaced or not, verified against a Pillow oracle across 120
+    combinations of colour type x depth x interlacing x image size. The one
+    deliberate departure is 16-bit greyscale, where Pillow's `I;16 -> L`
+    *clips* at 255 (blanking any drawing whose ink exceeds 255) and `png.py`
+    scales instead.
+  - **Extracted coordinates shifted** toward the origin -- the exact
+    bounding box replacing the quadtree's 64px-padded one. Tree shape,
+    opcodes and relative geometry are identical; only absolute positions
+    moved, and nothing downstream reads them.
+  - **Rendered PNG bytes differ.** Same dimensions and same ink count, but
+    8 pixels differ (all inside the arrowhead, from the scanline fill
+    replacing Pillow's polygon) and files are smaller for carrying no
+    ancillary chunks -- 301 vs 363 bytes for `+++`. The output is still a
+    valid PNG that `file(1)`, `sips` and Pillow all read correctly. Anything
+    byte-comparing rendered output against a stored copy would notice.
 
 ## Resolved
 
