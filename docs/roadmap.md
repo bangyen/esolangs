@@ -157,7 +157,6 @@ The weakest suites:
 
 | language | score | survivors |
 | --- | --- | --- |
-| LaserFuck | 66.7% | 82 |
 | AddSubJump | 80.2% | 23 |
 | WII2D | 80.2% | 33 |
 | Point Break | 80.4% | 94 |
@@ -167,8 +166,49 @@ The weakest suites:
 | 3x | 83.4% | 29 |
 | Dimensional | 83.5% | 56 |
 
-LaserFuck is the outlier on score; Forbin, Basicfuck, Streetcode (98) and
-Suptiftam (93) carry the most survivors absolutely.
+Forbin, Basicfuck, Streetcode (98) and Suptiftam (93) carry the most
+survivors in absolute terms.
+
+LaserFuck has left this table.  It was the outlier at 66.7% / 82; the four
+commits ending at `0a5f42b` took it to 76.0% / 59, and categorising all 59
+of those survivors -- each run against the mutated bundle, so that every
+claim is executed rather than read off the source -- turned most of them
+into tests.  It now scores **91.1%, 22 survivors**, and what remains is
+close to the equivalent-mutant floor: a dead attribute (`self.pos`, written
+three times and read nowhere in the repository), flags only ever tested for
+truth, and identities that no input can distinguish -- `(d + 2) % 4` is
+`(d - 2) % 4`, and `rfind` is `find` on a string whose characters are
+unique.  Three real gaps are left open deliberately: the two-laser
+scheduler needs three simultaneous beams doing order-dependent work, and
+one command-set mutant can only be caught by a program that *hangs*, which
+is worse as a test than the gap it closes.
+
+Two cautions about the measurement itself, both learned here.  A survivor
+count is only trustworthy from a run with nothing else on the machine: the
+per-test alarm fails a slow-but-passing test and scores it as a kill, so a
+contended run reported 17 survivors where a solo run reports 22, the
+difference being five mutants that are provably equivalent.  And a grid
+containing `*` splits in a random direction, so any test built on one must
+be symmetric about the split -- an asymmetric arm passes most runs and
+fails the rest.
+
+Three findings there generalise:
+
+- **A default argument can hide a whole branch.**  Every test passed a
+  heading because the suite's helper took `heading: int = 3`, so the branch
+  that *draws* one at random was never executed -- not even by the test
+  named for it, which loops `range(4)` and passes each value explicitly
+  while its docstring says the grid "does not need to".  An edit making the
+  draw raise on every call survived.
+- **Widening a command literal is invisible without a test that uses a
+  non-command character.**  Six survivors were of the form `"-"` becoming
+  `"XX-XX"`.  The sharpest turned `"^v{}"` into a set containing `X`, after
+  which `find` returns `-1` -- and a beam heading `-1` still moves rightward
+  but answers the mirror guards backwards.
+- **Command coverage is not branch coverage, twice over.**  Mirrors were
+  only ever met head-on, and the pointer only ever moved at an edge, so the
+  guards that refuse and the moves that do not grow the tape were both
+  unexercised.
 
 Triage from the test file, not the diffs — six mechanical shapes recur
 (substring-matched `pytest.raises`, comment tests outside the command set,
