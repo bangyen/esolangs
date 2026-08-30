@@ -5,20 +5,19 @@
 There used to be a second construction, ``six_five_arithmetic``, which
 packed the inputs and the table into single cells and decoded the entry
 with ``f(x) = (T >> x) & 1``.  It existed because the unfolded tree spent
-one of 6-5's 35 branch labels per internal node and so capped at n == 5.
-Once the tree folded, the cap became a property of the *table* rather than
-of ``n``, and the arithmetic path was left unreachable: it needs ``T`` (or
-its complement) small enough to build, which confines the ones to low
-indices, which leaves the rest of the table constant -- exactly the shape
-that folds well inside the label budget.  No table was found that overflows
-the budget and still builds arithmetically, so the construction and its
-assembler were retired.
+one branch label per internal node against an alphabet believed to stop at
+35, and so capped at n == 5.  Once the tree folded, the cap became a
+property of the *table* rather than of ``n``, and the arithmetic path was
+left unreachable: it needs ``T`` (or its complement) small enough to build,
+which confines the ones to low indices, which leaves the rest of the table
+constant -- exactly the shape that folds well inside any budget.  The label
+ceiling has since been removed outright (see :func:`_label_for`), so the
+arithmetic path is redundant twice over and stays retired.
 """
 
-from contextlib import suppress
 from itertools import permutations
-from math import factorial
 
+from esolangs.interpreters.tape_based.six_five import num
 from esolangs.tools.boolean.helpers import (
     _ASCII_ZERO,
     _ORDER_SEARCH_MAX,
@@ -27,9 +26,58 @@ from esolangs.tools.boolean.helpers import (
     permute_truth_table,
     stored_inputs,
 )
-from esolangs.tools.transpilers import _six_five_label
 
 __all__ = ["six_five"]
+
+
+def _label_for(ordinal: int) -> str | None:
+    """Return the character 6-5 reads as ``ordinal`` in a ``7n``/``8n`` operand.
+
+    The interpreter decodes an operand with
+    :func:`~esolangs.interpreters.tape_based.six_five.num`, which is
+    ``int(c)`` for a digit and ``ord(c.upper()) - 55`` otherwise -- so the
+    operand alphabet is *not* the 36 characters ``0..9A..Z``.  Any character
+    at all is a legal operand (the tokenizer merges whatever follows a
+    ``7``/``8`` without inspecting it), and ``chr(ordinal + 55)`` names every
+    ordinal whose character is not case-folded onto a smaller one.
+
+    Returns ``None`` for an ordinal no single character can name -- the
+    ranges where ``chr(ordinal + 55)`` is lowercase, since ``.upper()``
+    aliases those down (``num("a") == 10``, not 42).  Those ordinals are
+    *skipped* rather than lost: a bare ``4`` is a no-op the marker scan
+    still counts, so padding walks past a dead ordinal at one character
+    each.  This is why the generator has no label ceiling.
+
+    The check is a round trip through the interpreter's own decoder rather
+    than a hand-kept table of live ranges, so it cannot drift from it.
+    """
+    if ordinal < 1:
+        return None
+    if ordinal < 10:
+        return str(ordinal)
+    char = chr(ordinal + 55)
+    # ``\n`` would be eaten by the comment-stripping regex; every other
+    # character survives tokenization untouched.
+    if char == "\n":
+        return None
+    try:
+        return char if num(char) == ordinal else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _next_label(ordinal: int) -> tuple[int, str]:
+    """Return the first ordinal at or after ``ordinal`` a character can name.
+
+    Returns that ordinal and its character.  The caller emits one inert
+    ``4`` per ordinal skipped, which is what walks the marker scan past the
+    dead ones.
+    """
+    while True:
+        char = _label_for(ordinal)
+        if char is not None:
+            return ordinal, char
+        ordinal += 1
 
 
 def _six_five_markers(table: str) -> int:
@@ -86,41 +134,39 @@ def six_five(truth_table: str) -> str:
     is 18.1% shorter, improving 186 and growing none, and 23.6% shorter over
     a sample at n == 4.
 
-    The branch labels are the digits 0..9 then A..Z (values 1..35, consumed
-    as ``8n`` operands), one per internal node the fold leaves standing.
-    An unfolded tree would therefore cap at n == 5 (31 internal nodes), but
-    since folding is what spends the labels, the choice is made by counting
-    them (:func:`_six_five_markers`) rather than by ``n``: any table whose
-    folded tree fits in 35 labels uses the tree, at any ``n``.
+    **There is no branch-label ceiling.**  A label is an ``8n`` operand
+    naming the n-th ``4`` in the program, and the interpreter decodes that
+    operand as ``ord(c.upper()) - 55`` for any character at all -- not as a
+    lookup in some 36-character alphabet.  ``0..9A..Z`` merely happens to
+    name ordinals 1..35; the punctuation immediately after ``Z`` names 36,
+    37, 38, and so on without end.  The only gaps are ordinals whose
+    character is lowercase, which ``.upper()`` folds down onto a smaller
+    value, and those are stepped over by an inert ``4`` apiece -- a bare
+    ``4`` is a no-op the marker scan still counts.  :func:`_label_for`
+    decides which is which by round-tripping through the interpreter's own
+    decoder, so **every table renders at every ``n``**; the label count only
+    sets the length.
 
-    **The budget is spent per input order**, so a table whose identity tree
-    overflows may fold inside it under some other order, and only a table
-    overflowing under *every* order is refused.  The worst case is therefore
-    the shape no renaming folds -- **parity**, which needs 63 labels under
-    all 720 orders because any permutation of parity is parity.  An
-    alternating table folds nothing in stream order but is only NOT of the
-    last input, so one reorder collapses it to a single label: a table that
-    merely looks scattered is not a refusal witness.  Every table is
-    renderable through n == 5 (the worst case spends 31), so the refusals
-    begin at n == 6, and a table refused under every order raises
-    :class:`ValueError`.
+    **The order search still runs, now purely for size.**  The count
+    (:func:`_six_five_markers`) is what the orders are compared on, since a
+    tree that folds harder is a shorter program.  Parity is the shape no
+    renaming folds -- 63 standing nodes at n == 6 under all 720 orders,
+    because any permutation of parity is parity -- so it is the longest
+    build rather than a refusal.  An alternating table folds nothing in
+    stream order but is only NOT of the last input, so one reorder collapses
+    it to a single label.
 
     **The order search is capped at ``_ORDER_SEARCH_MAX`` inputs**, the same
-    bound and the same greedy fallback ``best_input_order`` uses.  The cap
-    matters more here than there, because this generator does render past
-    n == 6 when a table folds hard: searching AND-8's 40320 orders takes
-    about 17 seconds against milliseconds for the greedy pick, and n == 9
-    would be half an hour.  Above the cap only the identity and the greedy
-    order are built, so a wide table stays fast and still never grows.
+    bound and the same greedy fallback ``best_input_order`` uses: searching
+    AND-8's 40320 orders takes about 17 seconds against milliseconds for the
+    greedy pick, and n == 9 would be half an hour.  Above the cap only the
+    identity and the greedy order are built, so a wide table stays fast and
+    still never grows.
     """
     n = _validate_truth_table(truth_table)
-    best = ""
     # The node-read build goes first and ties keep it, so a table no hoist
-    # and no reorder improves emits exactly what it emitted before.  It
-    # raises on a table whose identity tree overflows the budget, which is
-    # not a refusal of the *table* any more -- another order may still fit.
-    with suppress(ValueError):
-        best = _six_five_node_read(truth_table)
+    # and no reorder improves emits exactly what it emitted before.
+    best = _six_five_node_read(truth_table)
     identity = tuple(range(n))
     # The same cap ``best_input_order`` uses, for the same reason: ``n!``
     # builds of an ``O(2**n)`` program does not announce itself.  This
@@ -137,18 +183,8 @@ def six_five(truth_table: str) -> str:
             truth_table if perm == identity else permute_truth_table(truth_table, perm)
         )
         candidate = _six_five_hoisted(table, perm)
-        # An empty candidate means this order overflowed the label budget,
-        # so it is skipped rather than winning on length 0.
-        if candidate and (not best or len(candidate) < len(best)):
+        if len(candidate) < len(best):
             best = candidate
-    if not best:
-        searched = factorial(n) if n <= _ORDER_SEARCH_MAX else len(orders)
-        raise ValueError(
-            "the 6-5 decision tree has 35 branch labels, but this table needs "
-            f"{_six_five_markers(truth_table)} after folding its constant "
-            f"subtrees under every one of the {searched} input orders tried "
-            f"(n == {n})"
-        )
     return best
 
 
@@ -157,9 +193,9 @@ def _six_five_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
 
     ``truth_table`` is already permuted, so every row index here is in the
     permuted frame and self-consistent; ``perm`` surfaces only where a node
-    names the *stream* input it tests.  Returns ``""`` when this order's
-    folded tree overflows the 35-label budget, which is a signal to try
-    another order rather than a refusal of the table.
+    names the *stream* input it tests.  Every order builds -- there is no
+    label ceiling to overflow (see :func:`_label_for`) -- so the orders are
+    compared on length alone.
 
     **Only the inputs the tree branches on get a cell.**  The read contract
     asks that every input be *consumed*, not that every value be *kept*, so
@@ -169,10 +205,13 @@ def _six_five_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
     dependencies rather than one as wide as ``n``.
 
     **A stored read is normalized where it lands**, with the same eight
-    ``2``s the node-read build spends: ``7n`` decodes its operand through a
-    single character capped at 35, so a cell still holding 48/49 can never be
-    tested directly, and normalizing at read time is what lets every node
-    emit a plain ``78`` and every leaf inherit the 8/9 base arithmetic.
+    ``2``s the node-read build spends.  Testing a raw 48/49 cell is not an
+    option even with the operand range opened up: 48 and 49 are exactly the
+    ordinals ``g`` and ``h`` would name, and those are lowercase, so
+    ``.upper()`` aliases them down to 16 and 17 and no character reaches
+    them (:func:`_label_for` returns ``None`` for both).  Normalizing at read
+    time is therefore still what lets every node emit a plain ``78`` and
+    every leaf inherit the 8/9 base arithmetic.
 
     **A leaf prints from the cell it is standing on.**  It was reached by its
     parent's test, so the pointer is on that parent's cell and the value
@@ -184,8 +223,6 @@ def _six_five_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
     parent's cell.
     """
     n = _validate_truth_table(truth_table)
-    if _six_five_markers(truth_table) > 35:
-        return ""
     stored = stored_inputs(truth_table, perm)
     # Reads run in input order; only a stored input claims a cell, so the
     # kept bits occupy a contiguous block from cell 0 and every clobbered
@@ -234,12 +271,17 @@ def _six_five_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
         nav = _six_five_move(entry, cell)
         # A label is the index of this node's own ``4`` among every ``4`` in
         # the emitted string, so it is allocated *after* the left subtree --
-        # whose markers all precede it -- and before the right.
+        # whose markers all precede it -- and before the right.  When the
+        # next ordinal has no character, inert ``4``s pad up to one that
+        # does; they sit between ``sub0`` and this node's own ``4``, where
+        # they raise only this marker's ordinal and no earlier one, and
+        # where no path reaches them (every leaf in ``sub0`` ends ``A0``).
         sub0 = node(level + 1, lo, mid, cell, 8)
-        marker += 1
-        label = marker
+        label, char = _next_label(marker + 1)
+        pad = "4" * (label - marker - 1)
+        marker = label
         sub1 = node(level + 1, mid, hi, cell, 9)
-        return nav + "78" + "8" + _six_five_label(label) + sub0 + "4" + sub1
+        return nav + "78" + "8" + char + sub0 + pad + "4" + sub1
 
     return reads + node(0, 0, 2**n, pos, None)
 
@@ -282,15 +324,11 @@ def _six_five_node_read(truth_table: str) -> str:
     untouched, since every tree path works in cell 0 and every leaf halts --
     and builds the digit from zero there.
 
-    Raises :class:`ValueError` when the folded tree overflows the 35 labels.
+    Every table builds: labels are ``8n`` operands over an unbounded
+    character range, padded past the case-aliased gaps with inert ``4``s
+    exactly as in :func:`_six_five_hoisted`.
     """
     n = _validate_truth_table(truth_table)
-    labels = _six_five_markers(truth_table)
-    if labels > 35:
-        raise ValueError(
-            "the 6-5 decision tree has 35 branch labels, but this table needs "
-            f"{labels} after folding its constant subtrees (n == {n})"
-        )
     marker = 0
 
     def build(rows: list[int], bit: int, base: int) -> str:
@@ -316,10 +354,11 @@ def _six_five_node_read(truth_table: str) -> str:
         g0 = [r for r in rows if ((r >> (n - bit)) & 1) == 0]
         g1 = [r for r in rows if ((r >> (n - bit)) & 1) == 1]
         sub0 = build(g0, bit + 1, 8)
-        label = marker + 1
-        marker += 1
+        label, char = _next_label(marker + 1)
+        pad = "4" * (label - marker - 1)
+        marker = label
         sub1 = build(g1, bit + 1, 9)
-        return "B" + "2" * 8 + "78" + "8" + _six_five_label(label) + sub0 + "4" + sub1
+        return "B" + "2" * 8 + "78" + "8" + char + sub0 + pad + "4" + sub1
 
     return build(list(range(2**n)), 1, 0)
 
