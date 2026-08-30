@@ -98,15 +98,6 @@ _WINDOW = 2
 # after tens of thousands of chunks that cannot help.
 _TOKENS_PER_LEAF = 1024
 
-# How far the reach has to clear the 0-arm before a refusal to place is
-# treated as a contradiction rather than a node that needs another chunk.
-# Candidates differ in how long an arm they carry, so a gap barely under
-# zero can still leave every one of them short -- refusals were observed
-# down to -8.  None were observed at or below this, over the same 172452
-# nodes, which is what makes the loop terminate: outside the floor the gap
-# strictly descends, and inside it placement is forced.
-_PLACEMENT_FLOOR = 64
-
 # ``DIGEST PRONOUNCE EXCRETE LEAPFROG``: the fixed tail every leaf ends with,
 # which :func:`_zero_arm_length` has to account for without building one.
 _LEAF_TAIL = 4
@@ -297,8 +288,8 @@ def _subtree(
     # cannot outrun the finished program.  One past that describes a tree no
     # emission could have produced, and its gap is too large for any run of
     # chunks to close -- worth saying at once rather than after tens of
-    # thousands of them.  This is the only bound the loop needs beyond the
-    # two invariants below, and it is validation rather than termination.
+    # thousands of them.  This is validation rather than termination: what
+    # ends the loop is placing, or the convergence check below.
     if base > _TOKENS_PER_LEAF * 2**n:
         raise ValueError(
             f"the subtree at depth {depth}, row {row!r} starts at token {base}, "
@@ -309,21 +300,6 @@ def _subtree(
         gap = _placement_gap(table, n, depth, row, prefix, candidates, base)
         if spent:
             window.append(gap)
-
-        # Below the floor the reach clears the 0-arm by more than the spread
-        # between candidates, so some candidate must fit and a refusal means
-        # the arm's length and the landing disagree beyond what the formulas
-        # allow.  Measured over every node of every table through n == 3
-        # (172452 nodes), no iteration below -_PLACEMENT_FLOOR ever failed
-        # to place, while refusals do occur down to -8.
-        if gap <= -_PLACEMENT_FLOOR:
-            placed = _place(table, n, depth, row, prefix, candidates, base)
-            if placed is None:
-                raise ValueError(
-                    f"the reach cleared the 0-arm by {-gap} at depth {depth}, "
-                    f"row {row!r}, and no candidate still fit"
-                )
-            return placed
 
         # A chunk buys ~255 tokens of reach against the layout it adds, but
         # the layout outruns the reach on the *first* chunk, and thereafter
