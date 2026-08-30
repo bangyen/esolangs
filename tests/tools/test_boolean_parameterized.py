@@ -2308,11 +2308,16 @@ class TestParameterizedMinifuck:
 
         They replaced a breadth-first search, so the property that matters
         is coverage: wherever the search would have found a pool, the list
-        must too.  Two of the codes cover all 117 planned stagings between
-        them, which makes trimming look safe -- it is not.  The degenerate
-        and reconverged routes reach the endgame from states the plans never
-        produce, and three two-input tables lose their pool if the list is
-        cut to those two.  So this checks the routes, not the plans.
+        must too.  This builds through the public entry point precisely
+        because the routes differ -- the degenerate and reconverged ones
+        reach the endgame from states the staged route never produces, and
+        six of the ten codes answer only those.
+
+        It deliberately does not assert that each code is necessary.
+        Measured, none of them is: every one can be dropped alone and every
+        table at both arities still builds, because the codes overlap and
+        the acceptance test decides each call.  So coverage of the routes is
+        the real property, and minimality is not one to pin.
         """
         import importlib
 
