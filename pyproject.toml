@@ -168,12 +168,16 @@ addopts = [
     "--strict-config",
     "--verbose",
     "--tb=short",
-    # Two workers.  Measured on the fast run ("-m 'not slow'"), the first two
-    # workers do nearly all the work -- 94s serial, 50.7s at 2, 45.8s at 4 --
-    # so the third and fourth buy 5s while claiming twice the machine.
-    # Override per-run with "-n 4", "-n auto", or "-n 0" on the command line.
+    # Four workers.  Re-measured on the fast run ("-m 'not slow'") on a
+    # 10-core machine (8 performance): 33.4s serial, 23.3s at 2, 13.8s at 4,
+    # 13.1s at 6, 15.4s at 8.  The suite has grown broader and shorter-tailed
+    # than when this was set to 2 -- no single test dominates, so the work
+    # divides -- and the curve is flat past 4 and turns back up at 8, where
+    # the workers outnumber the performance cores.  Four takes nearly all the
+    # available speedup while leaving cores free.
+    # Override per-run with "-n auto", "-n 2", or "-n 0" on the command line.
     "-n",
-    "2",
+    "4",
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
