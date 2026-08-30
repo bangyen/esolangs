@@ -2331,6 +2331,49 @@ class TestParameterizedMinifuck:
             table = format(table_int, "04b")
             assert module.minifuck.__wrapped__(table), table
 
+    def test_the_pool_mirrors_are_derived_not_written_down(self) -> None:
+        """The ``cell7 == 1`` pool codes come from the setters plus a flip.
+
+        Each pool code serves exactly one orientation, and they pair up: a
+        code answers a state at ``cell7 == 0`` exactly where its partner
+        answers the same state at ``cell7 == 1``.  Mechanically that mirror
+        is only "flip cell 7", so the second half of the list is generated
+        rather than stored -- five setters and two flips in place of ten
+        strings.
+
+        This pins the generation, and pins that it still contains what the
+        ten strings did: the four codes that used to be written out as
+        mirrors are all reachable, and every candidate is longer than the
+        setter it came from (so shortest-first ordering still puts the plain
+        setters first).
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        setters = module._POOL_SETTERS  # noqa: SLF001
+        flips = module._POOL_FLIPS  # noqa: SLF001
+        codes = module._POOL_CODES  # noqa: SLF001
+
+        assert len(setters) == 5, setters
+        assert len(flips) == 2, flips
+        # Every setter appears as-is, and every setter+flip does too.
+        for setter in setters:
+            assert setter in codes, setter
+            for flip in flips:
+                assert setter + flip in codes, (setter, flip)
+        # Shortest first, so the plain setters are tried before the mirrors.
+        assert list(codes) == sorted(codes, key=len), codes
+        # The four mirrors that were previously written out by hand are
+        # exactly the ones the two flips reproduce.
+        for was_stored in (
+            "[<[[[<[<[<" + "[[[[<",
+            "[<[<[[[<[<[<" + "[[[[<",
+            "[<<[<[<[[[<[<" + "[[[[[[<",
+            "[<[<[<<[[[<[[<<<" + "[[[[[[<",
+        ):
+            assert was_stored in codes, was_stored
+
     def test_the_degenerate_cells_are_where_they_were_written_down(self) -> None:
         """Measuring the embed reproduces the six cells that used to be stored.
 
