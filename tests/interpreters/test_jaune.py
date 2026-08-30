@@ -5,6 +5,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.jaune import run
+from tests.interpreters.contract import SnapshotContract
 
 
 def run_program(code: str, stdin: str = "") -> str:
@@ -175,11 +176,16 @@ class TestMachine:
         assert machine.halted
         machine.step()  # must not raise
 
-    def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
-        from esolangs.interpreters.tape_based.jaune import _Machine
 
-        machine = _Machine("6+5+^.", ScriptedIO())
-        before = machine.snapshot()
-        hash(before)  # must not raise
-        machine.step()
-        assert machine.snapshot() != before
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.jaune import _Machine
+
+    return _Machine(code, ScriptedIO())
+
+
+class TestContract(SnapshotContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    stepping_program = "6+5+^."

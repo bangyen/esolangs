@@ -10,6 +10,7 @@ import pytest
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.bio import run
+from tests.interpreters.contract import CycleContract, SnapshotContract
 
 
 class TestBIOBasicCommands:
@@ -298,19 +299,6 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 4
 
-    def test_snapshot_is_hashable(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.bio import _Machine
-
-        assert hash(_Machine("0ox;", ScriptedIO()).snapshot()) is not None
-
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.bio import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine("0ox;1ix;", ScriptedIO())) is True
-
     def test_nonterminating_loop_is_detected_as_a_cycle(self) -> None:
         """A loop whose body never changes a register revisits a snapshot."""
         from esolangs.interpreters.io import ScriptedIO
@@ -320,6 +308,22 @@ class TestStepMachine:
         assert (
             run_until_halt_or_cycle(_Machine("0ox;0ix{0ix{};};", ScriptedIO())) is False
         )
+
+
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.register_based.bio import _Machine
+
+    return _Machine(code, ScriptedIO())
+
+
+class TestContract(SnapshotContract, CycleContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    stepping_program = "0ox;"
+    halting_program = "0ox;1ix;"
+    looping_program = "0ox;0ix{0ix{};};"
 
 
 if __name__ == "__main__":

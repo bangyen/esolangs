@@ -2,10 +2,12 @@
 
 import io
 from contextlib import redirect_stdout
+from typing import ClassVar
 from unittest.mock import patch
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.tape_based.brainif import run
+from tests.interpreters.contract import CycleContract
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
@@ -166,13 +168,6 @@ class TestStepMachine:
         assert machine.cells == [ord("A")]
         assert machine.io.position() == 1
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.brainif import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine(["if 0 output"], ScriptedIO())) is True
-
     def test_goto_loop_is_detected_as_a_cycle(self) -> None:
         """A goto back to itself with the cell unchanged loops forever."""
         from esolangs.interpreters.io import ScriptedIO
@@ -199,3 +194,18 @@ def test_a_blank_line_is_skipped() -> None:
     """
     assert run_and_capture(["if 0 increment", "", "if 1 output"]) == "\x01"
     assert run_and_capture(["if 0 increment", "", "   ", "if 1 output"]) == "\x01"
+
+
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.brainif import _Machine
+
+    return _Machine(code, ScriptedIO())
+
+
+class TestContract(CycleContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    halting_program: ClassVar[list[str]] = ["if 0 output"]
+    looping_program: ClassVar[list[str]] = ["if 0 goto 1"]

@@ -9,6 +9,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.stack_based.bfstack import run
+from tests.interpreters.contract import CycleContract
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
@@ -131,17 +132,17 @@ class TestStepMachine:
         assert machine.snapshot() != before
         assert machine.io.position() == 1
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.stack_based.bfstack import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
 
-        assert run_until_halt_or_cycle(_Machine(">+.", ScriptedIO())) is True
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.stack_based.bfstack import _Machine
 
-    def test_loop_is_detected_as_a_cycle(self) -> None:
-        """A [ loop whose top never zeroes spins forever."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.stack_based.bfstack import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+    return _Machine(code, ScriptedIO())
 
-        assert run_until_halt_or_cycle(_Machine(">+[]", ScriptedIO())) is False
+
+class TestContract(CycleContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    halting_program = ">+."
+    looping_program = ">+[]"
