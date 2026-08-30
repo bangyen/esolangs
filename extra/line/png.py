@@ -4,14 +4,12 @@ Images are passed as one ``bytearray`` of greyscale levels per row -- the
 same shape ``render.Canvas`` keeps its pixels in, and what
 ``mask.from_grey`` thresholds into an ink mask.
 
-Only what ``extract.py`` and ``render.py`` actually exchange is supported:
-non-interlaced images that are 1/2/4/8-bit greyscale or palette-indexed on
-the way in, and 8-bit greyscale on the way out.  That covers the wiki
-reference images checked in under ``fixtures/`` (1-bit palette, black and
-white) and everything :func:`render.render` produces.  Anything else --
-interlaced, 16-bit, truecolour, an alpha channel -- raises rather than
-guessing, since a Line drawing that arrives in one of those formats is far
-more likely to be a mistake than something worth silently accepting.
+Reading accepts any non-interlaced PNG at 1/2/4/8 bits per channel --
+greyscale, palette, truecolour, with or without alpha -- reduced to
+greyscale on the way in; writing always emits 8-bit greyscale.  Colour
+support matters because a Line drawing that has been through an image
+editor typically comes back as RGB even though it is visually black and
+white.  Interlaced and 16-bit images raise rather than being guessed at.
 
 The point is not to be a general codec.  PNG's container is a handful of
 length-tagged chunks and its compression is plain zlib, both in the standard
@@ -38,6 +36,10 @@ _PALETTE = 3
 _GREY_ALPHA = 4
 _RGBA = 6
 
+# Samples per pixel for each colour type.  Palette images store one index per
+# pixel; the PLTE lookup turns that into colour later.
+_CHANNELS = {_GREY: 1, _RGB: 3, _PALETTE: 1, _GREY_ALPHA: 2, _RGBA: 4}
+
 _COLOUR_NAMES = {
     _GREY: "greyscale",
     _RGB: "truecolour",
@@ -45,6 +47,17 @@ _COLOUR_NAMES = {
     _GREY_ALPHA: "greyscale+alpha",
     _RGBA: "truecolour+alpha",
 }
+
+
+def _luma(red: int, green: int, blue: int) -> int:
+    """Reduce a colour to grey with ITU-R 601-2 weights, as Pillow does.
+
+    Pillow's ``convert("L")`` uses this exact fixed-point form rather than a
+    float or a floor-divided decimal; the ``+ 0x8000`` rounds to nearest.
+    Cheaper formulas agree on pure black and white but differ by one level on
+    mid-greys, which is enough to flip a pixel across the ink threshold.
+    """
+    return (red * 19595 + green * 38470 + blue * 7471 + 0x8000) >> 16
 
 
 def _chunks(data: bytes) -> Iterator[tuple[bytes, bytes]]:
@@ -171,21 +184,25 @@ def read_grey(data: bytes) -> list[bytearray]:
         raise ValueError("unsupported PNG compression or filter method")
     if interlace != 0:
         raise ValueError("interlaced PNGs are not supported")
-    if colour not in (_GREY, _PALETTE):
+    if colour not in _CHANNELS:
         raise ValueError(
             f"unsupported PNG colour type {colour} "
-            f"({_COLOUR_NAMES.get(colour, 'unknown')}); "
-            "only greyscale and palette images are supported"
+            f"({_COLOUR_NAMES.get(colour, 'unknown')})"
         )
     if depth not in (1, 2, 4, 8):
         raise ValueError(f"unsupported PNG bit depth {depth}")
 
-    stride = (width * depth + 7) // 8
-    raw = _unfilter(zlib.decompress(bytes(idat)), height, stride, step=1)
+    channels = _CHANNELS[colour]
+    if channels > 1 and depth != 8:
+        # Sub-byte samples only occur in single-channel images per the spec.
+        raise ValueError(f"unsupported PNG bit depth {depth} for {channels} channels")
+
+    stride = (width * channels * depth + 7) // 8
+    # The filter predictor looks one *pixel* to the left, which is `channels`
+    # bytes away once a pixel spans more than one.
+    raw = _unfilter(zlib.decompress(bytes(idat)), height, stride, step=channels)
     if depth == 8:
-        samples = [
-            bytearray(raw[y * stride : y * stride + width]) for y in range(height)
-        ]
+        samples = [bytearray(raw[y * stride : (y + 1) * stride]) for y in range(height)]
     else:
         samples = _unpack_bits(raw, height, width, stride, depth)
 
@@ -193,21 +210,29 @@ def read_grey(data: bytes) -> list[bytearray]:
         if palette is None:
             raise ValueError("palette PNG has no PLTE chunk")
         entries = [palette[i : i + 3] for i in range(0, len(palette), 3)]
-        # ITU-R 601-2 luma, matching Pillow's RGB -> L conversion.  Padded out
-        # to a full 256 entries because that is what bytes.translate wants; a
-        # sample indexing past the palette is a malformed file, and mapping it
-        # to black is as good as any other answer for one.
-        luma = bytes(
-            (red * 299 + green * 587 + blue * 114) // 1000
-            for red, green, blue in entries
-        ).ljust(256, b"\x00")
-        return [row.translate(luma) for row in samples]
+        # Padded out to a full 256 entries because that is what bytes.translate
+        # wants; a sample indexing past the palette is a malformed file, and
+        # mapping it to black is as good as any other answer for one.
+        table = bytes(_luma(*entry) for entry in entries).ljust(256, b"\x00")
+        return [row.translate(table) for row in samples]
+    if colour in (_RGB, _RGBA):
+        # Alpha is dropped rather than composited, matching Pillow's
+        # convert("L"): a Line drawing's transparency is not ink.
+        return [
+            bytearray(
+                _luma(row[i], row[i + 1], row[i + 2])
+                for i in range(0, width * channels, channels)
+            )
+            for row in samples
+        ]
+    if colour == _GREY_ALPHA:
+        return [bytearray(row[0 : width * 2 : 2]) for row in samples]
     if depth != 8:
         # Scale a narrow greyscale range up to full 0-255 (1-bit 1 -> 255).
         factor = 255 // ((1 << depth) - 1)
         scale = bytes((value * factor) & 0xFF for value in range(256))
         return [row.translate(scale) for row in samples]
-    return samples
+    return [row[:width] for row in samples]
 
 
 def write_grey(pixels: list[bytearray]) -> bytes:

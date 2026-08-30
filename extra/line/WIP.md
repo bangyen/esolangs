@@ -23,8 +23,8 @@ exercises `render.py`'s loop-drawing geometry (`_layout`/
 `_loop_return_legs`) at all -- see the nested-loop entry below for why that
 distinction matters. `test_png.py` covers `png.py`, the stdlib PNG codec
 that replaced Pillow: the checked-in fixtures against the values Pillow
-decoded them to, round-trips, every row filter, the sub-byte depths, and
-the rejections; `test_mask.py` covers `mask.py`'s row-bitmask image type,
+decoded them to, round-trips, every row filter, the sub-byte depths, the
+colour types, and the rejections; `test_mask.py` covers `mask.py`'s row-bitmask image type,
 concentrating on the two things that representation makes easy to get
 wrong -- unbounded Python ints leaking bits past the canvas width, and the
 edge cases in the bit-twiddling shortcuts. Run any of them with `uv run --with pytest
@@ -756,9 +756,13 @@ round-trip check for `extract()` alone.
   still well inside `_FILL_RATIO_RANGE`). The full reasoning is in a
   comment block in `extract.py` just above the imports.
 
-  Two deliberate narrowings: only PNG is readable now (Pillow's other
-  formats were never used), and only non-interlaced greyscale/palette PNGs
-  at 1/2/4/8 bits -- anything else raises rather than guessing.
+  One deliberate narrowing: only PNG is readable now (Pillow's other formats
+  were never used here). Every PNG colour type is accepted -- greyscale,
+  palette, truecolour, with or without alpha, at 1/2/4/8 bits -- because a
+  drawing that has been through an image editor typically comes back as RGB
+  even when it is visually black and white; `png.py`'s greyscale reduction
+  is byte-identical to Pillow's `convert("L")` on all of them. Interlaced
+  and 16-bit images raise rather than being guessed at.
 
   One visible change: `crop_to_content` now returns an exact bounding box
   where the quadtree returned one padded out to 64px leaf boundaries, so

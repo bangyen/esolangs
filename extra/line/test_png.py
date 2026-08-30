@@ -10,8 +10,9 @@ Pillow produced when the swap was made, recorded as constants.
 
 Beyond that: every row filter the spec defines (the fixtures between them
 use 0/1/2/4, but a PNG this reads could legitimately use 3), the sub-byte
-bit depths, and the rejections -- an unsupported format must raise rather
-than decode something plausible-looking but wrong.
+bit depths, the colour types (a drawing that has been through an image
+editor comes back as RGB), and the rejections -- an unsupported format must
+raise rather than decode something plausible-looking but wrong.
 """
 
 from __future__ import annotations
@@ -185,6 +186,64 @@ def test_palette_is_resolved_through_plte() -> None:
     assert png.read_grey(blob) == [bytearray([255, 0])]
 
 
+@pytest.mark.parametrize(
+    ("colour", "pixel", "expected"),
+    [
+        # Luma weights are ITU-R 601-2, rounded to nearest as Pillow rounds:
+        # (r*19595 + g*38470 + b*7471 + 0x8000) >> 16.
+        (png._RGB, [255, 0, 0], 76),  # noqa: SLF001
+        (png._RGB, [0, 255, 0], 150),  # noqa: SLF001
+        (png._RGB, [0, 0, 255], 29),  # noqa: SLF001
+        (png._RGB, [170, 85, 42], 106),  # noqa: SLF001
+        # Alpha is dropped, not composited -- the colour reads the same
+        # whatever the alpha channel says.
+        (png._RGBA, [255, 0, 0, 0], 76),  # noqa: SLF001
+        (png._RGBA, [255, 0, 0, 255], 76),  # noqa: SLF001
+        (png._GREY_ALPHA, [200, 0], 200),  # noqa: SLF001
+        (png._GREY_ALPHA, [200, 255], 200),  # noqa: SLF001
+    ],
+)
+def test_colour_types_reduce_to_grey_as_pillow_does(
+    colour: int, pixel: list[int], expected: int
+) -> None:
+    """Colour and alpha images reduce to the grey level Pillow produces.
+
+    A Line drawing opened and re-saved in an image editor typically comes
+    back as RGB even though it is visually black and white, so refusing
+    colour would refuse a file the user reasonably considers the same
+    drawing.  The expected values here were taken from Pillow's own
+    ``convert("L")`` output.
+    """
+    blob = _encode([bytes([0, *pixel])], 1, 1, colour=colour)
+    assert png.read_grey(blob) == [bytearray([expected])]
+
+
+def test_multi_channel_filters_step_by_a_whole_pixel() -> None:
+    """A colour row's Sub filter predicts from the pixel left, not the byte.
+
+    With 3 bytes per pixel the predictor looks back 3 bytes; using 1 would
+    decode a plausible-looking but wrong image rather than failing loudly.
+    """
+    want = [(10, 20, 30), (40, 60, 90), (200, 130, 70)]
+    row = bytearray([1])  # filter type: Sub
+    for i, (red, green, blue) in enumerate(want):
+        prev = want[i - 1] if i else (0, 0, 0)
+        row += bytes(
+            (channel - prev[j]) & 0xFF for j, channel in enumerate((red, green, blue))
+        )
+    blob = _encode([bytes(row)], 3, 1, colour=png._RGB)  # noqa: SLF001
+    expected = bytearray(
+        (r * 19595 + g * 38470 + b * 7471 + 0x8000) >> 16 for r, g, b in want
+    )
+    assert png.read_grey(blob) == [expected]
+
+
+def test_rejects_sub_byte_depth_on_a_colour_image() -> None:
+    """Sub-byte samples are single-channel only, per the spec."""
+    with pytest.raises(ValueError, match="bit depth"):
+        png.read_grey(_encode([bytes([0, 0])], 1, 1, depth=4, colour=png._RGB))  # noqa: SLF001
+
+
 def test_rejects_a_non_png() -> None:
     """Bytes that are not a PNG at all are refused up front."""
     with pytest.raises(ValueError, match="signature"):
@@ -199,10 +258,10 @@ def test_rejects_interlaced() -> None:
         png.read_grey(bytes(blob))
 
 
-def test_rejects_truecolour_by_name() -> None:
-    """An unsupported colour type is named in the error, not just numbered."""
-    with pytest.raises(ValueError, match="truecolour"):
-        png.read_grey(_encode([bytes([0, 0])], 1, 1, colour=png._RGB))  # noqa: SLF001
+def test_rejects_an_unknown_colour_type_by_number() -> None:
+    """A colour type outside the spec is refused rather than guessed at."""
+    with pytest.raises(ValueError, match="colour type 5"):
+        png.read_grey(_encode([bytes([0, 0])], 1, 1, colour=5))
 
 
 def test_rejects_an_unknown_row_filter() -> None:
