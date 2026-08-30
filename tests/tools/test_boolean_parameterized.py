@@ -2841,11 +2841,14 @@ class TestParameterizedPctSquaredMinusOne:
             for row in range(8):
                 bits = [(row >> (2 - k)) & 1 for k in range(3)]
                 assert self.run_pct(self.instantiate(template, bits)) == table[row]
-        # The subcubes on three inputs and their complements, counted once
-        # each: 48 of the 256 tables, against the 2 the single-minterm family
-        # alone would reach.  Pinned as a number so a coverage regression in
-        # the acceptor is caught rather than passing quietly.
-        assert built == 48
+        # The count is exactly ``2 * 3**n - 2*n``.  There are ``3**n``
+        # subcubes (each input is pinned to 0, pinned to 1, or free), and as
+        # many complements; the overlap is precisely the ``2*n`` single-literal
+        # tables, the only subcubes whose complement is also a subcube.  The
+        # constant tables do not double-count, because :func:`_subcube_of`
+        # rejects an empty ON-set.  Pinned so a regression in the acceptor is
+        # caught rather than passing quietly.
+        assert built == 2 * 3**3 - 2 * 3 == 48
 
     def test_non_subcube_table_refused_not_miscomputed(self) -> None:
         """A table the cascade cannot build is refused rather than served wrong.
