@@ -12,9 +12,12 @@ linear solve whatever its shape.
 The construction
 ----------------
 
-* **The pool** (cells 0..7) is written first, as the constant ``00110000``.
-  Cells 0..6 spell the fixed part of an ASCII digit and cell 7 carries the
-  answer, so the printed byte is ``'0'`` (48) or ``'1'`` (49).
+* **The pool** (cells 0..7) is written first, as an ASCII digit with cell 7
+  carrying the answer, so the printed byte is ``'0'`` (48) or ``'1'`` (49).
+  Two spellings are kept, differing only in cell 7, because they print the
+  two landing cells the opposite way round -- and a truth table and its
+  complement want opposite arrangements.  Carrying both means the schedule
+  may come out either way up.
 * **The region** follows: a constant pattern written rightward, then one
   crossing per input.  Input ``k``'s ``{Xk}`` setter is emitted at an entry
   cell, and the entries strictly descend so each setter lands on a cell no
@@ -66,14 +69,33 @@ from esolangs.tools.boolean.minifuck import _set_bit, _Sim
 
 __all__ = ["minifuck_closed"]
 
-# The pool spells ASCII '0' (0b00110000); cell 7 carries the answer, so
-# cells 1..6 are written as this constant and cell 0 is left zero.
-_POOL_BITS = (0, 1, 1, 0, 0, 0)
+# The pool, written into cells 1..7 (cell 0 is never written).  Two
+# spellings, differing only in cell 7, and the difference is what lets a
+# schedule of either orientation be printed.
+#
+# With cell 7 clear the pool spells '0' and a row on cell 6 flips cell 7 to
+# spell '1', so the *one* class must land low:
+#
+#     cell 5 -> '3'   cell 6 -> '1'   cell 7 -> '0'   cell 8 -> '0'
+#
+# With cell 7 already set the mapping reverses -- cell 6 clears it back to
+# '0', cell 7 flips cell 8 outside the pool and leaves '1' -- so the one
+# class must land high:
+#
+#     cell 6 -> '0'   cell 7 -> '1'
+#
+# A truth table and its complement want opposite arrangements, and the
+# planner's reads reach one of the two; carrying both pools means it does
+# not matter which.  Sweeping every pool constant and both landings, these
+# are the only two that print a clean '0'/'1' pair.
+_POOL_ZERO_LOW = (0, 1, 1, 0, 0, 0, 0)
+_POOL_ZERO_HIGH = (0, 1, 1, 0, 0, 0, 1)
 
-# Where the two answer classes must land.  A row on cell 6 has its ``[x``
-# write cell 7 and prints '1'; a row on cell 7 writes cell 8 and prints '0'.
-_LAND_ONE = 6
-_LAND_ZERO = 7
+# Where the two classes land.  Which of the two is the *one* class depends
+# on the pool: with ``_POOL_ZERO_LOW`` it is the lower cell, with
+# ``_POOL_ZERO_HIGH`` the upper.
+_LAND_LOW = 6
+_LAND_HIGH = 7
 
 # The gadgets :func:`_write_pattern` picks from.  Each advances the pointer
 # exactly one cell and leaves a chosen bit behind; which one applies depends
@@ -150,17 +172,27 @@ class _Joint:
         return "".join(self.parts)
 
 
-def _region(n: int, pattern: list[int], size: int = 400_000) -> tuple | None:
+def _region(
+    n: int,
+    pattern: list[int],
+    pool: tuple[int, ...] = _POOL_ZERO_LOW,
+    size: int = 400_000,
+) -> tuple | None:
     """Write the pool, then the region, then cross it once per input.
 
     Returns ``(joint, lo, hi)`` for the region's cell range, or None if any
     stage leaves the rows' pointers diverged -- which is a bug in the
     caller's sizing rather than a table this cannot build, so the caller
     treats None as fatal.
+
+    ``pool`` selects which digit each landing cell prints; see the two
+    ``_POOL_*`` constants.  It shifts the whole region one cell right (it is
+    a seven-bit write rather than six), which is why the model and the
+    schedule must be built with the same pool.
     """
     joint = _Joint(n, size)
     scratch = joint.ms[0].copy()
-    joint.emit(_write_pattern(scratch, list(_POOL_BITS)))
+    joint.emit(_write_pattern(scratch, list(pool)))
     joint.emit("[x" * 4)
     start = joint.ptr()
 
@@ -184,7 +216,9 @@ def _region(n: int, pattern: list[int], size: int = 400_000) -> tuple | None:
     return joint, start + 1, right
 
 
-def _model(n: int, width: int) -> tuple | None:
+def _model(
+    n: int, width: int, pool: tuple[int, ...] = _POOL_ZERO_LOW
+) -> tuple | None:
     """Measure the region as an affine map of its pattern bits.
 
     Returns ``(base, deltas, span)``: the tape each cell holds under the
@@ -193,7 +227,7 @@ def _model(n: int, width: int) -> tuple | None:
     what lets :func:`_solve` answer by elimination instead of by trying
     patterns.
     """
-    built = _region(n, [0] * width)
+    built = _region(n, [0] * width, pool)
     if built is None:
         return None
     joint, lo, hi = built
@@ -204,7 +238,7 @@ def _model(n: int, width: int) -> tuple | None:
     for bit in range(width):
         pattern = [0] * width
         pattern[bit] = 1
-        flipped = _region(n, pattern)
+        flipped = _region(n, pattern, pool)
         if flipped is None or flipped[1] != lo or flipped[2] != hi:
             deltas.append(None)
             continue
@@ -298,7 +332,7 @@ def _gap_for(n: int) -> int:
 
 def _plan(
     n: int, table: list[int], reachable: dict, start: int, gap: int, depth: int
-) -> list | None:
+) -> tuple[list, int] | None:
     """Choose the reads, by walking the achievable moves.
 
     At each step the rows occupy known cells, and each occupied cell offers
@@ -319,9 +353,8 @@ def _plan(
     classes would need the walk to land the one class below the zero one,
     which the pool geometry does not allow.
 
-    The floor is ``_LAND_ONE + 1`` rather than ``_LAND_ZERO + 1``: the rows
-    may stop one cell lower than the old bound allowed, since only the one
-    class needs to reach 6.
+    Returns ``(history, upper)`` where ``upper`` names the class that came
+    out on top; the caller uses it to choose the pool.
     """
     rows = 2**n
     initial = tuple(start for _ in range(rows))
@@ -335,13 +368,12 @@ def _plan(
         if len(by_class) == 2 and all(len(v) == 1 for v in by_class.values()):
             zero = min(by_class[0])
             one = min(by_class[1])
-            # The one class must land on cell 6 and the zero class above it.
-            # Cells 7 and 8 both print '0' (a row past the pool writes cell 8
-            # and leaves the pool alone), but a row *below* 6 writes cell 6
-            # and spells a different byte -- so the zero class has slack above
-            # and none below, which fixes the orientation to zero-above-one.
-            if zero - one == 1 and one >= _LAND_ONE + 1:
-                return history
+            # Either arrangement will do, because there are two pools: with
+            # the zero class on top the low pool prints it, and with the one
+            # class on top the high pool does.  Return which way round it
+            # came out so the caller can pick the matching pool.
+            if abs(zero - one) == 1 and min(zero, one) >= _LAND_LOW + 1:
+                return history, (0 if zero > one else 1)
         if len(history) >= depth:
             continue
 
@@ -357,7 +389,7 @@ def _plan(
                 positions[r] + 1 - gap + picked[positions[r] + 1][r]
                 for r in range(rows)
             )
-            if min(moved) <= _LAND_ZERO + 1 or moved in seen:
+            if min(moved) <= _LAND_HIGH + 1 or moved in seen:
                 continue
             seen.add(moved)
             queue.append((moved, [*history, (positions, picked)]))
@@ -371,7 +403,10 @@ def _width_for(n: int, depth: int) -> int:
     return depth * _gap_for(n) + 8 * 2**n + 40
 
 
-def _constant(n: int, table: list[int], width: int) -> str:
+def _constant(
+    n: int, table: list[int], width: int,
+    pool: tuple[int, ...] = _POOL_ZERO_LOW,
+) -> str:
     """Build a table that ignores its inputs.
 
     The crossings leave the rows converged, so a constant needs no reads at
@@ -379,12 +414,12 @@ def _constant(n: int, table: list[int], width: int) -> str:
     print.  The ``{Xi}`` are still emitted -- the harness has a bit for each
     -- and by then they cannot affect the answer.
     """
-    built = _region(n, [0] * width)
+    built = _region(n, [0] * width, pool)
     if built is None:  # pragma: no cover - sizing is fixed by the caller
         raise ValueError("region build failed")
     joint = built[0]
-    land = _LAND_ONE if table[0] == 1 else _LAND_ZERO
-    joint.emit("<" * (joint.ptr() - land))
+    # With the low pool cell 6 prints '1' and cell 7 prints '0'.
+    joint.emit("<" * (joint.ptr() - (_LAND_LOW if table[0] == 1 else _LAND_HIGH)))
     joint.emit("[x.")
     return joint.template()
 
@@ -417,11 +452,22 @@ def minifuck_closed(truth_table: str, depth: int = 5) -> str:
     base, deltas, span = measured
     reachable = _cosets(base, deltas, n, span)
     gap = _gap_for(n)
-    history = _plan(n, table, reachable, span[1] - 1, gap, depth)
-    if history is None:
+    planned = _plan(n, table, reachable, span[1] - 1, gap, depth)
+    if planned is None:
         raise ValueError(
             f"no closed-form schedule for {truth_table!r} at depth {depth}"
         )
+    history, upper = planned
+    # The pool suits the arrangement the reads reached: whichever class ends
+    # up on top, the pool that prints it correctly is the one written.
+    #
+    # One model serves both.  The pools differ only in cell 7, which lies
+    # before the region and is never crossed again, so the region's cells --
+    # and hence the affine model and every constraint drawn from it -- come
+    # out identical either way.  Measured, not assumed: the two models are
+    # equal cell for cell, and the rebuild below re-checks that the region
+    # did not move.
+    pool = _POOL_ZERO_LOW if upper == 0 else _POOL_ZERO_HIGH
 
     constraints = {}
     for positions, picked in history:
@@ -434,10 +480,12 @@ def minifuck_closed(truth_table: str, depth: int = 5) -> str:
     if pattern is None:
         raise ValueError(f"constraints for {truth_table!r} are inconsistent")
 
-    built = _region(n, pattern)
+    built = _region(n, pattern, pool)
     if built is None:  # pragma: no cover - the zero pattern already built
         raise ValueError("region rebuild failed")
-    joint = built[0]
+    joint, rebuilt_lo, rebuilt_hi = built
+    if (rebuilt_lo, rebuilt_hi) != span:
+        raise ValueError(f"pool {pool} moved the region: {(rebuilt_lo, rebuilt_hi)}")
     joint.emit("<" * (joint.ptr() - (span[1] - 1)))
     for _ in history:
         joint.emit("[" + "<" * gap)
@@ -447,12 +495,12 @@ def minifuck_closed(truth_table: str, depth: int = 5) -> str:
         by_class.setdefault(table[r], set()).add(joint.ms[r].ptr)
     if len(by_class) != 2 or any(len(v) != 1 for v in by_class.values()):
         raise ValueError(f"{truth_table!r} did not separate: {by_class}")
-    # A row on cell 6 writes cell 7 and leaves the pool spelling '1'; a row
-    # on 7 writes cell 8, outside the pool, and spells '0'.  Only the one
-    # class needs an exact landing, so the walk is anchored on it -- a row
-    # below 6 would write into the pool and spell some third byte, which is
-    # what anchoring on the zero class risked.
-    joint.emit("<" * (min(by_class[1]) - _LAND_ONE))
+    # Land the two classes on cells 6 and 7.  The walk is anchored on the
+    # lower class, since a row below 6 would write into the pool and spell
+    # some third byte; the upper class then sits on 7, or on 8 when the pool
+    # left it there, both of which print the same digit.
+    lower = min(min(v) for v in by_class.values())
+    joint.emit("<" * (lower - _LAND_LOW))
     joint.emit("[x.")
 
     printed = ["".join(m.out) for m in joint.ms]
