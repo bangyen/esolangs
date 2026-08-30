@@ -18,7 +18,7 @@ import importlib
 import io
 import random
 from collections.abc import Iterator
-from contextlib import redirect_stdout, suppress
+from contextlib import redirect_stdout
 from unittest.mock import patch
 
 from esolangs.interpreters.io import IO
@@ -309,14 +309,13 @@ def run_nevermind(program: str, inputs: list[str]) -> str:
 def run_container(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.other.container import run
 
-    buffer = io.StringIO()
-    with (
-        patch("builtins.input", side_effect=inputs),
-        redirect_stdout(buffer),
-        suppress(SystemExit),  # EXIT halts via sys.exit
-    ):
-        run(program.splitlines(), io=IO())
-    return buffer.getvalue()
+    # EXIT halts via sys.exit rather than by returning.
+    return run_program(
+        run,
+        program.splitlines(),
+        _stdin(inputs),
+        suppress_exit=True,
+    )
 
 
 def run_taglate(program: str, inputs: list[str]) -> str:

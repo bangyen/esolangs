@@ -286,17 +286,10 @@ class TestParameterizedBIO:
     """Input-by-substitution generators for the no-input language BIO."""
 
     def run_bio(self, prog: str, bits: list[int]) -> str:
-
-        from esolangs.interpreters.io import IO
+        from tests.interpreters.runner import run_program
 
         run = importlib.import_module("esolangs.interpreters.register_based.bio").run
-        buffer = io.StringIO()
-        with (
-            patch("builtins.input", side_effect=[str(b) for b in bits]),
-            redirect_stdout(buffer),
-        ):
-            run(prog, io=IO())
-        return buffer.getvalue()
+        return run_program(run, prog, "".join(f"{b}\n" for b in bits))
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         """Fill the template the way the example harness does."""
