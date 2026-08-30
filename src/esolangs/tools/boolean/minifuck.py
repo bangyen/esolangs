@@ -64,7 +64,13 @@ live tape, so moving the trailing fills to the front makes 2 rows wrong at
   the embed under either separator -- emitting the ignored setters first and
   then erasing them (see :func:`_reconverged`).
 
-Together they leave nothing out of order.
+Together they leave nothing out of order at ``n == 2``, and ten tables at
+``n == 3``.  All ten ignore their *middle* input, which is the one shape the
+reconvergence cannot sort: emitting the ignored setter first does not help
+when it already follows ``{X0}``, and no reset repairs it either, because
+reconvergence works by driving every row to a single state and so cannot
+collapse one input while preserving another.  Sorting those needs the solver
+to assign names, which is a change to :func:`_project` and :func:`_lift`.
 
 **Coverage: every two-input table, and 28 of the 40 three-input orbits**
 (under input permutation and complement).  That is up from the eight orbits
@@ -635,13 +641,32 @@ def _reconverged(truth_table: str, essential: list[int], n: int) -> str | None:
     by then, so it is a constant starting condition, which is exactly what
     the searches here are built to run from.
     """
-    if len(essential) != 1:
+    if not 1 <= len(essential) <= 2:
         return None
     ignored = [i for i in range(n) if i not in essential]
     if ignored != list(range(len(ignored))):
         # The ignored inputs have to be the *leading* ones for emitting them
         # first to keep the order ascending.
         return None
+
+    # Where to look for the answer once the ignored inputs are gone.  One
+    # essential input leaves a projection, which stands at a known cell; two
+    # leave a two-input table, which has a staging of its own -- so replay
+    # that staging and read its own accumulator rather than scanning.  The
+    # scan is what costs: at two essential inputs it turns a 0.5s build into
+    # seconds without reaching anything the staging does not.
+    if len(essential) == 1:
+        setup: tuple[int, int, int] | None = None
+        accumulators: tuple[int, ...] = tuple(_DEGENERATE_CELLS.values())
+    else:
+        inner = _project(truth_table, essential, n)
+        complement = "".join(str(1 - int(c)) for c in inner)
+        plan = _TWO_INPUT_PLAN.get(min(inner, complement))
+        if plan is None:
+            return None
+        sep_index, _settle, brackets, acc = plan
+        setup = (sep_index, brackets, acc)
+        accumulators = (acc,)
 
     for reset in _find_reset(len(ignored)):
         j = _Joint(n)
@@ -651,10 +676,21 @@ def _reconverged(truth_table: str, essential: list[int], n: int) -> str | None:
         if len({m.key() for m in j.ms}) != 1:
             continue
         _walk_to(j, _BASE - 1)
-        j.emit_setter(essential[0])
-        j.emit("[x")
+        if setup is None:
+            j.emit_setter(essential[0])
+            j.emit("[x")
+        else:
+            sep_index, brackets, _acc = setup
+            for slot, i in enumerate(essential):
+                j.emit_setter(i)
+                j.emit("[x")
+                if slot + 1 < len(essential):
+                    j.emit(_SEPS[sep_index])
+            _clamp(j)
+            _walk_to(j, _BASE - 1)
+            j.emit("[" * brackets + "<")
         _clamp(j)
-        for acc in _DEGENERATE_CELLS.values():
+        for acc in accumulators:
             hit = _try_print(j, truth_table, acc)
             if hit is not None:
                 return hit.template()
@@ -860,10 +896,11 @@ def minifuck(truth_table: str) -> str:
         # attempt is capped at the fixed-cell lookup because that is where
         # every table it wins is won; letting it run the column search only
         # adds about five seconds to the tables it cannot build anyway.
-        if _lift_leaves_name_order(essential, n) and len(essential) <= 1:
-            in_order = _degenerate(truth_table, n, fixed_cells_only=True)
-            if in_order is not None:
-                return in_order
+        if _lift_leaves_name_order(essential, n):
+            if len(essential) <= 1:
+                in_order = _degenerate(truth_table, n, fixed_cells_only=True)
+                if in_order is not None:
+                    return in_order
             reconverged = _reconverged(truth_table, essential, n)
             if reconverged is not None:
                 return reconverged
