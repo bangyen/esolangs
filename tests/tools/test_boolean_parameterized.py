@@ -2331,48 +2331,34 @@ class TestParameterizedMinifuck:
             table = format(table_int, "04b")
             assert module.minifuck.__wrapped__(table), table
 
-    def test_the_pool_mirrors_are_derived_not_written_down(self) -> None:
-        """The ``cell7 == 1`` pool codes come from the setters plus a flip.
+    def test_the_pool_codes_all_serve_one_orientation(self) -> None:
+        """Every pool code answers ``cell7 == 0``, and that is enough.
 
-        Each pool code serves exactly one orientation, and they pair up: a
-        code answers a state at ``cell7 == 0`` exactly where its partner
-        answers the same state at ``cell7 == 1``.  Mechanically that mirror
-        is only "flip cell 7", so the second half of the list is generated
-        rather than stored -- five setters and two flips in place of ten
-        strings.
+        The list looks like half a list: no code satisfies ``cell7 == 1``,
+        yet the endgame asks about both orientations.  It works because a
+        missing pool is recoverable -- ``_try_print`` forks the same state
+        for both orientations and both reads, so a refusal is one failed
+        attempt among four.
 
-        This pins the generation, and pins that it still contains what the
-        ten strings did: the four codes that used to be written out as
-        mirrors are all reachable, and every candidate is longer than the
-        setter it came from (so shortest-first ordering still puts the plain
-        setters first).
+        The list carried the ``cell7 == 1`` mirrors for one commit.  They
+        changed 136 templates and bought nothing, which an ablation only
+        exposed once the fallback searches were stubbed: with the
+        fallthrough open, a gutted pool list still "works", because the
+        searches quietly rebuild what it drops.  So this pins the property
+        that made the mirrors droppable rather than the mirrors.
         """
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
-        setters = module._POOL_SETTERS  # noqa: SLF001
-        flips = module._POOL_FLIPS  # noqa: SLF001
         codes = module._POOL_CODES  # noqa: SLF001
-
-        assert len(setters) == 5, setters
-        assert len(flips) == 2, flips
-        # Every setter appears as-is, and every setter+flip does too.
-        for setter in setters:
-            assert setter in codes, setter
-            for flip in flips:
-                assert setter + flip in codes, (setter, flip)
-        # Shortest first, so the plain setters are tried before the mirrors.
+        assert len(codes) == 5, codes
+        # Shortest first, so the emitted program is no longer than it must be.
         assert list(codes) == sorted(codes, key=len), codes
-        # The four mirrors that were previously written out by hand are
-        # exactly the ones the two flips reproduce.
-        for was_stored in (
-            "[<[[[<[<[<" + "[[[[<",
-            "[<[<[[[<[<[<" + "[[[[<",
-            "[<<[<[<[[[<[<" + "[[[[[[<",
-            "[<[<[<<[[[<[[<<<" + "[[[[[[<",
-        ):
-            assert was_stored in codes, was_stored
+        # Every code is built from the two idioms only -- no ``x`` appears,
+        # though the alphabet allows it.
+        for code in codes:
+            assert set(code) <= {"[", "<"}, code
 
     def test_the_degenerate_cells_are_where_they_were_written_down(self) -> None:
         """Measuring the embed reproduces the six cells that used to be stored.
