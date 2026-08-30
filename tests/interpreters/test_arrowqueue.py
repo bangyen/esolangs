@@ -159,3 +159,14 @@ class TestMachineState:
         """Without the ~, the ring stops refilling and an empty queue halts it."""
         program = [" ~*", "+ *", "*~+"]
         assert run_until_halt_or_cycle(_Machine(program)) is True
+
+
+class TestStepMachine:
+    def test_step_after_halt_is_a_noop(self) -> None:
+        machine = _Machine(["..."])
+        while not machine.halted:
+            machine.step()
+        state = machine.snapshot()
+        machine.step()  # stepping a halted machine must not raise
+        assert machine.halted
+        assert machine.snapshot() == state

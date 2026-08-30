@@ -497,3 +497,14 @@ class TestSurvivorGaps:
         with patch("secrets.randbelow", return_value=0):
             for heading in range(4):
                 assert run_and_capture(cage, heading=heading) == "2", heading
+
+
+class TestStepMachine:
+    def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
+        from esolangs.interpreters.grid_based.laserfuck import _Machine
+
+        machine = _Machine(["ÿ}o+x\n   x"], IO(), heading=3)
+        before = machine.snapshot()
+        hash(before)  # must not raise
+        machine.step()
+        assert machine.snapshot() != before

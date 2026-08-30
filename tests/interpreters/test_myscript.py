@@ -212,3 +212,31 @@ class TestGenerator:
 
         with pytest.raises(ValueError, match="representable"):
             gen.myscript("\x07")
+
+
+class TestSnapshot:
+    def test_check_runs_the_first_matching_case(self) -> None:
+        """A matching case runs its block and stops the check."""
+        code = 'check 5,\n  if 5,\n    say "hit"\n  if 5,\n    say "again"'
+        assert run_and_capture(code) == "hit"
+
+    def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
+        from esolangs.interpreters.register_based.myscript import _Machine
+
+        machine = _Machine('var a is 1\nsay a', IO())
+        before = machine.snapshot()
+        hash(before)  # must not raise
+        machine.step()
+        assert machine.snapshot() != before
+
+    def test_snapshot_captures_a_nested_scope_chain(self) -> None:
+        """A function frame's scope chain is folded into the snapshot key."""
+        from esolangs.interpreters.register_based.myscript import _Machine
+
+        code = "var f is func x\n  return add x 1\nsay f 1"
+        machine = _Machine(code, IO())
+        seen = set()
+        while not machine.halted:
+            seen.add(machine.snapshot())
+            machine.step()
+        assert len(seen) > 1

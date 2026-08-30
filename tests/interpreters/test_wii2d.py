@@ -418,6 +418,19 @@ class TestStepMachine:
         assert machine.snapshot() != before
         assert machine.acc == 1
 
+    def test_step_after_halt_is_a_noop(self) -> None:
+        from esolangs.interpreters.grid_based.wii2d import _Machine
+
+        machine = _Machine([">~.", "!"], IO())
+        for _ in range(200):
+            if machine.halted:
+                break
+            machine.step()
+        assert machine.halted
+        state = machine.snapshot()
+        machine.step()  # stepping a halted machine must not raise
+        assert machine.snapshot() == state
+
 
 if __name__ == "__main__":
     pytest.main([__file__])

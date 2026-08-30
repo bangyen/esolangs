@@ -402,3 +402,18 @@ class TestMachine:
         assert machine.state.io.getvalue() == "H"
         machine.step()  # stepping a halted machine is a no-op
         assert machine.state.io.getvalue() == "H"
+
+    def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
+        from esolangs.interpreters.other.suptiftam import _Machine
+
+        machine = _Machine("term='H'\nright(:term:)", ScriptedIO())
+        before = machine.snapshot()
+        hash(before)  # must not raise
+        machine.step()
+        assert machine.snapshot() != before
+
+    def test_a_program_that_never_writes_the_term_prints_nothing(self) -> None:
+        """An unwritten term has no cells, so the end-of-run render is empty."""
+        io = ScriptedIO()
+        run("var~1", io)
+        assert io.getvalue() == ""

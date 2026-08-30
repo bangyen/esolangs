@@ -185,3 +185,17 @@ class TestEval:
         """+ on a non-numeric top is an invalid operation."""
         with pytest.raises(HaltError):
             run('"abc"+', IO())
+
+
+class TestStepMachine:
+    def test_the_empty_program_starts_halted(self) -> None:
+        # `step` has no halted guard of its own -- the caller checks first,
+        # which is what the VM's run loop does.
+        assert State(io=IO(), sym="").halted
+
+    def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
+        state = State(io=IO(), sym="0+.")
+        before = state.snapshot()
+        hash(before)  # must not raise
+        state.step()
+        assert state.snapshot() != before
