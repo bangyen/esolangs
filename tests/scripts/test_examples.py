@@ -15,9 +15,8 @@ plain test fixtures rather than examples, and live inline in the matching
 
 import importlib
 import io
-from contextlib import redirect_stdout, suppress
+from contextlib import redirect_stdout
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -27,6 +26,7 @@ from esolangs.registry import LANGUAGES
 from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.tools.boolean.examples import HAND_WRITTEN
 from esolangs.tools.wrap import DEFAULT_WIDTH
+from tests.interpreters.runner import run_program
 
 BASE_DIR = Path(__file__).parents[2]
 EXAMPLES_DIR = BASE_DIR / "examples" / "hello-world"
@@ -174,12 +174,12 @@ def test_boolean_example(name: str) -> None:
     )
     argument = program.splitlines() if splitlines else program
 
-    buffer = io.StringIO()
     # Container halts by calling sys.exit(0), like its hello-world example.
-    with (
-        patch("builtins.input", side_effect=inputs),
-        redirect_stdout(buffer),
-        suppress(SystemExit),
-    ):
-        run(argument, io=IO(), **kwargs)
-    assert buffer.getvalue() == expected
+    got = run_program(
+        run,
+        argument,
+        "".join(f"{line}\n" for line in inputs),
+        suppress_exit=True,
+        **kwargs,
+    )
+    assert got == expected

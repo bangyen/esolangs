@@ -370,13 +370,9 @@ def test_greedy_order_is_correct_when_it_is_not_the_identity() -> None:
     gets run rather than merely sized.  ``"01" * 64`` depends only on its
     last input, which the greedy pick fronts.
     """
-    import io as _io
-    from contextlib import redirect_stdout
-    from unittest.mock import patch
-
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.tape_based.brainfuck import run
     from esolangs.tools.boolean.helpers import _greedy_input_order
+    from tests.interpreters.runner import run_program
 
     n = 7
     table = "01" * 64
@@ -386,14 +382,9 @@ def test_greedy_order_is_correct_when_it_is_not_the_identity() -> None:
     program = boolean.brainfuck(table)
     for combo in range(2**n):
         bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
-        buffer = _io.StringIO()
-        with (
-            patch("builtins.input", side_effect=bits),
-            redirect_stdout(buffer),
-            contextlib.suppress(SystemExit),
-        ):
-            run(program, io=IO())
-        assert buffer.getvalue() == table[combo], f"inputs {bits}"
+        stdin = "".join(f"{bit}\n" for bit in bits)
+        got = run_program(run, program, stdin)
+        assert got == table[combo], f"inputs {bits}"
 
 
 # The shape each boolean generator's construction takes, which decides which
