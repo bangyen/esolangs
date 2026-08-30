@@ -17,8 +17,10 @@ from typing import ClassVar
 import esolangs
 from esolangs.interpreters.grid_based.arrowqueue import _Machine, run
 from esolangs.interpreters.io import IO
-from esolangs.vm import run_until_halt_or_cycle
-from tests.interpreters.contract import EmptyProgramContract
+from tests.interpreters.contract import (
+    CycleContract,
+    EmptyProgramContract,
+)
 
 
 def run_and_capture(code: list[str]) -> str:
@@ -149,16 +151,6 @@ class TestMachineState:
         assert machine.halted
         assert (machine.width, machine.grid) == (0, [])
 
-    def test_truth_machine_present_loops_forever(self) -> None:
-        """A ~ in the data cell sustains the ring, so the program never halts."""
-        program = [" ~*", "+~*", "*~+"]
-        assert run_until_halt_or_cycle(_Machine(program)) is False
-
-    def test_truth_machine_absent_halts(self) -> None:
-        """Without the ~, the ring stops refilling and an empty queue halts it."""
-        program = [" ~*", "+ *", "*~+"]
-        assert run_until_halt_or_cycle(_Machine(program)) is True
-
 
 class TestStepMachine:
     def test_step_after_halt_is_a_noop(self) -> None:
@@ -171,8 +163,18 @@ class TestStepMachine:
         assert machine.snapshot() == state
 
 
-class TestContract(EmptyProgramContract):
-    """The shared empty-program shape, with this language's data."""
+def _machine(code: object) -> object:
+    from esolangs.interpreters.grid_based.arrowqueue import _Machine
+
+    return _Machine(code)
+
+
+class TestContract(EmptyProgramContract, CycleContract):
+    """The shared shapes, with this language's own programs."""
 
     run = staticmethod(run_and_capture)
+    machine = staticmethod(_machine)
     empty_program: ClassVar[list[str]] = []
+    # The same ring either way; the ~ in the middle row is what sustains it.
+    halting_program: ClassVar[list[str]] = [" ~*", "+ *", "*~+"]
+    looping_program: ClassVar[list[str]] = [" ~*", "+~*", "*~+"]
