@@ -992,10 +992,16 @@ exactly one skip for a job.
 
 ### The two compositions
 
-Read off the interpreter (`src/esolangs/interpreters/tape_based/nocomment.py`),
-`s` does three things worth naming: it **peeks** the stack rather than
-popping it, it **does not move the pointer**, and a skip amount of zero is a
-plain no-op.  Those give:
+The two properties this rests on are in the **wiki's own words**, not merely
+in this repo's interpreter — which matters, because a lift that only works
+where an implementation is more permissive than its spec is undefined
+behaviour, not a capability.  The wiki gives `s` as "If the value of the
+pointer is non-zero, **peek (do not pop)** a value from the stack (let's
+call it x) and jump x spaces forward", and describes memory as "A static,
+flat memory space **divided into bytes**".  So: the peek is specified, the
+pointer is never said to move during a jump, and the byte-sized cell is
+exactly where the 255 comes from.  The spec states no limit on jump
+distance or program length.  Those give:
 
 **Chained guards — a guarded region may be any length.**  After a skip
 fires, the guard cell is still under the pointer and still nonzero, so it
@@ -1052,11 +1058,27 @@ output matched the table.  The tests keep this as a parameterized case and
 derive the cap by asking the generator where it stops rather than pinning a
 literal, so the bound tracks the interpreter's tape if that changes.
 
+The construction was also audited against the spec's *domain*, not just
+against this interpreter's tolerance, since a green execution gate proves
+nothing when the construction is built out of the interpreter's own
+non-conformance.  Instrumenting every executed step over every input at
+`n == 9`, `10`, and `11` shows the largest skip amount ever peeked is
+**255** and the largest value ever written to a cell is **255** — the
+construction lives strictly *inside* the byte, which is the point: it
+composes many legal skips rather than needing one illegal one.  No
+generated program contains a non-command character, pops an empty stack,
+jumps to a target outside the program, or wraps the pointer past either
+tape end.  The narrow `n == 8` path already reached a 255 skip and a 255
+cell, so the wide path relies on no wider a region than the code that
+shipped before it.
+
 This is the same shape of error as the two already on record here: `%^2^-1`'s
 NOT needed 36 commands so a length-8 sweep missed it, and ZTOALC's
 positional-index wall fell to `s += s` because the sweep only searched trees.
 In all three the claim bounded one primitive and was read as bounding what
-could be built out of it.
+could be built out of it.  The discipline that separates these from a false
+lift is the one applied above: name the spec text the construction depends
+on, and check that nothing executed leaves the region that text sanctions.
 
 ## NoComment, BF-PDA (a `{Ci}` embed was not actually needed)
 
