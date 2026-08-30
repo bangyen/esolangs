@@ -102,31 +102,23 @@ DUMPS_ON_THE_POST_HALT_STEP = frozenset({"Minsky Swap", "RAM0"})
 # are carried for the checks that do not need one.
 NEVER_SELF_HALTS = frozenset({"A Painter Ant", "Suffolk"})
 
-# Languages whose ``step()`` raises ``IndexError`` when called on an
-# already-halted machine, rather than returning without doing anything.
+# Languages whose ``step()`` raises when called on an already-halted
+# machine, rather than returning without doing anything.
 #
-# This set is a finding, not a convention: the fifteen per-language copies
-# of ``test_step_after_halt_is_a_noop`` happen to cover none of these nine,
-# so the inconsistency survived precisely because the check was written
-# per file instead of swept.  Nothing in the package steps a halted machine
-# today -- every runner and the VM's own drivers test ``halted`` first --
-# so this is a latent sharp edge rather than a live bug, which is why it is
-# recorded here as an expected failure instead of being patched under a
-# question about test structure.  Emptying this set is the fix: give each
-# ``step()`` an early return when ``halted``.
-RAISES_ON_THE_POST_HALT_STEP = frozenset(
-    {
-        "Dimensional",
-        "Eval",
-        "Factor",
-        "Grapheme",
-        "Modulous",
-        "Point Break",
-        "Qoibl",
-        "S*bleq",
-        "brainfuck",
-    }
-)
+# This set is kept, empty, because it is what holds the fix in place.  It
+# once held nine languages -- brainfuck, Eval, Factor, Dimensional,
+# Modulous, Point Break, Qoibl, S*bleq and Grapheme -- each of which
+# indexed off the end of its own program when stepped past its halt.  The
+# fifteen hand-written copies of ``test_step_after_halt_is_a_noop``
+# happened to cover none of them, so the inconsistency survived precisely
+# because the check was written per file instead of swept.
+#
+# All nine now carry the ``if self.halted: return`` guard the other fifty
+# interpreters already had.  ``test_the_post_halt_step_raises_only_where
+# _recorded`` compares this set against what actually raises, in both
+# directions, so a language that regressed would fail rather than quietly
+# rejoining a list nobody rechecks.
+RAISES_ON_THE_POST_HALT_STEP: frozenset[str] = frozenset()
 
 # LaserFuck's ``run`` draws the laser's initial heading at random when it
 # is not pinned, so its output is not a function of the program alone and
