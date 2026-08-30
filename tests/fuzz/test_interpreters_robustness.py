@@ -48,9 +48,9 @@ def _empty_machine(module: str, io: IO) -> object:
 
         return _Machine(io=io, mem=[])
     if module == "esolangs.interpreters.tape_based.dimensional":
-        from esolangs.interpreters.tape_based.dimensional import _Runner
+        from esolangs.interpreters.tape_based.dimensional import _Machine
 
-        return _Runner("", io)
+        return _Machine("", io)
     if module == "esolangs.interpreters.tape_based.one_two_three":
         from esolangs.interpreters.tape_based.one_two_three import _Machine
 

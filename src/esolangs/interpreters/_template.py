@@ -30,6 +30,18 @@ Every interpreter follows the same conventions:
 * Guard input lines before indexing them (``if val:``) when the language
   reads a character: the library raises ``EOFError`` when input runs out and
   an empty line is legal, so ``val[0]`` can fail without a guard.
+* Name the steppable state class ``_Machine`` when the interpreter has one.
+  A language that can be stepped one command at a time keeps its run state
+  in a class exposing ``step()``, ``halted``, and ``snapshot()`` -- the
+  surface ``esolangs.vm`` wraps to build a
+  :class:`~esolangs.vm.VM`, and that
+  ``run_until_halt_or_cycle`` steps to prove a hang.  ``snapshot()`` must
+  return a hashable tuple of the *complete* state, input cursor included,
+  or a repeat is not a real cycle.  The name matters because it is what a
+  reader greps for: where a module already uses ``_Machine`` for something
+  else, name that other thing for what it is (``dimensional.py`` calls its
+  pointer hierarchy ``_Tape``) rather than the steppable class something
+  else.  ``run()`` then builds one and steps it to completion.
 * Document decisions for genuinely neutral gaps in the language's wiki spec
   in the module docstring rather than choosing silently; do not use this to
   define away invalid operations.  ``suffolk.py`` shows a *spec-gap* note --
