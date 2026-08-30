@@ -65,7 +65,7 @@ from collections import deque
 from collections.abc import Callable
 from functools import cache
 
-from esolangs.tools.boolean.helpers import _validate_truth_table
+from esolangs.tools.boolean.helpers import _validate_truth_table, read_at
 
 __all__ = ["minifuck"]
 
@@ -576,16 +576,12 @@ def _project(truth_table: str, essential: list[int], n: int) -> str:
     A table that ignores some of its inputs is a smaller table wearing extra
     ones.  Reading it at the essential positions gives that smaller table,
     which is a ``len(essential)``-input problem however wide the original was.
+
+    The read itself is :func:`read_at`, shared with
+    :func:`permute_truth_table` -- a permutation is the case where every
+    input is essential, so nothing is held back.
     """
-    k = len(essential)
-    rows = []
-    for row in range(2**k):
-        full = 0
-        for slot, i in enumerate(essential):
-            if (row >> (k - 1 - slot)) & 1:
-                full |= 1 << (n - 1 - i)
-        rows.append(truth_table[full])
-    return "".join(rows)
+    return read_at(truth_table, essential, n)
 
 
 # How far to search for a reconverging reset, and how many to try.  The

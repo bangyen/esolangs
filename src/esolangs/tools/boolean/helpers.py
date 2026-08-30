@@ -152,12 +152,40 @@ def permute_truth_table(truth_table: str, perm: tuple[int, ...]) -> str:
     split; the same function written as ``10101010`` folds only at the
     bottom.  Reordering lets the second be emitted as the first.
     """
-    n = _validate_truth_table(truth_table)
+    _validate_truth_table(truth_table)
+    return read_at(truth_table, perm, len(perm))
+
+
+def read_at(truth_table: str, inputs: tuple[int, ...] | list[int], n: int) -> str:
+    """Return the ``len(inputs)``-input table read at the given input positions.
+
+    Slot ``k`` of the result varies with original input ``inputs[k]``, and
+    every original input not named is held at 0.  Both callers want that one
+    scatter of a small row index into a wide one, and they differ only in
+    whether the naming is a permutation:
+
+    * :func:`permute_truth_table` passes all ``n`` inputs in some order, so
+      nothing is held and the result is the same function with its arguments
+      renamed.
+    * :func:`~esolangs.tools.boolean.minifuck._project` passes the
+      *essential* inputs of a table that ignores the rest.  Holding an
+      ignored input at 0 is exactly right there, since by construction it
+      cannot change the answer -- which is what makes an ``n``-input table
+      that ignores some inputs a smaller table wearing extra ones.
+
+    ``n`` is passed rather than derived because the projecting caller's
+    result is narrower than its input: ``len(inputs)`` is the *output* width
+    and ``n`` the table's own, and the two coincide only for a permutation.
+    Validation stays with the callers for the same reason -- minifuck
+    projects tables it has already validated, and revalidating a narrowed
+    table here would check the wrong width.
+    """
+    k = len(inputs)
     rows = []
-    for row in range(2**n):
+    for row in range(2**k):
         original = 0
-        for level, i in enumerate(perm):
-            if (row >> (n - 1 - level)) & 1:
+        for slot, i in enumerate(inputs):
+            if (row >> (k - 1 - slot)) & 1:
                 original |= 1 << (n - 1 - i)
         rows.append(truth_table[original])
     return "".join(rows)
