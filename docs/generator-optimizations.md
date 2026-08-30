@@ -48,13 +48,17 @@ input is far cheaper than parity. Measured 2026-08-28 over all 59 exported
 generators, comparing the best of the six one-dependency tables against
 `01101001` (both ones-count 4):
 
-**Tree-shaped (43).** taglate, ztoalc_l, polynomial, dig, myscript, six_five,
+**Tree-shaped (44).** cvnc, taglate, ztoalc_l, polynomial, dig, myscript, six_five,
 addsubjump, sophie, modulous, laserfuck, nevermind, jaune, bitdeque,
 unsquare, flowchart, streetcode, forth, basicfuck, bfpda, ram0,
 forbin_boolean, arrowqueue, back, lamfunc, between, eval, factor, circlefuck,
 painfuck, bf_tree, brainfuck, three_d_brainfuck, sbleq, dimensional,
 dimensional_tree, clockwise, brainif, three_x, circuit_diagram, minsky_swap,
 decleq, grapheme, bio — folding 95% (taglate) down to 5% (bio).
+
+`cvnc` was added after that sweep (2026-08-30) and measures 74.1% on the
+same comparison, which is why the count above reads 44 against a sweep of
+59; the dated figures are left as they were measured rather than restated.
 
 **Minterm-shaped (13).** a_painter_ant, bfstack, bit_tilde, cod,
 collatz_multiverse, container, home_row, nocomment, point_break, qoibl,
@@ -121,6 +125,7 @@ Each character costs only its distance from the previous one.
 | `brainfuck` | **hybrid**: delta when close, else `[-]` + multiply-loop rebuild |
 | `bfstack` | same hybrid, with a measured threshold |
 | `unsquare` | delta chain off the retained accumulator (~21% on "Hello, World!"), **bounded by parity** — `x` can't restore oddness, so odd targets off an even accumulator reseed |
+| `cvnc` | `ci`/`cə` runs via shared `delta_program`, at **2 characters per unit**: every command needs a partner of the other class to form a CV syllable, and `c` (function reset) is the only consonant that touches neither accumulator nor deque while an invalid `u` is the only such vowel, so the pairing is forced rather than chosen — no other pairing undercuts the factor of two |
 
 ### Arithmetic-construction
 
@@ -294,6 +299,16 @@ on split order: `a_painter_ant`, `circlefuck_byte`, `circuit_diagram`, `cod`,
 hold a read bit, so a bit can only be branched on before the next read:
 `polynomial` (25.1%), `modulous` (16.4%), `sophie` (16.4%). Residual merging
 collects what the screen was measuring for polynomial and sophie.
+
+**Measured, not yet built:** `cvnc` screens **15.2% mean** over sampled
+tables at `n = 2..4` (74.1% on the best single table), which clears the
+10% bar. Unlike polynomial and sophie it is *reachable*: the deque is
+addressable storage, so a read bit can be pushed with `m`/`n` and popped
+back with `ŋ`/`ɲ` rather than having to be branched on before the next
+read. The screen is a gross figure and the walk is not subtracted — the
+tree reads MSB-first in sequence, so a permuted order still has to reach
+each input in the order the harness feeds it. Build it only after
+subtracting that cost, per the rule in this file's reorder section.
 
 Four rules worth carrying into the remaining candidates:
 
