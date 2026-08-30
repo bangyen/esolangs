@@ -278,6 +278,12 @@ first:
   enough.  The other two were ordinary gaps: an error branch no test
   reached, and a `snapshot()` whose arrays half was only ever exercised
   empty.  Pool 102 → 98, suite to 100%.
+- **A `*` quantifier never fails, so its fallback is dead.**  Eval matched
+  a string literal with `re.match('[^"]*', ...)` and fell back to `""` when
+  the match was `None` — which cannot happen, since `[^"]*` matches the
+  empty string anywhere (300,000 random inputs, never `None`).  Replacing
+  the whole thing with `partition('"')[0]` says the same thing with no
+  unmatched case, and retires the `re` import with it.
 - **Two copies of a check can each be half dead.**  NoComment's `s` and `b`
   bounds-checked their jump target separately, and each copy had an
   unreachable half: a forward target is always at least 1, so `s` could
