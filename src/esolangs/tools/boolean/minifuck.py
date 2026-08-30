@@ -792,6 +792,21 @@ _TWO_INPUT_PLAN: dict[str, _Staging] = {
 # to the searches rather than raising, so coverage cannot regress and the one
 # remaining pair (``01101101`` / ``10010010``) is built as it always was.
 #
+# That pair was looked for and not found, and the shape of the miss is worth
+# recording so it is not re-run blind.  Unlike the tables the new separators
+# closed, its answer *is* computed: ``01101101`` stands as a column at cell 24
+# under separator 2 at ``k == 15``.  What fails is the carry -- no accumulator
+# reads it intact, and from that staging it arrives as ``10011101`` or
+# ``01100010``, neither the table nor its complement.  A sweep over 13 of the
+# 15 (separator, settle) slices at ``k <= 40`` and every accumulator found no
+# staging that delivers it; the two skipped slices scored worst on a cheap
+# distance screen, and the five that scored best -- reaching Hamming distance
+# 1 but never 0 -- were all covered and all missed.
+#
+# It is a gap in this family, not a wall: 180 of the 256 possible columns
+# arrive across the family, and no affine invariant separates them from this
+# one (all 255 parity masks checked), so nothing here forbids it.
+#
 # What closed the gap was not a better search but a wider *separator* set.
 # See the note on :data:`_SEPS`: the first two separators leave only 92
 # distinct columns standing, and 112 of the 120 tables the searches could not

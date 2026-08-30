@@ -360,6 +360,25 @@ The other two axes were **sampled** rather than exhausted, and came back
 empty — settle counts 3–5 and accumulators 36–47 reached nothing already
 covered. Evidence they are barren, not proof.
 
+**The last pair is a gap, not a wall, and the distinction is evidenced.**
+`01101101` / `10010010` is the one complement pair still searching, and it
+fails differently from the 118 the new separators closed. Its answer *is*
+computed — it stands as a column at cell 24 under separator 2 at `k=15` — but
+no accumulator reads it intact; from that staging it arrives as `10011101` or
+`01100010`. So this is a carry failure, which is why widening the separator
+set again does not address it.
+
+Searched and not found: 13 of the 15 (separator, settle) slices at `k ≤ 40`
+across every accumulator. The two skipped slices scored worst on a cheap
+Hamming-distance screen, and the five that scored *best* — reaching distance
+1 but never 0 — were all swept and all missed. That is a capped negative and
+is recorded as one.
+
+What rules out calling it a wall: 180 of the 256 possible columns arrive
+across the family, and **no affine invariant separates them from this one**
+(all 255 parity masks checked). Nothing in the construction forbids it; the
+stagings tried simply do not produce it.
+
 The remaining 2 still search, so the plan is a *fast path*, not a
 replacement — a table with no staging falls through unchanged, and the
 searches stay exactly where they were.
