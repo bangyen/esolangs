@@ -2352,13 +2352,119 @@ class TestParameterizedMinifuck:
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
         codes = module._POOL_CODES  # noqa: SLF001
-        assert len(codes) == 5, codes
+        assert codes, "the pool list should not be empty"
         # Shortest first, so the emitted program is no longer than it must be.
         assert list(codes) == sorted(codes, key=len), codes
         # Every code is built from the two idioms only -- no ``x`` appears,
         # though the alphabet allows it.
         for code in codes:
             assert set(code) <= {"[", "<"}, code
+        # No code answers ``cell7 == 1``: the list really is one orientation.
+        # Checked on the states a build actually reaches, not on a state
+        # constructed here -- ``_find_pool`` is called part-way through the
+        # endgame, and a bare embed is not a state any call sees.
+        seen: list[tuple[object, int, int]] = []
+        real = module._find_pool  # noqa: SLF001
+
+        def record(joint: object, cell7: int, walk_out: int) -> object:
+            if len(seen) < 40:
+                seen.append((joint.fork(), cell7, walk_out))  # type: ignore[attr-defined]
+            return real(joint, cell7, walk_out)
+
+        with patch.object(module, "_find_pool", record):
+            module.minifuck.cache_clear()
+            module.minifuck.__wrapped__("0110")
+        assert seen, "no pool lookups were observed"
+        answered = {
+            cell7
+            for joint, cell7, walk_out in seen
+            for code in codes
+            if module._pool_reaches(joint, code, cell7, walk_out)  # noqa: SLF001
+        }
+        assert answered == {0}, f"expected only cell7==0 to be served, got {answered}"
+
+    @pytest.mark.slow  # one full three-input ablation per code
+    def test_dropping_a_pool_code_is_measured_not_assumed(self) -> None:
+        """What each pool code is worth, ablated rather than argued.
+
+        This replaced an assertion on ``len(_POOL_CODES)``, which noticed
+        only that the list had been edited.  The property worth pinning is
+        what each code *does*, and it is not uniform: three of the five
+        strand tables when dropped, and two strand none.
+
+        The two that strand nothing are still not free, which is the trap
+        this records.  Removing both keeps every table correct and makes the
+        build faster -- and pushes eight tables off ``_reconverged`` onto a
+        route that cannot sort their slots, taking the out-of-name-order
+        count from ten to eighteen.  Coverage and correctness are the loud
+        properties; slot order is the quiet one, and it is what a trim
+        actually costs here.
+
+        The searches are stubbed, so a table that loses its pool fails here
+        rather than being rebuilt slowly by a fallback -- with the
+        fallthrough open this test would pass on any list at all.  Three
+        inputs, because two is not enough: two of the codes strand nothing
+        at ``n == 2`` and 22 and 18 tables at ``n == 3``.
+        """
+        import importlib
+        import re
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        codes = module._POOL_CODES  # noqa: SLF001
+
+        def forbidden(*_args: object, **_kwargs: object) -> object:
+            raise AssertionError("a table fell through to the searches")
+
+        def out_of_order() -> int:
+            count = 0
+            for table_int in range(256):
+                table = format(table_int, "08b")
+                template = module.minifuck.__wrapped__(table)
+                names = [int(m) for m in re.findall(r"\{X(\d+)\}", template)]
+                count += names != sorted(names)
+            return count
+
+        def reset(new_codes: tuple[str, ...]) -> None:
+            module._POOL_CODES = new_codes  # noqa: SLF001
+            module._derived_plans.cache_clear()  # noqa: SLF001
+            module._degenerate_cells.cache_clear()  # noqa: SLF001
+            module.minifuck.cache_clear()
+
+        original = codes
+        try:
+            reset(original)
+            baseline = out_of_order()
+            assert baseline == 10, baseline
+
+            stranding = {}
+            for dropped in range(len(codes)):
+                reset(tuple(c for i, c in enumerate(codes) if i != dropped))
+                stranded = []
+                with (
+                    patch.object(module, "_find_column", forbidden),
+                    patch.object(module, "_find_parked", forbidden),
+                ):
+                    for table_int in range(256):
+                        table = format(table_int, "08b")
+                        try:
+                            module.minifuck.__wrapped__(table)
+                        except AssertionError:
+                            stranded.append(table)
+                stranding[codes[dropped]] = len(stranded)
+
+            # Three codes are load-bearing outright.
+            assert sum(1 for n in stranding.values() if n) == 3, stranding
+            # The other two strand nothing, and are kept for slot order:
+            # dropping both takes the out-of-order count from 10 to 18.
+            free = [c for c, n in stranding.items() if not n]
+            assert len(free) == 2, stranding
+            reset(tuple(c for c in codes if c not in free))
+            assert out_of_order() > baseline, (
+                "dropping the non-stranding codes no longer costs slot order; "
+                "if that holds, the list can lose them"
+            )
+        finally:
+            reset(original)
 
     def test_the_degenerate_cells_are_where_they_were_written_down(self) -> None:
         """Measuring the embed reproduces the six cells that used to be stored.
