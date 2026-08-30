@@ -336,7 +336,6 @@ class _Machine:
             for step in range(len(token)):
                 self.offsets[offset + step] = index
             offset += len(token)
-        self.length = offset
         self.io = io
         self.accumulator = 0
         self.deque: list[int] = []
