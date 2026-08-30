@@ -1,23 +1,17 @@
 """Unit tests for the Minifuck interpreter."""
 
-import io
-from contextlib import redirect_stdout
-from unittest.mock import patch
 
-from esolangs.interpreters.io import IO
 from esolangs.interpreters.tape_based.minifuck import run
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
     SnapshotContract,
 )
+from tests.interpreters.runner import run_program
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        run(code, IO())
-    return buffer.getvalue()
+    return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
 
 
 class TestMinifuck:

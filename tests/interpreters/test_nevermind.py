@@ -1,20 +1,15 @@
 """Unit tests for the Nevermind interpreter."""
 
-import io
-from contextlib import redirect_stdout
 from typing import ClassVar
-from unittest.mock import patch
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.nevermind import run
 from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.interpreters.runner import run_program
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        run(code, IO())
-    return buffer.getvalue()
+    return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
 
 
 class TestNevermind:
