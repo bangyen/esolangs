@@ -12,12 +12,12 @@ from functools import cache
 from typing import Literal
 
 from esolangs.tools.text.helpers import (
-    _factor_triple,
     _ilog,
     _literal_chunks,
     _require_ascii,
     _require_bytes,
     delta_program,
+    factor_triple,
     run_step,
 )
 from esolangs.tools.text.laserfuck import laserfuck
@@ -764,7 +764,7 @@ def home_row(text: str) -> str:
     _require_bytes(text, "Home Row")
 
     def segment(value: int) -> str:
-        a, b, r = _factor_triple(value)
+        a, b, r = factor_triple(value)
         # counter cell 0, target cell 1: "f" moves 0 -> 1 and four "f"s wrap
         # 1 -> 0 back.  The loop body adds b to the target and decrements
         # the counter.

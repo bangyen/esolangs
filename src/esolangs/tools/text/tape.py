@@ -3,10 +3,10 @@
 import math
 
 from esolangs.tools.text.helpers import (
-    _factor_triple,
     _require_ascii,
     _require_bytes,
     delta_program,
+    factor_triple,
     run_step,
 )
 from esolangs.tools.wrap import shortest
@@ -77,7 +77,7 @@ def _bf_set(value: int) -> str:
     the pointer is left on the printed cell.  ``a`` is searched near
     ``sqrt(value)`` so the program is O(sqrt) rather than O(value).
     """
-    a, b, r = _factor_triple(value)
+    a, b, r = factor_triple(value)
     return "+" * a + "[>" + "+" * b + "<-]" + ">" + "+" * r + "."
 
 
@@ -289,10 +289,12 @@ def suffolk(text: str) -> str:
     Each character is factored as ``n = a * b + r``; ``!`` computes
     ``max(0, cell + 1 - acc)`` so the multiplier ``a`` is built into a helper
     cell and the remainder ``r`` is added by repeated ``>!`` moves, then ``.``
-    prints.  The ``>!`` and ``><`` moves cost two characters each, so ``a``
-    is searched over the factorization that minimizes ``a + 2b + 2r`` rather
-    than fixed at ``sqrt(n)``.  Cell 2 is sized so ``!`` zeroes the working
-    cells and they can be reused per character.
+    prints.  Cell 2 is sized so ``!`` zeroes the working cells and they can
+    be reused per character.
+
+    The factorization is :func:`factor_triple` under Suffolk's own cost:
+    ``>!`` and ``><`` are two characters each, so a unit of ``b`` or ``r``
+    costs twice a unit of ``a`` and the search minimizes ``a + 2b + 2r``.
     """
     if not text:
         return ""
@@ -301,13 +303,10 @@ def suffolk(text: str) -> str:
     big = max(int((ord(c) + 1) ** 0.5) for c in text) + 2
     res = []
     for c in text:
-        n = ord(c) + 1
-        best = min(
-            (a + 2 * b + 2 * r, a, b, r)
-            for a in range(1, n + 1)
-            for b, r in (divmod(n, a),)
+        a, b, r = factor_triple(
+            ord(c) + 1,
+            lambda mul, add, rem: mul + 2 * add + 2 * rem,
         )
-        _, a, b, r = best
         res.append(f">><!>><>!{'!' * a}{'>!' * r}><{'<' * b}.")
     return ">>!" * big + "".join(res)
 
