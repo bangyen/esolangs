@@ -2114,6 +2114,62 @@ class TestParameterizedMinifuck:
         # ...and the public entry point still builds a planned table.
         assert parameterized.minifuck(sorted(_THREE_INPUT_PLAN)[0])
 
+    @pytest.mark.slow  # builds and runs all 256 three-input tables
+    def test_almost_every_three_input_table_is_search_free(self) -> None:
+        """254 of the 256 three-input tables build without searching.
+
+        With ``_find_column`` and ``_find_parked`` stubbed to raise, all but
+        one complement pair still build -- and every row is run, because a
+        staging that emits without computing would otherwise pass silently.
+
+        The exact remainder is pinned rather than a bound.  A staging that
+        stopped working would show up as a table falling through to the
+        search, and a bound like "at most a few" would hide that.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        def forbidden(*args: object, **kwargs: object) -> object:
+            raise AssertionError("reached the search")
+
+        searched = []
+        with (
+            patch.object(module, "_find_column", forbidden),
+            patch.object(module, "_find_parked", forbidden),
+        ):
+            for table_int in range(256):
+                table = format(table_int, "08b")
+                try:
+                    template = module.minifuck.__wrapped__(table)
+                except AssertionError:
+                    searched.append(table)
+                    continue
+                for combo in range(8):
+                    bits = [(combo >> (2 - i)) & 1 for i in range(3)]
+                    got = self.run_minifuck(self.instantiate(template, bits))
+                    assert got == table[combo], f"{table} inputs {bits}"
+        assert searched == ["01101101", "10010010"], searched
+
+    def test_only_the_first_separators_are_scanned(self) -> None:
+        """The searching routes scan two separators; the plan names the rest.
+
+        Adding a separator to :data:`_SEPS` widens what the plan can *name*
+        without widening what the searches must *try* -- each extra separator
+        would multiply the cost of every fallback search.  This pins that
+        split, which is easy to undo by looping over ``_SEPS`` out of habit.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        assert module._SCAN_SEPS == module._SEPS[:2], module._SCAN_SEPS  # noqa: SLF001
+        assert len(module._SEPS) > len(module._SCAN_SEPS), module._SEPS  # noqa: SLF001
+        # Every separator index a plan entry names must exist.
+        for plan in module._PLANS.values():  # noqa: SLF001
+            for key, (sep_index, *_rest) in plan.items():
+                assert 0 <= sep_index < len(module._SEPS), (key, sep_index)  # noqa: SLF001
+
     def test_pool_cache_agrees_with_the_search_it_replaces(self) -> None:
         """Memoising ``_find_pool`` must not change a single answer.
 

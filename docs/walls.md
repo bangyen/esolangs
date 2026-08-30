@@ -95,7 +95,7 @@ that frontier.
 
 What remains true: the parameterized generator
 (`esolangs.tools.boolean.minifuck`) builds every two-input table by embedding,
-and covers 30 of the 40 three-input orbits (under input permutation and
+and covers 34 of the 40 three-input orbits (under input permutation and
 complement) — up from the eight the searches alone reached, since the staged
 route below builds tables the searches fail on. The reading prologue reaches
 **none** of the three-input arity.  So the parameterized path stays as
@@ -314,12 +314,36 @@ tables are now derived from an eight-entry staging table
 
 **The same staging works at n=3, for part of the arity.** Extending the
 enumeration to three inputs (adding the settle count as a fourth coordinate)
-covers **98 of the 218 three-essential tables** — all of which build, compute
+covers **216 of the 218 three-essential tables** — all of which build, compute
 and emit in order, with no endgame losses. Parity (`01101001`) and majority
 (`00010111`) are among them, two of the orbits the search takes tens of
 seconds to reach. Add the 38 degenerate tables, which project onto the n=2
-construction and were already free, and **136 of the 256 three-input tables
+construction and were already free, and **254 of the 256 three-input tables
 need no search at all**.
+
+**The binding constraint was the separator, and it was never searched.**
+`_SEPS` held two hand-picked strings, and everything else — bracket counts,
+settle counts, accumulators — was swept exhaustively against them. That was
+sweeping the wrong axis. The diagnosis that found it: of the 120 tables the
+staged route missed, **112 did not stand as a column anywhere on the tape**,
+before the endgame even ran. The whole two-separator family leaves only 92
+distinct columns standing, so the gap was what the embed *computes*, not how
+the answer is carried to the read.
+
+Enumerating short strings over the same `<[x` alphabet closes it. One new
+separator (`[<[<[`) carries 70 of the 120; `[[[[[` adds 40 and `[x[<[` adds
+8, for **118 of 120** — all of which build, compute on the interpreter and
+emit in name order, with **zero endgame losses**. Four further candidates
+that screened well added nothing, so three is the whole set.
+
+The screen is worth distinguishing from the result. A *pre-walk* screen said
+seven separators reach 218/218, and that number is not real — the pre-walk
+column is exactly the wrong selector (it is the mistake that covered 10/16 at
+n=2 and looked nearly right). The 118 above is post-walk selection with the
+endgame run and every row executed.
+
+Only the first two separators are scanned by the searching routes; the rest
+are reached by name from the plan, so adding one costs the searches nothing.
 
 **The bracket axis is exhausted, not capped**, which is worth stating in a
 file that has repeatedly mistaken one for the other. Nothing in this language
@@ -336,7 +360,7 @@ The other two axes were **sampled** rather than exhausted, and came back
 empty — settle counts 3–5 and accumulators 36–47 reached nothing already
 covered. Evidence they are barren, not proof.
 
-The remaining 120 still search, so the plan is a *fast path*, not a
+The remaining 2 still search, so the plan is a *fast path*, not a
 replacement — a table with no staging falls through unchanged, and the
 searches stay exactly where they were.
 
@@ -346,7 +370,7 @@ fail after ~130 seconds of searching and build in under 0.08s from a staging,
 correct on every row. The reason is the same transform the n=2 derivation
 turns on: the searches hunt for a cell *holding* the answer and then lose it
 to the prefix-XOR on the walk out, while the staging selects on the column as
-the read sees it. Orbit coverage is therefore 30 of 40, not the 8 of 14 this
+the read sees it. Orbit coverage is therefore 34 of 40, not the 8 of 14 this
 file recorded when the searches were the only route. What follows is about
 the rest.
 
