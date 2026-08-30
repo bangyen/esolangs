@@ -4,7 +4,12 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.fargo import _Machine, _parse_program, run
+from esolangs.interpreters.other.fargo import (
+    _is_literal,
+    _Machine,
+    _parse_program,
+    run,
+)
 from esolangs.vm import run_until_halt_or_ancestor, run_until_halt_or_cycle
 
 # The wiki's truth machine, verbatim apart from the zero-width spaces it
@@ -33,12 +38,54 @@ class TestBuiltins:
         assert run_program("% 0 > 1\n$") == "0"  # 1 << 1 = 2, bit 0 is 0
         assert run_program("% 0 < 10\n$") == "1"  # 2 >> 1 = 1
 
+    def test_shifts_move_exactly_one_place(self) -> None:
+        """Pin the distance, which ``%`` alone cannot see.
+
+        ``%`` writes only the *low bit* of its value, so ``1 << 1`` and
+        ``1 << 2`` both leave bit 0 clear and look alike.  Indexing an
+        array by the shifted number reads the whole value instead: this
+        array answers 1 at index 2 and 0 at index 4, so a one-place shift
+        and a two-place shift give different output.
+        """
+        # elements, by index: 0 0 1 0 0
+        arr = "+[] +[] +[] +[] [] 0 [] 0 [] 1 [] 0 [] 0"
+        assert run_program(f"% 0 [?] {arr} > 1\n$") == "1"  # 1 << 1 == 2
+        assert run_program(f"% 0 [?] {arr} < 100\n$") == "1"  # 4 >> 1 == 2
+        # and the shift really moves: unshifted, index 1 answers 0
+        assert run_program(f"% 0 [?] {arr} 1\n$") == "0"
+
     def test_bitwise_operators(self) -> None:
         assert run_program("% 0 & 1 1\n$") == "1"
         assert run_program("% 0 & 1 0\n$") == "0"
         assert run_program("% 0 | 0 1\n$") == "1"
         assert run_program("% 0 ^ 1 1\n$") == "0"
         assert run_program("% 0 ^ 1 0\n$") == "1"
+
+    def test_binary_operators_read_both_arguments(self) -> None:
+        """Each operand must come from its own position.
+
+        A binary operator that read one argument twice would still agree
+        on every *symmetric* case, so these are the asymmetric ones: for
+        AND and OR the two orders of ``1``/``0`` must agree with each
+        other and disagree with the doubled operand.
+        """
+        assert run_program("% 0 & 0 1\n$") == "0"
+        assert run_program("% 0 & 1 0\n$") == "0"
+        assert run_program("% 0 | 1 0\n$") == "1"
+        assert run_program("% 0 | 0 1\n$") == "1"
+        # `+[] x y` concatenates in order, so index 0 comes from the left.
+        assert run_program("% 0 [?] +[] [] 1 [] 0 0\n$") == "1"
+        assert run_program("% 0 [?] +[] [] 1 [] 0 1\n$") == "0"
+
+    def test_writes_and_prints_evaluate_to_zero(self) -> None:
+        """``%`` and ``$`` return 0, which is what keeps output write-only.
+
+        The recursion check omits the output number from a frame's key on
+        exactly this basis, so a nonzero return here would quietly make
+        that unsound.  ``|`` exposes the value ``%`` hands back.
+        """
+        assert run_program("% 0 | 0 % 1 1\n$") == "2"
+        assert run_program("% 0 | 0 $\n$") == "00"
 
     def test_input_bits_are_lsb_first(self) -> None:
         # 6 is 0b110: bit 0 is 0, bits 1 and 2 are 1.
@@ -86,6 +133,25 @@ class TestSyntax:
 
     def test_zero_width_spaces_are_stripped(self) -> None:
         assert run_program("​% 0 1\n$") == "1"
+
+    def test_a_second_hash_stays_inside_the_comment(self) -> None:
+        """Only the first ``#`` divides code from comment."""
+        assert run_program("% 0 1 # a # b # c\n$") == "1"
+
+    def test_a_token_may_end_in_a_colon(self) -> None:
+        """The raw mark is a *prefix*; a trailing colon is part of the name."""
+        defs, _ = _parse_program("f: x | x 0\nf: 1\n$\n")
+        assert list(defs) == ["f:"]
+        assert run_program("f: x | x 0\n% 0 f: 1\n$") == "1"
+
+    def test_only_zero_and_one_are_literal_digits(self) -> None:
+        """``2`` is a name, not a number, so it is never a literal."""
+        assert not _is_literal("2")
+        assert not _is_literal("")
+        assert _is_literal("101")
+        # a definition named ``2`` therefore parses as a definition
+        defs, _ = _parse_program("2 x | x 0\n$\n")
+        assert list(defs) == ["2"]
 
     def test_definition_splits_arguments_from_code(self) -> None:
         # ``^`` is a builtin, so it starts the code and ``one`` takes no
@@ -218,9 +284,11 @@ class TestErrors:
             run_program("% 0 nope 1\n")
 
     def test_a_call_left_wanting_arguments(self) -> None:
-        # ``%`` takes two and the line supplies one.
-        with pytest.raises(ValueError, match="wants more args"):
+        # ``%`` takes two and the line supplies one.  ``match=`` is a
+        # substring search, so the whole message is compared too.
+        with pytest.raises(ValueError, match="wants more args") as caught:
             run_program("% 0\n$\n")
+        assert str(caught.value) == "call wants more args"
 
     def test_calling_a_parameter_bound_to_a_plain_value(self) -> None:
         # ``c`` sits in ``:``'s body slot but was given the number 1.
@@ -286,6 +354,64 @@ class TestMachine:
         state = machine.snapshot()
         machine.step()
         assert machine.snapshot() == state
+
+    @staticmethod
+    def _states(code: str, stdin: str = "0\n") -> list[object]:
+        """Every snapshot one run passes through, halt included."""
+        machine = _Machine(code, ScriptedIO(stdin))
+        seen: list[object] = []
+        for _ in range(200):
+            seen.append(machine.snapshot())
+            if machine.halted:
+                break
+            machine.step()
+        return seen
+
+    def test_snapshot_separates_the_state_it_claims_to_carry(self) -> None:
+        """Each field is load-bearing, so a run's states are all distinct.
+
+        The cycle detector's soundness rests on the snapshot being
+        *complete*: a field it drops is a difference two runs can hide
+        behind.  These three pairs differ only in a frame's bindings, its
+        pending arguments, and its result respectively -- the parts that
+        are captured through ``repr()`` and so are easiest to hollow out
+        without any output changing.
+        """
+        assert self._states("f x | x 0\nf 1\n$\n") != self._states(
+            "f x | x 0\nf 0\n$\n"
+        ), "bindings do not reach the snapshot"
+        assert self._states("% 0 | 1 0\n$\n") != self._states("% 0 | 0 0\n$\n"), (
+            "pending arguments do not reach the snapshot"
+        )
+        assert self._states("g | 1 0\n% 0 : 1 g\n$\n") != self._states(
+            "g | 0 0\n% 0 : 1 g\n$\n"
+        ), "a frame's result does not reach the snapshot"
+
+    def test_every_step_of_a_run_has_its_own_state(self) -> None:
+        """No two steps collide, so nothing is a spurious cycle."""
+        seen = self._states("f x | x 0\nf 1\n$\n")
+        assert len(set(seen)) == len(seen)
+
+    def test_frame_entry_key_separates_differing_bindings(self) -> None:
+        """Two calls of one function with different arguments differ.
+
+        The ancestor check calls a frame a replay when its key matches an
+        ancestor's, so bindings dropped from the key would make an
+        ordinary recursion look like a hang.
+        """
+        machine = _Machine("f x | x 0\nf 1\n$\n", ScriptedIO("0\n"))
+        keys = []
+        while not machine.halted:
+            machine.step()
+            if machine.frames:
+                keys.append(machine.frame_entry_key(machine.frames[-1]))
+        other = _Machine("f x | x 0\nf 0\n$\n", ScriptedIO("0\n"))
+        others = []
+        while not other.halted:
+            other.step()
+            if other.frames:
+                others.append(other.frame_entry_key(other.frames[-1]))
+        assert keys != others
 
     def test_frame_entry_key_ignores_the_output_number(self) -> None:
         # The output number is write-only, so two frames that differ only
