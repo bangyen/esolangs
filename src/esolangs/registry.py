@@ -22,6 +22,11 @@ from esolangs.tools import text as _generate
 # (a name whose meaning is lost by stripping its symbols, like ``%^2^-1``).
 _CANONICAL_OVERRIDES = {
     "%^2^-1": "pct_squared_minus_one",
+    # The parentheses are part of the name -- they mark the optional slots
+    # of the CV(N)(C) syllable -- so the slug rule turns them into
+    # separators and yields "cv_n_c".  The language is written and
+    # pronounced as one word, so the underscores are noise.
+    "CV(N)(C)": "cvnc",
 }
 
 _DIGIT_WORDS = {
@@ -249,6 +254,13 @@ LANGUAGES: dict[str, Language] = {
         "register_based.collatz_multiverse",
         boolean=_boolean.collatz_multiverse,
         id="collatz_multiverse",
+    ),
+    "CV(N)(C)": Language(
+        "CV(N)(C)",
+        _generate.cvnc,
+        "other.cvnc",
+        boolean=_boolean.cvnc,
+        id="cvnc",
     ),
     "Decleq": Language(
         "Decleq",

@@ -231,6 +231,12 @@ def _empty_machine(module: str, io: IO) -> object:
         from esolangs.interpreters.other.lamfunc import _Machine
 
         return _Machine("", io)
+    if module == "esolangs.interpreters.other.cvnc":
+        from esolangs.interpreters.other.cvnc import _Machine
+
+        # An empty program is malformed in CV(N)(C), so the stand-in is the
+        # shortest legal one: a single syllable that does nothing observable.
+        return _Machine("ci", io)
     if module == "esolangs.interpreters.other.fargo":
         from esolangs.interpreters.other.fargo import _Machine
 
@@ -295,6 +301,7 @@ _STEP_MACHINES = {
     "esolangs.interpreters.register_based.between",
     "esolangs.interpreters.register_based.myscript",
     "esolangs.interpreters.other.lamfunc",
+    "esolangs.interpreters.other.cvnc",
     "esolangs.interpreters.other.fargo",
     "esolangs.interpreters.other.forbin",
     "esolangs.interpreters.other.suptiftam",

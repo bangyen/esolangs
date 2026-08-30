@@ -16,10 +16,6 @@ assessed-and-rejected ledger in `docs/limitations.md`.
 - **function x(y)** — Turing-complete: functions with defaults, `[~]`/`` `~ ``
   input, `[a]`/`` `a `` output, comparison operators, a ternary, recursion; a
   boolean generator branches on a comparison and prints 0/1.
-- **CV(N)(C)** — Turing-complete: every command is an IPA syllable;
-  fricatives do character/integer I/O, approximants do while loops and
-  gotos on the accumulator, vowels do arithmetic.  The page's truth-machine
-  (`soθɰ̊oθʋi`) is the boolean-generator seed.
 - **DINAC** — `IN` reads an aschar or wubyte, `OUT` prints, IF-ELSE and
   WHILE on zero/nonzero, truth-machine example.  Bounded-storage machine,
   so the boolean generator is the whole story.

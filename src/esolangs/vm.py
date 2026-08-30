@@ -1918,6 +1918,43 @@ class _LamfuncVM(_BaseVM):
         return []
 
 
+class _CvncVM(_BaseVM):
+    """Accumulator and deque; ``ip`` is the command cursor.
+
+    ``memory`` puts the accumulator in front of the deque, the two places a
+    CV(N)(C) program keeps a number.  ``stack`` is the deque itself, which
+    the language pushes and pops from both ends.  The function under
+    construction is neither, so it appears in neither -- it holds symbols
+    rather than values, and ``snapshot`` is what carries it for cycle
+    detection.
+    """
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.other.cvnc import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.pointer
+
+    @property
+    def memory(self) -> list[int]:
+        return [self._machine.accumulator, *self._machine.deque]
+
+    @property
+    def stack(self) -> list[object]:
+        return list(self._machine.deque)
+
+
 class _FargoVM(_BaseVM):
     """Prefix-call evaluator; ``ip`` is the top-level line cursor.
 
@@ -2199,6 +2236,7 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Between": _BetweenVM,
     "MyScript": _MyScriptVM,
     "Lamfunc": _LamfuncVM,
+    "CV(N)(C)": _CvncVM,
     "Fargo": _FargoVM,
     "Forbin": _ForbinVM,
     "Suptiftam": _SuptiftamVM,

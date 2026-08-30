@@ -110,6 +110,15 @@ ignore = [
 # Parametrized tests share a (program, stdin) battery; some tests only use
 # program, but pytest requires the parameter to be declared.
 "tests/tools/test_transpilers.py" = ["ARG001"]
+# CV(N)(C)'s source code *is* IPA, so the ambiguous-unicode rules fire on
+# every command in the language: the fricative is U+03B8 GREEK SMALL LETTER
+# THETA, the multiplication plosive U+0261 LATIN SMALL LETTER SCRIPT G, and
+# so on.  Here the confusable character is the correct one -- these rules
+# catch a homoglyph typed by mistake, and there is no non-IPA spelling to
+# prefer -- so they are off for the three files that spell the language.
+"src/esolangs/interpreters/other/cvnc.py" = ["RUF001", "RUF002", "RUF003"]
+"src/esolangs/tools/boolean/cvnc.py" = ["RUF001", "RUF002", "RUF003"]
+"tests/interpreters/test_cvnc.py" = ["D", "N802", "RUF001", "RUF002", "RUF003"]
 
 [tool.mypy]
 strict = true

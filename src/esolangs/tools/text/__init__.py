@@ -14,6 +14,7 @@ from esolangs.tools.text.other import (
     bit_tilde,
     clockwise,
     container,
+    cvnc,
     dimensional,
     forbin,
     forth,
