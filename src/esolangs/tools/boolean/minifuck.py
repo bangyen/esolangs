@@ -67,8 +67,11 @@ live tape, so moving the trailing fills to the front makes 2 rows wrong at
 Together they leave nothing out of order.
 
 **Coverage: every two-input table, and eight of the fourteen three-input
-orbits.**  This is a *search* -- three routes across two embed separators --
-so its reach is bounded by the depth caps below rather than by an argument.
+orbits.**  Two inputs are *derived* rather than searched -- see
+:data:`_TWO_INPUT_PLAN` -- so all sixteen build in well under a second where
+they used to cost 2.5-9s each.  Three inputs are still a *search*: three
+routes across two embed separators, so their reach is bounded by the depth
+caps below rather than by an argument.
 Measuring by orbit rather than by sampling tables: the four degenerate orbits
 are immediate, and AND3, majority, parity and one more build in 7-40 seconds.
 The six that fail do so after about two minutes, and not for want of a
@@ -646,6 +649,63 @@ def _reconverged(truth_table: str, essential: list[int], n: int) -> str | None:
     return None
 
 
+# The two-input construction: one staging per complement pair.
+#
+# The embed leaves an affine picture -- every cell holds ``a*b0 ^ b*b1 ^ c``
+# plus the one nonlinear term the ``[`` cascade computes -- and a plain run
+# of ``k`` brackets from ``_BASE - 1`` sweeps that picture forward, exposing
+# a different function at each step.  So the whole two-input problem is:
+# pick the separator, the bracket count and the accumulator, then hand the
+# result to the endgame every other route already uses.
+#
+# Selection is on the accumulator's value **at the read**, not on the cell
+# that holds the answer beforehand.  Those differ, because the walk out
+# applies the running prefix-XOR: at ``acc = 22`` after separator 1, AND
+# ``(0,0,0,1)`` arrives as the constant ``(1,1,1,1)``, and XOR ``(0,1,1,0)``
+# arrives as ``b1``.  Choosing on the pre-walk column is what made an
+# earlier version of this table cover 10 of 16 rather than all of them.
+#
+# There are eight stagings for sixteen tables because a table and its
+# complement always share one: the endgame tries both read polarities and
+# both pool orientations, and the printed digit is ``NOT(v XOR cell7)``, so
+# the complement costs nothing to reach.  Each entry was derived by running
+# the staging forward and reading off the arriving column -- no program
+# search -- and every one is checked end to end by the test suite.
+_TWO_INPUT_PLAN: dict[str, tuple[int, int, int]] = {
+    # table (and its complement): (separator index, bracket count, accumulator)
+    "0000": (0, 0, 9),  # constants
+    "0011": (0, 0, 16),  # b0
+    "0101": (0, 0, 19),  # b1
+    "0110": (0, 1, 19),  # XOR
+    "0111": (0, 4, 20),  # OR
+    "0001": (1, 0, 21),  # AND
+    "0010": (0, 5, 20),  # b0 AND NOT b1
+    "0100": (0, 6, 20),  # NOT b0 AND b1
+}
+
+
+def _two_input(truth_table: str) -> str | None:
+    """Build a two-input table from :data:`_TWO_INPUT_PLAN`, without searching.
+
+    The plan is keyed by the lexicographically smaller of the table and its
+    complement, since the pair shares a staging.  Returns None rather than
+    raising if the endgame somehow declines, so the caller falls through to
+    the searches and coverage cannot regress.
+    """
+    complement = "".join(str(1 - int(c)) for c in truth_table)
+    plan = _TWO_INPUT_PLAN.get(min(truth_table, complement))
+    if plan is None:
+        return None
+    sep_index, brackets, acc = plan
+    j = _embed(2, sep=_SEPS[sep_index])
+    _clamp(j)
+    _walk_to(j, _BASE - 1)
+    j.emit("[" * brackets + "<")
+    _clamp(j)
+    hit = _try_print(j, truth_table, acc)
+    return hit.template() if hit is not None else None
+
+
 def _lift_leaves_name_order(essential: list[int], n: int) -> bool:
     """Whether lifting would emit the ``{Xi}`` out of ascending order.
 
@@ -701,12 +761,12 @@ def minifuck(truth_table: str) -> str:
     :class:`ValueError` is raised rather than returning a program that has
     not been seen to print the table.
 
-    Cached, because that simulated search is what this module costs: about
-    26s per two-input table, against effectively zero to *run* the program it
-    returns.  The search is deterministic in ``truth_table`` and the result
-    is an immutable string, so repeat calls are free.  Callers that build the
-    same table more than once -- the test suite sweeps all sixteen two-input
-    tables and separately spot-checks several of them -- pay the search once.
+    Cached, because at three inputs the simulated search is what this module
+    costs -- seconds to tens of seconds a table, against effectively zero to
+    *run* the program it returns.  Two inputs no longer pay that: they are
+    derived from :data:`_TWO_INPUT_PLAN`, and all sixteen build in well under
+    a second together.  The build is deterministic in ``truth_table`` and the
+    result is an immutable string, so repeat calls are free either way.
     """
     n = _validate_truth_table(truth_table)
     want = tuple(int(c) for c in truth_table)
@@ -748,6 +808,13 @@ def minifuck(truth_table: str) -> str:
         degenerate = _degenerate(truth_table, n)
         if degenerate is not None:
             return degenerate
+
+    # Two inputs are solved outright: every two-input table has a staging in
+    # :data:`_TWO_INPUT_PLAN`, so no search runs at this arity at all.
+    if n == 2:
+        derived = _two_input(truth_table)
+        if derived is not None:
+            return derived
 
     frontier = _BASE + n * _SPAN + 6
 
