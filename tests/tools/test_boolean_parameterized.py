@@ -2757,6 +2757,60 @@ class TestParameterizedPctSquaredMinusOne:
         with pytest.raises(ValueError, match="power-of-two"):
             parameterized.pct_squared_minus_one("011")
 
+    @pytest.mark.parametrize("n", [3, 4, 5, 6])
+    def test_minterm_cascade_lifts_the_two_input_cap(self, n: int) -> None:
+        """Single-minterm tables build at any arity, past the derived path's cap.
+
+        The derived two-input path composes one affine map per input into a
+        shared value, which forces each cofactor of the table to be constant
+        or an affine image of one shared function -- the constraint that caps
+        it at two inputs.  The cascade escapes it by using the erase
+        multiplier as a conditional: the accumulator is loaded with 1 and
+        wiped by the first input whose bit misses the minterm, so *where* the
+        wipe happens depends on the inputs.  That is a branch realised
+        arithmetically in a language whose only jump target is position 0.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        for index in range(2**n):
+            table = "".join("1" if i == index else "0" for i in range(2**n))
+            template = parameterized.pct_squared_minus_one(table)
+            for row in range(2**n):
+                bits = [(row >> (n - 1 - k)) & 1 for k in range(n)]
+                assert self.run_pct(self.instantiate(template, bits)) == table[row]
+
+    def test_cascade_branches_are_equal_width(self) -> None:
+        """No instantiation leaks its inputs through ``len()``.
+
+        Both cascade branches are two characters -- ``pp`` is two negations
+        composing to the identity, ``'p`` zeroes and negates zero -- so a
+        one-character ``'`` erase, whose odd shortfall has no ``pp`` padding,
+        is never what a setter spells.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        n = 4
+        template = parameterized.pct_squared_minus_one("1" + "0" * (2**n - 1))
+        widths = {
+            len(
+                self.instantiate(template, [(row >> (n - 1 - k)) & 1 for k in range(n)])
+            )
+            for row in range(2**n)
+        }
+        assert len(widths) == 1
+
+    def test_multi_minterm_table_refused_not_miscomputed(self) -> None:
+        """A table the cascade cannot build is refused rather than served wrong.
+
+        OR-ing minterm indicators needs a running total to survive a gadget
+        that erases, and there is only one register, so tables with several
+        ones are outside this construction.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        with pytest.raises(ValueError, match="single-minterm"):
+            parameterized.pct_squared_minus_one("00000110")
+
     def test_slope_zero_forgets_the_accumulator(self) -> None:
         """``'`` is the constant map: it discards whatever it was given.
 
