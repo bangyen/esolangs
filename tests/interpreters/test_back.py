@@ -2,9 +2,11 @@
 
 import io
 from contextlib import redirect_stdout
+from typing import ClassVar
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.tape_based.back import run
+from tests.interpreters.contract import CycleContract, SnapshotContract
 
 
 def run_and_capture(code: list[str]) -> str:
@@ -182,39 +184,17 @@ class TestStepMachine:
         revisit.step()  # ">" onto the cell that already exists
         assert revisit.tape == [0, 0], "no cell appended for known ground"
 
-    def test_snapshot_is_hashable(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.back import _Machine
 
-        assert hash(_Machine(["-*"], ScriptedIO()).snapshot()) is not None
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.back import _Machine
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.back import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+    return _Machine(code, ScriptedIO())
 
-        assert run_until_halt_or_cycle(_Machine(["-*"], ScriptedIO())) is True
 
-    def test_beam_without_star_is_detected_as_a_cycle(self) -> None:
-        """A beam that bounces forever revisits a snapshot and is proven."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.back import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+class TestContract(SnapshotContract, CycleContract):
+    """The shared shapes, with this language's own programs."""
 
-        assert run_until_halt_or_cycle(_Machine(["-"], ScriptedIO())) is False
-
-    def test_short_lines_pad_on_the_right(self) -> None:
-        """A short line keeps its content at the left, and is padded right.
-
-        Padding the other way shifts every short row's commands sideways.
-        Here that decides whether the program terminates at all: with the
-        ``\\`` at column 0 the beam bounces forever, and moved to column 1
-        it drops onto the ``*`` and halts.  The cycle detector settles it
-        without a time limit -- the grid has no ``>``, so the state space is
-        finite either way.
-        """
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.back import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine(["\\", "-*"], ScriptedIO())) is False
+    machine = staticmethod(_machine)
+    stepping_program: ClassVar[list[str]] = ["-*"]
+    halting_program: ClassVar[list[str]] = ["-*"]

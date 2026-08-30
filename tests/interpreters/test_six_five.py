@@ -6,6 +6,7 @@ from contextlib import redirect_stdout
 from unittest.mock import patch
 
 from esolangs.interpreters.io import IO
+from tests.interpreters.contract import CycleContract, SnapshotContract
 
 sixfive = importlib.import_module("esolangs.interpreters.tape_based.six_five")
 
@@ -186,23 +187,18 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 3
 
-    def test_snapshot_is_hashable(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.six_five import _Machine
 
-        assert hash(_Machine("55A", ScriptedIO()).snapshot()) is not None
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.six_five import _Machine
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.six_five import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+    return _Machine(code, ScriptedIO())
 
-        assert run_until_halt_or_cycle(_Machine("55A", ScriptedIO())) is True
 
-    def test_8_jump_is_detected_as_a_cycle(self) -> None:
-        """A 8n jump back to a 4 marker that never fires loops forever."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.six_five import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+class TestContract(SnapshotContract, CycleContract):
+    """The shared shapes, with this language's own programs."""
 
-        assert run_until_halt_or_cycle(_Machine("481", ScriptedIO())) is False
+    machine = staticmethod(_machine)
+    stepping_program = "55A"
+    halting_program = "55A"
+    looping_program = "481"

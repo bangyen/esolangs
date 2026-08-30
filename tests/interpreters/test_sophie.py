@@ -15,6 +15,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.sophie import find, run
+from tests.interpreters.contract import CycleContract, SnapshotContract
 
 
 class _TestTimeoutError(Exception):
@@ -454,15 +455,6 @@ class TestSophieFindFunction:
 
 
 class TestStepMachine:
-    def test_snapshot_changes_after_a_step(self) -> None:
-        from esolangs.interpreters.register_based.sophie import _Machine
-
-        machine = _Machine("#$5", IO())
-        before = machine.snapshot()
-        machine.step()  # #$5 loads 5 into the accumulator
-        assert machine.snapshot() != before
-        assert machine.acc == 5
-
     def test_halt_command_sets_halted(self) -> None:
         from esolangs.interpreters.register_based.sophie import _Machine
 
@@ -471,20 +463,6 @@ class TestStepMachine:
         machine.step()
         assert machine.halted
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.register_based.sophie import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine("&", IO())) is True
-
-    def test_loop_is_detected_as_a_cycle(self) -> None:
-        # [] is an empty loop: [ pushes the index, ] jumps straight back,
-        # so the machine oscillates between the same two states forever.
-        from esolangs.interpreters.register_based.sophie import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine("[]", IO())) is False
-
     def test_step_after_halt_is_a_noop(self) -> None:
         from esolangs.interpreters.register_based.sophie import _Machine
 
@@ -492,6 +470,22 @@ class TestStepMachine:
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
         assert machine.halted
+
+
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.register_based.sophie import _Machine
+
+    return _Machine(code, IO())
+
+
+class TestContract(SnapshotContract, CycleContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    stepping_program = "#$5"
+    halting_program = "&"
+    looping_program = "[]"
 
 
 if __name__ == "__main__":

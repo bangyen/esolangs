@@ -15,6 +15,7 @@ import pytest
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.ram0 import run
+from tests.interpreters.contract import CycleContract, SnapshotContract
 
 
 class _TestTimeoutError(Exception):
@@ -488,21 +489,6 @@ class TestStepMachine:
         machine.step()  # must not dump again
         assert machine.io.getvalue() == "z: 1\nn: 0\nram: {}"
 
-    def test_snapshot_changes_after_a_step(self) -> None:
-        from esolangs.interpreters.register_based.ram0 import _Machine
-
-        machine = _Machine("A", IO())
-        before = machine.snapshot()
-        machine.step()  # A increments z
-        assert machine.snapshot() != before
-        assert machine.z == 1
-
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.register_based.ram0 import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine("ZA", IO())) is True
-
     def test_loop_is_detected_as_a_cycle(self) -> None:
         # Z1: Z zeroes z (already zero, a net no-op), then the goto to
         # token 1 sets ind back to 0 -- a genuine state cycle, not
@@ -511,6 +497,22 @@ class TestStepMachine:
         from esolangs.vm import run_until_halt_or_cycle
 
         assert run_until_halt_or_cycle(_Machine("Z1", IO())) is False
+
+
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.register_based.ram0 import _Machine
+
+    return _Machine(code, IO())
+
+
+class TestContract(SnapshotContract, CycleContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    stepping_program = "A"
+    halting_program = "ZA"
+    looping_program = "Z1"
 
 
 if __name__ == "__main__":

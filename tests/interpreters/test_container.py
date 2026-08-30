@@ -2,11 +2,13 @@
 
 import io
 from contextlib import redirect_stdout
+from typing import ClassVar
 
 import pytest
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.container import run
+from tests.interpreters.contract import SnapshotContract
 
 HELLO_WORLD = [
     "A:",
@@ -80,15 +82,6 @@ class TestContainer:
 
 
 class TestStepMachine:
-    def test_snapshot_changes_after_a_step(self) -> None:
-        from esolangs.interpreters.other.container import _Machine
-
-        machine = _Machine(["A=0:", "+1 A>=0"], IO())
-        before = machine.snapshot()
-        machine.step()
-        assert machine.snapshot() != before
-        assert machine.var == {"A": 1}
-
     def test_exit_sets_halted_and_exit_code(self) -> None:
         from esolangs.interpreters.other.container import _Machine
 
@@ -118,3 +111,17 @@ class TestStepMachine:
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
         assert machine.tick == 0
+
+
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.other.container import _Machine
+
+    return _Machine(code, IO())
+
+
+class TestContract(SnapshotContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    stepping_program: ClassVar[list[str]] = ["A=0:", "+1 A>=0"]

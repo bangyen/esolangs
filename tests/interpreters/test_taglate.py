@@ -8,12 +8,14 @@ Google Translate URL ``t`` command).
 
 import io
 from contextlib import redirect_stdout
+from typing import ClassVar
 from unittest.mock import patch
 
 import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.queue_based.taglate import run
+from tests.interpreters.contract import CycleContract, SnapshotContract
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
@@ -130,25 +132,18 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 1
 
-    def test_snapshot_is_hashable(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.queue_based.taglate import _Machine
 
-        assert hash(_Machine(["abc", "i"], ScriptedIO()).snapshot()) is not None
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.queue_based.taglate import _Machine
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.queue_based.taglate import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+    return _Machine(code, ScriptedIO())
 
-        assert run_until_halt_or_cycle(_Machine(["abc", "i"], ScriptedIO())) is True
 
-    def test_loop_is_detected_as_a_cycle(self) -> None:
-        """A gz whose head never zeroes re-enters itself forever."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.queue_based.taglate import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+class TestContract(SnapshotContract, CycleContract):
+    """The shared shapes, with this language's own programs."""
 
-        assert (
-            run_until_halt_or_cycle(_Machine(["1", "gy", "gz"], ScriptedIO())) is False
-        )
+    machine = staticmethod(_machine)
+    stepping_program: ClassVar[list[str]] = ["abc", "i"]
+    halting_program: ClassVar[list[str]] = ["abc", "i"]
+    looping_program: ClassVar[list[str]] = ["1", "gy", "gz"]

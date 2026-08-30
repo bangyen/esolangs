@@ -8,12 +8,13 @@ import io
 import signal
 from collections.abc import Callable
 from contextlib import redirect_stdout
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 
 from esolangs.interpreters.grid_based.wii2d import run
 from esolangs.interpreters.io import IO
+from tests.interpreters.contract import CycleContract, SnapshotContract
 
 
 class _TestTimeoutError(Exception):
@@ -384,23 +385,6 @@ class TestStepMachine:
         assert machine.halted
         assert machine.acc == 0
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.grid_based.wii2d import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine([">~.", "!"], IO())) is True
-
-    def test_snapshot_is_hashable_and_tracks_the_accumulator(self) -> None:
-        from esolangs.interpreters.grid_based.wii2d import _Machine
-
-        machine = _Machine([">+~.", "!"], IO())
-        before = machine.snapshot()
-        assert hash(before) is not None
-        machine.step()  # > east
-        machine.step()  # + increments
-        assert machine.snapshot() != before
-        assert machine.acc == 1
-
     def test_step_after_halt_is_a_noop(self) -> None:
         from esolangs.interpreters.grid_based.wii2d import _Machine
 
@@ -413,6 +397,21 @@ class TestStepMachine:
         state = machine.snapshot()
         machine.step()  # stepping a halted machine must not raise
         assert machine.snapshot() == state
+
+
+def _machine(code: object) -> object:
+    from esolangs.interpreters.grid_based.wii2d import _Machine
+    from esolangs.interpreters.io import IO
+
+    return _Machine(code, IO())
+
+
+class TestContract(SnapshotContract, CycleContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    stepping_program: ClassVar[list[str]] = [">+~.", "!"]
+    halting_program: ClassVar[list[str]] = [">~.", "!"]
 
 
 if __name__ == "__main__":

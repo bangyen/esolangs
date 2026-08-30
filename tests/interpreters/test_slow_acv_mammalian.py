@@ -6,6 +6,7 @@ from pathlib import Path
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.tape_based.slow_acv_mammalian import run
+from tests.interpreters.contract import SnapshotContract
 
 
 def run_and_capture(code: str) -> str:
@@ -57,15 +58,6 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.lst == [[0] for _ in range(23)]
 
-    def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
-        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
-
-        machine = _Machine("SEED PRONOUNCE", IO())
-        before = machine.snapshot()
-        hash(before)  # must not raise
-        machine.step()
-        assert machine.snapshot() != before
-
 
 class TestPartial:
     """``partial`` applies one array op, and two of them need a non-empty array."""
@@ -108,3 +100,17 @@ class TestLeapfrog:
         machine.step()
         assert not machine.halted
         assert machine.ind == 2
+
+
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
+    return _Machine(code, IO())
+
+
+class TestContract(SnapshotContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    stepping_program = "SEED PRONOUNCE"

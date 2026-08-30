@@ -9,12 +9,14 @@ is the first digit adjacent to the command (up, right, down, left).
 
 import io
 from contextlib import redirect_stdout
+from typing import ClassVar
 from unittest.mock import patch
 
 import pytest
 
 from esolangs.interpreters.grid_based.dig import run
 from esolangs.interpreters.io import IO, ScriptedIO
+from tests.interpreters.contract import CycleContract
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
@@ -246,19 +248,6 @@ class TestStepMachine:
         assert machine.mole == ord("A")
         assert machine.io.position() == 1
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.grid_based.dig import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine([">@"], IO())) is True
-
-    def test_looping_ring_is_detected_as_a_cycle(self) -> None:
-        """A mole orbiting a closed direction ring never halts or leaves."""
-        from esolangs.interpreters.grid_based.dig import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine([">'", "^<"], IO())) is False
-
     def test_step_after_halt_is_a_noop(self) -> None:
         from esolangs.interpreters.grid_based.dig import _Machine
 
@@ -271,3 +260,18 @@ class TestStepMachine:
         state = machine.snapshot()
         machine.step()  # stepping a halted machine must not raise
         assert machine.snapshot() == state
+
+
+def _machine(code: object) -> object:
+    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.io import IO
+
+    return _Machine(code, IO())
+
+
+class TestContract(CycleContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    halting_program: ClassVar[list[str]] = [">@"]
+    looping_program: ClassVar[list[str]] = [">'", "^<"]

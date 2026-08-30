@@ -18,6 +18,7 @@ from esolangs.interpreters.register_based.polynomial import (
     run,
     sanitize,
 )
+from tests.interpreters.contract import CycleContract, SnapshotContract
 
 
 class TestPolynomialHelperFunctions:
@@ -403,15 +404,17 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 1
 
-    def test_snapshot_is_hashable(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.polynomial import _Machine
 
-        assert hash(_Machine("f(x) = x^2+4", ScriptedIO()).snapshot()) is not None
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.register_based.polynomial import _Machine
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.polynomial import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+    return _Machine(code, ScriptedIO())
 
-        assert run_until_halt_or_cycle(_Machine("f(x) = x^2+4", ScriptedIO())) is True
+
+class TestContract(SnapshotContract, CycleContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    stepping_program = "f(x) = x^2+4"
+    halting_program = "f(x) = x^2+4"
