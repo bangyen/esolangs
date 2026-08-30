@@ -385,6 +385,22 @@ def _search[Hit](
 # and after the code and the walk cell 7 holds one value, so one code cannot
 # satisfy both.  Ten is therefore not a list that wants shrinking to one.
 #
+# **Nor to five plus a rule.**  The pairing is a property of what the codes
+# *cover*, not of how they are *spelled*, so the obvious compression -- keep
+# one code per pair and derive its partner -- does not exist.  Mechanically
+# the mirror is only "flip cell 7": run a pair on one state and the two tapes
+# agree everywhere else, at the same pointer.  But the codes finish at four
+# different pointer positions (1, 2, 4 and 5), so "flip cell 7 from where I
+# stopped" is a different string for each, and no trailing rule is uniform.
+# Measured three ways: rewriting a trailing ``[<`` to ``[[<<`` gives the right
+# partner for two pairs and the wrong string for the other three; no uniform
+# appended suffix up to length 6 makes the five reach what their partners
+# reach; and a partner derived as ``code + flip`` is necessarily longer than
+# the shipped one, which would lose the shortest-first ordering below and
+# change which code wins where.  A per-code flip search would work and is not
+# compression -- five strings become five strings plus five suffixes plus the
+# machinery to apply them.
+#
 # The full list stays because there is no reason to prune it: the acceptance
 # test decides every call, so a redundant candidate costs one check and can
 # never produce a wrong pool.  Ordered shortest first, so the emitted program
