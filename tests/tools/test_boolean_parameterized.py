@@ -2007,7 +2007,7 @@ class TestParameterizedMinifuck:
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
-        def forbidden(*args: object, **kwargs: object) -> object:
+        def forbidden(*_args: object, **_kwargs: object) -> object:
             raise AssertionError("a two-input table reached the search")
 
         with (
@@ -2019,7 +2019,8 @@ class TestParameterizedMinifuck:
                 # ``minifuck`` is cached, so go through the wrapped function
                 # to be sure the build actually runs under the patch.
                 template = module.minifuck.__wrapped__(format(table_int, "04b"))
-                assert "{X0}" in template and "{X1}" in template, table
+                assert "{X0}" in template, table
+                assert "{X1}" in template, table
         # And the public entry point still agrees with what it built.
         assert parameterized.minifuck("0110").count("{X") == 2
 
@@ -2059,7 +2060,7 @@ class TestParameterizedMinifuck:
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
-        def forbidden(*args: object, **kwargs: object) -> object:
+        def forbidden(*_args: object, **_kwargs: object) -> object:
             raise AssertionError("a degenerate table reached the search")
 
         checked = 0
@@ -2121,7 +2122,7 @@ class TestParameterizedMinifuck:
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
-        def forbidden(*args: object, **kwargs: object) -> object:
+        def forbidden(*_args: object, **_kwargs: object) -> object:
             raise AssertionError("reached the search")
 
         searched = []
@@ -2154,7 +2155,7 @@ class TestParameterizedMinifuck:
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
-        assert module._SCAN_SEPS == module._SEPS[:2], module._SCAN_SEPS  # noqa: SLF001
+        assert module._SEPS[:2] == module._SCAN_SEPS, module._SCAN_SEPS  # noqa: SLF001
         assert len(module._SEPS) > len(module._SCAN_SEPS), module._SEPS  # noqa: SLF001
         # Every separator index a plan entry names must exist.
         for plan in module._PLANS.values():  # noqa: SLF001
@@ -2207,13 +2208,13 @@ class TestParameterizedMinifuck:
         for n, plan in sorted(module._PLANS.items()):  # noqa: SLF001
             for key, (sep_index, settle, suffix, acc) in sorted(plan.items()):
                 joint = module._embed(  # noqa: SLF001
-                    n, settle=settle, sep=module._SEPS[sep_index]  # noqa: SLF001
+                    n,
+                    settle=settle,
+                    sep=module._SEPS[sep_index],  # noqa: SLF001
                 )
                 module._clamp(joint)  # noqa: SLF001
                 module._walk_to(joint, module._BASE - 1)  # noqa: SLF001
-                joint.emit(
-                    "[" * suffix + "<" if isinstance(suffix, int) else suffix
-                )
+                joint.emit("[" * suffix + "<" if isinstance(suffix, int) else suffix)
                 module._clamp(joint)  # noqa: SLF001
                 arrived = None
                 for cell7 in (0, 1):
@@ -2228,7 +2229,7 @@ class TestParameterizedMinifuck:
                     if key in (column, complement):
                         arrived = column
                         break
-                assert arrived is not None, (n, key, sep_index, settle, brackets, acc)
+                assert arrived is not None, (n, key, sep_index, settle, suffix, acc)
 
     @pytest.mark.slow  # 7.8s: builds the searching two-input template
     def test_instantiations_have_equal_length(self) -> None:
