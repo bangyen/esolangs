@@ -30,21 +30,31 @@ the pool, relays a cell's value into the *pointer* -- values cannot travel
 left in this language, but the pointer can -- and prints one ASCII digit.
 
 The choice of ``(separator, settle count, suffix, accumulator)`` is what
-makes a table build, and :data:`_PLANS` records one per truth table.  The
-selection rule is the load-bearing part: pick the accumulator whose column
-reads correctly **at the read**, not the cell that holds the answer
+makes a table build, and that choice is **derived, not stored**: the product
+is small enough to walk, so :func:`_derive_staging` enumerates it in a fixed
+order and takes the first entry that prints.  Each candidate is run and its
+rows compared against the table, so nothing is accepted on a recorded claim.
+The one exception is a single three-input table whose suffix no bracket run
+spells; see :data:`_EXCEPTIONS`.
+
+The selection rule is the load-bearing part, and it is why the enumeration
+tests rather than predicts: the accumulator that works is the one whose
+column reads correctly **at the read**, not the cell holding the answer
 beforehand.  Those differ, because the walk out applies the running
 prefix-XOR -- an AND column can arrive as a constant, and XOR can arrive as a
 projection.  Choosing pre-walk covers 10 of the 16 two-input tables and looks
 nearly right, which is the trap.
 
-A table and its complement share a staging, so the plans are keyed by the
-lexicographically smaller of the two: the endgame tries both read polarities
-and prints ``NOT(v XOR cell7)``, so the complement costs nothing.
+A table and its complement share a staging: the endgame tries both read
+polarities and prints ``NOT(v XOR cell7)``, so the complement costs nothing.
 
 **Coverage.**  Every table at ``n <= 3`` builds from a staging, with no
-search: 16 of 16 at two inputs, 256 of 256 at three, the whole three-input
-arity in about ten seconds.  Wider tables fall through to the searches below,
+search: 16 of 16 at two inputs, 256 of 256 at three.  All but one pair are
+derived, and the derivation is done for a whole arity at a time -- measured,
+0.9s for two inputs and 15s for three, against minutes if each table sweeps
+for itself.  So the first three-input table costs the arity and the other
+255 are free; that is the trade deriving makes against storing.
+Wider tables fall through to the searches below,
 which is why those remain -- a missing staging degrades rather than raises.
 A table that ignores some inputs is solved at the arity it uses and renumbered
 back, so a wide table with a narrow core is as cheap as that core.
@@ -62,7 +72,7 @@ searches fail on.
 
 import re
 from collections import deque
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from functools import cache
 
 from esolangs.tools.boolean.helpers import _validate_truth_table, read_at
@@ -88,8 +98,8 @@ _BASE = 16
 # Enumerating short strings over the same alphabet fixed that -- the three
 # added below carry 118 of those 120, and the searches never had to change.
 # Only the first two are used by the routes that scan separators (the
-# degenerate path and the fallback searches); the rest are reached by name
-# from :data:`_THREE_INPUT_PLAN`, so adding one costs those routes nothing.
+# degenerate path and the fallback searches); the rest are reached by the
+# staging enumeration, so adding one costs those routes nothing.
 _SEPS = ("[x<[x", "[x[x[x", "[<[<[", "[[[[[", "[x[<[")
 _SEP = _SEPS[0]
 
@@ -660,14 +670,13 @@ def _reconverged(truth_table: str, essential: list[int], n: int) -> str | None:
         accumulators: tuple[int, ...] = tuple(_DEGENERATE_CELLS.values())
     else:
         inner = _project(truth_table, essential, n)
-        complement = "".join(str(1 - int(c)) for c in inner)
-        plan = _TWO_INPUT_PLAN.get(min(inner, complement))
+        plan = _derive_staging(inner, 2)
         if plan is None:
             return None
         sep_index, _settle, brackets, acc = plan
         # Every two-input staging is a plain bracket run; the literal-suffix
-        # form is only used by one three-input entry, and replaying it here
-        # would need the walk this route does not make.
+        # form is only used by the one stored three-input exception, and
+        # replaying it here would need the walk this route does not make.
         if not isinstance(brackets, int):
             return None
         setup = (sep_index, brackets, acc)
@@ -702,77 +711,76 @@ def _reconverged(truth_table: str, essential: list[int], n: int) -> str | None:
     return None
 
 
-# The two-input construction: one staging per complement pair.
+# The staged construction: one ``(separator, settle, suffix, accumulator)``
+# per complement pair, *derived* rather than stored.
 #
-# The embed leaves an affine picture -- every cell holds ``a*b0 ^ b*b1 ^ c``
-# plus the one nonlinear term the ``[`` cascade computes -- and a plain run
-# of ``k`` brackets from ``_BASE - 1`` sweeps that picture forward, exposing
-# a different function at each step.  So the whole two-input problem is:
-# pick the separator, the bracket count and the accumulator, then hand the
-# result to the endgame every other route already uses.
+# The embed leaves an affine picture -- every cell holds a linear form in the
+# input bits plus the one nonlinear term the ``[`` cascade computes -- and a
+# plain run of ``k`` brackets from ``_BASE - 1`` sweeps that picture forward,
+# exposing a different function at each step.  So the whole problem is: pick
+# the separator, the bracket count and the accumulator, then hand the result
+# to the endgame every other route already uses.
+#
+# Which is small enough to *enumerate*.  :func:`_stagings` gives the order --
+# 5 separators x 2 settle counts x 29 bracket counts x 26 accumulators -- and
+# a table is built by the first entry that prints it, so no table of answers
+# is needed.
+#
+# :func:`_derived_plans` runs that enumeration for a whole arity at once,
+# which is what makes it affordable.  A staging is expensive to build and
+# cheap to test against a table, so the loops go staging-major: one embed per
+# (separator, settle), the bracket run extended one instruction at a time,
+# and the endgame emitted once per (k, accumulator, read, orientation)
+# whatever the table.  Measured, the whole three-input arity derives in 15s
+# and two inputs in 0.9s; the table-major spelling of the same search costs
+# minutes, because it rebuilds every staging once per table.
 #
 # Selection is on the accumulator's value **at the read**, not on the cell
 # that holds the answer beforehand.  Those differ, because the walk out
 # applies the running prefix-XOR: at ``acc = 22`` after separator 1, AND
 # ``(0,0,0,1)`` arrives as the constant ``(1,1,1,1)``, and XOR ``(0,1,1,0)``
-# arrives as ``b1``.  Choosing on the pre-walk column is what made an
-# earlier version of this table cover 10 of 16 rather than all of them.
+# arrives as ``b1``.  Choosing on the pre-walk column is what made an earlier
+# version of this cover 10 of the 16 two-input tables rather than all of them.
+# The enumeration sidesteps that trap by construction: it does not reason
+# about which column *ought* to arrive, it emits the endgame and reads what
+# the rows actually printed.
 #
-# There are eight stagings for sixteen tables because a table and its
-# complement always share one: the endgame tries both read polarities and
-# both pool orientations, and the printed digit is ``NOT(v XOR cell7)``, so
-# the complement costs nothing to reach.  Each entry was derived by running
-# the staging forward and reading off the arriving column -- no program
-# search -- and every one is checked end to end by the test suite.
-# Each entry is ``(separator index, settle count, bracket count, accumulator)``
-# keyed by the lexicographically smaller of a table and its complement.
-# The third field is a bracket *count* for all but one entry, and a literal
-# suffix string for that one.  See :func:`_staged`.
+# A table and its complement share a staging, because the endgame tries both
+# read polarities and both pool orientations and the printed digit is
+# ``NOT(v XOR cell7)``, so the complement costs nothing to reach.  That is
+# why the counts below are given in complement pairs.
 _Staging = tuple[int, int, int | str, int]
 
-_TWO_INPUT_PLAN: dict[str, _Staging] = {
-    "0000": (0, 0, 0, 9),  # constants
-    "0011": (0, 0, 0, 16),  # b0
-    "0101": (0, 0, 0, 19),  # b1
-    "0110": (0, 0, 1, 19),  # XOR
-    "0111": (0, 0, 4, 20),  # OR
-    "0001": (1, 0, 0, 21),  # AND
-    "0010": (0, 0, 5, 20),  # b0 AND NOT b1
-    "0100": (0, 0, 6, 20),  # NOT b0 AND b1
-}
-
-# The same construction at three inputs.  It very nearly covers the arity --
-# 108 of the 109 complement pairs are here -- but a miss still falls through
-# to the searches rather than raising, so coverage cannot regress and the one
-# last pair (``01101101`` / ``10010010``) needed a staging the others do not.
+# **Coverage, and the one table that must still be stored.**  The enumeration
+# reaches 108 of the 109 non-degenerate three-input pairs and all 8 at two
+# inputs.  The holdout is ``01101101`` / ``10010010``, and it is worth knowing
+# why, because it was the hardest table here by some margin and the searches
+# never built it at all -- both members raise after about 96 seconds.
 #
-# It is worth knowing why, because it was the hardest table here by some
-# margin and the searches never built it at all -- both members raise after
-# about 96 seconds.  Its answer column is not scarce: 14375 of 804600 sparse
-# suffixes leave it standing somewhere on the tape.  What is scarce is a
-# staging that also *carries* it to the read, because the walk's prefix-XOR
-# rewrites the very cell.  A pure bracket run never manages it; the suffix
-# below interleaves two ``<`` into the run, which is the vocabulary the
-# column search was already using when it found the column and still failed
-# to print it.
+# Its answer column is not scarce: 14375 of 804600 sparse suffixes leave it
+# standing somewhere on the tape.  What is scarce is a staging that also
+# *carries* it to the read, because the walk's prefix-XOR rewrites the very
+# cell.  A pure bracket run never manages it -- which is exactly why the
+# enumeration cannot reach it, every entry of :func:`_stagings` being a run --
+# and the stored suffix interleaves two ``<`` into the run instead.
 #
-# That pair was looked for and not found, and the shape of the miss is worth
-# recording so it is not re-run blind.  Unlike the tables the new separators
-# closed, its answer *is* computed: ``01101101`` stands as a column at cell 24
-# under separator 2 at ``k == 15``.  What fails is the carry -- no accumulator
-# reads it intact, and from that staging it arrives as ``10011101`` or
-# ``01100010``, neither the table nor its complement.  A sweep over 13 of the
-# 15 (separator, settle) slices at ``k <= 40`` and every accumulator found no
-# staging that delivers it; the two skipped slices scored worst on a cheap
-# distance screen, and the five that scored best -- reaching Hamming distance
-# 1 but never 0 -- were all covered and all missed.
+# The shape of that miss is worth recording so it is not re-run blind.  Unlike
+# the tables the wider separator set closed, its answer *is* computed:
+# ``01101101`` stands as a column at cell 24 under separator 2 at ``k == 15``.
+# What fails is the carry -- no accumulator reads it intact, and from that
+# staging it arrives as ``10011101`` or ``01100010``, neither the table nor
+# its complement.  A sweep over 13 of the 15 (separator, settle) slices at
+# ``k <= 40`` and every accumulator found no staging that delivers it; the two
+# skipped slices scored worst on a cheap distance screen, and the five that
+# scored best -- reaching Hamming distance 1 but never 0 -- were all covered
+# and all missed.
 #
 # It is a gap in this family, not a wall: 180 of the 256 possible columns
 # arrive across the family, and no affine invariant separates them from this
 # one (all 255 parity masks checked), so nothing here forbids it.
 #
-# What closed the gap was not a better search but a wider *separator* set.
-# See the note on :data:`_SEPS`: the first two separators leave only 92
+# What closed the *other* gaps was not a better search but a wider separator
+# set.  See the note on :data:`_SEPS`: the first two separators leave only 92
 # distinct columns standing, and 112 of the 120 tables the searches could not
 # reach did not stand as a column at all.  Three more separators carry 118 of
 # those 120, every one of which builds, computes and emits in name order.
@@ -784,16 +792,20 @@ _TWO_INPUT_PLAN: dict[str, _Staging] = {
 # no further bracket can change a staged column.  Measured, the columns stop
 # changing between ``k == 25`` and ``k == 38`` depending on separator and
 # settle count, so the sweep ran to 40 and anything past it is provably
-# redundant.  Stopping at 30 would have been a cap rather than a bound, and
-# would have missed real tables: nine of the entries below need 14 to 22.
+# redundant.  The deepest first hit the enumeration actually needs is
+# ``k == 26`` at three inputs and ``k == 6`` at two, which is where
+# :data:`_MAX_BRACKETS` comes from; stopping at 30 would have been a cap
+# rather than a bound.
 #
 # The other two axes were *sampled* rather than exhausted and came back
 # empty -- settle counts 3 to 5 and accumulators 36 to 47 reached nothing the
 # shipped stagings did not.  That is evidence they are barren, not proof.
 #
-# **A simpler form was looked for and does not exist.**  The obvious wish is
-# a uniform rule -- one staging, or at least one field fewer -- even at the
-# cost of longer programs.  Every version of that was measured and fails:
+# **A simpler form was looked for and does not exist.**  This is what the
+# enumeration replaced a stored table with, and not what it could have been:
+# the wish was a *uniform* rule -- one staging, or at least one field fewer --
+# even at the cost of longer programs.  Every version of that was measured and
+# fails, which is why all four fields are still enumerated:
 #
 # * **One fixed staging: impossible**, and by counting rather than by search.
 #   A staging offers one column per accumulator and orientation -- 52 slots
@@ -805,174 +817,195 @@ _TWO_INPUT_PLAN: dict[str, _Staging] = {
 # * **Two separators: 99 of 109**, and *not* for want of room -- re-running
 #   with bracket counts to 70 and accumulators to 60 reaches the same 99.
 #   The ten stragglers need a different separator, not a longer program.
+#   This is why :func:`_stagings` walks all five.
 # * **Dropping the settle field: 99 of 109.**  Ten pairs are reachable only
 #   at ``settle == 1``, so the staging cannot shrink to three fields.
-# * **Consolidating stagings: bounded, and the bound is close.**  The 109
-#   entries use 63 stagings.  The 13-pair maximum above puts a floor of
-#   ``ceil(109 / 13) = 9`` on any cover, and a greedy search over all 406
-#   useful stagings -- then a pruning pass that found nothing redundant --
-#   gets to 33.  So the achievable range is 33 to 63 against a floor of 9
-#   that nothing approaches: the pairs simply do not clump.  A rebuild
-#   avoiding separator 0 lands on 51 at +1.4% program size, gated clean.
-#   None of these removes anything a caller sees, so the constants stay.
 #
-# Separator 0 is the one curiosity: no *three-input* entry needs it, since
-# separators 1 to 4 reach 108 of the 109 between them.  It stays because the
-# two-input plan, :data:`_SEP` and :data:`_SCAN_SEPS` all use it.
+# Separator 0 is the one curiosity: no *three-input* table needs it, since
+# separators 1 to 4 reach 108 of the 109 between them.  It is enumerated
+# first anyway because it carries every two-input table on its own, and
+# :data:`_SEP` and :data:`_SCAN_SEPS` use it.
 #
-# Two more things look removable and are not.  ``_SETTLE`` is unused by both
-# plans but parameterises the parked search, which still serves ``n >= 4``;
-# and the searches themselves are unreachable at ``n <= 3`` yet are what a
-# wider table falls through to.  Neither is dead.
-_THREE_INPUT_PLAN: dict[str, _Staging] = {
-    "00000001": (0, 0, 10, 23),
-    "00000110": (1, 1, 11, 27),
-    "00001000": (0, 1, 8, 23),
-    "00001110": (1, 0, 1, 26),
-    "00010010": (0, 1, 6, 22),
-    "00010100": (0, 0, 9, 23),
-    "00010101": (0, 0, 9, 22),
-    "00010111": (1, 0, 0, 25),
-    "00011000": (1, 0, 1, 25),
-    "00011001": (0, 1, 8, 22),
-    "00011110": (0, 0, 1, 22),
-    "00100001": (0, 1, 7, 22),
-    "00100110": (1, 1, 12, 26),
-    "00101000": (1, 0, 7, 25),
-    "00101001": (1, 1, 12, 28),
-    "00101101": (0, 0, 5, 22),
-    "00101110": (0, 0, 4, 22),
-    "00110110": (1, 1, 10, 26),
-    "00110111": (1, 1, 10, 27),
-    "00111110": (1, 0, 7, 26),
-    "01000000": (1, 0, 7, 24),
-    "01000011": (0, 0, 8, 23),
-    "01000111": (0, 0, 8, 21),
-    "01001000": (0, 0, 4, 21),
-    "01001010": (0, 1, 10, 23),
-    "01001011": (0, 0, 5, 21),
-    "01001111": (1, 1, 10, 24),
-    "01010010": (0, 0, 8, 22),
-    "01010111": (1, 1, 13, 25),
-    "01011110": (0, 0, 10, 22),
-    "01101000": (1, 0, 13, 25),
-    "01101001": (1, 1, 13, 28),
-    "01101110": (0, 1, 9, 22),
-    "01110000": (1, 0, 1, 24),
-    "01110100": (0, 1, 6, 21),
-    "01110110": (1, 1, 13, 26),
-    "01111000": (0, 0, 1, 21),
-    "01111011": (0, 0, 7, 21),
-    "01111110": (1, 0, 13, 26),
-    "01111111": (1, 0, 0, 24),
-    # Longer bracket runs, all on the second separator.  The first sweep
-    # stopped at 13 for no better reason than that it was enough; these need
-    # 14 to 22, and the axis is now taken to exhaustion rather than to a cap
-    # -- see the note below on where the columns freeze.
-    "00000111": (1, 0, 19, 30),
-    "00010110": (1, 1, 16, 26),
-    "00011111": (1, 0, 17, 28),
-    "01000001": (1, 0, 21, 30),
-    "01010110": (1, 1, 14, 26),
-    "01100000": (1, 0, 17, 27),
-    "01100001": (1, 0, 21, 28),
-    "01100111": (1, 0, 17, 25),
-    "01101111": (1, 0, 22, 28),
-    # The one entry whose suffix is not a plain bracket run.  Nothing else
-    # reaches this pair -- not the scans, not the column search, not the
-    # parked search.
-    "01101101": (2, 0, "[[<[<[[[[[[[[[", 22),
-    # Reached by the three added separators; see the _SEPS note.
-    "00000010": (3, 0, 20, 27),
-    "00000100": (2, 0, 14, 26),
-    "00001001": (2, 0, 19, 28),
-    "00001011": (2, 0, 21, 28),
-    "00001101": (2, 0, 11, 24),
-    "00010000": (3, 0, 20, 29),
-    "00010011": (2, 0, 3, 21),
-    "00011010": (2, 0, 13, 27),
-    "00011011": (2, 0, 15, 24),
-    "00011100": (3, 1, 10, 27),
-    "00011101": (2, 0, 7, 24),
-    "00100000": (3, 1, 15, 27),
-    "00100011": (2, 0, 1, 21),
-    "00100100": (3, 0, 12, 29),
-    "00100101": (2, 0, 13, 26),
-    "00100111": (2, 0, 3, 23),
-    "00101010": (2, 1, 13, 24),
-    "00101011": (2, 1, 9, 23),
-    "00101100": (2, 0, 0, 21),
-    "00101111": (2, 0, 7, 21),
-    "00110001": (3, 0, 1, 24),
-    "00110010": (3, 0, 1, 22),
-    "00110100": (3, 1, 12, 24),
-    "00110101": (3, 1, 6, 26),
-    "00111000": (3, 1, 13, 29),
-    "00111001": (3, 0, 1, 26),
-    "00111010": (2, 0, 9, 25),
-    "00111011": (2, 0, 14, 27),
-    "00111101": (2, 1, 14, 25),
-    "01000010": (2, 0, 3, 22),
-    "01000101": (2, 0, 11, 25),
-    "01000110": (2, 0, 14, 25),
-    "01001001": (2, 0, 10, 23),
-    "01001100": (3, 0, 24, 30),
-    "01001101": (2, 0, 9, 24),
-    "01001110": (3, 1, 22, 32),
-    "01010001": (2, 0, 9, 22),
-    "01010011": (4, 0, 16, 26),
-    "01010100": (3, 0, 21, 28),
-    "01011000": (3, 0, 24, 28),
-    "01011001": (3, 0, 1, 28),
-    "01011011": (2, 1, 11, 24),
-    "01011100": (3, 0, 22, 28),
-    "01011101": (4, 0, 10, 22),
-    "01100010": (2, 0, 11, 22),
-    "01100011": (3, 1, 10, 28),
-    "01100100": (2, 0, 7, 23),
-    "01100101": (2, 0, 13, 25),
-    "01101010": (2, 0, 19, 27),
-    "01101011": (2, 1, 12, 24),
-    "01101100": (2, 1, 17, 30),
-    "01110001": (3, 0, 17, 28),
-    "01110010": (2, 0, 1, 22),
-    "01110011": (3, 1, 15, 28),
-    "01110101": (4, 0, 14, 23),
-    "01111001": (4, 0, 15, 23),
-    "01111010": (2, 0, 13, 23),
-    "01111100": (2, 1, 19, 30),
-    "01111101": (2, 0, 0, 22),
-}
+# Two more things look removable and are not.  ``_SETTLE`` is unused by the
+# enumeration but parameterises the parked search, which still serves
+# ``n >= 4``; and the searches themselves are unreachable at ``n <= 3`` yet
+# are what a wider table falls through to.  Neither is dead.
 
-_PLANS: dict[int, dict[str, _Staging]] = {
-    2: _TWO_INPUT_PLAN,
-    3: _THREE_INPUT_PLAN,
-}
+# The arities the enumeration covers.  Beyond three it is not that the
+# enumeration fails but that it has not been shown to succeed, and a route
+# that grinds through the whole product before giving up would be worse than
+# the fall-through it replaces -- so the gate is explicit rather than
+# implied by a miss.
+_STAGED_ARITIES = (2, 3)
+
+# How far the enumeration runs.  Both caps are the measured maximum over
+# every table plus a margin, not guesses: sweeping to a bracket count of 30
+# and an accumulator of 40, the deepest first hit at two inputs is
+# ``(k=6, acc=20)`` and at three ``(k=26, acc=31)``.  Nothing is reached past
+# those, so the sweep stops a little beyond them.
+_MAX_BRACKETS = 28
+_MAX_ACC = 34
 
 
-def _staged(truth_table: str, n: int) -> str | None:
-    """Build from :data:`_PLANS` without searching, or None if unplanned.
+def _stagings(n: int) -> Iterator[_Staging]:
+    """Enumerate ``(separator, settle, bracket count, accumulator)`` in order.
 
-    The plan is keyed by the lexicographically smaller of the table and its
-    complement, since the pair shares a staging.  None rather than an
-    exception on a miss, so the caller falls through to the searches and
-    coverage cannot regress.
+    The order is what makes the derivation deterministic, and it is chosen so
+    the cheap stagings come first: separator, then settle, then the bracket
+    run, then the accumulator.  A table is built by the *first* of these that
+    prints it, so this order -- not a stored table -- is what fixes which
+    program each truth table gets.
+
+    :func:`_derived_plans` does not call this: it interleaves the same four
+    loops with the machines it is advancing, so that a bracket count costs one
+    instruction rather than a rebuild.  This states the order those loops
+    implement, and the test suite checks the two agree.
+
+    ``n`` is unused, the enumeration being the same at every arity; it is
+    taken so the caps could be made arity-dependent without changing callers.
     """
-    complement = "".join(str(1 - int(c)) for c in truth_table)
-    plan = _PLANS.get(n, {}).get(min(truth_table, complement))
-    if plan is None:
-        return None
+    del n
+    for sep_index in range(len(_SEPS)):
+        for settle in (0, 1):
+            for brackets in range(_MAX_BRACKETS + 1):
+                for acc in range(9, _MAX_ACC + 1):
+                    yield sep_index, settle, brackets, acc
+
+
+# The one table the enumeration cannot reach.  Its suffix interleaves two
+# ``<`` into the bracket run, which no ``'[' * k`` spells, so no entry of
+# :func:`_stagings` expresses it.  This is not a staging the sweep merely
+# missed: pure bracket runs were taken to exhaustion for this pair over every
+# separator, settle count and accumulator -- 13 of the 15 slices at
+# ``k <= 40`` -- and none carries its column to the read.  The search that
+# did find it ran for 29 minutes, which is why it is stored rather than
+# derived.  See the note on :data:`_SEPS` and commit 89bcc12.
+_EXCEPTIONS: dict[int, dict[str, _Staging]] = {
+    3: {"01101101": (2, 0, "[[<[<[[[[[[[[[", 22)},
+}
+
+
+def _replay(truth_table: str, n: int, plan: _Staging) -> str | None:
+    """Build one staging and return its template, or None if it does not print.
+
+    The suffix is a bracket *count* for everything the enumeration produces --
+    a plain run, which the ``<`` terminates so the pointer lands where the
+    endgame expects -- and a literal string for the one stored exception.
+    """
     sep_index, settle, suffix, acc = plan
     j = _embed(n, settle=settle, sep=_SEPS[sep_index])
     _clamp(j)
     _walk_to(j, _BASE - 1)
-    # A count is the common case -- a plain bracket run, which the ``<``
-    # terminates so the pointer lands where the endgame expects.  A literal
-    # string is the escape hatch for the one staging a run cannot express.
     j.emit("[" * suffix + "<" if isinstance(suffix, int) else suffix)
     _clamp(j)
     hit = _try_print(j, truth_table, acc)
     return hit.template() if hit is not None else None
+
+
+@cache
+def _derived_plans(n: int) -> dict[str, _Staging]:
+    """Derive a staging for every table at this arity, in one pass.
+
+    The whole arity is done at once because a staging is expensive to *build*
+    and cheap to *test against a table*: the embed, the bracket run and the
+    endgame do not depend on which table is wanted, and only the comparison
+    at the very end does.  So the loops run staging-major -- one embed per
+    ``(separator, settle)``, the bracket run extended one ``[`` at a time
+    rather than rebuilt, and the endgame emitted once per
+    ``(k, accumulator, read, orientation)`` -- and each printed column is
+    looked up among the tables still wanting one.
+
+    Doing it table-major instead re-derives the same stagings once per table
+    and costs minutes rather than seconds, which is what an earlier version
+    of this did.  The result is identical either way: a table is assigned the
+    first staging in :func:`_stagings` order that prints it.
+
+    Returns a mapping from truth table to staging.  A table that no staging
+    reaches is simply absent, so the caller falls through to the searches.
+    """
+    if n not in _STAGED_ARITIES:
+        return {}
+
+    # What each printed column would answer.  A table and its complement
+    # share a staging, so both spellings map to their own table and whichever
+    # is reached first assigns both.
+    wanted: dict[tuple[int, ...], list[str]] = {}
+    for r in range(2 ** (2**n)):
+        table = format(r, f"0{2**n}b")
+        wanted.setdefault(tuple(int(c) for c in table), []).append(table)
+    remaining = 2 ** (2**n)
+
+    found: dict[str, _Staging] = {}
+    for sep_index in range(len(_SEPS)):
+        for settle in (0, 1):
+            base = _embed(n, settle=settle, sep=_SEPS[sep_index])
+            _clamp(base)
+            _walk_to(base, _BASE - 1)
+            run = base.fork()
+            for brackets in range(_MAX_BRACKETS + 1):
+                staged = run.fork()
+                staged.emit("<")
+                _clamp(staged)
+                for acc in range(9, _MAX_ACC + 1):
+                    for read in _READS:
+                        for cell7 in (0, 1):
+                            probe = staged.fork()
+                            try:
+                                _endgame(probe, acc, read, cell7)
+                            except ValueError:
+                                continue
+                            printed = probe.printed()
+                            if any(len(digit) != 1 for digit in printed):
+                                continue
+                            column = tuple(int(digit) for digit in printed)
+                            for table in wanted.get(column, ()):
+                                if table not in found:
+                                    found[table] = (
+                                        sep_index,
+                                        settle,
+                                        brackets,
+                                        acc,
+                                    )
+                                    remaining -= 1
+                    if not remaining:
+                        return found
+                # Extending the run is what makes this cheap: the next
+                # bracket count is one instruction on from this one, not a
+                # rebuild from the embed.
+                run.emit("[")
+    return found
+
+
+def _derive_staging(truth_table: str, n: int) -> _Staging | None:
+    """Return the staging that builds ``truth_table``, or None if none does.
+
+    Every staging is accepted on the evidence of its own output -- the
+    endgame is emitted and the rows are compared against the table -- so this
+    needs no table of answers.  The enumeration order in :func:`_stagings` is
+    the whole specification: it, and not a stored answer, decides which
+    program a truth table gets.
+
+    The stored exception is keyed by the lexicographically smaller of the
+    table and its complement, since that pair shares a staging: the endgame
+    tries both read polarities and prints ``NOT(v XOR cell7)``.
+    """
+    if n not in _STAGED_ARITIES:
+        return None
+    complement = "".join(str(1 - int(c)) for c in truth_table)
+    exception = _EXCEPTIONS.get(n, {}).get(min(truth_table, complement))
+    if exception is not None:
+        return exception
+    return _derived_plans(n).get(truth_table)
+
+
+def _staged(truth_table: str, n: int) -> str | None:
+    """Build from a derived staging without searching, or None if there is none.
+
+    None rather than an exception on a miss, so the caller falls through to
+    the searches and coverage cannot regress.
+    """
+    plan = _derive_staging(truth_table, n)
+    return None if plan is None else _replay(truth_table, n, plan)
 
 
 def _lift_leaves_name_order(essential: list[int], n: int) -> bool:
@@ -1033,7 +1066,7 @@ def minifuck(truth_table: str) -> str:
     Cached, because at three inputs the simulated search is what this module
     costs -- seconds to tens of seconds a table, against effectively zero to
     *run* the program it returns.  Two inputs no longer pay that: they are
-    derived from :data:`_TWO_INPUT_PLAN`, and all sixteen build in well under
+    derived from the staging enumeration, and all sixteen build in well under
     a second together.  The build is deterministic in ``truth_table`` and the
     result is an immutable string, so repeat calls are free either way.
     """
