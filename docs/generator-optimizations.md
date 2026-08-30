@@ -692,7 +692,7 @@ that gates its own candidates.)
 | Generator | Optimization |
 |---|---|
 | `bf_tree` | tree shares bit tests: `O(2**n)` vs minterm's `O(n * 2**n)` — XOR-n at n=8 is 20K vs 33M characters |
-| `nocomment` | computes the numeric index and uses it as a byte-sized skip into a staircase — straight-line, no leaf chains. `s` doubles as a NOT gate, so the complement is computed at runtime from one embed |
+| `nocomment` | computes the numeric index and uses it as a byte-sized skip into a staircase — straight-line, no leaf chains. `s` doubles as a NOT gate, so the complement is computed at runtime from one embed. Past `n == 8` the index no longer fits a byte, so it is split into byte-sized summands and one staircase is walked per summand: `s` peeks rather than pops, so displacements add across stages and a chain of legal skips reaches any index |
 | `home_row` | packs bits into one accumulator + linear chain; the removed routing generator walled at n=2 |
 | `bfstack` | avoids branching entirely — encodes inputs as a number, decodes with nested loops |
 | `suffolk` | branch-free minterms at `limit=1`; a constant table needs no minterm *blocks*, though it still reads every input (measured 2026-08-28: 8 reads on every table, constant or not — an earlier note here claimed it read none); dense tables evaluated from their zero rows and inverted |
