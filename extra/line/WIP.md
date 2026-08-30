@@ -815,13 +815,26 @@ round-trip check for `extract()` alone.
     subsampling modes, odd sizes with partial MCUs, and both colour models;
     greyscale agrees to within one level everywhere.
 
-    Two deliberate refusals, both loud: **progressive** JPEG (a different
-    scan structure entirely) and **restart markers**. The latter is the more
-    interesting one -- an implementation was written, and it desynchronised
-    partway down the image, decoding ~180 MCUs correctly and then emitting
-    noise where the reference was flat white. Refusing beat shipping a
-    decoder that returns a plausible-looking wrong drawing; no encoder
-    writes restart markers by default.
+    Restart markers work, and the bug that nearly saw them refused is worth
+    recording because of how it hid. A literal 0xFF in the entropy data is
+    written stuffed as `FF 00`; when one lands immediately before a restart
+    marker, aligning to the byte boundary has to step over *both* bytes.
+    Stepping over one lands on the stuffing zero and reads everything after
+    it a byte early. That happened at exactly **one of 360 boundaries** in
+    the test image -- enough to corrupt the second half of the drawing,
+    rare enough that three separate probes looked straight past it. The
+    diagnosis that finally worked was checking whether the decoder consumed
+    *exactly* the scan data (it did: +0 bytes over-read, confirming the
+    entropy loop was fine and narrowing the fault to the skipping path).
+    The fix is two lines.
+
+    **Progressive JPEG is refused**, loudly. It is not a patch on this
+    decoder but a restructuring: a progressive file splits coefficients
+    across several scans by frequency band (spectral selection) and bit
+    plane (successive approximation), so coefficients must accumulate in a
+    buffer across every scan before a single IDCT runs at the end, where
+    this transforms each block as it decodes. Roughly 100-130 lines, and
+    unnecessary for anything this repo produces.
 
     One bounded divergence: chroma planes are box-upsampled where Pillow
     interpolates, so a *saturated colour* photograph can differ by up to ~17
