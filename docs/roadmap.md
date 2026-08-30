@@ -161,13 +161,18 @@ The weakest suites:
 | WII2D | 80.2% | 33 |
 | Point Break | 80.4% | 94 |
 | Painfuck | 80.9% | 49 |
-| Forbin | 81.4% | 216 |
 | Basicfuck | 82.8% | 119 |
 | 3x | 83.4% | 29 |
 | Dimensional | 83.5% | 56 |
 
-Forbin, Basicfuck, Streetcode (98) and Suptiftam (93) carry the most
-survivors in absolute terms.
+Basicfuck, Streetcode (98) and Suptiftam (93) now carry the most survivors
+in absolute terms.
+
+Two of these figures have been re-measured since the harness commits
+`800f071` and `86c89b9`, which were only ever validated one language at a
+time: AddSubJump came back at exactly 80.2% / 23, and Forbin at exactly
+81.4% / 216 before the work below.  A full re-sweep of all 59 is still
+outstanding.
 
 LaserFuck has left this table.  It was the outlier at 66.7% / 82; the four
 commits ending at `0a5f42b` took it to 76.0% / 59, and categorising all 59
@@ -210,13 +215,40 @@ Three findings there generalise:
   guards that refuse and the moves that do not grow the tape were both
   unexercised.
 
-Triage from the test file, not the diffs — six mechanical shapes recur
-(substring-matched `pytest.raises`, comment tests outside the command set,
-truth-only `bool` flags, one-sided boundaries, write-only attributes,
-assertions on a constant).  Two cautions: a survivor is not a gap until the
-harness is trusted (tests reaching the VM or registry are dropped from the
-bundle *correctly*), and a score is a means — stop where the survivors stop
-teaching anything.
+Forbin has left the table too, from 81.4% / 216 to **89.0% / 128** on
+sixteen tests.  Its pool was nothing like a tape interpreter's: 843 lines
+with a parser, and half the survivors were one shape -- an argument of
+`_eval(node, frame, globals_, reader, depth)` replaced by `None` at one
+call site.  That whole family is decidable rather than searchable, by
+asking what *forces* each parameter (a top-level function name forces
+`globals_`, an `in` forces `reader`, a local forces `frame`, a nested call
+forces `depth`), and the forcing construct has to sit **at** the position:
+assigning an `in` to a local and reading the local exercises `frame`, not
+the reader.  94 killable mutants needed only 35 programs to witness, one
+of which -- a two-wildcard iteration pattern -- accounts for fourteen.
+
+Three cautions from that run, all of them about instrumentation rather
+than about Forbin:
+
+- **A probe whose own baseline moves reads as a witness for everything.**
+  `_bound` interpolates `{value!r}`, and a `_Function` has no `__repr__`,
+  so its message ends in an address that differs between processes.  The
+  program that triggers it was recorded as the sole witness for 114
+  mutants that were not killable at all; the honest count was 70, not the
+  184 first reported.  Run the original battery twice in separate
+  processes and diff it against itself before trusting any verdict.
+- **Naming a dropped module in a docstring drops your test.**  The
+  harness matches `esolangs.vm` and friends against the test's *text*, so
+  a test written to cover `snapshot` without the VM was dropped for
+  explaining why VM tests are dropped.  Watch the `dropped N` line.
+- **"Never read" has to include "never operated on."**  `depth` is
+  threaded everywhere and compared nowhere, which looked like a dead
+  parameter; but `_call` does `depth + 1`, so eleven of the twenty-three
+  `depth=None` mutants die on a `TypeError`.  Only the two that change the
+  increment are equivalent.
+
+Triaging one goes faster from the test file than from the diffs.  Six
+shapes recur, and all six are mechanical:
 
 ## Dependency reduction
 
