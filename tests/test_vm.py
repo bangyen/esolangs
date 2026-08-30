@@ -6,78 +6,22 @@ import esolangs
 from esolangs.exceptions import UnknownLanguageError
 from esolangs.vm import VM
 
+# These four programs are the sweep's samples for their languages, so they
+# live in the table rather than being spelled twice.
+from .samples import (
+    CIRCUIT_PRIME_TESTER,
+    FLOWCHART_CAT,
+    FLOWCHART_TRUTH_MACHINE,
+    STREETCODE,
+    STREETCODE_GAP,
+    bits_of,
+)
+
 
 def _run_all(vm: VM) -> str:
     while not vm.halted:
         vm.step()
     return vm.output
-
-
-# The wiki's street shape: a two-wide road with the instructions in the
-# southern lane, walled all round.  ``C`` starts the car, ``^`` increments
-# the CPth cell, ``O`` prints it, ``;`` halts.
-STREETCODE = "+-----+\n|     |\n|C^^O;|\n+-----+"
-
-# The same street, writing cells 0 and 2 and stepping over cell 1: "=" moves
-# CP right without touching the cell it leaves.
-STREETCODE_GAP = "+------+\n|      |\n|C^==^;|\n+------+"
-
-# The wiki's truth machine: read a bit, and on 0 print it once and halt.
-FLOWCHART_TRUTH_MACHINE = "\n".join(
-    [
-        "       ( )──┐        ",
-        "           / /       ",
-        "            │        ",
-        "(( ))─\\ \\──< >┬─\\ \\─┐",
-        "              │     │",
-        "              └─────┘",
-    ]
-)
-
-# The wiki's cat: the upper loop reads bits onto a deque, the lower pops
-# them back off and prints them.
-FLOWCHART_CAT = "\n".join(
-    [
-        "( )──┐   ",
-        "  ┌─/ /─┐",
-        "  │  │  │",
-        "  │\\[ ]/│",
-        "  │  │  │",
-        "  └─< >─┘",
-        "     │   ",
-        "  ┌/{ }\\┐",
-        "  │  │  │",
-        "  │ \\ \\ │",
-        "  │  │  │",
-        "  └─< >─┘",
-        "     │   ",
-        "   (( )) ",
-    ]
-)
-
-# The wiki's prime tester, repaired: a four-bit input port drives a tree of
-# gates whose output bit is set for exactly the primes below 16.
-CIRCUIT_PRIME_TESTER = "\n".join(
-    [
-        "       .~..",
-        "      /    ..         .-.",
-        "     <.----=---------.   o.",
-        "    / .~. /.   .---.    .  >.",
-        "-4-<     =  >.=--.  o.-=--.  \\",
-        "    \\ . . .. /    ..  /       .",
-        "     < =    = .------=-----.   >.",
-        "      = .~..-=--.~.-.       .-.  a.-:",
-        "     / \\    / \\                 .",
-        "    .   .===.  .               /",
-        "     \\   o.  \\  o.------------.",
-        "      .-.     ..",
-    ]
-)
-
-
-def _bits_of(value: int) -> str:
-    """Return ``value`` as four input lines, most significant bit first."""
-    return "\n".join(format(value, "04b")) + "\n"
 
 
 class TestProtocol:
@@ -435,7 +379,7 @@ class TestFlowchart:
 
 class TestCircuitDiagram:
     def test_wire_values_are_per_generation_events(self) -> None:
-        vm = esolangs.make_vm("Circuit Diagram", CIRCUIT_PRIME_TESTER, _bits_of(3))
+        vm = esolangs.make_vm("Circuit Diagram", CIRCUIT_PRIME_TESTER, bits_of(3))
         assert vm.ip is None  # nothing moves through a circuit
         assert vm.stack == []
         vm.step()
@@ -448,20 +392,20 @@ class TestCircuitDiagram:
             n
             for n in range(16)
             if _run_all(
-                esolangs.make_vm("Circuit Diagram", CIRCUIT_PRIME_TESTER, _bits_of(n))
+                esolangs.make_vm("Circuit Diagram", CIRCUIT_PRIME_TESTER, bits_of(n))
             )
             == "1"
         }
         assert detected == {2, 3, 5, 7, 11, 13}
 
     def test_run_matches_execute(self) -> None:
-        vm = esolangs.make_vm("Circuit Diagram", CIRCUIT_PRIME_TESTER, _bits_of(7))
+        vm = esolangs.make_vm("Circuit Diagram", CIRCUIT_PRIME_TESTER, bits_of(7))
         assert _run_all(vm) == esolangs.run(
-            "Circuit Diagram", CIRCUIT_PRIME_TESTER, _bits_of(7)
+            "Circuit Diagram", CIRCUIT_PRIME_TESTER, bits_of(7)
         )
 
     def test_stepping_a_halted_vm_is_a_noop(self) -> None:
-        vm = esolangs.make_vm("Circuit Diagram", CIRCUIT_PRIME_TESTER, _bits_of(7))
+        vm = esolangs.make_vm("Circuit Diagram", CIRCUIT_PRIME_TESTER, bits_of(7))
         assert _run_all(vm) == "1"
         vm.step()  # no-op
         assert vm.output == "1"
