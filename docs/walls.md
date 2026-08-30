@@ -593,7 +593,55 @@ first read's debris rather than the planted indicator.  A sweep of every gap
 1..9 at chain lengths 2 and 3 found no layout that accumulates the indicator
 sum; guard cells cannot fix it, since the pads write over the guards.
 
-## 123 (parameterized: 8 affine tables built; the rest open)
+## 123 (parameterized — resolved at `n <= 2`; wider arities open)
+
+**Resolved.  All sixteen two-input tables build, and the generator ships**
+(`esolangs.tools.boolean.one_two_three`).  The section below is kept because
+its mechanism analysis is sound and still describes the language; what was
+wrong was the *scope* of its ceiling, not its internal argument.
+
+The monotonicity bound is real for the setter it was derived under.  This
+section fixed the displacement-neutral `12`/`21` pair, and under that pair
+every instantiation stays in position lockstep, so a set bit can only add a
+pass and never remove one, the looping set is upward-closed, and the
+computed table is monotone by construction.  The survey of 1428 templates
+finding only monotone tables is exactly what that predicts.
+
+The setter is a free parameter, and the neutral one is not forced.  With
+the **±1 fill** — `1` for a one, `2` for a zero, one character each, so
+nothing leaks through `len()` — the two instantiations displace the pointer
+*oppositely*, position lockstep is broken, and the monotonicity argument's
+hypothesis fails.  All sixteen tables follow, XOR (`0110`), XNOR (`1001`),
+NAND (`1110`) and NOR (`1000`) included.  This section did consider the ±1
+setter and rejected it, but for the **printing** route — "instantiations
+drift apart by bit count and never print together," which is true and does
+not bind the termination route, where nothing has to print.
+
+The mechanism is a counter modulo four.  Displacement after the embeds is
+`(#zeros - #ones)`, the `-4 -> 0` wrap reduces it mod 4, and a tail of `1`s
+decodes it: `{X0}{X1}` followed by `k` ones computes a function of the input
+*popcount* alone — rows `01` and `10` always agree — sweeping XNOR at
+`k == 2` and XOR at `k == 4`.  The asymmetric tables use `3`, whose
+TRUE-backward jump re-runs the preceding segment and makes the pass count
+input-dependent, exactly the "conditional re-execution" this section
+identified as the one non-affine operator.
+
+Two constraints shaped the shipped plans.  Every looping row is a **proven
+state revisit**, never unbounded growth: `run_until_halt_or_cycle` does not
+return on a program whose pointer marches right forever, so such a row would
+hang the harness rather than report a 1.  And every plan emits its slots in
+name order with each `{Xi}` once.
+
+**Still open: three or more inputs.**  The projection that lifts other
+generators' caps does not apply, because an ignored input must still be
+embedded, every fill moves the pointer, and here the pointer phase *is* the
+computed value — a trailing inert embed shifts the quantity the plan
+decodes.  A short lockstep search does reach 243 of the 256 three-input
+tables when the setter may vary per table, so the obstruction looks like the
+uniform-fill contract plus template length rather than the language; no
+construction is known.
+
+The original analysis follows.
 
 A decision tree needs the `3` jump, which on a TRUE/FALSE bit jumps to the
 *nearest* preceding/following `3` (not bracket-matched): FALSE always lands
@@ -820,13 +868,16 @@ from that route: it loops on row `00` alone, so its looping set is not
 upward-closed, which is exactly what the monotonicity argument forbids
 forbids.
 
-**So the generator is not total at `n == 2`.**  That is the bar
-`docs/limitations.md` records for the 2dFish removal — "affine-only with no
-total once-embedding construction" — and 123 clears the first clause
-without clearing the second.  What keeps 123 in the repo is unrelated and
-untouched: unlike 2dFish, whose generator floor was a literal-embed in
-disguise, 123's text generator is genuinely computational (a running XOR
-across characters, emitting only per-character bit differences).
+**So the generator is not total at `n == 2`** — under the neutral setter
+this section fixed.  That was the bar `docs/limitations.md` records for the
+2dFish removal ("affine-only with no total once-embedding construction"),
+and the conclusion drawn here was that 123 clears the first clause without
+the second.  **The ±1 setter clears both**, as the resolution at the top of
+this section describes, so this paragraph's verdict no longer stands.  What
+keeps 123 in the repo never depended on it anyway: unlike 2dFish, whose
+generator floor was a literal-embed in disguise, 123's text generator is
+genuinely computational (a running XOR across characters, emitting only
+per-character bit differences).
 
 That also corrects the impossibility sketch this section might invite.
 Position maps in `1`/`2` are tape-independent, which suggests rows entering
