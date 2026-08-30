@@ -87,6 +87,8 @@ class _Machine:
 
     def step(self) -> None:
         """Execute one instruction (``a b c``), advancing or branching."""
+        if self.halted:
+            return
         a = self.mem[self.ip]
         b = self.mem[self.ip + 1]
         c = self.mem[self.ip + 2]

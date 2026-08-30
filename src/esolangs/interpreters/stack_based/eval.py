@@ -108,6 +108,8 @@ class State:
 
     def step(self) -> None:
         """Execute one command, advancing the code cursor."""
+        if self.halted:
+            return
         self.ind = self._iteration(self.sym, self.ind)
 
 

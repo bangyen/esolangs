@@ -58,6 +58,8 @@ class State:
 
     def step(self) -> None:
         """Execute one ``[OP arg]`` token, advancing the pointer."""
+        if self.halted:
+            return
         mod = self.tokens[self.ind]
         arg = mod.split()
         self.ind += 1

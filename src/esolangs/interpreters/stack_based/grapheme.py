@@ -181,6 +181,8 @@ class _Machine:
 
     def step(self) -> None:
         """Execute one command, finishing any frames that are now complete."""
+        if self.halted:
+            return
         frame = self.frames[-1]
         if frame.pc >= len(frame.code):
             self._finish(frame)

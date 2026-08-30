@@ -206,6 +206,8 @@ class _Machine:
 
     def step(self) -> None:
         """Execute one command (or comment character), advancing the position."""
+        if self.halted:
+            return
         code = self.code
         tape = self.tape
         c = code[self.ind]

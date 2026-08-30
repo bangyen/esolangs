@@ -24,12 +24,13 @@ the program from outside, so there is no halt to drive to), and
 heading, so the two sides are not comparable).  Absorbing any of them into
 the driver would make the sweep pass while hiding the distinction.
 
-A fourth set, :data:`~tests.samples.RAISES_ON_THE_POST_HALT_STEP`, is not a
-convention but the sweep's first finding: nine adapters raise
+A fourth set, :data:`~tests.samples.RAISES_ON_THE_POST_HALT_STEP`, was not
+a convention but the sweep's first finding: nine adapters raised
 ``IndexError`` when stepped past their halt instead of doing nothing, and
 none of the fifteen hand-written copies of that check covered any of them.
-It is carried as an xfail with a companion test pinning the set exactly, so
-the gap is recorded rather than either hidden or silently widened.
+All nine now carry the guard the rest already had, so the set is empty --
+kept, rather than deleted, because the companion test compares it against
+what actually raises and would fail if any of them regressed.
 """
 
 from typing import cast

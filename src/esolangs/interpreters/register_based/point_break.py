@@ -293,6 +293,8 @@ class _Machine:
 
     def step(self) -> None:
         """Execute one statement, advancing the machine."""
+        if self.halted:
+            return
         stmt = self.stmts[self.pc]
         if stmt[0] == "let":
             self.variables[stmt[1]] = _eval(stmt[2], self.variables, self.io)
