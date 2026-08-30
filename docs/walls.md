@@ -919,7 +919,7 @@ plain literal-embed, so Dotlang was too thin to justify being the sole
 exception to the exactly-once rule.  The construction is recorded here as a
 negative result so the assessment is not redone.
 
-## Polynomial (numeric root-finding ruled out; caps at n <= 4)
+## Polynomial (numeric root-finding ruled out; caps at 138 instructions)
 
 The generator emits exact integer polynomials whose coefficients far exceed
 float64's exact-integer range (2**53) once a few instructions accumulate —
@@ -928,8 +928,20 @@ solver (high-precision `mp.polyroots`, companion-matrix QR, change-of-scale)
 silently solves the wrong polynomial, and a residual-based gate cannot work
 (the ill-conditioning ~1e16 makes wildly wrong roots look right).  The
 interpreter factors the monic integer polynomial over Z with sympy instead.
-That exact factorization defines the boolean generator's practical bound:
-`n == 4` (degree 184) factors in ~10s, while `n == 5` (degree 376) does not.
+
+That exact factorization defines the boolean generator's practical bound,
+but the bound is on **instructions, not inputs** — each instruction consumes
+a fresh prime, so the degree (and the factoring cost) tracks the instruction
+count, which is what `_POLYNOMIAL_MAX_INSTRS = 138` caps.  An earlier `n <= 4`
+gate measured the wrong thing: it refused parity from `n == 5` even though
+parity needs only 13 instructions per input.  The generator now builds both a
+decision tree and a residual-merge state machine (an ordered BDD, merging any
+two prefixes with the same residual subfunction rather than only constant
+ones) and emits the shorter, which makes the real bound visible — parity
+renders through `n == 8` at 106 instructions, while random dense tables,
+whose residuals do not merge, start refusing at `n == 6`.  So a table that
+collapses to few states renders at any width; what is capped is the ones that
+do not collapse.
 
 ## ROTfuck (rotation defeats a decision tree)
 
