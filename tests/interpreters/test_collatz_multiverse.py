@@ -11,7 +11,11 @@ import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.collatz_multiverse import run
-from tests.interpreters.contract import EmptyProgramContract
+from tests.interpreters.contract import (
+    CycleContract,
+    EmptyProgramContract,
+    SnapshotContract,
+)
 
 
 def run_program(code: str, stdin: str = "") -> str:
@@ -238,15 +242,6 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ip == 2
 
-    def test_snapshot_is_hashable(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.collatz_multiverse import _Machine
-
-        assert (
-            hash(_Machine("x = y x + z, DO PRINT.", ScriptedIO()).snapshot())
-            is not None
-        )
-
     def test_snapshot_carries_the_array_cells(self) -> None:
         """A populated array reaches the snapshot, and distinguishes states.
 
@@ -277,32 +272,22 @@ class TestStepMachine:
         assert seen[-1] != seen[0]
         assert len(set(seen)) == len(seen)
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.collatz_multiverse import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
 
-        assert (
-            run_until_halt_or_cycle(_Machine("x = y x + z, DO PRINT.", ScriptedIO()))
-            is True
-        )
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.register_based.collatz_multiverse import _Machine
 
-    def test_line_number_jump_is_detected_as_a_cycle(self) -> None:
-        """A jump back to a line that never changes state loops forever."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.collatz_multiverse import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        program = "\n".join(
-            [
-                "z = z x + z, NOT PRINT.",
-                "lineNumber = lineNumber x + z, NOT PRINT.",
-            ]
-        )
-        assert run_until_halt_or_cycle(_Machine(program, ScriptedIO())) is False
+    return _Machine(code, ScriptedIO())
 
 
-class TestContract(EmptyProgramContract):
+class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
     """The shared empty-program shape, with this language's data."""
 
     run = staticmethod(run_program)
+    machine = staticmethod(_machine)
+    stepping_program = "x = y x + z, DO PRINT."
+    halting_program = "x = y x + z, DO PRINT."
+    # A line that jumps to itself, so the state repeats rather than advancing.
+    looping_program = (
+        "z = z x + z, NOT PRINT.\nlineNumber = lineNumber x + z, NOT PRINT."
+    )

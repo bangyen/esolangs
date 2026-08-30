@@ -9,7 +9,7 @@ import pytest
 
 from esolangs.interpreters.grid_based.clockwise import run
 from esolangs.interpreters.io import IO, ScriptedIO
-from tests.interpreters.contract import EmptyProgramContract
+from tests.interpreters.contract import CycleContract, EmptyProgramContract
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
@@ -147,26 +147,6 @@ class TestStepMachine:
         machine.step()  # S at row 0, col 2: acc zeroed
         assert (machine.row, machine.col, machine.r, machine.acc) == (0, 3, 0, 0)
 
-    def test_halting_ring_is_detected(self) -> None:
-        from esolangs.interpreters.grid_based.clockwise import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        machine = _Machine(["+;S;S;S;S;S;+;R", "R             R"], IO())
-        assert run_until_halt_or_cycle(machine) is True
-
-    def test_looping_ring_is_detected_as_a_cycle(self) -> None:
-        """A ring whose orbit never re-enters the origin loops forever.
-
-        The halt condition is a return to the origin with a non-zero heading,
-        so this ring's closed orbit is a finite-state cycle the detector can
-        prove without waiting out a timeout.
-        """
-        from esolangs.interpreters.grid_based.clockwise import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        machine = _Machine(["SS?R ", "+?+S-", "R!!RS"], IO())
-        assert run_until_halt_or_cycle(machine) is False
-
     def test_snapshot_includes_the_input_bits_and_their_rotation(self) -> None:
         """A consuming ``.`` rotates the input bit list, changing the snapshot."""
         from esolangs.interpreters.grid_based.clockwise import _Machine
@@ -205,9 +185,23 @@ def test_reading_with_no_input_is_eof() -> None:
         run(".", ScriptedIO("\n"))
 
 
-class TestContract(EmptyProgramContract):
-    """The shared empty-program shape, with this language's data."""
+def _machine(code: object) -> object:
+    from esolangs.interpreters.grid_based.clockwise import _Machine
+
+    return _Machine(code, IO())
+
+
+class TestContract(EmptyProgramContract, CycleContract):
+    """The shared shapes.
+
+    The halt condition is a return to the origin with a non-zero heading,
+    so the looping ring's closed orbit is a finite-state cycle the detector
+    can prove without waiting out a timeout.
+    """
 
     run = staticmethod(run_and_capture)
+    machine = staticmethod(_machine)
     empty_program: ClassVar[list[str]] = []
     empty_raises = "Clockwise program cannot be empty"
+    halting_program: ClassVar[list[str]] = ["+;S;S;S;S;S;+;R", "R             R"]
+    looping_program: ClassVar[list[str]] = ["SS?R ", "+?+S-", "R!!RS"]

@@ -8,7 +8,10 @@ import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.home_row import run
-from tests.interpreters.contract import EmptyProgramContract
+from tests.interpreters.contract import (
+    CycleContract,
+    EmptyProgramContract,
+)
 
 
 def run_program(code: str) -> str:
@@ -160,21 +163,6 @@ class TestStepMachine:
         assert machine.snapshot() != before
         assert machine.grid[0] == 1
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.tape_based.home_row import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine("ak;", ScriptedIO())) is True
-
-    def test_loop_is_detected_as_a_cycle(self) -> None:
-        # all: a increments cell 0 to 1, then the loop body is empty, so
-        # the closing l jumps back to itself forever with the cell
-        # unchanged -- a genuine state cycle, not unbounded growth.
-        from esolangs.interpreters.tape_based.home_row import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine("all", ScriptedIO())) is False
-
     def test_step_after_halt_is_a_noop(self) -> None:
         from esolangs.interpreters.tape_based.home_row import _Machine
 
@@ -184,7 +172,17 @@ class TestStepMachine:
         assert machine.grid[0] == 0
 
 
-class TestContract(EmptyProgramContract):
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.home_row import _Machine
+
+    return _Machine(code, ScriptedIO())
+
+
+class TestContract(EmptyProgramContract, CycleContract):
     """The shared empty-program shape, with this language's data."""
 
     run = staticmethod(run_program)
+    machine = staticmethod(_machine)
+    halting_program = "ak;"
+    looping_program = "all"

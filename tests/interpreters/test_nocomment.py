@@ -16,7 +16,11 @@ import pytest
 import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
-from tests.interpreters.contract import EmptyProgramContract
+from tests.interpreters.contract import (
+    CycleContract,
+    EmptyProgramContract,
+    SnapshotContract,
+)
 
 nocomment = importlib.import_module("esolangs.interpreters.tape_based.nocomment")
 
@@ -188,29 +192,19 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 4
 
-    def test_snapshot_is_hashable(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.nocomment import _Machine
 
-        assert hash(_Machine("co", ScriptedIO()).snapshot()) is not None
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.nocomment import _Machine
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.nocomment import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine("ciio", ScriptedIO())) is True
-
-    def test_back_jump_is_detected_as_a_cycle(self) -> None:
-        """A jump back to a command that never changes state loops forever."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.nocomment import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine("inbb", ScriptedIO())) is False
+    return _Machine(code, ScriptedIO())
 
 
-class TestContract(EmptyProgramContract):
+class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
     """The shared empty-program shape, with this language's data."""
 
     run = staticmethod(run_and_capture)
+    machine = staticmethod(_machine)
+    stepping_program = "co"
+    halting_program = "ciio"
+    looping_program = "inbb"

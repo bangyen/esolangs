@@ -3,7 +3,7 @@
 import importlib
 
 from esolangs.interpreters.io import ScriptedIO
-from tests.interpreters.contract import EmptyProgramContract
+from tests.interpreters.contract import CycleContract, EmptyProgramContract
 
 run = importlib.import_module(
     "esolangs.interpreters.register_based.pct_squared_minus_one"
@@ -124,25 +124,6 @@ class TestStepMachine:
         assert machine.snapshot() != before
         assert machine.acc == -3
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.register_based.pct_squared_minus_one import (
-            _Machine,
-        )
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine("i", ScriptedIO(""))) is True
-
-    def test_loop_is_detected_as_a_cycle(self) -> None:
-        # 'mipt' settles into a genuine 4-state cycle: (0,3) -> (1,6) ->
-        # (2,3) -> (3,-3) -> back to (0,3), so the accumulator never grows
-        # without bound and the state repeats exactly.
-        from esolangs.interpreters.register_based.pct_squared_minus_one import (
-            _Machine,
-        )
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine("mipt", ScriptedIO(""))) is False
-
     def test_step_after_halt_is_a_noop(self) -> None:
         from esolangs.interpreters.register_based.pct_squared_minus_one import (
             _Machine,
@@ -154,7 +135,21 @@ class TestStepMachine:
         assert machine.acc == 0
 
 
-class TestContract(EmptyProgramContract):
-    """The shared empty-program shape, with this language's data."""
+def _machine(code: object) -> object:
+    from esolangs.interpreters.register_based.pct_squared_minus_one import _Machine
+
+    return _Machine(code, ScriptedIO(""))
+
+
+class TestContract(EmptyProgramContract, CycleContract):
+    """The shared shapes.
+
+    ``mipt`` settles into a genuine 4-state cycle: (0,3) -> (1,6) -> (2,3)
+    -> (3,-3) -> back to (0,3), so the accumulator never grows without
+    bound and the state repeats exactly.
+    """
 
     run = staticmethod(run_program)
+    machine = staticmethod(_machine)
+    halting_program = "i"
+    looping_program = "mipt"
