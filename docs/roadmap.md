@@ -157,9 +157,9 @@ recorded came back exactly** — which is what the harness commits
 `800f071` and `86c89b9` needed, each having been validated against a
 single language while nothing checked the rest.
 
-Ten suites are at 100% — `%^2^-1`, Back, BFStack, Bitdeque, brainfuck,
-Factor, Home Row, Minifuck, RAM0 and Suffolk.  1525 mutants survive across
-the repo; the rest of the field, worst first:
+Thirteen suites are at 100% — `%^2^-1`, ArrowQueue, Back, BFStack, Bitdeque,
+brainfuck, BrainIf, Decleq, Factor, Home Row, Minifuck, RAM0 and Suffolk.
+1522 mutants survive across the repo; the rest of the field, worst first:
 
 | language | score | survivors |
 | --- | --- | --- |
@@ -209,13 +209,11 @@ the repo; the rest of the field, worst first:
 | Modulous | 95.6% | 11 |
 | Unsquare | 96.1% | 6 |
 | Clockwise | 98.0% | 3 |
-| ArrowQueue | 98.5% | 1 |
-| Decleq | 98.7% | 1 |
-| BrainIf | 98.9% | 1 |
 
-LaserFuck, Forbin and Basicfuck are post-triage rows (they began at 66.7%,
-81.4% and 82.8%); the other 56 are the sweep's own numbers, 15 of which had
-never been recorded per-language.  **Lamfunc (82), Between (77), MyScript
+LaserFuck, Forbin, Basicfuck, ArrowQueue, Decleq and BrainIf are post-triage
+rows (the first three began at 66.7%, 81.4% and 82.8%; the last three each
+carried a single survivor and now sit at 100%); the other 53 are the sweep's
+own numbers, 15 of which had never been recorded per-language.  **Lamfunc (82), Between (77), MyScript
 (71) and Grapheme (60) are the largest untriaged pools** and were invisible
 before this sweep.
 
@@ -229,9 +227,24 @@ first:
 - **Measure on an idle machine.**  The per-test alarm fails a slow-but-
   passing test and scores it as a kill, so a contended run *under*-reports
   survivors — one reported 17 where a solo run reports 22.
+- **The last survivor is often the source's fault, not the suite's.**  Two
+  of the three one-survivor languages were closed by *deleting* the slack
+  rather than testing it: BrainIf seeded a retry loop with `s = ""` when
+  every falsy seed behaves alike (a walrus condition leaves no seed to
+  mutate, and drops the pool 88→85), and ArrowQueue guarded its grid setup
+  with `if code:` so that `_Machine(None)` took the empty-grid path and
+  halted — indistinguishable from outside in a language with no output.
+  Consuming `code` unconditionally makes that mutant raise.  Reach for the
+  interpreter first when the mutated construct carries no information.
 - **`pytest.raises(match=...)` is a substring search.**  Passing the whole
   message still matches a mutant that widened it; only
   `assert str(caught.value) == message` catches that.
+- **A default argument every test overrides is untested.**  Decleq's
+  `limit=10_000` survived widening to 10001 because each test passed
+  `limit=` explicitly.  Killing it needs a run that takes *exactly* the
+  default: `run_with_limit` checks `halted` at the top of each pass, so a
+  program halting in `limit` steps still exhausts the loop and raises,
+  which puts the discriminating count at 10,000 rather than 10,001.
 - **A survivor is only as tested as the observables you compare.**
   Output and step count miss frame bookkeeping entirely: comparing
   `snapshot()` killed seven Forbin mutants and four Basicfuck ones that
