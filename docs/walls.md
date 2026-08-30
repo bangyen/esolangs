@@ -1290,10 +1290,44 @@ linear scan rather than a genuine representation limit.  See
   popcount-accumulator prefix plus the same fold decode over `n` points
   instead of the full `2**n` rows — majority-of-20 constructs in a fraction
   of a second.  Past `n == 6` the general (non-symmetric) path raises
-  :class:`ValueError`: the decode domain doubles with each input and the op
-  strings it produces grow past any width worth emitting (a 64-point decode
-  measured 187243 cells), so large dense non-symmetric tables are out of
-  reach, and there is no universal fallback (a tree would need each input
+  :class:`ValueError` — **on a cost guard, not on a capability limit.**  The
+  refusal is `_WII2D_MAX_INDEX_DOMAIN = 32` compared against the decode
+  domain `2 ** (n - 1)`, and it fires *before* `_wii2d_decode` is ever
+  called, so it has never established that anything fails.  It does not:
+  sampled 64-point patterns fold correctly, and with the constant raised to
+  64 a dense non-symmetric `n == 7` table builds in 1.54s (13372 characters,
+  8 rows by 6673 columns) and was verified against the interpreter on **all
+  128 input combinations** (`test_chain_builds_and_runs_at_n7_when_the_guard_is_raised`).
+  So `n == 7` is liftable by paying build cost; whether to pay it is a
+  caller's decision, and the guard stays at 32 by default for two measured
+  reasons.
+
+  *Cost, with a heavy tail.*  At the shipped first beam width, five random
+  patterns per domain gave median/worst decode lengths of 51/96 cells at
+  `D == 16`, 1245/2686 at `D == 32`, and 46385/131433 at `D == 64`.  At
+  `D == 64` four of the five took 0.7s to 17s and the fifth exceeded a 120s
+  budget.  The tail is the real cost: most `n == 7` tables build in seconds,
+  but a sizeable minority send the fold somewhere it takes minutes to return
+  from, so raising the guard trades a clean refusal for an occasional very
+  long build.
+
+  *Accumulator magnitude.*  The fold squares, so intermediates grow.  Peak
+  `|acc|` over all input combinations was 9 bits for a sampled dense
+  `n == 5` table and 16 bits for a sampled `n == 6` one; across five sampled
+  `D == 64` decodes it ranges from 27 bits to 45766 bits, tracking decode
+  length rather than arity (the interpreter-verified `n == 7` build reaches
+  1840 bits).  Measured over every start `q` in the decode's domain, not
+  just `q == 0` — with repeated squaring the `q == 0` trajectory is not
+  representative.  The wiki spec does not specify an accumulator bound (it says only
+  "increment, decrement, double, square, or half the accumulator"), and this
+  interpreter uses Python's arbitrary-precision integers.  Nothing here
+  contradicts the spec, and the dependence is not new at `n == 7` — the
+  shipped `n == 5` path already passes one byte — but the region a wide
+  `n == 7` decode exercises is far outside anything the shipped examples
+  cover (the hello-world program's largest intermediate is 81), so it rests
+  on spec silence rather than on ground truth.
+
+  There is still no universal fallback (a tree would need each input
   re-embedded at every node, which WII2D has no way to store).
 
   **This replaced an earlier chain search.**  A previous note here recorded a
@@ -1307,10 +1341,21 @@ linear scan rather than a genuine representation limit.  See
   picking a decode but not on **building** one: the fold construction above
   composes a decode of whatever length the pattern needs, so the pool never
   has to contain the answer.  Every one of the 65536 patterns on the 16-point
-  `n == 5` domain folds -- the case the old note put at 0.04% coverage.  The
-  counting bound is still real, and it is why the general path stops at
-  `n == 6`; it just binds at a much higher arity than a fixed-length pool
-  suggests.
+  `n == 5` domain folds -- the case the old note put at 0.04% coverage.
+
+  **The counting bound is not why the general path stops at `n == 6`.**  This
+  paragraph used to end by conceding that it was, "binding at a much higher
+  arity"; that concession was wrong in the same way as the note it corrects.
+  The stop is `_WII2D_MAX_INDEX_DOMAIN`, a size/time policy that refuses
+  before the fold runs, and lifting it builds interpreter-verified `n == 7`
+  programs (above).  A pool count bounds how many decodes can be *picked* out
+  of op-strings of some fixed length; it says nothing about a construction
+  that *composes* one to fit, so it cannot be the reason for any particular
+  arity cutoff.  What remains genuinely open is **completeness**: every
+  pattern is verified to fold exhaustively only through `D == 8`, with
+  `D == 16` sampled, and the fold is a beam search that can dead-end in
+  principle.  Whether some 64-point pattern fails to fold is unknown -- but
+  no sampled one has, and an unproven completeness claim is not a wall.
 
 ## 2dFish (the WII2D-style merging chain is affine-only; a decision tree is the universal construction)
 

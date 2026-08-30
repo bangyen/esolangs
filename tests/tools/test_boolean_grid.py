@@ -532,6 +532,87 @@ class TestWII2D:
             got = [_wii2d_apply(ops, x) for x in range(16)]
             assert got == pattern, (pattern, ops, got)
 
+    def test_index_domain_guard_is_cost_not_capability(self) -> None:
+        """The ``n == 7`` refusal is a size guard, checked before the fold.
+
+        The generator rejects a dense non-symmetric table whose decode domain
+        exceeds :data:`_WII2D_MAX_INDEX_DOMAIN` *without ever calling the
+        decode*, so the refusal carries no evidence that the pattern is
+        unreachable -- and the two tests below show it is not.  The arity the
+        refusal starts at is derived from the constant, not pinned.
+        """
+        from esolangs.tools.boolean.wii2d import (
+            _WII2D_MAX_INDEX_DOMAIN,
+            _wii2d_routes,
+            _wii2d_symmetric_popcount_map,
+        )
+
+        # the first arity whose decode domain 2**(n-1) passes the guard
+        n = (_WII2D_MAX_INDEX_DOMAIN).bit_length() + 1
+        assert 2 ** (n - 1) > _WII2D_MAX_INDEX_DOMAIN
+        assert 2 ** (n - 2) <= _WII2D_MAX_INDEX_DOMAIN
+
+        # a dense non-symmetric table at that arity: alternate on the low bit
+        # except at one combo, which breaks symmetry without being sparse
+        table = "".join("01"[(combo ^ (combo >> 2)) & 1] for combo in range(2**n))
+        table = table[:-1] + str(1 - int(table[-1]))
+        assert _wii2d_symmetric_popcount_map(n, table) is None
+        assert _wii2d_routes(n, table) is None
+
+        with pytest.raises(ValueError, match="cost guard"):
+            boolean.wii2d(table)
+
+    @pytest.mark.slow
+    def test_decode_folds_past_the_guard(self) -> None:
+        """A 64-point decode -- the ``n == 7`` domain -- folds correctly.
+
+        This is what makes the guard a cost policy rather than a wall: the
+        construction is not out of reach at this width, it is merely
+        expensive.  The pattern is fixed (not random) because decode time at
+        this domain has a heavy tail; this one is a fast representative.
+        """
+        from esolangs.tools.boolean.wii2d import _wii2d_apply, _wii2d_decode
+
+        pattern = [
+            int(bit)
+            for bit in "00110011001110001000010111111010"
+            "00101111111010101001100110101001"
+        ]
+        assert len(pattern) == 64
+        ops = _wii2d_decode(pattern)
+        assert ops is not None
+        assert [_wii2d_apply(ops, x) for x in range(64)] == pattern
+
+    @pytest.mark.slow
+    def test_chain_builds_and_runs_at_n7_when_the_guard_is_raised(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Raising the guard yields a working ``n == 7`` program.
+
+        The evidence gate for the "liftable, but costly" verdict: every one
+        of the 128 input combinations is executed through the real
+        interpreter and checked against the table.  The table is fixed so the
+        build stays on the fast side of the decode's heavy tail.
+        """
+        from esolangs.tools.boolean.wii2d import _wii2d_symmetric_popcount_map
+
+        module = importlib.import_module("esolangs.tools.boolean.wii2d")
+        n = 7
+        monkeypatch.setattr(module, "_WII2D_MAX_INDEX_DOMAIN", 2 ** (n - 1))
+
+        table = (
+            "1001101101110011101111111100000100010000001110100111111110001011"
+            "0010100001000011100000001010010001100010001001011101101110101111"
+        )
+        assert len(table) == 2**n
+        assert _wii2d_symmetric_popcount_map(n, table) is None
+
+        template = module.wii2d(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_chain(template, bits)
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
     def test_decode_constant_pattern_is_a_single_digit(self) -> None:
         """A constant column needs no folding at all, just a digit."""
         from esolangs.tools.boolean.wii2d import _wii2d_decode
@@ -763,13 +844,17 @@ class TestWII2D:
         assert _wii2d_routes(4, table) == _wii2d_routes(4, table)
 
     def test_a_dense_wide_table_is_refused_on_decode_width(self) -> None:
-        """Past six inputs the index chain's decode domain is too wide.
+        """Past six inputs the index chain's decode domain trips the cost guard.
 
         The chain decodes over ``2 ** (n - 1)`` points, so n == 7 is 64 --
-        past the limit worth spelling out in the grid.  A symmetric table
-        escapes through the popcount chain, which decodes over ``n`` points
-        instead; this one is neither symmetric nor foldable, so the width
-        check is what stops it, and the caller sees the documented refusal.
+        past :data:`_WII2D_MAX_INDEX_DOMAIN`.  A symmetric table escapes
+        through the popcount chain, which decodes over ``n`` points instead.
+        This one is not symmetric, so the width check stops it.
+
+        The refusal is a *cost* policy: the guard fires before the fold is
+        attempted, so this says nothing about whether the pattern folds --
+        and ``test_decode_folds_past_the_guard`` shows a 64-point pattern
+        that does.  The message must therefore not claim unreachability.
         """
         table = (
             "0011001100111000100001011111101000101111111010101001100110101001"
@@ -781,8 +866,10 @@ class TestWII2D:
 
         assert _wii2d_routes(7, table) is None
 
-        with pytest.raises(ValueError, match="out of reach"):
+        with pytest.raises(ValueError, match="cost guard") as caught:
             boolean.wii2d(table)
+        # the old message claimed unreachability, which the fold disproves
+        assert "out of reach" not in str(caught.value)
 
     def test_a_branch_that_will_not_decode_refuses_the_chain(self) -> None:
         """Both halves of the index chain have to decode, or there is no route.
