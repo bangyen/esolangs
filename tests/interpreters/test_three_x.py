@@ -5,6 +5,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.three_x import run
+from tests.interpreters.contract import CycleContract, SnapshotContract
 
 
 def run_program(code: str, stdin: str = "") -> str:
@@ -104,15 +105,6 @@ class Test3x:
 
 
 class TestStepMachine:
-    def test_snapshot_changes_after_a_step(self) -> None:
-        from esolangs.interpreters.stack_based.three_x import _Machine
-
-        machine = _Machine("3", ScriptedIO())
-        before = machine.snapshot()
-        machine.step()  # 3 pushes the rational 3
-        assert machine.snapshot() != before
-        assert machine.stack == [3]
-
     def test_a_close_paren_with_no_open_loop(self) -> None:
         """``)`` on a zero falls out of a loop it was never inside.
 
@@ -156,20 +148,6 @@ class TestStepMachine:
             closed.step()
         assert closed.io.getvalue() == "abc"
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.stack_based.three_x import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine("3!", ScriptedIO())) is True
-
-    def test_loop_is_detected_as_a_cycle(self) -> None:
-        # 3() pushes a nonzero value then loops with an empty body forever:
-        # the stack never changes, a genuine state cycle.
-        from esolangs.interpreters.stack_based.three_x import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine("3()", ScriptedIO())) is False
-
     def test_step_after_halt_is_a_noop(self) -> None:
         from esolangs.interpreters.stack_based.three_x import _Machine
 
@@ -177,3 +155,19 @@ class TestStepMachine:
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
         assert machine.stack == []
+
+
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.stack_based.three_x import _Machine
+
+    return _Machine(code, ScriptedIO())
+
+
+class TestContract(SnapshotContract, CycleContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    stepping_program = "3"
+    halting_program = "3!"
+    looping_program = "3()"

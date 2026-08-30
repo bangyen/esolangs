@@ -9,6 +9,7 @@ lines, integer-zero variable initialization).
 
 import io
 from contextlib import redirect_stdout
+from typing import ClassVar
 from unittest.mock import patch
 
 import pytest
@@ -16,6 +17,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.between import run
+from tests.interpreters.contract import SnapshotContract
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
@@ -283,11 +285,16 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.halted
 
-    def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
-        from esolangs.interpreters.register_based.between import _Machine
 
-        machine = _Machine(["'x'v.", "[x]s|7|"], IO())
-        before = machine.snapshot()
-        hash(before)  # must not raise
-        machine.step()
-        assert machine.snapshot() != before
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.register_based.between import _Machine
+
+    return _Machine(code, IO())
+
+
+class TestContract(SnapshotContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    stepping_program: ClassVar[list[str]] = ["'x'v.", "[x]s|7|"]

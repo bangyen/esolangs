@@ -10,6 +10,7 @@ import pytest
 from esolangs.interpreters.io import IO
 from esolangs.tools.boolean.tape import dimensional as bool_gen
 from esolangs.tools.text.other import dimensional as text_gen
+from tests.interpreters.contract import SnapshotContract
 
 dim = importlib.import_module("esolangs.interpreters.tape_based.dimensional")
 
@@ -120,15 +121,6 @@ class TestDimensional:
 
 
 class TestStepMachine:
-    def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
-        from esolangs.interpreters.tape_based.dimensional import _Machine
-
-        machine = _Machine("+" * 3 + ".", IO())
-        before = machine.snapshot()
-        hash(before)  # must not raise
-        machine.step()
-        assert machine.snapshot() != before
-
     def test_snapshot_freezes_a_higher_dimensional_tape(self) -> None:
         """A tape raised past 2D nests levels, each frozen into the key."""
         from esolangs.interpreters.tape_based.dimensional import _Machine
@@ -141,3 +133,17 @@ class TestStepMachine:
             seen.add(machine.snapshot())
             machine.step()
         assert len(seen) > 1
+
+
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.tape_based.dimensional import _Machine
+
+    return _Machine(code, IO())
+
+
+class TestContract(SnapshotContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    stepping_program = "+" * 3 + "."

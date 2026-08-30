@@ -4,6 +4,7 @@ import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.three_d_brainfuck import _Machine, run
+from tests.interpreters.contract import CycleContract, SnapshotContract
 
 
 def run_program(code: str, stdin: str = "") -> str:
@@ -204,23 +205,18 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ip == (2, 0, 0)
 
-    def test_snapshot_is_hashable(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.three_d_brainfuck import _Machine
 
-        assert hash(_Machine("+.", ScriptedIO()).snapshot()) is not None
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.three_d_brainfuck import _Machine
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.three_d_brainfuck import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+    return _Machine(code, ScriptedIO())
 
-        assert run_until_halt_or_cycle(_Machine("+.", ScriptedIO())) is True
 
-    def test_bracket_loop_is_detected_as_a_cycle(self) -> None:
-        """A bracket pair around a cell that never clears loops forever."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.three_d_brainfuck import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+class TestContract(SnapshotContract, CycleContract):
+    """The shared shapes, with this language's own programs."""
 
-        assert run_until_halt_or_cycle(_Machine("+[]", ScriptedIO())) is False
+    machine = staticmethod(_machine)
+    stepping_program = "+."
+    halting_program = "+."
+    looping_program = "+[]"

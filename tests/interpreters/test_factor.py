@@ -4,6 +4,7 @@ import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.factor import decode, run
+from tests.interpreters.contract import CycleContract, SnapshotContract
 
 # The wiki's published programs, decoded from their prime factorizations.
 CAT = 310861643  # 17 * 29 * 71 * 83 * 107 -> ,[.,]
@@ -106,23 +107,18 @@ class TestStepMachine:
         assert machine.io.getvalue() == "\x01"
         assert machine.halted
 
-    def test_snapshot_is_hashable(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.factor import _Machine
 
-        assert hash(_Machine("15", ScriptedIO()).snapshot()) is not None
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.factor import _Machine
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.factor import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+    return _Machine(code, ScriptedIO())
 
-        assert run_until_halt_or_cycle(_Machine("15", ScriptedIO())) is True
 
-    def test_looping_decoded_program_is_detected_as_a_cycle(self) -> None:
-        """3567 = 3 * 29 * 41 decodes to +[] (residues 3, 7, 8)."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.factor import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+class TestContract(SnapshotContract, CycleContract):
+    """The shared shapes, with this language's own programs."""
 
-        assert run_until_halt_or_cycle(_Machine("3567", ScriptedIO())) is False
+    machine = staticmethod(_machine)
+    stepping_program = "15"
+    halting_program = "15"
+    looping_program = "3567"

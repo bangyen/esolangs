@@ -2,10 +2,12 @@
 
 import io
 from contextlib import redirect_stdout
+from typing import ClassVar
 from unittest.mock import patch
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.nevermind import run
+from tests.interpreters.contract import CycleContract, SnapshotContract
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
@@ -143,21 +145,6 @@ class TestNevermind:
 
 
 class TestStepMachine:
-    def test_snapshot_changes_after_a_step(self) -> None:
-        from esolangs.interpreters.register_based.nevermind import _Machine
-
-        machine = _Machine(["make,x,5"], IO())
-        before = machine.snapshot()
-        machine.step()
-        assert machine.snapshot() != before
-        assert machine.var == {"x": 5}
-
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.register_based.nevermind import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine(["make,x,5"], IO())) is True
-
     def test_empty_program_is_halted(self) -> None:
         from esolangs.interpreters.register_based.nevermind import _Machine
 
@@ -268,3 +255,18 @@ class TestStepMachine:
         )
         loop = ["make,n,2", "loop,$n", "", "print,h", "endloop"]
         assert run_and_capture(loop) == "hh"
+
+
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.register_based.nevermind import _Machine
+
+    return _Machine(code, IO())
+
+
+class TestContract(SnapshotContract, CycleContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    stepping_program: ClassVar[list[str]] = ["make,x,5"]
+    halting_program: ClassVar[list[str]] = ["make,x,5"]

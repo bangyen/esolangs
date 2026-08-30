@@ -15,6 +15,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.myscript import run
+from tests.interpreters.contract import SnapshotContract
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
@@ -220,15 +221,6 @@ class TestSnapshot:
         code = 'check 5,\n  if 5,\n    say "hit"\n  if 5,\n    say "again"'
         assert run_and_capture(code) == "hit"
 
-    def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
-        from esolangs.interpreters.register_based.myscript import _Machine
-
-        machine = _Machine("var a is 1\nsay a", IO())
-        before = machine.snapshot()
-        hash(before)  # must not raise
-        machine.step()
-        assert machine.snapshot() != before
-
     def test_snapshot_captures_a_nested_scope_chain(self) -> None:
         """A function frame's scope chain is folded into the snapshot key."""
         from esolangs.interpreters.register_based.myscript import _Machine
@@ -240,3 +232,17 @@ class TestSnapshot:
             seen.add(machine.snapshot())
             machine.step()
         assert len(seen) > 1
+
+
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.register_based.myscript import _Machine
+
+    return _Machine(code, IO())
+
+
+class TestContract(SnapshotContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    stepping_program = "var a is 1\nsay a"
