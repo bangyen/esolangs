@@ -966,19 +966,23 @@ in that sweep's searching set.
 execution, but the fixpoint between sizes and offsets does iterate: a node
 whose reach falls short of its own 0-subtree prepends a stash chunk, which
 buys ~255 tokens of reach, and re-derives.  That loop carries no iteration
-cap.  It has three exits, each backed by a measurement over every node of
+cap.  It has two exits, both backed by a measurement over every node of
 every table through `n == 3` (172452 nodes):
 
 * **Place.**  Some candidate's landing clears the 0-arm.
-* **Floor.**  The reach clears the arm by more than the spread between
-  candidates, so one of them must fit and a refusal is a contradiction.
-  Refusals were observed down to a gap of −8 and never at or below −64.
 * **Stall.**  The gap stopped closing — the parent/child lock the 0-arm's
   shed exists to break.  Checked over a two-chunk window, and only after
   the first chunk, since the first spikes the gap (its layout lands before
   the reach it buys) and single steps sawtooth up a few tokens.  Measured
   that way the gap fell by at least 248 tokens every window, without
   exception.
+
+A third exit was tried and dropped: treating a refusal as a contradiction
+once the reach cleared the arm by some margin.  Disabling it changed
+nothing — every table through `n == 3` still built, byte for byte, and the
+lock still stalled — so it was guarding a case the stall check already
+reaches, and its threshold was a constant justified by a measurement
+showing it never fired.
 
 The quantity being descended has to include the 0-arm's length.  The
 cheaper proxy — the shortfall against the node alone — looks equivalent
