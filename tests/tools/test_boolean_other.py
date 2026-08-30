@@ -16,6 +16,7 @@ from tests.tools.boolean_runners import (
     run_between,
     run_clockwise,
     run_container,
+    run_cvnc,
     run_fargo,
     run_flowchart,
     run_forbin_boolean,
@@ -146,6 +147,75 @@ class TestForbinBoolean:
     def test_rejects_non_binary(self) -> None:
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.forbin_boolean("02")
+
+
+class TestCvnc:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("0", 0),  # no inputs at all
+            ("1", 0),
+            ("01", 1),  # identity
+            ("10", 1),  # NOT
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1000000000000000", 4),  # AND4
+            ("1111111111111111", 4),  # constant one
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.cvnc(table)
+        for combo in range(2**n):
+            bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+            got = run_cvnc(program, bits)
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_a_table_that_folds_nothing_is_a_full_tree(self) -> None:
+        """Parity folds nowhere, so it keeps a leaf per row."""
+        program = boolean.cvnc("01101001")
+        assert program.count("fu") == 8  # one leaf per row
+        assert program.count("\u0270\u030ao") == 7  # one branch per interior node
+
+    def test_a_constant_table_folds_to_one_leaf_but_keeps_its_reads(self) -> None:
+        """Folding drops the branches, never the reads."""
+        for table in ("00000000", "11111111"):
+            program = boolean.cvnc(table)
+            assert program.count("so") == 3  # still three inputs consumed
+            assert program.count("\u0270\u030ao") == 0  # nothing left to branch on
+            assert program.count("fu") == 1  # one leaf for the whole table
+
+    def test_a_one_dependency_table_costs_two_leaves(self) -> None:
+        """Depending on one input collapses the other two levels.
+
+        The read count is a property of each *path*, not of the text: both
+        arms fold and each emits the two reads below the root, so five
+        ``so`` appear while any single run consumes three.
+        """
+        program = boolean.cvnc("11110000")
+        assert program.count("fu") == 2
+        assert program.count("\u0270\u030ao") == 1  # only the root still branches
+        for combo in range(8):
+            bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
+            assert run_cvnc(program, bits) == "11110000"[combo]
+
+    def test_folding_shortens_the_program(self) -> None:
+        assert len(boolean.cvnc("00000000")) < len(boolean.cvnc("01101001"))
+
+    def test_every_leaf_ends_by_halting(self) -> None:
+        """Without the halting goto a then-arm falls into its own loop end."""
+        program = boolean.cvnc("0110")
+        assert program.count("\u0279i") == program.count("fu")
+
+    def test_a_zero_input_table_reads_nothing(self) -> None:
+        """With no inputs there is nothing to branch on."""
+        assert "so" not in boolean.cvnc("1")
+        assert run_cvnc(boolean.cvnc("1"), []) == "1"
 
 
 class TestFargo:

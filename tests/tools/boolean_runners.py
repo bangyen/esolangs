@@ -193,6 +193,21 @@ def run_decleq(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+def run_cvnc(program: str, inputs: list[str]) -> str:
+    """Run a CV(N)(C) program, feeding one input line per bit.
+
+    ``s`` reads a whole line as an integer, so the boolean convention here
+    is the ordinary one: each bit is its own line, in the order the tree
+    reads them.
+    """
+    from esolangs.interpreters.other.cvnc import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
 def run_fargo(program: str, inputs: list[str]) -> str:
     """Run a Fargo program, packing ``inputs`` into its one input number.
 
