@@ -112,6 +112,22 @@ _LAND_HIGH = 7
 # simulation rather than by a rule.
 _WRITE_GADGETS = ("[", "[x", "[<[", "[<[x", "[<[<[", "[x<[", "[x<[x")
 
+# A cell's value across the rows -- the function that cell holds.  The tuple
+# is indexed by row, so it is the truth table's column for that cell.
+_Column = tuple[int, ...]
+
+# The region as an affine map: what each cell holds under the all-zero
+# pattern, and the XOR one pattern bit makes to it.  A delta is None when
+# that bit resizes the region, which makes it unusable rather than merely
+# ineffective.
+_Base = dict[int, _Column]
+_Deltas = list[dict[int, _Column] | None]
+_Span = tuple[int, int]
+
+# One planned read: the literal tag, the step it takes, where the rows sat
+# before it, and which column each occupied cell was steered to.
+_Move = tuple[str, int, tuple[int, ...], dict[int, _Column]]
+
 
 def _write_pattern(sim: "_Sim", bits: list[int]) -> str:
     """Return code writing ``bits`` into the cells right of ``sim.ptr``.
@@ -144,9 +160,7 @@ class _Joint:
     def __init__(self, n: int, size: int) -> None:
         """Start one machine per row of the truth table."""
         self.n = n
-        self.rows = [
-            [(r >> (n - 1 - k)) & 1 for k in range(n)] for r in range(2**n)
-        ]
+        self.rows = [[(r >> (n - 1 - k)) & 1 for k in range(n)] for r in range(2**n)]
         self.ms = [_Sim(size) for _ in self.rows]
         self.parts: list[str] = []
 
@@ -169,7 +183,7 @@ class _Joint:
         return len({m.ptr for m in self.ms}) == 1
 
     def ptr(self) -> int:
-        """The common pointer.  Only meaningful when converged."""
+        """Return the common pointer.  Only meaningful when converged."""
         return self.ms[0].ptr
 
     def column(self, cell: int) -> tuple[int, ...]:
@@ -177,7 +191,7 @@ class _Joint:
         return tuple(m.tape[cell] for m in self.ms)
 
     def template(self) -> str:
-        """The emitted template, ``{Xi}`` placeholders included."""
+        """Return the emitted template, ``{Xi}`` placeholders included."""
         return "".join(self.parts)
 
 
@@ -186,7 +200,7 @@ def _region(
     pattern: list[int],
     pool: tuple[int, ...] = _POOL_ZERO_LOW,
     size: int = 400_000,
-) -> tuple | None:
+) -> tuple["_Joint", int, int] | None:
     """Write the pool, then the region, then cross it once per input.
 
     Returns ``(joint, lo, hi)`` for the region's cell range, or None if any
@@ -227,7 +241,7 @@ def _region(
 
 def _model(
     n: int, width: int, pool: tuple[int, ...] = _POOL_ZERO_LOW
-) -> tuple | None:
+) -> tuple[_Base, _Deltas, _Span] | None:
     """Measure the region as an affine map of its pattern bits.
 
     Returns ``(base, deltas, span)``: the tape each cell holds under the
@@ -261,8 +275,10 @@ def _model(
     return base, deltas, (lo, hi)
 
 
-def _cosets(base: dict, deltas: list, n: int, span: tuple) -> dict:
-    """The columns each cell can be made to hold.
+def _cosets(
+    base: _Base, deltas: _Deltas, n: int, span: _Span
+) -> dict[int, set[_Column]]:
+    """Return the columns each cell can be made to hold.
 
     A cell's reachable set is a coset of the span of its deltas.  In
     practice every cell inside the region offers exactly two, complementary,
@@ -276,18 +292,19 @@ def _cosets(base: dict, deltas: list, n: int, span: tuple) -> dict:
         spanned = {tuple([0] * (2**n))}
         for vector in vectors:
             spanned |= {
-                tuple(a ^ b for a, b in zip(s, vector, strict=True))
-                for s in spanned
+                tuple(a ^ b for a, b in zip(s, vector, strict=True)) for s in spanned
             }
         reachable[cell] = {
-            tuple(a ^ b for a, b in zip(base[cell], s, strict=True))
-            for s in spanned
+            tuple(a ^ b for a, b in zip(base[cell], s, strict=True)) for s in spanned
         }
     return reachable
 
 
 def _solve(
-    constraints: dict, base: dict, deltas: list, width: int
+    constraints: dict[tuple[int, int], int],
+    base: _Base,
+    deltas: _Deltas,
+    width: int,
 ) -> list[int] | None:
     """Solve for the pattern bits realising ``constraints``.
 
@@ -314,9 +331,7 @@ def _solve(
         rhs[rank], rhs[pivot] = rhs[pivot], rhs[rank]
         for i in range(len(rows)):
             if i != rank and rows[i][column]:
-                rows[i] = [
-                    a ^ b for a, b in zip(rows[i], rows[rank], strict=True)
-                ]
+                rows[i] = [a ^ b for a, b in zip(rows[i], rows[rank], strict=True)]
                 rhs[i] ^= rhs[rank]
         pivots.append(column)
         rank += 1
@@ -335,16 +350,18 @@ def _solve(
 # must exceed the number of reads, so that no two reads' landing zones
 # overlap and each row lands on a cell of its own.
 def _gap_for(n: int) -> int:
-    """The wide left step, used to spread the rows apart.
+    """Return the wide left step, used to spread the rows apart.
 
     Wide enough that no two reads' landing zones overlap, so each row lands
     on a cell of its own and that cell's free bit steers it alone.
     """
-    return 4 * 2**n + 2
+    # int(): ``2**n`` is Any to mypy, since __pow__ widens for a possibly
+    # negative exponent.  n is an arity here, so the value is an int.
+    return int(4 * 2**n + 2)
 
 
 def _gaps_for(n: int) -> tuple[int, ...]:
-    """The step lengths a read may use.
+    """Return the step lengths a read may use.
 
     A read is ``'[' + '<'*gap``, so the gap decides what the read *does*:
 
@@ -390,11 +407,11 @@ def _gaps_for(n: int) -> tuple[int, ...]:
 def _plan(
     n: int,
     table: list[int],
-    reachable: dict,
+    reachable: dict[int, set[_Column]],
     start: int,
     gaps: tuple[int, ...],
     depth: int,
-) -> tuple[list, int] | None:
+) -> tuple[list[_Move], int] | None:
     """Choose the reads, by walking the achievable moves.
 
     At each step the rows occupy known cells, and each occupied cell offers
@@ -435,7 +452,9 @@ def _plan(
     # later read cannot land on one of them.  See the note at the point of
     # use: rows advance leftward and so never re-read a cell themselves,
     # but two *different* rows can reach the same cell at different reads.
-    queue = deque([(initial, [], frozenset())])
+    queue: deque[tuple[tuple[int, ...], list[_Move], frozenset[int]]] = deque(
+        [(initial, [], frozenset())]
+    )
     while queue:
         positions, history, used = queue.popleft()
         by_class: dict[int, set[int]] = {}
@@ -489,9 +508,9 @@ def _plan(
                     # strictly advances leftward -- the property holds by
                     # construction rather than by filtering, and this asserts
                     # it rather than silently relying on it.
-                    assert all(
-                        moved[r] < positions[r] for r in range(rows)
-                    ), f"a row failed to advance: {positions} -> {moved}"
+                    assert all(moved[r] < positions[r] for r in range(rows)), (
+                        f"a row failed to advance: {positions} -> {moved}"
+                    )
                     seen.add(moved)
                     queue.append(
                         (
@@ -523,11 +542,13 @@ def _plan(
 # cell per read step plus the landing zone and a little slack.
 def _width_for(n: int, depth: int) -> int:
     """Pattern width sized so every read lands inside the region."""
-    return depth * _gap_for(n) + 8 * 2**n + 40
+    return depth * _gap_for(n) + int(8 * 2**n) + 40
 
 
 def _constant(
-    n: int, table: list[int], width: int,
+    n: int,
+    table: list[int],
+    width: int,
     pool: tuple[int, ...] = _POOL_ZERO_LOW,
 ) -> str:
     """Build a table that ignores its inputs.
