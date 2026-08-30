@@ -44,6 +44,8 @@ def run_program(
     *,
     limit: int | None = None,
     suppress_eof: bool = True,
+    suppress_exit: bool = False,
+    **run_kwargs: Any,
 ) -> str:
     """Run ``code`` through ``run`` and return everything it printed.
 
@@ -57,12 +59,24 @@ def run_program(
     the ``EOFError`` of a program that reads past its input, which is the
     normal halt for the languages that read until exhaustion; the tests
     that assert the error escapes pass ``False``.
+
+    ``suppress_exit`` is off by default and exists for Container, which
+    halts by calling ``sys.exit`` rather than by returning -- so its
+    ``SystemExit`` is a normal end of run there and an error anywhere
+    else.  It is a parameter rather than always-on because swallowing
+    ``SystemExit`` unconditionally would hide a real one.
+
+    Anything else is forwarded to ``run`` untouched.  The example tables
+    pin a language's own settings that way -- LaserFuck's ``heading``,
+    whose initial value the spec leaves random -- and taking ``run`` as an
+    argument is only useful if its parameters travel with it.  ``limit``
+    keeps its own name because it is the one nearly every language shares.
     """
     io = ScriptedIO(stdin)
-    kwargs = {} if limit is None else {"limit": limit}
-    if suppress_eof:
-        with contextlib.suppress(EOFError):
-            run(code, io, **kwargs)
-    else:
+    kwargs = dict(run_kwargs) if limit is None else {"limit": limit, **run_kwargs}
+    halts: tuple[type[BaseException], ...] = (EOFError,) if suppress_eof else ()
+    if suppress_exit:
+        halts += (SystemExit,)
+    with contextlib.suppress(*halts):
         run(code, io, **kwargs)
     return io.getvalue()
