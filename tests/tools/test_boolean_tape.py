@@ -6,7 +6,7 @@ single-language modules that share its tape-machine shape: ``rotfuck``,
 """
 
 import contextlib
-from itertools import permutations
+from itertools import pairwise, permutations
 
 import pytest
 
@@ -1110,6 +1110,61 @@ class TestSlowAcvMammalian:
 
         with pytest.raises(ValueError, match="no landing reached the subtree"):
             _subtree("01", 1, 0, "", [0], 0, 10_000_000)
+
+    def test_a_stash_loop_that_stops_closing_the_gap_raises(self) -> None:
+        """A shortfall that stops falling is reported as a formula failure.
+
+        The loop's whole justification is that a chunk buys more reach than
+        the layout it adds, so the shortfall falls until the jump clears the
+        0-arm.  If a chunk ever stopped buying reach -- the parent/child
+        lock the 0-arm's shed exists to break -- the loop would spin to
+        ``_MAX_CHUNKS`` and report a budget problem, hiding a wrong model
+        behind a number that looks tunable.  Neutering the stash freezes the
+        shortfall, which is exactly that failure, and it has to name itself.
+        """
+        import esolangs.tools.boolean.slow_acv_mammalian as module
+
+        def barren(array: list[int], acc: int) -> tuple[list[str], list[int], int]:
+            # Costs layout and buys nothing: the shortfall cannot improve.
+            return ["SEED"], list(array), acc
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_stash_chunk", barren)
+            with pytest.raises(ValueError, match="stopped converging"):
+                module.slow_acv_mammalian_boolean("0110")
+
+    def test_the_shortfall_falls_over_every_two_chunk_window(self) -> None:
+        """Progress is windowed, not per-step, and this pins which.
+
+        A chunk's layout can outrun the reach it buys for a single
+        iteration, so the shortfall sawtooths up a few tokens before
+        resuming its fall -- asserting a per-step decrease would be false.
+        What holds is that any two chunks together close the gap, measured
+        at 88 tokens minimum over every node of every table through
+        ``n == 3``.  The convergence check is built on that, so a change
+        making the sawtooth deeper than one step has to fail here rather
+        than turn into a spurious "stopped converging" on a real table.
+        """
+        from esolangs.tools.boolean.slow_acv_mammalian import (
+            _candidates,
+            _stash_chunk,
+        )
+
+        cursor, value, prefix = [0], 0, 0
+        shortfalls = []
+        for _ in range(8):
+            candidates = _candidates(cursor, value)
+            shortfalls.append(
+                prefix + len(candidates[0][0]) - candidates[-1][3],
+            )
+            chunk, cursor, value = _stash_chunk(cursor, value)
+            prefix += len(chunk)
+
+        assert any(after > before for before, after in pairwise(shortfalls)), (
+            "no sawtooth: a per-step check would have done, so this test is stale"
+        )
+        for start, end in zip(shortfalls, shortfalls[2:], strict=False):
+            assert start - end >= 88, f"two-chunk window closed only {start - end}"
 
 
 class TestSuffolk:

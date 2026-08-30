@@ -77,11 +77,16 @@ _SHED_KEEP = 2
 # needs more effort.
 _MAX_RELAXATIONS = 8
 
-# Stash chunks tried before a node gives up.  Each chunk buys ~255 tokens of
-# reach against a handful of layout, so this bounds the program size a node
-# can aim past rather than standing in for a search: ~100k tokens, against
-# ~4.5k for a three-input table and ~10k for a four-input one.  A table that
-# raises past it wants a larger bound, not a different construction.
+# Stash chunks a node may prepend before giving up.  Each buys ~255 tokens
+# of reach, and the convergence check in :func:`_subtree` is what actually
+# rules out a stuck loop -- this is only a backstop on how far a node is
+# allowed to push its 1-arm out.  Measured over every node of every table
+# through ``n == 3`` (64384 nodes), the worst any node used was 15: 2 at
+# ``n == 1``, 7 at ``n == 2``, 15 at ``n == 3``, so the headroom here is
+# about 27x the observed worst case.  The growth across those arities is
+# mild but not flat, so this is not proven adequate for large ``n``; a table
+# that exhausts it should be checked against the convergence error above
+# before the bound is simply raised.
 _MAX_CHUNKS = 400
 
 # ``DIGEST PRONOUNCE EXCRETE LEAPFROG``: the fixed tail every leaf ends with,
@@ -266,8 +271,30 @@ def _subtree(
 
     prefix: list[str] = []
     cursor, value = list(array), acc
+    window: list[int] = []
     for _ in range(_MAX_CHUNKS):
         candidates = _candidates(cursor, value)
+        # How far the furthest reachable landing still falls short of where
+        # the 1-arm could start.  This is what a stash chunk exists to close,
+        # so it is also what proves the loop is converging rather than stuck.
+        window.append(base + len(prefix) + len(candidates[0][0]) - candidates[-1][3])
+        if len(window) > 3:
+            window.pop(0)
+        # A chunk buys ~255 tokens of reach against the layout it adds, but
+        # the layout can outrun the reach for a *single* iteration, so the
+        # shortfall sawtooths up by a few tokens before resuming its fall.
+        # Progress is therefore checked over a two-step window, where the
+        # observed drop never fell below 88 tokens over every node of every
+        # table through n == 3.  A window that fails to close is the
+        # parent/child lock this construction exists to break -- the
+        # 0-arm's shed no longer decoupling the child from inherited
+        # ballast -- which is a bug in the formulas, not a table that needs
+        # a larger budget.
+        if len(window) == 3 and window[2] >= window[0]:
+            raise ValueError(
+                f"the stash loop stopped converging at depth {depth}, row {row!r}: "
+                f"shortfall went {window[0]} -> {window[2]} over two chunks"
+            )
         placed = (
             _place_above_leaves(table, n, depth, row, prefix, candidates, base)
             if depth + 1 == n
