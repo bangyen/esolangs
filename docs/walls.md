@@ -92,7 +92,22 @@ the default.  `n == 3` under the reading model is open, not walled: the
 pointer must cross the banked bits to leave the pool, and `[`'s skip on a
 differing cell desynchronizes the rows.  A joint search for a gadget avoiding
 that ran 2.48M states without a hit, but timed out rather than exhausting.
-Full detail in `docs/parameterized-input-conversion.md`.
+Full detail in `docs/parameterized-input-conversion.md`, removed in 2615cd4
+and readable with `git show 2615cd4^:docs/parameterized-input-conversion.md`.
+
+That coverage is also what settles the slot-order question, which is worth
+recording because the two look connected and are not. The `{Xi}` placeholders
+must be emitted in ascending order, and `_embed` does that by construction, so
+every table solved at its *full* arity is in order for free — AND3, XOR3 and
+majority all emit `{X0}{X1}{X2}`, verified. The violation came only from the
+projection path, where a table ignoring some inputs is solved smaller and the
+ignored placeholders are appended. Solving those at full arity instead leaves
+just two out of order in the whole space: `01010101` and `10101010`, the
+projections onto the *last* input, where the answer stands in no cell under
+either separator and the complete pipeline fails after ~158 seconds. So the
+n=3 coverage is not the debt, and swapping to a reading generator would not
+discharge it — a reading generator emits no placeholders, so it is *exempt*
+from the invariant rather than satisfying it, while losing every n=3 orbit.
 
 The original argument is kept below, as a record of what was believed and of
 exactly which step failed.

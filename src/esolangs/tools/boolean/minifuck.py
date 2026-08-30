@@ -14,7 +14,9 @@ below it verbatim -- builds and verifies all four one-input and all sixteen
 two-input tables with clean output.  The parameterized path is kept because
 that prologue does not yet reach ``n == 3``, where the pointer must cross the
 banked bits to leave the pool and ``[``'s skip desynchronizes the rows.  See
-``docs/parameterized-input-conversion.md``.
+``docs/walls.md``, and ``docs/parameterized-input-conversion.md`` for the
+full detail -- removed in 2615cd4, readable with
+``git show 2615cd4^:docs/parameterized-input-conversion.md``.
 
 ``docs/walls.md`` records Minifuck as reaching only the four one-input
 functions plus the eight 0-preserving two-input tables.  **That
@@ -42,6 +44,20 @@ Because that bookkeeping is affine but fiddly, nothing here is hand-tracked:
 is emitted, every choice is made against the simulated truth, and
 :func:`minifuck` raises rather than returning a program it has not seen
 print the table.
+
+**Slot order.**  Every generator in this family emits ``{X0}``..``{Xn-1}`` in
+ascending order, and :func:`_embed` does so by construction -- so any table
+solved at its full arity is in name order for free.  The exception is the
+projection path: a table ignoring some of its inputs is solved smaller and
+:func:`_lift` appends the ignored placeholders, which leaves the order
+whenever an ignored index sits below an essential one.  Those tables now try
+the full-arity route first (see :func:`_lift_leaves_name_order`), which
+leaves exactly two out of order across the whole space -- ``01010101`` and
+``10101010``, the projections onto the *last* input, where the answer stands
+in no cell under either separator and the complete pipeline fails after some
+158 seconds.  Relocating a placeholder instead is not an option and it is
+measured, not assumed: a fill writes the live tape, so moving the trailing
+fills to the front makes 2 rows wrong at ``n == 2`` and 6 at ``n == 3``.
 
 **Coverage: every two-input table, and eight of the fourteen three-input
 orbits.**  This is a *search* -- three routes across two embed separators --
@@ -474,7 +490,9 @@ def _essential_inputs(truth_table: str, n: int) -> list[int]:
     ]
 
 
-def _degenerate(truth_table: str, n: int) -> str | None:
+def _degenerate(
+    truth_table: str, n: int, fixed_cells_only: bool = False
+) -> str | None:
     """Build a table depending on at most one input, without the ladder.
 
     Such a table is a constant, a projection, or a negated projection, and
@@ -486,6 +504,12 @@ def _degenerate(truth_table: str, n: int) -> str | None:
     This is the piece that composes upward: a table with ``k`` essential
     inputs is a ``k``-input problem whatever its arity, so four of the
     fourteen three-input orbits are handled here for free.
+
+    ``fixed_cells_only`` stops after the six known cells, skipping the column
+    search.  That is for the caller who has a working fallback and wants a
+    cheap *attempt* rather than an answer: the search costs about five
+    seconds to fail at ``n == 3`` and the lookup under one, and every table
+    the name-order caller below wins is won at the lookup.
     """
     want = tuple(int(c) for c in truth_table)
     base = _embed(n, sep=_SEP)
@@ -497,6 +521,9 @@ def _degenerate(truth_table: str, n: int) -> str | None:
         hit = _try_print(base, truth_table, acc)
         if hit is not None:
             return hit.template()
+
+    if fixed_cells_only:
+        return None
 
     probe = _embed(n, sep=_SEP)
     _clamp(probe)
@@ -529,6 +556,18 @@ def _project(truth_table: str, essential: list[int], n: int) -> str:
                 full |= 1 << (n - 1 - i)
         rows.append(truth_table[full])
     return "".join(rows)
+
+
+def _lift_leaves_name_order(essential: list[int], n: int) -> bool:
+    """Whether lifting would emit the ``{Xi}`` out of ascending order.
+
+    :func:`_lift` appends the ignored inputs after the solved template, so
+    the result is still sorted when every ignored index is above every
+    essential one -- ``{X0}{X1}`` then ``{X2}``.  It is only when an ignored
+    index sits *below* an essential one that the append leaves sequence.
+    """
+    ignored = [i for i in range(n) if i not in essential]
+    return bool(ignored and essential and min(ignored) < max(essential))
 
 
 def _lift(template: str, essential: list[int], n: int) -> str:
@@ -591,6 +630,23 @@ def minifuck(truth_table: str) -> str:
     # table with a narrow core is as cheap as that core.
     essential = _essential_inputs(truth_table, n)
     if len(essential) < n:
+        # Projecting is much the cheaper route, but it emits the ignored
+        # inputs after the ``.``, which leaves name order whenever an ignored
+        # index sits below an essential one.  ``_embed`` already lays every
+        # slot down in ascending order, so solving at the *full* arity is
+        # in-order by construction -- try it first for exactly the tables the
+        # lift would disorder, and only when it is the cheap closed-form
+        # path.  A table with two or more essential inputs is not: measured
+        # at n == 3, ``00000101`` runs the searches for 132 seconds and still
+        # fails, against seconds to project.  Coverage comes first, so a miss
+        # here falls through to the projection rather than raising.  The
+        # attempt is capped at the fixed-cell lookup because that is where
+        # every table it wins is won; letting it run the column search only
+        # adds about five seconds to the tables it cannot build anyway.
+        if _lift_leaves_name_order(essential, n) and len(essential) <= 1:
+            in_order = _degenerate(truth_table, n, fixed_cells_only=True)
+            if in_order is not None:
+                return in_order
         inner = minifuck(_project(truth_table, essential, n))
         return _lift(inner, essential, n)
 
