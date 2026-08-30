@@ -169,10 +169,10 @@ recorded came back exactly** — which is what the harness commits
 `800f071` and `86c89b9` needed, each having been validated against a
 single language while nothing checked the rest.
 
-Sixteen suites are at 100% — `%^2^-1`, ArrowQueue, Back, BFStack, Bitdeque,
-brainfuck, BrainIf, Clockwise, Decleq, Factor, Home Row, Minifuck, NoComment,
-RAM0, Suffolk and Unsquare.  1496 mutants survive across the repo; the rest
-of the field, worst first:
+Seventeen suites are at 100% — `%^2^-1`, ArrowQueue, Back, BFStack, Bitdeque,
+brainfuck, BrainIf, Clockwise, Collatz Multiverse, Decleq, Factor, Home Row,
+Minifuck, NoComment, RAM0, Suffolk and Unsquare.  1492 mutants survive across
+the repo; the rest of the field, worst first:
 
 | language | score | survivors |
 | --- | --- | --- |
@@ -218,15 +218,14 @@ of the field, worst first:
 | Qoibl | 94.7% | 26 |
 | 3D Brainfuck | 94.9% | 6 |
 | Modulous | 95.6% | 11 |
-| Collatz Multiverse | 96.1% | 4 |
 
 LaserFuck, Forbin and Basicfuck are post-triage rows (they began at 66.7%,
 81.4% and 82.8%); four more — ArrowQueue, Decleq, BrainIf and Clockwise —
 carried one to three survivors each, were closed to 100%, and have left the
-table; NoComment (5) and Unsquare (6) left it the same way.  Painfuck, 3x,
-Forþ and Collatz Multiverse are post-triage too — the prompt-argument
+table; NoComment (5), Unsquare (6) and Collatz Multiverse (7) left it the
+same way.  Painfuck, 3x and Forþ are post-triage too — the prompt-argument
 deletion below cut each one's survivors without ending its triage — so
-their rows are re-measured, not swept.  That leaves 36 of the table's 43
+their rows are re-measured, not swept.  That leaves 36 of the table's 42
 rows carrying the sweep's own numbers, 15 of which had never been recorded
 per-language.  **Lamfunc (82), Between (77), MyScript
 (71) and Grapheme (60) are the largest untriaged pools** and were invisible
@@ -269,6 +268,16 @@ first:
   all six of its survivors were the two call sites'.  The interactive `IO`
   path prints the identical prompt either way.  Prefer the default over
   restating it: a restated default is slack that mutation testing counts.
+- **A default is dead when something upstream already ran it.**  Collatz
+  Multiverse's write path used `arrays.setdefault(var1, {})`, but every
+  line reads its target before writing it and an indexed *read* already
+  defaults the array — so by the write the key always exists.  Two of its
+  four survivors were mutations of that unreachable default (`None` and
+  the argument dropped entirely); a probe asserting the key's presence ran
+  20,000 random array programs without firing.  Plain subscripting is
+  enough.  The other two were ordinary gaps: an error branch no test
+  reached, and a `snapshot()` whose arrays half was only ever exercised
+  empty.  Pool 102 → 98, suite to 100%.
 - **Two copies of a check can each be half dead.**  NoComment's `s` and `b`
   bounds-checked their jump target separately, and each copy had an
   unreachable half: a forward target is always at least 1, so `s` could

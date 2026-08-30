@@ -110,7 +110,11 @@ class _Machine:
         if var1 == "lineNumber":
             next_ip = t
         elif idx1 is not None:
-            self.arrays.setdefault(var1, {})[self._read((idx1, None))] = t
+            # The array already exists: every line reads its target before
+            # writing it, and an indexed read creates the array (``_read``
+            # defaults it).  So this write needs no default of its own --
+            # one here would be a branch nothing can reach.
+            self.arrays[var1][self._read((idx1, None))] = t
         else:
             self.registers[var1] = t
 
