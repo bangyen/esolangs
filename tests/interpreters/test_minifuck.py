@@ -1,6 +1,5 @@
 """Unit tests for the Minifuck interpreter."""
 
-
 from esolangs.interpreters.tape_based.minifuck import run
 from tests.interpreters.contract import (
     CycleContract,

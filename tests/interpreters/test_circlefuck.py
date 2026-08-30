@@ -1,6 +1,5 @@
 """Unit tests for the Circlefuck interpreter."""
 
-
 from esolangs.interpreters.tape_based.circlefuck import run
 from tests.interpreters.contract import CycleContract, SnapshotContract
 from tests.interpreters.runner import run_program
