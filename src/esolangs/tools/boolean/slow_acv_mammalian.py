@@ -77,17 +77,51 @@ _SHED_KEEP = 2
 # needs more effort.
 _MAX_RELAXATIONS = 8
 
-# Stash chunks a node may prepend before giving up.  Each buys ~255 tokens
-# of reach, and the convergence check in :func:`_subtree` is what actually
-# rules out a stuck loop -- this is only a backstop on how far a node is
-# allowed to push its 1-arm out.  Measured over every node of every table
-# through ``n == 3`` (64384 nodes), the worst any node used was 15: 2 at
-# ``n == 1``, 7 at ``n == 2``, 15 at ``n == 3``, so the headroom here is
-# about 27x the observed worst case.  The growth across those arities is
-# mild but not flat, so this is not proven adequate for large ``n``; a table
-# that exhausts it should be checked against the convergence error above
-# before the bound is simply raised.
-_MAX_CHUNKS = 400
+# Chunks the stash loop looks back over when checking it is still closing
+# the placement gap.  One step is not enough: the gap sawtooths up a few
+# tokens on single iterations, and the *first* chunk always spikes it,
+# since the layout lands before the reach it buys.  Over two, measured
+# across every node of every table through ``n == 3`` (172452 nodes), the
+# gap fell by at least 248 tokens every time with no exceptions.
+_WINDOW = 2
+
+# The slowest the gap is allowed to close, *per chunk*, with the slack a
+# node is allowed on top for the prologue spike and for the distance
+# between a gap closing and some candidate actually fitting.  Together they
+# turn the descent into a bound: a node opening with a gap of ``g`` places
+# within ``g / _CHUNK_DROP + _CHUNK_SLACK`` chunks, and a loop still running
+# past that descended slower than the invariant permits even though no
+# individual window violated it.
+#
+# Both carry margin deliberately.  Against every node of every table
+# through ``n == 3`` (172452 of them) the worst ratio was an opening gap of
+# 419 placed in 7 chunks, which the measured per-window rate alone (248
+# over two chunks, so 124 each) would have allowed exactly 7 -- a fit with
+# no room, and this bound has to hold for tables nobody has measured.  The
+# rate is loosened and the slack doubled, which leaves the worst observed
+# case five chunks of headroom.
+_CHUNK_DROP = 100
+_CHUNK_SLACK = 8
+
+# The largest budget a caller can legitimately present, in chunks.  This is
+# *input validation*, not part of the termination argument: ``base`` is a
+# partial sum of the lengths already emitted, so it cannot exceed the
+# finished program, and a base past that describes a tree no emission could
+# have produced.  The worst opening gap over every real node through
+# ``n == 3`` was 3267, a budget of 40; gaps track subtree size, which
+# roughly doubles per input, so this leaves room for far more arity than
+# the generator can build while still rejecting a nonsense base at once
+# instead of after tens of thousands of chunks.
+_BUDGET_CEILING = 10_000
+
+# How far the reach has to clear the 0-arm before a refusal to place is
+# treated as a contradiction rather than a node that needs another chunk.
+# Candidates differ in how long an arm they carry, so a gap barely under
+# zero can still leave every one of them short -- refusals were observed
+# down to -8.  None were observed at or below this, over the same 172452
+# nodes, which is what makes the loop terminate: outside the floor the gap
+# strictly descends, and inside it placement is forced.
+_PLACEMENT_FLOOR = 64
 
 # ``DIGEST PRONOUNCE EXCRETE LEAPFROG``: the fixed tail every leaf ends with,
 # which :func:`_zero_arm_length` has to account for without building one.
@@ -271,40 +305,117 @@ def _subtree(
 
     prefix: list[str] = []
     cursor, value = list(array), acc
+    # The first chunk's layout lands before the reach it buys, so the gap
+    # spikes once at the start; the descent below is checked over what
+    # follows that prologue rather than over the spike.
     window: list[int] = []
-    for _ in range(_MAX_CHUNKS):
+    opening = _placement_gap(
+        table, n, depth, row, prefix, _candidates(cursor, value), base
+    )
+    # The gap the node opens with, and the rate the window check enforces,
+    # together say how long placing it can legitimately take.  Running past
+    # that means the gap descended slower than every window individually
+    # claimed -- a contradiction the per-window check cannot see, since it
+    # only ever compares neighbours.  It is also what rejects a ``base``
+    # beyond anything an emission could have produced: those present a gap
+    # so large that no run of chunks could close it, which is worth saying
+    # at once rather than after tens of thousands of them.
+    budget = max(0, opening) // _CHUNK_DROP + _CHUNK_SLACK
+    if budget > _BUDGET_CEILING:
+        raise ValueError(
+            f"the subtree at depth {depth}, row {row!r} starts at token {base}, "
+            f"which opens a gap of {opening} that no run of chunks could close"
+        )
+    for spent in range(budget + 1):
         candidates = _candidates(cursor, value)
-        # How far the furthest reachable landing still falls short of where
-        # the 1-arm could start.  This is what a stash chunk exists to close,
-        # so it is also what proves the loop is converging rather than stuck.
-        window.append(base + len(prefix) + len(candidates[0][0]) - candidates[-1][3])
-        if len(window) > 3:
-            window.pop(0)
+        gap = _placement_gap(table, n, depth, row, prefix, candidates, base)
+        if spent:
+            window.append(gap)
+
+        # Below the floor the reach clears the 0-arm by more than the spread
+        # between candidates, so some candidate must fit and a refusal means
+        # the arm's length and the landing disagree beyond what the formulas
+        # allow.  Measured over every node of every table through n == 3
+        # (172452 nodes), no iteration below -_PLACEMENT_FLOOR ever failed
+        # to place, while refusals do occur down to -8.
+        if gap <= -_PLACEMENT_FLOOR:
+            placed = _place(table, n, depth, row, prefix, candidates, base)
+            if placed is None:
+                raise ValueError(
+                    f"the reach cleared the 0-arm by {-gap} at depth {depth}, "
+                    f"row {row!r}, and no candidate still fit"
+                )
+            return placed
+
         # A chunk buys ~255 tokens of reach against the layout it adds, but
-        # the layout can outrun the reach for a *single* iteration, so the
-        # shortfall sawtooths up by a few tokens before resuming its fall.
-        # Progress is therefore checked over a two-step window, where the
-        # observed drop never fell below 88 tokens over every node of every
-        # table through n == 3.  A window that fails to close is the
-        # parent/child lock this construction exists to break -- the
-        # 0-arm's shed no longer decoupling the child from inherited
-        # ballast -- which is a bug in the formulas, not a table that needs
-        # a larger budget.
-        if len(window) == 3 and window[2] >= window[0]:
+        # the layout outruns the reach on the *first* chunk, and thereafter
+        # sawtooths up a few tokens on single steps.  So progress is checked
+        # over a two-step window and only once the first chunk is past:
+        # measured that way the gap fell by at least 248 tokens every window,
+        # with no exceptions.  A window that fails to close is the
+        # parent/child lock this construction exists to break -- the 0-arm's
+        # shed no longer decoupling the child from inherited ballast -- which
+        # is a bug in the formulas, not a table that needs a bigger budget.
+        if len(window) > _WINDOW + 1:
+            window.pop(0)
+        if len(window) == _WINDOW + 1 and window[-1] >= window[0]:
             raise ValueError(
                 f"the stash loop stopped converging at depth {depth}, row {row!r}: "
-                f"shortfall went {window[0]} -> {window[2]} over two chunks"
+                f"the placement gap went {window[0]} -> {window[-1]} over "
+                f"{_WINDOW} chunks"
             )
-        placed = (
-            _place_above_leaves(table, n, depth, row, prefix, candidates, base)
-            if depth + 1 == n
-            else _place_inner(table, n, depth, row, prefix, candidates, base)
-        )
+
+        placed = _place(table, n, depth, row, prefix, candidates, base)
         if placed is not None:
             return placed
         chunk, cursor, value = _stash_chunk(cursor, value)
         prefix = [*prefix, *chunk]
-    raise ValueError(f"no landing reached the subtree at depth {depth}, row {row!r}")
+    raise ValueError(
+        f"the stash loop outran its descent at depth {depth}, row {row!r}: "
+        f"{budget} chunks bought less than the {opening} gap they opened with"
+    )
+
+
+def _place(
+    table: str,
+    n: int,
+    depth: int,
+    row: str,
+    prefix: list[str],
+    candidates: list[_Node],
+    base: int,
+) -> list[str] | None:
+    """Lay this node out, if any candidate's landing clears its 0-arm."""
+    if depth + 1 == n:
+        return _place_above_leaves(table, n, depth, row, prefix, candidates, base)
+    return _place_inner(table, n, depth, row, prefix, candidates, base)
+
+
+def _placement_gap(
+    table: str,
+    n: int,
+    depth: int,
+    row: str,
+    prefix: list[str],
+    candidates: list[_Node],
+    base: int,
+) -> int:
+    """How far the furthest landing still falls short of clearing the 0-arm.
+
+    This is the quantity placement actually turns on, so it is the one the
+    loop can descend.  The obvious cheaper proxy -- the shortfall against
+    the *node* alone, leaving the arm out -- does not work: its zero region
+    does not force a placement, and over the tables through ``n == 3`` there
+    were 13512 iterations where it had gone negative and placement still
+    refused.
+    """
+    reach = base + len(prefix) + len(candidates[0][0])
+    arm = (
+        _zero_arm_length(table, row, candidates[0][1])
+        if depth + 1 == n
+        else len(_zero_arm(table, n, depth, row, candidates[0][1], reach))
+    )
+    return reach + arm - candidates[-1][3]
 
 
 def _place_above_leaves(

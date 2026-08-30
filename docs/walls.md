@@ -963,20 +963,39 @@ the boolean contract sweep's one-second budget — the language is no longer
 in that sweep's searching set.
 
 **What still iterates, and why it terminates.**  Solving a landing needs no
-execution, but the fixpoint between sizes and offsets does iterate: a
-node whose reach falls short of its own 0-subtree prepends a stash chunk,
-which buys ~255 tokens of reach, and re-derives.  That loop is bounded by
-a measured convergence check rather than by its `_MAX_CHUNKS` backstop.
-Instrumenting every node of every table through `n == 3` (64384 nodes)
-shows the shortfall is *not* monotone per iteration — a chunk's layout
-outruns the reach it buys for a single step, so the gap sawtooths up two
-to four tokens before resuming its fall — but it closes over every
-two-chunk window, with a minimum observed drop of 88 tokens.  A window
-that fails to close is the parent/child lock the 0-arm's shed exists to
-break, and is reported as such.  Chunk use is small: the worst any node
-needed was 15 (2 at `n == 1`, 7 at `n == 2`, 15 at `n == 3`), against a
-backstop of 400.  That growth is mild but not flat, so the backstop is not
-proven adequate for large `n`.
+execution, but the fixpoint between sizes and offsets does iterate: a node
+whose reach falls short of its own 0-subtree prepends a stash chunk, which
+buys ~255 tokens of reach, and re-derives.  That loop carries no iteration
+cap.  It has four exits, each backed by a measurement over every node of
+every table through `n == 3` (172452 nodes):
+
+* **Place.**  Some candidate's landing clears the 0-arm.
+* **Floor.**  The reach clears the arm by more than the spread between
+  candidates, so one of them must fit and a refusal is a contradiction.
+  Refusals were observed down to a gap of −8 and never at or below −64.
+* **Stall.**  The gap stopped closing — the parent/child lock the 0-arm's
+  shed exists to break.  Checked over a two-chunk window, and only after
+  the first chunk, since the first spikes the gap (its layout lands before
+  the reach it buys) and single steps sawtooth up a few tokens.  Measured
+  that way the gap fell by at least 248 tokens every window, without
+  exception.
+* **Overrun.**  The gap descended slower than the window check individually
+  claimed, which no sequence of legal windows permits.
+
+The quantity being descended has to include the 0-arm's length.  The
+cheaper proxy — the shortfall against the node alone — looks equivalent
+and is not: its zero region does not force a placement, and 13512
+iterations were measured where it had gone negative while every candidate
+still refused.
+
+Chunk use is small: the worst any node needed was 15 (2 at `n == 1`, 7 at
+`n == 2`, 15 at `n == 3`).  A fifth check rejects a `base` past anything an
+emission could have produced; that one is input validation rather than part
+of the termination argument.
+
+The shed is what makes this hold from `n == 3` on.  Disabling it still
+builds every table at `n <= 2` — the arrays there are too small to carry
+ballast — and stalls all 256 at `n == 3`.
 
 **Where this leans on undefined behaviour.**  The wiki is explicit about
 the fact the wall got wrong — `ACCEPT` pushes "onto the top of array 0",
