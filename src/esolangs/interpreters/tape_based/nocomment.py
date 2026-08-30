@@ -28,8 +28,6 @@ import sys
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-_COMMANDS = "idclrnfsbo"
-
 # The static tape size: the wiki says the memory space is static but does not
 # give its size, so 4096 (matching the RISC-V cross-check's buffer) is used.
 _TAPE = 4096
@@ -88,20 +86,19 @@ class _Machine:
             if not self.stack:
                 raise HaltError
             self.tape[self.ptr] = self.stack.pop()
-        elif c == "s":
+        elif c in "sb":
             if self.tape[self.ptr] and self.stack:
-                # skip X forward: the next command is at ind + X + 1
-                target = self.ind + self.stack[-1] + 1
+                # ``s`` skips X forward and ``b`` jumps back X-1, which is the
+                # same move in opposite directions: the next command is at
+                # ind ± X + 1.  Kept as one check because each half of the
+                # bound is dead in one direction -- a forward target is always
+                # at least 1, and a backward one rarely reaches the end -- so
+                # separate copies leave unreachable branches behind.
+                delta = self.stack[-1] if c == "s" else -self.stack[-1]
+                target = self.ind + delta + 1
                 if not 0 <= target < len(self.code):
                     raise HaltError
-                self.ind += self.stack[-1]
-        elif c == "b":
-            if self.tape[self.ptr] and self.stack:
-                # jump back X-1: the next command is at ind - X + 1
-                target = self.ind - self.stack[-1] + 1
-                if not 0 <= target < len(self.code):
-                    raise HaltError
-                self.ind -= self.stack[-1]
+                self.ind += delta
         elif c == "o":
             self.io.print_char(chr(self.tape[self.ptr]))
         else:
