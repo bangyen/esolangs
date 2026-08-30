@@ -152,7 +152,14 @@ module = ["riscv_elf_runner"]
 disallow_untyped_calls = false
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+# extra/line is collected alongside tests/ even though it is not a package:
+# its modules import each other as flat top-level names, which resolves
+# because pytest prepends a rootdir-less test file's own directory to
+# sys.path.  That does mean names like `png` and `mask` become importable
+# package-wide during a test session, so a third-party module of either name
+# would shadow -- neither is currently a dependency, and `src/` imports
+# nothing by those names.
+testpaths = ["tests", "extra/line"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

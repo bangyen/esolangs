@@ -171,10 +171,12 @@ jobs:
       run: uv run --with pip-audit pip-audit --local
 
   line:
-    # extra/line is a standalone spike: its modules import each other as flat
-    # top-level names, so it is not under the root `tests/` testpaths and is
-    # run here from its own directory.  It has no third-party dependencies of
-    # its own -- only pytest to run the suites with.
+    # extra/line's suites also run in the main `test` job (they are under the
+    # root testpaths now that they need no image libraries).  This job repeats
+    # them for a different reason: `--isolated --no-project` installs *only*
+    # pytest, so a green run here is the standing proof that the subtree has
+    # no third-party dependencies at all.  The main suite runs with the
+    # package installed and so cannot show that.  ~3s, deliberately spent.
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

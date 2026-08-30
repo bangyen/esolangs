@@ -19,7 +19,7 @@ help:
     @echo "  test-py      - pytest only (~16s, 3325 tests, -n auto; skip slow with -m 'not slow')"
     @echo "  test-differential - interpreter vs native differential corpora (~51s)"
     @echo "  test-unicorn - RISC-V assembly under unicorn (~10s)"
-    @echo "  test-line    - extra/line suites via uv, incl. slow (~13s)"
+    @echo "  test-line    - extra/line suites with pytest only (~3s)"
     @echo "  test-anchor  - ztoalc anchor table check (~3.2s)"
     @echo "  mutate LANG  - mutation-test one interpreter (e.g. just mutate Qoibl)"
     @echo "  install-dev  - Install development dependencies"
