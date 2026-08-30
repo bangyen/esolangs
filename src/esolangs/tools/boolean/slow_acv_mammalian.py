@@ -79,7 +79,9 @@ _MAX_RELAXATIONS = 8
 
 # Stash chunks tried before a node gives up.  Each chunk buys ~255 tokens of
 # reach against a handful of layout, so this bounds the program size a node
-# can aim past rather than standing in for a search.
+# can aim past rather than standing in for a search: ~100k tokens, against
+# ~4.5k for a three-input table and ~10k for a four-input one.  A table that
+# raises past it wants a larger bound, not a different construction.
 _MAX_CHUNKS = 400
 
 # ``DIGEST PRONOUNCE EXCRETE LEAPFROG``: the fixed tail every leaf ends with,
