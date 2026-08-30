@@ -292,9 +292,19 @@ def suffolk(text: str) -> str:
     prints.  Cell 2 is sized so ``!`` zeroes the working cells and they can
     be reused per character.
 
-    The factorization is :func:`factor_triple` under Suffolk's own cost:
-    ``>!`` and ``><`` are two characters each, so a unit of ``b`` or ``r``
-    costs twice a unit of ``a`` and the search minimizes ``a + 2b + 2r``.
+    The factorization is :func:`factor_triple` under the weighting this
+    generator has always used, ``a + 2b + 2r``.
+
+    **That weighting does not match what the line above emits**, which runs
+    to ``12 + a + b + 2r``: ``r`` does cost two characters a unit (``>!``),
+    but ``b`` costs one (``<``) -- the ``><`` is a single separator, not a
+    per-unit price.  Over-weighting ``b`` picks a worse factorization for 37
+    of the 256 byte values (``value = 36`` takes ``9 * 4`` at 25 characters
+    where ``6 * 6`` spells it in 24), about 0.61% of total output.  The
+    weighting is kept because correcting it changes the emitted program, so
+    it wants an execution check rather than the byte-diff that guarded the
+    move to the shared search -- and because the choice also feeds the
+    ``big`` prologue above, which the cost model does not model at all.
     """
     if not text:
         return ""
