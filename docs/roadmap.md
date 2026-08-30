@@ -23,10 +23,6 @@ assessed-and-rejected ledger in `docs/limitations.md`.
 - **DINAC** — `IN` reads an aschar or wubyte, `OUT` prints, IF-ELSE and
   WHILE on zero/nonzero, truth-machine example.  Bounded-storage machine,
   so the boolean generator is the whole story.
-- **Fargo** — one input number per run with bit access (`@ x`), one output
-  number with bit writes (`% x y`), conditional `: x y`, base-10 output `$`.
-  Unknown computational class, but the bit interface is ideal for a
-  parameterized generator.
 - **Packlang** — Turing-complete: packages with the built-in IO package
   (`charGet`/`charPut`), `If`/`While`, XOR/`!`; the truth-machine example
   branches on `input ^ 48`.

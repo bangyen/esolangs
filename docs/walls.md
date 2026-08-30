@@ -1504,14 +1504,14 @@ returning — callers only get the True/False verdict, not the machine's
 state at the moment of detection.
 
 `tests/fuzz/test_interpreters_robustness.py` decides the empty-program invariant
-by state-cycle detection for forty-eight string-based step-capable
+by state-cycle detection for forty-nine string-based step-capable
 machines (brainfuck, S*bleq, Dimensional, 123, Eval, Modulous, Qoibl,
 Point Break, Forþ, AddSubJump, Bitdeque, BrainIf, Minifuck, Taglate,
 ROTfuck, Circlefuck, BFStack, Decleq, 6-5, Back, BIO, NoComment, 3D
 Brainfuck, Factor, Basicfuck, bit~, Collatz Multiverse, Polynomial,
 Grapheme, RAM0, Minsky Swap, Home Row, Unsquare, %^2^-1, Suffolk,
 Container, Nevermind, BF-PDA, 3x, Sophie, Jaune, SLOW ACV MAMMALIAN,
-ZTOALC L, Between, MyScript, Lamfunc, Forbin, Suptiftam), and keeps the
+ZTOALC L, Between, MyScript, Lamfunc, Fargo, Forbin, Suptiftam), and keeps the
 SIGALRM backstop for the rest (Painfuck's `y`, WII2D's `?`, and
 LaserFuck's random heading are non-deterministic).  Every registry
 language is now step-capable: `_VM_ADAPTERS` in `esolangs.vm` covers
@@ -1538,6 +1538,19 @@ immediately, so there is no return-value-threading idiom to convert), so
 the larger continuation-stack machinery needed to resume mid-expression is
 not worth it for a case Forbin programs do not actually use.  It is still bounded only by Python's own default recursion limit, not
 a documented cap.
+
+**Fargo is the case where the cycle detector cannot be the primary check
+at all.**  It has no jumps and each line runs once, so *recursion is its
+only loop* -- the wiki's own truth machine hangs by calling `one` from
+inside `one`.  A recursion that never returns pushes a frame per step and
+pops none, so `snapshot()` grows without bound and never repeats, which is
+precisely the class `run_until_halt_or_cycle` is blind to.  Its hang
+detection is therefore `run_until_halt_or_ancestor`, and the frame key is
+sound without the output number because Fargo's output is *write-only*:
+`%` and `$` both return 0 and no builtin reads the output number back, so
+nothing a frame goes on to do can depend on it.  The cycle detector still
+covers the language's terminating side (the empty program above), which is
+why Fargo appears in both lists.
 
 **Suptiftam's call machinery, Forbin's statement-position calls, and all of
 Lamfunc's calls were converted to an explicit frame stack**
