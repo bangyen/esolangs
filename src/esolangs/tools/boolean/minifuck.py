@@ -361,13 +361,29 @@ def _search[Hit](
 # codes get used, four of them (indices 4, 6, 7, 9) serving the staged route
 # and the rest only the degenerate and reconverged ones.
 #
-# But "used" is not "needed".  Dropping any single code breaks nothing: all
-# ten were removed one at a time and every table at both arities still built.
-# The claim this comment used to make -- that trimming to what the staged
-# route needs costs three two-input tables -- was measured against the
-# *stored* stagings and does not survive deriving; cutting to those four
-# breaks nothing either.  The codes overlap, so which one answers a given
-# call is a matter of order rather than of necessity.
+# But "used" is not "needed", and the reason is the endgame rather than any
+# overlap between the codes.  The six rare ones are not redundant: they
+# uniquely answer 40 of the 16766 distinct call sites a build makes.  What
+# makes them droppable is that **a missing pool is not fatal** -- ``_endgame``
+# raises, ``_try_print`` treats it as one failed read/orientation and moves
+# on, and the table is answered at some other accumulator.  Measured: cutting
+# the list to the four high-coverage codes takes the number of calls finding
+# nothing from 31 to 437 and still builds every table at both arities, as
+# does dropping any single code.
+#
+# The codes have a clear structure, which is worth recording because it is
+# not visible from the strings.  Each serves exactly one orientation -- no
+# code answers both ``cell7`` values -- and they come in mirror pairs, one
+# code answering a state at ``cell7 == 0`` exactly where its partner answers
+# the same state at ``cell7 == 1``.  Four of the five pairs match exactly
+# (3, 13, 3938 and 4421 states); the fifth covers the same walk-outs at
+# disjoint states.  So this is five behaviours seen from two sides, not ten
+# independent strings.
+#
+# No single code can serve every call, and that is structural rather than
+# unlucky: ``_try_print`` asks about the same state at both ``cell7`` values,
+# and after the code and the walk cell 7 holds one value, so one code cannot
+# satisfy both.  Ten is therefore not a list that wants shrinking to one.
 #
 # The full list stays because there is no reason to prune it: the acceptance
 # test decides every call, so a redundant candidate costs one check and can

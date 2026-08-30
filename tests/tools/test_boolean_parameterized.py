@@ -2315,9 +2315,13 @@ class TestParameterizedMinifuck:
 
         It deliberately does not assert that each code is necessary.
         Measured, none of them is: every one can be dropped alone and every
-        table at both arities still builds, because the codes overlap and
-        the acceptance test decides each call.  So coverage of the routes is
-        the real property, and minimality is not one to pin.
+        table at both arities still builds.  That is not because the codes
+        cover for each other -- six of them uniquely answer 40 of the 16766
+        call sites -- but because a missing pool is *recoverable*:
+        ``_endgame`` raises, ``_try_print`` counts it as one failed
+        read/orientation, and another accumulator answers the table.  So
+        coverage of the routes is the real property, and minimality is not
+        one to pin.
         """
         import importlib
 
