@@ -5,6 +5,8 @@ printing, variables, arrays, the special variables (negativeOne, lineNumber,
 input), and the documented error cases.
 """
 
+import re
+
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
@@ -134,6 +136,20 @@ class TestArrays:
         # x = 0*(-1)+1 = 1
         assert run_program(program) == "\x01"
 
+    def test_input_cannot_be_assigned(self) -> None:
+        """``input`` is read-only; assigning to it is a malformed program.
+
+        Nothing else in the suite reaches this branch, so the message went
+        unasserted.  It is compared whole, and by identity rather than
+        ``match=``: a substring search still passes a message that has been
+        widened around the original text.
+        """
+        message = "input cannot be redefined"
+        program = "input = negativeOne x + negativeOne, NOT PRINT."
+        with pytest.raises(ValueError, match=re.escape(message)) as caught:
+            run(program, ScriptedIO("5"))
+        assert str(caught.value) == message
+
 
 class TestLineNumber:
     def test_reads_current_line(self) -> None:
@@ -232,6 +248,36 @@ class TestStepMachine:
             hash(_Machine("x = y x + z, DO PRINT.", ScriptedIO()).snapshot())
             is not None
         )
+
+    def test_snapshot_carries_the_array_cells(self) -> None:
+        """A populated array reaches the snapshot, and distinguishes states.
+
+        The program above holds no arrays, so the arrays half of the tuple
+        was always empty and its contents went unread -- hashable either
+        way.  Running a machine that writes two cells pins it: the snapshot
+        has to change as the cells do, so a snapshot that dropped or
+        constant-folded them would collide with the state before the write.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.collatz_multiverse import _Machine
+
+        program = CONSTANTS + "\n".join(
+            [
+                "",
+                "arr[negativeOne] = negativeOne x + one, NOT PRINT.",
+                "arr[one] = negativeOne x + one, NOT PRINT.",
+            ]
+        )
+        machine = _Machine(program, ScriptedIO())
+        seen = [machine.snapshot()]
+        while not machine.halted:
+            machine.step()
+            seen.append(machine.snapshot())
+
+        assert machine.arrays == {"arr": {-1: 1, 1: 1}}
+        assert hash(seen[-1]) is not None
+        assert seen[-1] != seen[0]
+        assert len(set(seen)) == len(seen)
 
     def test_halting_program_is_detected(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
