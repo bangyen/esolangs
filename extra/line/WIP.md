@@ -24,7 +24,10 @@ exercises `render.py`'s loop-drawing geometry (`_layout`/
 distinction matters. `test_png.py` covers `png.py`, the stdlib PNG codec
 that replaced Pillow: the checked-in fixtures against the values Pillow
 decoded them to, round-trips, every row filter, bit depths through 16,
-interlacing, the colour types, and the rejections; `test_mask.py` covers
+interlacing, the colour types, and the rejections; `test_jpeg.py` covers
+`jpeg.py` through a hand-assembled baseline file (a DC-only block, whose
+flat output the IDCT's definition fixes without needing a reference
+decoder) plus every refusal; `test_mask.py` covers
 `mask.py`'s row-bitmask image type, concentrating on the two things that
 representation makes easy to get wrong -- unbounded Python ints leaking
 bits past the canvas width, and the edge cases in the bit-twiddling
@@ -792,17 +795,39 @@ round-trip check for `extract()` alone.
   **What an end user can observe**, since "no dependencies" is not the same
   as "no change":
 
-  - **Only PNG is readable.** JPEG, BMP, GIF and TIFF are gone with Pillow.
-    JPEG is the only one that was ever exercised, and it was exercised as a
-    hazard rather than a feature -- see the recompression entry above: below
-    quality 32 the format quantizes pixels straight out of a 1px stroke and
-    severs it. A non-PNG now raises rather than being silently mangled.
-  - Every *PNG* is readable, though: all five colour types, all bit depths
+  - **PNG and baseline JPEG are readable; BMP, GIF and TIFF are not.** Those
+    three went with Pillow and were never exercised. JPEG was, so it came
+    back as `jpeg.py` -- see below.
+  - Every *PNG* is readable: all five colour types, all bit depths
     1-16, interlaced or not, verified against a Pillow oracle across 120
     combinations of colour type x depth x interlacing x image size. The one
     deliberate departure is 16-bit greyscale, where Pillow's `I;16 -> L`
     *clips* at 255 (blanking any drawing whose ink exceeds 255) and `png.py`
     scales instead.
+  - **JPEG is readable again**, via `jpeg.py`: baseline sequential DCT,
+    greyscale and YCbCr, any subsampling. This is the one component in the
+    subtree that genuinely reimplements a library's algorithm rather than
+    discovering the call never needed one -- JPEG *is* Huffman coding over
+    quantized DCT coefficients, and there is no shortcut past that. It came
+    to about 300 lines, against a first estimate of 400+ that shrank every
+    time it was examined (the Huffman decoder is ~30 lines, the inverse DCT
+    17). Verified against a Pillow oracle across qualities 10-95, all three
+    subsampling modes, odd sizes with partial MCUs, and both colour models;
+    greyscale agrees to within one level everywhere.
+
+    Two deliberate refusals, both loud: **progressive** JPEG (a different
+    scan structure entirely) and **restart markers**. The latter is the more
+    interesting one -- an implementation was written, and it desynchronised
+    partway down the image, decoding ~180 MCUs correctly and then emitting
+    noise where the reference was flat white. Refusing beat shipping a
+    decoder that returns a plausible-looking wrong drawing; no encoder
+    writes restart markers by default.
+
+    One bounded divergence: chroma planes are box-upsampled where Pillow
+    interpolates, so a *saturated colour* photograph can differ by up to ~17
+    levels along colour edges. On black-and-white drawings -- the only thing
+    this reads -- the two agree within one level and produce byte-identical
+    ink masks at every quality and subsampling mode tested.
   - **Extracted coordinates shifted** toward the origin -- the exact
     bounding box replacing the quadtree's 64px-padded one. Tree shape,
     opcodes and relative geometry are identical; only absolute positions
