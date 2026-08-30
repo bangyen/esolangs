@@ -217,6 +217,23 @@ def test_minifuck_reconverged_tables_compute_their_function() -> None:
         assert len(widths) == 1, (table, widths)
 
 
+def test_minifuck_reconvergence_declines_outside_one_or_two_essentials() -> None:
+    """The reconvergence route only handles one or two essential inputs.
+
+    With none there is no table left to build once the ignored inputs are
+    erased, and with three or more the route has no embed geometry to fall
+    back on -- both decline up front rather than searching.
+    """
+    import importlib
+
+    # ``from ... import minifuck`` binds the cache-wrapped generator that the
+    # package re-exports, not the module the helper lives in.
+    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+    assert module._reconverged("01", [], 1) is None  # noqa: SLF001
+    assert module._reconverged("01011010", [0, 1, 2], 3) is None  # noqa: SLF001
+
+
 def _drawing(template: str) -> str:
     """The template with every placeholder *name* erased.
 
