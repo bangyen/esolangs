@@ -67,10 +67,20 @@ class TestWatches:
         assert history == [1, 2, 2]  # None once the pointer moves past
 
     def test_watch_cell_returns_same_list(self) -> None:
+        """Watching a cell again hands back the history already being kept."""
         dbg = esolangs.make_debugger("brainfuck", "+")
         first = dbg.watch_cell(0)
+        assert dbg.watch_cell(0) is first
         dbg.step()
         assert first == [1]
+
+    def test_watch_stack_returns_same_list(self) -> None:
+        """Watching a slot again hands back the history already being kept."""
+        dbg = esolangs.make_debugger("Eval", "0^")
+        first = dbg.watch_stack(0)
+        assert dbg.watch_stack(0) is first
+        dbg.step()
+        assert first == [0]
 
     def test_watch_stack_top(self) -> None:
         dbg = esolangs.make_debugger("Eval", "0^")

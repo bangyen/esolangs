@@ -61,6 +61,16 @@ class TestBFStackParse:
         mod = importlib.import_module("esolangs.compilers.bfstack")
         assert mod.parse(">[[]") == []
 
+    def test_dead_loop_scan_skips_non_bracket_commands(self) -> None:
+        """The scan for a dead loop's end steps over ordinary commands.
+
+        Matching ``[`` to ``]`` only counts brackets, so a body command --
+        here ``.`` -- is neither an open nor a close and the scanner just
+        keeps walking.  The whole skipped loop still disappears.
+        """
+        mod = importlib.import_module("esolangs.compilers.bfstack")
+        assert mod.parse(">[.]") == [(">", 1)]
+
     def test_counted_io(self) -> None:
         """Counted > commands loop the output/input calls."""
         mod = importlib.import_module("esolangs.compilers.bfstack")
@@ -407,6 +417,23 @@ class TestAddSubJump:
             code = " ".join(str(random.randint(-9, 200)) for _ in range(n))
             mod.comp(code)  # must not raise
 
+    def test_program_at_buffer_size_is_not_padded(self) -> None:
+        """A program already filling the cell buffer skips the zero padding.
+
+        Short programs are padded out to the fixed ``_CELLS`` buffer (65536);
+        one that is already that long takes the other side of the guard, and
+        the halt boundary ``s3`` still reports its own length.
+        """
+        mod = importlib.import_module("esolangs.compilers.addsubjump")
+        output = mod.comp(" ".join(["0"] * 65536))
+        assert "li   s3, 65536" in output
+
+    def test_program_over_buffer_size_keeps_its_length(self) -> None:
+        """Past the buffer the boundary follows the program, not ``_CELLS``."""
+        mod = importlib.import_module("esolangs.compilers.addsubjump")
+        output = mod.comp(" ".join(["0"] * 65600))
+        assert "li   s3, 65600" in output
+
 
 class TestSBleq:
     def test_compiles_to_assembly(self) -> None:
@@ -447,6 +474,12 @@ class TestSBleq:
             n = random.randint(1, 40)
             code = " ".join(str(random.randint(-3, 200)) for _ in range(n))
             mod.comp(code)  # must not raise
+
+    def test_program_at_buffer_size_is_not_padded(self) -> None:
+        """A program already filling the cell buffer skips the zero padding."""
+        mod = importlib.import_module("esolangs.compilers.sbleq")
+        output = mod.comp(" ".join(["0"] * 65536))
+        assert "li   s3, 65536" in output
 
 
 class TestDecleq:
@@ -489,6 +522,12 @@ class TestDecleq:
             code = " ".join(str(random.randint(-2, 200)) for _ in range(n))
             mod.comp(code)  # must not raise
 
+    def test_program_at_buffer_size_is_not_padded(self) -> None:
+        """A program already filling the cell buffer skips the zero padding."""
+        mod = importlib.import_module("esolangs.compilers.decleq")
+        output = mod.comp(" ".join(["0"] * 65536))
+        assert "li   s3, 65536" in output
+
 
 class TestCollatzMultiverse:
     def test_compiles_to_assembly(self) -> None:
@@ -518,6 +557,18 @@ class TestCollatzMultiverse:
         output = mod.comp("arr[i] = negativeOne x + i, DO PRINT.")
         assert "array_index:" in output
         assert "arr0:" in output
+
+    def test_repeated_array_and_index_allocated_once(self) -> None:
+        """A name and index seen again reuse their slots rather than re-adding.
+
+        The allocator walks all three operands of every line; naming the same
+        array and the same index in each takes the already-registered side of
+        both checks, so ``arr`` gets one data block and ``i`` one scalar.
+        """
+        mod = importlib.import_module("esolangs.compilers.collatz_multiverse")
+        output = mod.comp("arr[i] = arr[i] x + arr[i], DO PRINT.")
+        assert output.count("arr0:") == 1
+        assert "arr1:" not in output
 
     def test_line_number_dispatch_table(self) -> None:
         mod = importlib.import_module("esolangs.compilers.collatz_multiverse")
