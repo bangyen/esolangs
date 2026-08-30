@@ -378,7 +378,7 @@ _POOL_CACHE: dict[tuple[object, ...], str | None] = {}
 def _find_pool_uncached(
     j: _Joint, cell7: int, walk_out: int, maxlen: int = _POOL_DEPTH
 ) -> str | None:
-    """The search :func:`_find_pool` memoises.  See it for what and why."""
+    """Run the search :func:`_find_pool` memoises.  See it for what and why."""
     target = (*_POOL, cell7)
 
     def accept(new: list[_Sim], code: str) -> str | None:
