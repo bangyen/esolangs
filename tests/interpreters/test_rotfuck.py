@@ -21,6 +21,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.rotfuck import run
+from tests.interpreters.contract import EmptyProgramContract
 
 _CHAIN = "+-><,.[]"
 
@@ -64,9 +65,6 @@ class TestTape:
     def test_left_clamped(self) -> None:
         """< at the left edge does nothing (matches the Brainfuck semantics)."""
         assert run_program(build("<<.")) == "\x00"
-
-    def test_empty_program(self) -> None:
-        assert run_program("") == ""
 
     def test_comments_ignored(self) -> None:
         # trailing comments are skipped by the pointer and never rotate
@@ -166,3 +164,9 @@ class TestStepMachine:
         from esolangs.vm import run_until_halt_or_cycle
 
         assert run_until_halt_or_cycle(_Machine(".", ScriptedIO())) is True
+
+
+class TestContract(EmptyProgramContract):
+    """The shared empty-program shape, with this language's data."""
+
+    run = staticmethod(run_program)

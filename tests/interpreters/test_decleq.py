@@ -10,6 +10,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.decleq import run
+from tests.interpreters.contract import EmptyProgramContract
 from tests.interpreters.oisc import memory, run_program
 
 
@@ -96,9 +97,6 @@ class TestHaltAndErrors:
     def test_comments_and_blank_lines_are_ignored(self) -> None:
         code = "# a comment\n\n1 1 3 # trailing comment\n-2 1 0\n"
         assert _run(code) == "\x00"
-
-    def test_empty_program(self) -> None:
-        assert _run("") == ""
 
 
 class TestOperandRange:
@@ -225,3 +223,9 @@ class TestStepMachine:
         assert (
             run_until_halt_or_cycle(_Machine("-2 5 9 9 9 65 0 0", ScriptedIO())) is True
         )
+
+
+class TestContract(EmptyProgramContract):
+    """The shared empty-program shape, with this language's data."""
+
+    run = staticmethod(_run)

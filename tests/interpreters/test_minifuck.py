@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.tape_based.minifuck import run
+from tests.interpreters.contract import EmptyProgramContract
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
@@ -20,9 +21,6 @@ class TestMinifuck:
         """The canonical cat program echoes its input."""
         assert run_and_capture("<[<.[<.", inputs=["A"]) == "A"
         assert run_and_capture("<[<.[<.", inputs=["B"]) == "B"
-
-    def test_empty_program(self) -> None:
-        assert run_and_capture("") == ""
 
     def test_comment_characters_ignored(self) -> None:
         """Non-command characters are ignored."""
@@ -167,3 +165,9 @@ class TestStepMachine:
 
         # the tape never rewinds, so every Minifuck program halts
         assert run_until_halt_or_cycle(_Machine(".", ScriptedIO())) is True
+
+
+class TestContract(EmptyProgramContract):
+    """The shared empty-program shape, with this language's data."""
+
+    run = staticmethod(run_and_capture)

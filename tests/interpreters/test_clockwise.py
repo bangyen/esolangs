@@ -2,12 +2,14 @@
 
 import io
 from contextlib import redirect_stdout
+from typing import ClassVar
 from unittest.mock import patch
 
 import pytest
 
 from esolangs.interpreters.grid_based.clockwise import run
 from esolangs.interpreters.io import IO, ScriptedIO
+from tests.interpreters.contract import EmptyProgramContract
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
@@ -76,11 +78,6 @@ class TestClockwise:
         assert run_and_capture(["  !", "! !"]) == ""
         # mixed with R corners, the ring still closes
         assert run_and_capture(["  !", "R R"]) == ""
-
-    def test_empty_program_rejected(self) -> None:
-        """An empty program is malformed."""
-        with pytest.raises(ValueError, match=r"^Clockwise program cannot be empty$"):
-            run_and_capture([])
 
     def test_unclosed_ring_rejected(self) -> None:
         """A pointer that walks off the ring is a malformed program."""
@@ -206,3 +203,11 @@ def test_reading_with_no_input_is_eof() -> None:
 
     with pytest.raises(EOFError):
         run(".", ScriptedIO("\n"))
+
+
+class TestContract(EmptyProgramContract):
+    """The shared empty-program shape, with this language's data."""
+
+    run = staticmethod(run_and_capture)
+    empty_program: ClassVar[list[str]] = []
+    empty_raises = "Clockwise program cannot be empty"

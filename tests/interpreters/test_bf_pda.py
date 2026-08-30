@@ -11,6 +11,7 @@ import importlib
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
+from tests.interpreters.contract import EmptyProgramContract
 
 run = importlib.import_module("esolangs.interpreters.stack_based.bf_pda").run
 
@@ -98,10 +99,6 @@ class TestEmptyStack:
 
 
 class TestMalformed:
-    def test_empty_program_rejected(self) -> None:
-        with pytest.raises(ValueError, match="cannot be empty"):
-            run_program("")
-
     def test_unmatched_brackets_rejected(self) -> None:
         with pytest.raises(ValueError, match="unmatched"):
             run_program("[")
@@ -149,3 +146,10 @@ class TestStepMachine:
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
         assert machine.stack == [0]
+
+
+class TestContract(EmptyProgramContract):
+    """The shared empty-program shape, with this language's data."""
+
+    run = staticmethod(run_program)
+    empty_raises = "BF-PDA program cannot be empty"

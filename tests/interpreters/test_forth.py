@@ -5,6 +5,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.forth import run
+from tests.interpreters.contract import EmptyProgramContract
 
 
 def run_program(code: str, stdin: str = "") -> str:
@@ -107,9 +108,6 @@ class TestForth:
         with pytest.raises(HaltError):
             run_program("1{.};")
 
-    def test_empty_program(self) -> None:
-        assert run_program("") == ""
-
 
 class TestStepMachine:
     def test_arithmetic_wraps_to_a_signed_32_bit_range(self) -> None:
@@ -190,3 +188,9 @@ class TestStepMachine:
         from esolangs.vm import run_until_halt_or_cycle
 
         assert run_until_halt_or_cycle(_Machine("1[]", ScriptedIO())) is False
+
+
+class TestContract(EmptyProgramContract):
+    """The shared empty-program shape, with this language's data."""
+
+    run = staticmethod(run_program)

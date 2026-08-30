@@ -10,6 +10,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.addsubjump import run
+from tests.interpreters.contract import EmptyProgramContract
 from tests.interpreters.oisc import memory, run_program
 
 
@@ -148,9 +149,6 @@ class TestHaltAndErrors:
         code = "# a comment\n\n" + base + " # trailing comment\n"
         assert _run(code) == "\x01"
 
-    def test_empty_program(self) -> None:
-        assert _run("") == ""
-
     def test_unallocatable_address_halts(self) -> None:
         """Cell values are unbounded; the list holding them is not."""
         with pytest.raises(HaltError, match="too large"):
@@ -189,3 +187,9 @@ class TestStepMachine:
         from esolangs.vm import run_until_halt_or_cycle
 
         assert run_until_halt_or_cycle(_Machine("0 0 0 0", ScriptedIO())) is False
+
+
+class TestContract(EmptyProgramContract):
+    """The shared empty-program shape, with this language's data."""
+
+    run = staticmethod(_run)
