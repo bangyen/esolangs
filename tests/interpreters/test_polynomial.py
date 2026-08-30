@@ -294,8 +294,26 @@ class TestPolynomialExecution:
         """A root of 4i encodes an input instruction (value stored in reg)."""
         import unittest.mock
 
-        with unittest.mock.patch("builtins.input", return_value="A"):
-            run("f(x) = x^2+16", io=IO())  # does not crash; reg stores the input
+        from esolangs.interpreters.register_based.polynomial import _Machine
+
+        for text, expected in (("A", 65), ("z", 122)):
+            with unittest.mock.patch("builtins.input", return_value=text):
+                machine = _Machine("f(x) = x^2+16", IO())
+                machine.step()
+                assert machine.reg == expected
+
+    def test_input_of_nul_reads_as_minus_one(self) -> None:
+        """``ord(val[0]) or -1``: a NUL byte reads as 0, which the ``or``
+        turns into -1 so the value stays distinguishable from an unset
+        register."""
+        import unittest.mock
+
+        from esolangs.interpreters.register_based.polynomial import _Machine
+
+        with unittest.mock.patch("builtins.input", return_value="\x00"):
+            machine = _Machine("f(x) = x^2+16", IO())
+            machine.step()
+            assert machine.reg == -1
 
 
 class TestPolynomialHighPrecisionRoots:

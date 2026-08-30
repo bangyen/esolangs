@@ -64,7 +64,7 @@ class TestRAM0BasicCommands:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert "z: 0" in output
+        assert output == "z: 0\nn: 0\nram: {}"
 
     def test_a_command_increment(self) -> None:
         """Test A command increments z register."""
@@ -75,7 +75,7 @@ class TestRAM0BasicCommands:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert "z: 3" in output
+        assert output == "z: 3\nn: 0\nram: {}"
 
     def test_n_command_copy_z_to_n(self) -> None:
         """Test N command copies z register to n register."""
@@ -86,8 +86,7 @@ class TestRAM0BasicCommands:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert "z: 3" in output
-        assert "n: 3" in output
+        assert output == "z: 3\nn: 3\nram: {}"
 
     def test_l_command_load_from_memory(self) -> None:
         """Test L command loads value from RAM at address z."""
@@ -100,8 +99,8 @@ class TestRAM0BasicCommands:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert "z: 0" in output  # L loads from uninitialized address, returns 0
-        assert "2: 5" in output
+        # L loads from uninitialized address, returns 0
+        assert output == "z: 0\nn: 2\nram: {\n    2: 5\n}"
 
     def test_s_command_store_to_memory(self) -> None:
         """Test S command stores z register value to RAM at address n."""
@@ -112,7 +111,7 @@ class TestRAM0BasicCommands:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert "2: 5" in output
+        assert output == "z: 5\nn: 2\nram: {\n    2: 5\n}"
 
     def test_c_command_conditional_skip(self) -> None:
         """Test C command skips next instruction when z is zero."""
@@ -123,7 +122,8 @@ class TestRAM0BasicCommands:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert "z: 0" in output  # A should be skipped
+        # A should be skipped
+        assert output == "z: 0\nn: 0\nram: {}"
 
     def test_c_command_no_skip_when_nonzero(self) -> None:
         """Test C command does not skip when z is nonzero."""
@@ -136,7 +136,8 @@ class TestRAM0BasicCommands:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert "z: 2" in output  # A should not be skipped
+        # A should not be skipped
+        assert output == "z: 2\nn: 0\nram: {}"
 
 
 class TestRAM0ControlFlow:
@@ -151,9 +152,8 @@ class TestRAM0ControlFlow:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert (
-            "z: 3" in output
-        )  # All three A commands executed (goto doesn't skip as expected)
+        # All three A commands executed (goto doesn't skip as expected)
+        assert output == "z: 3\nn: 0\nram: {}"
 
 
 class TestRAM0MemoryOperations:
@@ -170,8 +170,8 @@ class TestRAM0MemoryOperations:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert "z: 0" in output  # Load from uninitialized address
-        assert "2: 5" in output
+        # Load from uninitialized address
+        assert output == "z: 0\nn: 2\nram: {\n    2: 5\n}"
 
     def test_multiple_memory_locations(self) -> None:
         """Test storing values at multiple memory locations."""
@@ -184,8 +184,7 @@ class TestRAM0MemoryOperations:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert "1: 2" in output
-        assert "4: 6" in output
+        assert output == "z: 6\nn: 4\nram: {\n    1: 2,\n    4: 6\n}"
 
     def test_memory_overwrite(self) -> None:
         """Test overwriting memory locations."""
@@ -198,8 +197,7 @@ class TestRAM0MemoryOperations:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert "1: 2" in output
-        assert "5: 5" in output
+        assert output == "z: 5\nn: 5\nram: {\n    1: 2,\n    5: 5\n}"
 
     def test_load_from_uninitialized_memory(self) -> None:
         """Test loading from uninitialized memory returns 0."""
@@ -210,7 +208,7 @@ class TestRAM0MemoryOperations:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert "z: 0" in output
+        assert output == "z: 0\nn: 0\nram: {}"
 
 
 class TestRAM0RegisterInteractions:
@@ -225,8 +223,7 @@ class TestRAM0RegisterInteractions:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert "z: 5" in output
-        assert "n: 3" in output
+        assert output == "z: 5\nn: 3\nram: {}"
 
     def test_n_register_preserves_z(self) -> None:
         """Test that N command preserves z register value."""
@@ -237,8 +234,7 @@ class TestRAM0RegisterInteractions:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert "z: 4" in output
-        assert "n: 3" in output
+        assert output == "z: 4\nn: 3\nram: {}"
 
     def test_store_using_n_register(self) -> None:
         """Test storing using n register as address."""
@@ -249,7 +245,7 @@ class TestRAM0RegisterInteractions:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert "2: 5" in output
+        assert output == "z: 5\nn: 2\nram: {\n    2: 5\n}"
 
 
 class TestRAM0EdgeCases:
@@ -264,8 +260,7 @@ class TestRAM0EdgeCases:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert "z: 0" in output
-        assert "n: 0" in output
+        assert output == "z: 0\nn: 0\nram: {}"
 
     def test_whitespace_only(self) -> None:
         """Test that whitespace-only program produces default output."""
@@ -276,8 +271,7 @@ class TestRAM0EdgeCases:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert "z: 0" in output
-        assert "n: 0" in output
+        assert output == "z: 0\nn: 0\nram: {}"
 
     def test_invalid_commands_ignored(self) -> None:
         """Test that invalid commands are ignored by regex."""
@@ -288,9 +282,8 @@ class TestRAM0EdgeCases:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert (
-            "z: 0" in output
-        )  # Only A command executes, but L command loads from uninitialized address
+        # Only A command executes, but L command loads from uninitialized address
+        assert output == "z: 0\nn: 0\nram: {}"
 
     def test_comments_in_code(self) -> None:
         """Test that comments are properly ignored."""
@@ -301,7 +294,7 @@ class TestRAM0EdgeCases:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert "z: 3" in output
+        assert output == "z: 3\nn: 0\nram: {}"
 
     def test_zero_goto_command(self) -> None:
         """Test that goto to instruction 0 terminates program."""
@@ -312,7 +305,8 @@ class TestRAM0EdgeCases:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert "z: 3" in output  # All A commands execute
+        # All A commands execute
+        assert output == "z: 3\nn: 0\nram: {}"
 
     def test_large_goto_number(self) -> None:
         """Test goto with large instruction numbers."""
@@ -323,7 +317,8 @@ class TestRAM0EdgeCases:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert "z: 1" in output  # Should terminate after first A
+        # Should terminate after first A
+        assert output == "z: 1\nn: 0\nram: {}"
 
 
 class TestRAM0MathematicalOperations:
@@ -341,7 +336,8 @@ class TestRAM0MathematicalOperations:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert "z: 0" in output  # Load from uninitialized address returns 0
+        # Load from uninitialized address returns 0
+        assert output == "z: 0\nn: 2\nram: {\n    2: 5\n}"
 
     def test_counter_pattern(self) -> None:
         """Test counter pattern using memory."""
@@ -355,9 +351,7 @@ class TestRAM0MathematicalOperations:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert "3: 3" in output
-        assert "6: 6" in output
-        assert "9: 9" in output
+        assert output == "z: 9\nn: 9\nram: {\n    3: 3,\n    6: 6,\n    9: 9\n}"
 
     def test_register_swap_pattern(self) -> None:
         """Test swapping values between registers using memory."""
@@ -369,8 +363,8 @@ class TestRAM0MathematicalOperations:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert "z: 0" in output  # Load from uninitialized address 13
-        assert "n: 13" in output
+        # Load from uninitialized address 13
+        assert output == "z: 0\nn: 13\nram: {\n    5: 8\n}"
 
 
 class TestRAM0Integration:
@@ -386,9 +380,8 @@ class TestRAM0Integration:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert (
-            "z: 0" in output
-        )  # Final result after loading from uninitialized addresses
+        # Final result after loading from uninitialized addresses
+        assert output == "z: 0\nn: 8\nram: {\n    2: 5,\n    8: 12\n}"
 
     def test_memory_initialization_pattern(self) -> None:
         """Test pattern for initializing multiple memory locations."""
@@ -400,20 +393,19 @@ class TestRAM0Integration:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        assert "1: 1" in output
-        assert "3: 3" in output
-        assert "6: 6" in output
-        assert "10: 10" in output
-        assert "15: 15" in output
+        assert output == (
+            "z: 15\nn: 15\nram: {\n"
+            "    1: 1,\n    3: 3,\n    6: 6,\n    10: 10,\n    15: 15\n}"
+        )
 
 
 class TestDumpFormat:
     """The exact text of the state dump.
 
-    Every other test asserts substrings -- ``"z: 0" in output`` -- so the
-    punctuation holding the dump together was never checked: the braces,
-    the indent, and the newline that closes the RAM block could all be
-    spelled differently and nothing would notice.
+    The tests above now compare whole dumps, so the punctuation holding one
+    together -- the braces, the indent, the newline closing the RAM block --
+    is covered wherever they run.  These keep it pinned directly, on the
+    smallest programs that show a populated and an empty RAM block.
     """
 
     def dump(self, code: str) -> str:
