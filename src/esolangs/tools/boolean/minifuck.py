@@ -793,18 +793,32 @@ _TWO_INPUT_PLAN: dict[str, _Staging] = {
 # empty -- settle counts 3 to 5 and accumulators 36 to 47 reached nothing the
 # shipped stagings did not.  That is evidence they are barren, not proof.
 #
-# **This table is close to its natural size, which was measured rather than
-# assumed.**  The 109 entries use 63 distinct ``(separator, settle, suffix)``
-# stagings; a greedy minimum cover needs 35, and it still needs *all five*
-# separators and both settle counts, with twelve stagings carrying a single
-# pair each.  So there is no smaller vocabulary hiding here, and rewriting
-# 108 verified entries to consolidate stagings would churn working constants
-# for a count no caller sees.  Declined deliberately.
+# **A simpler form was looked for and does not exist.**  The obvious wish is
+# a uniform rule -- one staging, or at least one field fewer -- even at the
+# cost of longer programs.  Every version of that was measured and fails:
 #
-# Two related things also look removable and are not.  ``_SETTLE`` is unused
-# by both plans but parameterises the parked search, which still serves
-# ``n >= 4``; and the searches themselves are unreachable at ``n <= 3`` yet
-# are what a wider table falls through to.  Neither is dead.
+# * **One fixed staging: impossible**, and by counting rather than by search.
+#   A staging exposes at most one column per accumulator and orientation,
+#   about 2 x 26 = 52 of them, against 109 pairs to place.  The best single
+#   ``(separator, settle)`` reaches 60.
+# * **Two separators: 99 of 109**, and *not* for want of room -- re-running
+#   with bracket counts to 70 and accumulators to 60 reaches the same 99.
+#   The ten stragglers need a different separator, not a longer program.
+# * **Dropping the settle field: 99 of 109.**  Ten pairs are reachable only
+#   at ``settle == 1``, so the staging cannot shrink to three fields.
+# * **Consolidating stagings:** the 109 entries use 63; a greedy cover needs
+#   35, and a rebuild avoiding separator 0 entirely lands on 51 at +1.4%
+#   size.  All of those churn verified constants to change a count no caller
+#   sees, so none is worth doing.
+#
+# Separator 0 is the one curiosity: no *three-input* entry needs it, since
+# separators 1 to 4 reach 108 of the 109 between them.  It stays because the
+# two-input plan, :data:`_SEP` and :data:`_SCAN_SEPS` all use it.
+#
+# Two more things look removable and are not.  ``_SETTLE`` is unused by both
+# plans but parameterises the parked search, which still serves ``n >= 4``;
+# and the searches themselves are unreachable at ``n <= 3`` yet are what a
+# wider table falls through to.  Neither is dead.
 _THREE_INPUT_PLAN: dict[str, _Staging] = {
     "00000001": (0, 0, 10, 23),
     "00000110": (1, 1, 11, 27),
