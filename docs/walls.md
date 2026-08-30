@@ -1098,12 +1098,20 @@ re-derivation.
 
 The layout needs `2**n` output cells, plus an apron of nonzero cells past
 the table for the stages' guards to land on, plus the walk's own reach.  The
-interpreter's tape is a static 4096 cells, so `n == 12` needs cell 4650 and
-is refused.  The wiki does not specify a memory size — the 4096 is this
-interpreter's choice, matching the RISC-V cross-check's buffer — so this is
-a configuration bound in the same sense as the Factor row's
-`sys.get_int_max_str_digits()`, not a property of NoComment.  A larger tape
-moves the cap; nothing in the language argues for a particular `n`.
+interpreter's tape defaults to 4096 cells, so at that size `n == 12` needs
+cell 4650 and is refused.  The wiki *does* require the memory space to be
+static — pointer overflow is defined as moving to the opposite end, which a
+tape with no ends could not do — but it never gives a size, so 4096 is this
+interpreter's choice, matching the RISC-V cross-check's buffer.  That makes
+this a configuration bound in the same sense as the Factor row's
+`sys.get_int_max_str_digits()`, not a property of NoComment.
+
+The bound is now literally configurable: `nocomment(table, tape=...)` builds
+against a caller-supplied size and `run(code, io, tape=...)` executes at one,
+both defaulting to 4096 so existing programs are unaffected.  `n == 12`
+builds and runs correctly at `tape=16384`.  The default stays put because the
+size is *observable* — cell 0 steps left to `tape - 1` — so moving it would
+change what existing wrapping programs do and would desync the cross-check.
 
 ### Evidence
 

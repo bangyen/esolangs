@@ -639,12 +639,12 @@ class TestParameterizedBack:
 class TestParameterizedNoComment:
     """Input-by-substitution boolean generator for the no-input language NoComment."""
 
-    def run_nocomment(self, prog: str) -> str:
-        from esolangs.interpreters.tape_based.nocomment import run
+    def run_nocomment(self, prog: str, tape: int | None = None) -> str:
+        from esolangs.interpreters.tape_based.nocomment import _TAPE, run
 
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            run(prog, IO())
+            run(prog, IO(), _TAPE if tape is None else tape)
         return buffer.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
@@ -800,6 +800,31 @@ class TestParameterizedNoComment:
         with pytest.raises(ValueError, match=str(_TAPE)) as caught:
             parameterized.nocomment("0" * (2 ** (widest + 1)))
         assert "tape" in str(caught.value)
+
+    def test_a_bigger_tape_lifts_the_cap(self) -> None:
+        """The cap is the tape size, so a bigger tape moves it -- and still computes.
+
+        The arity the default refuses is built against a larger tape and run
+        on an interpreter given that same size, which is what makes this a
+        lifted bound rather than a longer program that nothing can execute.
+        A spot-check of inputs, not the sweep: :meth:`test_wide_arity_is_exact`
+        already runs every combination at the arities the default reaches, and
+        ``2**12`` runs of a 51k-command program is far too slow for the suite.
+        """
+        from esolangs.interpreters.tape_based.nocomment import _TAPE
+        from esolangs.tools.boolean import parameterized
+
+        n, tape = 12, 16384
+        table = "".join(str((r * r + r // 3) % 2) for r in range(2**n))
+
+        with pytest.raises(ValueError, match=str(_TAPE)):
+            parameterized.nocomment(table)
+
+        template = parameterized.nocomment(table, tape=tape)
+        for combo in (0, 1, 2**n - 1, 2**n - 2, 1234, 2731):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_nocomment(self.instantiate(template, bits), tape)
+            assert got == table[combo], f"n={n} inputs {bits}"
 
     def test_bad_table_rejected(self) -> None:
         from esolangs.tools.boolean import parameterized
