@@ -303,10 +303,14 @@ def best_input_order(
         greedy = _greedy_input_order(truth_table, n)
         orders = [] if greedy == identity else [greedy]
 
-    # An empty candidate means "this order could not be built" -- ZTOALC L
-    # searches for a collision-free line placement and some orders have
-    # none -- so it is skipped rather than winning on length 0.  A build
-    # that always succeeds never returns one, and gets the plain behaviour.
+    # An empty candidate means "this order could not be built" -- Forth's
+    # stack reader reaches only some arrangements of the bits, so an order
+    # it cannot stack comes back empty -- and it is skipped rather than
+    # winning on length 0.  A build that always succeeds never returns one,
+    # and gets the plain behaviour.  (ZTOALC L was the original reason for
+    # this: it searched for a collision-free line placement and some orders
+    # had none.  It now constructs a branch-free lookup instead and does not
+    # reorder at all, so it is no longer an example.)
     best = build(truth_table, identity)
     for perm in orders:
         candidate = build(permute_truth_table(truth_table, perm), perm)

@@ -48,7 +48,7 @@ input is far cheaper than parity. Measured 2026-08-28 over all 59 exported
 generators, comparing the best of the six one-dependency tables against
 `01101001` (both ones-count 4):
 
-**Tree-shaped (44).** cvnc, taglate, ztoalc_l, polynomial, dig, myscript, six_five,
+**Tree-shaped (43).** cvnc, taglate, polynomial, dig, myscript, six_five,
 addsubjump, sophie, modulous, laserfuck, nevermind, jaune, bitdeque,
 unsquare, flowchart, streetcode, forth, basicfuck, bfpda, ram0,
 forbin_boolean, arrowqueue, back, lamfunc, between, eval, factor, circlefuck,
@@ -68,9 +68,15 @@ collatz_multiverse, container, home_row, nocomment, point_break, qoibl,
 rotfuck, suffolk, suptiftam — all within 4% of parity on a one-dependency
 table, because there is no subtree to collapse.
 
-**Neither (1).** `wii2d` measures *negative* (a one-dependency table costs
+**Neither (2).** `wii2d` measures *negative* (a one-dependency table costs
 slightly more than parity): its construction is a route search over a grid,
-so neither model describes it.
+so neither model describes it. `ztoalc_l` measures a flat **0%** — every
+table in the comparison has ones-count 4 and they all render to exactly the
+same length — because it is a *table lookup*, not a tree or a sum: the row
+index is built arithmetically by double-and-add and the table is one-hot
+encoded into an array, so there are no subtrees to collapse and no per-row
+terms to count. Its size tracks the trajectory peak its command count
+selects from the anchor table.
 
 **A third shape: algebraic (1).** `fargo` (added 2026-08-30) is neither a
 tree nor a minterm sum but an *algebraic normal form* — the XOR of the
@@ -167,8 +173,11 @@ arithmetic. `forth` still builds each char as `m * 15**n + p`.
 - **`brainif`** — starts a falling character from the **largest parked value
   not above it** rather than from zero. The `l` of "Hello, World!" costs 66
   lines from the comma's parked 44 vs 110 from zero.
-- **`ztoalc_l`** — precomputed anchor table (`ztoalc_starts.py`) of Collatz
-  starts with the smallest trajectory peak per length interval.
+- **`ztoalc_l`** (text *and* boolean) — precomputed anchor table
+  (`ztoalc_starts.py`) of Collatz starts with the smallest trajectory peak per
+  length interval. The boolean generator places its commands the same way the
+  text one places characters, which is what let it drop its placement search
+  entirely.
 - **`factor`** / **`three_d_brainfuck`** — reuse `brainfuck`'s output unchanged.
 
 ### Width handling (9 of them lay out their own shape)
@@ -656,12 +665,15 @@ saving unchanged; a shorter program also shrinks factor's set of tables
 whose integer encoding exceeds Python's digit limit.
 
 **A trap when wiring the rest.** A generator that validates its own output
-during construction needs that check frame-mapped too. ZTOALC L asks its
-simulator whether the program computes `truth_table[c]`, but a reordered tree
+during construction needs that check frame-mapped too. ZTOALC L used to ask a
+simulator whether the program computed `truth_table[c]`, but a reordered tree
 walks to the row whose bits are gathered in `perm` order, so the unmapped
 check demands a different function and rejects every correct placement. The
 symptom is a clean 0.00% across every table — indistinguishable from
-"reordering does not help here".
+"reordering does not help here". (ZTOALC L no longer searches or reorders at
+all: it constructs a branch-free array lookup placed on a Collatz trajectory,
+so there is nothing left to validate. The trap still applies to any generator
+that gates its own candidates.)
 
 ### Layout and geometry
 
@@ -687,7 +699,6 @@ symptom is a clean 0.00% across every table — indistinguishable from
 | `three_x` | result defaults to the **majority** table value, so only differing rows emit an override |
 | `bitdeque` / `ram0` | fixed-length setters keep absolute `GOTO` targets stable — this is what unblocked the earlier "variable-length setter" wall |
 | `lamfunc` / `ram0` | each input stored once and read back, rather than re-embedded at every node |
-| `ztoalc_l_boolean` | tries every `b1` in turn with the simulator as sole gate, keeping any smaller start that places without collision |
 | `point_break` / `arrowqueue` | no output command — use the halt/loop termination convention |
 
 ### Equal-width embedding (the deliberate non-optimization)
