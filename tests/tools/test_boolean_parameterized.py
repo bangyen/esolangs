@@ -186,6 +186,17 @@ def test_minifuck_slots_run_in_name_order() -> None:
             continue
         assert slots == sorted(slots), (table, slots)
 
+    # ``00010001`` and ``11101110`` project onto AND and NAND, and the
+    # enumeration derives both at ``settle == 1``.  A version of
+    # ``_reconverged`` that dropped the staging's settle count pushed exactly
+    # these two off the route and out of sequence, while every other test
+    # stayed green -- the four tables above do not reach that path.  So they
+    # are pinned here, by the property the bug broke.
+    for table in ("00010001", "11101110"):
+        slots = _slot_order(parameterized.minifuck, table)
+        assert slots is not None, table
+        assert slots == sorted(slots), (table, slots)
+
 
 @pytest.mark.slow  # two closed-form builds plus eight interpreter runs each
 def test_minifuck_reconverged_tables_compute_their_function() -> None:
@@ -2211,6 +2222,42 @@ class TestParameterizedMinifuck:
             table = format(table_int, "04b")
             assert module.minifuck.__wrapped__(table), table
 
+    def test_the_degenerate_cells_are_where_they_were_written_down(self) -> None:
+        """Measuring the embed reproduces the six cells that used to be stored.
+
+        ``_degenerate_cells`` replaced a written-down mapping, and the reason
+        it can is the reason the mapping was constant in the first place: the
+        carry chain preserves ``b0`` and ``b1`` individually before the
+        prefix-XOR starts mixing.  This pins the collapse to the numbers it
+        replaced, so a change to the embed or the separator that moved these
+        columns would be caught here rather than as a slow degenerate build.
+
+        The cells are the same at every arity the route serves, which is what
+        let one mapping serve all of them.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        written_down = {
+            "const1": 1,
+            "~b0": 16,
+            "b0": 17,
+            "const0": 18,
+            "~b1": 19,
+            "b1": 20,
+        }
+        for n in (2, 3, 4):
+            assert module._degenerate_cells(n) == written_down, n  # noqa: SLF001
+        # One input leaves no ``b1`` to find, and the route asks for whatever
+        # is there rather than assuming all six.
+        assert module._degenerate_cells(1) == {  # noqa: SLF001
+            "const1": 1,
+            "~b0": 16,
+            "b0": 17,
+            "const0": 18,
+        }
+
     def test_the_enumeration_and_the_derivation_agree(self) -> None:
         """``_stagings`` states the order ``_derived_plans`` actually walks.
 
@@ -2632,14 +2679,15 @@ class TestParameterizedMinifuck:
         # The package re-exports the generator under the submodule's own
         # name, so import the module explicitly rather than by attribute.
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
-        from esolangs.tools.boolean.minifuck import _DEGENERATE_CELLS, _degenerate
+        from esolangs.tools.boolean.minifuck import _degenerate, _degenerate_cells
 
         # b1's cell carries "0101" at n == 2, so pointing the stubbed search
-        # at it stands in for a search that succeeded.
-        b1_cell = _DEGENERATE_CELLS["b1"]
+        # at it stands in for a search that succeeded.  The cell is measured
+        # off the embed rather than written down, so read it from there.
+        b1_cell = _degenerate_cells(2)["b1"]
 
         with pytest.MonkeyPatch.context() as patch:
-            patch.setattr(module, "_DEGENERATE_CELLS", {})
+            patch.setattr(module, "_degenerate_cells", lambda _n: {})
             patch.setattr(module, "_find_column", lambda *_a, **_k: ("", b1_cell))
             found = _degenerate("0101", 2)
         assert found is not None, "the searched column should still print"
@@ -2649,13 +2697,13 @@ class TestParameterizedMinifuck:
         # XOR is not degenerate, so no accumulator prints it however the
         # search claims to have gone: the scan runs out and reports that.
         with pytest.MonkeyPatch.context() as patch:
-            patch.setattr(module, "_DEGENERATE_CELLS", {})
+            patch.setattr(module, "_degenerate_cells", lambda _n: {})
             patch.setattr(module, "_find_column", lambda *_a, **_k: ("", b1_cell))
             assert _degenerate("0110", 2) is None
 
         # And a search that finds nothing at all reports that directly.
         with pytest.MonkeyPatch.context() as patch:
-            patch.setattr(module, "_DEGENERATE_CELLS", {})
+            patch.setattr(module, "_degenerate_cells", lambda _n: {})
             patch.setattr(module, "_find_column", lambda *_a, **_k: None)
             assert _degenerate("0101", 2) is None
 

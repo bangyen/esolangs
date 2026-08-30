@@ -53,9 +53,9 @@ search: 16 of 16 at two inputs, 256 of 256 at three.  All but one pair are
 derived, and the derivation is done for a whole arity at a time -- measured,
 0.9s for two inputs and 15s for three, against minutes if each table sweeps
 for itself.  So the first three-input table costs the arity and the other
-255 are free; that is the trade deriving makes against storing.
-Wider tables fall through to the searches below,
-which is why those remain -- a missing staging degrades rather than raises.
+255 are free; that is the trade deriving makes against storing.  Wider tables
+fall through to the searches below, which is why those remain -- a missing
+staging degrades rather than raises.
 A table that ignores some inputs is solved at the arity it uses and renumbered
 back, so a wide table with a narrow core is as cheap as that core.
 
@@ -344,9 +344,9 @@ def _search[Hit](
 
 # The pool codes.  Setting the pool is not a search: across every table at
 # ``n <= 3`` the breadth-first search this replaced returned one of exactly
-# these ten strings, and trying them in turn reproduces its answer on all
-# 280 calls the generator makes -- a code wherever it found one, and none
-# where it found none.
+# these ten strings, and trying them in turn reproduces its answer on every
+# call the generator makes -- a code wherever it found one, and none where
+# it found none.
 #
 # A lookup keyed on ``(cell7, walk_out)`` would *not* work, which is why
 # this is a list tried in turn rather than a table: the same pair takes
@@ -355,12 +355,12 @@ def _search[Hit](
 # test the search applied, so a code is accepted on exactly the evidence it
 # always was.
 #
-# The list is not minimal against the *plans* -- two of these cover all 117
-# planned stagings between them -- but it is not trimmed to those two,
-# because the degenerate and reconverged routes reach the endgame from
-# states the plans never produce, and three two-input tables lose their
-# pool if the rest are dropped.  Ordered shortest first, so the emitted
-# program is no longer than before.
+# The list is not minimal against the *staged* route -- two of these cover
+# every staging it derives -- but it is not trimmed to those two, because
+# the degenerate and reconverged routes reach the endgame from states the
+# staged route never produces, and three two-input tables lose their pool
+# if the rest are dropped.  Ordered shortest first, so the emitted program
+# is no longer than before.
 _POOL_CODES = (
     "[[[<[<<<<",
     "[<[[[<[<[<",
@@ -503,21 +503,63 @@ def _find_parked(
     return _search(j, accept, maxlen) or hits
 
 
-# Where the embed leaves the first two inputs and the constants, whatever the
-# arity: the carry chain preserves ``b0`` and ``b1`` individually before the
-# prefix-XOR starts mixing, so these cells are fixed rather than searched.
-# Later inputs are *not* here at any settle count -- the affine transform
-# fixes which bits stay separable -- but a column search finds them in a
-# fraction of a second, which is why the degenerate path still beats the
-# ladder without being wholly search-free.
-_DEGENERATE_CELLS = {
-    "const1": 1,
-    "~b0": 16,
-    "b0": 17,
-    "const0": 18,
-    "~b1": 19,
-    "b1": 20,
-}
+# The columns a degenerate table can be built from: a constant, one of the
+# first two inputs, or one of their complements.  A table depending on at
+# most one input is exactly one of these, which is why naming them is enough.
+_DEGENERATE_COLUMNS = ("const1", "~b0", "b0", "const0", "~b1", "b1")
+
+
+def _column_of(name: str, n: int) -> tuple[int, ...] | None:
+    """Return the column ``name`` stands for, or None if this arity has no such bit.
+
+    ``b1`` does not exist at one input, and it must come back as None rather
+    than as some default: an all-zero stand-in would match wherever
+    ``const0`` does, and the route would carry a duplicate cell that means
+    nothing.
+    """
+    rows = range(2**n)
+    if name in ("const0", "const1"):
+        return tuple(int(name == "const1") for _ in rows)
+    negated = name.startswith("~")
+    bit = int(name.lstrip("~")[1:])
+    if bit >= n:
+        return None
+    return tuple((((r >> (n - 1 - bit)) & 1) ^ negated) for r in rows)
+
+
+@cache
+def _degenerate_cells(n: int) -> dict[str, int]:
+    """Find where the embed leaves the constants and the first two inputs.
+
+    These were six written-down cell numbers, and the reason they were
+    constant is also the reason they need not be written down: the carry
+    chain preserves ``b0`` and ``b1`` individually before the prefix-XOR
+    starts mixing, so the cells holding them can simply be *read off* the
+    embedded tape.  Measured, this reproduces the six exactly at every arity
+    the route serves.
+
+    Later inputs are not separable here at any settle count -- the affine
+    transform fixes which bits stay apart -- but a column search finds them
+    in a fraction of a second, which is why the degenerate path still beats
+    the ladder without being wholly search-free.
+
+    Only the default settle count is meaningful: :func:`_degenerate` embeds
+    with it, and re-crossing the region moves these columns elsewhere.
+    """
+    joint = _embed(n, sep=_SEP)
+    _clamp(joint)
+    wanted = {
+        name: column
+        for name in _DEGENERATE_COLUMNS
+        if (column := _column_of(name, n)) is not None
+    }
+    found: dict[str, int] = {}
+    for cell in range(1, _BASE + n * _SPAN + 8):
+        column = joint.col(cell)
+        for name, target in wanted.items():
+            if name not in found and column == target:
+                found[name] = cell
+    return found
 
 
 def _essential_inputs(truth_table: str, n: int) -> list[int]:
@@ -558,7 +600,7 @@ def _degenerate(
     _clamp(base)
 
     # The fixed cells first, then a search for the rest.
-    candidates = list(_DEGENERATE_CELLS.values())
+    candidates = list(_degenerate_cells(n).values())
     for acc in candidates:
         hit = _try_print(base, truth_table, acc)
         if hit is not None:
@@ -645,8 +687,8 @@ def _reconverged(truth_table: str, essential: list[int], n: int) -> str | None:
 
     The walk to ``_BASE - 1`` before the essential setter is what makes this
     cheap rather than a fresh search: it reproduces the standard embed, so
-    the essential input lands on the cells :data:`_DEGENERATE_CELLS` already
-    names and the fixed-cell lookup decides in a fraction of a second.  The
+    the essential input lands on the cells :func:`_degenerate_cells` finds,
+    and the fixed-cell lookup decides in a fraction of a second.  The
     junk the reset leaves behind is not a problem -- the rows are identical
     by then, so it is a constant starting condition, which is exactly what
     the searches here are built to run from.
@@ -666,8 +708,8 @@ def _reconverged(truth_table: str, essential: list[int], n: int) -> str | None:
     # scan is what costs: at two essential inputs it turns a 0.5s build into
     # seconds without reaching anything the staging does not.
     if len(essential) == 1:
-        setup: tuple[int, int, int] | None = None
-        accumulators: tuple[int, ...] = tuple(_DEGENERATE_CELLS.values())
+        setup: tuple[int, int, int, int] | None = None
+        accumulators: tuple[int, ...] = tuple(_degenerate_cells(n).values())
     else:
         inner = _project(truth_table, essential, n)
         plan = _derive_staging(inner, 2)
@@ -679,19 +721,7 @@ def _reconverged(truth_table: str, essential: list[int], n: int) -> str | None:
         # replaying it here would need the walk this route does not make.
         if not isinstance(brackets, int):
             return None
-        # This route lays the embed down itself -- it has to, since the reset
-        # comes first -- and that hand-rolled embed does not re-cross the bit
-        # region, so it can only replay a staging that does not ask it to.
-        # Declining is safe: the caller falls through to the searches.  It is
-        # checked rather than assumed because the staging is *derived* now,
-        # and the enumeration does hand back ``settle == 1`` -- AND and NAND
-        # both come out that way, and six three-input tables project onto
-        # them.  Replaying those at settle 0 happened to still print, which is
-        # luck rather than a property, and the kind of luck that changes when
-        # a cap or the enumeration order moves.
-        if settle:
-            return None
-        setup = (sep_index, brackets, acc)
+        setup = (sep_index, settle, brackets, acc)
         accumulators = (acc,)
 
     for reset in _find_reset(len(ignored)):
@@ -706,12 +736,21 @@ def _reconverged(truth_table: str, essential: list[int], n: int) -> str | None:
             j.emit_setter(essential[0])
             j.emit("[x")
         else:
-            sep_index, brackets, _acc = setup
+            sep_index, settle, brackets, _acc = setup
             for slot, i in enumerate(essential):
                 j.emit_setter(i)
                 j.emit("[x")
                 if slot + 1 < len(essential):
                     j.emit(_SEPS[sep_index])
+            # The staging's settle count, replayed the way ``_embed`` does
+            # it: re-crossing the bit region advances the affine state, and
+            # the accumulator was chosen against the state that produces.
+            # The enumeration hands back ``settle == 1`` for AND and NAND,
+            # and six three-input tables project onto one of those, so
+            # ignoring the field would replay them against the wrong tape.
+            for _ in range(settle):
+                _clamp(j)
+                _walk_to(j, _BASE - 1)
             _clamp(j)
             _walk_to(j, _BASE - 1)
             j.emit("[" * brackets + "<")
