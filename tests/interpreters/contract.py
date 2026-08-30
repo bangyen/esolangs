@@ -73,6 +73,35 @@ class EmptyProgramContract:
             assert type(self).run(self.empty_program) == self.empty_output
 
 
+class SnapshotContract:
+    """That a machine's snapshot can be hashed, and moves when it steps.
+
+    Both halves are the cycle detector's preconditions rather than
+    statements about the language.  ``run_until_halt_or_cycle`` stores
+    snapshots in a set, so an unhashable one -- a list of cells where a
+    tuple was meant -- silently disables hang detection; and a snapshot
+    that does not change when the machine does makes every program look
+    like a hang on its second step.
+    """
+
+    machine: ClassVar[Any]
+
+    # A program with at least one step left in it, so the "changes" half
+    # has something to observe.
+    stepping_program: ClassVar[Any]
+
+    def test_snapshot_is_hashable(self) -> None:
+        """The state the cycle detector stores can go in a set."""
+        assert hash(type(self).machine(self.stepping_program).snapshot()) is not None
+
+    def test_snapshot_changes_after_a_step(self) -> None:
+        """Stepping the machine moves it to a state that compares different."""
+        machine = type(self).machine(self.stepping_program)
+        before = machine.snapshot()
+        machine.step()
+        assert machine.snapshot() != before
+
+
 class CycleContract:
     """What the hang detector concludes about two of a language's programs.
 
