@@ -151,9 +151,11 @@ screen figures, the hoist caveat, and the frame-mapping trap.
 
 ## Mutation-testing sweep
 
-Every language is measured; a whole-repo sweep costs a few minutes, so
-re-running one is the regression check for anything touching an interpreter.
-The weakest suites:
+Every language is measured.  Ten are at 100%, six are below 85%, and a
+whole-repo sweep costs a few minutes — so re-running one is the regression
+check for anything that touches an interpreter.
+
+The weakest suites, by score and then by how many mutants survive:
 
 | language | score | survivors |
 | --- | --- | --- |
@@ -161,18 +163,17 @@ The weakest suites:
 | WII2D | 80.2% | 33 |
 | Point Break | 80.4% | 94 |
 | Painfuck | 80.9% | 49 |
-| Basicfuck | 82.8% | 119 |
 | 3x | 83.4% | 29 |
 | Dimensional | 83.5% | 56 |
 
-Basicfuck, Streetcode (98) and Suptiftam (93) now carry the most survivors
-in absolute terms.
+Streetcode (98) and Suptiftam (93) now carry the most survivors in
+absolute terms.
 
-Two of these figures have been re-measured since the harness commits
+Three of these figures have been re-measured since the harness commits
 `800f071` and `86c89b9`, which were only ever validated one language at a
-time: AddSubJump came back at exactly 80.2% / 23, and Forbin at exactly
-81.4% / 216 before the work below.  A full re-sweep of all 59 is still
-outstanding.
+time, and all three came back exactly as recorded: AddSubJump at 80.2% /
+23, Forbin at 81.4% / 216, and Basicfuck at 82.8% / 119, each before the
+work below.  A full re-sweep of all 59 is still outstanding.
 
 LaserFuck has left this table.  It was the outlier at 66.7% / 82; the four
 commits ending at `0a5f42b` took it to 76.0% / 59, and categorising all 59
@@ -246,6 +247,29 @@ than about Forbin:
   parameter; but `_call` does `depth + 1`, so eleven of the twenty-three
   `depth=None` mutants die on a `TypeError`.  Only the two that change the
   increment are equivalent.
+
+Basicfuck follows, 82.8% / 119 to **92.8% / 50** on twenty-eight tests.
+It is a small compiler rather than a tape language -- a directive parser,
+an allocator, a lexer, a parser and a frame machine -- and its survivors
+were spread across all five rather than concentrated.  A third of them
+widen or recase an error-message literal, which turns out to need more
+than the obvious fix:
+
+- **`pytest.raises(match=...)` is a substring search.**  Passing the
+  whole message still lets `"Invalid token."` match a mutant raising
+  `"XXInvalid token.XX"`; only `assert str(caught.value) == message`
+  kills the widened form.  A recased message dies to `match=` alone,
+  which is why half of that family looked covered.
+- **A survivor is only as tested as the observables the probe compares.**
+  Four `_Frame` mutants showed no difference in output or step count and
+  differ immediately in `snapshot()`, whose content no test asserted --
+  the same gap Forbin had, where it hid seven.
+
+Two language facts the suite now pins, both of which contradicted what
+the tests seemed to assume: `o=wrap` **clamps to the opposite bound**
+rather than wrapping modularly, and it requires a range closed at both
+ends -- the "invalid overflow directive" complaint is about that, not
+about a misspelled mode, which fails the directive pattern outright.
 
 Triaging one goes faster from the test file than from the diffs.  Six
 shapes recur, and all six are mechanical:
