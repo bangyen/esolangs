@@ -172,9 +172,9 @@ jobs:
 
   line:
     # extra/line is a standalone spike: its modules import each other as flat
-    # top-level names, and it needs image libraries the package itself does
-    # not depend on, so it is not under the root `tests/` testpaths and is run
-    # here from its own directory with those deps supplied ad hoc.
+    # top-level names, so it is not under the root `tests/` testpaths and is
+    # run here from its own directory.  It has no third-party dependencies of
+    # its own -- only pytest to run the suites with.
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -192,7 +192,6 @@ jobs:
       run: |
         cd extra/line
         uv run --isolated --no-project \
-          --with numpy \
           --with pytest --with pytest-xdist \
           pytest . -q
 
@@ -205,9 +204,7 @@ jobs:
         set -e
         cd extra/line
         run_line() {
-          uv run --isolated --no-project \
-            --with numpy \
-            python "$@"
+          uv run --isolated --no-project python "$@"
         }
         run_line render.py "+++" /tmp/line_render.png
         [ "$(run_line simulate.py /tmp/line_render.png)" \

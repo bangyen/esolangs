@@ -31,13 +31,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import lattice
-import numpy as np
+import mask as mask_module
 import png
 from lattice import _DIRS, _ink
+from mask import Mask
 
 # Dependency notes.  This started on four undeclared third-party libraries
-# (Pillow, numpy, scipy, scikit-image); numpy is the only one left, and the
-# recurring lesson was that a call did not need the library's actual algorithm.
+# (Pillow, numpy, scipy, scikit-image) and now has none: everything below runs
+# on the standard library alone.  The recurring lesson, in all four cases, was
+# that the call did not need the library's actual algorithm.
 #
 #   scipy.ndimage.distance_transform_edt was previously called "the one hard
 #   piece to replace" -- a brute-force replacement is O(ink x background) and
@@ -67,83 +69,52 @@ from lattice import _DIRS, _ink
 #   like (a strided slice), with one wrinkle about grid alignment recorded in
 #   normalize_scale.  The narrowing: JPEG and the rest of Pillow's formats are
 #   no longer readable, which nothing here ever relied on.
+#
+#   numpy looked like the one with a real cost, since the masks reach 9Mpx and
+#   pure-Python per-pixel loops over that would be minutes.  The answer was to
+#   stop storing pixels individually: ``mask.py`` keeps one Python int per row
+#   and lets CPython's bigints do whole-row bitwise work, which is *faster*
+#   than the numpy it replaced on the operations that matter here (see that
+#   module's docstring for the measurements).  It also retired the quadtree
+#   this file used for bounding boxes, which existed only to work around
+#   numpy's whole-canvas nonzero() scan.
 
 
-def load_binary(path: str) -> np.ndarray:
+def load_binary(path: str) -> Mask:
     """Load a PNG as a boolean ink mask (True = black/foreground)."""
-    return png.read_grey_file(path) < 128
+    return mask_module.from_grey(png.read_grey_file(path))
 
 
-# Below this size a quadrant is a leaf: its full bounding box is used as-is
-# rather than subdividing further.  Small enough that a leaf still meaningfully
-# narrows down where the ink is on a huge canvas, large enough that the
-# recursion doesn't spend time on quadrants near pixel-level granularity where
-# a plain scan would be just as fast.
-_QUADTREE_LEAF_SIZE = 64
-
-
-def _content_bbox(mask: np.ndarray) -> tuple[int, int, int, int]:
-    """Find ink's bounding box in O(content + log(canvas)), not O(canvas).
-
-    ``np.nonzero(mask)`` finds the same bounding box but must touch every
-    pixel in the array to do it, so its cost scales with the canvas size
-    even when almost all of it is blank -- confirmed to matter in practice:
-    on a ~4600x4600 canvas holding a small drawing padded by a 2000px
-    border, a plain ``np.nonzero`` scan takes ~9x longer than this.
-
-    Recursively quarters the canvas, skipping (via a cheap ``.any()`` check
-    on the numpy slice) any quadrant with no ink at all rather than
-    descending into it -- a huge blank border gets discarded in a handful of
-    splits rather than scanned pixel by pixel.  Returns the union bounding
-    box of every non-empty leaf quadrant, which is a safe superset of the
-    true tight bounding box (padded out to quadrant boundaries) rather than
-    the exact minimal box -- confirmed never to exclude real ink, which is
-    the property that matters for a crop step feeding the rest of the
-    pipeline.  Raises :class:`ValueError` if the mask is entirely blank.
-    """
-    h, w = mask.shape
-    stack = [(0, 0, h, w)]
-    bounds: list[int] | None = None
-    while stack:
-        ry0, rx0, ry1, rx1 = stack.pop()
-        if not mask[ry0:ry1, rx0:rx1].any():
-            continue
-        if (ry1 - ry0) <= _QUADTREE_LEAF_SIZE or (rx1 - rx0) <= _QUADTREE_LEAF_SIZE:
-            if bounds is None:
-                bounds = [ry0, rx0, ry1, rx1]
-            else:
-                bounds[0] = min(bounds[0], ry0)
-                bounds[1] = min(bounds[1], rx0)
-                bounds[2] = max(bounds[2], ry1)
-                bounds[3] = max(bounds[3], rx1)
-            continue
-        my, mx = (ry0 + ry1) // 2, (rx0 + rx1) // 2
-        stack.extend(
-            [
-                (ry0, rx0, my, mx),
-                (ry0, mx, my, rx1),
-                (my, rx0, ry1, mx),
-                (my, mx, ry1, rx1),
-            ]
-        )
-    if bounds is None:
-        raise ValueError("image contains no ink")
-    return bounds[0], bounds[1], bounds[2], bounds[3]
-
-
-def crop_to_content(mask: np.ndarray, margin: int = 2) -> np.ndarray:
-    """Crop ``mask`` to its ink's bounding box (see :func:`_content_bbox`).
+def crop_to_content(mask: Mask, margin: int = 2) -> Mask:
+    """Crop ``mask`` to its ink's bounding box.
 
     ``margin`` pixels of surrounding blank space are kept on every side so
-    downstream code (e.g. :func:`find_cursor`'s distance transform) still
-    sees genuine background immediately around the drawing's own edge,
-    rather than the crop boundary itself acting like an artificial wall.
+    downstream code (e.g. :func:`find_cursor`'s erosion) still sees genuine
+    background immediately around the drawing's own edge, rather than the
+    crop boundary itself acting like an artificial wall.
+
+    The bounding box costs one pass over the row list, with a couple of bit
+    operations per non-empty row (:meth:`mask.Mask.bounds`), so it is already
+    independent of how much blank canvas surrounds the drawing -- a 4600x4600
+    canvas holding a small drawing inside a 2000px border measures 0.2ms.
+    An earlier version quartered the canvas recursively to get that property
+    back from ``numpy.nonzero``, which had to touch every pixel; row bitmasks
+    make it fall out for free, and exactly, rather than as a box padded out
+    to quadrant boundaries.  Extracted programs are unchanged by that -- same
+    tree shape, same opcodes, same geometry relative to the drawing, on all
+    five fixtures -- but every coordinate now sits closer to the origin,
+    since the crop no longer keeps up to a leaf-size band of blank canvas.
+    Nothing downstream reads absolute positions.  Raises :class:`ValueError`
+    if the mask is entirely blank.
     """
-    h, w = mask.shape
-    y0, x0, y1, x1 = _content_bbox(mask)
-    top, bottom = max(0, y0 - margin), min(h, y1 + margin)
-    left, right = max(0, x0 - margin), min(w, x1 + margin)
-    return mask[top:bottom, left:right]
+    bounds = mask.bounds()
+    if bounds is None:
+        raise ValueError("image contains no ink")
+    y0, x0, y1, x1 = bounds
+    height, width = mask.shape
+    top, bottom = max(0, y0 - margin), min(height, y1 + 1 + margin)
+    left, right = max(0, x0 - margin), min(width, x1 + 1 + margin)
+    return mask.crop(top, left, bottom - top, right - left)
 
 
 # No Line drawing this reads is scaled past a handful of pixels per stroke
@@ -153,7 +124,7 @@ def crop_to_content(mask: np.ndarray, margin: int = 2) -> np.ndarray:
 _MAX_SCALE = 16
 
 
-def detect_scale(mask: np.ndarray) -> int:
+def detect_scale(mask: Mask) -> int:
     """Find the integer factor a Line drawing was scaled up by.
 
     Line's own strokes are always 1px wide in the wiki's reference images
@@ -172,26 +143,52 @@ def detect_scale(mask: np.ndarray) -> int:
 
     A mask with no ink has no scale to detect and returns 1.
     """
-    ys, xs = np.nonzero(mask)
-    if len(ys) == 0:
+    bounds = mask.bounds()
+    if bounds is None:
         return 1
-    # Anchor to the ink itself: crop_to_content pads the bounding box out to
-    # quadtree-leaf boundaries plus a margin, so the array's own origin is not
-    # aligned to the upscale grid, but the drawing's first ink pixel is.
-    sub = mask[int(ys.min()) :, int(xs.min()) :]
-    h, w = sub.shape
+    # Anchor to the ink itself: crop_to_content leaves an arbitrary blank
+    # margin, so the array's own origin is not aligned to the upscale grid,
+    # but the drawing's first ink pixel is.
+    top, left, _, _ = bounds
+    rows = [row >> left for row in mask.rows[top:]]
     best = 1
     for k in range(2, _MAX_SCALE + 1):
-        pad_h, pad_w = (-h) % k, (-w) % k
-        padded = np.pad(sub, ((0, pad_h), (0, pad_w))) if pad_h or pad_w else sub
-        blocks = padded.reshape(padded.shape[0] // k, k, padded.shape[1] // k, k)
-        # Uniform block <=> "any pixel set" agrees with "all pixels set".
-        if np.array_equal(blocks.any(axis=(1, 3)), blocks.all(axis=(1, 3))):
+        if _blocks_uniform(rows, k):
             best = k
     return best
 
 
-def normalize_scale(mask: np.ndarray) -> np.ndarray:
+def _blocks_uniform(rows: list[int], k: int) -> bool:
+    """Whether every ``k`` x ``k`` block of ``rows`` is all ink or all blank.
+
+    Each group of ``k`` rows is collapsed to "any pixel set in this column"
+    and "every pixel set in this column" with two row-wide bitwise ops, after
+    which a block is uniform exactly when those two agree across it -- so a
+    non-uniform block is found without ever looking at an individual pixel.
+    """
+    for y0 in range(0, len(rows), k):
+        group = rows[y0 : y0 + k]
+        any_set = 0
+        all_set = -1
+        for row in group:
+            any_set |= row
+            all_set &= row
+        if len(group) < k:
+            # A partial group at the bottom edge cannot be a full block, so
+            # nothing in it may be ink.
+            if any_set:
+                return False
+            continue
+        block = (1 << k) - 1
+        while any_set or all_set:
+            if (any_set & block) and (all_set & block) != block:
+                return False
+            any_set >>= k
+            all_set >>= k
+    return True
+
+
+def normalize_scale(mask: Mask) -> Mask:
     """Downscale ``mask`` to 1px-wide strokes if it was rendered larger.
 
     Detects the drawing's stroke width (:func:`detect_scale`) and, if greater
@@ -224,12 +221,13 @@ def normalize_scale(mask: np.ndarray) -> np.ndarray:
     # Every block is uniform -- detect_scale returned this scale precisely
     # because they all are -- so which pixel within the block is taken does not
     # matter, only that the sample lands inside one.
-    ys, xs = np.nonzero(mask)
-    off_y, off_x = int(ys.min()) % scale, int(xs.min()) % scale
-    return mask[off_y::scale, off_x::scale]
+    bounds = mask.bounds()
+    assert bounds is not None  # detect_scale returned > 1, so there is ink
+    top, left, _, _ = bounds
+    return mask.subsample(scale, top % scale, left % scale)
 
 
-def _ink_neighbor_count(mask: np.ndarray, y: int, x: int) -> int:
+def _ink_neighbor_count(mask: Mask, y: int, x: int) -> int:
     """How many of (y, x)'s 8 neighbors are ink.
 
     A 1px-wide stroke's interior pixels -- including an ordinary corner,
@@ -248,26 +246,7 @@ def _ink_neighbor_count(mask: np.ndarray, y: int, x: int) -> int:
     return count
 
 
-def _erode(mask: np.ndarray) -> np.ndarray:
-    """Binary 3x3 erosion: keep only ink whose whole 8-neighborhood is ink.
-
-    Equivalently, on a boolean mask, exactly ``distance_transform_edt(mask) >
-    sqrt(2)`` -- a pixel with any non-ink 8-neighbor is at Euclidean distance
-    at most sqrt(2) from background, and one without is strictly farther.
-    That is what makes this an exact stand-in for the thresholded distance
-    transform :func:`find_cursor` used to take from scipy.
-    """
-    h, w = mask.shape
-    padded = np.zeros((h + 2, w + 2), dtype=bool)
-    padded[1:-1, 1:-1] = mask
-    out = np.ones((h, w), dtype=bool)
-    for dy in range(3):
-        for dx in range(3):
-            out &= padded[dy : dy + h, dx : dx + w]
-    return out
-
-
-def _largest_thick_region(thick: np.ndarray) -> np.ndarray:
+def _largest_thick_region(thick: Mask) -> Mask:
     """Find the biggest 8-connected component of ``thick``, as a mask.
 
     Replaces ``ndimage.label`` plus an argmax over ``ndimage.sum``: only the
@@ -275,13 +254,13 @@ def _largest_thick_region(thick: np.ndarray) -> np.ndarray:
     one at a time and only the best-so-far is kept.
     """
     h, w = thick.shape
-    seen = np.zeros((h, w), dtype=bool)
+    seen = Mask(h, w)
     best: list[tuple[int, int]] = []
-    for sy, sx in zip(*np.nonzero(thick), strict=True):
+    for sy, sx in thick.nonzero():
         if seen[sy, sx]:
             continue
         component = []
-        frontier = [(int(sy), int(sx))]
+        frontier = [(sy, sx)]
         seen[sy, sx] = True
         while frontier:
             y, x = frontier.pop()
@@ -299,7 +278,7 @@ def _largest_thick_region(thick: np.ndarray) -> np.ndarray:
                         frontier.append((ny, nx))
         if len(component) > len(best):
             best = component
-    core = np.zeros((h, w), dtype=bool)
+    core = Mask(h, w)
     for y, x in best:
         core[y, x] = True
     return core
@@ -311,7 +290,7 @@ class Cursor:
 
     y: float
     x: float
-    blob: np.ndarray  # boolean mask, same shape as the source image
+    blob: Mask  # boolean mask, same shape as the source image
 
 
 # A pixel is "blob-like" (part of the arrowhead's body, not a 1px-wide path
@@ -336,15 +315,16 @@ _BLOB_NEIGHBOR_MIN = 3
 _FILL_RATIO_RANGE = (0.25, 0.75)
 
 
-def _fill_ratio(blob: np.ndarray) -> float:
+def _fill_ratio(blob: Mask) -> float:
     """Fraction of ``blob``'s own bounding box that is filled."""
-    ys, xs = np.nonzero(blob)
-    height = int(ys.max() - ys.min()) + 1
-    width = int(xs.max() - xs.min()) + 1
-    return float(blob.sum()) / (height * width)
+    bounds = blob.bounds()
+    if bounds is None:
+        return 0.0
+    top, left, bottom, right = bounds
+    return blob.sum() / ((bottom - top + 1) * (right - left + 1))
 
 
-def find_cursor(mask: np.ndarray) -> Cursor:
+def find_cursor(mask: Mask) -> Cursor:
     """Isolate the whole arrowhead shape via erosion + growth.
 
     The arrowhead is the only solid (multi-pixel-thick) region in a
@@ -381,15 +361,16 @@ def find_cursor(mask: np.ndarray) -> Cursor:
     (see :data:`_FILL_RATIO_RANGE`), so that case raises instead of
     returning a silently wrong cursor.
     """
-    thick = _erode(mask)
+    thick = mask.erode()
     if not thick.any():
         raise ValueError("no cursor (thick/filled region) found in image")
     core = _largest_thick_region(thick)
-    core_ys, core_xs = np.nonzero(core)
-    cy, cx = float(core_ys.mean()), float(core_xs.mean())
+    core_pixels = list(core.nonzero())
+    cy = sum(y for y, _ in core_pixels) / len(core_pixels)
+    cx = sum(x for _, x in core_pixels) / len(core_pixels)
 
     h, w = mask.shape
-    visited = {(int(y), int(x)) for y, x in zip(*np.nonzero(core), strict=True)}
+    visited = set(core.nonzero())
     frontier = list(visited)
     while frontier:
         y, x = frontier.pop()
@@ -409,7 +390,7 @@ def find_cursor(mask: np.ndarray) -> Cursor:
                     visited.add((ny, nx))
                     frontier.append((ny, nx))
 
-    blob = np.zeros_like(mask)
+    blob = Mask(h, w)
     for y, x in visited:
         blob[y, x] = True
 
@@ -440,7 +421,7 @@ Stroke = lattice.Stroke
 Vertex = lattice.Vertex
 
 
-def extract_tree(mask: np.ndarray, cursor: Cursor, start_heading: int = 0) -> Stroke:
+def extract_tree(mask: Mask, cursor: Cursor, start_heading: int = 0) -> Stroke:
     """Walk a Line image's full path tree from the cursor.
 
     ``start_heading`` is a direction index into ``_DIRS`` (default 0 = N,
@@ -450,12 +431,14 @@ def extract_tree(mask: np.ndarray, cursor: Cursor, start_heading: int = 0) -> St
     replaced this module's own region-adjacency one.
     """
     stripped = mask & ~cursor.blob
-    ys, xs = np.nonzero(stripped)
-    if ys.size == 0:
+    nearest = min(
+        stripped.nonzero(),
+        key=lambda p: (p[0] - cursor.y) ** 2 + (p[1] - cursor.x) ** 2,
+        default=None,
+    )
+    if nearest is None:
         raise ValueError("no path pixels found outside the cursor blob")
-    dists = (ys - cursor.y) ** 2 + (xs - cursor.x) ** 2
-    start = (int(ys[np.argmin(dists)]), int(xs[np.argmin(dists)]))
-    start = lattice.find_start(stripped, *start, start_heading)
+    start = lattice.find_start(stripped, *nearest, start_heading)
     return lattice.walk_tree(stripped, start, start_heading)
 
 
@@ -764,7 +747,7 @@ def count_pivots(stroke: Stroke) -> int:
     return count
 
 
-def _redraw(vertex_lists: list[list[Vertex]], mask: np.ndarray) -> np.ndarray:
+def _redraw(vertex_lists: list[list[Vertex]], mask: Mask) -> Mask:
     """Draw every walked vertex-to-vertex leg's real ink onto a blank canvas.
 
     A leg is redrawn by re-walking ``mask`` pixel by pixel from its start
@@ -782,7 +765,7 @@ def _redraw(vertex_lists: list[list[Vertex]], mask: np.ndarray) -> np.ndarray:
     the true corner is real ink either way, even on the rare step its own
     heading's pixel walk does not reach it.
     """
-    canvas = np.zeros(mask.shape, dtype=bool)
+    canvas = Mask(*mask.shape)
     for vertices in vertex_lists:
         for i in range(len(vertices) - 1):
             v0, v1 = vertices[i], vertices[i + 1]
@@ -809,7 +792,7 @@ def _redraw(vertex_lists: list[list[Vertex]], mask: np.ndarray) -> np.ndarray:
 _ARROWHEAD_TIP_GAP = 2
 
 
-def coverage_gap(mask: np.ndarray, cursor: Cursor, stroke: Stroke) -> int:
+def coverage_gap(mask: Mask, cursor: Cursor, stroke: Stroke) -> int:
     """How many source-image ink pixels ``stroke`` leaves unaccounted for.
 
     Redraws ``stroke``'s walked legs (:func:`_redraw`) and XORs against the
@@ -829,7 +812,7 @@ def coverage_gap(mask: np.ndarray, cursor: Cursor, stroke: Stroke) -> int:
     vertex_lists = flatten(stroke)
     redrawn = _redraw(vertex_lists, mask)
     reference = mask & ~cursor.blob
-    return int((redrawn ^ reference).sum())
+    return (redrawn ^ reference).sum()
 
 
 def extract(path: str) -> Stroke:

@@ -24,10 +24,13 @@ exercises `render.py`'s loop-drawing geometry (`_layout`/
 distinction matters. `test_png.py` covers `png.py`, the stdlib PNG codec
 that replaced Pillow: the checked-in fixtures against the values Pillow
 decoded them to, round-trips, every row filter, the sub-byte depths, and
-the rejections. Run any of them with `uv run --with numpy --with
-pytest --with pytest-xdist pytest test_simulate.py` (or
+the rejections; `test_mask.py` covers `mask.py`'s row-bitmask image type,
+concentrating on the two things that representation makes easy to get
+wrong -- unbounded Python ints leaking bits past the canvas width, and the
+edge cases in the bit-twiddling shortcuts. Run any of them with `uv run --with pytest
+--with pytest-xdist pytest test_simulate.py` (or
 `test_line_boolean.py`, or
-`test_bf_to_line.py`) from this directory -- the modules import each other
+`test_bf_to_line.py`, `test_png.py`, `test_mask.py`) from this directory -- the modules import each other
 as flat top-level names, so this directory has to be on `sys.path`. None is
 under the repo root's `tests/` `testpaths`, so a bare `pytest` from the repo
 root will not find them; CI runs all three via the `line` job in
@@ -113,9 +116,11 @@ round-trip check for `extract()` alone.
     solid-square false positive. Does *not* resolve genuine ambiguity
     between two equally arrowhead-shaped candidates -- still picks the
     larger by design.
-  - Huge blank borders: `crop_to_content`'s quadtree search stays fast
-    independent of canvas size (confirmed ~9x faster than a plain
-    `np.nonzero` scan on a sparse ~4600x4600 canvas).
+  - Huge blank borders: `crop_to_content` stays fast independent of canvas
+    size. This used to need a quadtree search to beat `np.nonzero`'s
+    whole-canvas scan; with row bitmasks (`mask.py`) the bounding box is a
+    couple of bit operations per non-empty row, so the quadtree is gone and
+    a sparse ~4600x4600 canvas measures 0.2ms.
   - Oversized/upscaled drawings: `normalize_scale` detects and corrects
     for a drawing rendered at 2x-4x its native 1px stroke width (confirmed
     on both fixtures at each scale) -- the pipeline fails outright without
@@ -716,11 +721,11 @@ round-trip check for `extract()` alone.
   `run(code, io)` convention every other language in `src/esolangs/` uses.
   Stays a standalone `extra/` tool.
 
-- Dependency footprint: 1 undeclared dep (numpy), informal by design
-  matching how `extra/` keeps other subtrees' toolchains out of
-  `pyproject.toml`. Down from 4 -- Pillow, scipy and scikit-image are all
-  gone, each because the call turned out not to need the library's actual
-  algorithm rather than because it was laboriously reimplemented:
+- Dependency footprint: **none**. Down from 4 undeclared deps (Pillow,
+  numpy, scipy, scikit-image); the whole subtree now runs on a bare Python
+  interpreter, and CI installs only `pytest` to run the suites with. Each
+  library went for the same reason -- the call did not need the library's
+  actual algorithm -- rather than because it was laboriously reimplemented:
 
   - `find_cursor` only ever *thresholded* `distance_transform_edt` at 1.5,
     and `> sqrt(2)` on a boolean mask is exactly a 3x3 erosion. This was
@@ -732,10 +737,20 @@ round-trip check for `extract()` alone.
     and PNG is length-tagged chunks over zlib, both in the stdlib. `png.py`
     reads and writes them in ~200 lines; `render.py` gained a `Canvas`
     with the two primitives it needs (Bresenham polyline, scanline fill).
+  - numpy was the one expected to have a real cost: the masks reach 9Mpx,
+    and per-pixel Python loops over that are minutes. The fix was to stop
+    storing pixels individually. `mask.py` holds one Python int per row and
+    lets CPython's bigints do whole-row bitwise work, which is *faster*
+    than the numpy it replaced on the operations that matter: on a
+    3600x2600 canvas, erode 0.001s vs 0.01s and the scale scan 0.001s vs
+    0.37s, with single-pixel reads a wash. It also retired
+    `crop_to_content`'s quadtree, which existed only to work around
+    `np.nonzero`'s whole-canvas scan.
 
   Every step was gated on execution, not reasoning: bit-identical `thick`
-  masks, extraction trees unchanged across all five fixtures, `png.py`
-  matching Pillow byte-for-byte in both directions, and the rasterizer's
+  masks, extraction trees unchanged across all five fixtures (structurally,
+  after the crop change noted below), `png.py` matching Pillow
+  byte-for-byte in both directions, and the rasterizer's
   strokes pixel-identical to Pillow's (the arrowhead differs by ~8 interior
   pixels, which moved the measured fill ratio from 0.41-0.55 to 0.46-0.61,
   still well inside `_FILL_RATIO_RANGE`). The full reasoning is in a
@@ -744,6 +759,13 @@ round-trip check for `extract()` alone.
   Two deliberate narrowings: only PNG is readable now (Pillow's other
   formats were never used), and only non-interlaced greyscale/palette PNGs
   at 1/2/4/8 bits -- anything else raises rather than guessing.
+
+  One visible change: `crop_to_content` now returns an exact bounding box
+  where the quadtree returned one padded out to 64px leaf boundaries, so
+  extracted coordinates sit closer to the origin. Extracted *programs* are
+  unchanged -- same tree shape, same opcodes, same geometry relative to the
+  drawing, verified on all five fixtures -- and nothing downstream reads an
+  absolute position.
 
 ## Resolved
 

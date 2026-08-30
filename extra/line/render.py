@@ -40,7 +40,6 @@ import itertools
 import sys
 from dataclasses import dataclass, field
 
-import numpy as np
 import png
 
 # One grid unit in output pixels.  The wiki's own images use roughly this
@@ -845,9 +844,10 @@ class Canvas:
     """An 8-bit greyscale raster with the two drawing primitives Line needs.
 
     Line drawings are 1px strokes plus one small filled triangle, so this is
-    Bresenham and a scanline fill over a numpy array rather than anything
-    general.  What matters is not matching a particular graphics library
-    pixel-for-pixel but that :mod:`extract` can read the result back: strokes
+    Bresenham and a scanline fill over one ``bytearray`` per row -- the
+    shape :mod:`png` writes directly -- rather than anything general.  What
+    matters is not matching a particular graphics library pixel-for-pixel
+    but that :mod:`extract` can read the result back: strokes
     stay exactly 1px wide (:func:`extract.detect_scale` infers the drawing's
     scale from that), and the arrowhead stays the only region thick enough to
     survive an erosion, with a fill ratio inside
@@ -856,7 +856,9 @@ class Canvas:
 
     def __init__(self, width: int, height: int, colour: int = 255) -> None:
         """Create a ``width`` x ``height`` canvas filled with ``colour``."""
-        self.pixels = np.full((height, width), colour, dtype=np.uint8)
+        self.width = width
+        self.height = height
+        self.pixels = [bytearray([colour]) * width for _ in range(height)]
 
     def line(self, points: list[tuple[float, float]], colour: int = 0) -> None:
         """Stroke a 1px-wide polyline through ``points`` given as ``(x, y)``."""
@@ -865,14 +867,14 @@ class Canvas:
 
     def _segment(self, x0: int, y0: int, x1: int, y1: int, colour: int) -> None:
         """Bresenham's line algorithm, plotting one pixel per step."""
-        height, width = self.pixels.shape
+        height, width = self.height, self.width
         dx, dy = abs(x1 - x0), -abs(y1 - y0)
         step_x = 1 if x0 < x1 else -1
         step_y = 1 if y0 < y1 else -1
         error = dx + dy
         while True:
             if 0 <= y0 < height and 0 <= x0 < width:
-                self.pixels[y0, x0] = colour
+                self.pixels[y0][x0] = colour
             if x0 == x1 and y0 == y1:
                 return
             doubled = 2 * error
@@ -891,7 +893,7 @@ class Canvas:
         outline is stroked too, so a triangle thinner than a pixel in places
         still comes out connected rather than dotted.
         """
-        height, width = self.pixels.shape
+        height, width = self.height, self.width
         ys = [y for _, y in points]
         for row in range(max(0, int(min(ys))), min(height, int(max(ys)) + 2)):
             centre = row + 0.5
@@ -903,7 +905,8 @@ class Canvas:
             for left, right in zip(crossings[::2], crossings[1::2], strict=False):
                 start = max(0, round(left))
                 stop = min(width, round(right) + 1)
-                self.pixels[row, start:stop] = colour
+                if stop > start:
+                    self.pixels[row][start:stop] = bytes([colour]) * (stop - start)
         self.line([*points, points[0]], colour)
 
     def save(self, path: str) -> None:
