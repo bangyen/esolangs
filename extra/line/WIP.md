@@ -21,14 +21,23 @@ decision trees end-to-end (render -> extract -> simulate) for n = 1-3 plus
 `bf_to_line.py` through the same full pipeline, and is the only suite that
 exercises `render.py`'s loop-drawing geometry (`_layout`/
 `_loop_return_legs`) at all -- see the nested-loop entry below for why that
-distinction matters. Run any of them with `uv run --with pillow --with
-numpy --with scipy --with scikit-image --with pytest --with pytest-xdist
-pytest test_simulate.py` (or `test_line_boolean.py`, or
-`test_bf_to_line.py`) from this directory -- the modules import each other
-as flat top-level names, so this directory has to be on `sys.path`. None is
-under the repo root's `tests/` `testpaths`, so a bare `pytest` from the repo
-root will not find them; CI runs all three via the `line` job in
-`.github/workflows/ci.yml`. `verify.py` remains the separate, narrower
+distinction matters. `test_png.py` covers `png.py`, the stdlib PNG codec
+that replaced Pillow: the checked-in fixtures against the values Pillow
+decoded them to, round-trips, every row filter, bit depths through 16,
+interlacing, the colour types, and the rejections; `test_mask.py` covers
+`mask.py`'s row-bitmask image type, concentrating on the two things that
+representation makes easy to get wrong -- unbounded Python ints leaking
+bits past the canvas width, and the edge cases in the bit-twiddling
+shortcuts. Run any of them with `uv run --with pytest --with pytest-xdist
+pytest test_simulate.py` (or `test_line_boolean.py`, `test_bf_to_line.py`,
+`test_png.py`, `test_mask.py`) from this directory. They are also under the
+repo root's `testpaths`, so a bare `pytest` from the root collects them
+along with everything else -- the modules import each other as flat
+top-level names, which resolves either way because pytest puts a test
+file's own directory on `sys.path`. CI additionally runs them via the
+`line` job under `--isolated --no-project`, which installs only pytest and
+is therefore the standing proof that this subtree has no third-party
+dependencies; the in-project run cannot show that. `verify.py` remains the separate, narrower
 round-trip check for `extract()` alone.
 
 ## Settled and tested
@@ -105,14 +114,49 @@ round-trip check for `extract()` alone.
     cliff at quality 32 and below (block quantization erases pixels
     directly out of a 1px stroke) is now caught by `extract()`'s coverage
     check rather than failing silently.
+
+    **That cliff belongs to the 1px stroke, not to the format**, which was
+    only established later. Rendering the same program thicker moves it a
+    long way down, because a blurred 3px stroke is still a stroke where a
+    blurred 1px stroke is a gap. Measured end to end (JPEG at each quality,
+    then the full extract pipeline, checking the recovered opcodes):
+
+    ===  ==========  ==========  ==========
+     k   stroke      correct to  destroyed
+    ===  ==========  ==========  ==========
+     1x   1px         q34         q28
+     2x   2px         q15         q10
+     3x   3px         q15         q10
+     4x   4px         q10         --
+    ===  ==========  ==========  ==========
+
+    At 2x and above the accepted cases reconstruct *exactly* -- coverage
+    gap 0, not merely under threshold -- so this is real redundancy rather
+    than tolerated damage. `render(scale=k)` exists for this; see its docstring.
+
+    Two things this measurement settled. First, **the coverage check is
+    correctly calibrated and should not be loosened**: every failure above
+    is a genuine one, with gaps of 57/58/290 pixels against a threshold of
+    2, and the program that would have come back had it been permissive is
+    wrong (a trailing `+` silently missing), not merely degraded. There is
+    no marginal band where leniency would recover anything -- gaps are 0 or
+    they are enormous. Second, redundancy at write time strictly beats
+    leniency at read time, because it preserves the signal instead of
+    guessing at it.
+
+    The 2x/q10 case fails in `find_cursor` rather than coverage: enough
+    blur that the arrowhead stops passing the fill-ratio check. Also a
+    correct refusal, just an earlier one.
   - Cursor misidentification: `find_cursor` rejects a winning candidate
     that isn't arrowhead-shaped (fill-ratio bracket), confirmed against a
     solid-square false positive. Does *not* resolve genuine ambiguity
     between two equally arrowhead-shaped candidates -- still picks the
     larger by design.
-  - Huge blank borders: `crop_to_content`'s quadtree search stays fast
-    independent of canvas size (confirmed ~9x faster than a plain
-    `np.nonzero` scan on a sparse ~4600x4600 canvas).
+  - Huge blank borders: `crop_to_content` stays fast independent of canvas
+    size. This used to need a quadtree search to beat `np.nonzero`'s
+    whole-canvas scan; with row bitmasks (`mask.py`) the bounding box is a
+    couple of bit operations per non-empty row, so the quadtree is gone and
+    a sparse ~4600x4600 canvas measures 0.2ms.
   - Oversized/upscaled drawings: `normalize_scale` detects and corrects
     for a drawing rendered at 2x-4x its native 1px stroke width (confirmed
     on both fixtures at each scale) -- the pipeline fails outright without
@@ -713,12 +757,101 @@ round-trip check for `extract()` alone.
   `run(code, io)` convention every other language in `src/esolangs/` uses.
   Stays a standalone `extra/` tool.
 
-- Dependency footprint: 4 undeclared deps (Pillow, numpy, scipy,
-  scikit-image), informal by design matching how `extra/` keeps other
-  subtrees' toolchains out of `pyproject.toml`. A ranked, tested plan for
-  which would be easiest to replace with hand-rolled numpy is recorded as
-  a comment block in `extract.py` just above the imports, if this is ever
-  worth revisiting.
+- Dependency footprint: **none**. Down from 4 undeclared deps (Pillow,
+  numpy, scipy, scikit-image); the whole subtree now runs on a bare Python
+  interpreter, and CI installs only `pytest` to run the suites with. Each
+  library went for the same reason -- the call did not need the library's
+  actual algorithm -- rather than because it was laboriously reimplemented:
+
+  - `find_cursor` only ever *thresholded* `distance_transform_edt` at 1.5,
+    and `> sqrt(2)` on a boolean mask is exactly a 3x3 erosion. This was
+    the piece an earlier note here called the hard one to replace.
+  - `detect_scale` only wanted the integer upscale factor, which is a
+    direct block-uniformity test rather than skeletonize's ~5% ink-length
+    ratio -- exact where the old one was approximate.
+  - Pillow was only ever decoding PNGs this repo wrote or the fixtures,
+    and PNG is length-tagged chunks over zlib, both in the stdlib. `png.py`
+    reads and writes them in ~200 lines; `render.py` gained a `Canvas`
+    with the two primitives it needs (Bresenham polyline, scanline fill).
+  - numpy was the one expected to have a real cost: the masks reach 9Mpx,
+    and per-pixel Python loops over that are minutes. The fix was to stop
+    storing pixels individually. `mask.py` holds one Python int per row and
+    lets CPython's bigints do whole-row bitwise work, which is *faster*
+    than the numpy it replaced on the operations that matter: on a
+    3600x2600 canvas, erode 0.001s vs 0.01s and the scale scan 0.001s vs
+    0.37s, with single-pixel reads a wash. It also retired
+    `crop_to_content`'s quadtree, which existed only to work around
+    `np.nonzero`'s whole-canvas scan.
+
+  Every step was gated on execution, not reasoning: bit-identical `thick`
+  masks, extraction trees unchanged across all five fixtures (structurally,
+  after the crop change noted below), `png.py` matching Pillow
+  byte-for-byte in both directions, and the rasterizer's
+  strokes pixel-identical to Pillow's (the arrowhead differs by ~8 interior
+  pixels, which moved the measured fill ratio from 0.41-0.55 to 0.46-0.61,
+  still well inside `_FILL_RATIO_RANGE`). The full reasoning is in a
+  comment block in `extract.py` just above the imports.
+
+  **What an end user can observe**, since "no dependencies" is not the same
+  as "no change":
+
+  - **Only PNG is readable.** JPEG, BMP, GIF and TIFF went with Pillow.
+    JPEG is the only one that was ever exercised, and it was exercised as a
+    hazard rather than a feature -- see the recompression entry above.
+  - Every *PNG* is readable: all five colour types, all bit depths
+    1-16, interlaced or not, verified against a Pillow oracle across 120
+    combinations of colour type x depth x interlacing x image size. The one
+    deliberate departure is 16-bit greyscale, where Pillow's `I;16 -> L`
+    *clips* at 255 (blanking any drawing whose ink exceeds 255) and `png.py`
+    scales instead.
+  - **JPEG is not readable**, and that is now a decision rather than an
+    accident. A baseline decoder was written (~300 lines: marker parsing,
+    canonical Huffman, dequantization, inverse DCT, YCbCr reduction,
+    restart markers) and verified against a Pillow oracle across qualities
+    10-95, all three subsampling modes, odd sizes with partial MCUs, and
+    both colour models -- greyscale agreed within one level everywhere, and
+    the wiki addition drawing computed 12+30=42 from a JPEG. It was then
+    **removed deliberately**, because it supported only *baseline* JPEG:
+    progressive files, which are common on the web, would have needed
+    another ~100-130 lines and a restructuring (coefficients accumulate
+    across scans by frequency band and bit plane, so a single IDCT runs at
+    the end rather than per block as they decode). 300 lines for partial
+    support was the least defensible of the three positions available --
+    all of it, none of it, or an awkward middle whose contract is hard to
+    state. `render(scale=)` addresses the underlying need in 20 lines by
+    making drawings survive a lossy round trip regardless of who decodes
+    them. A JPEG now raises a message naming the format and the fix.
+
+    Two findings from that work are worth keeping, since both cost real
+    time to reach:
+
+    - **Measure what the decoder consumes, do not re-read its code.**
+      Restart markers appeared deeply broken (correct for ~180 MCUs, then
+      noise). Three probes inspecting the marker logic found nothing,
+      because the marker logic was right. Checking whether the decoder
+      consumed *exactly* the scan data settled it in one step: it did (+0
+      bytes over-read), which cleared the entropy loop entirely and left
+      only the skipping path, where the failing boundary was immediately
+      visible as `ff00ff`. The bug was two lines -- a stuffed `FF 00`
+      before a restart marker must be stepped over as a pair -- and it
+      fired at exactly 1 of 360 boundaries.
+    - **An oracle can be wrong before the code is.** Colour JPEG looked
+      broken at a 36-level difference. The cause was the reference:
+      Pillow's `convert("L")` on a colour JPEG is *not* the Y plane, it
+      converts YCbCr to RGB (with clipping) and then applies luma weights.
+      Matching that path dropped the difference to 1. A correct decoder was
+      nearly "fixed" against a bad reference.
+
+  - **Extracted coordinates shifted** toward the origin -- the exact
+    bounding box replacing the quadtree's 64px-padded one. Tree shape,
+    opcodes and relative geometry are identical; only absolute positions
+    moved, and nothing downstream reads them.
+  - **Rendered PNG bytes differ.** Same dimensions and same ink count, but
+    8 pixels differ (all inside the arrowhead, from the scanline fill
+    replacing Pillow's polygon) and files are smaller for carrying no
+    ancillary chunks -- 301 vs 363 bytes for `+++`. The output is still a
+    valid PNG that `file(1)`, `sips` and Pillow all read correctly. Anything
+    byte-comparing rendered output against a stored copy would notice.
 
 ## Resolved
 

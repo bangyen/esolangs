@@ -11,13 +11,11 @@ description = "A comprehensive collection of esoteric programming language inter
 authors = [{name = "Bangyen Pham", email = "bangyenp@gmail.com"}]
 license = "GPL-3.0-or-later"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Interpreters",
@@ -43,11 +41,9 @@ dev = [
     "pre-commit>=3.0.0",
     "types-requests",
     "types-setuptools",
-    # Pinned: mutmut >=3.4 builds the trampoline qualname with
-    # mangled_name_from_mutant_name(), which strips the class part, so
-    # class-method mutants can never be selected and are silently reported
-    # as killed.  3.3.1 uses orig.__name__ and works.  See scripts/mutate_one.py.
-    "mutmut==3.3.1",
+    # Was pinned to 3.3.1 against a class-method selection bug; 3.7.0 does not
+    # have it, and fixes one of its own.  See scripts/mutate_one.py.
+    "mutmut==3.7.0",
 ]
 
 [project.urls]
@@ -67,7 +63,7 @@ exclude = ["tests*", "examples*", "docs*"]
 esolangs = ["py.typed"]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py312"
 line-length = 88
 
 [tool.ruff.lint]
@@ -117,7 +113,7 @@ ignore = [
 
 [tool.mypy]
 strict = true
-python_version = "3.10"
+python_version = "3.12"
 # scripts/ is CI infrastructure (the differential, unicorn, and installer
 # checks), so it is type-checked alongside the package itself.
 files = ["src", "scripts"]
@@ -156,7 +152,14 @@ module = ["riscv_elf_runner"]
 disallow_untyped_calls = false
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+# extra/line is collected alongside tests/ even though it is not a package:
+# its modules import each other as flat top-level names, which resolves
+# because pytest prepends a rootdir-less test file's own directory to
+# sys.path.  That does mean names like `png` and `mask` become importable
+# package-wide during a test session, so a third-party module of either name
+# would shadow -- neither is currently a dependency, and `src/` imports
+# nothing by those names.
+testpaths = ["tests", "extra/line"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
@@ -165,12 +168,12 @@ addopts = [
     "--strict-config",
     "--verbose",
     "--tb=short",
-    # Run in parallel, but leave cores free: "auto" claims every CPU and
-    # starves the rest of the machine.  4 workers keeps most of the speedup
-    # (pytest-cov still combines worker data into a single .coverage).
-    # Override per-run with "-n auto" or "-n 0" on the command line.
+    # Two workers.  Measured on the fast run ("-m 'not slow'"), the first two
+    # workers do nearly all the work -- 94s serial, 50.7s at 2, 45.8s at 4 --
+    # so the third and fourth buy 5s while claiming twice the machine.
+    # Override per-run with "-n 4", "-n auto", or "-n 0" on the command line.
     "-n",
-    "4",
+    "2",
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",

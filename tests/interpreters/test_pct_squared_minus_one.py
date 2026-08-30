@@ -76,6 +76,21 @@ class TestPct:
         # an uppercase T is not the rewind command, so it changes nothing
         assert run_program("iTl") == "-3"
 
+    def test_rewind_sends_the_cursor_back_to_the_start(self) -> None:
+        """``t`` restarts the program while the accumulator is nonzero.
+
+        The suite covers the characters that are *not* the rewind -- an
+        uppercase ``T`` above -- but never the one that is, so the branch
+        could stop matching entirely and every program would still finish.
+        Testing it needs a loop that ends: ``t`` rewinds to the start, so
+        the accumulator has to reach zero on its own.  It does, through the
+        cap -- ``s`` then ``p`` makes it positive and ``m`` doubles it
+        until it passes 3003, which the next step resets to 0.  Then ``t``
+        falls through and ``l`` prints the zero.  Without the rewind the
+        run is a single pass and prints 4 instead.
+        """
+        assert run_program("sptml") == "0"
+
     def test_reset_clears_an_accumulated_value(self) -> None:
         """' zeroes a magnitude that is already nonzero.
 

@@ -46,8 +46,13 @@ class TestBFStack:
         assert run_and_capture(">[[-]]") == ""
 
     def test_loop_skip_unmatched(self) -> None:
-        """A skipped [ with no closing ] is a malformed program."""
-        with pytest.raises(ValueError, match="unmatched"):
+        """A skipped [ with no closing ] is a malformed program.
+
+        The message is matched whole rather than by the substring
+        ``unmatched``, which any rewording keeping that one word would
+        still satisfy.
+        """
+        with pytest.raises(ValueError, match=r"^unmatched '\['$"):
             run_and_capture(">[")
 
     def test_output_on_empty_stack_raises(self) -> None:

@@ -4,7 +4,7 @@ What the generators cannot do, and the assessments that concluded an
 approach is not viable (or only partially viable).  Completed work lives in
 the commit history; this file records the walls, the negative results, and
 the reasoning behind them.  Genuine future work is in `docs/roadmap.md`, and
-the criteria for assessing a candidate language are in `CONTRIBUTING.md`.
+the criteria for assessing a candidate language are in `docs/CONTRIBUTING.md`.
 
 The tables below name every blocker at a glance; the full structural
 argument for each is in [`docs/walls.md`](walls.md).
@@ -99,7 +99,7 @@ per-character encoding can be meaningfully shortened:
 | Language | Why it cannot compute a truth table |
 | --- | --- |
 | 123 | The `3`-jump is nearest-match, not bracket-matched, so TRUE always re-runs the segment already executing rather than reaching an independent branch target — and `1` flips the bit under the pointer before moving, so navigating from the post-read position (0) to the write position (-2) corrupts the byte's MSB en route. Only the four one-input functions are reachable via runtime `,` reads (too trivial to keep as a generator); a structured search found no two-input function under either bit-encoding. A parameterized generator (embedding each input at compile time, as WII2D's does) was assessed and is also walled, on a third mechanism: it does clear both mechanisms above and reaches real input-dependent behavior (an AND by emission), but location 0 is both the byte's MSB and the only cell the pointer wrap returns to, so the loop that builds a byte is the one that would have to be stopped to print once, and `3` cannot stop it -- no program over `1`/`2` to length 8 prints exactly `"0"` or `"1"`. Full argument in `docs/walls.md`. |
-| %^2^-1 | Only control flow is `t` (rewind on a nonzero accumulator); a whole-program while loop that cannot count passes. |
+| %^2^-1 | Only control flow is `t` (rewind on a nonzero accumulator); a whole-program while loop that cannot count passes. No program that *reads* its inputs computes any two-input function (proved in Lean), but the shipped boolean generator is parameterized and builds all sixteen: it embeds the bits, composes one affine setter per input into a product-weighted accumulator, and prints with `l`, which spells the accumulator in decimal so `0`/`1` need no branch. The setters are derived from the table (each column's slope is read off it, and the offsets are then solved) rather than searched. Total at `n <= 2`; higher arities are rejected outright rather than risking a wrong program. |
 
 ## Generator caps (shipped)
 
@@ -109,6 +109,7 @@ per-character encoding can be meaningfully shortened:
 | Polynomial | `n <= 4` | Performance cap: exact factorization of huge coefficients is impractical past `n == 4`. |
 | 6-5 | `n <= 5` exact; past that, tables whose folded tree needs more than 35 branch labels are rejected (AND-6 and other well-folding tables *do* render) | Genuine wall: 6-5 has 35 branch labels (`0..9`, `A..Z`), and the decision tree spends one per internal node its constant-subtree fold leaves standing. The fold's worst case is an alternating table, which folds nothing and spends `2**n - 1` — 31 at `n == 5`, so every table renders there; 63 at `n == 6`, so refusals begin. What survives past `n == 5` is tables that fold hard: ~1% of random `n == 6` tables, but structured ones like AND-`n` at any width (they need only `n` labels). The former arithmetic fallback was retired — it needed the table as a single buildable integer, which confines the ones to low indices, which leaves the rest constant, which folds well inside the budget, so it never covered a table the tree could not. |
 | ZTOALC L | `n <= 3` exact; popcount-symmetric tables lifted further (e.g. XOR4 at `n == 4`); dense non-symmetric `n == 4` rejected | Genuine wall: every Collatz trajectory converges to the `16, 8, 4, 2, 1` tail, so a dense non-symmetric tree has leaf collisions past `n == 3`; symmetric tables fall back to a branch-free linear program instead. |
+| Minifuck | `n == 2` complete (all 16 tables, interpreter-verified); `n == 3` partial -- eight of the fourteen orbits, the other six raising after about two minutes | Liftable, and the weakest generator here: it is a *search* over three routes and two embed separators, so the reach is set by its depth caps rather than by an argument, and the n == 3 failures are cap exhaustion rather than unreachability. Structured tables (constants, AND, OR, parity, majority) do build, so hand-picked samples overstate coverage badly. The route a fix would take is a *construction* in wii2d's shape -- see `docs/walls.md` for which piece of it does not yet compose. |
 | WII2D | `n <= 4` exact (exhaustive through three, sampled dense at four); symmetric tables of any arity via closed forms; dense non-symmetric past `n == 5` rejected | Genuine wall: the single-embedding chain's branch op strings are bounded, so the counting bound rules out representing every table once `n` is large; the search raises for dense non-symmetric tables past `n == 5`. |
 | Factor | program-size cap, not `n`-driven: sparse tables (e.g. constant-0/1) stay under the cap at any tested `n`, dense tables (e.g. XOR4, AND4 at `n == 4`) don't | Liftable by host config: the encoded integer's decimal length is checked against `sys.get_int_max_str_digits()` (CPython's int-to-string DoS guard, default 4300 digits) before rendering — the Factor *interpreter* parses its program the same way, so a caller who raises the process-wide limit gets both the generator and the interpreter working past it. |
 
@@ -116,9 +117,12 @@ Removed for being trivial: the boolean generators for Home Row (`n <= 2`) and
 Minifuck (`n <= 3`, 0-preserving two-input only) were dropped — their caps
 left them able to express only a small fraction of the two-input boolean
 functions.  Their languages and text generators remain; see `docs/roadmap.md`.
-Home Row's generator was later rebuilt with a closed-form construction
+Both were later rebuilt.  Home Row's is a closed-form construction
 (binary-pack the inputs into an accumulator, then walk a linear equality
-chain) that has no `n` cap at all — see `docs/walls.md`.
+chain) with no `n` cap at all.  Minifuck's is parameterized: the old cap was
+a property of *reading* the inputs, and embedding them instead lifts it, so
+the generator now builds every two-input table rather than the 0-preserving
+half.  See `docs/walls.md` for both.
 
 The parameterized no-input generators embed every input exactly once rather
 than re-embedding a bit at multiple decision nodes, mirroring how an
@@ -287,6 +291,14 @@ prime-search totality plus the encode/decode round-trip
 equivalence proofs, and the generator correctness proofs) was dropped as
 redundant with the round-trip test suite.
 
+Note the scope of the `%^2^-1` wall, which is the same scope the Minifuck
+statement carries: `Computes` binds one program across all four bit
+combinations and feeds the bits in through `start`'s input list, so the
+theorem is about programs that *read* their inputs.  The shipped generator
+is parameterized and builds every two-input table, so the theorem bounds the
+reading model, not the language, and it needed no change when that generator
+landed.
+
 `BfMintermCorrect.lean` was removed for both reasons at once: its subject,
 the branch-free `_bf_minterm` construction, was itself deleted when folding
 made it unreachable (`brainfuck` is now just `bf_tree`), and the file had
@@ -299,4 +311,7 @@ The one open theorem, if more Lean work is ever wanted, is the Minifuck
 boolean reachability characterization: a language-power statement (exactly
 the four one-input functions plus the eight 0-preserving two-input tables),
 not a generator-correctness proof -- the same shape as the `%^2^-1` wall,
-which is the worked precedent for it.
+which is the worked precedent for it.  Note the scope: that statement is
+about programs that *read* their inputs.  The shipped generator is
+parameterized and builds every two-input table, so the theorem bounds the
+reading model, not the language.

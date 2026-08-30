@@ -186,7 +186,9 @@ class TestKolakoski:
         halts, so scheduling decides whether it lands before or after the
         east branch's first bit).  The repeating ``100110011001`` tail is
         identical under every policy tried, and also under every combination
-        of the two contested semantic rules (see the roadmap entry), so it
+        of the two contested semantic rules (1 turns left/right x empty
+        prints nothing/is zero; only the shipped combination passes the
+        truth machine and the cat at all), so it
         is neither an interleaving nor a routing artifact.
 
         The east pointer in fact emits one bit and halts eleven nodes in:

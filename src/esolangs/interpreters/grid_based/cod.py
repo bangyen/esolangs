@@ -18,10 +18,17 @@ them:
   edge) reads a number from stdin into the cod's value; elsewhere it is
   ignored (water).
 
-The wiki's own truth-machine example uses a single ``.`` for input rather
-than ``...``, which is not itself a documented command; this interpreter
-follows the prose spec (a genuine three-in-a-row, edge-touching run) rather
-than that example, so the sample program does not read input as written.
+The wiki's own truth-machine example does contain a valid ``...``: column 2,
+rows 0-2, touching the top edge, which :func:`_edge_dot_cells` accepts.  (The
+dots in the neighbouring columns do not break it -- the spec's "without any
+waves or other characters in between" constrains the run along its own
+column.)
+
+Each of the three dot cells is its own read, so the read count depends on how
+a cod meets the run: crossing horizontally enters one cell and reads once,
+while turning *into* the column reads three times for what the spec calls a
+single command.  A generator wanting one read per input must cross
+horizontally.
 
 A cod continues straight when its forward cell is open.  When forward is
 blocked, it considers every other open cell except the one it just left: one

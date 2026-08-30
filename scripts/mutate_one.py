@@ -27,12 +27,28 @@ Usage:
     python scripts/mutate_one.py Qoibl
     python scripts/mutate_one.py Grapheme --keep   # leave the work dir
 
-Requires: mutmut==3.3.1.  Newer versions build the trampoline qualname with
-mangled_name_from_mutant_name(), which strips the class part, so class-method
-mutants can never be selected and are silently reported as killed.
+Requires: mutmut==3.7.0.  It was pinned to 3.3.1 for a long stretch, against
+a bug where the trampoline built its qualname with
+mangled_name_from_mutant_name(), stripping the class part so that
+class-method mutants could never be selected and were silently reported as
+killed.  3.7.0 does not have it: it carries the class through the mangled
+name itself (``mangle_function_name`` joins it with a ``CLASS_NAME_SEPARATOR``
+and ``orig_function_and_class_names_from_key`` reads it back), and a run over
+Minifuck selects and reports all four of its surviving ``_Machine`` mutants,
+which the bug would have hidden.
+
+3.7.0 also drops a class of mutant 3.3.1 emitted: bodies textually identical
+to the original.  Bitdeque had one, and it read as a survivor -- no test can
+kill code that changes nothing -- so 3.3.1 scored it 83/84 where 3.7.0 scores
+the same suite 83/83.  The higher number is the true one.
+
+Note when comparing against older notes: mutants are numbered per function in
+generation order, so an ID like ``__init____mutmut_15`` does not refer to the
+same edit across the two versions.
 """
 
 import argparse
+import ast
 import json
 import os
 import re
@@ -40,6 +56,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -49,7 +66,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 # Tests that reach past the interpreter -- into the VM or the registry --
 # cannot run against a bundle, which inlines neither.  They are dropped from
 # the copied test file, so the score is over the tests that can run.
-_UNBUNDLED = ("esolangs.vm", "esolangs.registry")
+#
+# ``esolangs.run(`` is the same reach by another spelling: it dispatches
+# through the registry, so it runs the *installed* interpreter rather than
+# the bundle.  A bare ``import esolangs`` is not an import the rewrite can
+# repoint, so these calls were left pointing at the real package -- which
+# only shows when a test asserts the exception it raises.  Point Break's
+# error suite does, and failed its baseline outright, taking the whole
+# language's score with it.
+_UNBUNDLED = ("esolangs.vm", "esolangs.registry", "esolangs.run(")
 
 # Packages the bundle does not inline, whose imports must therefore keep
 # resolving against the installed package.  This is deliberately *not*
@@ -65,6 +90,23 @@ _NOT_REWRITTEN = ("vm", "registry", "tools")
 # what ``_score`` checks its exclusions against.
 _INLINED = ("esolangs.exceptions", "esolangs.interpreters.io")
 
+# How far past the unmutated baseline a single test may run before the alarm
+# in ``_CONFTEST`` fails it.  Both numbers are deliberately generous: the
+# only job here is to come in under mutmut's ``(estimate + 1) * 30``
+# CPU-second RLIMIT, and the cost of being too tight (a passing test failed,
+# scored as a kill nothing earned) is far worse than being too loose.
+_ALARM_FACTOR = 10.0
+_MIN_ALARM = 2.0
+
+# How long the unmutated suite may take before the run is called stuck.
+_BASELINE_TIMEOUT = 120.0
+
+# Below this share of mutants killed, the run is treated as broken rather
+# than reported.  The lowest score this harness has ever legitimately
+# produced is 76.7%, and a suite good enough to be worth mutating does not
+# miss nine mutants in ten -- so a figure down here means they never ran.
+_MIN_KILL_RATE = 0.1
+
 
 def _test_file(module: str) -> Path:
     """Return the test file for ``category.module``, or raise if absent."""
@@ -72,6 +114,35 @@ def _test_file(module: str) -> Path:
     if not path.exists():
         raise SystemExit(f"no test file for {module}: expected {path}")
     return path
+
+
+def _reaching_helpers(src: str) -> list[str]:
+    """Return call markers for helpers that themselves reach past the bundle.
+
+    A helper is any non-test function or method whose body names one of
+    ``_UNBUNDLED``.  What comes back is what a *caller* looks like -- with
+    the parenthesis, and for a method also the ``self.`` form -- so the
+    caller can be matched by the same substring test as everything else.
+
+    Only one level is followed.  A helper calling a helper does not occur
+    in this suite set, and resolving it properly wants a call graph rather
+    than a scan; if one ever appears, the test stays and its score is
+    deflated, which is the same failure this fixes rather than a new one.
+    """
+    try:
+        tree = ast.parse(src)
+    except SyntaxError:  # pragma: no cover - the suite is a valid module
+        return []
+
+    lines = src.splitlines()
+    markers: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.FunctionDef) or node.name.startswith("test_"):
+            continue
+        body = "\n".join(lines[node.lineno - 1 : node.end_lineno])
+        if any(mod in body for mod in _UNBUNDLED):
+            markers += [f"{node.name}(", f".{node.name}("]
+    return markers
 
 
 def _drop_unbundled_tests(src: str) -> tuple[str, int]:
@@ -85,18 +156,58 @@ def _drop_unbundled_tests(src: str) -> tuple[str, int]:
     Cutting from the ``def`` alone leaves a ``@pytest.mark.parametrize``
     stranded on whichever test follows, and pytest rejects the file at
     collection: "function uses no argument 'text'".
+
+    "Whole" also has to *stop* at the next top-level statement.  The match
+    ended at the next method, the next class, or the end of the file, which
+    for the last method of the last class meant the end of the file --
+    taking every module-level test below it along with the one being cut.
+    BrainIf's suite is laid out that way, and its blank-line test was
+    silently dropped: the three mutants that only it kills read as
+    survivors, and no count said three tests had gone missing.
+
+    The reach can also be one call deep.  A test that calls a *helper* --
+    Point Break's ``run_until_halt``, Forbin's ``_verdict`` -- carries no
+    marker of its own, so it stayed in the bundle while the helper it calls
+    went to the registry or the VM.  Such a test runs the installed
+    interpreter, cannot fail for any mutant, and quietly deflates the score
+    with mutants nothing can catch.  Helpers whose own body reaches past
+    the interpreter are found first, and their names become markers too.
     """
     dropped = 0
+    markers = (*_UNBUNDLED, *_reaching_helpers(src))
     for name in re.findall(r"\n    def (test_\w+)\(", src):
+        # The lines above the ``def`` that belong to it: a decorator ``@``,
+        # any continuation of one (more indented than the ``def``), and the
+        # bracket that closes a multi-line decorator, which lines up with
+        # the ``@``.  Matching only 8-space continuations stopped early on a
+        # ``@pytest.mark.parametrize`` whose list closes at four -- Point
+        # Break's malformed-program table -- leaving the tail behind as an
+        # unindented fragment, and the copied file no longer parsed.
+        #
+        # These are one flat alternation rather than a repetition nested in
+        # another.  Nested, the two ``*`` can carve the same run of lines
+        # more ways than there are lines, and a ``def`` that fails to match
+        # then backtracks through all of them: Point Break's suite hung the
+        # run inside ``sre_search``, before any test had been collected.
         body = re.search(
-            rf"\n(?:    @[^\n]*\n(?:        [^\n]*\n)*)*    def {name}\("
-            rf".*?(?=\n    @|\n    def |\nclass |\Z)",
+            rf"\n(?:    @[^\n]*\n|     [^\n]*\n|    [)\]][^\n]*\n)*    def {name}\("
+            rf".*?(?=\n    @|\n    def |\nclass |\n@|\ndef |\Z)",
             src,
             re.S,
         )
-        if body and any(mod in body.group(0) for mod in _UNBUNDLED):
+        if body and any(mod in body.group(0) for mod in markers):
             src = src.replace(body.group(0), "\n")
             dropped += 1
+
+    # A class can lose every test it had -- Point Break's TestErrors is four
+    # assertions on what ``esolangs.run`` raises, and all four go -- which
+    # leaves a class statement with no body at all, and the copied file does
+    # not parse.  Give any such class a ``pass``.
+    src = re.sub(
+        r"(\nclass \w+[^\n]*:\n)(?=\s*\n*(?:class |def |@|\Z))",
+        r"\1    pass\n",
+        src,
+    )
     return src, dropped
 
 
@@ -178,18 +289,35 @@ def _rewrite_imports(src: str, stem: str, module: str = "") -> str:
     )
 
 
-_CONFTEST = '''"""mutmut workarounds, both of which otherwise fail silently.
+_CONFTEST = '''"""mutmut workarounds, all of which otherwise fail silently.
 
 1. ``set_start_method`` raises on the second call under macOS + Python 3.12,
    which aborts the run rather than the mutant.
 2. mutmut names a mutant without the module prefix while the trampoline
    builds its qualname from ``__module__``, which has it.  Without the
    prefix the selected mutant never activates and every one "passes".
+3. A mutant that turns a loop condition around does not fail the suite, it
+   hangs it, and mutmut only reclaims a hung mutant at its RLIMIT_CPU of
+   ``(estimate + 1) * 30`` CPU-seconds.  Such a mutant is killed either way
+   -- an interpreter that never halts is a caught bug -- but at ~30
+   CPU-seconds instead of the ~0.2s an ordinary kill costs.  Over brainfuck
+   18 of 68 mutants hung, and capping each test below the RLIMIT reproduced
+   the identical verdict in 5s where the run had taken 33s.
+
+   The budget is passed in rather than hardcoded, because "too long" is a
+   property of the suite: a fixed cap would fail the languages whose tests
+   legitimately run for seconds (Minifuck's is a generator build).  The
+   caller derives it from the measured baseline, and when the variable is
+   absent no alarm is installed -- which is what leaves the harness's own
+   baseline run, and any other use of these tests, untouched.
 """
 
 import contextlib
 import multiprocessing
 import os
+import signal
+
+import pytest
 
 _orig = multiprocessing.set_start_method
 
@@ -204,6 +332,25 @@ multiprocessing.set_start_method = _patched
 _mut = os.environ.get("MUTANT_UNDER_TEST", "")
 if _mut and "__mutmut_" in _mut and not _mut.startswith("{stem}"):
     os.environ["MUTANT_UNDER_TEST"] = "{stem}" + _mut
+
+_budget = float(os.environ.get("MUTATE_ONE_ALARM", "0"))
+
+
+def _expired(signum, frame):
+    raise TimeoutError(f"exceeded the {_budget:g}s per-test budget")
+
+
+if _budget:
+
+    @pytest.hookimpl(hookwrapper=True)
+    def pytest_runtest_protocol(item, nextitem):
+        """Fail a test that outruns the budget instead of hanging on it."""
+        signal.signal(signal.SIGALRM, _expired)
+        signal.setitimer(signal.ITIMER_REAL, _budget)
+        try:
+            yield
+        finally:
+            signal.setitimer(signal.ITIMER_REAL, 0)
 '''
 
 # mutmut parses each file into an AST to build its mutants, and the parsing
@@ -296,6 +443,14 @@ def _prepare(language: str, work: Path) -> tuple[Path, str, int, set[str]]:
     # Link rather than copy: nothing outside ``bundled.py`` is mutated.
     (work / "examples").symlink_to(ROOT / "examples")
     (proj / "examples").symlink_to(ROOT / "examples")
+    # The same for ``tests/fixtures``, which SLOW ACV MAMMALIAN reads its
+    # hello-world program from.  Without it that suite fails its baseline
+    # outright -- not one mutant, the whole run -- and the language cannot
+    # be scored at all.  ``tests/`` here is the directory built above, so
+    # only the fixtures need linking into it.
+    (work / "tests").mkdir(exist_ok=True)
+    for tests_dir in (work / "tests", proj / "tests"):
+        (tests_dir / "fixtures").symlink_to(ROOT / "tests" / "fixtures")
     (proj / "pyproject.toml").write_text(
         "[tool.mutmut]\n"
         f'paths_to_mutate = ["{out.name}"]\n'
@@ -458,18 +613,49 @@ def main() -> int:
         if dropped:
             print(f"[note] dropped {dropped} test(s) needing the VM or registry")
 
-        baseline = subprocess.run(
-            [sys.executable, "-m", "pytest", "-q", "tests/test_bundled.py"],
-            cwd=proj,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        # The per-test alarm belongs to the mutation runs; the baseline has
+        # none, so anything that does not finish here waits forever instead
+        # of saying so.  Every baseline measured across the 46 languages is
+        # under a second, so a cap two orders of magnitude above that costs
+        # nothing and turns a hang into a message.
+        started = time.monotonic()
+        try:
+            baseline = subprocess.run(
+                [sys.executable, "-m", "pytest", "-q", "tests/test_bundled.py"],
+                cwd=proj,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=_BASELINE_TIMEOUT,
+            )
+        except subprocess.TimeoutExpired:
+            raise SystemExit(
+                f"the bundled tests did not finish in {_BASELINE_TIMEOUT:g}s.  "
+                "Either a test loops without the bound its helper gave it, or "
+                "the harness itself is stuck before pytest -- sample the "
+                "process to tell which."
+            ) from None
+        elapsed = time.monotonic() - started
         if baseline.returncode != 0:
             print(baseline.stdout[-2000:])
             raise SystemExit("the bundled tests fail before any mutation")
 
-        env = {"PYTHONPATH": str(work), "PYTHONDONTWRITEBYTECODE": "1"}
+        # What every test does unmutated, times a wide factor: the alarm only
+        # has to come in under mutmut's ``(estimate + 1) * 30`` CPU-second
+        # RLIMIT to pay off, so it is set loose on purpose.  An alarm too
+        # loose still turns a 30-second burn into a couple of seconds; an
+        # alarm too tight would fail a slow-but-passing test and report a
+        # kill that no mutation earned.  The whole file's wall time is used
+        # rather than any one test's, and the floor covers the languages
+        # whose suites are dominated by interpreter startup.
+        budget = max(_MIN_ALARM, elapsed * _ALARM_FACTOR)
+        print(f"[note] baseline {elapsed:.2f}s; capping each test at {budget:.1f}s")
+
+        env = {
+            "PYTHONPATH": str(work),
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "MUTATE_ONE_ALARM": f"{budget:.3f}",
+        }
         mutation = subprocess.run(
             [sys.executable, "-m", "mutmut", "run", "--max-children", str(args.jobs)],
             cwd=proj,
@@ -482,16 +668,20 @@ def main() -> int:
         killed, total, survivors = _score(proj, stem, classes)
         if not total:
             raise SystemExit("no mutants were generated")
-        if not killed:
-            # Every exit code still at its initial 0 means no mutant run ever
+        if killed < total * _MIN_KILL_RATE:
+            # An exit code still at its initial 0 means that mutant never
             # reported, which a suite that passes its baseline cannot cause.
-            # It reads as a perfect survivor sweep, so say what it is instead.
+            # Testing for *zero* killed was too narrow: a run of this same
+            # brainfuck suite reported 2 of 68, which is the same failure --
+            # the mutants did not run -- but printed a plausible 2.9% instead
+            # of tripping the check.  A real score does not live down here;
+            # the suites this harness targets kill most of what they see.
             print(mutation.stdout[-3000:] or mutation.stderr[-3000:])
             raise SystemExit(
-                f"0 of {total} mutants killed with a passing baseline: the "
-                "mutants did not run.  Check the output above -- usually the "
-                "suite fails inside mutants/, where it runs from a different "
-                "directory than the baseline."
+                f"only {killed} of {total} mutants killed with a passing "
+                "baseline: the mutants did not run.  Check the output above "
+                "-- usually the suite fails inside mutants/, where it runs "
+                "from a different directory than the baseline."
             )
         print(
             f"\n{args.language}: {killed}/{total} killed ({100 * killed / total:.1f}%)"

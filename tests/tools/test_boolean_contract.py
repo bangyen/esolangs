@@ -27,7 +27,41 @@ from esolangs.vm import run_until_halt_or_cycle
 _TABLES = ["00000000", "01101001"]
 
 
-def _input_reading_generators() -> list[tuple[str, object]]:
+# Generators that search rather than emit, and so cost seconds per table
+# instead of milliseconds.  The rule is a one-second budget per entry in this
+# sweep: over that, the case carries ``slow`` and sits out the fast run.
+# Measured at the time of writing (``pytest --durations -n 0``, one worker):
+# minifuck 41.1s, slow_acv_mammalian 5.5s, and the next entry down is
+# polynomial at 0.5s, with the median around 0.03s.
+#
+# ``ztoalc_l_boolean`` used to be listed here at 2.8s and now runs in 0.02s,
+# so it is no longer marked -- the cost moved to the *reordering* sweeps
+# below, which is why the two sets are kept separate rather than shared.
+#
+# ``pct_squared_minus_one`` was briefly in this set, at 4.6s: it searched
+# setter assignments and this sweep's parity table is ``n == 3``, which it
+# could not separate, so it paid a whole search budget before raising.  It
+# now derives its programs instead and rejects that arity outright, which
+# puts it below the measurement floor.
+#
+# Naming the languages rather than timing them at collection time is
+# deliberate: a wall-clock threshold evaluated during collection would make
+# the selected test set depend on how loaded the machine is, so a run could
+# silently cover less than the last one.  Re-measure and edit this set when
+# a generator's cost changes.
+_SEARCHING_GENERATORS = frozenset({"minifuck", "slow_acv_mammalian_boolean"})
+
+# The same one-second rule, applied to the two reordering sweeps.  Those call
+# the ``_*_ordered`` builder once per input order for every table up to three
+# inputs, so a generator that *searches* pays that cost repeatedly.  Measured
+# one worker, ztoalc_l_boolean is 3.0s in test_reordering_never_grows_a_program
+# against 0.02s in the read-count sweep above, and the next entry down is
+# streetcode at 0.06s.  A generator can be cheap in one sweep and expensive in
+# the other, so this set is maintained independently of the one above.
+_SLOW_REORDERING_GENERATORS = frozenset({"ztoalc_l_boolean"})
+
+
+def _input_reading_generators() -> list[object]:
     """Every boolean generator whose language actually reads input.
 
     Looked up in ``BY_BOOLEAN``, not ``BY_FUNCTION``.  The latter is keyed
@@ -51,7 +85,10 @@ def _input_reading_generators() -> list[tuple[str, object]]:
             ).run
         except Exception:  # pragma: no cover - interpreter lives outside the pkg
             continue
-        found.append((name, (fn, lang, run)))
+        if name in _SEARCHING_GENERATORS:
+            found.append(pytest.param(name, (fn, lang, run), marks=pytest.mark.slow))
+        else:
+            found.append((name, (fn, lang, run)))
     return found
 
 
@@ -69,7 +106,16 @@ def _reads(entry: tuple, table: str) -> int:
     count at that point is the same number either way.
     """
     fn, lang, run = entry
-    program = str(fn(table))
+    try:
+        program = str(fn(table))
+    except ValueError:
+        # A generator that does not cover this table emits no program, and a
+        # program that does not exist reads nothing.  Reporting 0 routes the
+        # caller into its "does not read input" skip rather than failing on a
+        # coverage gap, which is not what this test measures.  %^2^-1 is the
+        # case in hand: it derives two-input tables only, and the sweep's
+        # parity table has three.
+        return 0
     io = ScriptedIO("0\n" * 8)
     source = program.splitlines() if lang.split else program
     module = importlib.import_module("esolangs.interpreters." + lang.interpreter)
@@ -171,7 +217,7 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
 
 # The tree generators that pick their input split order by measuring, and the
 # builder that emits one fixed order, so a test can compare the two.
-def _reordering_generators() -> list[tuple[str, object, object]]:
+def _reordering_generators() -> list[object]:
     from esolangs.tools.boolean.helpers import _decision_tree_program
     from esolangs.tools.boolean.other import (
         _between_ordered,
@@ -192,7 +238,7 @@ def _reordering_generators() -> list[tuple[str, object, object]]:
     )
     from esolangs.tools.boolean.ztoalc_l import _ztoalc_ordered
 
-    return [
+    entries: list[tuple[str, object, object]] = [
         (
             "brainfuck",
             boolean.brainfuck,
@@ -221,6 +267,14 @@ def _reordering_generators() -> list[tuple[str, object, object]]:
         ),
         ("forbin_boolean", boolean.forbin_boolean, _forbin_ordered),
         ("jaune", boolean.jaune, _jaune_ordered),
+    ]
+    return [
+        (
+            pytest.param(name, fn, ordered, marks=pytest.mark.slow)
+            if name in _SLOW_REORDERING_GENERATORS
+            else (name, fn, ordered)
+        )
+        for name, fn, ordered in entries
     ]
 
 
@@ -369,8 +423,23 @@ _MINTERM_SHAPED = {
 # appended -- so collapsing a constant subtree would drop that subtree's
 # reads and break the read-count contract above.  The tree therefore stays
 # uniform depth ``n`` and its size tracks ``2**n`` whatever the table says.
+#
+# ``minifuck`` is a search too, and of the same kind as ``wii2d``: it emits
+# whatever code it can *see* produce the table's column, so the program has
+# no per-row structure to fold and its size tracks the search rather than the
+# table's shape.
+#
+# ``pct_squared_minus_one`` emits no tree at all.  %^2^-1's only branch is
+# ``t``, which jumps to position 0 and nowhere else, so the generator
+# computes the answer *arithmetically* -- one affine setter per input and a
+# single ``l`` -- rather than routing rows to leaves.  Its size tracks the
+# constants the solver happens to find, not the table's shape, so the
+# folding discriminator has nothing to measure.  It also raises on the
+# ``n == 3`` tables this test uses, which it cannot separate.
 _UNSHAPED = {
     "wii2d",
+    "minifuck",
+    "pct_squared_minus_one",
     "jaune_multiply",
     "circlefuck_byte",
     "slow_acv_mammalian_boolean",

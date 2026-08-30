@@ -376,6 +376,21 @@ class TestRobustness:
             with pytest.raises(ValueError, match="malformed if"):
                 run_program(code)
 
+    def test_an_if_without_its_paren_is_refused(self) -> None:
+        """``_scan_if`` checks for the ``(`` it was told would be there.
+
+        The statement dispatcher only calls it after matching ``if(``, so a
+        whole program cannot reach this -- it is refused as a malformed
+        statement first.  The check is the parser's own precondition, and
+        testing it directly is what keeps the two spellings of "malformed
+        if" agreeing about what counts as one.
+        """
+        from esolangs.interpreters.other.suptiftam import _scan_if
+
+        for line in ("if", "if x", "ifx"):
+            with pytest.raises(ValueError, match="malformed if"):
+                _scan_if(line, 2)
+
 
 class TestMachine:
     def test_step_after_halt_is_a_noop(self) -> None:

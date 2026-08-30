@@ -1,7 +1,6 @@
 """Tests for bf_to_line.py, driven through the *real* render pipeline.
 
-Run via: uv run --with pillow --with numpy --with scipy --with scikit-image
---with pytest pytest test_bf_to_line.py
+Run via: uv run --with pytest pytest test_bf_to_line.py
 
 This suite exists to close the coverage gap WIP.md flagged when the
 nested-loop regression was found: `test_simulate.py` builds cyclic `Stroke`
@@ -281,6 +280,7 @@ class TestNestingDepth:
             "+[>+[>+[>+[>+[>+<-]<-]<-]<-]<-]>>>>>.", tmp_path / "depth5.png"
         ) == [1]
 
+    @pytest.mark.slow  # 5.2s: the deepest nesting the renderer draws
     def test_eight_levels_round_trip(self, tmp_path: Path) -> None:
         """Depth 8 renders, extracts and executes correctly.
 

@@ -141,13 +141,16 @@ def _wii2d_compress(
     collides two values that need different bits; incrementing first pairs
     neighbours the other way round, which usually clears the collision.
     """
+    # This terminates on the guard alone.  While ``max|v| > 1`` either
+    # halving strictly lowers it -- ``|(v + shift) // 2| < |v|`` holds for
+    # every ``|v| > 1`` and both shifts -- so the loop descends a
+    # non-negative integer and cannot revisit a state.  There is no
+    # "made no progress" case to break out of.
     while max(abs(v) for v in values) > 1:
         for shift in (0, 1):
             candidate = [(v + shift) // 2 for v in values]
             if _wii2d_points(candidate, bits) is None:
                 continue
-            if set(candidate) == set(values):
-                continue  # no progress; a further halving would not help
             ops += "+" * shift + "/"
             values = candidate
             break
@@ -220,8 +223,10 @@ def _wii2d_folds(
                     break
                 merged[folded] = live[value]
             else:
-                if len(merged) >= len(points):
-                    continue  # nothing merged; the fold buys no progress
+                # Every centre offered here is the exact midpoint of two live
+                # points -- only even sums are collected above -- so that pair
+                # always squares to one value and the fold always merges at
+                # least once.  There is no "merged nothing" case to reject.
                 fragment = ("*" if scale else "") + _wii2d_offset(centre) + "s"
                 folded_values = [(v - centre) ** 2 for v in scaled]
                 folded_values, fragment = _wii2d_compress(folded_values, bits, fragment)

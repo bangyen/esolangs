@@ -614,3 +614,364 @@ class TestForbinAncestorHangDetection:
         machine = _NeverRepeats("main {\n f {\n  f 0;\n }\n f 0;\n}\n", ScriptedIO(""))
         with pytest.raises(TimeoutError, match="undecided"):
             run_until_halt_or_ancestor(machine)
+
+
+class TestArgumentThreading:
+    r"""Programs that notice ``_eval``'s arguments going astray.
+
+    A mutation run left 216 survivors, and half of them replace one
+    argument of ``_eval(node, frame, globals_, reader, depth)`` with
+    ``None`` at one call site.  Such an edit is invisible unless something
+    that *consumes* that argument is evaluated in that syntactic position:
+
+        ``globals_``  a reference to a top-level function
+        ``reader``    an ``in``
+        ``frame``     a local variable
+        ``depth``     a nested call, which increments it
+
+    and the consuming construct has to sit **at** the position rather than
+    be assigned to a local first -- reading a local forces ``frame``, not
+    whatever filled it.  So each program below puts one forcing construct
+    in one place a value can appear: a range bound, an iteration pattern,
+    a call argument, an ``out`` argument, a ``!``, a return.
+    """
+
+    def test_a_call_returning_a_call(self) -> None:
+        """``globals_`` and ``depth`` threaded through nested returns.
+
+        ``f`` returns the result of calling ``one``, so the return value
+        is evaluated in a frame one deeper than the call that produced it.
+        """
+        assert (
+            run_program(
+                "one { return 1; }\nf { return (one 0); }\n"
+                "main {\n a = (f 0);\n out 0,1,0,0,0,0,0,a;\n}\n"
+            )
+            == "A"
+        )
+
+    def test_a_call_as_a_range_bound(self) -> None:
+        """A ``for`` bound is a value, so it may itself be a call."""
+        assert (
+            run_program(
+                "g x { out 0,1,0,0,0,0,0,x; }\none { return 1; }\n"
+                "main {\n for i:0..(one 0) { g i; }\n}\n"
+            )
+            == "@A"
+        )
+
+    def test_a_call_in_a_nested_loop_bound(self) -> None:
+        """The inner bound is re-evaluated on every row of the outer loop."""
+        assert (
+            run_program(
+                "g x { out 0,1,0,0,0,0,0,x; }\none { return 1; }\n"
+                "main {\n for i:0..1 {\n  for j:0..(one 0) { g j; }\n }\n}\n"
+            )
+            == "@A@A"
+        )
+
+    def test_a_call_opens_a_range_through_not(self) -> None:
+        r"""``!`` is how a call reaches the *start* of a range.
+
+        ``for i:(one 0)..1`` does not parse -- a leading ``(`` is claimed
+        by the iteration-list branch of ``_for_spec`` -- but ``!`` is read
+        by ``_value``, where ``(`` builds a call.  So ``!(zero 0)`` both
+        parses and evaluates a call in start position, which no other
+        program here reaches.  The same route carries an ``in``.
+        """
+        assert (
+            run_program(
+                "g x { out 0,1,0,0,0,0,0,x; }\nzero { return 0; }\n"
+                "main {\n for i:!(zero 0)..1 { g i; }\n}\n"
+            )
+            == "A"
+        )
+        assert (
+            run_program(
+                "g x { out 0,1,0,0,0,0,0,x; }\nmain {\n for i:!(in 0)..1 { g i; }\n}\n",
+                "\x00",
+            )
+            == "A"
+        )
+        assert (
+            run_program(
+                "g x { out 0,1,0,0,0,0,0,x; }\none { return 1; }\n"
+                "main {\n for i:0..!(one 0) { g i; }\n}\n"
+            )
+            == "@"
+        )
+
+    def test_a_call_at_the_remaining_positions(self) -> None:
+        """The call twins of the ``in`` cases: argument, pattern, multi-RHS.
+
+        A call and an ``in`` force different arguments through the same
+        slot -- ``globals_`` and ``depth`` for the call, ``reader`` for the
+        input -- so each position needs both.
+        """
+        assert (
+            run_program(
+                "g x { out 0,1,0,0,0,0,0,x; }\none { return 1; }\nmain { g (one 0); }\n"
+            )
+            == "A"
+        )
+        assert (
+            run_program(
+                "g x { out 0,1,0,0,0,0,0,x; }\none { return 1; }\n"
+                "main {\n for i:((one 0)) { g i; }\n}\n"
+            )
+            == "A"
+        )
+        assert (
+            run_program(
+                "one { return 1; }\n"
+                "main {\n a,b = (one 0),(one 0);\n out 0,1,0,0,0,0,b,a;\n}\n"
+            )
+            == "C"
+        )
+
+    def test_input_read_at_each_position(self) -> None:
+        """``in`` at the position, not assigned to a local first.
+
+        Binding the byte to a local and using the local forces ``frame``;
+        only an ``in`` sitting in the slot forces the bit reader through
+        it.
+        """
+        assert run_program("main { out 0,1,0,0,0,0,0,(in 0); }\n", "\x01") == "@"
+        assert run_program("main { out 0,1,0,0,0,0,0,!(in 0); }\n", "\x00") == "A"
+        assert (
+            run_program("g x { out 0,1,0,0,0,0,0,x; }\nmain { g (in 0); }\n", "\x01")
+            == "@"
+        )
+        assert (
+            run_program(
+                "g x { out 0,1,0,0,0,0,0,x; }\nmain {\n for i:0..(in 0) { g i; }\n}\n",
+                "\x01",
+            )
+            == "@"
+        )
+        assert (
+            run_program(
+                "g x { out 0,1,0,0,0,0,0,x; }\nmain {\n for i:((in 0)) { g i; }\n}\n",
+                "\x01",
+            )
+            == "@"
+        )
+        assert (
+            run_program(
+                "f { return (in 0); }\nmain {\n a = (f 0);\n out 0,1,0,0,0,0,0,a;\n}\n",
+                "\x01",
+            )
+            == "@"
+        )
+        assert (
+            run_program(
+                "main {\n a,b = (in 0),(in 0);\n out 0,1,0,0,0,0,b,a;\n}\n", "\x01\x01"
+            )
+            == "@"
+        )
+
+    def test_a_nested_definition_reads_the_enclosing_frame(self) -> None:
+        """``_lookup`` walks ``frame.parent`` until it finds the name."""
+        assert (
+            run_program(
+                "main {\n a = 1;\n inner { out 0,1,0,0,0,0,0,a; }\n inner 0;\n}\n"
+            )
+            == "A"
+        )
+        assert (
+            run_program(
+                "main {\n a = 1;\n mid {\n  deep { out 0,1,0,0,0,0,0,a; }\n"
+                "  deep 0;\n }\n mid 0;\n}\n"
+            )
+            == "A"
+        )
+
+    def test_two_wildcards_expand_to_four_rows(self) -> None:
+        """``*`` doubles the row count, and the columns are independent.
+
+        One wildcard cannot tell a product over the wildcard *count* from
+        a product over a fixed repeat, nor the order the expanded columns
+        are filled in; two can.
+        """
+        assert (
+            run_program(
+                "g x { out 0,1,0,0,0,0,0,x; }\n"
+                "main {\n for (i,j):((*,*)) { g i; g j; }\n}\n"
+            )
+            == "@@@AA@AA"
+        )
+
+    def test_arity_mismatches_are_tolerated(self) -> None:
+        """Extra arguments are dropped and missing ones default to zero.
+
+        The zips that bind parameters and loop variables are deliberately
+        not ``strict``; a mismatch is a documented case, not an error.
+        """
+        assert run_program("f x,y { out 0,1,0,0,0,0,y,x; }\nmain { f 1; }\n") == "A"
+        assert run_program("f x { out 0,1,0,0,0,0,0,x; }\nmain { f 1,1,1; }\n") == "A"
+        assert (
+            run_program(
+                "g x { out 0,1,0,0,0,0,0,x; }\n"
+                "main {\n for (i,j):((0,1),(1)) { g i; }\n}\n"
+            )
+            == "@A"
+        )
+
+    def test_a_loop_variable_named_underscore_stays_unbound(self) -> None:
+        """``_`` is the discard name, so it must not enter the frame."""
+        with pytest.raises(HaltError, match="undeclared identifier '_'"):
+            run(
+                "main {\n for _:0..0 { out 0,1,0,0,0,0,0,0; }\n"
+                " out 0,1,0,0,0,0,0,_;\n}\n",
+                ScriptedIO(""),
+            )
+
+
+class TestErrorMessages:
+    """The wording of a rejection, not merely that one happened.
+
+    Every message below was matched only loosely, or not at all, so an
+    edit widening the literal that names the failing thing went unnoticed.
+    Where the message interpolates a value, only the stable prefix is
+    asserted: a ``_Function`` has no ``__repr__``, so the tail carries its
+    address and differs between runs.
+    """
+
+    def test_a_range_bound_that_is_not_a_number(self) -> None:
+        """``start`` and ``end`` name which bound was wrong."""
+        with pytest.raises(HaltError, match="for end bound must be a number"):
+            run("f { return 0; }\nmain {\n for i:0..f { f 0; }\n}\n", ScriptedIO(""))
+        with pytest.raises(HaltError, match="for start bound must be a number"):
+            run("f { return 0; }\nmain {\n for i:f..1 { f 0; }\n}\n", ScriptedIO(""))
+
+    def test_out_rejects_the_two_ways_of_being_wrong(self) -> None:
+        """A wrong count and a non-bit argument are different complaints."""
+        with pytest.raises(HaltError, match="out needs exactly 8 bit arguments"):
+            run("main { out 0,1,0; }\n", ScriptedIO(""))
+        with pytest.raises(HaltError, match="out needs bit arguments"):
+            run("f { return 0; }\nmain { out 0,1,0,0,0,0,0,f; }\n", ScriptedIO(""))
+
+    def test_calling_and_negating_the_wrong_thing(self) -> None:
+        with pytest.raises(HaltError, match="called value is not a function"):
+            run("main {\n a = 1;\n a 0;\n}\n", ScriptedIO(""))
+        with pytest.raises(HaltError, match=r"! needs a bit"):
+            run("f { return 0; }\nmain { out 0,1,0,0,0,0,0,!f; }\n", ScriptedIO(""))
+
+    def test_the_parser_names_what_it_wanted(self) -> None:
+        for code, message in (
+            (
+                "main {\n for i:0.1 { out 0,1,0,0,0,0,0,i; }\n}\n",
+                "expected '..' or an iteration list",
+            ),
+            ("main {\n 1 = 0;\n}\n", "assignment target must be a variable"),
+            ("main {\n a,b;\n}\n", "expected '=' after assignment targets"),
+            ("main {\n !0;\n}\n", "statement must be a call, assignment, or return"),
+            ("main { a = ", "expected a value"),
+            ("main { ", "unterminated block"),
+        ):
+            with pytest.raises(ValueError, match=message):
+                run(code, ScriptedIO(""))
+
+    def test_a_stray_slash_is_not_a_comment(self) -> None:
+        """A comment needs *two* slashes, and one at the end of input.
+
+        The scanner looks ahead one character for the second ``/``, so the
+        bound it checks matters most where there is no character to look
+        at: a lone ``/`` as the last thing in the file.
+        """
+        with pytest.raises(ValueError, match="expected an identifier"):
+            run("main { out 0,1,0,0,1,0,0,0; }\n/", ScriptedIO(""))
+        assert run_program("main { out 0,1,0,0,1,0,0,0; }\n//") == "H"
+        with pytest.raises(ValueError, match="no main function"):
+            run("// c", ScriptedIO(""))
+
+
+class TestSnapshotWithoutTheCycleDetector:
+    """What the cycle detector sees, checked without importing it.
+
+    ``snapshot`` is otherwise exercised only through the shared runner,
+    which the bundled build used for mutation testing does not inline --
+    so those tests are correctly dropped there, and the method then reads
+    as wholly untested.  That is a property of the harness rather than of
+    the suite.  Driving the machine directly covers the same ground with
+    nothing to drop.
+    """
+
+    def test_a_snapshot_distinguishes_the_states_it_must(self) -> None:
+        """Every component of the snapshot has to move something.
+
+        The cycle detector only sees what ``snapshot`` reports, and the
+        tests that exercise it go through the shared runner, which the
+        bundled mutation build does not inline -- so they are dropped and
+        the whole method reads as untested.  These assertions need only
+        the interpreter: they drive two machines directly and compare.
+
+        Each pair below differs in exactly one field, so a snapshot that
+        stopped reporting that field would collapse the two together.
+        """
+        from esolangs.interpreters.other.forbin import _Machine
+
+        def at(code: str, steps: int, stdin: str = "") -> tuple[object, ...]:
+            machine = _Machine(code, ScriptedIO(stdin))
+            for _ in range(steps):
+                if machine.halted:
+                    break
+                machine.step()
+            return machine.snapshot()
+
+        prog = (
+            "g x { out 0,1,0,0,0,0,0,x; }\nmain {\n a = 0;\n for i:0..1 { g i; }\n}\n"
+        )
+
+        # the same machine at the same point is the same state
+        assert at(prog, 2) == at(prog, 2)
+        # the statement cursor advances
+        assert at(prog, 1) != at(prog, 2)
+        # a different binding is a different state, at the same cursor
+        assert at("main {\n a = 0;\n}\n", 1) != at("main {\n a = 1;\n}\n", 1)
+        # so is a different loop row, and a different position within a body
+        assert at(prog, 3) != at(prog, 4)
+        # frames are part of it: inside a call is not the same as before it
+        nested = "f { out 0,1,0,0,0,0,0,1; }\nmain {\n f 0;\n}\n"
+        assert at(nested, 1) != at(nested, 2)
+        # and so is the input cursor, with everything else equal
+        read = "main {\n a,b,c,d,e,f,g,h = (in 0);\n}\n"
+        assert at(read, 0, "HH") != at(read, 1, "HH")
+
+    def test_a_frame_outside_a_loop_reports_a_sentinel(self) -> None:
+        """The two loop counters need a value meaning "not in a loop".
+
+        A frame that is not running a ``for`` has no row index and no
+        position within a body, and the snapshot reports ``-1`` for both.
+        The choice matters: the sentinel has to be a number no real
+        counter can take, or a frame between loops would compare equal to
+        one part-way through iterating.  ``for_ind`` reaches 1 on the
+        second row, so a sentinel of ``+1`` collides with it, and reading
+        the two the other way round -- sentinel while looping, counter
+        while not -- swaps every frame in the tuple.
+        """
+        from esolangs.interpreters.other.forbin import _Machine
+
+        def frames(code: str, steps: int) -> tuple[object, ...]:
+            machine = _Machine(code, ScriptedIO(""))
+            for _ in range(steps):
+                if machine.halted:
+                    break
+                machine.step()
+            return machine.snapshot()[0]
+
+        looping = "g x { out 0,1,0,0,0,0,0,x; }\nmain {\n for i:0..1 { g i; }\n}\n"
+        flat = "g x { out 0,1,0,0,0,0,0,x; }\nmain {\n g 0;\n g 1;\n}\n"
+
+        # a frame that has not entered its loop yet reports the sentinel
+        assert frames(looping, 0) == (("main", 0, (), -1, -1),)
+        # once iterating, both counters are real and start at zero
+        assert frames(looping, 1) == (("main", 0, (), 0, 0),)
+        # the row index counts up, so it takes the values a sentinel must avoid
+        assert frames(looping, 2) == (("main", 0, (("i", "0"),), 1, 0),)
+        assert frames(looping, 6) == (("main", 0, (("i", "1"),), 2, 0),)
+        # a called frame is not looping, so it carries the sentinel
+        assert frames(looping, 3)[1] == ("g", 0, (("x", "0"),), -1, -1)
+        # and a program with no loop at all reports it for every step
+        for step in range(4):
+            assert all(f[3] == -1 and f[4] == -1 for f in frames(flat, step))

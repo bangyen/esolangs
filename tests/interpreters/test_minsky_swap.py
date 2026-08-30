@@ -211,6 +211,43 @@ class TestStepMachine:
         assert machine.snapshot() != before
         assert machine.reg == [1, 0]
 
+    def test_the_register_dump_happens_once(self) -> None:
+        """Stepping a halted machine again does not re-print the registers.
+
+        ``step`` is called by the VM and by the cycle detector, either of
+        which can run one past the end, so the dump is guarded by a flag
+        rather than by the caller counting steps.
+        """
+        import io
+        from contextlib import redirect_stdout
+
+        from esolangs.interpreters.register_based.minsky_swap import _Machine
+
+        machine = _Machine("+", IO())
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            while not machine.halted:
+                machine.step()
+            machine.step()  # the dump
+            machine.step()  # once halted and dumped, a no-op
+        assert buffer.getvalue().strip() == "1 0"
+
+    def test_a_decrement_targeting_line_zero_falls_through(self) -> None:
+        """A jump target of ``0`` is falsy, so ``~`` advances instead.
+
+        Every ``~`` is given a target at parse time, so the branch cannot
+        be reached by omitting one -- but a target of line 0 reads as
+        false, and the cursor then moves on rather than jumping.  Whether
+        that is the intended reading of line 0 is the language's question;
+        this pins what the interpreter does with it.
+        """
+        from esolangs.interpreters.register_based.minsky_swap import _Machine
+
+        machine = _Machine("~\n0", IO())  # zero register, target line 0
+        machine.step()
+        assert machine.reg == [0, 0], "nothing to decrement"
+        assert machine.ind == 1, "the cursor advanced rather than jumping"
+
     def test_halting_program_is_detected(self) -> None:
         from esolangs.interpreters.register_based.minsky_swap import _Machine
         from esolangs.vm import run_until_halt_or_cycle

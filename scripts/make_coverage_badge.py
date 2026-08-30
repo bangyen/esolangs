@@ -1,4 +1,4 @@
-"""Generate coverage-badge.svg from a coverage.py XML report.
+"""Generate docs/coverage-badge.svg from a coverage.py XML report.
 
 Reads coverage.xml (as written by ``pytest --cov --cov-report=xml``) and writes
 a shields.io-style SVG badge showing the total line coverage. Uses only the
@@ -62,7 +62,8 @@ def make_badge(percent: float) -> str:
 def main() -> None:
     """Read coverage.xml and write the badge SVG to stdout."""
     xml_path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("coverage.xml")
-    out_path = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("coverage-badge.svg")
+    default_out = Path(__file__).resolve().parents[1] / "docs" / "coverage-badge.svg"
+    out_path = Path(sys.argv[2]) if len(sys.argv) > 2 else default_out
 
     tree = ET.parse(xml_path)
     root = tree.getroot()

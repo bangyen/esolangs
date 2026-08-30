@@ -79,6 +79,21 @@ class TestRun:
 
 
 class TestStepMachine:
+    def test_a_program_with_no_digits_is_the_number_one(self) -> None:
+        """No digits means 1, which factors to nothing and runs no commands.
+
+        ``test_empty_program`` and ``test_comment_characters_ignored``
+        both cover the digit-free case, but only through the output: 1 and
+        2 decode to ``''`` and ``'<'``, and a lone ``<`` prints nothing
+        either, so the empty string does not say which number was used.
+        The decoded program does.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.factor import _Machine
+
+        assert _Machine("", ScriptedIO()).bf.code == ""
+        assert _Machine("no digits here", ScriptedIO()).bf.code == ""
+
     def test_step_tracks_the_decoded_tape(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.factor import _Machine

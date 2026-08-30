@@ -44,7 +44,6 @@ the ``set_comp`` argument that filled it are gone.
 
 from collections import deque
 from functools import cache
-from typing import TypeAlias
 
 # Re-exported so this module stays the import site for the whole
 # parameterized family; each of these owns a file because its
@@ -59,6 +58,8 @@ from esolangs.tools.boolean.helpers import (
     instantiate,
     permute_truth_table,
 )
+from esolangs.tools.boolean.minifuck import minifuck
+from esolangs.tools.boolean.pct_squared_minus_one import pct_squared_minus_one
 from esolangs.tools.boolean.wii2d import wii2d
 
 __all__ = [
@@ -72,15 +73,17 @@ __all__ = [
     "eval",
     "instantiate",
     "lamfunc",
+    "minifuck",
     "minsky_swap",
     "nocomment",
+    "pct_squared_minus_one",
     "ram0",
     "wii2d",
 ]
 
 # A decision-tree node: ("leaf", leaf_id, value, None, None) or
 # ("node", node_id, level, zero_subtree, one_subtree).
-_Node: TypeAlias = "tuple[str, int, int, _Node | None, _Node | None]"
+type _Node = tuple[str, int, int, _Node | None, _Node | None]
 
 
 def bio(truth_table: str) -> str:
@@ -133,7 +136,7 @@ _EVAL_TREE_STACK, _EVAL_READ_STACK = 0, 1
 _EVAL_MAX_OPS = 16
 # (tree stack, input stack, which stack is active), each stack listed
 # bottom to top by the input index it carries.
-_EvalState: TypeAlias = tuple[tuple[int, ...], tuple[int, ...], int]
+type _EvalState = tuple[tuple[int, ...], tuple[int, ...], int]
 
 
 @cache
@@ -362,14 +365,85 @@ def back(truth_table: str) -> str:
     nothing -- a leaf spends one ``-`` instead of one extra pointer move --
     and makes the dump self-describing.
     """
+    return best_input_order(truth_table, _back_ordered)
+
+
+def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    r"""Build one Back template, loading its inputs in ``perm`` order.
+
+    ``truth_table`` is already permuted, so every row index here is in the
+    permuted frame.  ``perm`` is spent in exactly one place: the cell each
+    ``{Xi}`` unit loads into.
+
+    A node is ``+\>`` -- test the current cell, *then* advance -- so level
+    ``k`` tests cell ``k``, and input ``perm[k]`` is the one that has to be
+    loaded there.  That is one cell lower than the generators whose node
+    steps before it tests (Streetcode's halls and LaserFuck's ``>#v)`` both
+    test cell ``k + 1``), and getting it wrong computes a different
+    function rather than failing to draw.
+
+    **The load runs the placeholders in name order and walks the pointer to
+    each one's cell.**  Input ``i`` belongs at cell ``perm.index(i)``, the
+    inverse of the permutation, and a walk of ``>``/``<`` carries the
+    pointer there.  Reading the permutation forward instead puts the right
+    bits in the wrong cells and computes a different function.
+
+    **This is not the cheapest build, and the trade is deliberate.**
+    Filling in *cell* order -- cell ``c`` taking ``{X perm[c]}`` -- emits no
+    walk at all, because the pointer only ever steps one cell forward, and
+    it delivered the full 12.0% screen against the 9.15% here.  That build
+    is not kept: it puts the template's placeholders out of name order, and
+    every other generator in this module emits ``{X0}``..``{Xn-1}`` in
+    sequence.  Both forms are correct -- ``instantiate`` substitutes by
+    *name*, so a placeholder is filled wherever it sits -- so this is a
+    consistency choice rather than a correctness one, and it costs 2.85
+    points.
+
+    The walk is cheap in absolute terms (two characters a move: the
+    character, plus the newline its own load row carries) and shows up as
+    2.85 points only because Back's programs are small -- 82 characters on
+    average at n=3, against LaserFuck's 326.
+
+    Keeping the ``-``/``{Xi}`` pairs intact is what preserves the
+    equal-width embedding: the primer and the placeholder are one unit and
+    are never separated, so both bits still cost the same two rows and the
+    template's height cannot leak an input.
+    """
     n = _validate_truth_table(truth_table)
 
-    # The load: fill cells 0..n-1 with the inputs, then '>' to open the answer
-    # cell at n and n '<' to walk the pointer back to cell 0 for the tree's
-    # first test.  Held as units because a '{Xi}' is one grid cell but four
-    # template characters.
+    # The load: fill the input cells, then '>' to open the answer cell at n
+    # and walk the pointer back to cell 0 for the tree's first test.  Held as
+    # units because a '{Xi}' is one grid cell but four template characters.
+    #
+    # The load runs the ``{Xi}`` in *name* order and walks the pointer to the
+    # cell each one belongs in.  Cell ``c`` is tested by level ``c``, which
+    # has to test input ``perm[c]``, so input ``i`` belongs at cell
+    # ``perm.index(i)`` -- the inverse of the permutation.
+    #
+    # Filling in cell order instead (cell ``c`` taking ``{X perm[c]}``) would
+    # emit no walk at all and is what this generator did briefly: it costs
+    # nothing and delivers the full 12.0% screen against the 9.15% here.  It
+    # is not kept, because it puts the template's placeholders out of name
+    # order, and every other generator in this module emits ``{X0}``..
+    # ``{Xn-1}`` in sequence.  The saving is real but the exception is not
+    # worth it; see the docstring for the trade.
+    cells = [0] * n
+    for level, i in enumerate(perm):
+        cells[i] = level
+
+    def walk(frm: int, to: int) -> list[str]:
+        """Move the pointer from cell ``frm`` to cell ``to``, one per row."""
+        return [">" if to >= frm else "<"] * abs(to - frm)
+
+    # Emitted in *reverse* name order, because the load is drawn bottom-to-top
+    # into column 0 (the beam runs up it), so the template's text reads the
+    # units backwards.  Loading input ``n-1`` first therefore puts ``{X0}``
+    # first in the emitted template, which is the order every other generator
+    # in this module reads in.  The walk costs whatever it costs; the search
+    # over input orders prices it either way.
     units: list[str] = []
-    for i in range(n):
+    at = 0
+    for cell in range(n - 1, -1, -1):
         # Two units per input, so neither bit has to be written as a blank:
         # the beam reads one cell per row in column 0, so the setter's second
         # command needs a row of its own rather than the column beside it.
@@ -381,11 +455,19 @@ def back(truth_table: str) -> str:
         # Putting the bit on the trailing row rather than the leading one is
         # what makes every load row execute -- see the fill for why the older
         # '{Xi}' + '+' order skipped a row instead.
+        #
+        # The walk that puts this input in its cell goes *before* the pair,
+        # never between the two halves of it: splitting them would break the
+        # equal-width embedding, since the primer and the placeholder have to
+        # stay two rows for either bit.
+        units.extend(walk(at, cells[cell]))
         units.append("-")
-        units.append("{X" + str(i) + "}")
-        if i < n - 1:
-            units.append(">")
-    units.append(">")
+        units.append("{X" + str(cell) + "}")
+        at = cells[cell]
+    # Open the answer cell at n, then home to cell 0 for the tree's first
+    # test.  Under the identity order the last input sits at cell n-1 and
+    # this is the single '>' the load always ended on.
+    units.extend(walk(at, n))
     units.extend("<" * n)
 
     # The load occupies column 0 and the tree everything from column 1, so the
@@ -636,8 +718,16 @@ def bfpda(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
 
-    # load: push a constant-1 marker then the bit, so top = b0
-    head = "".join("<@{X" + str(i) + "}" for i in range(n - 1, -1, -1))
+    # Load: push a constant-1 marker then the bit, in name order, so the top
+    # of the stack is the *last* input and the tree tests it first.
+    #
+    # The load used to run reversed so the top was ``b0`` and level ``i``
+    # could test input ``i``.  That is the only thing the reversal bought,
+    # and testing the inputs bottom-up costs nothing: the stack is strictly
+    # LIFO either way, every level still consumes exactly one bit and one
+    # marker, and the tree is the same shape reflected.  Pushing in name
+    # order keeps the emitted template in ``{X0}``..``{Xn-1}`` sequence.
+    head = "".join("<@{X" + str(i) + "}" for i in range(n))
 
     def leaf(level: int, value: str) -> str:
         # consume the remaining pre-loaded bits, then print the answer
@@ -651,8 +741,11 @@ def bfpda(truth_table: str) -> str:
         results = {truth_table[r] for r in rows}
         if i == n or len(results) == 1:
             return leaf(i, results.pop() if i < n else truth_table[rows[0]])
-        zero = [r for r in rows if ((r >> (n - 1 - i)) & 1) == 0]
-        one = [r for r in rows if ((r >> (n - 1 - i)) & 1) == 1]
+        # The load pushes in name order, so the stack hands back the *last*
+        # input first: level ``i`` tests input ``n - 1 - i``, whose row bit
+        # is at position ``i``.
+        zero = [r for r in rows if ((r >> i) & 1) == 0]
+        one = [r for r in rows if ((r >> i) & 1) == 1]
         sub0 = node(i + 1, zero)
         sub1 = node(i + 1, one)
         # one-branch pops ~bi first (expose next bit); zero-branch has it popped
@@ -786,9 +879,18 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         return out
 
     # Simulate the deque to find each level's rotation.  The load pushes the
-    # most significant input first, so the tail -- what ``POP`` returns -- is
-    # input 0 and the head is input ``n - 1``.
-    deque = list(range(n - 1, -1, -1))
+    # inputs in name order, so the tail -- what ``POP`` returns -- is input
+    # ``n - 1`` and the head is input 0.
+    #
+    # Pushing in name order rather than reversed is free.  The reversed load
+    # was there to make the first ``POP`` the *most significant* bit, which
+    # only fixes which input a root-level test reaches first -- and the
+    # rotation search already brings any bit to either end, so both loads
+    # reach the same set of orders at the same cost.  Measured over every
+    # order at n = 2, 3 and 4, the rotation-length multisets are identical.
+    # Name order is the better default because it keeps the emitted template
+    # in ``{X0}``..``{Xn-1}`` sequence.
+    deque = list(range(n))
     rotations: list[list[str]] = []
     for level in range(n):
         want = perm[level]
@@ -811,9 +913,8 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         # the rotation, its consuming pop, and the node's own ``GOTO``
         return len(rotations[level]) + 1
 
-    # the load block, most significant placeholder first (so the first POP
-    # after the load is the MSB); each placeholder expands to two commands
-    head = ["{X" + str(i) + "}" for i in range(n - 1, -1, -1)]
+    # the load block, in name order; each placeholder expands to two commands
+    head = ["{X" + str(i) + "}" for i in range(n)]
 
     # A node spends its rotation, its pop and its ``GOTO`` before either
     # subtree, so the walker's ``at`` lands on this node and ``at +
@@ -1272,8 +1373,8 @@ def _compact(rows: list[str]) -> str:
     width = max((len(row) for row in rows), default=0)
     padded = [row.ljust(width) for row in rows]
     kept = [row for row in padded if row.strip()]
-    if not kept:  # pragma: no cover - every table lays down at least one cell
-        return ""
+    if not kept:
+        return ""  # pragma: no cover - every table lays a cell
     columns = [x for x in range(width) if any(row[x] != " " for row in kept)]
     return "\n".join("".join(row[x] for x in columns).rstrip() for row in kept)
 

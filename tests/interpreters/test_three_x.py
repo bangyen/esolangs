@@ -113,6 +113,49 @@ class TestStepMachine:
         assert machine.snapshot() != before
         assert machine.stack == [3]
 
+    def test_a_close_paren_with_no_open_loop(self) -> None:
+        """``)`` on a zero falls out of a loop it was never inside.
+
+        The two readings differ by what is on the stack: a nonzero top
+        means "jump back", which needs an open loop and halts without one,
+        while a zero means "leave", and leaving a loop that was never
+        entered is simply the end of it.
+        """
+        from esolangs.exceptions import HaltError
+        from esolangs.interpreters.stack_based.three_x import _Machine
+
+        machine = _Machine("?)", ScriptedIO("0\n"))
+        while not machine.halted:
+            machine.step()
+        assert machine.stack == [0], "the zero is still there, unlooped"
+        assert machine.jumps == []
+
+        def drain(machine: _Machine) -> None:
+            while not machine.halted:
+                machine.step()
+
+        with pytest.raises(HaltError, match="unmatched"):
+            drain(_Machine("?)", ScriptedIO("1\n")))
+
+    def test_an_unterminated_literal_prints_nothing(self) -> None:
+        """``[`` with no closing ``]`` prints the empty string, not the rest.
+
+        The literal is whatever sits between the brackets, so a bracket
+        that never closes delimits nothing -- printing the remainder of the
+        program instead would leak its own source into the output.
+        """
+        from esolangs.interpreters.stack_based.three_x import _Machine
+
+        machine = _Machine("[abc", ScriptedIO())
+        while not machine.halted:
+            machine.step()
+        assert machine.io.getvalue() == ""
+
+        closed = _Machine("[abc]", ScriptedIO())
+        while not closed.halted:
+            closed.step()
+        assert closed.io.getvalue() == "abc"
+
     def test_halting_program_is_detected(self) -> None:
         from esolangs.interpreters.stack_based.three_x import _Machine
         from esolangs.vm import run_until_halt_or_cycle

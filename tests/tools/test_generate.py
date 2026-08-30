@@ -253,6 +253,27 @@ class TestGeneratorRoundTrips:
             code = sum(1 for c in program if not c.isspace())
             assert code / len(program) > floor, f"{text!r}: sparse grid"
 
+    def test_clockwise_gives_up_on_a_template_that_does_not_close(self) -> None:
+        """A grid whose walk never comes home ends that size's search.
+
+        The slots are the cells the pointer runs exactly once, so a
+        template the walk cannot complete has none to offer.  Every
+        template the builder actually produces closes -- the geometry is
+        fixed -- so the branch is reached by handing it one that does not.
+        """
+        import importlib
+
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.text.other")
+        from esolangs.tools.text.other import _clockwise_weave
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_weave_template", lambda *_a: [[" "]])
+            # Nothing weaves, so the caller falls back to the ring rather
+            # than looping on a template that can never hold the program.
+            assert _clockwise_weave("abc", 12) is None
+
     def test_clockwise_clamps_a_width_below_the_weave_floor(self) -> None:
         """A width under the floor gets the narrowest weave, not an error.
 
@@ -327,7 +348,20 @@ class TestGeneratorRoundTrips:
 
     @pytest.mark.parametrize(
         "text",
-        ["H", "a", "!", "\x01", "Hi", "zyA", "Hello, World!", "Ω", "€Ā"],
+        [
+            "H",
+            "a",
+            "!",
+            "\x01",
+            "Hi",
+            "zyA",
+            "Hello, World!",
+            "Ω",
+            # Two wide codepoints, so both the ring and the street are
+            # built at full size: 1.7s at one worker, over the fast
+            # run's one-second budget.  The rest are milliseconds.
+            pytest.param("€Ā", marks=pytest.mark.slow),
+        ],
     )
     def test_streetcode_emits_the_shorter_of_ring_and_street(self, text: str) -> None:
         """Whichever shape is smaller is what comes out.
@@ -430,6 +464,7 @@ class TestGeneratorRoundTrips:
         assert max(len(line) for line in lines) <= width
         assert roundtrip(streetcode_run, lines) == text
 
+    @pytest.mark.slow  # 2.3s
     def test_streetcode_fold_falls_back_when_a_ring_will_not_fit(self) -> None:
         """A ring too wide for the lane leaves the plain fold standing.
 
@@ -917,6 +952,22 @@ class TestGeneratorRoundTrips:
         assert gen.addsubjump("") == ""
         assert gen.decleq("") == ""
 
+    def test_addsubjump_emits_a_nul_byte(self) -> None:
+        """A NUL is a legal byte, and its value is the one built by no doubling.
+
+        The generator builds each byte by doubling up from 1, which needs
+        the value to have a leading bit; zero has none, so it takes the
+        cleared register as it stands.  NUL passes the byte-range check, so
+        this is a text a caller can really ask for.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.addsubjump import run
+
+        program = gen.addsubjump("a\0b")
+        io_ = ScriptedIO("")
+        run(program, io_)
+        assert io_.getvalue() == "a\0b"
+
     def test_nevermind_unsupported(self) -> None:
         """Nevermind cannot print multiline text or a leading $."""
         with pytest.raises(ValueError, match="single line"):
@@ -1272,6 +1323,7 @@ class TestGeneratorBranches:
         out = capsys.readouterr().out
         assert "usage: python -m esolangs.tools.text" in out
 
+    @pytest.mark.slow  # 3.2s: every generator over the edge-case corpus
     def test_edge_case_inputs(self) -> None:
         """Generators must not crash on edge-case inputs."""
         generators = [

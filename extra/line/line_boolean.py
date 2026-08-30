@@ -32,8 +32,7 @@ arms far enough apart that a decision tree's own branches never re-converge
 on an ancestor fork's arms.  Arms used to be sized geometrically (roughly
 doubling per remaining nesting level), which made the canvas grow sharply
 with ``n`` -- n=3 rendered at roughly 9000x4000px and n=4 at roughly
-17000x9000px, large enough to trip Pillow's default decompression-bomb
-warning.  Arms are now sized from each subtree's *measured* extent (see
+17000x9000px.  Arms are now sized from each subtree's *measured* extent (see
 ``render.py``'s ``_subtree_extent``/``_arm_spacing``), which shrinks that
 dramatically: n=2 at 900x1100, n=3 at 1820x1440, n=4 at 1960x2160.
 
@@ -52,11 +51,11 @@ against the truth table) after the change:
 ===  ===========  ==========  =======  ==========
 
 For scale, n=5 was previously projected at roughly 35000x17000px and called
-impractical; it is 4000x2620 and extracts in a second.  n=7 renders 35Mpx,
-which exceeds Pillow's default decompression-bomb threshold -- a caller
-reading such an image back must raise ``Image.MAX_IMAGE_PIXELS`` (as the
-measurement above did), which is a Pillow default rather than a limit of
-this generator.
+impractical; it is 4000x2620 and extracts in a second.  n=7 renders 35Mpx;
+reading an image that size back is a question of memory and patience only.
+It used to additionally trip Pillow's decompression-bomb threshold, needing
+the caller to raise ``Image.MAX_IMAGE_PIXELS`` (as the measurement above
+did), but ``png.py`` replaced Pillow here and imposes no such ceiling.
 
 Nothing here is enforced, and n=8 upward is simply untested rather than
 known-bad -- the growth is roughly 2x area per input, so the practical limit

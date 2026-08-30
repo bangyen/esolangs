@@ -84,16 +84,48 @@ class TestBack:
         assert run_and_capture(["\\", "+", "-", "*"]) == "0"
 
     def test_blank_only_program_is_empty(self) -> None:
-        """Programs of only blank lines are rejected, not crashed on."""
+        """Programs of only blank lines are rejected, not crashed on.
+
+        The message is matched whole, and with its casing: ``match="empty"``
+        is a substring search, so the wording could drift to anything still
+        containing the word and no test would say so.
+        """
         import pytest
 
-        with pytest.raises(ValueError, match="empty"):
+        message = r"^Back program cannot be empty$"
+        with pytest.raises(ValueError, match=message):
             run_and_capture(["\n"])
-        with pytest.raises(ValueError, match="empty"):
+        with pytest.raises(ValueError, match=message):
             run_and_capture(["   ", "\t"])
+
+    def test_a_short_line_is_padded_on_the_right(self) -> None:
+        r"""A short row keeps its content at the left, and the pad goes right.
+
+        ``test_short_lines_pad_on_the_right`` already covers this, but it
+        settles the question with the cycle detector, so it cannot run
+        against a bundled interpreter and is dropped before mutation ever
+        sees it.  This grid decides the same thing by halting either way:
+        the beam reflects off the ``\`` on the short first row, and which
+        column that row's content sits in changes which cell the tape ends
+        up holding -- 1 when the row is padded on the right, 0 when the pad
+        goes in front of it instead.
+        """
+        assert run_and_capture(["\\", "\\-*"]) == "1"
 
 
 class TestStepMachine:
+    def test_a_fresh_machine_reports_a_boolean(self) -> None:
+        """``halted`` starts as False itself, not merely as something falsey.
+
+        Every other read of it is a truthiness test, which ``None`` passes
+        just as well, so the flag could start un-set rather than unset and
+        nothing would object -- while ``halted`` is annotated as a bool.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.back import _Machine
+
+        assert _Machine(["-*"], ScriptedIO()).halted is False
+
     def test_step_tracks_beam_tape_and_direction(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.back import _Machine
@@ -108,6 +140,47 @@ class TestStepMachine:
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
         assert machine.row == 0
+
+    def test_moving_left_from_cell_zero_stays_put(self) -> None:
+        """``<`` at the leftmost cell is a no-op, not an underflow.
+
+        The tape only grows rightward, so there is nothing to the left of
+        cell 0 to step onto; without the guard the pointer would go
+        negative and start indexing the tape from its far end.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.back import _Machine
+
+        machine = _Machine(["<-*"], ScriptedIO())
+        assert machine.cell == 0
+        machine.step()  # "<" with nowhere to go
+        assert machine.cell == 0
+        machine.step()  # "-" flips the cell the pointer stayed on
+        assert machine.tape[0] == 1, "the flip landed on cell 0"
+
+    def test_moving_right_grows_the_tape_only_at_its_end(self) -> None:
+        """``>`` appends a cell when it steps past the last one, once.
+
+        Stepping back and forth over ground already covered must not keep
+        appending, or the tape would grow with every lap of a loop.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.back import _Machine
+
+        machine = _Machine([">>*"], ScriptedIO())
+        assert machine.tape == [0]
+        machine.step()  # past the end: the tape grows
+        assert machine.tape == [0, 0]
+        machine.step()  # past the new end: it grows again
+        assert machine.tape == [0, 0, 0]
+
+        # Re-entering a cell that already exists leaves the tape alone.
+        revisit = _Machine(["><>*"], ScriptedIO())
+        revisit.step()  # ">" grows to two cells
+        assert revisit.tape == [0, 0]
+        revisit.step()  # "<" back to cell 0
+        revisit.step()  # ">" onto the cell that already exists
+        assert revisit.tape == [0, 0], "no cell appended for known ground"
 
     def test_snapshot_is_hashable(self) -> None:
         from esolangs.interpreters.io import ScriptedIO

@@ -114,8 +114,14 @@ def _reach_acc(array: list[int], acc: int, want: int) -> list[str] | None:
 def _leaf(array: list[int], acc: int, bit: int) -> list[str]:
     """Print the table entry, then halt."""
     tokens = _reach_acc(array, acc, _ASCII_ZERO + bit)
-    if tokens is None:  # pragma: no cover - a residue is always reachable
-        raise ValueError("no accumulator normalizer for a leaf")
+    # Stays a ValueError, and stays excluded rather than becoming an
+    # assertion: _subtree calls this through a recursion whose arms catch
+    # ValueError to try the next candidate, so escalating it would turn a
+    # recoverable backtrack into a crash.
+    if tokens is None:
+        raise ValueError(  # pragma: no cover - a residue is always reachable
+            "no accumulator normalizer for a leaf"
+        )
     # ``EXCRETE`` appends the printed byte (48 or 49, so nonzero: ``LEAPFROG``
     # fires) and clears the accumulator, which makes the jump target
     # ``0 - head - 1``.  That is negative, which the interpreter halts on.

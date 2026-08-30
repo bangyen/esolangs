@@ -43,10 +43,15 @@ class TestSuffolk:
         assert buffer.getvalue() == "A"
 
     def test_empty_program_rejected(self) -> None:
-        """An empty program is malformed."""
+        """An empty program is malformed.
+
+        The message is matched whole, and with its casing: ``match="empty"``
+        is a substring search, so the wording could drift to anything that
+        still contains the word and no test would say so.
+        """
         import pytest
 
-        with pytest.raises(ValueError, match="empty"):
+        with pytest.raises(ValueError, match=r"^Suffolk program cannot be empty$"):
             run("", IO())
 
     def test_default_limit_is_ten_passes(self) -> None:
