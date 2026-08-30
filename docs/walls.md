@@ -962,6 +962,22 @@ commit.  A table costs ~0.68s at `n == 3`, down from ~3.5s, which is under
 the boolean contract sweep's one-second budget — the language is no longer
 in that sweep's searching set.
 
+**What still iterates, and why it terminates.**  Solving a landing needs no
+execution, but the fixpoint between sizes and offsets does iterate: a
+node whose reach falls short of its own 0-subtree prepends a stash chunk,
+which buys ~255 tokens of reach, and re-derives.  That loop is bounded by
+a measured convergence check rather than by its `_MAX_CHUNKS` backstop.
+Instrumenting every node of every table through `n == 3` (64384 nodes)
+shows the shortfall is *not* monotone per iteration — a chunk's layout
+outruns the reach it buys for a single step, so the gap sawtooths up two
+to four tokens before resuming its fall — but it closes over every
+two-chunk window, with a minimum observed drop of 88 tokens.  A window
+that fails to close is the parent/child lock the 0-arm's shed exists to
+break, and is reported as such.  Chunk use is small: the worst any node
+needed was 15 (2 at `n == 1`, 7 at `n == 2`, 15 at `n == 3`), against a
+backstop of 400.  That growth is mild but not flat, so the backstop is not
+proven adequate for large `n`.
+
 **Where this leans on undefined behaviour.**  The wiki is explicit about
 the fact the wall got wrong — `ACCEPT` pushes "onto the top of array 0",
 while every other array instruction says "the array under the pointer", so
