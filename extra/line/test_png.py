@@ -238,10 +238,91 @@ def test_multi_channel_filters_step_by_a_whole_pixel() -> None:
     assert png.read_grey(blob) == [expected]
 
 
+def test_rejects_a_sixteen_bit_palette() -> None:
+    """Palette indices are at most 8 bits, so 16-bit palette is malformed."""
+    with pytest.raises(ValueError, match="palette"):
+        png.read_grey(_encode([bytes([0, 0, 0])], 1, 1, depth=16, colour=png._PALETTE))  # noqa: SLF001
+
+
 def test_rejects_sub_byte_depth_on_a_colour_image() -> None:
     """Sub-byte samples are single-channel only, per the spec."""
     with pytest.raises(ValueError, match="bit depth"):
         png.read_grey(_encode([bytes([0, 0])], 1, 1, depth=4, colour=png._RGB))  # noqa: SLF001
+
+
+def _adam7_encode(pixels: list[list[int]], width: int, height: int) -> bytes:
+    """Encode 8-bit greyscale as an interlaced PNG, filter 0 throughout."""
+    raw = bytearray()
+    for row0, col0, row_step, col_step in png._ADAM7:  # noqa: SLF001
+        cols = list(range(col0, width, col_step))
+        rows = list(range(row0, height, row_step))
+        if not cols or not rows:
+            continue
+        for y in rows:
+            raw.append(0)
+            raw += bytes(pixels[y][x] for x in cols)
+    ihdr = struct.pack(">IIBBBBB", width, height, 8, png._GREY, 0, 0, 1)  # noqa: SLF001
+
+    def chunk(kind: bytes, body: bytes) -> bytes:
+        return (
+            struct.pack(">I", len(body))
+            + kind
+            + body
+            + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
+        )
+
+    return (
+        png._SIGNATURE  # noqa: SLF001
+        + chunk(b"IHDR", ihdr)
+        + chunk(b"IDAT", zlib.compress(bytes(raw)))
+        + chunk(b"IEND", b"")
+    )
+
+
+@pytest.mark.parametrize(("width", "height"), [(1, 1), (5, 3), (9, 9), (16, 7)])
+def test_interlaced_reassembles_to_the_same_image(width: int, height: int) -> None:
+    """An Adam7 image decodes to what the same pixels say non-interlaced.
+
+    Adam7 stores seven subsampled passes rather than plain scanlines, each
+    with its own dimensions, row filters and row padding.  The sizes here
+    include ones smaller than the 8x8 lattice, where whole passes are empty
+    -- the case an off-by-one in the pass geometry shows up on first.
+    """
+    pixels = [
+        [(x * 37 + y * 11) % 256 for x in range(width)] for y in range(height)
+    ]
+    plain = _encode(
+        [bytes([0, *row]) for row in pixels], width, height, colour=png._GREY  # noqa: SLF001
+    )
+    interlaced = _adam7_encode(pixels, width, height)
+    assert png.read_grey(interlaced) == png.read_grey(plain)
+    assert png.read_grey(interlaced) == [bytearray(row) for row in pixels]
+
+
+def test_sixteen_bit_scales_down_rather_than_clipping() -> None:
+    """16-bit samples scale onto 0-255; they are not clipped there.
+
+    This deliberately departs from Pillow, whose ``I;16 -> L`` conversion
+    clips: under it every 16-bit value above 255 comes out white, so a
+    drawing whose ink is stored as (say) 1000 would decode to a blank page
+    with every stroke erased.  The two agree on pure 0 and pure 65535, which
+    is what a clean black-and-white drawing actually holds.
+    """
+    values = [0, 256, 1000, 32768, 60000, 65535]
+    row = bytearray([0])
+    for value in values:
+        row += struct.pack(">H", value)
+    blob = _encode([bytes(row)], len(values), 1, depth=16, colour=png._GREY)  # noqa: SLF001
+    assert png.read_grey(blob) == [bytearray(v >> 8 for v in values)]
+
+
+def test_sixteen_bit_colour_reduces_through_luma() -> None:
+    """A 16-bit RGB pixel scales per channel, then reduces like any colour."""
+    row = bytearray([0])
+    for value in (65535, 0, 0):  # pure red at full depth
+        row += struct.pack(">H", value)
+    blob = _encode([bytes(row)], 1, 1, depth=16, colour=png._RGB)  # noqa: SLF001
+    assert png.read_grey(blob) == [bytearray([76])]
 
 
 def test_rejects_a_non_png() -> None:
@@ -250,11 +331,11 @@ def test_rejects_a_non_png() -> None:
         png.read_grey(b"not a png at all")
 
 
-def test_rejects_interlaced() -> None:
-    """Adam7 interlacing is unimplemented, so it must raise, not misdecode."""
+def test_rejects_an_unknown_interlace_method() -> None:
+    """Only the spec's two interlace methods exist; anything else is corrupt."""
     blob = bytearray(_encode([bytes([0, 0])], 1, 1))
-    blob[8 + 8 + 12] = 1  # IHDR's interlace byte
-    with pytest.raises(ValueError, match="interlaced"):
+    blob[8 + 8 + 12] = 7  # IHDR's interlace byte
+    with pytest.raises(ValueError, match="interlace method"):
         png.read_grey(bytes(blob))
 
 

@@ -4,12 +4,12 @@ Images are passed as one ``bytearray`` of greyscale levels per row -- the
 same shape ``render.Canvas`` keeps its pixels in, and what
 ``mask.from_grey`` thresholds into an ink mask.
 
-Reading accepts any non-interlaced PNG at 1/2/4/8 bits per channel --
-greyscale, palette, truecolour, with or without alpha -- reduced to
-greyscale on the way in; writing always emits 8-bit greyscale.  Colour
-support matters because a Line drawing that has been through an image
-editor typically comes back as RGB even though it is visually black and
-white.  Interlaced and 16-bit images raise rather than being guessed at.
+Reading accepts any PNG the spec defines -- every colour type, every bit
+depth from 1 to 16, interlaced or not -- and reduces it to greyscale on the
+way in; writing always emits plain 8-bit greyscale.  Reading broadly matters
+because a Line drawing that has been through an image editor comes back in
+whatever that editor prefers (commonly RGB, sometimes 16-bit) while still
+being visually the same black-and-white drawing.
 
 The point is not to be a general codec.  PNG's container is a handful of
 length-tagged chunks and its compression is plain zlib, both in the standard
@@ -93,11 +93,11 @@ def _unfilter(raw: bytes, height: int, stride: int, step: int) -> bytearray:
     """Reverse the per-row filters, returning ``height * stride`` raw bytes.
 
     Each row in ``raw`` is prefixed with a filter-type byte and is decoded
-    against the row above it, so this cannot be vectorised across rows the way
-    the rest of this module's array work is -- filters 1/3/4 also depend on
-    earlier bytes *within* the same row.  ``step`` is the byte distance to the
-    pixel on the left (1 for every format here, since all are single-channel
-    at 8 bits or narrower, but the spec defines it per-format).
+    against the row above it, and filters 1/3/4 also depend on earlier bytes
+    *within* the same row, so this is inherently sequential.  ``step`` is the
+    byte distance to the pixel on the left: one whole pixel, which is
+    ``channels * depth // 8`` bytes, floored at 1 because sub-byte pixels
+    predict from the neighbouring byte.
     """
     out = bytearray(height * stride)
     prev = bytearray(stride)
@@ -131,38 +131,104 @@ def _unfilter(raw: bytes, height: int, stride: int, step: int) -> bytearray:
     return out
 
 
-def _unpack_bits(
-    rows: bytearray, height: int, width: int, stride: int, depth: int
-) -> list[bytearray]:
-    """Expand sub-byte samples to one byte each, dropping each row's padding.
+# Adam7's seven passes, each as (first row, first column, row step, column
+# step).  Pass k stores a subsampled grid; together the seven tile the image
+# exactly once, which is what lets a decoder show a coarse preview early.
+_ADAM7 = (
+    (0, 0, 8, 8),
+    (0, 4, 8, 8),
+    (4, 0, 8, 4),
+    (0, 2, 4, 4),
+    (2, 0, 4, 2),
+    (0, 1, 2, 2),
+    (1, 0, 2, 1),
+)
 
-    Every byte expands the same way regardless of where it sits, so the 256
-    possible expansions are tabulated once and the per-row work becomes a
-    lookup and a join rather than a shift per sample.
-    """
+
+def _unpack_row(raw: bytes, width: int, channels: int, depth: int) -> list[int]:
+    """Expand one filtered-and-restored row to one integer per sample."""
+    count = width * channels
+    if depth == 8:
+        return list(raw[:count])
+    if depth == 16:
+        # Big-endian, per the spec.
+        return [(raw[2 * i] << 8) | raw[2 * i + 1] for i in range(count)]
     per_byte = 8 // depth
     mask = (1 << depth) - 1
-    # Most-significant sample first, per the spec.
-    table = [
-        bytes(
-            (value >> (shift * depth)) & mask for shift in range(per_byte - 1, -1, -1)
-        )
-        for value in range(256)
+    out: list[int] = []
+    for byte in raw:
+        # Most-significant sample first, per the spec.
+        for shift in range(per_byte - 1, -1, -1):
+            out.append((byte >> (shift * depth)) & mask)
+    return out[:count]  # trailing samples are row padding
+
+
+def _read_pass(
+    stream: bytes, width: int, height: int, channels: int, depth: int, offset: int = 0
+) -> list[list[int]]:
+    """Decode one non-interlaced image (or one Adam7 pass) from ``stream``.
+
+    ``offset`` is where this pass's filtered rows start; a whole
+    non-interlaced image is just the single pass beginning at zero.
+    """
+    if width == 0 or height == 0:
+        return []
+    stride = (width * channels * depth + 7) // 8
+    # The filter predictor looks one *pixel* to the left, which is the pixel's
+    # whole width in bytes -- never less than one, since sub-byte pixels
+    # predict from the adjacent byte.
+    step = max(1, channels * depth // 8)
+    raw = _unfilter(stream[offset:], height, stride, step)
+    return [
+        _unpack_row(bytes(raw[y * stride : (y + 1) * stride]), width, channels, depth)
+        for y in range(height)
     ]
-    out = []
-    for y in range(height):
-        packed = rows[y * stride : (y + 1) * stride]
-        out.append(bytearray(b"".join([table[byte] for byte in packed])[:width]))
-    return out
+
+
+def _pass_size(width: int, height: int, index: int) -> tuple[int, int]:
+    """How many columns and rows Adam7 pass ``index`` holds."""
+    row0, col0, row_step, col_step = _ADAM7[index]
+    if width <= col0 or height <= row0:
+        return 0, 0
+    return (
+        (width - col0 + col_step - 1) // col_step,
+        (height - row0 + row_step - 1) // row_step,
+    )
+
+
+def _deinterlace(
+    stream: bytes, width: int, height: int, channels: int, depth: int
+) -> list[list[int]]:
+    """Reassemble the seven Adam7 passes into ordinary scanlines.
+
+    Each pass is a complete little image with its own dimensions, its own row
+    filters and its own row padding, laid end to end in the same zlib stream,
+    so each is decoded exactly like a non-interlaced one and its pixels are
+    then scattered onto the lattice it came from.
+    """
+    rows = [[0] * (width * channels) for _ in range(height)]
+    offset = 0
+    for index, (row0, col0, row_step, col_step) in enumerate(_ADAM7):
+        pass_width, pass_height = _pass_size(width, height, index)
+        if pass_width == 0 or pass_height == 0:
+            continue
+        decoded = _read_pass(stream, pass_width, pass_height, channels, depth, offset)
+        for y, row in enumerate(decoded):
+            target = rows[row0 + y * row_step]
+            for x in range(pass_width):
+                base = (col0 + x * col_step) * channels
+                target[base : base + channels] = row[x * channels : (x + 1) * channels]
+        stride = (pass_width * channels * depth + 7) // 8
+        offset += pass_height * (stride + 1)  # each row carries a filter byte
+    return rows
 
 
 def read_grey(data: bytes) -> list[bytearray]:
     """Decode PNG bytes to one ``bytearray`` of greyscale levels per row.
 
-    Palette images are resolved through their PLTE entries; because the only
-    palettes this needs to handle are black-and-white, the RGB triple is
-    reduced with the same ITU-R 601-2 luma weights Pillow's ``convert("L")``
-    uses, so a greyscale threshold means the same thing either way.
+    Colour is reduced with the same ITU-R 601-2 luma weights Pillow's
+    ``convert("L")`` uses -- palette entries included -- so an ink threshold
+    means the same thing whichever format a drawing arrives in.
     """
     header = None
     palette = None
@@ -182,30 +248,45 @@ def read_grey(data: bytes) -> list[bytearray]:
 
     if compression != 0 or filter_method != 0:
         raise ValueError("unsupported PNG compression or filter method")
-    if interlace != 0:
-        raise ValueError("interlaced PNGs are not supported")
+    if interlace not in (0, 1):
+        raise ValueError(f"unknown PNG interlace method {interlace}")
     if colour not in _CHANNELS:
         raise ValueError(
             f"unsupported PNG colour type {colour} "
             f"({_COLOUR_NAMES.get(colour, 'unknown')})"
         )
-    if depth not in (1, 2, 4, 8):
+    if depth not in (1, 2, 4, 8, 16):
         raise ValueError(f"unsupported PNG bit depth {depth}")
 
     channels = _CHANNELS[colour]
-    if channels > 1 and depth != 8:
+    if channels > 1 and depth < 8:
         # Sub-byte samples only occur in single-channel images per the spec.
         raise ValueError(f"unsupported PNG bit depth {depth} for {channels} channels")
+    if colour == _PALETTE and depth == 16:
+        raise ValueError("palette PNGs cannot be 16-bit")
 
-    stride = (width * channels * depth + 7) // 8
-    # The filter predictor looks one *pixel* to the left, which is `channels`
-    # bytes away once a pixel spans more than one.
-    raw = _unfilter(zlib.decompress(bytes(idat)), height, stride, step=channels)
-    if depth == 8:
-        samples = [bytearray(raw[y * stride : (y + 1) * stride]) for y in range(height)]
+    data_stream = zlib.decompress(bytes(idat))
+    if interlace:
+        samples = _deinterlace(data_stream, width, height, channels, depth)
     else:
-        samples = _unpack_bits(raw, height, width, stride, depth)
+        samples = _read_pass(data_stream, width, height, channels, depth)
 
+    return _to_grey(samples, width, channels, depth, colour, palette)
+
+
+def _to_grey(
+    samples: list[list[int]],
+    width: int,
+    channels: int,
+    depth: int,
+    colour: int,
+    palette: bytes | None,
+) -> list[bytearray]:
+    """Reduce decoded samples to one greyscale byte per pixel.
+
+    ``samples`` holds one row per scanline, already unpacked to one integer
+    per sample and with any row padding dropped.
+    """
     if colour == _PALETTE:
         if palette is None:
             raise ValueError("palette PNG has no PLTE chunk")
@@ -214,25 +295,44 @@ def read_grey(data: bytes) -> list[bytearray]:
         # wants; a sample indexing past the palette is a malformed file, and
         # mapping it to black is as good as any other answer for one.
         table = bytes(_luma(*entry) for entry in entries).ljust(256, b"\x00")
-        return [row.translate(table) for row in samples]
+        return [bytearray(row).translate(table) for row in samples]
+
+    # Bring every depth onto the same 0-255 scale before reducing colour, so
+    # the luma weights and the ink threshold mean one thing throughout.
+    top = (1 << depth) - 1
+    if depth == 8:
+
+        def level(value: int) -> int:
+            return value
+    elif depth == 16:
+        # Take the high byte, i.e. scale 0-65535 down onto 0-255.  This is a
+        # deliberate departure from Pillow, whose I;16 -> L conversion *clips*
+        # rather than scaling: under Pillow every 16-bit value above 255 comes
+        # out white, so a drawing whose ink is stored as, say, 1000 decodes to
+        # a blank page with every stroke erased.  Scaling keeps the picture.
+        # The two agree on pure 0 and pure 65535, which is what a clean
+        # black-and-white drawing actually contains, so this only ever differs
+        # in Pillow's favour on files Pillow would have mangled.
+        def level(value: int) -> int:
+            return value >> 8
+    else:
+
+        def level(value: int) -> int:
+            return value * 255 // top
+
     if colour in (_RGB, _RGBA):
         # Alpha is dropped rather than composited, matching Pillow's
         # convert("L"): a Line drawing's transparency is not ink.
         return [
             bytearray(
-                _luma(row[i], row[i + 1], row[i + 2])
+                _luma(level(row[i]), level(row[i + 1]), level(row[i + 2]))
                 for i in range(0, width * channels, channels)
             )
             for row in samples
         ]
     if colour == _GREY_ALPHA:
-        return [bytearray(row[0 : width * 2 : 2]) for row in samples]
-    if depth != 8:
-        # Scale a narrow greyscale range up to full 0-255 (1-bit 1 -> 255).
-        factor = 255 // ((1 << depth) - 1)
-        scale = bytes((value * factor) & 0xFF for value in range(256))
-        return [row.translate(scale) for row in samples]
-    return [row[:width] for row in samples]
+        return [bytearray(level(v) for v in row[0 : width * 2 : 2]) for row in samples]
+    return [bytearray(level(v) for v in row[:width]) for row in samples]
 
 
 def write_grey(pixels: list[bytearray]) -> bytes:
