@@ -948,26 +948,6 @@ _PLANS: dict[int, dict[str, _Staging]] = {
 }
 
 
-def _closed_form(truth_table: str) -> str | None:
-    """Build by the closed-form construction, or None if it cannot.
-
-    A thin wrapper so the route is a module-level name: it can be stubbed
-    like :func:`_find_column` and :func:`_find_parked` by the tests that
-    exercise the searches, which need every earlier route to fail.
-
-    The import is local because
-    :mod:`esolangs.tools.boolean.minifuck_closed` borrows this module's
-    ``_Sim`` and ``_set_bit``, so importing it at module scope would be
-    circular.
-    """
-    from esolangs.tools.boolean.minifuck_closed import minifuck_closed
-
-    try:
-        return minifuck_closed(truth_table)
-    except ValueError:
-        return None
-
-
 def _staged(truth_table: str, n: int) -> str | None:
     """Build from :data:`_PLANS` without searching, or None if unplanned.
 
@@ -1104,23 +1084,6 @@ def minifuck(truth_table: str) -> str:
     derived = _staged(truth_table, n)
     if derived is not None:
         return derived
-
-    # Next the closed-form construction, which searches for nothing: it
-    # builds a region whose cells hold affine functions of the inputs,
-    # solves a GF(2) system for the pattern that puts the wanted values
-    # where the reads will look, and prints from a computed pool.  See
-    # :mod:`esolangs.tools.boolean.minifuck_closed`.
-    #
-    # It goes *after* the plans and *before* the searches because that is
-    # where it wins: the plans are complete at two and three inputs and
-    # cost nothing, while the searches below cost tens of seconds a table.
-    # Its own coverage is partial -- it raises rather than returning a
-    # template it has not seen print the table -- so a miss falls through
-    # exactly as before and no table this module used to build can stop
-    # building.
-    closed = _closed_form(truth_table)
-    if closed is not None:
-        return closed
 
     frontier = _BASE + n * _SPAN + 6
 
