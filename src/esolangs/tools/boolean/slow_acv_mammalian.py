@@ -240,7 +240,7 @@ def _zero_arm(
     ]
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def _zero_arm_length_cached(array: tuple[int, ...], acc: int, bit: int) -> int:
     """:func:`_zero_arm_length` over hashable arguments, memoised.
 
