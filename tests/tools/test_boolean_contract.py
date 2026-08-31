@@ -421,7 +421,6 @@ def test_greedy_order_is_correct_when_it_is_not_the_identity() -> None:
 _MINTERM_SHAPED = {
     "a_painter_ant",
     "bfstack",
-    "collatz_multiverse",
     "container",
     "point_break",
 }
@@ -482,6 +481,7 @@ _MINTERM_SHAPED = {
 _REDUCING = {
     "bit_tilde",
     "cod",
+    "collatz_multiverse",
     "home_row",
     "nocomment",
     "qoibl",

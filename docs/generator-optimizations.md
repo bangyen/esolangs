@@ -68,16 +68,21 @@ It measured 74.1% when first added and 74.5% once its reorder shipped the
 same day — the one-dependency table it is scored on is exactly the case the
 reorder improves, so this figure moves when that build changes.
 
-**Minterm-shaped (5).** a_painter_ant, bfstack,
-collatz_multiverse, container, point_break — all within 4% of parity
-on a one-dependency table, because there is no subtree to collapse.
+**Minterm-shaped (4).** a_painter_ant, bfstack, container, point_break —
+all within 4% of parity on a one-dependency table, because there is no
+subtree to collapse.
 
-**Reducing (8).** `home_row`, `cod`, `nocomment`, `bit_tilde`, `rotfuck`,
-`suptiftam`, `suffolk` and `qoibl` were on that list until 2026-08-30/31 and
-are still minterm sums; they now gain **60.6%**, **92.5%**, **27.3%**,
-**81.5%**, **76.3%**, **69.4%**, **14.7%** and **53.2%** respectively on a
-one-dependency table by *dependency reduction* (10) rather than by
-folding.
+**Reducing (9).** `home_row`, `cod`, `nocomment`, `bit_tilde`, `rotfuck`,
+`suptiftam`, `suffolk`, `qoibl` and `collatz_multiverse` were on that list
+until 2026-08-30/31 and are still minterm sums; they now gain **60.6%**,
+**92.5%**, **27.3%**, **81.5%**, **76.3%**, **69.4%**, **14.7%**, **53.2%**
+and **66.1%** respectively on a one-dependency table by *dependency
+reduction* (10) rather than by folding.
+
+`container` and `bfstack` stay minterm-shaped deliberately: measured, a
+constant table is 93% and ~100% of a one-dependency program's length
+respectively, so nearly all of their arity cost is per-input setup that the
+reads pin and reduction cannot reach. See the setup/body note below.
 
 That is most of the minterm side, and the pattern is worth stating: a sum of
 minterms is the *ideal* shape for technique 10, because it pays per selected
@@ -313,7 +318,7 @@ zero rows and inverting — one term saved per row, paid for once.
 | `qoibl`, `bit_tilde`, `grapheme` | fewer minterms; grapheme picks whichever row-set is shorter |
 | `container` | `OUT` spends one `+1 S{row}>=Gout` line per one-row, so a dense table sums its zero rows from a 49 start and subtracts — 12.7% on the densest n=4 table. The per-row survivor blocks are fixed and unaffected |
 
-### Dependency reduction (10) — eleven generators
+### Dependency reduction (10) — twelve generators
 
 A table ignoring an input is emitted as the *smaller* table, still
 consuming the rest. `essential_inputs` (in `boolean/helpers.py`, promoted
@@ -467,6 +472,32 @@ and that is set by the interface rather than by the construction:
   the screen, which promised both about 70%. **Split the program into
   per-input setup and per-row body before believing an arity screen** — the
   screen prices the whole program, and only the body is reachable.
+
+- **`collatz_multiverse` reads an input it never turns into an indicator.**
+  A minterm costs an indicator per input plus an AND chain, on top of one
+  minterm per selected row. 2419 → **821** at `n == 3` (66.1%). Its constant
+  branch was already the reduction for zero essential inputs — reads every
+  input, discards it, prints the constant — so this generalizes it, the same
+  move as `circuit_diagram` and `suffolk`.
+
+**Before building the next one, split it.** The arity screen prices the
+whole program, but only the per-row **body** is reducible; per-input
+**setup** is the interface and stays. A cheap proxy for the split is the
+length of a *constant* table against a one-dependency one, since a constant
+needs no body:
+
+| generator | setup share | delivered |
+|---|---|---|
+| `point_break` | 12% | not yet built |
+| `collatz_multiverse` | 21% | 66.1% |
+| `qoibl` | 29% | 53.2% |
+| `container` | 93% | not worth building |
+| `suffolk` | 96% | 14.7% |
+| `bfstack`, `clockwise` | ~100% | not worth building |
+
+The screen called `suffolk` and `qoibl` both about 70%; the split called
+them apart in one measurement each. **Three candidates were retired on this
+evidence without being built.**
 
 **What to check on the next candidate.** The win is available wherever cost
 tracks *arity* rather than the table's contents, which is why it crosses the
