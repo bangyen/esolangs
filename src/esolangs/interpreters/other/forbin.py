@@ -820,7 +820,7 @@ class _Machine:
         # a broken invariant skip the body assignment silently instead of
         # saying so.
         current = frame.body[frame.pos]
-        assert current[0] == "for"
+        assert current[0] == "for"  # nosec B101
         frame.for_body = current[2]
         frame.for_body_pos = 0
 

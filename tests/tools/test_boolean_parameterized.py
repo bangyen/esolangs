@@ -268,7 +268,7 @@ def test_minifuck_single_essential_falls_past_the_degenerate_lookup() -> None:
     module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
     for table in ("01010101", "10101010"):
-        assert module._essential_inputs(table, 3) == [2]  # noqa: SLF001
+        assert module.essential_inputs(table, 3) == [2]
         assert module._degenerate(table, 3) is None  # noqa: SLF001
 
         # Declining is only correct if the build still produces the table.
