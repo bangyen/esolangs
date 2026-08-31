@@ -323,7 +323,7 @@ zero rows and inverting — one term saved per row, paid for once.
 | `qoibl`, `bit_tilde`, `grapheme` | fewer minterms; grapheme picks whichever row-set is shorter |
 | `container` | `OUT` spends one `+1 S{row}>=Gout` line per one-row, so a dense table sums its zero rows from a 49 start and subtracts — 12.7% on the densest n=4 table. The per-row survivor blocks are fixed and unaffected |
 
-### Dependency reduction (10) — thirteen generators
+### Dependency reduction (10) — fourteen generators, both shapes
 
 A table ignoring an input is emitted as the *smaller* table, still
 consuming the rest. `essential_inputs` (in `boolean/helpers.py`, promoted
@@ -495,6 +495,29 @@ and that is set by the interface rather than by the construction:
   rule this relies on — *the reads are the interface, and only the body may
   shrink*.
 
+- **`three_x` is the first *tree* generator reduced deliberately, and it
+  retires the idea that trees have nothing to gain.** Its tree prunes only
+  the rows that *differ from the default*, which for a one-dependency table
+  is still half of them, each carrying a full-depth guard chain; folding
+  never sees the degeneracy. Reducing collapses those to one guard: 603 →
+  **185** at `n == 3` (69.3%).
+
+  **The bug it produced is worth keeping.** `_three_x_ordered` receives an
+  *already-permuted* table from `best_input_order`, so the essential set it
+  computes is in the tree's coordinates, not the input stream's. Mapping
+  slots back through the stream order mixes the two — which agrees only when
+  the essential set is contiguous from 0, so it was invisible on every
+  one-dependency table and produced **522 wrong rows** on gapped sets like
+  `[0, 2]`. When a generator reduces *inside* a reorder wrapper, check which
+  coordinate system the reduced indices live in.
+
+**Both shapes reduce.** The minterm side is where this started, but the
+discriminator was never the shape — it is the split below. A tree folds a
+degenerate table away only when its fold *direction* matches the essential
+inputs and its cost is leaf-count-bound; `three_x` fails the second (its
+cost is per differing row) and keeps the full gap. `grapheme` (72.8%) and
+`circuit_diagram` (99.3%) were already tree-side counterexamples.
+
 **Before building the next one, split it.** The arity screen prices the
 whole program, but only the per-row **body** is reducible; per-input
 **setup** is the interface and stays. A cheap proxy for the split is the
@@ -568,7 +591,12 @@ on split order: `a_painter_ant`, `circlefuck_byte`, `circuit_diagram`, `cod`,
 
 **Measured upside but unreachable as a reorder** — no addressable storage to
 hold a read bit, so a bit can only be branched on before the next read:
-`polynomial` (25.1%), `modulous` (16.4%), `sophie` (16.4%). Residual merging
+`polynomial` (25.1%), `modulous` (16.4%), `sophie` (16.4%).
+
+**Dependency reduction (10) reaches part of this**, because it is
+*order-blind*: it rewrites the table over its essential inputs before any
+split order is chosen, so it needs nowhere to hold a read bit. That is the
+escape the reorder could not take. Residual merging
 collects what the screen was measuring for polynomial and sophie.
 
 **Built 2026-08-30 — `cvnc`, and the walk cost turned out to be zero.** It
