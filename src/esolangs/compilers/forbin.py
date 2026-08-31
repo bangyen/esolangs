@@ -439,9 +439,19 @@ class _Compiler:
             # any number of open loops jumps straight to the epilogue, so
             # the epilogue restores sp from the mark rather than trusting
             # the loops to have unwound their saved registers.
-            f"    addi sp, sp, -32\n"
+            #
+            # s4/s5 are a range loop's live counter and limit.  They are
+            # saved here, not only per-loop, because a `return` from inside
+            # a callee's loop discards that loop's own stack save -- and if
+            # the *caller* is mid-loop, its counter would come back
+            # clobbered.  The epilogue runs on every exit path, so saving
+            # them per-invocation hands the caller its values back however
+            # the callee leaves.
+            f"    addi sp, sp, -48\n"
             f"    sd   ra, 0(sp)\n"
             f"    sd   s6, 8(sp)\n"
+            f"    sd   s4, 16(sp)\n"
+            f"    sd   s5, 24(sp)\n"
             f"    mv   s6, sp\n"
             f"{body}"
             f"    li   a0, 0\n"
@@ -449,7 +459,9 @@ class _Compiler:
             f"    mv   sp, s6\n"
             f"    ld   ra, 0(sp)\n"
             f"    ld   s6, 8(sp)\n"
-            f"    addi sp, sp, 32\n"
+            f"    ld   s4, 16(sp)\n"
+            f"    ld   s5, 24(sp)\n"
+            f"    addi sp, sp, 48\n"
             f"    ret\n"
             f"{table}"
         )
