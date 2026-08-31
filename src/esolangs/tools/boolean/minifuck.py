@@ -74,6 +74,14 @@ because the tables it *does* reach include five-input XOR, which no search
 here builds at all.  The one thing that had to change is the spelling: the
 whole-arity derivation cannot run at 2**32 tables, so this arity derives one
 table at a time.  See :data:`_TABLE_MAJOR_ARITIES` for what that trades.
+
+Paying that per table is what makes a *screen* worth having, and there is
+one: everything the endgame emits after the suffix is GF(2)-affine in the
+columns standing at that point, so a printed column lies in their span.  A
+table in no staging's span cannot be printed by any of them, and
+:func:`_span_admits` says so in about 3.6 milliseconds where the enumeration
+takes 143 seconds to find nothing.  It only ever declines, so no table that
+built before builds differently now.
 A table that ignores some inputs is solved at the arity it uses and renumbered
 back, so a wide table with a narrow core is as cheap as that core.
 
@@ -1563,6 +1571,114 @@ def _derived_plans(
     return found
 
 
+# The arities whose enumeration is worth screening before it is run.  Only
+# five: the screen below is *vacuous* at four inputs and cheaper to skip than
+# to evaluate.  See :func:`_span_admits` for why the arity is what decides it.
+_SCREENED_ARITIES = (5,)
+
+
+def _span_basis(vectors: list[int]) -> list[int]:
+    """Row-reduce ``vectors`` to a GF(2) basis, greatest leading bit first.
+
+    Columns are packed one bit per row, so a table and a tape column are the
+    same kind of object and XOR is their addition.
+    """
+    basis: list[int] = []
+    for v in vectors:
+        cur = v
+        for b in basis:
+            cur = min(cur, cur ^ b)
+        if cur:
+            basis.append(cur)
+            basis.sort(reverse=True)
+    return basis
+
+
+def _in_span(v: int, basis: list[int]) -> bool:
+    """Whether ``v`` is a GF(2) combination of ``basis``."""
+    cur = v
+    for b in basis:
+        cur = min(cur, cur ^ b)
+    return cur == 0
+
+
+@cache
+def _staging_spans(n: int) -> tuple[tuple[int, ...], ...]:
+    """Return one basis per staging, spanning its standing columns.
+
+    Built once per arity and cached, because it does not depend on the table
+    being asked for: it is a property of the enumeration, not of the target.
+    """
+    out: list[tuple[int, ...]] = []
+    window = range(1, _BASE + n * _SPAN + 12)
+
+    def pack(j: _Joint) -> list[int]:
+        cols = []
+        for cell in window:
+            v = 0
+            for bit in j.col(cell):
+                v = (v << 1) | bit
+            cols.append(v)
+        return cols
+
+    for sep_index in range(len(_SEPS)):
+        for settle in (0, 1):
+            base = _embed(n, settle=settle, sep=_SEPS[sep_index])
+            _clamp(base)
+            _walk_to(base, _BASE - 1)
+            run = base.fork()
+            for _k in range(_MAX_BRACKETS + 1):
+                staged = run.fork()
+                staged.emit("<")
+                _clamp(staged)
+                out.append(tuple(_span_basis(pack(staged))))
+                run.emit("[")
+            if n not in _INSERT_ARITIES:
+                continue
+            for suffix in _insert_suffixes():
+                staged = base.fork()
+                staged.emit(suffix + "<")
+                _clamp(staged)
+                out.append(tuple(_span_basis(pack(staged))))
+    return tuple(out)
+
+
+def _span_admits(truth_table: str, n: int) -> bool:
+    """Whether any staging *could* print this table, on a linear-algebra test.
+
+    A **necessary** condition, and the asymmetry is the point: False means no
+    staging prints the table and the enumeration can be skipped outright,
+    while True means only that the enumeration has to run.  A miss at five
+    inputs costs a measured 143 seconds and this answers in about 3.6
+    milliseconds, so what it saves is the sweep that was going to fail.
+
+    Everything the endgame emits after the suffix is GF(2)-affine in the
+    columns standing at that point, so a printed column lies in their span.
+    Measured over the whole family rather than argued: 241280 of 241280
+    (staging, printed column) incidences are contained at five inputs, and no
+    reachable table is declined -- 0 false negatives over all 24582.  The
+    check that matters most is the one against the *generator* rather than
+    against that harvest: sampled declined tables were handed to the real
+    derivation and it agreed, taking about 143 seconds each to find nothing.
+
+    **Only five inputs.**  At four the test is vacuous -- ambient dimension
+    16 against bases whose rank reaches 16, so every table is admitted at
+    exactly the base rate -- and evaluating it would cost more than it saves.
+    At five the ambient dimension is 32 against a median rank of 16, which is
+    what makes it bite: it declines 53.4% of unreachable tables.
+
+    Scope is the shipped caps, separators and setter.  Change any of them and
+    the spans change with them; ``test_span_screen_declines_no_reachable_table``
+    is what fails if this is ever no longer true.
+    """
+    if n not in _SCREENED_ARITIES:
+        return True
+    packed = 0
+    for bit in truth_table:
+        packed = (packed << 1) | int(bit)
+    return any(_in_span(packed, list(b)) for b in _staging_spans(n))
+
+
 def _derive_staging(truth_table: str, n: int) -> _Staging | None:
     """Return the staging that builds ``truth_table``, or None if none does.
 
@@ -1582,6 +1698,13 @@ def _derive_staging(truth_table: str, n: int) -> _Staging | None:
     exception = _EXCEPTIONS.get(n, {}).get(min(truth_table, complement))
     if exception is not None:
         return exception
+    # A linear-algebra screen before the enumeration, where one is worth
+    # running.  It only ever declines -- see :func:`_span_admits` -- so the
+    # result is the same and a table it rejects skips a sweep that was going
+    # to fail.  Checked after the stored exception so that a stored answer is
+    # never screened away.
+    if not _span_admits(truth_table, n):
+        return None
     if n in _TABLE_MAJOR_ARITIES:
         # The whole-arity dict cannot be built here, so ask for this table
         # and its complement only.  Both are passed because they share a

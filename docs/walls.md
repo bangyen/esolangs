@@ -374,6 +374,62 @@ One thing this does *not* establish: it is a family-level negative with a
 mechanism, not an exhaustion proof.  Nothing here forbids a composing
 construction that does not route its intermediate through the pointer.
 
+### A sound decline exists after all, and it is linear algebra
+
+The section below concludes that no invariant yields a *rule* — only rates —
+and that stands for every invariant of the **truth table**.  What it missed
+is that the predictor need not be a function of the table alone: it can be a
+function of the **staging's state**, and there one exists.
+
+**Post-suffix span containment.**  Take the columns standing after
+`suffix + "<"` and the clamp, and their GF(2) span.  Everything `_endgame`
+emits from there is affine in those columns, so **every column a staging
+prints lies in that span**.  A table in no staging's span therefore cannot be
+printed by any of them, and saying so is a linear-algebra test rather than a
+sweep.
+
+Measured, not argued:
+
+| check | result |
+|---|---|
+| (staging, printed column) incidences contained, `n == 5` | **241280 / 241280** |
+| false negatives over every reachable table | **0 / 24582** |
+| unreachable tables declined | 53.4% |
+| cost | **3.6 ms** against the enumeration's measured **143 s** |
+
+The check that matters most is against the *generator* rather than against
+the harvest the rule was built from: sampled declined tables were handed to
+the real `_derive_staging`, which agreed on all of them after about 143
+seconds of finding nothing.  Two independent implementations, written from
+the description rather than from each other's code, agree on every figure.
+
+**Why five inputs and not four.**  The identical condition is *vacuous* at
+`n == 4` — ambient dimension 16 against bases whose rank reaches 16, so it
+admits every table at exactly the 23.85% base rate.  At `n == 5` the ambient
+dimension is 32 against a median rank of 16, so acceptance is about 2^-16.
+It bites exactly where the cost is.
+
+**What it does not claim.**  The mechanism is measured rather than proved:
+the `[` cascade's skip is value-dependent, which is what breaks containment
+*before* the suffix, and the claim is that nothing after it reintroduces the
+nonlinearity.  The *pre*-suffix span is not a necessary condition and was
+checked — the union of the ten slices' standing columns has rank 15 of 16 and
+holds only 9236 of 15404 printed essential columns, because the bracket
+cascade creates algebraic content the embed never left standing.  That is the
+module's "select on the column at the read, not the cell holding it" trap in
+algebraic form.
+
+Validity is scoped to the shipped caps, separators and setter; the spans are
+a property of those.  `test_span_screen_declines_no_reachable_table` replays
+the whole enumeration against the spans and is what fails if that ever stops
+being true — deliberately not a sampled test, since a screen that declines
+one reachable table is a silent coverage regression.
+
+One honest note on what shipping it buys: it removes the 143-second staged
+sweep from a *failure*, and a declined table still falls through to the
+column and parked searches.  It makes the staging fast to give up on, not the
+whole call.
+
 ### The layout is a free parameter, and the tape state predicts yield
 
 Everything above asks whether the *fixed* button layout can be predicted.
@@ -468,6 +524,14 @@ directed widening, and nothing at all if applied naively.
 The natural question after "the enumeration is brute force" is whether it
 *has* to be — whether each button could be characterised, so a table could be
 routed to the staging that serves it instead of sweeping.  Measured, no.
+
+**Read this section with its scope in mind**: everything below is about
+predictors that are functions of the **truth table**, and for those the
+answer really is no.  A predictor of the *staging's state* is a different
+object and a sound one exists — see the span screen above.  The failure
+recorded here is of table-side invariants, not of prediction as such, and
+missing that distinction is what kept the span rule unfound for as long as it
+was.
 
 **First, a methodological trap that produced a wrong answer before the right
 one.**  The obvious object to analyse is the *assignment* — which staging
