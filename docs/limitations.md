@@ -431,14 +431,21 @@ available, and it is now an emulator rather than a rewrite:
   slots: the print count is not known until the loop runs, so the append
   finds its slot at runtime.  A slot holds `value + 1`, so an occupied
   slot is nonzero and an empty one is zero, and `[>]` walks to the first
-  free one.  That biased encoding needs a cell with no top to collide
-  against, which LaserFuck's *unbounded* cells give -- the same trick is
-  impossible on a wrapping byte, where `255 + 1` would read as empty, and
-  it was rejected on exactly those grounds for `brainfuck → 3D Brainfuck`
-  above.  Cell 0 is kept permanently nonzero as a landmark, because
-  LaserFuck *prepends* a cell when `<` runs at cell 0 rather than
-  clamping, which would shift every address; a nonzero cell 0 stops the
-  return walk before that can happen.
+  free one.  The biased encoding needs headroom above the values it
+  carries, or the top of the range wraps onto the empty marker: a *byte*
+  cell cannot host it, since `255 + 1` reads as empty, which is exactly
+  why it was rejected for `brainfuck → 3D Brainfuck` above.  LaserFuck's
+  cells are signed 32-bit per the wiki (unbounded in this interpreter),
+  so a printed byte sits nowhere near the top.
+
+  Cell 0 is kept permanently nonzero as a landmark, because a return walk
+  has to stop somewhere.  The wiki gives LaserFuck "infinite cells in
+  both directions", so there is no left edge to arrive at, and `[<]` halts
+  on the first *zero* -- which every cell left of the working region is.
+  Without the landmark the walk stops wherever it likes; with it, on a
+  known address.  (This interpreter realizes the leftward half of that
+  tape by inserting at the front of a list, so a walk that runs off the
+  left also shifts which position each value occupies in the dump.)
 
   This is a widening, not a totality result: what it lifts is the output
   convention, and the rest of the class is untouched (the pointer
