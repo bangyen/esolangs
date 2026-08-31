@@ -787,8 +787,12 @@ def test_basicfuck_fuzz_in_bounds_programs() -> None:
         )
 
 
-# (Decleq program, stdin) pairs; every program keeps its instruction pointer
-# inside the original program and terminates.
+# (Decleq program, stdin) pairs.  The transpiler emits a Decleq emulator,
+# so nothing about a program's shape puts it out of class: self-modifying
+# code, computed jumps, lengths and targets that are not multiples of
+# three, and negative operands all translate.  The pairs avoid *empty*
+# input lines, which S*bleq cannot represent (see
+# ``test_decleq_empty_input_line_is_a_target_language_collision``).
 DECLEQ_BATTERY = (
     ("1 1 3 -2 1 0", ""),
     ("9 12 3 -2 12 0 -7 0 -1 5 0 0", ""),
@@ -800,6 +804,13 @@ DECLEQ_BATTERY = (
     ("-1 0 3 -2 0 0", "\x00"),
     ("-1 0 3 -2 0 0 -1 1 9 -2 1 0", "B\nC\n"),
     ("", ""),
+    # Classes the earlier static translation rejected outright.
+    ("2 10 3 255 10 6 -10 16 9 -2 10 0 -2 10 0 -2 16 0", ""),  # self-modifying
+    ("1 1 4 0 0 0 -2 0 0", ""),  # jump target not a multiple of three
+    ("1 1 3 -2", ""),  # length not a multiple of three
+    ("5 -2 3", ""),  # negative non-special b
+    ("-7 0 3 -2 0 0", ""),  # negative non-special a, which reads as zero
+    ("-2 -3 3", ""),  # output through a negative address
 )
 
 
@@ -811,68 +822,108 @@ def test_decleq_transpiles_to_sbleq(program: str, stdin: str) -> None:
     )
 
 
-def test_decleq_self_modifying_code_is_out_of_class() -> None:
-    """A write that is re-read as an operand is rejected, not mistranslated."""
+def test_decleq_self_modifying_code_is_translated() -> None:
+    """A write re-read as an operand translates; the emulator dispatches it.
+
+    This program overwrites the operand of a later instruction, which no
+    static per-instruction rewrite can express -- a computed target may
+    land in the middle of a translated block.  The emulator has no blocks
+    to land in the middle of.
+    """
     program = "2 10 3 255 10 6 -10 16 9 -2 10 0 -2 10 0 -2 16 0"
-    with pytest.raises(ValueError, match="self-modifying"):
-        esolangs.transpile("Decleq", "S*bleq", program)
+    sb_program = esolangs.transpile("Decleq", "S*bleq", program)
+    assert esolangs.run("S*bleq", sb_program) == esolangs.run("Decleq", program)
 
 
-def test_decleq_non_triple_length_rejected() -> None:
-    with pytest.raises(ValueError, match="multiple of three"):
-        esolangs.transpile("Decleq", "S*bleq", "1 2")
+def test_decleq_non_triple_length_is_translated() -> None:
+    """Decleq reads a missing ``b``/``c`` as zero, so any length is legal."""
+    sb_program = esolangs.transpile("Decleq", "S*bleq", "1 1 3 -2")
+    assert esolangs.run("S*bleq", sb_program) == esolangs.run("Decleq", "1 1 3 -2")
 
 
-def test_decleq_bad_jump_target_rejected() -> None:
-    with pytest.raises(ValueError, match="multiples of three"):
-        esolangs.transpile("Decleq", "S*bleq", "1 1 4 -2 1 0")
+def test_decleq_unaligned_jump_target_is_translated() -> None:
+    """A target that is not a multiple of three lands mid-instruction."""
+    program = "1 1 4 0 0 0 -2 0 0"
+    sb_program = esolangs.transpile("Decleq", "S*bleq", program)
+    assert esolangs.run("S*bleq", sb_program) == esolangs.run("Decleq", program)
 
 
-def test_decleq_negative_non_special_b_rejected() -> None:
-    """A negative ``b`` other than the I/O specials has no S*bleq mapping."""
-    with pytest.raises(ValueError, match="negative non-special b"):
-        esolangs.transpile("Decleq", "S*bleq", "5 -2 3")
+def test_decleq_negative_b_indexes_from_the_end() -> None:
+    """A negative non-special ``b`` writes through Python's negative index."""
+    program = "5 -2 3"
+    sb_program = esolangs.transpile("Decleq", "S*bleq", program)
+    assert esolangs.run("S*bleq", sb_program) == esolangs.run("Decleq", program)
 
 
-def test_decleq_fuzz_in_class_programs() -> None:
-    """Random in-class programs (write targets outside the code) agree."""
+def test_decleq_transpiler_is_total() -> None:
+    """No integer list is rejected: the rewrite raises only on non-integers."""
+    for program in (
+        "",
+        "0",
+        "-1",
+        "1 2",
+        "5 -2 3",
+        "1 1 4 0 0 0",
+        "-99 -99 -99",
+        "2 10 3 255 10 6 -10 16 9 -2 10 0 -2 10 0 -2 16 0",
+    ):
+        assert esolangs.transpile("Decleq", "S*bleq", program)
+    with pytest.raises(ValueError, match="malformed memory token"):
+        esolangs.transpile("Decleq", "S*bleq", "1 x 3")
+
+
+def test_decleq_empty_input_line_is_a_target_language_collision() -> None:
+    """An empty input line is the one thing S*bleq cannot represent.
+
+    Decleq's reader turns an empty line into ``10`` (the newline that ended
+    it) and a ``"\x00"`` line into ``0``.  S*bleq's only input primitive,
+    address ``-2``, yields ``0`` for *both* -- two inputs reaching one
+    value.  Every S*bleq computation is a function of the values it reads,
+    so no S*bleq program can separate them and no translation can either;
+    the same collision sends end-of-input to ``0`` where Decleq raises
+    ``EOFError``.  This asserts the divergence rather than hiding it.
+    """
+    program = "-1 0 3 -2 0 0"
+    sb_program = esolangs.transpile("Decleq", "S*bleq", program)
+    assert esolangs.run("Decleq", program, "\n") == "\n"
+    assert esolangs.run("S*bleq", sb_program, "\n") == "\x00"
+    # the collision: a NUL line is what S*bleq reports for both
+    assert esolangs.run("S*bleq", sb_program, "\x00") == "\x00"
+
+
+def test_decleq_fuzz_unrestricted_programs() -> None:
+    """Random programs of any shape agree with the Decleq interpreter."""
     rng = random.Random(19)
-    vals = [0, 1, 2, 3, 5, 9, 42, 127, 200, 255, -2, -3, -5, -10]
-    for _ in range(200):
-        k = rng.randint(1, 4)
-        cells = []
-        for i in range(k):
-            cells.extend([rng.choice(vals), rng.randint(3 * k, 30), (i + 1) * 3])
-        for i in range(k):
-            cells.extend([-2, cells[i * 3 + 1], 0])
-        cells.extend([-7, 0, -1])  # halt, so the pointer never runs off the end
+    vals = [0, 1, 2, 3, 5, 9, -1, -2, -3, -7, 42, 127, 255, -255, 6, 12, 15, 4, 10]
+    checked = 0
+    for _ in range(120):
+        cells = [rng.choice(vals) for _ in range(rng.randint(0, 12))]
         program = " ".join(map(str, cells))
         try:
             expected = esolangs.run("Decleq", program)
-        except (EsolangError, EOFError):
-            continue  # out of the terminating class; the transpiler halts early
-        try:
-            sb_program = esolangs.transpile("Decleq", "S*bleq", program)
-        except ValueError:
-            continue  # writes into reachable operands; self-modifying code
+        except (EsolangError, EOFError, IndexError):
+            continue  # the reference interpreter errors; no behaviour to match
+        sb_program = esolangs.transpile("Decleq", "S*bleq", program)
         assert esolangs.run("S*bleq", sb_program) == expected
+        checked += 1
+    assert checked > 40, f"only {checked} programs terminated; fuzz is not exercising"
 
 
 def test_decleq_fuzz_countdowns() -> None:
     """Random countdowns (the canonical ``x x next`` idiom) agree."""
     rng = random.Random(23)
-    for _ in range(80):
+    checked = 0
+    for _ in range(40):
         x = rng.randint(0, 25)
         program = f"{x} {x} 3 -2 {x} 0"
         try:
             expected = esolangs.run("Decleq", program)
-        except (EsolangError, EOFError):
-            continue  # counters inside the code extend memory; out of class
-        try:
-            sb_program = esolangs.transpile("Decleq", "S*bleq", program)
-        except ValueError:
-            continue  # a counter cell doubled as a re-read operand
+        except (EsolangError, EOFError, IndexError):
+            continue
+        sb_program = esolangs.transpile("Decleq", "S*bleq", program)
         assert esolangs.run("S*bleq", sb_program) == expected
+        checked += 1
+    assert checked > 10, f"only {checked} countdowns terminated"
 
 
 def test_laser_emit_steps_past_a_stray_loop_close() -> None:

@@ -261,19 +261,51 @@ sidesteps are in
 
 ## Transpiler walls
 
-Transpilers exist where languages share a semantic core (through brainfuck,
-and the one direct pair `Decleq → S*bleq`).  Direct transpilation between
-languages with no shared core is a full runtime-in-a-language, not a program
-rewrite:
+Most transpilers here exist where languages share a semantic core (through
+brainfuck, and the direct pair `Decleq → S*bleq`).  Where no core is
+shared, a program rewrite will not do it; what is needed is a full
+runtime-in-a-language, which a target can only host if it has dynamic
+dispatch.  `Decleq → S*bleq` is the pair where that turned out to be
+available, and it is now an emulator rather than a rewrite:
 
-- **OISC-to-OISC (S*bleq → Decleq; Decleq ↔ AddSubJump).**  Both
-  self-modifying-memory OISCs share the "≤ 0 branch", and `Decleq → S*bleq`
-  ships, but neither has dynamic instruction dispatch in general: S*bleq
-  cannot express Decleq code that re-reads a written cell as an operand
-  (self-modifying code; rejected), and ASJ's only conditional is
-  ``dest = dest ± op`` by a fixed operand.  A general total transpiler is
-  therefore not expressible; the partial classes would be silent-droppers.
-  Documented as research-level future work in `docs/roadmap.md`.
+- **OISC-to-OISC (Decleq ↔ AddSubJump).**  ASJ's only conditional is
+  ``dest = dest ± op`` by a fixed operand, so it has no dispatch to build a
+  fetch-decode-execute loop out of.
+
+  This entry used to include `Decleq → S*bleq`, on the claim that "neither
+  has dynamic instruction dispatch."  That was wrong about S*bleq, and the
+  transpiler is now **total over programs**.  S*bleq's `c` operand is
+  *indirect* (`ip = mem[c]`) and its `-1` special is a writable instruction
+  pointer, which is dispatch; its code cells are ordinary memory, so a
+  generated program can patch its own operand fields to reach an address it
+  computed at runtime, which is indirect load and store.  Those are the
+  pieces a runtime-in-a-language needs, so `decleq_to_sbleq` emits one: a
+  fixed emulator loop over the Decleq image, which rides along as data in
+  `[loop | scratch | image]` order, the image last so that Decleq's
+  grow-on-write and read-past-the-end-as-zero coincide with S*bleq's.
+
+  What that bought is the whole class the static rewrite rejected:
+  self-modifying code (a write re-read as an operand), jump targets and
+  program lengths that are not multiples of three, and negative operands.
+  A static per-instruction rewrite cannot be total here for a reason worth
+  naming: a computed target may land in the *interior* of a translated
+  block, and only an emulator has no interiors to land in.  The cost is
+  size and speed -- a fixed ~1250-cell loop, and a few hundred S*bleq steps
+  per Decleq step -- not coverage.
+
+  Two divergences remain, and both are properties of S*bleq's input
+  primitive rather than of the translation.  Address `-2` is the only way
+  an S*bleq program can read input, and it yields `0` both at end-of-input
+  (where Decleq raises `EOFError`) and for an *empty* input line (where
+  Decleq's reader yields `10`, the newline that ended it).  A `"\x00"` line
+  also yields `0`, so two distinct inputs reach one value.  Every S*bleq
+  computation is a function of the values it reads, so no S*bleq program
+  whatsoever separates them -- this is a collision in the target language,
+  not a gap in the rewrite, and it is asserted rather than hidden in
+  `test_decleq_empty_input_line_is_a_target_language_collision`.  The
+  interpreter's other error exits are not behaviour to reproduce: its
+  `HaltError` is a harness step budget, and an out-of-range negative `b`
+  crashes it with `IndexError`.
 - **2D-to-2D: the store is shared, the control flow is not.**  This entry
   used to say no two 2D languages share a model.  That is wrong for
   Streetcode and LaserFuck, which hold the same thing -- a tape of
