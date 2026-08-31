@@ -390,12 +390,23 @@ def collatz_multiverse(truth_table: str) -> str:
     # chain, and a flip -- so a dense table is built from its zeros.
     # Inverting is free here: the OR already ends on a ``flip``, so the
     # complement drops it rather than adding one.
-    table, invert = _maybe_complement(truth_table)
-    for k in range(2**n):
+    # A table that ignores some of its inputs is a smaller table, and a
+    # minterm costs an indicator *per input* plus an AND chain on top of one
+    # minterm per selected row -- so dropping an input removes rows and
+    # shortens the rows that remain.  Every input keeps its ``b{i}`` read
+    # (the reads are the interface); an ignored one is simply never turned
+    # into an indicator.  This is the constant branch above generalized from
+    # "no essential inputs" to "the ones that matter".
+    used = essential_inputs(truth_table, n) or [0]
+    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
+    width = len(used)
+    table, invert = _maybe_complement(reduced)
+    for k in range(2**width):
         if table[k] == "0":
             continue
         indicators = []
-        for i, negated in minterm_literals(k, n):
+        for slot, negated in minterm_literals(k, width):
+            i = used[slot]
             if negated:
                 indicators.append(flip(f"b{i}"))
             else:
