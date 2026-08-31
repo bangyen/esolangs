@@ -47,8 +47,8 @@ def test_run_eof_when_input_runs_out() -> None:
 
 def test_transpile_round_trips() -> None:
     program = esolangs.generate("brainfuck", "Hi")
-    circlefuck = esolangs.transpile("brainfuck", "Circlefuck", program)
-    assert esolangs.run("Circlefuck", circlefuck) == "Hi"
+    painfuck = esolangs.transpile("brainfuck", "Painfuck", program)
+    assert esolangs.run("Painfuck", painfuck) == "Hi"
 
 
 def test_transpile_unsupported_pair_raises() -> None:
@@ -58,10 +58,10 @@ def test_transpile_unsupported_pair_raises() -> None:
     assert issubclass(UnsupportedTranspilationError, ValueError)
 
 
-def test_transpile_to_circlefuck() -> None:
+def test_transpile_to_three_d_brainfuck() -> None:
     program = esolangs.generate("brainfuck", "Hi")
-    circlefuck = esolangs.transpile("brainfuck", "Circlefuck", program)
-    assert esolangs.run("Circlefuck", circlefuck) == "Hi"
+    target = esolangs.transpile("brainfuck", "3D Brainfuck", program)
+    assert esolangs.run("3D Brainfuck", target) == "Hi"
 
 
 def test_run_timeout_halts_runaway_program() -> None:
@@ -110,7 +110,7 @@ def test_describe_structured_summary() -> None:
     assert info["text_generator"] is True
     assert info["boolean_generator"] is True
     assert info["interpreter"] == "tape_based.brainfuck"
-    assert ("brainfuck", "Circlefuck") in info["transpilers"]
+    assert ("brainfuck", "Painfuck") in info["transpilers"]
     assert info["wiki_url"] == "https://esolangs.org/wiki/brainfuck"
 
 

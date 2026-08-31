@@ -259,229 +259,140 @@ headings, no `snapshot()` yet), and the `pytest --cov` deadlock this also
 sidesteps are in
 [`docs/walls.md`](walls.md#state-cycle-detection-coverage-hang-detection-without-a-wall-clock-timeout).
 
-## Transpiler walls
+## Transpilers: the admission bar, and what it removed
 
-Most transpilers here exist where languages share a semantic core (through
-brainfuck, and the direct pair `Decleq → S*bleq`).  Where no core is
-shared, a program rewrite will not do it; what is needed is a full
-runtime-in-a-language, which a target can only host if it has dynamic
-dispatch.  `Decleq → S*bleq` is the pair where that turned out to be
-available, and it is now an emulator rather than a rewrite:
+Transpilers here are **total** over their source language: each accepts
+every program that language's own interpreter accepts, and agrees with it
+on every run the interpreter completes.  The five admission criteria live
+in the module docstring of `esolangs/tools/transpilers.py`, which is what
+an author of a new one reads.
 
-- **OISC-to-OISC (Decleq ↔ AddSubJump).**  ASJ's only conditional is
-  ``dest = dest ± op`` by a fixed operand, so it has no dispatch to build a
-  fetch-decode-execute loop out of.
+That bar is the outcome of a survey of the ten transpilers this repo used
+to carry.  Six were partial, and the survey found that "partial" covered
+two very different defects.  Some rejected out-of-class programs loudly,
+which is honest but leaves the caller holding a subset they cannot check.
+One did not: `bio_to_bf` named its class only in prose, and a program
+outside it was mistranslated in silence.  Since a documented subset gives
+a caller no way to test whether their program is inside it, all six were
+removed rather than annotated.
 
-  This entry used to include `Decleq → S*bleq`, on the claim that "neither
-  has dynamic instruction dispatch."  That was wrong about S*bleq, and the
-  transpiler is now **total over programs**.  S*bleq's `c` operand is
-  *indirect* (`ip = mem[c]`) and its `-1` special is a writable instruction
-  pointer, which is dispatch; its code cells are ordinary memory, so a
-  generated program can patch its own operand fields to reach an address it
-  computed at runtime, which is indirect load and store.  Those are the
-  pieces a runtime-in-a-language needs, so `decleq_to_sbleq` emits one: a
+**The four that remain, and why each clears the bar.**
+
+- **`Decleq → S*bleq`** is the interesting one, because its wall was
+  documented as structural and was not.  The old entry said neither OISC
+  had dynamic instruction dispatch; that was wrong about S*bleq, whose `c`
+  operand is *indirect* (`ip = mem[c]`) and whose `-1` special is a
+  writable instruction pointer.  Its code cells are ordinary memory, so a
+  generated program patches its own operand fields to reach a
+  runtime-computed address -- indirect load and store.  Those are the
+  pieces a runtime-in-a-language needs, so the transpiler emits one: a
   fixed emulator loop over the Decleq image, which rides along as data in
   `[loop | scratch | image]` order, the image last so that Decleq's
   grow-on-write and read-past-the-end-as-zero coincide with S*bleq's.
 
-  What that bought is the whole class the static rewrite rejected:
-  self-modifying code (a write re-read as an operand), jump targets and
-  program lengths that are not multiples of three, and negative operands.
-  A static per-instruction rewrite cannot be total here for a reason worth
-  naming: a computed target may land in the *interior* of a translated
-  block, and only an emulator has no interiors to land in.  The cost is
-  size and speed -- a fixed ~1250-cell loop, and a few hundred S*bleq steps
-  per Decleq step -- not coverage.
+  A static per-instruction rewrite could never be total here, for a reason
+  worth naming: Decleq can compute a jump into the middle of what it just
+  wrote, so a target may land in the *interior* of a translated block, and
+  only an emulator has no interiors.  The cost is size and speed -- a fixed
+  ~1250-cell loop, a few hundred S*bleq steps per Decleq step -- not
+  coverage.
 
-  Two divergences remain, and both are properties of S*bleq's input
-  primitive rather than of the translation.  Address `-2` is the only way
-  an S*bleq program can read input, and it yields `0` both at end-of-input
-  (where Decleq raises `EOFError`) and for an *empty* input line (where
-  Decleq's reader yields `10`, the newline that ended it).  A `"\x00"` line
-  also yields `0`, so two distinct inputs reach one value.  Every S*bleq
-  computation is a function of the values it reads, so no S*bleq program
-  whatsoever separates them -- this is a collision in the target language,
-  not a gap in the rewrite, and it is asserted rather than hidden in
-  `test_decleq_empty_input_line_is_a_target_language_collision`.  The
-  interpreter's other error exits are not behaviour to reproduce: its
-  `HaltError` is a harness step budget, and an out-of-range negative `b`
-  crashes it with `IndexError`.
-- **2D-to-2D: the store is shared, the control flow is not.**  This entry
-  used to say no two 2D languages share a model.  That is wrong for
-  Streetcode and LaserFuck, which hold the same thing -- a tape of
-  unbounded signed cells under a pointer -- and whose instruction sets are
-  the *same eight commands*: Streetcode's `^~=_IO` are brainfuck's
-  `+-><,.` under other glyphs.  `Streetcode → LaserFuck` ships on that
-  basis.
+  Its residue is the worked example for criterion 3.  Address `-2` is the
+  only way an S*bleq program reads input, and it yields `0` both at
+  end-of-input (where Decleq raises `EOFError`) and for an *empty* input
+  line (where Decleq's reader yields `10`).  A `"\x00"` line yields `0`
+  too, so two distinct inputs reach one value; every S*bleq computation is
+  a function of the values it reads, so no S*bleq program separates them.
+  That is a collision in the target language, not a gap in the rewrite, and
+  `test_decleq_empty_input_line_is_a_target_language_collision` asserts it
+  rather than avoiding it.
 
-  What does not carry across is control flow, for a reason worth naming
-  rather than asserting.  Streetcode has no loop command; the car branches
-  by which exit of a junction it takes, and brainfuck's loop needs a state
-  the program returns to once per lap to close its `[`.  A drawn ring does
-  not give one:
+- **`brainfuck → 3D Brainfuck`** was made total by a runtime guard.
+  Brainfuck *clamps* `<` at cell 0 while 3D Brainfuck's `s` walks negative,
+  and the clamping is load-bearing: `+.<.` prints the same byte twice in
+  brainfuck precisely because `<` was a no-op.  No static shift of the
+  origin repairs that -- a shift cannot turn a move into a non-move -- but
+  3D Brainfuck's array is *three-dimensional*, so a sentinel goes on an
+  axis brainfuck's tape never uses.  A prefix `su+dn` writes `1` at
+  `(-1, 1, 0)`, and `<` compiles to `su[dnu]d`.  Every observable channel
+  already agreed -- cells wrap 0-255 in both, both grow on demand, both
+  print `chr(cell)` and raise `EOFError` on exhausted input -- so this one
+  is total with *no* residue at all.
 
-  - A ring entered from a junction rejoins the road *past* that junction's
-    square, returning under a different heading and different steering
-    latches.  The state that decides the loop is never revisited, so there
-    is no `[` to close.
-  - A ring that does re-cross its test square crosses further gaps on the
-    way, and [every gap crossing reads the CPth cell](streetcode.md).
-    Those reads are junctions too, and showing they cannot steer means
-    showing a cell stays nonzero across iterations -- value analysis, not a
-    rewrite.  The counting loop in `tests/interpreters/test_streetcode.py`
-    is the worked example: nine laps, and three junctions entangled in
-    them.
-
-  So the shipped class is the programs the tape never steers, and drawn
-  control flow is rejected rather than mistranslated.
-
-  **What that leaves in practice.**  The text generator emits a single
-  straight street -- no branching at all -- so its output is in class, but
-  only *unwrapped*: the default folds the line into a boustrophedon to save
-  columns, and the fold is a ring the car steers around, which is not.
-  Asked for a width wide enough to keep one row (`generate(..., width=N)`
-  with a large `N`), texts transpile and round-trip.  This used to be
-  limited to *one-character* texts, on the ground that a LaserFuck program
-  prints its tape once and so carries a single `O`; that limit is gone --
-  outputs are staged into a region the halt dump replays in order (see the
-  Dimensional entry below), so `hi`, `abc` and `Hey` all round-trip.  The
-  boolean generator's programs are still out on the tree argument above,
-  and both checked-in `examples/` programs are wrapped.  So what bounds
-  the in-class set now is control flow alone: unwrapped text generation of
-  any length, and hand-drawn corridors.  Lowering the control-flow half
-  would need scratch cells and a converged answer -- a compiler, which is
-  what separates the two halves of this bullet.  The boolean generator's
-  Streetcode programs are further out still: they are decision trees whose
-  leaves each print.
-- **Why each partial transpiler is partial.**  `Decleq → S*bleq` is the
-  reason this entry exists: its wall was documented as structural and was
-  not, so the remaining partial transpilers are worth separating by *what
-  kind* of limit they have.  The split is not subtle once named.  A limit
-  that is a **resource or observable mismatch** is structural and no
-  cleverness reaches it.  A limit that is an artefact of the **rewrite
-  being per-instruction or per-glyph** falls to simulation whenever the
-  target has enough dispatch -- which is exactly what happened to Decleq.
-  Two of the shipped restrictions are the first kind and two are the
-  second; none of the liftable ones is built, and they are candidates here
-  rather than claims.
-
-  *Structural.*  `brainfuck → Circlefuck` is the strongest case, and the
-  rejections it raises (below cell 0, drifting loops) name the wrong
-  reason.  The real limit is finiteness: brainfuck's tape grows
-  unboundedly rightward (the interpreter appends a cell on demand), while
-  a Circlefuck tape *is the program*, wrapping modulo its fixed length.
-  The witness is `,[[->+<]>-]`, which carries its counter one cell right
-  per decrement and so touches `n + 1` cells for an input of `n` -- tape
-  length 4, 9 and 21 for inputs 3, 8 and 20.  A translation must fix its
-  size at transpile time, so by pigeonhole no fixed-length Circlefuck
-  program holds every input's tape.  Markers could widen the class; they
-  cannot make it total.  Separately, `→ LaserFuck` cannot represent a
-  *non-terminating* program that produces output, LaserFuck having no
-  output command at all -- `dump()` prints the tape when it halts, so a
-  source that emits forever has no image.  That one is mostly moot under
-  the repo-wide contract of agreeing on runs the reference completes.
-
-  *Lifted.*  `brainfuck → 3D Brainfuck` used to reject programs that dip
-  below cell 0, because brainfuck clamps `<` there and 3D Brainfuck's `s`
-  walks negative.  A static shift of the origin does not fix it, the
-  clamping being *load-bearing*: `+.<.` prints `\x01\x01` in brainfuck
-  precisely because `<` was a no-op, and no starting offset turns a move
-  into a non-move.  What works is a runtime guard, and 3D Brainfuck hands
-  one over cheaply -- its array is a *three-dimensional* grid, so the
-  sentinel goes on an axis brainfuck's tape never uses.  A prefix `su+dn`
-  writes `1` at `(-1, 1, 0)`, and `<` compiles to `su[dnu]d`: step left,
-  rise to the marker plane, and loop only if the sentinel is there, which
-  happens exactly at the left edge and undoes the step.  No data cell is
-  written, the sentinel is written once, and the guard's brackets nest
-  with the program's own.  **The transpiler is now total**, and with no
-  I/O residue at all -- unlike `Decleq → S*bleq`, every observable channel
-  agrees, cells wrapping 0-255 in both, both growing on demand, both
-  printing `chr(cell)` and raising `EOFError` on exhausted input.
-
-  Two silent mistranslations died with it, and both are worth recording
-  because the old entry claimed this transpiler *rejected* rather than
-  mistranslated.  It did neither reliably.  The class check was a linear
-  scan of the program text, so it missed dips that only happen on a
-  loop's later laps: `++>+[<-].` passed the check and compiled to a
-  program that never halts, where brainfuck prints `\x00`.  And comments
-  were passed through unchanged, but brainfuck's comment characters
+  Two silent mistranslations died with it, both witnessed.  The old class
+  check was a linear scan of the program text, so it missed dips that only
+  happen on a loop's later laps: `++>+[<-].` passed the check and compiled
+  to a program that never halts, where brainfuck prints `\x00`.  And
+  comments were passed through, though brainfuck's comment characters
   include `n`, `s`, `e`, `w`, `u` and `d`, every one an array move in the
-  target -- so an ordinary word silently moved the pointer, `+.hello.`
-  printing `\x01\x00` against brainfuck's `\x01\x01`.  Only the eight
-  brainfuck commands are emitted now, which also protects the guard: a
-  stray `u` would leave the `y = 0` plane, where a later `+` could forge
-  the sentinel.
+  target -- `+.hello.` printed `\x01\x00` against brainfuck's
+  `\x01\x01`.
 
-  *Widened.*  `Dimensional → LaserFuck` used to allow a `.` only as the
-  last command, on the ground that LaserFuck prints its tape once, when
-  the last laser dies.  But equivalence is judged on the output a
-  terminating run *captures*, so when a byte leaves the program is
-  unobservable -- only its order survives.  Each `.` therefore copies its
-  cell into an output region, and the halt dump replays the region in
-  order.  A top-level op runs exactly once, so the slots fill in textual
-  order, which is execution order, and the region is sized statically; it
-  is laid out *last*, after the working cells and one temp, so it grows
-  rightward into LaserFuck's unbounded tape with nothing to displace.  The
-  epilogue drives the working cells negative to hide them and touches each
-  slot with `+-` to keep it -- necessary because the dump skips cells
-  nothing wrote, so a staged `\x00` would otherwise vanish rather than
-  print.
+- **`brainfuck → Painfuck`** and **`BFStack → brainfuck`** are total by
+  construction: both are per-command rewrites over a target that is a
+  superset of the source's semantics, and neither has a rejection path.
 
-  A print *inside a loop* is in class too, which needs more than numbered
-  slots: the print count is not known until the loop runs, so the append
-  finds its slot at runtime.  A slot holds `value + 1`, so an occupied
-  slot is nonzero and an empty one is zero, and `[>]` walks to the first
-  free one.  The biased encoding needs headroom above the values it
-  carries, or the top of the range wraps onto the empty marker: a *byte*
-  cell cannot host it, since `255 + 1` reads as empty, which is exactly
-  why it was rejected for `brainfuck → 3D Brainfuck` above.  LaserFuck's
-  cells are signed 32-bit per the wiki (unbounded in this interpreter),
-  so a printed byte sits nowhere near the top.
+**The six removed.**
 
-  Cell 0 is kept permanently nonzero as a landmark, because a return walk
-  has to stop somewhere.  The wiki gives LaserFuck "infinite cells in
-  both directions", so there is no left edge to arrive at, and `[<]` halts
-  on the first *zero* -- which every cell left of the working region is.
-  Without the landmark the walk stops wherever it likes; with it, on a
-  known address.  (This interpreter realizes the leftward half of that
-  tape by inserting at the front of a list, so a walk that runs off the
-  left also shifts which position each value occupies in the dump.)
-
-  This is a widening, not a totality result: what it lifts is the output
-  convention, and the rest of the class is untouched (the pointer
-  hierarchy, the numeric readers, drift loops, below-cell-0).  One
-  divergence is worth naming, since the byte-wrap case already documented
-  above now shows differently: a negative cell makes the emitted program
-  *hang* rather than answer, at a print and -- as before this change, for
-  `-->0+.` -- in the epilogue.  Rejecting those would need a proof that a
-  cell stays non-negative through arbitrary loops, which is the unsound
-  static value analysis this module has twice removed.
-
-  `Streetcode → LaserFuck` shares the assembler, so it was widened by the
-  same change: multi-character generated text now round-trips, and its
-  remaining limit is control flow alone.
-
-  *Open.*  `brainfuck → 6-5` caps at 17 loops because its loop markers are
-  single characters `0-9A-Z`, two per loop, and the region past `Z` is
+- **`BIO → brainfuck`** -- the disqualifying case, and the reason criterion
+  4 exists.  Its docstring restricted the transpiler to "programs whose
+  registers never reach a nonzero multiple of 256", but nothing enforced
+  it.  A BIO program whose register hits 256 and then loops on it
+  transpiles without complaint; BIO enters the loop (256 is nonzero) and
+  runs forever, while the translation's cell has wrapped to 0, so
+  brainfuck skips the loop and prints `\x00`.  Silent mistranslation, in
+  the same class as the long-dropped `nocomment_to_bf`.
+- **`Basicfuck → brainfuck`** -- gated on cell range, refusing
+  `r=0~127` and `r=0~65535`, which are legal Basicfuck.  Enforced, so not
+  the BIO defect, but still a subset the caller cannot check.
+- **`brainfuck → Circlefuck`** -- the one whose limit is *structural*, and
+  so the clearest case for removal rather than repair.  A Circlefuck tape
+  **is the program**, fixed at transpile time, while brainfuck's grows
+  unboundedly rightward.  The witness is `,[[->+<]>-]`, which carries its
+  counter one cell right per decrement and touches `n + 1` cells for an
+  input of `n` -- measured tape lengths 4, 9 and 21 for inputs 3, 8 and 20.
+  By pigeonhole no fixed-length Circlefuck program holds every input's
+  tape.  It rejected 42% of unconstrained brainfuck.
+- **`brainfuck → 6-5`** -- capped at 17 loops, because 6-5's loop markers
+  are single characters `0-9A-Z`, two per loop, and the region past `Z` is
   undefined behaviour rather than more labels (see the conformance note
-  above).  The Decleq escape applies in principle, an interpreter's loop
-  count being independent of its source's -- but the classic 423-byte
-  `dbfi` self-interpreter needs 58 loops, 41 over budget.  That is
-  evidence, not proof: it does not rule out a ≤17-loop interpreter, and
-  6-5's cell semantics would have to be carried inside it.
-  `Streetcode → LaserFuck`'s steering restriction is the heaviest and
-  least certain; junction graphs compile to structured control flow in
-  principle, and LaserFuck has conditional rings.
+  above; a lift into it was tried and reverted).  Acceptance is therefore a
+  function of program size: 86.7% at 40 chunks, 19.0% at 60, 0% at 100.
+  An interpreter-in-6-5 would sidestep the cap the way Decleq's emulator
+  did, but the classic 423-byte `dbfi` self-interpreter needs 58 loops --
+  evidence against, not proof.
+- **`Dimensional → LaserFuck`** and **`Streetcode → LaserFuck`** -- partial
+  on the target's output convention and, for Streetcode, on control flow.
+  Both were widened substantially before removal: LaserFuck has no output
+  command (it prints its tape once, when the last laser dies), so outputs
+  were *staged* into a region the halt dump replays in order, first for
+  top-level prints and then, via a runtime append with a `value + 1` bias,
+  for prints inside loops.  That work is recoverable at commits `e02e7716`
+  and `ccd9fa37`.  What remained out of class was the rest of Dimensional's
+  surface -- the pointer hierarchy (`$`, `{`/`}`, `?`/`!`), the numeric
+  readers (`d`/`x`), drift loops, below-cell-0 -- which held acceptance to
+  27.5% over the full command set, plus Streetcode's drawn control flow.
+  A negative cell also made the emitted program hang rather than answer,
+  and rejecting those would need a proof that a cell stays non-negative
+  through arbitrary loops: the unsound static value analysis this module
+  removed twice.
 
-  Not partiality at all: `BFStack → bf` and `BIO → bf` only reject
-  malformed input, `brainfuck → Painfuck` is total, and
-  `Basicfuck → bf`'s gates are cell-range restrictions (`r=0~255`,
-  constants within a byte) that other ranges would need multi-cell
-  arithmetic to lift.
-- **Dropped transpilers.**  `nocomment_to_bf` silently dropped NoComment's
+  Worth recording for anyone reviving these: the control-flow wall for
+  Streetcode is real and separate.  Streetcode has no loop command; the car
+  branches by which exit of a junction it takes, and brainfuck's loop needs
+  a state the program returns to once per lap to close its `[`.  A ring
+  entered from a junction rejoins the road *past* that junction's square,
+  returning under a different heading and different steering latches, so
+  the state that decides the loop is never revisited.  A ring that does
+  re-cross its test square crosses further gaps on the way, and every gap
+  crossing reads the CPth cell -- those reads are junctions too, so showing
+  they cannot steer means showing a cell stays nonzero across iterations:
+  value analysis, not a rewrite.
+
+- **Earlier drops.**  `nocomment_to_bf` silently dropped NoComment's
   stack/jump/pointer commands (a silent mistranslation); the `6-5 → bf` and
-  `Circlefuck → bf` decoders only reversed the forward transpilers' canonical
-  form (round-trip-only).
+  `Circlefuck → bf` decoders only reversed the forward transpilers'
+  canonical form (round-trip-only).
 
 ## Lean proofs (kept set)
 
