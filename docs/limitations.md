@@ -196,9 +196,43 @@ programs, the largest integer any compiler emits is **65536** — a tape or
 buffer constant in the OISC compilers (addsubjump, S*bleq, decleq); the
 byte-oriented ones peak around 93–114, and Container's own containers peak
 at 127 at run time.  That leaves fourteen orders of magnitude of headroom,
-so this bounds hand-written programs only, which is why it is recorded
-rather than fixed — widening to arbitrary precision would cost every
-compiler a software bignum for a case no generator can produce.
+so this bounds hand-written programs only.
+
+### Why it is recorded rather than checked or widened
+
+Both fixes were costed and declined.
+
+**A per-site overflow check is unsound at the cheap granularity**, which is
+the argument that decides it — not the price.  Two's-complement addition is
+exact mod `2**64`, and Container's clamp reads only the *committed* value's
+sign, so a rule sum may cross `2**63` mid-tick and come back down with the
+right answer.  A container starting at `2**63 - 1` with rules `+1` and `-2`
+does exactly that: the transient sum is `2**63`, the committed value is in
+range, and interpreter and compiled program agree today.  A check firing at
+each `add` would abort that program — narrowing the accepted class to buy
+insurance.  A *sound* check needs to track carries across the whole rule
+sum, which costs more than the ~2x measured for the naive form (Container's
+n=5 boolean program goes 1472 → 2816 instructions).  Forbin's arena abort is
+not a precedent: it is one site, guarding a resource programs actually
+exhaust.
+
+**Arbitrary precision would not buy totality either.**  No compiler here has
+a heap — every one uses static `.data`/`.bss` at compile-time-known sizes —
+so bignums mean inventing an allocator, ten times over, on an `rv64i` target
+with no hardware multiply (Forth already needs ~50 lines of assembly for
+*fixed-width* `mul32`/`divmod32`).  And values are not the only unbounded
+axis: RAM0 and Collatz Multiverse already ship a fixed window for unbounded
+*index* space, so closing the value axis would leave that one open.  The
+inversion is the real objection: these compilers exist for verification
+value, and a large untested bignum runtime would make the checker the
+buggiest component in the differential.
+
+The one live alternative, if loud failure is ever wanted, is compile-time
+rejection of an out-of-range **literal** in the program-text compilers —
+Decleq's shape, the only entry reachable with no arithmetic at all
+(precedent: S*bleq's unknown-`store` rejection).  It is unshipped because it
+trades away acceptance parity: the interpreter runs `2**63 0 0`, and a
+compiler that refuses it no longer accepts what the interpreter accepts.
 
 ## Divergent example outputs
 
