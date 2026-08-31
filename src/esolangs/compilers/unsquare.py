@@ -132,7 +132,9 @@ def comp(code: str) -> str:
         elif c == ">":
             jmp += 1
             res += f".T{jmp}:\n\tli   t0, 2\n\tbltu s2, t0, .B{jmp}\n"
-        elif c == "<":
+        else:
+            # ``prep`` keeps only ``OIASP+-xoi><`` and every other character
+            # of it has an arm above, so what is left here is ``<``.
             res += f"\tj .T{jmp}\n.B{jmp}:\n"
             jmp -= 1
 

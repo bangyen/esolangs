@@ -90,7 +90,9 @@ def comp(code: str) -> str:
                 res += f"\tbnez t0, .top{n}\n.bot{n}:\n"
             else:
                 res += f"\tbeqz t0, .bot{n}\n.top{n}:\n"
-        elif c == ";":
+        else:
+            # The first rewrite strips everything outside ``asdfjkl;`` and
+            # the arms above take ``a s d f j k l``, so this is ``;``.
             res += "\n\tli   a0, 0\n\tli   a7, 93\n\tecall\n"
 
         if end:
