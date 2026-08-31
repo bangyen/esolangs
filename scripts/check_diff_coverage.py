@@ -13,6 +13,14 @@ was added by this branch, is an executable statement coverage knows about, and
 was never executed.  Comments, docstrings and blank lines are not statements,
 so they cannot fail it.
 
+Added *branches* are held to the same rule when the data has them -- an added
+``if`` that only ever went one way fails just as an unexecuted line does.
+This is deliberately not a percentage: a diff of three branches cannot score
+95% except by scoring 100, so "the branches you added are taken both ways" is
+the only coherent form the threshold takes on a diff.  A repository-wide floor
+is a different instrument and belongs in CI, where the whole suite runs; on
+the fast subset it would count arcs that only the ``slow`` tests reach.
+
 Fail-open, matching :mod:`_scope`: an unreadable diff, absent coverage data, or
 a run whose test selection cannot support the verdict is reported and skipped
 rather than failed.  A gate that blocks on data it does not have would just
@@ -24,6 +32,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -120,7 +129,7 @@ def _diff_base() -> str | None:
     return _rev("rev-parse", "HEAD~1")
 
 
-def _coverage_json(data_file: Path) -> dict[str, dict[str, list[int]]] | None:
+def _coverage_json(data_file: Path) -> dict[str, dict[str, Any]] | None:
     """Return coverage's per-file executed/missing lines, or ``None``.
 
     Reads through ``coverage json`` rather than the ``.coverage`` SQLite file
@@ -199,7 +208,13 @@ def main() -> int:
         return 0
 
     gaps: list[tuple[str, list[int]]] = []
+    arc_gaps: list[tuple[str, list[tuple[int, int]]]] = []
     checked = 0
+    arcs_checked = 0
+    # Branch data is optional: a `pytest --cov` run without `--cov-branch`
+    # records no arcs at all, and a gate that failed on its absence would
+    # block every such run.  Only a file that *has* arc data is judged on it.
+    branch_data = False
     for path, lines in sorted(targets.items()):
         record = files.get(path)
         if record is None:
@@ -215,21 +230,53 @@ def main() -> int:
         if missing:
             gaps.append((path, missing))
 
-    if not gaps:
-        print(f"changed-line coverage: 100% ({checked} added statement(s))")
+        # An arc is `[from, to]`; it belongs to the branch when the *test*
+        # that failed to go both ways is on an added line.  A negative `to`
+        # is coverage's spelling for leaving the function, which is a real
+        # untaken exit rather than a line number.
+        summary = record.get("summary", {})
+        if summary.get("num_branches") is None:
+            continue
+        branch_data = True
+        arcs_checked += sum(
+            1 for arc in record.get("executed_branches") or () if arc[0] in lines
+        )
+        untaken = sorted(
+            (arc[0], arc[1])
+            for arc in record.get("missing_branches") or ()
+            if arc[0] in lines
+        )
+        arcs_checked += len(untaken)
+        if untaken:
+            arc_gaps.append((path, untaken))
+
+    if not gaps and not arc_gaps:
+        summary = f"changed-line coverage: 100% ({checked} added statement(s)"
+        summary += f", {arcs_checked} branch(es))" if branch_data else ")"
+        print(summary)
         return 0
 
-    total = sum(len(m) for _, m in gaps)
-    print(f"changed-line coverage: {total} added statement(s) never executed")
-    for path, missing in gaps:
-        spans = ",".join(str(n) for n in missing)
-        print(f"  {path}: {spans}")
+    if gaps:
+        total = sum(len(m) for _, m in gaps)
+        print(f"changed-line coverage: {total} added statement(s) never executed")
+        for path, missing in gaps:
+            spans = ",".join(str(n) for n in missing)
+            print(f"  {path}: {spans}")
+
+    if arc_gaps:
+        total_arcs = sum(len(a) for _, a in arc_gaps)
+        print(f"changed-branch coverage: {total_arcs} added branch(es) never taken")
+        for path, untaken in arc_gaps:
+            for src, dest in untaken:
+                where = "exit" if dest < 0 else f"line {dest}"
+                print(f"  {path}: line {src} never continues to {where}")
 
     if args.partial:
         print(
             "\nnot failing: the suite ran a subset, so these may be covered by "
             "tests that did not run.  Re-check with the full suite:\n"
-            "  uv run pytest --cov && uv run python scripts/check_diff_coverage.py"
+            "  uv run pytest --cov --cov-branch && "
+            "uv run python scripts/check_diff_coverage.py"
         )
         return 0
     print("\nadd tests for the lines above, or mark them `# pragma: no cover`.")
