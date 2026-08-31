@@ -425,7 +425,6 @@ _MINTERM_SHAPED = {
     "cod",
     "collatz_multiverse",
     "container",
-    "home_row",
     "nocomment",
     "point_break",
     "qoibl",
@@ -479,6 +478,18 @@ _MINTERM_SHAPED = {
 # raises on the ``n == 3`` tables this test uses -- an ignored input still
 # has to be embedded, and every fill moves the pointer that carries the
 # answer, so the projection this test's folding measures cannot happen.
+# Minterm sums that nonetheless gain on a one-dependency table, and *not* by
+# folding: they apply dependency reduction (technique 10), emitting the
+# smaller table that a degenerate one really is.  The distinction the shape
+# test would otherwise lose is that these have no subtrees at all -- the sum
+# is simply over fewer rows because the table was rewritten over its
+# essential inputs, so the gain tracks the dropped *arity* rather than any
+# collapsed structure.  Reordering does not become applicable to them the way
+# it would if they had grown a tree, which is why they are neither list.
+_REDUCING = {
+    "home_row",
+}
+
 _UNSHAPED = {
     "wii2d",
     "minifuck",
@@ -533,6 +544,18 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
     best = min(len(fn(table)) for table in _ONE_DEPENDENCY)
     parity = len(fn(_PARITY))
     folds = 1 - best / parity
+    if name in _REDUCING:
+        # The gain is real but is not a fold, so assert it from the other
+        # direction: the saving must come from dropped inputs, which means a
+        # table that depends on *every* input cannot be shortened at all.
+        assert folds >= 0.05, (
+            f"{name} is listed as applying dependency reduction but gains "
+            f"only {folds:.1%} on a one-dependency table -- its reduction "
+            f"has regressed"
+        )
+        for table in _ONE_DEPENDENCY:
+            assert len(fn(table)) < parity, table
+        return
     if name in _MINTERM_SHAPED:
         assert folds < 0.05, (
             f"{name} is listed as minterm-shaped but folds {folds:.1%} on a "
