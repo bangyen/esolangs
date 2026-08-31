@@ -106,14 +106,45 @@ generator exercised through a compile-then-fuzz differential) or **intrinsic
 value** (genuine lowering — control flow, calls, memory, dispatch — rather
 than per-command transliteration).
 
-No remaining candidate clears either bar.  Plain brainfuck is the trap
-answer — uncovered, but `home_row`/`suffolk` already cover that shape, so it
-is transliteration.  Taglate is blocked outright: its `t` command rewrites
-the queue into a Google Translate URL of its text.  Bitdeque is too thin,
-and Point Break has no output command, so its differential could only
-observe halting.  **Lamfunc is the strongest of what is left** — partial
-application and closures are real lowering — but it is heavier than the
-call-graph backends already shipped, for the same class of win.
+Candidates in priority order.  Two facts constrain every entry: the target
+is **`rv64i`**, whose base integer ISA has no float and no hardware
+multiply (forth already emits software `mul32`/`divmod32`, so integers are
+precedent and floats are not); and a differential is only worth the name
+when the generator *reads input*, since an `_embedded` generator substitutes
+its bits into a fixed template and replays the same program.
+
+- **Container** — `_reader` generator, so a real differential; values are
+  plain `int`, so no domain problem.  The lowering is its tick loop: every
+  container updates from its own conditional deltas each tick, which is a
+  dataflow round rather than a command transliteration.  Cheapest of the
+  three that clear both bars, and the one to try first.
+- **MyScript** — the richest call graph left: first-class functions,
+  `return`, `while`/`check` blocks, and a `_reader` generator.  Scoping was
+  **probed and is not lexical** (a caller's local is visible inside a callee
+  that never received it), so like Forbin it needs no captured environments.
+  The bill is its *value domain*: `say` prints floats, strings, and arrays,
+  and on `rv64i` that means soft-float plus heap-managed strings and
+  growable arrays — a different league from Forbin's tagged 64-bit words.
+  Worth doing, but scope the value domain before starting.
+- **CV(N)(C)** — genuine dispatch, and the most unusual lowering available:
+  the program builds a *function* symbol by symbol and applies it on demand,
+  over an accumulator, a deque, and that function.  Unbounded unsigned
+  integers fit the documented fixed-width caveat, and it carries both a text
+  and a boolean generator.  Its cost is the syllable grammar — validity is
+  CV(N)(C) structure, so the front end is a real parser rather than a
+  character dispatch.
+
+Standing negatives, unchanged.  Plain brainfuck is the trap answer —
+uncovered, but `home_row`/`suffolk` already cover that shape, so it is
+transliteration; the same disposes of the rest of the bf-shaped tape family.
+Taglate is blocked outright: its `t` command rewrites the queue into a
+Google Translate URL of its text.  Bitdeque is too thin, and Point Break has
+no output command, so its differential could only observe halting.
+Polynomial needs complex-root finding, which is not RISC-V work.  Lamfunc's
+partial application is real lowering, but its generator is `_embedded`, so
+it cannot pay the verification bar the way Container and MyScript can.  The
+2D/grid family stays out under the toolchain rule, and the drawn-control-flow
+item under **Transpilers** already covers that direction.
 
 **Input-reading compilers are now supported.**  `COMPILER_CASES` entries
 take an optional fifth element carrying stdin (pre-existing cases keep
