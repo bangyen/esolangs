@@ -60,9 +60,30 @@ applies to line-faithful readers like Forbin's ``in``, and Container's is
 not one -- it consumes a line one character per pulse, not one character per
 line.  EOF halts the run, matching the interpreter's ``EOFError``.
 
-Values are 64-bit signed words where the interpreter's are unbounded Python
-integers, the fixed-width caveat the other compilers document.  Comparisons
-are signed because both initial values and rule literals may be negative.
+**The compiled program is not total**, and the value domain is the only
+reason.  Acceptance is exact -- the shared parser and the compile-time
+undeclared-name check reject precisely the programs the interpreter rejects
+-- but a container's value is a 64-bit signed word where the interpreter's
+is an unbounded Python integer, so the two agree only while every value
+stays within ``0 .. 2**63 - 1``.  That bound is exact and was measured:
+a container driven to ``2**63 - 1`` still agrees, and one driven to
+``2**63`` wraps negative, whereupon ``max(res, 0)`` clamps it to zero and
+every later ``A>=1`` test reads false where the interpreter reads true.
+The wrap is *not* generally invisible: it survives into output whenever a
+big value reaches a comparison, and is only masked when the value merely
+feeds ``OUT`` (which is taken mod 128 on both sides).
+
+The clamp is what makes this observable rather than a silent modular
+arithmetic: ``update`` returns ``max(res, 0)``, so a wrapped-negative sum
+does not stay negative and wrap back on a later tick -- it is destroyed.
+No program the repo's generators emit approaches the bound: the measured
+peak container value across both generators is 127 (the text generator's
+largest byte; the boolean generator peaks at 65, its armed-gate constant),
+against a bound of ``2**63 - 1``.  This therefore bounds hand-written
+programs only.
+
+Comparisons are signed because both initial values and rule literals may be
+negative.
 
 Registers: ``s1`` = the ``old`` buffer, ``s2`` = the ``new`` buffer, ``s3``
 = a rule sum under construction, ``t6`` = a computed address for a cell
