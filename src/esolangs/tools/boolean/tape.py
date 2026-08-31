@@ -17,6 +17,8 @@ from esolangs.tools.boolean.helpers import (
     _validate_truth_table,
     best_input_order,
     decision_tree_program,
+    essential_inputs,
+    read_at,
     stored_inputs,
 )
 from esolangs.tools.boolean.rotfuck import rotfuck
@@ -1173,6 +1175,18 @@ def suffolk(truth_table: str) -> str:
         )
         return const(1, _ASCII_ONE + int(truth_table[0])) + reads + ">" + "<" + "."
 
+    # A table that ignores some of its inputs is a smaller table, and a
+    # minterm costs one literal walk *per input* on top of one block per
+    # selected row -- so dropping an input removes rows and shortens the
+    # rows that remain.  The reads stay, one ``,`` per input; an ignored one
+    # is read into its own scratch cell and never used as a literal, which
+    # is exactly what the constant branch above already does for *every*
+    # input.  This is that branch generalized from "no essential inputs" to
+    # "the ones that matter".
+    used = essential_inputs(truth_table, n) or [0]
+    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
+    width = len(used)
+
     def evaluate(wanted: str, *, invert: bool) -> str:
         """Sum the minterms of the rows equal to ``wanted``, then print.
 
@@ -1197,11 +1211,15 @@ def suffolk(truth_table: str) -> str:
 
         cells: list[int] = []
         next_cell = 2 + 2 * n
-        for row in range(2**n):
-            if truth_table[row] != wanted:
+        for row in range(2**width):
+            if reduced[row] != wanted:
                 continue
-            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-            literals = [(2 + i) if v else (2 + n + i) for i, v in enumerate(bits)]
+            # Slot ``s`` carries original input ``used[s]``, whose complement
+            # and raw cells were laid down at the full arity above.
+            bits = [(row >> (width - 1 - s)) & 1 for s in range(width)]
+            literals = [
+                (2 + used[s]) if v else (2 + n + used[s]) for s, v in enumerate(bits)
+            ]
             body += "".join(">" * c + "<" for c in literals)
             body += ">" * next_cell + "!"
             cells.append(next_cell)

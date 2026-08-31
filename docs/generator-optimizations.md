@@ -68,16 +68,16 @@ It measured 74.1% when first added and 74.5% once its reorder shipped the
 same day — the one-dependency table it is scored on is exactly the case the
 reorder improves, so this figure moves when that build changes.
 
-**Minterm-shaped (7).** a_painter_ant, bfstack,
-collatz_multiverse, container, point_break, qoibl,
-suffolk — all within 4% of parity on a one-dependency
-table, because there is no subtree to collapse.
+**Minterm-shaped (6).** a_painter_ant, bfstack,
+collatz_multiverse, container, point_break, qoibl — all within 4% of parity
+on a one-dependency table, because there is no subtree to collapse.
 
-**Reducing (6).** `home_row`, `cod`, `nocomment`, `bit_tilde`, `rotfuck` and
-`suptiftam` were on that list until 2026-08-30/31 and are still minterm
-sums; they now gain **60.6%**, **92.5%**, **27.3%**, **81.5%**, **76.3%**
-and **69.4%** respectively on a one-dependency table by *dependency
-reduction* (10) rather than by folding.
+**Reducing (7).** `home_row`, `cod`, `nocomment`, `bit_tilde`, `rotfuck`,
+`suptiftam` and `suffolk` were on that list until 2026-08-30/31 and are
+still minterm sums; they now gain **60.6%**, **92.5%**, **27.3%**,
+**81.5%**, **76.3%**, **69.4%** and **14.7%** respectively on a
+one-dependency table by *dependency reduction* (10) rather than by
+folding.
 
 That is most of the minterm side, and the pattern is worth stating: a sum of
 minterms is the *ideal* shape for technique 10, because it pays per selected
@@ -313,7 +313,7 @@ zero rows and inverting — one term saved per row, paid for once.
 | `qoibl`, `bit_tilde`, `grapheme` | fewer minterms; grapheme picks whichever row-set is shorter |
 | `container` | `OUT` spends one `+1 S{row}>=Gout` line per one-row, so a dense table sums its zero rows from a 49 start and subtracts — 12.7% on the densest n=4 table. The per-row survivor blocks are fixed and unaffected |
 
-### Dependency reduction (10) — nine generators
+### Dependency reduction (10) — ten generators
 
 A table ignoring an input is emitted as the *smaller* table, still
 consuming the rest. `essential_inputs` (in `boolean/helpers.py`, promoted
@@ -440,6 +440,21 @@ and that is set by the interface rather than by the construction:
   and its `%-[read]22%` normalization; an ignored one is simply never used
   as a factor. 700 → **214** at `n == 3` (69.4%) and 1555 → **247** at
   `n == 4` (84.1%).
+
+- **`suffolk` reduces the least, and the reason is the more useful finding.**
+  It reads an input it never uses as a literal — the same move its constant
+  branch already made for *every* input — but its win is only 875 → **746**
+  at `n == 3` (14.7%), against a 69% screen. Measured, **96.5% of the
+  reduced program is the per-input read-and-complement setup**: `const`
+  re-walks its gap once per unit, so preloading 48 at each of `n` cells
+  costs 591 characters at `n == 3` while the whole minterm body it replaces
+  is about 3.5%. The setup is the interface and cannot be dropped.
+
+  It is still worth having — nothing grows, and at `n == 4` the body has
+  grown enough to make it 1479 → **1066** (28%) — but it is the clearest
+  case in the catalogue of a **screen measuring headroom that the reads
+  make unreachable**. Where a generator's per-input setup dominates, price
+  the setup before believing an arity screen.
 
 **What to check on the next candidate.** The win is available wherever cost
 tracks *arity* rather than the table's contents, which is why it crosses the
