@@ -1383,7 +1383,8 @@ linear scan rather than a genuine representation limit.  See
   constant out of `s`/`i` needs ~20+ commands, well outside a length-8 sweep.
 
   **The three-input cap was the padding, not the language.**  Coverage at
-  `n == 3` went 48/256 -> 86/256 (and 154 -> 496 at `n == 4`) by adding a
+  `n == 3` went 48/256 -> 86/256 (and 154 -> 496 at `n == 4`) — and later to
+  106/256, see the ladder below — by adding a
   third construction that composes one affine setter per input and *searches*
   the composition, rather than reading one slope per column as the two-input
   derivation does.  XOR3 builds, which is no subcube.  What had actually been
@@ -1423,15 +1424,45 @@ linear scan rather than a genuine representation limit.  See
   and not derived, which is why 84 is reported as where every widening tried
   stops rather than as a proved maximum.
 
-  Majority-3 — the smallest OR of disjoint subcubes — remains **unreached,
-  not walled**, and one obvious escape was tried and did not open it.  The
-  once-each embedding rule is a repo invariant rather than a language fact,
-  so relaxing it is the natural next lever; re-embedding an input at a second
-  slot (six layouts, up to ~9800 states each, with the tail check applied)
-  reached majority-3 in none of them.  That is a bounded search over one
-  gadget shape, so it is evidence about the layout and not a wall: what is
-  actually needed is a running total that survives a gadget that erases, and
-  there is one register.
+  **Majority-3 is reached, and this entry's argument for its being out of
+  reach was wrong.**  The entry closed by saying that what is needed is "a
+  running total that survives a gadget that erases, and there is one
+  register" — correctly labelling itself evidence about a layout rather than a
+  wall.  The register is enough, because the running total does not need to
+  survive a gadget: it can *be* the accumulator, and the over-3003 reset can
+  read it.  A fourth construction, the **threshold ladder**, gives each input
+  a weight, subtracts it into a negative accumulator, and lets the reset fold
+  every row above the limit onto 0.  That is a threshold on a weighted sum,
+  which is exactly a majority; coverage at `n == 3` went 86/256 -> **106/256**,
+  majority-3 among the twenty added, at 598 characters and executed on all
+  eight rows.
+
+  This does **not** contradict the paragraph above: the reset still cannot
+  *separate* rows that agree.  It merges, and the ladder is what supplies an
+  order for it to merge along — the separation is done by the weights before
+  the reset ever fires, and the printing tail is the ordinary gap-1 one.  The
+  amplify-then-clamp tail still never fires, and the tail bound stands as
+  stated.
+
+  Two things the construction turns on, both of which cost a wrong answer
+  first.  Stage one must stay **nonpositive**, since the reset never fires on
+  a negative accumulator and that is what makes the stage exactly affine; a
+  positive intermediate crossing 3003 clamps at the *next* command, which
+  silently produced a program computing the wrong function.  And the
+  stage-one vector must be obtained by **running the emitted characters**
+  rather than by solving the arithmetic separately: a `pp` hold negates, so a
+  magnitude past the limit clamps to 0, and a model that assumed
+  `-(base + Σ w·b)` disagreed with the interpreter on exactly the rows where
+  it mattered.  Modelling and emitting were reconciled by making the search
+  call `_apply` on the code that is actually emitted.
+
+  What bounds the ladder is now stated rather than guessed: one reset is one
+  threshold, and only **104 of the 256** three-input tables are linearly
+  separable, so no widening of the ladder grid can make this shape total.
+  Deepening the suffix to 14 characters on the shipped ladders reached no
+  further table, though 24 witnesses do use two or more reset events, so
+  multi-threshold behaviour exists and is simply not yet harnessed.  The
+  remaining 150 are **unreached, not walled**.
 
 - **The Temporary Stack** — **this entry's argument is refuted; the removal
   rested on a bad negative.**  The entry claimed the auto-drain's `front - 1`
