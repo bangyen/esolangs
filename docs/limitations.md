@@ -149,6 +149,57 @@ using one should hard-error is a behaviour change for callers, not a bug
 fix, so it is recorded here rather than made — nothing in the repo depends
 on the answer now that the emitters are capped.
 
+## Compilers are bounded-agreement, not total, over unbounded values
+
+The gaps above run one way — an interpreter accepting more than its spec.
+This one runs the other: a *compiler* that is narrower than the interpreter
+it reproduces.
+
+Every compiler in `src/esolangs/compilers/` lowers a value to a
+**fixed-width machine word** — 64-bit signed at the widest, and a byte in
+BFStack, whose cells are byte-sized on both sides.  So where the
+interpreter's value is an unbounded Python integer, the two agree only
+while it stays inside that width: at the 64-bit ones, `-2**63 .. 2**63 - 1`.
+Outside it the compiled word wraps and the answer is silently wrong — no
+compiler diagnoses it, and the assembler accepts the truncation.
+
+*Which* compilers this applies to is deliberately **not** listed here — the
+list would go stale on any new compiler or interpreter change, and the rule
+derives it in one read.  A compiler is exact when its **interpreter** is
+itself bounded, and bounded-agreement when it is not:
+
+- **Exact.** Forth's interpreter wraps every result through `_wrap32`, and
+  BFStack's cells are `% 256`; the compiler reproducing that width is
+  agreement, not a caveat.
+- **Bounded-agreement.** Everything whose interpreter arithmetic runs on
+  plain Python integers.
+- **Not applicable.** Forbin, whose values are bits and tagged words rather
+  than arithmetic; its docstring accordingly claims *acceptance* totality,
+  which is the distinction this whole section turns on.
+
+Two measured boundary checks, both at the same place, one per shape of
+entry:
+
+- **Decleq** takes the value straight from the program text, so no
+  arithmetic is needed to reach it: cell `2**63` is stored as
+  `-9223372036854775808` and `2**64 + 5` as `5`.  Its sole instruction
+  branches on `<= 0`, so a flipped sign redirects control flow at once.
+- **Container** has to accumulate there across ticks, and its clamp changes
+  the character of the failure: `max(res, 0)` **destroys** a wrapped-negative
+  value instead of letting it wrap back, so the divergence is permanent once
+  triggered — yet invisible while the value only feeds `OUT`, which is taken
+  `% 128` on both sides.  Agreement holds through `2**63 - 1` and breaks at
+  `2**63`.
+
+**Nothing shipped approaches this.**  Measured over the text generators'
+programs, the largest integer any compiler emits is **65536** — a tape or
+buffer constant in the OISC compilers (addsubjump, S*bleq, decleq); the
+byte-oriented ones peak around 93–114, and Container's own containers peak
+at 127 at run time.  That leaves fourteen orders of magnitude of headroom,
+so this bounds hand-written programs only, which is why it is recorded
+rather than fixed — widening to arbitrary precision would cost every
+compiler a software bignum for a case no generator can produce.
+
 ## Divergent example outputs
 
 `examples/boolean` holds one committed program per boolean generator, and

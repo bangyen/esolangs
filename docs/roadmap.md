@@ -124,8 +124,9 @@ its bits into a fixed template and replays the same program.
 - **CV(N)(C)** — genuine dispatch, and the most unusual lowering available:
   the program builds a *function* symbol by symbol and applies it on demand,
   over an accumulator, a deque, and that function.  Unbounded unsigned
-  integers fit the documented fixed-width caveat, and it carries both a text
-  and a boolean generator.  Its cost is the syllable grammar — validity is
+  integers fit the bounded-agreement rule every compiler here shares
+  ([`docs/limitations.md`](limitations.md#compilers-are-bounded-agreement-not-total-over-unbounded-values)),
+  and it carries both a text and a boolean generator.  Its cost is the syllable grammar — validity is
   CV(N)(C) structure, so the front end is a real parser rather than a
   character dispatch.
 
