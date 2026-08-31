@@ -113,11 +113,6 @@ precedent and floats are not); and a differential is only worth the name
 when the generator *reads input*, since an `_embedded` generator substitutes
 its bits into a fixed template and replays the same program.
 
-- **Container** — `_reader` generator, so a real differential; values are
-  plain `int`, so no domain problem.  The lowering is its tick loop: every
-  container updates from its own conditional deltas each tick, which is a
-  dataflow round rather than a command transliteration.  Cheapest of the
-  three that clear both bars, and the one to try first.
 - **MyScript** — the richest call graph left: first-class functions,
   `return`, `while`/`check` blocks, and a `_reader` generator.  Scoping was
   **probed and is not lexical** (a caller's local is visible inside a callee
@@ -142,18 +137,24 @@ Google Translate URL of its text.  Bitdeque is too thin, and Point Break has
 no output command, so its differential could only observe halting.
 Polynomial needs complex-root finding, which is not RISC-V work.  Lamfunc's
 partial application is real lowering, but its generator is `_embedded`, so
-it cannot pay the verification bar the way Container and MyScript can.  The
+it cannot pay the verification bar the way MyScript can.  The
 2D/grid family stays out under the toolchain rule, and the drawn-control-flow
 item under **Transpilers** already covers that direction.
 
 **Input-reading compilers are now supported.**  `COMPILER_CASES` entries
 take an optional fifth element carrying stdin (pre-existing cases keep
 running on empty input), so a new input-reading compiler needs no harness
-work.  One convention it must match: `IO.input_char` reads a *line* and
-returns its first character, so a compiled reader is line-faithful, not
-raw-byte.  `_riscv_common.GETBYTE` reads raw bytes and is used only by
-compilers whose unicorn cases feed empty stdin, so it is not a precedent
-for a reader that is actually exercised.
+work.  What a compiled reader must match is *its own language's* refill,
+and the two shipped readers differ: Forbin's `in` goes through
+`IO.input_char`, which reads a whole *line* and returns its first
+character, so that reader is line-faithful and byte-consecutive reads
+would diverge.  Container's is not line-faithful — it refills a queue with
+`input_str`'s line *contents* and consumes one character per pulse, and
+since `input_str` strips terminators that queue is exactly the raw byte
+stream minus its newlines.  So `_riscv_common.GETBYTE` plus a newline skip
+is the correct lowering there, and Container is the standing precedent that
+GETBYTE is fine for an exercised reader whose language reads that way.
+Derive the convention from the interpreter's refill, not from a default.
 
 ## Forbin's expression-position recursion
 

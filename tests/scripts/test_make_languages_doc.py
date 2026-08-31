@@ -71,6 +71,7 @@ def test_compiler_sets_match_the_compiler_modules() -> None:
         "BF-PDA",
         "BFStack",
         "Collatz Multiverse",
+        "Container",
         "Decleq",
         "Forbin",
         "Forþ",
