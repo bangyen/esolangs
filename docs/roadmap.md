@@ -39,7 +39,20 @@ Circuit Diagram, all implemented.
 
 ## Transpilers
 
-The only candidates identified (a second Forth dialect ↔ Forþ,
+`Streetcode → LaserFuck` ships: the two share a tape of unbounded signed
+cells under a pointer, and Streetcode's instructions are brainfuck's eight
+under other glyphs, so no new interpreter was needed.  Its supported class
+is the programs the tape never steers.
+
+**Open research item: lowering drawn control flow.**  A Streetcode ring has
+no brainfuck loop image -- the car never returns to the junction that steers
+it as the same drive state -- and the boolean generator's programs are
+decision trees whose leaves each print.  Both are lowerable with scratch
+cells and a converged answer, which is a compiler rather than a program
+rewrite; `docs/limitations.md` carries the measured argument and the
+worked examples.  This is the same class of future work as the OISC pair.
+
+The remaining candidates (a second Forth dialect ↔ Forþ,
 Boolfuck ↔ ABCDirection/Minifuck) each need a *new* interpreter first, so
 they belong under "New interpreters" if that language is ever added.
 
