@@ -180,14 +180,26 @@ STEPS = [
     # scripts' imports), so scripts/ is type-checked here, in the project env.
     ("mypy (src + scripts)", [*PY, "-m", "mypy"]),
     # `--cov-report=` writes no report: the run is here for the data file,
-    # which the changed-line gate reads afterwards.  `--cov-branch` does drop
-    # coverage off its sysmon core -- sys.monitoring cannot measure branches
-    # at 7.13.4, and it falls back with a warning -- but the fallback is not
-    # the several-fold cost that reputation suggests: measured over this
-    # suite it is 65.4s against 68.2s for the line-only run, inside the noise.
-    # The gate needs the arcs to hold added branches to the same rule as
-    # added lines, and they are effectively free, so it asks for them.
-    ("pytest", [*PY, "-m", "pytest", "-q", "--cov", "--cov-branch", "--cov-report="]),
+    # which the changed-line gate reads afterwards.
+    #
+    # `--cov-branch` is NOT asked for by default, and the reason is a measured
+    # reversal of what the comment here used to claim.  It said the arcs were
+    # "effectively free" at 65.4s against 68.2s -- true when measured, because
+    # both runs were on the same tracer.  sys.monitoring then made the
+    # line-only run fast and left branch measurement behind, so the two are no
+    # longer the same core at all.  Re-measured 2026-08-31 over this suite
+    # (-n 4, coverage 7.13.4, CPython 3.13, the fast `not slow` selection):
+    #
+    #     no coverage                36.5s
+    #     --cov (line, sysmon)       36.1s   <- free
+    #     --cov --cov-branch         119.3s  <- 3.3x, the no-sysmon fallback
+    #
+    # That 83s was the bulk of a ~130s push, for arcs on the handful of lines
+    # a branch adds.  The gate is built for this: it judges a file on arcs
+    # only when the data has them (see check_diff_coverage.py) and otherwise
+    # degrades to the added-line rule, so a line-only local run still holds
+    # every added *line*.  --full and CI ask for the arcs and pay for them.
+    ("pytest", [*PY, "-m", "pytest", "-q", "--cov", "--cov-report="]),
     ("bandit", ["uv", "run", "--with", "bandit", "bandit", "-r", "src", "-q"]),
     (
         # These also run under the plain `pytest` step above.  Repeated here
@@ -598,6 +610,13 @@ def main() -> int:
             # skips it; CI runs `pre-commit run --all-files` with no SKIP
             # (ci.yml:28), so the hook still guards the config itself.
             step_env = dict(step_env, SKIP="mypy")
+        if full and name == "pytest":
+            # The arcs the default run leaves out.  A --full run is already
+            # paying for the whole tree and the slow markers, so the
+            # no-sysmon tracer's 3.3x (see the STEPS comment) is in keeping
+            # with what it is for, and it lets the changed-line gate hold
+            # added *branches* as well as added lines.
+            cmd = [*cmd, "--cov-branch"]
         if only is None and not full:
             if name == "pytest":
                 cmd = [*cmd, "-m", "not slow"]

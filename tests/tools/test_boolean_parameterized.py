@@ -248,6 +248,8 @@ def test_minifuck_reconvergence_declines_outside_one_or_two_essentials() -> None
     assert module._reconverged("01011010", [0, 1, 2], 3) is None  # noqa: SLF001
 
 
+# 2.3s: two three-input minifuck builds, which is the cost, not the asserts.
+@pytest.mark.slow
 def test_minifuck_single_essential_falls_past_the_degenerate_lookup() -> None:
     """One essential input does not guarantee the cell lookup resolves it.
 
@@ -757,15 +759,17 @@ class TestParameterizedNoComment:
             got = self.run_nocomment(self.instantiate(template, bits))
             assert got == str(int("1010101010101010"[combo])), f"inputs {bits}"
 
-    # The decode is exponential in the arity, so the cost is all in the two
-    # widest cases: measured 4.1s at n=9, 13.0s at n=10 and 43.5s at n=11,
-    # against a one-second budget.  n=9 stays in the fast run as the case
-    # that still exercises the composed skip past a byte-sized index; the
-    # two above it prove the same mechanism and sit out.
+    # The decode is exponential in the arity, so all three widest cases cost
+    # seconds: measured 4.1s at n=9, 13.0s at n=10 and 43.5s at n=11.  n=9
+    # used to stay in the fast run as the case exercising the composed skip
+    # past a byte-sized index, but it is four times the one-second budget
+    # every other case is held to, and CI runs `-m slow` and errors if any
+    # of them skips -- so the mechanism is still proved on every push, just
+    # not at push time.
     @pytest.mark.parametrize(
         "n",
         [
-            9,
+            pytest.param(9, marks=pytest.mark.slow),
             pytest.param(10, marks=pytest.mark.slow),
             pytest.param(11, marks=pytest.mark.slow),
         ],
@@ -2840,6 +2844,8 @@ class TestParameterizedMinifuck:
             got = self.run_minifuck(self.instantiate(template, bits))
             assert got == table[combo], (tier, bits)
 
+    # 4.8s: the enumeration it walks is the cost.
+    @pytest.mark.slow
     def test_the_enumeration_skips_a_column_that_is_not_one_digit(self) -> None:
         """A probe printing anything but single digits is passed over.
 

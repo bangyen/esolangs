@@ -19,6 +19,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "check_diff_coverage.py"
 
@@ -218,6 +220,8 @@ class TestTheGateRuns:
 
 
 class TestCoverageJsonShape:
+    # 1.6s: it shells out to a real coverage run to compare the shapes.
+    @pytest.mark.slow
     def test_the_stub_matches_what_coverage_actually_emits(self) -> None:
         """The stubbed record above has to look like the real payload.
 
