@@ -337,7 +337,10 @@ def _greedy_input_order(truth_table: str, n: int) -> tuple[int, ...]:
     # Blocks of rows still to be separated: each is a list of row indices
     # that agree on every input chosen so far.
     blocks = [list(range(2**n))]
-    while remaining:
+    # The loop always leaves by the ``break`` below: picking every input
+    # separates every row, so ``blocks`` is empty on the last pass at the
+    # latest, and ``remaining`` is never the condition that ends it.
+    while remaining:  # pragma: no branch - always exits via the break
         best_input = remaining[0]
         best_score = -1
         for i in remaining:
