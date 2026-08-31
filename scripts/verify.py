@@ -63,6 +63,15 @@ from typing import Any
 
 ROOT = Path(__file__).parents[1]
 
+# Git runs this hook with its stdout attached to a pipe, not the terminal, so
+# Python block-buffers our own prints while the steps -- which inherit the
+# same pipe and write to it directly -- stream straight through.  The result
+# is that `scope:`, the `[skip]` lines and the `[....] pytest` banner arrive
+# only when the run ends, after the very silence they exist to explain.  Line
+# buffering puts them in front of the wait, where they belong.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(line_buffering=True)
+
 
 def python_cmd() -> list[str]:
     """Return the project's Python command.
@@ -104,6 +113,11 @@ FULL_ONLY = frozenset(
 # Named once: the step table, STEP_SCOPE and the slow-marker filter all refer
 # to this step, and a typo in any of them would silently stop matching.
 LINE_STEP = "extra/line suites (uv)"
+
+# How often the long step reports that it is still going.  Short enough that
+# the wait never looks stalled, long enough that a normal run prints only a
+# handful of lines.
+HEARTBEAT_SECONDS = 20.0
 
 # Not a STEPS entry: it reads the coverage data file `pytest` writes, and
 # `pytest` is LONG_STEP -- launched with Popen and left running while the
@@ -478,7 +492,20 @@ def _run_steps(
             run_serial(name, cmd, step_env)
 
     if proc is not None:
-        output, _ = proc.communicate()
+        # The short steps are done and pytest holds the only remaining output,
+        # captured rather than streamed so two live subprocesses cannot
+        # interleave into nonsense.  Waiting on it in one blocking call meant
+        # the push sat silent for the ~2 minutes the suite takes, which reads
+        # as a hang -- long enough to invite the Ctrl-C that skips the checks.
+        # Waiting in slices costs nothing and keeps the wait legible.
+        output = ""
+        while True:
+            try:
+                output, _ = proc.communicate(timeout=HEARTBEAT_SECONDS)
+                break
+            except subprocess.TimeoutExpired:
+                waited = time.time() - long_start
+                print(f"[....] {LONG_STEP} still running ({waited:.0f}s elapsed)")
         elapsed = time.time() - long_start
         timings.append((LONG_STEP, elapsed))
         pytest_ok = _report(LONG_STEP, elapsed, proc.returncode, output)
