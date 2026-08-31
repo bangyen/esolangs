@@ -87,20 +87,21 @@ _WII2D_MAX_CENTRE = 4096
 # ``n == 7`` table built with this constant raised to 64 was verified against
 # the interpreter on all 128 input combinations.  See ``docs/walls.md``.
 #
-# What the constant buys is bounded *time* and *width*, both of which degrade
-# sharply and with heavy variance as the domain doubles.  Measured at the
-# shipped first beam width, on five random patterns per domain:
+# What the constant buys is bounded *width*, which still grows sharply as the
+# domain doubles.  Measured through :func:`_wii2d_decode`, random patterns:
 #
-#     D == 16 (n == 5):  median     51 cells, worst     96, all < 0.01s
-#     D == 32 (n == 6):  median   1245 cells, worst   2686, all < 0.15s
-#     D == 64 (n == 7):  median  46385 cells, worst 131433, 0.7s..17s,
-#                        and one pattern in five exceeded a 120s budget
+#     D == 16 (n == 5):  median     62 cells, worst    120, all < 0.01s
+#     D == 32 (n == 6):  median    415 cells, worst   1149, all < 0.15s
+#     D == 64 (n == 7):  median   4762 cells, worst  19448, 0.34s..8.07s
 #
-# The tail is the real cost: most ``n == 7`` tables build in seconds, but a
-# sizeable minority send the fold search somewhere it takes minutes to come
-# back from, so raising this trades a clean refusal for an occasional very
-# long build.  Whether that trade is worth making is a caller's decision,
-# which is why the bound is a module constant rather than an inlined literal.
+# The *time* it used to buy is largely gone.  That tail was the doubling trap
+# described at :data:`_WII2D_MAX_STATE_BITS`, and the retry there clears it:
+# the same 14 sampled ``D == 64`` patterns that gave four builds over a 120s
+# budget and a 55.73s worst case now all finish, the slowest in 8.07s.  What
+# remains is emitted size -- an ``n == 7`` decode is thousands of cells --
+# plus the accumulator width noted below, so the default stays at 32 and the
+# trade remains a caller's decision, which is why the bound is a module
+# constant rather than an inlined literal.
 #
 # Symmetric tables never reach this check: they decode over ``n`` points via
 # the popcount chain, so majority-of-12 is 397 characters and instant.
@@ -309,7 +310,7 @@ def _wii2d_decode_at(pattern: list[int], beam: int) -> str | None:
     return _wii2d_decode_pass(pattern, beam, ranked=True)
 
 
-def _wii2d_decode_pass(pattern: list[int], beam: int, ranked: bool) -> str | None:
+def _wii2d_decode_pass(pattern: list[int], beam: int, *, ranked: bool) -> str | None:
     """Run one fold search; see :func:`_wii2d_decode_at` for the two passes.
 
     ``ranked`` picks the state ordering.  Both passes give up when the
