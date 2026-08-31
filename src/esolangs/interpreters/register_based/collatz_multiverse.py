@@ -62,6 +62,15 @@ class _Machine:
             m = _LINE.fullmatch(ln)
             if not m:
                 raise ValueError(f"malformed line: {ln!r}")
+            # Redefining ``input`` is malformed, and malformedness is a
+            # property of the program text -- so it is rejected here with
+            # the other two malformed cases rather than when the line
+            # happens to run.  Checking it in ``step()`` made an
+            # unreachable ``input =`` line (one a ``lineNumber`` jump skips)
+            # legal, and made acceptance depend on stdin, since a jump
+            # target can be read from input.
+            if m.group(1) == "input":
+                raise ValueError("input cannot be redefined")
             self.parsed.append(m.groups())
         self.registers: dict[str, int] = {"negativeOne": -1}
         self.arrays: dict[str, dict[int, int]] = {}
@@ -98,8 +107,6 @@ class _Machine:
         if self.halted:
             return
         var1, idx1, var2, idx2, var3, idx3, do_print = self.parsed[self.ip - 1]
-        if var1 == "input":
-            raise ValueError("input cannot be redefined")
 
         t = self._read((var1, idx1))
         a = self._read((var2, idx2))
