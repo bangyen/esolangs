@@ -394,13 +394,37 @@ about one more slice, so roughly +10% derivation cost.  Only 8 of 178 were
 true forced zeros (every probe failing in `_find_pool`); the uniform
 3016/6032 pool-failure rate elsewhere is the normal one-in-two.
 
-**The setter had never been swept at all.**  `_set_bit` returns
-`("[<", "xx")` — one hardcoded pair.  This matters because `docs/walls.md`
-already records, for the 123 language, that a ceiling which looked like a
-language limit belonged to the *setter choice*.  Spot-checked here, a single
-novel pair `("x<", "[[")` yields **2722 columns against the shipped pair's
-1856** on the same screen — so the axis is live, and the equal-width
-constraint (no length leak) is the only real limit on it.
+**The setter had never been swept at all, and it is the widest axis of the
+three.**  `_set_bit` returns `("[<", "xx")` — one hardcoded pair.  This
+matters because this file already records, for the 123 language, that a
+ceiling which looked like a language limit belonged to the *setter choice*.
+
+Sweeping all 78 equal-width pairs of widths 1–2 (the shipped pair among
+them), screened pure-runs-only:
+
+| setter (zero, one) | essential columns | novel |
+|---|---|---|
+| `("x<", "[[")` | 2588 | **1858** |
+| `("[[", "x<")` | 2588 | 1606 |
+| `("x<", "[x")` | 2002 | 1482 |
+| shipped `("xx", "[<")` | 1856 | — |
+
+The best novel pair reaches 39% more essential columns than the shipped one,
+and the **union over the top ten is 9842 novel columns — 1.64x** the shipped
+family.  Admission would be **additive rather than a replacement**: each of
+the top pairs misses about 93% of the shipped pair's own 1650 columns, so
+nothing here dominates the current choice.
+
+The winning pairs are **not displacement-neutral** — `x<` moves the pointer
+where `xx` does not — which is exactly the 123 precedent, and the reason
+neutrality was deliberately not required.  Equal width is the one real
+constraint, since unequal fills leak the inputs through `len(program)`.
+
+Of the 78 pairs, 8 yield nothing, and **none of those is an instrumentation
+artifact**: zero of the eight failed in `_find_pool`, so they genuinely
+produce no columns rather than breaking the endgame.  (Width 3 is a further
+702 pairs at about 50 minutes and was not swept; the widths above are where
+the 123 precedent points.)
 
 ### The state a button leaves predicts its yield, but barely guides a search
 
