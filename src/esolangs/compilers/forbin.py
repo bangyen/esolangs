@@ -412,13 +412,21 @@ class _Compiler:
         return (
             f"# function {fn.name or '<anonymous>'} (index {ind})\n"
             f".fn{ind}:\n"
-            f"    addi sp, sp, -16\n"
+            # s6 holds this invocation's stack mark.  A `return` inside
+            # any number of open loops jumps straight to the epilogue, so
+            # the epilogue restores sp from the mark rather than trusting
+            # the loops to have unwound their saved registers.
+            f"    addi sp, sp, -32\n"
             f"    sd   ra, 0(sp)\n"
+            f"    sd   s6, 8(sp)\n"
+            f"    mv   s6, sp\n"
             f"{body}"
             f"    li   a0, 0\n"
             f".ret{ind}:\n"
+            f"    mv   sp, s6\n"
             f"    ld   ra, 0(sp)\n"
-            f"    addi sp, sp, 16\n"
+            f"    ld   s6, 8(sp)\n"
+            f"    addi sp, sp, 32\n"
             f"    ret\n"
             f"{table}"
         )
@@ -578,21 +586,20 @@ class _Compiler:
         their byte; any other arity, or a non-bit, is a halt.
         """
         return (
+            # ``in`` is line-faithful, matching IO.input_char: a refill
+            # takes the first byte of a line and discards the rest of that
+            # line, an empty line reads as the '\n' that ended it, and EOF
+            # with nothing read halts the run (the interpreter's EOFError).
+            # Reading raw consecutive bytes instead would make identical
+            # stdin produce different output from the interpreter, which is
+            # the whole point of the differential.
             ".do_in:\n"
             "    la   t0, forbin_bitcount\n"
             "    ld   t1, 0(t0)\n"
             "    bnez t1, .have_bits\n"
-            "    addi sp, sp, -16\n"
-            "    li   a7, 63\n"
-            "    li   a0, 0\n"
-            "    mv   a1, sp\n"
-            "    li   a2, 1\n"
-            "    ecall\n"
-            "    blez a0, .halt\n"
-            "    lbu  t2, 0(sp)\n"
-            "    addi sp, sp, 16\n"
+            "    call .readline\n"
             "    la   t3, forbin_bitbuf\n"
-            "    sd   t2, 0(t3)\n"
+            "    sd   a0, 0(t3)\n"
             "    li   t1, 8\n"
             ".have_bits:\n"
             "    addi t1, t1, -1\n"
@@ -603,6 +610,38 @@ class _Compiler:
             "    srl  a0, t2, t1\n"
             "    andi a0, a0, 1\n"
             "    j    .dispatch_ret\n"
+            # readline() -> a0: the line's first character, per input_char
+            ".readline:\n"
+            "    addi sp, sp, -32\n"
+            "    sd   ra, 0(sp)\n"
+            "    sd   s4, 8(sp)\n"
+            "    li   a7, 63\n"
+            "    li   a0, 0\n"
+            "    addi a1, sp, 16\n"
+            "    li   a2, 1\n"
+            "    ecall\n"
+            # nothing read at all: past the end of the input, so halt
+            "    blez a0, .halt\n"
+            "    lbu  s4, 16(sp)\n"
+            "    li   t0, 10\n"
+            # an empty line: the character read is the newline itself
+            "    beq  s4, t0, .readline_done\n"
+            ".readline_skip:\n"
+            "    li   a7, 63\n"
+            "    li   a0, 0\n"
+            "    addi a1, sp, 16\n"
+            "    li   a2, 1\n"
+            "    ecall\n"
+            "    blez a0, .readline_done\n"
+            "    lbu  t1, 16(sp)\n"
+            "    li   t0, 10\n"
+            "    bne  t1, t0, .readline_skip\n"
+            ".readline_done:\n"
+            "    mv   a0, s4\n"
+            "    ld   ra, 0(sp)\n"
+            "    ld   s4, 8(sp)\n"
+            "    addi sp, sp, 32\n"
+            "    ret\n"
             ".do_out:\n"
             "    li   t0, 8\n"
             "    bne  a2, t0, .abort\n"
