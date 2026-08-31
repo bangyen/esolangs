@@ -394,11 +394,17 @@ class _Builder:
         it.
         """
         column, reached = self.buses[signal]
-        if y != reached:
+        # Each leg is skipped when the bus already sits on the tap's row or
+        # column, which the layout never produces: rows advance for every
+        # gate and a bus column is its own, so a tap is always at least one
+        # cell away on both axes.  Both tests stay, since a layout change
+        # that did reach a tap head-on would otherwise draw a zero-length
+        # run and a junction on top of the bus.
+        if y != reached:  # pragma: no branch - a tap is never on the bus row
             self.layout.run_vertical(column, reached, y, signal)
             self.layout.junction(column, y, signal)
             self.buses[signal] = (column, y)
-        if x != column:
+        if x != column:  # pragma: no branch - nor in the bus column
             self.layout.run_horizontal(column, x, y, signal)
             self.layout.junction(x, y, signal)
 

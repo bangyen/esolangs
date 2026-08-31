@@ -1284,6 +1284,37 @@ class TestLaserFuck:
         """
         assert ",>,>," in boolean.laserfuck("01101001")
 
+    def test_wide_tables_do_not_search_every_order(self) -> None:
+        """Past the cap only the identity order is built, not ``n!`` of them.
+
+        Seven inputs would be 5040 orders; the search stops at six, so the
+        wide table costs one build.  Counting the builds is the assertion
+        rather than the timing, since that is what a change to the cap
+        would move.
+        """
+        import importlib
+
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.boolean.laserfuck")
+        real = module._laserfuck_build  # noqa: SLF001
+
+        for n, table, orders in (
+            (3, "01011010", 6),
+            (7, ("10" * 64)[:128], 1),
+        ):
+            built = 0
+
+            def counted(*args: object, _build: object = real, **kwargs: object) -> str:
+                nonlocal built
+                built += 1
+                return _build(*args, **kwargs)  # type: ignore[operator, no-any-return]
+
+            with pytest.MonkeyPatch.context() as patch:
+                patch.setattr(module, "_laserfuck_build", counted)
+                boolean.laserfuck(table)
+            assert built == orders, f"n={n} built {built} candidates"
+
     @pytest.mark.parametrize(
         "table",
         ["10101010", "11001100", "01011010", "00111100", "10010110"],

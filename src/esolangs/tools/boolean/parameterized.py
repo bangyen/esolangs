@@ -581,7 +581,10 @@ def _nocomment_summand_plan(n: int, room: int) -> list[list[tuple[int, int]]]:
             current.append((i, take))
             total += take
             remaining -= take
-    if current:
+    # Each pass appends to ``current`` before it can be flushed, so the only
+    # way to arrive here empty is a table with no inputs -- which
+    # ``_validate_truth_table`` rejects before any caller gets this far.
+    if current:  # pragma: no branch - n == 0 never reaches the planner
         parts.append(current)
     return parts
 
@@ -889,7 +892,9 @@ def nocomment(truth_table: str, tape: int = _TAPE) -> str:
     for j in range(k):
         cells.append((tbase + j, _ASCII_ZERO + int(truth_table[j])))
     cells.sort(key=lambda cv: cv[1])
-    if cells:
+    # The sentinel is appended unconditionally above, so there is always at
+    # least one cell to walk here.
+    if cells:  # pragma: no branch - the sentinel keeps this non-empty
         first_addr, first_value = cells[0]
         setup_move(first_addr)
         setup.extend(["i"] * first_value)

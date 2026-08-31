@@ -235,7 +235,14 @@ def _forth_stack_programs(n: int) -> dict[tuple[int, ...], str]:
             stack = _forth_sink_top(stack, places)
             text += ops
         else:
-            if stack not in reached or len(text) < len(reached[stack]):
+            # Every surviving sink combination lands on a distinct stack
+            # shape -- 162 completions at n == 6, no repeat -- so the
+            # shorter-text tie-break never fires.  It stays because the
+            # table is keyed by shape, and a future sink whose shape
+            # repeated would need it to keep the cheaper spelling.
+            if (  # pragma: no branch - no two combinations share a shape
+                stack not in reached or len(text) < len(reached[stack])
+            ):
                 reached[stack] = text
     return reached
 
@@ -532,7 +539,14 @@ def _unsquare_stack_programs(n: int) -> dict[tuple[int, ...], str]:
             stack = _unsquare_sink_top(stack, places)
             text += ops
         else:
-            if stack not in reached or len(text) < len(reached[stack]):
+            # Every surviving sink combination lands on a distinct stack
+            # shape -- 162 completions at n == 6, no repeat -- so the
+            # shorter-text tie-break never fires.  It stays because the
+            # table is keyed by shape, and a future sink whose shape
+            # repeated would need it to keep the cheaper spelling.
+            if (  # pragma: no branch - no two combinations share a shape
+                stack not in reached or len(text) < len(reached[stack])
+            ):
                 reached[stack] = text
     return reached
 
