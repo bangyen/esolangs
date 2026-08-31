@@ -374,6 +374,71 @@ One thing this does *not* establish: it is a family-level negative with a
 mechanism, not an exhaustion proof.  Nothing here forbids a composing
 construction that does not route its intermediate through the pointer.
 
+### The layout is a free parameter, and the tape state predicts yield
+
+Everything above asks whether the *fixed* button layout can be predicted.
+This asks whether the layout is the limiting choice, and whether the state a
+button leaves says anything about what follows.  **Every result here is a
+multiplier on the 23.9% at `n == 4`; none of it moves the counting argument,
+and a tenfold layout win would still leave `n == 5` near 0.006%.**
+
+**Separator length was never re-swept, and it is live.**  The shipped five
+came from enumerating *short* strings to close an `n == 3` gap.  Sampling 178
+strings of length 5–7 (of 3159) and screening them the same way gives **8100
+novel essential columns beyond the shipped 15404 — 1.53x**.  That figure is a
+**floor** twice over: candidates were screened pure-runs-only but diffed
+against the shipped family's full pure+insert relation, and only 5.6% of the
+space was sampled.  Best singles were `[x[[[` (302 novel), `[xxx[` and
+`xxx[x[` (284).  Priced like the per-gap axis: each admitted separator is
+about one more slice, so roughly +10% derivation cost.  Only 8 of 178 were
+true forced zeros (every probe failing in `_find_pool`); the uniform
+3016/6032 pool-failure rate elsewhere is the normal one-in-two.
+
+**The setter had never been swept at all.**  `_set_bit` returns
+`("[<", "xx")` — one hardcoded pair.  This matters because `docs/walls.md`
+already records, for the 123 language, that a ceiling which looked like a
+language limit belonged to the *setter choice*.  Spot-checked here, a single
+novel pair `("x<", "[[")` yields **2722 columns against the shipped pair's
+1856** on the same screen — so the axis is live, and the equal-width
+constraint (no length leak) is the only real limit on it.
+
+### The state a button leaves predicts its yield, but barely guides a search
+
+The pre-walk state's count of **standing nonaffine columns** predicts what a
+prefix prints at **r = 0.925** (essential-column count 0.924, distinct 0.849;
+pointer position and row spread predict nothing, r = 0.000).  The guard that
+keeps this honest is that predictors are read from the *pre-walk state* and
+ground truth from *printed* columns — the module's documented trap is using
+standing columns as the yield, since the walk rewrites them.
+
+It survives the check that matters: the feature was **selected** on `n == 4`
+data, so its edge could have been feature selection.  Measured out-of-sample
+at `n == 5` it holds — first-server position improves **+13.5% over random**.
+
+**Yield is not novelty, and novelty is what an enumeration gains.**
+Correlation with novelty is only r = 0.345, because a prefix delivering a lot
+is mostly re-delivering what earlier prefixes already delivered.
+
+**Where ordering can pay is `n == 5` alone.**  At `n <= 4` the derivation
+runs to its caps regardless, and reordering forfeits the incremental
+`[`-extension that makes it affordable, so coverage-at-k-prefixes never
+becomes time saved.  At `n == 5`, which is table-major and stops at first
+hit, the median first server moves from prefix 2888 to 1594 — 1.54x against
+the shipped order, but only **1.13x against random**, and the shipped order
+is *cost*-ordered by design rather than novelty-ordered, so it is the weaker
+comparison that is the honest one.
+
+**A raw score ranking is worse than useless, and the failure is the
+lesson.**  Directing the unshipped two-`<` widening by score alone found
+**zero** novel columns against blind enumeration's 118 — not anti-correlation
+but **degenerate concentration**: all 200 top-scored candidates came from one
+slice, `(sep 3, settle 0)`, tied at score 11.  A ranking with no diversity
+term spends its whole budget on near-identical states.  Ranked within slice
+and taken round-robin, the score gives **1.24x–1.74x** over diversified
+random (five seeds; the scored arm is deterministic at 136 novel columns, the
+random arms range 78–114).  So the score is worth a modest constant on a
+directed widening, and nothing at all if applied naively.
+
 ### The staging → table map is a hash, not an index
 
 The natural question after "the enumeration is brute force" is whether it
