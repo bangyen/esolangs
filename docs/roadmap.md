@@ -155,198 +155,103 @@ generator that validates its own output needs that check frame-mapped too.
 
 ## Mutation-testing sweep
 
-All 60 are measured.  The whole sweep was re-run on 2026-08-29, one
-language at a time on an idle machine, and **every figure previously
-recorded came back exactly** — which is what the harness commits
-`800f071` and `86c89b9` needed, each having been validated against a
-single language while nothing checked the rest.
+All 60 suites are measured, and nineteen are at 100%.  Per-language scores
+and survivor counts are *not* recorded here: they go stale on any test change
+and are cheap to re-derive — 56 of the 60 finish in under half a minute, and
+only Streetcode and Forbin run to minutes.  Re-run the language you touched;
+re-run everything after a change to the shared machinery.
 
-Nineteen suites are at 100% — `%^2^-1`, 3D Brainfuck, ArrowQueue, Back,
-BFStack, Bitdeque, brainfuck, BrainIf, Clockwise, Collatz Multiverse, Decleq,
-Eval, Factor, Home Row, Minifuck, NoComment, RAM0, Suffolk and Unsquare.
-1512 mutants survive across the repo (Fargo, added 2026-08-30, is the
-forty-first row and the only one not from the 2026-08-29 sweep); the rest
-of the field, worst first:
+What is worth keeping is what a triage pass has to get right, each learned by
+getting it wrong first.
 
-| language | score | survivors |
-| --- | --- | --- |
-| WII2D | 80.2% | 33 |
-| AddSubJump | 80.2% | 23 |
-| Point Break | 80.4% | 94 |
-| Painfuck | 81.7% | 46 |
-| Dimensional | 83.5% | 56 |
-| 3x | 84.8% | 26 |
-| Lamfunc | 85.0% | 82 |
-| S*bleq | 85.3% | 14 |
-| Grapheme | 86.1% | 60 |
-| ROTfuck | 86.3% | 20 |
-| COD | 86.6% | 38 |
-| Nevermind | 86.8% | 36 |
-| SLOW ACV MAMMALIAN | 87.4% | 23 |
-| Between | 88.1% | 77 |
-| MyScript | 88.5% | 71 |
-| Container | 88.5% | 16 |
-| Forbin | 89.0% | 128 |
-| Polynomial | 89.4% | 38 |
-| Flowchart | 89.9% | 51 |
-| Minsky Swap | 89.9% | 14 |
-| Sophie | 90.1% | 23 |
-| ZTOALC L | 90.7% | 29 |
-| Circlefuck | 90.7% | 17 |
-| Circuit Diagram | 90.9% | 53 |
-| Dig | 90.9% | 15 |
-| LaserFuck | 91.1% | 22 |
-| Taglate | 91.7% | 14 |
-| Suptiftam | 91.8% | 93 |
-| Streetcode | 91.9% | 98 |
-| BIO | 92.2% | 9 |
-| Fargo | 92.4% | 32 |
-| 6-5 | 92.7% | 10 |
-| Basicfuck | 92.8% | 50 |
-| Jaune | 92.9% | 18 |
-| A Painter Ant | 93.1% | 7 |
-| 123 | 93.2% | 8 |
-| bit~ | 93.3% | 8 |
-| BF-PDA | 93.8% | 9 |
-| Forþ | 94.1% | 14 |
-| Qoibl | 94.7% | 26 |
-| Modulous | 95.6% | 11 |
-
-LaserFuck, Forbin and Basicfuck are post-triage rows (they began at 66.7%,
-81.4% and 82.8%); four more — ArrowQueue, Decleq, BrainIf and Clockwise —
-carried one to three survivors each, were closed to 100%, and have left the
-table; NoComment (5), Unsquare (6), Collatz Multiverse (7), Eval (6) and
-3D Brainfuck (6) left it the same way.  Painfuck, 3x and Forþ are
-post-triage too — the prompt-argument deletion below cut each one's
-survivors without ending its triage — so their rows are re-measured, not
-swept.  That leaves 36 of the table's 40 rows carrying the sweep's own
-numbers, 15 of which had never been recorded per-language.  **Lamfunc (82), Between (77), MyScript
-(71) and Grapheme (60) are the largest untriaged pools** and were invisible
-before this sweep.
-
-56 of the 60 finish in under half a minute; only Streetcode and Forbin run
-to minutes.  So re-running the language you touched is free, and re-running
-everything after a change to the shared machinery is worth the few minutes.
-
-What a triage pass has to get right, learned by getting each one wrong
-first:
+**Trusting the measurement:**
 
 - **Measure on an idle machine.**  The per-test alarm fails a slow-but-
   passing test and scores it as a kill, so a contended run *under*-reports
   survivors — one reported 17 where a solo run reports 22.
-- **The last survivor is often the source's fault, not the suite's.**  Two
-  of the three one-survivor languages were closed by *deleting* the slack
-  rather than testing it: BrainIf seeded a retry loop with `s = ""` when
-  every falsy seed behaves alike (a walrus condition leaves no seed to
-  mutate, and drops the pool 88→85), and ArrowQueue guarded its grid setup
-  with `if code:` so that `_Machine(None)` took the empty-grid path and
-  halted — indistinguishable from outside in a language with no output.
-  Consuming `code` unconditionally makes that mutant raise.  Clockwise is
-  the same lesson at its limit: its `if ins in "R?!"` early return was
-  *dead*, since the dispatch below has no branch for a turn cell and the
-  flush cannot fire on one, so both of its set-widening survivors sat on
-  code that did nothing.  Deleting the guard took the suite to 100% and
-  the pool from 150 mutants to 140.  Reach for the interpreter first when
-  the mutated construct carries no information: a construct that cannot be
-  observed is usually one that need not exist.
-- **A redundant argument is unkillable by construction.**  Five
-  interpreters passed `input_str("Input: ")` (and one `input_num`) when
-  that string is already the parameter's default, so the argument changed
-  nothing — and `ScriptedIO._read` discards the prompt, so no test under
-  the harness could ever see it.  Each call site therefore carried three
-  permanently surviving mutants (the `XX` sentinel and two re-casings),
-  alongside a fourth the tests already killed.  Deleting the argument
-  removed 24 mutants across Painfuck, 3x, Forþ, Collatz Multiverse and
-  Unsquare, **18 of them survivors** — closing Unsquare outright, since
-  all six of its survivors were the two call sites'.  The interactive `IO`
-  path prints the identical prompt either way.  Prefer the default over
-  restating it: a restated default is slack that mutation testing counts.
+- **`uv run` can measure the wrong tree, silently.**  It reinstalls the
+  package from the project root, so a worktree's edits never reach the
+  bundle; `PYTHONPATH=$PWD/src` fixes it.  The tell is a survivor on a line
+  you already deleted, or a pool size that did not move after deleting code.
+- **A probe whose own baseline moves witnesses everything.**  An error
+  message interpolating an object with no `__repr__` carries its address, and
+  one such program was recorded as the sole witness for 114 mutants that were
+  not killable at all.
+- **Naming `esolangs.vm` in a docstring drops the test** from the bundle
+  exactly as an import would, silently.  A survivor is not a gap until the
+  harness is trusted: tests reaching the VM or registry are dropped
+  *correctly*.
+
+**The last survivor is often the source's fault, not the suite's.**  A
+construct that cannot be observed is usually one that need not exist, so
+reach for the interpreter first when the mutated construct carries no
+information:
+
+- **A redundant argument is unkillable by construction.**  Five interpreters
+  passed `input_str("Input: ")` when that string is already the parameter's
+  default, and `ScriptedIO._read` discards the prompt, so no test could ever
+  see it.  Each call site carried three permanently surviving mutants;
+  deleting the argument removed 24 mutants, **18 of them survivors**, and
+  closed Unsquare outright.  Prefer the default over restating it.
 - **A default is dead when something upstream already ran it.**  Collatz
-  Multiverse's write path used `arrays.setdefault(var1, {})`, but every
-  line reads its target before writing it and an indexed *read* already
-  defaults the array — so by the write the key always exists.  Two of its
-  four survivors were mutations of that unreachable default (`None` and
-  the argument dropped entirely); a probe asserting the key's presence ran
-  20,000 random array programs without firing.  Plain subscripting is
-  enough.  The other two were ordinary gaps: an error branch no test
-  reached, and a `snapshot()` whose arrays half was only ever exercised
-  empty.  Pool 102 → 98, suite to 100%.
-- **A `*` quantifier never fails, so its fallback is dead.**  Eval matched
-  a string literal with `re.match('[^"]*', ...)` and fell back to `""` when
-  the match was `None` — which cannot happen, since `[^"]*` matches the
-  empty string anywhere (300,000 random inputs, never `None`).  Replacing
-  the whole thing with `partition('"')[0]` says the same thing with no
-  unmatched case, and retires the `re` import with it.
-- **"Symmetric table" is not an equivalence argument on its own.**  3D
-  Brainfuck's direction tables are closed under negation, which was long
-  cited as making its axis mutants unkillable.  They are not: `snapshot()`
-  carries `ap`, `ip` and `heading`, so a relabelled axis is visible even
-  when output and step count match.  All 23 non-identity permutations of
-  the four off-axis headings are distinguishable, and each array sign-flip
-  dies to a program as short as `n+`.  Five of its six survivors were
-  ordinary gaps — the tests asserted output only, and every move walked out
-  and back, where direction cancels.  Assert the *coordinate*.
-  The sixth was real: `ip[1]` read as `ip[2]` is undetectable because the
-  instruction pointer never leaves the `y = z = 0` line alive (a heading
-  block walks it off the source and halts it), so both are always 0 there —
-  44,680 programs found no witness.  Unpacking the triple into named
-  components removes the index that could be wrong.
-- **A rewrite can install a gap where it removed slack.**  That same
-  `partition` swap introduced a survivor the regex version never had:
-  `partition` and `rpartition` agree on every program holding a *single*
-  literal, because the closing quote is then also the program's last one,
-  and every test had exactly one.  Two literals separate them —
-  `"a"."b".` prints `ab`, or `a"."b` if the split takes the last quote.
-  So re-measure after every rewrite rather than assuming the score only
-  improves: this one went 6 survivors → 1, and the 1 was newly created.
-  3D Brainfuck showed the sharper version: factoring the pointer move into
-  a `zip`-based helper traded one equivalent mutant for **three**, because
-  ruff's B905 requires an explicit `strict=` and both operands are always
-  3-tuples, so that argument can never fire.  A lint rule can mandate
-  slack.  Unpacking the two triples instead satisfies the linter with no
-  extra argument, and took the pool 117 → 114.
-- **`uv run` can measure the wrong tree, silently.**  Three runs of the
-  same command reported an unchanged 6 survivors — including a mutant of
-  a line that had already been deleted — because `uv run` reinstalls the
-  package from the project root, so a worktree's edits never reached the
-  bundle.  `PYTHONPATH=$PWD/src` fixes it.  The tell is a survivor that
-  cannot exist in the source you are looking at, or a pool size that did
-  not move after deleting code.
+  Multiverse's `arrays.setdefault(var1, {})` could never fire, since every
+  line reads its target before writing and an indexed read already defaults
+  the array — a probe ran 20,000 random programs without the key ever being
+  absent.
+- **A `*` quantifier never fails, so its fallback is dead.**  Eval's
+  `re.match('[^"]*', ...)` fell back to `""` on `None`, which cannot happen;
+  `partition('"')[0]` says the same thing with no unmatched case.
+- **Dead guards.**  Clockwise's `if ins in "R?!"` early return was
+  unreachable, so both of its set-widening survivors sat on code that did
+  nothing; deleting it took the suite to 100%.  BrainIf seeded a retry loop
+  with `s = ""` when every falsy seed behaves alike.  ArrowQueue guarded grid
+  setup with `if code:`, making `_Machine(None)` take the empty-grid path —
+  indistinguishable from outside in a language with no output.
 - **Two copies of a check can each be half dead.**  NoComment's `s` and `b`
   bounds-checked their jump target separately, and each copy had an
-  unreachable half: a forward target is always at least 1, so `s` could
-  never fail the floor, while `b` almost never reaches the ceiling.  Three
-  of its five survivors sat on those dead halves.  Merging the two into one
-  check over a signed delta leaves every fragment live through at least one
-  command — the floor via a `b` landing on index 0, the ceiling via `s` —
-  which turned two equivalent mutants into deleted code and the third into
-  an ordinary boundary test.  Pool 108 → 95, suite to 100%.
+  unreachable half: a forward target is always at least 1, so `s` could never
+  fail the floor, while `b` almost never reaches the ceiling.  Merging them
+  into one check over a signed delta leaves every fragment live.
+
+**Writing the test that kills it:**
+
+- **A survivor is only as tested as the observables you compare.**  Output
+  and step count miss frame bookkeeping entirely; comparing `snapshot()`
+  killed seven Forbin mutants and four Basicfuck ones that looked equivalent.
+- **"Symmetric table" is not an equivalence argument on its own.**  3D
+  Brainfuck's direction tables are closed under negation, long cited as
+  making its axis mutants unkillable.  They are not — `snapshot()` carries
+  `ap`, `ip` and `heading`, so a relabelled axis is visible even when output
+  and step count match.  All 23 non-identity permutations are
+  distinguishable.  Assert the *coordinate*, not just the output: five of its
+  six survivors were tests asserting output only, where every move walked out
+  and back and direction cancels.  The sixth was real — `ip[1]` read as
+  `ip[2]` is undetectable because the instruction pointer never leaves the
+  `y = z = 0` line alive, so unpacking the triple removes the index that
+  could be wrong.
 - **`pytest.raises(match=...)` is a substring search.**  Passing the whole
   message still matches a mutant that widened it; only
   `assert str(caught.value) == message` catches that.
 - **A default argument every test overrides is untested.**  Decleq's
-  `limit=10_000` survived widening to 10001 because each test passed
-  `limit=` explicitly.  Killing it needs a run that takes *exactly* the
-  default: `run_with_limit` checks `halted` at the top of each pass, so a
-  program halting in `limit` steps still exhausts the loop and raises,
-  which puts the discriminating count at 10,000 rather than 10,001.
-- **A survivor is only as tested as the observables you compare.**
-  Output and step count miss frame bookkeeping entirely: comparing
-  `snapshot()` killed seven Forbin mutants and four Basicfuck ones that
-  looked equivalent.
-- **A probe whose own baseline moves witnesses everything.**  An error
-  message interpolating an object with no `__repr__` carries its address,
-  and one such program was recorded as the sole witness for 114 mutants
-  that were not killable at all.
-- **Naming `esolangs.vm` in a docstring drops the test** from the bundle
-  exactly as an import would, silently.
+  `limit=10_000` survived widening to 10001 because every test passed
+  `limit=` explicitly.  `run_with_limit` checks `halted` at the top of each
+  pass, so a program halting in `limit` steps still exhausts the loop — which
+  puts the discriminating count at 10,000, not 10,001.
+
+**A rewrite can install a gap where it removed slack**, so re-measure after
+every one rather than assuming the score only improves.  The `partition` swap
+above introduced a survivor the regex version never had: `partition` and
+`rpartition` agree on every program holding a *single* literal, and every
+test had exactly one.  That went 6 survivors → 1, and the 1 was newly
+created.  3D Brainfuck showed the sharper version: factoring a pointer move
+into a `zip`-based helper traded one equivalent mutant for **three**, because
+ruff's B905 requires an explicit `strict=` and both operands are always
+3-tuples, so that argument can never fire.  A lint rule can mandate slack.
 
 Triage from the test file, not the diffs — six mechanical shapes recur
 (substring-matched `pytest.raises`, comment tests outside the command set,
 truth-only `bool` flags, one-sided boundaries, write-only attributes,
-assertions on a constant).  Two cautions: a survivor is not a gap until the
-harness is trusted (tests reaching the VM or registry are dropped from the
-bundle *correctly*), and a score is a means — stop where the survivors stop
+assertions on a constant).  A score is a means: stop where the survivors stop
 teaching anything.
 
 ## Dependency reduction
