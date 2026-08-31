@@ -83,7 +83,7 @@ def prep(code: str) -> str:
         ind += 1
 
     code = sub(r"([OI]A[+\-x]*)+", r"\1", code)
-    code = sub("(OO|II|PP)S+", "\1", code)
+    code = sub("(OO|II|PP)S+", r"\1", code)
 
     return code.replace("SS", "")
 
