@@ -555,11 +555,19 @@ def _match_pair(
     The narrowest shared width is taken, so the setter is as short as this
     construction makes it -- though not necessarily the shortest program for
     the table, since the branches are chosen before the tail is known.
+
+    The empty-intersection return is never taken for the shipped grid: all
+    30625 branch pairs over :data:`_WIDE_A_VALS` x :data:`_WIDE_B_VALS` share
+    a width, and every map in it has some spelling.  It is kept because that
+    is a property of the grid and the depth, not of the function -- narrowing
+    either would make it fire -- and returning ``None`` is what lets
+    :func:`_affine_tables` skip a state rather than emit a setter whose two
+    branches differ in length, which would leak the input through ``len()``.
     """
     zero = _spellings_by_width(*branch_zero)
     one = _spellings_by_width(*branch_one)
     shared = sorted(set(zero) & set(one))
-    if not shared:
+    if not shared:  # pragma: no cover - no pair in the shipped grid lacks one
         return None
     width = shared[0]
     return zero[width], one[width]
@@ -667,7 +675,12 @@ def _affine_tables(n: int) -> dict[str, tuple[tuple[tuple[str, str], ...], str]]
             if tail is None:
                 continue
             setters = [_match_pair(zero, one) for zero, one in assign]
-            if any(pair is None for pair in setters):
+            # Unreachable for the shipped grid, where every branch pair shares
+            # a width -- see :func:`_match_pair`.  It stays because a narrower
+            # grid or a shallower spelling depth would make it fire, and
+            # skipping the state is what keeps a setter from being emitted
+            # with branches of different lengths.
+            if any(pair is None for pair in setters):  # pragma: no cover
                 continue
             # ``mypy`` cannot see the guard above, which is what makes the
             # cast safe rather than assumed.

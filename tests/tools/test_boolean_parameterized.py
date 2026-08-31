@@ -4052,6 +4052,30 @@ class TestParameterizedPctSquaredMinusOne:
                 assert self.run_pct(self.instantiate(template, bits)) == table[row]
         assert built == 86
 
+    def test_every_branch_pair_shares_a_spelling_width(self) -> None:
+        """No setter in the grid needs the "no shared width" fallback.
+
+        Both branches of a setter must be the same width or the program leaks
+        its inputs through ``len()``.  ``_match_pair`` returns ``None`` when
+        two branches share no width, and ``_affine_tables`` then skips the
+        state -- but for the shipped grid that never happens, which is why
+        both guards carry a coverage pragma.  Pinned here so the pragma rests
+        on a checked property: narrowing the grid or the spelling depth makes
+        this fail rather than silently making dead code live.
+        """
+        from esolangs.tools.boolean.pct_squared_minus_one import (
+            _WIDE_A_VALS,
+            _WIDE_B_VALS,
+            _match_pair,
+        )
+
+        grid = [(a, b) for a in _WIDE_A_VALS for b in _WIDE_B_VALS]
+        for zero in grid:
+            for one in grid:
+                pair = _match_pair(zero, one)
+                assert pair is not None, (zero, one)
+                assert len(pair[0]) == len(pair[1]), (zero, one, pair)
+
     def test_non_subcube_table_refused_not_miscomputed(self) -> None:
         """A table the cascade cannot build is refused rather than served wrong.
 
