@@ -1054,6 +1054,10 @@ def test_streetcode_endless_ring_is_rejected() -> None:
     assert "the program does not halt" in str(caught.value)
 
 
+# ~4.4s per parameter: the cost is generating the Streetcode text program
+# and transpiling it, not the class assertion, so every parameter pays it
+# and the marker goes on the whole family.
+@pytest.mark.slow
 @pytest.mark.parametrize("text", ["A", "x", "Z", "0"])
 def test_streetcode_unwrapped_text_generator_is_in_class(text: str) -> None:
     """The text generator's own output transpiles, so long as it is not folded.
@@ -1076,6 +1080,8 @@ def test_streetcode_wrapped_text_generator_is_rejected() -> None:
         )
 
 
+# 2.2s, and the same generator build as the family above.
+@pytest.mark.slow
 def test_streetcode_multi_character_text_hits_the_output_convention() -> None:
     """Longer texts are refused by the target, not by the control-flow wall.
 

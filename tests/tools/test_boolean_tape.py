@@ -1009,11 +1009,14 @@ class TestSlowAcvMammalian:
             ("1110", 2),  # NAND
             ("0", 0),  # zero inputs: a bare constant, with no tree at all
             ("1", 0),
-            # The three-input tables cost 0.68s each now that the landings
-            # are solved rather than searched, down from 3.5s and 3.3s at
-            # one worker, so they no longer sit out the fast run.
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
+            # The three-input tables were 0.68s each when the landings became
+            # solved rather than searched, and were let back into the fast run
+            # on that measurement.  Re-measured 2026-08-31 at one worker they
+            # are 1.68s and 1.65s -- still far better than the 3.5s/3.3s they
+            # started at, but over the one-second budget, so they sit out
+            # again.  CI runs `-m slow`, so both tables still run per push.
+            pytest.param("11111110", 3, marks=pytest.mark.slow),  # NAND3
+            pytest.param("01101001", 3, marks=pytest.mark.slow),  # XOR3
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -1045,6 +1048,8 @@ class TestSlowAcvMammalian:
             run_until_halt_or_cycle(_Machine(program, io_obj))
             assert io_obj.position() == 2
 
+    # 1.6s: it walks the three-input tree, the same build the n=3 tables pay.
+    @pytest.mark.slow
     def test_pointer_never_leaves_array_zero(self) -> None:
         """No ``SPRINT``: the tree lives in code space, not in array space.
 
