@@ -68,17 +68,19 @@ It measured 74.1% when first added and 74.5% once its reorder shipped the
 same day — the one-dependency table it is scored on is exactly the case the
 reorder improves, so this figure moves when that build changes.
 
-**Minterm-shaped (12).** a_painter_ant, bfstack, bit_tilde, cod,
+**Minterm-shaped (11).** a_painter_ant, bfstack, bit_tilde,
 collatz_multiverse, container, nocomment, point_break, qoibl,
 rotfuck, suffolk, suptiftam — all within 4% of parity on a one-dependency
 table, because there is no subtree to collapse.
 
-`home_row` was the thirteenth until 2026-08-30 and is still a minterm sum;
-it now gains **60.6%** on a one-dependency table by *dependency reduction*
-(10) rather than by folding, which is a distinction the shape test would
-otherwise lose — so it is carried in its own `_REDUCING` category rather
-than being relabelled tree-shaped. Reordering does not become applicable to
-it the way it would if it had grown a tree.
+**Reducing (2).** `home_row` and `cod` were on that list until 2026-08-30
+and are still minterm sums; they now gain **60.6%** and **92.5%**
+respectively on a one-dependency table by *dependency reduction* (10)
+rather than by folding. That is a distinction the shape test would
+otherwise lose, so they are carried in their own `_REDUCING` category
+rather than relabelled tree-shaped: the gain tracks dropped *arity*, and
+reordering does not become applicable to them the way it would if they had
+grown a tree.
 
 **Neither.** Eight generators are exempted from the shape test altogether
 (`_UNSHAPED` in `test_boolean_contract.py`, which is the list of record):
@@ -296,7 +298,7 @@ zero rows and inverting — one term saved per row, paid for once.
 | `qoibl`, `bit_tilde`, `grapheme` | fewer minterms; grapheme picks whichever row-set is shorter |
 | `container` | `OUT` spends one `+1 S{row}>=Gout` line per one-row, so a dense table sums its zero rows from a 49 start and subtracts — 12.7% on the densest n=4 table. The per-row survivor blocks are fixed and unaffected |
 
-### Dependency reduction (10) — taglate, minifuck, home_row
+### Dependency reduction (10) — taglate, minifuck, home_row, cod
 
 A table ignoring an input is emitted as the *smaller* table, still
 consuming the rest. `essential_inputs` (in `boolean/helpers.py`, promoted
@@ -317,6 +319,23 @@ and that is set by the interface rather than by the construction:
   ignored inputs are `{Xi}` slots rather than reads; `_project` handles what
   it can and `_reconverged` emits the ignored setters first, then drives
   every row to one identical state.
+- **`cod` embeds into a sealed box, and pays nothing at all.** COD is a
+  *grid*, so unlike a one-dimensional tape it has cells that are genuinely
+  unreachable: `_cod_dead_box` walls an ignored setter in `~` on every
+  side, and its `)` increments nothing because no cod is ever there. The
+  leaf cascade is `2**n - 1` blocks whatever the table says, so dropping
+  inputs takes a one-dependency table from 1504 characters to **113**
+  (92.5%) and a constant to 113 as well.
+
+  Two traps, both worth carrying to the next grid language. **A space is
+  not inert filler** — it is open water, so `_cod_combine`'s space padding
+  cannot be used to line the box up beside the program; padding the reduced
+  program to a common width lets the cod swim out and it prints nothing at
+  all. The boxes are therefore stacked above and below. And a **gapped**
+  dependency set (inputs 0 and 2 but not 1) would emit the core's slots
+  around the ignored one, leaving `{X2}` before `{X1}`; widening the set to
+  its span restores name order, where taglate declines a gapped set
+  outright because there the widened table would ghost-pad itself.
 - **`home_row` embeds and weighs zero.** The cheapest of the three, because
   the ignored input needs neither a discard nor an erase: its packing line
   `{Xi}lsffff a^weight fl` simply carries **weight zero**, so the gate still
@@ -330,10 +349,14 @@ and that is set by the interface rather than by the construction:
 **What to check on the next candidate.** The win is available wherever cost
 tracks *arity* rather than the table's contents, which is why it crosses the
 tree/sum divide. The question is only what the ignored input's placeholder
-must still do — and the three shipped answers (discard it, erase it, weigh
-it zero) are in increasing order of cheapness. Look for a construction where
-the ignored input's contribution is already multiplied by something the
-generator picks, since setting that factor to zero costs nothing at all.
+must still do — and the four shipped answers (discard it, erase it, weigh it
+zero, wall it off) are in increasing order of cheapness. Two things make it
+free rather than merely cheap: a construction where the ignored input's
+contribution is already multiplied by something the generator picks, so the
+factor can be set to zero; or **a dimension the interpreter cannot reach
+into**, which is why the 2D languages are the better hunting ground — a 1D
+tape has no dead cells, which is exactly why minifuck needed reconvergence
+where cod needs only a wall.
 
 It also **sidesteps the storage wall that closed reordering** for
 `polynomial` (25.1%), `modulous` and `sophie`: those need somewhere to hold

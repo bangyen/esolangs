@@ -422,7 +422,6 @@ _MINTERM_SHAPED = {
     "a_painter_ant",
     "bfstack",
     "bit_tilde",
-    "cod",
     "collatz_multiverse",
     "container",
     "nocomment",
@@ -487,6 +486,7 @@ _MINTERM_SHAPED = {
 # collapsed structure.  Reordering does not become applicable to them the way
 # it would if they had grown a tree, which is why they are neither list.
 _REDUCING = {
+    "cod",
     "home_row",
 }
 
