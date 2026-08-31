@@ -89,6 +89,17 @@ class TestPainfuck:
         # t repeats the previous command 3 times
         assert run_program("ptpue") == "\n"
 
+    def test_repeat_previous_with_nothing_before_it(self) -> None:
+        """A leading ``t`` has no earlier command, so it repeats nothing.
+
+        The backward scan walks off the start of the program rather than
+        finding a command, and execution carries on: the ``u`` still prints
+        the untouched cell.  A ``t`` preceded only by more ``t``s is the
+        same case, since the scan skips those looking for a real command.
+        """
+        assert run_program("tue") == "\x00"
+        assert run_program("t") == ""
+
     def test_halt(self) -> None:
         assert run_program("pe") == ""
         assert run_program("p") == ""
