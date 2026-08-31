@@ -351,6 +351,69 @@ available, and it is now an emulator rather than a rewrite:
   separates the two halves of this bullet.  The boolean generator's
   Streetcode programs are further out still: they are decision trees whose
   leaves each print.
+- **Why each partial transpiler is partial.**  `Decleq → S*bleq` is the
+  reason this entry exists: its wall was documented as structural and was
+  not, so the remaining partial transpilers are worth separating by *what
+  kind* of limit they have.  The split is not subtle once named.  A limit
+  that is a **resource or observable mismatch** is structural and no
+  cleverness reaches it.  A limit that is an artefact of the **rewrite
+  being per-instruction or per-glyph** falls to simulation whenever the
+  target has enough dispatch -- which is exactly what happened to Decleq.
+  Two of the shipped restrictions are the first kind and two are the
+  second; none of the liftable ones is built, and they are candidates here
+  rather than claims.
+
+  *Structural.*  `brainfuck → Circlefuck` is the strongest case, and the
+  rejections it raises (below cell 0, drifting loops) name the wrong
+  reason.  The real limit is finiteness: brainfuck's tape grows
+  unboundedly rightward (the interpreter appends a cell on demand), while
+  a Circlefuck tape *is the program*, wrapping modulo its fixed length.
+  The witness is `,[[->+<]>-]`, which carries its counter one cell right
+  per decrement and so touches `n + 1` cells for an input of `n` -- tape
+  length 4, 9 and 21 for inputs 3, 8 and 20.  A translation must fix its
+  size at transpile time, so by pigeonhole no fixed-length Circlefuck
+  program holds every input's tape.  Markers could widen the class; they
+  cannot make it total.  Separately, `→ LaserFuck` cannot represent a
+  *non-terminating* program that produces output, LaserFuck having no
+  output command at all -- `dump()` prints the tape when it halts, so a
+  source that emits forever has no image.  That one is mostly moot under
+  the repo-wide contract of agreeing on runs the reference completes.
+
+  *Liftable; no construction built.*  `brainfuck → 3D Brainfuck` rejects
+  programs that dip below cell 0 because brainfuck clamps `<` there and 3D
+  Brainfuck's `s` walks negative.  A static shift of the origin does not
+  fix it, because the clamping is *load-bearing*: `+.<.` prints
+  `\x01\x01` in brainfuck precisely because `<` was a no-op, and no
+  starting offset makes a move into a non-move.  What it needs is a
+  runtime guard -- a boundary marker the translated `<` tests before
+  moving -- which turns the one-to-one glyph swap into a simulation, at
+  the size and speed cost that implies.  `Dimensional → LaserFuck`'s "`.`
+  only as the last command" is likewise a choice, not a language limit:
+  equivalence is judged on the final captured output of a terminating run,
+  so mid-run prints can be staged into tape cells and dumped at halt.  The
+  mechanism is verified to exist -- LaserFuck's dump emits multiple bytes
+  in order, and the transpiler controls the program text, so it can opt
+  into byte mode with the leading `\xff` -- but the grid geometry for a
+  moving output cursor is not built.  Both reopened as candidates; no
+  construction built.
+
+  *Open.*  `brainfuck → 6-5` caps at 17 loops because its loop markers are
+  single characters `0-9A-Z`, two per loop, and the region past `Z` is
+  undefined behaviour rather than more labels (see the conformance note
+  above).  The Decleq escape applies in principle, an interpreter's loop
+  count being independent of its source's -- but the classic 423-byte
+  `dbfi` self-interpreter needs 58 loops, 41 over budget.  That is
+  evidence, not proof: it does not rule out a ≤17-loop interpreter, and
+  6-5's cell semantics would have to be carried inside it.
+  `Streetcode → LaserFuck`'s steering restriction is the heaviest and
+  least certain; junction graphs compile to structured control flow in
+  principle, and LaserFuck has conditional rings.
+
+  Not partiality at all: `BFStack → bf` and `BIO → bf` only reject
+  malformed input, `brainfuck → Painfuck` is total, and
+  `Basicfuck → bf`'s gates are cell-range restrictions (`r=0~255`,
+  constants within a byte) that other ranges would need multi-cell
+  arithmetic to lift.
 - **Dropped transpilers.**  `nocomment_to_bf` silently dropped NoComment's
   stack/jump/pointer commands (a silent mistranslation); the `6-5 → bf` and
   `Circlefuck → bf` decoders only reversed the forward transpilers' canonical
