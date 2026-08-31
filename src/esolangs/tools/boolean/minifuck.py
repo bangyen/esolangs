@@ -435,27 +435,72 @@ def _search[Hit](
 # stubbed.  Ablating with the fallthrough open reports success either way,
 # because the searches quietly rebuild whatever the pool list drops.
 #
-# **The missing orientation is reachable from the step family**, which is worth
-# recording because the mirrors made it look like it was only reachable by
-# appending a flip.  Enumerating tails over :func:`_step` -- codes of the form
-# ``'[<' * k`` then a short tail -- turns up members answering ``cell7 == 1``
-# natively, at every arity checked: on 200 sites harvested from a two-input
-# build, a three-input build, and 400 from a four-input one, the shipped five
-# answer only ``cell7 == 0`` and these answer only ``cell7 == 1``.  At sixteen
-# rows seven of them answer 52 sites each, and those 52 are disjoint from the
-# 200 the shipped five reach.
+# **The missing orientation is not missing, and the space is catalogued.**
+# The mirrors made ``cell7 == 1`` look reachable only by appending a flip to a
+# shipped code.  It is not: sweeping *every* string over ``{'[', '<'}`` up to
+# length 16 -- 131070 of them -- against harvested sites leaves 1464 usable
+# pool codes, 448 of them answering ``cell7 == 1`` natively.  Nothing shorter
+# than eleven characters works at all, which the sweep settles rather than
+# bounds, and the count by length runs 8, 32, 54, 162, 314, 894 from eleven to
+# sixteen.  The list of five is a choice out of a large space, not a scarce
+# find.
 #
-# The family also regenerates what the list already has: searching it turns up
-# complete substitutes for the third code (a dropped-code gap of 22 tables
-# refilled by either of two ``'[<[<' + core`` members) and for the fourth (18
-# tables, refilled by a ``k == 6`` member with a long ``'<<<'`` tail).  No
-# substitute was found for the fifth among the three candidates tried.
+# One law falls out and it is exact, not sampled.  **No code serves both
+# orientations.**  Per site that is forced: a code's effect on a fixed state is
+# deterministic, so it lands one value in cell 7 and can satisfy at most one
+# target.  Measured across sites as well, no code answers ``cell7 == 0``
+# anywhere and ``cell7 == 1`` elsewhere -- each of the 1464 is bound to one
+# orientation.  So the list being "half a list" is the shape of the space, not
+# an accident of these five strings.
 #
-# None of this argues for adding a code.  The shipped five strand nothing, so
-# there is no gap to fill, and a sixth string would change emitted templates
-# the way the mirrors did.  It is recorded so the question "is the other
-# orientation out of reach?" is answered -- it is not -- without re-running the
-# search.
+# **Two codes close the other half.**  A breadth-first search over reachable
+# joint states -- which answers "can *any* string do this", at any length, not
+# just short ones -- finds every one of 120 sampled four-input sites reachable.
+# The shipped five answer the 60 at ``cell7 == 0`` and none of the 60 at
+# ``cell7 == 1``, and that entire gap closes with::
+#
+#     _step(4, 3, odd=False)                  '[[[[[[[[<<<'     148 sites
+#     _step() + _step(5, 2, odd=False)        '[<[[[[[[[[[[<<'   52 sites
+#
+# Together with the shipped five that is 400 of 400 harvested sixteen-row
+# sites, against 200 for the shipped five alone.  Appended last they change
+# nothing at ``n <= 3``: all 272 templates are byte-identical and the
+# out-of-name-order count stays at 10, because the shipped five are tried first
+# and win every call they already answered.
+#
+# **And it buys no tables, which is the point.**  With both appended, the
+# four-input tables that fail still fail -- and the instrumented runs say why
+# that is conclusive rather than suggestive.  On both tables tried,
+# ``_find_pool`` never once returns None: four-input XOR makes 1016 lookups and
+# all 1016 succeed, and a second failing table makes 296 and all 296 succeed.
+# Both still fail to build.  There is no pool lookup left to satisfy, so the
+# pool is not the constraint; the ``n >= 4`` limit is search depth and no pool
+# code can raise it.  See :data:`_STAGED_ARITIES`.
+#
+# That is what closes this line of attack.  The earlier reading -- "the wall is
+# search depth" -- was inferred from a one-in-two hit rate, which is consistent
+# with the pool being a partial constraint.  A hit rate of one leaves no room
+# for that: better pool codes cannot help, because there is nothing left for
+# them to fix.
+#
+# Depth alone is not the whole answer either.  Raising :data:`_COLUMN_DEPTH`
+# and :data:`_PARKED_DEPTH` by four, with the two codes above in place, does
+# not build four-input XOR within ten minutes.  So "search depth" names where
+# the constraint lives, not a setting that would lift it; what a wider arity
+# needs is a cheaper route, which is what :data:`_STAGED_ARITIES` gates.
+#
+# The family also regenerates what the list already has: complete substitutes
+# for the third code (a dropped-code gap of 22 tables refilled by either of two
+# ``'[<[<' + core`` members) and for the fourth (18 tables, refilled by a
+# ``k == 6`` member with a long ``'<<<'`` tail).  No substitute was found for
+# the fifth among the three candidates tried.
+#
+# None of this argues for adding a code.  The shipped five strand nothing, the
+# two above are free but buy nothing measurable, and expressing them would need
+# :data:`_PLANS` to carry a per-step carry (both use carries of 4 and 5, where
+# every shipped step carries 1 or 2).  It is recorded so the questions "is the
+# other orientation out of reach?" and "can better pool codes raise the arity
+# cap?" are answered -- no and no -- without re-running the search.
 #
 # **What the mirrors were.**  Recorded because it is a real property of the
 # space and would otherwise be rediscovered the hard way.  The codes pair up:
