@@ -10,6 +10,7 @@ from esolangs.tools.boolean.helpers import (
     _maybe_complement,
     _validate_truth_table,
     best_input_order,
+    essential_inputs,
     minterm_literals,
 )
 from esolangs.tools.boolean.laserfuck import laserfuck
@@ -484,24 +485,6 @@ def _odd_reduce(pairs: int, level: int, n: int) -> str:
     return "e" * rot + zero + swap + bring + er
 
 
-def _taglate_dependencies(truth_table: str, n: int) -> list[int]:
-    """Which input positions the table's value actually depends on.
-
-    Input ``i`` matters when some row's value changes if only that bit is
-    flipped; a table where none does is constant in ``i``.
-    """
-    used = []
-    for i in range(n):
-        bit = 1 << (n - 1 - i)
-        if any(
-            truth_table[row] != truth_table[row | bit]
-            for row in range(2**n)
-            if not row & bit
-        ):
-            used.append(i)
-    return used
-
-
 def _taglate_reduced_table(truth_table: str, n: int, used: list[int]) -> str:
     """Rewrite the function over just the inputs in ``used``."""
     width = len(used)
@@ -580,7 +563,7 @@ def taglate(truth_table: str) -> str:
     # the reduced program's own reads, and the queue there is not what the
     # following reduce block assumes -- the output comes out arithmetically
     # corrupted rather than merely permuted.
-    used = _taglate_dependencies(truth_table, n)
+    used = essential_inputs(truth_table, n)
     # A constant table depends on nothing, so it reduces to the smallest
     # valid table there is -- a one-input constant, never the length-1
     # table, which is not a valid shape.

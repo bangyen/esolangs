@@ -62,7 +62,7 @@ whose pointer marches right forever, so a plan with such a row would hang
 the harness instead of reporting a 1.  The suite checks this directly.
 """
 
-from esolangs.tools.boolean.helpers import _validate_truth_table
+from esolangs.tools.boolean.helpers import _validate_truth_table, essential_inputs
 
 __all__ = ["one_two_three"]
 
@@ -102,18 +102,6 @@ _TWO_INPUT_PLAN = {
 }
 
 
-def _essential_inputs(truth_table: str, n: int) -> list[int]:
-    """Which inputs the table actually depends on."""
-    return [
-        i
-        for i in range(n)
-        if any(
-            truth_table[row] != truth_table[row ^ (1 << (n - 1 - i))]
-            for row in range(2**n)
-        )
-    ]
-
-
 def _in_name_order(body: str, n: int) -> str:
     """Return ``body`` once its slots are known to be in ascending order.
 
@@ -147,7 +135,7 @@ def one_two_three(truth_table: str) -> str:
     if n == 0:
         raise ValueError("123 needs at least one input")
     if n > 2:
-        essential = len(_essential_inputs(truth_table, n))
+        essential = len(essential_inputs(truth_table, n))
         raise ValueError(
             "123's boolean generator derives one- and two-input tables; "
             f"{truth_table!r} has {n} inputs ({essential} essential). "

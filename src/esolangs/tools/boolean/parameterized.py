@@ -56,8 +56,10 @@ from esolangs.tools.boolean.helpers import (
     _validate_truth_table,
     best_input_order,
     decision_tree_tokens,
+    essential_inputs,
     instantiate,
     permute_truth_table,
+    read_at,
 )
 from esolangs.tools.boolean.minifuck import minifuck
 from esolangs.tools.boolean.one_two_three import one_two_three
@@ -1651,13 +1653,26 @@ def home_row(truth_table: str) -> str:
     restore, since every other index has already been ruled out.
     """
     n = _validate_truth_table(truth_table)
+    # A table that ignores some of its inputs is a smaller table, and the
+    # leaf chain -- the whole cost here -- is 2**n lines regardless of what
+    # the table says, so dropping an input halves the program.  The gates
+    # stay: every input keeps its ``{Xi}`` setter and its packing line, and
+    # an ignored one simply carries binary weight zero, so its gate runs and
+    # consumes its guard exactly as before while adding nothing to the
+    # accumulator.  Nothing is relocated and no setter changes width, which
+    # is what keeps the slot-order and equal-width invariants intact.
+    used = essential_inputs(truth_table, n)
+    # A constant table depends on nothing and reduces to a one-input table,
+    # never to the length-1 table, which is not a valid shape.
+    table = truth_table if len(used) == n else read_at(truth_table, used or [0], n)
+    weights = {i: 2 ** (len(used) - 1 - slot) for slot, i in enumerate(used)}
+
     setup = "aaaaaalsffaaaaaaaaffflf"
     bit_lines = [
-        "{X" + str(i) + "}lsffff" + "a" * (2 ** (n - 1 - i)) + "fl" for i in range(n)
+        "{X" + str(i) + "}lsffff" + "a" * weights.get(i, 0) + "fl" for i in range(n)
     ]
     leaves = [
-        "afffflsfsfflflf" + ("a" if bit == "1" else "") + "k;lff"
-        for bit in truth_table[:-1]
+        "afffflsfsfflflf" + ("a" if bit == "1" else "") + "k;lff" for bit in table[:-1]
     ]
-    leaves.append("f" + ("a" if truth_table[-1] == "1" else "") + "k;")
+    leaves.append("f" + ("a" if table[-1] == "1" else "") + "k;")
     return setup + "".join(bit_lines) + "".join(leaves)

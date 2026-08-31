@@ -32,15 +32,18 @@ three.
 | 7 | **Shape-aware width** | honour a width by building a *different* shape, not by reflowing | `laserfuck_layout.py`, `wrap.py` |
 | 8 | **Literal batching** | print a whole string in one statement rather than per character | `text/helpers.py` `_literal_chunks` |
 | 9 | **Equal-width embedding** | *anti*-optimization: pad both bits to equal width so length can't leak inputs | `boolean/helpers.py:97` `instantiate` |
-| 10 | **Dependency reduction** | a table that ignores an input is emitted as the *smaller* table, reading and discarding the rest | `boolean/other.py` `_taglate_dependencies` |
+| 10 | **Dependency reduction** | a table that ignores an input is emitted as the *smaller* table, still reading (or embedding) the rest | `boolean/helpers.py` `essential_inputs` + `read_at`; `taglate`, `minifuck`, `home_row` |
 | 11 | **Input reordering** | the tree splits on its inputs in whichever order emits the shortest program, so more subtrees fold — the bar is that the **emitted program changes** and still **consumes its inputs in the same order**, which rules out only a template whose emitted program is *identical* under the permutation | `boolean/helpers.py` `best_input_order` (`six_five`, `forth`, `streetcode` and `laserfuck` roll their own) |
 
 ## Which shape a boolean generator is
 
 Most of the boolean techniques apply to one shape and are meaningless for
 the other, so the shape is worth knowing before reaching for one. Folding
-(5), input reordering (11) and dependency reduction (10) are tree
-optimizations; complement/polarity (6) is a minterm one.
+(5) and input reordering (11) are tree optimizations; complement/polarity
+(6) is a minterm one. Dependency reduction (10) is the exception that
+belongs to **neither**: it rewrites the table over its essential inputs
+before the shape-specific machinery runs, so a sum benefits as readily as a
+tree — `home_row` is the worked example.
 
 The two are told apart by **what the size depends on**. A minterm sum costs
 one term per selected row, so its size tracks the ones-count and is blind to
@@ -65,10 +68,17 @@ It measured 74.1% when first added and 74.5% once its reorder shipped the
 same day — the one-dependency table it is scored on is exactly the case the
 reorder improves, so this figure moves when that build changes.
 
-**Minterm-shaped (13).** a_painter_ant, bfstack, bit_tilde, cod,
-collatz_multiverse, container, home_row, nocomment, point_break, qoibl,
+**Minterm-shaped (12).** a_painter_ant, bfstack, bit_tilde, cod,
+collatz_multiverse, container, nocomment, point_break, qoibl,
 rotfuck, suffolk, suptiftam — all within 4% of parity on a one-dependency
 table, because there is no subtree to collapse.
+
+`home_row` was the thirteenth until 2026-08-30 and is still a minterm sum;
+it now gains **60.6%** on a one-dependency table by *dependency reduction*
+(10) rather than by folding, which is a distinction the shape test would
+otherwise lose — so it is carried in its own `_REDUCING` category rather
+than being relabelled tree-shaped. Reordering does not become applicable to
+it the way it would if it had grown a tree.
 
 **Neither.** Eight generators are exempted from the shape test altogether
 (`_UNSHAPED` in `test_boolean_contract.py`, which is the list of record):
@@ -286,11 +296,48 @@ zero rows and inverting — one term saved per row, paid for once.
 | `qoibl`, `bit_tilde`, `grapheme` | fewer minterms; grapheme picks whichever row-set is shorter |
 | `container` | `OUT` spends one `+1 S{row}>=Gout` line per one-row, so a dense table sums its zero rows from a 49 start and subtracts — 12.7% on the densest n=4 table. The per-row survivor blocks are fixed and unaffected |
 
-### Dependency reduction (10) — taglate
+### Dependency reduction (10) — taglate, minifuck, home_row
 
-A table ignoring an input is emitted as the *smaller* table, reading and
-discarding the rest (`_taglate_dependencies`). Note `taglate`'s own
-`_reorder_tt` is a different thing despite the name.
+A table ignoring an input is emitted as the *smaller* table, still
+consuming the rest. `essential_inputs` (in `boolean/helpers.py`, promoted
+there 2026-08-30 from three independent spellings) names the inputs whose
+flip changes some row, and `read_at` projects the table onto them.
+
+What differs per generator is **how the ignored inputs are still honoured**,
+and that is set by the interface rather than by the construction:
+
+- **`taglate` reads and discards.** The read count is the interface
+  (`test_every_table_reads_the_same_number_of_inputs`), so the emitted
+  program keeps every read: `h` appends the character to the queue's tail,
+  `e` repeated once per queued cell rotates it back to the front, and `f`
+  drops it — leaving the queue exactly as it was so the reduces' positional
+  arithmetic is undisturbed. Constant tables go from 451 characters to 21.
+  Note `taglate`'s own `_reorder_tt` is a different thing despite the name.
+- **`minifuck` embeds and erases.** A parameterized generator, so the
+  ignored inputs are `{Xi}` slots rather than reads; `_project` handles what
+  it can and `_reconverged` emits the ignored setters first, then drives
+  every row to one identical state.
+- **`home_row` embeds and weighs zero.** The cheapest of the three, because
+  the ignored input needs neither a discard nor an erase: its packing line
+  `{Xi}lsffff a^weight fl` simply carries **weight zero**, so the gate still
+  runs and consumes its guard while adding nothing to the accumulator. The
+  setter keeps its two-character width and its position, so equal-width
+  embedding (9) and name order both hold with nothing to reconcile. The
+  saving is the leaf chain: `2**n` lines become `2**k`, taking every
+  one-dependency table at `n == 3` from 213 characters to **84** (60.6%) and
+  a constant to 82, with non-degenerate tables byte-identical.
+
+**What to check on the next candidate.** The win is available wherever cost
+tracks *arity* rather than the table's contents, which is why it crosses the
+tree/sum divide. The question is only what the ignored input's placeholder
+must still do — and the three shipped answers (discard it, erase it, weigh
+it zero) are in increasing order of cheapness. Look for a construction where
+the ignored input's contribution is already multiplied by something the
+generator picks, since setting that factor to zero costs nothing at all.
+
+It also **sidesteps the storage wall that closed reordering** for
+`polynomial` (25.1%), `modulous` and `sophie`: those need somewhere to hold
+a read bit, and a discarded or zero-weighted input needs no storage.
 
 ### Input reordering (11) — the decision-tree generators
 
