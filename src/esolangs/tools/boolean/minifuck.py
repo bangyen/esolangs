@@ -1319,10 +1319,15 @@ _STAGED_ARITIES = (2, 3, 4, 5)
 #
 # The cost this trades into is real and worth stating: at ``n <= 4`` the
 # enumeration is paid once per process and every table after the first is
-# free, while here it is paid *per table*.  Measured by harvesting the whole
-# family, a full pass over the shipped caps at five inputs is about 150
-# seconds, so that is the worst case for a table the family misses; a table
-# it reaches stops early and costs less.
+# free, while here it is paid *per table*.  Measured through
+# :func:`_derive_staging` rather than through a harness that merely resembles
+# it: a random fully-essential five-input table misses in 143.0 seconds,
+# which is the full sweep to the caps and so the worst case.
+#
+# A table the family *reaches* stops where it lands and costs far less --
+# 3.7s for five-input XOR, 0.6s for five-input AND, both early in the
+# enumeration.  So the arity's headline cost is the miss, and quoting it as
+# what every five-input table pays would overstate it by two orders.
 _TABLE_MAJOR_ARITIES = (5,)
 
 # How far the enumeration runs.  Both caps are the measured maximum over
