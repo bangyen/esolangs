@@ -65,6 +65,15 @@ through to the searches below, which is why those remain -- a missing staging
 degrades rather than raises.  What a four-input table does pay for is the
 derivation, which at this arity cannot stop early; see
 :data:`_STAGED_ARITIES`.
+
+Five inputs is staged on the same terms and a far thinner slice: the family
+produces 24582 fully-essential 32-bit columns against 4294642034 such tables,
+so this is 0.00057% of the arity rather than a quarter of it.  It ships for
+the reason four did -- a miss costs nothing but the fall-through -- and
+because the tables it *does* reach include five-input XOR, which no search
+here builds at all.  The one thing that had to change is the spelling: the
+whole-arity derivation cannot run at 2**32 tables, so this arity derives one
+table at a time.  See :data:`_TABLE_MAJOR_ARITIES` for what that trades.
 A table that ignores some inputs is solved at the arity it uses and renumbered
 back, so a wide table with a narrow core is as cheap as that core.
 
@@ -1258,10 +1267,20 @@ _Staging = tuple[int, int, int | str, int]
 # fifth code alone, while the failing XOR's were answered by both.  Take this
 # as "arity changes which code answers", not as a census.
 
-# The arities the enumeration covers.  Two and three are *total*; four is
-# partial, and is here because partial beats the fall-through it replaces.
-# Beyond four it is not that the enumeration fails but that it has not been
-# shown to succeed, so the gate stays explicit rather than implied by a miss.
+# The arities the enumeration covers.  Two and three are *total*; four and
+# five are partial, and are here because partial beats the fall-through each
+# replaces.  Beyond five the gate stays explicit rather than implied by a
+# miss: it is not that the enumeration is known to fail there, but that it
+# has not been shown to succeed, and this list is the place that claim is
+# made.
+#
+# Five was gated shut on exactly that wording until the family was harvested
+# at that arity, which is the measurement that opened it: 24582
+# fully-essential 32-bit columns, complement-closed, five-input XOR among
+# them.  It is a 0.00057% slice rather than four inputs' quarter, and it
+# ships on the same argument -- a miss falls through, so admitting the arity
+# cannot cost coverage.  See :data:`_TABLE_MAJOR_ARITIES` for the one thing
+# that had to change to make it runnable at all.
 #
 # Four inputs is gated on measurement rather than hope: the insert family
 # below reaches 15404 of the 64594 fully-essential four-input tables (23.9%),
@@ -1285,7 +1304,26 @@ _Staging = tuple[int, int, int | str, int]
 # at ``k <= 24`` against 15404 at 28, so a trim to buy time is a trim to
 # coverage.  ``_stagings`` takes ``n`` for arity-dependent caps; measurement
 # says this arity wants the full ones.
-_STAGED_ARITIES = (2, 3, 4)
+_STAGED_ARITIES = (2, 3, 4, 5)
+
+# The arities whose plans are derived one table at a time rather than for the
+# whole arity at once.  This is a *spelling* of the same enumeration, not a
+# different search: :func:`_derived_plans` runs identical loops in identical
+# order either way, and only the set it looks its printed columns up in
+# changes.
+#
+# Five inputs is here because the whole-arity spelling is not merely slow at
+# that arity but impossible: it pre-builds a dict over all ``2 ** (2 ** n)``
+# tables, and ``2**32`` entries will not be built.  Asking for one table and
+# its complement makes that dict two entries.
+#
+# The cost this trades into is real and worth stating: at ``n <= 4`` the
+# enumeration is paid once per process and every table after the first is
+# free, while here it is paid *per table*.  Measured by harvesting the whole
+# family, a full pass over the shipped caps at five inputs is about 150
+# seconds, so that is the worst case for a table the family misses; a table
+# it reaches stops early and costs less.
+_TABLE_MAJOR_ARITIES = (5,)
 
 # How far the enumeration runs.  Both caps are the measured maximum over
 # every table plus a margin, not guesses: sweeping to a bracket count of 30
@@ -1299,7 +1337,7 @@ _MAX_ACC = 34
 # offered at two or three inputs because the pure runs already close those
 # arities completely, and enumerating a family that can only be reached after
 # every pure run has missed would cost those arities time for nothing.
-_INSERT_ARITIES = (4,)
+_INSERT_ARITIES = (4, 5)
 
 
 def _insert_suffixes() -> Iterator[str]:
@@ -1392,7 +1430,9 @@ def _replay(truth_table: str, n: int, plan: _Staging) -> str | None:
 
 
 @cache
-def _derived_plans(n: int) -> dict[str, _Staging]:
+def _derived_plans(
+    n: int, targets: tuple[str, ...] | None = None
+) -> dict[str, _Staging]:
     """Derive a staging for every table at this arity, in one pass.
 
     The whole arity is done at once because a staging is expensive to *build*
@@ -1409,6 +1449,16 @@ def _derived_plans(n: int) -> dict[str, _Staging]:
     of this did.  The result is identical either way: a table is assigned the
     first staging in :func:`_stagings` order that prints it.
 
+    ``targets`` narrows *what is being looked for* without changing the
+    enumeration at all -- the same loops, the same order, the same first-hit
+    rule.  It exists because the whole-arity spelling above cannot run at
+    five inputs: it pre-builds ``wanted`` over all ``2 ** (2 ** n)`` tables,
+    which is ``2**32`` entries at ``n == 5``.  Passing the one table (and its
+    complement) makes ``wanted`` a two-entry dict, so the arity becomes
+    reachable at the cost of paying the enumeration per table rather than
+    once.  ``None`` keeps the whole-arity behaviour, and ``n <= 4`` is
+    unchanged table for table.
+
     Returns a mapping from truth table to staging.  A table that no staging
     reaches is simply absent, so the caller falls through to the searches.
     """
@@ -1419,10 +1469,14 @@ def _derived_plans(n: int) -> dict[str, _Staging]:
     # share a staging, so both spellings map to their own table and whichever
     # is reached first assigns both.
     wanted: dict[tuple[int, ...], list[str]] = {}
-    for r in range(2 ** (2**n)):
-        table = format(r, f"0{2**n}b")
-        wanted.setdefault(tuple(int(c) for c in table), []).append(table)
-    remaining = 2 ** (2**n)
+    if targets is None:
+        for r in range(2 ** (2**n)):
+            table = format(r, f"0{2**n}b")
+            wanted.setdefault(tuple(int(c) for c in table), []).append(table)
+    else:
+        for table in targets:
+            wanted.setdefault(tuple(int(c) for c in table), []).append(table)
+    remaining = sum(len(tables) for tables in wanted.values())
 
     found: dict[str, _Staging] = {}
 
@@ -1512,6 +1566,11 @@ def _derive_staging(truth_table: str, n: int) -> _Staging | None:
     exception = _EXCEPTIONS.get(n, {}).get(min(truth_table, complement))
     if exception is not None:
         return exception
+    if n in _TABLE_MAJOR_ARITIES:
+        # The whole-arity dict cannot be built here, so ask for this table
+        # and its complement only.  Both are passed because they share a
+        # staging and whichever the enumeration reaches first assigns it.
+        return _derived_plans(n, (truth_table, complement)).get(truth_table)
     return _derived_plans(n).get(truth_table)
 
 
