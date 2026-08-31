@@ -119,13 +119,17 @@ them. Input reordering is therefore vacuous here — there is no read order
 to permute. Worth checking for on any future candidate whose input is
 bit-addressable rather than streamed.
 
-Two entries sit near the boundary and are worth reading as measurements
-rather than labels. `circuit_diagram` folds only 12.6% yet special-cases a
-constant to 57 characters against 2756 — it is a minterm sum whose
-*constants* are special-cased, so the split-order metric puts it on the tree
-side for the wrong reason. `minsky_swap` comes out at 10% only because a
+One entry sits near the boundary and is worth reading as a measurement
+rather than a label: `minsky_swap` comes out at 10% only because a
 one-dependency table is *smaller* than parity there by a few characters of
 embedding, not because anything folds.
+
+`circuit_diagram` used to be the other, at 12.6% — a minterm sum whose
+*constants* were special-cased, so the split-order metric filed it tree-side
+for the wrong reason. It now measures **99.3%** and is tree-side for a real
+one: dependency reduction (10) builds its chains over the essential inputs
+only, so a one-dependency table drops from 2756 characters to **40**. It
+needs no `_REDUCING` exemption, since it clears the folding bar on its own.
 
 Technique 9 is the one deliberate refusal to shorten. A zero embedded as
 nothing makes `len(program)` a function of the inputs, leaking the very bits
@@ -298,7 +302,7 @@ zero rows and inverting — one term saved per row, paid for once.
 | `qoibl`, `bit_tilde`, `grapheme` | fewer minterms; grapheme picks whichever row-set is shorter |
 | `container` | `OUT` spends one `+1 S{row}>=Gout` line per one-row, so a dense table sums its zero rows from a 49 start and subtracts — 12.7% on the densest n=4 table. The per-row survivor blocks are fixed and unaffected |
 
-### Dependency reduction (10) — taglate, minifuck, home_row, cod, grapheme, nocomment
+### Dependency reduction (10) — taglate, minifuck, home_row, cod, grapheme, nocomment, circuit_diagram
 
 A table ignoring an input is emitted as the *smaller* table, still
 consuming the rest. `essential_inputs` (in `boolean/helpers.py`, promoted
@@ -377,6 +381,21 @@ and that is set by the interface rather than by the construction:
   staircase scales as `2**n` while the NOT-gate prologue and setup do not.
   A generator whose fixed overhead dominates at small `n` can still be a
   strong reducer where it matters.
+
+- **`circuit_diagram` drives nothing from the ignored rail, and it is the
+  largest win in the catalogue.** Its cost is entirely the body: one `a`
+  chain per selected row, each a gate per literal plus the runs feeding it.
+  Every input keeps its own `-` row — the rows *are* the read order — but
+  the chains are built over the essential inputs' rails only, and an ignored
+  rail simply drives nothing. A one-dependency table at `n == 3` drops from
+  2756 characters to **40** (98.5%).
+
+  The precedent was already in the generator: a constant table is one
+  self-fed gate over `rails[0]` while every other rail drives nothing, and
+  still consumes all `n` reads. Dependency reduction is that same move
+  generalized from "reads no literal" to "reads the ones that matter" —
+  worth remembering that a generator's own constant special-case is often a
+  reducer already written for one table.
 
 **What to check on the next candidate.** The win is available wherever cost
 tracks *arity* rather than the table's contents, which is why it crosses the

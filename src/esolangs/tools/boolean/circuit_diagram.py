@@ -95,7 +95,9 @@ from typing import Literal
 from esolangs.tools.boolean.helpers import (
     _maybe_complement,
     _validate_truth_table,
+    essential_inputs,
     minterm_literals,
+    read_at,
 )
 
 # The gate characters this generator draws: an AND and an OR for the
@@ -462,7 +464,22 @@ def circuit_diagram(truth_table: str) -> str:
 
     builder = _Builder()
     n = len(truth_table).bit_length() - 1
+    # Every input keeps its own ``-`` row -- the rows are the read order and
+    # the interface -- but a table that ignores some of them is a smaller
+    # table, and the cost here is entirely in the *body*: one ``a`` chain
+    # per selected row, each a gate per literal plus the runs feeding it.
+    # So the chains are built over the essential inputs' rails only, and an
+    # ignored rail simply drives nothing, exactly as every rail but the
+    # first already does for a constant table.
+    used = essential_inputs(truth_table, n) or [0]
+    table = truth_table if len(used) == n else read_at(truth_table, used, n)
     rails = [builder.input_bus() for _ in range(n)]
+    if len(used) < n:
+        # Re-point at the surviving rails and evaluate the reduced table;
+        # everything below is written against ``rails``/``truth_table``.
+        rails = [rails[i] for i in used]
+        truth_table = table
+        n = len(used)
 
     # A sum of minterms spends one ``a`` chain per 1-row, so a table with
     # more ones than zeros is cheaper built from its *zero* rows and
