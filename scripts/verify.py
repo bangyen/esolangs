@@ -166,11 +166,14 @@ STEPS = [
     # scripts' imports), so scripts/ is type-checked here, in the project env.
     ("mypy (src + scripts)", [*PY, "-m", "mypy"]),
     # `--cov-report=` writes no report: the run is here for the data file,
-    # which the changed-line gate reads afterwards.  Line coverage keeps
-    # coverage on its sysmon core (~0.9s over this suite); asking for branch
-    # coverage would silently drop it back to the settrace tracer, which
-    # costs several times that -- see docs, and pyproject's `core` setting.
-    ("pytest", [*PY, "-m", "pytest", "-q", "--cov", "--cov-report="]),
+    # which the changed-line gate reads afterwards.  `--cov-branch` does drop
+    # coverage off its sysmon core -- sys.monitoring cannot measure branches
+    # at 7.13.4, and it falls back with a warning -- but the fallback is not
+    # the several-fold cost that reputation suggests: measured over this
+    # suite it is 65.4s against 68.2s for the line-only run, inside the noise.
+    # The gate needs the arcs to hold added branches to the same rule as
+    # added lines, and they are effectively free, so it asks for them.
+    ("pytest", [*PY, "-m", "pytest", "-q", "--cov", "--cov-branch", "--cov-report="]),
     ("bandit", ["uv", "run", "--with", "bandit", "bandit", "-r", "src", "-q"]),
     (
         # These also run under the plain `pytest` step above.  Repeated here
