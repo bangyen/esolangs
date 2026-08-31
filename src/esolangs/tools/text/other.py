@@ -618,7 +618,10 @@ def myscript(text: str, width: int | None = None) -> str:
             lines.append(current)
             current = ""
         current += piece
-    if current or not lines:
+    # Every piece is a character or an escape, never empty, and the loop
+    # ends by appending one -- so ``current`` holds the last line whenever
+    # the loop ran, and ``lines`` is empty when it did not.
+    if current or not lines:  # pragma: no branch - one disjunct always holds
         lines.append(current)
     return "\n".join(f'say "{line}"' for line in lines)
 

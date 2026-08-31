@@ -865,7 +865,9 @@ def _laser_emit(
             g.set(row, col, c)
             col += 1
             i += 1
-        elif c == "[":
+        else:
+            # ``_laser_parse`` emits only ``+-<>.,[]`` and the arms above
+            # take the other seven, so this is a loop open.
             depth = 1
             j = i + 1
             while j < len(ops) and depth:
@@ -954,7 +956,9 @@ def _laser_analyze(ops: list[_LaserOp]) -> tuple[int, int, int | None]:
                 )
             out_cell = ptr
             i += 1
-        elif c == "[":
+        else:
+            # As in ``_laser_emit``: the parse admits only ``+-<>.,[]``, so
+            # what is left after the arms above is a loop open.
             depth = 1
             j = i + 1
             while j < len(ops) and depth:
