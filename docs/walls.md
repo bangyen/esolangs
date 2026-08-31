@@ -1251,8 +1251,9 @@ linear scan rather than a genuine representation limit.  See
   command strings compose as affine maps (`p` negates, `'` zeroes, `m`
   doubles, `s`/`i` translate), so chaining one per input makes the
   accumulator a *product-weighted* function of the bits; and the over-3003
-  reset fires before every command, an implicit comparator the endgame uses
-  to fold a parked zero-class onto 0.
+  reset fires before every command, including the `l` that prints — so a
+  value above the limit prints as `0`.  (Nothing shipped relies on that: see
+  the tail note below, where the reset is measured *not* to separate.)
 
   **The nonlinearity is load-bearing.**  A purely *additive* weighting gives
   each row a distinct consecutive value, and every affine-plus-clamp tail is
@@ -1265,6 +1266,43 @@ linear scan rather than a genuine representation limit.  See
   search missed: NOT is `nss` + `i` * 31 + `pe` (36 commands), computing
   `x -> -x + 97` so that 48 -> 49 and 49 -> 48.  Building the additive
   constant out of `s`/`i` needs ~20+ commands, well outside a length-8 sweep.
+
+  **The three-input cap was the padding, not the language.**  Coverage at
+  `n == 3` went 48/256 -> 86/256 (and 154 -> 496 at `n == 4`) by adding a
+  third construction that composes one affine setter per input and *searches*
+  the composition, rather than reading one slope per column as the two-input
+  derivation does.  XOR3 builds, which is no subcube.  What had actually been
+  refusing it was a width rule: both branches of a setter must be equal width
+  or the program leaks its inputs through `len()`, and `_pad_pair` pads with
+  `pp`, which closes only *even* gaps.  Parity-3's witness wants branches of
+  width 6 and 5, so it died on an odd shortfall — with a printable tail
+  (`pssssspl`) already in hand.  Spelling both branches at a width they share
+  closes it; 99 of the 100 maps in the grid have spellings of both parities.
+  Two search-design notes, both of which cost a wrong answer first: the state
+  space must be deduplicated by the **partition** a vector induces on the
+  input combinations, not by its values (a value-keyed sweep did not finish,
+  and a value-*capped* one reported 14/256 — below what the cascade already
+  builds, the signature of a forced result); and the composition indexes
+  inputs least-significant-first while a truth table is most-significant-first,
+  a bit reversal that presented as inverted outputs on setters that did not
+  even differ, and accounted for all 68 initial verification failures.
+
+  **The reset is not a separator, and the tail bound now has a reason.**  An
+  earlier note here described the over-3003 reset as "an implicit comparator
+  the endgame uses to fold a parked zero-class onto 0"; the shipped
+  `_tail_for` in fact never reaches it, and its own docstring records that the
+  amplify-then-clamp shape "never once fired".  The reset cannot separate:
+  every command acts uniformly on the accumulator, so `s`/`i` translate all
+  rows alike and `m`/`p` scale them alike, and the reset merges a class onto 0
+  without ever splitting rows that agree.  A BFS over *value-vectors* rather
+  than program strings found no tail separating three or more values to depth
+  14, and the reset was instrumented as firing 1148–7020 times across ~43–55k
+  explored states — so that zero is a real negative and not a search of dead
+  code.  The affine path's own reach is likewise measured rather than assumed:
+  84/256 alone, unchanged by widening the multipliers to `±4`, the offsets to
+  `±16`, the spelling depth to 9, or the witness count to 16, against a
+  ceiling of 88 that the shared-cofactor law admits.  Majority-3 — the
+  smallest OR of disjoint subcubes — remains **unreached, not walled**.
 
 - **The Temporary Stack** — **this entry's argument is refuted; the removal
   rested on a bad negative.**  The entry claimed the auto-drain's `front - 1`

@@ -65,9 +65,25 @@ Above two inputs a second construction takes over, :func:`_cascade`, which
 escapes that constraint by using the erase multiplier as a conditional -- the
 position at which the accumulator is wiped depends on the inputs, which is a
 branch realised arithmetically.  It builds every conjunction or disjunction
-of literals at any arity.  Tables outside that family still raise
-:class:`ValueError` rather than returning a program that computes the wrong
-function; they are *unreached*, not proved unreachable, and
+of literals at any arity, in ``2n + 4`` characters, which is why it is tried
+first.
+
+A third construction, :func:`_affine`, catches tables that are no subcube.
+It composes one affine setter per input the way the two-input derivation
+does, but *searches* the composition instead of reading slopes off columns,
+so it is not restricted to two inputs.  Two things make that search finite:
+states are deduplicated by the **partition** they induce on the input
+combinations rather than by their values, since only which combinations share
+an accumulator decides the table; and each setter's two branches are spelled
+at a common width by :func:`_spellings_by_width` rather than padded, which is
+what lets an odd width gap close.  That gap was the binding constraint --
+``_pad_pair`` pads with ``pp`` and refuses an odd shortfall, and parity-3's
+witness wants branches of width 6 and 5.
+
+Together the three build 86 of the 256 three-input tables (XOR and XNOR among
+them) and 496 of the 65536 four-input ones.  Tables none of them reaches still
+raise :class:`ValueError` rather than returning a program that computes the
+wrong function; they are *unreached*, not proved unreachable, and
 ``docs/limitations.md`` records what bounds are actually known.
 
 Unlike the other parameterized generators, *which* command strings a setter
@@ -78,10 +94,12 @@ the ``{Xi}`` placeholders themselves; :func:`fill` reads the header and
 substitutes the branch each bit selects.  This mirrors ArrowQueue, whose
 template likewise needs a structure-aware filler rather than a lambda.
 
-Both branches of a setter are padded to the same width with ``pp`` -- two
-negations, which the interpreter executes and which compose to the identity
--- so every instantiation of a template has the same length and no program
-leaks its inputs through ``len()``.
+Both branches of a setter come out the same width, so every instantiation of
+a template has the same length and no program leaks its inputs through
+``len()``.  The derivation and the cascade reach that by padding with ``pp``
+-- two negations, which the interpreter executes and which compose to the
+identity -- and :func:`_affine` by spelling both branches at a width they
+share.  Padding can only close an even gap; respelling closes either.
 """
 
 import re
@@ -474,6 +492,217 @@ def _cascade(truth_table: str, n: int) -> str | None:
     return header + _HEADER_END + body
 
 
+#: Multipliers the wide search composes.  ``m`` doubles and ``p`` negates, so
+#: ``mp`` is ``-2``, ``mm`` is ``4`` and ``mmp`` is ``-4``; widening past this
+#: was measured and reaches no further table.
+_WIDE_A_VALS = (0, 1, -1, 2, -2, 4, -4)
+
+#: Offsets the wide search composes.  Measured: widening to ``+/-16`` reaches
+#: no table that ``+/-12`` misses.
+_WIDE_B_VALS = tuple(range(-12, 13))
+
+#: Window a candidate spelling is checked against.  A spelling is admitted
+#: because it *behaves* as ``a*x + b`` here, not because it matches a template,
+#: which is what lets ``mp`` be found as ``a == -2`` without a rule for it.
+_SPELL_WINDOW = range(-90, 91)
+
+#: Longest command string the speller enumerates for one branch.
+_SPELL_MAX = 7
+
+#: Distinct value vectors kept per induced partition.  One is too few: the
+#: first witness found for parity-3 has no equal-width spelling while a
+#: sibling with the same partition does.  Keying on the full vector instead
+#: explodes the frontier, and the count stops mattering past four -- measured
+#: 82 tables at two witnesses, 84 at four, and 84 at every count up to
+#: sixteen.
+_WITNESSES = 6
+
+
+@cache
+def _spellings_by_width(a: int, b: int) -> dict[int, str]:
+    """Map width to a command string realising ``x -> a*x + b`` at that width.
+
+    :func:`_affine_code` gives one spelling per map, which fixes its width.
+    That is what makes an odd width gap between a setter's two branches
+    unfixable: :func:`_pad_pair` pads with ``pp`` and closes only even gaps.
+    But a map usually has spellings of *several* lengths -- ``-6`` is ``sss``
+    or ``ii`` -- so a pair whose natural widths differ by one can be respelled
+    to a common width instead of padded.  Ninety-nine of the hundred maps in
+    the grid have spellings of both parities, so this closes nearly every gap
+    that padding refused.
+
+    Candidates are admitted by behaviour on :data:`_SPELL_WINDOW` rather than
+    by construction, so a spelling like ``mp`` is found for ``a == -2`` with no
+    rule naming it.
+    """
+    out: dict[int, str] = {}
+    frontier = [""]
+    for _ in range(_SPELL_MAX + 1):
+        for code in frontier:
+            if len(code) not in out and all(
+                _apply(v, code) == a * v + b for v in _SPELL_WINDOW
+            ):
+                out[len(code)] = code
+        frontier = [c + ch for c in frontier if len(c) < _SPELL_MAX for ch in "simp'"]
+    return out
+
+
+def _match_pair(
+    branch_zero: tuple[int, int], branch_one: tuple[int, int]
+) -> tuple[str, str] | None:
+    """Spell a setter's two branches at a common width, or ``None``.
+
+    The narrowest shared width is taken, so the setter is as short as this
+    construction makes it -- though not necessarily the shortest program for
+    the table, since the branches are chosen before the tail is known.
+    """
+    zero = _spellings_by_width(*branch_zero)
+    one = _spellings_by_width(*branch_one)
+    shared = sorted(set(zero) & set(one))
+    if not shared:
+        return None
+    width = shared[0]
+    return zero[width], one[width]
+
+
+def _partition(vec: tuple[int, ...]) -> tuple[int, ...]:
+    """Relabel a vector by first appearance, keeping only its equality pattern.
+
+    The tail separates two classes, so what decides the table is which input
+    combinations share an accumulator value, not the values themselves.
+    Deduplicating on the pattern keeps the frontier flat across layers; an
+    earlier sweep that deduplicated on values instead did not finish, and one
+    that capped the values reported *fewer* tables than the cascade already
+    builds -- the signature of a truncated search rather than a result.
+    """
+    seen: dict[int, int] = {}
+    return tuple(seen.setdefault(v, len(seen)) for v in vec)
+
+
+def _reindex(vec: tuple[int, ...], n: int) -> tuple[int, ...]:
+    """Reorder a composed vector into truth-table index order.
+
+    :func:`_compose` appends each input's results as ``zero + one``, so input
+    ``k`` lands in bit ``k`` of the index and the *last* input is most
+    significant.  A truth table indexes the other way round, most significant
+    first.  The two are a bit reversal; composing without correcting it
+    harvests a permuted table, which shows up as inverted outputs on setters
+    that do not even differ.
+    """
+    out = [0] * len(vec)
+    for index, value in enumerate(vec):
+        combo = 0
+        for k in range(n):
+            combo |= ((index >> k) & 1) << (n - 1 - k)
+        out[combo] = value
+    return tuple(out)
+
+
+#: One branch of a setter as an affine map, ``(a, b)`` for ``x -> a*x + b``.
+_Branch = tuple[int, int]
+
+#: A setter: the branch taken when the input is 0, and when it is 1.
+_Setter = tuple[_Branch, _Branch]
+
+#: A composition state: the accumulator per input combination, paired with the
+#: setters that produced it.
+_State = tuple[tuple[int, ...], tuple[_Setter, ...]]
+
+
+def _compose(n: int) -> list[_State]:
+    """Every accumulator vector one affine setter per input can produce.
+
+    Enumerating setter *assignments* is a product over inputs and blows up.
+    Only the value vector carries from one input to the next, so the layers are
+    composed with deduplication instead: start from the accumulator's initial
+    zero and, at each input, apply every branch pair to every vector kept so
+    far.  That is a fixpoint over vectors rather than a product over programs.
+
+    The affine model ignores the over-3003 reset, which is sound only while the
+    values stay small.  With ``|a| <= 4`` and ``|b| <= 12`` over three layers
+    the magnitude cannot exceed ``4*(4*(4*0 + 12) + 12) + 12 == 252``, far
+    under the limit, so no reset fires inside a setter and the composition is
+    exactly what the interpreter computes.  A wider arity must re-derive this
+    before trusting the model.
+    """
+    branches: list[_Branch] = [(a, b) for a in _WIDE_A_VALS for b in _WIDE_B_VALS]
+    frontier: list[_State] = [((0,), ())]
+    for _ in range(n):
+        layer: dict[tuple[int, ...], list[_State]] = {}
+        for vec, assign in frontier:
+            for zero_branch in branches:
+                zero = tuple(zero_branch[0] * v + zero_branch[1] for v in vec)
+                for one_branch in branches:
+                    one = tuple(one_branch[0] * v + one_branch[1] for v in vec)
+                    candidate = zero + one
+                    bucket = layer.setdefault(_partition(candidate), [])
+                    if len(bucket) < _WITNESSES and all(
+                        candidate != seen for seen, _ in bucket
+                    ):
+                        bucket.append((candidate, (*assign, (zero_branch, one_branch))))
+        frontier = [state for bucket in layer.values() for state in bucket]
+    return frontier
+
+
+@cache
+def _affine_tables(n: int) -> dict[str, tuple[tuple[tuple[str, str], ...], str]]:
+    """Every table the composed-affine path builds at ``n`` inputs.
+
+    Derived for a whole arity in one pass and cached, because the composition
+    is shared: the states already carry the table each one induces, so
+    harvesting them costs one sweep rather than one per table.
+    """
+    built: dict[str, tuple[tuple[tuple[str, str], ...], str]] = {}
+    for raw, assign in _compose(n):
+        vec = _reindex(raw, n)
+        values = set(vec)
+        if len(values) != 2:
+            continue
+        for one_value in values:
+            table = "".join("1" if v == one_value else "0" for v in vec)
+            if table in built:
+                continue
+            zero_value = next(v for v in vec if v != one_value)
+            tail = _tail_for(one_value, zero_value)
+            if tail is None:
+                continue
+            setters = [_match_pair(zero, one) for zero, one in assign]
+            if any(pair is None for pair in setters):
+                continue
+            # ``mypy`` cannot see the guard above, which is what makes the
+            # cast safe rather than assumed.
+            built[table] = (
+                tuple(pair for pair in setters if pair is not None),
+                tail,
+            )
+    return built
+
+
+def _affine(truth_table: str, n: int) -> str | None:
+    """Build a composed-affine template, or ``None`` if the table is not one.
+
+    This is the wide construction above two inputs.  The two-input derivation
+    reads one slope per column and does not generalise; the cascade builds only
+    subcubes.  Composing one affine setter per input reaches neither's limit:
+    it builds 84 of the 256 three-input tables, XOR and XNOR among them, which
+    no subcube is and which the shared-cofactor argument admits.
+
+    The 84 is measured and stable -- widening the multipliers, the offsets, the
+    spelling depth and the witness count each reach no further table -- against
+    a ceiling of 88, the tables the shared-cofactor law permits at all.  What
+    it does not reach is an OR of several disjoint subcubes, majority-3 being
+    the smallest; that needs a running total to survive a gadget that erases,
+    and there is one register.  See ``docs/limitations.md``.
+    """
+    found = _affine_tables(n).get(truth_table)
+    if found is None:
+        return None
+    setters, tail = found
+    header = ";".join(f"{k}={zero}|{one}" for k, (zero, one) in enumerate(setters))
+    body = "".join("{X" + str(k) + "}" for k in range(n)) + tail
+    return header + _HEADER_END + body
+
+
 def pct_squared_minus_one(truth_table: str) -> str:
     """Build a %^2^-1 template for the given truth table.
 
@@ -504,14 +733,23 @@ def pct_squared_minus_one(truth_table: str) -> str:
         # slope per column of a two-input table -- but the minterm cascade
         # does, at any arity.  A table it cannot build is still refused rather
         # than served by a program computing the wrong function.
+        # The cascade is tried first because it is much the shorter of the
+        # two -- ``2n + 4`` characters against the affine path's setters --
+        # and it covers every subcube at any arity.
         cascade = _cascade(truth_table, n)
-        if cascade is None:
+        if cascade is not None:
+            return cascade
+        # Tables that are not subcubes may still compose from one affine
+        # setter per input, which is what reaches XOR at three inputs.
+        affine = _affine(truth_table, n)
+        if affine is None:
             raise ValueError(
-                f"%^2^-1 builds every two-input table, and at any arity a "
-                f"conjunction or disjunction of literals; got {n} inputs "
-                f"({truth_table!r})"
+                f"%^2^-1 builds every two-input table, at any arity a "
+                f"conjunction or disjunction of literals, and at three "
+                f"inputs the tables one affine setter per input composes; "
+                f"got {n} inputs ({truth_table!r})"
             )
-        return cascade
+        return affine
     # Widen a one-input table by repeating each entry, so the second input is
     # present in the derivation but cannot change the answer.
     widened = truth_table if n == 2 else "".join(bit * 2 for bit in truth_table)
