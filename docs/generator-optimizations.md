@@ -68,15 +68,15 @@ It measured 74.1% when first added and 74.5% once its reorder shipped the
 same day — the one-dependency table it is scored on is exactly the case the
 reorder improves, so this figure moves when that build changes.
 
-**Minterm-shaped (11).** a_painter_ant, bfstack, bit_tilde,
-collatz_multiverse, container, nocomment, point_break, qoibl,
+**Minterm-shaped (10).** a_painter_ant, bfstack, bit_tilde,
+collatz_multiverse, container, point_break, qoibl,
 rotfuck, suffolk, suptiftam — all within 4% of parity on a one-dependency
 table, because there is no subtree to collapse.
 
-**Reducing (2).** `home_row` and `cod` were on that list until 2026-08-30
-and are still minterm sums; they now gain **60.6%** and **92.5%**
-respectively on a one-dependency table by *dependency reduction* (10)
-rather than by folding. That is a distinction the shape test would
+**Reducing (3).** `home_row`, `cod` and `nocomment` were on that list until
+2026-08-30 and are still minterm sums; they now gain **60.6%**, **92.5%**
+and **27.3%** respectively on a one-dependency table by *dependency
+reduction* (10) rather than by folding. That is a distinction the shape test would
 otherwise lose, so they are carried in their own `_REDUCING` category
 rather than relabelled tree-shaped: the gain tracks dropped *arity*, and
 reordering does not become applicable to them the way it would if they had
@@ -298,7 +298,7 @@ zero rows and inverting — one term saved per row, paid for once.
 | `qoibl`, `bit_tilde`, `grapheme` | fewer minterms; grapheme picks whichever row-set is shorter |
 | `container` | `OUT` spends one `+1 S{row}>=Gout` line per one-row, so a dense table sums its zero rows from a 49 start and subtracts — 12.7% on the densest n=4 table. The per-row survivor blocks are fixed and unaffected |
 
-### Dependency reduction (10) — taglate, minifuck, home_row, cod, grapheme
+### Dependency reduction (10) — taglate, minifuck, home_row, cod, grapheme, nocomment
 
 A table ignoring an input is emitted as the *smaller* table, still
 consuming the rest. `essential_inputs` (in `boolean/helpers.py`, promoted
@@ -363,6 +363,20 @@ and that is set by the interface rather than by the construction:
   bar, so filing it as a reducer would suppress a check it passes on its
   own. `_REDUCING` is only for generators whose gain would otherwise look
   like a contradiction.
+
+- **`nocomment` embeds and weighs zero, like `home_row`.** Its index is
+  built by a guarded run of `i`s per input — `["i"] * (2**w)`, a run length
+  the *generator* picks — so an ignored input contributes an empty run while
+  its guard still executes and still leaves the pointer on its complement
+  cell. The saving is the staircase and the preloaded output cells, both one
+  per row: a one-dependency table at `n == 3` goes from 373 characters to
+  **271** (27.3%).
+
+  The figure to note is that it *grows with arity*, which is the opposite of
+  the usual direction: at `n == 4` it is 653 → **387** (40.7%), because the
+  staircase scales as `2**n` while the NOT-gate prologue and setup do not.
+  A generator whose fixed overhead dominates at small `n` can still be a
+  strong reducer where it matters.
 
 **What to check on the next candidate.** The win is available wherever cost
 tracks *arity* rather than the table's contents, which is why it crosses the

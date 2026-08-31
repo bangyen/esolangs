@@ -803,7 +803,26 @@ def nocomment(truth_table: str, tape: int = _TAPE) -> str:
     if n > _NOCOMMENT_NARROW_MAX:
         return _nocomment_wide(truth_table, n, tape)
 
-    k = 2**n
+    # A table that ignores some of its inputs is a smaller table, and almost
+    # everything here is sized by the *index range*: the staircase is one
+    # ``l`` per row, and one output cell per row is preloaded and stepped
+    # through in the setup's sorted climb.  So evaluating over the essential
+    # inputs alone shrinks the dominant term from ``2**n`` to ``2**width``.
+    #
+    # Every input keeps its ``{Xi}`` setter and its NOT-gate prologue -- the
+    # harness has a bit for each one -- and an ignored input costs only its
+    # guarded increment's *run length*, which goes to zero: the weight is
+    # ``["i"] * (2**w)``, a run this generator chooses, so a dropped input
+    # contributes an empty run.  The guard still runs and still leaves the
+    # pointer on its complement cell, so the emitted moves stay consistent.
+    used = essential_inputs(truth_table, n) or [0]
+    table = truth_table if len(used) == n else read_at(truth_table, used, n)
+    width = len(used)
+    # Slot ``s`` carries original input ``used[s]``, so it takes the weight
+    # ``2**(width - 1 - s)``; an ignored input takes none.
+    weights = {i: 2 ** (width - 1 - slot) for slot, i in enumerate(used)}
+
+    k = 2**width
     index = 2 * n
     skip_base = index + 1  # one skip cell per input bit
     tbase = skip_base + n  # the output cells
@@ -826,7 +845,6 @@ def nocomment(truth_table: str, tape: int = _TAPE) -> str:
 
     skip_vals: dict[int, int] = {}
     for i in range(n):
-        w = n - 1 - i
         comp = n + i
         d = skip_base + i
         move(d)
@@ -835,7 +853,7 @@ def nocomment(truth_table: str, tape: int = _TAPE) -> str:
         commands.append("s")
         block = len(commands)
         move(index)
-        commands.extend(["i"] * (2**w))
+        commands.extend(["i"] * weights.get(i, 0))
         move(comp)
         skip_vals[d] = len(commands) - block
     move(index)
@@ -892,7 +910,7 @@ def nocomment(truth_table: str, tape: int = _TAPE) -> str:
     cells: list[tuple[int, int]] = list(skip_vals.items())
     cells.append((sentinel, _ASCII_ZERO))
     for j in range(k):
-        cells.append((tbase + j, _ASCII_ZERO + int(truth_table[j])))
+        cells.append((tbase + j, _ASCII_ZERO + int(table[j])))
     cells.sort(key=lambda cv: cv[1])
     # The sentinel is appended unconditionally above, so there is always at
     # least one cell to walk here.

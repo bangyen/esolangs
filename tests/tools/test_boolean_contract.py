@@ -424,7 +424,6 @@ _MINTERM_SHAPED = {
     "bit_tilde",
     "collatz_multiverse",
     "container",
-    "nocomment",
     "point_break",
     "qoibl",
     "rotfuck",
@@ -488,6 +487,7 @@ _MINTERM_SHAPED = {
 _REDUCING = {
     "cod",
     "home_row",
+    "nocomment",
 }
 
 _UNSHAPED = {
