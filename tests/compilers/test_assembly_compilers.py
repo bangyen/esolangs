@@ -834,3 +834,68 @@ class TestCompilerFuzz:
                 random.choice(self.ALPHABET) for _ in range(random.randint(1, 40))
             )
             mod.comp(code, 1)
+
+
+class TestForbinCompiler:
+    """Forbin lowers to a call graph over a runtime frame chain.
+
+    Forbin is excluded from the ``COMPILERS`` sweep above because that
+    sweep compiles the literal text ``"Hello"``, which is not a Forbin
+    program (every program is a set of brace-delimited functions).
+    """
+
+    @staticmethod
+    def comp(code: str) -> str:
+        mod = importlib.import_module("esolangs.compilers.forbin")
+        return mod.comp(code)
+
+    def test_produces_assembly(self) -> None:
+        out = self.comp("main { out 0,1,0,0,1,0,0,0; }")
+        assert ".global _start" in out
+
+    def test_relaxation_is_disabled(self) -> None:
+        """``la`` must not relax to a gp-relative access.
+
+        Nothing initializes ``gp`` under ``-nostdlib``, so a relaxed
+        ``la`` yields a garbage arena pointer and every frame lands
+        outside mapped memory.
+        """
+        assert ".option norelax" in self.comp("main { }")
+
+    def test_no_main_is_rejected(self) -> None:
+        """A program without ``main`` is rejected, as the interpreter does."""
+        with pytest.raises(ValueError, match="no main function"):
+            self.comp("helper { out 0,0,0,0,0,0,0,0; }")
+
+    def test_malformed_source_is_rejected(self) -> None:
+        """Malformed syntax raises, sharing the interpreter's parser."""
+        with pytest.raises(ValueError):
+            self.comp("main {")
+
+    def test_each_function_gets_its_own_epilogue(self) -> None:
+        """Two functions must not share one ``.ret`` label.
+
+        A shared label is a duplicate-symbol assembler error rather than a
+        wrong answer, so it needs its own guard.
+        """
+        out = self.comp("one { return 1; }\nmain { a = (one 0); }")
+        assert ".ret0:" in out
+        assert ".ret1:" in out
+
+    def test_recursive_function_compiles(self) -> None:
+        """A self-call reaches its own body index without recursing forever."""
+        out = self.comp("again { again 0; }\nmain { again 0; }")
+        assert ".global _start" in out
+
+    def test_nested_definitions_emit_a_table(self) -> None:
+        """A function with nested definitions carries a lookup table.
+
+        The table is what makes a caller's nested definition visible to a
+        callee, which is how Forbin's dynamic scoping resolves names.
+        """
+        out = self.comp("main { helper { out 0,0,0,0,0,0,0,0; } helper 0; }")
+        assert ".tbl0:" in out
+
+    def test_function_without_nested_has_no_table(self) -> None:
+        out = self.comp("main { out 0,0,0,0,0,0,0,0; }")
+        assert ".tbl" not in out
