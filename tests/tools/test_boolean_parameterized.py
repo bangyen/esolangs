@@ -2385,6 +2385,54 @@ class TestParameterizedMinifuck:
         }
         assert answered == {0}, f"expected only cell7==0 to be served, got {answered}"
 
+    def test_the_pool_codes_are_generated_from_the_law(self) -> None:
+        """The five codes are spelled by the law, not stored as strings.
+
+        ``_POOL_CODES`` is built by walking ``_PLANS`` through :func:`_step`,
+        which inverts the ``ceil(k / 2)`` law: a carry of ``c`` fixes the
+        bracket run at ``2 * c - 1``, or ``2 * c`` where the pending skip is
+        not wanted.  The five literals below are the anchor -- with the source
+        deriving them, every number in the plans and in the step law is
+        otherwise unpinned, and this one assertion is what makes a wrong
+        carry, a wrong override, or a reordered plan fail.
+
+        The plans are also checked for the property that makes them a
+        construction rather than five parameter dumps: two of the five carry
+        no override at all.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        # The anchor: the derivation must reproduce these exactly, in order.
+        assert module._POOL_CODES == (  # noqa: SLF001
+            "[[[<[<<<<",
+            "[<[[[<[<[<",
+            "[<[<[[[<[<[<",
+            "[<<[<[<[[[<[<",
+            "[<[<[<<[[[<[[<<<",
+        )
+
+        # The step law itself, away from the plans: a carry of c spells a run
+        # of 2c-1 brackets, and dropping the skip spells the even run.
+        step = module._step  # noqa: SLF001
+        assert step() == "[<"  # the default: carry one, trail by one
+        assert step(carry=2) == "[[[<"
+        assert step(carry=1, odd=False) == "[[<"
+        assert step(carry=1, backs=4) == "[<<<<"
+
+        # Two of the five plans are (steps, core) and nothing else, which is
+        # what "one construction indexed by where the mark goes" means.
+        plans = module._PLANS  # noqa: SLF001
+        assert len(plans) == len(module._POOL_CODES)  # noqa: SLF001
+        bare = [(n, core) for n, core, over in plans if not over]
+        assert bare == [(4, 1), (5, 2)], bare
+
+        # Every plan has exactly one core, and it is inside the walk.
+        for n, core, over in plans:
+            assert 0 <= core < n, (n, core)
+            assert all(0 <= i < n for i in over), (n, over)
+
     def test_the_pool_codes_are_one_construction(self) -> None:
         """Each pool code is a mark, shifted three cells by a shared core.
 
