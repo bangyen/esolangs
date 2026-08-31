@@ -52,7 +52,7 @@ python -m esolangs.interpreters.<category>.<language> program.txt
 esolangs run <language> program.txt
 esolangs list                          # list the supported languages
 esolangs generate <language> "Hello"   # print a program that outputs "Hello"
-esolangs transpile BIO BF program.txt  # rewrite between languages
+esolangs transpile BFStack BF program.txt  # rewrite between languages
 ```
 
 Most generators emit one long line.  `--width` (optionally `--width N`,
@@ -107,7 +107,7 @@ import esolangs
 program = esolangs.generate("Suffolk", "Hello, World!")
 output = esolangs.run("Suffolk", program)
 esolangs.list_languages()
-bf = esolangs.transpile("BIO", "brainfuck", bio_program)
+bf = esolangs.transpile("BFStack", "brainfuck", bfstack_program)
 ```
 
 ### Running the Tests
@@ -288,35 +288,26 @@ Compilers that translate esoteric languages to other target languages.
 
 Transpilers rewrite a program in one esolang into an equivalent program in another, and are verified end-to-end: the source runs on its interpreter, the translation runs on the target interpreter, and the outputs must agree.
 
+Every transpiler here is **total** over its source language: it accepts
+every program that language's own interpreter accepts. Partial ones are
+not carried — the admission criteria, and why six earlier transpilers were
+removed rather than documented as subsets, are in
+`esolangs/tools/transpilers.py`.
+
 | Source | Direction | Target |
 | --- | :---: | --- |
-| Basicfuck | → | BF |
-| BF | → | Circlefuck |
-| BF | → | 6-5 |
 | BF | → | 3D Brainfuck |
 | BF | → | Painfuck |
 | BFStack | → | BF |
-| BIO | → | BF |
 | Decleq | → | S*bleq |
-| Dimensional | → | LaserFuck |
-| Streetcode | → | LaserFuck |
-
-Each transpiler's supported subset and caveats are documented in `esolangs/tools/transpilers.py`.
 
 ```bash
-esolangs transpile BIO BF program.txt           # rewrite a program into another esolang
+esolangs transpile BFStack BF program.txt       # rewrite a program into another esolang
 esolangs transpile Decleq "S*bleq" program.txt  # emits a Decleq emulator; any program
 ```
 
 ```python
-bf = esolangs.transpile("BIO", "brainfuck", source)  # or via the API
-```
-
-The BF-to-Circlefuck pair sizes its data region automatically; pass `size`
-to set it explicitly:
-
-```python
-target = esolangs.transpile("brainfuck", "Circlefuck", program, size=8)
+bf = esolangs.transpile("BFStack", "brainfuck", source)  # or via the API
 ```
 
 ## Tools
