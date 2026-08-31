@@ -90,7 +90,10 @@ def comp(code: str) -> str:
 
     for char, num in tokens:
         if char == "+":
-            if num:
+            # ``parse`` strips every ``+-`` and ``-+`` pair before grouping,
+            # so a group is all pluses or all minuses and its net is never
+            # zero.  The test stays as the guard the emitted ``addi`` needs.
+            if num:  # pragma: no branch - a zero-net group cannot survive parse
                 res += f"\tlbu  t0, 0(s1)\n\taddi t0, t0, {num}\n\tsb   t0, 0(s1)\n"
         elif char == "0":
             res += "\tsb   zero, 0(s1)\n"
