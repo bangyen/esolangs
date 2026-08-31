@@ -189,7 +189,9 @@ def render() -> str:
         "can branch on what it reads, so their reading models are walled "
         "(the %^2^-1 wall is proved in Lean) and embedding is what reaches "
         "the two-input tables.  %^2^-1 goes further: a subcube cascade "
-        "builds every conjunction or disjunction of literals at any arity "
+        "builds every conjunction or disjunction of literals at any arity, "
+        "and a composed-affine search adds the tables that are no subcube "
+        "-- 86 of the 256 three-input tables, XOR3 among them "
         "(see `docs/limitations.md`).",
         "",
         "| Language | Text generator | Python | Cross-check | Boolean | Compiler |",
