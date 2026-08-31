@@ -303,7 +303,13 @@ shipped interpreter**, search-free, from a 259-character template.
 
 The cost is the trade this makes.  At `n <= 4` the enumeration is paid once
 per process and every later table is free; here it is paid *per table* —
-about 150 seconds for a table the family misses, less for one it reaches.
+143 seconds for a table the family misses, and far less for one it reaches,
+since a hit stops the enumeration where it lands.  Measured through
+`_derive_staging`: 143.0s for a random fully-essential miss, against 3.7s for
+five-input XOR and 0.6s for five-input AND, both of which sit early in the
+enumeration.  So the quoted arity cost is the *miss*, not what a reachable
+table pays.
+
 The shipped caps are carried over from four inputs and are **unmeasured at
 five**; they are constant-factor headroom and do not change the story above.
 
