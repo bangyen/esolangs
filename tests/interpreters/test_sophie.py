@@ -240,6 +240,26 @@ class TestSophieEdgeCases:
         assert f.getvalue() == ""
 
     @pytest.mark.usefixtures("timeout_protection")
+    def test_a_program_ending_on_a_load_marker(self) -> None:
+        """``#`` and ``#$`` may be the last thing in the program.
+
+        The bracket scan steps over whatever a ``#`` loads, so it has to
+        cope with there being nothing left to step over.  Neither form is
+        an unmatched bracket, so neither raises.
+        """
+        for code in ("#", "#$"):
+            with redirect_stdout(io.StringIO()) as f:
+                run(code, io=IO())
+            assert f.getvalue() == "", code
+
+    @pytest.mark.usefixtures("timeout_protection")
+    def test_a_bracket_loaded_by_a_marker_is_not_a_bracket(self) -> None:
+        """``#[`` loads the ``[`` as data, so no loop is left unmatched."""
+        with redirect_stdout(io.StringIO()) as f:
+            run("#[", io=IO())
+        assert f.getvalue() == ""
+
+    @pytest.mark.usefixtures("timeout_protection")
     def test_unmatched_brackets(self) -> None:
         """Test program with unmatched brackets."""
         with pytest.raises(ValueError, match="unmatched"):
