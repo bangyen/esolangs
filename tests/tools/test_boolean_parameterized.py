@@ -282,6 +282,70 @@ def test_minifuck_single_essential_falls_past_the_degenerate_lookup() -> None:
             assert io_.getvalue() == table[combo], f"{table} inputs {bits}"
 
 
+# 4s: one five-input build, which is the cost -- the 32 interpreter runs are
+# effectively free next to deriving the staging.
+@pytest.mark.slow
+def test_minifuck_builds_five_input_xor() -> None:
+    """Five-input XOR builds from a staging and prints all 32 rows.
+
+    This is the table the arity turns on.  ``docs/walls.md`` records XOR as
+    the four-input table the searches could not build, and at five inputs a
+    fully-essential table has no search that reaches it at all -- so a
+    result here is a staging result or it is nothing.
+
+    Running every row on the shipped interpreter is the whole point: a
+    template that has not been seen to print is not evidence, and the
+    equal-width check is what keeps the instantiation from leaking its
+    inputs through ``len()``.
+    """
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.minifuck import run
+    from esolangs.tools.boolean import parameterized
+    from esolangs.tools.boolean.examples import _fill_minifuck
+
+    table = "".join(str(bin(r).count("1") & 1) for r in range(32))
+    template = parameterized.minifuck(table)
+
+    widths = set()
+    for combo in range(32):
+        bits = [(combo >> (4 - i)) & 1 for i in range(5)]
+        program = _fill_minifuck(template, bits)
+        widths.add(len(program))
+        io_ = ScriptedIO("")
+        run(program, io_)
+        assert io_.getvalue() == table[combo], f"inputs {bits}"
+
+    assert len(widths) == 1, widths
+
+
+def test_minifuck_five_input_plans_are_derived_per_table() -> None:
+    """At five inputs the derivation is asked for one table, not the arity.
+
+    The whole-arity spelling pre-builds a dict over every table, which is
+    ``2**32`` entries at this arity and will not be built.  So five inputs
+    goes table-major, and this pins that: the arity is staged, it is in the
+    table-major set, and asking ``_derived_plans`` for a target set returns
+    at most those targets rather than a whole-arity map.
+
+    Kept cheap deliberately -- it checks the *wiring*, and
+    ``test_minifuck_builds_five_input_xor`` checks that the wiring builds.
+    """
+    import importlib
+
+    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+    assert 5 in module._STAGED_ARITIES  # noqa: SLF001
+    assert 5 in module._TABLE_MAJOR_ARITIES  # noqa: SLF001
+    assert 5 in module._INSERT_ARITIES  # noqa: SLF001
+
+    # A target set the enumeration cannot possibly print -- a table and its
+    # complement are asked for together, and nothing else may come back.
+    table = "".join(str(bin(r).count("1") & 1) for r in range(32))
+    complement = "".join(str(1 - int(c)) for c in table)
+    plans = module._derived_plans(5, (table, complement))  # noqa: SLF001
+    assert set(plans) <= {table, complement}
+
+
 def _drawing(template: str) -> str:
     """The template with every placeholder *name* erased.
 

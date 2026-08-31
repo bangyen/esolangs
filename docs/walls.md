@@ -259,7 +259,123 @@ misses.  The caps are not slack: coverage climbs to both of them (12256
 tables at `k <= 24` against 15404 at 28), so trimming to buy time trims
 coverage.
 
-### `n >= 5` is out of reach of *any* staging family, and this count is safe
+### `n == 5` ships partially; full coverage is out of reach of any flat family
+
+**The heading here used to read "`n >= 5` is out of reach of *any* staging
+family".  That was wrong in scope and is corrected below.**  The counting
+argument it rested on is sound and is kept — a flat pool of columns cannot
+cover a real *fraction* of five inputs — but "cannot cover a fraction" was
+silently read as "cannot cover anything", and the shipped family in fact
+carries a measured sliver that is now derived rather than searched for.
+
+**Measured, not estimated.**  `_derived_plans` cannot run at this arity: it
+pre-builds a `wanted` dict over all `2 ** (2 ** n)` tables, which is `2**32`
+entries.  Inverting the loop — collect the columns the family actually
+produces, then count them — gives:
+
+| suffix family, all 5 separators × 2 settles, shipped caps | distinct 32-bit columns | fully essential |
+|---|---|---|
+| pure runs `'[' * k` | 2508 | 1874 |
+| one `<` inside the run (**shipped**) | **28096** | **24582** |
+
+The column set is **fully complement-closed** (28096 of 28096 have their
+complement present), which is what lets coverage be quoted in pairs.  Only
+**2** of the 24582 essential columns are affine, so this is not a family of
+parities with a few extras — it is overwhelmingly nonlinear.
+
+Against 4294642034 fully-essential five-input tables that is **0.00057%**.
+The counting argument stands exactly as written: no constant factor on the
+suffix axis closes a gap of that order, and `n == 4` really was the last
+arity where a flat family covers a real share.
+
+**What ships anyway.**  Partial coverage is worth gating on for the same
+reason it was at four inputs — a miss falls through to the searches, so
+admitting the arity cannot cost coverage.  The only obstacle was mechanical:
+the whole-arity spelling will not build a `2**32`-entry dict.  So five inputs
+derives **table-major** — the same loops in the same order, with `wanted`
+narrowed to the one table and its complement (`_TABLE_MAJOR_ARITIES`).
+
+The flagship is five-input XOR, and it is the pointed case for the same
+reason four-input XOR was: this file records XOR as the table the searches
+fail on, and at five inputs a fully-essential table has *no* search that
+reaches it.  It now **builds in 3.8 seconds and prints all 32 rows on the
+shipped interpreter**, search-free, from a 259-character template.
+
+The cost is the trade this makes.  At `n <= 4` the enumeration is paid once
+per process and every later table is free; here it is paid *per table* —
+about 150 seconds for a table the family misses, less for one it reaches.
+The shipped caps are carried over from four inputs and are **unmeasured at
+five**; they are constant-factor headroom and do not change the story above.
+
+### Composition through the pointer: refuted, with the mechanism
+
+`docs/walls.md` used to say a higher arity needs a construction that
+*composes*, and named two failures in one line each. That line has now been
+worked out in full, and the answer is that the combine step **creates no
+information**.
+
+**"No decode from an accumulated position" — the exact content.**  A mux
+needs a selector read then a cofactor read.  With the cofactors planted as
+their pre-images (`p0 = NOT f0`, `p1 = NOT(f1 XOR p0)`, inverting the walk's
+prefix-XOR) the second read is **correct in all eight rows** — it sees
+exactly `f_v`.  The chain works.  What fails is the readout:
+
+```
+ptr after the chain = entry + v + answer
+```
+
+`v` and the answer are *summed*, so position cannot separate `(v=0, ans=1)`
+from `(v=1, ans=0)`.  That is the whole of the recorded claim, and stating it
+this way also names the escape — a later read of a cell holding `NOT v` makes
+the displacement `answer + 1`.
+
+**Two negatives that are forced and prove nothing**, recorded so they are not
+re-run as evidence:
+
+- A **static band** cannot cancel the displacement (all 256 patterns, every
+  tail walk, one and two reads: zero).  This is a theorem: two rows converged
+  on one position, with an identical static band ahead and a rightward-only
+  tail, execute identically forever — `[` touches only `ptr + 1` and nothing
+  looks behind.
+- A **uniform live `NOT v` band** also fails, for a narrower reason: the value
+  a read sees is `NOT(planted XOR running-prefix)`, and the prefix depends on
+  the debris each row crossed, so the pre-image needed is **per-row**.
+
+**The verified two-stage chain, and why it still fails.**  Carried to 42
+configurations in which the stage-2 selector arrives as `v` and the stage-2
+read sees `f_v`, asserted in all eight rows rather than assumed.  Both
+products stand — `v AND f1` and `NOT v AND f0` — and columns depending on all
+three variables appear.  The mux appeared to stand as well, and **it does
+not**: in all 7 such configurations the per-row solver had planted a
+`v`-dependent value at the very cell being read back (`11001010` at cell 29 —
+the mux complement, re-complemented by the crossing).  The chain was *handed*
+the answer.  Forced to a uniform function of `(f0, f1)` — something an embed
+could produce — the mux vanishes under every plant rule tried.
+
+So a selecting walk yields **one product**, never both and never the mux,
+because the read consumes the selector into the pointer.
+
+**Why no chain can escape the counting argument.**  Any post-embed chain is
+just a suffix string over the same alphabet: stage-2 "reads" are `[<` /
+`[x<[<` emitted after the embed, so the chain family is a *subset* of the
+general suffix space — and `_EXCEPTIONS`' stored suffix `[[<[<[[[[[[[[[` is
+itself chain-shaped.  Every chain therefore still yields one printed column
+per (staging, accumulator, read, orientation) slot, so the flat-pool count
+governs chains too.  Composition through the pointer was never going to be
+multiplicative.
+
+One thing this does *not* establish: it is a family-level negative with a
+mechanism, not an exhaustion proof.  Nothing here forbids a composing
+construction that does not route its intermediate through the pointer.
+
+### The pool is not the obstruction at five inputs
+
+Checked before anything else, since a failure would block every design
+downstream: the endgame's pool search succeeds at 32 lockstep machines,
+**12 of 24 lookups hitting** at every separator and settle count — the same
+one-in-two rate the three- and four-input arities show.
+
+### The original counting argument, kept
 
 The obvious next question is whether the suffix trick repeats.  It does not,
 and the reason is worth separating carefully from the argument it just
@@ -286,8 +402,13 @@ solved at that core and renumbered back, but only **2292** five-input tables
 have three or fewer essential inputs, and 322970 have exactly four — of which
 the shipped family stages 23.8%.  Adding those up, the search-free share of
 `n == 5` by projection is **1.8e-05**.  The other 4294642034 tables are fully
-essential and need columns of their own: **2.8e+05 times more** than the
-15404 this family produces.
+essential and need columns of their own: **1.7e+05 times more** than the
+24582 essential columns this family produces *at five inputs*.
+
+(That ratio used to read 2.8e+05 against 15404, which is the family's yield at
+**four** inputs — the arity it was measured at.  Harvesting the family at five
+gives 24582, so the gap is a little narrower than recorded and the conclusion
+is unchanged: no constant factor closes 1.7e+05.)
 
 That gap is immune to the axes above, because they multiply by constants.
 Per-gap separators took the union to 36.1% — about 1.5x — and a second `<`
@@ -301,11 +422,11 @@ polynomially, and four is where those curves cross.
 **What a higher arity would actually need** is a construction that
 *composes* — building an `n`-input function from solved sub-functions already
 on the tape, so cost is additive in `n` rather than a lookup into a flat pool
-of columns.  The two attempts at that are recorded below and both failed:
-`4 -> 8` doubling does not compose, and there is no decode from an
-accumulated position.  Those obstructions are untouched by the suffix result,
-and they, not the enumeration's reach, are what stands between this generator
-and `n >= 5`.
+of columns.  The two attempts at that are `4 -> 8` doubling and a decode from
+an accumulated position.  The second has since been worked out in full and
+refuted with its mechanism — see "Composition through the pointer" above,
+which also shows *why* no chain escapes this count: a chain is a suffix, so
+it lives inside the same family being counted here.
 
 One honesty note on the above: the exact table is combinatorics and the
 1.8e-05 follows from it, but "constants cannot close 2.8e+05" assumes new
