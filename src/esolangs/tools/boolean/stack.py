@@ -8,8 +8,10 @@ from esolangs.tools.boolean.helpers import (
     _ASCII_ZERO,
     _ORDER_SEARCH_MAX,
     _validate_truth_table,
+    essential_inputs,
     minterm_literals,
     permute_truth_table,
+    read_at,
 )
 
 
@@ -56,22 +58,41 @@ def grapheme(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
 
+    # A table that ignores some of its inputs is a smaller table, and every
+    # minterm here spends one factor per input, so dropping an input shortens
+    # each of the (now fewer) minterms as well.  The reads stay -- they are
+    # the interface -- but an ignored one costs a *single* character: ``W``
+    # pushes the line it read and nothing ever pops it, since every operator
+    # here pops what it consumes and ``Y`` prints the top of the stack, so a
+    # value left below the accumulator is unreachable rather than merely
+    # unused.  That makes it cheaper than taglate's rotate-and-drop, which
+    # has a queue's positional arithmetic to keep undisturbed.
+    used = essential_inputs(truth_table, n) or [0]
+    table = truth_table if len(used) == n else read_at(truth_table, used, n)
+    width = len(used)
+    # Slot ``s`` holds original input ``used[s]``; the minterm body below is
+    # written over the reduced table's slots, so it never names a dropped one.
+    slot_of = {i: s for s, i in enumerate(used)}
+
     prog = [_grapheme_push65() + _grapheme_push_key(90) + "C"]  # vars[90] = 65
     for i in range(n):
-        # W reads the bit; normalize to 0/1; store under key 10*(i+1).
+        if i not in slot_of:
+            prog.append("W")  # read the ignored input and abandon it
+            continue
+        # W reads the bit; normalize to 0/1; store under key 10*(slot+1).
         prog.append(
             "W"
             + _grapheme_push_key(90)
             + "D"
             + "B"
             + "T"
-            + _grapheme_push_key(10 * (i + 1))
+            + _grapheme_push_key(10 * (slot_of[i] + 1))
             + "C"
         )
 
     # Evaluate over the sparser side to bound the program size.
-    zeros = [r for r in range(2**n) if truth_table[r] == "0"]
-    ones = [r for r in range(2**n) if truth_table[r] == "1"]
+    zeros = [r for r in range(2**width) if table[r] == "0"]
+    ones = [r for r in range(2**width) if table[r] == "1"]
     if len(zeros) <= len(ones):
         rows, acc, op = zeros, _grapheme_push1(), "B"  # acc = 1 - sum(0-row minterms)
     else:
@@ -79,7 +100,7 @@ def grapheme(truth_table: str) -> str:
     prog.append(acc)
     for row in rows:
         prog.append(_grapheme_push1())  # start this minterm at 1
-        for i, negated in minterm_literals(row, n):
+        for i, negated in minterm_literals(row, width):
             if negated:
                 # factor = 1 - b_i
                 prog.append(
