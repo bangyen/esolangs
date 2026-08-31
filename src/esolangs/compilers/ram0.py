@@ -68,7 +68,9 @@ def comp(code: str) -> str:
             )
         elif tok == "C":
             res += f"\tbeqz s1, {target(i + 2)}\n"
-        elif tok.isdigit():
+        else:
+            # ``parse`` matches ``[ZANCLS]`` or ``[1-9]\d*`` and nothing
+            # else, so every token that reaches here is a goto.
             res += f"\tj {target(int(tok) - 1)}\n"
             continue
         res += f"\tj {target(i + 1)}\n"
