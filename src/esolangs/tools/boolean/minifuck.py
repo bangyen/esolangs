@@ -66,6 +66,16 @@ degrades rather than raises.  What a four-input table does pay for is the
 derivation, which at this arity cannot stop early; see
 :data:`_STAGED_ARITIES`.
 
+That 23.9% is the ceiling of *this* family, and it is not the ceiling of the
+language.  A prototype that interleaves two reads with chosen walks -- a
+richer pool than the suffix this module enumerates, coordinates
+``(separator, settle, k, cell, read1, gap, read2, accumulator, orientation)``
+-- prints 19.5% of a 400-table sample of the tables the enumeration misses,
+78 of 78 verified on the interpreter.  It is not shipped and nothing here
+calls it, but it means a miss below is a miss of the staging family rather
+than of Minifuck.  See ``docs/walls.md``, "Why no chain can escape the
+counting argument", which the prototype refutes.
+
 Five inputs is staged on the same terms and a far thinner slice: the family
 produces 24582 fully-essential 32-bit columns against 4294642034 such tables,
 so this is 0.00057% of the arity rather than a quarter of it.  It ships for

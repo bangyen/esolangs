@@ -344,13 +344,17 @@ saving.  Taglate reduces (451 characters → 21).  What is open:
 - **Severely constrained boolean generators** — caps are tracked so removal
   or lifting is deliberate.  No language is currently a *removal* candidate:
   every shipped generator covers `n <= 2` at minimum.
-- **Minifuck's three-input coverage** — the one cap here that is liftable
-  rather than a wall.  It builds all sixteen two-input tables but only
-  eight of the fourteen three-input orbits, the other six raising after
-  about two minutes; the failures are depth-cap exhaustion, not an
-  argument, so the reach is set by the search rather than by the language.
-  The route is a *construction* in wii2d's shape instead of a search —
-  `docs/walls.md` has the piece that does not yet compose.  The other six
+- **Minifuck's four-input coverage** — three inputs is **done**: all 256
+  tables build with no search at all, from a derived staging plus `_rescue`
+  for the four the enumeration misses.  What is open is four inputs, where
+  the shipped staging family reaches 23.9% of the fully-essential tables.
+  That is a ceiling of the *family*, not of the language: a two-read chain
+  prototype — reads interleaved with chosen walks, a richer pool than the
+  enumerated suffix — prints 19.5% of a sample of the tables the family
+  misses, 78 of 78 interpreter-verified, and is not shipped.  Wiring it in
+  as a fallback after the staged route is the concrete next step; see
+  `docs/walls.md`, "Why no chain can escape the counting argument", which
+  that prototype refutes.  The other six
   refusing generators stay off this list: 6-5 is the one documented wall
   left (`docs/limitations.md`), %^2^-1 is partly lifted with the rest open,
   and NoComment, Polynomial, Factor and WII2D are resource knobs.  NoComment
