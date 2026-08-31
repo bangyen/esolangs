@@ -1094,6 +1094,19 @@ class TestContainerCompiler:
         out = self.comp("A=1:\n+1 T>=0\nA=2:\n+1 T>=0\nT:\n+1 T>=T")
         assert out.count("sd   s3, 0(s2)") == 2
 
+    def test_values_are_fixed_width(self) -> None:
+        """The 64-bit value domain is the one place totality stops.
+
+        A delta at ``2**63 - 1`` is emitted as-is, which pins where the
+        compiled form stops agreeing with the interpreter's unbounded
+        integers: a container driven past that wraps negative, and
+        ``max(res, 0)`` then destroys it rather than wrapping back.  The
+        repo's generators peak at 127, so only hand-written programs can
+        reach this.
+        """
+        out = self.comp(f"A=0:\n+{2**63 - 1} A>=0\nEXIT=1:\n-1 A>=1")
+        assert f"li   t2, {2**63 - 1}\n" in out
+
     def test_far_cells_use_an_indirect_address(self) -> None:
         """Past the 12-bit ``ld``/``sd`` offset, the address is computed.
 
