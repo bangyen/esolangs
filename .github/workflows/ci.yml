@@ -58,6 +58,12 @@ jobs:
 
     steps:
     - uses: actions/checkout@v7
+      with:
+        # The changed-line gate below diffs against the merge-base with main.
+        # The default shallow clone has no such commit, so the gate would
+        # fail open and check nothing at all -- quietly, which is worse than
+        # not running it.
+        fetch-depth: 0
 
     - name: Install uv
       uses: astral-sh/setup-uv@v7
@@ -80,7 +86,21 @@ jobs:
       if: matrix.python-version == '3.12'
       # The local default is a fixed, modest worker count so developer laptops
       # keep cores free; CI has the box to itself, so ask for all of them.
-      run: uv run pytest -n auto --cov --cov-report=xml --cov-report=term-missing
+      #
+      # `--cov-branch` drops coverage off its sysmon core (sys.monitoring
+      # cannot measure branches at 7.13.4 and falls back with a warning), but
+      # the fallback is cheap -- 65.4s against 68.2s measured over the fast
+      # subset -- and the gate below needs the arcs.  The badge is unaffected:
+      # it reads the XML's line-rate, which branch mode leaves alone.
+      run: uv run pytest -n auto --cov --cov-branch --cov-report=xml --cov-report=term-missing
+
+    # Strict here, unlike the local pre-push run: this job runs the whole
+    # suite, so an uncovered added line or one-sided added branch cannot be
+    # blamed on a deselected test.  The gate is still fail-open about data it
+    # does not have -- see its module docstring.
+    - name: Check changed-line and changed-branch coverage
+      if: matrix.python-version == '3.12'
+      run: uv run python scripts/check_diff_coverage.py
 
     - name: Test with pytest
       if: matrix.python-version != '3.12'
