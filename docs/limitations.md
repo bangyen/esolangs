@@ -274,10 +274,38 @@ rewrite:
   ``dest = dest ± op`` by a fixed operand.  A general total transpiler is
   therefore not expressible; the partial classes would be silent-droppers.
   Documented as research-level future work in `docs/roadmap.md`.
-- **2D-to-2D.**  No two 2D languages share a model: Dimensional is a
-  pointer-hierarchy tape, LaserFuck mirror-driven control, ABCDrection a
-  Boolfuck bit tape with a queue.  Even the two bf-tape ones (Dimensional,
-  LaserFuck) differ in control flow.
+- **2D-to-2D: the store is shared, the control flow is not.**  This entry
+  used to say no two 2D languages share a model.  That is wrong for
+  Streetcode and LaserFuck, which hold the same thing -- a tape of
+  unbounded signed cells under a pointer -- and whose instruction sets are
+  the *same eight commands*: Streetcode's `^~=_IO` are brainfuck's
+  `+-><,.` under other glyphs.  `Streetcode → LaserFuck` ships on that
+  basis.
+
+  What does not carry across is control flow, for a reason worth naming
+  rather than asserting.  Streetcode has no loop command; the car branches
+  by which exit of a junction it takes, and brainfuck's loop needs a state
+  the program returns to once per lap to close its `[`.  A drawn ring does
+  not give one:
+
+  - A ring entered from a junction rejoins the road *past* that junction's
+    square, returning under a different heading and different steering
+    latches.  The state that decides the loop is never revisited, so there
+    is no `[` to close.
+  - A ring that does re-cross its test square crosses further gaps on the
+    way, and [every gap crossing reads the CPth cell](streetcode.md).
+    Those reads are junctions too, and showing they cannot steer means
+    showing a cell stays nonzero across iterations -- value analysis, not a
+    rewrite.  The counting loop in `tests/interpreters/test_streetcode.py`
+    is the worked example: nine laps, and three junctions entangled in
+    them.
+
+  So the shipped class is the programs the tape never steers, and drawn
+  control flow is rejected rather than mistranslated.  Lowering it would
+  need scratch cells and a converged answer -- a compiler, which is what
+  separates the two halves of this bullet.  The boolean generator's
+  Streetcode programs are further out still: they are decision trees whose
+  leaves each print.
 - **Dropped transpilers.**  `nocomment_to_bf` silently dropped NoComment's
   stack/jump/pointer commands (a silent mistranslation); the `6-5 → bf` and
   `Circlefuck → bf` decoders only reversed the forward transpilers' canonical

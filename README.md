@@ -299,6 +299,7 @@ Transpilers rewrite a program in one esolang into an equivalent program in anoth
 | BIO | → | BF |
 | Decleq | → | S*bleq |
 | Dimensional | → | LaserFuck |
+| Streetcode | → | LaserFuck |
 
 Each transpiler's supported subset and caveats are documented in `esolangs/tools/transpilers.py`.
 
