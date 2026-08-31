@@ -2385,6 +2385,44 @@ class TestParameterizedMinifuck:
         }
         assert answered == {0}, f"expected only cell7==0 to be served, got {answered}"
 
+        # And that is a property of the list, not of the language: the step
+        # family reaches the other orientation natively.  These are not
+        # mirrors -- nothing is appended to a shipped code to get them -- they
+        # are ``'[<' * k`` walks with a different tail, and they answer
+        # ``cell7 == 1`` where no shipped code answers anything.  Pinned so
+        # the "half a list" account cannot drift back into "the other half is
+        # unreachable".
+        #
+        # Harvested separately, and from a cold derivation.  ``cache_clear``
+        # on ``minifuck`` alone is not enough: ``_derived_plans`` survives it,
+        # and a warm plan cache makes this build ask ``_find_pool`` exactly
+        # once instead of the hundreds of times a cold one does.  A one-site
+        # sample would make the check below depend on which test ran first.
+        wide: list[tuple[object, int, int]] = []
+
+        def record_all(joint: object, cell7: int, walk_out: int) -> object:
+            if len(wide) < 400:
+                wide.append((joint.fork(), cell7, walk_out))  # type: ignore[attr-defined]
+            return real(joint, cell7, walk_out)
+
+        with patch.object(module, "_find_pool", record_all):
+            module._derived_plans.cache_clear()  # noqa: SLF001
+            module.minifuck.cache_clear()
+            module.minifuck.__wrapped__("0110")
+        module.minifuck.cache_clear()
+        assert len(wide) > 100, f"expected a cold build's lookups, got {len(wide)}"
+
+        other = ("[<[<[[[<[<[[<<", "[<[<[[[<[[[[<<", "[<[<[[[[[<[[<<")
+        other_answered = {
+            cell7
+            for joint, cell7, walk_out in wide
+            for code in other
+            if module._pool_reaches(joint, code, cell7, walk_out)  # noqa: SLF001
+        }
+        assert other_answered == {1}, (
+            f"expected the family's other orientation, got {other_answered}"
+        )
+
     def test_the_pool_codes_are_generated_from_the_law(self) -> None:
         """The five codes are spelled by the law, not stored as strings.
 
