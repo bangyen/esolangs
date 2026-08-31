@@ -51,7 +51,7 @@ polarities and prints ``NOT(v XOR cell7)``, so the complement costs nothing.
 **Coverage.**  Every table at ``n <= 3`` builds from a staging, with no
 search: 16 of 16 at two inputs, 256 of 256 at three.  All but one pair are
 derived, and the derivation is done for a whole arity at a time -- measured,
-0.9s for two inputs and 15s for three, against minutes if each table sweeps
+0.4s for two inputs and 6.6s for three, against minutes if each table sweeps
 for itself.  So the first three-input table costs the arity and the other
 255 are free; that is the trade deriving makes against storing.
 
@@ -1098,9 +1098,17 @@ def _reconverged(truth_table: str, essential: list[int], n: int) -> str | None:
 # cheap to test against a table, so the loops go staging-major: one embed per
 # (separator, settle), the bracket run extended one instruction at a time,
 # and the endgame emitted once per (k, accumulator, read, orientation)
-# whatever the table.  Measured, the whole three-input arity derives in 15s
-# and two inputs in 0.9s; the table-major spelling of the same search costs
-# minutes, because it rebuilds every staging once per table.
+# whatever the table.  Measured, the whole three-input arity derives in 6.6s
+# and two inputs in 0.4s; the table-major spelling of the same search costs
+# minutes, because it rebuilds every staging once per table.  (Those two were
+# 15s and 0.9s when this was written and are re-measured here rather than
+# carried forward -- a timing in prose ages against every change under it.)
+#
+# What the three-input arity spends that on is 127 distinct stagings, spread
+# over all five separators -- 34, 29, 37, 23 and 4 of them -- and both settle
+# counts, 94 at zero and 33 at one.  The load is nowhere near even, and
+# separator 4 carrying four stagings is the reason the list is not trimmed on
+# a glance at how often each is named.
 #
 # Selection is on the accumulator's value **at the read**, not on the cell
 # that holds the answer beforehand.  Those differ, because the walk out
