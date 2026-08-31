@@ -497,6 +497,26 @@ def _step(carry: int = 1, backs: int = 1, *, odd: bool = True) -> str:
 #
 # An override is ``(backs, odd)`` for the step it names, so the two free
 # variables stay visible side by side.
+#
+# **Why these values, and not a shorter description.**  The plans do not
+# compress further, which was measured rather than assumed.  ``core`` is not
+# derivable from the finished code: on a blank tape every plan with
+# ``core > 0`` ends at ``mark = steps + 1`` and ``pointer = steps`` whatever
+# the core's index -- verified for ``steps`` 1 to 40 -- so the blank-tape
+# outcome cannot pick it.  It is pinned on live states instead, and the two
+# properties split the way they do for the codes themselves.  Moving the core
+# strands tables at every alternative for three of the plans -- 22 for the
+# third, 18 for the fourth, 6 for the fifth -- which for the third and fourth
+# is exactly what dropping those codes outright costs.  The second plan's core
+# strands nothing at any alternative and is pinned by the quiet property
+# instead: slot order goes from 10 out-of-name-order templates to 18, the same
+# cost the ablation records for the non-stranding codes.
+#
+# Only the first plan's core moves freely, and that is not a fact about the
+# core.  That code answers no site at ``n <= 3`` at all -- it is one of the two
+# the ablation finds strands nothing -- so every spelling of it looks free at
+# the arity being measured.  The two spellings are genuinely different
+# functions, leaving marks at cells 1, 2, 4 against a single mark at 3.
 _PLANS: tuple[tuple[int, int, dict[int, tuple[int, bool]]], ...] = (
     (2, 0, {1: (4, True)}),
     (4, 1, {}),
@@ -549,7 +569,16 @@ def _pool_reaches(j: _Joint, code: str, cell7: int, walk_out: int) -> bool:
 
 
 def _find_pool(j: _Joint, cell7: int, walk_out: int) -> str | None:
-    """Return a pool code for this orientation, or None if none fits."""
+    """Return a pool code for this orientation, or None if none fits.
+
+    ``walk_out`` decides whether a code is *asked*, not whether it fits: the
+    verdict is invariant in it.  Measured over walk_outs 9 to 39, no
+    ``(site, code)`` pair changes answer -- 0 of 1000 at four and eight rows,
+    0 of 300 at sixteen.  That follows from the affine picture, since cells
+    0..7 after the walk depend only on what was crossed before them, and it
+    is why arity reaches the pool codes only through the joint's rows and
+    window state rather than through how far right the accumulator sits.
+    """
     for code in _POOL_CODES:
         if _pool_reaches(j, code, cell7, walk_out):
             return code
@@ -1024,6 +1053,26 @@ _Staging = tuple[int, int, int | str, int]
 # enumeration but parameterises the parked search, which still serves
 # ``n >= 4``; and the searches themselves are unreachable at ``n <= 3`` yet
 # are what a wider table falls through to.  Neither is dead.
+#
+# **What happens at four inputs, and where the wall is.**  The gate sends a
+# four-input table to the searches, and the pool codes go with it -- they are
+# consulted from the endgame whichever route reached it, so the construction
+# is exercised at sixteen rows even though the enumeration is not.  It holds
+# up there: four-input AND and NAND build in 0.2s, and a table depending on
+# one input in 2.4s.  Four-input XOR does *not* build, and the interesting
+# part is why not.  Its failed attempt made 1016 pool lookups and 508 of them
+# succeeded -- the same one-in-two hit rate the three-input arity shows -- so
+# the pool is answering at exactly its usual rate while the search around it
+# runs out.  The wall at ``n >= 4`` is the search depth, not the pool.
+#
+# Which code answers does shift with arity, which is worth knowing before
+# trimming the list on three-input evidence.  On the four-input tables measured
+# here, sixteen-row joints were served by the third and fifth codes, and the
+# fifth answers almost nothing below four inputs -- so an ablation at
+# ``n <= 3`` under-reports what it is for.  The split is table-dependent and
+# the sample is small: the sites from a four-input AND were answered by the
+# fifth code alone, while the failing XOR's were answered by both.  Take this
+# as "arity changes which code answers", not as a census.
 
 # The arities the enumeration covers.  Beyond three it is not that the
 # enumeration fails but that it has not been shown to succeed, and a route
