@@ -298,7 +298,7 @@ zero rows and inverting — one term saved per row, paid for once.
 | `qoibl`, `bit_tilde`, `grapheme` | fewer minterms; grapheme picks whichever row-set is shorter |
 | `container` | `OUT` spends one `+1 S{row}>=Gout` line per one-row, so a dense table sums its zero rows from a 49 start and subtracts — 12.7% on the densest n=4 table. The per-row survivor blocks are fixed and unaffected |
 
-### Dependency reduction (10) — taglate, minifuck, home_row, cod
+### Dependency reduction (10) — taglate, minifuck, home_row, cod, grapheme
 
 A table ignoring an input is emitted as the *smaller* table, still
 consuming the rest. `essential_inputs` (in `boolean/helpers.py`, promoted
@@ -346,11 +346,30 @@ and that is set by the interface rather than by the construction:
   one-dependency table at `n == 3` from 213 characters to **84** (60.6%) and
   a constant to 82, with non-degenerate tables byte-identical.
 
+- **`grapheme` reads and abandons.** Its reads are the interface, so an
+  ignored input keeps one, but it costs a *single character*: `W` pushes
+  the line it read and nothing ever pops it. That is safe by construction
+  rather than by measurement — every operator pops what it consumes and
+  `Y` prints the top of the stack, so a value left below the accumulator
+  is unreachable, not merely unused. Cheaper than taglate's rotate-and-drop,
+  which has a queue's positional arithmetic to keep undisturbed. A
+  one-dependency table at `n == 3` goes from 180 characters to **49**
+  (72.8%), helped by the minterms shortening too: each spends one factor
+  per input, so dropping inputs shrinks every surviving minterm as well as
+  removing minterms.
+
+  Note `grapheme` stays **tree-shaped** in the catalogue and out of
+  `_REDUCING`: it gains 75.0% against parity, well past the folding test's
+  bar, so filing it as a reducer would suppress a check it passes on its
+  own. `_REDUCING` is only for generators whose gain would otherwise look
+  like a contradiction.
+
 **What to check on the next candidate.** The win is available wherever cost
 tracks *arity* rather than the table's contents, which is why it crosses the
-tree/sum divide. The question is only what the ignored input's placeholder
-must still do — and the four shipped answers (discard it, erase it, weigh it
-zero, wall it off) are in increasing order of cheapness. Two things make it
+tree/sum divide. The question is only what the ignored input's placeholder or read
+must still do — and the five shipped answers (rotate-and-drop it, erase it,
+weigh it zero, abandon it on a stack, wall it off) are roughly in increasing
+order of cheapness. Two things make it
 free rather than merely cheap: a construction where the ignored input's
 contribution is already multiplied by something the generator picks, so the
 factor can be set to zero; or **a dimension the interpreter cannot reach
