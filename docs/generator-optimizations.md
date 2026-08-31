@@ -68,15 +68,15 @@ It measured 74.1% when first added and 74.5% once its reorder shipped the
 same day — the one-dependency table it is scored on is exactly the case the
 reorder improves, so this figure moves when that build changes.
 
-**Minterm-shaped (9).** a_painter_ant, bfstack,
+**Minterm-shaped (8).** a_painter_ant, bfstack,
 collatz_multiverse, container, point_break, qoibl,
-rotfuck, suffolk, suptiftam — all within 4% of parity on a one-dependency
+suffolk, suptiftam — all within 4% of parity on a one-dependency
 table, because there is no subtree to collapse.
 
-**Reducing (4).** `home_row`, `cod`, `nocomment` and `bit_tilde` were on
-that list until 2026-08-30/31 and are still minterm sums; they now gain
-**60.6%**, **92.5%**, **27.3%** and **81.5%** respectively on a
-one-dependency table by *dependency reduction* (10) rather than by
+**Reducing (5).** `home_row`, `cod`, `nocomment`, `bit_tilde` and `rotfuck`
+were on that list until 2026-08-30/31 and are still minterm sums; they now
+gain **60.6%**, **92.5%**, **27.3%**, **81.5%** and **76.3%** respectively
+on a one-dependency table by *dependency reduction* (10) rather than by
 folding. That is a distinction the shape test would
 otherwise lose, so they are carried in their own `_REDUCING` category
 rather than relabelled tree-shaped: the gain tracks dropped *arity*, and
@@ -250,10 +250,14 @@ Two constraints a future change must respect:
 
 Two generators look like they have headroom, and it is a missing
 *complement* (6) rather than a missing fold: `a_painter_ant` (all-0 92,
-all-1 444) and `rotfuck` (1404, 1740) are cheap on all-zeros and expensive
+all-1 444) and `rotfuck` (370, 408) are cheap on all-zeros and expensive
 on all-ones, and neither calls `_maybe_complement`. Taking the cheaper
-polarity of every n=3 table would be 17.96% for `a_painter_ant` and 2.99%
+polarity of every n=3 table would be 17.96% for `a_painter_ant` and 2.81%
 for `rotfuck`.
+
+`rotfuck`'s two figures were 1404 and 1740, and its headroom 2.99%, before
+dependency reduction (10) shipped on 2026-08-31; the lever is unchanged and
+still unbuilt, but it is now measured against a much smaller program.
 
 **`a_painter_ant`'s share of that is not reachable, and the reason is the
 output convention rather than the construction.** Its answer is *the colour
@@ -303,7 +307,7 @@ zero rows and inverting — one term saved per row, paid for once.
 | `qoibl`, `bit_tilde`, `grapheme` | fewer minterms; grapheme picks whichever row-set is shorter |
 | `container` | `OUT` spends one `+1 S{row}>=Gout` line per one-row, so a dense table sums its zero rows from a 49 start and subtracts — 12.7% on the densest n=4 table. The per-row survivor blocks are fixed and unaffected |
 
-### Dependency reduction (10) — seven generators
+### Dependency reduction (10) — eight generators
 
 A table ignoring an input is emitted as the *smaller* table, still
 consuming the rest. `essential_inputs` (in `boolean/helpers.py`, promoted
@@ -414,6 +418,15 @@ and that is set by the interface rather than by the construction:
   exactly the 16 tables at `n <= 3` which ignore input 0, and it cost a
   60-row gate failure before an explicit `{ ~ }` clear was added. **A cell
   that a construction incidentally cleans is load-bearing.**
+
+- **`rotfuck` reads and normalizes an input it then never guards with.**
+  Its cell layout and block list are both dominated by `2**n` — one mismatch
+  cell and one minterm cell per row, one guarded `[ body ]` block per (row,
+  input) pair — so evaluating over the essential inputs drops the exponent.
+  Every input keeps its `,` read, its cell and its complement; an ignored one
+  is normalized like the rest and then simply never guards a block. 1576 →
+  **373** at `n == 3` (76.3%), and 5123 → **482** at `n == 4` (90.6%).
+  Constants improve too, 1404 → 370.
 
 **What to check on the next candidate.** The win is available wherever cost
 tracks *arity* rather than the table's contents, which is why it crosses the

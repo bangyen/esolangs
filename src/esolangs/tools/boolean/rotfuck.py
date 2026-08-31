@@ -10,7 +10,9 @@ a command spelling that survives its rotation
 from esolangs.tools.boolean.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
+    essential_inputs,
     minterm_literals,
+    read_at,
 )
 
 __all__ = ["rotfuck"]
@@ -144,11 +146,22 @@ def rotfuck(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
 
+    # A table that ignores some of its inputs is a smaller table, and the
+    # cell layout and the block list are both dominated by ``2**n``: one
+    # mismatch cell and one minterm cell per row, and one guarded block per
+    # (row, input) pair.  Evaluating over the essential inputs drops the
+    # exponent to ``2**width``.  Every input still gets its ``,`` read and
+    # its own cell -- the reads are the interface -- and an ignored one is
+    # normalized like the rest and then simply never guards a block.
+    used = essential_inputs(truth_table, n) or [0]
+    table = truth_table if len(used) == n else read_at(truth_table, used, n)
+    width = len(used)
+
     b = list(range(n))
     c = list(range(n, 2 * n))
     r = 2 * n
-    mc = list(range(2 * n + 1, 2 * n + 1 + 2**n))
-    m = list(range(2 * n + 1 + 2**n, 2 * n + 1 + 2 * 2**n))
+    mc = list(range(2 * n + 1, 2 * n + 1 + 2**width))
+    m = list(range(2 * n + 1 + 2**width, 2 * n + 1 + 2 * 2**width))
 
     eff: list[str] = []
     phantoms: dict[int, int] = {}
@@ -169,9 +182,9 @@ def rotfuck(truth_table: str) -> str:
         if i < n - 1:
             emit([">"])
     emit([">"] * (m[0] - c[-1]))
-    for k in range(2**n):
+    for k in range(2**width):
         emit(["+"])
-        if k < 2**n - 1:
+        if k < 2**width - 1:
             emit([">"])
 
     # Block layout: for each minterm, each input bit guards a mismatch count;
@@ -180,13 +193,14 @@ def rotfuck(truth_table: str) -> str:
     block_specs: list[tuple[int, int, str]] = []
     for i in range(n):
         block_specs.append((b[i], c[i], "-"))  # complement c_i = 1 - b_i
-    for k in range(2**n):
-        for i, negated in minterm_literals(k, n):
+    for k in range(2**width):
+        for slot, negated in minterm_literals(k, width):
+            i = used[slot]
             guard = b[i] if negated else c[i]
             block_specs.append((guard, mc[k], "+"))  # mismatch count
         block_specs.append((mc[k], m[k], "-"))  # zero minterm on any mismatch
-    for k in range(2**n):
-        if truth_table[k] == "1":
+    for k in range(2**width):
+        if table[k] == "1":
             block_specs.append((m[k], r, "+"))  # accumulate 1-rows
 
     ptr = m[-1]
