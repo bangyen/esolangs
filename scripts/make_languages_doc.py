@@ -30,6 +30,7 @@ _COMPILER_NAMES = {
     "decleq": "Decleq",
     "forth": "Forþ",
     "forbin": "Forbin",
+    "container": "Container",
 }
 
 _COMPILER_DIRS = {

@@ -34,7 +34,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | Circuit Diagram |  | yes |  | yes |  |
 | Clockwise | yes | yes |  | yes |  |
 | Collatz Multiverse | yes | yes |  | yes | yes |
-| Container | yes | yes |  | yes |  |
+| Container | yes | yes |  | yes | yes |
 | Decleq | yes | yes |  | yes | yes |
 | Dig | yes | yes |  | yes |  |
 | Dimensional | yes | yes |  | yes |  |

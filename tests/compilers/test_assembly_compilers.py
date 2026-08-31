@@ -986,3 +986,124 @@ class TestForbinCompiler:
         """Each listed value emits the body once, plus the entry's own call."""
         out = self.comp("main { for v:(0,1) { out 0,0,0,0,0,0,0,v; } }")
         assert out.count("call .dispatch") == 2 + 1
+
+
+class TestContainerCompiler:
+    """Container lowers a synchronous rule system to a dataflow round.
+
+    Container is excluded from the ``COMPILERS`` sweep above because that
+    sweep compiles the literal text ``"Hello"``, whose first line is a rule
+    with no container to attach it to -- which the shared parser rejects.
+    """
+
+    @staticmethod
+    def comp(code: str) -> str:
+        mod = importlib.import_module("esolangs.compilers.container")
+        return mod.comp(code)
+
+    def test_produces_assembly(self) -> None:
+        out = self.comp("A=1:\n+1 A>=0\nEXIT=1:\n-1 A>=3")
+        assert ".global _start" in out
+
+    def test_relaxation_is_disabled(self) -> None:
+        """``la`` must not relax to a gp-relative access.
+
+        Nothing initializes ``gp`` under ``-nostdlib``, so a relaxed ``la``
+        yields a garbage buffer pointer and every container's store lands
+        outside mapped memory.
+        """
+        assert ".option norelax" in self.comp("A:\nEXIT=1:\n-1 A>=0")
+
+    def test_rule_before_declaration_is_rejected(self) -> None:
+        """A rule with no container raises, sharing the interpreter's parser."""
+        with pytest.raises(ValueError, match="rule line before any container"):
+            self.comp("+1 T>=0")
+
+    def test_undeclared_condition_name_is_rejected(self) -> None:
+        """A name that is neither a container nor a literal is rejected.
+
+        ``update`` calls ``val`` on every operand every tick, so such a
+        program raises on its first tick; rejecting it at compile time
+        matches the interpreter rather than narrowing the accepted class.
+        """
+        with pytest.raises(ValueError, match="undeclared container"):
+            self.comp("A=1:\n+1 ZZ>=0")
+
+    def test_negative_literal_is_accepted(self) -> None:
+        """A negative operand parses as a literal, as ``int()`` does."""
+        assert ".global _start" in self.comp("A=1:\n+1 A>=-1\nEXIT=1:\n-1 A>=3")
+
+    def test_empty_program_halts_immediately(self) -> None:
+        """No containers means ``halted`` before the first tick."""
+        out = self.comp("")
+        assert "li   a7, 93" in out
+        assert ".tick:" not in out
+
+    def test_two_buffers_are_one_symbol(self) -> None:
+        """``old`` and ``new`` are halves of one array, so one ``la`` reaches both."""
+        out = self.comp("A=1:\nEXIT=1:\n-1 A>=0")
+        assert out.count("la   s1, con_cells") == 1
+        assert "con_new" not in out
+
+    def test_print_masks_to_seven_bits(self) -> None:
+        """The interpreter prints ``OUT % (1 << 7)``, so the mask is 0x7f."""
+        out = self.comp("OUT=200:\nPRINT:\n+1 PRINT<=0\nEXIT=1:\n-1 OUT>=0")
+        assert "andi a0, a0, 0x7f" in out
+
+    def test_print_needs_both_print_and_out(self) -> None:
+        """PRINT without OUT prints nothing, as the interpreter's guard does."""
+        assert "call putbyte" not in self.comp("PRINT:\n+1 PRINT<=0")
+
+    def test_reader_without_in_still_consumes(self) -> None:
+        """A program declaring ``""`` but no IN reads the byte and drops it.
+
+        The interpreter writes ``new["IN"]`` into a dict with no IN
+        container, so the value is discarded on the next tick.
+        """
+        out = self.comp(":\n+1 T>=0\nT:\n+1 T>=T")
+        assert "call readqueue" in out
+        assert "sd   a0," not in out
+
+    def test_reader_with_in_stores_the_byte(self) -> None:
+        """With IN declared, the read lands in the *new* buffer.
+
+        Storing to ``new`` rather than ``old`` is what reproduces the
+        interpreter's clobber: the write happens after IN's own rules have
+        already computed a value for this tick.
+        """
+        out = self.comp(":\n+1 T>=0\nT:\n+1 T>=T\nIN=0:\n+1 T>=0")
+        assert "call readqueue\n" in out
+        assert "    sd   a0, 16(s2)\n" in out
+
+    def test_exit_fires_on_any_change(self) -> None:
+        """EXIT halts when its value *changes*, not on an edge to nonzero."""
+        out = self.comp("EXIT=5:\n-1 T>=0\nT:\n+1 T>=T")
+        assert "beq  t0, t1, .no_exit" in out
+
+    def test_clamp_is_once_per_container(self) -> None:
+        """``max(res, 0)`` wraps the whole rule sum, not each rule."""
+        out = self.comp("A=1:\n-1 A>=0\n-1 A>=0\n-1 A>=0\nEXIT=1:\n-1 A>=9")
+        assert out.count("bgez s3, .keep_0") == 1
+
+    def test_duplicate_declaration_shares_one_cell(self) -> None:
+        """Two containers of one name write the same cell, so the last wins.
+
+        The interpreter builds ``new`` as a dict comprehension keyed by
+        name, which is exactly what a second store to one cell reproduces.
+        """
+        out = self.comp("A=1:\n+1 T>=0\nA=2:\n+1 T>=0\nT:\n+1 T>=T")
+        assert out.count("sd   s3, 0(s2)") == 2
+
+    def test_far_cells_use_an_indirect_address(self) -> None:
+        """Past the 12-bit ``ld``/``sd`` offset, the address is computed.
+
+        The boolean generator needs ``2**n + 2n + 7`` containers, which
+        passes 255 at ``n == 8``, so this path is reached by real output
+        rather than only by a synthetic program.
+        """
+        lines = ["T:", "+1 T>=T"]
+        for i in range(300):
+            lines.append(f"C{i}={i}:")
+            lines.append(f"+1 T>={i % 5}")
+        out = self.comp("\n".join(lines))
+        assert "add  t6, s1, t6" in out
