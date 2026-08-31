@@ -80,7 +80,7 @@ REFERENCE_CASES = [
 # round-trip them; the others (jaune, bf_pda, ram0) get fixed programs with
 # known output.  Forbin is the only one whose programs read stdin, so its
 # cases carry a fifth element; everything else runs on empty input.
-COMPILER_CASES = []
+COMPILER_CASES: list[tuple[str, str, str, str] | tuple[str, str, str, str, str]] = []
 for text in ["Hi", "Hello, World!", "esolangs!"]:
     COMPILER_CASES.append(("bfstack", "bfstack", gen.bfstack(text), text))
     COMPILER_CASES.append(("suffolk", "suffolk", gen.suffolk(text), text))
@@ -110,9 +110,7 @@ COMPILER_CASES.append(("forth", "forth", "1{/}1;", ""))
 # over its whole input space.  Forbin's `in` is line-faithful (IO.input_char
 # takes one byte per line), so each input bit is its own line.
 _FORBIN_AND2 = gen_bool.forbin_boolean("0001")
-COMPILER_CASES.append(
-    ("forbin", "forbin", _FORBIN_HELLO, "Hello, World!")
-)
+COMPILER_CASES.append(("forbin", "forbin", _FORBIN_HELLO, "Hello, World!"))
 for _a in "01":
     for _b in "01":
         COMPILER_CASES.append(
