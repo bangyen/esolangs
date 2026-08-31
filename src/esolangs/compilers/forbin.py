@@ -238,7 +238,7 @@ class _Compiler:
         """
         kind = stmt[0]
         if kind == "return":
-            return self.emit_value(stmt[1], fn) + "    j    .ret\n"
+            return self.emit_value(stmt[1], fn) + f"    j    {self.ret_label}\n"
         if kind == "assign":
             return self.emit_assign(stmt, fn)
         if kind == "call":
@@ -249,21 +249,25 @@ class _Compiler:
     def emit_assign(self, stmt: tuple, fn: _Function) -> str:
         """Emit an assignment, binding each target in the current frame.
 
-        One right-hand value broadcasts to every target; otherwise targets
-        and values pair up positionally and a surplus on either side is
-        dropped, matching ``zip(..., strict=False)``.  ``_`` discards.
+        A single right-hand value is **re-evaluated once per target**, not
+        computed once and broadcast: ``_exec_stmt`` calls ``_eval`` inside
+        its target loop, so ``a,...,h = (in 0)`` performs eight reads --
+        which is exactly how the boolean generator loads an input byte.  A
+        ``_`` target is skipped entirely, so it consumes no read.
+        Otherwise targets and values pair up positionally and a surplus on
+        either side is dropped, matching ``zip(..., strict=False)``.
         """
         _, targets, rhs = stmt
         code = ""
         if len(rhs) == 1:
-            code += self.emit_value(rhs[0], fn)
             for name in targets:
                 if name != "_":
+                    code += self.emit_value(rhs[0], fn)
                     code += self.emit_bind(name)
             return code
         for name, value in zip(targets, rhs, strict=False):
-            code += self.emit_value(value, fn)
             if name != "_":
+                code += self.emit_value(value, fn)
                 code += self.emit_bind(name)
         return code
 
@@ -397,7 +401,14 @@ class _Compiler:
         returns 0, matching ``_call``'s ``result if result is not None else 0``.
         """
         table = self.emit_table(fn)
+        # The epilogue label is per-function: `return` inside nested loops
+        # jumps here to leave the whole function, as _exec_stmt does.
+        # Saved and restored because emitting this body can emit another
+        # function's, which would otherwise leave its label installed.
+        outer = getattr(self, "ret_label", None)
+        self.ret_label = f".ret{ind}"
         body = self.emit_stmts(fn.body, fn)
+        self.ret_label = outer
         return (
             f"# function {fn.name or '<anonymous>'} (index {ind})\n"
             f".fn{ind}:\n"
@@ -405,7 +416,7 @@ class _Compiler:
             f"    sd   ra, 0(sp)\n"
             f"{body}"
             f"    li   a0, 0\n"
-            f".ret:\n"
+            f".ret{ind}:\n"
             f"    ld   ra, 0(sp)\n"
             f"    addi sp, sp, 16\n"
             f"    ret\n"
@@ -503,7 +514,12 @@ class _Compiler:
             for ind in range(len(self.bodies))
         )
         jumps = "".join(
-            f".body{ind}:\n" + self.emit_table_store(ind) + f"    j    .fn{ind}\n"
+            f".body{ind}:\n"
+            + self.emit_table_store(ind)
+            # `call`, not `j`: the body must return here so the dispatch can
+            # restore the caller's frame before handing the value back.
+            + f"    call .fn{ind}\n"
+            + "    j    .dispatch_ret\n"
             for ind in range(len(self.bodies))
         )
         return (
