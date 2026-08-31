@@ -1300,9 +1300,23 @@ linear scan rather than a genuine representation limit.  See
   explored states — so that zero is a real negative and not a search of dead
   code.  The affine path's own reach is likewise measured rather than assumed:
   84/256 alone, unchanged by widening the multipliers to `±4`, the offsets to
-  `±16`, the spelling depth to 9, or the witness count to 16, against a
-  ceiling of 88 that the shared-cofactor law admits.  Majority-3 — the
-  smallest OR of disjoint subcubes — remains **unreached, not walled**.
+  `±16`, the spelling depth to 9, or the witness count to 16.  The 88 that the
+  shared-cofactor law admits is **not** a ceiling on this path: that law is a
+  necessary condition on the *last* input alone, and the search reaches 32
+  tables it does not admit while missing 36 that it does, so the two sets
+  cross rather than nest.  The bound on the affine path is therefore measured
+  and not derived, which is why 84 is reported as where every widening tried
+  stops rather than as a proved maximum.
+
+  Majority-3 — the smallest OR of disjoint subcubes — remains **unreached,
+  not walled**, and one obvious escape was tried and did not open it.  The
+  once-each embedding rule is a repo invariant rather than a language fact,
+  so relaxing it is the natural next lever; re-embedding an input at a second
+  slot (six layouts, up to ~9800 states each, with the tail check applied)
+  reached majority-3 in none of them.  That is a bounded search over one
+  gadget shape, so it is evidence about the layout and not a wall: what is
+  actually needed is a running total that survives a gadget that erases, and
+  there is one register.
 
 - **The Temporary Stack** — **this entry's argument is refuted; the removal
   rested on a bad negative.**  The entry claimed the auto-drain's `front - 1`
