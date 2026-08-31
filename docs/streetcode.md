@@ -444,116 +444,79 @@ ring existed.  Its two halves hold -- the conditional does re-decide every
 lap, and a counter on the lap does count down -- but its conclusion was an
 artifact of the interpreter's road detection, not of the language.
 
-## Earlier probing: what worked, what leaked
+## What the earlier probing got wrong
 
-The text generator (`esolangs.tools.text.streetcode`) emits a straight
-corridor whose size is `O(sum of |code point deltas|)` -- unary, unlike
-the repo's other text generators, which compress with multiplication
-loops (`factor_triple` gets the brainfuck family to `O(sqrt(value))`).
-Closing that gap needs `while (cell) { ... }`: a body the car
-re-traverses under the control of a counter. The two halves of that
-primitive were both demonstrated, but no ring composing
-enter -> lap x N -> exit was found *at the time*. This section records the
-traces so the next attempt does not re-derive them.
+Before the counting loop was found, six hand-drawn ring geometries all
+leaked, and this file concluded no enterable ring existed.  That conclusion
+was an artifact of the interpreter's road detection — the plumbing works —
+but the traces are kept, because the leak mechanism is real and a
+re-derivation would cost the same rounds.
 
-### The conditional is real, and re-decides every lap
+**Cutting a wall for an entry or exit road changes the lap**, so any travel
+direction measured on the uncut ring is void afterwards.  The right-hand hug
+then treats the cut as an open road on the car's right and drives out through
+it.  Concretely: an entry joined to a run the lap travels in the *opposite*
+direction is seen as open-to-the-right on the return leg, so the car escapes
+onto the entry corridor and re-crosses the seed, re-raising the counter
+(3 -> 6 -> 9) instead of letting it fall; cutting the outer wall to admit that
+entry re-routed the lap so the gap was traversed *outward*, into a dead end;
+and seeding anywhere on the lap itself never terminates, since every cell is
+re-crossed, so a `+1` seed against a `-1` body oscillates 0/1 forever.
 
-On the wiki infinite-loop example -- the ring the interpreter provably
-laps (17 cells, pinned by
-`test_infinite_loop_example_traces_its_17_cell_lap`) -- the junction at
-`(2, 2)` approached heading East offers `roads=['E', 'S']`. With the
-cell at 0 the car takes `E` (the plain lap, which is why the committed
-example loops forever); with the cell nonzero it takes `S` instead, and
-it re-decides on **every** lap, not once. So this is a genuine per-lap,
-cell-keyed, two-way branch, and its polarity is the countdown one:
-nonzero continues into the body, zero leaves.
+The invariant these imply: the lap must pass the entry gap **travelling the
+entry's own direction** — a mouth behind the car is `back`, and
+`_junction_choices` never offers `back`, so a tangential join is invisible
+while lapping.  That has to be checked on the *cut* grid, not the uncut one.
 
-### A counter on the lap does count down
+Two facts from that probing survive unchanged and are worth keeping:
 
-With the seed placed on an entry corridor rather than on the lap, the
-counter decrements once per lap as the car crosses a `~` on the ring
-(observed 3 -> 2, then 6 -> 5 on the following lap). Neither latching
-nor non-detection is an obstacle: `_junction_kind` fires on each
-arrival and the cell is re-read each time.
-
-### What could not be built: a ring you can enter and leave
-
-Six hand-drawn geometries all leaked, each differently, and the
-recurring mechanism is this: **cutting a wall for an entry or exit road
-changes the lap**, so any travel direction measured on the uncut ring is
-void afterwards. The right-hand hug then treats the cut as an open road
-on the car's right and drives out through it. Concretely:
-
-- An entry joined to a run the lap travels in the *opposite* direction
-  is seen as open-to-the-right on the return leg, so the car escapes
-  onto the entry corridor and re-crosses the seed, which re-raises the
-  counter (3 -> 6 -> 9 ...) instead of letting it fall.
-- Cutting the outer wall to admit that entry re-routed the lap so the
-  gap was traversed *outward*, into the entry corridor's dead end, and
-  the car bounced back across the seed twice per excursion.
-- Seeding anywhere on the lap itself never terminates: every cell of the
-  17-cell lap is re-crossed, so the seed's `^`s re-apply each lap and
-  fight the body's `~` (a `+1` seed against a `-1` body oscillates 0/1
-  forever).
-
-The invariant these imply, for anyone picking this up: the lap must pass
-the entry gap **travelling the entry's own direction** -- a mouth behind
-the car is `back`, and `_junction_choices` never offers `back`, so a
-tangential join is invisible while lapping. That has to be checked on
-the *cut* grid, not the uncut one. A mechanical sweep over small ring
-shapes, rather than hand-drawing, is the way to find such a geometry (or
-to establish that none of the small ones work); one was started but not
-completed.
-
-So `O(value)` stands for the Streetcode text generator today, and the
-straight corridor is what ships -- but on the evidence above the barrier
-is the entry/exit plumbing, **not** the absence of a loop construct. The
-boolean generator is consistent with this: its loops are driven by `I`
-reading fresh input and each is traversed once per run, so it never
-needs to solve the re-entry problem.
-
-**Superseded.** The barrier was narrower still: the plumbing works, and
-the leaks recorded here were the interpreter offering roads that are not
-roads.  See "The counting loop" above.  The generator now uses the ring
-for its first character (`_streetcode_ring`): the hand-written loop's
-nine-by-eight is not a minimum, since blanking cells shortens a factor
-and widening the island lengthens one, so the ring makes any
-`counter * per_lap` and a remainder walked on the street covers the
-rest.  Later characters keep the straight corridor of increments --
-their deltas are the gaps between adjacent code points, and a gap that
-small is cheaper walked than ringed.
-
-Chaining rings on one street also works (a second ring's descent gap
-placed after the first ring's `O`, with `_` resetting CP and a fresh
-`^` run seeding the next counter), so the entry/exit plumbing composes;
-the generator does not use it yet, because only the first character has
-a delta large enough to be worth a ring.
-
-**The ring survives a width.**  The ring applies on the folded path too,
-not only the unfolded one: a caller passing a `width` -- which
-`scripts/write_examples.py` does for every example -- would otherwise get
-the plain serpentine and no loop at all.  Folding does not make the first
-character's walk cheaper; it packs the same unary run into more rows.  The two layouts compose (`_streetcode_ring_serpentine`): the fold
-fills its lane pairs bottom-up and starts the car in the lowest
-eastbound lane, which is exactly where the ring prefix belongs, and the
-block hangs below the grid's southern wall, where the fold has built
-nothing.  `Hello, World!` at width 80 goes 809 -> 650 bytes.  A ring
-whose prefix will not fit one lane leaves the plain fold standing -- a
-CJK plan wants a remainder of 18453 -- rather than being re-planned to
-suit the width: what a ring costs is what it costs, and the two finished
-programs are compared as they are.
+- **The conditional re-decides every lap.**  On the wiki infinite-loop
+  example, the junction at `(2, 2)` approached heading East offers
+  `roads=['E', 'S']`; with the cell at 0 the car takes `E`, with it nonzero
+  `S`, re-decided on every lap.  A genuine per-lap, cell-keyed, two-way
+  branch, with the countdown polarity: nonzero continues, zero leaves.
+- **A counter on the lap counts down.**  With the seed on an entry corridor
+  rather than the lap, the counter decrements once per lap as the car crosses
+  a `~` (observed 3 -> 2, then 6 -> 5).  `_junction_kind` fires on each
+  arrival and the cell is re-read each time, so neither latching nor
+  non-detection is an obstacle.
 
 ### Two pitfalls worth keeping
 
-- A cell that reaches exactly 0 *inside* one of these hallways sends the
-  car into an unterminated lap (no halt, no error).
+- A cell that reaches exactly 0 *inside* one of these hallways sends the car
+  into an unterminated lap (no halt, no error).
 - A parameterized drive-through hallway (the boolean generator's
-  `_streetcode_hallway`, with the row count varied) lands a cell on
-  exactly `2 * rows + 2`, confirmed to 100 rows, and hallways in series
-  compose additively. That is unary rotated 90 degrees -- grid *height*
-  proportional to the value -- so it compresses nothing on its own. Its
-  conditional half does work: zero at the mouth skips the hallway,
-  nonzero enters it.
+  `_streetcode_hallway`, with the row count varied) lands a cell on exactly
+  `2 * rows + 2`, confirmed to 100 rows, and hallways in series compose
+  additively.  That is unary rotated 90 degrees — grid *height* proportional
+  to the value — so it compresses nothing on its own.  Its conditional half
+  does work: zero at the mouth skips the hallway, nonzero enters it.
+
+## What the ring buys
+
+The generator uses the ring for its first character (`_streetcode_ring`).
+The hand-written nine-by-eight is not a minimum: blanking cells shortens a
+factor and widening the island lengthens one, so the ring makes any
+`counter * per_lap`, with a remainder walked on the street.  Later characters
+keep the straight corridor of increments — their deltas are the gaps between
+adjacent code points, and a gap that small is cheaper walked than ringed.
+Chaining rings on one street also works (a second ring's descent gap placed
+after the first ring's `O`, with `_` resetting CP and a fresh `^` seeding the
+next counter), so the plumbing composes; the generator does not use it yet,
+since only the first character has a delta worth a ring.
+
+**The ring survives a width.**  It applies on the folded path too, not only
+the unfolded one — a caller passing a `width`, which `scripts/write_examples.py`
+does for every example, would otherwise get the plain serpentine and no loop
+at all.  Folding does not make the first character's walk cheaper; it packs
+the same unary run into more rows.  The two layouts compose
+(`_streetcode_ring_serpentine`): the fold fills its lane pairs bottom-up and
+starts the car in the lowest eastbound lane, exactly where the ring prefix
+belongs, and the block hangs below the grid's southern wall where the fold has
+built nothing.  `Hello, World!` at width 80 goes 809 -> 650 bytes.  A ring
+whose prefix will not fit one lane leaves the plain fold standing rather than
+being re-planned to suit the width: what a ring costs is what it costs, and
+the two finished programs are compared as they are.
 
 ### The ring in the boolean generator
 
