@@ -12,6 +12,7 @@ from esolangs.tools.boolean.helpers import (
     best_input_order,
     essential_inputs,
     minterm_literals,
+    read_at,
 )
 from esolangs.tools.boolean.laserfuck import laserfuck
 from esolangs.tools.boolean.streetcode import streetcode
@@ -960,7 +961,20 @@ def bit_tilde(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
 
-    table, use_complement = _maybe_complement(truth_table)
+    # A table that ignores some of its inputs is a smaller table, and every
+    # cost here is per *one-row* and per *input within it*: each minterm
+    # pre-copies one cell per input and nests one ``{`` test per input, so
+    # dropping an input removes rows and shortens the rows that remain.
+    # The reads stay -- one ``)`` per input, and they are the interface --
+    # so the ignored inputs are still read into their own cells and simply
+    # never copied out of them.
+    used = essential_inputs(truth_table, n) or [0]
+    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
+
+    table, use_complement = _maybe_complement(reduced)
+    # Reads keep their original cells (input ``i`` lands at ``8i+7``), so a
+    # minterm's ``level`` indexes into ``used`` rather than into ``range(n)``.
+    width = len(used)
 
     prog: list[str] = []
     pos = 0
@@ -995,14 +1009,24 @@ def bit_tilde(truth_table: str) -> str:
 
     scratch = 8 * n
     uses: dict[tuple[int, int], int] = {}
-    for i in range(n):
+    if 0 not in used:
+        # ``(`` prints cell 7's window, and input 0's bit lands there, so it
+        # has to be consumed whether or not the table depends on it.  When
+        # input 0 is essential the first copy below does that as a side
+        # effect; when it is *ignored* nothing else touches cell 7, and the
+        # output comes out as the input bit rather than the answer -- which
+        # is exactly the 16 tables at ``n <= 3`` that ignore input 0.
+        move(7)
+        prog.append("{ ~ }")
+        pos = 7
+    for slot, i in enumerate(used):
         src = 8 * i + 7
-        for k in range(2**n):
+        for k in range(2**width):
             # only one-rows' indicators are used; the first input-0 copy must
             # still run to consume the input bit out of cell 7
-            if table[k] != "1" and not (i == 0 and k == 0):
+            if table[k] != "1" and not (slot == 0 and i == 0 and k == 0):
                 continue
-            c = (k >> (n - 1 - i)) & 1
+            c = (k >> (width - 1 - slot)) & 1
             use = scratch
             keep = scratch + 1
             scratch += 2
@@ -1012,7 +1036,7 @@ def bit_tilde(truth_table: str) -> str:
                 move(use)
                 prog.append("~")
                 pos = use
-            uses[(k, i)] = use
+            uses[(k, slot)] = use
 
     result = scratch
     scratch += 1
@@ -1025,7 +1049,7 @@ def bit_tilde(truth_table: str) -> str:
 
     def node(level: int, k: int) -> None:
         nonlocal pos
-        if level == n:
+        if level == width:
             set_result()
             return
         use = uses[(k, level)]
@@ -1038,7 +1062,7 @@ def bit_tilde(truth_table: str) -> str:
         pos = use
         prog.append("}")
 
-    for k in range(2**n):
+    for k in range(2**width):
         if table[k] == "1":
             node(0, k)
 
