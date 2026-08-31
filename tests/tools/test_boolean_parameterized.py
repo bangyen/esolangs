@@ -247,6 +247,36 @@ def test_minifuck_reconvergence_declines_outside_one_or_two_essentials() -> None
     assert module._reconverged("01011010", [0, 1, 2], 3) is None  # noqa: SLF001
 
 
+def test_minifuck_single_essential_falls_past_the_degenerate_lookup() -> None:
+    """One essential input does not guarantee the cell lookup resolves it.
+
+    ``len(essential) <= 1`` sends a table to ``_degenerate``, which answers
+    from a column of the embed rather than searching.  A projection onto the
+    *last* input has no such column, so ``_degenerate`` declines and the
+    build continues to the staged and searching routes below it -- the only
+    way that fall-through is taken.
+    """
+    import importlib
+
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.minifuck import run
+    from esolangs.tools.boolean.examples import _fill_minifuck
+
+    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+    for table in ("01010101", "10101010"):
+        assert module._essential_inputs(table, 3) == [2]  # noqa: SLF001
+        assert module._degenerate(table, 3) is None  # noqa: SLF001
+
+        # Declining is only correct if the build still produces the table.
+        template = module.minifuck(table)
+        for combo in range(8):
+            bits = [(combo >> (2 - i)) & 1 for i in range(3)]
+            io_ = ScriptedIO("")
+            run(_fill_minifuck(template, bits), io_)
+            assert io_.getvalue() == table[combo], f"{table} inputs {bits}"
+
+
 def _drawing(template: str) -> str:
     """The template with every placeholder *name* erased.
 
