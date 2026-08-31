@@ -182,7 +182,7 @@ verdict is in the commit history.  ``(removed)`` marks languages whose
 interpreter, generator, and tests were deleted from the repo.
 
 - **2 Bits 1 Byte** (removed): joke; single-byte program, no text or boolean generator, externally implemented.
-- **2dFish** (removed): its `(...)*` capture-and-print makes its true generator floor a literal-embed, and its boolean generator was separately walled as affine-only with no total once-embedding construction — the same criterion The Temporary Stack was removed under.
+- **2dFish** (removed): its `(...)*` capture-and-print makes its true generator floor a literal-embed, and its boolean generator was separately walled as affine-only with no total once-embedding construction — the same generator-story criterion The Temporary Stack was removed under.
 - **Aaargh++**: 4D work-in-progress with a partial spec.
 - **Albabet** (removed): straight-line two-register accumulator; no conditional at all, so no boolean generator.
 - **ALT-4**: stack-based concurrent language with no input or output commands.  Baking input into the program is not disqualifying — it *is* the parameterized convention, and the wiki supplies both an infinite loop and a truth-machine, so a termination-convention generator is the natural fit.  What is unbuilt is the general construction: a single file's stack holds only zeroes, so it is one unary counter with an emptiness test, and an arbitrary table needs a decision tree over that.  Separately, `2` multithreads by *filename*, which is the file/OS-based I/O the criteria exclude — a generator can avoid `2`, an interpreter cannot.  Reopened as a candidate pending both.
@@ -224,7 +224,7 @@ interpreter, generator, and tests were deleted from the repo.
 - **Stackint**: output is an optional interpreter dump, and input is a single number per run.
 - **State and Main**: one `main` argument, no output, no conditional; a boolean generator could reach at most one input.
 - **Stun Step** (removed): no input; invented dump and a one-bit halt-vs-loop wall; sole implementation removed anyway.
-- **The Temporary Stack** (removed): its text generator is a literal-embed and its boolean generator was walled — the auto-drain's `front - 1` output can't be `'0'`/`'1'` and there is no input-dependent branch.  Under the tightened generator-story criterion (a literal-embed text generator needs a boolean generator), that made it inadmissible; the wall argument is in [`docs/walls.md`](walls.md).
+- **The Temporary Stack** (removed): its text generator is a literal-embed, and under the tightened generator-story criterion (a literal-embed text generator needs a boolean generator) that made it inadmissible.  **The boolean wall it was also removed under is refuted** — the drain condition `sum(stk[1:]) / 2 > stk[0]` *is* an input-dependent branch, and numeric mode prints `front - 1` as text so a front of 1 or 2 gives `'0'`/`'1'` directly.  What the language actually supports is a *partial* generator (9 of 16 two-input tables, roughly ArrowQueue's threshold class), since the four XOR-like tables need an input-gated silent death that does not exist.  Whether that clears the bar is an open judgement; see [`docs/walls.md`](walls.md).
 - **Trash** (removed): advance-to-next-prime gadget; can never print `1`.
 - **Uack**: total; no output.
 - **Vandevelo**: input-only, no output at all — but a termination-convention generator needs no output, so that alone no longer settles it.  It is the strongest of the reopened cases: `Inp` is *real* input (no substitution needed), `::` is JavaScript `&&` and the `-!>`/`~!>` forms negate, so AND-with-NOT is functionally complete; the wiki's own truth-machine already answers by termination.  The open question is hang detection, not expressiveness: the loop is lazy self-reference rather than a revisited machine state, so state-cycle detection may not apply.  Reopened as a candidate; no construction built.
@@ -306,9 +306,11 @@ proof outside it is checked by no automation — the gap that let
 was removed (its subject, the branch-free `_bf_minterm` construction, had
 itself been deleted when folding made it unreachable).
 
-The one open theorem, if more Lean work is ever wanted, is the Minifuck
-boolean *reading*-model characterization: exactly the four one-input
-functions plus the eight 0-preserving two-input tables — a language-power
-statement of the same shape as the `%^2^-1` wall, which is the worked
-precedent.  It bounds the reading model only; the shipped generator embeds
-its inputs instead and builds every table at `n <= 3`.
+No comparable Minifuck theorem is open.  The candidate used to be a
+characterization of its *reading* model — exactly the four one-input
+functions plus the eight 0-preserving two-input tables — but that statement
+is false: a reading construction builds and verifies all sixteen two-input
+tables on the shipped interpreter, and the searches that suggested otherwise
+were length-bounded well below the 88-148 characters it needs.  See
+[`docs/walls.md`](walls.md).  The shipped generator embeds its inputs instead
+and builds every table at `n <= 3`.
