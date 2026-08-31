@@ -253,7 +253,7 @@ worse columns.
 
 **The cost this buys, stated plainly.**  At `n <= 3` the derivation stops
 early because every table is placed.  At four it cannot — 76% is unreachable
-— so the enumeration always runs to its caps, about six minutes, paid once
+— so the enumeration always runs to its caps, about 76 seconds, paid once
 per process by the first fully-essential four-input table whether it hits or
 misses.  The caps are not slack: coverage climbs to both of them (12256
 tables at `k <= 24` against 15404 at 28), so trimming to buy time trims

@@ -51,7 +51,7 @@ polarities and prints ``NOT(v XOR cell7)``, so the complement costs nothing.
 **Coverage.**  Every table at ``n <= 3`` builds from a staging, with no
 search: 16 of 16 at two inputs, 256 of 256 at three.  All but one pair are
 derived, and the derivation is done for a whole arity at a time -- measured,
-0.4s for two inputs and 6.6s for three, against minutes if each table sweeps
+0.15s for two inputs and 2.4s for three, against minutes if each table sweeps
 for itself.  So the first three-input table costs the arity and the other
 255 are free; that is the trade deriving makes against storing.
 
@@ -688,24 +688,50 @@ def _pool_reaches(j: _Joint, code: str, cell7: int, walk_out: int) -> bool:
     return True
 
 
+# What :func:`_find_pool_cached` probes with.  The verdict is invariant in
+# the walk out (measured over 9..39, no ``(site, code)`` pair changes answer),
+# so the search needs *a* value and not the caller's; naming one here is what
+# lets the memo key omit it.  The smallest legal accumulator, since
+# :func:`_endgame` rejects anything under 8 and the probe should sit where
+# every caller's does or further left.
+_PROBE_WALK_OUT = 9
+
+
 @cache
 def _find_pool_cached(
     site: tuple[tuple[object, ...], ...],
     cell7: int,
-    walk_out: int,
     codes: tuple[str, ...],
 ) -> str | None:
     """:func:`_find_pool` keyed on the joint's state, memoised.
 
     The search is the build's hot spot -- it walks every pool code through
-    every row of the joint, and at ``n == 3`` parity that is 56 million
-    ``_Sim.exec`` calls, over half the build.  Almost all of it is repeated:
-    the same joint state is reached from many plans, so 30167 calls resolve
-    to 572 distinct sites, a 98% hit rate.
+    every row of the joint, and re-running it is most of what a derivation
+    would otherwise spend its time on.  Almost all of it is repeated, because
+    the same joint state is reached from many plans: at four inputs, 474170
+    hits against 8390 misses, a 98.3% hit rate.
 
-    Keyed without ``walk_out`` deliberately -- see :func:`_find_pool` for
-    why the verdict does not depend on it.  It is still passed through to
-    the probe so a cache miss runs exactly the search it always ran.
+    (The "56 million ``_Sim.exec`` calls" and "30167 calls to 572 sites" this
+    docstring used to quote were measured when ``walk_out`` was still in the
+    key, so they describe a memo that was splitting entries -- kept out of the
+    numbers above rather than carried forward as though they still held.)
+
+    ``walk_out`` is *not* a parameter, which is the whole point -- see
+    :func:`_find_pool` for why the verdict does not depend on it.  It was one
+    once, and that silently halved the memo: the verdict is invariant in
+    ``walk_out`` but the key was not, so every accumulator split one entry
+    into many.  The hit rate ran at 50% while this docstring claimed 98%, and
+    dropping ``walk_out`` from the key took the whole four-input derivation
+    from 330s to 76s and the three-input one from 6.6s to 2.4s, with every
+    template byte-identical.  A cache key that disagrees with the prose is worth
+    more than a comment: this now takes only what the answer depends on, so
+    the two cannot drift apart again.
+
+    The search still needs *a* ``walk_out`` to probe with, and by the same
+    invariance any will do, so the miss path uses :data:`_PROBE_WALK_OUT`.
+    That is not a default standing in for the caller's value -- it is the
+    statement that the value cannot matter, which the invariance measurement
+    backs and :func:`_find_pool` documents.
 
     ``codes`` *is* in the key, and is the reason this takes the list as an
     argument rather than reading the module global.  The pool codes are
@@ -717,7 +743,7 @@ def _find_pool_cached(
     j = _Joint.__new__(_Joint)
     j.ms = [_Sim.restore(k) for k in site]
     for code in codes:
-        if _pool_reaches(j, code, cell7, walk_out):
+        if _pool_reaches(j, code, cell7, _PROBE_WALK_OUT):
             return code
     return None
 
@@ -734,11 +760,13 @@ def _find_pool(j: _Joint, cell7: int, walk_out: int) -> str | None:
     window state rather than through how far right the accumulator sits.
 
     That invariance is what lets the memo below drop ``walk_out`` from its
-    key: two calls differing only in it are the same question.
+    key: two calls differing only in it are the same question.  ``walk_out``
+    is therefore accepted and not forwarded -- it stays in the signature
+    because callers reason in terms of their own accumulator, and dropping it
+    would push the invariance argument out to every call site.
     """
-    return _find_pool_cached(
-        tuple(m.key() for m in j.ms), cell7, walk_out, tuple(_POOL_CODES)
-    )
+    del walk_out
+    return _find_pool_cached(tuple(m.key() for m in j.ms), cell7, tuple(_POOL_CODES))
 
 
 def _endgame(j: _Joint, acc: int, read: str, cell7: int) -> None:
@@ -1098,8 +1126,8 @@ def _reconverged(truth_table: str, essential: list[int], n: int) -> str | None:
 # cheap to test against a table, so the loops go staging-major: one embed per
 # (separator, settle), the bracket run extended one instruction at a time,
 # and the endgame emitted once per (k, accumulator, read, orientation)
-# whatever the table.  Measured, the whole three-input arity derives in 6.6s
-# and two inputs in 0.4s; the table-major spelling of the same search costs
+# whatever the table.  Measured, the whole three-input arity derives in 2.4s
+# and two inputs in 0.15s; the table-major spelling of the same search costs
 # minutes, because it rebuilds every staging once per table.  (Those two were
 # 15s and 0.9s when this was written and are re-measured here rather than
 # carried forward -- a timing in prose ages against every change under it.)
@@ -1246,7 +1274,7 @@ _Staging = tuple[int, int, int | str, int]
 # derivation stops early: every table is placed, so ``remaining`` reaches
 # zero partway through.  At four it never can -- 76% of the arity is
 # unreachable -- so the enumeration always runs to its caps, measured at
-# about six minutes.  That is paid by the first fully-essential four-input
+# about 76 seconds.  That is paid by the first fully-essential four-input
 # table in a process whether it hits or misses, and :func:`_derived_plans` is
 # cached, so it is paid once.  Constants, projections and any table with an
 # ignored input are answered by the degenerate and projection routes in
