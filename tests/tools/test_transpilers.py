@@ -1022,3 +1022,33 @@ def test_streetcode_multiple_outputs_are_rejected() -> None:
     """LaserFuck prints its tape once, so only a single final ``O`` is in class."""
     with pytest.raises(ValueError, match="must be the last command"):
         esolangs.transpile("Streetcode", "LaserFuck", _street_corridor("C^O^O;"))
+
+
+# A ring road two lanes wide around a solid island, with no ';' anywhere:
+# the car laps it forever.  Nothing on it steers, so this is the one
+# rejection that reaches the walk's cycle guard rather than its junction
+# check.
+STREET_DONUT = "\n".join(
+    [
+        "+------+",
+        "|C     |",
+        "|      |",
+        "|  --  |",
+        "|  --  |",
+        "|      |",
+        "|      |",
+        "+------+",
+    ]
+)
+
+
+def test_streetcode_endless_ring_is_rejected() -> None:
+    """A ring with nothing to stop the car has nothing to translate.
+
+    The interpreter validates that the car can always drive *out* of a
+    square, not that it ever stops, so a program that never halts reaches
+    the transpiler intact and the walk has to notice the repeat itself.
+    """
+    with pytest.raises(ValueError, match="nothing to stop it") as caught:
+        esolangs.transpile("Streetcode", "LaserFuck", STREET_DONUT)
+    assert "the program does not halt" in str(caught.value)
