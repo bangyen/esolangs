@@ -1335,8 +1335,25 @@ class TestSuffolk:
         length rose monotonically with the ones-count.  Now it peaks at half
         and falls again -- the signature of picking whichever row-set is
         smaller -- which is what this pins.
+
+        **Every table here depends on all three inputs**, which the prefix
+        family ``1^k 0^(8-k)`` does not: ``11110000`` ignores two of them,
+        and since dependency reduction (10) shipped it is the *cheapest*
+        table of the seven rather than the dearest, so the peak-at-half
+        signature reads as broken when it is only being measured through a
+        second optimization.  Holding the arity fixed isolates the
+        complement, which is what this test is about.
         """
-        lengths = [len(boolean.suffolk("1" * k + "0" * (8 - k))) for k in range(1, 8)]
+        tables = (
+            "10000000",  # 1 one
+            "10010000",  # 2
+            "11100000",  # 3
+            "11101000",  # 4
+            "11111000",  # 5
+            "11111001",  # 6
+            "11111110",  # 7
+        )
+        lengths = [len(boolean.suffolk(table)) for table in tables]
         assert lengths[3] == max(lengths)  # four ones is the worst case
         assert lengths[6] < lengths[3]  # seven ones is cheaper than four
         # and roughly as cheap as its one-one mirror image
