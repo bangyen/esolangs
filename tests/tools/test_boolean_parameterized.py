@@ -2093,9 +2093,11 @@ class TestParameterizedMinifuck:
     def test_all_two_input_tables(self) -> None:
         """Every two-input table builds, including the ones the wall named.
 
-        ``docs/walls.md`` records NAND, NOR and XNOR as unreachable.  That
-        is true of programs that *read* their inputs; embedding them lifts
-        it, and this is the check that says so.
+        A wall once recorded NAND, NOR and XNOR as unreachable.  It does not
+        hold either way round: embedding lifts it, which is what this checks,
+        and ``docs/walls.md`` now also records a *reading* construction
+        verifying all sixteen -- the searches behind the original claim were
+        length-bounded well below what it needs.
 
         No longer marked ``slow``: two inputs come from a derived staging
         rather than a search, so all sixteen build in about a second
