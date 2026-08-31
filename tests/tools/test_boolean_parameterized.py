@@ -3964,14 +3964,17 @@ class TestParameterizedPctSquaredMinusOne:
         their setters are the identity on both branches -- which is what makes
         the coverage wider than the single-minterm family.
         """
-        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.pct_squared_minus_one import _cascade
 
+        # The cascade is asked directly rather than through the generator,
+        # which now falls back to the composed-affine path when no subcube
+        # serves -- counting the generator's successes would measure both
+        # constructions and no longer pin this one.
         built = 0
         for value in range(256):
             table = format(value, "08b")
-            try:
-                template = parameterized.pct_squared_minus_one(table)
-            except ValueError:
+            template = _cascade(table, 3)
+            if template is None:
                 continue
             built += 1
             for row in range(8):
@@ -3985,6 +3988,69 @@ class TestParameterizedPctSquaredMinusOne:
         # rejects an empty ON-set.  Pinned so a regression in the acceptor is
         # caught rather than passing quietly.
         assert built == 2 * 3**3 - 2 * 3 == 48
+
+    # The cost is the three-input composition, which is derived once for the
+    # whole arity and cached -- 4.9s on the first table and free thereafter,
+    # so it is the arity that is marked, not this table.
+    @pytest.mark.slow
+    def test_affine_path_builds_three_input_parity(self) -> None:
+        """XOR3 builds, which no subcube is and the cascade refuses.
+
+        Parity is the canonical table outside the subcube family: its ON-set
+        is four disjoint minterms, so no conjunction of literals describes it
+        and neither does its complement.  It composes from one affine setter
+        per input instead, which is the construction that lifts the cap.
+        """
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.pct_squared_minus_one import _cascade
+
+        table = "01101001"
+        assert _cascade(table, 3) is None, "parity is not a subcube"
+        template = parameterized.pct_squared_minus_one(table)
+        for row in range(8):
+            bits = [(row >> (2 - k)) & 1 for k in range(3)]
+            assert self.run_pct(self.instantiate(template, bits)) == table[row]
+
+    @pytest.mark.slow
+    def test_affine_path_instantiations_share_a_length(self) -> None:
+        """A composed-affine program leaks nothing through ``len()``.
+
+        The branches are respelled to a common width rather than padded with
+        ``pp``, so this checks the property the respelling is there to keep.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.pct_squared_minus_one("01101001")
+        lengths = {
+            len(self.instantiate(template, [(row >> (2 - k)) & 1 for k in range(3)]))
+            for row in range(8)
+        }
+        assert len(lengths) == 1, lengths
+
+    @pytest.mark.slow
+    def test_three_input_coverage_is_what_the_docs_say(self) -> None:
+        """The two constructions together build exactly 86 of the 256 tables.
+
+        Pinned because the number is the cap this generator advertises: the
+        cascade's 48 subcubes plus the composed-affine path, which alone
+        reaches 84 and overlaps the cascade on all but two.  Every table that
+        builds is executed, so a construction that grew coverage by emitting a
+        wrong program fails here rather than raising the count.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        built = 0
+        for value in range(256):
+            table = format(value, "08b")
+            try:
+                template = parameterized.pct_squared_minus_one(table)
+            except ValueError:
+                continue
+            built += 1
+            for row in range(8):
+                bits = [(row >> (2 - k)) & 1 for k in range(3)]
+                assert self.run_pct(self.instantiate(template, bits)) == table[row]
+        assert built == 86
 
     def test_non_subcube_table_refused_not_miscomputed(self) -> None:
         """A table the cascade cannot build is refused rather than served wrong.
