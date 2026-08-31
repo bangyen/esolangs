@@ -301,7 +301,20 @@ rewrite:
     them.
 
   So the shipped class is the programs the tape never steers, and drawn
-  control flow is rejected rather than mistranslated.  Lowering it would
+  control flow is rejected rather than mistranslated.
+
+  **What that leaves in practice.**  The text generator emits a single
+  straight street -- no branching at all -- so its output is in class, but
+  only *unwrapped*: the default folds the line into a boustrophedon to save
+  columns, and the fold is a ring the car steers around, which is not.
+  Asked for a width wide enough to keep one row (`generate(..., width=N)`
+  with a large `N`), one-character texts transpile and round-trip; longer
+  ones are then rejected by the target's output convention rather than by
+  control flow, since a LaserFuck program prints its tape once and so
+  carries a single `O`.  The boolean generator's programs are out on the
+  tree argument above, and both checked-in `examples/` programs are wrapped.
+  So the in-class set is real but narrow: unwrapped single-character text
+  generation, and hand-drawn corridors.  Lowering it would
   need scratch cells and a converged answer -- a compiler, which is what
   separates the two halves of this bullet.  The boolean generator's
   Streetcode programs are further out still: they are decision trees whose

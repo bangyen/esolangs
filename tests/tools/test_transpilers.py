@@ -1052,3 +1052,36 @@ def test_streetcode_endless_ring_is_rejected() -> None:
     with pytest.raises(ValueError, match="nothing to stop it") as caught:
         esolangs.transpile("Streetcode", "LaserFuck", STREET_DONUT)
     assert "the program does not halt" in str(caught.value)
+
+
+@pytest.mark.parametrize("text", ["A", "x", "Z", "0"])
+def test_streetcode_unwrapped_text_generator_is_in_class(text: str) -> None:
+    """The text generator's own output transpiles, so long as it is not folded.
+
+    The generator draws a single straight street with no branching, which
+    is exactly the supported class -- but only at a width that keeps it on
+    one row.  The default folds the line into a boustrophedon, and the fold
+    is a ring the car steers around, so the wrapped form is rejected.
+    """
+    program = esolangs.generate("Streetcode", text, 100_000)
+    laserfuck = esolangs.transpile("Streetcode", "LaserFuck", program)
+    assert esolangs.run("LaserFuck", laserfuck) == esolangs.run("Streetcode", program)
+
+
+def test_streetcode_wrapped_text_generator_is_rejected() -> None:
+    """The default (folded) form of the same program is out of class."""
+    with pytest.raises(ValueError, match="the car steers on the tape"):
+        esolangs.transpile(
+            "Streetcode", "LaserFuck", esolangs.generate("Streetcode", "A")
+        )
+
+
+def test_streetcode_multi_character_text_hits_the_output_convention() -> None:
+    """Longer texts are refused by the target, not by the control-flow wall.
+
+    A LaserFuck program prints its tape once when the last laser dies, so
+    it carries a single ``O``; the generator emits one per character.
+    """
+    program = esolangs.generate("Streetcode", "hi", 100_000)
+    with pytest.raises(ValueError, match="must be the last command"):
+        esolangs.transpile("Streetcode", "LaserFuck", program)
