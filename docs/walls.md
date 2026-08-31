@@ -374,6 +374,72 @@ One thing this does *not* establish: it is a family-level negative with a
 mechanism, not an exhaustion proof.  Nothing here forbids a composing
 construction that does not route its intermediate through the pointer.
 
+### The staging → table map is a hash, not an index
+
+The natural question after "the enumeration is brute force" is whether it
+*has* to be — whether each button could be characterised, so a table could be
+routed to the staging that serves it instead of sweeping.  Measured, no.
+
+**First, a methodological trap that produced a wrong answer before the right
+one.**  The obvious object to analyse is the *assignment* — which staging
+each table was given.  That object is contaminated by the first-hit rule:
+separator 0 is enumerated first and claims everything it reaches, so the
+later coordinates hold only leftovers.  Statements read off it ("separator 2
+serves 72 tables, degrees 2 and 3") describe greedy residue, not separator
+2's reach, and any predictiveness test inherits the contamination.
+
+The honest object is the full many-to-many **relation** — every
+`(separator, settle, suffix, accumulator, read, orientation)` against every
+column it prints, with no dedup.  Built at each arity (2s / 76s / 143s) it is
+what the numbers below are measured on.
+
+**No invariant tested yields a rule.**  At `n == 4`, where both sides are
+exhaustive — every essential table, and the family's complete reach at the
+shipped caps — reachability was measured *by class*, against a base rate of
+15404/64594 = **23.85%**:
+
+| class | result |
+|---|---|
+| ANF degree | flat (1.01x at degree 4); no discrimination |
+| ANF monomial support = consecutive intervals | 3.3% of reachable vs 2.8% of random — **noise** |
+| ANF sparsity | identical distributions (median 8, max 16 both sides) |
+| Hamming weight | **strong, symmetric**: 78.4% at weight 2 and 14, falling monotonically to 18.8% at weight 8 |
+| nonlinearity | 1.79x at the near-affine end, 0.92x in the middle |
+
+The consecutive-interval hypothesis is the one that was *derived from the
+mechanism* — the `[` cascade is a skip-carry over adjacent cells in a
+rightward-only language, so interval-shaped monomials looked likely — and it
+is flatly refuted.  Worth recording as a mechanism-plausible guess that the
+measurement killed.
+
+**The weight and nonlinearity signals are real and still buy nothing
+sound.**  Both are exhaustively measured, and the weight curve's symmetry
+about 8 is exactly what complement-closure demands, so this is structure
+rather than noise.  It is also coherent with the mechanism: a family built
+from prefix-XORs plus one cascade term should over-represent near-affine and
+unbalanced tables.  But **no weight class is empty** — reachable tables span
+weights 1..15 of 1..15 — so no weight licenses declining without running the
+sweep.  A rate sets expectations ("weight-8 tables are the slow ones"); it is
+never a decline.
+
+**No coordinate is droppable either.**  Each of the ten (separator, settle)
+slices reaches 3.0%–24.3% of the family alone, and every one contributes
+tables reachable **nowhere else** — 104 at the thinnest, 2212 at the widest.
+72% of tables (11080 of 15404) are served by exactly one slice.  So the sweep
+cannot be shortened by trimming coordinates, which is the same conclusion the
+"two separators reach 99 of 109" row reaches at `n == 3`, now measured on the
+relation rather than on the assignment.
+
+**The one sound shortcut is an index, not a predicate.**  Exact membership in
+the harvested family is sound by construction — it *is* the family — answers
+in microseconds, and costs ~125 KB at `n == 4` or ~220 KB at `n == 5`.  It is
+**costed here and not taken**, for three reasons: it reverses the module's
+deliberate move from stored stagings to a derivation; its validity is coupled
+to the caps and separators, so any change silently invalidates it without a
+regeneration story; and it saves the 143s staged sweep only on a *miss*,
+which then falls through to the searches anyway, so it shaves the first act
+of a failure that continues well past it.
+
 ### The pool is not the obstruction at five inputs
 
 Checked before anything else, since a failure would block every design
