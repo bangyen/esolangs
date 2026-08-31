@@ -318,6 +318,11 @@ def test_minifuck_builds_five_input_xor() -> None:
     assert len(widths) == 1, widths
 
 
+# 3.7s standalone: the target-set derivation is the cost.  It is free when the
+# XOR5 build above has already run in this process and warmed the cache, but
+# a -k selection or a shuffled order can pick this one alone, so it is marked
+# for what it costs on its own rather than for the lucky case.
+@pytest.mark.slow
 def test_minifuck_five_input_plans_are_derived_per_table() -> None:
     """At five inputs the derivation is asked for one table, not the arity.
 
@@ -326,9 +331,6 @@ def test_minifuck_five_input_plans_are_derived_per_table() -> None:
     goes table-major, and this pins that: the arity is staged, it is in the
     table-major set, and asking ``_derived_plans`` for a target set returns
     at most those targets rather than a whole-arity map.
-
-    Kept cheap deliberately -- it checks the *wiring*, and
-    ``test_minifuck_builds_five_input_xor`` checks that the wiring builds.
     """
     import importlib
 
@@ -2347,7 +2349,10 @@ class TestParameterizedMinifuck:
                     assert got == table[combo], f"{table} inputs {bits}"
         assert checked == 38, checked
 
-    @pytest.mark.slow  # 15.4s: the derivation runs for every staged arity
+    # 2.4s: the three-input derivation is the cost.  The gate probe at the
+    # ungated arity is free -- declining is the whole point of it -- so this
+    # does not pay for the staged arities above three.
+    @pytest.mark.slow
     def test_a_table_with_no_staging_falls_through(self) -> None:
         """An unplanned table returns None from ``_staged`` rather than raising.
 
@@ -2356,17 +2361,22 @@ class TestParameterizedMinifuck:
         that matters, since it is what lets a wider table reach the searches
         instead of failing outright.
 
-        That arity is now five: four is staged (partially), so probing the
-        fall-through there would both miss the point and pay the four-input
-        derivation to do it.
+        That arity is now six: four and five are both staged (partially), so
+        probing the fall-through at either would miss the point and pay that
+        arity's derivation to do it.
+
+        The ungated arity is read off :data:`_STAGED_ARITIES` rather than
+        written down, so raising the staged arity again moves this test with
+        it instead of breaking it.  What is asserted is the *gate* -- that an
+        unstaged arity declines immediately -- which is what keeps the miss
+        cheap: without it the table would grind through the whole enumeration
+        before giving up.
         """
         from esolangs.tools.boolean import parameterized
         from esolangs.tools.boolean.minifuck import _STAGED_ARITIES, _staged
 
         ungated = max(_STAGED_ARITIES) + 1
-        assert ungated == 5, "five inputs are expected to be ungated"
-        # The gate is what makes the miss cheap: without it a five-input
-        # table would grind through the whole enumeration before giving up.
+        assert ungated not in _STAGED_ARITIES
         assert _staged("1" * 2**ungated, ungated) is None
         # A table the derivation does reach is built from it, not searched.
         for table_int in range(4):
