@@ -2423,6 +2423,52 @@ class TestParameterizedMinifuck:
             f"expected the family's other orientation, got {other_answered}"
         )
 
+    def test_no_pool_code_serves_both_orientations(self) -> None:
+        """A code answers ``cell7 == 0`` or ``cell7 == 1``, never both.
+
+        Per site this is forced rather than observed: a code's effect on a
+        fixed state is deterministic, so it leaves one value in cell 7 and can
+        match at most one of the two targets.  Checked here on the shipped
+        five and on two codes from the other orientation, because the fact is
+        what makes the list's one-sidedness structural -- the space has no
+        code that would let one string serve both, so "half a list" is the
+        shape of the space rather than a gap in these five.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        seen: list[tuple[object, int, int]] = []
+        real = module._find_pool  # noqa: SLF001
+
+        def record(joint: object, cell7: int, walk_out: int) -> object:
+            if len(seen) < 200:
+                seen.append((joint.fork(), cell7, walk_out))  # type: ignore[attr-defined]
+            return real(joint, cell7, walk_out)
+
+        with patch.object(module, "_find_pool", record):
+            module._derived_plans.cache_clear()  # noqa: SLF001
+            module.minifuck.cache_clear()
+            module.minifuck.__wrapped__("0110")
+        module.minifuck.cache_clear()
+        assert len(seen) > 100, f"expected a cold build's lookups, got {len(seen)}"
+
+        # The two witnesses from the other orientation, spelled by the same
+        # step law the shipped codes are.
+        other = (
+            module._step(4, 3, odd=False),  # noqa: SLF001
+            module._step() + module._step(5, 2, odd=False),  # noqa: SLF001
+        )
+        assert other == ("[[[[[[[[<<<", "[<[[[[[[[[[[<<"), other
+
+        for code in (*module._POOL_CODES, *other):  # noqa: SLF001
+            for joint, _cell7, walk_out in seen:
+                both = all(
+                    module._pool_reaches(joint, code, orientation, walk_out)  # noqa: SLF001
+                    for orientation in (0, 1)
+                )
+                assert not both, f"{code!r} answered both orientations at one site"
+
     def test_the_pool_codes_are_generated_from_the_law(self) -> None:
         """The five codes are spelled by the law, not stored as strings.
 
