@@ -68,16 +68,21 @@ It measured 74.1% when first added and 74.5% once its reorder shipped the
 same day — the one-dependency table it is scored on is exactly the case the
 reorder improves, so this figure moves when that build changes.
 
-**Minterm-shaped (4).** a_painter_ant, bfstack, container, point_break —
-all within 4% of parity on a one-dependency table, because there is no
-subtree to collapse.
+**Minterm-shaped (3).** a_painter_ant, bfstack, container — all within 4%
+of parity on a one-dependency table, because there is no subtree to
+collapse.
 
-**Reducing (9).** `home_row`, `cod`, `nocomment`, `bit_tilde`, `rotfuck`,
-`suptiftam`, `suffolk`, `qoibl` and `collatz_multiverse` were on that list
-until 2026-08-30/31 and are still minterm sums; they now gain **60.6%**,
-**92.5%**, **27.3%**, **81.5%**, **76.3%**, **69.4%**, **14.7%**, **53.2%**
-and **66.1%** respectively on a one-dependency table by *dependency
-reduction* (10) rather than by folding.
+**Reducing (10).** `home_row`, `cod`, `nocomment`, `bit_tilde`, `rotfuck`,
+`suptiftam`, `suffolk`, `qoibl`, `collatz_multiverse` and `point_break` were
+on that list until 2026-08-30/31 and are still minterm sums; they now gain
+**60.6%**, **92.5%**, **27.3%**, **81.5%**, **76.3%**, **69.4%**, **14.7%**,
+**53.2%**, **66.1%** and **50.7%** respectively on a one-dependency table by
+*dependency reduction* (10) rather than by folding.
+
+**That is the whole minterm side bar three**, and the three are measured
+rather than skipped: `container` and `bfstack` are setup-dominated (see the
+split table below) and `a_painter_ant`'s setters *are* its routing geometry,
+so reducing it is a restructure rather than a projection.
 
 `container` and `bfstack` stay minterm-shaped deliberately: measured, a
 constant table is 93% and ~100% of a one-dependency program's length
@@ -318,7 +323,7 @@ zero rows and inverting — one term saved per row, paid for once.
 | `qoibl`, `bit_tilde`, `grapheme` | fewer minterms; grapheme picks whichever row-set is shorter |
 | `container` | `OUT` spends one `+1 S{row}>=Gout` line per one-row, so a dense table sums its zero rows from a 49 start and subtracts — 12.7% on the densest n=4 table. The per-row survivor blocks are fixed and unaffected |
 
-### Dependency reduction (10) — twelve generators
+### Dependency reduction (10) — thirteen generators
 
 A table ignoring an input is emitted as the *smaller* table, still
 consuming the rest. `essential_inputs` (in `boolean/helpers.py`, promoted
@@ -480,6 +485,16 @@ and that is set by the interface rather than by the construction:
   input, discards it, prints the constant — so this generalizes it, the same
   move as `circuit_diagram` and `suffolk`.
 
+- **`point_break` answers by halting, and the reduction is unaffected.** Its
+  result is the termination convention — halt for 0, loop forever for 1 —
+  so the gate compares the halt observable (`point_break_result`, which
+  proves the loop by a state revisit) rather than printed text. The
+  construction reduces like any other minterm sum: each selected row costs a
+  `LET` per factor, so dropping an input removes rows and shortens the rest.
+  292 → **144** at `n == 3` (50.7%). Its own docstring already stated the
+  rule this relies on — *the reads are the interface, and only the body may
+  shrink*.
+
 **Before building the next one, split it.** The arity screen prices the
 whole program, but only the per-row **body** is reducible; per-input
 **setup** is the interface and stays. A cheap proxy for the split is the
@@ -488,7 +503,7 @@ needs no body:
 
 | generator | setup share | delivered |
 |---|---|---|
-| `point_break` | 12% | not yet built |
+| `point_break` | 12% | 50.7% |
 | `collatz_multiverse` | 21% | 66.1% |
 | `qoibl` | 29% | 53.2% |
 | `container` | 93% | not worth building |

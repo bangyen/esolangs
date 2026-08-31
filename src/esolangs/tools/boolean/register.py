@@ -1042,13 +1042,24 @@ def point_break(truth_table: str) -> str:
     # a table with more ones than zeros is cheaper summed over its *zero*
     # rows.  Inverting is free: the tail already needs ``1 - f`` for the
     # loop guard, so a complemented sum *is* that guard.
-    table, invert = _maybe_complement(truth_table)
-    for k in range(2**n):
+    # A table that ignores some of its inputs is a smaller table, and each
+    # selected row costs a ``LET`` per factor -- so dropping an input removes
+    # rows and shortens the rows that remain.  The reads and the complements
+    # stay at the full arity, exactly as the constant branch above keeps
+    # them; an ignored input is simply never named as a factor.  This is
+    # that branch generalized from "no essential inputs" to "the ones that
+    # matter", and the docstring's rule -- only the body may shrink -- is
+    # what makes it safe.
+    used = essential_inputs(truth_table, n) or [0]
+    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
+    width = len(used)
+    table, invert = _maybe_complement(reduced)
+    for k in range(2**width):
         if table[k] == "0":
             continue
         factors = [
-            _pb_name(1 + n + i) if negated else _pb_name(1 + i)
-            for i, negated in minterm_literals(k, n)
+            _pb_name(1 + n + used[slot]) if negated else _pb_name(1 + used[slot])
+            for slot, negated in minterm_literals(k, width)
         ]
         lines.append(f"LET {_pb_name(2 + 2 * n)}:={factors[0]}")
         for factor in factors[1:]:
