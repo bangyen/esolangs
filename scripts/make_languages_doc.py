@@ -29,6 +29,7 @@ _COMPILER_NAMES = {
     "sbleq": "S*bleq",
     "decleq": "Decleq",
     "forth": "Forþ",
+    "forbin": "Forbin",
 }
 
 _COMPILER_DIRS = {
