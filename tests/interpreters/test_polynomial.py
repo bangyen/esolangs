@@ -45,6 +45,21 @@ class TestPolynomialHelperFunctions:
         # so only the linear root survives.
         assert _factor_roots((1, 0, -5, 2)) == (complex(2, 0),)
 
+    def test_factor_skips_a_cubic_factor(self) -> None:
+        """Only degree 1 and 2 factors encode instructions; higher ones do not.
+
+        ``x^3 - 2`` is irreducible over the rationals, so it stays one cubic
+        factor and contributes no root -- the loop moves on rather than
+        decoding it.
+        """
+        from esolangs.interpreters.register_based.polynomial import _factor_roots
+
+        assert _factor_roots((1, 0, 0, -2)) == ()
+
+        # And a cubic alongside a decodable linear factor: (x^3 - 2)(x - 1)
+        # keeps the 1 and still skips the cubic.
+        assert _factor_roots((1, -1, 0, -2, 2)) == (complex(1, 0),)
+
     def test_sanitize_simple_polynomial(self) -> None:
         """Test polynomial parsing for simple cases."""
         result = sanitize("f(x) = 3x^2 + x + 7")
@@ -180,18 +195,29 @@ class TestPolynomialEdgeCases:
 class TestPolynomialSafety:
     """Test polynomial safety features."""
 
-    def test_step_limit_exists(self) -> None:
-        """Test that step limit is implemented in the run function."""
-        # Check that the run function exists and has the expected signature
-        import inspect
+    def test_step_limit_stops_a_program_before_it_finishes(self) -> None:
+        """``limit`` bounds the steps, so a low one truncates the run.
 
-        from esolangs.interpreters.register_based.polynomial import run
+        This program needs two steps to print: it does the arithmetic, then
+        outputs.  Capped at one it produces nothing, which is the loop in
+        ``run`` running out rather than the machine halting -- the case the
+        limit exists for.  Asserting only that ``run`` is callable, as this
+        test once did, could not tell those apart.
+        """
+        program = "f(x) = x^4 - 130x^3 + 4238x^2 - 1170x + 38061"
 
-        sig = inspect.signature(run)
-        assert "code" in sig.parameters
+        for limit, expected in ((0, ""), (1, ""), (2, "A")):
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                run(program, io=IO(), limit=limit)
+            assert buffer.getvalue() == expected, limit
 
-        # The function should exist and be callable
-        assert callable(run)
+    def test_step_limit_defaults_to_completing_a_program(self) -> None:
+        """The default limit is not so small that ordinary programs truncate."""
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run("f(x) = x^4 - 130x^3 + 4238x^2 - 1170x + 38061", io=IO())
+        assert buffer.getvalue() == "A"
 
     def test_helper_functions_safe(self) -> None:
         """Test that helper functions are safe to call."""
