@@ -685,14 +685,18 @@ def _affine(truth_table: str, n: int) -> str | None:
     reads one slope per column and does not generalise; the cascade builds only
     subcubes.  Composing one affine setter per input reaches neither's limit:
     it builds 84 of the 256 three-input tables, XOR and XNOR among them, which
-    no subcube is and which the shared-cofactor argument admits.
+    no subcube is.
 
     The 84 is measured and stable -- widening the multipliers, the offsets, the
-    spelling depth and the witness count each reach no further table -- against
-    a ceiling of 88, the tables the shared-cofactor law permits at all.  What
-    it does not reach is an OR of several disjoint subcubes, majority-3 being
-    the smallest; that needs a running total to survive a gadget that erases,
-    and there is one register.  See ``docs/limitations.md``.
+    spelling depth and the witness count each reach no further table -- but it
+    is *not* known to be a maximum.  The shared-cofactor law admits 88, and it
+    is tempting to read that as the ceiling; it is not one, because the law
+    constrains the last input alone.  Measured against it, this path reaches 32
+    tables the law does not admit and misses 36 that it does, so the two sets
+    cross rather than nest.  What the path does not reach is an OR of several
+    disjoint subcubes, majority-3 being the smallest; that needs a running
+    total to survive a gadget that erases, and there is one register.  See
+    ``docs/limitations.md``.
     """
     found = _affine_tables(n).get(truth_table)
     if found is None:
