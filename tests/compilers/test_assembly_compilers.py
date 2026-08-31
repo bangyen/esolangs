@@ -133,6 +133,26 @@ def test_unsquare_emits_syscalls() -> None:
     assert "ecall" in mod.comp("ab")
 
 
+class TestUnsquareLoopCollapse:
+    """A zero-or-one ``OA`` before a *balanced* loop drops the loop.
+
+    The loop can never run in that case, so ``prep`` removes it -- but only
+    once the scan has matched the ``>`` with a ``<``.  An unbalanced ``>``
+    is left exactly as written, since eliding it would change where the
+    program's brackets pair up.
+    """
+
+    def test_a_balanced_loop_after_a_zero_is_dropped(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.unsquare")
+        assert mod.prep("OA><") == "OA"
+        assert mod.prep("OA>OA<") == "OA"
+
+    def test_an_unbalanced_loop_is_left_alone(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.unsquare")
+        assert mod.prep("OA>") == "OA>"
+        assert mod.prep("IA>") == "IA>"
+
+
 class TestUnsquareDoubledPairCollapse:
     """``(OO|II|PP)S+`` keeps the pair and drops the ``S``s after it.
 
