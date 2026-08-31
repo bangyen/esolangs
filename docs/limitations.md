@@ -379,22 +379,45 @@ available, and it is now an emulator rather than a rewrite:
   source that emits forever has no image.  That one is mostly moot under
   the repo-wide contract of agreeing on runs the reference completes.
 
-  *Liftable; no construction built.*  `brainfuck → 3D Brainfuck` rejects
-  programs that dip below cell 0 because brainfuck clamps `<` there and 3D
-  Brainfuck's `s` walks negative.  A static shift of the origin does not
-  fix it, because the clamping is *load-bearing*: `+.<.` prints
-  `\x01\x01` in brainfuck precisely because `<` was a no-op, and no
-  starting offset makes a move into a non-move.  What it needs is a
-  runtime guard -- a boundary marker the translated `<` tests before
-  moving -- which turns the one-to-one glyph swap into a simulation, at
-  the size and speed cost that implies.  `Dimensional → LaserFuck`'s "`.`
-  only as the last command" is likewise a choice, not a language limit:
+  *Lifted.*  `brainfuck → 3D Brainfuck` used to reject programs that dip
+  below cell 0, because brainfuck clamps `<` there and 3D Brainfuck's `s`
+  walks negative.  A static shift of the origin does not fix it, the
+  clamping being *load-bearing*: `+.<.` prints `\x01\x01` in brainfuck
+  precisely because `<` was a no-op, and no starting offset turns a move
+  into a non-move.  What works is a runtime guard, and 3D Brainfuck hands
+  one over cheaply -- its array is a *three-dimensional* grid, so the
+  sentinel goes on an axis brainfuck's tape never uses.  A prefix `su+dn`
+  writes `1` at `(-1, 1, 0)`, and `<` compiles to `su[dnu]d`: step left,
+  rise to the marker plane, and loop only if the sentinel is there, which
+  happens exactly at the left edge and undoes the step.  No data cell is
+  written, the sentinel is written once, and the guard's brackets nest
+  with the program's own.  **The transpiler is now total**, and with no
+  I/O residue at all -- unlike `Decleq → S*bleq`, every observable channel
+  agrees, cells wrapping 0-255 in both, both growing on demand, both
+  printing `chr(cell)` and raising `EOFError` on exhausted input.
+
+  Two silent mistranslations died with it, and both are worth recording
+  because the old entry claimed this transpiler *rejected* rather than
+  mistranslated.  It did neither reliably.  The class check was a linear
+  scan of the program text, so it missed dips that only happen on a
+  loop's later laps: `++>+[<-].` passed the check and compiled to a
+  program that never halts, where brainfuck prints `\x00`.  And comments
+  were passed through unchanged, but brainfuck's comment characters
+  include `n`, `s`, `e`, `w`, `u` and `d`, every one an array move in the
+  target -- so an ordinary word silently moved the pointer, `+.hello.`
+  printing `\x01\x00` against brainfuck's `\x01\x01`.  Only the eight
+  brainfuck commands are emitted now, which also protects the guard: a
+  stray `u` would leave the `y = 0` plane, where a later `+` could forge
+  the sentinel.
+
+  *Liftable; no construction built.*  `Dimensional → LaserFuck`'s "`.`
+  only as the last command" is a choice, not a language limit:
   equivalence is judged on the final captured output of a terminating run,
   so mid-run prints can be staged into tape cells and dumped at halt.  The
   mechanism is verified to exist -- LaserFuck's dump emits multiple bytes
   in order, and the transpiler controls the program text, so it can opt
   into byte mode with the leading `\xff` -- but the grid geometry for a
-  moving output cursor is not built.  Both reopened as candidates; no
+  moving output cursor is not built.  Reopened as a candidate; no
   construction built.
 
   *Open.*  `brainfuck → 6-5` caps at 17 loops because its loop markers are

@@ -122,32 +122,53 @@ def bf_to_circlefuck(program: str, size: int | None = None) -> str:
 def bf_to_three_d_brainfuck(program: str) -> str:
     """Rewrite a brainfuck program into 3D Brainfuck.
 
-    3D Brainfuck is a brainfuck superset: the code pointer travels a 3D grid
-    of the source characters (default heading +X), and the array moves
-    ``n``/``s`` walk the data tape along that same axis.  So the translation
-    is a one-to-one command swap — ``>`` → ``n``, ``<`` → ``s`` — with
-    ``+``/``-``/``,``/``.``/``[``/``]`` unchanged.
+    3D Brainfuck holds a *three-dimensional* grid of byte cells and moves
+    the array pointer along six axes (``n``/``s`` on x, ``u``/``d`` on y,
+    ``e``/``w`` on z), so brainfuck's tape is its ``y = z = 0`` row and
+    ``>``/``<`` become ``n``/``s``.  The two languages agree on everything
+    else that is observable: cells wrap 0-255 in both, both create cells on
+    demand, both print ``chr(cell)``, and both raise :class:`EOFError` when
+    input runs out.
 
-    The supported class is programs whose pointer never moves below cell 0:
-    brainfuck clamps ``<`` at the left edge, but 3D Brainfuck's ``s`` walks
-    into the negative cells, so a program that dips below cell 0 diverges.
-    A program that moves below cell 0 is rejected rather than mistranslated
-    (``ValueError``), matching the Circlefuck transpiler's handling of its
-    out-of-class programs.  Comment characters are carried through unchanged
-    and stay comments in the target.
+    The one disagreement is the left edge.  Brainfuck *clamps* ``<`` at
+    cell 0 while 3D Brainfuck's ``s`` walks into the negative cells, and
+    the clamping is load-bearing rather than incidental: ``+.<.`` prints
+    the same byte twice in brainfuck precisely because ``<`` was a no-op
+    there.  No static shift of the origin repairs that -- a shift cannot
+    turn a move into a non-move -- so ``<`` compiles to a *runtime* guard
+    instead, which is what makes the rewrite total.
+
+    The guard puts a sentinel where data cannot reach it.  A prefix
+    ``su+dn`` writes ``1`` at ``(-1, 1, 0)`` -- one step below the tape,
+    one step off it on the y axis -- and returns the pointer to the origin.
+    Then ``<`` becomes ``su[dnu]d``:
+
+    - at column ``k > 0``, ``s`` lands on ``k - 1`` and ``u`` reads
+      ``(k - 1, 1, 0)``, which is zero, so the loop body is skipped and
+      ``d`` drops back to the tape: one cell left, as brainfuck moves;
+    - at column ``0``, ``s`` lands on ``-1`` and ``u`` reads the sentinel,
+      so the body runs once -- ``dnu`` walks back to ``(0, 1, 0)``, which
+      is zero, closing the loop -- and ``d`` lands on the origin: no net
+      move, which is brainfuck's clamp.
+
+    The guard never writes a data cell, writes the sentinel once and never
+    again, never moves below column ``-1``, and its brackets are textually
+    balanced, so they nest with the program's own loops.
+
+    Only the eight brainfuck commands are emitted; every other character is
+    dropped.  That is not cosmetic.  Brainfuck comment characters include
+    ``n``, ``s``, ``e``, ``w``, ``u`` and ``d``, which are *array moves* in
+    3D Brainfuck, so passing them through silently mistranslates -- an
+    ordinary word like ``hello`` in a comment moves the pointer twice --
+    and a stray ``u`` or ``d`` would leave the ``y = 0`` plane entirely,
+    where a later ``+`` could forge the sentinel.  Dropping them matches
+    the Painfuck transpiler.
     """
-    ptr = 0
-    for char in program:
-        if char == ">":
-            ptr += 1
-        elif char == "<":
-            ptr -= 1
-            if ptr < 0:
-                raise ValueError(
-                    "3D Brainfuck cannot represent a program that moves below cell 0 "
-                    "(brainfuck clamps '<' but 3D Brainfuck's 's' walks negative)"
-                )
-    return program.translate(str.maketrans("><", "ns"))
+    guard = "su[dnu]d"
+    body = "".join(
+        {">": "n", "<": guard}.get(char, char) for char in program if char in "><+-.,[]"
+    )
+    return "su+dn" + body
 
 
 # Painfuck's two substitution cycles, in the order the interpreter (and the
