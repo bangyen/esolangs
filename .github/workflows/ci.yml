@@ -6,6 +6,17 @@ on:
   pull_request:
     branches: [ main ]
 
+# `.python-version` pins 3.14, but the jobs below deliberately sync other
+# interpreters -- the lint job holds the 3.12 floor `requires-python`
+# promises, and the test matrix spans 3.12/3.13/3.14.  A bare `uv run`
+# re-reads that pin, sees the synced `.venv` does not match it, and *deletes
+# and recreates* the environment -- re-syncing without `--extra dev`, which
+# drops pre-commit, pytest, and mypy and fails with "Failed to spawn".
+# `UV_NO_SYNC` makes the explicit `uv sync` above each run the single
+# authority over the environment.
+env:
+  UV_NO_SYNC: "1"
+
 jobs:
   lint:
     runs-on: ubuntu-latest
