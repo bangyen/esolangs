@@ -164,11 +164,13 @@ def _candidates(array: list[int], acc: int) -> list[_Node]:
         if j1 + j2 > 255:
             continue
         second = first + j2
-        opening = first ^ second
         # ``ACCEPT`` reads the accumulator modulo 256 and wants a clean
-        # digit.  The high bytes are free, and are exactly the aiming knob.
-        if opening % 256 != _ASCII_ZERO:
-            continue
+        # digit, and ``j2`` is chosen to deliver one: it is defined so that
+        # ``second`` is congruent to ``first ^ _ASCII_ZERO`` mod 256, and XOR
+        # is bitwise, so ``opening % 256`` is ``_ASCII_ZERO`` for every
+        # ``first``.  The high bytes are free, and are exactly the aiming
+        # knob.
+        opening = first ^ second
         loaded = _seeded(opened, j1 + j2)
         tokens = [
             *["SEED"] * wrap,

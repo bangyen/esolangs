@@ -572,6 +572,24 @@ class TestStreetcode:
         for table in ("10", "0110", "11111110"):
             assert boolean.streetcode(table, None) == boolean.streetcode(table)
 
+    def test_order_search_stops_at_the_cap(self) -> None:
+        """Past the cap only the identity order is offered.
+
+        Above ``_ORDER_SEARCH_MAX`` the exhaustive search is ``n!`` builds of
+        an ``O(2**n)`` drawing, so the enumeration collapses to the one order
+        that needs no search.  Tested on the helper: reaching this through
+        ``streetcode`` would mean building a seven-input program.
+        """
+        from esolangs.tools.boolean.helpers import _ORDER_SEARCH_MAX
+        from esolangs.tools.boolean.streetcode import _streetcode_orders
+
+        at_cap = _streetcode_orders(_ORDER_SEARCH_MAX)
+        assert len(at_cap) == len(list(permutations(range(_ORDER_SEARCH_MAX))))
+        assert at_cap[0] == tuple(range(_ORDER_SEARCH_MAX))
+
+        past = _ORDER_SEARCH_MAX + 1
+        assert _streetcode_orders(past) == [tuple(range(past))]
+
 
 class TestDimensional:
     @pytest.mark.parametrize(
@@ -1235,6 +1253,44 @@ class TestSlowAcvMammalian:
         )
         for start, end in zip(body, body[2:], strict=False):
             assert start - end >= 248, f"two-chunk window closed only {start - end}"
+
+    def test_placement_declines_a_slice_that_lands_short(self) -> None:
+        """A node landing before its own start is passed over, not placed.
+
+        No real build reaches this skip, and the selection is why: ``first``
+        picks the earliest node with ``landing >= start + estimate``, which
+        is strictly stronger than the loop's own ``landing >= start``, so a
+        selected node always clears it.  The skip is reachable only through
+        the ``next(..., 0)`` default -- when *no* candidate clears the
+        selection, the loop walks the slice from the front unfiltered -- and
+        that is the case built here.  It is what keeps an unplaceable slice
+        returning ``None`` rather than emitting a node at a landing behind
+        the cursor.
+        """
+        from esolangs.tools.boolean.slow_acv_mammalian import (
+            _candidates,
+            _place_inner,
+            _zero_arm,
+        )
+
+        table, n, depth, row, prefix, base = "0110", 2, 1, "0", [], 0
+        candidates = _candidates([0], 0)
+        tokens, fell, jump, _landing = candidates[0]
+        reach = base + len(prefix)
+        estimate = len(_zero_arm(table, n, depth, row, fell, reach + len(tokens)))
+
+        # Neither entry clears ``first``: the first lands at 0, and the
+        # second's own tokens put its threshold far past its landing.  The
+        # last entry's landing still clears the early sizing guard, so the
+        # loop is entered rather than refused up front.
+        short_landing = (list(tokens), fell, jump, 0)
+        long_tokens = (list(tokens) * 40, fell, jump, reach + len(tokens) + estimate)
+        assert (
+            _place_inner(
+                table, n, depth, row, prefix, [short_landing, long_tokens], base
+            )
+            is None
+        )
 
 
 class TestSuffolk:
