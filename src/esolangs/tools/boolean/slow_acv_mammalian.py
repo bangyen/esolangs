@@ -55,6 +55,7 @@ uniform depth ``n``: constant tables are not folded, because the reads are
 the interface and every table has to consume all ``n`` inputs.
 """
 
+import functools
 import itertools
 
 from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
@@ -239,6 +240,21 @@ def _zero_arm(
     ]
 
 
+@functools.lru_cache(maxsize=None)
+def _zero_arm_length_cached(array: tuple[int, ...], acc: int, bit: int) -> int:
+    """:func:`_zero_arm_length` over hashable arguments, memoised.
+
+    ``_place_above_leaves`` asks for this once per candidate, and the
+    candidates of one node share a state while whole subtrees repeat states
+    between them: building parity at ``n == 3`` makes 630k calls that resolve
+    to 17k distinct answers, so all but 2.7% of the work is a repeat.  Keyed
+    on the shed's inputs rather than the node's, since two nodes differing
+    only in table position shed identically.
+    """
+    tokens, shed, value = _shed(list(array), acc)
+    return len(tokens) + _leaf_seeds(shed, value, bit) + _LEAF_TAIL
+
+
 def _zero_arm_length(table: str, row: str, state: tuple[list[int], int]) -> int:
     """Measure :func:`_zero_arm` without building it.
 
@@ -247,8 +263,8 @@ def _zero_arm_length(table: str, row: str, state: tuple[list[int], int]) -> int:
     knowing the length exactly is what lets those nodes take the first
     candidate that fits instead of rebuilding to find out.
     """
-    tokens, array, acc = _shed(*state)
-    return len(tokens) + _leaf_seeds(array, acc, _entry(table, f"{row}0")) + _LEAF_TAIL
+    array, acc = state
+    return _zero_arm_length_cached(tuple(array), acc, _entry(table, f"{row}0"))
 
 
 def _emit(
