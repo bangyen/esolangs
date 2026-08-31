@@ -12,6 +12,7 @@ from .samples import (
     CIRCUIT_PRIME_TESTER,
     FLOWCHART_CAT,
     FLOWCHART_TRUTH_MACHINE,
+    SAMPLES,
     STREETCODE,
     STREETCODE_GAP,
     bits_of,
@@ -966,6 +967,40 @@ class TestSuptiftam:
         assert vm.ip == 1
         assert vm.memory == [7]
         assert vm.halted
+
+
+class TestCvnc:
+    def test_accumulator_deque_and_cursor(self) -> None:
+        # The wiki's truth machine, whose "0" branch halts.  The program is
+        # IPA, so it comes from the sample table rather than being spelled
+        # here: this module carries no confusable-character exemption.
+        program, stdin = SAMPLES["CV(N)(C)"]
+        vm = esolangs.make_vm("CV(N)(C)", program, stdin)
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
+        vm.step()
+        vm.step()
+        vm.step()  # the read-and-print syllable emits the input digit
+        assert (vm.ip, vm.output) == (3, "0")
+        _run_all(vm)
+        # The accumulator leads `memory`, ahead of the (still empty) deque.
+        assert (vm.memory, vm.stack) == ([1], [])
+        assert vm.halted
+
+
+class TestFargo:
+    def test_frames_and_cursor(self) -> None:
+        vm = esolangs.make_vm("Fargo", "$", "0\n")
+        # `memory` is the whole state: the input read and the output built.
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0, 0], [])
+        vm.step()  # the top-level line pushes its frame
+        assert vm.ip == 1
+        assert len(vm.stack) == 1
+        frame = vm.stack[0]
+        assert (frame.tokens, frame.pos, frame.fn_name) == (("$",), 0, "")  # type: ignore[attr-defined]
+        vm.step()  # $ prints the number it was given
+        assert vm.output == "0"
+        vm.step()  # the frame pops, and the run is over
+        assert (vm.stack, vm.halted) == ([], True)
 
 
 class TestRunUntilHaltOrCycle:
