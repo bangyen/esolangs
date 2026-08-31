@@ -2291,14 +2291,19 @@ class TestParameterizedMinifuck:
         exercised at an arity that has no plan at all -- which is the case
         that matters, since it is what lets a wider table reach the searches
         instead of failing outright.
+
+        That arity is now five: four is staged (partially), so probing the
+        fall-through there would both miss the point and pay the four-input
+        derivation to do it.
         """
         from esolangs.tools.boolean import parameterized
         from esolangs.tools.boolean.minifuck import _STAGED_ARITIES, _staged
 
-        assert 4 not in _STAGED_ARITIES, "four inputs are expected to be ungated"
-        # The gate is what makes the miss cheap: without it a four-input
+        ungated = max(_STAGED_ARITIES) + 1
+        assert ungated == 5, "five inputs are expected to be ungated"
+        # The gate is what makes the miss cheap: without it a five-input
         # table would grind through the whole enumeration before giving up.
-        assert _staged("1" * 16, 4) is None
+        assert _staged("1" * 2**ungated, ungated) is None
         # A table the derivation does reach is built from it, not searched.
         for table_int in range(4):
             key = format(table_int, "08b")
@@ -2310,6 +2315,78 @@ class TestParameterizedMinifuck:
                 assert got == key[combo], f"{key} inputs {bits}"
         # ...and the public entry point still builds one.
         assert parameterized.minifuck("00000001")
+
+    @pytest.mark.slow  # ~6min: the four-input derivation runs to its caps
+    def test_four_input_tables_build_from_the_insert_family(self) -> None:
+        """Staged four-input tables build, and the staging is what builds them.
+
+        Four inputs is the arity the insert family was added for, and XOR is
+        the pointed case: ``docs/walls.md`` records it as the four-input
+        table the searches fail on.  It is asserted by name rather than
+        sampled, since a sample that happened to miss it would leave the one
+        claim this change rests on unchecked.
+
+        The searches are stubbed to raise, so a table that builds here built
+        from a staging.  Without that, a fallback that quietly took minutes
+        and succeeded would look exactly like a staging that worked.
+
+        Every row is run on the interpreter, and the widths are compared:
+        a template that computes the table but whose fills differ in length
+        leaks its inputs through ``len(program)``, which is the one thing the
+        parameterized convention exists to prevent.
+
+        The whole arity is derived once and cached, so the cost above is paid
+        by this test rather than by each table in it -- which is why the
+        samples share a test instead of being parametrized apart.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        def forbidden(*_args: object, **_kwargs: object) -> object:
+            raise AssertionError("reached the search")
+
+        # XOR first, then tables spread across the enumeration -- separators
+        # and both settles -- so a staging family that worked only at its
+        # first separator would not pass.
+        tables = (
+            "0110100110010110",  # XOR4, the recorded search failure
+            "0100111101110011",
+            "0010000100110111",
+            "1110011100101000",
+            "0101101111111110",
+        )
+        with (
+            patch.object(module, "_find_column", forbidden),
+            patch.object(module, "_find_parked", forbidden),
+        ):
+            for table in tables:
+                staged = module._staged(table, 4)  # noqa: SLF001
+                assert staged is not None, table
+                template = module.minifuck.__wrapped__(table)
+                widths = set()
+                for combo in range(16):
+                    bits = [(combo >> (3 - i)) & 1 for i in range(4)]
+                    program = self.instantiate(template, bits)
+                    widths.add(len(program))
+                    got = self.run_minifuck(program)
+                    assert got == table[combo], f"{table} inputs {bits}"
+                assert len(widths) == 1, (table, widths)
+
+        # The arity is *partial*, so the miss is the common case and has to
+        # stay quiet: ``_staged`` returns None and the caller reaches the
+        # searches.  A change making a miss raise would turn three quarters
+        # of the arity from slow into broken.  This rides along here rather
+        # than in a test of its own because the derivation is what either
+        # would cost, and it is cached per process -- two tests would pay it
+        # twice, and under xdist would pay it in two workers.
+        plans = module._derived_plans(4)  # noqa: SLF001
+        assert plans, "four inputs is expected to be staged"
+        assert len(plans) < 2**16, "four inputs is expected to be partial"
+        missing = next(
+            key for t in range(2**16) if (key := format(t, "016b")) not in plans
+        )
+        assert module._staged(missing, 4) is None  # noqa: SLF001
 
     @pytest.mark.slow  # builds and runs all 256 three-input tables
     def test_every_three_input_table_is_search_free(self) -> None:
@@ -2799,6 +2876,21 @@ class TestParameterizedMinifuck:
         offered = set(expected)
         for table, staging in module._derived_plans(2).items():  # noqa: SLF001
             assert staging in offered, (table, staging)
+
+        # Four inputs adds the insert family as a *second pass*, after every
+        # pure run: that ordering is what keeps the arities the pure runs
+        # already close assigned exactly the stagings they had, so it is
+        # checked rather than assumed.  The derivation writes this order out
+        # a second time as nested loops, which is what can drift.
+        widened = expected + [
+            (sep_index, settle, suffix, acc)
+            for sep_index in range(len(module._SEPS))  # noqa: SLF001
+            for settle in (0, 1)
+            for suffix in module._insert_suffixes()  # noqa: SLF001
+            for acc in range(9, module._MAX_ACC + 1)  # noqa: SLF001
+        ]
+        assert list(module._stagings(4)) == widened  # noqa: SLF001
+        assert widened[: len(expected)] == expected
 
     @pytest.mark.parametrize(
         ("table", "tier"),
