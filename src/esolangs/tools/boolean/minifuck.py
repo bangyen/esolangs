@@ -435,6 +435,28 @@ def _search[Hit](
 # stubbed.  Ablating with the fallthrough open reports success either way,
 # because the searches quietly rebuild whatever the pool list drops.
 #
+# **The missing orientation is reachable from the step family**, which is worth
+# recording because the mirrors made it look like it was only reachable by
+# appending a flip.  Enumerating tails over :func:`_step` -- codes of the form
+# ``'[<' * k`` then a short tail -- turns up members answering ``cell7 == 1``
+# natively, at every arity checked: on 200 sites harvested from a two-input
+# build, a three-input build, and 400 from a four-input one, the shipped five
+# answer only ``cell7 == 0`` and these answer only ``cell7 == 1``.  At sixteen
+# rows seven of them answer 52 sites each, and those 52 are disjoint from the
+# 200 the shipped five reach.
+#
+# The family also regenerates what the list already has: searching it turns up
+# complete substitutes for the third code (a dropped-code gap of 22 tables
+# refilled by either of two ``'[<[<' + core`` members) and for the fourth (18
+# tables, refilled by a ``k == 6`` member with a long ``'<<<'`` tail).  No
+# substitute was found for the fifth among the three candidates tried.
+#
+# None of this argues for adding a code.  The shipped five strand nothing, so
+# there is no gap to fill, and a sixth string would change emitted templates
+# the way the mirrors did.  It is recorded so the question "is the other
+# orientation out of reach?" is answered -- it is not -- without re-running the
+# search.
+#
 # **What the mirrors were.**  Recorded because it is a real property of the
 # space and would otherwise be rediscovered the hard way.  The codes pair up:
 # for four of the five there is a string answering a state at ``cell7 == 1``
