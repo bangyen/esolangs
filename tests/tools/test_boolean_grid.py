@@ -449,6 +449,22 @@ class TestWII2D:
             assert sorted(xs) == [f"{{X{i}}}" for i in range(n)], (n, xs)
             assert len(xs) == n, (n, xs)
 
+    def test_apply_ignores_blank_cells(self) -> None:
+        """A space is a no-op, so padding an op string cannot change it.
+
+        The grid is a rectangle of blanks that the routes are painted into,
+        so a route read back off it carries whatever spacing its row had --
+        which must apply exactly as the unpadded route does.
+        """
+        from esolangs.tools.boolean.wii2d import _wii2d_apply
+
+        for ops in ("+", "-", "*", "s", "+-", "*s"):
+            want = _wii2d_apply(ops, 3)
+            assert _wii2d_apply(f" {ops}", 3) == want, ops
+            assert _wii2d_apply(f"{ops} ", 3) == want, ops
+            assert _wii2d_apply(" ".join(ops), 3) == want, ops
+        assert _wii2d_apply("   ", 7) == 7
+
     def test_chain_n2_closed_form(self) -> None:
         """Two-input tables use the closed form, not the search."""
         from esolangs.tools.boolean.wii2d import (
