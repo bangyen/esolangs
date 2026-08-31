@@ -425,7 +425,6 @@ _MINTERM_SHAPED = {
     "container",
     "point_break",
     "qoibl",
-    "rotfuck",
     "suffolk",
     "suptiftam",
 }
@@ -488,6 +487,7 @@ _REDUCING = {
     "cod",
     "home_row",
     "nocomment",
+    "rotfuck",
 }
 
 _UNSHAPED = {
