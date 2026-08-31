@@ -318,6 +318,104 @@ def test_minifuck_builds_five_input_xor() -> None:
     assert len(widths) == 1, widths
 
 
+# 5.8s: builds the five-input spans and replays the enumeration through them.
+# This is the guard on a *soundness* claim, so it checks the whole population
+# rather than a sample -- a screen that declines one reachable table is a
+# silent coverage regression, which no sampled test would catch.
+@pytest.mark.slow
+def test_span_screen_declines_no_reachable_table() -> None:
+    """The span screen never declines a table some staging prints.
+
+    ``_span_admits`` is a necessary condition used to skip an enumeration
+    that would fail, so its only dangerous error is a false *negative*.  This
+    replays the derivation's own enumeration and asserts two things over
+    every column it prints: that the column lies in the span of the standing
+    columns at that staging, and that the screen therefore admits it.
+
+    This is the test that must fail if the caps, separators or setter ever
+    change -- the spans are a property of those, and a screen validated
+    against an older enumeration would silently decline tables the new one
+    reaches.  It is deliberately not a sampled check.
+    """
+    import importlib
+
+    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+    n = 5
+    assert module._staging_spans(n), "no spans built"  # noqa: SLF001
+    window = range(1, module._BASE + n * module._SPAN + 12)  # noqa: SLF001
+
+    def pack(table: tuple[int, ...] | str) -> int:
+        packed = 0
+        for bit in table:
+            packed = (packed << 1) | int(bit)
+        return packed
+
+    # Replay the enumeration, checking each printed column against the span
+    # of the staging that printed it, and against the screen as a whole.
+    checked = 0
+    for sep_index in range(len(module._SEPS)):  # noqa: SLF001
+        for settle in (0, 1):
+            base = module._embed(n, settle=settle, sep=module._SEPS[sep_index])  # noqa: SLF001
+            module._clamp(base)  # noqa: SLF001
+            module._walk_to(base, module._BASE - 1)  # noqa: SLF001
+            run = base.fork()
+            for _k in range(module._MAX_BRACKETS + 1):  # noqa: SLF001
+                staged = run.fork()
+                staged.emit("<")
+                module._clamp(staged)  # noqa: SLF001
+                # Built in place rather than indexed out of _staging_spans:
+                # that list interleaves each slice's pure runs with its
+                # insert family, so a counter that walks only the pure runs
+                # drifts onto another staging's span after the first slice.
+                # An indexing bug there would fail exactly like a violated
+                # rule, which is not a confusion this test may make.
+                basis = module._span_basis(  # noqa: SLF001
+                    [pack(staged.col(cell)) for cell in window]
+                )
+                for acc in range(9, module._MAX_ACC + 1, 5):  # noqa: SLF001
+                    for read in module._READS:  # noqa: SLF001
+                        probe = staged.fork()
+                        try:
+                            module._endgame(probe, acc, read, 0)  # noqa: SLF001
+                        except ValueError:
+                            continue
+                        printed = probe.printed()
+                        if any(len(d) != 1 for d in printed):
+                            continue
+                        column = "".join(printed)
+                        checked += 1
+                        assert module._in_span(pack(column), basis), (  # noqa: SLF001
+                            f"printed column outside its staging's span: {column}"
+                        )
+                        assert module._span_admits(column, n), (  # noqa: SLF001
+                            f"screen declines a reachable table: {column}"
+                        )
+                run.emit("[")
+
+    assert checked > 1000, f"too few columns checked to be evidence: {checked}"
+
+
+def test_span_screen_is_only_offered_where_it_bites() -> None:
+    """The screen admits everything at an arity it does not serve.
+
+    It is gated to five inputs because at four the ambient dimension (16)
+    matches the ranks the bases reach, so the test is vacuous there and
+    evaluating it would cost more than it saves.  Pinning that keeps a future
+    widening honest: offering it at another arity must be a measured choice,
+    not an accident of the gate.
+    """
+    import importlib
+
+    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+    assert module._SCREENED_ARITIES == (5,)  # noqa: SLF001
+    # Four inputs is not screened, so every table is admitted without the
+    # spans ever being built.
+    assert module._span_admits("0110100110010110", 4)  # noqa: SLF001
+    assert module._span_admits("1" * 16, 4)  # noqa: SLF001
+
+
 # 3.7s standalone: the target-set derivation is the cost.  It is free when the
 # XOR5 build above has already run in this process and warmed the cache, but
 # a -k selection or a shuffled order can pick this one alone, so it is marked
