@@ -578,123 +578,184 @@ def basicfuck_to_bf(program: str) -> str:
     return "".join(out)
 
 
-class _DecleqAsm:
+_SEQ = object()  # sentinel ``c``: fall through to the next instruction
+
+
+class _SbleqAsm:
     """Tiny S*bleq assembler used by :func:`decleq_to_sbleq`.
 
-    Labels map to instruction indices; ``data`` and ``scratch`` cells are
-    resolved to absolute addresses at build time, and ``jump`` cells hold the
-    absolute address of a label so that S*bleq's *indirect* ``c`` operand
-    (``ip = mem[c]``) can express a direct Decleq jump target.
+    Emits into three regions -- ``[code | scratch | image]`` -- and resolves
+    symbolic operands at :meth:`build` time.  An operand is an ``int`` (a
+    literal address, including the ``-1``/``-2``/``-3`` specials), a
+    ``("scratch", i)`` pair, or a ``("field", label, off)`` reference to
+    operand ``off`` of the instruction at ``label`` -- the last is how the
+    emulator patches its own operands to reach an address it computed at
+    runtime, which is S*bleq's only form of indirect load and store.
+
+    S*bleq branches when the difference is at most zero and otherwise falls
+    through, so a ``c`` of ``_SEQ`` still has to name the next instruction:
+    :meth:`build` allocates a cell holding that address.
     """
 
-    def __init__(self, cells: list[int]) -> None:
+    def __init__(self) -> None:
         self.code: list[list[Any]] = []
         self.syms: dict[str, int] = {}
-        self.data: list[int] = list(cells)
-        self.cells: list[int] = []
-        self._cells: dict[str, int] = {}
-        self.jump_cells: dict[str, int] = {}
+        self.names: dict[str, int] = {}
+        self.scratch: list[int] = []
+        self.jumps: dict[str, int] = {}
+        self.image: list[int] = []
+        self._serial = 0
 
-    def emit(self, a: Any, b: Any, c: Any, label: str | None = None) -> None:
-        if label is not None:
-            self.syms[label] = len(self.code)
-        self.code.append([a, b, c])
+    # -- allocation ---------------------------------------------------
 
-    def data_addr(self, i: int) -> tuple[str, int]:
-        return ("data", i)
+    def cell(self, name: str, value: int = 0) -> tuple[str, int]:
+        """Return the named scratch cell, creating it with ``value``."""
+        if name not in self.names:
+            self.names[name] = len(self.scratch)
+            self.scratch.append(value)
+        return ("scratch", self.names[name])
 
-    def scratch(self, name: str, value: int = 0) -> tuple[str, int]:
-        if name not in self._cells:
-            self._cells[name] = len(self.cells)
-            self.cells.append(value)
-        return ("scratch", self._cells[name])
+    def const(self, value: int) -> tuple[str, int]:
+        """Return a scratch cell holding the constant ``value``."""
+        return self.cell(f"_k{value}", value)
 
     def jcell(self, label: str) -> tuple[str, int]:
-        if label not in self.jump_cells:
-            self.jump_cells[label] = len(self.cells)
-            self.cells.append(0)
-        return ("jump", self.jump_cells[label])
+        """Return a scratch cell holding the address of ``label``.
 
-    def _resolve(self, v: Any, base_data: int, base_scratch: int) -> int:
-        if isinstance(v, tuple):
-            kind, idx = v
-            base = base_data if kind == "data" else base_scratch
-            return base + int(idx)
-        return int(v)
+        S*bleq's ``c`` operand is indirect (``ip = mem[c]``), so a jump
+        needs a cell holding the target rather than the target itself.
+        """
+        key = "@" + label
+        if key not in self.names:
+            self.names[key] = len(self.scratch)
+            self.scratch.append(0)
+            self.jumps[label] = self.names[key]
+        return ("scratch", self.names[key])
+
+    def field(self, label: str, off: int) -> tuple[str, str, int]:
+        """Return the address of operand ``off`` of instruction ``label``."""
+        return ("field", label, off)
+
+    def fresh(self, stem: str) -> str:
+        """Return a label unique to this assembler."""
+        self._serial += 1
+        return f"{stem}.{self._serial}"
+
+    # -- emission -----------------------------------------------------
+
+    def emit(self, a: Any, b: Any, c: Any = _SEQ, label: str | None = None) -> None:
+        """Emit ``a b c``; ``c`` defaults to falling through."""
+        if label is not None:
+            self.mark(label)
+        self.code.append([a, b, c])
+
+    def mark(self, label: str) -> None:
+        """Attach ``label`` to the next instruction emitted."""
+        if label in self.syms:
+            raise ValueError(f"duplicate label {label}")
+        self.syms[label] = len(self.code)
+
+    # -- macros -------------------------------------------------------
+
+    def goto(self, label: str) -> None:
+        """Jump to ``label`` unconditionally (zeroing a cell always branches)."""
+        z = self.cell("_zero")
+        self.emit(z, z, self.jcell(label))
+
+    def clear(self, dst: Any) -> None:
+        """``dst = 0``."""
+        self.emit(dst, dst)
+
+    def sub(self, dst: Any, src: Any) -> None:
+        """``dst -= src``, falling through whatever the sign."""
+        self.emit(dst, src)
+
+    def add(self, dst: Any, src: Any) -> None:
+        """``dst += src``, via a negated temporary."""
+        neg = self.cell("_neg")
+        self.emit(neg, neg)
+        self.emit(neg, src)
+        self.emit(dst, neg)
+
+    def move(self, dst: Any, src: Any) -> None:
+        """``dst = src``, preserving ``src``."""
+        self.clear(dst)
+        self.add(dst, src)
+
+    def branch_neg(self, value: Any, label: str) -> None:
+        """Branch to ``label`` when ``value`` is negative, preserving it.
+
+        ``value < 0`` is ``value + 1 <= 0``, which is the branch S*bleq
+        actually offers.
+        """
+        t = self.cell("_bt")
+        self.move(t, value)
+        self.emit(t, self.const(-1), self.jcell(label))
+
+    def branch_le(self, value: Any, other: Any, label: str) -> None:
+        """Branch to ``label`` when ``value <= other``, preserving both."""
+        t = self.cell("_bt")
+        self.move(t, value)
+        self.emit(t, other, self.jcell(label))
+
+    def load_indirect(self, dst: Any, addr: Any) -> None:
+        """``dst = mem[addr]`` for a runtime address held in ``addr``."""
+        site = self.fresh("ld")
+        f = self.field(site, 1)
+        self.clear(f)
+        self.add(f, addr)
+        self.clear(dst)
+        neg = self.cell("_neg")
+        self.emit(neg, neg)
+        self.emit(neg, 0, label=site)  # neg -= mem[addr]; b is patched above
+        self.emit(dst, neg)  # dst = -neg
+
+    def store_indirect(self, addr: Any, value: Any) -> None:
+        """``mem[addr] = value`` for a runtime address held in ``addr``."""
+        zap, put = self.fresh("stz"), self.fresh("stp")
+        for site, off in ((zap, 0), (zap, 1), (put, 0)):
+            f = self.field(site, off)
+            self.clear(f)
+            self.add(f, addr)
+        neg = self.cell("_neg2")
+        self.clear(neg)
+        self.sub(neg, value)  # neg = -value
+        self.emit(0, 0, label=zap)  # mem[addr] -= mem[addr]
+        self.emit(0, neg, label=put)  # mem[addr] -= -value
+
+    # -- build --------------------------------------------------------
 
     def build(self) -> list[int]:
-        n = len(self.code)
-        base_data = 3 * n
-        base_scratch = base_data + len(self.data)
-        for label, cell in self.jump_cells.items():
-            self.cells[cell] = 3 * self.syms[label]
+        """Resolve every symbolic operand and lay the three regions out."""
+        base_scratch = 3 * len(self.code)
+
+        seq: dict[int, int] = {}
+        for i, (_a, _b, c) in enumerate(self.code):
+            if c is _SEQ and 3 * (i + 1) not in seq:
+                self.scratch.append(3 * (i + 1))
+                seq[3 * (i + 1)] = len(self.scratch) - 1
+
+        base_image = base_scratch + len(self.scratch)
+        if "base" in self.names:
+            self.scratch[self.names["base"]] = base_image
+        for label, idx in self.jumps.items():
+            self.scratch[idx] = -1 if label == _HALT else 3 * self.syms[label]
+
+        def resolve(v: Any) -> int:
+            if isinstance(v, tuple):
+                if v[0] == "scratch":
+                    return base_scratch + int(v[1])
+                return 3 * self.syms[str(v[1])] + int(v[2])
+            return int(v)
+
         mem: list[int] = []
-        for a, b, c in self.code:
-            mem += [
-                self._resolve(a, base_data, base_scratch),
-                self._resolve(b, base_data, base_scratch),
-                self._resolve(c, base_data, base_scratch),
-            ]
-        return mem + self.data + self.cells
+        for i, (a, b, c) in enumerate(self.code):
+            target = base_scratch + seq[3 * (i + 1)] if c is _SEQ else resolve(c)
+            mem += [resolve(a), resolve(b), target]
+        return mem + self.scratch + self.image
 
 
-def _emit_copy(asm: _DecleqAsm, a: Any, b: Any, target: str, label: str) -> None:
-    """Emit ``b = a - 1`` for ``a != b``, preserving ``a``, then branch on ``b``."""
-    s1 = asm.scratch("s1")
-    s2 = asm.scratch("s2")
-    u = asm.scratch("u")
-    zero = asm.scratch("zero", 0)
-    one = asm.scratch("one", 1)
-    neg = asm.scratch("neg", -1)
-    t = asm.scratch("t")
-    asm.emit(a, zero, asm.jcell(f"{label}.NEG"), label=label)
-    asm.emit(s1, s1, asm.jcell(f"{label}.z2"), label=f"{label}.Z1")
-    asm.emit(s2, s2, asm.jcell(f"{label}.z3"), label=f"{label}.z2")
-    asm.emit(b, b, asm.jcell(f"{label}.L1"), label=f"{label}.z3")
-    asm.emit(a, one, asm.jcell(f"{label}.C2"), label=f"{label}.L1")
-    asm.emit(s1, neg, asm.jcell(f"{label}.j1"))
-    asm.emit(s2, neg, asm.jcell(f"{label}.j2"), label=f"{label}.j1")
-    asm.emit(u, u, asm.jcell(f"{label}.L1"), label=f"{label}.j2")
-    asm.emit(s1, neg, asm.jcell(f"{label}.j1b"), label=f"{label}.C2")
-    asm.emit(s2, neg, asm.jcell(f"{label}.L3"), label=f"{label}.j1b")
-    asm.emit(s2, one, asm.jcell(f"{label}.C3"), label=f"{label}.L3")
-    asm.emit(a, neg, asm.jcell(f"{label}.j3"))
-    asm.emit(u, u, asm.jcell(f"{label}.L3"), label=f"{label}.j3")
-    asm.emit(a, neg, asm.jcell(f"{label}.C4"), label=f"{label}.C3")
-    asm.emit(s1, one, asm.jcell(f"{label}.C5"), label=f"{label}.C4")
-    asm.emit(b, neg, asm.jcell(f"{label}.j5"))
-    asm.emit(u, u, asm.jcell(f"{label}.C4"), label=f"{label}.j5")
-    asm.emit(t, t, asm.jcell(f"{label}.A2"), label=f"{label}.NEG")
-    asm.emit(t, neg, asm.jcell(f"{label}.A3"), label=f"{label}.A2")  # t = 1
-    asm.emit(t, a, asm.jcell(f"{label}.A4"), label=f"{label}.A3")  # t = 1 - a
-    asm.emit(b, b, asm.jcell(f"{label}.A5"), label=f"{label}.A4")
-    asm.emit(t, one, asm.jcell(f"{label}.A7"), label=f"{label}.A5")  # t -= 1
-    asm.emit(b, one, asm.jcell(f"{label}.A5"))  # b -= 1; loop
-    asm.emit(b, one, asm.jcell(f"{label}.C5"), label=f"{label}.A7")  # final b -= 1
-    asm.emit(b, zero, asm.jcell(target), label=f"{label}.C5")  # if b <= 0 goto target
-
-
-def _emit_input(asm: _DecleqAsm, b: Any, target: str, label: str) -> None:
-    """Emit ``b = <byte>`` (an input cell, so ``b >= 0``), then branch on ``b``."""
-    u = asm.scratch("u")
-    neg = asm.scratch("neg", -1)
-    one = asm.scratch("one", 1)
-    t = asm.scratch("t")
-    asm.emit(b, b, asm.jcell(f"{label}.R2"), label=label)
-    asm.emit(b, -2, asm.jcell(f"{label}.R3"), label=f"{label}.R2")  # b = -value
-    asm.emit(t, t, asm.jcell(f"{label}.R4"), label=f"{label}.R3")
-    asm.emit(t, neg, asm.jcell(f"{label}.R5"), label=f"{label}.R4")  # t = 1
-    asm.emit(t, b, asm.jcell(f"{label}.S2L"), label=f"{label}.R5")  # t = 1 + value
-    asm.emit(b, b, asm.jcell(f"{label}.S2L"))  # b = 0 (value >= 0)
-    asm.emit(t, one, asm.jcell(f"{label}.C5"), label=f"{label}.S2L")  # t -= 1
-    asm.emit(b, neg, asm.jcell(f"{label}.J"))  # b += 1
-    asm.emit(u, u, asm.jcell(f"{label}.S2L"), label=f"{label}.J")
-    asm.emit(
-        b,
-        asm.scratch("zero", 0),
-        asm.jcell(target),
-        label=f"{label}.C5",
-    )  # if b <= 0 goto target
+_HALT = "__halt__"  # a jump cell holding -1; S*bleq halts on a negative target
 
 
 def decleq_to_sbleq(program: str) -> str:
@@ -702,103 +763,156 @@ def decleq_to_sbleq(program: str) -> str:
 
     Decleq's ``a b c`` does ``mem[b] = mem[a] - 1`` and jumps to ``c`` when
     the new ``mem[b]`` is at most zero; S*bleq's ``a b c`` does
-    ``mem[a] -= mem[b]`` and jumps *indirectly* to ``mem[c]``.  Each Decleq
-    instruction becomes a straight-line S*bleq block that materialises the
-    arithmetic with scratch cells and then branches to the Decleq target.
-    The ``-1`` (input) and ``-2`` (output) Decleq addresses map onto
-    S*bleq's ``-1``/``-3`` specials and the input-address ``-2``.
+    ``mem[a] -= mem[b]`` and jumps *indirectly* to ``mem[c]``.
 
-    The translation is faithful for Decleq programs that keep the
-    instruction pointer inside the original program and never treat a cell
-    as both data and (later) an operand: writes that would be re-read as an
-    operand of a reachable instruction are rejected with :class:`ValueError`
-    (self-modifying Decleq code is out of scope), and a program that would
-    run off the end into memory it extended past itself halts instead.
-    Reading past end-of-input also differs (Decleq raises :class:`EOFError`,
-    S*bleq reads zero).
+    A Decleq program is self-modifying memory -- it can compute a jump into
+    the middle of what it just wrote -- so no static per-instruction
+    rewrite can be total: a computed target may land anywhere, including
+    the interior of a translated block.  The output is therefore a Decleq
+    *emulator*: a fixed fetch-decode-execute loop over the Decleq image,
+    which is embedded as data.  S*bleq supplies the dynamic dispatch this
+    needs, its ``c`` operand being indirect, and the loop reaches a
+    computed address by patching the operand fields of its own load and
+    store instructions.
+
+    Memory is laid out as ``[loop | scratch | image]`` with the image
+    *last*, so that Decleq's grow-on-write and read-past-the-end-as-zero
+    conventions coincide with S*bleq's own.  Decleq's ``pc`` and its live
+    memory length live in scratch cells; the length is what moves the halt
+    boundary outward when a write lands past the end.
+
+    The rewrite is total over programs: every whitespace-separated list of
+    integers translates, whatever the values, and whatever the length --
+    including the self-modifying, non-multiple-of-three and negative-operand
+    programs that have no static translation.  It agrees with the Decleq
+    interpreter on every run that interpreter completes normally.  What it
+    cannot reproduce are that interpreter's *error* exits, and two of those
+    are structural rather than incidental: S*bleq's sole input primitive
+    (address ``-2``) yields ``0`` both at end-of-input and for an empty
+    input line, where Decleq raises :class:`EOFError` and yields ``10``
+    respectively.  Two inputs reaching one value is a collision in the
+    target language's only input primitive, so *no* S*bleq program can tell
+    them apart, and no translation can either.  The rest are not behaviour
+    to reproduce: Decleq's ``HaltError`` is a harness step budget, and an
+    out-of-range negative ``b`` crashes the interpreter with
+    :class:`IndexError`.
     """
     from esolangs.interpreters.memory import parse_int_memory as _parse
 
     cells = _parse(program)
-    n = len(cells) // 3
-    if 3 * n != len(cells):
-        raise ValueError("Decleq program length must be a multiple of three")
+    asm = _SbleqAsm()
+    asm.image = list(cells)
 
-    succ: list[list[int]] = [[] for _ in range(n)]
-    for k in range(n):
-        a, c = cells[3 * k], cells[3 * k + 2]
-        if a in (-1, -2):
-            if k + 1 < n:
-                succ[k].append(k + 1)
-        elif c >= 0 and c % 3 == 0 and 0 <= c // 3 < n:
-            succ[k].append(c // 3)
-            if k + 1 < n:
-                succ[k].append(k + 1)
+    base = asm.cell("base", 0)  # absolute address of the image, set on build
+    pc = asm.cell("pc", 0)
+    dlen = asm.cell("dlen", len(cells))
+    a, b, c = asm.cell("a"), asm.cell("b"), asm.cell("c")
+    val = asm.cell("val")
+    beff = asm.cell("beff")
+    addr = asm.cell("addr")
+    idx = asm.cell("idx")
+    one, two, three = asm.const(1), asm.const(2), asm.const(3)
 
-    reachable: set[int] = set()
-    stack = [0]
-    while stack:
-        k = stack.pop()
-        if k in reachable or k >= n:
-            continue
-        reachable.add(k)
-        stack.extend(succ[k])
+    def load_cell(dst: Any, index: Any) -> None:
+        """``dst = mem[index]`` under Decleq's guard: out of range reads zero."""
+        done = asm.fresh("gl")
+        asm.clear(dst)
+        asm.branch_neg(index, done)
+        asm.branch_le(dlen, index, done)  # dlen <= index: past the end
+        asm.move(addr, base)
+        asm.add(addr, index)
+        asm.load_indirect(dst, addr)
+        asm.mark(done)
 
-    writers = [
-        (k, cells[3 * k + 1])
-        for k in range(n)
-        if k in reachable and cells[3 * k] not in (-1, -2) and cells[3 * k + 1] >= 0
-    ]
-    for m, w in writers:
-        seen: set[int] = set()
-        stack = list(succ[m])
-        while stack:
-            k = stack.pop()
-            if k in seen or k >= n:
-                continue
-            seen.add(k)
-            lo, hi = (
-                (3 * k, 3 * k + 1) if cells[3 * k] in (-1, -2) else (3 * k, 3 * k + 2)
-            )
-            if lo <= w <= hi:
-                raise ValueError(
-                    f"instruction {m} writes cell {w}, which is re-read as an "
-                    f"operand of instruction {k} (self-modifying Decleq code "
-                    "is out of scope)"
-                )
-            stack.extend(succ[k])
+    def equals(value: Any, want: int, label: str) -> None:
+        """Branch to ``label`` when ``value == want`` (two ``<=`` tests)."""
+        low, done = asm.fresh("eq"), asm.fresh("eq")
+        t = asm.cell("_et")
+        asm.move(t, value)
+        asm.sub(t, asm.const(want))
+        asm.emit(t, asm.const(0), asm.jcell(low))  # value <= want
+        asm.goto(done)
+        asm.mark(low)
+        asm.clear(t)
+        asm.add(t, asm.const(want))
+        asm.sub(t, value)
+        asm.emit(t, asm.const(0), asm.jcell(label))  # want <= value
+        asm.mark(done)
 
-    max_addr = max(
-        [len(cells) - 1]
-        + [v for k in range(n) for v in (cells[3 * k], cells[3 * k + 1]) if v >= 0]
-    )
-    cells = cells + [0] * (max_addr + 1 - len(cells))
-    asm = _DecleqAsm(cells)
-    neg1 = asm.scratch("halt", -1)
-    u = asm.scratch("u")
-    for k in range(n):
-        a, b, c = cells[3 * k], cells[3 * k + 1], cells[3 * k + 2]
-        if c >= 0 and c % 3 != 0:
-            raise ValueError("Decleq jump targets must be multiples of three")
-        target = f"k{c // 3}" if 0 <= c < 3 * n else "halt"
-        label = f"k{k}"
-        if a == -2:  # output mem[b]
-            asm.emit(-3, asm.data_addr(b), asm.jcell(target), label=label)
-        elif a == -1:  # input into mem[b]
-            _emit_input(asm, asm.data_addr(b), target, label)
-        elif b < 0:
-            raise ValueError("a negative non-special b is out of the supported class")
-        elif a == b:  # countdown idiom: mem[a] -= 1; if <= 0 goto c
-            asm.emit(
-                asm.data_addr(a),
-                asm.scratch("one", 1),
-                asm.jcell(target),
-                label=label,
-            )
-        else:  # b = a - 1; if <= 0 goto c
-            src = asm.data_addr(a) if a >= 0 else asm.scratch("zero", 0)
-            _emit_copy(asm, src, asm.data_addr(b), target, label)
-    asm.emit(u, u, neg1, label="halt")
+    def effective_b() -> None:
+        """``beff`` = Decleq's write index for ``b``, growing memory to fit.
+
+        A negative ``b`` indexes from the end (the reference interpreter
+        writes through Python's negative indexing), and a write at or past
+        the end extends memory, which is what moves the halt boundary.
+        """
+        stem = asm.fresh("be")
+        asm.move(beff, b)
+        asm.branch_neg(b, stem + ".neg")
+        asm.goto(stem + ".sized")
+        asm.mark(stem + ".neg")
+        asm.add(beff, dlen)
+        asm.mark(stem + ".sized")
+        asm.branch_le(dlen, beff, stem + ".grow")
+        asm.goto(stem + ".done")
+        asm.mark(stem + ".grow")  # dlen <= beff: extend to beff + 1
+        asm.move(dlen, beff)
+        asm.add(dlen, one)
+        asm.mark(stem + ".done")
+
+    # -- fetch --------------------------------------------------------
+    asm.mark("fetch")
+    asm.branch_neg(pc, _HALT)
+    asm.branch_le(dlen, pc, _HALT)
+    load_cell(a, pc)
+    asm.move(idx, pc)
+    asm.add(idx, one)
+    load_cell(b, idx)
+    asm.move(idx, pc)
+    asm.add(idx, two)
+    load_cell(c, idx)
+
+    # -- decode -------------------------------------------------------
+    equals(a, -2, "out")
+    equals(a, -1, "in")
+    asm.goto("arith")
+
+    # -- output: print mem[b], then fall through three cells ----------
+    asm.mark("out")
+    load_cell(val, b)
+    asm.emit(-3, val)
+    asm.add(pc, three)
+    asm.goto("fetch")
+
+    # -- input: mem[b] = next byte, then fall through three cells -----
+    asm.mark("in")
+    effective_b()
+    asm.clear(val)
+    asm.sub(val, -2)  # val = -byte; -2 is read exactly once
+    asm.clear(addr)
+    asm.sub(addr, val)
+    asm.move(val, addr)  # val = byte
+    asm.move(addr, base)
+    asm.add(addr, beff)
+    asm.store_indirect(addr, val)
+    asm.add(pc, three)
+    asm.goto("fetch")
+
+    # -- arithmetic: mem[b] = mem[a] - 1; branch to c when <= 0 -------
+    asm.mark("arith")
+    effective_b()
+    load_cell(val, a)
+    asm.sub(val, one)
+    asm.move(addr, base)
+    asm.add(addr, beff)
+    asm.store_indirect(addr, val)
+    asm.branch_le(val, asm.const(0), "taken")
+    asm.add(pc, three)
+    asm.goto("fetch")
+    asm.mark("taken")
+    asm.move(pc, c)
+    asm.goto("fetch")
+
     return " ".join(map(str, asm.build()))
 
 
