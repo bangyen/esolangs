@@ -252,8 +252,74 @@ def _wii2d_folds(
     return out
 
 
+# Bit length at which the fold search gives up on its default ranking and
+# retries magnitude-first (:func:`_wii2d_decode_at`).
+#
+# ``s`` squares, so a fold roughly doubles every live value's bit length, and
+# :func:`_wii2d_compress` can only halve when no two values needing different
+# bits collide.  On a wide dense pattern that check fails from the very first
+# state, so nothing ever shrinks again and the search rides a doubly
+# exponential curve into thousand-digit arithmetic.
+#
+# The threshold only has to be out of reach of the searches that already
+# work.  Measured peak bit length of the leading state, 25 random patterns
+# per domain: ``D == 16`` median 5 / max 8, ``D == 32`` median 18 / max 148.
+# The shipped domains therefore never trip it and their output is unchanged.
+# It is deliberately not set to separate "will finish" from "will not" at
+# ``D == 64``, because no such threshold exists there -- sampled successes
+# peak anywhere from 10 to 21738 bits.  Overshooting merely retries, and the
+# retry is the better answer anyway: the 21738-bit success took 29.13s for
+# 142531 cells where the retry takes 1.83s for 19448.
+_WII2D_MAX_STATE_BITS = 4096
+
+
+def _wii2d_state_rank(values: list[int], ops: str) -> tuple[int, int, int]:
+    """Rank a search state: fewest live values, then smallest, then shortest.
+
+    The retry ranking.  Preferring the smaller state at equal live count
+    steers toward branches :func:`_wii2d_compress` can still act on, which is
+    what escapes the doubling described at :data:`_WII2D_MAX_STATE_BITS`.
+
+    It is not the default, because magnitude and decode length do not agree:
+    on the pinned ``n == 7`` table's first column, ranking this way finds a
+    120499-cell decode in 14.35s where the default finds 6575 cells in 0.97s.
+    Cheapest first, this second -- see :func:`_wii2d_decode_at`.
+    """
+    return (len(set(values)), max(abs(v) for v in values).bit_length(), len(ops))
+
+
 def _wii2d_decode_at(pattern: list[int], beam: int) -> str | None:
-    """Construct the decode at one fold width; see :func:`_wii2d_decode`."""
+    """Construct the decode at one fold width; see :func:`_wii2d_decode`.
+
+    Runs the fold search twice at most.  The first pass ranks states by live
+    count and then by length, which is what every shipped domain decodes
+    under.  If the leading state's magnitude passes
+    :data:`_WII2D_MAX_STATE_BITS` the pass is abandoned -- it is in the
+    doubling trap and every further fold squares numbers already thousands of
+    bits wide -- and the search reruns under :func:`_wii2d_state_rank`.
+
+    The abort is cheap by construction: magnitude doubles per iteration in
+    the trap, so the threshold is crossed in a handful of folds, well under a
+    second.  A pattern that never trips it decodes exactly as it did before
+    the retry existed.
+    """
+    ops = _wii2d_decode_pass(pattern, beam, ranked=False)
+    if ops is not None:
+        return ops
+    return _wii2d_decode_pass(pattern, beam, ranked=True)
+
+
+def _wii2d_decode_pass(pattern: list[int], beam: int, ranked: bool) -> str | None:
+    """Run one fold search; see :func:`_wii2d_decode_at` for the two passes.
+
+    ``ranked`` picks the state ordering.  Both passes give up when the
+    leading state's magnitude passes :data:`_WII2D_MAX_STATE_BITS`: a width
+    too narrow to escape the doubling should fall through to the next one
+    rather than grind.  Letting only the first pass bail was measured worse
+    -- one sampled 64-point pattern aborts its default pass in 1.22s, then
+    spent over a minute in a retry that never returned, when the *next* beam
+    width decodes it in 2.70s.
+    """
     bits = list(pattern)
     values, ops = _wii2d_compress(list(range(len(bits))), bits, "")
     states = [(values, ops)]
@@ -271,8 +337,13 @@ def _wii2d_decode_at(pattern: list[int], beam: int) -> str | None:
                 nxt.append((folded, state_ops + fragment))
         if not nxt:
             return None
-        nxt.sort(key=lambda state: (len(set(state[0])), len(state[1])))
+        if ranked:
+            nxt.sort(key=lambda state: _wii2d_state_rank(state[0], state[1]))
+        else:
+            nxt.sort(key=lambda state: (len(set(state[0])), len(state[1])))
         states = nxt[:beam]
+        if max(abs(v) for v in states[0][0]).bit_length() > _WII2D_MAX_STATE_BITS:
+            return None  # in the doubling trap; retry or widen the beam
     for state_values, state_ops in states:
         live = _wii2d_points(state_values, bits)
         if live is not None and len(live) <= 2:
