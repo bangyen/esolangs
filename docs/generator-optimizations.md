@@ -68,14 +68,14 @@ It measured 74.1% when first added and 74.5% once its reorder shipped the
 same day — the one-dependency table it is scored on is exactly the case the
 reorder improves, so this figure moves when that build changes.
 
-**Minterm-shaped (6).** a_painter_ant, bfstack,
-collatz_multiverse, container, point_break, qoibl — all within 4% of parity
+**Minterm-shaped (5).** a_painter_ant, bfstack,
+collatz_multiverse, container, point_break — all within 4% of parity
 on a one-dependency table, because there is no subtree to collapse.
 
-**Reducing (7).** `home_row`, `cod`, `nocomment`, `bit_tilde`, `rotfuck`,
-`suptiftam` and `suffolk` were on that list until 2026-08-30/31 and are
-still minterm sums; they now gain **60.6%**, **92.5%**, **27.3%**,
-**81.5%**, **76.3%**, **69.4%** and **14.7%** respectively on a
+**Reducing (8).** `home_row`, `cod`, `nocomment`, `bit_tilde`, `rotfuck`,
+`suptiftam`, `suffolk` and `qoibl` were on that list until 2026-08-30/31 and
+are still minterm sums; they now gain **60.6%**, **92.5%**, **27.3%**,
+**81.5%**, **76.3%**, **69.4%**, **14.7%** and **53.2%** respectively on a
 one-dependency table by *dependency reduction* (10) rather than by
 folding.
 
@@ -313,7 +313,7 @@ zero rows and inverting — one term saved per row, paid for once.
 | `qoibl`, `bit_tilde`, `grapheme` | fewer minterms; grapheme picks whichever row-set is shorter |
 | `container` | `OUT` spends one `+1 S{row}>=Gout` line per one-row, so a dense table sums its zero rows from a 49 start and subtracts — 12.7% on the densest n=4 table. The per-row survivor blocks are fixed and unaffected |
 
-### Dependency reduction (10) — ten generators
+### Dependency reduction (10) — eleven generators
 
 A table ignoring an input is emitted as the *smaller* table, still
 consuming the rest. `essential_inputs` (in `boolean/helpers.py`, promoted
@@ -455,6 +455,18 @@ and that is set by the interface rather than by the construction:
   case in the catalogue of a **screen measuring headroom that the reads
   make unreachable**. Where a generator's per-input setup dominates, price
   the setup before believing an arity screen.
+
+- **`qoibl` reads an input it then never names as a factor.** A minterm is
+  one `qe` factor per input on top of two lines per selected row. 633 →
+  **296** at `n == 3` (53.2%) and 1276 → **369** at `n == 4` (71.1%).
+
+  It is the counterpart to `suffolk` and the pair is the useful comparison:
+  both are minterm sums that read their inputs, but qoibl's per-input setup
+  is **29%** of a one-dependency program against suffolk's **96%**, and the
+  delivered figures track that (53.2% against 14.7%) rather than tracking
+  the screen, which promised both about 70%. **Split the program into
+  per-input setup and per-row body before believing an arity screen** — the
+  screen prices the whole program, and only the body is reachable.
 
 **What to check on the next candidate.** The win is available wherever cost
 tracks *arity* rather than the table's contents, which is why it crosses the

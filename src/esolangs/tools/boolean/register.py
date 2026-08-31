@@ -8,7 +8,9 @@ from esolangs.tools.boolean.helpers import (
     _maybe_complement,
     _validate_truth_table,
     best_input_order,
+    essential_inputs,
     minterm_literals,
+    read_at,
     stored_inputs,
 )
 from esolangs.tools.text.helpers import _cm_constants
@@ -652,7 +654,19 @@ def qoibl(truth_table: str) -> str:
     under the size of the sparser half.
     """
     n = _validate_truth_table(truth_table)
-    table, use_complement = _maybe_complement(truth_table)
+    # A table that ignores some of its inputs is a smaller table, and a
+    # minterm costs one ``qe`` factor *per input* on top of two lines per
+    # selected row -- so dropping an input removes rows and shortens the
+    # rows that remain.  Every input keeps its ``et`` read, its
+    # normalization and its complement (they are the interface); an ignored
+    # one is simply never named as a factor.  Measured at ``n == 3``, that
+    # setup is 29% of a one-dependency program and the minterm body the
+    # other 71%, so most of the arity cost here is reachable -- unlike
+    # ``suffolk``, whose per-input setup is 96% of the program.
+    used = essential_inputs(truth_table, n) or [0]
+    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
+    width = len(used)
+    table, use_complement = _maybe_complement(reduced)
     lines = []
     for i in range(n):
         lines.append(f"we {_qoibl_enc(i)} we et ry ey ry {_qoibl_enc(_ASCII_ZERO)} we")
@@ -662,11 +676,12 @@ def qoibl(truth_table: str) -> str:
             f"ry ey ry qe {_qoibl_enc(i)} qe we",
         )
     lines.append(f"we {_qoibl_enc(2 * n)} we {_qoibl_enc(0)} we")
-    for k in range(2**n):
+    for k in range(2**width):
         if table[k] == "0":
             continue
         factors = []
-        for i, negated in minterm_literals(k, n):
+        for slot, negated in minterm_literals(k, width):
+            i = used[slot]
             var = n + i if negated else i
             factors.append(f"qe {_qoibl_enc(var)} qe")
         product = factors[0]
