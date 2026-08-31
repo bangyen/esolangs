@@ -340,15 +340,17 @@ available, and it is now an emulator rather than a rewrite:
   only *unwrapped*: the default folds the line into a boustrophedon to save
   columns, and the fold is a ring the car steers around, which is not.
   Asked for a width wide enough to keep one row (`generate(..., width=N)`
-  with a large `N`), one-character texts transpile and round-trip; longer
-  ones are then rejected by the target's output convention rather than by
-  control flow, since a LaserFuck program prints its tape once and so
-  carries a single `O`.  The boolean generator's programs are out on the
-  tree argument above, and both checked-in `examples/` programs are wrapped.
-  So the in-class set is real but narrow: unwrapped single-character text
-  generation, and hand-drawn corridors.  Lowering it would
-  need scratch cells and a converged answer -- a compiler, which is what
-  separates the two halves of this bullet.  The boolean generator's
+  with a large `N`), texts transpile and round-trip.  This used to be
+  limited to *one-character* texts, on the ground that a LaserFuck program
+  prints its tape once and so carries a single `O`; that limit is gone --
+  outputs are staged into a region the halt dump replays in order (see the
+  Dimensional entry below), so `hi`, `abc` and `Hey` all round-trip.  The
+  boolean generator's programs are still out on the tree argument above,
+  and both checked-in `examples/` programs are wrapped.  So what bounds
+  the in-class set now is control flow alone: unwrapped text generation of
+  any length, and hand-drawn corridors.  Lowering the control-flow half
+  would need scratch cells and a converged answer -- a compiler, which is
+  what separates the two halves of this bullet.  The boolean generator's
   Streetcode programs are further out still: they are decision trees whose
   leaves each print.
 - **Why each partial transpiler is partial.**  `Decleq → S*bleq` is the
@@ -410,15 +412,39 @@ available, and it is now an emulator rather than a rewrite:
   stray `u` would leave the `y = 0` plane, where a later `+` could forge
   the sentinel.
 
-  *Liftable; no construction built.*  `Dimensional → LaserFuck`'s "`.`
-  only as the last command" is a choice, not a language limit:
-  equivalence is judged on the final captured output of a terminating run,
-  so mid-run prints can be staged into tape cells and dumped at halt.  The
-  mechanism is verified to exist -- LaserFuck's dump emits multiple bytes
-  in order, and the transpiler controls the program text, so it can opt
-  into byte mode with the leading `\xff` -- but the grid geometry for a
-  moving output cursor is not built.  Reopened as a candidate; no
-  construction built.
+  *Widened.*  `Dimensional → LaserFuck` used to allow a `.` only as the
+  last command, on the ground that LaserFuck prints its tape once, when
+  the last laser dies.  But equivalence is judged on the output a
+  terminating run *captures*, so when a byte leaves the program is
+  unobservable -- only its order survives.  Each `.` therefore copies its
+  cell into an output region, and the halt dump replays the region in
+  order.  A top-level op runs exactly once, so the slots fill in textual
+  order, which is execution order, and the region is sized statically; it
+  is laid out *last*, after the working cells and one temp, so it grows
+  rightward into LaserFuck's unbounded tape with nothing to displace.  The
+  epilogue drives the working cells negative to hide them and touches each
+  slot with `+-` to keep it -- necessary because the dump skips cells
+  nothing wrote, so a staged `\x00` would otherwise vanish rather than
+  print.
+
+  This is a widening, not a totality result: what it lifts is the output
+  convention, and the rest of the class is untouched (the pointer
+  hierarchy, the numeric readers, drift loops, below-cell-0).  Two limits
+  remain.  A `.` *inside a loop* is still out, its print count being
+  unknown until the loop runs, so its slots cannot be numbered at
+  transpile time; a runtime append would need the biased walk, and the
+  loop ring turns out to run drifting bodies correctly, so this is
+  unbuilt rather than blocked.  And the byte-wrap divergence already
+  documented above now shows differently: a negative cell makes the
+  emitted program *hang* rather than answer, at a print and -- as before
+  this change, for `-->0+.` -- in the epilogue.  Rejecting those would
+  need a proof that a cell stays non-negative through arbitrary loops,
+  which is the unsound static value analysis this module has twice
+  removed.
+
+  `Streetcode → LaserFuck` shares the assembler, so it was widened by the
+  same change: multi-character generated text now round-trips, and its
+  remaining limit is control flow alone.
 
   *Open.*  `brainfuck → 6-5` caps at 17 loops because its loop markers are
   single characters `0-9A-Z`, two per loop, and the region past `Z` is

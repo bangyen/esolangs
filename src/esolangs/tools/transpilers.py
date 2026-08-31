@@ -1055,12 +1055,16 @@ def _laser_loop(
 
 
 def _laser_analyze(ops: list[_LaserOp]) -> tuple[int, int, int | None]:
-    """Analyze the ops statically: final pointer, max cell, output cell.
+    r"""Analyze the ops statically: final pointer, max cell, output cell.
 
     Loops must have net-zero pointer displacement (so the pointer stays
-    statically known), the pointer must never move below cell 0 (LaserFuck's
-    tape has no negative cells), and a ``.`` is allowed only as the last
-    top-level command (LaserFuck prints the tape once at the end).
+    statically known) and the pointer must never move below cell 0
+    (LaserFuck's tape has no negative cells).  Any number of top-level
+    ``.``\ s are in class -- they are staged into an output region and
+    dumped in order at halt (:func:`_laser_stage_prints`) -- but a ``.``
+    *inside a loop* is not, its print count being unknown until the loop
+    runs.  ``out_cell`` reports the last print's cell, for callers that
+    still ask about a single-output program.
     """
     ptr = 0
     maxcell = 0
@@ -1085,11 +1089,10 @@ def _laser_analyze(ops: list[_LaserOp]) -> tuple[int, int, int | None]:
                 )
             i += 1
         elif c == ".":
-            if i != len(ops) - 1:
-                raise ValueError(
-                    "a '.' must be the last command (LaserFuck prints the tape "
-                    "once at the end, so only a final single output is in class)"
-                )
+            # Any number of top-level prints are in class: they are staged
+            # into an output region and dumped in order at halt (see
+            # ``_laser_stage_prints``).  ``out_cell`` records the last one
+            # only for callers that still ask about a single-output program.
             out_cell = ptr
             i += 1
         else:
@@ -1107,7 +1110,14 @@ def _laser_analyze(ops: list[_LaserOp]) -> tuple[int, int, int | None]:
                 raise AssertionError("balanced brackets were validated before analysis")
             body = ops[i + 1 : j - 1]
             if "." in body:
-                raise ValueError("a '.' inside a loop is out of the supported class")
+                # A print inside a loop runs a number of times the source
+                # decides, so its slots cannot be numbered at transpile
+                # time the way a top-level print's can.  Staging that needs
+                # a runtime append, which is not built.
+                raise ValueError(
+                    "a '.' inside a loop is out of the supported class (its "
+                    "print count is not known until the loop runs)"
+                )
             bptr, bmax, _bout = _laser_analyze(body)
             if bptr != 0:
                 raise ValueError(
@@ -1198,32 +1208,114 @@ def _laser_parse(program: str) -> list[_LaserOp]:
     return ops
 
 
+def _laser_move(delta: int) -> list[_LaserOp]:
+    """Return the moves that shift the pointer by ``delta``."""
+    return [">"] * delta if delta > 0 else ["<"] * -delta
+
+
+def _laser_stage_prints(
+    ops: list[_LaserOp], maxcell: int
+) -> tuple[list[_LaserOp], int, int]:
+    """Rewrite each top-level ``.`` into a copy into the output region.
+
+    LaserFuck has no output command: it prints the tape once, when the last
+    laser dies.  A single final ``.`` therefore translates by leaving that
+    one cell for the dump -- but a program that prints several times, or
+    prints before doing more work, has nothing to translate into under that
+    reading.
+
+    It does under a staged one.  Equivalence is judged on the output a
+    terminating run captures, so *when* a byte leaves the program is
+    unobservable; only the order survives.  So each ``.`` copies its cell
+    into the next slot of an output region and the dump prints the region,
+    in tape order, at the end.  A top-level op runs exactly once, so the
+    slots fill in textual order -- which is execution order -- and the
+    region's size is known statically.
+
+    The layout puts the region *last* -- ``[working 0..maxcell | temp |
+    output base..)`` -- so it grows rightward into LaserFuck's unbounded
+    tape with nothing to displace.  Copying is the usual
+    duplicate-and-restore: the source drains into both its slot and the
+    temp, then the temp drains back, so the source keeps its value and the
+    pointer ends where it began.
+
+    A copy drains its source one unit per lap, so it needs that source to
+    be non-negative -- and a Dimensional cell goes negative only by relying
+    on the byte wrap LaserFuck's unbounded cells do not have, which is
+    already out of class.  What staging changes is how that shows: the
+    epilogue's ``[-]`` already failed to terminate on a negative *working*
+    cell (``-->0+.`` hangs before this change too), and now a negative
+    *printed* cell does the same, where it used to print nothing and lose
+    the byte.  Both are wrong for an out-of-class program; a hang is at
+    least loud.  Rejecting them instead would need to prove a cell stays
+    non-negative through arbitrary loops, which is the unsound static
+    value analysis this module has twice removed.
+
+    Returns the rewritten ops, the temp cell, and the region's base.
+    """
+    temp = maxcell + 1
+    base = temp + 1
+    out: list[_LaserOp] = []
+    ptr = 0
+    slot = 0
+    for op in ops:
+        if op != ".":
+            out.append(op)
+            ptr += (op == ">") - (op == "<")
+            continue
+        target = base + slot
+        # drain ptr into the slot and the temp, one unit per lap
+        out.append("[")
+        out.append("-")
+        out.extend(_laser_move(target - ptr))
+        out.append("+")
+        out.extend(_laser_move(temp - target))
+        out.append("+")
+        out.extend(_laser_move(ptr - temp))
+        out.append("]")
+        # drain the temp back into ptr, restoring the source cell
+        out.extend(_laser_move(temp - ptr))
+        out.append("[")
+        out.append("-")
+        out.extend(_laser_move(ptr - temp))
+        out.append("+")
+        out.extend(_laser_move(temp - ptr))
+        out.append("]")
+        out.extend(_laser_move(ptr - temp))
+        slot += 1
+    return out, temp, base
+
+
 def _laser_assemble(ops: list[_LaserOp]) -> str:
-    """Analyze ``ops``, append the tape-clearing epilogue, and lay out the grid.
+    r"""Analyze ``ops``, stage its output, and lay out the grid.
 
     The half of a LaserFuck translation that does not depend on the source
     language: every transpiler targeting LaserFuck ends here, so the
     supported class (:func:`_laser_analyze`) and the printed tape are the
     same whichever language the ops came from.
 
-    LaserFuck prints the whole tape when the last laser dies, so a program
-    whose answer is one cell has to say so.  The epilogue drives every
-    working cell but the output one negative (``[-]-`` clears it and then
-    takes it below zero), and the dump excludes negative cells; the output
-    cell is left alone, so byte mode prints exactly it.
+    LaserFuck prints the whole tape when the last laser dies, which is its
+    only output.  So the program's bytes are *staged* into an output region
+    by :func:`_laser_stage_prints` and the epilogue arranges for the dump to
+    show exactly that region: every working cell and the temp are driven
+    negative (``[-]-`` clears a cell and takes it below zero, and the dump
+    excludes negative cells), while each slot is touched with ``+-`` and
+    kept.  The touch matters -- the dump skips cells nothing has written, so
+    a staged ``\\x00`` would otherwise vanish rather than print.
     """
-    ptr, maxcell, out_cell = _laser_analyze(ops)
+    ptr, maxcell, _out_cell = _laser_analyze(ops)
+    staged, temp, _base = _laser_stage_prints(ops, maxcell)
+    slots = sum(1 for op in ops if op == ".")
+
     epi: list[_LaserOp] = []
-    epi.extend(["<"] * ptr)
-    for cell in range(0, maxcell + 1):
-        if cell == out_cell:
-            epi.extend(["+", "-", ">"])
-            continue
-        epi.extend(["[", "-", "]", "-"])
-        epi.append(">")
+    epi.extend(_laser_move(-ptr))  # back to cell 0
+    for _cell in range(temp + 1):  # working cells and the temp
+        epi.extend(["[", "-", "]", "-", ">"])
+    for _slot in range(slots):  # the output region, touched and kept
+        epi.extend(["+", "-", ">"])
     g = _LaserGrid()
     _laser_funnel(g)
-    _laser_emit(g, ops + epi, 0, 3)
+    _laser_emit(g, staged + epi, 0, 3)
     return g.dump()
 
 
@@ -1238,16 +1330,22 @@ def dimensional_to_laserfuck(program: str) -> str:
     body and lets a zero cell fall through to the exit, so the loop runs
     exactly while its cell is nonzero like Dimensional's.
 
-    LaserFuck prints the whole tape once when the laser dies, so the emitted
-    program negates every working cell at the end; a final single ``.`` is
-    kept (and touched) so the tape dump is exactly that one byte.  Everything
-    outside this core is rejected rather than mistranslated: the pointer
-    hierarchy (``$``, ``{``/``}``, ``?``/``!``), the numeric readers (``d``/
-    ``x``), bare or non-zero-dimension moves, moving below cell 0, loops that
-    drift the pointer, and any ``.`` other than a final single output.
-    Cells do not wrap at 8 bits in the translation (LaserFuck cells are
-    unbounded), so programs that rely on Dimensional's byte wrapping are out
-    of class.
+    LaserFuck prints the whole tape once when the laser dies, which is its
+    only output, so each ``.`` copies its cell into an output region that
+    the dump replays in order (:func:`_laser_stage_prints`); the epilogue
+    drives the working cells negative to hide them.  A program may
+    therefore print as many times as it likes, wherever it likes, so long
+    as the prints are top level.
+
+    Everything outside this core is rejected rather than mistranslated: the
+    pointer hierarchy (``$``, ``{``/``}``, ``?``/``!``), the numeric
+    readers (``d``/``x``), bare or non-zero-dimension moves, moving below
+    cell 0, loops that drift the pointer, and a ``.`` inside a loop, whose
+    print count is not known until the loop runs.  Cells do not wrap at 8
+    bits in the translation (LaserFuck cells are unbounded), so programs
+    that rely on Dimensional's byte wrapping are out of class -- and a
+    negative cell makes the emitted program hang rather than answer, both
+    at a print and, as before this change, in the epilogue.
     """
     ops = _laser_parse(program)
     return _laser_assemble(ops)

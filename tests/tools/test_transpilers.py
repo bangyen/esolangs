@@ -403,7 +403,6 @@ def test_laserfuck_grid_is_rectangular_with_start_and_marker() -> None:
         ("+>+", "bare '>'/'<'"),  # bare move (dimension = current value)
         ("<0+", "below cell 0"),
         ("[<0]", "below cell 0"),  # below cell 0 inside a loop
-        (".+", "must be the last"),  # output not last
         ("+[.-]", "inside a loop"),  # output inside a loop
         ("[>0-]", "drift"),  # drifting loop
         ("++[+[>0]]", "drift"),  # drifting nested loop
@@ -424,6 +423,43 @@ def test_laserfuck_grid_is_rectangular_with_start_and_marker() -> None:
 def test_laserfuck_out_of_class_rejected(program: str, match: str) -> None:
     with pytest.raises(ValueError, match=match):
         esolangs.transpile("Dimensional", "LaserFuck", program)
+
+
+@pytest.mark.parametrize(
+    "program",
+    [
+        "+++.",  # the single final output that always worked
+        "+++.++.",  # two prints, the case that used to be rejected
+        "+.+.+.",  # three
+        ".",  # a lone print of zero, which the dump must not drop
+        ".+++.",  # a zero print before a nonzero one
+        "++.>0+++.",  # prints from different cells
+        "++.>0+++.<0.",  # and back again
+        "+++[>0++<0-]>0.<0+.",  # prints straddling a loop
+    ],
+)
+def test_laserfuck_staged_output_matches_source(program: str) -> None:
+    """Several outputs stage into a region the halt dump replays in order."""
+    target = esolangs.transpile("Dimensional", "LaserFuck", program)
+    assert esolangs.run("Dimensional", program) == esolangs.run("LaserFuck", target)
+
+
+def test_laserfuck_staged_zero_is_not_dropped() -> None:
+    """A staged ``\x00`` prints, though the dump skips untouched cells.
+
+    The dump shows a cell only if something wrote it, and copying a zero
+    runs the copy loop zero times -- so the epilogue touches every slot
+    with ``+-`` to keep it visible.
+    """
+    target = esolangs.transpile("Dimensional", "LaserFuck", ".")
+    assert esolangs.run("LaserFuck", target) == "\x00"
+
+
+def test_laserfuck_print_inside_a_loop_is_still_rejected() -> None:
+    """A loop's print count is unknown until it runs, so its slots cannot be
+    numbered at transpile time; staging that needs a runtime append."""
+    with pytest.raises(ValueError, match="inside a loop"):
+        esolangs.transpile("Dimensional", "LaserFuck", "+[.-]")
 
 
 @pytest.mark.parametrize("op", ["+", "-", ">", "><", ".", ",", "[]"])
@@ -1117,10 +1153,16 @@ def test_streetcode_boolean_generator_is_out_of_class() -> None:
         esolangs.transpile("Streetcode", "LaserFuck", boolean.streetcode("0001"))
 
 
-def test_streetcode_multiple_outputs_are_rejected() -> None:
-    """LaserFuck prints its tape once, so only a single final ``O`` is in class."""
-    with pytest.raises(ValueError, match="must be the last command"):
-        esolangs.transpile("Streetcode", "LaserFuck", _street_corridor("C^O^O;"))
+def test_streetcode_multiple_outputs_are_translated() -> None:
+    r"""Several ``O``\ s stage into the output region and dump in order.
+
+    LaserFuck prints its tape once, when the last laser dies, so a program
+    with more than one output used to have nothing to translate into.  The
+    bytes are staged instead, and the dump replays them in order.
+    """
+    program = _street_corridor("C^O^O;")
+    target = esolangs.transpile("Streetcode", "LaserFuck", program)
+    assert esolangs.run("Streetcode", program) == esolangs.run("LaserFuck", target)
 
 
 # A ring road two lanes wide around a solid island, with no ';' anywhere:
@@ -1181,12 +1223,15 @@ def test_streetcode_wrapped_text_generator_is_rejected() -> None:
 
 # 2.2s, and the same generator build as the family above.
 @pytest.mark.slow
-def test_streetcode_multi_character_text_hits_the_output_convention() -> None:
-    """Longer texts are refused by the target, not by the control-flow wall.
+def test_streetcode_multi_character_text_round_trips() -> None:
+    """Multi-character generated text round-trips now that output is staged.
 
-    A LaserFuck program prints its tape once when the last laser dies, so
-    it carries a single ``O``; the generator emits one per character.
+    A LaserFuck program prints its tape once when the last laser dies, and
+    the generator emits one ``O`` per character, so these used to be out of
+    class.  Each ``O`` stages a byte instead, and the dump replays them, so
+    what remains out of class is control flow rather than output.
     """
-    program = esolangs.generate("Streetcode", "hi", 100_000)
-    with pytest.raises(ValueError, match="must be the last command"):
-        esolangs.transpile("Streetcode", "LaserFuck", program)
+    for text in ("hi", "abc"):
+        program = esolangs.generate("Streetcode", text, 100_000)
+        target = esolangs.transpile("Streetcode", "LaserFuck", program)
+        assert esolangs.run("LaserFuck", target) == text
