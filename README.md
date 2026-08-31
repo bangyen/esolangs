@@ -261,7 +261,7 @@ interpreters, so they are not listed above:
 <details>
 <!-- COMPILERS:START -->
 
-<summary>Show all 12 compilers</summary>
+<summary>Show all 13 compilers</summary>
 
 Compilers that translate esoteric languages to other target languages.
 
@@ -272,6 +272,7 @@ Compilers that translate esoteric languages to other target languages.
 - [BFStack](https://esolangs.org/wiki/BFStack)
 - [Collatz Multiverse](https://esolangs.org/wiki/Collatz_Multiverse)
 - [Decleq](https://esolangs.org/wiki/Decleq)
+- [Forbin](https://esolangs.org/wiki/Forbin)
 - [Forþ](https://esolangs.org/wiki/Forþ)
 - [Home Row](https://esolangs.org/wiki/Home_Row)
 - [Jaune](https://esolangs.org/wiki/Jaune)

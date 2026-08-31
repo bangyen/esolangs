@@ -42,7 +42,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | Factor | yes | yes |  | yes |  |
 | Fargo |  | yes |  | yes |  |
 | Flowchart |  | yes |  | yes |  |
-| Forbin | yes | yes |  | yes |  |
+| Forbin | yes | yes |  | yes | yes |
 | Forþ | yes | yes |  | yes | yes |
 | Grapheme |  | yes |  | yes |  |
 | Home Row | yes | yes |  | yes | yes |
