@@ -1217,6 +1217,37 @@ class TestParameterizedMinskySwap:
         with pytest.raises(ValueError, match="power-of-two"):
             parameterized.minsky_swap("011")
 
+    @pytest.mark.parametrize("bits", [(0, 0), (0, 1), (1, 0), (1, 1)])
+    def test_examples_fill_sets_either_bit_in_either_position(
+        self, bits: tuple[int, int]
+    ) -> None:
+        """``_fill_minsky_swap`` spells a set bit above the LSB too.
+
+        The catalogue entry runs one fixed pair, ``(0, 1)``, which leaves
+        the non-LSB always zero -- so its weighted ``"+" * weight`` block
+        is never emitted there.  Each pair below is run, not merely built,
+        because a wrong weight or pad would still produce a plausible
+        string.
+        """
+        from esolangs.tools.boolean import minsky_swap
+        from esolangs.tools.boolean.examples import AND2, _fill_minsky_swap
+
+        program = _fill_minsky_swap(minsky_swap(AND2), list(bits))
+        assert self.run_minsky_swap(program) == AND2[(bits[0] << 1) | bits[1]]
+
+    def test_examples_fill_weights_the_non_lsb(self) -> None:
+        """A set non-LSB is its weight in ``+`` then a pad to the block size.
+
+        The pad keeps every block the same even length, which is what stops
+        the register pointer drifting; ``"+*+*"`` is the LSB's exception.
+        """
+        from esolangs.tools.boolean import minsky_swap
+        from esolangs.tools.boolean.examples import AND2, _fill_minsky_swap
+
+        template = minsky_swap(AND2)
+        assert "++**" in _fill_minsky_swap(template, [1, 1])
+        assert "++**" not in _fill_minsky_swap(template, [0, 1])
+
 
 class TestParameterizedArrowQueue:
     """Input-by-substitution boolean generator for the no-input language ArrowQueue.
