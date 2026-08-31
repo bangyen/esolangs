@@ -2598,6 +2598,256 @@ class TestParameterizedMinifuck:
         for table, staging in module._derived_plans(2).items():  # noqa: SLF001
             assert staging in offered, (table, staging)
 
+    @pytest.mark.parametrize(
+        ("table", "tier"),
+        [
+            ("0001", "scan"),  # AND: the embed's carry chain already holds it
+            ("0110", "column search"),  # XOR: found by searching for a column
+        ],
+    )
+    def test_the_search_tiers_still_build_when_the_cheap_routes_miss(
+        self, table: str, tier: str
+    ) -> None:
+        """With the derived routes stubbed off, the searches build the table.
+
+        Every supported table is served by the staged, degenerate, or
+        reconverged route, so these tiers are dead weight on the measured
+        path -- but they are the fallback the module keeps for tables a
+        future enumeration does not reach.  Stubbing the cheap routes is the
+        only way to run them, and they answer in well under a second at two
+        inputs, so this stays off the slow marker.
+
+        The program is executed against every input row rather than merely
+        being returned: a tier that builds the wrong thing is the failure
+        this is here to catch.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        with (
+            patch.object(module, "_staged", lambda *_a, **_k: None),
+            patch.object(module, "_reconverged", lambda *_a, **_k: None),
+            patch.object(module, "_degenerate", lambda *_a, **_k: None),
+        ):
+            module.minifuck.cache_clear()
+            try:
+                template = module.minifuck.__wrapped__(table)
+            finally:
+                module.minifuck.cache_clear()
+
+        assert template, f"the {tier} tier returned nothing"
+        for combo in range(4):
+            bits = [(combo >> 1) & 1, combo & 1]
+            got = self.run_minifuck(self.instantiate(template, bits))
+            assert got == table[combo], (tier, bits)
+
+    def test_the_enumeration_skips_a_column_that_is_not_one_digit(self) -> None:
+        """A probe printing anything but single digits is passed over.
+
+        Measured over ``_derived_plans(2)``, all 1844 prints the enumeration
+        makes are single digits, so this filter never fires on the stagings
+        that exist -- it is what keeps a column from being *decoded* out of a
+        print the endgame did not actually produce one digit per row for.
+        Forcing it needs the print itself stubbed, and the caches cleared
+        either side so neither the stub nor the real run is served stale.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        real_printed = module._Joint.printed  # noqa: SLF001
+
+        def two_digits(self: object) -> list[str]:
+            # Every row prints two characters, so no column is ever decoded.
+            return ["00" for _ in real_printed(self)]
+
+        try:
+            module._derived_plans.cache_clear()  # noqa: SLF001
+            with patch.object(module._Joint, "printed", two_digits):  # noqa: SLF001
+                assert module._derived_plans(2) == {}  # noqa: SLF001
+        finally:
+            module._derived_plans.cache_clear()  # noqa: SLF001
+        # With the real print restored the enumeration finds its entries
+        # again, so the empty result above is the filter and not a cache.
+        assert module._derived_plans(2)  # noqa: SLF001
+
+    def test_reconverged_declines_what_it_cannot_replay(self) -> None:
+        """``_reconverged`` bails rather than replaying a staging it lacks.
+
+        Neither refusal fires on real data -- every two-input inner table has
+        a staging, and every one of those stagings is a plain bracket run, so
+        the two-essential-input route always has something to replay.  They
+        are the guards that keep a *future* enumeration, one with a gap or
+        one carrying the literal-suffix form, from being replayed by a route
+        that makes no walk.  Forcing them is the only way to reach them, so
+        the enumeration is stubbed the way the search-route tests stub theirs.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        # Two essential inputs with the ignored one leading, so the route
+        # takes its projection branch -- the one that replays an inner
+        # staging -- rather than the single-input branch that stands at a
+        # known cell.  Unstubbed this table builds, so a None below is the
+        # guard firing and not the route failing for its own reasons.
+        table, n = "00010001", 3
+        pair = module._essential_inputs(table, n)  # noqa: SLF001
+        assert pair == [1, 2], pair
+        assert module._reconverged(table, pair, n) is not None  # noqa: SLF001
+
+        with patch.object(module, "_derive_staging", lambda *_a, **_k: None):
+            assert module._reconverged(table, list(pair), n) is None  # noqa: SLF001
+
+        # The same call, but the staging carries the literal-suffix form:
+        # `brackets` is a string rather than a count, which this route cannot
+        # replay because it makes no walk.
+        real = module._derive_staging  # noqa: SLF001
+
+        def literal_suffix(inner: str, arity: int) -> object:
+            plan = real(inner, arity)
+            if plan is None:
+                return None
+            sep_index, settle, _brackets, acc = plan
+            return (sep_index, settle, "[x", acc)
+
+        with patch.object(module, "_derive_staging", literal_suffix):
+            assert module._reconverged(table, list(pair), n) is None  # noqa: SLF001
+
+    def test_reconverged_skips_a_reset_that_splits_the_rows(self) -> None:
+        """A reset that leaves the rows in different states is passed over.
+
+        Every reset ``_find_reset`` currently offers reconverges all rows, so
+        this is the guard that keeps a wider search from committing to one
+        that does not: the route's whole premise is that the ignored inputs
+        are gone, which a split state has not achieved.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        real = module._find_reset  # noqa: SLF001
+
+        def diverging(ignored: int, *args: object, **kwargs: object) -> list[str]:
+            # ``[`` alone reads a row-dependent cell, so the rows stop
+            # agreeing -- prepended, it is tried and skipped before the real
+            # resets are reached.
+            return ["[", *real(ignored, *args, **kwargs)]  # type: ignore[arg-type]
+
+        table, n = "0101", 2  # input 1 alone decides it; input 0 is ignored
+        essential = module._essential_inputs(table, n)  # noqa: SLF001
+        # The route builds this table when its resets are the real ones.
+        assert module._reconverged(table, essential, n) is not None  # noqa: SLF001
+        with patch.object(module, "_find_reset", diverging):
+            # It still does: the split reset is skipped, not fatal.
+            assert module._reconverged(table, essential, n) is not None  # noqa: SLF001
+
+    def test_the_staging_enumeration_is_offered_only_at_its_arities(self) -> None:
+        """Outside ``_STAGED_ARITIES`` the derivation offers nothing.
+
+        One input is solved by the degenerate route and four is past what the
+        enumeration covers, so neither asks for a staging.  The guard is what
+        lets the caller fall through to the searches rather than paying an
+        enumeration that has no entries to give.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        for n in (1, max(module._STAGED_ARITIES) + 1):  # noqa: SLF001
+            assert n not in module._STAGED_ARITIES  # noqa: SLF001
+            assert module._derived_plans(n) == {}  # noqa: SLF001
+            assert module._derive_staging("0" * 2**n, n) is None  # noqa: SLF001
+        # At a staged arity the enumeration really does have entries, so the
+        # empty results above are the guard and not an exhausted search.
+        assert module._derived_plans(2)  # noqa: SLF001
+
+    def test_pool_reaches_refuses_a_code_that_kills_a_row(self) -> None:
+        """``_pool_reaches`` rejects code that kills or desynchronises a row.
+
+        The pool list is chosen so the codes it does offer keep every row
+        alive, so this refusal never fires during a build -- but it is what
+        makes a *candidate* code safe to try.  Checked against joints
+        captured from a real build rather than a hand-built state, for the
+        reason the pool test gives: a bare embed is not a state any call
+        sees.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        seen: list[tuple[object, int, int]] = []
+        real = module._find_pool  # noqa: SLF001
+
+        def record(joint: object, cell7: int, walk_out: int) -> object:
+            if len(seen) < 4:
+                seen.append((joint.fork(), cell7, walk_out))  # type: ignore[attr-defined]
+            return real(joint, cell7, walk_out)
+
+        with patch.object(module, "_find_pool", record):
+            module.minifuck.cache_clear()
+            module.minifuck.__wrapped__("0110")
+        assert seen, "no pool lookups were observed"
+
+        joint, cell7, walk_out = seen[0]
+        # ``[[`` leaves a row dead or mid-skip, so the code is refused before
+        # the walk out is priced -- a dead row cannot be walked at all.
+        assert not module._pool_reaches(joint, "[[", cell7, walk_out)  # noqa: SLF001
+        # ``x`` writes under the pointer and is refused as well.
+        assert not module._pool_reaches(joint, "x", cell7, walk_out)  # noqa: SLF001
+        # A code that ends past the walk-out target is refused rather than
+        # walked backwards: the walk out only ever moves right, so a pointer
+        # already beyond it can never arrive.
+        assert not module._pool_reaches(joint, "[x", cell7, 0)  # noqa: SLF001
+        # Bare navigation is refused too: reaching the state is not enough,
+        # the code has to leave the answer where the read will find it.
+        assert not module._pool_reaches(joint, "", cell7, walk_out)  # noqa: SLF001
+        # Exactly one of the pool's own codes serves this joint -- the guards
+        # are a filter over the list, not a formality that passes everything.
+        served = [
+            code
+            for code in module._POOL_CODES  # noqa: SLF001
+            if module._pool_reaches(joint, code, cell7, walk_out)  # noqa: SLF001
+        ]
+        assert len(served) == 1, served
+
+    def test_find_column_reports_a_hit_and_a_miss(self) -> None:
+        """``_find_column`` answers a reachable column and declines others.
+
+        The staged route serves every supported table, so this search is
+        never entered from ``minifuck`` itself; calling it directly is what
+        pins that it still finds a column when one is within its depth, and
+        returns ``None`` rather than guessing when none is.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        seen: list[object] = []
+        real = module._find_pool  # noqa: SLF001
+
+        def record(joint: object, cell7: int, walk_out: int) -> object:
+            if not seen:
+                seen.append(joint.fork())  # type: ignore[attr-defined]
+            return real(joint, cell7, walk_out)
+
+        with patch.object(module, "_find_pool", record):
+            module.minifuck.cache_clear()
+            module.minifuck.__wrapped__("0110")
+        assert seen, "no pool lookups were observed"
+        joint = seen[0]
+
+        # A column the state already holds is found at shallow depth, and the
+        # cell it names is a real cell of the window.
+        found = module._find_column(joint.fork(), (0, 0, 0, 0), 20, 3)  # noqa: SLF001
+        assert found is not None
+        code, cell = found
+        assert set(code) <= set("[<x")
+        assert 1 <= cell < 20
+        # A column no code of this depth delivers is declined outright.
+        assert module._find_column(joint.fork(), (0, 1, 1, 0), 20, 3) is None  # noqa: SLF001
+
     @pytest.mark.slow  # re-simulates a derived staging for every table
     def test_stagings_deliver_the_column_the_read_sees(self) -> None:
         """Every staging really does deliver its table's column at the read.
@@ -3474,6 +3724,37 @@ class TestParameterizedOneTwoThree:
 
         with pytest.raises(ValueError, match="one- and two-input tables"):
             parameterized.one_two_three("01101001")
+
+    def test_an_empty_table_is_declined(self) -> None:
+        """A table implying zero inputs raises rather than building nothing.
+
+        ``"1"`` is a well-formed truth table of length ``2**0``, so it clears
+        the shape validation and is refused on arity instead.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        # ``match`` is a substring search, so the equality below is what
+        # actually pins the message.
+        with pytest.raises(ValueError, match="at least one input") as caught:
+            parameterized.one_two_three("1")
+        assert str(caught.value) == "123 needs at least one input"
+
+    def test_out_of_order_slots_are_refused(self) -> None:
+        """The name-order invariant is asserted, not assumed.
+
+        Every table the generator builds satisfies it, so the guard is
+        reachable only by handing the helper a body that violates it -- which
+        is what a mistyped plan would look like.
+        """
+        from esolangs.tools.boolean.one_two_three import _in_name_order
+
+        assert _in_name_order("{X0}{X1}", 2) == "{X0}{X1}"
+
+        with pytest.raises(ValueError, match="out of name order") as caught:
+            _in_name_order("{X1}{X0}", 2)
+        assert str(caught.value) == (
+            "template '{X1}{X0}' emits slots out of name order"
+        )
 
     def test_each_input_is_embedded_once(self) -> None:
         """Each placeholder appears exactly once, and no {Ci} appears."""

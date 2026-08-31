@@ -650,6 +650,28 @@ def test_six_five_transpile_stays_in_the_spec_alphabet() -> None:
     assert all(c.isdigit() or c in string.ascii_uppercase for c in operands)
 
 
+def test_six_five_label_rejects_values_outside_the_alphabet() -> None:
+    """The label helper refuses what the operand alphabet cannot spell.
+
+    The transpiler stops at the cap before ever asking for one of these, so
+    this guard is reached only by calling the helper directly -- which is
+    the point: it is what keeps a future caller from emitting an operand the
+    spec does not name.
+    """
+    from esolangs.tools.transpilers import _SIX_FIVE_MAX_LABEL, _six_five_label
+
+    # The two ends of the valid range still spell.
+    assert _six_five_label(0) == "0"
+    assert _six_five_label(_SIX_FIVE_MAX_LABEL) == "Z"
+
+    for bad in (-1, _SIX_FIVE_MAX_LABEL + 1):
+        # ``match`` is a substring search, so the equality below is what
+        # actually pins the message.
+        with pytest.raises(ValueError, match="no operand character") as caught:
+            _six_five_label(bad)
+        assert str(caught.value) == f"6-5 has no operand character for {bad}"
+
+
 def test_six_five_unbalanced_brackets_rejected() -> None:
     with pytest.raises(ValueError, match="unbalanced"):
         esolangs.transpile("brainfuck", "6-5", "+[")
