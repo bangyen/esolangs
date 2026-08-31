@@ -1225,11 +1225,14 @@ def _laser_stage_prints(
     which is what lets a ``.`` sit inside a loop, where the number of
     prints is not known until the loop runs.  A slot holds ``value + 1``,
     so an occupied slot is nonzero and an empty one is zero, and ``[>]``
-    walks to the first free slot.  That bias needs a cell that cannot
-    collide at the top of its range, which LaserFuck's *unbounded* cells
-    give -- the same encoding is impossible on a byte that wraps, where
-    ``255 + 1`` would read as empty.  The epilogue subtracts the bias back
-    out.
+    walks to the first free slot.  The bias needs headroom above the
+    values it carries, or the top of the range would wrap onto the empty
+    marker: a *byte* cell cannot host it, since ``255 + 1`` reads as
+    empty, which is why the same encoding was rejected for
+    ``brainfuck -> 3D Brainfuck``.  LaserFuck's cells are signed 32-bit
+    per the wiki (unbounded in this interpreter), so a printed byte is
+    nowhere near the top and the bias is safe.  The epilogue subtracts it
+    back out.
 
     The layout is::
 
@@ -1240,11 +1243,17 @@ def _laser_stage_prints(
         M+4      gap, permanently zero: the left walk's landmark
         M+5..    the output slots
 
-    Cell 0 is a landmark because LaserFuck *prepends* a cell when ``<``
-    runs at cell 0 rather than clamping, which would shift every address
-    and corrupt the layout; a nonzero cell 0 stops ``[<]`` before it can
-    happen.  The gap is never written, and movement alone does not mark a
-    cell as used, so it stays invisible to the dump.
+    Cell 0 is a landmark because a return walk has to stop somewhere.
+    LaserFuck's tape is "infinite cells in both directions" (the wiki), so
+    there is no left edge to arrive at, and ``[<]`` halts on the first
+    *zero* -- which every cell left of the working region is.  Without a
+    nonzero cell 0 the walk stops wherever it likes and the gadget loses
+    its place; with one it lands on a known address every time.  This
+    interpreter realizes the leftward half of that tape by inserting at
+    the front of a list, so a walk that runs off the left also shifts
+    which position each value occupies in the halt dump.  The gap is never
+    written, and movement alone does not mark a cell as used, so it stays
+    invisible to the dump.
 
     Each print is three phases, all pointer-neutral, so they nest inside
     the program's own loops: duplicate the source into ``t`` (restoring it
