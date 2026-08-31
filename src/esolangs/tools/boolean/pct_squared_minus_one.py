@@ -232,7 +232,13 @@ def _tail_for(one_value: int, zero_value: int) -> str | None:
         if code is None:
             continue
         body = pre + code
-        if _apply(one_value, body) == 1 and _apply(zero_value, body) == 0:
+        # The shift was solved from these very values, so the check confirms
+        # rather than selects -- 236 candidate pairs over the reachable
+        # range all pass it.  It stays because it is what makes the emitted
+        # tail evidence rather than assertion.
+        if (  # pragma: no branch - the arithmetic above cannot produce a miss
+            _apply(one_value, body) == 1 and _apply(zero_value, body) == 0
+        ):
             return body + "l"
 
     return None
