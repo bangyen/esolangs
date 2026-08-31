@@ -79,7 +79,7 @@ def prep(code: str) -> tuple[str, list[int], list[int]]:
         return sub(r"\d[?!]", "", sym)
 
     code = sub(r"[^^v><\d+\-#&:?!.$@;%]", "", code)
-    code = sub("([#.;%])\1+", "\1", code)
+    code = sub(r"([#.;%])\1+", r"\1", code)
     code = sub("v[:$]", "", code)
 
     jump: list[int] = []

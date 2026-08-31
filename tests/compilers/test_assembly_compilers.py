@@ -133,6 +133,41 @@ def test_unsquare_emits_syscalls() -> None:
     assert "ecall" in mod.comp("ab")
 
 
+class TestUnsquareDoubledPairCollapse:
+    """``(OO|II|PP)S+`` keeps the pair and drops the ``S``s after it.
+
+    The replacement was once written ``"\\1"`` rather than ``r"\\1"``, which
+    is the single byte 1 and not a backreference, so the whole match --
+    including the pair the rewrite exists to keep -- was replaced by a
+    character the dispatch loop then ignored.  A program was silently
+    compiled as though its doubled pair were not there.
+    """
+
+    def test_the_pair_survives_the_rewrite(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.unsquare")
+        assert mod.prep("OOS") == "OO"
+        assert mod.prep("IIS") == "II"
+        assert mod.prep("PPS") == "PP"
+        assert mod.prep("OOSSS") == "OO"
+
+    def test_no_control_byte_reaches_the_output(self) -> None:
+        """The bug's signature was a stray ``\\x01`` in the prepared code."""
+        mod = importlib.import_module("esolangs.compilers.unsquare")
+        for program in ("OOS", "IIS", "PPS", "OOSo", "IISi"):
+            assert "\x01" not in mod.prep(program), program
+
+    def test_the_pair_still_compiles_to_instructions(self) -> None:
+        """``OOS`` emits the body ``OO`` does, not an empty program."""
+        mod = importlib.import_module("esolangs.compilers.unsquare")
+        body = [
+            line
+            for line in mod.comp("OOS").splitlines()
+            if line.startswith("\t") and "a7" not in line and "ecall" not in line
+        ]
+        assert body, "the doubled pair compiled to nothing"
+        assert mod.comp("OOS") == mod.comp("OO")
+
+
 class TestHomeRow:
     def test_arithmetic(self) -> None:
         mod = importlib.import_module("esolangs.compilers.home_row")
@@ -192,6 +227,20 @@ class TestHomeRow:
 
 
 class TestJaune:
+    def test_repeated_markers_collapse(self) -> None:
+        """A run of one marker compiles as a single one.
+
+        The dedup wrote its backreference as ``"\\1"`` in both the pattern
+        and the replacement, which is the byte 1 rather than a group
+        reference, so the pattern matched nothing and the rewrite never
+        fired.  It was harmless -- an earlier pass already collapses these,
+        which is why no output changed when it was corrected -- but a rule
+        that cannot match is not a rule, and this pins that it now can.
+        """
+        mod = importlib.import_module("esolangs.compilers.jaune")
+        for marker in "#.;%":
+            assert mod.comp(marker * 3) == mod.comp(marker), marker
+
     def test_arithmetic(self) -> None:
         mod = importlib.import_module("esolangs.compilers.jaune")
         assert "lw   t0, 0(s1)" in mod.comp("1+")
