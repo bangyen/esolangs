@@ -426,7 +426,6 @@ _MINTERM_SHAPED = {
     "point_break",
     "qoibl",
     "suffolk",
-    "suptiftam",
 }
 
 # Neither model describes these.  ``wii2d`` is a route search over a grid,
@@ -488,6 +487,7 @@ _REDUCING = {
     "home_row",
     "nocomment",
     "rotfuck",
+    "suptiftam",
 }
 
 _UNSHAPED = {
