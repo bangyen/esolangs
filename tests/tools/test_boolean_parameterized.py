@@ -3769,6 +3769,15 @@ class TestParameterizedPctSquaredMinusOne:
         assert _apply(_LIMIT + 1, "s") == -2
         assert _apply(_LIMIT, "s") == _LIMIT - 2, "at the limit nothing resets"
 
+        # The model covers the five commands the generator emits; the
+        # language's others (``l``/``e``/``n`` do I/O, ``t`` jumps) leave the
+        # accumulator alone here, exactly as a character the interpreter
+        # does not recognize does.  Skipping rather than raising is what
+        # lets a tail be scored without first filtering its spelling.
+        assert _apply(10, "l") == 10
+        assert _apply(10, "x") == 10
+        assert _apply(10, "sxs") == 6, "an unmodelled command interrupts nothing"
+
     def test_a_tail_is_not_always_available(self) -> None:
         """Not every pair of class values can be printed apart.
 
