@@ -103,7 +103,9 @@ bounds are actually known.
 One bound *is* known about the ladder: a single reset is one threshold, and
 only 104 of the 256 three-input tables are linearly separable, so this shape
 cannot be made total by widening its grid.  Reaching further needs several
-reset events, which is measured but not built.
+reset events.  Those do occur -- 24 of the witnesses here cross the limit
+twice or more -- but harnessing them needs a ladder whose rungs are not one
+weight per input, and no such geometry has been measured.
 
 Unlike the other parameterized generators, *which* command strings a setter
 uses is derived per table rather than fixed by the language, so a bare
