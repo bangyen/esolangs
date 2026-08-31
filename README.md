@@ -305,7 +305,7 @@ Each transpiler's supported subset and caveats are documented in `esolangs/tools
 
 ```bash
 esolangs transpile BIO BF program.txt           # rewrite a program into another esolang
-esolangs transpile Decleq "S*bleq" program.txt  # instructions must be triple-aligned
+esolangs transpile Decleq "S*bleq" program.txt  # emits a Decleq emulator; any program
 ```
 
 ```python
