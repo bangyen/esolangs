@@ -2617,10 +2617,13 @@ class TestParameterizedMinifuck:
         # past the scanned pair are the whole reason ``_SEPS`` is wider.
         offered = {sep_index for sep_index, *_rest in module._stagings(3)}  # noqa: SLF001
         assert offered == set(range(len(module._SEPS))), offered  # noqa: SLF001
-        # ...as must the index the one stored exception names.
-        for plan in module._EXCEPTIONS.values():  # noqa: SLF001
-            for key, (sep_index, *_rest) in plan.items():
-                assert 0 <= sep_index < len(module._SEPS), (key, sep_index)  # noqa: SLF001
+        # ...as must the index the rescue derives for the stragglers that
+        # miss the enumeration, which is the other route to a staging.
+        for key in ("01101101", "10010010"):
+            rescued = module._rescue(key, 3)  # noqa: SLF001
+            assert rescued is not None, key
+            sep_index, *_rest = rescued
+            assert 0 <= sep_index < len(module._SEPS), (key, sep_index)  # noqa: SLF001
 
     def test_the_pool_codes_cover_every_route(self) -> None:
         """The fixed codes must serve every route that reaches the endgame.
@@ -2921,9 +2924,12 @@ class TestParameterizedMinifuck:
 
         The searches are stubbed, so a table that loses its pool fails here
         rather than being rebuilt slowly by a fallback -- with the
-        fallthrough open this test would pass on any list at all.  Three
+        fallthrough open this test would pass on any list at all.
+        ``_rescue`` is stubbed for the same reason, and the two tables only
+        it reaches are skipped: they have no other route, so they would
+        strand under every drop and add a flat 2 to every count.  Three
         inputs, because two is not enough: two of the codes strand nothing
-        at ``n == 2`` and 22 and 18 tables at ``n == 3``.
+        at ``n == 2`` and 20 and 18 tables at ``n == 3``.
         """
         import importlib
         import re
@@ -2947,6 +2953,10 @@ class TestParameterizedMinifuck:
             module._POOL_CODES = new_codes  # noqa: SLF001
             module._derived_plans.cache_clear()  # noqa: SLF001
             module._degenerate_cells.cache_clear()  # noqa: SLF001
+            # ``_rescue`` derives against the pool codes too, so a warm cache
+            # here would answer an ablated list with a staging built from the
+            # full one and hide exactly what this measures.
+            module._rescue.cache_clear()  # noqa: SLF001
             module.minifuck.cache_clear()
 
         original = codes
@@ -2962,9 +2972,23 @@ class TestParameterizedMinifuck:
                 with (
                     patch.object(module, "_find_column", forbidden),
                     patch.object(module, "_find_parked", forbidden),
+                    # ``_rescue`` is a fallthrough like the searches, and a
+                    # live one would let a dropped code look free while
+                    # quietly moving tables onto a 44950-suffix sweep.  It
+                    # returns None rather than raising, so a table that needs
+                    # it strands in the searches exactly as it would have
+                    # before the rescue existed.
+                    patch.object(module, "_rescue", lambda *_a, **_k: None),
                 ):
                     for table_int in range(256):
                         table = format(table_int, "08b")
+                        # The two tables only ``_rescue`` reaches have no
+                        # other route by construction, so with it stubbed
+                        # they strand under every drop and would add a flat
+                        # 2 to every count.  What this measures is the pool
+                        # codes, so they are left out.
+                        if table in ("01101101", "10010010"):
+                            continue
                         try:
                             module.minifuck.__wrapped__(table)
                         except AssertionError:
@@ -3331,8 +3355,9 @@ class TestParameterizedMinifuck:
         test than this one and would catch a broken staging on its own.  What
         this adds is the reason: it pins that the column arrives at the read,
         so a future change that made the printing accidental rather than
-        earned would show up here.  It also covers the one stored exception,
-        which is the entry no enumeration re-derives.
+        earned would show up here.  It also covers ``01101101``, which the
+        enumeration misses and :func:`_rescue` derives, so the second route
+        to a staging is held to the same standard as the first.
         """
         import importlib
 
