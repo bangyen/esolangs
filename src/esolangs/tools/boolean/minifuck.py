@@ -1226,6 +1226,17 @@ _Staging = tuple[int, int, int | str, int]
 #   same column.  Measured over every staging in the family, **the best
 #   single one delivers 13 pairs and the mean is 5.8**, against 109 to place.
 #   So this is short by a factor of eight, not marginally.
+#
+#   Nor can the enumeration be *indexed* instead of swept -- the map from
+#   staging to table behaves like a hash.  Measured on the full many-to-many
+#   relation (not on the first-hit assignment, which is contaminated by
+#   separator 0 claiming everything it reaches first): at four inputs no
+#   tested invariant yields a necessary condition, every one of the ten
+#   (separator, settle) slices contributes tables reachable nowhere else,
+#   and 72% of tables are served by exactly one slice.  Hamming weight does
+#   predict a *rate* -- 78.4% reachable at weight 2 and 14 against 18.8% at
+#   weight 8 -- but no weight class is empty, so nothing licenses declining
+#   early.  See ``docs/walls.md``.
 # * **Two separators: 99 of 109**, and *not* for want of room -- re-running
 #   with bracket counts to 70 and accumulators to 60 reaches the same 99.
 #   The ten stragglers need a different separator, not a longer program.
