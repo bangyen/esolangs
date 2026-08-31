@@ -68,16 +68,22 @@ It measured 74.1% when first added and 74.5% once its reorder shipped the
 same day — the one-dependency table it is scored on is exactly the case the
 reorder improves, so this figure moves when that build changes.
 
-**Minterm-shaped (8).** a_painter_ant, bfstack,
+**Minterm-shaped (7).** a_painter_ant, bfstack,
 collatz_multiverse, container, point_break, qoibl,
-suffolk, suptiftam — all within 4% of parity on a one-dependency
+suffolk — all within 4% of parity on a one-dependency
 table, because there is no subtree to collapse.
 
-**Reducing (5).** `home_row`, `cod`, `nocomment`, `bit_tilde` and `rotfuck`
-were on that list until 2026-08-30/31 and are still minterm sums; they now
-gain **60.6%**, **92.5%**, **27.3%**, **81.5%** and **76.3%** respectively
-on a one-dependency table by *dependency reduction* (10) rather than by
-folding. That is a distinction the shape test would
+**Reducing (6).** `home_row`, `cod`, `nocomment`, `bit_tilde`, `rotfuck` and
+`suptiftam` were on that list until 2026-08-30/31 and are still minterm
+sums; they now gain **60.6%**, **92.5%**, **27.3%**, **81.5%**, **76.3%**
+and **69.4%** respectively on a one-dependency table by *dependency
+reduction* (10) rather than by folding.
+
+That is most of the minterm side, and the pattern is worth stating: a sum of
+minterms is the *ideal* shape for technique 10, because it pays per selected
+row **and** per input within each row, so dropping an input removes rows and
+shortens every row that survives. Folding-based generators gain less from it
+precisely because they already collapse what a degenerate table repeats. That is a distinction the shape test would
 otherwise lose, so they are carried in their own `_REDUCING` category
 rather than relabelled tree-shaped: the gain tracks dropped *arity*, and
 reordering does not become applicable to them the way it would if they had
@@ -307,7 +313,7 @@ zero rows and inverting — one term saved per row, paid for once.
 | `qoibl`, `bit_tilde`, `grapheme` | fewer minterms; grapheme picks whichever row-set is shorter |
 | `container` | `OUT` spends one `+1 S{row}>=Gout` line per one-row, so a dense table sums its zero rows from a 49 start and subtracts — 12.7% on the densest n=4 table. The per-row survivor blocks are fixed and unaffected |
 
-### Dependency reduction (10) — eight generators
+### Dependency reduction (10) — nine generators
 
 A table ignoring an input is emitted as the *smaller* table, still
 consuming the rest. `essential_inputs` (in `boolean/helpers.py`, promoted
@@ -427,6 +433,13 @@ and that is set by the interface rather than by the construction:
   is normalized like the rest and then simply never guards a block. 1576 →
   **373** at `n == 3` (76.3%), and 5123 → **482** at `n == 4` (90.6%).
   Constants improve too, 1404 → 370.
+
+- **`suptiftam` reads an input it then never names as a factor.** A minterm
+  is four lines per input on top of one row per selected row, so dropping an
+  input removes rows and shortens the survivors. Every input keeps its read
+  and its `%-[read]22%` normalization; an ignored one is simply never used
+  as a factor. 700 → **214** at `n == 3` (69.4%) and 1555 → **247** at
+  `n == 4` (84.1%).
 
 **What to check on the next candidate.** The win is available wherever cost
 tracks *arity* rather than the table's contents, which is why it crosses the

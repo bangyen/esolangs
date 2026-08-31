@@ -1180,12 +1180,21 @@ def suptiftam(truth_table: str) -> str:
     # One minterm per row selected, so a dense table is summed over its
     # zeros and the sum inverted -- ``1 - sum`` is one line however many
     # minterms it saves.
-    table, invert = _maybe_complement(truth_table)
-    for row in range(2**n):
+    # A table that ignores some of its inputs is a smaller table, and a
+    # minterm costs four lines *per input* on top of one row per selected
+    # row -- so dropping an input removes rows and shortens the rows that
+    # remain.  Every input keeps its read and its normalization (they are
+    # the interface); an ignored one is simply never named as a factor.
+    used = essential_inputs(truth_table, n) or [0]
+    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
+    width = len(used)
+    table, invert = _maybe_complement(reduced)
+    for row in range(2**width):
         if table[row] != "1":
             continue
         lines.append("p=1")
-        for i, negated in minterm_literals(row, n):
+        for slot, negated in minterm_literals(row, width):
+            i = used[slot]
             factor = f"%-[1]{names[i]}%" if negated else names[i]
             lines += ["prod=0", f"a={factor}", "mulStep(:p:)if(p)", "p=prod"]
         lines.append("sum=%+[sum]p%")
