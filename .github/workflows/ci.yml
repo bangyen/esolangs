@@ -21,8 +21,12 @@ jobs:
       with:
         python-version: "3.12"
 
+    # `--python` explicitly, though this job also sets up 3.12 above: the
+    # repo now commits a `.python-version` pin, and a bare `uv sync` prefers
+    # it -- which would quietly move this job to whatever dev is on.  The
+    # lint job holds the floor `requires-python` promises, so it says so.
     - name: Install dependencies
-      run: uv sync --extra dev
+      run: uv sync --extra dev --python 3.12
 
     - name: Run pre-commit
       run: uv run pre-commit run --all-files
@@ -54,7 +58,7 @@ jobs:
     timeout-minutes: 15
     strategy:
       matrix:
-        python-version: ["3.12", "3.13"]
+        python-version: ["3.12", "3.13", "3.14"]
 
     steps:
     - uses: actions/checkout@v7
@@ -76,22 +80,29 @@ jobs:
     - name: Install dependencies
       run: uv sync --extra dev --python ${{ matrix.python-version }}
 
-    # Coverage is only consumed from the 3.12 leg (Codecov upload, the badge
-    # artifact), and `coverage` cannot use its sysmon core before 3.12 --
-    # sys.monitoring is 3.12+.  On 3.10/3.11 it falls back to the settrace
-    # tracer, which fires per executed line and costs ~3x on interpreters that
-    # are tight dispatch loops.  So measure on 3.12 and just run the tests
-    # everywhere else.
+    # Coverage is consumed from one leg only (Codecov upload, the badge
+    # artifact), and that leg is now 3.14, because which interpreter measures
+    # it decides what it costs.  sys.monitoring cannot measure *branches*
+    # before 3.14, so asking for `--cov-branch` there drops coverage onto the
+    # old tracer.  Measured locally over the fast subset at -n 4, coverage
+    # 7.13.4, the same flags on both:
+    #
+    #     3.13  --cov (line, sysmon)     36.1s
+    #     3.13  --cov --cov-branch      119.3s   <- 3.3x, no-sysmon fallback
+    #     3.14  --cov (line, sysmon)     17.81s
+    #     3.14  --cov --cov-branch       17.89s  <- free
+    #
+    # The other legs just run the tests.  3.12 stays in the matrix because
+    # `requires-python` promises it -- the floor has to keep being tested even
+    # though it is no longer where coverage is measured.
     - name: Test with pytest (with coverage)
-      if: matrix.python-version == '3.12'
+      if: matrix.python-version == '3.14'
       # The local default is a fixed, modest worker count so developer laptops
       # keep cores free; CI has the box to itself, so ask for all of them.
       #
-      # `--cov-branch` drops coverage off its sysmon core (sys.monitoring
-      # cannot measure branches at 7.13.4 and falls back with a warning), but
-      # the fallback is cheap -- 65.4s against 68.2s measured over the fast
-      # subset -- and the gate below needs the arcs.  The badge is unaffected:
-      # it reads the XML's line-rate, which branch mode leaves alone.
+      # `--cov-branch` is free on this leg (see the table above) and the gate
+      # below needs the arcs.  The badge is unaffected: it reads the XML's
+      # line-rate, which branch mode leaves alone.
       run: uv run pytest -n auto --cov --cov-branch --cov-report=xml --cov-report=term-missing
 
     # Strict here, unlike the local pre-push run: this job runs the whole
@@ -99,15 +110,15 @@ jobs:
     # blamed on a deselected test.  The gate is still fail-open about data it
     # does not have -- see its module docstring.
     - name: Check changed-line and changed-branch coverage
-      if: matrix.python-version == '3.12'
+      if: matrix.python-version == '3.14'
       run: uv run python scripts/check_diff_coverage.py
 
     - name: Test with pytest
-      if: matrix.python-version != '3.12'
+      if: matrix.python-version != '3.14'
       run: uv run pytest -n auto
 
     - name: Upload coverage to Codecov
-      if: matrix.python-version == '3.12'
+      if: matrix.python-version == '3.14'
       uses: codecov/codecov-action@v7
       with:
         file: ./coverage.xml
@@ -116,7 +127,7 @@ jobs:
         fail_ci_if_error: false
 
     - name: Upload coverage report for the badge
-      if: matrix.python-version == '3.12'
+      if: matrix.python-version == '3.14'
       uses: actions/upload-artifact@v7
       with:
         name: coverage-xml
@@ -145,8 +156,10 @@ jobs:
       with:
         python-version: "3.12"
 
+    # Explicit, like every other sync here: with `.python-version` committed,
+    # a bare `uv sync` would follow the pin rather than the 3.12 set up above.
     - name: Install dependencies
-      run: uv sync --extra dev
+      run: uv sync --extra dev --python 3.12
 
     - name: Regenerate the coverage badge
       run: |
@@ -182,7 +195,7 @@ jobs:
         python-version: "3.12"
 
     - name: Install dependencies
-      run: uv sync --extra dev
+      run: uv sync --extra dev --python 3.12
 
     - name: Run bandit security check
       run: uv run --with bandit bandit -r src -f json -o bandit-report.json
@@ -304,7 +317,7 @@ jobs:
       uses: astral-sh/setup-uv@v7
 
     - name: Install dependencies
-      run: uv sync --extra dev
+      run: uv sync --extra dev --python 3.12
 
     - name: Run the fuzzer's divergence-detection tests
       run: |
