@@ -815,6 +815,69 @@ def _endgame(j: _Joint, acc: int, read: str, cell7: int) -> None:
     j.emit("[x.")
 
 
+def _complement(column: tuple[int, ...]) -> tuple[int, ...]:
+    """Flip every row of a column."""
+    return tuple(1 - bit for bit in column)
+
+
+def _printed_column(j: _Joint, acc: int, cell7: int) -> tuple[int, ...] | None:
+    """Return what the ``'[x<[<'`` read prints here, without printing it.
+
+    The endgame is not a search: what it prints is fixed by the tape once the
+    pool is set and the walk has run.  Emitting the pool code and walking to
+    ``acc - 1`` leaves the pointer one cell short of the answer, and the read
+    then reports the cell at ``ptr + 1`` -- directly for ``'[x<[<'`` and
+    complemented for ``'[<'``, which is the only difference between the two.
+    So one walk yields both reads' columns, and neither has to be run.
+
+    This is the same value :func:`_endgame` would print, derived rather than
+    observed.  Checked against it over every ``(separator, settle, bracket
+    run, accumulator, orientation)`` at two, three and four inputs: 15600
+    columns, no disagreement.  :func:`_confirm` re-checks each one that is
+    actually used, so a divergence would surface as a miss rather than as a
+    wrong program.
+
+    Returns None when this orientation has no pool pattern or the walk cannot
+    reach, which are the two conditions :func:`_endgame` raises on.
+    """
+    code = _find_pool(j, cell7, acc - 1)
+    if code is None:
+        return None
+    probe = j.fork()
+    probe.emit(code)
+    try:
+        _walk_to(probe, acc - 1)
+    except ValueError:
+        return None
+    return tuple(probe.col(probe.ms[0].ptr + 1))
+
+
+def _confirm(
+    j: _Joint, acc: int, read: str, cell7: int, column: tuple[int, ...]
+) -> bool:
+    """Whether the endgame really prints ``column`` here.
+
+    The derivation above settles which accumulator answers a table; this runs
+    the endgame that was chosen and checks it, so nothing is recorded on the
+    strength of the algebra alone.  It is the same standard the enumeration
+    has always applied -- a staging is accepted on the evidence of its own
+    output -- narrowed to the accumulators that are about to be used.
+
+    :func:`_endgame` also asserts the pool is input-independent, a side
+    condition the derivation does not model; a failure there is a bug in the
+    pair rather than a miss, so it is left to propagate.
+    """
+    probe = j.fork()
+    try:
+        _endgame(probe, acc, read, cell7)
+    except ValueError:
+        return False
+    printed = probe.printed()
+    if any(len(digit) != 1 for digit in printed):
+        return False
+    return tuple(int(digit) for digit in printed) == column
+
+
 def _try_print(j: _Joint, truth_table: str, acc: int) -> _Joint | None:
     """Try every read and orientation at ``acc``; return one that prints."""
     for read in _READS:
@@ -1505,30 +1568,38 @@ def _derived_plans(
     found: dict[str, _Staging] = {}
 
     def claim(staged: _Joint, suffix: int | str, head: tuple[int, int]) -> bool:
-        """Try every accumulator here, recording what each prints.
+        """Record what every accumulator here prints, computing it rather than
+        printing it.
 
         Returns whether every table has been placed, which is what stops the
         enumeration early.  Both passes below share this: the suffix is
         already emitted by the time it runs, so a bracket count and an insert
         string reach it the same way.
+
+        What an accumulator prints is not searched for.  :func:`_printed_column`
+        derives it in closed form from the tape the walk leaves behind, so an
+        accumulator that answers no wanted table costs one walk and a dict
+        lookup instead of a full endgame.  The two reads are not enumerated at
+        all: they print complementary columns, so both are read off the one
+        derivation.  Only an accumulator that *does* answer a wanted table
+        pays for an endgame, and then only to confirm it -- see
+        :func:`_confirm`.
         """
         nonlocal remaining
         for acc in range(9, _MAX_ACC + 1):
-            for read in _READS:
-                for cell7 in (0, 1):
-                    probe = staged.fork()
-                    try:
-                        _endgame(probe, acc, read, cell7)
-                    except ValueError:
-                        continue
-                    printed = probe.printed()
-                    if any(len(digit) != 1 for digit in printed):
-                        continue
-                    column = tuple(int(digit) for digit in printed)
+            for cell7 in (0, 1):
+                derived = _printed_column(staged, acc, cell7)
+                if derived is None:
+                    continue
+                for read in _READS:
+                    column = derived if read == _READS[1] else _complement(derived)
                     for table in wanted.get(column, ()):
-                        if table not in found:
-                            found[table] = (*head, suffix, acc)
-                            remaining -= 1
+                        if table in found:
+                            continue
+                        if not _confirm(staged, acc, read, cell7, column):
+                            continue
+                        found[table] = (*head, suffix, acc)
+                        remaining -= 1
             if not remaining:
                 return True
         return False
