@@ -58,7 +58,17 @@ arena limit.
 
 import sys
 
-from esolangs.interpreters.other.forbin import _Function, _Parser
+from esolangs.interpreters.other.forbin import (
+    _Assign,
+    _CallNode,
+    _For,
+    _Function,
+    _Iter,
+    _Parser,
+    _Range,
+    _Statement,
+    _ValueNode,
+)
 
 # Frame layout in bytes: parent, nested-table pointer, slot count, then
 # 16-byte (id, value) pairs.
@@ -87,6 +97,8 @@ class _Compiler:
         self.names: dict[str, int] = {}
         self.tables: list[str] = []
         self.label = 0
+        # The enclosing function's epilogue label, installed by emit_fn.
+        self.ret_label: str | None = None
 
     def name_id(self, name: str) -> int:
         """Intern ``name``, returning the integer a frame slot stores."""
@@ -119,12 +131,11 @@ class _Compiler:
 
     # -- values -----------------------------------------------------------
 
-    def emit_value(self, node: tuple, fn: _Function) -> str:
+    def emit_value(self, node: _ValueNode, fn: _Function) -> str:
         """Emit code leaving ``node``'s tagged value in ``a0``."""
-        kind = node[0]
-        if kind == "lit":
+        if node[0] == "lit":
             return f"    li   a0, {node[1]}\n"
-        if kind == "not":
+        if node[0] == "not":
             # ``!`` needs a bit: anything else is the interpreter's
             # "! needs a bit" halt.  Unsigned compare catches both the
             # function tag and the negative builtin words.
@@ -134,18 +145,22 @@ class _Compiler:
                 + "    bgtu a0, t0, .abort\n"
                 + "    xori a0, a0, 1\n"
             )
-        if kind == "var":
-            return self.emit_lookup(node[1], fn)
-        if kind == "fnlit":
+        if node[0] == "var":
+            return self.emit_lookup(node[1])
+        if node[0] == "fnlit":
             return f"    li   a0, {self.fn_value(node[1])}\n"
         return self.emit_call(node, fn)
 
-    def emit_lookup(self, name: str, fn: _Function) -> str:
+    def emit_lookup(self, name: str) -> str:
         """Emit a runtime frame-chain walk resolving ``name`` into ``a0``.
 
         Mirrors ``_lookup``: at each frame, its locals newest-first, then
         its nested table; then outward.  Only when the chain runs out do the
         static globals and builtins apply.
+
+        Takes no enclosing function, and that absence is the design: Forbin
+        resolves names along the *call* chain, so which function encloses
+        the read tells you nothing about what it will find.
         """
         nid = self.name_id(name)
         top, scan, tbl, tnext, nxt, done = (self.new_label() for _ in range(6))
@@ -199,7 +214,7 @@ class _Compiler:
 
     # -- calls ------------------------------------------------------------
 
-    def emit_call(self, node: tuple, fn: _Function) -> str:
+    def emit_call(self, node: _CallNode, fn: _Function) -> str:
         """Emit a call, leaving its result in ``a0``.
 
         The callee and arguments are evaluated left to right (matching
@@ -225,28 +240,27 @@ class _Compiler:
 
     # -- statements -------------------------------------------------------
 
-    def emit_stmts(self, stmts: list, fn: _Function) -> str:
+    def emit_stmts(self, stmts: list[_Statement], fn: _Function) -> str:
         """Emit a statement list in the current frame's scope."""
         return "".join(self.emit_stmt(s, fn) for s in stmts)
 
-    def emit_stmt(self, stmt: tuple, fn: _Function) -> str:
+    def emit_stmt(self, stmt: _Statement, fn: _Function) -> str:
         """Emit one statement.
 
         ``return`` leaves its value in ``a0`` and jumps to the function's
         epilogue, which is what makes a ``return`` inside nested loops exit
         the whole function as ``_exec_stmt`` does.
         """
-        kind = stmt[0]
-        if kind == "return":
+        if stmt[0] == "return":
             return self.emit_value(stmt[1], fn) + f"    j    {self.ret_label}\n"
-        if kind == "assign":
+        if stmt[0] == "assign":
             return self.emit_assign(stmt, fn)
-        if kind == "call":
+        if stmt[0] == "call":
             # a statement-position call discards its result
             return self.emit_call(stmt, fn)
         return self.emit_for(stmt, fn)
 
-    def emit_assign(self, stmt: tuple, fn: _Function) -> str:
+    def emit_assign(self, stmt: _Assign, fn: _Function) -> str:
         """Emit an assignment, binding each target in the current frame.
 
         A single right-hand value is **re-evaluated once per target**, not
@@ -293,7 +307,7 @@ class _Compiler:
 
     # -- loops ------------------------------------------------------------
 
-    def emit_for(self, stmt: tuple, fn: _Function) -> str:
+    def emit_for(self, stmt: _For, fn: _Function) -> str:
         """Emit a ``for`` statement.
 
         Both forms bind their variables in the *enclosing* frame -- the
@@ -305,7 +319,7 @@ class _Compiler:
             return self.emit_range(spec, body, fn)
         return self.emit_iter(spec, body, fn)
 
-    def emit_range(self, spec: tuple, body: list, fn: _Function) -> str:
+    def emit_range(self, spec: _Range, body: list[_Statement], fn: _Function) -> str:
         """Emit a range loop over ``start..end`` inclusive.
 
         Bounds are evaluated once, in order, before the loop; each must be a
@@ -336,7 +350,7 @@ class _Compiler:
         code += "    ld   s4, 0(sp)\n    ld   s5, 8(sp)\n    addi sp, sp, 48\n"
         return code
 
-    def emit_iter(self, spec: tuple, body: list, fn: _Function) -> str:
+    def emit_iter(self, spec: _Iter, body: list[_Statement], fn: _Function) -> str:
         """Emit an iteration loop over an explicit pattern list.
 
         A wildcard stands for both bit values, and its count is fixed at
@@ -353,10 +367,13 @@ class _Compiler:
             wilds = [j for j, p in enumerate(items) if p[0] == "*"]
             for combo in self.combos(len(wilds)):
                 w = 0
-                row = []
+                row: list[_ValueNode] = []
                 for p in items:
                     if p[0] == "*":
-                        row.append(("lit", combo[w]))
+                        # a wildcard's filling is a literal bit, so the row
+                        # is a plain value list the body can evaluate
+                        lit: _ValueNode = ("lit", combo[w])
+                        row.append(lit)
                         w += 1
                     else:
                         row.append(p[1])
@@ -368,10 +385,16 @@ class _Compiler:
         """Return the wildcard fillings, last wildcard counting fastest."""
         rows: list[tuple[int, ...]] = [()]
         for _ in range(count):
-            rows = [r + (b,) for r in rows for b in (0, 1)]
+            rows = [(*r, b) for r in rows for b in (0, 1)]
         return rows
 
-    def emit_row(self, names: list, row: list, body: list, fn: _Function) -> str:
+    def emit_row(
+        self,
+        names: list[str],
+        row: list[_ValueNode],
+        body: list[_Statement],
+        fn: _Function,
+    ) -> str:
         """Emit one iteration row: bind the names, then run the body once.
 
         Values are evaluated into temporaries before any is bound, since the
@@ -405,7 +428,7 @@ class _Compiler:
         # jumps here to leave the whole function, as _exec_stmt does.
         # Saved and restored because emitting this body can emit another
         # function's, which would otherwise leave its label installed.
-        outer = getattr(self, "ret_label", None)
+        outer = self.ret_label
         self.ret_label = f".ret{ind}"
         body = self.emit_stmts(fn.body, fn)
         self.ret_label = outer
@@ -509,10 +532,7 @@ class _Compiler:
             "    mv   a1, sp\n"
             "    li   a2, 1\n"
             "    call .dispatch\n"
-            "    j    .halt\n"
-            + self.emit_runtime()
-            + bodies
-            + self.emit_data()
+            "    j    .halt\n" + self.emit_runtime() + bodies + self.emit_data()
         )
 
     def emit_runtime(self) -> str:
@@ -552,9 +572,7 @@ class _Compiler:
             "    ld   ra, 0(sp)\n"
             "    ld   s2, 8(sp)\n"
             "    addi sp, sp, 32\n"
-            "    ret\n"
-            + self.emit_builtins()
-            + self.emit_abort()
+            "    ret\n" + self.emit_builtins() + self.emit_abort()
         )
 
     def emit_frame(self) -> str:
@@ -712,4 +730,5 @@ def comp(code: str) -> str:
 
 
 if __name__ == "__main__":  # pragma: no cover
-    print(comp(open(sys.argv[1]).read()), end="")
+    with open(sys.argv[1]) as _source:
+        print(comp(_source.read()), end="")
