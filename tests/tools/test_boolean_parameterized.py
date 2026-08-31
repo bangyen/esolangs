@@ -2316,7 +2316,7 @@ class TestParameterizedMinifuck:
         # ...and the public entry point still builds one.
         assert parameterized.minifuck("00000001")
 
-    @pytest.mark.slow  # ~6min: the four-input derivation runs to its caps
+    @pytest.mark.slow  # ~80s: the four-input derivation runs to its caps
     def test_four_input_tables_build_from_the_insert_family(self) -> None:
         """Staged four-input tables build, and the staging is what builds them.
 
