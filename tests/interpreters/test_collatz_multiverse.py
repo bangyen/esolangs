@@ -155,6 +155,61 @@ class TestArrays:
             run(program, ScriptedIO("5"))
         assert str(caught.value) == message
 
+    def test_unreachable_input_assignment_is_still_malformed(self) -> None:
+        """The check is on the program text, not on the lines that run.
+
+        Assigning to ``lineNumber`` jumps, so line 2 here never executes.
+        While the check lived in ``step()`` this program ran to completion
+        and printed, which made a *malformed* program legal whenever the
+        offending line was skipped -- unlike the two sibling malformed
+        cases, both rejected at construction.
+        """
+        program = "\n".join(
+            [
+                "lineNumber = x x + arr, DO PRINT.",
+                "input = two x + three, DO PRINT.",
+            ]
+        )
+        with pytest.raises(ValueError, match="input cannot be redefined"):
+            run(program, ScriptedIO("5"))
+
+    def test_acceptance_does_not_depend_on_input(self) -> None:
+        """The same program text is malformed whatever is on stdin.
+
+        A ``lineNumber`` jump target can be *read from input*, so while the
+        check was made at execution time this program's validity varied
+        with stdin: it ran on ``2`` and raised on ``3``.
+        """
+        program = "\n".join(
+            [
+                "lineNumber = input x + negativeOne, NOT PRINT.",
+                "negativeOne = negativeOne x + negativeOne, NOT PRINT.",
+                "input = negativeOne x + negativeOne, NOT PRINT.",
+            ]
+        )
+        for stdin in ("2", "3", "9"):
+            with pytest.raises(ValueError, match="input cannot be redefined"):
+                run(program, ScriptedIO(stdin))
+
+    def test_malformed_cases_agree_on_unreachable_lines(self) -> None:
+        """All three documented malformed cases are rejected alike.
+
+        The docstring lists a malformed line, a numeric literal, and an
+        ``input`` target as equally malformed; each is checked over the
+        whole program, so an unreachable offending line is rejected
+        whichever kind it is.
+        """
+        jump = "lineNumber = x x + arr, DO PRINT."
+        # Each malformed kind has its own message; pairing them keeps the
+        # assertion specific rather than accepting any ValueError.
+        for bad, message in (
+            ("this is not a valid line at all", "malformed line"),
+            ("foo = 3 x + one, NOT PRINT.", "malformed line"),
+            ("input = two x + three, DO PRINT.", "input cannot be redefined"),
+        ):
+            with pytest.raises(ValueError, match=message):
+                run(f"{jump}\n{bad}", ScriptedIO("5"))
+
 
 class TestLineNumber:
     def test_reads_current_line(self) -> None:
