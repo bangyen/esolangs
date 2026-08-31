@@ -88,7 +88,10 @@ def _scan(line: str, accept: Callable[[list[str]], bool]) -> list[str]:
                 branches.append(([*tokens, "rr" if nxt == "r" else "ry"], i + 2))
             if fused and (head := _steal(tokens, "y")) is not None:
                 branches.append(([*head, "yr"], i + 1))
-        elif char in "ey":
+        else:
+            # The source is filtered to ``ewqtry`` and whitespace, and the
+            # loop above skipped the whitespace, so what is left after the
+            # arms above is an ``e`` or a ``y`` opening a binary literal.
             j = i
             while j < n and line[j] in "ey":
                 j += 1
@@ -256,7 +259,12 @@ class State:
             return self.var.get(self._parse(expr[1:-1]), 0)
         elif op == "et":
             return self.io.input_char()
-        elif re.fullmatch("[ey]+", op):
+        # ``tokenize`` only accepts a split under which every statement
+        # parses, so the tokens that reach here are the keywords above, a
+        # binary ``[ey]+`` literal, or ``yr``/``ry`` -- and those two are
+        # taken by the ``in expr`` arms before the keyword tests run.  The
+        # fallback stays for a hand-built expression list.
+        elif re.fullmatch("[ey]+", op):  # pragma: no branch - see above
             op = op.replace("e", "0").replace("y", "1")
             return int(op, 2)
         return 0
