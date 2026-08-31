@@ -421,7 +421,6 @@ def test_greedy_order_is_correct_when_it_is_not_the_identity() -> None:
 _MINTERM_SHAPED = {
     "a_painter_ant",
     "bfstack",
-    "bit_tilde",
     "collatz_multiverse",
     "container",
     "point_break",
@@ -485,6 +484,7 @@ _MINTERM_SHAPED = {
 # collapsed structure.  Reordering does not become applicable to them the way
 # it would if they had grown a tree, which is why they are neither list.
 _REDUCING = {
+    "bit_tilde",
     "cod",
     "home_row",
     "nocomment",
