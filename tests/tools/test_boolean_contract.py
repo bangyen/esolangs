@@ -422,7 +422,6 @@ _MINTERM_SHAPED = {
     "a_painter_ant",
     "bfstack",
     "container",
-    "point_break",
 }
 
 # Neither model describes these.  ``wii2d`` is a route search over a grid,
@@ -484,6 +483,7 @@ _REDUCING = {
     "collatz_multiverse",
     "home_row",
     "nocomment",
+    "point_break",
     "qoibl",
     "rotfuck",
     "suffolk",
