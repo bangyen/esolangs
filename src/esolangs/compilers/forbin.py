@@ -53,7 +53,12 @@ parse is what makes acceptance totality hold by construction rather than by
 coincidence.
 
 Registers: ``s1`` = arena bump pointer, ``s2`` = current frame, ``s3`` =
-arena limit.
+arena limit, ``s4``/``s5`` = a range loop's live counter and limit, ``s6``
+= this invocation's stack mark.  The last three are saved and restored by
+every function prologue/epilogue rather than only around each loop: a
+``return`` from inside a loop jumps straight to the epilogue and so
+discards that loop's own stack save, which would otherwise hand a
+mid-loop *caller* a clobbered counter.
 """
 
 import sys
