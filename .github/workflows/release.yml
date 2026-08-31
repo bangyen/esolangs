@@ -22,6 +22,12 @@ on:
 permissions:
   contents: read
 
+# See ci.yml: a bare `uv run` would honour the `.python-version` pin over the
+# 3.12 these jobs set up, recreating the environment on a different
+# interpreter than the one the release is checked against.
+env:
+  UV_NO_SYNC: "1"
+
 jobs:
   # The tag is the only thing that triggers a release, so it is also the only
   # thing that can disagree with the package.  Check it before building.
