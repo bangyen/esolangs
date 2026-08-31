@@ -26,6 +26,7 @@ __all__ = [
     "bio_to_bf",
     "decleq_to_sbleq",
     "dimensional_to_laserfuck",
+    "streetcode_to_laserfuck",
 ]
 
 
@@ -1057,6 +1058,35 @@ def _laser_parse(program: str) -> list[_LaserOp]:
     return ops
 
 
+def _laser_assemble(ops: list[_LaserOp]) -> str:
+    """Analyze ``ops``, append the tape-clearing epilogue, and lay out the grid.
+
+    The half of a LaserFuck translation that does not depend on the source
+    language: every transpiler targeting LaserFuck ends here, so the
+    supported class (:func:`_laser_analyze`) and the printed tape are the
+    same whichever language the ops came from.
+
+    LaserFuck prints the whole tape when the last laser dies, so a program
+    whose answer is one cell has to say so.  The epilogue drives every
+    working cell but the output one negative (``[-]-`` clears it and then
+    takes it below zero), and the dump excludes negative cells; the output
+    cell is left alone, so byte mode prints exactly it.
+    """
+    ptr, maxcell, out_cell = _laser_analyze(ops)
+    epi: list[_LaserOp] = []
+    epi.extend(["<"] * ptr)
+    for cell in range(0, maxcell + 1):
+        if cell == out_cell:
+            epi.extend(["+", "-", ">"])
+            continue
+        epi.extend(["[", "-", "]", "-"])
+        epi.append(">")
+    g = _LaserGrid()
+    _laser_funnel(g)
+    _laser_emit(g, ops + epi, 0, 3)
+    return g.dump()
+
+
 def dimensional_to_laserfuck(program: str) -> str:
     r"""Rewrite a Dimensional program into LaserFuck.
 
@@ -1080,19 +1110,126 @@ def dimensional_to_laserfuck(program: str) -> str:
     of class.
     """
     ops = _laser_parse(program)
-    ptr, maxcell, out_cell = _laser_analyze(ops)
-    epi: list[_LaserOp] = []
-    epi.extend(["<"] * ptr)
-    for cell in range(0, maxcell + 1):
-        if cell == out_cell:
-            epi.extend(["+", "-", ">"])
-            continue
-        epi.extend(["[", "-", "]", "-"])
-        epi.append(">")
-    g = _LaserGrid()
-    _laser_funnel(g)
-    _laser_emit(g, ops + epi, 0, 3)
-    return g.dump()
+    return _laser_assemble(ops)
+
+
+# Streetcode's instruction set is brainfuck's, one glyph for one command,
+# which is what makes the pair a rewrite rather than an interpreter.  ``U``
+# and ``;`` are absent on purpose: both are *movement*, already accounted
+# for by the drive graph the walk follows, and neither leaves a command
+# behind.  Anything else on the grid is road.
+_STREET_OPS: dict[str, _LaserOp] = {
+    "^": "+",
+    "~": "-",
+    "=": ">",
+    "_": "<",
+    "I": ",",
+    "O": ".",
+}
+
+
+def _street_linearize(machine: Any) -> list[_LaserOp]:
+    """Walk the drive graph from the car's start, emitting its commands.
+
+    The whole of the Streetcode frontend.  Each drive state's successors
+    are keyed by the two zero-ness bits movement may read -- the arrival
+    cell and the current one -- so a state whose four successors agree is
+    road the car drives the same way whatever the tape holds, and the
+    square's command can simply be emitted.  A state whose successors
+    differ is one the *tape* steers, and this walk rejects it: see
+    :func:`streetcode_to_laserfuck` for why a drawn loop has no brainfuck
+    image.
+
+    What remains is a straight walk, so it needs no recursion and no
+    bracket emission.  The ``seen`` guard is still load-bearing: the
+    interpreter validates that the car can always drive *out* of a square,
+    not that it ever stops, so a junction-free ring is a program that
+    never halts and has nothing to translate into.
+    """
+    ops: list[_LaserOp] = []
+    state = machine._state  # noqa: SLF001
+    seen: set[Any] = set()
+    while state != "halt" and state is not None:
+        if state in seen:
+            raise ValueError(
+                "the car drives a ring with nothing to stop it: the program "
+                "does not halt, so it has no translation"
+            )
+        seen.add(state)
+        edges = machine._graph[state]  # noqa: SLF001
+        if len({*edges.values()}) > 1:
+            raise ValueError(
+                "the car steers on the tape at "
+                f"{(state.row, state.col)}: drawn control flow is out of the "
+                "supported class (a Streetcode ring has no brainfuck loop "
+                "image -- see streetcode_to_laserfuck)"
+            )
+        if op := _STREET_OPS.get(machine.grid[state.row, state.col]):
+            ops.append(op)
+        state = edges[0, 0]
+    return ops
+
+
+def streetcode_to_laserfuck(program: str) -> str:
+    r"""Rewrite a Streetcode program into LaserFuck.
+
+    The two languages hold the same thing -- a tape of unbounded signed
+    cells under a pointer -- and Streetcode's instructions are brainfuck's
+    under different glyphs (``^~`` increment and decrement, ``=_`` move the
+    cell pointer, ``I``/``O`` read and write a character).  What differs is
+    control flow: Streetcode has no loop command, only *roads*, and the car
+    branches by taking the leftmost exit of a junction when the cell under
+    it is zero and the second-leftmost otherwise.
+
+    So the translation is a linearization.  The interpreter's own drive
+    graph -- :meth:`_Machine._drive_states`, which enumerates every state
+    the car can reach and keys each one's successors by the tape bits
+    movement is allowed to read -- is walked from the start, emitting the
+    command under each square.  Movement itself emits nothing, because the
+    walk has already accounted for it.
+
+    The supported class is programs the tape never steers: straight-line
+    drives, input included, with a single trailing ``O``.  Everything else
+    is rejected rather than mistranslated.
+
+    Why drawn control flow is out of class
+    --------------------------------------
+
+    brainfuck's loop tests its cell at the top and again at the bottom of
+    the same body, so a translation needs a drive state the car returns to
+    once per lap.  A drawn Streetcode ring does not offer one.  Two
+    measured examples, both in the test suite:
+
+    * A ring entered from a junction re-joins the road *past* that
+      junction's square, and comes back under a different heading and
+      different steering latches -- so the state that decides the loop is
+      never revisited, and there is no ``[`` to close.
+    * The counting loop in ``tests/interpreters/test_streetcode.py`` does
+      re-cross its test square, but its lap crosses further gaps, and
+      every gap crossing reads the CPth cell.  Those extra reads are
+      junctions too; proving they cannot steer needs to know the
+      accumulator never reaches zero mid-lap, which is value analysis
+      across iterations rather than a rewrite.
+
+    Both are shapes a *compiler* could lower with scratch cells and a
+    converged answer.  Neither is a program rewrite, which is what a
+    transpiler in this package is, so the walk rejects a tape-steered
+    square and says so.  The boolean generator's programs are further out
+    still: they are decision trees, whose leaves each print.
+
+    Also rejected, by :func:`_laser_analyze` on the way out: moving below
+    cell 0, and any output that is not a single final one (LaserFuck
+    prints its tape once, when the last laser dies).
+
+    Cells do not wrap in either language, and both read input as the first
+    character of a line (zero on a blank one), so the tape and the I/O need
+    no translation of their own.
+    """
+    from esolangs.interpreters.grid_based.streetcode import _Machine
+    from esolangs.interpreters.io import ScriptedIO
+
+    machine = _Machine(program.splitlines(), ScriptedIO(""))
+    return _laser_assemble(_street_linearize(machine))
 
 
 TRANSPILERS: dict[tuple[str, str], Callable[..., str]] = {
@@ -1105,4 +1242,5 @@ TRANSPILERS: dict[tuple[str, str], Callable[..., str]] = {
     ("BIO", "brainfuck"): bio_to_bf,
     ("Decleq", "S*bleq"): decleq_to_sbleq,
     ("Dimensional", "LaserFuck"): dimensional_to_laserfuck,
+    ("Streetcode", "LaserFuck"): streetcode_to_laserfuck,
 }
