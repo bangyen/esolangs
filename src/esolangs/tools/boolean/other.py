@@ -860,7 +860,10 @@ def clockwise(truth_table: str) -> str:
     width = max(x for (x, y) in cells) + 1
     grid = [[" "] * width for _ in range(height)]
     for (x, y), ch in cells.items():
-        if 0 <= x < width and 0 <= y < height:
+        # ``width`` and ``height`` are derived from these very cells, so the
+        # test holds for every one of them; it stays as the guard that keeps
+        # a future caller's stray coordinate from writing outside the grid.
+        if 0 <= x < width and 0 <= y < height:  # pragma: no branch - see above
             grid[y][x] = ch
     # The grid is a fixed-size rectangle of blanks that the cells are painted
     # into, so a row's trailing filler is never reached; the interpreter pads
