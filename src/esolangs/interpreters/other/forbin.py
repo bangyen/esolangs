@@ -813,12 +813,15 @@ class _Machine:
         for name, value in zip(frame.for_names, row, strict=False):
             if name != "_":
                 frame.locals[name] = value
-        # This method only runs while the cursor sits on the ``for``
-        # whose rows it is walking, so the statement under it is that
-        # ``for``; testing the tag is what lets its body be read.
+        # This method only runs while the cursor sits on the ``for`` whose
+        # rows it is walking, so the statement under it is that ``for``.
+        # The tag is asserted rather than tested: narrowing the union is
+        # what lets ``current[2]`` be read at all, and an ``if`` would make
+        # a broken invariant skip the body assignment silently instead of
+        # saying so.
         current = frame.body[frame.pos]
-        if current[0] == "for":
-            frame.for_body = current[2]
+        assert current[0] == "for"
+        frame.for_body = current[2]
         frame.for_body_pos = 0
 
     def _pop(self) -> None:
