@@ -259,6 +259,60 @@ misses.  The caps are not slack: coverage climbs to both of them (12256
 tables at `k <= 24` against 15404 at 28), so trimming to buy time trims
 coverage.
 
+### `n >= 5` is out of reach of *any* staging family, and this count is safe
+
+The obvious next question is whether the suffix trick repeats.  It does not,
+and the reason is worth separating carefully from the argument it just
+overturned, since both are counting arguments and only one of them holds.
+
+**The argument that fell** counted columns from *one spelling of the suffix*
+and concluded something about the language.  Widening the spelling broke it.
+**This argument** is about the ratio between what any enumeration can produce
+— one column per probe, and probes are polynomial in the caps — and what an
+arity demands, which is doubly exponential in `n`.  Nothing about the
+spelling enters it.
+
+Exact combinatorics, not estimates.  Writing `E(n)` for the fully-essential
+`n`-input tables:
+
+| `n` | tables | fully essential | degenerate |
+|---|---|---|---|
+| 3 | 256 | 218 | 38 (14.84%) |
+| 4 | 65536 | 64594 | 942 (1.44%) |
+| 5 | 4294967296 | 4294642034 | 325262 (**0.0076%**) |
+
+Composition does not rescue this.  A five-input table with a narrow core is
+solved at that core and renumbered back, but only **2292** five-input tables
+have three or fewer essential inputs, and 322970 have exactly four — of which
+the shipped family stages 23.8%.  Adding those up, the search-free share of
+`n == 5` by projection is **1.8e-05**.  The other 4294642034 tables are fully
+essential and need columns of their own: **2.8e+05 times more** than the
+15404 this family produces.
+
+That gap is immune to the axes above, because they multiply by constants.
+Per-gap separators took the union to 36.1% — about 1.5x — and a second `<`
+roughly doubled the yield at matched `k`.  A hypothetical axis worth a
+hundredfold would move `n == 5` from 1e-05 to 1e-03.  So `n == 4` was not the
+first step of a ladder; it was the last arity small enough (64594 tables) for
+a family producing tens of thousands of columns to cover a real fraction of
+it.  The table count squares at each step while the family grows
+polynomially, and four is where those curves cross.
+
+**What a higher arity would actually need** is a construction that
+*composes* — building an `n`-input function from solved sub-functions already
+on the tape, so cost is additive in `n` rather than a lookup into a flat pool
+of columns.  The two attempts at that are recorded below and both failed:
+`4 -> 8` doubling does not compose, and there is no decode from an
+accumulated position.  Those obstructions are untouched by the suffix result,
+and they, not the enumeration's reach, are what stands between this generator
+and `n >= 5`.
+
+One honesty note on the above: the exact table is combinatorics and the
+1.8e-05 follows from it, but "constants cannot close 2.8e+05" assumes new
+axes behave like the two that were measured (1.5x and 2x).  That is an
+argument about the shape of this family, not a proof that no axis is worth
+more.
+
 A *uniform* rule does not exist either, which is why all four coordinates are
 still enumerated:
 
