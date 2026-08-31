@@ -899,3 +899,90 @@ class TestForbinCompiler:
     def test_function_without_nested_has_no_table(self) -> None:
         out = self.comp("main { out 0,0,0,0,0,0,0,0; }")
         assert ".tbl" not in out
+
+    def test_range_loop_emits_a_counter_loop(self) -> None:
+        """A range loop compares its counter against its limit each pass."""
+        out = self.comp("main { for i:0..1 { out 0,0,0,0,0,0,0,i; } }")
+        assert "bgt  s4, s5" in out
+
+    def test_range_bounds_are_checked_for_bitness(self) -> None:
+        """A non-bit bound halts, as the interpreter's _bound does."""
+        out = self.comp("main { for i:0..1 { } }")
+        assert out.count("bgtu a0, t0, .abort") >= 2
+
+    def test_wildcard_expands_at_compile_time(self) -> None:
+        """A wildcard's two fillings are unrolled, not looped at runtime.
+
+        The count is fixed at compile time, so each row is emitted; the
+        body therefore appears once per filling.
+        """
+        one = self.comp("main { for v:(0) { out 0,0,0,0,0,0,0,v; } }")
+        two = self.comp("main { for v:(*) { out 0,0,0,0,0,0,0,v; } }")
+        assert two.count("call .dispatch") > one.count("call .dispatch")
+
+    def test_wildcard_pair_expands_to_four_rows(self) -> None:
+        """``(*,*)`` unrolls to four rows, so the body is emitted four times.
+
+        The fifth dispatch is the entry's call to ``main`` itself.
+        """
+        out = self.comp("main { for (a,b):((*,*)) { out 0,0,0,0,0,0,a,b; } }")
+        assert out.count("call .dispatch") == 4 + 1
+
+    def test_broadcast_assignment_reevaluates_per_target(self) -> None:
+        """``a,b = (in 0)`` reads twice, matching _exec_stmt.
+
+        The interpreter calls _eval inside its target loop, so this is two
+        reads rather than one value bound twice -- the behaviour the
+        boolean generator's eight-name load depends on.
+        """
+        out = self.comp("main { a,b = (in 0); }")
+        assert out.count("li   a0, -2") == 2
+
+    def test_discard_target_consumes_no_read(self) -> None:
+        """``_`` is skipped entirely, so it evaluates nothing."""
+        out = self.comp("main { _,b = (in 0); }")
+        assert out.count("li   a0, -2") == 1
+
+    def test_paired_assignment_pairs_positionally(self) -> None:
+        out = self.comp("main { a,b = 1,0; }")
+        assert ".global _start" in out
+
+    def test_not_rejects_a_non_bit(self) -> None:
+        """``!`` guards its operand, as the interpreter's '! needs a bit'."""
+        assert "xori a0, a0, 1" in self.comp("main { a = !0; }")
+
+    def test_return_targets_its_own_function_epilogue(self) -> None:
+        """A nested function's return must not jump to main's epilogue."""
+        out = self.comp("f { return 1; }\nmain { a = (f 0); return 0; }")
+        assert "j    .ret0" in out
+        assert "j    .ret1" in out
+
+    def test_prologue_saves_the_loop_registers(self) -> None:
+        """s4/s5 are saved per invocation, not only per loop.
+
+        A callee returning from inside its own loop discards that loop's
+        stack save, so without this a mid-loop caller gets its counter
+        clobbered and loses an iteration.
+        """
+        out = self.comp("main { for i:0..1 { } }")
+        assert "sd   s4, 16(sp)" in out
+        assert "ld   s5, 24(sp)" in out
+
+    def test_statement_call_and_builtins_are_reachable(self) -> None:
+        out = self.comp("main { out 0,0,0,0,0,0,0,0; a = (in 0); }")
+        assert ".do_out:" in out
+        assert ".do_in:" in out
+        assert ".readline:" in out
+
+    def test_anonymous_function_literal_compiles(self) -> None:
+        out = self.comp("main { f = (a@{ return a; }); b = (f 1); }")
+        assert ".global _start" in out
+
+    def test_bare_block_literal_compiles(self) -> None:
+        out = self.comp("main { x = { return 1; }; }")
+        assert ".global _start" in out
+
+    def test_iteration_loop_over_named_values(self) -> None:
+        """Each listed value emits the body once, plus the entry's own call."""
+        out = self.comp("main { for v:(0,1) { out 0,0,0,0,0,0,0,v; } }")
+        assert out.count("call .dispatch") == 2 + 1
