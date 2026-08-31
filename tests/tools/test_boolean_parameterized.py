@@ -14,6 +14,7 @@ from unittest.mock import patch
 import pytest
 
 from esolangs.interpreters.io import IO
+from esolangs.tools.boolean.helpers import essential_inputs
 from esolangs.tools.boolean.parameterized import _instantiate_arrowqueue
 from tests.tools.boolean_runners import one_two_three_result
 
@@ -2268,7 +2269,7 @@ class TestParameterizedMinifuck:
         ):
             for table_int in range(256):
                 table = format(table_int, "08b")
-                if len(module._essential_inputs(table, 3)) > 2:  # noqa: SLF001
+                if len(essential_inputs(table, 3)) > 2:
                     continue
                 checked += 1
                 template = module.minifuck.__wrapped__(table)
@@ -2890,7 +2891,7 @@ class TestParameterizedMinifuck:
         # known cell.  Unstubbed this table builds, so a None below is the
         # guard firing and not the route failing for its own reasons.
         table, n = "00010001", 3
-        pair = module._essential_inputs(table, n)  # noqa: SLF001
+        pair = essential_inputs(table, n)
         assert pair == [1, 2], pair
         assert module._reconverged(table, pair, n) is not None  # noqa: SLF001
 
@@ -2933,7 +2934,7 @@ class TestParameterizedMinifuck:
             return ["[", *real(ignored, *args, **kwargs)]  # type: ignore[arg-type]
 
         table, n = "0101", 2  # input 1 alone decides it; input 0 is ignored
-        essential = module._essential_inputs(table, n)  # noqa: SLF001
+        essential = essential_inputs(table, n)
         # The route builds this table when its resets are the real ones.
         assert module._reconverged(table, essential, n) is not None  # noqa: SLF001
         with patch.object(module, "_find_reset", diverging):

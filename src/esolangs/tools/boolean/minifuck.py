@@ -75,7 +75,11 @@ from collections import deque
 from collections.abc import Callable, Iterator
 from functools import cache
 
-from esolangs.tools.boolean.helpers import _validate_truth_table, read_at
+from esolangs.tools.boolean.helpers import (
+    _validate_truth_table,
+    essential_inputs,
+    read_at,
+)
 
 __all__ = ["minifuck"]
 
@@ -825,18 +829,6 @@ def _degenerate_cells(n: int) -> dict[str, int]:
     return found
 
 
-def _essential_inputs(truth_table: str, n: int) -> list[int]:
-    """Which inputs the table actually depends on."""
-    return [
-        i
-        for i in range(n)
-        if any(
-            truth_table[row] != truth_table[row ^ (1 << (n - 1 - i))]
-            for row in range(2**n)
-        )
-    ]
-
-
 def _degenerate(
     truth_table: str, n: int, *, fixed_cells_only: bool = False
 ) -> str | None:
@@ -1412,7 +1404,7 @@ def minifuck(truth_table: str) -> str:
     # placeholders back.  This is the part of the construction that composes:
     # what it costs depends on the essential inputs, not on ``n``, so a wide
     # table with a narrow core is as cheap as that core.
-    essential = _essential_inputs(truth_table, n)
+    essential = essential_inputs(truth_table, n)
     if len(essential) < n:
         # Projecting is much the cheaper route, but it emits the ignored
         # inputs after the ``.``, which leaves name order whenever an ignored
