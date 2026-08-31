@@ -323,7 +323,7 @@ zero rows and inverting — one term saved per row, paid for once.
 | `qoibl`, `bit_tilde`, `grapheme` | fewer minterms; grapheme picks whichever row-set is shorter |
 | `container` | `OUT` spends one `+1 S{row}>=Gout` line per one-row, so a dense table sums its zero rows from a 49 start and subtracts — 12.7% on the densest n=4 table. The per-row survivor blocks are fixed and unaffected |
 
-### Dependency reduction (10) — fourteen generators, both shapes
+### Dependency reduction (10) — fifteen generators, both shapes
 
 A table ignoring an input is emitted as the *smaller* table, still
 consuming the rest. `essential_inputs` (in `boolean/helpers.py`, promoted
@@ -510,6 +510,28 @@ and that is set by the interface rather than by the construction:
   one-dependency table and produced **522 wrong rows** on gapped sets like
   `[0, 2]`. When a generator reduces *inside* a reorder wrapper, check which
   coordinate system the reduced indices live in.
+
+- **`polynomial` can only drop its *leading* ignored inputs, and the reason
+  is worth reading before reducing any read-assigns-to-a-register
+  generator.** A read assigns to the single register, so the tree must
+  consume the stream in order:
+
+  - a **trailing** ignored input is already free — the tree collapses its
+    subtree and drains the read at the leaf, machinery it already had;
+  - a **middle** one cannot be dropped at all, since the drain consumes the
+    stream in order and removing it makes the tree branch on the wrong bit
+    (measured: 92 wrong rows over the 26 tables at `n <= 3` whose ignored
+    set is not a leading run);
+  - only the **leading** run is genuinely wasted, because the tree burns a
+    full branching level before reaching the input that matters.
+
+  So the reduced build keeps every input from the first essential one
+  onward and drains the run before it. `11001100` falls 6855 → **1678** and
+  `10101010` 4106 → **1175**; `11110000` is correctly unchanged, its
+  essential input already being first. Only the *tree* takes the prefix —
+  the DAG indexes its states by how many bits have been read, so prepended
+  instructions shift every state and it answers correctly only while the
+  drained bit is 0, emitting nothing once it is 1.
 
 **Both shapes reduce.** The minterm side is where this started, but the
 discriminator was never the shape — it is the split below. A tree folds a

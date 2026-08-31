@@ -777,8 +777,50 @@ def polynomial(truth_table: str) -> str:
     table that collapses to few states renders at any width -- parity, the
     old gate's worst case, now renders through n == 8.
     """
-    _validate_truth_table(truth_table)
+    n = _validate_truth_table(truth_table)
     candidates = [_polynomial_tree(truth_table), _polynomial_dag(truth_table)]
+
+    # A table that ignores some of its inputs is a smaller table, and this
+    # generator cannot get there on its own: a read *assigns* to the single
+    # register, so the tree must consume the inputs in stream order and an
+    # ignored one still costs a full level of branching before the tree can
+    # reach the input that matters.  Folding collapses the subtrees, not the
+    # levels above them -- ``10101010`` costs 66 instructions where the
+    # one-input table it really is costs 12.
+    #
+    # Reduction sidesteps that because it is *order-blind*: it rewrites the
+    # table before any tree is built.  The ignored inputs are drained first
+    # -- read, subtract 48 -- which is the same pair the tree already emits
+    # for a collapsed leaf's untaken siblings, so every path still consumes
+    # exactly ``n`` inputs.
+    # Only a *leading* run of ignored inputs can be handled this way. The
+    # drain reads the stream in order, so it can stand in for inputs the
+    # reduced tree would otherwise have read *before* the ones it keeps; an
+    # ignored input sitting after an essential one would be drained out of
+    # turn and the tree would then branch on the wrong bit -- measured, that
+    # is 26 tables at ``n <= 3`` and 92 wrong rows. Reordering the drains is
+    # not available either, since a read assigns to the single register, so
+    # a non-prefix ignored set simply keeps the unreduced build.
+    essential = essential_inputs(truth_table, n) or [0]
+    lead = next((i for i in range(n) if i in essential), n)
+    if lead:
+        prefix: list[list[int]] = []
+        for _ in range(lead):
+            prefix.extend([[0, 2], [_ASCII_ZERO, 2]])  # input; -= 48
+        # Keep every input from the first essential one onward, not just the
+        # essential ones: a *trailing* ignored input is already free, since
+        # the tree collapses its subtree and drains the read at the leaf,
+        # while a middle one cannot be dropped at all -- the drain consumes
+        # the stream in order, so removing it would make the tree branch on
+        # the wrong bit (measured: 92 wrong rows over 26 tables).
+        reduced = read_at(truth_table, list(range(lead, n)), n)
+        # Only the *tree* takes the prefix. The DAG's states are indexed by
+        # how many bits have been read, so instructions prepended ahead of
+        # it shift every state and the machine falls off its own table --
+        # measured, it answers correctly only while the drained bit is 0 and
+        # emits nothing at all once it is 1.
+        candidates.append(prefix + _polynomial_tree(reduced))
+
     fits = [c for c in candidates if len(c) <= _POLYNOMIAL_MAX_INSTRS]
     if not fits:
         raise ValueError(
