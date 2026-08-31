@@ -422,13 +422,44 @@ weights 1..15 of 1..15 — so no weight licenses declining without running the
 sweep.  A rate sets expectations ("weight-8 tables are the slow ones"); it is
 never a decline.
 
-**No coordinate is droppable either.**  Each of the ten (separator, settle)
-slices reaches 3.0%–24.3% of the family alone, and every one contributes
-tables reachable **nowhere else** — 104 at the thinnest, 2212 at the widest.
-72% of tables (11080 of 15404) are served by exactly one slice.  So the sweep
-cannot be shortened by trimming coordinates, which is the same conclusion the
-"two separators reach 99 of 109" row reaches at `n == 3`, now measured on the
-relation rather than on the assignment.
+**The weight skew is a property of the family, not of one arity.**  Rates
+cannot be measured at `n == 5` — the complement is 4.29e9 tables — but the
+reachable set's weight *distribution* can be compared against the binomial a
+uniform table would give, and it carries the same shape far more sharply:
+
+| weight (of 32) | skew vs uniform |
+|---|---|
+| 5 / 27 | **41.6x** |
+| 8 / 24 | 4.1x |
+| 12 / 20 | 1.1x |
+| 16 (balanced) | 0.8x |
+
+Perfectly symmetric about 16, decaying monotonically to balance — 4.5% of
+reachable tables have weight ≤8 or ≥24 against 0.70% of uniform ones.  So the
+family really does favour unbalanced tables, and increasingly so with arity.
+It still licenses no decline, for the same reason: the classes are thin, not
+empty.
+
+**Redundancy collapses as arity rises**, which is worth knowing before
+reading anything into a single staging.  The median column is served by 16
+stagings at `n == 3`, **2** at `n == 4`, and **1** at `n == 5`.  At the top
+arity the typical reachable table has exactly one way in, so there is no
+slack for a cleverer search to exploit — which is the same fact the
+one-slice-serves-72% figure below reports from the other direction.
+
+**No coordinate is droppable either**, at either arity.  Every one of the ten
+(separator, settle) slices contributes tables reachable **nowhere else**:
+
+| | `n == 4` | `n == 5` |
+|---|---|---|
+| slice reach, alone | 3.0%–24.3% | 6%–17.5% |
+| unique contribution, thinnest / widest | 104 / 2212 | 16 / 3648 |
+| tables served by exactly one slice | 72% (11080 of 15404) | **92.6%** (22752 of 24582) |
+
+So the sweep cannot be shortened by trimming coordinates, and the room to do
+so *shrinks* with arity — the same conclusion the "two separators reach 99 of
+109" row reaches at `n == 3`, now measured on the relation rather than on the
+assignment.
 
 **The one sound shortcut is an index, not a predicate.**  Exact membership in
 the harvested family is sound by construction — it *is* the family — answers
