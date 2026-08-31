@@ -4030,11 +4030,13 @@ class TestParameterizedPctSquaredMinusOne:
 
     @pytest.mark.slow
     def test_three_input_coverage_is_what_the_docs_say(self) -> None:
-        """The two constructions together build exactly 86 of the 256 tables.
+        """The three constructions together build exactly 106 of the 256 tables.
 
         Pinned because the number is the cap this generator advertises: the
-        cascade's 48 subcubes plus the composed-affine path, which alone
-        reaches 84 and overlaps the cascade on all but two.  Every table that
+        cascade's 48 subcubes, the composed-affine path, which alone reaches 84
+        and overlaps the cascade on all but two, and the ladder, which adds 20
+        the other two cannot reach because they are affine in the accumulator
+        and so cannot merge rows that do not already agree.  Every table that
         builds is executed, so a construction that grew coverage by emitting a
         wrong program fails here rather than raising the count.
         """
@@ -4051,7 +4053,35 @@ class TestParameterizedPctSquaredMinusOne:
             for row in range(8):
                 bits = [(row >> (2 - k)) & 1 for k in range(3)]
                 assert self.run_pct(self.instantiate(template, bits)) == table[row]
-        assert built == 86
+        assert built == 106
+
+    def test_ladder_builds_majority_three(self) -> None:
+        """Majority-3 builds, which no affine composition of setters reaches.
+
+        It is the smallest OR of disjoint subcubes, and the docs recorded it as
+        out of reach on the grounds that chaining indicator gadgets needs a
+        running total to survive a gadget that erases.  The ladder keeps that
+        total in the accumulator and lets the over-3003 reset read it as a
+        threshold, so the argument does not bind.  Executed on all eight rows
+        rather than asserted structurally.
+        """
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.pct_squared_minus_one import _affine, _cascade
+
+        table = "00010111"
+        # The other two paths really do refuse it, so this pins the ladder.
+        assert _cascade(table, 3) is None
+        assert _affine(table, 3) is None
+        template = parameterized.pct_squared_minus_one(table)
+        lengths = set()
+        for row in range(8):
+            bits = [(row >> (2 - k)) & 1 for k in range(3)]
+            program = self.instantiate(template, bits)
+            lengths.add(len(program))
+            assert self.run_pct(program) == table[row]
+        # Both branches of every setter share a width, so no program leaks its
+        # inputs through ``len()``.
+        assert len(lengths) == 1, lengths
 
     def test_every_branch_pair_shares_a_spelling_width(self) -> None:
         """No setter in the grid needs the "no shared width" fallback.

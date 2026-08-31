@@ -80,11 +80,30 @@ what lets an odd width gap close.  That gap was the binding constraint --
 ``_pad_pair`` pads with ``pp`` and refuses an odd shortfall, and parity-3's
 witness wants branches of width 6 and 5.
 
-Together the three build 86 of the 256 three-input tables (XOR and XNOR among
-them) and 496 of the 65536 four-input ones.  Tables none of them reaches still
-raise :class:`ValueError` rather than returning a program that computes the
-wrong function; they are *unreached*, not proved unreachable, and
-``docs/limitations.md`` records what bounds are actually known.
+A fourth construction, :func:`_ladder`, is the only one that computes *with*
+the over-3003 reset instead of keeping clear of it.  Every path above is
+affine in the accumulator -- each command acts uniformly on it, so the rows
+keep their order and no two can be merged unless they already agree.  The
+reset is the one primitive that is not affine: it maps everything above 3003
+onto zero and leaves everything below alone, which is a threshold.  So the
+ladder gives each input a weight, subtracts them into a negative accumulator
+(negatives never reset, so stage one is exactly affine), and then lets the
+reset read the weighted sum.  A threshold on a weighted sum is a majority,
+which is why this path builds majority-3 -- the smallest OR of disjoint
+subcubes, and one the composed-affine search cannot reach.
+
+Together the four build 106 of the 256 three-input tables (XOR, XNOR and
+majority among them) and 496 of the 65536 four-input ones; the ladder is
+derived at three inputs and does not run above it, so the four-input figure
+is unchanged.  Tables none of them reaches still raise :class:`ValueError`
+rather than returning a program that computes the wrong function; they are
+*unreached*, not proved unreachable, and ``docs/limitations.md`` records what
+bounds are actually known.
+
+One bound *is* known about the ladder: a single reset is one threshold, and
+only 104 of the 256 three-input tables are linearly separable, so this shape
+cannot be made total by widening its grid.  Reaching further needs several
+reset events, which is measured but not built.
 
 Unlike the other parameterized generators, *which* command strings a setter
 uses is derived per table rather than fixed by the language, so a bare
@@ -691,6 +710,218 @@ def _affine_tables(n: int) -> dict[str, tuple[tuple[tuple[str, str], ...], str]]
     return built
 
 
+#: Ladders the search runs, as ``(weights, base)``.  Every value is a multiple
+#: of 250 and every rung stays within ``[-3003, 0]``, which is what keeps stage
+#: one exactly affine: the reset fires only above 3003 and never on a negative
+#: accumulator, so no rung clamps before the suffix asks it to.
+#:
+#: These eight are a *cover*, not a grid.  The full product of four weights and
+#: four bases leaves 256 distinct ladders, of which 150 reach some table the
+#: other paths miss; greedy set cover over their yields picks these eight, which
+#: between them reach all twenty.  Searching the other 248 costs about fifty
+#: seconds of build time and finds nothing further, so the cover is what ships.
+_LADDERS = (
+    ((250, 500, 250), 1000),
+    ((500, 250, 250), 1000),
+    ((250, 250, 250), 1000),
+    ((250, 250, 500), 3000),
+    ((500, 250, 500), 2750),
+    ((1250, 250, 500), 2000),
+    ((1250, 250, 1000), 2000),
+    ((1250, 1250, 500), 2000),
+)
+
+#: Longest suffix the ladder search composes after stage 1.  The witnesses in
+#: the shipped grid need at most ten characters; the search is breadth-first, so
+#: this bounds the frontier rather than selecting among solutions.
+_LADDER_DEPTH = 10
+
+
+def _sub_of_width(k: int, width: int) -> str | None:
+    """Spell a subtraction of exactly ``k`` in ``width`` characters, or ``None``.
+
+    ``s`` subtracts 2 and ``i`` subtracts 3, so ``a`` esses and ``b`` eyes give
+    ``2a + 3b == k`` in ``a + b == width`` characters; solving for the counts
+    gives ``b == k - 2*width``.  Unlike :func:`_sub_code` this pins the width,
+    which is what lets a setter's two branches be spelled to match.
+    """
+    eyes = k - 2 * width
+    esses = width - eyes
+    if eyes < 0 or esses < 0:
+        return None
+    return "i" * eyes + "s" * esses
+
+
+def _even_width_for(k: int) -> int | None:
+    """Narrowest *even* width at which ``k`` has a subtraction spelling.
+
+    The hold branch of a ladder setter is ``pp`` repeated, which has only even
+    widths, so the subtracting branch has to reach an even width to match it.
+    """
+    if k == 0:
+        return 0
+    width = -(-k // 3)
+    if width % 2:
+        width += 1
+    while width <= k:
+        if _sub_of_width(k, width) is not None:
+            return width
+        width += 2
+    return None
+
+
+def _ladder_setters(
+    weights: tuple[int, ...], base: int
+) -> tuple[list[tuple[str, str]], str] | None:
+    """Spell a ladder's stage one, or ``None`` if some weight has no spelling.
+
+    Each input's setter subtracts its weight when the bit is 1 and holds when it
+    is 0.  The hold is ``pp`` repeated: two negations compose to the identity,
+    and because every rung is negative the intermediate negation stays under the
+    limit, so no reset fires inside a setter.  Both branches are spelled at one
+    width, so no program leaks its inputs through ``len()``.
+    """
+    lead_width = _even_width_for(base)
+    if lead_width is None:
+        return None
+    lead = _sub_of_width(base, lead_width) or ""
+    setters = []
+    for weight in weights:
+        width = _even_width_for(weight)
+        if width is None:
+            return None
+        code = _sub_of_width(weight, width)
+        if code is None:  # pragma: no cover - _even_width_for just found one
+            return None
+        setters.append(("p" * width, code))
+    return setters, lead
+
+
+def _ladder_vector(
+    setters: list[tuple[str, str]], lead: str, n: int
+) -> tuple[int, ...]:
+    """Return what stage one really leaves, run rather than solved.
+
+    The arithmetic and the emitted characters have to agree, and modelling them
+    separately is what let an earlier version claim a program the interpreter
+    then contradicted: a hold negates, and a magnitude past the limit clamps to
+    zero on the very next command.  Running :func:`_apply` over the code that is
+    actually emitted removes that whole class of divergence.
+    """
+    out = []
+    for index in range(2**n):
+        code = lead
+        for position, (zero, one) in enumerate(setters):
+            code += one if (index >> (n - 1 - position)) & 1 else zero
+        out.append(_apply(0, code))
+    return tuple(out)
+
+
+def _ladder_splits(vec: tuple[int, ...]) -> dict[str, str]:
+    """Every two-class split of ``vec`` a suffix reaches, with its suffix.
+
+    This is where the reset does the work the affine path cannot.  Stage one
+    leaves the rows on an ordered ladder of negative values; a ``p`` turns the
+    ladder positive, and then every row above 3003 folds onto zero while the
+    rows below it survive.  That is a *threshold* on the weighted sum, evaluated
+    by the one command the language spends no branch on -- and thresholds are
+    exactly what an OR of disjoint subcubes needs.
+
+    The printing tail is the ordinary one: the reset separates the classes in
+    the body, and :func:`_tail_for` still lands them a step apart.  The wider
+    amplify-then-clamp tail the docstring describes as never firing still never
+    fires, and this path does not need it.
+    """
+    out: dict[str, str] = {}
+    seen = {vec}
+    frontier = [(vec, "")]
+    while frontier:
+        following = []
+        for values, code in frontier:
+            distinct = set(values)
+            if len(distinct) == 2:
+                low, high = sorted(distinct)
+                for one_value, zero_value in ((low, high), (high, low)):
+                    tail = _tail_for(one_value, zero_value)
+                    if tail is None:
+                        continue
+                    table = "".join(
+                        "1" if value == one_value else "0" for value in values
+                    )
+                    out.setdefault(table, code + tail)
+            if len(code) >= _LADDER_DEPTH:
+                continue
+            for char in "simp'":
+                nxt = tuple(_apply(value, char) for value in values)
+                if nxt in seen:
+                    continue
+                seen.add(nxt)
+                following.append((nxt, code + char))
+        frontier = following
+    return out
+
+
+@cache
+def _ladder_tables(n: int) -> dict[str, tuple[tuple[tuple[str, str], ...], str, str]]:
+    """Every table the ladder path builds at ``n`` inputs.
+
+    Derived for a whole arity in one pass and cached, the way
+    :func:`_affine_tables` is: the suffix search is shared across every table a
+    ladder reaches, so harvesting costs one sweep per parameter set rather than
+    one per table.  Parameter sets that leave the same stage-one vector are
+    searched once.
+    """
+    built: dict[str, tuple[tuple[tuple[str, str], ...], str, str]] = {}
+    searched: set[tuple[int, ...]] = set()
+    for weights, base in _LADDERS:
+        if len(weights) != n:
+            continue
+        spelled = _ladder_setters(weights, base)
+        if spelled is None:  # pragma: no cover - every shipped weight spells
+            continue
+        setters, lead = spelled
+        vec = _ladder_vector(setters, lead, n)
+        # Distinct parameters can leave the same rungs; the suffix search
+        # depends only on those, so it runs once per vector.
+        if vec in searched:
+            continue
+        searched.add(vec)
+        for table, suffix in _ladder_splits(vec).items():
+            if table not in built:
+                built[table] = (tuple(setters), lead, suffix)
+    return built
+
+
+def _ladder(truth_table: str, n: int) -> str | None:
+    """Build a ladder template, or ``None`` if the table is not one.
+
+    This is the third construction above two inputs and the only one that uses
+    the over-3003 reset as a computation rather than routing around it.  The
+    other paths are affine in the accumulator: every command they compose acts
+    uniformly on it, so the rows keep their order and no two of them can be
+    merged except by agreeing already.  The reset is the one primitive that is
+    *not* affine -- it maps everything above a threshold onto zero and leaves
+    everything below it alone -- and a threshold on a weighted sum is precisely
+    what a majority is.
+
+    That is why this path reaches majority-3, which the composed-affine search
+    does not: an OR of disjoint subcubes needs a running total to survive a
+    gadget that erases, and the ladder keeps that total in the accumulator
+    itself, letting the reset read it.
+
+    The lead runs before any setter and is the same for every input
+    combination, so it is emitted at the head of the body rather than as a
+    setter of its own.
+    """
+    found = _ladder_tables(n).get(truth_table)
+    if found is None:
+        return None
+    setters, lead, suffix = found
+    header = ";".join(f"{k}={zero}|{one}" for k, (zero, one) in enumerate(setters))
+    body = lead + "".join("{X" + str(k) + "}" for k in range(n)) + suffix
+    return header + _HEADER_END + body
+
+
 def _affine(truth_table: str, n: int) -> str | None:
     """Build a composed-affine template, or ``None`` if the table is not one.
 
@@ -707,9 +938,13 @@ def _affine(truth_table: str, n: int) -> str | None:
     constrains the last input alone.  Measured against it, this path reaches 32
     tables the law does not admit and misses 36 that it does, so the two sets
     cross rather than nest.  What the path does not reach is an OR of several
-    disjoint subcubes, majority-3 being the smallest; that needs a running
-    total to survive a gadget that erases, and there is one register.  See
-    ``docs/limitations.md``.
+    disjoint subcubes, majority-3 being the smallest.  That was recorded here
+    as a limit of the *model* -- chaining indicator gadgets was said to need a
+    running total to survive a gadget that erases, and there is one register --
+    but the argument does not bind: :func:`_ladder` keeps the running total in
+    the accumulator itself and lets the over-3003 reset read it as a threshold,
+    which builds majority-3.  What is true is narrower, that no composition of
+    *affine* setters reaches it.  See ``docs/limitations.md``.
     """
     found = _affine_tables(n).get(truth_table)
     if found is None:
@@ -739,10 +974,14 @@ def pct_squared_minus_one(truth_table: str) -> str:
     the derivation rather than needing a second path.
 
     Above two inputs the derivation does not apply -- it reads one slope per
-    column of a two-input table -- and :func:`_cascade` takes over, building
-    any conjunction or disjunction of literals at any arity.  A table neither
-    path covers raises :class:`ValueError`, because emitting nothing is
-    better than emitting a program that computes the wrong function.
+    column of a two-input table -- and three other constructions take over, in
+    increasing order of program length: :func:`_cascade` for any conjunction
+    or disjunction of literals at any arity, :func:`_affine` for the tables
+    one affine setter per input composes, and :func:`_ladder`, which weights
+    the inputs and lets the over-3003 reset read the sum as a threshold.  A
+    table none of them covers raises :class:`ValueError`, because emitting
+    nothing is better than emitting a program that computes the wrong
+    function.
     """
     n = _validate_truth_table(truth_table)
     if n > 2:
@@ -759,14 +998,23 @@ def pct_squared_minus_one(truth_table: str) -> str:
         # Tables that are not subcubes may still compose from one affine
         # setter per input, which is what reaches XOR at three inputs.
         affine = _affine(truth_table, n)
-        if affine is None:
+        if affine is not None:
+            return affine
+        # Everything above is affine in the accumulator, so it cannot merge
+        # rows that do not already agree.  The ladder path is the one that
+        # uses the over-3003 reset as a threshold, which is what reaches a
+        # majority.  It is tried last because its programs are the longest by
+        # far -- hundreds of characters against the others' dozens.
+        ladder = _ladder(truth_table, n)
+        if ladder is None:
             raise ValueError(
                 f"%^2^-1 builds every two-input table, at any arity a "
-                f"conjunction or disjunction of literals, and at three "
-                f"inputs the tables one affine setter per input composes; "
+                f"conjunction or disjunction of literals, at three inputs the "
+                f"tables one affine setter per input composes, and the "
+                f"thresholds a weighted ladder crosses; "
                 f"got {n} inputs ({truth_table!r})"
             )
-        return affine
+        return ladder
     # Widen a one-input table by repeating each entry, so the second input is
     # present in the derivation but cannot change the answer.
     widened = truth_table if n == 2 else "".join(bit * 2 for bit in truth_table)
