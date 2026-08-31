@@ -443,13 +443,20 @@ def _search[Hit](
 # two of them cover site-for-site what that pair covers (they are distinct
 # functions with identical coverage).  So on reach they would do the job.
 #
-# It still does not help, for the reason the closure pair does not: serving the
-# orientation closes *sites* and builds no table, which is the measurement two
-# paragraphs down.  What the drop got right was the conclusion; what it could
-# not have known is that the surplus reach is real and simply has nothing to
-# fix -- every table at ``n <= 3`` already builds.  As an implementation they
-# are also dominated: ten strings of length 14 to 23, of which four cover
-# anything and two matter, against a pair at 11 and 14.
+# It still does not help, and that was run rather than inferred: with the
+# mirrors installed, four-input XOR makes 1016 pool lookups, all 1016 succeed,
+# and the build fails -- the same numbers the closure pair gives.  Serving the
+# orientation closes *sites* and builds no table.  What the drop got right was
+# the conclusion; what it could not have known is that the surplus reach is
+# real and simply has nothing to fix -- every table at ``n <= 3`` already
+# builds.  As an implementation they are also dominated: ten strings of length
+# 14 to 23, of which four cover anything and two matter, against a pair at 11
+# and 14.
+#
+# The flips themselves are one step each under the law below: ``'[[[[<'`` is
+# ``_step(2, 1, odd=False)`` and ``'[[[[[[<'`` is ``_step(3, 1, odd=False)``.
+# That is why exactly those two worked and the odd runs did not, which
+# a492a2ea recorded as a fact before there was a vocabulary to state it in.
 #
 # **The missing orientation is not missing, and the space is catalogued.**
 # The mirrors made ``cell7 == 1`` look reachable only by appending a flip to a
