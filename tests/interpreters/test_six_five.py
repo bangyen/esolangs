@@ -54,6 +54,26 @@ class TestSixFive:
         """3 moves the pointer left."""
         assert run_and_capture("313A0") == "\x00"
 
+    def test_the_conditional_skip_only_fires_on_a_match(self) -> None:
+        """``7n`` skips the next instruction when the cell holds ``n``.
+
+        Both sides matter: ``70`` on a zeroed cell swallows the ``A`` and
+        prints nothing, while a cell holding 48 against ``71`` does not
+        match, so the ``A`` runs and the digit appears.
+        """
+        assert run_and_capture("70A0") == ""
+        assert run_and_capture("6666666671A0") == "0"
+
+    def test_a_jump_to_a_missing_label_falls_through(self) -> None:
+        """``8n`` scans for the nth ``4``; with none there, nothing happens.
+
+        The scan runs off the end of the token list rather than matching, so
+        the pointer is left alone and the next instruction runs -- the same
+        output the program gives without the jump at all.
+        """
+        assert run_and_capture("8166666666A0") == "0"
+        assert run_and_capture("66666666A0") == "0"
+
     def test_the_two_moves_are_different_sizes(self) -> None:
         """``1`` goes right by two, ``3`` left by one, and the tape follows.
 

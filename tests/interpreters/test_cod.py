@@ -37,6 +37,22 @@ class TestCOD:
         # removes the cod outright, per the wiki's "Remove the cod"
         assert run_and_capture("~~~~~~\n~>-)---") == ""
 
+    def test_a_dot_run_that_is_not_a_read(self) -> None:
+        """Only a run of exactly three touching an edge reads; others are water.
+
+        A column with two dots is the wrong length, so the scan rejects it
+        and moves on rather than treating either cell as an input command --
+        the cod crosses them and the program ends with nothing read.
+        """
+        assert run_and_capture("~~~~~\n~>).\n~~.~~") == ""
+
+    def test_a_three_dot_run_off_both_edges_is_not_a_read(self) -> None:
+        """Three dots are only a read where the run reaches the top or bottom."""
+        from esolangs.interpreters.grid_based.cod import _edge_dot_cells
+
+        assert _edge_dot_cells(["x", ".", ".", ".", "x"]) == set()
+        assert _edge_dot_cells([".", ".", ".", "x"]) == {(0, 0), (1, 0), (2, 0)}
+
     def test_triple_dash_not_on_edge_is_three_removals(self) -> None:
         # '---' with water on both sides is three plain '-' removals, not
         # print+remove; the cod dies on the first one, so nothing prints
