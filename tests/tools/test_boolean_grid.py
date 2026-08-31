@@ -629,6 +629,42 @@ class TestWII2D:
             got = self.run_chain(template, bits)
             assert got == str(int(table[combo])), f"inputs {bits}"
 
+    def test_doubling_trap_is_abandoned_for_the_ranked_retry(self) -> None:
+        """A pass whose values run away is dropped, and the retry answers.
+
+        ``s`` squares, so a fold roughly doubles every live value's bit
+        length whenever ``_wii2d_compress`` cannot halve -- and it cannot
+        when halving would collide two values needing different bits.  The
+        default pass gives up once the leading state passes
+        ``_WII2D_MAX_STATE_BITS`` so the magnitude-first retry can run; this
+        pins that the abandonment is what the threshold does, by lowering it
+        far enough that an ordinary pattern trips it.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.wii2d")
+        from esolangs.tools.boolean.wii2d import (
+            _wii2d_apply,
+            _wii2d_decode_at,
+            _wii2d_decode_pass,
+        )
+
+        pattern = [0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1]
+        with pytest.MonkeyPatch.context() as patch:
+            # A threshold of zero bits is tripped by the first fold, so the
+            # unranked pass can never return and every answer is the retry's.
+            patch.setattr(module, "_WII2D_MAX_STATE_BITS", 0)
+            assert _wii2d_decode_pass(pattern, 4, ranked=False) is None
+            assert _wii2d_decode_pass(pattern, 4, ranked=True) is None
+            assert _wii2d_decode_at(pattern, 4) is None
+
+        # Undisturbed, the same pattern decodes and the threshold is never
+        # approached: the shipped domains stay on the default pass, which is
+        # why their emitted programs are unchanged by the retry existing.
+        ops = _wii2d_decode_at(pattern, 4)
+        assert ops is not None
+        assert [_wii2d_apply(ops, x) for x in range(len(pattern))] == pattern
+
     def test_decode_constant_pattern_is_a_single_digit(self) -> None:
         """A constant column needs no folding at all, just a digit."""
         from esolangs.tools.boolean.wii2d import _wii2d_decode
