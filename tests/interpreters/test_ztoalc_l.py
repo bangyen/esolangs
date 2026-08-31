@@ -44,6 +44,16 @@ class TestZTOALCVariables:
         code = ["3", "jump x 0", "x = input", "print x", "x - 1"]
         assert run_and_capture(code, inputs=["A"]) == "@"
 
+    def test_an_unrecognized_operator_does_nothing(self) -> None:
+        """Only ``=``, ``+``/``+=`` and ``-``/``-=`` are statements.
+
+        A line with any other operator is skipped rather than halting the
+        run: ``x`` keeps the 66 it was assigned and still prints, which a
+        line that raised or that stored something would not produce.
+        """
+        code = ["3", "jump x 0", "x = 66", "print x", "x ? 1"]
+        assert run_and_capture(code) == "B"
+
     def test_array_creation_and_indexing(self) -> None:
         """X = [3] creates a zeroed array; y = x[1] indexes it."""
         code = ["3", "jump y 0", "x = [3]", "print y", "y = x[1]"]

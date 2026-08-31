@@ -66,6 +66,17 @@ class TestSpecialAddresses:
         )
         assert _run(code) == "\x00"
 
+    def test_writing_a_reserved_address_is_discarded(self) -> None:
+        """Of the special addresses only ``-1`` and ``-9`` accept a write.
+
+        ``-1`` prints and ``-9`` sets the flag-update mode; the constants at
+        ``-6``..``-8`` and the flags between are read-only, so a write aimed
+        at one is dropped rather than landing in memory or raising.  The
+        program then prints, so the run is observed to continue.
+        """
+        code = memory([[-5, -6, 20, -7], [-1, -7, -8, -7]], {20: 4})
+        assert _run(code) == "\x00"
+
     def test_input_byte_is_added_to_the_target(self) -> None:
         # memory[12] starts 0, so reading -1 (as *b) adds the input byte.
         code = memory([[12, -1, 13, -7], [-1, 12, -8, -7]], {13: 4})
