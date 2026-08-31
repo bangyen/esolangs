@@ -69,7 +69,16 @@ _TABLES = ["00000000", "01101001"]
 # When the derivation is made to pay for itself, re-measure and drop the
 # entry rather than leaving this comment to rot the way the 0.09s claim
 # above did.
-_SEARCHING_GENERATORS_REGRESSED: frozenset[str] = frozenset({"minifuck"})
+#
+# ``slow_acv_mammalian_boolean`` joined it 2026-08-31, the same shape of
+# regression: the comment above records it leaving this set at 5.5s and
+# settling at 0.68s once the landings were solved, and it now measures 3.04s
+# in this sweep (its n=3 truth tables in test_boolean_tape moved 0.68s ->
+# 1.68s alongside).  Marked for the same reason and with the same caveat --
+# re-measure and drop the entry when the cost comes back down.
+_SEARCHING_GENERATORS_REGRESSED: frozenset[str] = frozenset(
+    {"minifuck", "slow_acv_mammalian_boolean"}
+)
 
 # Naming the languages rather than timing them at collection time is
 # deliberate: a wall-clock threshold evaluated during collection would make
