@@ -736,8 +736,9 @@ class _SbleqAsm:
                 seq[3 * (i + 1)] = len(self.scratch) - 1
 
         base_image = base_scratch + len(self.scratch)
-        if "base" in self.names:
-            self.scratch[self.names["base"]] = base_image
+        # ``base`` holds the image's own address, which only becomes known
+        # here; the emulator adds a Decleq index to it to reach a cell.
+        self.scratch[self.names["base"]] = base_image
         for label, idx in self.jumps.items():
             self.scratch[idx] = -1 if label == _HALT else 3 * self.syms[label]
 
