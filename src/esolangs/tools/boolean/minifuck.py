@@ -344,39 +344,57 @@ def _search[Hit](
 
 # The pool codes: one construction at five parameters.
 #
-# They read as five unrelated strings and are not.  Every one of them is
-#
-#     PREFIX + '[[[<[' + SUFFIX
-#
-# with that core appearing exactly once.  One law runs through all of it:
+# They read as five unrelated strings and are not.  One law runs through all
+# of it:
 #
 #     **a run of k brackets carries a mark right by ceil(k / 2) cells**,
 #     leaving a pending skip when k is odd
 #
-# -- verified from marks at cells 2 to 5 for runs of 1 to 8.  ``'[<'`` repeated
-# ``n`` times plants a single 1 at cell ``n`` and nothing else, so a code is
-# "plant a mark, then walk it right with bracket runs":
+# -- verified from marks at cells 2 to 5 for runs of 1 to 8.  Read forwards
+# that law describes a walk; read backwards it *builds* one, which is what
+# :func:`_step` does.  Asking for a carry of ``c`` fixes the bracket run at
+# ``2 * c - 1``, or ``2 * c`` where the pending skip is not wanted, and a run
+# of ``<`` then sets how far behind its mark the pointer ends up.  So a code
+# is a sequence of steps, and the default step -- carry the mark one cell,
+# leave the pointer one behind it -- spells itself ``'[<'``.
 #
-#     ''         + core + '<<<<'     no mark             ends at cell 0
-#     '[<'       + core + '<[<'      mark 1 -> 4         ends at cell 4
-#     '[<[<'     + core + '<[<'      mark 2 -> 5         ends at cell 5
-#     '[<<[<[<'  + core + '<'        mark 3 -> 6         ends at cell 5
-#     '[<[<[<<'  + core + '[<<<'     mark 3, spread      ends at cell 2
+# Every code is that default repeated, with exactly one step -- the core --
+# carrying two instead of one.  How many steps, and which one is the core, is
+# most of the construction:
 #
-# Every piece is that law at a different ``k``: the core opens with three
-# brackets and moves a mark +2, the suffix ``'[<<<'`` opens with one and moves
-# it +1, and the suffixes that open with none (``'<[<'``, ``'<'``, ``'<<<<'``)
-# move no mark at all and only reposition the pointer.  Two codes share the
-# suffix ``'<[<'`` verbatim at different marks, which is what a law stated in
-# *displacements* rather than positions predicts.
+#     steps  core   overrides                     code
+#       2      0    backs 4 at step 1             '[[[<[<<<<'
+#       4      1    --                            '[<[[[<[<[<'
+#       5      2    --                            '[<[<[[[<[<[<'
+#       5      3    backs 2 at step 0             '[<<[<[<[[[<[<'
+#       5      3    backs 2 at 2, even run at 4   '[<[<[<<[[[<[[<<<'
 #
-# The one code that does not fit is ``'[<[<[<<'``, and it says what the law
-# depends on: the walk is clean only when the pointer sits just left of the
-# mark.  That prefix reaches cell 3 with the pointer at 1 rather than 2, so the
-# core spreads marks over cells 2..4 instead of carrying one.  A plain
-# ``'[<[<[<'`` would mark cell 3 and walk cleanly -- what the irregular
-# spelling buys is the pointer, which is the second free variable and the one
-# the end-position argument below is about.
+# Two of the five need no override at all: they are the construction indexed
+# by where the mark goes, and nothing else.  The overrides are the informative
+# part, and each is one of the two free variables the law leaves open.
+#
+# ``backs`` is the pointer, and the walk is clean only when the pointer sits
+# just left of the mark.  The last code widens it to 2 at step 2, which is why
+# that code arrives at cell 3 with the pointer at 1 rather than 2 and the core
+# then spreads marks over cells 2..4 instead of carrying one.  A plain default
+# there would mark cell 3 and walk cleanly; what the widened step buys is the
+# pointer.
+#
+# Neither widening is slack, and the fourth code is the one that proves it
+# cannot be read off a blank tape.  Narrowed to the default its trace on an
+# empty tape is *identical* -- mark at 6, pointer at 5 -- because ``<`` clamps
+# at cell 0 and both spellings start there.  On the live states the endgame
+# actually presents, the pool cells are already set, so the opening ``[``
+# fires and the pointer is no longer at 0 when the second ``<`` runs.  The
+# two spellings then walk different tapes and land the pool two cells apart.
+# Narrowed and ablated the way the searches-stubbed test ablates a whole code,
+# the default spelling strands 18 tables at ``n == 3`` -- the same 18 that
+# dropping the code strands, so the widening *is* the code.
+#
+# ``odd`` is the pending skip, and one step in the family turns it off.  The
+# same code's last step wants a carry of one *without* the skip, which the law
+# spells as an even run -- the only even bracket run in the five.  A carry
+# alone does not determine the spelling, and this step is what proves it.
 #
 # The same law is why the mirrors were derivable and why exactly two flips
 # existed.  A mirror is its setter plus a bracket run, and the two that work --
@@ -458,13 +476,46 @@ def _search[Hit](
 # Coverage and correctness are the loud properties and slot order is the quiet
 # one, so all five stay.  ``test_dropping_a_pool_code_is_measured_not_assumed``
 # pins that, and will say so if the slot-order cost ever disappears.
-_POOL_CODES = (
-    "[[[<[<<<<",
-    "[<[[[<[<[<",
-    "[<[<[[[<[<[<",
-    "[<<[<[<[[[<[<",
-    "[<[<[<<[[[<[[<<<",
+def _step(carry: int = 1, backs: int = 1, *, odd: bool = True) -> str:
+    """One step of a pool code: carry a mark right, then walk the pointer back.
+
+    This is the ``ceil(k / 2)`` law inverted.  A run of ``k`` brackets carries
+    a mark right by ``ceil(k / 2)`` and leaves a pending skip when ``k`` is
+    odd, so asking for a carry of ``c`` fixes the run at ``2 * c - 1`` when
+    the skip is wanted and ``2 * c`` when it is not.  The trailing ``<`` runs
+    set how far behind the mark the pointer ends up, which is the second free
+    variable: the carry is clean only from just left of the mark.
+    """
+    return "[" * (2 * carry - odd) + "<" * backs
+
+
+# Each plan is ``(steps, core, overrides)``: how many steps the code walks,
+# which one is the core, and the steps that are not the default.  A default
+# step carries the mark one cell and leaves the pointer one behind it; the
+# core carries two.  Two of the five need no override at all -- they are the
+# construction indexed by where the mark goes, and nothing else.
+#
+# An override is ``(backs, odd)`` for the step it names, so the two free
+# variables stay visible side by side.
+_PLANS: tuple[tuple[int, int, dict[int, tuple[int, bool]]], ...] = (
+    (2, 0, {1: (4, True)}),
+    (4, 1, {}),
+    (5, 2, {}),
+    (5, 3, {0: (2, True)}),
+    (5, 3, {2: (2, True), 4: (3, False)}),
 )
+
+
+def _render(steps: int, core: int, overrides: dict[int, tuple[int, bool]]) -> str:
+    """Spell one plan out as a pool code."""
+    codes = []
+    for i in range(steps):
+        backs, odd = overrides.get(i, (1, True))
+        codes.append(_step(carry=2 if i == core else 1, backs=backs, odd=odd))
+    return "".join(codes)
+
+
+_POOL_CODES = tuple(_render(*plan) for plan in _PLANS)
 
 
 def _pool_reaches(j: _Joint, code: str, cell7: int, walk_out: int) -> bool:
