@@ -403,7 +403,6 @@ def test_laserfuck_grid_is_rectangular_with_start_and_marker() -> None:
         ("+>+", "bare '>'/'<'"),  # bare move (dimension = current value)
         ("<0+", "below cell 0"),
         ("[<0]", "below cell 0"),  # below cell 0 inside a loop
-        ("+[.-]", "inside a loop"),  # output inside a loop
         ("[>0-]", "drift"),  # drifting loop
         ("++[+[>0]]", "drift"),  # drifting nested loop
         ("$2", "out of the supported class"),  # axis selection
@@ -455,11 +454,26 @@ def test_laserfuck_staged_zero_is_not_dropped() -> None:
     assert esolangs.run("LaserFuck", target) == "\x00"
 
 
-def test_laserfuck_print_inside_a_loop_is_still_rejected() -> None:
-    """A loop's print count is unknown until it runs, so its slots cannot be
-    numbered at transpile time; staging that needs a runtime append."""
-    with pytest.raises(ValueError, match="inside a loop"):
-        esolangs.transpile("Dimensional", "LaserFuck", "+[.-]")
+@pytest.mark.parametrize(
+    "program",
+    [
+        "+++[.-]",  # a loop that prints on every lap
+        "+[-.]",  # prints \x00 from inside a loop: the collision case
+        "++.+++[.-]",  # a top-level print and a loop's, interleaved
+        "++[>0+++[.-]<0-]",  # a print inside two nested loops
+    ],
+)
+def test_laserfuck_loop_print_matches_source(program: str) -> None:
+    """A print inside a loop appends at runtime, so its count may be dynamic.
+
+    The slots cannot be numbered at transpile time here, so the gadget
+    walks to the first free slot instead.  A slot holds ``value + 1``, so
+    an empty slot reads as zero and an occupied one does not -- an encoding
+    that needs a cell with no top to collide against, which LaserFuck's
+    unbounded cells provide and a wrapping byte would not.
+    """
+    target = esolangs.transpile("Dimensional", "LaserFuck", program)
+    assert esolangs.run("Dimensional", program) == esolangs.run("LaserFuck", target)
 
 
 @pytest.mark.parametrize("op", ["+", "-", ">", "><", ".", ",", "[]"])

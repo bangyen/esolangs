@@ -427,20 +427,28 @@ available, and it is now an emulator rather than a rewrite:
   nothing wrote, so a staged `\x00` would otherwise vanish rather than
   print.
 
+  A print *inside a loop* is in class too, which needs more than numbered
+  slots: the print count is not known until the loop runs, so the append
+  finds its slot at runtime.  A slot holds `value + 1`, so an occupied
+  slot is nonzero and an empty one is zero, and `[>]` walks to the first
+  free one.  That biased encoding needs a cell with no top to collide
+  against, which LaserFuck's *unbounded* cells give -- the same trick is
+  impossible on a wrapping byte, where `255 + 1` would read as empty, and
+  it was rejected on exactly those grounds for `brainfuck → 3D Brainfuck`
+  above.  Cell 0 is kept permanently nonzero as a landmark, because
+  LaserFuck *prepends* a cell when `<` runs at cell 0 rather than
+  clamping, which would shift every address; a nonzero cell 0 stops the
+  return walk before that can happen.
+
   This is a widening, not a totality result: what it lifts is the output
   convention, and the rest of the class is untouched (the pointer
-  hierarchy, the numeric readers, drift loops, below-cell-0).  Two limits
-  remain.  A `.` *inside a loop* is still out, its print count being
-  unknown until the loop runs, so its slots cannot be numbered at
-  transpile time; a runtime append would need the biased walk, and the
-  loop ring turns out to run drifting bodies correctly, so this is
-  unbuilt rather than blocked.  And the byte-wrap divergence already
-  documented above now shows differently: a negative cell makes the
-  emitted program *hang* rather than answer, at a print and -- as before
-  this change, for `-->0+.` -- in the epilogue.  Rejecting those would
-  need a proof that a cell stays non-negative through arbitrary loops,
-  which is the unsound static value analysis this module has twice
-  removed.
+  hierarchy, the numeric readers, drift loops, below-cell-0).  One
+  divergence is worth naming, since the byte-wrap case already documented
+  above now shows differently: a negative cell makes the emitted program
+  *hang* rather than answer, at a print and -- as before this change, for
+  `-->0+.` -- in the epilogue.  Rejecting those would need a proof that a
+  cell stays non-negative through arbitrary loops, which is the unsound
+  static value analysis this module has twice removed.
 
   `Streetcode → LaserFuck` shares the assembler, so it was widened by the
   same change: multi-character generated text now round-trips, and its
