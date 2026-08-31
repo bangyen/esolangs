@@ -1059,12 +1059,12 @@ def _laser_analyze(ops: list[_LaserOp]) -> tuple[int, int, int | None]:
 
     Loops must have net-zero pointer displacement (so the pointer stays
     statically known) and the pointer must never move below cell 0
-    (LaserFuck's tape has no negative cells).  Any number of top-level
-    ``.``\ s are in class -- they are staged into an output region and
-    dumped in order at halt (:func:`_laser_stage_prints`) -- but a ``.``
-    *inside a loop* is not, its print count being unknown until the loop
-    runs.  ``out_cell`` reports the last print's cell, for callers that
-    still ask about a single-output program.
+    (LaserFuck's tape has no negative cells).  Prints are unrestricted:
+    any number of them, anywhere, including inside a loop, since each
+    appends onto an output region at runtime and the dump replays the
+    region at halt (:func:`_laser_stage_prints`).  ``out_cell`` reports
+    the last print's cell, for callers that still ask about a
+    single-output program.
     """
     ptr = 0
     maxcell = 0
@@ -1109,15 +1109,6 @@ def _laser_analyze(ops: list[_LaserOp]) -> tuple[int, int, int | None]:
             if depth != 0:
                 raise AssertionError("balanced brackets were validated before analysis")
             body = ops[i + 1 : j - 1]
-            if "." in body:
-                # A print inside a loop runs a number of times the source
-                # decides, so its slots cannot be numbered at transpile
-                # time the way a top-level print's can.  Staging that needs
-                # a runtime append, which is not built.
-                raise ValueError(
-                    "a '.' inside a loop is out of the supported class (its "
-                    "print count is not known until the loop runs)"
-                )
             bptr, bmax, _bout = _laser_analyze(body)
             if bptr != 0:
                 raise ValueError(
@@ -1215,8 +1206,8 @@ def _laser_move(delta: int) -> list[_LaserOp]:
 
 def _laser_stage_prints(
     ops: list[_LaserOp], maxcell: int
-) -> tuple[list[_LaserOp], int, int]:
-    """Rewrite each top-level ``.`` into a copy into the output region.
+) -> tuple[list[_LaserOp], int, int, int, int]:
+    r"""Rewrite each ``.`` into an append onto the output region.
 
     LaserFuck has no output command: it prints the tape once, when the last
     laser dies.  A single final ``.`` therefore translates by leaving that
@@ -1226,18 +1217,43 @@ def _laser_stage_prints(
 
     It does under a staged one.  Equivalence is judged on the output a
     terminating run captures, so *when* a byte leaves the program is
-    unobservable; only the order survives.  So each ``.`` copies its cell
-    into the next slot of an output region and the dump prints the region,
-    in tape order, at the end.  A top-level op runs exactly once, so the
-    slots fill in textual order -- which is execution order -- and the
-    region's size is known statically.
+    unobservable; only its order survives.  So each ``.`` copies its cell
+    onto the end of an output region and the dump replays the region, in
+    tape order, at the end.
 
-    The layout puts the region *last* -- ``[working 0..maxcell | temp |
-    output base..)`` -- so it grows rightward into LaserFuck's unbounded
-    tape with nothing to displace.  Copying is the usual
-    duplicate-and-restore: the source drains into both its slot and the
-    temp, then the temp drains back, so the source keeps its value and the
-    pointer ends where it began.
+    The append is found at *runtime* rather than numbered at compile time,
+    which is what lets a ``.`` sit inside a loop, where the number of
+    prints is not known until the loop runs.  A slot holds ``value + 1``,
+    so an occupied slot is nonzero and an empty one is zero, and ``[>]``
+    walks to the first free slot.  That bias needs a cell that cannot
+    collide at the top of its range, which LaserFuck's *unbounded* cells
+    give -- the same encoding is impossible on a byte that wraps, where
+    ``255 + 1`` would read as empty.  The epilogue subtracts the bias back
+    out.
+
+    The layout is::
+
+        0        landmark, set to 1 once and never cleared
+        1..M+1   the program's cells (logical cell ``i`` at ``i + 1``)
+        M+2      t, the transfer counter
+        M+3      t2, the duplicate-and-restore scratch
+        M+4      gap, permanently zero: the left walk's landmark
+        M+5..    the output slots
+
+    Cell 0 is a landmark because LaserFuck *prepends* a cell when ``<``
+    runs at cell 0 rather than clamping, which would shift every address
+    and corrupt the layout; a nonzero cell 0 stops ``[<]`` before it can
+    happen.  The gap is never written, and movement alone does not mark a
+    cell as used, so it stays invisible to the dump.
+
+    Each print is three phases, all pointer-neutral, so they nest inside
+    the program's own loops: duplicate the source into ``t`` (restoring it
+    through ``t2``), walk to the first free slot and claim it with ``+``
+    (which is the bias, and also the write that makes the slot visible to
+    the dump -- a staged ``\x00`` would otherwise be skipped as untouched),
+    then transfer ``t`` units into that slot one lap at a time, stepping
+    back one cell from the first *free* slot each lap so the units land
+    together rather than scattering.
 
     A copy drains its source one unit per lap, so it needs that source to
     be non-negative -- and a Dimensional cell goes negative only by relying
@@ -1251,39 +1267,66 @@ def _laser_stage_prints(
     non-negative through arbitrary loops, which is the unsound static
     value analysis this module has twice removed.
 
-    Returns the rewritten ops, the temp cell, and the region's base.
+    Returns the rewritten ops and the ``base``, ``t``, ``t2`` and ``gap``
+    addresses.
     """
-    temp = maxcell + 1
-    base = temp + 1
-    out: list[_LaserOp] = []
-    ptr = 0
-    slot = 0
+    base = 1  # logical cell 0, one past the landmark
+    t = base + maxcell + 1
+    t2 = t + 1
+    gap = t2 + 1
+
+    out: list[_LaserOp] = ["+"]  # the landmark, written once
+    out.extend(_laser_move(base))
+    ptr = base
+
     for op in ops:
         if op != ".":
             out.append(op)
             ptr += (op == ">") - (op == "<")
             continue
-        target = base + slot
-        # drain ptr into the slot and the temp, one unit per lap
+
+        # duplicate the source into t, restoring it through t2
         out.append("[")
         out.append("-")
-        out.extend(_laser_move(target - ptr))
+        out.extend(_laser_move(t - ptr))
         out.append("+")
-        out.extend(_laser_move(temp - target))
+        out.extend(_laser_move(t2 - t))
         out.append("+")
-        out.extend(_laser_move(ptr - temp))
+        out.extend(_laser_move(ptr - t2))
         out.append("]")
-        # drain the temp back into ptr, restoring the source cell
-        out.extend(_laser_move(temp - ptr))
+        out.extend(_laser_move(t2 - ptr))
         out.append("[")
         out.append("-")
-        out.extend(_laser_move(ptr - temp))
+        out.extend(_laser_move(ptr - t2))
         out.append("+")
-        out.extend(_laser_move(temp - ptr))
+        out.extend(_laser_move(t2 - ptr))
         out.append("]")
-        out.extend(_laser_move(ptr - temp))
-        slot += 1
-    return out, temp, base
+        out.extend(_laser_move(t - t2))
+
+        # claim the first free slot: this is the bias, and the write that
+        # makes the slot visible to the dump
+        out.extend(_laser_move(gap - t))
+        out.append(">")
+        out.extend(["[", ">", "]"])
+        out.append("+")
+        out.extend(["[", "<", "]"])
+        out.extend(_laser_move(t - gap))
+
+        # transfer t into the claimed slot, one unit per lap
+        out.append("[")
+        out.append("-")
+        out.extend(_laser_move(gap - t))
+        out.append(">")
+        out.extend(["[", ">", "]"])
+        out.append("<")
+        out.append("+")
+        out.extend(["[", "<", "]"])
+        out.extend(_laser_move(t - gap))
+        out.append("]")
+
+        out.extend(_laser_move(ptr - t))
+
+    return out, base, t, t2, gap
 
 
 def _laser_assemble(ops: list[_LaserOp]) -> str:
@@ -1295,24 +1338,28 @@ def _laser_assemble(ops: list[_LaserOp]) -> str:
     same whichever language the ops came from.
 
     LaserFuck prints the whole tape when the last laser dies, which is its
-    only output.  So the program's bytes are *staged* into an output region
-    by :func:`_laser_stage_prints` and the epilogue arranges for the dump to
-    show exactly that region: every working cell and the temp are driven
-    negative (``[-]-`` clears a cell and takes it below zero, and the dump
-    excludes negative cells), while each slot is touched with ``+-`` and
-    kept.  The touch matters -- the dump skips cells nothing has written, so
-    a staged ``\\x00`` would otherwise vanish rather than print.
+    only output, so the program's bytes are appended to an output region by
+    :func:`_laser_stage_prints` and the epilogue arranges for the dump to
+    show exactly that region: the landmark, the working cells and both
+    scratch cells are driven negative (``[-]-`` clears a cell and then
+    takes it below zero, and the dump excludes negative cells), the gap is
+    stepped over unwritten, and ``[->]`` walks the slots subtracting the
+    bias each holds.  A slot biased to ``1`` lands on zero and stays
+    visible, since claiming it was a write, so a printed ``\x00`` survives.
     """
     ptr, maxcell, _out_cell = _laser_analyze(ops)
-    staged, temp, _base = _laser_stage_prints(ops, maxcell)
-    slots = sum(1 for op in ops if op == ".")
+    staged, base, _t, _t2, gap = _laser_stage_prints(ops, maxcell)
 
-    epi: list[_LaserOp] = []
-    epi.extend(_laser_move(-ptr))  # back to cell 0
-    for _cell in range(temp + 1):  # working cells and the temp
+    # The staged program is pointer-neutral at every print, and an in-class
+    # loop has net-zero displacement, so it ends where the original does --
+    # shifted by the landmark.  Counting the emitted text would be wrong:
+    # claiming a slot spends a ``>`` whose return is inside a walk.
+    epi: list[_LaserOp] = _laser_move(-(base + ptr))
+    for _cell in range(gap):  # landmark, working cells, t and t2
         epi.extend(["[", "-", "]", "-", ">"])
-    for _slot in range(slots):  # the output region, touched and kept
-        epi.extend(["+", "-", ">"])
+    epi.append(">")  # step over the gap, unwritten and so invisible
+    epi.extend(["[", "-", ">"])  # debias each slot, halting on the first free
+    epi.append("]")
     g = _LaserGrid()
     _laser_funnel(g)
     _laser_emit(g, staged + epi, 0, 3)
@@ -1331,17 +1378,17 @@ def dimensional_to_laserfuck(program: str) -> str:
     exactly while its cell is nonzero like Dimensional's.
 
     LaserFuck prints the whole tape once when the laser dies, which is its
-    only output, so each ``.`` copies its cell into an output region that
+    only output, so each ``.`` appends its cell to an output region that
     the dump replays in order (:func:`_laser_stage_prints`); the epilogue
     drives the working cells negative to hide them.  A program may
-    therefore print as many times as it likes, wherever it likes, so long
-    as the prints are top level.
+    therefore print as many times as it likes, wherever it likes --
+    including inside a loop, where the number of prints is not known until
+    the loop runs.
 
     Everything outside this core is rejected rather than mistranslated: the
     pointer hierarchy (``$``, ``{``/``}``, ``?``/``!``), the numeric
     readers (``d``/``x``), bare or non-zero-dimension moves, moving below
-    cell 0, loops that drift the pointer, and a ``.`` inside a loop, whose
-    print count is not known until the loop runs.  Cells do not wrap at 8
+    cell 0, and loops that drift the pointer.  Cells do not wrap at 8
     bits in the translation (LaserFuck cells are unbounded), so programs
     that rely on Dimensional's byte wrapping are out of class -- and a
     negative cell makes the emitted program hang rather than answer, both
