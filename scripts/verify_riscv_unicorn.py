@@ -78,8 +78,8 @@ REFERENCE_CASES = [
 # (name, compiler module, source program, expected output[, stdin]).
 # Compilers with generators (bfstack, suffolk, unsquare, home_row)
 # round-trip them; the others (jaune, bf_pda, ram0) get fixed programs with
-# known output.  Forbin is the only one whose programs read stdin, so its
-# cases carry a fifth element; everything else runs on empty input.
+# known output.  Forbin and Container read stdin, so their boolean cases
+# carry a fifth element; everything else runs on empty input.
 COMPILER_CASES: list[tuple[str, str, str, str] | tuple[str, str, str, str, str]] = []
 for text in ["Hi", "Hello, World!", "esolangs!"]:
     COMPILER_CASES.append(("bfstack", "bfstack", gen.bfstack(text), text))
@@ -92,6 +92,7 @@ for text in ["Hi", "Hello, World!", "esolangs!"]:
     )
     COMPILER_CASES.append(("sbleq", "sbleq", gen.sbleq(text), text))
     COMPILER_CASES.append(("decleq", "decleq", gen.decleq(text), text))
+    COMPILER_CASES.append(("container", "container", gen.container(text), text))
 COMPILER_CASES.append(("home_row", "home_row", "a" * 65 + "k;", "A"))
 COMPILER_CASES.append(("jaune", "jaune", "6+5+^.", "11"))
 COMPILER_CASES.append(("unsquare", "unsquare", "IA" + "+" * 32 + "Po", "A"))
@@ -118,6 +119,22 @@ for _a in "01":
                 "forbin",
                 "forbin",
                 _FORBIN_AND2,
+                "1" if _a == "1" and _b == "1" else "0",
+                f"{_a}\n{_b}",
+            )
+        )
+# Container: the boolean generator's AND2 program over its whole input
+# space.  Container's reader drains a *line* one character per pulse, so
+# unlike Forbin the bits could share a line; they are written one per line
+# to match the block above, and both spellings run identically.
+_CONTAINER_AND2 = gen_bool.container("0001")
+for _a in "01":
+    for _b in "01":
+        COMPILER_CASES.append(
+            (
+                "container",
+                "container",
+                _CONTAINER_AND2,
                 "1" if _a == "1" and _b == "1" else "0",
                 f"{_a}\n{_b}",
             )
