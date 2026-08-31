@@ -227,10 +227,12 @@ correctly on the real interpreter.  XOR is the pointed one: this file
 records it as the four-input table the searches fail on, and it is now
 search-free.
 
-The generalisation was not a guess.  `_EXCEPTIONS`' one stored three-input
-suffix interleaves `<` into its bracket run, so a family no wider than "the
-same run with a `<` in it" was already known to reach columns no `'[' * k`
-reaches; what the measurement settled is *how many*.
+The generalisation was not a guess.  The one three-input suffix that was
+stored at the time interleaves `<` into its bracket run, so a family no wider
+than "the same run with a `<` in it" was already known to reach columns no
+`'[' * k` reaches; what the measurement settled is *how many*.  That stored
+suffix is now derived rather than stored — see `_rescue`, which is the same
+family one `<` deeper.
 
 **Why 23.9% and not 100%.**  The remaining 76% is not shown unreachable —
 only unreached by this family.  Two axes were measured and are real headroom,
@@ -364,8 +366,8 @@ because the read consumes the selector into the pointer.
 **Why no chain can escape the counting argument.**  Any post-embed chain is
 just a suffix string over the same alphabet: stage-2 "reads" are `[<` /
 `[x<[<` emitted after the embed, so the chain family is a *subset* of the
-general suffix space — and `_EXCEPTIONS`' stored suffix `[[<[<[[[[[[[[[` is
-itself chain-shaped.  Every chain therefore still yields one printed column
+general suffix space — and the three-input suffix `[[<[<[[[[[[[[[`, once
+stored and now derived by `_rescue`, is itself chain-shaped.  Every chain therefore still yields one printed column
 per (staging, accumulator, read, orientation) slot, so the flat-pool count
 governs chains too.  Composition through the pointer was never going to be
 multiplicative.
