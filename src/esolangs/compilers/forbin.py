@@ -595,10 +595,11 @@ class _Compiler:
     def emit_frame(self) -> str:
         """Emit the frame allocation shared by every user-function call.
 
-        Parameters are bound in declaration order from the argument block;
-        an unpassed parameter is 0 and a surplus argument is dropped, which
-        is ``_call``'s zip-then-default behavior.  The parent is the
-        *calling* frame, which is what makes scoping dynamic.
+        The parent is the *calling* frame, which is what makes scoping
+        dynamic.  The arena is checked before the bump, so exhaustion
+        aborts rather than writing past the end; the per-function parts
+        (nested table, parameter binding) are emitted by
+        :meth:`emit_table_store` on each dispatch arm.
         """
         return (
             "    mv   t3, s1\n"
