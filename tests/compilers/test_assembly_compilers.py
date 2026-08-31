@@ -869,7 +869,7 @@ class TestForbinCompiler:
 
     def test_malformed_source_is_rejected(self) -> None:
         """Malformed syntax raises, sharing the interpreter's parser."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="unterminated block"):
             self.comp("main {")
 
     def test_each_function_gets_its_own_epilogue(self) -> None:
