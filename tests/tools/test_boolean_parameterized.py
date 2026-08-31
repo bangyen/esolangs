@@ -250,11 +250,13 @@ def test_minifuck_reconvergence_declines_outside_one_or_two_essentials() -> None
 def test_minifuck_single_essential_falls_past_the_degenerate_lookup() -> None:
     """One essential input does not guarantee the cell lookup resolves it.
 
-    ``len(essential) <= 1`` sends a table to ``_degenerate``, which answers
-    from a column of the embed rather than searching.  A projection onto the
-    *last* input has no such column, so ``_degenerate`` declines and the
-    build continues to the staged and searching routes below it -- the only
-    way that fall-through is taken.
+    ``_degenerate`` answers from a column of the embed rather than
+    searching, and a projection onto the *last* input has no such column, so
+    it declines.  These tables reach it through the projection block, which
+    returns whatever ``_lift`` builds; the later ``len(essential) <= 1``
+    lookup is not what serves them.  That one is reachable only when no
+    projection happened at all -- ``n <= 1`` -- and every such table
+    resolves, so its own decline branch cannot be taken from here.
     """
     import importlib
 
