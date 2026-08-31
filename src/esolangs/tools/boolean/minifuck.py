@@ -435,6 +435,22 @@ def _search[Hit](
 # stubbed.  Ablating with the fallthrough open reports success either way,
 # because the searches quietly rebuild whatever the pool list drops.
 #
+# **Would re-adding them help now?**  Worth answering here because the drop was
+# measured at ``n <= 3`` only, and the four-input work below turns on exactly
+# the orientation the mirrors served.  Measured rather than argued: the mirrors
+# reach *more* sites than the closure pair found below -- 367 of 367 harvested
+# three-input sites against 307, and the same 400 of 400 at sixteen rows, where
+# two of them cover site-for-site what that pair covers (they are distinct
+# functions with identical coverage).  So on reach they would do the job.
+#
+# It still does not help, for the reason the closure pair does not: serving the
+# orientation closes *sites* and builds no table, which is the measurement two
+# paragraphs down.  What the drop got right was the conclusion; what it could
+# not have known is that the surplus reach is real and simply has nothing to
+# fix -- every table at ``n <= 3`` already builds.  As an implementation they
+# are also dominated: ten strings of length 14 to 23, of which four cover
+# anything and two matter, against a pair at 11 and 14.
+#
 # **The missing orientation is not missing, and the space is catalogued.**
 # The mirrors made ``cell7 == 1`` look reachable only by appending a flip to a
 # shipped code.  It is not: sweeping *every* string over ``{'[', '<'}`` up to
@@ -484,10 +500,11 @@ def _search[Hit](
 # them to fix.
 #
 # Depth alone is not the whole answer either.  Raising :data:`_COLUMN_DEPTH`
-# and :data:`_PARKED_DEPTH` by four, with the two codes above in place, does
-# not build four-input XOR within ten minutes.  So "search depth" names where
-# the constraint lives, not a setting that would lift it; what a wider arity
-# needs is a cheaper route, which is what :data:`_STAGED_ARITIES` gates.
+# and :data:`_PARKED_DEPTH` together by four and by eight, with the two codes
+# above in place, does not build four-input XOR within ten minutes either way.
+# So "search depth" names where the constraint lives, not a setting that would
+# lift it; what a wider arity needs is a cheaper route, which is what
+# :data:`_STAGED_ARITIES` gates.
 #
 # The family also regenerates what the list already has: complete substitutes
 # for the third code (a dropped-code gap of 22 tables refilled by either of two
