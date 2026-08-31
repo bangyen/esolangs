@@ -6,22 +6,17 @@ blocks and function bodies.  These tests pin the wiki's examples and the
 edge cases (undefined variables, out-of-range indexing, mismatched calls).
 """
 
-import io
-from contextlib import redirect_stdout
-from unittest.mock import patch
-
 import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.myscript import run
+from tests.interpreters.contract import SnapshotContract
+from tests.interpreters.runner import run_program
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        run(code, IO())
-    return buffer.getvalue()
+    return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
 
 
 class TestExamples:
@@ -212,3 +207,36 @@ class TestGenerator:
 
         with pytest.raises(ValueError, match="representable"):
             gen.myscript("\x07")
+
+
+class TestSnapshot:
+    def test_check_runs_the_first_matching_case(self) -> None:
+        """A matching case runs its block and stops the check."""
+        code = 'check 5,\n  if 5,\n    say "hit"\n  if 5,\n    say "again"'
+        assert run_and_capture(code) == "hit"
+
+    def test_snapshot_captures_a_nested_scope_chain(self) -> None:
+        """A function frame's scope chain is folded into the snapshot key."""
+        from esolangs.interpreters.register_based.myscript import _Machine
+
+        code = "var f is func x\n  return add x 1\nsay f 1"
+        machine = _Machine(code, IO())
+        seen = set()
+        while not machine.halted:
+            seen.add(machine.snapshot())
+            machine.step()
+        assert len(seen) > 1
+
+
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.register_based.myscript import _Machine
+
+    return _Machine(code, IO())
+
+
+class TestContract(SnapshotContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    stepping_program = "var a is 1\nsay a"

@@ -37,6 +37,7 @@ import sys
 from dataclasses import dataclass, field
 
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.memory import parse_int_memory as _parse
 
 
 @dataclass
@@ -87,6 +88,8 @@ class _Machine:
 
     def step(self) -> None:
         """Execute one instruction (``a b c``), advancing or branching."""
+        if self.halted:
+            return
         a = self.mem[self.ip]
         b = self.mem[self.ip + 1]
         c = self.mem[self.ip + 2]
@@ -121,7 +124,7 @@ def run(code: str, io: IO, store: str = "a") -> None:
     ``store`` selects the storage variant: ``"a"`` (base S*bleq), ``"ab"``
     (S*bl*q, stores in both a and b), or ``"b"`` (Subl*q, stores in b).
     """
-    mach = _Machine(io=io, mem=[int(tok) for tok in code.split()], store=store)
+    mach = _Machine(io=io, mem=_parse(code), store=store)
 
     while not mach.halted:
         mach.step()

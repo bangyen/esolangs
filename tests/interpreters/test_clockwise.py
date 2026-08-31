@@ -1,20 +1,17 @@
 """Unit tests for the Clockwise interpreter."""
 
-import io
-from contextlib import redirect_stdout
-from unittest.mock import patch
+from typing import ClassVar
 
 import pytest
 
 from esolangs.interpreters.grid_based.clockwise import run
 from esolangs.interpreters.io import IO, ScriptedIO
+from tests.interpreters.contract import CycleContract, EmptyProgramContract
+from tests.interpreters.runner import run_program
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        run(code, IO())
-    return buffer.getvalue()
+    return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
 
 
 class TestClockwise:
@@ -76,11 +73,6 @@ class TestClockwise:
         assert run_and_capture(["  !", "! !"]) == ""
         # mixed with R corners, the ring still closes
         assert run_and_capture(["  !", "R R"]) == ""
-
-    def test_empty_program_rejected(self) -> None:
-        """An empty program is malformed."""
-        with pytest.raises(ValueError, match=r"^Clockwise program cannot be empty$"):
-            run_and_capture([])
 
     def test_unclosed_ring_rejected(self) -> None:
         """A pointer that walks off the ring is a malformed program."""
@@ -150,26 +142,6 @@ class TestStepMachine:
         machine.step()  # S at row 0, col 2: acc zeroed
         assert (machine.row, machine.col, machine.r, machine.acc) == (0, 3, 0, 0)
 
-    def test_halting_ring_is_detected(self) -> None:
-        from esolangs.interpreters.grid_based.clockwise import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        machine = _Machine(["+;S;S;S;S;S;+;R", "R             R"], IO())
-        assert run_until_halt_or_cycle(machine) is True
-
-    def test_looping_ring_is_detected_as_a_cycle(self) -> None:
-        """A ring whose orbit never re-enters the origin loops forever.
-
-        The halt condition is a return to the origin with a non-zero heading,
-        so this ring's closed orbit is a finite-state cycle the detector can
-        prove without waiting out a timeout.
-        """
-        from esolangs.interpreters.grid_based.clockwise import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        machine = _Machine(["SS?R ", "+?+S-", "R!!RS"], IO())
-        assert run_until_halt_or_cycle(machine) is False
-
     def test_snapshot_includes_the_input_bits_and_their_rotation(self) -> None:
         """A consuming ``.`` rotates the input bit list, changing the snapshot."""
         from esolangs.interpreters.grid_based.clockwise import _Machine
@@ -186,6 +158,19 @@ class TestStepMachine:
         assert machine.snapshot() != before
         assert "".join(machine.inp) == "1100000"
 
+    def test_step_after_halt_is_a_noop(self) -> None:
+        from esolangs.interpreters.grid_based.clockwise import _Machine
+
+        machine = _Machine(["+;S;S;S;S;S;+;R", "R             R"], IO())
+        for _ in range(200):
+            if machine.halted:
+                break
+            machine.step()
+        assert machine.halted
+        state = machine.snapshot()
+        machine.step()  # stepping a halted machine must not raise
+        assert machine.snapshot() == state
+
 
 def test_reading_with_no_input_is_eof() -> None:
     """Bits are read up front, so an empty queue is exhausted input."""
@@ -193,3 +178,25 @@ def test_reading_with_no_input_is_eof() -> None:
 
     with pytest.raises(EOFError):
         run(".", ScriptedIO("\n"))
+
+
+def _machine(code: object) -> object:
+    from esolangs.interpreters.grid_based.clockwise import _Machine
+
+    return _Machine(code, IO())
+
+
+class TestContract(EmptyProgramContract, CycleContract):
+    """The shared shapes.
+
+    The halt condition is a return to the origin with a non-zero heading,
+    so the looping ring's closed orbit is a finite-state cycle the detector
+    can prove without waiting out a timeout.
+    """
+
+    run = staticmethod(run_and_capture)
+    machine = staticmethod(_machine)
+    empty_program: ClassVar[list[str]] = []
+    empty_raises = "Clockwise program cannot be empty"
+    halting_program: ClassVar[list[str]] = ["+;S;S;S;S;S;+;R", "R             R"]
+    looping_program: ClassVar[list[str]] = ["SS?R ", "+?+S-", "R!!RS"]

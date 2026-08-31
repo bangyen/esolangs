@@ -6,6 +6,18 @@ import esolangs
 from esolangs.exceptions import UnknownLanguageError
 from esolangs.vm import VM
 
+# These four programs are the sweep's samples for their languages, so they
+# live in the table rather than being spelled twice.
+from .samples import (
+    CIRCUIT_PRIME_TESTER,
+    FLOWCHART_CAT,
+    FLOWCHART_TRUTH_MACHINE,
+    SAMPLES,
+    STREETCODE,
+    STREETCODE_GAP,
+    bits_of,
+)
+
 
 def _run_all(vm: VM) -> str:
     while not vm.halted:
@@ -295,6 +307,109 @@ class TestDig:
         assert _run_all(vm) == "5"
         vm.step()  # no-op
         assert vm.output == "5"
+
+
+class TestStreetcode:
+    def test_car_position_heading_and_cells(self) -> None:
+        vm = esolangs.make_vm("Streetcode", STREETCODE)
+        assert vm.ip == (2, 1, 1)  # on the C, heading east
+        assert vm.memory == []
+        vm.step()  # drives onto the first ^
+        assert vm.ip == (2, 2, 1)
+        vm.step()  # ^ increments the cell under CP
+        assert vm.memory == [1]
+        vm.step()  # ^ again
+        assert vm.memory == [2]
+        vm.step()  # O prints it
+        assert vm.output == "\x02"
+        assert vm.stack == []
+
+    def test_memory_fills_the_gaps_between_written_cells(self) -> None:
+        """The tape is a sparse dict, so a skipped cell still reads as zero.
+
+        ``=`` moves CP right without writing, so incrementing either side of
+        two of them leaves cell 1 untouched between two written cells.
+        """
+        vm = esolangs.make_vm("Streetcode", STREETCODE_GAP)
+        assert _run_all(vm) == ""
+        assert vm.memory == [1, 0, 1]
+
+    def test_run_matches_execute(self) -> None:
+        assert _run_all(esolangs.make_vm("Streetcode", STREETCODE)) == esolangs.run(
+            "Streetcode", STREETCODE
+        )
+
+    def test_stepping_a_halted_vm_is_a_noop(self) -> None:
+        vm = esolangs.make_vm("Streetcode", STREETCODE)
+        assert _run_all(vm) == "\x02"
+        vm.step()  # no-op
+        assert vm.output == "\x02"
+
+
+class TestFlowchart:
+    def test_live_pointer_position_and_heading(self) -> None:
+        vm = esolangs.make_vm("Flowchart", FLOWCHART_TRUTH_MACHINE, "0\n")
+        assert vm.ip == (0, 10, 0, 1)  # on the opening ( ), heading east
+        assert vm.stack == []
+        vm.step()
+        assert vm.ip == (0, 11, 0, 1)  # moved on, still travelling east
+
+    def test_ip_is_none_once_every_pointer_has_stopped(self) -> None:
+        """``ip`` reports the first live pointer, so a finished run has none."""
+        vm = esolangs.make_vm("Flowchart", FLOWCHART_TRUTH_MACHINE, "0\n")
+        assert _run_all(vm) == "0"
+        assert vm.ip is None
+
+    def test_the_deque_holds_what_the_pointers_read(self) -> None:
+        """The cat reads its bits onto the shared tape before printing them."""
+        vm = esolangs.make_vm("Flowchart", FLOWCHART_CAT, "1\n")
+        while not vm.halted and not vm.memory:
+            vm.step()
+        assert vm.memory == [1]
+
+    def test_run_matches_execute(self) -> None:
+        vm = esolangs.make_vm("Flowchart", FLOWCHART_TRUTH_MACHINE, "0\n")
+        assert _run_all(vm) == esolangs.run("Flowchart", FLOWCHART_TRUTH_MACHINE, "0\n")
+
+    def test_stepping_a_halted_vm_is_a_noop(self) -> None:
+        vm = esolangs.make_vm("Flowchart", FLOWCHART_TRUTH_MACHINE, "0\n")
+        assert _run_all(vm) == "0"
+        vm.step()  # no-op
+        assert vm.output == "0"
+
+
+class TestCircuitDiagram:
+    def test_wire_values_are_per_generation_events(self) -> None:
+        vm = esolangs.make_vm("Circuit Diagram", CIRCUIT_PRIME_TESTER, bits_of(3))
+        assert vm.ip is None  # nothing moves through a circuit
+        assert vm.stack == []
+        vm.step()
+        assert vm.memory == [0, 0, 1, 1]  # the input port, most significant first
+        assert _run_all(vm) == "1"
+
+    def test_stepping_detects_exactly_the_primes(self) -> None:
+        """The page's worked example, replayed a generation at a time."""
+        detected = {
+            n
+            for n in range(16)
+            if _run_all(
+                esolangs.make_vm("Circuit Diagram", CIRCUIT_PRIME_TESTER, bits_of(n))
+            )
+            == "1"
+        }
+        assert detected == {2, 3, 5, 7, 11, 13}
+
+    def test_run_matches_execute(self) -> None:
+        vm = esolangs.make_vm("Circuit Diagram", CIRCUIT_PRIME_TESTER, bits_of(7))
+        assert _run_all(vm) == esolangs.run(
+            "Circuit Diagram", CIRCUIT_PRIME_TESTER, bits_of(7)
+        )
+
+    def test_stepping_a_halted_vm_is_a_noop(self) -> None:
+        vm = esolangs.make_vm("Circuit Diagram", CIRCUIT_PRIME_TESTER, bits_of(7))
+        assert _run_all(vm) == "1"
+        vm.step()  # no-op
+        assert vm.output == "1"
 
 
 class TestWii2d:
@@ -854,6 +969,40 @@ class TestSuptiftam:
         assert vm.halted
 
 
+class TestCvnc:
+    def test_accumulator_deque_and_cursor(self) -> None:
+        # The wiki's truth machine, whose "0" branch halts.  The program is
+        # IPA, so it comes from the sample table rather than being spelled
+        # here: this module carries no confusable-character exemption.
+        program, stdin = SAMPLES["CV(N)(C)"]
+        vm = esolangs.make_vm("CV(N)(C)", program, stdin)
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
+        vm.step()
+        vm.step()
+        vm.step()  # the read-and-print syllable emits the input digit
+        assert (vm.ip, vm.output) == (3, "0")
+        _run_all(vm)
+        # The accumulator leads `memory`, ahead of the (still empty) deque.
+        assert (vm.memory, vm.stack) == ([1], [])
+        assert vm.halted
+
+
+class TestFargo:
+    def test_frames_and_cursor(self) -> None:
+        vm = esolangs.make_vm("Fargo", "$", "0\n")
+        # `memory` is the whole state: the input read and the output built.
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0, 0], [])
+        vm.step()  # the top-level line pushes its frame
+        assert vm.ip == 1
+        assert len(vm.stack) == 1
+        frame = vm.stack[0]
+        assert (frame.tokens, frame.pos, frame.fn_name) == (("$",), 0, "")  # type: ignore[attr-defined]
+        vm.step()  # $ prints the number it was given
+        assert vm.output == "0"
+        vm.step()  # the frame pops, and the run is over
+        assert (vm.stack, vm.halted) == ([], True)
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -918,20 +1067,20 @@ class TestRunUntilHaltOrCycle:
 
     def test_dimensional_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.dimensional import _Runner
+        from esolangs.interpreters.tape_based.dimensional import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
-        runner = _Runner("+.", ScriptedIO())
-        assert run_until_halt_or_cycle(runner) is True
+        machine = _Machine("+.", ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is True
 
     def test_dimensional_looping_run_is_detected_as_a_cycle(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.dimensional import _Runner
+        from esolangs.interpreters.tape_based.dimensional import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
         # cell starts nonzero and the loop body never changes it, so it never exits
-        runner = _Runner("+[]", ScriptedIO())
-        assert run_until_halt_or_cycle(runner) is False
+        machine = _Machine("+[]", ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is False
 
     def test_modulous_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -1150,6 +1299,7 @@ class TestFactory:
         ("bit~", "~("),
         ("Collatz Multiverse", "x = negativeOne x + negativeOne, DO PRINT."),
         ("Polynomial", "f(x) = x^2+4"),
+        ("Streetcode", STREETCODE),
     ],
 )
 def test_vm_output_matches_run(language: str, program: str) -> None:
@@ -1160,3 +1310,52 @@ def test_vm_output_matches_run(language: str, program: str) -> None:
         pytest.skip(f"{language} needs input")
     vm = esolangs.make_vm(language, program)
     assert _run_all(vm) == expected
+
+
+class TestEveryLanguageIsSteppable:
+    """The two whole-registry invariants, as tests rather than prose.
+
+    Both were true by habit before they were true by test: a new language
+    could land with a runner and no adapter, or with a state object whose
+    ``snapshot()`` nobody had written, and only a reader comparing two
+    lists would notice.
+    """
+
+    def test_every_registry_language_has_a_vm_adapter(self) -> None:
+        from esolangs.registry import RUNNERS
+        from esolangs.vm import _VM_ADAPTERS
+
+        assert set(RUNNERS) - set(_VM_ADAPTERS) == set()
+
+    def test_every_adapter_wraps_a_state_object_with_a_snapshot(self) -> None:
+        """``run_until_halt_or_cycle`` needs ``snapshot()`` on the machine.
+
+        The adapters wrap the interpreter class named in their own
+        ``__init__``, so read those imports back and check the classes
+        themselves: the alternative is building all 59, which needs a valid
+        program per language.  An adapter may import several names
+        (Grapheme takes its frame type alongside its machine), so the
+        requirement is that *one* of them carries the state -- a machine
+        without ``snapshot()`` cannot have a hang proven, which is the
+        cycle detector's real precondition.
+        """
+        import importlib
+        import inspect
+        import re
+
+        from esolangs.vm import _VM_ADAPTERS
+
+        without: list[str] = []
+        for name, adapter in sorted(_VM_ADAPTERS.items()):
+            source = inspect.getsource(adapter.__init__)
+            found = re.search(
+                r"from (esolangs\.interpreters\.[\w.]+) import "
+                r"\(?\s*([\w,\s]+?)\s*\)?\n",
+                source,
+            )
+            assert found is not None, f"{name}: adapter imports no interpreter"
+            module = importlib.import_module(found.group(1))
+            imported = [n.strip() for n in found.group(2).split(",") if n.strip()]
+            if not any(hasattr(getattr(module, n), "snapshot") for n in imported):
+                without.append(name)
+        assert without == []

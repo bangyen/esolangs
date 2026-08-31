@@ -7,6 +7,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.basicfuck import run
+from tests.interpreters.contract import CycleContract, SnapshotContract
 
 
 def run_program(code: str, stdin: str = "") -> str:
@@ -218,13 +219,6 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.frames == []
 
-    def test_snapshot_is_hashable(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.basicfuck import _Machine
-
-        prog = "#basicfuck t=1 r=0~255 o=nearest\n#allocate a\n"
-        assert hash(_Machine(prog, ScriptedIO()).snapshot()) is not None
-
     def test_a_frame_reports_what_kind_of_scope_it_is(self) -> None:
         """The snapshot carries each frame's loop bookkeeping, not just its
         cursor.
@@ -276,24 +270,6 @@ class TestStepMachine:
         plain = frames_after("a += 1;\nwhile (a) { a -= 1; }\n", 2)
         negated = frames_after("a += 1;\nwhile !(a) { a += 1; }\n", 2)
         assert plain != negated
-
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.basicfuck import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        prog = "#basicfuck t=1 r=0~255 o=nearest\n#allocate a\n"
-        assert run_until_halt_or_cycle(_Machine(prog + "a += 1;", ScriptedIO())) is True
-
-    def test_while_loop_is_detected_as_a_cycle(self) -> None:
-        """A while loop whose body never changes its condition loops forever."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.basicfuck import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        prog = "#basicfuck t=1 r=0~255 o=wrap\n#allocate a\n"
-        code = prog + "a += 1;\nwhile (a) { }"
-        assert run_until_halt_or_cycle(_Machine(code, ScriptedIO())) is False
 
 
 class TestDirectiveEdges:
@@ -714,3 +690,24 @@ class TestLexerBoundaries:
         ):
             with pytest.raises(ValueError, match=re.escape("Invalid syntax.")):
                 run_program(head + tail + "\n")
+
+
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.basicfuck import _Machine
+
+    return _Machine(code, ScriptedIO())
+
+
+# The directives every program needs before its first statement.
+_NEAREST = "#basicfuck t=1 r=0~255 o=nearest\n#allocate a\n"
+_WRAP = "#basicfuck t=1 r=0~255 o=wrap\n#allocate a\n"
+
+
+class TestContract(SnapshotContract, CycleContract):
+    """The shared shapes. ``while (a)`` with a nonzero ``a`` never exits."""
+
+    machine = staticmethod(_machine)
+    stepping_program = _NEAREST
+    halting_program = _NEAREST + "a += 1;"
+    looping_program = _WRAP + "a += 1;\nwhile (a) { }"

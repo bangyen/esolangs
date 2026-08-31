@@ -3,7 +3,8 @@
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.tape_based.three_d_brainfuck import run
+from esolangs.interpreters.tape_based.three_d_brainfuck import _Machine, run
+from tests.interpreters.contract import CycleContract, SnapshotContract
 
 
 def run_program(code: str, stdin: str = "") -> str:
@@ -59,6 +60,55 @@ class Test3DBrainfuck:
         assert run_program("n+s.") == "\x00"
         assert run_program("e+w.") == "\x00"
         assert run_program("u+d.") == "\x00"
+
+    def test_each_move_goes_the_way_its_axis_points(self) -> None:
+        """The array pointer lands on the named coordinate, not its mirror.
+
+        Output cannot show this.  ``_ARRAY`` is closed under negation, so
+        flipping the sign of any component relabels a pair of moves --
+        ``n``/``s``, ``u``/``d``, ``e``/``w`` -- and every program that walks
+        out and back returns to the origin either way, while one that only
+        walks out lands on a cell that is distinct either way.  The
+        coordinate itself is the thing that differs, so it is what these
+        assert: one move per axis, each naming the cell it wrote.
+        """
+        for program, cell in (
+            ("n+", (1, 0, 0)),
+            ("s+", (-1, 0, 0)),
+            ("u+", (0, 1, 0)),
+            ("d+", (0, -1, 0)),
+            ("e+", (0, 0, 1)),
+            ("w+", (0, 0, -1)),
+        ):
+            machine = _Machine(program, ScriptedIO())
+            while not machine.halted:
+                machine.step()
+            assert machine.ap == cell, program
+            assert machine.cells == {cell: 1}, program
+
+    def test_the_instruction_pointer_advances_along_its_heading(self) -> None:
+        """The instruction pointer moves the way the heading points.
+
+        The same negation symmetry sits on the advance: flipping a component
+        of the heading sends the pointer the other way along that axis.  On
+        the default +X heading the program simply runs, so the flip shows
+        only off-axis -- where the pointer leaves the source line and the
+        program halts either way, at the same step count.  The *position* it
+        stops at is what separates them.
+        """
+        for block, heading in (
+            ("U", (0, 1, 0)),
+            ("D", (0, -1, 0)),
+            ("E", (0, 0, 1)),
+            ("W", (0, 0, -1)),
+        ):
+            machine = _Machine(block + "+", ScriptedIO())
+            machine.step()  # the heading block, then one move along it
+            assert machine.heading == heading, block
+            # the block at the origin is replaced as the advance vector, so
+            # the pointer steps straight off the +X line and stops
+            assert machine.ip == heading, block
+            assert machine.halted, block
 
     def test_loop(self) -> None:
         assert run_program("++[-].") == "\x00"
@@ -155,23 +205,18 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ip == (2, 0, 0)
 
-    def test_snapshot_is_hashable(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.three_d_brainfuck import _Machine
 
-        assert hash(_Machine("+.", ScriptedIO()).snapshot()) is not None
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.three_d_brainfuck import _Machine
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.three_d_brainfuck import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+    return _Machine(code, ScriptedIO())
 
-        assert run_until_halt_or_cycle(_Machine("+.", ScriptedIO())) is True
 
-    def test_bracket_loop_is_detected_as_a_cycle(self) -> None:
-        """A bracket pair around a cell that never clears loops forever."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.three_d_brainfuck import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+class TestContract(SnapshotContract, CycleContract):
+    """The shared shapes, with this language's own programs."""
 
-        assert run_until_halt_or_cycle(_Machine("+[]", ScriptedIO())) is False
+    machine = staticmethod(_machine)
+    stepping_program = "+."
+    halting_program = "+."
+    looping_program = "+[]"

@@ -21,6 +21,11 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.rotfuck import run
+from tests.interpreters.contract import (
+    CycleContract,
+    EmptyProgramContract,
+    SnapshotContract,
+)
 
 _CHAIN = "+-><,.[]"
 
@@ -64,9 +69,6 @@ class TestTape:
     def test_left_clamped(self) -> None:
         """< at the left edge does nothing (matches the Brainfuck semantics)."""
         assert run_program(build("<<.")) == "\x00"
-
-    def test_empty_program(self) -> None:
-        assert run_program("") == ""
 
     def test_comments_ignored(self) -> None:
         # trailing comments are skipped by the pointer and never rotate
@@ -156,13 +158,18 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 2
 
-    def test_snapshot_is_hashable(self) -> None:
-        from esolangs.interpreters.tape_based.rotfuck import _Machine
 
-        assert hash(_Machine(".", ScriptedIO()).snapshot()) is not None
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.rotfuck import _Machine
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.tape_based.rotfuck import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+    return _Machine(code, ScriptedIO())
 
-        assert run_until_halt_or_cycle(_Machine(".", ScriptedIO())) is True
+
+class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
+    """The shared empty-program shape, with this language's data."""
+
+    run = staticmethod(run_program)
+    machine = staticmethod(_machine)
+    stepping_program = "."
+    halting_program = "."

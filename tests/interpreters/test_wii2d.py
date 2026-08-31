@@ -8,12 +8,13 @@ import io
 import signal
 from collections.abc import Callable
 from contextlib import redirect_stdout
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 
 from esolangs.interpreters.grid_based.wii2d import run
 from esolangs.interpreters.io import IO
+from tests.interpreters.contract import CycleContract, SnapshotContract
 
 
 class _TestTimeoutError(Exception):
@@ -284,15 +285,6 @@ class TestWII2DEdgeCases:
             run_with_timeout(lambda: run(code, IO()))
         assert f.getvalue() == "\x00"
 
-    def test_wrap_around_behavior(self) -> None:
-        """Test pointer wrap-around at grid boundaries."""
-        # Create a program that tests wrap-around with a clear halt path
-        code = [">~.", "!"]  # Move right, output, halt
-
-        with redirect_stdout(io.StringIO()):
-            run_with_timeout(lambda: run(code, IO()))
-        # Should output accumulator value (0) as ASCII
-
     def test_large_accumulator_values(self) -> None:
         """Test handling of large accumulator values."""
         code = [">255~.", "!"]  # Maximum byte value
@@ -330,14 +322,6 @@ class TestWII2DIntegration:
         with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code, IO()))
         assert f.getvalue() == "H"  # ASCII 72
-
-    def test_program_with_loops_and_conditionals(self) -> None:
-        """Test program that uses control flow extensively."""
-        code = ["!", ">@~.", "  @"]
-
-        with redirect_stdout(io.StringIO()):
-            run_with_timeout(lambda: run(code, IO()))
-        # Should execute without hanging
 
     def test_character_arithmetic_chain(self) -> None:
         """Test a chain of character arithmetic operations."""
@@ -401,22 +385,33 @@ class TestStepMachine:
         assert machine.halted
         assert machine.acc == 0
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.grid_based.wii2d import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine([">~.", "!"], IO())) is True
-
-    def test_snapshot_is_hashable_and_tracks_the_accumulator(self) -> None:
+    def test_step_after_halt_is_a_noop(self) -> None:
         from esolangs.interpreters.grid_based.wii2d import _Machine
 
-        machine = _Machine([">+~.", "!"], IO())
-        before = machine.snapshot()
-        assert hash(before) is not None
-        machine.step()  # > east
-        machine.step()  # + increments
-        assert machine.snapshot() != before
-        assert machine.acc == 1
+        machine = _Machine([">~.", "!"], IO())
+        for _ in range(200):
+            if machine.halted:
+                break
+            machine.step()
+        assert machine.halted
+        state = machine.snapshot()
+        machine.step()  # stepping a halted machine must not raise
+        assert machine.snapshot() == state
+
+
+def _machine(code: object) -> object:
+    from esolangs.interpreters.grid_based.wii2d import _Machine
+    from esolangs.interpreters.io import IO
+
+    return _Machine(code, IO())
+
+
+class TestContract(SnapshotContract, CycleContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    stepping_program: ClassVar[list[str]] = [">+~.", "!"]
+    halting_program: ClassVar[list[str]] = [">~.", "!"]
 
 
 if __name__ == "__main__":

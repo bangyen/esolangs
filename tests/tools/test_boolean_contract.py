@@ -44,21 +44,54 @@ _TABLES = ["00000000", "01101001"]
 # now derives its programs instead and rejects that arity outright, which
 # puts it below the measurement floor.
 #
+# ``minifuck`` left the set for the same reason, having been its most
+# expensive member at 41.1s.  It no longer searches at ``n <= 3`` -- every
+# table up to three inputs comes from a staging table -- and this sweep's
+# parity case now costs 0.09s, two orders of magnitude under the budget.
+#
+# ``slow_acv_mammalian_boolean`` left it last, at 5.5s.  It no longer
+# searches at all: a read node's landing point is now solved from the array
+# sum rather than found by measuring where a candidate jumped, so building a
+# table is arithmetic plus a bounded relaxation pass.  Its parity case costs
+# 0.68s, which is under the budget but not by much -- the tree still carries
+# ``2**n`` leaves and the padding between them.
+#
+# ``minifuck`` is back, at 14.9s of this sweep's 18.0s across sixty
+# generators -- and this is a *regression*, not the cost the construction
+# ought to carry.  Bisected 2026-08-30 by checking out
+# ``src/esolangs/tools/boolean/minifuck.py`` alone at each commit that
+# touched it: the parity table costs 0.08s at ef651aa1 and c48b1cdf, 0.00s
+# at 2a91ab70, and 14.71s from 32f5638c ("derive the stagings instead of
+# storing 117 of them") onwards, unchanged through HEAD.  Deriving what was
+# stored is cheap to *build* and expensive to *run*.
+#
+# The mark keeps the fast run fast; it does not make the cost acceptable.
+# When the derivation is made to pay for itself, re-measure and drop the
+# entry rather than leaving this comment to rot the way the 0.09s claim
+# above did.
+_SEARCHING_GENERATORS_REGRESSED: frozenset[str] = frozenset({"minifuck"})
+
 # Naming the languages rather than timing them at collection time is
 # deliberate: a wall-clock threshold evaluated during collection would make
 # the selected test set depend on how loaded the machine is, so a run could
 # silently cover less than the last one.  Re-measure and edit this set when
 # a generator's cost changes.
-_SEARCHING_GENERATORS = frozenset({"minifuck", "slow_acv_mammalian_boolean"})
+_SEARCHING_GENERATORS: frozenset[str] = frozenset()
 
 # The same one-second rule, applied to the two reordering sweeps.  Those call
 # the ``_*_ordered`` builder once per input order for every table up to three
-# inputs, so a generator that *searches* pays that cost repeatedly.  Measured
-# one worker, ztoalc_l_boolean is 3.0s in test_reordering_never_grows_a_program
-# against 0.02s in the read-count sweep above, and the next entry down is
-# streetcode at 0.06s.  A generator can be cheap in one sweep and expensive in
-# the other, so this set is maintained independently of the one above.
-_SLOW_REORDERING_GENERATORS = frozenset({"ztoalc_l_boolean"})
+# inputs, so a generator that *searches* pays that cost repeatedly.
+#
+# ``ztoalc_l_boolean`` was this set's only member, at 3.0s in
+# test_reordering_never_grows_a_program against 0.02s in the read-count sweep
+# above.  It no longer reorders at all -- it constructs one branch-free
+# lookup whose length is permutation-invariant -- so it left both the sweep
+# and this set.  The next entry down was streetcode at 0.06s, comfortably
+# under budget, which is why the set is now empty rather than re-pointed.
+#
+# A generator can be cheap in one sweep and expensive in the other, so this
+# set is maintained independently of the one above.
+_SLOW_REORDERING_GENERATORS: frozenset[str] = frozenset()
 
 
 def _input_reading_generators() -> list[object]:
@@ -85,7 +118,7 @@ def _input_reading_generators() -> list[object]:
             ).run
         except Exception:  # pragma: no cover - interpreter lives outside the pkg
             continue
-        if name in _SEARCHING_GENERATORS:
+        if name in _SEARCHING_GENERATORS | _SEARCHING_GENERATORS_REGRESSED:
             found.append(pytest.param(name, (fn, lang, run), marks=pytest.mark.slow))
         else:
             found.append((name, (fn, lang, run)))
@@ -236,7 +269,6 @@ def _reordering_generators() -> list[object]:
         _circlefuck_ordered,
         _jaune_ordered,
     )
-    from esolangs.tools.boolean.ztoalc_l import _ztoalc_ordered
 
     entries: list[tuple[str, object, object]] = [
         (
@@ -253,7 +285,6 @@ def _reordering_generators() -> list[object]:
         ("between", boolean.between, _between_ordered),
         ("lamfunc", boolean.lamfunc, _lamfunc_ordered),
         ("bitdeque", boolean.bitdeque, _bitdeque_ordered),
-        ("ztoalc_l_boolean", boolean.ztoalc_l_boolean, _ztoalc_ordered),
         ("myscript", boolean.myscript, _myscript_ordered),
         ("nevermind", boolean.nevermind, _nevermind_ordered),
         ("basicfuck", boolean.basicfuck, _basicfuck_ordered),
@@ -365,13 +396,9 @@ def test_greedy_order_is_correct_when_it_is_not_the_identity() -> None:
     gets run rather than merely sized.  ``"01" * 64`` depends only on its
     last input, which the greedy pick fronts.
     """
-    import io as _io
-    from contextlib import redirect_stdout
-    from unittest.mock import patch
-
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.tape_based.brainfuck import run
     from esolangs.tools.boolean.helpers import _greedy_input_order
+    from tests.interpreters.runner import run_program
 
     n = 7
     table = "01" * 64
@@ -381,14 +408,9 @@ def test_greedy_order_is_correct_when_it_is_not_the_identity() -> None:
     program = boolean.brainfuck(table)
     for combo in range(2**n):
         bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
-        buffer = _io.StringIO()
-        with (
-            patch("builtins.input", side_effect=bits),
-            redirect_stdout(buffer),
-            contextlib.suppress(SystemExit),
-        ):
-            run(program, io=IO())
-        assert buffer.getvalue() == table[combo], f"inputs {bits}"
+        stdin = "".join(f"{bit}\n" for bit in bits)
+        got = run_program(run, program, stdin)
+        assert got == table[combo], f"inputs {bits}"
 
 
 # The shape each boolean generator's construction takes, which decides which
@@ -429,6 +451,19 @@ _MINTERM_SHAPED = {
 # no per-row structure to fold and its size tracks the search rather than the
 # table's shape.
 #
+# ``ztoalc_l_boolean`` emits no tree either, and for a reason the folding
+# discriminator cannot see.  It builds one branch-free array lookup: the
+# inputs' row index is accumulated arithmetically and the table is one-hot
+# encoded into an array, so there are no subtrees to collapse and the
+# program's size tracks the number of rows it encodes, not the table's
+# shape.  Every table this test measures has ones-count 4, so they all
+# render to *exactly* the same length -- a 0% fold that is a property of the
+# construction rather than a regression in it.  (It is not minterm-shaped
+# either: a minterm sum's cost is one term per selected row, and while the
+# array init is one command per row, the emitted program's length is set by
+# the Collatz trajectory's peak, which is a lookup in a committed anchor
+# table rather than a function of the row count.)
+#
 # ``pct_squared_minus_one`` emits no tree at all.  %^2^-1's only branch is
 # ``t``, which jumps to position 0 and nowhere else, so the generator
 # computes the answer *arithmetically* -- one affine setter per input and a
@@ -436,10 +471,20 @@ _MINTERM_SHAPED = {
 # constants the solver happens to find, not the table's shape, so the
 # folding discriminator has nothing to measure.  It also raises on the
 # ``n == 3`` tables this test uses, which it cannot separate.
+#
+# ``one_two_three`` emits no tree either, and for a related reason: 123's
+# answer is whether the program halts, and what decides that is the pointer
+# phase the embeds leave behind, so the generator emits a flat plan whose
+# length tracks the modulo-four decode rather than any table shape.  It also
+# raises on the ``n == 3`` tables this test uses -- an ignored input still
+# has to be embedded, and every fill moves the pointer that carries the
+# answer, so the projection this test's folding measures cannot happen.
 _UNSHAPED = {
     "wii2d",
     "minifuck",
+    "ztoalc_l_boolean",
     "pct_squared_minus_one",
+    "one_two_three",
     "jaune_multiply",
     "circlefuck_byte",
     "slow_acv_mammalian_boolean",

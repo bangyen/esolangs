@@ -78,17 +78,32 @@ _WII2D_BEAMS: tuple[int, ...] = (4, 16, 32)
 _WII2D_MAX_CENTRE = 4096
 
 # The widest decode domain the *index chain* will attempt, i.e. the general
-# (non-symmetric) path is used up to ``n == 6``.
+# (non-symmetric) path is used up to ``n == 6`` by default.
 #
-# The fold search is superlinear in the number of live points, and the op
-# strings it produces grow with them: a 16-point decode is a few dozen cells,
-# a 32-point one a few hundred, and a 64-point one measured 187243 -- correct,
-# and far past any width worth emitting.  Symmetric tables are unaffected;
-# they decode over ``n`` points and stay cheap to much higher arity.
+# **This is a cost policy, not a capability bound.**  The check below fires
+# before :func:`_wii2d_decode` is ever called, so nothing here has ever
+# established that a wider decode fails -- and measurement says it does not.
+# Sampled 64-point (``n == 7``) patterns do fold, and a dense non-symmetric
+# ``n == 7`` table built with this constant raised to 64 was verified against
+# the interpreter on all 128 input combinations.  See ``docs/walls.md``.
 #
-# The old search raised past ``n == 5`` for the same class of table, so
-# stopping here keeps that contract rather than replacing a bounded failure
-# with an unbounded run.
+# What the constant buys is bounded *time* and *width*, both of which degrade
+# sharply and with heavy variance as the domain doubles.  Measured at the
+# shipped first beam width, on five random patterns per domain:
+#
+#     D == 16 (n == 5):  median     51 cells, worst     96, all < 0.01s
+#     D == 32 (n == 6):  median   1245 cells, worst   2686, all < 0.15s
+#     D == 64 (n == 7):  median  46385 cells, worst 131433, 0.7s..17s,
+#                        and one pattern in five exceeded a 120s budget
+#
+# The tail is the real cost: most ``n == 7`` tables build in seconds, but a
+# sizeable minority send the fold search somewhere it takes minutes to come
+# back from, so raising this trades a clean refusal for an occasional very
+# long build.  Whether that trade is worth making is a caller's decision,
+# which is why the bound is a module constant rather than an inlined literal.
+#
+# Symmetric tables never reach this check: they decode over ``n`` points via
+# the popcount chain, so majority-of-12 is 397 characters and instant.
 _WII2D_MAX_INDEX_DOMAIN = 32
 
 
@@ -335,7 +350,9 @@ def _wii2d_routes(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | Non
             return 0, [("", "+")] * (n - 1) + [(low, high)]
     half = 2 ** (n - 1)
     if half > _WII2D_MAX_INDEX_DOMAIN:
-        return None  # a decode this wide is not worth emitting; see the constant
+        # Refused on cost, not on capability: the fold is never attempted at
+        # this width.  Sampled decodes here do succeed -- see the constant.
+        return None
     branch0 = _wii2d_decode([int(table[2 * q]) for q in range(half)])
     branch1 = _wii2d_decode([int(table[2 * q + 1]) for q in range(half)])
     if branch0 is None or branch1 is None:
@@ -507,15 +524,25 @@ def wii2d(truth_table: str) -> str:
     popcount chain instead, decoding over ``n`` points rather than
     ``2 ** (n - 1)``; that keeps majority-of-n and friends cheap at arities
     well past where the general path stops.  The general path raises
-    :class:`ValueError` past ``n == 6``, where the decode would be wider than
-    any program worth emitting.
+    :class:`ValueError` past ``n == 6``, on the
+    :data:`_WII2D_MAX_INDEX_DOMAIN` **cost guard** rather than on any
+    demonstrated limit of the construction: the check fires before the fold
+    is attempted, and sampled ``n == 7`` tables do build and
+    interpreter-verify when the guard is raised.  See that constant for the
+    measured cost curve and ``docs/walls.md`` for the argument.
     """
     n = _validate_truth_table(truth_table)
     result = _wii2d_routes(n, truth_table)
     if result is None:
-        raise ValueError(
-            "the WII2D n-embedding construction found no route; dense "
-            "non-symmetric tables past n == 6 are out of reach"
-        )
+        if 2 ** (n - 1) > _WII2D_MAX_INDEX_DOMAIN:
+            raise ValueError(
+                f"the WII2D decode for a dense non-symmetric n == {n} table "
+                f"spans {2 ** (n - 1)} points, past the "
+                f"_WII2D_MAX_INDEX_DOMAIN = {_WII2D_MAX_INDEX_DOMAIN} cost "
+                "guard; this is a size/time policy, not an unreachable "
+                "table -- raising the constant does build these (see "
+                "docs/walls.md for the measured cost curve)"
+            )
+        raise ValueError("the WII2D n-embedding construction found no route")
     start, routes = result
     return "\n".join(_wii2d_layout(n, start, routes))

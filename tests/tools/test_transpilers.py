@@ -10,6 +10,7 @@ programs verifies that class.
 """
 
 import random
+import string
 
 import pytest
 
@@ -621,9 +622,54 @@ def test_six_five_transpiles_generated_program() -> None:
 
 
 def test_six_five_loop_cap() -> None:
-    """More than 18 loops (36 markers) cannot be labelled."""
-    with pytest.raises(ValueError, match="18 loops"):
-        esolangs.transpile("brainfuck", "6-5", "[-]" * 19)
+    """More than 17 loops cannot be labelled within the spec's alphabet.
+
+    The bound is derived from the operand alphabet (digits then ``A``..``Z``,
+    so 35 is the highest named marker), not hardcoded: an 18th loop would
+    need marker 36, which the spec names no character for.
+    """
+    from esolangs.tools.transpilers import _SIX_FIVE_MAX_LABEL
+
+    cap = _SIX_FIVE_MAX_LABEL // 2
+    with pytest.raises(ValueError, match=f"{cap} loops"):
+        esolangs.transpile("brainfuck", "6-5", "[-]" * (cap + 1))
+
+
+def test_six_five_transpile_stays_in_the_spec_alphabet() -> None:
+    """Every 7n/8n operand emitted is a digit or an uppercase letter.
+
+    At the cap the transpiler used to emit ``8[`` -- operand 36 -- which only
+    worked through the interpreter's undefined decode.
+    """
+    from esolangs.interpreters.tape_based.six_five import _tokens
+    from esolangs.tools.transpilers import _SIX_FIVE_MAX_LABEL
+
+    code = esolangs.transpile("brainfuck", "6-5", "[-]" * (_SIX_FIVE_MAX_LABEL // 2))
+    operands = [t[1] for t in _tokens(code) if t[0] in "78" and len(t) > 1]
+    assert operands, "expected the transpile to emit 7n/8n tokens"
+    assert all(c.isdigit() or c in string.ascii_uppercase for c in operands)
+
+
+def test_six_five_label_rejects_values_outside_the_alphabet() -> None:
+    """The label helper refuses what the operand alphabet cannot spell.
+
+    The transpiler stops at the cap before ever asking for one of these, so
+    this guard is reached only by calling the helper directly -- which is
+    the point: it is what keeps a future caller from emitting an operand the
+    spec does not name.
+    """
+    from esolangs.tools.transpilers import _SIX_FIVE_MAX_LABEL, _six_five_label
+
+    # The two ends of the valid range still spell.
+    assert _six_five_label(0) == "0"
+    assert _six_five_label(_SIX_FIVE_MAX_LABEL) == "Z"
+
+    for bad in (-1, _SIX_FIVE_MAX_LABEL + 1):
+        # ``match`` is a substring search, so the equality below is what
+        # actually pins the message.
+        with pytest.raises(ValueError, match="no operand character") as caught:
+            _six_five_label(bad)
+        assert str(caught.value) == f"6-5 has no operand character for {bad}"
 
 
 def test_six_five_unbalanced_brackets_rejected() -> None:
@@ -844,3 +890,198 @@ def test_laser_emit_steps_past_a_stray_loop_close() -> None:
 
     plain = _LaserGrid()
     assert _laser_emit(plain, list("+"), 4, 0) == (next_col, _bottom)
+
+
+def _street_corridor(body: str) -> str:
+    """Draw ``body`` as a single two-wide east-west street.
+
+    Streetcode's streets are two characters wide and must be walled all
+    round, so the shortest program that is just a run of commands is a
+    blank lane above the code lane, boxed.  Every accepted program in this
+    module is one of these: a drive with nothing for the tape to steer.
+    """
+    inner = len(body)
+    return "\n".join(
+        [
+            "+" + "-" * inner + "+",
+            "|" + " " * inner + "|",
+            "|" + body + "|",
+            "+" + "-" * inner + "+",
+        ]
+    )
+
+
+# The counting loop from ``tests/interpreters/test_streetcode.py``: nine
+# laps of an island, printing 'H'.  It is the *designed* Streetcode loop,
+# and it is out of the transpiler's class -- see the rejection test.
+STREET_COUNTING_LOOP = "\n".join(
+    [
+        "+------------+",
+        "|            |",
+        "|C^        O;|",
+        "+--+  ++  +--+",
+        "   |      |",
+        "   | ^_~ =|",
+        "   | ^++= |",
+        "   |^^++^U|",
+        "   |^^^^^=|",
+        "   |^^^^^^|",
+        "   +------+",
+    ]
+)
+
+# A ring whose only junction is where the car enters it.  The car still
+# never returns to that junction *as a drive state*, which is the wall.
+STREET_RING = "\n".join(
+    [
+        "+---------+",
+        "|         |",
+        "|C^^^   O;|",
+        "+--+  +--+",
+        "   |  |",
+        "   |~ |",
+        "   |  |",
+        "   +--+",
+    ]
+)
+
+# (command run, stdin) pairs; each is drawn as a corridor and must agree.
+STREETCODE_BATTERY = (
+    ("C^^^O;", ""),
+    ("C" + "^" * 65 + "O;", ""),
+    ("C^^=^^O;", ""),
+    ("C^^=^^~O;", ""),
+    ("C=^^^_^O;", ""),
+    ("CIO;", "A\n"),
+    ("CI^O;", "A\n"),
+    ("CIO;", "\n"),
+)
+
+
+@pytest.mark.parametrize(("body", "stdin"), STREETCODE_BATTERY)
+def test_streetcode_transpiled_output_matches_source(body: str, stdin: str) -> None:
+    program = _street_corridor(body)
+    laserfuck = esolangs.transpile("Streetcode", "LaserFuck", program)
+    assert esolangs.run("Streetcode", program, stdin) == esolangs.run(
+        "LaserFuck", laserfuck, stdin
+    )
+
+
+def test_streetcode_pinned_outputs() -> None:
+    """A subset with pinned output, so the battery checks more than agreement."""
+    pinned = {
+        "C" + "^" * 65 + "O;": "A",
+        "C^^^O;": "\x03",
+        "C^^=^^O;": "\x02",
+    }
+    for body, expected in pinned.items():
+        laserfuck = esolangs.transpile(
+            "Streetcode", "LaserFuck", _street_corridor(body)
+        )
+        assert esolangs.run("LaserFuck", laserfuck) == expected
+
+
+def test_streetcode_grid_is_rectangular_with_start_and_marker() -> None:
+    """The output is a LaserFuck grid with the byte-mode marker and a start."""
+    laserfuck = esolangs.transpile("Streetcode", "LaserFuck", _street_corridor("C^^O;"))
+    lines = laserfuck.splitlines()
+    assert lines[0][0] == "\u00ff"
+    assert any("o" in line for line in lines)
+
+
+@pytest.mark.parametrize(
+    "program",
+    [
+        pytest.param(STREET_COUNTING_LOOP, id="counting-loop"),
+        pytest.param(STREET_RING, id="ring"),
+        pytest.param(esolangs.generate("Streetcode", "A"), id="text-generator"),
+    ],
+)
+def test_streetcode_drawn_control_flow_is_rejected(program: str) -> None:
+    """A tape-steered square is refused, not mistranslated.
+
+    All three drawings run correctly on Streetcode; none has a brainfuck
+    loop image, because the car never returns to the junction that steers
+    it as the same drive state.  ``match`` is a substring search, so the
+    message is also asserted whole.
+    """
+    with pytest.raises(ValueError, match="the car steers on the tape") as caught:
+        esolangs.transpile("Streetcode", "LaserFuck", program)
+    assert "drawn control flow is out of the supported class" in str(caught.value)
+
+
+def test_streetcode_boolean_generator_is_out_of_class() -> None:
+    """The boolean generator draws decision trees, which are out of class."""
+    from esolangs.tools import boolean
+
+    with pytest.raises(ValueError, match="the car steers on the tape"):
+        esolangs.transpile("Streetcode", "LaserFuck", boolean.streetcode("0001"))
+
+
+def test_streetcode_multiple_outputs_are_rejected() -> None:
+    """LaserFuck prints its tape once, so only a single final ``O`` is in class."""
+    with pytest.raises(ValueError, match="must be the last command"):
+        esolangs.transpile("Streetcode", "LaserFuck", _street_corridor("C^O^O;"))
+
+
+# A ring road two lanes wide around a solid island, with no ';' anywhere:
+# the car laps it forever.  Nothing on it steers, so this is the one
+# rejection that reaches the walk's cycle guard rather than its junction
+# check.
+STREET_DONUT = "\n".join(
+    [
+        "+------+",
+        "|C     |",
+        "|      |",
+        "|  --  |",
+        "|  --  |",
+        "|      |",
+        "|      |",
+        "+------+",
+    ]
+)
+
+
+def test_streetcode_endless_ring_is_rejected() -> None:
+    """A ring with nothing to stop the car has nothing to translate.
+
+    The interpreter validates that the car can always drive *out* of a
+    square, not that it ever stops, so a program that never halts reaches
+    the transpiler intact and the walk has to notice the repeat itself.
+    """
+    with pytest.raises(ValueError, match="nothing to stop it") as caught:
+        esolangs.transpile("Streetcode", "LaserFuck", STREET_DONUT)
+    assert "the program does not halt" in str(caught.value)
+
+
+@pytest.mark.parametrize("text", ["A", "x", "Z", "0"])
+def test_streetcode_unwrapped_text_generator_is_in_class(text: str) -> None:
+    """The text generator's own output transpiles, so long as it is not folded.
+
+    The generator draws a single straight street with no branching, which
+    is exactly the supported class -- but only at a width that keeps it on
+    one row.  The default folds the line into a boustrophedon, and the fold
+    is a ring the car steers around, so the wrapped form is rejected.
+    """
+    program = esolangs.generate("Streetcode", text, 100_000)
+    laserfuck = esolangs.transpile("Streetcode", "LaserFuck", program)
+    assert esolangs.run("LaserFuck", laserfuck) == esolangs.run("Streetcode", program)
+
+
+def test_streetcode_wrapped_text_generator_is_rejected() -> None:
+    """The default (folded) form of the same program is out of class."""
+    with pytest.raises(ValueError, match="the car steers on the tape"):
+        esolangs.transpile(
+            "Streetcode", "LaserFuck", esolangs.generate("Streetcode", "A")
+        )
+
+
+def test_streetcode_multi_character_text_hits_the_output_convention() -> None:
+    """Longer texts are refused by the target, not by the control-flow wall.
+
+    A LaserFuck program prints its tape once when the last laser dies, so
+    it carries a single ``O``; the generator emits one per character.
+    """
+    program = esolangs.generate("Streetcode", "hi", 100_000)
+    with pytest.raises(ValueError, match="must be the last command"):
+        esolangs.transpile("Streetcode", "LaserFuck", program)

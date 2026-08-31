@@ -262,3 +262,39 @@ class TestVariants:
                 break
             machine.step()
         return machine.mem
+
+
+class TestSnapshot:
+    def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.sbleq import _Machine
+
+        machine = _Machine(io=ScriptedIO(""), mem=[3, 4, 6, 1, 1, 0, 0, 0, 0])
+        before = machine.snapshot()
+        hash(before)  # must not raise
+        machine.step()
+        assert machine.snapshot() != before
+
+
+class TestProgramText:
+    """Comments and whitespace, via the shared ``parse_int_memory``.
+
+    S*bleq once parsed with a bare ``code.split()`` of its own, which made it
+    the only OISC in the package that rejected ``#`` comments -- and it
+    rejected them with a raw ``int()`` message rather than the package's.
+    Its compiler already used the shared parser, so a commented program
+    compiled but would not interpret.
+    """
+
+    def test_comment_is_ignored(self) -> None:
+        """``#`` starts a comment that runs to the end of its line."""
+        program = "-3 6 3 # print, then halt\n0 0 7 65 9"
+        assert run_bounded(program) == "A"
+
+    def test_comment_only_program_is_empty(self) -> None:
+        assert run_bounded("# nothing but a comment") == ""
+
+    def test_malformed_token_raises_package_error(self) -> None:
+        """A non-integer token is a ``ValueError`` naming the token."""
+        with pytest.raises(ValueError, match="malformed memory token: 'x'"):
+            run_bounded("0 0 x")

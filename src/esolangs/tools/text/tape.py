@@ -3,12 +3,13 @@
 import math
 
 from esolangs.tools.text.helpers import (
-    _factor_triple,
     _require_ascii,
     _require_bytes,
     delta_program,
+    factor_triple,
     run_step,
 )
+from esolangs.tools.wrap import shortest
 
 __all__ = [
     "_MAMMALIAN_WALK",
@@ -76,7 +77,7 @@ def _bf_set(value: int) -> str:
     the pointer is left on the printed cell.  ``a`` is searched near
     ``sqrt(value)`` so the program is O(sqrt) rather than O(value).
     """
-    a, b, r = _factor_triple(value)
+    a, b, r = factor_triple(value)
     return "+" * a + "[>" + "+" * b + "<-]" + ">" + "+" * r + "."
 
 
@@ -88,6 +89,14 @@ def brainfuck(text: str) -> str:
     rebuilding it: the program emits the +/- run and prints in place.
     Otherwise the cell is zeroed with ``[-]`` and rebuilt with a multiply
     loop (``_bf_set``), so large values cost O(sqrt) instead of O(value).
+
+    The choice is made by :func:`shortest` over the two finished candidates
+    rather than by comparing their costs, because a cost comparison has to
+    restate each shape's length and then drift from it: this used to read
+    ``len(inc) + 1 <= len(_bf_set(v)) + 3``, where the ``+ 1`` and ``+ 3``
+    were the print and the ``[-]`` counted a second time, by hand.  The walk
+    is passed first, so a tie keeps it -- 453 of the 65536 (previous, next)
+    byte pairs are exact ties, so which side wins one is not academic.
     """
     _require_bytes(text, "Brainfuck")
     res: list[str] = []
@@ -96,12 +105,8 @@ def brainfuck(text: str) -> str:
         v = ord(c)
         delta = v - cur
         inc = "+" * delta if delta >= 0 else "-" * -delta
-        if len(inc) + 1 <= len(_bf_set(v)) + 3:
-            res.append(inc + ".")
-            cur = v
-        else:
-            res.append("[-]" + _bf_set(v))
-            cur = v
+        res.append(shortest(inc + ".", "[-]" + _bf_set(v)))
+        cur = v
     return "".join(res)
 
 
@@ -198,6 +203,13 @@ def bfstack(text: str) -> str:
     The top of the stack is driven from the previous character's value; a
     small delta uses ``+``/``-`` and a large one zeroes the cell with
     ``[-]`` and builds the code from scratch, printing each with ``.``.
+
+    As in :func:`brainfuck`, the two shapes are built and the shorter kept.
+    **The rebuild is passed first here**, because this generator breaks a
+    tie the other way: its threshold was ``abs(n) < ord(c) + 3`` -- strict,
+    where brainfuck's was ``<=`` -- so an equal-length pair rebuilt rather
+    than walked.  127 of the 65536 byte pairs tie, so preserving the
+    direction is what keeps the emitted program byte-identical.
     """
     _require_bytes(text, "BFStack")
     res = ">"
@@ -205,12 +217,8 @@ def bfstack(text: str) -> str:
 
     for c in text:
         n = ord(c) - acc
-        if abs(n) < ord(c) + 3:
-            o = "+" if n > 0 else "-"
-            res += o * abs(n) + "."
-        else:
-            o = "+" * ord(c)
-            res += f"[-]{o}."
+        o = "+" if n > 0 else "-"
+        res += shortest("[-]" + "+" * ord(c) + ".", o * abs(n) + ".")
         acc = ord(c)
 
     return res
@@ -281,10 +289,22 @@ def suffolk(text: str) -> str:
     Each character is factored as ``n = a * b + r``; ``!`` computes
     ``max(0, cell + 1 - acc)`` so the multiplier ``a`` is built into a helper
     cell and the remainder ``r`` is added by repeated ``>!`` moves, then ``.``
-    prints.  The ``>!`` and ``><`` moves cost two characters each, so ``a``
-    is searched over the factorization that minimizes ``a + 2b + 2r`` rather
-    than fixed at ``sqrt(n)``.  Cell 2 is sized so ``!`` zeroes the working
-    cells and they can be reused per character.
+    prints.  Cell 2 is sized so ``!`` zeroes the working cells and they can
+    be reused per character.
+
+    The factorization is :func:`factor_triple` under the length this
+    generator actually emits.  The line below is twelve constant characters
+    (``>><!>><>!``, the ``><`` separator and the ``.``) plus ``'!' * a``,
+    ``'>!' * r`` and ``'<' * b``, so a character costs ``12 + a + b + 2r``
+    and the search minimizes ``a + b + 2r``.
+
+    It used to minimize ``a + 2b + 2r``, on the reasoning that ``>!`` and
+    ``><`` are two characters each.  That is right for ``r`` and wrong for
+    ``b``: the ``><`` is one separator, not a price paid per unit of ``b``,
+    which is spelled ``<``.  Over-weighting ``b`` picked a worse
+    factorization for 37 of the 256 byte values -- ``value = 36`` took
+    ``9 * 4`` at 25 characters where ``6 * 6`` spells it in 24 -- costing
+    about 0.61% of total output.
     """
     if not text:
         return ""
@@ -293,13 +313,10 @@ def suffolk(text: str) -> str:
     big = max(int((ord(c) + 1) ** 0.5) for c in text) + 2
     res = []
     for c in text:
-        n = ord(c) + 1
-        best = min(
-            (a + 2 * b + 2 * r, a, b, r)
-            for a in range(1, n + 1)
-            for b, r in (divmod(n, a),)
+        a, b, r = factor_triple(
+            ord(c) + 1,
+            lambda mul, add, rem: mul + add + 2 * rem,
         )
-        _, a, b, r = best
         res.append(f">><!>><>!{'!' * a}{'>!' * r}><{'<' * b}.")
     return ">>!" * big + "".join(res)
 

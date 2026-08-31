@@ -226,8 +226,12 @@ class TestProgramShape:
         assert run_until_halt("\n\nLET zero:=0\n\n") == ""
 
     def test_program_as_string_and_lines(self) -> None:
-        from esolangs.interpreters.io import IO
-        from esolangs.interpreters.register_based.point_break import run
+        """A program is accepted as one string or as a list of lines, and
+        the two forms reach the same final state -- otherwise the split is
+        doing something the joined form is not."""
+        joined = _Machine("LET zero:=0\nLET one:=1", ScriptedIO())
+        split = _Machine(["LET zero:=0", "LET one:=1"], ScriptedIO())
 
-        run("LET zero:=0", io=IO())
-        run(["LET zero:=0"], io=IO())
+        assert run_until_halt_or_cycle(joined) is True
+        assert run_until_halt_or_cycle(split) is True
+        assert joined.snapshot() == split.snapshot()

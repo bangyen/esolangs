@@ -162,7 +162,7 @@ class _Machine:
         elif char == ".":
             self.io.print_char(chr(self._pop() & 0xFF))
         elif char == ",":
-            for ch in self.io.input_str("Input: "):
+            for ch in self.io.input_str():
                 self.stack.append(ord(ch) & 0xFF)
         elif char == ";":
             scope = self.table.get(self._pop(), "")

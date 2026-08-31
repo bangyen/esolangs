@@ -53,10 +53,22 @@ outright and needs no budget.
 
 Coverage: every table at ``n <= 2``, the sixteen two-input functions with XOR
 and XNOR included; a one-input table is derived as the two-input table that
-ignores its second input.  Higher arities are not supported -- the
-derivation reads one slope per column of a two-input table and does not
-generalise -- and :func:`pct_squared_minus_one` raises :class:`ValueError`
-for them rather than returning a program that computes the wrong function.
+ignores its second input.
+
+The derivation above does not generalise past two inputs -- it reads one
+slope per column of a two-input table -- and the reason is structural: one
+affine map per input composes into a *shared* value, which forces each
+cofactor of the table to be constant or an affine image of one shared
+function.  Only 88 of the 256 three-input tables satisfy that.
+
+Above two inputs a second construction takes over, :func:`_cascade`, which
+escapes that constraint by using the erase multiplier as a conditional -- the
+position at which the accumulator is wiped depends on the inputs, which is a
+branch realised arithmetically.  It builds every conjunction or disjunction
+of literals at any arity.  Tables outside that family still raise
+:class:`ValueError` rather than returning a program that computes the wrong
+function; they are *unreached*, not proved unreachable, and
+``docs/limitations.md`` records what bounds are actually known.
 
 Unlike the other parameterized generators, *which* command strings a setter
 uses is derived per table rather than fixed by the language, so a bare
@@ -357,6 +369,105 @@ def _derive(truth_table: str) -> tuple[list[tuple[str, str]], str] | None:
     return best[1], best[2]
 
 
+#: Setter branches for the arbitrary-arity minterm cascade.  Both are two
+#: characters wide, so a setter leaks nothing through ``len()`` and the pad
+#: parity problem never arises: a bare ``'`` erase is one character, and the
+#: odd shortfall against an empty identity branch has no ``pp`` padding.
+#: ``pp`` is two negations, which compose to the identity; ``'p`` zeroes and
+#: then negates zero, which is still zero.
+_CASCADE_IDENT = "pp"
+_CASCADE_ERASE = "'p"
+
+#: Loads 1 into the accumulator from 0: ``i`` subtracts 3, ``p`` negates to
+#: 3, ``s`` subtracts 2.  The direct ``+1`` has no spelling -- ``_sub_code``
+#: has no representation for 1 -- so the constant is built by this detour.
+_CASCADE_ONE = "ips"
+
+
+#: Negates a 0/1 accumulator: ``i`` subtracts 3, ``p`` negates, ``s``
+#: subtracts 2, so ``r`` becomes ``1 - r``.  Appending it to a cascade turns
+#: the indicator into its complement, which is what reaches ``OR``-``n`` and
+#: ``NAND``-``n``.  It is the same three characters as :data:`_CASCADE_ONE`,
+#: which builds 1 from an accumulator that is already 0.
+_CASCADE_NOT = "ips"
+
+
+def _subcube_of(truth_table: str, n: int) -> dict[int, int] | None:
+    """Return the literals pinning ``truth_table``'s ON-set, or ``None``.
+
+    The cascade computes a *conjunction of literals* -- a subcube.  Inputs the
+    conjunction does not mention are free, so the ON-set is every row agreeing
+    with the pinned inputs, and the table is realisable exactly when its ones
+    are precisely that set.  A single minterm is the case where every input is
+    pinned.
+
+    The candidate pinning is read straight off the ON-rows: an input is pinned
+    when every one-row agrees on it.  That is necessary but not sufficient, so
+    the row count is checked against the subcube the pinning describes.
+    """
+    ones = [index for index, bit in enumerate(truth_table) if bit == "1"]
+    if not ones:
+        return None
+    rows = [tuple((index >> (n - 1 - k)) & 1 for k in range(n)) for index in ones]
+    fixed = {k: rows[0][k] for k in range(n) if len({row[k] for row in rows}) == 1}
+    # A subcube on ``len(fixed)`` pinned inputs has exactly this many rows;
+    # a table with the right pinning but the wrong count is not one.
+    if len(ones) != 2 ** (n - len(fixed)):
+        return None
+    return fixed
+
+
+def _cascade(truth_table: str, n: int) -> str | None:
+    """Build a cascade template, or ``None`` if the table is not a subcube.
+
+    The accumulator is loaded with 1 and then passed through one setter per
+    input.  A pinned input's setter is the identity when its bit matches and
+    an erase when it does not, so the accumulator survives as 1 exactly when
+    every pinned bit matches; a free input's setter is the identity either
+    way.  ``l`` then prints it in decimal, needing no branch -- the same
+    printing route the two-input derivation uses.
+
+    A table whose *complement* is a subcube is built by appending
+    :data:`_CASCADE_NOT`, which maps the 0/1 indicator to ``1 - r``.  Together
+    the two cases cover every conjunction and disjunction of literals at any
+    arity: ``AND``-``n`` and single minterms directly, ``OR``-``n`` and
+    ``NAND``-``n`` by complement.
+
+    This is what lifts the two-input cap.  The derived path composes one
+    affine map per input into a shared value, which forces each cofactor of
+    the table to be constant or an affine image of one shared function; that
+    constraint is what stops it at two inputs.  The cascade escapes it by
+    using the erase multiplier as a conditional: the position at which the
+    accumulator is wiped depends on the inputs, which is a genuine branch
+    realised arithmetically in a language whose only jump target is 0.
+
+    Tables that are neither a subcube nor the complement of one are not
+    reachable this way, and are refused rather than served by a program
+    computing the wrong function.  See ``docs/limitations.md`` for what is
+    known about them.
+    """
+    fixed = _subcube_of(truth_table, n)
+    complement = False
+    if fixed is None:
+        flipped = "".join("1" if bit == "0" else "0" for bit in truth_table)
+        fixed = _subcube_of(flipped, n)
+        complement = True
+    if fixed is None:
+        return None
+    setters = []
+    for k in range(n):
+        if k not in fixed:
+            setters.append((_CASCADE_IDENT, _CASCADE_IDENT))
+        elif fixed[k]:
+            setters.append((_CASCADE_ERASE, _CASCADE_IDENT))
+        else:
+            setters.append((_CASCADE_IDENT, _CASCADE_ERASE))
+    header = ";".join(f"{k}={zero}|{one}" for k, (zero, one) in enumerate(setters))
+    tail = (_CASCADE_NOT if complement else "") + "l"
+    body = _CASCADE_ONE + "".join("{X" + str(k) + "}" for k in range(n)) + tail
+    return header + _HEADER_END + body
+
+
 def pct_squared_minus_one(truth_table: str) -> str:
     """Build a %^2^-1 template for the given truth table.
 
@@ -375,17 +486,26 @@ def pct_squared_minus_one(truth_table: str) -> str:
     second input, and the unused setter is then dropped, so ``n == 1`` shares
     the derivation rather than needing a second path.
 
-    Raises :class:`ValueError` above two inputs: the derivation reads one
-    slope per column of a two-input table and does not generalise, and
-    emitting nothing is better than emitting a program that computes the
-    wrong function.
+    Above two inputs the derivation does not apply -- it reads one slope per
+    column of a two-input table -- and :func:`_cascade` takes over, building
+    any conjunction or disjunction of literals at any arity.  A table neither
+    path covers raises :class:`ValueError`, because emitting nothing is
+    better than emitting a program that computes the wrong function.
     """
     n = _validate_truth_table(truth_table)
     if n > 2:
-        raise ValueError(
-            f"%^2^-1 supports one- and two-input tables; got {n} inputs "
-            f"({truth_table!r})"
-        )
+        # Above two inputs the derivation below does not apply -- it reads one
+        # slope per column of a two-input table -- but the minterm cascade
+        # does, at any arity.  A table it cannot build is still refused rather
+        # than served by a program computing the wrong function.
+        cascade = _cascade(truth_table, n)
+        if cascade is None:
+            raise ValueError(
+                f"%^2^-1 builds every two-input table, and at any arity a "
+                f"conjunction or disjunction of literals; got {n} inputs "
+                f"({truth_table!r})"
+            )
+        return cascade
     # Widen a one-input table by repeating each entry, so the second input is
     # present in the derivation but cannot change the answer.
     widened = truth_table if n == 2 else "".join(bit * 2 for bit in truth_table)

@@ -5,6 +5,7 @@ from contextlib import redirect_stdout
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.queue_based.bitdeque import run
+from tests.interpreters.contract import CycleContract, SnapshotContract
 
 
 def run_and_capture(code: str) -> str:
@@ -101,23 +102,18 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 2
 
-    def test_snapshot_is_hashable(self) -> None:
-        from esolangs.interpreters.io import IO
-        from esolangs.interpreters.queue_based.bitdeque import _Machine
 
-        assert hash(_Machine("PUSH", IO()).snapshot()) is not None
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.queue_based.bitdeque import _Machine
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.io import IO
-        from esolangs.interpreters.queue_based.bitdeque import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+    return _Machine(code, IO())
 
-        assert run_until_halt_or_cycle(_Machine("INVERT PUSH", IO())) is True
 
-    def test_goto_loop_is_detected_as_a_cycle(self) -> None:
-        """GOTO 1 with a nonzero register re-enters itself forever."""
-        from esolangs.interpreters.io import IO
-        from esolangs.interpreters.queue_based.bitdeque import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+class TestContract(SnapshotContract, CycleContract):
+    """The shared shapes, with this language's own programs."""
 
-        assert run_until_halt_or_cycle(_Machine("INVERT GOTO 1", IO())) is False
+    machine = staticmethod(_machine)
+    stepping_program = "PUSH"
+    halting_program = "INVERT PUSH"
+    looping_program = "INVERT GOTO 1"

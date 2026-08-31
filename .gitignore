@@ -151,3 +151,6 @@ compile_commands.json
 
 # editor swap files
 *.swp
+
+# scratch audit notes
+notes/

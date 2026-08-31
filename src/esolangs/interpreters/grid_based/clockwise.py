@@ -66,7 +66,7 @@ class _Machine:
         self.inp: list[str] = []
         self._done = False
 
-        if "." in "".join(self.code):
+        if any("." in line for line in self.code):
             for k in io.input_str():
                 val = f"{ord(k):07b}"
                 self.inp += list(val.zfill(7))
@@ -95,11 +95,11 @@ class _Machine:
         row, col, r, ins, cont = move(self.row, self.col, self.r, self.code, self.acc)
         self.row, self.col, self.r = row, col, r
 
-        if ins in "R?!":
-            if not cont:
-                self._done = True
-            return
-
+        # A turn cell (R, or ? / ! when the accumulator agrees) needs no case
+        # of its own: the dispatch below has no branch for one, and the flush
+        # cannot fire on it -- ``out`` reaches seven only on the ``;`` that
+        # appends the seventh bit, which empties it again the same step.  So
+        # a turn falls through to the shared ``cont`` check at the bottom.
         if ins == "+":
             self.acc += 1
         elif ins == "-":

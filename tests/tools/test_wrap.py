@@ -32,6 +32,7 @@ from esolangs.tools.wrap import (
     _cell_width,
     _nevermind,
     _polynomial,
+    _six_five,
     _span,
     _taglate,
     takes_width,
@@ -759,3 +760,37 @@ def test_nevermind_keeps_a_dollar_with_the_character_before_it() -> None:
     for line in program.split("\n"):
         assert not line[len("print,") :].startswith("$")
     assert _run("Nevermind", program) == text
+
+
+def test_six_five_keeps_an_operand_with_its_command() -> None:
+    """``7``/``8`` take the next character, so a break never lands between.
+
+    The interpreter merges the pair without inspecting it, so a newline in
+    the gap becomes the operand -- and ``num("\\n")`` is -45, a value no cell
+    can hold.
+    """
+    program = "657812A"
+    for width in range(2, 10):
+        for line in _six_five(program, width).split("\n"):
+            assert not line.endswith(("7", "8")), f"width {width} split an operand"
+
+
+def test_six_five_keeps_a_guard_with_the_instruction_it_skips() -> None:
+    """``7n`` skips the next *token*, and a newline is one.
+
+    ``706A`` prints nothing and leaves cell 0 -- the ``70`` skips the ``6``.
+    Break between them and the skip eats the newline instead, so the ``6``
+    runs: the guard is defeated and the cell ends at 6.  The wrapper must
+    therefore bind a ``7n`` to whatever follows it.
+    """
+    program = "70621A"
+    unwrapped = _run("6-5", program)
+    for width in range(2, 12):
+        assert _run("6-5", _six_five(program, width)) == unwrapped
+
+
+def test_six_five_wrapped_programs_still_run() -> None:
+    """A wrapped 6-5 program computes what the unwrapped one computed."""
+    program = generate("6-5", TEXT)
+    for width in (3, 5, 8, 13, 40, 60):
+        assert _run("6-5", _six_five(program, width)) == TEXT

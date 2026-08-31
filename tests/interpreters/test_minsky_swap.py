@@ -11,6 +11,7 @@ from contextlib import redirect_stdout
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.minsky_swap import run
+from tests.interpreters.contract import CycleContract, SnapshotContract
 
 
 class TestMinskySwapBasicCommands:
@@ -202,15 +203,6 @@ class TestMinskySwapExamples:
 
 
 class TestStepMachine:
-    def test_snapshot_changes_after_a_step(self) -> None:
-        from esolangs.interpreters.register_based.minsky_swap import _Machine
-
-        machine = _Machine("+", IO())
-        before = machine.snapshot()
-        machine.step()  # + increments the active register
-        assert machine.snapshot() != before
-        assert machine.reg == [1, 0]
-
     def test_the_register_dump_happens_once(self) -> None:
         """Stepping a halted machine again does not re-print the registers.
 
@@ -248,17 +240,18 @@ class TestStepMachine:
         assert machine.reg == [0, 0], "nothing to decrement"
         assert machine.ind == 1, "the cursor advanced rather than jumping"
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.register_based.minsky_swap import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
 
-        assert run_until_halt_or_cycle(_Machine("+", IO())) is True
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.register_based.minsky_swap import _Machine
 
-    def test_loop_is_detected_as_a_cycle(self) -> None:
-        # '~' alone with reg[0] == 0 jumps to target 1, which lands back on
-        # the same tilde with the register unchanged -- a genuine state
-        # cycle, not unbounded growth.
-        from esolangs.interpreters.register_based.minsky_swap import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+    return _Machine(code, IO())
 
-        assert run_until_halt_or_cycle(_Machine("~\n1", IO())) is False
+
+class TestContract(SnapshotContract, CycleContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    stepping_program = "+"
+    halting_program = "+"
+    looping_program = "~\n1"

@@ -110,6 +110,18 @@ ignore = [
 # Parametrized tests share a (program, stdin) battery; some tests only use
 # program, but pytest requires the parameter to be declared.
 "tests/tools/test_transpilers.py" = ["ARG001"]
+# CV(N)(C)'s source code *is* IPA, so the ambiguous-unicode rules fire on
+# every command in the language: the fricative is U+03B8 GREEK SMALL LETTER
+# THETA, the multiplication plosive U+0261 LATIN SMALL LETTER SCRIPT G, and
+# so on.  Here the confusable character is the correct one -- these rules
+# catch a homoglyph typed by mistake, and there is no non-IPA spelling to
+# prefer -- so they are off for the files that spell the language.  That
+# includes tests/samples.py, which is otherwise language-agnostic but
+# holds one CV(N)(C) program in its per-language table.
+"src/esolangs/interpreters/other/cvnc.py" = ["RUF001", "RUF002", "RUF003"]
+"src/esolangs/tools/boolean/cvnc.py" = ["RUF001", "RUF002", "RUF003"]
+"tests/interpreters/test_cvnc.py" = ["D", "N802", "RUF001", "RUF002", "RUF003"]
+"tests/samples.py" = ["D", "N802", "RUF001", "RUF002", "RUF003"]
 
 [tool.mypy]
 strict = true
@@ -168,12 +180,16 @@ addopts = [
     "--strict-config",
     "--verbose",
     "--tb=short",
-    # Two workers.  Measured on the fast run ("-m 'not slow'"), the first two
-    # workers do nearly all the work -- 94s serial, 50.7s at 2, 45.8s at 4 --
-    # so the third and fourth buy 5s while claiming twice the machine.
-    # Override per-run with "-n 4", "-n auto", or "-n 0" on the command line.
+    # Four workers.  Re-measured on the fast run ("-m 'not slow'") on a
+    # 10-core machine (8 performance): 33.4s serial, 23.3s at 2, 13.8s at 4,
+    # 13.1s at 6, 15.4s at 8.  The suite has grown broader and shorter-tailed
+    # than when this was set to 2 -- no single test dominates, so the work
+    # divides -- and the curve is flat past 4 and turns back up at 8, where
+    # the workers outnumber the performance cores.  Four takes nearly all the
+    # available speedup while leaving cores free.
+    # Override per-run with "-n auto", "-n 2", or "-n 0" on the command line.
     "-n",
-    "2",
+    "4",
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",

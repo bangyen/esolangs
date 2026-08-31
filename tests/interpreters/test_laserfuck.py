@@ -2,10 +2,12 @@
 
 import io
 from contextlib import redirect_stdout
+from typing import ClassVar
 from unittest.mock import patch
 
 from esolangs.interpreters.grid_based.laserfuck import run
 from esolangs.interpreters.io import IO
+from tests.interpreters.contract import SnapshotContract
 
 
 def run_and_capture(code: list[str], heading: int | None = 3) -> str:
@@ -497,3 +499,17 @@ class TestSurvivorGaps:
         with patch("secrets.randbelow", return_value=0):
             for heading in range(4):
                 assert run_and_capture(cage, heading=heading) == "2", heading
+
+
+def _machine(code: object) -> object:
+    from esolangs.interpreters.grid_based.laserfuck import _Machine
+    from esolangs.interpreters.io import IO
+
+    return _Machine(code, IO(), heading=3)
+
+
+class TestContract(SnapshotContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    stepping_program: ClassVar[list[str]] = ["ÿ}o+x\n x"]
