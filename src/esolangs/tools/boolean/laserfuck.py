@@ -441,7 +441,11 @@ def _laserfuck_build(
     # negative, which the dump then skips; sized to the bit it is one ``-``
     # for a zero and two for a one, but that needs a bit a *folded* leaf
     def lay(row: int, col: int, char: str) -> None:
-        if char != " ":
+        # Every caller passes a beam character: the run is built from
+        # ``><-+`` and the rest are the literals ``x``, ``>#v)`` and ``\``.
+        # The blank test mirrors the text generator's ``put``, where the
+        # grid *is* padded, so the two helpers stay the same shape.
+        if char != " ":  # pragma: no branch - no caller passes a blank
             tree[(row, col)] = char
 
     def emit(path: list[int], row: int, col: int) -> None:
