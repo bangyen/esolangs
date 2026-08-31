@@ -106,35 +106,23 @@ generator exercised through a compile-then-fuzz differential) or **intrinsic
 value** (genuine lowering — control flow, calls, memory, dispatch — rather
 than per-command transliteration).
 
-**Forbin shipped and cleared both** (`notes/forbin-compiler.md`), on Forþ's
-precedent: its functions nest, are first-class, and recurse, so it lowers to
-a real call graph over a runtime frame chain rather than transliterating.
-Its scoping turns out to be *dynamic* — `_call` chains each frame to its
-caller and `_lookup` walks that chain for locals *and* nested definitions —
-which is what makes it compilable without closure capture, and what forces
-every name read to emit a runtime walk.  A side effect: compiled code gets a
-hardware call stack, so it sidesteps the expression-position recursion item
-below rather than needing the rejected `_EvalTask` design.
+No remaining candidate clears either bar.  Plain brainfuck is the trap
+answer — uncovered, but `home_row`/`suffolk` already cover that shape, so it
+is transliteration.  Taglate is blocked outright: its `t` command rewrites
+the queue into a Google Translate URL of its text.  Bitdeque is too thin,
+and Point Break has no output command, so its differential could only
+observe halting.  **Lamfunc is the strongest of what is left** — partial
+application and closures are real lowering — but it is heavier than the
+call-graph backends already shipped, for the same class of win.
 
-Of the remaining candidates, none clears either bar.  Plain brainfuck is the
-trap answer — uncovered, but `home_row`/`suffolk` already cover that shape,
-so it is transliteration.  Taglate is blocked outright: its `t` command
-rewrites the queue into a Google Translate URL of its text.  Bitdeque is too
-thin, and Point Break has no output command, so its differential could only
-observe halting.  Lamfunc is the strongest of what is left (partial
-application and closures are real lowering) but is heavier than Forbin for
-the same class of win.
-
-**Harness note — now discharged.**  An input-reading compiler needed fixed
-stdin cases via `run_elf`; Forbin was the first such compiler, so
-`COMPILER_CASES` entries now take an optional fifth element carrying stdin,
-and every pre-existing case keeps running on empty input.  A second
-convention question came with it: `IO.input_char` reads a *line* and returns
-its first character, so Forbin's compiled `in` is line-faithful rather than
-reading raw consecutive bytes.  `_riscv_common.GETBYTE` does the latter, but
-that divergence has never been exercised — every pre-existing unicorn case
-feeds empty stdin — so Forbin sets the tested precedent, and identical stdin
-now produces identical output on both sides with no translation layer.
+**Input-reading compilers are now supported.**  `COMPILER_CASES` entries
+take an optional fifth element carrying stdin (pre-existing cases keep
+running on empty input), so a new input-reading compiler needs no harness
+work.  One convention it must match: `IO.input_char` reads a *line* and
+returns its first character, so a compiled reader is line-faithful, not
+raw-byte.  `_riscv_common.GETBYTE` reads raw bytes and is used only by
+compilers whose unicorn cases feed empty stdin, so it is not a precedent
+for a reader that is actually exercised.
 
 ## Forbin's expression-position recursion
 
