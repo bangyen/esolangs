@@ -6,6 +6,11 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
+from tests.interpreters.contract import (
+    CycleContract,
+    EmptyProgramContract,
+    SnapshotContract,
+)
 
 run = importlib.import_module("esolangs.interpreters.tape_based.painfuck").run
 
@@ -112,9 +117,6 @@ class TestPainfuck:
         with pytest.raises(HaltError):
             run_program("b")  # loop close with an empty stack
 
-    def test_empty_program(self) -> None:
-        assert run_program("") == ""
-
 
 class TestStepMachine:
     def test_step_tracks_tape_and_cursor(self) -> None:
@@ -130,15 +132,24 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 2
 
-    def test_snapshot_is_hashable(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.painfuck import _Machine
+    def test_skipping_a_loop_steps_over_a_nested_one(self) -> None:
+        """A zero cell skips to the loop's own 'b', not to a nested one."""
+        # cell 0 is zero, so the outer 'a' skips forward; the inner 'a...b'
+        # pair must be consumed as a unit, leaving 'u' to print cell 0.
+        assert run_program("aabbue") == "\x00"
 
-        assert hash(_Machine("pp", ScriptedIO()).snapshot()) is not None
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.painfuck import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.painfuck import _Machine
 
-        assert run_until_halt_or_cycle(_Machine("pp", ScriptedIO())) is True
+    return _Machine(code, ScriptedIO())
+
+
+class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
+    """The shared empty-program shape, with this language's data."""
+
+    run = staticmethod(run_program)
+    machine = staticmethod(_machine)
+    stepping_program = "pp"
+    halting_program = "pp"

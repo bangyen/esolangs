@@ -1,18 +1,14 @@
 """Unit tests for the BrainIf interpreter."""
 
-import io
-from contextlib import redirect_stdout
-from unittest.mock import patch
+from typing import ClassVar
 
-from esolangs.interpreters.io import IO
 from esolangs.interpreters.tape_based.brainif import run
+from tests.interpreters.contract import CycleContract
+from tests.interpreters.runner import run_program
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        run(code, IO())
-    return buffer.getvalue()
+    return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
 
 
 class TestBrainIfBasicCommands:
@@ -28,6 +24,19 @@ class TestBrainIfBasicCommands:
 
     def test_input(self) -> None:
         assert run_and_capture(["if 0 input", "if 65 output"], inputs=["A"]) == "A"
+
+    def test_input_retries_past_blank_lines(self) -> None:
+        """A blank line is read again, not stored as the newline it ended.
+
+        ``input`` reads whole lines, and an empty one carries no character
+        to take -- so the read repeats until a line has one.  Nothing else
+        in the suite feeds a blank line, and the retry is the loop's only
+        observable: without it the first empty string would be indexed and
+        raise, and a loop entered on the wrong condition would either skip
+        the read or never leave it.
+        """
+        code = ["if 0 input", "if 65 output"]
+        assert run_and_capture(code, inputs=["", "", "A"]) == "A"
 
     def test_move_right(self) -> None:
         code = ["if 0 right", "if 0 increment", "if 1 output"]
@@ -153,13 +162,6 @@ class TestStepMachine:
         assert machine.cells == [ord("A")]
         assert machine.io.position() == 1
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.brainif import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine(["if 0 output"], ScriptedIO())) is True
-
     def test_goto_loop_is_detected_as_a_cycle(self) -> None:
         """A goto back to itself with the cell unchanged loops forever."""
         from esolangs.interpreters.io import ScriptedIO
@@ -186,3 +188,18 @@ def test_a_blank_line_is_skipped() -> None:
     """
     assert run_and_capture(["if 0 increment", "", "if 1 output"]) == "\x01"
     assert run_and_capture(["if 0 increment", "", "   ", "if 1 output"]) == "\x01"
+
+
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.brainif import _Machine
+
+    return _Machine(code, ScriptedIO())
+
+
+class TestContract(CycleContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    halting_program: ClassVar[list[str]] = ["if 0 output"]
+    looping_program: ClassVar[list[str]] = ["if 0 goto 1"]

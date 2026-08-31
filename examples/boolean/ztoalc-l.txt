@@ -1,25 +1,29 @@
-96
-
-print 48
-
-
-jump a x0
+18
 
 
 
 
-print 48
+
+s = x0
+
+x0 - 48
+
+s += x1
+
+print r
 x1 - 48
 
 
+t[3] = 1
+x0 = input
 
 
 
+s += s
 
 
 
-
-jump a x1
+r + 48
 
 x1 = input
 
@@ -27,6 +31,7 @@ x1 = input
 
 
 
+t = [4]
 
 
 
@@ -44,53 +49,4 @@ x1 = input
 
 
 
-
-x0 - 48
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-print 49
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-x0 = input
+r = t[s]

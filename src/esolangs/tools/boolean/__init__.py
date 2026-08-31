@@ -13,6 +13,8 @@ module re-exports them for compatibility.
 """
 
 from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+from esolangs.tools.boolean.cvnc import cvnc
+from esolangs.tools.boolean.fargo import fargo
 from esolangs.tools.boolean.other import (
     between,
     bit_tilde,
@@ -44,6 +46,7 @@ from esolangs.tools.boolean.parameterized import (
     minifuck,
     minsky_swap,
     nocomment,
+    one_two_three,
     pct_squared_minus_one,
     ram0,
     wii2d,
@@ -103,12 +106,14 @@ __all__ = [
     "cod",
     "collatz_multiverse",
     "container",
+    "cvnc",
     "decleq",
     "dig",
     "dimensional",
     "dimensional_tree",
     "eval",
     "factor",
+    "fargo",
     "flowchart",
     "forbin_boolean",
     "forth",
@@ -125,6 +130,7 @@ __all__ = [
     "myscript",
     "nevermind",
     "nocomment",
+    "one_two_three",
     "painfuck",
     "pct_squared_minus_one",
     "point_break",

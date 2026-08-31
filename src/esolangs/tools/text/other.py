@@ -12,12 +12,12 @@ from functools import cache
 from typing import Literal
 
 from esolangs.tools.text.helpers import (
-    _factor_triple,
     _ilog,
     _literal_chunks,
     _require_ascii,
     _require_bytes,
     delta_program,
+    factor_triple,
     run_step,
 )
 from esolangs.tools.text.laserfuck import laserfuck
@@ -31,6 +31,7 @@ __all__ = [
     "bit_tilde",
     "clockwise",
     "container",
+    "cvnc",
     "dimensional",
     "forbin",
     "forth",
@@ -634,6 +635,41 @@ def nocomment(text: str) -> str:
     return delta_program(text, run_step("i", "d"), "o")
 
 
+def cvnc(text: str) -> str:
+    """Generate a CV(N)(C) program that outputs ``text``.
+
+    The accumulator is driven in place from one character's value to the
+    next and printed there, so each character costs its delta from the
+    previous one.  What the language adds to that shape is that a command
+    cannot stand alone: every syllable is CV(N)(C), so each command needs a
+    partner of the other class, and the generator's job is to pick partners
+    that do nothing.
+
+    Three syllables do the whole program:
+
+    - ``ci`` increments.  ``c`` resets the function, which is already empty.
+    - ``cə`` decrements, flooring at zero -- which never bites, because the
+      walk only ever steps down toward a target it has not yet reached.
+    - ``fu`` prints.  ``u`` applies the function, and the function is empty
+      at every print (every syllable here has a ``c`` onset), so it does not
+      parse and ``u`` is inert by the spec's own "if the function is valid,
+      else do nothing".
+
+    ``c`` is the only consonant with no effect on the accumulator or the
+    deque, and an invalid ``u`` the only such vowel, so this pairing is
+    forced rather than chosen.  In particular the walk cannot pad with
+    ``o``: ``o`` takes the integer square root, which would destroy the
+    accumulator between two deltas.
+
+    The cost is a factor of two against a language whose commands stand
+    alone -- two characters per unit of delta instead of one -- which is the
+    price of the syllable structure and not something a different pairing
+    can undercut.
+    """
+    _require_bytes(text, "CV(N)(C)")
+    return delta_program(text, run_step("ci", "cə"), "fu")
+
+
 def unsquare(text: str) -> str:
     """Generate an Unsquare program that outputs ``text``.
 
@@ -728,7 +764,7 @@ def home_row(text: str) -> str:
     _require_bytes(text, "Home Row")
 
     def segment(value: int) -> str:
-        a, b, r = _factor_triple(value)
+        a, b, r = factor_triple(value)
         # counter cell 0, target cell 1: "f" moves 0 -> 1 and four "f"s wrap
         # 1 -> 0 back.  The loop body adds b to the target and decrements
         # the counter.

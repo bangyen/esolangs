@@ -3,34 +3,48 @@
 Each ``run_*`` helper feeds ``inputs`` to one language's interpreter and
 returns everything it wrote to stdout, so the test modules can assert on a
 generated program's output without repeating the capture plumbing.
+
+The plain ``run_*`` helpers delegate to
+:func:`tests.interpreters.runner.run_program`, which drives the interpreter
+through :class:`ScriptedIO`.  The ``*_from`` family deliberately does not:
+its shared iterator is the *read-count probe* rather than plumbing, since
+the caller asserts the feed came back empty to prove a program consumed
+exactly ``n`` inputs.  ``ScriptedIO`` owns its input privately and reports
+only a count, so routing those through it would rewrite what the boolean
+contract checks instead of how it is spelled.
 """
 
 import importlib
 import io
 import random
 from collections.abc import Iterator
-from contextlib import redirect_stdout, suppress
+from contextlib import redirect_stdout
 from unittest.mock import patch
 
 from esolangs.interpreters.io import IO
+from tests.interpreters.runner import run_program
+
+
+def _stdin(inputs: list[str]) -> str:
+    """Join input lines into the single stdin string the runner takes.
+
+    An empty list has to stay the empty string rather than a lone newline:
+    a language that reads nothing and one that reads a blank line are
+    different, and several boolean programs are in the first group.
+    """
+    return "".join(f"{line}\n" for line in inputs)
 
 
 def run_dig(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.grid_based.dig import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program.splitlines(), io=IO())
-    return buffer.getvalue()
+    return run_program(run, program.splitlines(), _stdin(inputs))
 
 
 def run_six_five(program: str, inputs: list[str]) -> str:
 
     run = importlib.import_module("esolangs.interpreters.tape_based.six_five").run
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
+    return run_program(run, program, _stdin(inputs))
 
 
 def _run_from(module: str, program: str, feed: Iterator[str]) -> str:
@@ -70,91 +84,61 @@ def run_sophie_from(program: str, feed: Iterator[str]) -> str:
 def run_dimensional(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.dimensional import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
+    return run_program(run, program, _stdin(inputs))
 
 
 def run_bf(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.brainfuck import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
+    return run_program(run, program, _stdin(inputs))
 
 
 def run_three_d_brainfuck(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.three_d_brainfuck import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
+    return run_program(run, program, _stdin(inputs))
 
 
 def run_factor(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.factor import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
+    return run_program(run, program, _stdin(inputs))
 
 
 def run_suffolk(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.suffolk import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO(), limit=1)
-    return buffer.getvalue()
+    return run_program(run, program, _stdin(inputs), limit=1)
 
 
 def run_painfuck(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.painfuck import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
+    return run_program(run, program, _stdin(inputs))
 
 
 def run_rotfuck(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.rotfuck import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
+    return run_program(run, program, _stdin(inputs))
 
 
 def run_forth(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.stack_based.forth import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
+    return run_program(run, program, _stdin(inputs))
 
 
 def run_circlefuck(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.circlefuck import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
+    return run_program(run, program, _stdin(inputs))
 
 
 def run_bit_tilde(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.bit_tilde import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
+    return run_program(run, program, _stdin(inputs))
 
 
 def run_jaune(program: str, inputs: list[str]) -> str:
@@ -169,37 +153,51 @@ def run_jaune(program: str, inputs: list[str]) -> str:
 def run_123(program: str, inputs: list[str]) -> str:
 
     run = importlib.import_module("esolangs.interpreters.tape_based.one_two_three").run
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
+    return run_program(run, program, _stdin(inputs))
 
 
 def run_collatz_multiverse(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.collatz_multiverse import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
+    return run_program(run, program, _stdin(inputs))
 
 
 def run_decleq(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.decleq import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
+    return run_program(run, program, _stdin(inputs))
+
+
+def run_cvnc(program: str, inputs: list[str]) -> str:
+    """Run a CV(N)(C) program, feeding one input line per bit.
+
+    ``s`` reads a whole line as an integer, so the boolean convention here
+    is the ordinary one: each bit is its own line, in the order the tree
+    reads them.
+    """
+    from esolangs.interpreters.other.cvnc import run
+
+    return run_program(run, program, _stdin(inputs))
+
+
+def run_fargo(program: str, inputs: list[str]) -> str:
+    """Run a Fargo program, packing ``inputs`` into its one input number.
+
+    Fargo reads a single *number* before the program starts rather than a
+    stream of bits, so the boolean convention is to feed the row index:
+    the bits most-significant-first are the number's binary digits, which
+    is what makes input ``i`` the generator's ``@ (n - 1 - i)``.
+    """
+    from esolangs.interpreters.other.fargo import run
+
+    number = int("".join(inputs), 2) if inputs else 0
+    return run_program(run, program, f"{number}\n")
 
 
 def run_forbin_boolean(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.other.forbin import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
+    return run_program(run, program, _stdin(inputs))
 
 
 def run_suptiftam(program: str, inputs: list[str]) -> str:
@@ -214,28 +212,19 @@ def run_suptiftam(program: str, inputs: list[str]) -> str:
 def run_addsubjump(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.addsubjump import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
+    return run_program(run, program, _stdin(inputs))
 
 
 def run_qoibl(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.qoibl import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program.splitlines(), io=IO())
-    return buffer.getvalue()
+    return run_program(run, program.splitlines(), _stdin(inputs))
 
 
 def run_polynomial(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.polynomial import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
+    return run_program(run, program, _stdin(inputs))
 
 
 def run_polynomial_from(program: str, feed: Iterator[str]) -> str:
@@ -246,73 +235,49 @@ def run_polynomial_from(program: str, feed: Iterator[str]) -> str:
 def run_bfstack(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.stack_based.bfstack import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
+    return run_program(run, program, _stdin(inputs))
 
 
 def run_slow_acv_mammalian(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.slow_acv_mammalian import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
+    return run_program(run, program, _stdin(inputs))
 
 
 def run_streetcode(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.grid_based.streetcode import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program.splitlines(), io=IO())
-    return buffer.getvalue()
+    return run_program(run, program.splitlines(), _stdin(inputs))
 
 
 def run_flowchart(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.grid_based.flowchart import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program.splitlines(), io=IO())
-    return buffer.getvalue()
+    return run_program(run, program.splitlines(), _stdin(inputs))
 
 
 def run_sophie(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.sophie import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
+    return run_program(run, program, _stdin(inputs))
 
 
 def run_between(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.between import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program.splitlines(), io=IO())
-    return buffer.getvalue()
+    return run_program(run, program.splitlines(), _stdin(inputs))
 
 
 def run_sbleq(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.sbleq import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
+    return run_program(run, program, _stdin(inputs))
 
 
 def run_modulous(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.stack_based.modulous import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
+    return run_program(run, program, _stdin(inputs))
 
 
 def run_grapheme(program: str, inputs: list[str]) -> str:
@@ -326,46 +291,31 @@ def run_grapheme(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.stack_based.grapheme import run
 
     alphabet = {"0": "%", "1": "A"}
-    buffer = io.StringIO()
-    with (
-        patch("builtins.input", side_effect=[alphabet[i] for i in inputs]),
-        redirect_stdout(
-            buffer,
-        ),
-    ):
-        run(program, io=IO())
-    return buffer.getvalue()
+    return run_program(run, program, _stdin([alphabet[i] for i in inputs]))
 
 
 def run_brainif(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.brainif import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program.splitlines(), io=IO())
-    return buffer.getvalue()
+    return run_program(run, program.splitlines(), _stdin(inputs))
 
 
 def run_nevermind(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.nevermind import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program.splitlines(), io=IO())
-    return buffer.getvalue()
+    return run_program(run, program.splitlines(), _stdin(inputs))
 
 
 def run_container(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.other.container import run
 
-    buffer = io.StringIO()
-    with (
-        patch("builtins.input", side_effect=inputs),
-        redirect_stdout(buffer),
-        suppress(SystemExit),  # EXIT halts via sys.exit
-    ):
-        run(program.splitlines(), io=IO())
-    return buffer.getvalue()
+    # EXIT halts via sys.exit rather than by returning.
+    return run_program(
+        run,
+        program.splitlines(),
+        _stdin(inputs),
+        suppress_exit=True,
+    )
 
 
 def run_taglate(program: str, inputs: list[str]) -> str:
@@ -421,10 +371,7 @@ def run_laserfuck(program: str, inputs: list[str], heading: int) -> str:
 def run_myscript(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.myscript import run
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
+    return run_program(run, program, _stdin(inputs))
 
 
 def point_break_result(program: str, inputs: list[str]) -> str:
@@ -442,6 +389,24 @@ def point_break_result(program: str, inputs: list[str]) -> str:
     from esolangs.vm import run_until_halt_or_cycle
 
     machine = _Machine(program, ScriptedIO("\n".join(inputs)))
+    return "0" if run_until_halt_or_cycle(machine) else "1"
+
+
+def one_two_three_result(program: str) -> str:
+    """Run a 123 program; return "0" if it halts and "1" if it loops.
+
+    123's boolean generator answers with the termination convention, the
+    same one Point Break uses, so the verdict is a state revisit rather than
+    a fuel cap.  There are no ``inputs``: the generator is parameterized, so
+    the bits are already substituted into ``program`` and reaching the read
+    command would mean the template was wrong.  ``ScriptedIO`` with an empty
+    script supplies that -- a read raises instead of consuming real stdin.
+    """
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.one_two_three import _Machine
+    from esolangs.vm import run_until_halt_or_cycle
+
+    machine = _Machine(program, ScriptedIO(""))
     return "0" if run_until_halt_or_cycle(machine) else "1"
 
 

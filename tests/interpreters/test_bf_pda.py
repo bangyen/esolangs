@@ -11,6 +11,10 @@ import importlib
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
+from tests.interpreters.contract import (
+    CycleContract,
+    EmptyProgramContract,
+)
 
 run = importlib.import_module("esolangs.interpreters.stack_based.bf_pda").run
 
@@ -98,10 +102,6 @@ class TestEmptyStack:
 
 
 class TestMalformed:
-    def test_empty_program_rejected(self) -> None:
-        with pytest.raises(ValueError, match="cannot be empty"):
-            run_program("")
-
     def test_unmatched_brackets_rejected(self) -> None:
         with pytest.raises(ValueError, match="unmatched"):
             run_program("[")
@@ -127,20 +127,6 @@ class TestStepMachine:
         assert machine.snapshot() != before
         assert machine.stack == [0]
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.stack_based.bf_pda import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine("<@.", ScriptedIO())) is True
-
-    def test_loop_is_detected_as_a_cycle(self) -> None:
-        # <@[@@] pushes a 1, then loops flipping the top bit twice each pass
-        # (a no-op), so ] always sees a 1 and jumps back forever.
-        from esolangs.interpreters.stack_based.bf_pda import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine("<@[@@]", ScriptedIO())) is False
-
     def test_step_after_halt_is_a_noop(self) -> None:
         from esolangs.interpreters.stack_based.bf_pda import _Machine
 
@@ -149,3 +135,20 @@ class TestStepMachine:
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
         assert machine.stack == [0]
+
+
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.stack_based.bf_pda import _Machine
+
+    return _Machine(code, ScriptedIO())
+
+
+class TestContract(EmptyProgramContract, CycleContract):
+    """The shared empty-program shape, with this language's data."""
+
+    run = staticmethod(run_program)
+    machine = staticmethod(_machine)
+    empty_raises = "BF-PDA program cannot be empty"
+    halting_program = "<@."
+    looping_program = "<@[@@]"

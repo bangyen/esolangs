@@ -9,6 +9,7 @@ import pytest
 
 from esolangs.interpreters.grid_based.a_painter_ant import run
 from esolangs.interpreters.io import ScriptedIO
+from tests.interpreters.contract import EmptyProgramContract
 
 
 def run_program(code: str, cycles: int = 1) -> str:
@@ -72,9 +73,6 @@ class TestImplicitLoop:
 
 
 class TestFormat:
-    def test_empty_program(self) -> None:
-        assert run_program("") == "o"
-
     def test_whitespace_is_ignored(self) -> None:
         # P whites the origin, n steps onto the still-black north cell.
         assert run_program(" P \n n ") == "o\n#"
@@ -145,3 +143,10 @@ def test_an_empty_program_leaves_the_ant_where_it_started() -> None:
     starting cell and nothing else.
     """
     assert run_program("") == "o"
+
+
+class TestContract(EmptyProgramContract):
+    """The shared empty-program shape, with this language's data."""
+
+    run = staticmethod(run_program)
+    empty_output = "o"

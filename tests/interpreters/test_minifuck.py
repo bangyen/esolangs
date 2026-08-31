@@ -1,18 +1,16 @@
 """Unit tests for the Minifuck interpreter."""
 
-import io
-from contextlib import redirect_stdout
-from unittest.mock import patch
-
-from esolangs.interpreters.io import IO
 from esolangs.interpreters.tape_based.minifuck import run
+from tests.interpreters.contract import (
+    CycleContract,
+    EmptyProgramContract,
+    SnapshotContract,
+)
+from tests.interpreters.runner import run_program
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        run(code, IO())
-    return buffer.getvalue()
+    return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
 
 
 class TestMinifuck:
@@ -20,9 +18,6 @@ class TestMinifuck:
         """The canonical cat program echoes its input."""
         assert run_and_capture("<[<.[<.", inputs=["A"]) == "A"
         assert run_and_capture("<[<.[<.", inputs=["B"]) == "B"
-
-    def test_empty_program(self) -> None:
-        assert run_and_capture("") == ""
 
     def test_comment_characters_ignored(self) -> None:
         """Non-command characters are ignored."""
@@ -154,16 +149,18 @@ class TestStepMachine:
         assert machine.io.getvalue() == "@`p0\x10"
         assert machine.tape == [0, 1, 0, 0, 0, 0, 0, 1, 0]
 
-    def test_snapshot_is_hashable(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.minifuck import _Machine
 
-        assert hash(_Machine(".", ScriptedIO()).snapshot()) is not None
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.minifuck import _Machine
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.minifuck import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+    return _Machine(code, ScriptedIO())
 
-        # the tape never rewinds, so every Minifuck program halts
-        assert run_until_halt_or_cycle(_Machine(".", ScriptedIO())) is True
+
+class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
+    """The shared empty-program shape, with this language's data."""
+
+    run = staticmethod(run_and_capture)
+    machine = staticmethod(_machine)
+    stepping_program = "."
+    halting_program = "."

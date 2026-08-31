@@ -1,21 +1,15 @@
 """Unit tests for the Modulous interpreter."""
 
-import io
-from contextlib import redirect_stdout
-from unittest.mock import patch
-
 import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.stack_based.modulous import run
+from tests.interpreters.runner import run_program
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        run(code, IO())
-    return buffer.getvalue()
+    return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
 
 
 class TestModulous:
@@ -210,3 +204,22 @@ class TestModulous:
     def test_missing_random_operand_rejected(self) -> None:
         with pytest.raises(ValueError, match="missing operand"):
             run("[RND]", IO())
+
+
+class TestStepMachine:
+    def test_a_token_less_state_starts_halted(self) -> None:
+        from esolangs.interpreters.stack_based.modulous import State
+
+        # `step` has no halted guard of its own -- the caller checks first,
+        # which is what the VM's run loop does.
+        assert State(io=IO()).halted
+
+    def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
+        from esolangs.interpreters.stack_based.modulous import State
+
+        state = State(io=IO())
+        state.tokens = ["PSH INT 5", "PRT INT", "END"]
+        before = state.snapshot()
+        hash(before)  # must not raise
+        state.step()
+        assert state.snapshot() != before

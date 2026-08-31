@@ -5,6 +5,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.lamfunc import run
+from tests.interpreters.contract import SnapshotContract
 
 
 def run_program(code: str) -> str:
@@ -149,3 +150,23 @@ class TestMachine:
         assert machine.io.getvalue() == "101"
         machine.step()  # stepping a halted machine is a no-op
         assert machine.io.getvalue() == "101"
+
+    def test_referencing_an_undefined_function_halts(self) -> None:
+        """``.name`` builds a function value, so an unknown name has no arity."""
+        with pytest.raises(HaltError) as caught:
+            run_program("p .nope")
+        assert str(caught.value) == "calling undefined function 'nope'"
+
+
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.other.lamfunc import _Machine
+
+    return _Machine(code, ScriptedIO())
+
+
+class TestContract(SnapshotContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    stepping_program = "p 5"

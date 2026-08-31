@@ -18,6 +18,7 @@ from esolangs.interpreters.register_based.polynomial import (
     run,
     sanitize,
 )
+from tests.interpreters.contract import CycleContract, SnapshotContract
 
 
 class TestPolynomialHelperFunctions:
@@ -294,8 +295,26 @@ class TestPolynomialExecution:
         """A root of 4i encodes an input instruction (value stored in reg)."""
         import unittest.mock
 
-        with unittest.mock.patch("builtins.input", return_value="A"):
-            run("f(x) = x^2+16", io=IO())  # does not crash; reg stores the input
+        from esolangs.interpreters.register_based.polynomial import _Machine
+
+        for text, expected in (("A", 65), ("z", 122)):
+            with unittest.mock.patch("builtins.input", return_value=text):
+                machine = _Machine("f(x) = x^2+16", IO())
+                machine.step()
+                assert machine.reg == expected
+
+    def test_input_of_nul_reads_as_minus_one(self) -> None:
+        """``ord(val[0]) or -1``: a NUL byte reads as 0, which the ``or``
+        turns into -1 so the value stays distinguishable from an unset
+        register."""
+        import unittest.mock
+
+        from esolangs.interpreters.register_based.polynomial import _Machine
+
+        with unittest.mock.patch("builtins.input", return_value="\x00"):
+            machine = _Machine("f(x) = x^2+16", IO())
+            machine.step()
+            assert machine.reg == -1
 
 
 class TestPolynomialHighPrecisionRoots:
@@ -385,15 +404,17 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 1
 
-    def test_snapshot_is_hashable(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.polynomial import _Machine
 
-        assert hash(_Machine("f(x) = x^2+4", ScriptedIO()).snapshot()) is not None
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.register_based.polynomial import _Machine
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.polynomial import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+    return _Machine(code, ScriptedIO())
 
-        assert run_until_halt_or_cycle(_Machine("f(x) = x^2+4", ScriptedIO())) is True
+
+class TestContract(SnapshotContract, CycleContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    stepping_program = "f(x) = x^2+4"
+    halting_program = "f(x) = x^2+4"

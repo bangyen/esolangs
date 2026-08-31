@@ -10,6 +10,10 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.addsubjump import run
+from tests.interpreters.contract import (
+    CycleContract,
+    EmptyProgramContract,
+)
 from tests.interpreters.oisc import memory, run_program
 
 
@@ -148,9 +152,6 @@ class TestHaltAndErrors:
         code = "# a comment\n\n" + base + " # trailing comment\n"
         assert _run(code) == "\x01"
 
-    def test_empty_program(self) -> None:
-        assert _run("") == ""
-
     def test_unallocatable_address_halts(self) -> None:
         """Cell values are unbounded; the list holding them is not."""
         with pytest.raises(HaltError, match="too large"):
@@ -177,15 +178,18 @@ class TestStepMachine:
         assert hash(machine.snapshot()) is not None
         assert machine.io.position() == 0
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.register_based.addsubjump import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
 
-        assert run_until_halt_or_cycle(_Machine("-1 1 0 -7", ScriptedIO())) is True
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.register_based.addsubjump import _Machine
 
-    def test_looping_program_is_detected_as_a_cycle(self) -> None:
-        """0 0 0 0 adds zero to cell 0 and jumps to itself forever."""
-        from esolangs.interpreters.register_based.addsubjump import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+    return _Machine(code, ScriptedIO())
 
-        assert run_until_halt_or_cycle(_Machine("0 0 0 0", ScriptedIO())) is False
+
+class TestContract(EmptyProgramContract, CycleContract):
+    """The shared empty-program shape, with this language's data."""
+
+    run = staticmethod(_run)
+    machine = staticmethod(_machine)
+    halting_program = "-1 1 0 -7"
+    looping_program = "0 0 0 0"

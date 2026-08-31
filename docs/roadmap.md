@@ -16,17 +16,9 @@ assessed-and-rejected ledger in `docs/limitations.md`.
 - **function x(y)** — Turing-complete: functions with defaults, `[~]`/`` `~ ``
   input, `[a]`/`` `a `` output, comparison operators, a ternary, recursion; a
   boolean generator branches on a comparison and prints 0/1.
-- **CV(N)(C)** — Turing-complete: every command is an IPA syllable;
-  fricatives do character/integer I/O, approximants do while loops and
-  gotos on the accumulator, vowels do arithmetic.  The page's truth-machine
-  (`soθɰ̊oθʋi`) is the boolean-generator seed.
 - **DINAC** — `IN` reads an aschar or wubyte, `OUT` prints, IF-ELSE and
   WHILE on zero/nonzero, truth-machine example.  Bounded-storage machine,
   so the boolean generator is the whole story.
-- **Fargo** — one input number per run with bit access (`@ x`), one output
-  number with bit writes (`% x y`), conditional `: x y`, base-10 output `$`.
-  Unknown computational class, but the bit interface is ideal for a
-  parameterized generator.
 - **Packlang** — Turing-complete: packages with the built-in IO package
   (`charGet`/`charPut`), `If`/`While`, XOR/`!`; the truth-machine example
   branches on `input ^ 48`.
@@ -47,7 +39,20 @@ Circuit Diagram, all implemented.
 
 ## Transpilers
 
-The only candidates identified (a second Forth dialect ↔ Forþ,
+`Streetcode → LaserFuck` ships: the two share a tape of unbounded signed
+cells under a pointer, and Streetcode's instructions are brainfuck's eight
+under other glyphs, so no new interpreter was needed.  Its supported class
+is the programs the tape never steers.
+
+**Open research item: lowering drawn control flow.**  A Streetcode ring has
+no brainfuck loop image -- the car never returns to the junction that steers
+it as the same drive state -- and the boolean generator's programs are
+decision trees whose leaves each print.  Both are lowerable with scratch
+cells and a converged answer, which is a compiler rather than a program
+rewrite; `docs/limitations.md` carries the measured argument and the
+worked examples.  This is the same class of future work as the OISC pair.
+
+The remaining candidates (a second Forth dialect ↔ Forþ,
 Boolfuck ↔ ABCDirection/Minifuck) each need a *new* interpreter first, so
 they belong under "New interpreters" if that language is ever added.
 
@@ -135,120 +140,131 @@ wall-clock timeouts for step-capable deterministic machines; see
 
 ## Input reordering (remainder)
 
-Generators build under every input order and keep the shortest.  Seventeen
-have landed; `docs/generator-optimizations.md`'s "Not yet done" carries the
-screen figures, the hoist caveat, and the frame-mapping trap.
+Generators build under every input order and keep the shortest.  **The queue
+is closed in both tiers** — every candidate with a measured screen is shipped,
+built-and-declined, or costed and closed, and
+`docs/generator-optimizations.md` carries each verdict with its figure.  What
+is left is below the thresholds that section sets (about 5% for a rename,
+10% for a hoist that must restructure), so none of it is scheduled:
 
-- **Unexamined, no layout work** — sbleq, brainif, three_x, taglate,
-  minsky_swap, bio, decleq, nocomment, painfuck, rotfuck, bfstack.  Each
-  screen figure is a **lower bound**: it prices the reorder alone, so a
-  generator whose reads sit at its nodes gains the hoist too (AddSubJump
-  screened 16.7%, delivered 31.7%).
-- **Blocked on 2D layout surgery** — Dig, Flowchart, Streetcode, LaserFuck,
-  Back, Clockwise, WII2D, and ArrowQueue (whose queue-fed template needs
-  re-enqueue gadgets).  The bar: the emitted program changes and still
-  consumes its inputs in the same order.
+- **ArrowQueue's reorder (12.4%)** — the one unclaimed screen figure, and the
+  only item here above the bar.  Its queue-fed template needs re-enqueue
+  gadgets to bring a bit to the front; permuting which name sits in each
+  header slot is not an alternative, since `_header_rows` fills the header
+  positionally and the names are inert.
+- **Back's snaked load (+1.9%)** — the load runs up column 0 at one command
+  per row, so it is `2n+2` rows tall against the tree's ~7.5; snaking it into
+  two columns nets about 1.9% at `n == 3`.  Under the bar, and the turn-mirror
+  estimate is the soft part: a turn cell cannot also carry a load command.
+- **Bitdeque's free-reorder headroom (0.9%)** — blocked in the *harness*
+  rather than the language.  `_fill_bitdeque` derives each setter's parity
+  from the input's **name**, assuming input *i* sits at load position
+  `n-1-i`, so permuting names between slots desyncs every fill site.
+
+Before reopening any of these, read that section's four rules first — the
+screen is neither a floor nor a ceiling, reachable orders are usually far
+fewer than `n!`, the cell map is the inverse of the permutation, and a
+generator that validates its own output needs that check frame-mapped too.
 
 ## Mutation-testing sweep
 
-All 59 are measured.  The whole sweep was re-run on 2026-08-29, one
-language at a time on an idle machine, and **every figure previously
-recorded came back exactly** — which is what the harness commits
-`800f071` and `86c89b9` needed, each having been validated against a
-single language while nothing checked the rest.
+All 60 suites are measured, and nineteen are at 100%.  Per-language scores
+and survivor counts are *not* recorded here: they go stale on any test change
+and are cheap to re-derive — 56 of the 60 finish in under half a minute, and
+only Streetcode and Forbin run to minutes.  Re-run the language you touched;
+re-run everything after a change to the shared machinery.
 
-Ten suites are at 100% — `%^2^-1`, Back, BFStack, Bitdeque, brainfuck,
-Factor, Home Row, Minifuck, RAM0 and Suffolk.  1525 mutants survive across
-the repo; the rest of the field, worst first:
+What is worth keeping is what a triage pass has to get right, each learned by
+getting it wrong first.
 
-| language | score | survivors |
-| --- | --- | --- |
-| WII2D | 80.2% | 33 |
-| AddSubJump | 80.2% | 23 |
-| Point Break | 80.4% | 94 |
-| Painfuck | 80.9% | 49 |
-| 3x | 83.4% | 29 |
-| Dimensional | 83.5% | 56 |
-| Lamfunc | 85.0% | 82 |
-| S*bleq | 85.3% | 14 |
-| Grapheme | 86.1% | 60 |
-| ROTfuck | 86.3% | 20 |
-| COD | 86.6% | 38 |
-| Nevermind | 86.8% | 36 |
-| SLOW ACV MAMMALIAN | 87.4% | 23 |
-| Between | 88.1% | 77 |
-| MyScript | 88.5% | 71 |
-| Container | 88.5% | 16 |
-| Forbin | 89.0% | 128 |
-| Polynomial | 89.4% | 38 |
-| Flowchart | 89.9% | 51 |
-| Minsky Swap | 89.9% | 14 |
-| Sophie | 90.1% | 23 |
-| ZTOALC L | 90.7% | 29 |
-| Circlefuck | 90.7% | 17 |
-| Circuit Diagram | 90.9% | 53 |
-| Dig | 90.9% | 15 |
-| LaserFuck | 91.1% | 22 |
-| Taglate | 91.7% | 14 |
-| Suptiftam | 91.8% | 93 |
-| Streetcode | 91.9% | 98 |
-| BIO | 92.2% | 9 |
-| 6-5 | 92.7% | 10 |
-| Basicfuck | 92.8% | 50 |
-| Jaune | 92.9% | 18 |
-| Forþ | 93.0% | 17 |
-| A Painter Ant | 93.1% | 7 |
-| 123 | 93.2% | 8 |
-| bit~ | 93.3% | 8 |
-| Collatz Multiverse | 93.4% | 7 |
-| BF-PDA | 93.8% | 9 |
-| Eval | 94.6% | 6 |
-| Qoibl | 94.7% | 26 |
-| 3D Brainfuck | 94.9% | 6 |
-| NoComment | 95.4% | 5 |
-| Modulous | 95.6% | 11 |
-| Unsquare | 96.1% | 6 |
-| Clockwise | 98.0% | 3 |
-| ArrowQueue | 98.5% | 1 |
-| Decleq | 98.7% | 1 |
-| BrainIf | 98.9% | 1 |
-
-LaserFuck, Forbin and Basicfuck are post-triage rows (they began at 66.7%,
-81.4% and 82.8%); the other 56 are the sweep's own numbers, 15 of which had
-never been recorded per-language.  **Lamfunc (82), Between (77), MyScript
-(71) and Grapheme (60) are the largest untriaged pools** and were invisible
-before this sweep.
-
-55 of the 59 finish in under half a minute; only Streetcode and Forbin run
-to minutes.  So re-running the language you touched is free, and re-running
-everything after a change to the shared machinery is worth the few minutes.
-
-What a triage pass has to get right, learned by getting each one wrong
-first:
+**Trusting the measurement:**
 
 - **Measure on an idle machine.**  The per-test alarm fails a slow-but-
   passing test and scores it as a kill, so a contended run *under*-reports
   survivors — one reported 17 where a solo run reports 22.
+- **`uv run` can measure the wrong tree, silently.**  It reinstalls the
+  package from the project root, so a worktree's edits never reach the
+  bundle; `PYTHONPATH=$PWD/src` fixes it.  The tell is a survivor on a line
+  you already deleted, or a pool size that did not move after deleting code.
+- **A probe whose own baseline moves witnesses everything.**  An error
+  message interpolating an object with no `__repr__` carries its address, and
+  one such program was recorded as the sole witness for 114 mutants that were
+  not killable at all.
+- **Naming `esolangs.vm` in a docstring drops the test** from the bundle
+  exactly as an import would, silently.  A survivor is not a gap until the
+  harness is trusted: tests reaching the VM or registry are dropped
+  *correctly*.
+
+**The last survivor is often the source's fault, not the suite's.**  A
+construct that cannot be observed is usually one that need not exist, so
+reach for the interpreter first when the mutated construct carries no
+information:
+
+- **A redundant argument is unkillable by construction.**  Five interpreters
+  passed `input_str("Input: ")` when that string is already the parameter's
+  default, and `ScriptedIO._read` discards the prompt, so no test could ever
+  see it.  Each call site carried three permanently surviving mutants;
+  deleting the argument removed 24 mutants, **18 of them survivors**, and
+  closed Unsquare outright.  Prefer the default over restating it.
+- **A default is dead when something upstream already ran it.**  Collatz
+  Multiverse's `arrays.setdefault(var1, {})` could never fire, since every
+  line reads its target before writing and an indexed read already defaults
+  the array — a probe ran 20,000 random programs without the key ever being
+  absent.
+- **A `*` quantifier never fails, so its fallback is dead.**  Eval's
+  `re.match('[^"]*', ...)` fell back to `""` on `None`, which cannot happen;
+  `partition('"')[0]` says the same thing with no unmatched case.
+- **Dead guards.**  Clockwise's `if ins in "R?!"` early return was
+  unreachable, so both of its set-widening survivors sat on code that did
+  nothing; deleting it took the suite to 100%.  BrainIf seeded a retry loop
+  with `s = ""` when every falsy seed behaves alike.  ArrowQueue guarded grid
+  setup with `if code:`, making `_Machine(None)` take the empty-grid path —
+  indistinguishable from outside in a language with no output.
+- **Two copies of a check can each be half dead.**  NoComment's `s` and `b`
+  bounds-checked their jump target separately, and each copy had an
+  unreachable half: a forward target is always at least 1, so `s` could never
+  fail the floor, while `b` almost never reaches the ceiling.  Merging them
+  into one check over a signed delta leaves every fragment live.
+
+**Writing the test that kills it:**
+
+- **A survivor is only as tested as the observables you compare.**  Output
+  and step count miss frame bookkeeping entirely; comparing `snapshot()`
+  killed seven Forbin mutants and four Basicfuck ones that looked equivalent.
+- **"Symmetric table" is not an equivalence argument on its own.**  3D
+  Brainfuck's direction tables are closed under negation, long cited as
+  making its axis mutants unkillable.  They are not — `snapshot()` carries
+  `ap`, `ip` and `heading`, so a relabelled axis is visible even when output
+  and step count match.  All 23 non-identity permutations are
+  distinguishable.  Assert the *coordinate*, not just the output: five of its
+  six survivors were tests asserting output only, where every move walked out
+  and back and direction cancels.  The sixth was real — `ip[1]` read as
+  `ip[2]` is undetectable because the instruction pointer never leaves the
+  `y = z = 0` line alive, so unpacking the triple removes the index that
+  could be wrong.
 - **`pytest.raises(match=...)` is a substring search.**  Passing the whole
   message still matches a mutant that widened it; only
   `assert str(caught.value) == message` catches that.
-- **A survivor is only as tested as the observables you compare.**
-  Output and step count miss frame bookkeeping entirely: comparing
-  `snapshot()` killed seven Forbin mutants and four Basicfuck ones that
-  looked equivalent.
-- **A probe whose own baseline moves witnesses everything.**  An error
-  message interpolating an object with no `__repr__` carries its address,
-  and one such program was recorded as the sole witness for 114 mutants
-  that were not killable at all.
-- **Naming `esolangs.vm` in a docstring drops the test** from the bundle
-  exactly as an import would, silently.
+- **A default argument every test overrides is untested.**  Decleq's
+  `limit=10_000` survived widening to 10001 because every test passed
+  `limit=` explicitly.  `run_with_limit` checks `halted` at the top of each
+  pass, so a program halting in `limit` steps still exhausts the loop — which
+  puts the discriminating count at 10,000, not 10,001.
+
+**A rewrite can install a gap where it removed slack**, so re-measure after
+every one rather than assuming the score only improves.  The `partition` swap
+above introduced a survivor the regex version never had: `partition` and
+`rpartition` agree on every program holding a *single* literal, and every
+test had exactly one.  That went 6 survivors → 1, and the 1 was newly
+created.  3D Brainfuck showed the sharper version: factoring a pointer move
+into a `zip`-based helper traded one equivalent mutant for **three**, because
+ruff's B905 requires an explicit `strict=` and both operands are always
+3-tuples, so that argument can never fire.  A lint rule can mandate slack.
 
 Triage from the test file, not the diffs — six mechanical shapes recur
 (substring-matched `pytest.raises`, comment tests outside the command set,
 truth-only `bool` flags, one-sided boundaries, write-only attributes,
-assertions on a constant).  Two cautions: a survivor is not a gap until the
-harness is trusted (tests reaching the VM or registry are dropped from the
-bundle *correctly*), and a score is a means — stop where the survivors stop
+assertions on a constant).  A score is a means: stop where the survivors stop
 teaching anything.
 
 ## Dependency reduction
@@ -282,4 +298,40 @@ saving.  Taglate reduces (451 characters → 21).  What is open:
   and marker classes are erased at runtime.  Revisit only if the module is
   restructured anyway, or a validator lands whose ordering is non-obvious.
 - **Severely constrained boolean generators** — caps are tracked so removal
-  or lifting is deliberate.  No language is currently on this list.
+  or lifting is deliberate.  No language is currently a *removal* candidate:
+  every shipped generator covers `n <= 2` at minimum.
+- **Minifuck's three-input coverage** — the one cap here that is liftable
+  rather than a wall.  It builds all sixteen two-input tables but only
+  eight of the fourteen three-input orbits, the other six raising after
+  about two minutes; the failures are depth-cap exhaustion, not an
+  argument, so the reach is set by the search rather than by the language.
+  The route is a *construction* in wii2d's shape instead of a search —
+  `docs/walls.md` has the piece that does not yet compose.  The other six
+  refusing generators stay off this list: 6-5 is the one documented wall
+  left (`docs/limitations.md`), %^2^-1 is partly lifted with the rest open,
+  and NoComment, Polynomial, Factor and WII2D are resource knobs.  NoComment
+  used to be listed as a wall here on the strength of "the `s` skip is
+  byte-indexed, capping every jump at 255" -- which bounds one jump and not a
+  composition of them; chaining byte-sized skips lifted it from `n <= 8` to
+  the interpreter's tape bound.  WII2D's `n == 7` refusal is likewise a cost
+  guard that fires before the fold is attempted, and raising it builds
+  interpreter-verified `n == 7` programs at a heavy build-time tail.
+  NoComment's and Factor's remaining caps are liftable by host config, and
+  `docs/walls.md` has both arguments.  ZTOALC L was on
+  this list and its refusals are now *size gates only* -- the anchor table's
+  1132 commands and the `2**22` line limit -- rather than capability walls:
+  its wall was a property of the decision tree it built, not of the
+  language, and a branch-free array lookup placed on a Collatz trajectory
+  renders every table small enough to materialize (`docs/walls.md`).
+- **NoComment's tape size** — *resolved by parameter, not by moving the
+  constant.*  The boolean generator reaches `n <= 11` at the default size,
+  and what stopped it there was `_TAPE = 4096`, not the language: the wiki
+  requires the memory space to be static but never gives a size, so 4096 is a
+  host choice matching the RISC-V cross-check's buffer.  Both `run` and
+  `nocomment` now take a `tape` argument defaulting to it, so a caller who
+  wants `n == 12` (cell 4650) builds and runs at a larger size while every
+  existing program keeps the 4096 the cross-check agrees with.  Raising the
+  *default* is still declined for the reason first noted here — the buffers
+  would disagree about where the tape ends, which is what the cross-check
+  exists to catch.  The open question is unchanged and is about width, not
+  memory: an `n == 11` build is already ~27k characters.

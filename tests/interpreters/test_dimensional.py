@@ -1,24 +1,20 @@
 """Unit tests for the Dimensional v3.0 interpreter."""
 
 import importlib
-import io
-from contextlib import redirect_stdout
-from unittest.mock import patch
 
 import pytest
 
 from esolangs.interpreters.io import IO
 from esolangs.tools.boolean.tape import dimensional as bool_gen
 from esolangs.tools.text.other import dimensional as text_gen
+from tests.interpreters.contract import SnapshotContract
+from tests.interpreters.runner import run_program
 
 dim = importlib.import_module("esolangs.interpreters.tape_based.dimensional")
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        dim.run(code, IO())
-    return buffer.getvalue()
+    return run_program(dim.run, code, "".join(f"{line}\n" for line in inputs or []))
 
 
 class TestDimensional:
@@ -117,3 +113,32 @@ class TestDimensional:
             dim.run("=4", IO())
         with pytest.raises(ValueError, match="character"):
             dim.run(":", IO())
+
+
+class TestStepMachine:
+    def test_snapshot_freezes_a_higher_dimensional_tape(self) -> None:
+        """A tape raised past 2D nests levels, each frozen into the key."""
+        from esolangs.interpreters.tape_based.dimensional import _Machine
+
+        machine = _Machine("^^>+.", IO())
+        seen = set()
+        for _ in range(50):
+            if machine.halted:
+                break
+            seen.add(machine.snapshot())
+            machine.step()
+        assert len(seen) > 1
+
+
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.tape_based.dimensional import _Machine
+
+    return _Machine(code, IO())
+
+
+class TestContract(SnapshotContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    stepping_program = "+" * 3 + "."

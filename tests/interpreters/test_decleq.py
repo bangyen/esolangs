@@ -10,6 +10,11 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.decleq import run
+from tests.interpreters.contract import (
+    CycleContract,
+    EmptyProgramContract,
+    SnapshotContract,
+)
 from tests.interpreters.oisc import memory, run_program
 
 
@@ -64,6 +69,31 @@ class TestHaltAndErrors:
         with pytest.raises(HaltError):
             run(code, io, limit=100)
 
+    def test_the_default_limit_is_ten_thousand(self) -> None:
+        """The default cuts a run off at exactly 10,000 instructions.
+
+        Every other test passes ``limit=`` explicitly, so the default was
+        never the bound under test and could take any nearby value unnoticed.
+        ``run_with_limit`` checks ``halted`` at the *top* of each pass, so a
+        program taking exactly ``limit`` steps still exhausts the loop and
+        raises -- which makes 10,000 the count that separates the real
+        default from one a single step larger, and 9,998 the companion that
+        pins it from below.
+
+        The program is a countdown of ``n`` passes behind a one-instruction
+        prologue, so it runs 2n steps: cell 11 counts down and jumps off the
+        end at zero, while the cell-12 source keeps the loop's tail
+        instruction jumping back to it.
+        """
+
+        def countdown(n: int) -> str:
+            mem = [9, 10, 0, 11, 11, 99, 12, 13, 3, 5, 0, n, 0, 0]
+            return " ".join(map(str, mem))
+
+        with pytest.raises(HaltError):
+            run(countdown(5000), ScriptedIO(""))
+        run(countdown(4999), ScriptedIO(""))
+
     def test_malformed_token(self) -> None:
         with pytest.raises(ValueError, match="malformed memory token"):
             _run("10 10 x")
@@ -71,9 +101,6 @@ class TestHaltAndErrors:
     def test_comments_and_blank_lines_are_ignored(self) -> None:
         code = "# a comment\n\n1 1 3 # trailing comment\n-2 1 0\n"
         assert _run(code) == "\x00"
-
-    def test_empty_program(self) -> None:
-        assert _run("") == ""
 
 
 class TestOperandRange:
@@ -186,17 +213,18 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.pc == 65
 
-    def test_snapshot_is_hashable(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.decleq import _Machine
 
-        assert hash(_Machine("-2 5 9 9 9 65 0 0", ScriptedIO()).snapshot()) is not None
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.register_based.decleq import _Machine
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.decleq import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+    return _Machine(code, ScriptedIO())
 
-        assert (
-            run_until_halt_or_cycle(_Machine("-2 5 9 9 9 65 0 0", ScriptedIO())) is True
-        )
+
+class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
+    """The shared empty-program shape, with this language's data."""
+
+    run = staticmethod(_run)
+    machine = staticmethod(_machine)
+    stepping_program = "-2 5 9 9 9 65 0 0"
+    halting_program = "-2 5 9 9 9 65 0 0"

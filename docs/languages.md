@@ -8,12 +8,12 @@ Python means an in-repo interpreter under `esolangs.interpreters`;
 Cross-check means an implementation in `extra/` that runs as a
 standalone program (Lean or RISC-V assembly), used to
 differentially verify the Python interpreter.  The Boolean
-column marks the boolean-function generators; the no-input languages (Back, BIO, NoComment, BF-PDA, Lamfunc, Bitdeque, RAM0, Minsky Swap, Eval, ArrowQueue, A Painter Ant, WII2D) use parameterized generators (the harness substitutes input bits into a template).  Minifuck and %^2^-1 use parameterized generators too, for a different reason: both *have* an input command, but neither can branch on what it reads, so their reading models are walled (the %^2^-1 wall is proved in Lean) and embedding is what reaches the two-input tables.
+column marks the boolean-function generators; the no-input languages (Back, BIO, NoComment, BF-PDA, Lamfunc, Bitdeque, RAM0, Minsky Swap, Eval, ArrowQueue, A Painter Ant, WII2D) use parameterized generators (the harness substitutes input bits into a template).  Minifuck and %^2^-1 use parameterized generators too, for a different reason: both *have* an input command, but neither can branch on what it reads, so their reading models are walled (the %^2^-1 wall is proved in Lean) and embedding is what reaches the two-input tables.  %^2^-1 goes further: a subcube cascade builds every conjunction or disjunction of literals at any arity (see `docs/limitations.md`).
 
 | Language | Text generator | Python | Cross-check | Boolean | Compiler |
 | --- | :---: | :---: | :---: | :---: | :---: |
 | %^2^-1 | yes | yes |  | yes |  |
-| 123 | yes | yes |  |  |  |
+| 123 | yes | yes |  | yes |  |
 | 3D Brainfuck | yes | yes |  | yes |  |
 | 3x | yes | yes |  | yes |  |
 | 6-5 | yes | yes |  | yes |  |
@@ -29,6 +29,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | Bitdeque |  | yes |  | yes |  |
 | BrainIf | yes | yes |  | yes |  |
 | COD |  | yes |  | yes |  |
+| CV(N)(C) | yes | yes |  | yes |  |
 | Circlefuck | yes | yes |  | yes |  |
 | Circuit Diagram |  | yes |  | yes |  |
 | Clockwise | yes | yes |  | yes |  |
@@ -39,6 +40,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | Dimensional | yes | yes |  | yes |  |
 | Eval | yes | yes |  | yes |  |
 | Factor | yes | yes |  | yes |  |
+| Fargo |  | yes |  | yes |  |
 | Flowchart |  | yes |  | yes |  |
 | Forbin | yes | yes |  | yes |  |
 | Forþ | yes | yes |  | yes | yes |

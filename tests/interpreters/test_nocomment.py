@@ -16,6 +16,11 @@ import pytest
 import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
+from tests.interpreters.contract import (
+    CycleContract,
+    EmptyProgramContract,
+    SnapshotContract,
+)
 
 nocomment = importlib.import_module("esolangs.interpreters.tape_based.nocomment")
 
@@ -47,6 +52,37 @@ class TestNoComment:
         # l at cell 0 wraps to cell 4095, a fresh zero cell
         assert run_and_capture("c" + "i" * 65 + "l" + "o") == "\x00"
         assert run_and_capture("c" + "i" * 65 + "r" + "l" + "o") == "A"
+
+    def test_tape_size_is_configurable(self) -> None:
+        """The wiki fixes the wrap but not the size, so the size is a knob.
+
+        The size is observable through that wrap -- cell 0 steps left to
+        ``tape - 1`` -- so this pins the argument reaching *both* wrap sites
+        rather than only the allocation.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.nocomment import _TAPE, _Machine
+
+        assert _TAPE == 4096  # the default stays put; moving it moves behaviour
+
+        for size in (2, 512, 8192):
+            left = _Machine("l", ScriptedIO(), size)
+            left.step()
+            assert left.ptr == size - 1
+
+            right = _Machine("r" * size, ScriptedIO(), size)
+            while not right.halted:
+                right.step()
+            assert right.ptr == 0  # a full lap returns to the origin
+
+    def test_tape_size_must_be_positive(self) -> None:
+        """A tape with no cells has no cell to point at."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.nocomment import _Machine
+
+        for size in (0, -1):
+            with pytest.raises(ValueError, match="at least one cell"):
+                _Machine("i", ScriptedIO(), size)
 
     def test_stack_push_pop(self) -> None:
         """n pushes the cell; f pops into it."""
@@ -117,6 +153,35 @@ class TestNoComment:
         with pytest.raises(HaltError):
             run_and_capture("nib")
 
+    def test_a_backward_jump_landing_on_the_first_command_is_allowed(self) -> None:
+        """Zero is a legal target: the jump lands on the first command.
+
+        ``test_backward_jump_of_zero_leaves_the_code`` names the low edge but
+        does not reach it -- jumping back by zero targets ``ind + 1``, which
+        is above it.  The edge is reached only when the stacked value is one
+        more than the jump's own index, and it is a *valid* landing: the
+        program continues from the top and runs to completion, printing 6.
+        A floor of 1, or an exclusive comparison, halts here instead.
+        """
+        assert run_and_capture("iisbinbo") == "\x06"
+
+    def test_every_non_command_character_is_rejected(self) -> None:
+        """No character outside the ten commands is executable -- no no-ops exist.
+
+        The jump commands share one branch, so ``s`` and ``b`` form a set,
+        and a set can be widened to swallow a character that should have
+        been malformed.  Pinning that with one chosen sentinel would only
+        pin the sentinel, so this sweeps the whole printable range against
+        the command set itself: whatever a widened set admits, it is in here.
+        The preceding ``iin`` leaves a nonzero cell and a stacked value, so
+        a character wrongly read as a jump would act rather than be ignored.
+        """
+        for char in map(chr, range(0x20, 0x7F)):
+            if char in "idclrnfsbo":
+                continue
+            with pytest.raises(ValueError, match="unrecognized NoComment command"):
+                run_and_capture("iin" + char + "o")
+
     def test_unrecognized_command_is_error(self) -> None:
         """The wiki allows no comments; a non-command is a malformed program."""
         with pytest.raises(ValueError, match="unrecognized NoComment command"):
@@ -133,9 +198,6 @@ class TestNoComment:
             run_and_capture("c" + "i" * 10 + "n" + "s" + "o")
         with pytest.raises(HaltError):
             run_and_capture("c" + "i" * 10 + "n" + "b" + "o")
-
-    def test_empty_program(self) -> None:
-        assert run_and_capture("") == ""
 
     def test_generator_round_trips(self) -> None:
         for text in ("Hello, World!", "Hi", "\x00\x01"):
@@ -161,23 +223,19 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 4
 
-    def test_snapshot_is_hashable(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.nocomment import _Machine
 
-        assert hash(_Machine("co", ScriptedIO()).snapshot()) is not None
+def _machine(code: object) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.nocomment import _Machine
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.nocomment import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+    return _Machine(code, ScriptedIO())
 
-        assert run_until_halt_or_cycle(_Machine("ciio", ScriptedIO())) is True
 
-    def test_back_jump_is_detected_as_a_cycle(self) -> None:
-        """A jump back to a command that never changes state loops forever."""
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.nocomment import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
+class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
+    """The shared empty-program shape, with this language's data."""
 
-        assert run_until_halt_or_cycle(_Machine("inbb", ScriptedIO())) is False
+    run = staticmethod(run_and_capture)
+    machine = staticmethod(_machine)
+    stepping_program = "co"
+    halting_program = "ciio"
+    looping_program = "inbb"

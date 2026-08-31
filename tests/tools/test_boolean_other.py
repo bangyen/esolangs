@@ -5,6 +5,10 @@ Covers the generators in :mod:`esolangs.tools.boolean.other` and
 helper edge paths exercised across generator modules.
 """
 
+import importlib
+import itertools
+import random
+
 import pytest
 
 from esolangs.interpreters.io import IO
@@ -13,6 +17,8 @@ from tests.tools.boolean_runners import (
     run_between,
     run_clockwise,
     run_container,
+    run_cvnc,
+    run_fargo,
     run_flowchart,
     run_forbin_boolean,
     run_laserfuck,
@@ -142,6 +148,260 @@ class TestForbinBoolean:
     def test_rejects_non_binary(self) -> None:
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.forbin_boolean("02")
+
+
+class TestCvnc:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("0", 0),  # no inputs at all
+            ("1", 0),
+            ("01", 1),  # identity
+            ("10", 1),  # NOT
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1000000000000000", 4),  # AND4
+            ("1111111111111111", 4),  # constant one
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.cvnc(table)
+        for combo in range(2**n):
+            bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+            got = run_cvnc(program, bits)
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_a_table_that_folds_nothing_is_a_full_tree(self) -> None:
+        """Parity folds nowhere, so it keeps a leaf per row."""
+        program = boolean.cvnc("01101001")
+        assert program.count("fu") == 8  # one leaf per row
+        assert program.count("\u0270\u030ao") == 7  # one branch per interior node
+
+    def test_a_constant_table_folds_to_one_leaf_but_keeps_its_reads(self) -> None:
+        """Folding drops the branches, never the reads."""
+        for table in ("00000000", "11111111"):
+            program = boolean.cvnc(table)
+            assert program.count("so") == 3  # still three inputs consumed
+            assert program.count("\u0270\u030ao") == 0  # nothing left to branch on
+            assert program.count("fu") == 1  # one leaf for the whole table
+
+    def test_a_one_dependency_table_costs_two_leaves(self) -> None:
+        """Depending on one input collapses the other two levels.
+
+        This table is where the hoisted build wins, so the three reads are
+        the load block's and appear once each rather than once per folded
+        path.  Either way only the root branches and only two leaves remain.
+        """
+        program = boolean.cvnc("11110000")
+        assert program.count("fu") == 2
+        assert program.count("\u0270\u030ao") == 1  # only the root still branches
+        assert program.count("so") == 3  # three inputs, read once each
+        for combo in range(8):
+            bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
+            assert run_cvnc(program, bits) == "11110000"[combo]
+
+    def test_folding_shortens_the_program(self) -> None:
+        assert len(boolean.cvnc("00000000")) < len(boolean.cvnc("01101001"))
+
+    def test_the_halting_goto_covers_every_arity_the_generator_emits(self) -> None:
+        """The gadget's reach is the generator's arity bound, and is checked.
+
+        The goto lands at a fixed offset, so a program longer than that
+        offset would jump back *into itself* instead of halting.  The
+        generator raises rather than emit one, and the reach is chosen so
+        that no arity it can practically be asked for trips the guard.
+        """
+        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+        reach = module._HALT_REACH  # noqa: SLF001
+
+        # parity is the table that folds nothing, so it is the worst case
+        for n in range(1, 9):
+            table = "01" * (2**n // 2)
+            assert len(boolean.cvnc(table)) < reach, f"n={n}"
+
+    def test_a_program_outgrowing_the_goto_is_refused(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The guard raises rather than emitting a self-re-entering program.
+
+        The reach is far past any table worth generating, so the guard is
+        reached by shrinking it rather than by building a vast table.
+        """
+        # ``esolangs.tools.boolean.cvnc`` resolves to the re-exported
+        # *function*, so the module has to be fetched by name.
+        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+        monkeypatch.setattr(module, "_HALT_REACH", 10)
+        with pytest.raises(ValueError, match="outgrew"):
+            module.cvnc("01")
+
+    def test_every_leaf_ends_by_halting(self) -> None:
+        """Without the halting goto a then-arm falls into its own loop end."""
+        program = boolean.cvnc("0110")
+        assert program.count("\u0279i") == program.count("fu")
+
+    def test_a_zero_input_table_reads_nothing(self) -> None:
+        """With no inputs there is nothing to branch on."""
+        assert "so" not in boolean.cvnc("1")
+        assert run_cvnc(boolean.cvnc("1"), []) == "1"
+
+    def test_the_hoisted_build_reorders_a_table_the_stream_order_cannot_fold(
+        self,
+    ) -> None:
+        """A table folding only on its *last* input is what the reorder is for.
+
+        ``10101010`` is ``11110000``'s function with the inputs renamed, so
+        the node-read tree cannot fold it at the root while the hoisted one
+        tests input 2 first and folds after a single branch.  The win has to
+        show up as a shorter program, not merely a different one.
+        """
+        program = boolean.cvnc("10101010")
+        assert program.count("fu") == 2  # two leaves, as the reorder intends
+        assert program.count("ɰ̊o") == 1
+        # The unreordered node-read tree over the same table folds only at the
+        # bottom, so it costs a leaf per row.
+        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+        unreordered = module._tree("10101010", 0)  # noqa: SLF001
+        assert unreordered.count("fu") == 8
+        assert len(program) < len(unreordered)
+
+    def test_the_hoisted_build_stores_and_fetches_rather_than_rotating(self) -> None:
+        """The bridge between read order and test order is the deque's ends."""
+        program = boolean.cvnc("10101010")
+        # Every input is read once and pushed to an end in the same syllable.
+        assert program.count("so") == 3
+        assert program.count("som") + program.count("son") == 3
+        # The one surviving node fetches rather than reads.
+        assert program.count("cuŋ") + program.count("cuɲ") == 1
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_every_table_computes_its_function(self, n: int) -> None:
+        """Exhaustive over both constructions, since either may be returned."""
+        for value in range(2 ** (2**n)):
+            table = bin(value)[2:].zfill(2**n)
+            program = boolean.cvnc(table)
+            for combo in range(2**n):
+                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                assert run_cvnc(program, bits) == table[combo], f"{table} {bits}"
+
+    def test_choosing_between_the_builds_never_grows_a_program(self) -> None:
+        """The hoist has a price, so it is a candidate and not a replacement.
+
+        Parity is the table it loses on: nothing folds, so the load block's
+        nasals and the per-node fetch are paid for with no fold to show for
+        them, and the node-read tree must still be the one returned.
+        """
+        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+        for value in range(2**8):
+            table = bin(value)[2:].zfill(8)
+            assert len(boolean.cvnc(table)) <= len(module._tree(table, 0))  # noqa: SLF001
+        # and parity specifically keeps the node-read build
+        assert boolean.cvnc("01101001") == module._tree("01101001", 0)  # noqa: SLF001
+
+    def test_an_unservable_order_is_skipped_rather_than_mispriced(self) -> None:
+        """The deque serves the unimodal orders; the rest return no program.
+
+        ``best_input_order`` reads an empty candidate as "this order could
+        not be built" and skips it, so returning one is how an unservable
+        order declines. Substituting some other program would let it win on
+        a length it never paid.
+        """
+        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+        # (0, 2, 1, 3) is the smallest non-unimodal permutation.
+        assert module._deque_schedule((0, 2, 1, 3)) is None  # noqa: SLF001
+        assert module._hoisted_candidate("0" * 16, (0, 2, 1, 3)) == ""  # noqa: SLF001
+        # The identity is always unimodal, so a candidate always exists.
+        assert module._deque_schedule((0, 1, 2, 3)) is not None  # noqa: SLF001
+
+    def test_a_table_folding_at_its_root_normalizes_the_last_read(self) -> None:
+        """The hoisted build's folded root still holds an unpredictable bit.
+
+        No branch has run, so the accumulator is whatever the load block read
+        last rather than a bit the tree chose.  Without the ``cə`` the leaf
+        climbs from that and prints one too many for a 1 input.
+        """
+        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+        program = module._hoisted("00", (0,))  # noqa: SLF001
+        assert program is not None
+        assert "cə" in program
+        for bit in ("0", "1"):
+            assert run_cvnc(program, [bit]) == "0"
+
+
+class TestFargo:
+    """The Fargo boolean generator: an algebraic normal form, not a tree."""
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_every_table_at_small_arity(self, n: int) -> None:
+        """Exhaustive: every table, every input combination."""
+        for value in range(2 ** (2**n)):
+            table = format(value, f"0{2**n}b")
+            program = boolean.fargo(table)
+            for combo in range(2**n):
+                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                got = run_fargo(program, bits)
+                assert got == table[combo], f"table {table} inputs {bits}"
+
+    @pytest.mark.parametrize("n", [4, 5, 8])
+    def test_higher_arity_tables(self, n: int) -> None:
+        """The construction is uncapped: no arity limit, no search."""
+        rng = random.Random(20260830 + n)
+        for _ in range(4):
+            table = "".join(rng.choice("01") for _ in range(2**n))
+            program = boolean.fargo(table)
+            for _ in range(10):
+                combo = rng.randrange(2**n)
+                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                assert run_fargo(program, bits) == table[combo]
+
+    def test_constant_tables_need_no_reads(self) -> None:
+        """A constant table is its degree-zero coefficient alone."""
+        assert boolean.fargo("00000000") == "% 0 0\n$\n"
+        assert boolean.fargo("11111111") == "% 0 1\n$\n"
+
+    def test_parity_is_one_term_per_input(self) -> None:
+        """Parity's ANF is the sum of the single-variable terms."""
+        assert boolean.fargo("01101001") == "% 0 ^ ^ @ 0 @ 1 @ 10\n$\n"
+
+    def test_parity_grows_linearly_not_exponentially(self) -> None:
+        """The size tracks algebraic complexity, so parity is O(n log n).
+
+        This is the property that makes Fargo's generator unlike the
+        tree-shaped ones: a decision tree spends O(2**n) on parity, the
+        table that folds nothing.  Parity's ANF is one single-variable
+        term per input, so each extra input adds one ``^ @ i`` -- a
+        constant plus the index's own binary width, which is why the
+        steps widen by one every time ``i`` gains a digit rather than
+        staying exactly equal.
+        """
+        sizes = [
+            len(boolean.fargo("".join(str(bin(r).count("1") % 2) for r in range(2**n))))
+            for n in (2, 4, 6, 8)
+        ]
+        gaps = [b - a for a, b in itertools.pairwise(sizes)]
+        # Each step of two inputs costs a bounded amount, nowhere near the
+        # doubling per input a decision tree would pay.
+        assert all(12 <= gap <= 20 for gap in gaps), f"not linear: {sizes}"
+        # A decision tree over n == 8 would be thousands of characters.
+        assert sizes[-1] < 100, f"growing too fast: {sizes}"
+
+    def test_a_one_dependency_table_folds(self) -> None:
+        """One term whatever the arity, which is what the catalogue checks."""
+        assert boolean.fargo("11110000") == "% 0 ^ 1 @ 10\n$\n"
+        assert len(boolean.fargo("11110000")) < len(boolean.fargo("01101001"))
+
+    def test_rejects_bad_table(self) -> None:
+        with pytest.raises(ValueError, match="entries"):
+            boolean.fargo("011")
+
+    def test_rejects_non_binary(self) -> None:
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.fargo("02")
 
 
 class TestFlowchart:
@@ -463,63 +723,99 @@ class TestZtoalc:
                 assert run_ztoalc(program, [str(b) for b in bits]) == table[combo]
 
     def test_structure(self) -> None:
-        """The program rides a Collatz descent with jumps and prints."""
+        """The program is a branch-free array lookup on a Collatz trajectory."""
         program = boolean.ztoalc_l_boolean("0110")
         lines = program.splitlines()
         assert lines[0].strip().isdigit()  # line 1 is the starting value
-        assert any("jump" in line for line in lines)
+        assert any(line.strip().startswith("t = [") for line in lines)
         assert any(line.strip().startswith("print") for line in lines)
+        # The construction branches on nothing, so the tree's jumps are gone.
+        assert not any("jump" in line for line in lines)
 
-    @pytest.mark.slow  # 4.0s: searches, over the one-second fast-run budget
-    def test_xor4_linear_fallback(self) -> None:
-        """Dense symmetric tables fall back to a huge linear program."""
-        program = boolean.ztoalc_l_boolean("0110100110010110")  # XOR4 = parity
-        assert len(program.splitlines()) > 100_000  # linear, not the small tree
-        for combo in range(16):
-            bits = [(combo >> (3 - i)) & 1 for i in range(4)]
-            got = run_ztoalc(program, [str(b) for b in bits])
-            assert got == str(int("0110100110010110"[combo])), f"inputs {bits}"
+    def test_commands_are_placed_without_collisions(self) -> None:
+        """Every command occupies its own line, in trajectory order.
 
-    @pytest.mark.slow  # 2.9s: searches every input order
-    def test_dense_non_symmetric_places_under_a_reordered_tree(self) -> None:
-        """A table the identity order cannot place is rendered by another order.
-
-        This table used to be refused: its tree found no collision-free
-        placement and it is not popcount-symmetric, so the linear fallback
-        could not help either.  Choosing the input split order gives the
-        search a differently-shaped tree to place, and one of the orders
-        fits -- the same effect that shrinks factor's unrenderable set.
+        This is the placement guarantee stated directly: a Collatz
+        trajectory visits distinct values until it reaches 1, so the
+        commands land on distinct lines and each executes exactly once.
         """
-        from esolangs.tools.boolean.ztoalc_l import _ztoalc_ordered
+        from esolangs.tools.boolean.ztoalc_l import _collatz_prefix, _commands
 
+        for table in ("0110", "1010001000011000", "0110100110010110"):
+            n = len(table).bit_length() - 1
+            cmds = _commands(table, n)
+            program = boolean.ztoalc_l_boolean(table)
+            start = int(program.splitlines()[0])
+            values = _collatz_prefix(start, len(cmds))
+            assert len(set(values)) == len(values), table
+            assert 1 not in values, table
+            emitted = program.splitlines()
+            assert [emitted[v - 1] for v in values] == cmds, table
+
+    def test_xor4_is_small(self) -> None:
+        """XOR4 renders compactly, where the old linear fallback was huge.
+
+        The removed fallback placed a branch-free program on the pure
+        power-of-two descent, so its ``2**L`` lines put XOR4 at 524,288.  A
+        trajectory's peak grows far slower, and the same program fits in
+        hundreds of lines.
+        """
+        table = "0110100110010110"
+        program = boolean.ztoalc_l_boolean(table)
+        assert len(program.splitlines()) < 1000
+        for combo in range(16):
+            bits = [str((combo >> (3 - i)) & 1) for i in range(4)]
+            assert run_ztoalc(program, bits) == table[combo], f"inputs {bits}"
+
+    def test_dense_non_symmetric_table(self) -> None:
+        """A dense non-symmetric table renders; it once could not be placed.
+
+        Neither the tree (under any input order) nor the popcount-symmetric
+        fallback could place this table, so the generator refused it.  The
+        lookup construction has no placement problem to fail at.
+        """
         table = "1010001000011000"
-        assert not _ztoalc_ordered(table, (0, 1, 2, 3)), (
-            "the identity order should still fail to place this table"
-        )
         program = boolean.ztoalc_l_boolean(table)
         for combo in range(16):
             bits = [str((combo >> (3 - i)) & 1) for i in range(4)]
             assert run_ztoalc(program, bits) == table[combo], f"inputs {bits}"
 
-    def test_when_no_order_places_the_identity_raises(self) -> None:
-        """A table no order can place reports the placement failure.
+    def test_constant_table_skips_the_lookup(self) -> None:
+        """A constant table prints its constant, still draining its inputs."""
+        for n, bit in ((2, "0"), (3, "1")):
+            table = bit * (2**n)
+            program = boolean.ztoalc_l_boolean(table)
+            assert "t = [" not in program
+            for combo in range(2**n):
+                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                assert run_ztoalc(program, bits) == bit
 
-        The search swallows each order's ``ValueError`` so one refusal does
-        not end it, which leaves nothing to re-raise when every order
-        fails.  The identity is then re-run outside the search so the
-        caller gets the generator's own message, with no mention of the
-        search that happened first.
-        """
+    def test_zero_input_table(self) -> None:
+        """A single-entry table is a constant with no inputs to read."""
+        for bit in ("0", "1"):
+            assert run_ztoalc(boolean.ztoalc_l_boolean(bit), []) == bit
+
+    def test_table_past_the_anchor_table_is_refused(self) -> None:
+        """A table needing more steps than any committed anchor is refused."""
         import importlib
 
-        # The package re-exports the generator under the submodule's own
-        # name, so import the module explicitly rather than by attribute.
         module = importlib.import_module("esolangs.tools.boolean.ztoalc_l")
 
         with pytest.MonkeyPatch.context() as patch:
-            patch.setattr(module, "best_input_order", lambda *_: "")
-            with pytest.raises(ValueError, match="no collision-free placement"):
-                module.ztoalc_l_boolean("1010001000011000")
+            patch.setattr(module, "ANCHORS", [(1, 2), (8, 6)])
+            with pytest.raises(ValueError, match="longest committed anchor"):
+                module.ztoalc_l_boolean("0110")
+
+    def test_table_needing_too_many_lines_is_refused(self) -> None:
+        """A table whose trajectory peaks past the line limit is refused."""
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.ztoalc_l")
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_MAX_LINES", 8)
+            with pytest.raises(ValueError, match="past the"):
+                module.ztoalc_l_boolean("0110")
 
     def test_wrong_length_rejected(self) -> None:
         """A truth table of the wrong length is malformed."""
@@ -1390,16 +1686,3 @@ class TestGeneratorEdgePaths:
 
         assert _six_five_const(5) == "5"
         assert _six_five_const(11) == "65"
-
-    def test_ztoalc_simulator_rejects_bad_program(self) -> None:
-        """An empty or non-numeric first line fails the fast simulator."""
-        from esolangs.tools.boolean.ztoalc_l import _ztoalc_ok
-
-        assert _ztoalc_ok({}, 0, "", "") is False
-        assert _ztoalc_ok({0: "not-a-number"}, 0, "", "") is False
-
-    def test_ztoalc_simulator_input_exhausted(self) -> None:
-        """A '=' instruction with no input left fails the fast simulator."""
-        from esolangs.tools.boolean.ztoalc_l import _ztoalc_ok
-
-        assert _ztoalc_ok({0: "2", 1: "a = 1"}, 1, "", "") is False

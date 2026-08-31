@@ -50,6 +50,7 @@ from esolangs.interpreters.grid_based.streetcode import (
 )
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.vm import _StepMachine, run_until_halt_or_cycle
+from tests.interpreters.runner import run_program
 
 
 def street(instructions: str) -> list[str]:
@@ -82,11 +83,8 @@ def machine_unvalidated(code: list[str]) -> _Machine:
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
-    """Run a Streetcode program (patching input) and return its stdout."""
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        run(code, io=IO())
-    return buffer.getvalue()
+    """Run a Streetcode program and return its stdout."""
+    return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
 
 
 def run_street(instructions: str, inputs: list[str] | None = None) -> str:

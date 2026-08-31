@@ -15,6 +15,7 @@ from esolangs.interpreters.grid_based.streetcode import run as streetcode_run
 from esolangs.interpreters.grid_based.wii2d import run as wii2d_run
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.container import run as container_run
+from esolangs.interpreters.other.cvnc import run as cvnc_run
 from esolangs.interpreters.other.forbin import run as forbin_run
 from esolangs.interpreters.other.ztoalc_l import run as ztoalc_run
 from esolangs.interpreters.register_based.between import run as between_run
@@ -101,6 +102,32 @@ class TestGeneratorRoundTrips:
         # single-digit values (< 15) and three-digit base-15 values (>= 241)
         assert roundtrip(forth_run, gen.forth("\t\x0b")) == "\t\x0b"
         assert roundtrip(forth_run, gen.forth("\xff\xf1")) == "\xff\xf1"
+
+    def test_cvnc(self) -> None:
+        """The accumulator walks between character values inside syllables.
+
+        Each command needs a partner of the other class, so the walk costs
+        two characters per unit rather than one: ``ci`` up, ``c\u0259`` down,
+        ``fu`` to print.
+        """
+        assert roundtrip(cvnc_run, gen.cvnc("Hi")) == "Hi"
+        assert roundtrip(cvnc_run, gen.cvnc("Hello, World!")) == "Hello, World!"
+        # the extremes of the byte range, and a value needing a walk down
+        assert roundtrip(cvnc_run, gen.cvnc("\x00\xff")) == "\x00\xff"
+        assert roundtrip(cvnc_run, gen.cvnc("ba")) == "ba"
+
+    def test_cvnc_emits_only_valid_syllables(self) -> None:
+        """A program the interpreter rejects would not be a program at all."""
+        from esolangs.interpreters.other.cvnc import _syllabify, _tokenize
+
+        assert _syllabify(_tokenize(gen.cvnc("Hello, World!")))
+
+    def test_cvnc_empty_text_is_an_empty_program(self) -> None:
+        assert gen.cvnc("") == ""
+
+    def test_cvnc_rejects_non_bytes(self) -> None:
+        with pytest.raises(ValueError, match="bytes"):
+            gen.cvnc("\u0100")
 
     def test_unsquare(self) -> None:
         """Each byte is built from a parity seed and +/x, printed by Po."""

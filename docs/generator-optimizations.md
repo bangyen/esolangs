@@ -1,7 +1,9 @@
 # What each text / boolean generator optimizes
 
-Catalog of the size-and-shape optimizations each of the 45 text and 61 boolean
-generators applies to the *emitted program*.
+Catalog of the size-and-shape optimizations each text and boolean generator
+applies to the *emitted program*.  (47 text and 65 boolean as of
+2026-08-30; `esolangs.tools.text.__all__` and `.boolean.__all__` are the
+live counts, and a stated total here goes stale every time one is added.)
 
 "Optimization" here means what the generator does to make its output smaller
 or better-shaped — not the runtime of the generator itself.
@@ -22,9 +24,9 @@ three.
 | # | Technique | What it buys | Lives in |
 |---|---|---|---|
 | 1 | **Delta encoding** | each character costs its distance from the previous one, not its full code point | `text/helpers.py:28` `delta_program` |
-| 2 | **Multiply/factor loops** | a byte costs `O(sqrt(v))` instead of `O(v)` via `a*b + r` | `text/helpers.py:71` `_factor_triple` |
+| 2 | **Multiply/factor loops** | a byte costs `O(sqrt(v))` instead of `O(v)` via `a*b + r`; the per-language cost of a run is an argument, so brainfuck/home_row minimize `a+b+r` and suffolk `a+b+2r` | `text/helpers.py:71` `factor_triple` |
 | 3 | **Binary doubling** | a byte costs `O(log v)` by walking its bit expansion | addsubjump, unsquare |
-| 4 | **Shortest-of-N dispatch** | build two constructions, measure, return the smaller | laserfuck, streetcode, %^2^-1, brainfuck |
+| 4 | **Shortest-of-N dispatch** | build two constructions, measure, return the smaller | `wrap.py:114` `shortest` (laserfuck, streetcode, %^2^-1, unsquare, brainfuck, bfstack) |
 | 5 | **Constant-subtree folding** | a subtree whose rows agree emits a leaf, not a branch | `boolean/helpers.py` (both walkers) |
 | 6 | **Complement / polarity** | a dense table is evaluated from its zero rows and inverted | `boolean/helpers.py:44` `_maybe_complement` |
 | 7 | **Shape-aware width** | honour a width by building a *different* shape, not by reflowing | `laserfuck_layout.py`, `wrap.py` |
@@ -48,7 +50,7 @@ input is far cheaper than parity. Measured 2026-08-28 over all 59 exported
 generators, comparing the best of the six one-dependency tables against
 `01101001` (both ones-count 4):
 
-**Tree-shaped (43).** taglate, ztoalc_l, polynomial, dig, myscript, six_five,
+**Tree-shaped (44 now, `fargo` being the addition below).** cvnc, taglate, polynomial, dig, myscript, six_five,
 addsubjump, sophie, modulous, laserfuck, nevermind, jaune, bitdeque,
 unsquare, flowchart, streetcode, forth, basicfuck, bfpda, ram0,
 forbin_boolean, arrowqueue, back, lamfunc, between, eval, factor, circlefuck,
@@ -56,14 +58,54 @@ painfuck, bf_tree, brainfuck, three_d_brainfuck, sbleq, dimensional,
 dimensional_tree, clockwise, brainif, three_x, circuit_diagram, minsky_swap,
 decleq, grapheme, bio — folding 95% (taglate) down to 5% (bio).
 
+`cvnc` was added after that sweep (2026-08-30) and measures 74.5% on the
+same comparison, which is why the count above reads 44 against a sweep of
+59; the dated figures are left as they were measured rather than restated.
+It measured 74.1% when first added and 74.5% once its reorder shipped the
+same day — the one-dependency table it is scored on is exactly the case the
+reorder improves, so this figure moves when that build changes.
+
 **Minterm-shaped (13).** a_painter_ant, bfstack, bit_tilde, cod,
 collatz_multiverse, container, home_row, nocomment, point_break, qoibl,
 rotfuck, suffolk, suptiftam — all within 4% of parity on a one-dependency
 table, because there is no subtree to collapse.
 
-**Neither (1).** `wii2d` measures *negative* (a one-dependency table costs
-slightly more than parity): its construction is a route search over a grid,
-so neither model describes it.
+**Neither.** Eight generators are exempted from the shape test altogether
+(`_UNSHAPED` in `test_boolean_contract.py`, which is the list of record):
+`wii2d`, `ztoalc_l_boolean`, `minifuck`, `one_two_three`,
+`pct_squared_minus_one`, `slow_acv_mammalian_boolean`, `jaune_multiply` and
+`circlefuck_byte`.  Some are a different shape and some simply raise on the
+`n == 3` tables the test uses — `one_two_three` caps at two inputs, and
+`minifuck` and `pct_squared_minus_one` are parameterized routes whose length
+tracks their embed rather than any table shape.  Two are worth naming for
+their mechanism: `wii2d` measures *negative* (a one-dependency table costs
+slightly more than parity), its construction being a route search over a
+grid; and `ztoalc_l` measures a flat **0%** — every table in the comparison
+has ones-count 4 and they all render to exactly the same length — because it
+is a *table lookup*, not a tree or a sum: the row index is built
+arithmetically by double-and-add and the table is one-hot encoded into an
+array, so there are no subtrees to collapse and no per-row terms to count.
+Its size tracks the trajectory peak its command count selects from the
+anchor table.
+
+**A third shape: algebraic (1).** `fargo` (added 2026-08-30) is neither a
+tree nor a minterm sum but an *algebraic normal form* — the XOR of the
+AND-products the Möbius transform selects. Its size tracks the function's
+algebraic degree, which makes it the only generator whose worst case is
+**linear** rather than exponential: parity, the table that folds nothing
+anywhere else, is its *cheapest* dense case at one term per input (10
+characters at `n == 1` growing to 62 at `n == 8`, against brainfuck's 225
+to 1649 by `n == 4` alone). It measures 56.5% folding on the
+one-dependency comparison, so the catalogue test files it tree-side, but
+the mechanism is different: a one-dependency table is one ANF term
+whatever its arity, and nothing about it is a subtree collapse.
+
+What makes it possible is the *interface*, not the language's power:
+Fargo's `@ i` indexes the input number's `i`th bit directly, so the
+generator pays nothing to read, normalize, or store bits before testing
+them. Input reordering is therefore vacuous here — there is no read order
+to permute. Worth checking for on any future candidate whose input is
+bit-addressable rather than streamed.
 
 Two entries sit near the boundary and are worth reading as measurements
 rather than labels. `circuit_diagram` folds only 12.6% yet special-cases a
@@ -100,15 +142,16 @@ Each character costs only its distance from the previous one.
 | `one_two_three` | running **XOR** in `edi`; emits only the differing bits |
 | `bit_tilde` | tracks the tape, toggles only bits that must change |
 | `brainfuck` | **hybrid**: delta when close, else `[-]` + multiply-loop rebuild |
-| `bfstack` | same hybrid, with a measured threshold |
+| `bfstack` | same hybrid; both pick with `shortest`, but `bfstack` breaks a tie toward the rebuild where `brainfuck` keeps the walk |
 | `unsquare` | delta chain off the retained accumulator (~21% on "Hello, World!"), **bounded by parity** — `x` can't restore oddness, so odd targets off an even accumulator reseed |
+| `cvnc` | `ci`/`cə` runs via shared `delta_program`, at **2 characters per unit**: every command needs a partner of the other class to form a CV syllable, and `c` (function reset) is the only consonant that touches neither accumulator nor deque while an invalid `u` is the only such vowel, so the pairing is forced rather than chosen — no other pairing undercuts the factor of two |
 
 ### Arithmetic-construction
 
 | Generator | Optimization |
 |---|---|
 | `home_row` | `a*b+r` counter loop, `a` searched near `sqrt` → `O(sqrt)` |
-| `suffolk` | factors minimizing `a + 2b + 2r` — *not* `sqrt`, because `>!` and `><` cost two characters each |
+| `suffolk` | factors minimizing `a + b + 2r` — *not* `sqrt`, because `r` is spelled `>!` at two characters a unit. It minimized `a + 2b + 2r` until 2026-08-30, counting the one `><` separator as a per-`b` price; the emitted line measures `12 + a + b + 2r`, and the correction is shorter on 37 of the 256 byte values and longer on none |
 | `addsubjump` | binary doubling → `O(log byte)` |
 | `collatz_multiverse` | two-line multiply-add per constant; **only the bytes actually referenced** are built (`_PLAN` / `_extend_plans`), reaching large values in `O(log)` constants |
 | `wii2d` | per character picks cheapest of literal digit / square / double / combination |
@@ -140,8 +183,11 @@ arithmetic. `forth` still builds each char as `m * 15**n + p`.
 - **`brainif`** — starts a falling character from the **largest parked value
   not above it** rather than from zero. The `l` of "Hello, World!" costs 66
   lines from the comma's parked 44 vs 110 from zero.
-- **`ztoalc_l`** — precomputed anchor table (`ztoalc_starts.py`) of Collatz
-  starts with the smallest trajectory peak per length interval.
+- **`ztoalc_l`** (text *and* boolean) — precomputed anchor table
+  (`ztoalc_starts.py`) of Collatz starts with the smallest trajectory peak per
+  length interval. The boolean generator places its commands the same way the
+  text one places characters, which is what let it drop its placement search
+  entirely.
 - **`factor`** / **`three_d_brainfuck`** — reuse `brainfuck`'s output unchanged.
 
 ### Width handling (9 of them lay out their own shape)
@@ -261,10 +307,20 @@ which name fills each slot while building its tree on the permuted table.
 
 **Shipped:** `six_five`, `jaune`, `eval`, `circlefuck`, `unsquare`, `sbleq`,
 `three_x`, `forth`, `sophie`, `polynomial`, `addsubjump`, `streetcode`,
-`laserfuck`, `back` (via `best_input_order`; `six_five`, `forth`,
+`laserfuck`, `back`, `cvnc`, `basicfuck`, `myscript`, `nevermind`, `between`,
+`forbin_boolean`, `lamfunc`, `bitdeque`, `ram0` (`six_five`, `forth`,
 `streetcode` and `laserfuck` roll their own — the two grid ones because their
 `width` has to choose among *every* candidate, and `best_input_order` returns
-only the shortest. `back` has no width, so it uses the wrapper).
+only the shortest; `back` has no width, so it uses the wrapper).
+
+The authority for that list is
+`grep -rn 'best_input_order(truth_table' src/`, not this paragraph: a
+generator that grows a reorder is not required to touch this file, so the
+names here lag.  `bitdeque`'s is the one worth reading, because it is *not*
+the free reorder the roadmap still lists as open — its rotations happen
+inside the tree (`EJECT PUSH`, `POP INJECT`, two commands per position),
+while the load block stays byte-identical because the `{Xi}` setter's parity
+is derived from the input's name.
 
 **Not applicable — sum-of-minterms**, where the minterm count does not depend
 on split order: `a_painter_ant`, `circlefuck_byte`, `circuit_diagram`, `cod`,
@@ -275,6 +331,40 @@ on split order: `a_painter_ant`, `circlefuck_byte`, `circuit_diagram`, `cod`,
 hold a read bit, so a bit can only be branched on before the next read:
 `polynomial` (25.1%), `modulous` (16.4%), `sophie` (16.4%). Residual merging
 collects what the screen was measuring for polynomial and sophie.
+
+**Built 2026-08-30 — `cvnc`, and the walk cost turned out to be zero.** It
+screened **15.2% mean** at `n = 2..4` and *delivered* **13.8% at `n = 3`**
+(every table) and **17.9% at `n = 4`** (300 sampled), with **no table
+growing**. The screen was gross and the walk was supposed to be subtracted
+from it; the walk is instead free, which is why the delivered figure rises
+above the screen at `n = 4` rather than falling below it.
+
+What makes it free is that a deque has *two* ends. The obvious way to
+reconcile a permuted test order with a fixed read order is to rotate the
+bits into place, and rotations are what the screen was told to charge for.
+There is no need: each read is pushed to whichever **end** it will later be
+popped from (`m` or `n`, riding the read's own syllable for one character),
+and each node pops the end holding the bit it wants. `_deque_schedule`
+searches the `2**n` push assignments; what that reaches is exactly the
+**unimodal** permutations — all of them through `n = 3`, 20 of 24 at
+`n = 4`, 252 of 720 at `n = 6` — and unservable orders return the empty
+string, which `best_input_order` already reads as "not buildable" and
+skips.
+
+The hoist is not free, which is why it does not replace the node-read tree:
+a stored read costs one character more than a bare one and a fetch costs
+three where a node read costs two. What repays it is that a folded subtree
+then owes **nothing** — the node-read build still owes its remaining `so`
+runs and the `cə` that normalizes the bit they leave behind. So the two are
+built and the shorter returned, the `six_five` precedent. Parity keeps the
+node-read build; one-dependency tables take the hoist.
+
+**The generalizable part: count the ends before pricing a walk.** A reorder
+over storage with two addressable ends may need no walk at all, because the
+*push* side has a free choice that can pre-arrange the pop order. That is a
+different escape from `back`'s (whose harness substitutes its bits) and it
+applies to any deque-shaped store — `bitdeque`'s `INJECT`/`EJECT` pair is
+the other one in this repo.
 
 Four rules worth carrying into the remaining candidates:
 
@@ -454,8 +544,9 @@ cheap change, and the mirror estimate is the soft part: a turn cell cannot
 also carry a load command, and `+`'s conditional step interacts with the
 beam's direction at a mirror. Recorded rather than built.
 
-**Not yet done.** What is left splits by *where the node reads*, which is the
-same question the token-sequence tier answers, not by being 2D:
+**The rest of the tier, and why each closes.** What is left splits by *where
+the node reads*, which is the same question the token-sequence tier answers,
+not by being 2D:
 
 - **`clockwise` (1.3%, a lone accumulator) and `wii2d` (3.4%)** have nothing
   to place into and sit below the threshold anyway.
@@ -594,12 +685,15 @@ saving unchanged; a shorter program also shrinks factor's set of tables
 whose integer encoding exceeds Python's digit limit.
 
 **A trap when wiring the rest.** A generator that validates its own output
-during construction needs that check frame-mapped too. ZTOALC L asks its
-simulator whether the program computes `truth_table[c]`, but a reordered tree
+during construction needs that check frame-mapped too. ZTOALC L used to ask a
+simulator whether the program computed `truth_table[c]`, but a reordered tree
 walks to the row whose bits are gathered in `perm` order, so the unmapped
 check demands a different function and rejects every correct placement. The
 symptom is a clean 0.00% across every table — indistinguishable from
-"reordering does not help here".
+"reordering does not help here". (ZTOALC L no longer searches or reorders at
+all: it constructs a branch-free array lookup placed on a Collatz trajectory,
+so there is nothing left to validate. The trap still applies to any generator
+that gates its own candidates.)
 
 ### Layout and geometry
 
@@ -618,14 +712,13 @@ symptom is a clean 0.00% across every table — indistinguishable from
 | Generator | Optimization |
 |---|---|
 | `bf_tree` | tree shares bit tests: `O(2**n)` vs minterm's `O(n * 2**n)` — XOR-n at n=8 is 20K vs 33M characters |
-| `nocomment` | computes the numeric index and uses it as a byte-sized skip into a staircase — straight-line, no leaf chains. `s` doubles as a NOT gate, so the complement is computed at runtime from one embed |
+| `nocomment` | computes the numeric index and uses it as a byte-sized skip into a staircase — straight-line, no leaf chains. `s` doubles as a NOT gate, so the complement is computed at runtime from one embed. Past `n == 8` the index no longer fits a byte, so it is split into byte-sized summands and one staircase is walked per summand: `s` peeks rather than pops, so displacements add across stages and a chain of legal skips reaches any index |
 | `home_row` | packs bits into one accumulator + linear chain; the removed routing generator walled at n=2 |
 | `bfstack` | avoids branching entirely — encodes inputs as a number, decodes with nested loops |
 | `suffolk` | branch-free minterms at `limit=1`; a constant table needs no minterm *blocks*, though it still reads every input (measured 2026-08-28: 8 reads on every table, constant or not — an earlier note here claimed it read none); dense tables evaluated from their zero rows and inverted |
 | `three_x` | result defaults to the **majority** table value, so only differing rows emit an override |
 | `bitdeque` / `ram0` | fixed-length setters keep absolute `GOTO` targets stable — this is what unblocked the earlier "variable-length setter" wall |
 | `lamfunc` / `ram0` | each input stored once and read back, rather than re-embedded at every node |
-| `ztoalc_l_boolean` | tries every `b1` in turn with the simulator as sole gate, keeping any smaller start that places without collision |
 | `point_break` / `arrowqueue` | no output command — use the halt/loop termination convention |
 
 ### Equal-width embedding (the deliberate non-optimization)

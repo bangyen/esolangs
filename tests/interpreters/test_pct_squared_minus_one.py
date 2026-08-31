@@ -3,6 +3,7 @@
 import importlib
 
 from esolangs.interpreters.io import ScriptedIO
+from tests.interpreters.contract import CycleContract, EmptyProgramContract
 
 run = importlib.import_module(
     "esolangs.interpreters.register_based.pct_squared_minus_one"
@@ -57,9 +58,6 @@ class TestPct:
         assert run_program("ip" + "m" * 10 + "l") == "0"
         # just under the threshold: 3 * 2^9 = 1536 prints normally
         assert run_program("ip" + "m" * 9 + "l") == "1536"
-
-    def test_empty_program(self) -> None:
-        assert run_program("") == ""
 
     def test_unknown_characters_are_no_ops(self) -> None:
         """Characters outside the command set do nothing at all.
@@ -126,25 +124,6 @@ class TestStepMachine:
         assert machine.snapshot() != before
         assert machine.acc == -3
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.register_based.pct_squared_minus_one import (
-            _Machine,
-        )
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine("i", ScriptedIO(""))) is True
-
-    def test_loop_is_detected_as_a_cycle(self) -> None:
-        # 'mipt' settles into a genuine 4-state cycle: (0,3) -> (1,6) ->
-        # (2,3) -> (3,-3) -> back to (0,3), so the accumulator never grows
-        # without bound and the state repeats exactly.
-        from esolangs.interpreters.register_based.pct_squared_minus_one import (
-            _Machine,
-        )
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine("mipt", ScriptedIO(""))) is False
-
     def test_step_after_halt_is_a_noop(self) -> None:
         from esolangs.interpreters.register_based.pct_squared_minus_one import (
             _Machine,
@@ -154,3 +133,23 @@ class TestStepMachine:
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
         assert machine.acc == 0
+
+
+def _machine(code: object) -> object:
+    from esolangs.interpreters.register_based.pct_squared_minus_one import _Machine
+
+    return _Machine(code, ScriptedIO(""))
+
+
+class TestContract(EmptyProgramContract, CycleContract):
+    """The shared shapes.
+
+    ``mipt`` settles into a genuine 4-state cycle: (0,3) -> (1,6) -> (2,3)
+    -> (3,-3) -> back to (0,3), so the accumulator never grows without
+    bound and the state repeats exactly.
+    """
+
+    run = staticmethod(run_program)
+    machine = staticmethod(_machine)
+    halting_program = "i"
+    looping_program = "mipt"

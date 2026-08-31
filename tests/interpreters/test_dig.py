@@ -9,20 +9,19 @@ is the first digit adjacent to the command (up, right, down, left).
 
 import io
 from contextlib import redirect_stdout
-from unittest.mock import patch
+from typing import ClassVar
 
 import pytest
 
 from esolangs.interpreters.grid_based.dig import run
 from esolangs.interpreters.io import IO, ScriptedIO
+from tests.interpreters.contract import CycleContract
+from tests.interpreters.runner import run_program
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
-    """Run a Dig program (patching input) and return its stdout."""
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        run(code, io=IO())
-    return buffer.getvalue()
+    """Run a Dig program and return its stdout."""
+    return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
 
 
 class TestDigHaltAndMovement:
@@ -246,15 +245,30 @@ class TestStepMachine:
         assert machine.mole == ord("A")
         assert machine.io.position() == 1
 
-    def test_halting_program_is_detected(self) -> None:
+    def test_step_after_halt_is_a_noop(self) -> None:
         from esolangs.interpreters.grid_based.dig import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
 
-        assert run_until_halt_or_cycle(_Machine([">@"], IO())) is True
+        machine = _Machine([">"], io=IO())
+        for _ in range(200):
+            if machine.halted:
+                break
+            machine.step()
+        assert machine.halted
+        state = machine.snapshot()
+        machine.step()  # stepping a halted machine must not raise
+        assert machine.snapshot() == state
 
-    def test_looping_ring_is_detected_as_a_cycle(self) -> None:
-        """A mole orbiting a closed direction ring never halts or leaves."""
-        from esolangs.interpreters.grid_based.dig import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
 
-        assert run_until_halt_or_cycle(_Machine([">'", "^<"], IO())) is False
+def _machine(code: object) -> object:
+    from esolangs.interpreters.grid_based.dig import _Machine
+    from esolangs.interpreters.io import IO
+
+    return _Machine(code, IO())
+
+
+class TestContract(CycleContract):
+    """The shared shapes, with this language's own programs."""
+
+    machine = staticmethod(_machine)
+    halting_program: ClassVar[list[str]] = [">@"]
+    looping_program: ClassVar[list[str]] = [">'", "^<"]

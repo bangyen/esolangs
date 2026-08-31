@@ -12,6 +12,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.grapheme import run
+from tests.interpreters.contract import CycleContract, EmptyProgramContract
 
 
 def run_program(code: str, stdin: str = "") -> str:
@@ -193,9 +194,6 @@ class TestErrors:
         with pytest.raises(ValueError, match="uppercase"):
             run_program("hello")
 
-    def test_empty_program(self) -> None:
-        assert run_program("") == ""
-
 
 class TestEdgeCases:
     def test_j_on_an_int_is_identity(self) -> None:
@@ -274,25 +272,6 @@ class TestStepMachine:
         assert machine.io.position() == 1
         assert machine.stack == ["hi"]
 
-    def test_halting_program_is_detected(self) -> None:
-        from esolangs.interpreters.stack_based.grapheme import _Frame, _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        machine = _Machine(ScriptedIO(), 1_000_000)
-        machine.frames.append(_Frame("FAFY", 0))
-        assert run_until_halt_or_cycle(machine) is True
-
-    def test_loop_is_detected_as_a_cycle(self) -> None:
-        # FAFHKMHZ: Z re-runs "KM" (dup then pop, a net no-op on the stack)
-        # forever since the stack never empties -- a genuine state cycle,
-        # not unbounded growth.
-        from esolangs.interpreters.stack_based.grapheme import _Frame, _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        machine = _Machine(ScriptedIO(), 1_000_000)
-        machine.frames.append(_Frame("FAFHKMHZ", 0))
-        assert run_until_halt_or_cycle(machine) is False
-
 
 class TestNumberEncoding:
     """Letters stand for digits, with Z standing for zero.
@@ -326,3 +305,25 @@ class TestNumberEncoding:
         from esolangs.interpreters.stack_based.grapheme import _to_int
 
         assert _to_int("") == 0
+
+
+def _machine(code: object) -> object:
+    """A machine with ``code`` pushed as its first frame.
+
+    Grapheme's machine takes no program: it is built empty and a frame is
+    appended, which is why the shared constructor shape does not fit it.
+    """
+    from esolangs.interpreters.stack_based.grapheme import _Frame, _Machine
+
+    machine = _Machine(ScriptedIO(), 1_000_000)
+    machine.frames.append(_Frame(str(code), 0))
+    return machine
+
+
+class TestContract(EmptyProgramContract, CycleContract):
+    """The shared shapes. ``Z`` re-runs ``KM`` -- dup then pop -- forever."""
+
+    run = staticmethod(run_program)
+    machine = staticmethod(_machine)
+    halting_program = "FAFY"
+    looping_program = "FAFHKMHZ"
