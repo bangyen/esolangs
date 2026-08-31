@@ -164,9 +164,9 @@ def wrap_grid(program: str, width: int) -> str:
 
     Right-aligning pads on the left, so no line ever carries trailing
     whitespace.  The interpreters split on whitespace *runs*
-    (:func:`~esolangs.interpreters.memory.parse_int_memory`, and S*bleq's
-    own ``code.split()``), so the padding is invisible to them and the
-    program means exactly what it did unpadded.
+    (:func:`~esolangs.interpreters.memory.parse_int_memory`), so the
+    padding is invisible to them and the program means exactly what it did
+    unpadded.
     """
     tokens = program.split()
     if not tokens:
