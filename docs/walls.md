@@ -1441,17 +1441,43 @@ linear scan rather than a genuine representation limit.  See
   6673 columns), verified against the interpreter on **all 128 input
   combinations**.  The guard stays at 32 for two measured reasons:
 
-  *Cost, with a heavy tail.*  At the shipped first beam width, five random
-  patterns per domain gave median/worst decode lengths of 51/96 cells at
-  `D == 16`, 1245/2686 at `D == 32`, and 46385/131433 at `D == 64`.  At
-  `D == 64` four of five took 0.7s to 17s and the fifth exceeded a 120s
-  budget.  Most `n == 7` tables build in seconds, but a sizeable minority
-  send the fold somewhere it takes minutes to return from.
+  *Width.*  Random patterns give median/worst decode lengths of 62/120 cells
+  at `D == 16`, 415/1149 at `D == 32`, and 4762/19448 at `D == 64`.  An
+  `n == 7` decode is thousands of cells wide however fast it is found.
+
+  **The heavy tail this entry used to cite is gone, and it had one cause.**
+  The old note recorded four of five `D == 64` patterns taking 0.7s to 17s
+  and the fifth exceeding a 120s budget, with a "sizeable minority" of tables
+  sending the fold somewhere it took minutes to return from.  That minority
+  was the *doubling trap*: `s` squares, so a fold roughly doubles every live
+  value's bit length, and `_wii2d_compress` can only halve when no two values
+  needing different bits collide — a check that fails from the very first
+  state on a wide dense pattern, so nothing ever shrinks again.  Instrumented
+  on a 64-point pattern that never returned, the live count crawled 60 → 19
+  over 14 iterations while `max|v|` went from 3 to over 4300 *digits*, with
+  compress a no-op at every step.  The search was not exploring; it was doing
+  arithmetic on thousand-digit integers.
+
+  Ranking states by magnitude escapes it, but is no strict improvement — over
+  25 sampled 64-point patterns it was 8 wins, 6 losses and 9 ties, and on the
+  pinned `n == 7` table's first column it finds a 120499-cell decode in
+  14.35s where the default finds 6575 in 0.97s.  So it ships as a *fallback*
+  (`_WII2D_MAX_STATE_BITS`): the default pass runs first and is abandoned
+  only once the leading state's magnitude passes the threshold, then the
+  search reruns magnitude-first.  Shipped domains never reach the threshold —
+  peak leading-state bit length is at most 8 at `D == 16` and 148 at
+  `D == 32` over 25 patterns each, against 4096 — so **every shipped program
+  is byte-for-byte what it was**, verified over a 492-record corpus.
+  Measured at `D == 64`, 14 sampled patterns: all 14 now decode, median 1.28s
+  and worst 8.07s, against four over a 120s budget and a 55.73s worst before.
+  One pattern that had not finished in 595s takes 2.73s.
 
   *Accumulator magnitude.*  The fold squares, so intermediates grow.  Peak
   `|acc|` was 9 bits for a sampled dense `n == 5` table and 16 for an
-  `n == 6` one; across five sampled `D == 64` decodes it ranges from 27 to
-  45766 bits, tracking decode length rather than arity.  Measured over every
+  `n == 6` one; across five sampled `D == 64` decodes it ranges from 321 to
+  1723 bits, tracking decode length rather than arity.  (Before the fallback
+  above, the same measurement reached 45766 bits — magnitude is exactly what
+  the retry reduces, though it bounds nothing in principle.)  Measured over every
   start `q` in the domain, not just `q == 0` — with repeated squaring the
   `q == 0` trajectory is not representative.  The wiki specifies no
   accumulator bound and this interpreter uses arbitrary-precision integers,
