@@ -363,18 +363,65 @@ could produce — the mux vanishes under every plant rule tried.
 So a selecting walk yields **one product**, never both and never the mux,
 because the read consumes the selector into the pointer.
 
-**Why no chain can escape the counting argument.**  Any post-embed chain is
-just a suffix string over the same alphabet: stage-2 "reads" are `[<` /
-`[x<[<` emitted after the embed, so the chain family is a *subset* of the
-general suffix space — and the three-input suffix `[[<[<[[[[[[[[[`, once
-stored and now derived by `_rescue`, is itself chain-shaped.  Every chain therefore still yields one printed column
-per (staging, accumulator, read, orientation) slot, so the flat-pool count
-governs chains too.  Composition through the pointer was never going to be
-multiplicative.
+**"Why no chain can escape the counting argument" — REFUTED BY
+CONSTRUCTION** (2026-08-31).  This section used to argue that a chain is
+"just a suffix string over the same alphabet", hence a *subset* of the
+enumerated suffix space, hence governed by the same flat-pool count.  That
+step is wrong, and 78 interpreter-verified programs say so.
 
-One thing this does *not* establish: it is a family-level negative with a
-mechanism, not an exhaustion proof.  Nothing here forbids a composing
-construction that does not route its intermediate through the pointer.
+A chain is **not** a suffix the enumeration can emit.  `_stagings` emits one
+uninterrupted run from `_BASE - 1`; a chain walks to a *chosen* cell, reads,
+walks a chosen gap, and reads again.  Its coordinates are
+`(separator, settle, k, cell, read1, gap, read2, accumulator, orientation)` —
+a strictly larger pool that no `'[' * k` and no single-insert suffix spells.
+Being "over the same alphabet" was never the same as being in the same
+enumeration.
+
+**What was actually measured.**  Sweeping 125440 chains and scoring them
+against what they would *print*:
+
+| sample of unreached four-input tables | chains print | verified |
+|---|---|---|
+| 400 (strided over the unreached 49542) | **78 (19.5%)** | **78/78 on the interpreter** |
+
+All 78 are fully essential, 296-329 characters, four slots.  Projected over
+the whole unreached set that is roughly 9660 tables, taking four-input
+coverage from 24.4% to about **39%** — an extrapolation from a strided
+sample, not a measurement of the space.
+
+**Why it was missed before, and it is not subtle.**  The earlier attempt
+searched the *standing* set: "which chain leaves the answer sitting in a
+cell?"  That question has answers (23 of 200 sampled) and every one of them
+dies on the walk out — which is what "produced easily, destroyed almost every
+time" below records, correctly.  The right question is the **printable** set:
+which chain leaves a tape the ordinary endgame prints correctly.  The chain
+never has to decode position at all; it reshapes the tape so the existing
+print route lands.  Standing and printable are different sets, and the whole
+negative came from searching the wrong one.
+
+That question only became exhaustively askable once `_printed_column` gave a
+closed form for what an endgame prints (see the module docstring): scoring a
+chain costs a walk and a lookup instead of an emitted endgame, which is what
+makes 125440 chains a ten-minute sweep instead of an overnight one.
+
+**What survives.**  The mux analysis below is still correct about what it
+actually examined — `ptr = entry + v + ans` does sum the selector with the
+answer, and the standing answer really is destroyed by the walk's per-row
+prefix-XOR.  It is a true statement about position-decoding, and a false
+statement about chains in general.  The counting argument also still governs
+the *staging family*: nothing here raises what `_stagings` reaches.
+
+**What this does not establish.**  Four inputs is not total — this is a large
+slice of the unreached space, not closure.  And the chain pool is itself
+finite and fixed-size, so it faces the same demand-squares-per-arity problem
+at five inputs; nothing here suggests it closes another arity.
+
+**Reproducing it.**  The prototype is not shipped and nothing in `src/` calls
+it.  `notes/minifuck_chain_sweep.py` runs the sweep (about ten minutes, and it
+carries a positive control so a zero cannot be a forced artifact);
+`notes/minifuck_chain_verify.py` re-derives the hits and runs every one of
+them through the real interpreter, which is the 78/78 above.  `notes/` is
+gitignored, so these are working files rather than a shipped harness.
 
 ### A sound decline exists after all, and it is linear algebra
 
@@ -682,9 +729,11 @@ polynomially, and four is where those curves cross.
 on the tape, so cost is additive in `n` rather than a lookup into a flat pool
 of columns.  The two attempts at that are `4 -> 8` doubling and a decode from
 an accumulated position.  The second has since been worked out in full and
-refuted with its mechanism — see "Composition through the pointer" above,
-which also shows *why* no chain escapes this count: a chain is a suffix, so
-it lives inside the same family being counted here.
+refuted with its mechanism for *position decoding* specifically — see
+"Composition through the pointer" above.  The companion claim that no chain
+escapes this count has since been **refuted by construction**: a chain is not
+a suffix the enumeration emits, and 78 interpreter-verified four-input
+programs sit outside the family counted here.
 
 One honesty note on the above: the exact table is combinatorics and the
 1.8e-05 follows from it, but "constants cannot close 2.8e+05" assumes new
@@ -752,9 +801,10 @@ costing a round to re-derive:
   states achieving the deposit — and neither condition is needed, since `<`
   reconverges for free afterwards.
 - **Length-bounded suffix enumeration.**  A length-8 sweep of mixed suffixes
-  returned zero in 9 seconds; the one table needing a stored exception
-  (`01101101` / `10010010`) closes with a length-14 suffix interleaving two
-  `<` into the bracket run, so no `'[' * k` ever spells it.  Its column is
+  returned zero in 9 seconds; the pair the enumeration misses
+  (`01101101` / `10010010`, once stored and now derived by `_rescue`) closes
+  with a suffix interleaving two `<` into the bracket run, so no `'[' * k`
+  ever spells it.  Its column is
   *abundant* — 14375 of 804600 sparse suffixes leave it standing — but the
   walk's prefix-XOR rewrites the very cell, so the answer is produced easily
   and destroyed almost every time.
