@@ -1,7 +1,9 @@
 # What each text / boolean generator optimizes
 
-Catalog of the size-and-shape optimizations each of the 45 text and 61 boolean
-generators applies to the *emitted program*.
+Catalog of the size-and-shape optimizations each text and boolean generator
+applies to the *emitted program*.  (47 text and 65 boolean as of
+2026-08-30; `esolangs.tools.text.__all__` and `.boolean.__all__` are the
+live counts, and a stated total here goes stale every time one is added.)
 
 "Optimization" here means what the generator does to make its output smaller
 or better-shaped — not the runtime of the generator itself.
@@ -48,7 +50,7 @@ input is far cheaper than parity. Measured 2026-08-28 over all 59 exported
 generators, comparing the best of the six one-dependency tables against
 `01101001` (both ones-count 4):
 
-**Tree-shaped (43).** cvnc, taglate, polynomial, dig, myscript, six_five,
+**Tree-shaped (44 now, `fargo` being the addition below).** cvnc, taglate, polynomial, dig, myscript, six_five,
 addsubjump, sophie, modulous, laserfuck, nevermind, jaune, bitdeque,
 unsquare, flowchart, streetcode, forth, basicfuck, bfpda, ram0,
 forbin_boolean, arrowqueue, back, lamfunc, between, eval, factor, circlefuck,
@@ -68,15 +70,23 @@ collatz_multiverse, container, home_row, nocomment, point_break, qoibl,
 rotfuck, suffolk, suptiftam — all within 4% of parity on a one-dependency
 table, because there is no subtree to collapse.
 
-**Neither (2).** `wii2d` measures *negative* (a one-dependency table costs
-slightly more than parity): its construction is a route search over a grid,
-so neither model describes it. `ztoalc_l` measures a flat **0%** — every
-table in the comparison has ones-count 4 and they all render to exactly the
-same length — because it is a *table lookup*, not a tree or a sum: the row
-index is built arithmetically by double-and-add and the table is one-hot
-encoded into an array, so there are no subtrees to collapse and no per-row
-terms to count. Its size tracks the trajectory peak its command count
-selects from the anchor table.
+**Neither.** Eight generators are exempted from the shape test altogether
+(`_UNSHAPED` in `test_boolean_contract.py`, which is the list of record):
+`wii2d`, `ztoalc_l_boolean`, `minifuck`, `one_two_three`,
+`pct_squared_minus_one`, `slow_acv_mammalian_boolean`, `jaune_multiply` and
+`circlefuck_byte`.  Some are a different shape and some simply raise on the
+`n == 3` tables the test uses — `one_two_three` caps at two inputs, and
+`minifuck` and `pct_squared_minus_one` are parameterized routes whose length
+tracks their embed rather than any table shape.  Two are worth naming for
+their mechanism: `wii2d` measures *negative* (a one-dependency table costs
+slightly more than parity), its construction being a route search over a
+grid; and `ztoalc_l` measures a flat **0%** — every table in the comparison
+has ones-count 4 and they all render to exactly the same length — because it
+is a *table lookup*, not a tree or a sum: the row index is built
+arithmetically by double-and-add and the table is one-hot encoded into an
+array, so there are no subtrees to collapse and no per-row terms to count.
+Its size tracks the trajectory peak its command count selects from the
+anchor table.
 
 **A third shape: algebraic (1).** `fargo` (added 2026-08-30) is neither a
 tree nor a minterm sum but an *algebraic normal form* — the XOR of the
@@ -297,10 +307,20 @@ which name fills each slot while building its tree on the permuted table.
 
 **Shipped:** `six_five`, `jaune`, `eval`, `circlefuck`, `unsquare`, `sbleq`,
 `three_x`, `forth`, `sophie`, `polynomial`, `addsubjump`, `streetcode`,
-`laserfuck`, `back`, `cvnc` (via `best_input_order`; `six_five`, `forth`,
+`laserfuck`, `back`, `cvnc`, `basicfuck`, `myscript`, `nevermind`, `between`,
+`forbin_boolean`, `lamfunc`, `bitdeque`, `ram0` (`six_five`, `forth`,
 `streetcode` and `laserfuck` roll their own — the two grid ones because their
 `width` has to choose among *every* candidate, and `best_input_order` returns
-only the shortest. `back` has no width, so it uses the wrapper).
+only the shortest; `back` has no width, so it uses the wrapper).
+
+The authority for that list is
+`grep -rn 'best_input_order(truth_table' src/`, not this paragraph: a
+generator that grows a reorder is not required to touch this file, so the
+names here lag.  `bitdeque`'s is the one worth reading, because it is *not*
+the free reorder the roadmap still lists as open — its rotations happen
+inside the tree (`EJECT PUSH`, `POP INJECT`, two commands per position),
+while the load block stays byte-identical because the `{Xi}` setter's parity
+is derived from the input's name.
 
 **Not applicable — sum-of-minterms**, where the minterm count does not depend
 on split order: `a_painter_ant`, `circlefuck_byte`, `circuit_diagram`, `cod`,
