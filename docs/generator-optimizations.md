@@ -68,15 +68,16 @@ It measured 74.1% when first added and 74.5% once its reorder shipped the
 same day — the one-dependency table it is scored on is exactly the case the
 reorder improves, so this figure moves when that build changes.
 
-**Minterm-shaped (10).** a_painter_ant, bfstack, bit_tilde,
+**Minterm-shaped (9).** a_painter_ant, bfstack,
 collatz_multiverse, container, point_break, qoibl,
 rotfuck, suffolk, suptiftam — all within 4% of parity on a one-dependency
 table, because there is no subtree to collapse.
 
-**Reducing (3).** `home_row`, `cod` and `nocomment` were on that list until
-2026-08-30 and are still minterm sums; they now gain **60.6%**, **92.5%**
-and **27.3%** respectively on a one-dependency table by *dependency
-reduction* (10) rather than by folding. That is a distinction the shape test would
+**Reducing (4).** `home_row`, `cod`, `nocomment` and `bit_tilde` were on
+that list until 2026-08-30/31 and are still minterm sums; they now gain
+**60.6%**, **92.5%**, **27.3%** and **81.5%** respectively on a
+one-dependency table by *dependency reduction* (10) rather than by
+folding. That is a distinction the shape test would
 otherwise lose, so they are carried in their own `_REDUCING` category
 rather than relabelled tree-shaped: the gain tracks dropped *arity*, and
 reordering does not become applicable to them the way it would if they had
@@ -302,7 +303,7 @@ zero rows and inverting — one term saved per row, paid for once.
 | `qoibl`, `bit_tilde`, `grapheme` | fewer minterms; grapheme picks whichever row-set is shorter |
 | `container` | `OUT` spends one `+1 S{row}>=Gout` line per one-row, so a dense table sums its zero rows from a 49 start and subtracts — 12.7% on the densest n=4 table. The per-row survivor blocks are fixed and unaffected |
 
-### Dependency reduction (10) — taglate, minifuck, home_row, cod, grapheme, nocomment, circuit_diagram
+### Dependency reduction (10) — seven generators
 
 A table ignoring an input is emitted as the *smaller* table, still
 consuming the rest. `essential_inputs` (in `boolean/helpers.py`, promoted
@@ -396,6 +397,23 @@ and that is set by the interface rather than by the construction:
   generalized from "reads no literal" to "reads the ones that matter" —
   worth remembering that a generator's own constant special-case is often a
   reducer already written for one table.
+
+- **`bit_tilde` reads into a cell it then never copies out of.** Its cost is
+  per one-row *and* per input within it — each minterm pre-copies one cell
+  per input and nests one `{` test per input — so dropping an input removes
+  rows and shortens the rows that survive. The reads stay (one `)` each,
+  and they are the interface); an ignored input is simply read into its own
+  cell and never copied out. 778 → **144** at `n == 3` (81.5%), and 2425 →
+  **237** at `n == 4` (90.2%).
+
+  **One trap, and it is the kind only execution finds.** `(` prints cell 7's
+  window and input 0's bit lands there, so it must be consumed whether or
+  not the table depends on it. The stock generator did that as a side effect
+  of its first copy; when input 0 is *ignored* nothing else touches cell 7
+  and the program prints the input bit rather than the answer. That is
+  exactly the 16 tables at `n <= 3` which ignore input 0, and it cost a
+  60-row gate failure before an explicit `{ ~ }` clear was added. **A cell
+  that a construction incidentally cleans is load-bearing.**
 
 **What to check on the next candidate.** The win is available wherever cost
 tracks *arity* rather than the table's contents, which is why it crosses the
