@@ -196,20 +196,68 @@ state.  Confirmed over 4000 random programs: none failed to halt, and the
 step count never exceeded the program length.  This is also why the language
 needs no hang detector.
 
-### The staging method does not scale to n = 4
+### The n = 4 wall was a wall around the *suffix*, and it has partly fallen
 
-The arithmetic says so before any sweep.  Of the 65536 four-input tables only
-**942 (1.4%) are degenerate** — those project onto the completed `n <= 3`
-plans and are already search-free.  The other 64594 are fully essential, and
-a staging offers only ~52 slots; at the hit rate measured at `n == 3` (13
-pairs per staging) covering the arity would need **>= 2484 distinct
-stagings** against the 63 that suffice at `n == 3`.  Deriving rather than
-storing does not change this — the enumeration would still have to *reach*
-those stagings.  Measured rather than extrapolated: sweeping every separator
-and settle at `n == 4` reaches 1200 distinct 16-bit columns, 1012 of them
-fully essential — **1.6%** of the arity even if every one were usable.
-Closing `n == 4` needs a mechanism producing columns in bulk, which is a
-different design, not more sweeping.
+This section used to say the staging method does not scale to `n == 4`, on a
+counting argument: a staging offers only ~52 slots, and sweeping every
+separator and settle reached 1200 distinct 16-bit columns, 1012 fully
+essential — **1.6%** of the arity even if every one were usable.  It closed
+by saying that closing `n == 4` needs "a mechanism producing columns in
+bulk, which is a different design, not more sweeping."
+
+That was right about the sweeping and wrong about the design being distant.
+**The count was over pure bracket runs**, because `'[' * k` is the only
+suffix `_stagings` spelled.  Admitting a single `<` *inside* the run — one
+string per length becomes `k + 1` — multiplies the yield by nine:
+
+| suffix family, all 5 separators × 2 settles, shipped caps | essential 16-bit columns | share of 64594 |
+|---|---|---|
+| pure runs `'[' * k` (what the old count measured) | 1650 | 2.6% |
+| one `<` inside the run (**shipped**) | **15404** | **23.9%** |
+
+The pure-run row reads 1650 where the old text said 1012; re-measuring at the
+shipped caps is the difference, the earlier sweep having been narrower.  The
+figures above were checked by replaying sampled columns through `_replay`
+before any of them were counted, so they are what the generator reaches and
+not what a harness reported.
+
+This is measured through the shipped caps, and 12 sampled tables from it —
+four-input XOR among them — build through `minifuck()` and print all 16 rows
+correctly on the real interpreter.  XOR is the pointed one: this file
+records it as the four-input table the searches fail on, and it is now
+search-free.
+
+The generalisation was not a guess.  `_EXCEPTIONS`' one stored three-input
+suffix interleaves `<` into its bracket run, so a family no wider than "the
+same run with a `<` in it" was already known to reach columns no `'[' * k`
+reaches; what the measurement settled is *how many*.
+
+**Why 23.9% and not 100%.**  The remaining 76% is not shown unreachable —
+only unreached by this family.  Two axes were measured and are real headroom,
+neither shipped because each multiplies the derivation's cost by more than it
+returns:
+
+| axis | essential columns | note |
+|---|---|---|
+| one `<` (shipped) | 15404 | |
+| per-gap separators (a separator per gap, 5³ combinations) | 12726 | **not** contained in the shipped set: adds 7882 of its own, union **23286 = 36.1%** |
+| two `<` inside the run, at `k <= 12` | 3464 vs 1720 for one `<` at the same `k` | strictly contains the one-`<` set; the axis has not saturated |
+
+So the next raise is available and its price is known: per-gap costs 250
+embeds against 10, and two-`<` about ten times the suffixes.  What is *not*
+available is more of the same sweeping — settle counts of 2 and above
+produce **zero** columns at both `n == 3` and `n == 4`, and instrumentation
+says why: all 352 probes raise from `_find_pool`, so the extra clamp and
+re-walk land the state outside every pool code rather than merely offering
+worse columns.
+
+**The cost this buys, stated plainly.**  At `n <= 3` the derivation stops
+early because every table is placed.  At four it cannot — 76% is unreachable
+— so the enumeration always runs to its caps, about six minutes, paid once
+per process by the first fully-essential four-input table whether it hits or
+misses.  The caps are not slack: coverage climbs to both of them (12256
+tables at `k <= 24` against 15404 at 28), so trimming to buy time trims
+coverage.
 
 A *uniform* rule does not exist either, which is why all four coordinates are
 still enumerated:
