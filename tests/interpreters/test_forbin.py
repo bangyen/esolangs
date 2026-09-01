@@ -1013,6 +1013,156 @@ class TestArgumentThreading:
             )
 
 
+class TestThreadedResources:
+    """Every evaluator argument, loaded in every position that forwards it.
+
+    ``_eval``/``_exec_stmt``/``_call`` thread four things through every
+    recursive step -- the frame, the globals, the bit reader, and the call
+    depth -- and a suite whose programs never *use* one of them in a given
+    position cannot notice that position forwarding the wrong thing.  Each
+    program below puts a load on exactly one resource:
+
+    ``(in 0)`` needs the reader, a bare local name needs the frame, a call
+    needs the globals, and a call nested inside an expression-position
+    call needs the depth, which is read once as ``depth + 1``.
+
+    The positions matter as much as the loads.  A loop bound, a call
+    argument, an assignment right-hand side, and an iteration pattern are
+    four separate forwarding sites, and the whole set is duplicated between
+    the step machine and the recursive evaluator an expression-position
+    call runs in.
+    """
+
+    def test_the_reader_reaches_every_position_that_can_read(self) -> None:
+        """``(in 0)`` in each spot that forwards the reader.
+
+        ``in`` yields one bit, most significant first, so the stdin byte
+        here is ``\xff`` -- a leading 1.  That matters: a leading 0 would
+        make the read indistinguishable from an unset variable, and the
+        test would pass against a reader that was never consulted.
+        """
+        assert (
+            run_program(
+                "main { for i:0..(in 0) { out 0,1,0,0,0,0,0,i; } }", "\xff"
+            )
+            == "@A"
+        )
+        assert (
+            run_program("g a { out 0,1,0,0,0,0,0,a; }\nmain { g (in 0); }\n", "\xff")
+            == "A"
+        )
+        assert run_program("main { x = (in 0); out 0,1,0,0,0,0,0,x; }", "\xff") == "A"
+        assert (
+            run_program("main { for i:((in 0)) { out 0,1,0,0,0,0,0,i; } }", "\xff")
+            == "A"
+        )
+        # inside an expression-position call, which runs recursively
+        assert (
+            run_program(
+                "g { x = (in 0); return x; }\n"
+                "main { y = (g 0); out 0,1,0,0,0,0,0,y; }\n",
+                "\xff",
+            )
+            == "A"
+        )
+
+    def test_the_frame_reaches_every_position_that_reads_a_local(self) -> None:
+        """A bare local name in each spot that forwards the frame."""
+        assert run_program("main { n = 1; for i:0..n { out 0,1,0,0,0,0,0,i; } }") == "@A"
+        assert (
+            run_program("g a { out 0,1,0,0,0,0,0,a; }\nmain { n = 1; g n; }\n") == "A"
+        )
+        assert (
+            run_program(
+                "g { n = 1; return n; }\nmain { y = (g 0); out 0,1,0,0,0,0,0,y; }\n"
+            )
+            == "A"
+        )
+
+    def test_the_globals_reach_every_position_that_can_call(self) -> None:
+        """A call in each spot that forwards the function table."""
+        assert (
+            run_program(
+                "h { return 1; }\nmain { for i:0..(h 0) { out 0,1,0,0,0,0,0,i; } }\n"
+            )
+            == "@A"
+        )
+        assert (
+            run_program(
+                "h { return 1; }\ng a { out 0,1,0,0,0,0,0,a; }\nmain { g (h 0); }\n"
+            )
+            == "A"
+        )
+
+    def test_a_call_nested_in_a_call_is_what_reads_the_depth(self) -> None:
+        """``depth`` is forwarded everywhere and read once, as ``depth + 1``.
+
+        That single read is in ``_call``, so it needs a call reached from
+        *inside* another call's recursive evaluation -- one level of
+        expression-position nesting is not enough to notice a depth that
+        arrived as something other than a number.
+        """
+        assert (
+            run_program(
+                "h { return 1; }\ng { x = (h 0); return x; }\n"
+                "main { y = (g 0); out 0,1,0,0,0,0,0,y; }\n"
+            )
+            == "A"
+        )
+        assert (
+            run_program(
+                "k { return 1; }\nh { x = (k 0); return x; }\n"
+                "g { x = (h 0); return x; }\n"
+                "main { y = (g 0); out 0,1,0,0,0,0,0,y; }\n"
+            )
+            == "A"
+        )
+
+
+class TestPairedLengthsAreNotChecked:
+    """Forbin pairs by position and stops at the shorter side.
+
+    Five ``zip`` calls bind names to values -- parameters to arguments
+    (twice, once per call path), targets to right-hand sides, and loop
+    variables to a row (twice again).  Each passes ``strict=False``, and
+    tightening any one of them to ``strict=True`` turns a length mismatch
+    from a tolerated program into a crash.  The suite ran no program whose
+    two sides differed, so every one of those edits was invisible.
+    """
+
+    def test_arity_mismatch_is_tolerated_on_both_call_paths(self) -> None:
+        """A statement call and an expression call bind arguments separately."""
+        # statement-position call: too few arguments, then too many
+        assert run_program("g a, b { out 0,1,0,0,0,0,0,a; }\nmain { g 1; }\n") == "A"
+        assert run_program("g a { out 0,1,0,0,0,0,0,a; }\nmain { g 1, 0; }\n") == "A"
+        # expression-position call, which binds through the other zip
+        assert (
+            run_program(
+                "g a { return a; }\nmain { x = (g 1, 0); out 0,1,0,0,0,0,0,x; }\n"
+            )
+            == "A"
+        )
+
+    def test_an_assignment_may_have_uneven_sides(self) -> None:
+        """Extra targets stay unset and extra values are dropped."""
+        assert run_program("main { a, b = 1, 0, 1; out 0,1,0,0,0,0,0,a; }") == "A"
+        assert run_program("main { a, b, c = 1, 0; out 0,1,0,0,0,0,0,a; }") == "A"
+
+    def test_a_row_narrower_than_its_variable_list_is_tolerated(self) -> None:
+        """Two loop variables over one-wide rows leave the second unbound."""
+        assert (
+            run_program("main { for (i,j):((0),(1)) { out 0,1,0,0,0,0,0,i; } }") == "@A"
+        )
+        # and again through the recursive evaluator
+        assert (
+            run_program(
+                "g { for (i,j):((0),(1)) { return 0; } return 0; }\n"
+                "main { x = (g 0); out 0,1,0,0,0,0,0,x; }\n"
+            )
+            == "@"
+        )
+
+
 class TestErrorMessages:
     """The wording of a rejection, not merely that one happened.
 
