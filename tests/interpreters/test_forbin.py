@@ -1607,6 +1607,37 @@ class TestSnapshotWithoutTheCycleDetector:
         read = "main {\n a,b,c,d,e,f,g,h = (in 0);\n}\n"
         assert at(read, 0, "HH") != at(read, 1, "HH")
 
+    def test_an_anonymous_function_is_named_by_the_empty_string(self) -> None:
+        """``""`` is a real value here, not a placeholder nobody reads.
+
+        A function literal has no name, and the parser spells that as the
+        empty string.  Nothing *prints* the name, so a mutant storing
+        ``None`` or some other filler instead left every program's output
+        untouched -- but ``frame_entry_key`` carries the name, which is
+        what the hang check compares ancestors on, so the wrong filler
+        changes which recursions are provably non-terminating.
+
+        ``snapshot()`` cannot be used for this: it holds each function's
+        ``repr``, which carries a memory address and differs between runs.
+        ``frame_entry_key`` records the name itself and is stable.
+        """
+        from esolangs.interpreters.other.forbin import _Machine
+
+        machine = _Machine(
+            "main { f = { out 0,1,0,0,1,0,0,0; }; f 0; }", ScriptedIO("")
+        )
+        keys, steps, depth = [], 0, len(machine.frames)
+        while not machine.halted and steps < 200:
+            machine.step()
+            steps += 1
+            if len(machine.frames) > depth:
+                keys.append(machine.frame_entry_key(machine.frames[-1]))
+            depth = len(machine.frames)
+        assert machine.halted
+        assert machine.io.getvalue() == "H"
+        # one frame pushed, for the anonymous function, named ""
+        assert keys == [("", (), 0)]
+
     def test_a_frame_outside_a_loop_reports_a_sentinel(self) -> None:
         """The two loop counters need a value meaning "not in a loop".
 
