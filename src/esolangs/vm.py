@@ -375,50 +375,6 @@ class _ModulousVM(_DelegatingVM):
         self._machine = State.of(program, self._io, rng=Seeded())
 
 
-class _LaserFuckVM(_DelegatingVM):
-    """2D grid; the interpreter describes its own shape.
-
-    Both of the language's random draws come from the seeded generator:
-    the laser's initial heading, and ``*``, which splits a beam in a
-    random perpendicular direction every time it runs.  Passing a fixed
-    ``heading`` instead would pin the first and leave the second loose,
-    and would make every stepped run start the same way rather than
-    sampling the four the language allows.
-    """
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.grid_based.laserfuck import _Machine
-        from esolangs.interpreters.randomness import Seeded
-
-        # Seed 2 draws 0 first, so the laser starts heading up -- the
-        # direction the language's own examples are written for.  Every
-        # later draw, including each ``*`` split, comes from the same
-        # generator, so the whole run is reproducible without any of the
-        # four headings being unreachable by construction.
-        self._machine = _Machine(program.splitlines(), self._io, rng=Seeded(2))
-
-
-class _CODVM(_DelegatingVM):
-    """2D grid with possibly many live cods; the interpreter describes its shape.
-
-    Random junctions are resolved from a seeded generator so stepping is
-    reproducible.  That is this adapter's business rather than the
-    language's, which is why the constructor stays spelled out here.
-    """
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.grid_based.cod import _Machine
-        from esolangs.interpreters.randomness import Seeded
-
-        # Seed 1 sends the wiki's junction example East, the direction its
-        # own walkthrough takes.  Every later junction draws from the same
-        # generator, so a run is reproducible without any branch being
-        # unreachable the way an always-first chooser would make it.
-        self._machine = _Machine(program, self._io, rng=Seeded(1))
-
-
 class _PointBreakVM(_DelegatingVM):
     """Variable store + loop frames; the interpreter describes its own shape."""
 
@@ -472,8 +428,6 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Qoibl": _QoiblVM,
     "Eval": _EvalVM,
     "Modulous": _ModulousVM,
-    "LaserFuck": _LaserFuckVM,
-    "COD": _CODVM,
     "Point Break": _PointBreakVM,
     "ArrowQueue": _ArrowQueueVM,
     "A Painter Ant": _APainterAntVM,
@@ -483,6 +437,8 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
 
 # Languages whose adapter is pure boilerplate over the registry entry.
 _DERIVED_LANGUAGES = (
+    "COD",
+    "LaserFuck",
     "Painfuck",
     "WII2D",
     "Bitdeque",
@@ -572,8 +528,15 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
             # and a stepped VM has to be reproducible, so one is passed
             # wherever it is accepted.  It is optional exactly like ``io``
             # is: the interpreter falls back to ``secrets`` without it.
+            #
+            # The seed comes from the machine.  Which draw a language
+            # wants to start from is a fact about that language -- COD's
+            # own junction example goes East, LaserFuck's grids are
+            # written for a laser heading up -- so the interpreter says
+            # so, rather than every caller having to know.
             if "rng" in inspect.signature(machine.__init__).parameters:
-                self._machine = machine(code, self._io, rng=Seeded())
+                seed = getattr(machine, "reproducible_seed", 0)
+                self._machine = machine(code, self._io, rng=Seeded(seed))
             else:
                 self._machine = machine(code, self._io)
 
