@@ -4270,6 +4270,11 @@ class TestParameterizedOneTwoThree:
     ceiling was the displacement-neutral ``12``/``21`` setter's, not the
     language's: the +-1 fill used here breaks position lockstep, so XOR and
     NAND come out too and all sixteen two-input tables are covered.
+
+    All 256 three-input tables build as well.  The bare mod-four counter
+    carries only popcount *parity* at three inputs, so the tables that are
+    not parity functions need ``3``'s TRUE-backward re-run; ``01111110``,
+    TRUE unless all three inputs agree, was the last to build.
     """
 
     def run(self, program: str) -> str:
@@ -4282,9 +4287,9 @@ class TestParameterizedOneTwoThree:
             template = template.replace(f"{{X{i}}}", ONE if bit else ZERO)
         return template
 
-    @pytest.mark.parametrize("n", [1, 2])
+    @pytest.mark.parametrize("n", [1, 2, 3])
     def test_all_small_tables(self, n: int) -> None:
-        """Every one- and two-input table halts or loops per its entry."""
+        """Every one-, two- and three-input table halts or loops per its entry."""
         from esolangs.tools.boolean import parameterized
 
         for table_int in range(2 ** (2**n)):
@@ -4326,7 +4331,7 @@ class TestParameterizedOneTwoThree:
         from esolangs.interpreters.tape_based.one_two_three import _Machine
         from esolangs.tools.boolean import parameterized
 
-        for n in (1, 2):
+        for n in (1, 2, 3):
             for table_int in range(2 ** (2**n)):
                 table = format(table_int, f"0{2**n}b")
                 template = parameterized.one_two_three(table)
@@ -4368,11 +4373,11 @@ class TestParameterizedOneTwoThree:
             assert len(sizes) == 1, (table, sizes)
 
     def test_wider_tables_are_declined(self) -> None:
-        """A three-input table raises rather than emitting a wrong program."""
+        """A four-input table raises rather than emitting a wrong program."""
         from esolangs.tools.boolean import parameterized
 
-        with pytest.raises(ValueError, match="one- and two-input tables"):
-            parameterized.one_two_three("01101001")
+        with pytest.raises(ValueError, match="three-input"):
+            parameterized.one_two_three("0110100110010110")
 
     def test_an_empty_table_is_declined(self) -> None:
         """A table implying zero inputs raises rather than building nothing.
@@ -4411,7 +4416,7 @@ class TestParameterizedOneTwoThree:
 
         from esolangs.tools.boolean import parameterized
 
-        for n in (1, 2):
+        for n in (1, 2, 3):
             for table_int in range(2 ** (2**n)):
                 table = format(table_int, f"0{2**n}b")
                 template = parameterized.one_two_three(table)
