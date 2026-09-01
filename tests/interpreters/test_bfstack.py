@@ -103,11 +103,11 @@ class TestStepMachine:
         from esolangs.interpreters.stack_based.bfstack import _Machine
 
         machine = _Machine(">+.", ScriptedIO())
-        assert (machine.ind, machine.stk) == (0, [])
+        assert (machine.ind, machine.stk) == (0, ())
         machine.step()  # > pushes 0
-        assert machine.stk == [0]
+        assert machine.stk == (0,)
         machine.step()  # + increments the top
-        assert machine.stk == [1]
+        assert machine.stk == (1,)
         machine.step()  # . prints it
         assert machine.io.getvalue() == "\x01"
         assert machine.halted
