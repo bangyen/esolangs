@@ -890,7 +890,15 @@ class TestStreetcodeRejectionMessages:
         ("horizontal", ["C^O;", "+---+"], "not two-wide at (0, 1) (horizontal)"),
         (
             "vertical",
-            ["+-+    ", "|C|    ", "|^+-+  ", "|^^^|  ", "+-+^|  ", "  |;|  ", "  +-+  "],
+            [
+                "+-+    ",
+                "|C|    ",
+                "|^+-+  ",
+                "|^^^|  ",
+                "+-+^|  ",
+                "  |;|  ",
+                "  +-+  ",
+            ],
             "not two-wide at (2, 1) (vertical)",
         ),
         (
