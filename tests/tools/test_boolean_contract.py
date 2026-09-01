@@ -76,8 +76,16 @@ _TABLES = ["00000000", "01101001"]
 # in this sweep (its n=3 truth tables in test_boolean_tape moved 0.68s ->
 # 1.68s alongside).  Marked for the same reason and with the same caveat --
 # re-measure and drop the entry when the cost comes back down.
+#
+# ``pct_squared_minus_one`` joined 2026-08-31 at 6.45s, having grown with the
+# three-input work: the generator became total at three inputs (e4419a3b) via
+# the threshold ladder (b78f65cd), so this sweep's table now walks the ladder
+# instead of refusing early.  Unlike the two above this is the construction's
+# real cost rather than a regression against a cheaper predecessor, but it is
+# over the one-second rule either way.  Re-measure and drop the entry if the
+# ladder is ever made to pay for itself.
 _SEARCHING_GENERATORS_REGRESSED: frozenset[str] = frozenset(
-    {"minifuck", "slow_acv_mammalian_boolean"}
+    {"minifuck", "pct_squared_minus_one", "slow_acv_mammalian_boolean"}
 )
 
 # Naming the languages rather than timing them at collection time is
