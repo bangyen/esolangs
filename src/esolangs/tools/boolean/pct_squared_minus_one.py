@@ -92,20 +92,30 @@ reset read the weighted sum.  A threshold on a weighted sum is a majority,
 which is why this path builds majority-3 -- the smallest OR of disjoint
 subcubes, and one the composed-affine search cannot reach.
 
-Together the four build 106 of the 256 three-input tables (XOR, XNOR and
-majority among them) and 496 of the 65536 four-input ones; the ladder is
-derived at three inputs and does not run above it, so the four-input figure
-is unchanged.  Tables none of them reaches still raise :class:`ValueError`
-rather than returning a program that computes the wrong function; they are
-*unreached*, not proved unreachable, and ``docs/limitations.md`` records what
-bounds are actually known.
+One bound is known about the ladder: a single reset is one threshold, and only
+104 of the 256 three-input tables are linearly separable, so that shape cannot
+be made total by widening its grid.  What lifts it is not more arithmetic but a
+different *printing command*, which is the fifth construction, :func:`_band`.
 
-One bound *is* known about the ladder: a single reset is one threshold, and
-only 104 of the 256 three-input tables are linearly separable, so this shape
-cannot be made total by widening its grid.  Reaching further needs several
-reset events.  Those do occur -- 24 of the witnesses here cross the limit
-twice or more -- but harnessing them needs a ladder whose rungs are not one
-weight per input, and no such geometry has been measured.
+Every path above prints with ``l``, which spells the accumulator in decimal and
+so needs it to *be* 0 or 1 -- that is what pins the two answer classes to two
+exact values.  ``e`` prints ``chr(acc & 0xFF)``, so a row only has to be
+**congruent** to 48 or 49 mod 256, and with residues rather than values as the
+target the reset can be used once per run of the table instead of once in total.
+The band construction weights each input by a multiple of 256, so every row
+starts congruent; sorting the rows by the weighted sum turns the table into
+runs; and one stage clears each run from the top, since the reset wipes only the
+largest values.  Nothing is searched -- a wiped band thereafter takes the same
+translations as the survivors, so the parking amount cancels out of their
+residue gap and each stage's translation is fixed by a single congruence.
+
+That makes three inputs **total**: all 256 tables build, every one executed on
+the interpreter for all eight input combinations with every fill the same
+length.  Four inputs stay at 496 of 65536, since the ladder and the band are
+derived at three inputs and do not run above it; tables neither reaches there
+still raise :class:`ValueError` rather than returning a program that computes
+the wrong function.  They are *unreached*, not proved unreachable, and
+``docs/limitations.md`` records what bounds are actually known.
 
 Unlike the other parameterized generators, *which* command strings a setter
 uses is derived per table rather than fixed by the language, so a bare

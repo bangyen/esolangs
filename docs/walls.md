@@ -1383,8 +1383,9 @@ linear scan rather than a genuine representation limit.  See
   constant out of `s`/`i` needs ~20+ commands, well outside a length-8 sweep.
 
   **The three-input cap was the padding, not the language.**  Coverage at
-  `n == 3` went 48/256 -> 86/256 (and 154 -> 496 at `n == 4`) — and later to
-  106/256, see the ladder below — by adding a
+  `n == 3` went 48/256 -> 86/256 (and 154 -> 496 at `n == 4`) — later to
+  106/256 with the ladder, and finally to 256/256 with the band
+  construction, both below — by adding a
   third construction that composes one affine setter per input and *searches*
   the composition, rather than reading one slope per column as the two-input
   derivation does.  XOR3 builds, which is no subcube.  What had actually been
@@ -1433,12 +1434,14 @@ linear scan rather than a genuine representation limit.  See
   read it.  A fourth construction, the **threshold ladder**, gives each input
   a weight, subtracts it into a negative accumulator, and lets the reset fold
   every row above the limit onto 0.  That is a threshold on a weighted sum,
-  which is exactly a majority; coverage at `n == 3` went 86/256 -> **106/256**,
+  which is exactly a majority; coverage at `n == 3` went 86/256 -> **106/256**
+  (and later to 256/256, see below),
   majority-3 among the twenty added, at 598 characters and executed on all
   eight rows.
 
-  This does **not** contradict the paragraph above: the reset still cannot
-  *separate* rows that agree.  It merges, and the ladder is what supplies an
+  This does **not** contradict the paragraph above, and neither does the
+  band construction below: the reset still cannot *separate* rows that
+  agree, and the `l` tail bound stands as stated.  It merges, and the ladder is what supplies an
   order for it to merge along — the separation is done by the weights before
   the reset ever fires, and the printing tail is the ordinary gap-1 one.  The
   amplify-then-clamp tail still never fires, and the tail bound stands as
@@ -1456,13 +1459,33 @@ linear scan rather than a genuine representation limit.  See
   it mattered.  Modelling and emitting were reconciled by making the search
   call `_apply` on the code that is actually emitted.
 
-  What bounds the ladder is now stated rather than guessed: one reset is one
+  What bounds the *ladder* is stated rather than guessed: one reset is one
   threshold, and only **104 of the 256** three-input tables are linearly
-  separable, so no widening of the ladder grid can make this shape total.
-  Deepening the suffix to 14 characters on the shipped ladders reached no
-  further table, though 24 witnesses do use two or more reset events, so
-  multi-threshold behaviour exists and is simply not yet harnessed.  The
-  remaining 150 are **unreached, not walled**.
+  separable, so no widening of the ladder grid can make that shape total.
+  That bound is about the ladder, not the language.
+
+  **Three inputs are now total — 256/256 — and the lever was the printing
+  command.**  Everything above prints with `l`, which spells the
+  accumulator in decimal and so needs it to *be* 0 or 1.  `e` prints
+  `chr(acc & 0xFF)`, so a row only has to be **congruent** to 48 or 49 mod
+  256, and with residues as the target the reset can be used repeatedly.
+  The **band construction** weights each input by a multiple of 256 (so all
+  rows start congruent), sorts the rows by the weighted sum — turning the
+  table into runs — and clears one run per stage from the top, since the
+  reset only wipes the largest values.  Survivors are parked back *under*
+  the limit between stages; parking them negative stops drift but also
+  stops the next clamp, which is the bug that cost a rewrite.
+
+  Nothing is searched.  A wiped band thereafter receives the same
+  translations as the survivors, so the parking amount cancels out of their
+  residue gap and each stage's translation is fixed by one congruence,
+  `U ≡ (live − band) − v (mod 256)`.  Each cut's window is one full residue
+  system wide, so exactly one translation in it qualifies — which is why an
+  earlier sweep of a window found precisely one working candidate in about
+  two thousand.  Stage counts follow the run structure exactly:
+  2/14/42/70/70/42/14/2 tables at 0–7 stages.  Programs run 8257–14959
+  characters against the ladder's hundreds, so the path is tried last, and
+  all 256 are interpreter-verified on every row at equal fill length.
 
 - **The Temporary Stack** — **this entry's argument is refuted; the removal
   rested on a bad negative.**  The entry claimed the auto-drain's `front - 1`
