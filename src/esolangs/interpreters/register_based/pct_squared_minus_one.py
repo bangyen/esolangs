@@ -59,6 +59,17 @@ from esolangs.interpreters.io import IO
 type _State = tuple[int, int]
 
 
+def _reset(state: _State) -> _State:
+    """Return ``state`` with an over-3003 accumulator zeroed.
+
+    The magnitude is clamped before each command, and both the transition
+    and the shell's prints need the clamped value, so the rule is defined
+    here once rather than spelled out in each of them.
+    """
+    ind, acc = state
+    return (ind, 0) if acc > 3003 else state
+
+
 def _advance(state: _State, code: str) -> _State:
     """Return the state after executing the command at the code position.
 
@@ -70,7 +81,9 @@ def _advance(state: _State, code: str) -> _State:
 
     The over-3003 reset is applied *before* the command, which is where the
     original loop applied it: a command reads the already-reset accumulator,
-    so ``m`` on 4000 doubles 0, not 4000.
+    so ``m`` on 4000 doubles 0, not 4000.  :func:`_reset` is the single
+    definition of that rule -- the shell calls it too, because the prints
+    must report the same reset value this transition will act on.
 
     ``t`` is the one command that does not fall through to the shared
     increment -- on a nonzero accumulator it rewinds to position 0, and
@@ -81,9 +94,7 @@ def _advance(state: _State, code: str) -> _State:
     shared increment, which is what makes the code position advance exactly
     once per call.
     """
-    ind, acc = state
-    if acc > 3003:
-        acc = 0
+    ind, acc = _reset(state)
     char = code[ind]
     if char == "s":
         acc -= 2
@@ -174,17 +185,15 @@ class _Machine:
         the accumulator, so the pure transition then runs on what they left
         behind and never needs the ``io`` object at all.
 
-        The over-3003 reset is applied here as well as in the transition,
-        because the two prints must report the *reset* accumulator -- they
-        read it before :func:`_advance` gets a chance to clamp it.
+        The prints must report the *reset* accumulator, since they read it
+        before :func:`_advance` runs, so this goes through :func:`_reset`
+        first -- the same function the transition uses, rather than a second
+        copy of the rule.
         """
-        state = self.state
-        ind, acc = state
-        if ind >= self.size:
+        if self.state[0] >= self.size:
             return
-        if acc > 3003:
-            acc = 0
-            state = (ind, acc)
+        state = _reset(self.state)
+        ind, acc = state
         char = self.code[ind]
         if char == "l":
             self.io.print_num(acc)
