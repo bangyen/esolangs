@@ -1459,13 +1459,10 @@ def test_the_generated_ring_program_runs() -> None:
     lap is where that latch is followed through to the turn -- so running a
     generated program is what exercises the merge bookkeeping end to end.
     """
-    import esolangs
-    from esolangs.registry import LANGUAGES
+    from esolangs.tools.text.streetcode import streetcode as generate
 
-    generate = LANGUAGES["Streetcode"].text
-    assert generate is not None
     for text in ("Hi", "Hello, World!"):
-        assert esolangs.run("Streetcode", generate(text)) == text
+        assert run_and_capture(generate(text).split("\n")) == text
 
 
 class TestStreetcodeDriveStates:
@@ -1749,10 +1746,8 @@ class TestStreetcodeGraphBackedStepping:
     @pytest.mark.parametrize("text", ["Hi", "Hello, World!"])
     def test_a_generated_ring_agrees(self, text: str) -> None:
         """The ring program latches a merge, so it drives the latch path."""
-        from esolangs.registry import LANGUAGES
+        from esolangs.tools.text.streetcode import streetcode as generate
 
-        generate = LANGUAGES["Streetcode"].text
-        assert generate is not None
         assert self._lockstep(generate(text).split("\n")) > 1
 
     def test_an_off_graph_state_falls_back(self) -> None:
