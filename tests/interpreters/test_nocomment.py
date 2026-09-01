@@ -84,6 +84,35 @@ class TestNoComment:
             with pytest.raises(ValueError, match="at least one cell"):
                 _Machine("i", ScriptedIO(), size)
 
+    def test_a_one_cell_tape_is_accepted(self) -> None:
+        """One cell is the smallest legal tape, and the guard's own edge.
+
+        ``test_tape_size_must_be_positive`` pins the rejected side and
+        ``test_tape_size_is_configurable`` starts at 2, so nothing stood on
+        the boundary itself: widening the floor to ``<= 1`` or ``< 2``
+        rejects a one-cell tape and no test objected.  One cell is the
+        degenerate wrap -- both ``l`` and ``r`` return to the only cell, so
+        the increments survive a move that would otherwise land elsewhere.
+        """
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            nocomment.run("c" + "i" * 65 + "rlo", IO(), tape=1)
+        assert buffer.getvalue() == "A"
+
+    def test_run_forwards_the_tape_size(self) -> None:
+        """``run`` passes its ``tape`` through, rather than taking the default.
+
+        Every other size test builds a ``_Machine`` directly, so dropping
+        the argument at ``run``'s only call site left the default in place
+        with nothing to notice.  A two-cell tape makes ``rr`` a full lap
+        back to the marked cell; on the 4096-cell default the same program
+        stops two cells away and prints a fresh zero.
+        """
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            nocomment.run("c" + "i" * 65 + "rro", IO(), tape=2)
+        assert buffer.getvalue() == "A"
+
     def test_stack_push_pop(self) -> None:
         """n pushes the cell; f pops into it."""
         assert run_and_capture("c" + "i" * 65 + "n" + "f" + "o") == "A"
