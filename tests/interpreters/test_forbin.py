@@ -21,6 +21,54 @@ def run_program(code: str, stdin: str = "") -> str:
     return io.getvalue()
 
 
+def walk_until_halt_or_ancestor(machine: object, limit: int = 64) -> bool:
+    """Step ``machine`` until it halts or a call provably replays an ancestor.
+
+    A local copy of the shared framed-machine walk, deliberately *not*
+    imported: the mutation harness cannot inline the shared module, so a
+    test that reached for it was dropped from the bundle whole -- taking
+    with it every mutant that only these programs catch.  Driving the
+    interpreter's own ``_Machine`` here keeps the class in the run.
+
+    Each newly-pushed frame is compared against the frames beneath it via
+    ``machine.frame_entry_key``.  A frame entering the same function, with
+    the same bindings, at the same input position as an ancestor is about
+    to replay what that ancestor is still in the middle of, so the
+    recursion cannot terminate: returns ``False``.  Returns ``True`` when
+    the machine halts first.
+
+    ``limit`` bounds the walk in *pushes examined*; exhausting it raises
+    :class:`TimeoutError` rather than returning a verdict, so a program the
+    check cannot decide is never reported as halting.  ``steps`` is a
+    second belt for a mutant that neither halts nor pushes -- without it
+    such a mutant spins until the harness alarm rather than failing fast.
+    """
+    keys: dict[int, object] = {}
+    pushes, steps = 0, 0
+    while pushes < limit:
+        if machine.halted:
+            return True
+        if steps >= 20000:
+            raise AssertionError("walk made no progress: neither halted nor pushed")
+        depth_before = len(machine.frames)
+        machine.step()
+        steps += 1
+        if len(machine.frames) <= depth_before:
+            continue
+        pushes += 1
+        depth = len(machine.frames) - 1
+        # A shallower frame at this index belongs to a call that has since
+        # returned, so drop it rather than compare against a dead ancestor.
+        keys = {d: k for d, k in keys.items() if d < depth}
+        keys[depth] = machine.frame_entry_key(machine.frames[-1])
+        if keys[depth] in [k for d, k in keys.items() if d < depth]:
+            return False
+    raise TimeoutError(
+        f"undecided after {limit} pushed frames: neither halted nor repeated "
+        "an ancestor's entry state"
+    )
+
+
 class TestOutput:
     def test_out_literals(self) -> None:
         code = "main { out 0,1,0,0,1,0,0,0; }"
@@ -598,26 +646,25 @@ class TestForbinMutationSurvivors:
 class TestForbinAncestorHangDetection:
     """Infinite recursion, proven rather than waited out.
 
-    ``run_until_halt_or_cycle`` cannot catch a Forbin hang: a call that
+    A whole-state cycle detector cannot catch a Forbin hang: a call that
     never returns pushes one frame per step and pops none, so the
     whole-machine snapshot grows forever and never repeats.  Every Forbin
     hang is in that unbounded-growth class, which is why this language had
     no hang test at all and leaned on the wall-clock backstop -- the one
     that deadlocks under ``pytest --cov`` (see ``docs/walls.md``).
 
-    ``run_until_halt_or_ancestor`` is the narrower check that class allows:
-    a frame entering the same function, with the same bindings, at the same
-    input position as an ancestor is about to replay what that ancestor is
-    still in the middle of.
+    :func:`walk_until_halt_or_ancestor` is the narrower check that class
+    allows: a frame entering the same function, with the same bindings, at
+    the same input position as an ancestor is about to replay what that
+    ancestor is still in the middle of.  What it keys on is the
+    interpreter's own ``frame_entry_key``, which is what these tests pin.
     """
 
     @staticmethod
     def _verdict(code: str, stdin: str = "") -> bool:
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.other.forbin import _Machine
-        from esolangs.vm import run_until_halt_or_ancestor
 
-        return run_until_halt_or_ancestor(_Machine(code, ScriptedIO(stdin)))
+        return walk_until_halt_or_ancestor(_Machine(code, ScriptedIO(stdin)))
 
     def test_an_unconditional_self_call_is_a_proven_hang(self) -> None:
         """``f`` calls itself with nothing changed, so it never returns."""
@@ -672,9 +719,7 @@ class TestForbinAncestorHangDetection:
         seconds to answer wrongly, once per mutant, which is what made a
         mutation run of this module crawl.
         """
-        from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.other.forbin import _Machine
-        from esolangs.vm import run_until_halt_or_ancestor
 
         class _NeverRepeats(_Machine):
             """Stands in for any mutant whose key stops repeating."""
@@ -687,7 +732,7 @@ class TestForbinAncestorHangDetection:
 
         machine = _NeverRepeats("main {\n f {\n  f 0;\n }\n f 0;\n}\n", ScriptedIO(""))
         with pytest.raises(TimeoutError, match="undecided"):
-            run_until_halt_or_ancestor(machine)
+            walk_until_halt_or_ancestor(machine)
 
 
 class TestArgumentThreading:
