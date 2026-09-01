@@ -160,6 +160,42 @@ class TestStepMachine:
         assert run_until_halt_or_cycle(_Machine(".", IO())) is False
         assert run_until_halt_or_cycle(_Machine("<", IO())) is False
 
+    def test_snapshot_includes_the_input_cursor(self) -> None:
+        """Reading a byte changes the state, even when nothing else does.
+
+        ``,`` adds the byte into the accumulator, so a program that reads
+        the same value twice leaves the tape and accumulator looking
+        untouched between the two reads -- identical on every field except
+        how much input is left.  Without the cursor those compare equal, and
+        the detector calls a program periodic when it is one read away from
+        EOF.  Two boolean-generator programs did exactly that.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.suffolk import _Machine
+
+        machine = _Machine(",", ScriptedIO("\x00\n\x00\n"))
+        before = machine.snapshot()
+        machine.step()  # consumes a line; acc stays 0 because the byte is NUL
+        assert machine.acc == before[2]  # nothing else moved
+        assert machine.snapshot() != before
+
+    def test_a_program_that_reads_is_not_called_periodic(self) -> None:
+        """A read one byte from EOF must not be reported as a hang.
+
+        The cursor makes each read a fresh state, so the detector runs the
+        program out to the ``EOFError`` instead of stopping at a repeat that
+        only looked like one.
+        """
+        import pytest
+
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.suffolk import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        machine = _Machine(",.", ScriptedIO("A\n"))
+        with pytest.raises(EOFError):
+            run_until_halt_or_cycle(machine)
+
     def test_snapshot_excludes_pass_count(self) -> None:
         from esolangs.interpreters.tape_based.suffolk import _Machine
 
