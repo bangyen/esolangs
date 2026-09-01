@@ -82,6 +82,19 @@ class TestOperations:
     def test_multiply(self) -> None:
         assert run_and_capture("||3|*|4||p.") == "12"
 
+    def test_arithmetic_reads_through_a_variable(self) -> None:
+        """An operand may be a variable, which has to be resolved first.
+
+        Both operands are literals everywhere else, so the step that looks
+        a name up before operating on it was never exercised on this path
+        -- an operand left unresolved is not an integer at all.
+        """
+        assert run_and_capture("'x'v.\n[x]s|3|\n|[x]*|2||p.") == "6"
+        assert (
+            run_and_capture("'x'v.\n[x]s|3|\n|4|f([x]>|1|)\n'no'p.\n'yes'p.")
+            == "yes"
+        )
+
     def test_multiply_non_integer_halts(self) -> None:
         with pytest.raises(HaltError, match="two integers"):
             run_and_capture("'a'*|2|")
@@ -183,6 +196,18 @@ class TestControlFlow:
 class TestParsing:
     def test_apostrophe_escape(self) -> None:
         assert run_and_capture("'can''t'p.") == "can't"
+
+    def test_a_string_that_is_only_an_escaped_apostrophe(self) -> None:
+        """``''''`` is one apostrophe, and the tightest case for the scan.
+
+        ``'can''t'`` has letters on both sides of the pair, so the scan
+        reaches it already inside the literal and leaves it with more to
+        read.  Here the pair is the whole content: the scan meets it
+        immediately after the opening quote, and mistaking either half for
+        the terminator ends the string early.
+        """
+        assert run_and_capture("''''p.") == "'"
+        assert run_and_capture("''p.") == ""
 
     def test_nested_pipe_expression(self) -> None:
         code = "'v'v.\n[v]s|[v]+|1||\n[v]p."
