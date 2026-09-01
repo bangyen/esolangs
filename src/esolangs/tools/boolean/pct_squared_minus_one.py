@@ -111,10 +111,19 @@ residue gap and each stage's translation is fixed by a single congruence.
 
 That makes three inputs **total**: all 256 tables build, every one executed on
 the interpreter for all eight input combinations with every fill the same
-length.  Four inputs stay at 496 of 65536, since the ladder and the band are
-derived at three inputs and do not run above it; tables neither reaches there
-still raise :class:`ValueError` rather than returning a program that computes
-the wrong function.  They are *unreached*, not proved unreachable, and
+length.
+
+Three is also where it stops, for a reason that can be counted.  Distinct row
+sums need weights behaving like a binary code, so at least ``2**n - 1`` units,
+while the limit allows only ``3003 // 256 == 11`` -- and four inputs need 15.
+At unit 256 there are 72 usable weightings at three inputs and none at four.  A
+smaller unit brings weightings back but breaks what the derivation rests on:
+each cut's window is then narrower than the 256 the congruence needs, so the
+required translation falls outside it.  Measured on random samples, 1 of 400
+four-input tables derives (and that one needs no stages at all) and 0 of 120 at
+five.  Four inputs therefore stay at 496 of 65536; tables the other paths do not
+reach there still raise :class:`ValueError` rather than returning a program that
+computes the wrong function.  They are *unreached*, not proved unreachable, and
 ``docs/limitations.md`` records what bounds are actually known.
 
 Unlike the other parameterized generators, *which* command strings a setter
