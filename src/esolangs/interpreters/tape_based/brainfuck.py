@@ -5,7 +5,7 @@ left edge, and loops are matching-bracket.  The transpiler targets are held
 to these same semantics, which is what lets each one be verified
 end-to-end.
 
-The execution model is a pure function over an immutable :class:`_State`:
+The execution model is a pure function over an immutable ``_State``:
 :func:`_advance` maps a state and a command to the next state, and never
 mutates what it is given.  It takes no ``io`` argument at all, so it is
 total and side-effect free by construction rather than by inspection.  The
@@ -16,7 +16,7 @@ than rebuilding.
 :class:`_Machine` is the mutable shell the interpreter protocol requires
 (``esolangs.vm`` wraps it, ``run_until_halt_or_cycle`` steps it, and
 ``factor.py`` drives a decoded program through it).  It holds one
-:class:`_State` and rebinds it each step, so the mutation lives in exactly
+``_State`` and rebinds it each step, so the mutation lives in exactly
 one assignment and every rule about what brainfuck *does* stays in the pure
 layer.  The one effect a command can have, ``.`` and ``,``'s I/O, is done
 by ``step`` before it calls the pure transition -- effects in the shell,
@@ -36,36 +36,34 @@ program terminates with an error rather than a graceful halt.
 from __future__ import annotations
 
 import sys
-from typing import NamedTuple
 
 from esolangs.interpreters.brackets import match_brackets as matches
 from esolangs.interpreters.io import IO
 
-
-class _State(NamedTuple):
-    """One instant of a run: the tape, the pointer, and the code position.
-
-    A NamedTuple rather than a mutable record because every transition
-    below returns a new state instead of editing one in place.  The tape is
-    a ``tuple`` for the same reason, and it buys the hashability that the
-    cycle detector needs: ``snapshot`` can hand this object's fields back
-    without copying a list into a tuple first.
-
-    The code and its bracket map are deliberately *not* here.  Neither
-    changes during a run, so carrying them in the state would put constant
-    data in every value the cycle detector stores.  They are parameters to
-    the transition functions instead.
-
-    The field order is ``ind, ptr, tape`` because ``snapshot`` unpacks this
-    tuple directly, and ``_advance`` and ``_step_effect`` unpack it
-    positionally -- it is also the order ``snapshot`` returned before the
-    state became a value.  Reordering the fields would silently reorder
-    every snapshot with it.
-    """
-
-    ind: int
-    ptr: int
-    tape: tuple[int, ...]
+#: One instant of a run: ``(ind, ptr, tape)`` -- the code position, the
+#: pointer, and the tape.  A value, not a record: every transition below
+#: returns a new one rather than editing one in place, and the tape is a
+#: ``tuple`` for the same reason.  That also buys the hashability the cycle
+#: detector needs, so ``snapshot`` can unpack a state as it stands instead
+#: of copying a list into a tuple first.
+#:
+#: A plain tuple rather than a ``NamedTuple``: the fields are read by
+#: unpacking in the two places that use them, so the names bought little,
+#: and ``NamedTuple.__new__`` is Python-level where the tuple constructor is
+#: C-level -- measured 2.7x slower to build, at one build per step.  The
+#: state is internal, so the representation is not observable: ``snapshot``
+#: returns unpacked contents either way.
+#:
+#: The code and its bracket map are deliberately *not* in here.  Neither
+#: changes during a run, so carrying them would put constant data in every
+#: value the cycle detector stores.  They are parameters to the transition
+#: functions instead.
+#:
+#: The field order is ``ind, ptr, tape`` because ``snapshot`` unpacks a
+#: state directly into its return value, and that was the order it returned
+#: before the state became a value.  Reordering would silently reorder every
+#: snapshot with it.
+type _State = tuple[int, int, tuple[int, ...]]
 
 
 def _written(tape: tuple[int, ...], ptr: int, value: int) -> tuple[int, ...]:
@@ -80,21 +78,20 @@ def _written(tape: tuple[int, ...], ptr: int, value: int) -> tuple[int, ...]:
 
 
 def _advance(state: _State, code: str, brackets: dict[int, int]) -> _State:
-    """Return the state after executing the command at ``state.ind``.
+    """Return the state after executing the command at the code position.
 
     Pure: it reads ``state`` and returns a new one, and every command that
-    is not I/O is decided entirely here.  ``.`` and ``,`` reach the ``io``
-    object, so their *effect* is done by the caller and this function sees
-    only what they leave behind -- ``.`` changes no state at all, and
+    is not I/O is decided entirely here.  It takes no ``io`` argument, so
+    ``.`` and ``,`` are necessarily the caller's business; this function
+    sees only what they leave behind -- ``.`` changes no state at all, and
     ``,``'s new cell value arrives already written.
 
-    The fields are unpacked to locals and a single :class:`_State` is built
-    at the end, rather than each branch deriving a state from the last.
-    That is a measured choice, not a style one: threading the state through
-    per-branch ``_replace`` calls cost two rebuilds per step and made the
-    interpreter ~5.6x slower than the mutable original, where building once
-    is ~2x.  ``_replace`` goes through ``_make`` and a fresh ``__new__``,
-    so it is the expensive way to say what ``_State(...)`` says directly.
+    The fields are unpacked to locals and one state is built at the end,
+    rather than each branch deriving a state from the last.  That is a
+    measured choice, not a style one: threading the state through
+    per-branch rebuilds cost two constructions per step and made the
+    interpreter ~5.6x slower than the mutable original, against ~2x for
+    building once.
 
     Anything that is not one of the eight commands is a comment and falls
     through to the shared increment, which is what makes the code position
@@ -119,11 +116,11 @@ def _advance(state: _State, code: str, brackets: dict[int, int]) -> _State:
         # Both brackets are one rule with the test inverted, and the jump
         # lands on the partner: the increment below steps past it.
         ind = brackets[ind]
-    return _State(ind + 1, ptr, tape)
+    return (ind + 1, ptr, tape)
 
 
 class _Machine:
-    """A Brainfuck run: one immutable :class:`_State`, rebound per step.
+    """A Brainfuck run: one immutable ``_State``, rebound per step.
 
     The protocol the rest of the library expects (``step``, ``halted``,
     ``snapshot``, and the ``ind``/``ptr``/``tape`` attributes ``vm.py``
@@ -142,7 +139,7 @@ class _Machine:
         # once by ``step``'s guard -- so the length is taken once here
         # rather than recomputed on every one of those reads.
         self.size = len(code)
-        self.state = _State(ind=0, ptr=0, tape=(0,))
+        self.state: _State = (0, 0, (0,))
 
     # ``vm.py`` reads these three off the machine, and ``factor.py``
     # snapshots through it.  They are views on the current state rather
@@ -150,19 +147,19 @@ class _Machine:
 
     @property
     def tape(self) -> tuple[int, ...]:
-        return self.state.tape
+        return self.state[2]
 
     @property
     def ptr(self) -> int:
-        return self.state.ptr
+        return self.state[1]
 
     @property
     def ind(self) -> int:
-        return self.state.ind
+        return self.state[0]
 
     @property
     def halted(self) -> bool:
-        return self.state.ind >= self.size
+        return self.state[0] >= self.size
 
     # The VM's language-shaped view: Tape + pointer; ip is the code cursor, memory the
     # tape.
@@ -200,16 +197,14 @@ class _Machine:
         behind and never needs the ``io`` object at all.
         """
         state = self.state
-        ind = state.ind
-        if ind >= self.size:
+        if state[0] >= self.size:
             return
+        ind, ptr, tape = state
         char = self.code[ind]
         if char == ".":
-            self.io.print_char(chr(state.tape[state.ptr]))
+            self.io.print_char(chr(tape[ptr]))
         elif char == ",":
-            ptr = state.ptr
-            byte = self.io.input_char()
-            state = _State(ind, ptr, _written(state.tape, ptr, byte))
+            state = (ind, ptr, _written(tape, ptr, self.io.input_char()))
         self.state = _advance(state, self.code, self.brackets)
 
 
