@@ -32,6 +32,7 @@ _COMPILER_NAMES = {
     "forbin": "Forbin",
     "container": "Container",
     "cvnc": "CV(N)(C)",
+    "myscript": "MyScript",
 }
 
 _COMPILER_DIRS = {
