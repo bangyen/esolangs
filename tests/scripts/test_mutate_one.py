@@ -86,3 +86,95 @@ class TestRewriteImports:
             "grid_based.streetcode",
         )
         assert out.strip() == "from bundled import _Machine"
+
+
+class TestDropUnbundledTests:
+    """What counts as reaching past the bundle, and what only looks like it.
+
+    A dropped test is invisible in the score: it does not fail, it stops
+    existing, and the mutants only it could kill read as survivors.  So
+    both directions matter -- dropping a test that would have run costs
+    coverage silently, and keeping one that cannot run marks every mutant
+    killed for the wrong reason.
+    """
+
+    def test_a_reach_is_dropped_however_it_is_spelled(self) -> None:
+        """Every syntax that actually leaves the bundle still cuts the test."""
+        script = load_script()
+        reaches = (
+            "from esolangs.vm import run_until_halt_or_cycle",
+            "from esolangs.registry import LANGUAGES",
+            "import esolangs.vm",
+            'import esolangs; esolangs.run("brainfuck", "+")',
+        )
+        for reach in reaches:
+            src = (
+                "\nclass TestX:\n"
+                "    def test_reaches(self) -> None:\n"
+                f"        {reach}\n"
+            )
+            out, dropped = script._drop_unbundled_tests(src)  # noqa: SLF001
+            assert dropped == 1, reach
+            assert "test_reaches" not in out, reach
+
+    def test_naming_a_module_in_prose_is_not_a_reach(self) -> None:
+        """A comment or docstring must not cut the test that carries it.
+
+        This is a real regression, not a hypothetical.  The check used to
+        be a substring scan over the test's text, which cannot tell an
+        import from a mention of one -- so a test whose docstring
+        explained *why* it copies a shared helper was dropped whole, and
+        the mutants only its programs catch went quietly missing.
+
+        The last case is the other half: a module named inside a *string*
+        is data, not an import, and this suite really does carry program
+        text spelled that way.
+        """
+        script = load_script()
+        mentions = (
+            "# unlike esolangs.vm, this one needs no shared walk",
+            'x = "from esolangs.vm import run_until_halt_or_cycle"',
+            "x = 'mirrors the walk in esolangs.registry, deliberately'",
+        )
+        for mention in mentions:
+            src = (
+                "\nclass TestX:\n"
+                "    def test_mentions(self) -> None:\n"
+                f"        {mention}\n"
+                "        assert True\n"
+            )
+            out, dropped = script._drop_unbundled_tests(src)  # noqa: SLF001
+            assert dropped == 0, mention
+            assert "test_mentions" in out, mention
+
+    def test_a_module_named_in_a_docstring_is_not_a_reach(self) -> None:
+        """The near-miss that prompted this: a test explaining its own copy."""
+        script = load_script()
+        quotes = '"' * 3
+        src = (
+            "\nclass TestX:\n"
+            "    def test_mentions(self) -> None:\n"
+            f"        {quotes}Mirrors the walk in esolangs.vm.{quotes}\n"
+            "        assert True\n"
+        )
+        out, dropped = script._drop_unbundled_tests(src)  # noqa: SLF001
+        assert dropped == 0
+        assert "test_mentions" in out
+
+    def test_a_test_calling_a_reaching_helper_is_dropped(self) -> None:
+        """The reach can be one call deep, and the caller carries no marker."""
+        script = load_script()
+        src = (
+            "\ndef _verdict(machine):\n"
+            "    from esolangs.vm import run_until_halt_or_cycle\n"
+            "    return run_until_halt_or_cycle(machine)\n"
+            "\nclass TestX:\n"
+            "    def test_uses_helper(self) -> None:\n"
+            "        assert _verdict(None)\n"
+            "\n    def test_independent(self) -> None:\n"
+            "        assert True\n"
+        )
+        out, dropped = script._drop_unbundled_tests(src)  # noqa: SLF001
+        assert dropped == 1
+        assert "test_uses_helper" not in out
+        assert "test_independent" in out

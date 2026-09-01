@@ -56,6 +56,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import textwrap
 import time
 from pathlib import Path
 
@@ -66,19 +67,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 # Tests that reach past the interpreter -- into the VM or the registry --
 # cannot run against a bundle, which inlines neither.  They are dropped from
 # the copied test file, so the score is over the tests that can run.
-#
-# ``esolangs.run(`` is the same reach by another spelling: it dispatches
-# through the registry, so it runs the *installed* interpreter rather than
-# the bundle.  A bare ``import esolangs`` is not an import the rewrite can
-# repoint, so these calls were left pointing at the real package -- which
-# only shows when a test asserts the exception it raises.  Point Break's
-# error suite does, and failed its baseline outright, taking the whole
-# language's score with it.
-_UNBUNDLED = ("esolangs.vm", "esolangs.registry", "esolangs.run(")
+# :func:`_reaches_unbundled` is what decides that, reading each test's
+# syntax rather than its text.
 
 # Packages the bundle does not inline, whose imports must therefore keep
-# resolving against the installed package.  This is deliberately *not*
-# ``_UNBUNDLED``: that constant also drives ``_drop_unbundled_tests``, and a
+# resolving against the installed package.  This is deliberately *not* the
+# set :func:`_reaches_unbundled` drops on: that judgement cuts a test, and a
 # test importing one of these is still perfectly runnable -- BrainIf's suite
 # checks its own generated hello-world through ``esolangs.tools.text``, which
 # only needs to be left alone, not cut.  Rewriting it to ``from bundled
@@ -116,11 +110,73 @@ def _test_file(module: str) -> Path:
     return path
 
 
+def _reaches_unbundled(node: ast.AST) -> bool:
+    """Return whether ``node``'s subtree really reaches past the bundle.
+
+    This reads the syntax rather than the text.  A substring scan cannot
+    tell a reach from a *mention* of one, and the mention is not
+    hypothetical: a comment or docstring naming one of the modules dropped
+    the test that carried it, silently, exactly as an import would.  The
+    walk below cannot see prose at all, so the hazard is gone by
+    construction rather than by remembering to phrase comments carefully.
+
+    Three shapes count, which is every shape the suite uses:
+
+    * ``from esolangs.vm import ...`` and ``from esolangs.registry import
+      ...``, plus any submodule of either -- an ``ImportFrom`` whose module
+      is the package or below it.
+    * ``import esolangs.vm`` -- the same reach, spelled as a plain
+      ``Import``.  No test spells it this way today; it is covered because
+      the cost of missing one is a test that cannot fail for any mutant.
+    * ``esolangs.run(...)`` -- an ``Attribute`` call on the package, which
+      dispatches through the registry and so runs the *installed*
+      interpreter rather than the bundle.  A bare ``import esolangs`` is
+      not an import the rewrite can repoint, so these calls were left
+      pointing at the real package -- which only shows when a test asserts
+      the exception it raises.  Point Break's error suite does, and failed
+      its baseline outright, taking the whole language's score with it.
+
+    A string is not a reach.  ``"from esolangs.vm import ..."`` appears in
+    this suite as *data* -- program text a test feeds to something else --
+    and the docstrings carry ``:mod:`` references; neither one imports
+    anything.  A dynamic ``import_module("esolangs.vm")`` would be a real
+    reach that this misses, but the suite has none, and adding a string
+    check to catch a case that does not exist would bring back the prose
+    hazard this removes.
+    """
+    packages = ("esolangs.vm", "esolangs.registry")
+    for sub in ast.walk(node):
+        if isinstance(sub, ast.ImportFrom) and sub.module is not None:
+            if any(
+                sub.module == pkg or sub.module.startswith(f"{pkg}.")
+                for pkg in packages
+            ):
+                return True
+        elif isinstance(sub, ast.Import):
+            if any(
+                alias.name == pkg or alias.name.startswith(f"{pkg}.")
+                for alias in sub.names
+                for pkg in packages
+            ):
+                return True
+        elif isinstance(sub, ast.Call):
+            func = sub.func
+            if (
+                isinstance(func, ast.Attribute)
+                and func.attr == "run"
+                and isinstance(func.value, ast.Name)
+                and func.value.id == "esolangs"
+            ):
+                return True
+    return False
+
+
 def _reaching_helpers(src: str) -> list[str]:
     """Return call markers for helpers that themselves reach past the bundle.
 
-    A helper is any non-test function or method whose body names one of
-    ``_UNBUNDLED``.  What comes back is what a *caller* looks like -- with
+    A helper is any non-test function or method whose body reaches past
+    the bundle, as :func:`_reaches_unbundled` judges it.  What comes back
+    is what a *caller* looks like -- with
     the parenthesis, and for a method also the ``self.`` form -- so the
     caller can be matched by the same substring test as everything else.
 
@@ -134,15 +190,28 @@ def _reaching_helpers(src: str) -> list[str]:
     except SyntaxError:  # pragma: no cover - the suite is a valid module
         return []
 
-    lines = src.splitlines()
     markers: list[str] = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.FunctionDef) or node.name.startswith("test_"):
             continue
-        body = "\n".join(lines[node.lineno - 1 : node.end_lineno])
-        if any(mod in body for mod in _UNBUNDLED):
+        if _reaches_unbundled(node):
             markers += [f"{node.name}(", f".{node.name}("]
     return markers
+
+
+def _parse_body(body: str) -> ast.AST:
+    """Parse a carved-out test body, which is indented inside its class.
+
+    The cut keeps the method's own indentation, so the text is not a module
+    on its own.  ``textwrap.dedent`` puts it back at column zero.  A body
+    that still will not parse yields an empty module rather than raising:
+    the caller is deciding whether to drop a test, and a parse failure is
+    not evidence that it reaches past the bundle.
+    """
+    try:
+        return ast.parse(textwrap.dedent(body))
+    except SyntaxError:  # pragma: no cover - bodies come from a valid module
+        return ast.Module(body=[], type_ignores=[])
 
 
 def _drop_unbundled_tests(src: str) -> tuple[str, int]:
@@ -174,7 +243,7 @@ def _drop_unbundled_tests(src: str) -> tuple[str, int]:
     the interpreter are found first, and their names become markers too.
     """
     dropped = 0
-    markers = (*_UNBUNDLED, *_reaching_helpers(src))
+    callers = _reaching_helpers(src)
     for name in re.findall(r"\n    def (test_\w+)\(", src):
         # The lines above the ``def`` that belong to it: a decorator ``@``,
         # any continuation of one (more indented than the ``def``), and the
@@ -195,7 +264,15 @@ def _drop_unbundled_tests(src: str) -> tuple[str, int]:
             src,
             re.S,
         )
-        if body and any(mod in body.group(0) for mod in markers):
+        # The reach itself is judged on syntax, so that a module named in a
+        # comment or docstring no longer reads as an import.  A *call* to a
+        # reaching helper stays a text match: it is a bare name, which
+        # carries no such hazard, and the body has been carved out of its
+        # class, so it is re-parsed on its own before being walked.
+        if body and (
+            any(name in body.group(0) for name in callers)
+            or _reaches_unbundled(_parse_body(body.group(0)))
+        ):
             src = src.replace(body.group(0), "\n")
             dropped += 1
 
