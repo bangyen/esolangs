@@ -1120,3 +1120,49 @@ class TestContainerCompiler:
             lines.append(f"+1 T>={i % 5}")
         out = self.comp("\n".join(lines))
         assert "add  t6, s1, t6" in out
+
+
+class TestForbinDiscardTarget:
+    """``_`` as a binding target, which the compiler emits no bind for.
+
+    Forbin's ``_`` is an ordinary identifier to the lexer, so every place
+    that binds a name has to special-case it.  There are three -- a
+    multi-target assignment, a range loop's counter, and an iteration row --
+    and each drops the store while still evaluating the value, matching the
+    interpreter.  The programs are compiled, not assembled, so these need no
+    cross-compiler.
+    """
+
+    @staticmethod
+    def comp(code: str) -> str:
+        mod = importlib.import_module("esolangs.compilers.forbin")
+        return str(mod.comp(code))
+
+    def test_multi_target_assignment_skips_the_discard(self) -> None:
+        """``x,_ = 1,0`` binds ``x`` and drops the second store."""
+        out = self.comp("main {\n  x,_ = 1,0;\n}\n")
+        assert ".global _start" in out
+        # one bind for x, none for the discard: the second value is still
+        # evaluated, so the difference is the store, not the expression.
+        assert (
+            out.count("sd   a0, ")
+            == self.comp("main {\n  x,y = 1,0;\n}\n").count("sd   a0, ") - 1
+        )
+
+    def test_range_loop_counter_may_be_discarded(self) -> None:
+        """``for _:0..1`` runs its body without binding the counter."""
+        out = self.comp("main {\n  for _:0..1 {\n    out 0,1,0,0,0,0,0,1;\n  }\n}\n")
+        named = self.comp("main {\n  for i:0..1 {\n    out 0,1,0,0,0,0,0,1;\n  }\n}\n")
+        assert ".global _start" in out
+        assert len(out) < len(named)  # the bind is what the named form adds
+
+    def test_iteration_row_may_discard_a_column(self) -> None:
+        """``for (_,x):((0,1))`` binds only the column that is named."""
+        out = self.comp(
+            "main {\n  for (_,x):((0,1)) {\n    out 0,1,0,0,0,0,0,1;\n  }\n}\n"
+        )
+        named = self.comp(
+            "main {\n  for (w,x):((0,1)) {\n    out 0,1,0,0,0,0,0,1;\n  }\n}\n"
+        )
+        assert ".global _start" in out
+        assert len(out) < len(named)
