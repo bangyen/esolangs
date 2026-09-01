@@ -334,47 +334,6 @@ class _SbleqVM(_DelegatingVM):
         self._machine = _Machine(io=self._io, mem=[int(tok) for tok in program.split()])
 
 
-class _GraphemeVM(_DelegatingVM):
-    """Stack + variables; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.stack_based.grapheme import _Machine
-
-        self._machine = _Machine.of(program, self._io)
-
-
-class _QoiblVM(_DelegatingVM):
-    """256-entry variable list; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.register_based.qoibl import State
-
-        self._machine = State.of(program, self._io)
-
-
-class _EvalVM(_DelegatingVM):
-    """Two stacks + active index; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.stack_based.eval import State
-
-        self._machine = State(io=self._io, sym=program)
-
-
-class _ModulousVM(_DelegatingVM):
-    """Stack + variables; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.randomness import Seeded
-        from esolangs.interpreters.stack_based.modulous import State
-
-        self._machine = State.of(program, self._io, rng=Seeded())
-
-
 class _PointBreakVM(_DelegatingVM):
     """Variable store + loop frames; the interpreter describes its own shape."""
 
@@ -424,10 +383,6 @@ class _SuffolkVM(_DelegatingVM):
 # from the way their runner does.
 _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "S*bleq": _SbleqVM,
-    "Grapheme": _GraphemeVM,
-    "Qoibl": _QoiblVM,
-    "Eval": _EvalVM,
-    "Modulous": _ModulousVM,
     "Point Break": _PointBreakVM,
     "ArrowQueue": _ArrowQueueVM,
     "A Painter Ant": _APainterAntVM,
@@ -437,6 +392,10 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
 
 # Languages whose adapter is pure boilerplate over the registry entry.
 _DERIVED_LANGUAGES = (
+    "Modulous",
+    "Qoibl",
+    "Grapheme",
+    "Eval",
     "COD",
     "LaserFuck",
     "Painfuck",
@@ -523,7 +482,12 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
             # ``_Machine`` is private to its module but is the state object
             # this whole file is built around; the explicit adapters below
             # import it by name for the same reason.
-            machine = getattr(module, "_Machine")  # noqa: B009
+            # Some state objects cannot take a program positionally -- a
+            # dataclass whose parsed field is ``init=False``, or one whose
+            # code field sits behind ``io``.  Those offer ``of(code, io)``
+            # instead, which is the same construction under a name.
+            state = getattr(module, "_Machine", None) or module.State
+            machine = getattr(state, "of", state)
             # A language with a random instruction takes a source for it,
             # and a stepped VM has to be reproducible, so one is passed
             # wherever it is accepted.  It is optional exactly like ``io``
@@ -534,8 +498,8 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
             # own junction example goes East, LaserFuck's grids are
             # written for a laser heading up -- so the interpreter says
             # so, rather than every caller having to know.
-            if "rng" in inspect.signature(machine.__init__).parameters:
-                seed = getattr(machine, "reproducible_seed", 0)
+            if "rng" in inspect.signature(machine).parameters:
+                seed = getattr(state, "reproducible_seed", 0)
                 self._machine = machine(code, self._io, rng=Seeded(seed))
             else:
                 self._machine = machine(code, self._io)
