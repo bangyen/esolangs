@@ -500,7 +500,6 @@ class TestSurvivorGaps:
             for heading in range(4):
                 assert run_and_capture(cage, heading=heading) == "2", heading
 
-
     def test_the_jump_flag_starts_false(self) -> None:
         """``jmp`` begins ``False``, and the snapshot carries that value.
 

@@ -221,9 +221,7 @@ class TestModulous:
         difference the trailing character of the output.
         """
         assert run_and_capture('[PSH INT 65][PSH STR "B"][PRT][PRT][END]') == "BA"
-        assert (
-            run_and_capture("[PSH INT 65][INP][PRT][PRT][END]", inputs=["B"]) == "BA"
-        )
+        assert run_and_capture("[PSH INT 65][INP][PRT][PRT][END]", inputs=["B"]) == "BA"
 
     def test_add_on_empty_stack_halts(self) -> None:
         """Arithmetic on an empty stack is an invalid operation."""

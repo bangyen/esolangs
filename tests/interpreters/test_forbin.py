@@ -329,9 +329,7 @@ class TestScannerBoundaries:
         assert run_program("main { a = 1;out 0,1,0,0,1,0,0,0; }") == "H"
         assert run_program("main { a =1; out 0,1,0,0,0,0,0,a; }") == "A"
         assert run_program("main{a=1;out 0,1,0,0,0,0,0,a;}") == "A"
-        assert (
-            run_program("g a { out 0,1,0,0,0,0,0,a; }\nmain{g 1;}") == "A"
-        )
+        assert run_program("g a { out 0,1,0,0,0,0,0,a; }\nmain{g 1;}") == "A"
 
     def test_a_name_may_be_a_keyword_followed_by_an_underscore(self) -> None:
         """``for_a`` is a name; the lookahead must not stop at ``for``.
@@ -1151,9 +1149,7 @@ class TestThreadedResources:
         test would pass against a reader that was never consulted.
         """
         assert (
-            run_program(
-                "main { for i:0..(in 0) { out 0,1,0,0,0,0,0,i; } }", "\xff"
-            )
+            run_program("main { for i:0..(in 0) { out 0,1,0,0,0,0,0,i; } }", "\xff")
             == "@A"
         )
         assert (
@@ -1177,7 +1173,9 @@ class TestThreadedResources:
 
     def test_the_frame_reaches_every_position_that_reads_a_local(self) -> None:
         """A bare local name in each spot that forwards the frame."""
-        assert run_program("main { n = 1; for i:0..n { out 0,1,0,0,0,0,0,i; } }") == "@A"
+        assert (
+            run_program("main { n = 1; for i:0..n { out 0,1,0,0,0,0,0,i; } }") == "@A"
+        )
         assert (
             run_program("g a { out 0,1,0,0,0,0,0,a; }\nmain { n = 1; g n; }\n") == "A"
         )

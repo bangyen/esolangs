@@ -94,9 +94,7 @@ class TestOperations:
         decl = "'x'v.\n[x]s|3|\n'y'v.\n[y]s|2|\n"
         assert run_and_capture(decl + "|[x]*[y]|p.") == "6"
         assert run_and_capture(decl + "|[x]+[y]|p.") == "5"
-        assert (
-            run_and_capture(decl + "|6|f([x]=[y])\n'no'p.\n'yes'p.") == "noyes"
-        )
+        assert run_and_capture(decl + "|6|f([x]=[y])\n'no'p.\n'yes'p.") == "noyes"
         assert run_and_capture(decl + "|6|f([x]>[y])\n'no'p.\n'yes'p.") == "yes"
 
     def test_multiply_non_integer_halts(self) -> None:
