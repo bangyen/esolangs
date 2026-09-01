@@ -139,6 +139,36 @@ class TestErrors:
         with pytest.raises(HaltError, match="expected a number"):
             run_program("lb .p")
 
+    def test_the_rejection_messages_are_exact(self) -> None:
+        """Each message is pinned whole, and names what it is complaining about.
+
+        The cases above match a fragment, and ``match=`` is a substring
+        search -- so the wording was free and the name each message quotes
+        was never checked.  The undefined-function message is raised from
+        two separate places, a bare call and a ``.`` reference, and both
+        have to name the function.
+
+        ``expected a number`` is deliberately not compared whole: it
+        interpolates a function object with no ``__repr__``, so the text
+        carries a memory address and would differ between runs.
+        """
+        with pytest.raises(ValueError) as raised:
+            run_program("F f x - x\nF f y - y")
+        assert str(raised.value) == "function 'f' redefined"
+
+        with pytest.raises(ValueError) as raised:
+            run_program("F f x x")
+        assert str(raised.value) == "function definition must contain '-'"
+
+        for code in ("nosuch 1", ".nosuch"):
+            with pytest.raises(HaltError) as caught:
+                run_program(code)
+            assert str(caught.value) == "calling undefined function 'nosuch'"
+
+        with pytest.raises(HaltError) as caught:
+            run_program("lb .p")
+        assert str(caught.value).startswith("expected a number, got ")
+
 
 class TestMachine:
     def test_step_after_halt_is_a_noop(self) -> None:
