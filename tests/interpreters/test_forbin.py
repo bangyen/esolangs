@@ -44,6 +44,11 @@ def walk_until_halt_or_ancestor(machine: object, limit: int = 64) -> bool:
     second belt for a mutant that neither halts nor pushes -- without it
     such a mutant spins until the harness alarm rather than failing fast.
     """
+    # pylint: disable=duplicate-code
+    # The overlap with the shared module's walk is the point, not an
+    # oversight: see the docstring above.  Importing it instead would cut
+    # this file from the mutation bundle whole, so the copy stays and the
+    # similarity check is told so here rather than left to fail in CI.
     keys: dict[int, object] = {}
     pushes, steps = 0, 0
     while pushes < limit:
