@@ -890,7 +890,7 @@ one the caller pre-transformed for it.  That is the same objection the removed
 runtime from its own `{Xi}`, as `nocomment` does with its `s`-as-NOT gate, or
 do without.
 
-## 123 (parameterized — resolved at `n <= 2`; wider arities open)
+## 123 (parameterized — resolved at `n <= 3`; wider arities open)
 
 **Resolved.  All four one-input and all sixteen two-input tables build, and
 the generator ships** (`esolangs.tools.boolean.one_two_three`).  What was
@@ -992,15 +992,52 @@ past the sweep's horizon.
   are `2` at `-3` (reads stdin, fatal for a parameterized program), `2` at
   `-2` (prints), and `2` at `-1` (the sole free exit).
 
-### Still open: three or more inputs
+### Three inputs: resolved, and how
 
-The projection that lifts other generators' caps does not apply, because an
-ignored input must still be embedded, every fill moves the pointer, and here
-the pointer phase *is* the computed value — a trailing inert embed shifts the
-quantity the plan decodes.  A short lockstep search does reach 243 of the 256
-three-input tables when the setter may vary per table, so the obstruction
-looks like the uniform-fill contract plus template length rather than the
-language; no construction is known.
+**All 256 three-input tables build**, under the shipped uniform-fill
+contract with each `{Xi}` embedded once in name order — no per-table setter,
+no repeated slot.  What this section previously called open was a search
+problem, not a language one.
+
+Three things mattered, and the first two are the reusable ones.
+
+**The step cap was the bottleneck, not the search space.**  Deciding a row
+means running until it halts or revisits a state, and a cap of 40000 steps
+made every *diverging* candidate cost the full budget.  Every row of every
+plan that does build decides within 100 steps (1215 of 1232 within 50), so
+the cap came down to 300 — a measured 200x speedup, and the difference
+between a search that saturates at 148 tables and one that reaches 251.
+Lowering it is safe because an undecided row only ever *discards* a
+candidate: nothing ships on the fast evaluator's word, and every stored plan
+is replayed row-by-row on the real interpreter.
+
+**Enumeration by length runs out before the tables do.**  Shortest-first
+enumeration covers 148 of 256 by ten symbols and multiplies by about four
+per further symbol, so eleven is already 1.08M templates for a handful of
+new tables.  What worked instead was sampling the *shape* the short plans
+take — a `3`-sparse skeleton with short literal runs between the slots — at
+lengths the flat sweep cannot afford.  Same lesson as the length-8 printing
+sweep above, one level up.
+
+**The last table fell to mutation, not sampling.**  `01111110` (TRUE unless
+all three inputs agree) is the one popcount-only signature the counter
+cannot reach alone: displacement after three uniform ±1 embeds is
+`3 - 2·popcount` mod 4, which is 3 for even popcount and 1 for odd, so the
+bare counter carries only popcount **parity** at three inputs.  Signature
+`0110` is not a parity function, so it needs `3`'s TRUE-backward re-run
+rather than a longer decode tail.  Random sampling never produced it;
+applying single literal edits to the plans for the *neighbouring* tables
+found it in about 2000 candidates on one core.
+
+### Still open: four or more inputs
+
+The projection that lifts other generators' caps still does not apply, for
+the reason that always applied here: an ignored input must still be
+embedded, every fill moves the pointer, and the pointer phase *is* the
+computed value, so a trailing inert embed shifts the quantity the plan
+decodes.  65536 tables at `n == 4` also makes a stored plan per table a
+different kind of artifact than the 256 stored here.  No construction is
+known.
 
 A *runtime* (reading) two-input table remains unproduced, and the sweeps run
 here do not bear on it: the shortest program satisfying the contract at all
