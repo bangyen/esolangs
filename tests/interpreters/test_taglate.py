@@ -13,6 +13,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.queue_based.taglate import run
 from tests.interpreters.contract import CycleContract, SnapshotContract
 from tests.interpreters.runner import run_program
+from tests.raises import raises_message
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
@@ -139,15 +140,12 @@ class TestTaglate:
         message is the only thing that says which marker was the loose
         one.
         """
-        import pytest
 
-        with pytest.raises(ValueError) as caught:
+        with raises_message(ValueError, "unmatched 'gy'"):
             run_and_capture(["\x001", "gy"])
-        assert str(caught.value) == "unmatched 'gy'"
 
-        with pytest.raises(ValueError) as caught:
+        with raises_message(ValueError, "unmatched 'gz'"):
             run_and_capture(["1", "gz"])
-        assert str(caught.value) == "unmatched 'gz'"
 
     def test_arithmetic_wraps_at_the_queue_ceiling(self) -> None:
         """Sums and products come back mod 65536, the top of the range.

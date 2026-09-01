@@ -52,6 +52,7 @@ from esolangs.interpreters.grid_based.streetcode import (
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.vm import _StepMachine, run_until_halt_or_cycle
 from tests.interpreters.runner import run_program
+from tests.raises import raises_message
 
 
 def street(instructions: str) -> list[str]:
@@ -974,9 +975,8 @@ class TestStreetcodeRejectionMessages:
     def test_rejection_message_is_exact(
         self, label: str, program: list[str], message: str
     ) -> None:
-        with pytest.raises(ValueError) as caught:
+        with raises_message(ValueError, message, label):
             _Machine(program, IO())
-        assert str(caught.value) == message, label
 
 
 class TestStreetcodeStreetWidth:

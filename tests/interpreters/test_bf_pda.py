@@ -15,6 +15,7 @@ from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
 )
+from tests.raises import raises_message
 
 run = importlib.import_module("esolangs.interpreters.stack_based.bf_pda").run
 
@@ -155,15 +156,13 @@ class TestMalformed:
         at 1 and again at 4, and the message names 4.  Reporting the first
         would say 1, and a search that finds nothing would say -1.
         """
-        with pytest.raises(ValueError) as caught:
+        with raises_message(ValueError, "unmatched '[' at position 4"):
             run_program("<[.<[.")
-        assert str(caught.value) == "unmatched '[' at position 4"
 
     def test_unmatched_close_bracket_reports_its_own_position(self) -> None:
         """A stray ``]`` names the index it sits at, checked exactly."""
-        with pytest.raises(ValueError) as caught:
+        with raises_message(ValueError, "unmatched ']' at position 2"):
             run_program("<@]")
-        assert str(caught.value) == "unmatched ']' at position 2"
 
 
 class TestStepMachine:

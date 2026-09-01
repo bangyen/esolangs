@@ -6,6 +6,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.lamfunc import run
 from tests.interpreters.contract import SnapshotContract
+from tests.raises import raises_message
 
 
 def run_program(code: str) -> str:
@@ -206,13 +207,11 @@ class TestErrors:
         interpolates a function object with no ``__repr__``, so the text
         carries a memory address and would differ between runs.
         """
-        with pytest.raises(ValueError) as raised:
+        with raises_message(ValueError, "function 'f' redefined"):
             run_program("F f x - x\nF f y - y")
-        assert str(raised.value) == "function 'f' redefined"
 
-        with pytest.raises(ValueError) as raised:
+        with raises_message(ValueError, "function definition must contain '-'"):
             run_program("F f x x")
-        assert str(raised.value) == "function definition must contain '-'"
 
         for code in ("nosuch 1", ".nosuch"):
             with pytest.raises(HaltError) as caught:

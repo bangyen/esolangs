@@ -17,6 +17,7 @@ from esolangs.interpreters.grid_based.dig import run
 from esolangs.interpreters.io import IO, ScriptedIO
 from tests.interpreters.contract import CycleContract
 from tests.interpreters.runner import run_program
+from tests.raises import raises_message
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
@@ -186,9 +187,8 @@ class TestDigEdgeCases:
 
     def test_the_empty_program_message_reads_exactly(self) -> None:
         """``match=`` only looks for a substring, so pin the whole message."""
-        with pytest.raises(ValueError) as caught:
+        with raises_message(ValueError, "Dig program cannot be empty"):
             run([], io=IO())
-        assert str(caught.value) == "Dig program cannot be empty"
 
     def test_blank_only_program_is_empty(self) -> None:
         """Programs of only blank lines are rejected, not crashing the mole."""

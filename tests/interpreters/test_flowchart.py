@@ -13,6 +13,7 @@ import pytest
 from esolangs.interpreters.grid_based.flowchart import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
+from tests.raises import raises_message
 
 # The wiki's truth machine: read a bit, and on 0 print it once and halt, on
 # 1 print it forever.  The switch is entered travelling downward, so its
@@ -237,13 +238,11 @@ class TestParsing:
         around each fragment was free -- and the unknown character's
         coordinates were never checked at all.
         """
-        with pytest.raises(ValueError) as caught:
+        with raises_message(ValueError, "unknown character '?' at (4, 0)"):
             _Machine(["( )─?─(( ))"], ScriptedIO(""))
-        assert str(caught.value) == "unknown character '?' at (4, 0)"
 
-        with pytest.raises(ValueError) as caught:
+        with raises_message(ValueError, "Flowchart program has no '( )' start node"):
             _Machine(["(( ))"], ScriptedIO(""))
-        assert str(caught.value) == "Flowchart program has no '( )' start node"
 
     def test_turning_left_rotates_every_heading(self) -> None:
         """A left turn is a rotation, so four of them return the heading.

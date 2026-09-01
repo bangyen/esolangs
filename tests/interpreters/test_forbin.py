@@ -12,6 +12,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.forbin import run
+from tests.raises import raises_message
 
 
 def run_program(code: str, stdin: str = "") -> str:
@@ -363,9 +364,8 @@ class TestScannerBoundaries:
             ("main { for", "expected an identifier at position 10"),
             ("main { a =", "expected a value at position 10"),
         ):
-            with pytest.raises(ValueError) as caught:
+            with raises_message(ValueError, message):
                 run(code, ScriptedIO(""))
-            assert str(caught.value) == message
 
     def test_a_parenthesised_call_in_statement_position(self) -> None:
         """``(g 0);`` parses as a statement, and then halts.
@@ -408,11 +408,10 @@ class TestIdentifierCharacters:
     def test_a_name_may_contain_a_digit(self) -> None:
         """Digits are allowed after the first character, not before it."""
         assert run_program("main { a1 = 1; out 0,1,0,0,0,0,0,a1; }") == "A"
-        with pytest.raises(ValueError) as caught:
+        with raises_message(
+            ValueError, "statement must be a call, assignment, or return at position 9"
+        ):
             run("main {\n 1a = 0;\n}\n", ScriptedIO(""))
-        assert str(caught.value) == (
-            "statement must be a call, assignment, or return at position 9"
-        )
 
 
 class TestKeywordPrefixedNames:
@@ -1530,11 +1529,11 @@ class TestErrorMessages:
             ("main {\n 1, b = 0, 1;\n}\n", 14),
             ("main {\n a, 1 = 0, 1;\n}\n", 14),
         ):
-            with pytest.raises(ValueError) as caught:
+            with raises_message(
+                ValueError,
+                f"assignment target must be a variable at position {position}",
+            ):
                 run(code, ScriptedIO(""))
-            assert str(caught.value) == (
-                f"assignment target must be a variable at position {position}"
-            )
 
     def test_a_stray_slash_is_not_a_comment(self) -> None:
         """A comment needs *two* slashes, and one at the end of input.

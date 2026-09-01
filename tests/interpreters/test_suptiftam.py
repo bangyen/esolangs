@@ -8,6 +8,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.suptiftam import run
 from tests.interpreters.contract import SnapshotContract
+from tests.raises import raises_message
 
 HELLO_WORLD = "\n".join(
     [
@@ -360,7 +361,10 @@ class TestRobustness:
             "xyz",  # bare identifier statement
             "term=!",  # unexpected character
         ):
-            with pytest.raises(ValueError):
+            # This list deliberately asserts only that the program was
+            # rejected; the exact message for each is pinned in REJECTIONS
+            # below, so raises_message has nothing to add here.
+            with pytest.raises(ValueError):  # noqa: PT011
                 run_program(code)
 
     # Each malformed program above paired with the message it must raise.
@@ -407,9 +411,8 @@ class TestRobustness:
     @pytest.mark.parametrize(("code", "message"), REJECTIONS)
     def test_each_rejection_says_its_own_thing(self, code: str, message: str) -> None:
         """Every malformed program is paired with the message it raises."""
-        with pytest.raises(ValueError) as caught:
+        with raises_message(ValueError, message):
             run_program(code)
-        assert str(caught.value) == message
 
     def test_local_assignment_uses_the_frame_scope(self) -> None:
         """A new name inside a function is local, not global."""
