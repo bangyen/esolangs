@@ -308,6 +308,39 @@ class TestFunctions:
         assert str(caught.value) == "expected '{' after function name at position 32"
 
 
+class TestIdentifierCharacters:
+    """What may appear in a name, and where.
+
+    ``_ident`` checks two character classes: the first character may be a
+    letter or ``_``, and each character after it may be alphanumeric or
+    ``_``.  The suite's names were all plain letters, so the underscore
+    half of the *continuation* class was never exercised -- a name could
+    stop being allowed to contain one and every test would still pass.
+    """
+
+    def test_an_underscore_may_appear_inside_a_name(self) -> None:
+        """``a_b`` is one identifier, not ``a`` followed by ``_b``.
+
+        Dropping ``_`` from the continuation class ends the name at the
+        underscore, which leaves the rest as a separate token and changes
+        what the program means rather than rejecting it outright.
+        """
+        assert run_program("main { a_b = 1; out 0,1,0,0,0,0,0,a_b; }") == "A"
+
+    def test_a_name_may_start_with_an_underscore(self) -> None:
+        """The first-character class allows ``_`` too."""
+        assert run_program("main { _x = 1; out 0,1,0,0,0,0,0,_x; }") == "A"
+
+    def test_a_name_may_contain_a_digit(self) -> None:
+        """Digits are allowed after the first character, not before it."""
+        assert run_program("main { a1 = 1; out 0,1,0,0,0,0,0,a1; }") == "A"
+        with pytest.raises(ValueError) as caught:
+            run("main {\n 1a = 0;\n}\n", ScriptedIO(""))
+        assert str(caught.value) == (
+            "statement must be a call, assignment, or return at position 9"
+        )
+
+
 class TestKeywordPrefixedNames:
     def test_an_identifier_may_start_with_a_keyword(self) -> None:
         """``returnvar`` is a name, not ``return`` followed by ``var``.
