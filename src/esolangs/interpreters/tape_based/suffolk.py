@@ -75,8 +75,16 @@ class _Machine:
         identically from here on.  Counting it would make every state unique
         by construction and reduce the cycle detector to a step budget --
         Suffolk's programs are periodic, and this is what lets that be proved.
+
+        The input cursor, by contrast, is *not* optional, and leaving it out
+        was a soundness bug.  ``,`` reads a byte, so two states with the same
+        tape but different input remaining do not run identically -- one has
+        a byte left to consume and the other raises.  Without the cursor the
+        detector called two boolean-generator programs periodic when they in
+        fact read once more and hit EOF, which is a hang reported where none
+        exists.
         """
-        return (self.ind, self.ptr, self.acc, tuple(self.tape))
+        return (self.ind, self.ptr, self.acc, tuple(self.tape), self.io.position())
 
     def step(self) -> None:
         """Execute one command, wrapping to the start at the end of the code."""
