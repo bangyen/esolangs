@@ -294,6 +294,18 @@ def comp(code: str) -> str:
     body += _emit_read(cells)
     body += _emit_exit(cells)
 
+    # The two I/O helpers are emitted only when the tick body can actually
+    # reach them, the way the tape compilers gate their subroutines on a
+    # `used` flag.  Both call sites are conditional already -- `_emit_print`
+    # returns "" unless PRINT and OUT are both declared, and `_emit_read`
+    # unless the reader container is -- so the bodies key off the same
+    # emitted text rather than re-deriving the conditions.
+    helpers = ""
+    if "call putbyte\n" in body:
+        helpers += PUTBYTE
+    if "call readqueue\n" in body:
+        helpers += GETBYTE + _readqueue()
+
     # Commit: new becomes old for the next tick.  Every container stores to
     # `new` unconditionally, so swapping `s1`/`s2` would also be correct and
     # would cost two instructions instead of `2n`; the copy is kept because
@@ -333,7 +345,7 @@ def comp(code: str) -> str:
         ".halt:\n"
         "    li   a0, 0\n"
         "    li   a7, 93\n"
-        "    ecall\n" + GETBYTE + PUTBYTE + _readqueue() + data
+        "    ecall\n" + helpers + data
     )
 
 
