@@ -190,6 +190,18 @@ is also *unsigned*, the interpreter being explicit that memory is unsigned,
 so its wrap point is `2**64` and its subtractions floor at zero rather than
 going negative.
 
+CV(N)(C) carries a **third** narrowing, and it is not about width at all:
+its `s` parses a line with Python's `int()` after `str.strip()`, both
+Unicode-aware, where the assembly is ASCII. `int("4_2")` is 42 because
+underscores are legal between digits, and `strip` removes any
+`str.isspace()` character including NBSP — so `4_2` and `\xa042` read as 0
+compiled and 42 interpreted. Measured, not assumed, and stated rather than
+chased: `int()`'s full grammar in assembly buys nothing any program here
+reaches. Every ASCII form agrees, signs and leading zeros included. The
+general point is that a compiler's agreement domain can be narrowed by a
+*library function's* generality and not only by a machine word's width,
+which is a place to look that the width rule above does not cover.
+
 Two measured boundary checks, both at the same place, one per shape of
 entry:
 
