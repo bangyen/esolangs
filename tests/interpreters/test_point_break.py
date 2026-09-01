@@ -132,6 +132,19 @@ class TestArithmetic:
     def test_signed_literal(self) -> None:
         assert_loops(self.loop_iff("-5+3", -2))
 
+    @pytest.mark.parametrize("literal", ["+0", "+9", "-50", "-59", "-1", "-123"])
+    def test_signed_literal_digit_ends(self, literal: str) -> None:
+        """A signed literal scans every digit, ``0`` and ``9`` included.
+
+        The scan's bounds are two separate ranges -- the one deciding a
+        sign *starts* a literal, and the one consuming the digits after it
+        -- so a bound that excludes an endpoint splits the literal into a
+        stray operator and a number, which is a malformed expression rather
+        than a wrong answer.  Both endpoints appear in a first digit and in
+        a later one.
+        """
+        assert_loops(self.loop_iff(literal, int(literal)))
+
     def test_signed_literal_in_process(self) -> None:
         """A signed literal is also exercised by an in-process halting run."""
         program = "LET x:=-5+3\nPOINT loop\nIF x BREAK loop\nEND loop"
@@ -141,6 +154,16 @@ class TestArithmetic:
         """Floor division is also exercised by an in-process halting run."""
         program = "LET x:=9/2\nPOINT loop\nIF x BREAK loop\nEND loop"
         assert_halts(program)
+
+    def test_variable_name_spans_the_whole_lowercase_range(self) -> None:
+        """``a`` and ``z`` are variable names, not unexpected characters.
+
+        The name scan is bounded at both ends, and either bound moving in
+        by one letter turns a name into a character the tokenizer has no
+        rule for -- so the endpoints are used as whole names here rather
+        than only in the middle of one.
+        """
+        assert_halts("LET a:=1\nLET z:=1\nPOINT loop\nIF a BREAK loop\nEND loop")
 
     def test_input_in_expression(self) -> None:
         assert_loops(
@@ -152,53 +175,70 @@ class TestArithmetic:
 
 
 class TestErrors:
+    """Rejections, asserted by their exact text.
+
+    ``pytest.raises(match=...)`` is a substring search, which is too weak
+    for a language whose rejections differ only in *which* one fires: a
+    tokenizer whose uppercase range stops one letter short turns "unknown
+    keyword 'Z'" into "unexpected character 'Z'", and a structure check
+    that loses its label set turns "duplicate loop label 'a'" into "no open
+    loop 'a'".  Both still match a regex naming every message, so the
+    programs below pin the whole string instead.
+    """
+
     def test_undefined_variable_in_let(self) -> None:
-        with pytest.raises(HaltError, match="undefined variable"):
+        with pytest.raises(HaltError) as caught:
             run("LET x:=y", ScriptedIO())
+        assert str(caught.value) == "undefined variable 'y'"
 
     def test_undefined_variable_in_if(self) -> None:
-        with pytest.raises(HaltError, match="undefined variable"):
+        with pytest.raises(HaltError) as caught:
             run("POINT loop\nIF x BREAK loop\nEND loop", ScriptedIO())
+        assert str(caught.value) == "undefined variable 'x'"
 
     def test_division_by_zero(self) -> None:
-        with pytest.raises(HaltError, match="division by zero"):
+        with pytest.raises(HaltError) as caught:
             run("LET x:=1/0", ScriptedIO())
+        assert str(caught.value) == "division by zero"
 
     def test_exhausted_input(self) -> None:
         with pytest.raises(EOFError):
             run("LET x:=?", ScriptedIO())
 
     @pytest.mark.parametrize(
-        "program",
+        ("program", "message"),
         [
-            "LET x=1",  # single = instead of :=
-            "LET x:",  # unterminated assignment
-            "LET x:=",  # missing expression
-            "LET x:=1+",  # trailing operator
-            "LET x:=1 2",  # two operands in a row
-            "LET x:=1**2",  # two operators in a row
-            "LET x:=-",  # lone sign
-            "LET 5:=1",  # numeric variable name
-            "LET x:=5!",  # stray character
-            "LET X:=1",  # uppercase variable
-            "POINT",  # missing label
-            "POINT 5",  # numeric label
-            "IF x BREAK",  # missing label
-            "IF x GOTO loop",  # unknown keyword
-            "BREAK x",  # not a statement
-            "END loop",  # END with no open loop
-            "POINT a\nPOINT a\nEND a\nEND a",  # duplicate label
-            "POINT a\nEND b",  # END for an unopened loop
-            "POINT a\nIF x BREAK b\nEND a",  # BREAK outside its loop
-            "POINT a\nEND a\nPOINT b",  # unclosed loop
+            ("LET x=1", "unexpected character '='"),  # single = instead of :=
+            ("LET x:", "malformed assignment operator (expected ':=')"),
+            ("LET x:=", "malformed statement"),  # missing expression
+            ("LET x:=1+", "malformed expression"),  # trailing operator
+            ("LET x:=1 2", "malformed expression"),  # two operands in a row
+            ("LET x:=1**2", "malformed expression"),  # two operators in a row
+            ("LET x:=-", "malformed expression"),  # lone sign
+            ("LET 5:=1", "malformed statement"),  # numeric variable name
+            ("LET x:=5!", "unexpected character '!'"),  # stray character
+            ("LET X:=1", "unknown keyword 'X'"),  # uppercase variable
+            ("LET Z:=1", "unknown keyword 'Z'"),  # the last uppercase letter
+            ("A", "unknown keyword 'A'"),  # the first uppercase letter
+            ("LET x:=1A", "unknown keyword 'A'"),  # a letter glued to a number
+            ("LET aZ:=1", "unknown keyword 'Z'"),  # a letter glued to a name
+            ("x y", "malformed statement"),  # two names, no keyword
+            ("POINT", "malformed statement"),  # missing label
+            ("POINT 5", "malformed statement"),  # numeric label
+            ("IF x BREAK", "malformed statement"),  # missing label
+            ("IF x GOTO loop", "unknown keyword 'GOTO'"),
+            ("BREAK x", "malformed statement"),  # not a statement
+            ("END loop", "no open loop 'loop'"),  # END with no open loop
+            ("POINT a\nPOINT a\nEND a\nEND a", "duplicate loop label 'a'"),
+            ("POINT a\nEND b", "no open loop 'b'"),  # END for an unopened loop
+            ("POINT a\nIF x BREAK b\nEND a", "BREAK b outside its loop"),
+            ("POINT a\nEND a\nPOINT b", "unclosed loop 'b'"),  # unclosed loop
         ],
     )
-    def test_malformed_program(self, program: str) -> None:
-        with pytest.raises(
-            ValueError,
-            match=r"malformed|duplicate|unclosed|unknown|unexpected|outside|open loop",
-        ):
+    def test_malformed_program(self, program: str, message: str) -> None:
+        with pytest.raises(ValueError) as caught:
             run(program, ScriptedIO())
+        assert str(caught.value) == message
 
 
 class TestComments:
