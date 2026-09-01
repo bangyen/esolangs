@@ -1543,12 +1543,31 @@ linear scan rather than a genuine representation limit.  See
 
   | `n` | old size | new size | old time | new time |
   |----|----------|----------|----------|----------|
-  | 4 | 175 / 213 | 172 / 222 | 0.77 / 1.51 ms | 0.39 / 0.60 ms |
-  | 5 | 300 / 546 | 330 / 556 | 8.68 / 35.22 ms | 1.96 / 10.67 ms |
-  | 6 | 913 / 13411 | **820 / 1198** | 113.65 / 393.27 ms | **13.47 / 29.61 ms** |
+  | 4 | 175 / 213 | 170 / 230 | 0.77 / 1.51 ms | 0.35 / 0.51 ms |
+  | 5 | 300 / 546 | 308 / 482 | 8.68 / 35.22 ms | 1.39 / 4.39 ms |
+  | 6 | 913 / 13411 | **736 / 1242** | 113.65 / 393.27 ms | **7.00 / 12.32 ms** |
 
   The `n == 6` worst case is where the trap lived: 13411 characters and 393ms
-  becomes 1198 and 30ms.  Programs are **not** byte-for-byte what they were
+  becomes 1242 and 12ms.
+
+  **Most of the remaining build time was speculative compression, not the
+  fold.**  A candidate is cheap to enumerate and expensive to *compress* -- a
+  halving loop over the whole domain, rebuilding the live map each step --
+  and the decode consumes only the head, so compressing every candidate threw
+  the rest away.  Profiled, that discard rose with the domain: 7 compressions
+  per fold actually used at `D == 16`, 15 at `D == 32`, 50 at `D == 64`.
+  That, and not the emitted string, is why build time climbed faster than the
+  domain did.  `_WII2D_SHORTLIST` compresses four candidates and drops the
+  rest, which makes the count flat in the domain and is *both* smaller and
+  faster than compressing everything.
+
+  The screen is an admitted approximation, not a bound: compression is a
+  contraction (a measured 529 collapsing to 17), so the uncompressed
+  magnitude cannot predict the compressed one, and over 80 sampled states
+  there was always a candidate whose uncompressed magnitude exceeded the
+  eventual winner's compressed magnitude.  An early exit justified as a bound
+  was tried first and changed the emitted programs, which is how that was
+  found.  Programs are **not** byte-for-byte what they were
   wherever the general path runs: the ranking changed.  (The committed
   example is `n == 2`, which the untouched closed form still answers, so that
   file is unchanged.)

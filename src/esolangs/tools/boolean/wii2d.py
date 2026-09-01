@@ -91,6 +91,38 @@ __all__ = ["wii2d"]
 # already avoiding.
 _WII2D_MAX_CENTRE = 4096
 
+# How many candidate folds are compressed before the true ranking is applied.
+#
+# Compression is the expensive half of a candidate -- a halving loop over the
+# whole domain, rebuilding the live map at every step -- and the decode takes
+# only the head, so compressing every candidate is work thrown away.  Before
+# this screen the count rose with the domain: 7 compressions per fold
+# actually used at ``D == 16``, 15 at ``D == 32`` and 50 at ``D == 64``, all
+# but one discarded.  That, and not the emitted string, is why build time
+# used to climb so much faster than the domain.
+#
+# The screen cannot be a *bound*.  Compression is a contraction, so the
+# uncompressed magnitude says almost nothing about the compressed one -- 529
+# collapsing to 17 is a measured case -- and over 80 sampled states there was
+# always a candidate whose uncompressed magnitude exceeded the eventual
+# winner's compressed magnitude.  Any early exit justified that way changes
+# the answer, so this is an admitted approximation: the shortlist is ranked
+# on the uncompressed state, and only its members get the real key.
+#
+# Four is where the trade settles.  Measured over the same random tables,
+# median/worst emitted characters and build time for the whole sweep:
+#
+#     eager (all candidates):  n6  832 / 1182   366 ms
+#     shortlist 2:             n6  884 / 1976   215 ms
+#     shortlist 3:             n6  750 / 1404   201 ms
+#     shortlist 4:             n6  714 / 1242   194 ms
+#     shortlist 6:             n6  740 / 1024   207 ms
+#
+# Four is both smaller and faster than compressing everything, which is not
+# the trade one expects from a cut: the eager ranking is not better here, it
+# merely ranks more candidates that the screen was right to drop.
+_WII2D_SHORTLIST = 4
+
 # The widest decode domain the general (non-symmetric) path will attempt, so
 # that path is used up to ``n == 6`` by default.
 #
@@ -104,13 +136,13 @@ _WII2D_MAX_CENTRE = 4096
 # What the constant buys is bounded *width*, which still grows as the domain
 # doubles.  Measured through :func:`_wii2d_decode`, 25 random patterns each:
 #
-#     D == 16 (n == 5):  median     62 cells, worst    182, under 0.01s
-#     D == 32 (n == 6):  median    273 cells, worst    452, under 0.02s
-#     D == 64 (n == 7):  median   1312 cells, worst   3353, under 0.21s
+#     D == 16 (n == 5):  median     60 cells, worst    155, under 0.01s
+#     D == 32 (n == 6):  median    204 cells, worst    389, under 0.01s
+#     D == 64 (n == 7):  median   1187 cells, worst   2078, under 0.06s
 #
 # The time this used to buy is gone: the old beam-and-retry search put the
 # same ``D == 64`` sample at a 19448-cell worst case and seconds per build,
-# against 3353 cells and a fifth of a second now.  What remains is emitted
+# against 2078 cells and under a tenth of a second now.  What remains is emitted
 # size -- an ``n == 7`` decode is still over a thousand cells -- plus the
 # accumulator width noted below, so the default stays at 32 and the trade
 # remains a caller's decision, which is why the bound is a module constant
@@ -224,8 +256,17 @@ def _wii2d_folds(
     fold is legal only when every pair it merges needs the same bit.
     Doubling first (``*``) makes every gap even, which opens the midpoints
     that are otherwise half-integral.
+
+    Only the first :data:`_WII2D_SHORTLIST` candidates are compressed, ranked
+    on their uncompressed state; the rest are dropped unseen.  That screen is
+    an approximation rather than a bound -- see the constant -- and it is
+    what keeps the per-step cost flat as the domain grows.
     """
-    out: list[tuple[int, int, int, str, list[int]]] = []
+    # Enumerate the legal folds first, *uncompressed*.  Compression is the
+    # expensive half -- a halving loop over the whole domain, each step
+    # rebuilding the live map -- and the caller only ever takes the head, so
+    # compressing every candidate is work thrown away.
+    pending: list[tuple[tuple[int, int, int], str, list[int]]] = []
     for scale in (0, 1):
         scaled = [v * 2 for v in values] if scale else list(values)
         live = _wii2d_points(scaled, bits)
@@ -258,16 +299,36 @@ def _wii2d_folds(
                 # least once.  There is no "merged nothing" case to reject.
                 fragment = ("*" if scale else "") + _wii2d_offset(centre) + "s"
                 folded_values = [(v - centre) ** 2 for v in scaled]
-                folded_values, fragment = _wii2d_compress(folded_values, bits, fragment)
-                out.append(
+                # The shortlist key, on the uncompressed state.  It is a
+                # *screen*, not the ranking: compression can lower a
+                # magnitude by an order of magnitude (529 to 17 is real), so
+                # this cannot predict the true order and is not used as it.
+                pending.append(
                     (
-                        max(abs(v) for v in folded_values),
-                        len(set(folded_values)),
-                        len(fragment),
+                        (
+                            max(abs(v) for v in folded_values),
+                            len(merged),
+                            len(fragment),
+                        ),
                         fragment,
                         folded_values,
                     )
                 )
+
+    # Compress only the shortlist, then rank those on their true keys.
+    pending.sort(key=lambda candidate: candidate[0])
+    out: list[tuple[int, int, int, str, list[int]]] = []
+    for _screen, fragment, folded_values in pending[:_WII2D_SHORTLIST]:
+        compressed, grown = _wii2d_compress(folded_values, bits, fragment)
+        out.append(
+            (
+                max(abs(v) for v in compressed),
+                len(set(compressed)),
+                len(grown),
+                grown,
+                compressed,
+            )
+        )
     # Magnitude first.  A fold centre is spelled out as ``'-' * c``, so the
     # live values *are* the program's width: keeping them small is what keeps
     # the emitted grid small, and it also steers away from the squaring
