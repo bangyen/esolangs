@@ -1359,6 +1359,36 @@ class _Machine:
         """Whether the car has halted."""
         return self._done
 
+    # The VM's language-shaped view.
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        """The car's ``(row, col, heading)``.
+
+        The heading is spelled ``"N"``/``"E"``/``"S"``/``"W"`` internally and
+        reported as its index into that order, so ``ip`` stays all-integer
+        like every other 2D language's.
+        """
+        return (self.row, self.col, "NESW".index(self.heading))
+
+    @property
+    def memory(self) -> list[int]:
+        """The tape's cells, densified.
+
+        The tape is a sparse dict keyed by CP, which never goes negative --
+        ``LEFT`` at zero halts -- so this is the dense prefix up to the
+        highest cell touched.
+        """
+        cells = self.cells
+        if not cells:
+            return []
+        return [cells.get(i, 0) for i in range(max(cells) + 1)]
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     # Where the car is, as read-only views onto the one record that holds
     # it.  They are reads and not writes on purpose: a caller that wants
     # to *move* the car states the whole position at once through

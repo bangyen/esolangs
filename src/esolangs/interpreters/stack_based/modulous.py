@@ -46,6 +46,24 @@ class State:
         """Whether the instruction pointer has run off the program."""
         return self._halted or self.ind >= len(self.tokens)
 
+    # The VM's language-shaped view: the store is the stack, and the named
+    # variables are not addressable cells, so ``memory`` stays empty.
+
+    @property
+    def ip(self) -> int:
+        """The token cursor."""
+        return self.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """No addressable cells; the store is the stack."""
+        return []
+
+    @property
+    def stack(self) -> list[object]:
+        """The data stack, bottom first."""
+        return list(self.stk)
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (

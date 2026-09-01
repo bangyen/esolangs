@@ -32,6 +32,29 @@ class State:
         """Whether the code cursor has run off the program."""
         return self.ind >= len(self.sym)
 
+    # The VM's language-shaped view: two stacks and an active index, so
+    # ``stack`` is whichever one ``ptr`` selects and there are no
+    # addressable cells.
+
+    @property
+    def ip(self) -> int:
+        """The code cursor."""
+        return self.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """No addressable cells; the store is the active stack."""
+        return []
+
+    @property
+    def stack(self) -> list[int | str]:
+        """The active stack, the one ``ptr`` currently selects.
+
+        Eval's stacks hold strings as well as ints, which the VM's
+        ``Sequence[object]`` accepts as it stands.
+        """
+        return self.stk[self.ptr]
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (
