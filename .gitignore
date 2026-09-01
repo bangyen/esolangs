@@ -157,3 +157,12 @@ compile_commands.json
 
 # scratch audit notes
 notes/
+
+# scratch markdown
+#   Only untracked files are affected: README.md and everything under docs/
+#   is already tracked, so git keeps them regardless of this pattern.  The
+#   rule exists to keep ad-hoc notes, plans, and scratch write-ups from
+#   showing up in `git status`.  New docs meant for the repo need an explicit
+#   `git add -f`, which is the point -- committing a doc becomes deliberate.
+*.md
+!README.md
