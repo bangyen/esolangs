@@ -29,6 +29,9 @@ from dataclasses import dataclass, field
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
+#: A command is a bracketed group, which may hold one quoted string.
+_TOKEN = re.compile(r'\[([^\[\]\"]*("[^"]*")?)]')
+
 
 @dataclass
 class State:
@@ -40,6 +43,19 @@ class State:
     io: IO = field(default_factory=IO)
     tokens: list[str] = field(default_factory=list, init=False)
     _halted: bool = field(default=False, init=False)
+
+    @classmethod
+    def of(cls, code: str, io: IO) -> "State":
+        """Build a state for ``code``: its four variables, and its tokens.
+
+        ``tokens`` cannot be a constructor field -- it is stored parsed, not
+        as text -- so without this every caller had to seed the variables
+        and extract the tokens by hand.  ``run`` and the VM adapter each
+        carried their own copy, which is the shape that lets the two drift.
+        """
+        state = cls(var={f"VAR{k}": 0 for k in range(1, 5)}, io=io)
+        state.tokens = [k[0] for k in _TOKEN.findall(code)]
+        return state
 
     @property
     def halted(self) -> bool:
@@ -251,9 +267,7 @@ _DISPATCH: dict[str, Callable[[State, str, list[str]], str | None]] = {
 
 def run(code: str, io: IO) -> None:
     """Run a Modulous program."""
-    reg = re.compile(r'\[([^\[\]\"]*("[^"]*")?)]')
-    state = State(var={f"VAR{k}": 0 for k in range(1, 5)}, io=io)
-    state.tokens = [k[0] for k in reg.findall(code)]
+    state = State.of(code, io)
 
     while not state.halted:
         state.step()

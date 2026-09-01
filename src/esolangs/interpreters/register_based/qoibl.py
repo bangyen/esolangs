@@ -197,6 +197,19 @@ class State:
     code: list[list[str]] = field(default_factory=list, init=False)
     ind: int = 0
 
+    @classmethod
+    def of(cls, code: str | list[str], io: IO) -> "State":
+        """Build a state for ``code``, tokenized.
+
+        ``code`` cannot be a constructor field: it is stored tokenized, not
+        as text.  Without this, every caller had to tokenize and assign it
+        by hand -- ``run`` and the VM adapter each with their own copy of
+        the same two lines, which is the shape that lets the two drift.
+        """
+        state = cls(io=io)
+        state.code = tokenize(code if isinstance(code, str) else "\n".join(code))
+        return state
+
     @property
     def halted(self) -> bool:
         """Whether the expression pointer has run off the program."""
@@ -305,8 +318,7 @@ def run(code: list[str] | str, io: IO) -> None:
     program is one character stream, since the language draws no distinction
     between a newline and any other ignored character.
     """
-    state = State(io=io)
-    state.code = tokenize(code if isinstance(code, str) else "\n".join(code))
+    state = State.of(code, io)
 
     while not state.halted:
         state.step()
