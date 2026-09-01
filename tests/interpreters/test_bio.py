@@ -301,15 +301,15 @@ class TestStepMachine:
         from esolangs.interpreters.register_based.bio import _Machine
 
         machine = _Machine("0ox;0ix{1ox;};", ScriptedIO())
-        assert (machine.reg, machine.stk, machine.ind) == ([0, 0, 0], [], 0)
+        assert (machine.reg, machine.stk, machine.ind) == ((0, 0, 0), (), 0)
         machine.step()  # 0ox sets x to 1
-        assert machine.reg == [1, 0, 0]
+        assert machine.reg == (1, 0, 0)
         machine.step()  # 0ix sees x nonzero and pushes the loop
-        assert machine.stk == [1]
+        assert machine.stk == (1,)
         machine.step()  # 1ox decrements x
-        assert machine.reg == [0, 0, 0]
+        assert machine.reg == (0, 0, 0)
         machine.step()  # } pops the loop and lands back on the 0ix
-        assert machine.stk == []
+        assert machine.stk == ()
         assert machine.ind == 1
         machine.step()  # 0ix sees x zero and skips the body
         assert machine.halted
