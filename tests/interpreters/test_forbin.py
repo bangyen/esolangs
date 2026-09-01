@@ -308,6 +308,82 @@ class TestFunctions:
         assert str(caught.value) == "expected '{' after function name at position 32"
 
 
+class TestScannerBoundaries:
+    """Where the scanner stops: at punctuation, at a keyword, and at EOF.
+
+    Three blind spots, all of them from programs that were too tidy.
+    Every program in the suite put a space after each ``;`` and ``=``, so
+    a cursor that advanced two characters instead of one simply landed on
+    whitespace ``_skip_ws`` would have eaten anyway.  Every program closed
+    its brackets, so no bound check was ever asked about the position one
+    past the end.  And the names that begin with a keyword were all
+    followed by a letter, never an underscore.
+    """
+
+    def test_punctuation_needs_no_space_after_it(self) -> None:
+        """A cursor that steps two characters lands past the next token.
+
+        With a space after every ``;`` and ``=`` the overshoot is
+        invisible.  These programs remove the cushion.
+        """
+        assert run_program("main { a = 1;out 0,1,0,0,1,0,0,0; }") == "H"
+        assert run_program("main { a =1; out 0,1,0,0,0,0,0,a; }") == "A"
+        assert run_program("main{a=1;out 0,1,0,0,0,0,0,a;}") == "A"
+        assert (
+            run_program("g a { out 0,1,0,0,0,0,0,a; }\nmain{g 1;}") == "A"
+        )
+
+    def test_a_name_may_be_a_keyword_followed_by_an_underscore(self) -> None:
+        """``for_a`` is a name; the lookahead must not stop at ``for``.
+
+        A keyword is only a keyword when what follows it cannot continue
+        an identifier.  The suite had ``outx`` and ``fora`` -- a *letter*
+        after the keyword -- but never an underscore, which is the other
+        half of that character class.
+        """
+        assert run_program("main { for_a = 1; out 0,1,0,0,0,0,0,for_a; }") == "A"
+        assert (
+            run_program(
+                "g { return_b = 1; return return_b; }\n"
+                "main { x = (g 0); out 0,1,0,0,0,0,0,x; }\n"
+            )
+            == "A"
+        )
+
+    def test_input_ending_mid_construct_is_a_clean_rejection(self) -> None:
+        """Every bound check, asked about the position one past the end.
+
+        A program that stops in the middle of a construct is what puts the
+        cursor at ``i == n`` inside ``_expect``, ``_ident`` and the
+        statement scanner.  Off by one there is the difference between a
+        parse error naming what was wanted and an IndexError.
+        """
+        for code, message in (
+            ("main { x = (g 0", "expected ',' at position 15"),
+            ("main { x = (", "expected an identifier at position 12"),
+            ("main { a, ", "expected a value at position 10"),
+            ("main { for", "expected an identifier at position 10"),
+            ("main { a =", "expected a value at position 10"),
+        ):
+            with pytest.raises(ValueError) as caught:
+                run(code, ScriptedIO(""))
+            assert str(caught.value) == message
+
+    def test_a_parenthesised_call_in_statement_position(self) -> None:
+        """``(g 0);`` parses as a statement, and then halts.
+
+        The statement scanner accepts a ``call`` node as well as a ``var``,
+        so the parenthesised form gets through parsing -- and then the
+        evaluator treats the whole parenthesised call as the *callee* of a
+        further call, which is not a function.  Both halves matter: the
+        node tag has to be the one the scanner names, and the rejection has
+        to be this one rather than a parse error.
+        """
+        with pytest.raises(HaltError) as caught:
+            run("g { return 1; }\nmain { (g 0); }", ScriptedIO(""))
+        assert str(caught.value) == "called value is not a function"
+
+
 class TestIdentifierCharacters:
     """What may appear in a name, and where.
 
