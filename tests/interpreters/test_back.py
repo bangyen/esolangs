@@ -134,9 +134,9 @@ class TestStepMachine:
 
         machine = _Machine(["-*"], ScriptedIO())
         assert (machine.row, machine.col, machine.a, machine.b) == (0, 0, 0, 1)
-        assert machine.tape == [0]
+        assert machine.tape == (0,)
         machine.step()  # - flips the current bit
-        assert machine.tape == [1]
+        assert machine.tape == (1,)
         machine.step()  # * prints the tape and halts
         assert machine.io.getvalue() == "1"
         assert machine.halted
@@ -170,19 +170,19 @@ class TestStepMachine:
         from esolangs.interpreters.tape_based.back import _Machine
 
         machine = _Machine([">>*"], ScriptedIO())
-        assert machine.tape == [0]
+        assert machine.tape == (0,)
         machine.step()  # past the end: the tape grows
-        assert machine.tape == [0, 0]
+        assert machine.tape == (0, 0)
         machine.step()  # past the new end: it grows again
-        assert machine.tape == [0, 0, 0]
+        assert machine.tape == (0, 0, 0)
 
         # Re-entering a cell that already exists leaves the tape alone.
         revisit = _Machine(["><>*"], ScriptedIO())
         revisit.step()  # ">" grows to two cells
-        assert revisit.tape == [0, 0]
+        assert revisit.tape == (0, 0)
         revisit.step()  # "<" back to cell 0
         revisit.step()  # ">" onto the cell that already exists
-        assert revisit.tape == [0, 0], "no cell appended for known ground"
+        assert revisit.tape == (0, 0), "no cell appended for known ground"
 
 
 def _machine(code: object) -> object:
