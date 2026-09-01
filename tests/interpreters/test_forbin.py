@@ -352,6 +352,38 @@ class TestDiscardTarget:
         with pytest.raises(HaltError, match="undeclared identifier"):
             run_program("main { _ = 1; out 0,0,0,0,0,0,0,_; }")
 
+    def test_every_binding_site_honours_the_discard(self) -> None:
+        """Each of the four places a name is bound must skip ``_``.
+
+        The sentinel is compared in four separate places -- broadcast
+        assignment, paired assignment, the step machine's ``for`` row
+        binder, and the recursive evaluator's row binder -- and a test
+        that reaches only one of them leaves the other three free to stop
+        honouring ``_`` unnoticed.  Each program below is the witness for
+        exactly one site: breaking that site alone makes it print
+        ``\x01`` instead of halting, and breaking any other leaves it
+        halting.
+
+        The last two run their loop inside an *expression-position* call,
+        which is evaluated recursively rather than by pushing a frame --
+        the only route to the recursive binder.
+        """
+        for code in (
+            # broadcast assignment
+            "main { _ = 1; out 0,0,0,0,0,0,0,_; }",
+            # paired assignment, where the value comes by position
+            "main { _, x = 1, 0; out 0,0,0,0,0,0,0,_; }",
+            # the step machine's row binder, range and iteration spellings
+            "main { for _:0..1 { } out 0,0,0,0,0,0,0,_; }",
+            "main { for _:(0, 1) { } out 0,0,0,0,0,0,0,_; }",
+            # the recursive binder, reached through an expression-position call
+            "g { for _:0..1 { } return _; }\nmain { x = (g 0); }\n",
+            "g { for _:(0, 1) { } return _; }\nmain { x = (g 0); }\n",
+        ):
+            with pytest.raises(HaltError) as caught:
+                run(code, ScriptedIO(""))
+            assert str(caught.value) == "undeclared identifier '_'"
+
 
 class TestCallingANonFunction:
     """A call whose callee resolves to a bit rather than to a function.
@@ -955,6 +987,77 @@ class TestErrorMessages:
     asserted: a ``_Function`` has no ``__repr__``, so the tail carries its
     address and differs between runs.
     """
+
+    def test_every_message_is_asserted_whole(self) -> None:
+        """Each rejection's text, in full, against the program that raises it.
+
+        ``pytest.raises(match=...)`` is a *substring* search, so every test
+        below this one passes just as happily against a message with extra
+        text welded on either end -- which is exactly the edit mutation
+        testing makes, and forty of them survived here.  Comparing
+        ``str(caught.value)`` for equality closes that: each program is
+        paired with the one message it must produce, so a widened literal
+        fails, and a rejection firing in the *wrong place* fails too rather
+        than matching some other entry's wording.
+
+        The two interpolating messages are checked by prefix instead: a
+        ``_Function`` has no ``__repr__``, so their tails carry an address
+        that differs between runs.
+        """
+        exact = (
+            ("main { out 0,1,0; }\n", "out needs exactly 8 bit arguments"),
+            (
+                "f { return 0; }\nmain { out 0,1,0,0,0,0,0,f; }\n",
+                "out needs bit arguments",
+            ),
+            ("main {\n a = 1;\n a 0;\n}\n", "called value is not a function"),
+            ("f { return 0; }\nmain { out 0,1,0,0,0,0,0,!f; }\n", "! needs a bit"),
+            ("main {\n out 0,1,0,0,0,0,0,zz;\n}\n", "undeclared identifier 'zz'"),
+            ("// c", "Forbin program has no main function"),
+            (
+                "main {\n for i:0.1 { out 0,1,0,0,0,0,0,i; }\n}\n",
+                "expected '..' or an iteration list at position 15",
+            ),
+            (
+                "main {\n 1 = 0;\n}\n",
+                "assignment target must be a variable at position 10",
+            ),
+            (
+                "main {\n a,b;\n}\n",
+                "expected '=' after assignment targets at position 11",
+            ),
+            (
+                "main {\n !0;\n}\n",
+                "statement must be a call, assignment, or return at position 10",
+            ),
+            ("main { a = ", "expected a value at position 11"),
+            ("main { ", "unterminated block, expected '}' at position 7"),
+            (
+                "main { out 0,1,0,0,1,0,0,0; }\n/",
+                "expected an identifier at position 30",
+            ),
+            ("main x\n", "expected '{' after function name at position 7"),
+        )
+        for code, message in exact:
+            with pytest.raises((HaltError, ValueError)) as caught:
+                run(code, ScriptedIO(""))
+            assert str(caught.value) == message
+
+        # These two interpolate the offending value, whose repr carries an
+        # address; the wording up to it is still pinned exactly.
+        for code, prefix in (
+            (
+                "f { return 0; }\nmain {\n for i:0..f { f 0; }\n}\n",
+                "for end bound must be a number, got ",
+            ),
+            (
+                "f { return 0; }\nmain {\n for i:f..1 { f 0; }\n}\n",
+                "for start bound must be a number, got ",
+            ),
+        ):
+            with pytest.raises(HaltError) as caught:
+                run(code, ScriptedIO(""))
+            assert str(caught.value).startswith(prefix)
 
     def test_a_range_bound_that_is_not_a_number(self) -> None:
         """``start`` and ``end`` name which bound was wrong."""
