@@ -1,4 +1,4 @@
-"""Shared RISC-V assembly fragments for the OISC-style compilers.
+"""Shared RISC-V assembly fragments for the compilers.
 
 decleq, S*bleq, and AddSubJump all compile to a fetch-decode-execute loop
 over a ``.data`` array of 8-byte cells (their jump targets are computed at
@@ -7,7 +7,33 @@ per-token blocks).  These three routines -- byte I/O and the final
 dword-per-row memory dump -- are copy-pasted identically between them;
 keeping one copy here is what the ``duplicate-code`` check in
 ``scripts/verify.py`` enforces.
+
+:class:`Routine` is the token-unrolling side's shared piece rather than
+the OISC side's: BFStack, Unsquare, and Jaune each had a byte-identical
+copy of it.
 """
+
+from dataclasses import dataclass
+
+
+@dataclass
+class Routine:
+    """One emittable subroutine: its label, and whether the program needs it.
+
+    ``used`` is set when a call to the routine is emitted, and ``looped``
+    when a repeat count is passed in the compiler's counter register --
+    which is what decides whether the routine ends by branching back on the
+    counter or plainly returning.  Both start false and only ever turn on.
+
+    Gating a body on ``used`` is why a program that never reads carries no
+    reader; the compilers whose helpers are fixed runtime scaffolding
+    instead key the same decision off their emitted call sites.
+    """
+
+    label: str
+    used: bool = False
+    looped: bool = False
+
 
 GETBYTE = (
     "# getbyte() -> a0; reads one byte of stdin, halts the program at EOF\n"
