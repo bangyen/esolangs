@@ -1463,9 +1463,8 @@ _STAGED_ARITIES = (2, 3, 4, 5)
 # tables, and ``2**32`` entries will not be built.  Asking for one table and
 # its complement makes that dict two entries.
 #
-# The cost this trades into is real and worth stating: at ``n <= 4`` the
-# enumeration is paid once per process and every table after the first is
-# free, while here it is paid *per table*.  Measured through
+# The cost this trades into is real and worth stating: the enumeration is
+# paid *per table* rather than once for the whole arity.  Measured through
 # :func:`_derive_staging` rather than through a harness that merely resembles
 # it: a random fully-essential five-input table misses in 143.0 seconds,
 # which is the full sweep to the caps and so the worst case.
@@ -1474,7 +1473,24 @@ _STAGED_ARITIES = (2, 3, 4, 5)
 # 3.7s for five-input XOR, 0.6s for five-input AND, both early in the
 # enumeration.  So the arity's headline cost is the miss, and quoting it as
 # what every five-input table pays would overstate it by two orders.
-_TABLE_MAJOR_ARITIES = (5,)
+#
+# **Four inputs is here for the opposite reason: stopping early beats the
+# dict it avoids.**  Whole-arity, a four-input table paid the entire
+# 15994-table derivation before it could be answered at all -- four-input
+# XOR took 35.9s, an order of magnitude *more* than the same table at five
+# inputs (3.4s), purely because five stopped where it landed and four did
+# not.  Table-major answers it in 0.73s, a 49x saving, with all 16 rows
+# verified on the interpreter and the placeholders still ascending.  The
+# per-table cost described above applies here too; at this arity it is
+# simply smaller than what it replaces.
+#
+# It does not rescue a table the enumeration *misses*: those fall through to
+# :func:`_flipped_staging` and the searches either way, and a random
+# four-input table usually is one -- 7 of 8 sampled still exceed ten
+# seconds, against 8 of 8 before.  What it buys is that a table the family
+# reaches costs a second instead of half a minute, which is what makes the
+# arity testable at all: the minifuck suite went from 85.0s to 36.2s.
+_TABLE_MAJOR_ARITIES = (4, 5)
 
 # How far the enumeration runs.  Both caps are the measured maximum over
 # every table plus a margin, not guesses: sweeping to a bracket count of 30
