@@ -295,6 +295,24 @@ class _Machine:
         """Whether every scope has completed."""
         return not self.frames
 
+    # The VM's language-shaped view: Compiled code + frame stack; ip the top frame's
+    # cursor, memory tape.
+
+    @property
+    def ip(self) -> int | None:
+        """The current instruction position."""
+        return self.frames[-1].ptr if self.frames else None
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return list(self.tape.cells())
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (

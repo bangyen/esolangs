@@ -67,6 +67,24 @@ class _Machine:
         """Whether the Collatz trajectory has reached 1."""
         return self.ptr == 1
 
+    # The VM's language-shaped view: Collatz-trajectory pointer; memory is the sorted
+    # variable values.
+
+    @property
+    def ip(self) -> int:
+        """The current instruction position."""
+        return self.ptr
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return [v for _, v in sorted(self.var.items()) if isinstance(v, int)]
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (

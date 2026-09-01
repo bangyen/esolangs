@@ -369,6 +369,23 @@ class _Machine:
         """Whether the instruction pointer has run off the end."""
         return self.pointer >= len(self.tokens)
 
+    # The VM's language-shaped view: Accumulator and deque; ip is the command cursor.
+
+    @property
+    def ip(self) -> int:
+        """The current instruction position."""
+        return self.pointer
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return [self.accumulator, *self.deque]
+
+    @property
+    def stack(self) -> list[object]:
+        """The stack."""
+        return list(self.deque)
+
     def snapshot(self) -> Hashable:
         """Return the complete state, hashable for cycle detection.
 

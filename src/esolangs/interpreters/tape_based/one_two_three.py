@@ -63,6 +63,19 @@ class _Machine:
         """Whether the run has ended (or has no commands to run)."""
         return self._done
 
+    # The VM's language-shaped view: Unbounded bit tape + pointer; ip is the code
+    # cursor.
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return [self.byte()]
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         bits = tuple(sorted(k for k, v in self.bits.items() if v))

@@ -39,6 +39,24 @@ class _Machine:
         """Whether the cursor has passed the last line."""
         return self.ind >= len(self.code)
 
+    # The VM's language-shaped view: Cell tape + line cursor; ip the cursor, memory the
+    # cells.
+
+    @property
+    def ip(self) -> int:
+        """The current instruction position."""
+        return self.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return list(self.cells)
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (tuple(self.cells), self.ind, self.ptr, self.io.position())
