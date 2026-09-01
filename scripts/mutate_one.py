@@ -602,8 +602,10 @@ def main() -> int:
         "is not always cheaper: mutmut caps each mutant with an RLIMIT_CPU "
         "of (baseline + 1) * 30, so with less sibling contention a process "
         "burns that CPU budget in fewer wall-seconds and more mutants reach "
-        "the cap -- at two workers a Forbin run spent 85% of its time on the "
-        "6% of mutants that timed out",
+        # argparse expands help through %-formatting, so a literal percent
+        # has to be doubled: 3.14 rejects a bare one outright.
+        "the cap -- at two workers a Forbin run spent 85%% of its time on the "
+        "6%% of mutants that timed out",
     )
     args = parser.parse_args()
 
