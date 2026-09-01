@@ -215,6 +215,17 @@ class TestCommands:
         program = "\n".join(["data;", "data;", "readto data", "send data"])
         assert _run(program, "x\ny\n") == "x\n"
 
+    def test_a_rewrite_does_not_move_its_own_opening_delimiter(self) -> None:
+        """Only positions strictly *after* the rewritten block's start move.
+
+        The block's own opening delimiter sits exactly at that boundary, so
+        shifting it too would corrupt the block's span: the block would
+        appear to start one line later, its contents would be read short,
+        and the following ``send`` would print nothing.
+        """
+        program = "\n".join(["d;", "d;", "readto d", "send d", "e;", "x", "e;"])
+        assert _run(program, "A\nB\n") == "A\n"
+
     def test_skipif_does_not_fire_on_an_empty_block(self) -> None:
         """A false guard falls through to the next line instead of jumping."""
         program = "\n".join(
