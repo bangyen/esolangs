@@ -3,7 +3,7 @@
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO
+from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.stack_based.modulous import run
 from tests.interpreters.runner import run_program
 
@@ -101,6 +101,47 @@ class TestModulous:
         """JMP B jumps backwards, eventually landing on END."""
         assert run_and_capture("[JMP B 1][END]") == ""
 
+    def test_forward_jump_is_relative_and_lands_past_the_skip(self) -> None:
+        """``JMP F n`` moves ``n`` modules on from the jump, not to module n.
+
+        ``test_jump_forward`` jumps from module 1 by 1, where a relative
+        move and an absolute one land in the same place, so neither the
+        base nor the distance was pinned.  Here the jump is the *first*
+        module and skips two: an absolute jump, or one that adds a
+        different constant, lands on a different push and prints its value
+        instead.
+        """
+        assert run_and_capture("[JMP F 2][PSH INT 7][PSH INT 8][PRT INT][END]") == "8"
+        assert run_and_capture("[JMP F 1][PSH INT 7][PRT INT][END]") == "7"
+
+    def test_backward_jump_distance_is_counted_from_the_jump(self) -> None:
+        """``JMP B n`` lands ``n`` modules back, making a fixed-size loop.
+
+        ``test_backward_jump`` jumps back one from module 0, which lands on
+        ``END`` whatever constant the arithmetic uses.  This loops over a
+        print: three modules per lap, one character each.  A backward jump
+        of a different width takes a longer or shorter lap and prints a
+        different number of characters in the same budget.
+
+        The loop never ends, so this steps a fixed count rather than
+        running it.
+        """
+        import re
+
+        from esolangs.interpreters.stack_based.modulous import State
+
+        io = ScriptedIO()
+        machine = State(var={f"VAR{k}": 0 for k in range(1, 5)}, io=io)
+        reg = re.compile(r'\[([^\[\]"]*("[^"]*")?)]')
+        machine.tokens = [
+            k[0] for k in reg.findall("[PSH INT 9][PRT INT][JMP B 2][END]")
+        ]
+        for _ in range(12):
+            if machine.halted:
+                break
+            machine.step()
+        assert io.getvalue() == "9999"
+
     def test_pop(self) -> None:
         """POP removes the top of the stack."""
         assert run_and_capture("[PSH INT 5][POP][PSH INT 7][PRT INT][END]") == "7"
@@ -129,6 +170,60 @@ class TestModulous:
 
     def test_variable_subtract(self) -> None:
         assert run_and_capture("[VAR1-3][PRT VAR1 INT][END]") == "-3"
+
+    def test_variable_arithmetic_accumulates(self) -> None:
+        """``VARn+k`` adds to the variable rather than replacing it.
+
+        Both cases above touch a variable once, starting from zero -- where
+        adding and assigning give the same answer.  Two operations tell
+        them apart, and mixing a ``+`` with a ``-`` pins each arm.
+        """
+        assert run_and_capture("[VAR1+2][VAR1+3][PRT VAR1 INT][END]") == "5"
+        assert run_and_capture("[VAR1+2][VAR1-1][PRT VAR1 INT][END]") == "1"
+
+    def test_variables_are_var1_through_var4(self) -> None:
+        """Four variables exist, named from 1 -- not from 0, and not five.
+
+        Every variable test names ``VAR1``, which exists under any of the
+        plausible ranges, so the ends were never pinned.  An undeclared
+        name halts, so the two names just outside the range say where it
+        stops as clearly as the two inside say where it runs.
+        """
+        for name in ("VAR1", "VAR4"):
+            assert run_and_capture(f"[{name}+3][PRT {name} INT][END]") == "3"
+        for name in ("VAR0", "VAR5"):
+            with pytest.raises(HaltError):
+                run(f"[{name}+3][PRT {name} INT][END]", IO())
+
+    def test_add_targets_the_top_of_the_stack(self) -> None:
+        """``ADD`` changes the top cell, leaving what is under it alone.
+
+        Indexing from the far end has to miss by more than the stack is
+        deep to be visible: on two values ``stk[1]`` and ``stk[-1]`` are the
+        same cell.  Three separate them -- the top 3 becomes 7, while the 2
+        in the middle (which ``stk[1]`` would have hit) stays put.
+        """
+        assert (
+            run_and_capture(
+                "[PSH INT 1][PSH INT 2][PSH INT 3][ADD 4]"
+                "[PRT INT][PRT INT][PRT INT][END]"
+            )
+            == "721"
+        )
+
+    def test_string_and_input_pushes_keep_the_stack_under_them(self) -> None:
+        """``PSH STR`` and ``INP`` extend the stack rather than replacing it.
+
+        Both build a list of character codes and add it to the stack; an
+        assignment in place of that addition throws away everything already
+        pushed, which no existing case would notice because each starts
+        from an empty stack.  Pushing an ``A`` underneath makes the
+        difference the trailing character of the output.
+        """
+        assert run_and_capture('[PSH INT 65][PSH STR "B"][PRT][PRT][END]') == "BA"
+        assert (
+            run_and_capture("[PSH INT 65][INP][PRT][PRT][END]", inputs=["B"]) == "BA"
+        )
 
     def test_add_on_empty_stack_halts(self) -> None:
         """Arithmetic on an empty stack is an invalid operation."""
@@ -197,6 +292,18 @@ class TestModulous:
         """A command missing a required operand is malformed."""
         with pytest.raises(ValueError, match="missing operand"):
             run("[JMP]", IO())
+
+    def test_missing_operand_message_quotes_the_whole_command(self) -> None:
+        """The message echoes the command with its tokens spaced normally.
+
+        ``[JMP]`` is a single token, so it reads the same however the parts
+        are joined -- the separator only shows once there are two of them.
+        ``match=`` would not see it either way, being a substring search,
+        so this asserts the message entire.
+        """
+        with pytest.raises(ValueError) as caught:
+            run("[JMP F]", IO())
+        assert str(caught.value) == "missing operand in JMP F"
 
     def test_empty_block_is_a_noop(self) -> None:
         """An empty ``[]`` block has no command and is skipped, not crashed on."""
