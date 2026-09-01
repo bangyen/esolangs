@@ -12,6 +12,7 @@ from esolangs.vm import VM
 # live in the table rather than being spelled twice.
 from .samples import (
     CIRCUIT_PRIME_TESTER,
+    DUMPS_ON_THE_POST_HALT_STEP,
     FLOWCHART_CAT,
     FLOWCHART_TRUTH_MACHINE,
     SAMPLES,
@@ -157,9 +158,12 @@ class TestLaserFuck:
         vm.step()
         assert vm.ip == (0, 4, 0)  # moved up onto the 'x', died
         assert vm.halted
-        assert vm.output == "\x01"
+        assert vm.output == ""  # the tape is not dumped until the next step
         assert vm.stack == []
-        vm.step()  # stepping a halted VM is a no-op
+        vm.step()  # the post-halt step dumps it, as run's own last step does
+        assert vm.output == "\x01"
+        vm.step()  # and the dump happens once, not once per step past the halt
+        assert vm.output == "\x01"
 
     def test_dump_output_matches_interpreter(self) -> None:
         from esolangs.interpreters.grid_based.laserfuck import run as lf_run
@@ -169,7 +173,9 @@ class TestLaserFuck:
         io_obj = ScriptedIO()
         lf_run(program.splitlines(), io_obj, heading=0)
         vm = esolangs.make_vm("LaserFuck", program)
-        assert _run_all(vm) == io_obj.getvalue()
+        _run_all(vm)
+        vm.step()  # the dump, which run performs as its own last step
+        assert vm.output == io_obj.getvalue()
 
 
 class TestCOD:
@@ -484,11 +490,13 @@ class TestBitdeque:
         assert (vm.ip, vm.memory, vm.stack) == (0, [], [0])
         vm.step()  # PUSH appends the register
         assert (vm.ip, vm.memory) == (1, [0])
-        vm.step()  # INVERT flips the register, then the run renders
+        vm.step()  # INVERT flips the register
         assert vm.stack == [1]
         assert vm.halted
+        assert vm.output == ""  # the deque is not rendered until the next step
+        vm.step()  # the post-halt step renders it, as run's own last step does
         assert vm.output == "0"
-        vm.step()  # stepping a halted VM is a no-op
+        vm.step()  # and rendering happens once, not once per step past the halt
         assert vm.output == "0"
 
 
@@ -1311,7 +1319,10 @@ def test_vm_output_matches_run(language: str, program: str) -> None:
     except EOFError:
         pytest.skip(f"{language} needs input")
     vm = esolangs.make_vm(language, program)
-    assert _run_all(vm) == expected
+    _run_all(vm)
+    if language in DUMPS_ON_THE_POST_HALT_STEP:
+        vm.step()  # the dump, which run performs after its own loop
+    assert vm.output == expected
 
 
 class TestEveryLanguageIsSteppable:

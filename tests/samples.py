@@ -99,7 +99,15 @@ def bits_of(value: int) -> str:
 # one more ``machine.step()`` to dump the final registers, so "stepping to
 # the halt writes what run writes" is false for them by design, and the
 # no-op step is the second one past the halt, not the first.
-DUMPS_ON_THE_POST_HALT_STEP = frozenset({"Minsky Swap", "RAM0"})
+#
+# Bitdeque and LaserFuck joined them when their dumps moved out of ``run``.
+# Both had been replicated in the VM adapter instead, and LaserFuck's copy
+# had drifted: it dumped on ``not lsrs`` where ``run`` dumps on ``halted``,
+# so a program stopped by the second start marker printed under ``run`` and
+# not under the VM.  One implementation, in the machine, cannot drift.
+DUMPS_ON_THE_POST_HALT_STEP = frozenset(
+    {"Minsky Swap", "RAM0", "Bitdeque", "LaserFuck"}
+)
 
 # Languages with no self-halt at all: ``esolangs.run`` stops them from
 # outside, by the ``limit``/``cycles`` bound the registry passes it, and a

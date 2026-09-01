@@ -22,16 +22,9 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import RUNNERS
 
 if TYPE_CHECKING:
-    # Only for the chooser stand-in's signature and the few adapters that
-    # narrow ``_machine`` past the shape protocol; the interpreters are
+    # Only for the chooser stand-in's signature; the interpreters are
     # imported lazily inside the VMs that use them.
     from esolangs.interpreters.grid_based.cod import _Direction
-    from esolangs.interpreters.grid_based.laserfuck import (
-        _Machine as _LaserFuckMachine,
-    )
-    from esolangs.interpreters.queue_based.bitdeque import (
-        _Machine as _BitdequeMachine,
-    )
 
 
 @runtime_checkable
@@ -407,28 +400,13 @@ class _LaserFuckVM(_DelegatingVM):
 
     The heading is fixed to 0 (up) so stepping is reproducible; the
     interpreter's own ``run`` draws a random heading when none is given.
-    ``step()`` is still spelled here because ``run`` dumps the tape after
-    the last laser dies, so stepping only matches running if the adapter
-    does the same -- that is this class's business, not the machine's.
     """
-
-    # Narrowed from the base's protocol type: the step override reads this
-    # machine's own fields, which the shape protocol does not describe.
-    _machine: _LaserFuckMachine
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.grid_based.laserfuck import _Machine
 
         self._machine = _Machine(program.splitlines(), self._io, heading=0)
-
-    def step(self) -> None:
-        machine = self._machine
-        if machine.halted:
-            return
-        machine.step()
-        if not machine.lsrs:
-            machine.dump()
 
 
 class _FirstChoiceRNG:
@@ -480,33 +458,6 @@ class _ArrowQueueVM(_DelegatingVM):
         self._machine = _Machine(program.splitlines())
 
 
-class _BitdequeVM(_DelegatingVM):
-    """Token cursor + deque; the interpreter describes its own shape.
-
-    ``step()`` is still spelled here: ``run()`` prints the deque *after* the
-    last step, so stepping only matches running if the adapter does the same
-    at the end.  That is this class's business, not the machine's.
-    """
-
-    # Narrowed from the base's protocol type: the step override below reads
-    # this machine's own fields, which the shape protocol does not describe.
-    _machine: _BitdequeMachine
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.queue_based.bitdeque import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-    def step(self) -> None:
-        machine = self._machine
-        if machine.halted:
-            return
-        machine.step()
-        if machine.ind >= len(machine.tokens):
-            machine.render()  # the deque is printed once the program ends
-
-
 class _APainterAntVM(_DelegatingVM):
     """2D grid; the interpreter describes its own shape."""
 
@@ -545,13 +496,13 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Point Break": _PointBreakVM,
     "ArrowQueue": _ArrowQueueVM,
     "A Painter Ant": _APainterAntVM,
-    "Bitdeque": _BitdequeVM,
     "Suffolk": _SuffolkVM,
 }
 
 
 # Languages whose adapter is pure boilerplate over the registry entry.
 _DERIVED_LANGUAGES = (
+    "Bitdeque",
     "3D Brainfuck",
     "%^2^-1",
     "123",

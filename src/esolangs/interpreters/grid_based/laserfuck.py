@@ -40,6 +40,7 @@ class _Machine:
         self.ind = 0
         self.pos = (0, 0, 0)
         self._second_start = False
+        self._dumped = False
 
         self.lsrs: list[list[int]] = []
         for row, line in enumerate(self.text):
@@ -89,8 +90,23 @@ class _Machine:
         )
 
     def step(self) -> None:
-        """Move the active laser one step and execute the command it lands on."""
+        """Move the active laser one step, dumping the tape once halted.
+
+        The dump belongs to the step *after* the halt, as Minsky Swap and
+        RAM0 already spell it, so that stepping a machine to a standstill
+        writes what ``run`` writes.  Keeping it in ``run`` instead left the
+        VM adapter to replicate it, and the two had drifted: the adapter
+        dumped on ``not lsrs`` where ``run`` dumps on ``halted``, so a
+        program stopped by the second start marker printed its tape under
+        ``run`` and nothing at all under the VM.  Guarding on ``halted``
+        covers both ways of stopping, and ``lsrs`` is the wrong test
+        besides -- a beam splitter appends to it, so it grows as well as
+        shrinks.
+        """
         if self.halted:
+            if not self._dumped:
+                self.dump()
+                self._dumped = True
             return
         row, col, d = self.lsrs[self.ind]
 
@@ -197,7 +213,7 @@ def run(code: list[str], io: IO, heading: int | None = None) -> None:
     machine = _Machine(code, io, heading)
     while not machine.halted:
         machine.step()
-    machine.dump()
+    machine.step()  # the post-halt step dumps the tape
 
 
 if __name__ == "__main__":
