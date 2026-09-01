@@ -81,8 +81,14 @@ class TestAPainterAnt:
         assert cls._cycle_stable(program), f"{table} {bits}: not cycle-stable"
         return cls._landing_after(program)
 
+    @pytest.mark.slow  # 1.2s: builds and runs all sixteen tables on four rows
     def test_all_two_input_functions(self) -> None:
-        """Every two-input table is exact and cycle-stable for every input."""
+        """Every two-input table is exact and cycle-stable for every input.
+
+        ``test_xor`` and ``test_nand`` below spot-check the same builder in
+        milliseconds, so the fast run still covers this path; this is the
+        exhaustive sweep.
+        """
         for value in range(16):
             table = format(value, "04b")
             for row in range(4):

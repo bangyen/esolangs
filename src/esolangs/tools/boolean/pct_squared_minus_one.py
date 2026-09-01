@@ -1290,7 +1290,18 @@ def pct_squared_minus_one(truth_table: str) -> str:
         # every three-input table, at the cost of much the longest programs
         # here, which is why it is tried last.
         band = _band(truth_table, n)
-        if band is None:
+        # No test reaches this branch.  Reaching it means exhausting every
+        # construction, and `_affine` is the expensive one: it derives a whole
+        # arity at once, and the composition frontier grows 90 -> 1630 -> 36458
+        # states at n = 2, 3, 4, so one four-input refusal costs 121s of the
+        # 124s.  Three inputs are total (0 of 256 refused), so the refusal
+        # cannot be shown any cheaper than that -- the test that pinned it cost
+        # 162s under xdist, more than the rest of the suite put together, and
+        # was removed 2026-08-31 rather than marked, since a marked test still
+        # bills CI for it.  The guard stays because emitting nothing is better
+        # than emitting a program that computes the wrong function; if `_affine`
+        # is ever made to refuse without enumerating, restore the test.
+        if band is None:  # pragma: no cover - see above
             raise ValueError(
                 f"%^2^-1 builds every table at one, two and three inputs; "
                 f"above that a conjunction or disjunction of literals at any "
