@@ -110,7 +110,7 @@ class TestSuffolk:
         for expected in (0, 1, 2, 3):
             assert machine.ptr == expected
             machine.step()
-        assert machine.tape == [0, 0, 0, 1]
+        assert machine.tape == (0, 0, 0, 1)
 
     def test_cell_clamps_at_zero(self) -> None:
         """! floors the cell at 0 when the accumulator overshoots.
@@ -125,7 +125,7 @@ class TestSuffolk:
         machine = _Machine("!!!<>!", IO())
         for _ in range(6):
             machine.step()
-        assert machine.tape == [3, 0]
+        assert machine.tape == (3, 0)
 
     def test_accumulator_is_subtracted_at_the_cell(self) -> None:
         """! subtracts the accumulator rather than adding it.
@@ -139,7 +139,7 @@ class TestSuffolk:
         machine = _Machine("!!<!", IO())
         for _ in range(4):
             machine.step()
-        assert machine.tape == [1]
+        assert machine.tape == (1,)
 
     def test_empty_input_clears_the_accumulator(self) -> None:
         """, on an empty line leaves the accumulator at zero, not one."""
@@ -159,7 +159,7 @@ class TestStepMachine:
         before = machine.snapshot()
         machine.step()  # ! sets the current cell from the accumulator
         assert machine.snapshot() != before
-        assert machine.tape == [1]
+        assert machine.tape == (1,)
 
     def test_halted_is_always_false(self) -> None:
         from esolangs.interpreters.tape_based.suffolk import _Machine
@@ -176,7 +176,7 @@ class TestStepMachine:
         machine = _Machine("!.", IO())
         machine.step()  # !
         assert machine.ind == 1
-        assert machine.tape == [1]
+        assert machine.tape == (1,)
         machine.step()  # .
         assert machine.ind == 0  # wrapped past the last instruction
 
