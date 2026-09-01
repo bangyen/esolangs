@@ -1287,3 +1287,19 @@ class TestCVNCCompiler:
         assert "mul64:" in out
         assert "divu64:" in out
         assert "isqrt64:" in out
+
+    def test_number_parse_is_ascii_only(self) -> None:
+        """``s`` accepts the ASCII forms, and the narrowing is deliberate.
+
+        ``_as_int`` is Python's ``int()`` after ``str.strip()``, both of
+        which are Unicode-aware: an underscore is legal between digits and
+        ``strip`` removes any ``str.isspace()`` character.  The assembly
+        strips only the ASCII space/tab family and accepts only ASCII
+        digits, so those two forms read as 0 -- a stated domain rather than
+        a silent divergence, which is what this pins.
+        """
+        out = self.comp("so")
+        assert "li   t1, 48\n" in out  # the ASCII digit floor
+        assert "li   t1, 58\n" in out  # and its ceiling
+        assert "li   t1, 45\n" in out  # a leading '-', which floors at 0
+        assert "li   t1, 43\n" in out  # a leading '+'
