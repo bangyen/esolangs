@@ -97,35 +97,6 @@ class TestSuffolk:
         """
         assert run_and_capture("!<.<<!") == "\x00"
 
-    def test_a_program_that_never_repeats_raises(self) -> None:
-        """The step cap is the backstop for what neither stop covers.
-
-        A cell growing without bound never repeats a state, and a program
-        that reads nothing never runs out of input, so ``!`` alone would run
-        forever.  Reaching the cap raises rather than returning quietly: a
-        program the run could not decide is not reported as finished.
-        """
-        import pytest
-
-        from esolangs.exceptions import HaltError
-
-        with pytest.raises(HaltError, match="exceeded"):
-            run("!", IO(), steps=500)
-
-    def test_the_step_cap_defaults_to_a_million(self) -> None:
-        """The default is pinned, since every other call passes its own.
-
-        Nothing generated comes near the cap, so its value is invisible in
-        every other test and could drift to anything.  The message carries
-        it, which is the cheapest place to read it back.
-        """
-        import pytest
-
-        from esolangs.exceptions import HaltError
-
-        with pytest.raises(HaltError, match=r"^execution exceeded the 1000000-"):
-            run("!", IO())
-
     def test_pointer_walks_past_the_second_cell(self) -> None:
         """Consecutive > keep incrementing the pointer, they do not set it.
 

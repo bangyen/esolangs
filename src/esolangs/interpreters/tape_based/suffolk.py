@@ -16,12 +16,10 @@ without deciding it: one pass was chosen because the programs were believed
 to be finished by then, not shown to be.  It now stops on a *proof* instead
 -- a repeated state, or the ``EOFError`` from reading past the end of the
 input, whichever the program reaches.  Both are properties of the run, so
-nothing is left to choose.  ``steps`` survives only as a step cap for a
-program that does neither -- one whose cells grow without bound and which
-reads no input -- and exceeding it raises
-:class:`~esolangs.exceptions.HaltError` rather than returning, so a run that
-could not be decided is never reported as finished.  Nothing the generators
-emit comes near it.
+nothing is left to choose.  A program that does neither -- cells growing
+without bound, and no input to run out of -- runs forever, which is what
+``esolangs.run``'s ``timeout`` is for; the interpreter carries no cap of
+its own.
 
 The interpreter runs on a :class:`_Machine` (the code, tape, and
 accumulator), so it is step-capable: ``step()`` executes one command.  The
@@ -30,9 +28,9 @@ in :func:`run`'s driver; a repeated :meth:`_Machine.snapshot` is what proves
 a program loops, via ``esolangs.vm.run_until_halt_or_cycle``.
 """
 
-from esolangs.exceptions import HaltError
+import sys
+
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.oisc_cli import main_with_limit
 
 
 class _Machine:
@@ -115,7 +113,7 @@ class _Machine:
             self.ind = 0
 
 
-def run(code: str, io: IO, steps: int = 1_000_000) -> None:
+def run(code: str, io: IO) -> None:
     """Run a Suffolk program until it repeats a state or runs out of input.
 
     The wiki's rerun is infinite, so a program is stopped from outside --
@@ -129,26 +127,27 @@ def run(code: str, io: IO, steps: int = 1_000_000) -> None:
       input.
     * a program that reads nothing ends where it began -- the text
       generator appends a tail that puts every cell back -- so its state
-      repeats, and :func:`~esolangs.vm.run_until_halt_or_cycle` proves the
-      loop at the end of the first pass, with the output written once.
+      repeats, and the repeat proves the loop at the end of the first pass,
+      with the output written once.
 
-    ``steps`` remains only as the backstop for the class neither covers: a
-    program whose cells grow without bound never repeats a state, and
-    without input never stops.  It is a step cap, not a pass count, and
-    reaching it is a :class:`~esolangs.exceptions.HaltError` rather than a
-    quiet return -- an undecided program is not silently reported as
-    finished.  Nothing the generators emit comes close to it.
+    A program that does neither -- cells growing without bound, and no input
+    to run out of -- runs forever, and that is left to the caller: it is
+    what :func:`esolangs.run`'s ``timeout`` is for.  A step cap here would
+    be a second bound at the wrong layer, and no other interpreter carries
+    one except the OISCs, whose self-modifying memory rules out proving a
+    loop from a repeated state at all.
     """
     machine = _Machine(code, io)
     seen: set[tuple[object, ...]] = set()
-    for _ in range(steps):
+    while True:
         state = machine.snapshot()
         if state in seen:
             return
         seen.add(state)
         machine.step()
-    raise HaltError(f"execution exceeded the {steps}-instruction limit")
 
 
 if __name__ == "__main__":
-    main_with_limit(run)
+    if len(sys.argv) > 1:
+        with open(sys.argv[1]) as file:
+            run(file.read(), IO())
