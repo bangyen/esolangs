@@ -165,10 +165,10 @@ class _Machine:
     # than fields of their own, so there is one place a step can change.
 
     @property
-    def cells(self) -> list[int]:
-        # A list, because that is what this exposed before the cells became
-        # a tuple in the state, and callers compare against one.
-        return list(self.state[2])
+    def cells(self) -> tuple[int, ...]:
+        # The state's own tuple, handed back as it stands.  Brainfuck's
+        # ``tape`` reads the same way, so the two tape languages agree.
+        return self.state[2]
 
     @property
     def ind(self) -> int:
