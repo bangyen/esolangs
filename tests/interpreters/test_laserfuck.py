@@ -501,6 +501,21 @@ class TestSurvivorGaps:
                 assert run_and_capture(cage, heading=heading) == "2", heading
 
 
+    def test_the_jump_flag_starts_false(self) -> None:
+        """``jmp`` begins ``False``, and the snapshot carries that value.
+
+        Any falsy value behaves alike wherever the flag is only tested for
+        truth, but it is part of the state the cycle detector compares --
+        so what it *is* matters, not just whether it is falsy.
+        """
+        from esolangs.interpreters.grid_based.laserfuck import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        machine = _Machine(["+"], ScriptedIO(), heading=3)
+        assert machine.jmp is False
+        assert machine.snapshot()[2] is False
+
+
 def _machine(code: object) -> object:
     from esolangs.interpreters.grid_based.laserfuck import _Machine
     from esolangs.interpreters.io import IO
