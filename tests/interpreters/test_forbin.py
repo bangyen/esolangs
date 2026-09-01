@@ -1094,6 +1094,39 @@ class TestThreadedResources:
             == "A"
         )
 
+    def test_an_argument_list_carries_its_own_resources(self) -> None:
+        """``_eval``'s argument list is a separate forwarding site.
+
+        A call node evaluates its callee, then its arguments, then calls.
+        Those are three lines, each forwarding the same four things, and
+        the argument list was the one no program loaded: every call in the
+        suite passed a literal or a bare name, which needs neither the
+        globals nor the reader.
+
+        An argument that is *itself* a call needs the globals; an argument
+        that reads input needs the reader.  Both are wrapped in an
+        expression-position call so the recursive evaluator is what runs
+        them.
+        """
+        # an argument that is a call: needs the function table
+        assert (
+            run_program(
+                "k { return 1; }\nh a { return a; }\n"
+                "g { x = (h (k 0)); return x; }\n"
+                "main { y = (g 0); out 0,1,0,0,0,0,0,y; }\n"
+            )
+            == "A"
+        )
+        # an argument that reads input: needs the reader
+        assert (
+            run_program(
+                "h a { return a; }\ng { x = (h (in 0)); return x; }\n"
+                "main { y = (g 0); out 0,1,0,0,0,0,0,y; }\n",
+                "\xff",
+            )
+            == "A"
+        )
+
     def test_a_call_nested_in_a_call_is_what_reads_the_depth(self) -> None:
         """``depth`` is forwarded everywhere and read once, as ``depth + 1``.
 
@@ -1116,6 +1149,78 @@ class TestThreadedResources:
                 "main { y = (g 0); out 0,1,0,0,0,0,0,y; }\n"
             )
             == "A"
+        )
+
+
+class TestWildcardExpansion:
+    """``*`` in an iteration pattern expands to every bit combination.
+
+    The expansion is written twice -- once in ``_for_rows`` for the step
+    machine, once inside ``_exec_stmt`` for the recursive evaluator -- and
+    each copy walks the pattern with a *separate* cursor ``w`` into the
+    combination tuple.  A wrong cursor is invisible with fewer than three
+    wildcards (with two, the only wrong index still lands in range and the
+    rows come out permuted rather than short), and invisible in the
+    recursive copy unless the loop is inside an expression-position call.
+    """
+
+    def test_three_wildcards_expand_to_eight_rows_in_order(self) -> None:
+        """Three ``*`` need a cursor that reaches index two.
+
+        With one or two wildcards a cursor that resets or counts backwards
+        still indexes a valid element; the third column is what makes a
+        wrong ``w`` either repeat a bit or run off the tuple.
+        """
+        code = (
+            "g a, b, c { out 0,1,0,0,0,0,0,a; out 0,1,0,0,0,1,0,b; "
+            "out 0,1,0,0,1,0,0,c; }\n"
+            "main { for (i,j,k):((*,*,*)) { g i, j, k; } }\n"
+        )
+        assert run_program(code) == "@DH@DI@EH@EIADHADIAEHAEI"
+
+    def test_the_recursive_copy_expands_too(self) -> None:
+        """The same expansion, reached through an expression-position call.
+
+        ``_exec_stmt`` carries its own copy of the wildcard walk, and a
+        top-level ``for`` never runs it -- the step machine builds those
+        rows in ``_for_rows`` instead.  These loops return on their first
+        row, so what they pin is that a row was produced at all and that
+        the pattern's fixed columns kept their values.
+        """
+        assert (
+            run_program(
+                "g { for (i,j):((*,*)) { return 0; } return 1; }\n"
+                "main { x = (g 0); out 0,1,0,0,0,0,0,x; }\n"
+            )
+            == "@"
+        )
+        # a fixed column either side of the wildcard: the cursor must not
+        # consume one of them
+        assert (
+            run_program(
+                "g { for (i,j,k):((1,*,0)) { return j; } return 1; }\n"
+                "main { x = (g 0); out 0,1,0,0,0,0,0,x; }\n"
+            )
+            == "@"
+        )
+
+
+class TestCallResultDefaults:
+    """What a call evaluates to when it returns nothing.
+
+    Both are ``0``, and both were only ever used in statement position --
+    where the value is discarded, so a mutant returning ``1`` changed
+    nothing observable.  Assigning the call's value is what reads it.
+    """
+
+    def test_a_function_that_returns_nothing_evaluates_to_zero(self) -> None:
+        assert run_program("g { }\nmain { x = (g 0); out 0,1,0,0,0,0,0,x; }\n") == "@"
+
+    def test_out_evaluates_to_zero(self) -> None:
+        """``out`` is a call like any other and yields a value."""
+        assert (
+            run_program("main { x = (out 0,1,0,0,0,0,0,1); out 0,1,0,0,0,0,0,x; }")
+            == "A@"
         )
 
 
