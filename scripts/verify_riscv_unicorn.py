@@ -78,8 +78,9 @@ REFERENCE_CASES = [
 # (name, compiler module, source program, expected output[, stdin]).
 # Compilers with generators (bfstack, suffolk, unsquare, home_row)
 # round-trip them; the others (jaune, bf_pda, ram0) get fixed programs with
-# known output.  Forbin and Container read stdin, so their boolean cases
-# carry a fifth element; everything else runs on empty input.
+# known output.  Forbin, Container, CV(N)(C), and MyScript read stdin, so
+# their boolean cases carry a fifth element; everything else runs on empty
+# input.
 COMPILER_CASES: list[tuple[str, str, str, str] | tuple[str, str, str, str, str]] = []
 for text in ["Hi", "Hello, World!", "esolangs!"]:
     COMPILER_CASES.append(("bfstack", "bfstack", gen.bfstack(text), text))
@@ -94,6 +95,7 @@ for text in ["Hi", "Hello, World!", "esolangs!"]:
     COMPILER_CASES.append(("decleq", "decleq", gen.decleq(text), text))
     COMPILER_CASES.append(("container", "container", gen.container(text), text))
     COMPILER_CASES.append(("cvnc", "cvnc", gen.cvnc(text), text))
+    COMPILER_CASES.append(("myscript", "myscript", gen.myscript(text), text))
 COMPILER_CASES.append(("home_row", "home_row", "a" * 65 + "k;", "A"))
 COMPILER_CASES.append(("jaune", "jaune", "6+5+^.", "11"))
 COMPILER_CASES.append(("unsquare", "unsquare", "IA" + "+" * 32 + "Po", "A"))
@@ -154,6 +156,24 @@ for _a in "01":
                 "cvnc",
                 _CVNC_AND2,
                 "1" if _a == "1" and _b == "1" else "0",
+                f"{_a}\n{_b}\n",
+            )
+        )
+# MyScript: the boolean generator's XOR2 program over its whole input
+# space.  `ask` is `IO.input_str`, a whole line without its terminator, so
+# each bit is its own line; the generator compares the line to the string
+# "1", so a bit sharing a line with another would compare unequal to both.
+# XOR rather than AND because its tree reaches a `say "1"` and a `say "0"`
+# leaf under each of the two top-level branches, so every arm is exercised.
+_MYSCRIPT_XOR2 = gen_bool.myscript("0110")
+for _a in "01":
+    for _b in "01":
+        COMPILER_CASES.append(
+            (
+                "myscript",
+                "myscript",
+                _MYSCRIPT_XOR2,
+                "1" if _a != _b else "0",
                 f"{_a}\n{_b}\n",
             )
         )

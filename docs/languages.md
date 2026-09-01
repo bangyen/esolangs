@@ -52,7 +52,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | Minifuck | yes | yes |  | yes |  |
 | Minsky Swap |  | yes | yes | yes |  |
 | Modulous | yes | yes |  | yes |  |
-| MyScript | yes | yes |  | yes |  |
+| MyScript | yes | yes |  | yes | yes |
 | Nevermind | yes | yes |  | yes |  |
 | NoComment | yes | yes | yes | yes |  |
 | Painfuck | yes | yes |  | yes |  |

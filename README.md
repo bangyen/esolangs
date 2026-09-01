@@ -261,7 +261,7 @@ interpreters, so they are not listed above:
 <details>
 <!-- COMPILERS:START -->
 
-<summary>Show all 15 compilers</summary>
+<summary>Show all 16 compilers</summary>
 
 Compilers that translate esoteric languages to other target languages.
 
@@ -278,6 +278,7 @@ Compilers that translate esoteric languages to other target languages.
 - [Forþ](https://esolangs.org/wiki/Forþ)
 - [Home Row](https://esolangs.org/wiki/Home_Row)
 - [Jaune](https://esolangs.org/wiki/Jaune)
+- [MyScript](https://esolangs.org/wiki/MyScript)
 - [RAM0](https://esolangs.org/wiki/RAM0)
 - [S*bleq](https://esolangs.org/wiki/S*bleq)
 - [Suffolk](https://esolangs.org/wiki/Suffolk)
