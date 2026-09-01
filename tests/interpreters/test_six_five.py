@@ -135,6 +135,55 @@ class TestSixFive:
         with pytest.raises(HaltError):
             run_and_capture("2A")
 
+    def test_the_printable_range_ends_at_the_last_codepoint(self) -> None:
+        """Both ends of the ``A`` guard, at the value that separates them.
+
+        Only the negative side was ever tested, so the upper bound could
+        have been any large number -- or one short of the real one -- and
+        every program still agreed.  ``B`` reads the boundary character
+        straight in: U+10FFFF prints, and one past it is the invalid
+        operation, which a narrower bound would refuse and a wider one
+        would hand to ``chr`` instead of rejecting.
+        """
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        assert run_and_capture("BA0", inputs=["\U0010ffff"]) == "\U0010ffff"
+        with pytest.raises(HaltError):
+            # 6 then 5 lands one past the last codepoint
+            run_and_capture("B62A", inputs=["\U0010ffff"])
+
+    def test_the_left_move_is_relative_to_where_the_pointer_is(self) -> None:
+        """``3`` steps back one, rather than landing on a fixed cell.
+
+        Every earlier ``3`` ran from cell 2, where stepping back and moving
+        to cell 1 are the same thing.  Marking cell 1 and then arriving
+        from cell 5 tells them apart: the step lands on the untouched cell
+        4, while a jump to cell 1 would find the mark.
+        """
+        assert run_and_capture("1366666666113A0") == "\x00"
+
+    def test_a_marker_jump_with_no_operand_does_nothing(self) -> None:
+        """A trailing ``8`` has no operand, so its target count is zero.
+
+        No ``4`` is ever the zeroth one, so the scan matches nothing and
+        the program simply ends.  Reading an operand that is not there
+        fails outright, and defaulting the count to 1 would send the
+        cursor back to the marker and loop forever.
+        """
+        assert run_and_capture("4A8") == "\x00"
+
+    def test_a_conditional_skip_with_no_operand_does_nothing(self) -> None:
+        """The same for a trailing ``7``: no operand, so nothing to read.
+
+        The comparison is against zero, which a zeroed cell matches -- but
+        the instruction it would skip is off the end of the program, so
+        the output cannot show it.  What the output does show is that the
+        missing operand is not read at all.
+        """
+        assert run_and_capture("A7") == "\x00"
+
 
 class TestComments:
     """``C`` starts a comment, unless it is the operand of a ``7`` or ``8``.
@@ -199,6 +248,38 @@ class TestStepMachine:
         assert machine.io.getvalue() == "\n"
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
+        assert machine.ind == 3
+
+    def test_an_operandless_skip_still_moves_the_cursor_past_one_token(
+        self,
+    ) -> None:
+        """A bare ``7`` compares against zero and skips on a match.
+
+        The tokenizer only ever leaves a ``7`` bare at the very end of a
+        program, so whatever it skips is past the last token and no output
+        can show it.  The cursor can: a zeroed cell matches the default
+        operand of 0, so it advances twice, where a default of 1 would not
+        match and it would advance once.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.six_five import _Machine
+
+        machine = _Machine("7", ScriptedIO())
+        machine.step()
+        assert (machine.ind, machine.halted) == (2, True)
+
+    def test_a_marker_jump_lands_past_the_marker_it_found(self) -> None:
+        """``8n`` leaves the cursor after the ``4``, not on it.
+
+        ``4`` is not an instruction, so landing on it costs one wasted
+        step and prints exactly what landing past it prints.  Only the
+        cursor separates the two, and the cycle detector keys on it.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.six_five import _Machine
+
+        machine = _Machine("81A4A0", ScriptedIO())
+        machine.step()  # 81 jumps to just after the first 4
         assert machine.ind == 3
 
 
