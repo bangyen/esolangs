@@ -132,10 +132,42 @@ class _Machine:
         self.limit = limit
         self.steps = 0
         self.frames: list[_Frame] = []
+        # Where the top-level frame ends.  The caller pushes that frame
+        # after construction, so this is filled in the first time ``step()``
+        # sees one -- ``ip`` still has to report a position after every
+        # frame has been popped.
+        self._top_length = 0
 
     @property
     def halted(self) -> bool:
         return not self.frames
+
+    # The VM's language-shaped view: a stack language whose call frames each
+    # carry their own cursor, and with no addressable cells.
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        """Each active frame's pc, root-to-leaf.
+
+        Every call frame (``G``/``I``/``Q``/``Z`` push one) contributes its
+        ``pc``, so this grows and shrinks with recursion depth instead of
+        folding every frame into the active one's position.  A breakpoint on
+        a specific position is therefore depth-sensitive: ``(5,)`` matches
+        only a single top-level frame at pc 5, not pc 5 one call deeper
+        (``(2, 5)``).
+
+        A frame is only ever popped once its own pc reaches the end of its
+        code, so no frames at all means the top-level one finished at the
+        end of the program -- which is what is reported then.
+        """
+        if self.frames:
+            return tuple(f.pc for f in self.frames)
+        return (self._top_length,)
+
+    @property
+    def memory(self) -> list[int]:
+        """No addressable cells; the store is the stack."""
+        return []
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
@@ -177,6 +209,10 @@ class _Machine:
             frame.pc = 0
             frame.pending_at = -1
         else:
+            if len(self.frames) == 1:
+                # The top-level frame is going: remember where it ended, so
+                # ``ip`` can still report a position once nothing is left.
+                self._top_length = len(frame.code)
             self.frames.pop()
 
     def step(self) -> None:
