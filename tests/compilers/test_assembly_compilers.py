@@ -1332,3 +1332,24 @@ class TestCVNCCompiler:
         assert "call push_back" in self.comp("cin")
         assert "call pop_front" in self.comp("coŋ")
         assert "call pop_back" in self.comp("coɲ")
+
+    def test_every_command_compiles(self) -> None:
+        """Each of the language's commands emits something.
+
+        A per-command sweep rather than a case per branch: the emit
+        functions dispatch on the command, so this reaches every arm of all
+        five of them.  The alphabet is spelled out rather than imported
+        from the interpreter, so a command that gains a lowering here but
+        no interpretation -- or the reverse -- shows up as a failure rather
+        than as two files agreeing with each other.
+        """
+        # Consonants that stand alone, each with an inert vowel.
+        for onset in "θfsʒpkdbtɡqʔʡcɹj":
+            assert ".global _start" in self.comp(onset + "i")
+        # A loop opener and the loop end only parse as a matched pair.
+        for opener in ["ɰ̊", "ɰ"]:
+            assert ".global _start" in self.comp(opener + "iʋi")
+        for vowel in "iəæou":
+            assert ".global _start" in self.comp("c" + vowel)
+        for nasal in "mnŋɲ":
+            assert ".global _start" in self.comp("ci" + nasal)
