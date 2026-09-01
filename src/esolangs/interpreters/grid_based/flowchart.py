@@ -126,6 +126,7 @@ middle, or no ``( )`` to start from) raise :class:`ValueError`.
 """
 
 import sys
+from typing import Literal, assert_never
 
 from esolangs.interpreters.io import IO
 
@@ -136,10 +137,34 @@ _LEFT = (0, -1)
 _RIGHT = (0, 1)
 _HEADINGS = (_RIGHT, _DOWN, _LEFT, _UP)
 
+# The spellings, as a type.  ``_parse`` is the only writer of ``self.nodes``
+# and it copies out of :data:`_NODES`, so every spelling the interpreter ever
+# dispatches on is one of these -- which lets ``_execute`` end in an ``else``
+# that mypy narrows to the last one, rather than a branch nothing can take.
+# Adding a node means adding it here as well as to ``_NODES``, or the tuple
+# stops type-checking.
+_Spelling = Literal[
+    "(( ))",
+    "\\[ ]/",
+    "/[ ]\\",
+    "\\{ }/",
+    "/{ }\\",
+    "( )",
+    "[ ]",
+    "{ ]",
+    "[ }",
+    "{ }",
+    "< >",
+    "/ /",
+    "\\ \\",
+    "< ]",
+    "[ >",
+]
+
 # Node spellings, longest first: ``\[ ]/`` contains ``[ ]``, and ``[ }``,
 # ``[ >`` and ``[ ]`` share a prefix, so a shorter spelling must never be
 # matched inside a longer one.
-_NODES = (
+_NODES: tuple[_Spelling, ...] = (
     "(( ))",
     "\\[ ]/",
     "/[ ]\\",
@@ -254,7 +279,7 @@ class _Machine:
         # (row, col) -> (node spelling, col of the node's first character); every
         # cell a node covers maps to that node, so a pointer arriving at any
         # column of the box executes it.
-        self.nodes: dict[tuple[int, int], tuple[str, int]] = {}
+        self.nodes: dict[tuple[int, int], tuple[_Spelling, int]] = {}
         self._parse()
 
         self.deques: dict[int, list[int]] = {}
@@ -615,6 +640,12 @@ class _Machine:
             p.deque -= 1
         elif spelling == "[ >":
             p.deque += 1
+        else:
+            # Unreachable, and checked to be: ``_Spelling`` is exhausted by
+            # the arms above, so mypy narrows this to ``Never``.  A node added
+            # to the type but not dispatched here fails the type check rather
+            # than silently falling through to ``_leave``.
+            assert_never(spelling)
 
         self._leave(p)
 

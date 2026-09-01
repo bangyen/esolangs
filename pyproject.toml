@@ -235,4 +235,9 @@ exclude_lines = [
     # Imports guarded by TYPE_CHECKING exist for the type checker and are
     # never executed, so they can only ever read as uncovered.
     "if TYPE_CHECKING:",
+    # An `assert_never` arm is the type checker's exhaustiveness proof: mypy
+    # only accepts it where it has narrowed the value to `Never`, so reaching
+    # it at run time is impossible by the same check that admits it.  Adding a
+    # case without dispatching it fails the type check instead.
+    "assert_never",
 ]
