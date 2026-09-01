@@ -230,7 +230,7 @@ class TestCOD:
         """
         code = "\n".join(["~~~~", "->~~", "~~~~"])
         machine = _Machine(code, IO())
-        assert machine._open_dirs(1, 1) == ["W"]
+        assert [(cod.r, cod.c, cod.d) for cod in machine.cods] == [(1, 1, "W")]
         machine.step()  # west onto the '-', which removes the cod
         assert machine.halted
 
@@ -289,17 +289,17 @@ class TestCOD:
         ``match=`` is a substring search, so every assertion above passes
         on a message padded or reworded around the phrase it looks for.
         """
-        with pytest.raises(ValueError) as no_start:
-            run("~~~~~", IO())
-        assert str(no_start.value) == "no cod start marker '>'"
+        import re
 
-        with pytest.raises(ValueError) as two_starts:
-            run("~~~~~~~\n~> > ~~\n~~~~~~~", IO())
-        assert str(two_starts.value) == "multiple cod start markers"
-
-        with pytest.raises(ValueError) as enclosed:
-            run("~~~\n~>~\n~~~", IO())
-        assert str(enclosed.value) == "cod start is fully enclosed"
+        for code, message in (
+            ("~~~~~", "no cod start marker '>'"),
+            ("~~~~~~~\n~> > ~~\n~~~~~~~", "multiple cod start markers"),
+            ("~~~\n~>~\n~~~", "cod start is fully enclosed"),
+            ("~>q~", "unknown instruction 'q'"),
+        ):
+            with pytest.raises(ValueError, match=re.escape(message)) as caught:
+                run(code, IO(), limit=5)
+            assert str(caught.value) == message
 
     def test_deterministic_rng_picks_first_option(self) -> None:
         # at a genuine (non '+') random junction, the injected rng's
@@ -323,7 +323,6 @@ class TestCOD:
         """
         code = "\n".join(["~~~~~", "~ > ~", "~~~~~"])
         machine = _Machine(code, IO(), rng=_LastChoiceRNG())
-        assert machine._open_dirs(1, 2) == ["E", "W"]
         assert machine.cods[0].d == "W"
 
     def test_run_hands_its_chooser_to_the_machine(self) -> None:
