@@ -90,20 +90,45 @@ class _Machine:
         self.m = _matches(code)
         self.cells: dict[tuple[int, int, int], int] = {}
         self.ap = (0, 0, 0)
-        self.ip = (0, 0, 0)
+        self.pos = (0, 0, 0)
         self.heading = (1, 0, 0)
 
     @property
     def halted(self) -> bool:
         """Whether the instruction pointer has left the source line."""
-        return self.ip not in self.grid
+        return self.pos not in self.grid
+
+    # The VM's language-shaped view.  The instruction pointer is held as
+    # ``pos`` -- the name LaserFuck gives the same thing -- because ``ip``
+    # here is the position *and* the heading, and one name cannot be both.
+    # ``ap`` keeps its own name: it is the array pointer, not this.
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        """The instruction pointer's position and heading, flattened.
+
+        Where the pointer is does not say where it goes next: the heading
+        is a separate 3D vector, and a breakpoint on a position alone would
+        match the same cell entered from six directions.
+        """
+        return (*self.pos, *self.heading)
+
+    @property
+    def memory(self) -> list[int]:
+        """The cells that have been touched, in address order."""
+        return [v for _, v in sorted(self.cells.items())]
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (
             tuple(sorted(self.cells.items())),
             self.ap,
-            self.ip,
+            self.pos,
             self.heading,
             self.io.position(),
         )
@@ -112,7 +137,7 @@ class _Machine:
         """Execute one block, moving the instruction pointer."""
         if self.halted:
             return
-        char = self.grid[self.ip]
+        char = self.grid[self.pos]
         if char in _HEADING:
             self.heading = _HEADING[char]
         elif char in _ARRAY:
@@ -128,12 +153,12 @@ class _Machine:
                 self.cells[self.ap] = self.io.input_char()
         elif char == "[":
             if self.cells.get(self.ap, 0) == 0:
-                self.ip = (self.m[self.ip[0]] + 1, 0, 0)
+                self.pos = (self.m[self.pos[0]] + 1, 0, 0)
                 return
         elif char == "]" and self.cells.get(self.ap, 0) != 0:
-            self.ip = (self.m[self.ip[0]] + 1, 0, 0)
+            self.pos = (self.m[self.pos[0]] + 1, 0, 0)
             return
-        self.ip = _advance(self.ip, self.heading)
+        self.pos = _advance(self.pos, self.heading)
 
 
 def run(code: str, io: IO) -> None:

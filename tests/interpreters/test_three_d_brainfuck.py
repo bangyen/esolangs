@@ -107,7 +107,7 @@ class Test3DBrainfuck:
             assert machine.heading == heading, block
             # the block at the origin is replaced as the advance vector, so
             # the pointer steps straight off the +X line and stops
-            assert machine.ip == heading, block
+            assert machine.pos == heading, block
             assert machine.halted, block
 
     def test_loop(self) -> None:
@@ -192,7 +192,7 @@ class TestStepMachine:
         from esolangs.interpreters.tape_based.three_d_brainfuck import _Machine
 
         machine = _Machine("+.", ScriptedIO())
-        assert (machine.ip, machine.ap, machine.heading) == (
+        assert (machine.pos, machine.ap, machine.heading) == (
             (0, 0, 0),
             (0, 0, 0),
             (1, 0, 0),
@@ -203,7 +203,7 @@ class TestStepMachine:
         assert machine.io.getvalue() == "\x01"
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
-        assert machine.ip == (2, 0, 0)
+        assert machine.pos == (2, 0, 0)
 
 
 def _machine(code: object) -> object:
