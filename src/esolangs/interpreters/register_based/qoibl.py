@@ -202,6 +202,25 @@ class State:
         """Whether the expression pointer has run off the program."""
         return self.ind >= len(self.code)
 
+    # The VM's language-shaped view: a 256-entry variable list addressed by
+    # number, so ``memory`` is that list densified -- absent keys read as
+    # zero, which is what the language says an unset variable holds.
+
+    @property
+    def ip(self) -> int:
+        """The expression cursor."""
+        return self.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """The 256 variables, unset ones reading as zero."""
+        return [self.var.get(k, 0) for k in range(256)]
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (self.ind, tuple(sorted(self.var.items())), self.io.position())
