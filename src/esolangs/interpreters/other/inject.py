@@ -145,6 +145,41 @@ class _Machine:
     def halted(self) -> bool:
         return self.done or self.ind >= len(self.lines)
 
+    # The VM's language-shaped view.
+
+    @property
+    def ip(self) -> int:
+        """The line cursor."""
+        return self.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """Each labelled block's line count, in label order.
+
+        Inject has no numbers at all -- its state is the text of its own
+        program -- so this is the one numeric view of the state the
+        language itself can test, since ``skipif`` asks whether a block has
+        at least one line.  A block's size is the gap between its
+        delimiters, so the spans alone give it without slicing the lines
+        back out.
+        """
+        return [
+            self.spans[name][1] - self.spans[name][0] - 1 for name in sorted(self.spans)
+        ]
+
+    @property
+    def stack(self) -> list[object]:
+        """The labels enclosing the cursor, innermost last.
+
+        ``skip``'s second clause is decided by that nesting, which is what
+        makes it the language's stack.
+        """
+        inside = [
+            name for name, (begin, end) in self.spans.items() if begin < self.ind < end
+        ]
+        ordered = sorted(inside, key=lambda n: self.spans[n][1] - self.spans[n][0])
+        return list(reversed(ordered))
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         # The program text is the memory, so it has to go in whole: a loop
