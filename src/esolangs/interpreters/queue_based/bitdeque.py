@@ -49,6 +49,26 @@ class _Machine:
         """Whether the cursor has passed the last token."""
         return self.ind >= len(self.tokens)
 
+    # The VM's language-shaped view: the deque is the store, and the one
+    # register reads as a stack of one.  Printing the deque is *not* here:
+    # ``render()`` is what ``run()`` does after the last step, so the VM's
+    # adapter drives it rather than ``step()``.
+
+    @property
+    def ip(self) -> int:
+        """The token cursor."""
+        return self.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """The deque, front first."""
+        return list(self.deq)
+
+    @property
+    def stack(self) -> list[object]:
+        """The single register, as a one-element stack."""
+        return [self.reg]
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (

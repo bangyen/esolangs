@@ -71,6 +71,23 @@ class _Machine:
         """
         return self.ind >= len(self.tokens)
 
+    # The VM's language-shaped view: two registers and a sparse RAM.
+
+    @property
+    def ip(self) -> int:
+        """The token cursor."""
+        return self.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """The registers ``z`` and ``n``, then the RAM in address order."""
+        return [self.z, self.n, *(self.ram[k] for k in sorted(self.ram))]
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (self.ind, self.z, self.n, frozenset(self.ram.items()))

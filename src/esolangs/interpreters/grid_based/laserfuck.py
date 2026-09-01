@@ -58,6 +58,25 @@ class _Machine:
     def halted(self) -> bool:
         return self._second_start or not self.lsrs
 
+    # The VM's language-shaped view.  Dumping the tape once the last laser
+    # dies is *not* here -- that is what ``run()`` does after the final
+    # step, so the VM's adapter drives it rather than ``step()``.
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        """The active laser's ``(row, col, heading)``."""
+        return self.pos
+
+    @property
+    def memory(self) -> list[int]:
+        """The tape's cell values, without their paint flags."""
+        return [v for v, _ in self.tape]
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (
