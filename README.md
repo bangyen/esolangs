@@ -261,7 +261,7 @@ interpreters, so they are not listed above:
 <details>
 <!-- COMPILERS:START -->
 
-<summary>Show all 14 compilers</summary>
+<summary>Show all 15 compilers</summary>
 
 Compilers that translate esoteric languages to other target languages.
 
@@ -270,6 +270,7 @@ Compilers that translate esoteric languages to other target languages.
 - [AddSubJump](https://esolangs.org/wiki/AddSubJump)
 - [BF-PDA](https://esolangs.org/wiki/BF-PDA)
 - [BFStack](https://esolangs.org/wiki/BFStack)
+- [CV(N)(C)](https://esolangs.org/wiki/CV(N)(C))
 - [Collatz Multiverse](https://esolangs.org/wiki/Collatz_Multiverse)
 - [Container](https://esolangs.org/wiki/Container)
 - [Decleq](https://esolangs.org/wiki/Decleq)

@@ -31,6 +31,7 @@ _COMPILER_NAMES = {
     "forth": "Forþ",
     "forbin": "Forbin",
     "container": "Container",
+    "cvnc": "CV(N)(C)",
 }
 
 _COMPILER_DIRS = {

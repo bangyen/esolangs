@@ -93,6 +93,7 @@ for text in ["Hi", "Hello, World!", "esolangs!"]:
     COMPILER_CASES.append(("sbleq", "sbleq", gen.sbleq(text), text))
     COMPILER_CASES.append(("decleq", "decleq", gen.decleq(text), text))
     COMPILER_CASES.append(("container", "container", gen.container(text), text))
+    COMPILER_CASES.append(("cvnc", "cvnc", gen.cvnc(text), text))
 COMPILER_CASES.append(("home_row", "home_row", "a" * 65 + "k;", "A"))
 COMPILER_CASES.append(("jaune", "jaune", "6+5+^.", "11"))
 COMPILER_CASES.append(("unsquare", "unsquare", "IA" + "+" * 32 + "Po", "A"))
@@ -137,6 +138,23 @@ for _a in "01":
                 _CONTAINER_AND2,
                 "1" if _a == "1" and _b == "1" else "0",
                 f"{_a}\n{_b}",
+            )
+        )
+# CV(N)(C): the boolean generator's AND2 program over its whole input
+# space.  Its read is `s`, which parses a whole *line* as an integer, so
+# each bit is its own line -- and unlike the two blocks above that is
+# forced rather than a matching convention: two bits on one line would
+# parse as a single two-digit number.
+_CVNC_AND2 = gen_bool.cvnc("0001")
+for _a in "01":
+    for _b in "01":
+        COMPILER_CASES.append(
+            (
+                "cvnc",
+                "cvnc",
+                _CVNC_AND2,
+                "1" if _a == "1" and _b == "1" else "0",
+                f"{_a}\n{_b}\n",
             )
         )
 _CM_CONSTANTS = "\n".join(

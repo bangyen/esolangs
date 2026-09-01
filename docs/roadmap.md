@@ -106,7 +106,7 @@ generator exercised through a compile-then-fuzz differential) or **intrinsic
 value** (genuine lowering — control flow, calls, memory, dispatch — rather
 than per-command transliteration).
 
-Candidates in priority order.  Two facts constrain every entry: the target
+One candidate remains.  Two facts constrain it: the target
 is **`rv64i`**, whose base integer ISA has no float and no hardware
 multiply (forth already emits software `mul32`/`divmod32`, so integers are
 precedent and floats are not); and a differential is only worth the name
@@ -121,14 +121,12 @@ its bits into a fixed template and replays the same program.
   and on `rv64i` that means soft-float plus heap-managed strings and
   growable arrays — a different league from Forbin's tagged 64-bit words.
   Worth doing, but scope the value domain before starting.
-- **CV(N)(C)** — genuine dispatch, and the most unusual lowering available:
-  the program builds a *function* symbol by symbol and applies it on demand,
-  over an accumulator, a deque, and that function.  Unbounded unsigned
-  integers fit the bounded-agreement rule every compiler here shares
-  ([`docs/limitations.md`](limitations.md#compilers-are-bounded-agreement-not-total-over-unbounded-values)),
-  and it carries both a text and a boolean generator.  Its cost is the syllable grammar — validity is
-  CV(N)(C) structure, so the front end is a real parser rather than a
-  character dispatch.
+
+CV(N)(C) shipped (`src/esolangs/compilers/cvnc.py`); its syllable grammar
+cost nothing, since the interpreter's tokenizer and syllabifier are
+imported the way `container` imports its parser, and the bill was instead
+the runtime-built function and the two computed gotos that the entry named
+as its value.  The compiler's own docstring carries the design.
 
 Standing negatives, unchanged.  Plain brainfuck is the trap answer —
 uncovered, but `home_row`/`suffolk` already cover that shape, so it is
