@@ -75,19 +75,35 @@ class TestBrackets:
         """``]`` with a one top jumps back across a nested ``]`` exactly once."""
         assert run_program("<@<@[<@[>@]>]") == ""
 
-    def test_scan_counts_two_levels_of_nesting(self) -> None:
-        """Both scans land past their own match, not an inner one.
+    def test_forward_scan_skips_an_empty_inner_loop(self) -> None:
+        """The forward scan counts an inner ``[`` even with nothing inside it.
 
-        The existing nested cases either skip the whole span or nest only
-        one deep, so a scan that miscounts inner brackets still lands
-        somewhere harmless.  Two levels make the count itself observable:
-        ``<`` pushes a zero, so the outer ``[`` skips forward over *two*
-        nested ``[`` before its match, and the trailing ``@.`` prints from
-        the cell the scan lands on.  A scan that fails to raise its depth
-        on an inner ``[``, or that starts one character further along,
-        stops at the first ``]`` instead and prints a different string.
+        Every nested case here puts commands between the inner brackets, so
+        a scan that miscounts still lands on a command and prints the same
+        thing.  An *empty* inner loop is the tight case: in ``[[]@]`` the
+        skip from the outer ``[`` has to pass ``[]`` and stop after the
+        outer ``]``.  A scan that starts one character further along, or
+        that never raises its depth on an inner ``[``, stops at the inner
+        ``]`` instead and resumes inside the loop.
+
+        The leading ``.`` prints the empty stack's zero, and the outer
+        ``[`` reads that same zero and skips -- so the program prints once
+        and halts, where a mis-landed scan runs ``@`` and prints again.
         """
-        assert run_program("<[[[.]]].@.") == "01"
+        assert run_program(".[[]@]") == "0"
+        assert run_program(".[[].]") == "0"
+
+    def test_backward_scan_lands_on_the_matching_open(self) -> None:
+        """``]`` resumes at its own ``[``, counting a nested ``]`` on the way.
+
+        The jump-back tests all sit next to a command, so a scan returning
+        one index either side still lands on something equivalent.  Here
+        the outer ``]`` is preceded directly by an inner ``][``, so the
+        index it computes is the difference between resuming at the outer
+        ``[`` and resuming one cell off it.
+        """
+        assert run_program("@<@.[>][]") == "1"
+        assert run_program("@<@[>.][]") == "10"
 
 
 class TestHalting:
