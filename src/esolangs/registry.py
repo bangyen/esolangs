@@ -499,7 +499,6 @@ LANGUAGES: dict[str, Language] = {
         "tape_based.suffolk",
         boolean=_boolean.suffolk,
         id="suffolk",
-        kwargs=_kw(limit=1),
     ),
     "Suptiftam": Language(
         "Suptiftam",

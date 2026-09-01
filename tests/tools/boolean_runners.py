@@ -114,7 +114,7 @@ def run_factor(program: str, inputs: list[str]) -> str:
 def run_suffolk(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.suffolk import run
 
-    return run_program(run, program, _stdin(inputs), limit=1)
+    return run_program(run, program, _stdin(inputs))
 
 
 def run_painfuck(program: str, inputs: list[str]) -> str:
