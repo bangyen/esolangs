@@ -187,6 +187,63 @@ class TestEval:
             run('"abc"+', IO())
 
 
+class TestFrames:
+    """``!`` runs on a frame stack rather than through Python recursion."""
+
+    def test_a_nested_program_takes_a_step_per_command(self) -> None:
+        """Entering ``!`` costs a step, and so does each command inside it.
+
+        Running the nested program to completion inside the caller's step
+        made a program of any length cost one step, which hid it from the
+        VM's step budget entirely.
+        """
+        state = State.of('"0."!', ScriptedIO(""))
+        steps = 0
+        while not state.halted:
+            state.step()
+            steps += 1
+        assert state.io.getvalue() == "0"
+        # literal, !, then 0 and . inside the frame, then two pops.
+        assert steps > 2, "the nested program's commands are steps of their own"
+
+    def test_the_frame_stack_deepens_inside_a_nested_program(self) -> None:
+        """``ip`` reports the depth, which a bare cursor could not."""
+        state = State.of('"0."!', ScriptedIO(""))
+        state.step()  # the literal
+        assert state.ip[0] == 1
+        state.step()  # `!` pushes the nested program
+        assert state.ip[0] == 2, "the nested program is a frame of its own"
+
+    def test_endless_recursion_is_proved_rather_than_crashing(self) -> None:
+        """A self-referential program is decided by the ancestor check.
+
+        It used to run to completion inside one step and die with
+        ``RecursionError``; nothing could see the recursion, because no
+        intermediate state ever reached the machine's surface.
+        """
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        looping = State.of('"0+.^!"^0+?!0.', ScriptedIO(""))
+        assert run_until_halt_or_ancestor(looping) is False
+
+        # A nested program that does terminate still reports as halting.
+        finite = State.of('"0."!', ScriptedIO(""))
+        assert run_until_halt_or_ancestor(finite) is True
+
+    def test_the_entry_key_separates_frames_by_their_stacks(self) -> None:
+        """Frames share one store, so the key has to carry it.
+
+        Two frames running the same text at the same cursor go on to do
+        different things when the values beneath them differ, so a key of
+        text and cursor alone would call an advancing recursion a repeat.
+        """
+        state = State.of('"0."!', ScriptedIO(""))
+        frame = ("0.", 0)
+        before = state.frame_entry_key(frame)
+        state.stk[state.ptr].append(7)
+        assert state.frame_entry_key(frame) != before
+
+
 class TestStepMachine:
     def test_the_empty_program_starts_halted(self) -> None:
         # `step` has no halted guard of its own -- the caller checks first,

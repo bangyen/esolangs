@@ -25,6 +25,14 @@ rather than Python stack, so a self-referential program no longer dies with
 ``RecursionError``.  Running a nested program to completion inside its
 caller's step hid all three.
 
+A frame stack is also what lets the *ancestor* check apply.  Endless
+recursion pushes a frame per call and pops none, so the whole-state
+snapshot grows forever and never repeats -- the unbounded-growth class
+:func:`esolangs.vm.run_until_halt_or_cycle` cannot decide.
+:func:`esolangs.vm.run_until_halt_or_ancestor` decides it instead, by
+comparing each pushed frame against the ones beneath it, and
+:meth:`State.frame_entry_key` is what it compares.
+
 Because a step is one command again, it prints at most once, so the effects
 stay in the shell the way every other interpreter here does it.
 
@@ -35,6 +43,7 @@ this one through ``.of()`` rather than the usual ``_Machine(code, io)``.
 from __future__ import annotations
 
 import sys
+from collections.abc import Hashable
 from dataclasses import dataclass, field
 
 from esolangs.exceptions import HaltError
@@ -231,6 +240,29 @@ class State:
             self.ptr,
             tuple(tuple(s) for s in self.stk),
             tuple(self.frames),
+            self.io.position(),
+        )
+
+    def frame_entry_key(self, frame: _Frame) -> Hashable:
+        """Return what ``frame`` is about to run, for the ancestor check.
+
+        Two frames with equal keys replay each other.  For Eval that is the
+        program text and the cursor into it -- but also *both stacks*,
+        because frames here share one store rather than carrying their own
+        bindings: the same program run twice does different things if the
+        values beneath it differ, and only the stacks say so.
+
+        The input cursor joins them for the reason Fargo and Forbin include
+        it, though Eval never reads input at all, so it never varies.
+
+        See :func:`esolangs.vm.run_until_halt_or_ancestor`.
+        """
+        sym, ind = frame
+        return (
+            sym,
+            ind,
+            self.ptr,
+            tuple(tuple(s) for s in self.stk),
             self.io.position(),
         )
 
