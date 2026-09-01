@@ -147,7 +147,7 @@ class TestStepMachine:
         machine.step()  # i reads a line, pushing its first character
         assert machine.snapshot() != before
         assert machine.io.position() == 1
-        assert machine.stack == [ord("h")]
+        assert machine.stack == (ord("h"),)
 
     def test_step_after_halt_is_a_noop(self) -> None:
         from esolangs.interpreters.stack_based.unsquare import _Machine
@@ -155,7 +155,7 @@ class TestStepMachine:
         machine = _Machine("", ScriptedIO())
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
-        assert machine.stack == []
+        assert machine.stack == ()
 
 
 def _machine(code: object) -> object:
