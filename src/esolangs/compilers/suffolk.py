@@ -3,7 +3,7 @@
 import sys
 from re import sub
 
-from esolangs.compilers._riscv_common import MUL32
+from esolangs.compilers._riscv_common import MUL32, Routine
 
 
 def count(code: str, ind: int) -> int:
@@ -36,10 +36,14 @@ def comp(code: str, num: int) -> str:
     length = len(code)
 
     ind = 0
-    add = False
-    inp = False
-    out = False
-    exc = False
+    # The four helper subroutines, gated so a program carries only the
+    # ones it calls -- the shared `Routine` the other tape compilers use.
+    subr = {
+        "left": Routine("left"),
+        "input": Routine("input"),
+        "output": Routine("output"),
+        "excl": Routine("excl"),
+    }
 
     while ind < length:
         n = count(code, ind)
@@ -55,18 +59,18 @@ def comp(code: str, num: int) -> str:
             elif n == 2:
                 s += "\n\tlw   t0, 0(s2)\n\tadd  s3, s3, t0"
 
-            add = True
+            subr["left"].used = True
         elif c == ".":
             s = "output"
-            out = True
+            subr["output"].used = True
         elif c == ",":
             s = "input"
-            inp = True
+            subr["input"].used = True
         else:
             s = "call excl"
             if n > 1:
                 s += f"\n\tlw   t0, 0(s2)\n\taddi t0, t0, {n - 1}\n\tsw   t0, 0(s2)"
-            exc = True
+            subr["excl"].used = True
 
         if c in ".,":
             s = "\n\t".join(f"call {s}" for _ in range(n))
@@ -82,7 +86,7 @@ def comp(code: str, num: int) -> str:
         "\tecall"
     )
 
-    if inp:
+    if subr["input"].used:
         res += (
             "\n\ninput:\n"
             "\tli   a7, 63\n"
@@ -94,7 +98,7 @@ def comp(code: str, num: int) -> str:
             "\tadd  s3, s3, t0\n"
             "\tret"
         )
-    if out:
+    if subr["output"].used:
         res += (
             "\n\noutput:\n"
             "\tbeqz s3, .output_done\n"
@@ -109,7 +113,7 @@ def comp(code: str, num: int) -> str:
             ".output_done:\n"
             "\tret"
         )
-    if exc:
+    if subr["excl"].used:
         res += (
             "\n\nexcl:\n"
             "\tlw   t0, 0(s2)\n"
@@ -123,7 +127,7 @@ def comp(code: str, num: int) -> str:
             "\taddi s2, s1, -4\n"
             "\tret"
         )
-    if add:
+    if subr["left"].used:
         res += (
             "\n\nleft:\n"
             "\taddi sp, sp, -16\n"

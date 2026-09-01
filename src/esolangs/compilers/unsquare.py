@@ -1,9 +1,10 @@
 """Compiler that turns Unsquare programs into RISC-V Linux assembly."""
 
 import sys
-from dataclasses import dataclass
 from re import sub
 from typing import Literal, get_args
+
+from esolangs.compilers._riscv_common import Routine
 
 # The seven commands that compile to a called subroutine rather than to
 # inline instructions.
@@ -11,21 +12,6 @@ _Func = Literal["O", "I", "A", "S", "P", "o", "i"]
 # Typed so the dispatch's membership test narrows the command to
 # _Func, which is what keys the routine table below.
 _SUBRS: frozenset[_Func] = frozenset(get_args(_Func))
-
-
-@dataclass
-class _Routine:
-    """One emittable subroutine: its label, and whether the program needs it.
-
-    ``used`` is set when a call to the routine is emitted, and ``looped``
-    when a repeat count is passed in ``s3`` -- which is what decides
-    whether the routine ends by branching back on the counter or plainly
-    returning.  Both start false and only ever turn on.
-    """
-
-    label: str
-    used: bool = False
-    looped: bool = False
 
 
 def count(code: str, ind: int) -> tuple[int, int]:
@@ -98,14 +84,14 @@ def comp(code: str) -> str:
         "    li   s2, 0\n"
         "    li   s3, 1\n\n"
     )
-    func: dict[_Func, _Routine] = {
-        "O": _Routine("zero"),
-        "I": _Routine("one"),
-        "A": _Routine("down"),
-        "S": _Routine("swap"),
-        "P": _Routine("up"),
-        "o": _Routine("output"),
-        "i": _Routine("input"),
+    func: dict[_Func, Routine] = {
+        "O": Routine("zero"),
+        "I": Routine("one"),
+        "A": Routine("down"),
+        "S": Routine("swap"),
+        "P": Routine("up"),
+        "o": Routine("output"),
+        "i": Routine("input"),
     }
 
     code = prep(code)
