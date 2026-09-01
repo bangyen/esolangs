@@ -49,6 +49,24 @@ class _Machine:
         """Whether the IP has left the grid or halted on an empty pop."""
         return self._done
 
+    # The VM's language-shaped view: Direction queue; ip is the IP's (row, col,
+    # heading).
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        """The current instruction position."""
+        return (self.row, self.col, self.d)
+
+    @property
+    def memory(self) -> list[int]:
+        """No addressable cells; the store is elsewhere."""
+        return []
+
+    @property
+    def stack(self) -> list[object]:
+        """The stack."""
+        return list(self.queue)
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (self.row, self.col, self.d, tuple(self.queue))

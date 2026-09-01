@@ -81,6 +81,19 @@ class _Machine:
         """Whether the pointer has left the program."""
         return not (1 <= self.ip <= self.n)
 
+    # The VM's language-shaped view: Named registers + line pointer; ip the line,
+    # memory the regs.
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return [self.registers[k] for k in sorted(self.registers)]
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (

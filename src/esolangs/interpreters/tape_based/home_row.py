@@ -80,6 +80,24 @@ class _Machine:
         """Whether the cursor has run off the program or hit ``;``."""
         return self.ind >= len(self.code) or self.code[self.ind] == ";"
 
+    # The VM's language-shaped view: 5x5 torus grid + pointer; ip the cursor, memory
+    # the 25 cells.
+
+    @property
+    def ip(self) -> int:
+        """The current instruction position."""
+        return self.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return list(self.grid)
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (self.ind, self.ptr, tuple(self.grid))

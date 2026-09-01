@@ -151,6 +151,23 @@ class _Machine:
     def halted(self) -> bool:
         return self.pos >= len(self.commands)
 
+    # The VM's language-shaped view: Cell tape + hold register; ip the command position.
+
+    @property
+    def ip(self) -> int:
+        """The current instruction position."""
+        return self.pos
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return list(self.cells)
+
+    @property
+    def stack(self) -> list[object]:
+        """The stack."""
+        return list(self.call_stack)
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (

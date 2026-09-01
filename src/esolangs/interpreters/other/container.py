@@ -93,6 +93,24 @@ class _Machine:
         """Whether EXIT has fired, or there was nothing to evaluate."""
         return self.exit_code is not None or not self.obj
 
+    # The VM's language-shaped view: Named containers + tick count; ip the tick, memory
+    # the values.
+
+    @property
+    def ip(self) -> int:
+        """The current instruction position."""
+        return self.tick
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return [self.var[k] for k in sorted(self.var)]
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (

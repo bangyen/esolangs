@@ -193,6 +193,24 @@ class _Machine:
     def halted(self) -> bool:
         return self.ind >= len(self.code)
 
+    # The VM's language-shaped view: Pointer hierarchy; ip is the code cursor, memory
+    # the axes.
+
+    @property
+    def ip(self) -> int:
+        """The current instruction position."""
+        return self.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return [self.tape.value()]
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (

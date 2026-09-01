@@ -68,6 +68,19 @@ class _Machine:
         """Whether the instruction pointer has run off the program."""
         return self._halted or not (0 <= self.ip < len(self.mem) - 2)
 
+    # The VM's language-shaped view: OISC cells + instruction pointer; memory is the
+    # program memory.
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return list(self.mem)
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (tuple(self.mem), self.ip, self.io.position(), self._halted)

@@ -293,6 +293,24 @@ class _Machine:
         """Whether ``x`` fired or the counter ran off the program."""
         return self._exited or not 0 <= self.pc < len(self.program)
 
+    # The VM's language-shaped view: Goto-based variables; ip the program counter,
+    # memory the ints.
+
+    @property
+    def ip(self) -> int:
+        """The current instruction position."""
+        return self.pc
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return [v for v in self.state.values() if type(v) is int]
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (
