@@ -338,6 +338,34 @@ class TestStreetcodeAmbiguousTurns:
                 for road in _junction_choices(machine.grid, car):
                     assert _open_toward(machine.grid, car, road), (path, state, road)
 
+    def test_the_examples_reach_exactly_these_drive_states(self) -> None:
+        """The size of each example's drive graph is pinned.
+
+        The junction, merge and heading helpers decide which states are
+        reachable, and *no program's output distinguishes them* -- the car
+        still reaches its ``;`` and prints the same bytes whichever way a
+        turn is resolved.  The graph is what those helpers actually build,
+        so it is the observable that can tell them apart: a rule that turns
+        one cell early, hugs the wrong wall, or reads a junction's shape
+        from the wrong neighbour opens or closes states and moves the
+        count.
+
+        The numbers are properties of the committed examples.  If an
+        example is redrawn they change with it, and the fix is to re-derive
+        them rather than to loosen the assertion.
+        """
+        root = Path(__file__).resolve().parents[2]
+        for path, expected in (
+            ("examples/hello-world/streetcode.txt", 469),
+            ("examples/boolean/streetcode.txt", 316),
+        ):
+            code = (root / path).read_text().split("\n")
+            if code and code[-1] == "":
+                code = code[:-1]
+            machine = _Machine(code, IO())
+            assert machine._graph is not None  # noqa: SLF001
+            assert len(machine._graph) == expected, path  # noqa: SLF001
+
     # A mouth whose gap opens ahead of the car (its near ``+`` sighted at
     # depth 0 or +1) and whose far ``+`` has open interior beneath it (so
     # ``_lane_bounded`` is False and no merge latch is taken): the chosen
