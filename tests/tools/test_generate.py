@@ -1329,7 +1329,7 @@ class TestGeneratorBranches:
 
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            suffolk_run(gen.suffolk("Hi"), limit=1, io=IO())
+            suffolk_run(gen.suffolk("Hi"), io=IO())
         assert buffer.getvalue() == "Hi"
 
     def test_suffolk_empty(self) -> None:

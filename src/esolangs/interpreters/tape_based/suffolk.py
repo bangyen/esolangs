@@ -2,22 +2,26 @@
 
 > moves right, < sums the current cell into the accumulator and rewinds the
 pointer, ! zeroes a cell computed from the accumulator, , reads a byte of
-input, and . prints the accumulator minus one.  Execution loops for a
-fixed number of passes over the code.
+input, and . prints the accumulator minus one.  Execution loops over the
+code until the run decides itself; see :func:`run`.
 
 The wiki describes ``,`` as reading one character, with EOF setting the
 accumulator to zero; this interpreter reads a whole line (using only its
 first byte) and raises :class:`EOFError` on exhausted input instead.  An
 empty program is malformed and rejected with :class:`ValueError`.
 
-The wiki's rerun is infinite, so there is no halt to run to and the budget
-is a *unit*, not a safety limit: :func:`run` executes ``limit`` whole passes
-over the code and returns.  A pass is the language's own unit -- the pointer
-runs off the end of the code and wraps -- so a whole number of them always
-leaves the machine at a line boundary, where a raw instruction budget would
-stop wherever it happened to land, mid-pass.  This matches A Painter Ant,
-whose implicit loop is metered the same way.  The count can be overridden as
-a second command-line argument (or the ``limit`` parameter to :func:`run`).
+The wiki's rerun is infinite, so there is no halt to run to.  :func:`run`
+used to count whole passes and stop after one, which answered the question
+without deciding it: one pass was chosen because the programs were believed
+to be finished by then, not shown to be.  It now stops on a *proof* instead
+-- a repeated state, or the ``EOFError`` from reading past the end of the
+input, whichever the program reaches.  Both are properties of the run, so
+nothing is left to choose.  ``steps`` survives only as a step cap for a
+program that does neither -- one whose cells grow without bound and which
+reads no input -- and exceeding it raises
+:class:`~esolangs.exceptions.HaltError` rather than returning, so a run that
+could not be decided is never reported as finished.  Nothing the generators
+emit comes near it.
 
 The interpreter runs on a :class:`_Machine` (the code, tape, and
 accumulator), so it is step-capable: ``step()`` executes one command.  The
@@ -26,6 +30,7 @@ in :func:`run`'s driver; a repeated :meth:`_Machine.snapshot` is what proves
 a program loops, via ``esolangs.vm.run_until_halt_or_cycle``.
 """
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.oisc_cli import main_with_limit
 
@@ -110,11 +115,39 @@ class _Machine:
             self.ind = 0
 
 
-def run(code: str, io: IO, limit: int = 10) -> None:
-    """Run a Suffolk program for ``limit`` whole passes over the code."""
+def run(code: str, io: IO, steps: int = 1_000_000) -> None:
+    """Run a Suffolk program until it repeats a state or runs out of input.
+
+    The wiki's rerun is infinite, so a program is stopped from outside --
+    but not by *counting*.  Both of the things a generated program does are
+    decidable stops in their own right:
+
+    * a program that reads runs out of input, and ``,`` raises
+      :class:`EOFError` on the read past the end.  That fires part-way
+      through the second pass, before the ``.`` that would print a second
+      answer, so the output is the one the program computed from its real
+      input.
+    * a program that reads nothing ends where it began -- the text
+      generator appends a tail that puts every cell back -- so its state
+      repeats, and :func:`~esolangs.vm.run_until_halt_or_cycle` proves the
+      loop at the end of the first pass, with the output written once.
+
+    ``steps`` remains only as the backstop for the class neither covers: a
+    program whose cells grow without bound never repeats a state, and
+    without input never stops.  It is a step cap, not a pass count, and
+    reaching it is a :class:`~esolangs.exceptions.HaltError` rather than a
+    quiet return -- an undecided program is not silently reported as
+    finished.  Nothing the generators emit comes close to it.
+    """
     machine = _Machine(code, io)
-    for _ in range(limit * len(machine.code)):
+    seen: set[tuple[object, ...]] = set()
+    for _ in range(steps):
+        state = machine.snapshot()
+        if state in seen:
+            return
+        seen.add(state)
         machine.step()
+    raise HaltError(f"execution exceeded the {steps}-instruction limit")
 
 
 if __name__ == "__main__":

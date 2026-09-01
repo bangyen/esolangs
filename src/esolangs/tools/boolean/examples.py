@@ -540,12 +540,7 @@ def _register() -> None:
         "s*bleq": _reader(b.sbleq, "tape_based.sbleq"),
         "sophie": _reader(b.sophie, "register_based.sophie"),
         "streetcode": _reader(b.streetcode, "grid_based.streetcode", split=True),
-        "suffolk": _reader(
-            b.suffolk,
-            "tape_based.suffolk",
-            kwargs=_kw(limit=1),
-            note="run with the loop count set to one",
-        ),
+        "suffolk": _reader(b.suffolk, "tape_based.suffolk"),
         "suptiftam": _reader(b.suptiftam, "other.suptiftam"),
         "taglate": _reader(b.taglate, "queue_based.taglate", split=True),
         "unsquare": _reader(b.unsquare, "stack_based.unsquare"),
