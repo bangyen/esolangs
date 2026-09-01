@@ -2547,16 +2547,37 @@ class TestParameterizedMinifuck:
 
         # The arity is *partial*, so the miss is the common case and has to
         # stay quiet: ``_staged`` returns None and the caller reaches the
-        # searches.  A change making a miss raise would turn three quarters
-        # of the arity from slow into broken.  This rides along here rather
-        # than in a test of its own because the derivation is what either
-        # would cost, and it is cached per process -- two tests would pay it
-        # twice, and under xdist would pay it in two workers.
+        # searches.  A change making a miss raise would turn the rest of the
+        # arity from slow into broken.  This rides along here rather than in
+        # a test of its own because the derivation is what either would cost,
+        # and it is cached per process -- two tests would pay it twice, and
+        # under xdist would pay it in two workers.
+        #
+        # A miss has to clear *both* sources.  ``_staged`` falls through to
+        # the complementing embeds when the name-order enumeration has no
+        # plan (:func:`_flipped_staging`), so a table absent from
+        # ``_derived_plans`` alone is not a miss -- it is exactly the case
+        # the flipped pass was added to catch, and asserting None on it
+        # tests that the pass does *not* work.
         plans = module._derived_plans(4)  # noqa: SLF001
+        flipped = module._flipped_plans(4)  # noqa: SLF001
         assert plans, "four inputs is expected to be staged"
         assert len(plans) < 2**16, "four inputs is expected to be partial"
+        assert flipped, "four inputs is expected to have flipped stagings"
+        reached = plans.keys() | flipped.keys()
+        assert len(reached) < 2**16, "four inputs is expected to stay partial"
+
+        # Positive control on the flipped half.  ``assert flipped`` above only
+        # says the derivation found stagings; it would still pass if replaying
+        # one had stopped returning a program, and then the miss assertion
+        # below would pass for the wrong reason -- every table would look like
+        # a miss.  Building one table that *only* the flipped pass reaches is
+        # what pins the pass as load-bearing.
+        flipped_only = next(key for key in flipped if key not in plans)
+        assert module._staged(flipped_only, 4) is not None  # noqa: SLF001
+
         missing = next(
-            key for t in range(2**16) if (key := format(t, "016b")) not in plans
+            key for t in range(2**16) if (key := format(t, "016b")) not in reached
         )
         assert module._staged(missing, 4) is None  # noqa: SLF001
 
