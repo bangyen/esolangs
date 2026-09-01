@@ -5,11 +5,10 @@ program can only input a single character at a time.
 """
 
 import sys
-from dataclasses import dataclass
 from re import findall, sub
 from typing import Literal
 
-from esolangs.compilers._riscv_common import MUL32
+from esolangs.compilers._riscv_common import MUL32, Routine
 
 # The four commands that compile to a called subroutine rather than to
 # inline instructions.
@@ -19,21 +18,6 @@ _Subr = Literal["^", "v", "<", "&"]
 # handled by its own arm.  Typed so the membership test narrows the
 # command to the key type rather than asserting it afterwards.
 _CALLED: frozenset[_Subr] = frozenset(("^", "v", "<"))
-
-
-@dataclass
-class _Routine:
-    """One emittable subroutine: its label, and whether the program needs it.
-
-    ``used`` is set when a call to the routine is emitted, and ``looped``
-    when a repeat count is passed in ``s3`` -- which is what decides
-    whether the routine ends by branching back on the counter or plainly
-    returning.  Both start false and only ever turn on.
-    """
-
-    label: str
-    used: bool = False
-    looped: bool = False
 
 
 def count(code: str, ind: int) -> tuple[int | str, int]:
@@ -135,11 +119,11 @@ def comp(code: str) -> str:
         "    li   s3, 1\n"
         "    li   s7, 0\n\n"
     )
-    subr: dict[_Subr, _Routine] = {
-        "^": _Routine("output"),
-        "v": _Routine("input"),
-        "<": _Routine("left"),
-        "&": _Routine("mult"),
+    subr: dict[_Subr, Routine] = {
+        "^": Routine("output"),
+        "v": Routine("input"),
+        "<": Routine("left"),
+        "&": Routine("mult"),
     }
 
     while ind < len(code):
