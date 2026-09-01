@@ -1335,11 +1335,28 @@ class TestEveryLanguageIsSteppable:
     lists would notice.
     """
 
-    def test_every_registry_language_has_a_vm_adapter(self) -> None:
-        from esolangs.registry import RUNNERS
-        from esolangs.vm import _VM_ADAPTERS
+    def test_every_registry_language_is_step_capable(self) -> None:
+        """Every language can be wrapped, which is why the table is derived.
 
-        assert set(RUNNERS) - set(_VM_ADAPTERS) == set()
+        The adapters are built from ``RUNNERS`` itself, so "every language
+        has an adapter" is now true by construction and worth nothing as an
+        assertion.  What is *not* automatic is the fact that made deriving
+        them safe: that every registered interpreter actually exposes a
+        step-capable state object.  A new language that ran only as a whole
+        program would still get an adapter built for it, and would fail on
+        the first ``step()`` rather than here -- so that is what is checked.
+        """
+        import importlib
+
+        from esolangs.registry import RUNNERS
+
+        without: list[str] = []
+        for language, (module_path, _split, _kwargs) in sorted(RUNNERS.items()):
+            module = importlib.import_module(f"esolangs.interpreters.{module_path}")
+            state = getattr(module, "_Machine", None) or getattr(module, "State", None)
+            if state is None or not hasattr(state, "step"):
+                without.append(language)
+        assert without == []
 
     def test_every_adapter_wraps_a_state_object_with_a_snapshot(self) -> None:
         """``run_until_halt_or_cycle`` needs ``snapshot()`` on the machine.
