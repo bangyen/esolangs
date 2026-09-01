@@ -14,6 +14,7 @@ import io
 import re
 from contextlib import redirect_stdout
 from pathlib import Path
+from typing import ClassVar
 from unittest.mock import patch
 
 import pytest
@@ -823,6 +824,118 @@ class TestStreetcodeMalformedPrograms:
     def test_multiple_cars_is_malformed(self) -> None:
         with pytest.raises(ValueError, match="exactly one C"):
             run(["C  ", "  C"], io=IO())
+
+
+class TestStreetcodeRejectionMessages:
+    """Every rejection paired with the message it must raise.
+
+    The tests elsewhere use ``pytest.raises(match=...)``, a *substring*
+    search, so a rejection firing in the wrong place still passes: all
+    four width failures share the prefix ``not two-wide``, and the shape
+    label in parentheses is the only part that says which arm fired.  The
+    coordinates each message quotes were never asserted at all.
+
+    One case shows the hazard directly.  The wall-hole program is asserted
+    against ``not two-wide|malformed wall``, and it resolves to the width
+    check -- so the second half of that alternation has never fired, and a
+    mutant moving the rejection between the two would not be noticed.
+    """
+
+    REJECTIONS: ClassVar[list[tuple[str, list[str], str]]] = [
+        ("empty", [], "Streetcode program cannot be empty"),
+        ("blank", ["   ", ""], "Streetcode program cannot be empty"),
+        (
+            "no car",
+            ["   ", " ; "],
+            "Streetcode program must have exactly one C, found 0",
+        ),
+        (
+            "two cars",
+            ["C  ", "  C"],
+            "Streetcode program must have exactly one C, found 2",
+        ),
+        (
+            "dead end",
+            ["+----+", "|C^O;|", "+----+"],
+            "not two-wide at (1, 1) (dead end)",
+        ),
+        ("horizontal", ["C^O;", "+---+"], "not two-wide at (0, 1) (horizontal)"),
+        (
+            "vertical",
+            ["+-+    ", "|C|    ", "|^+-+  ", "|^^^|  ", "+-+^|  ", "  |;|  ", "  +-+  "],
+            "not two-wide at (2, 1) (vertical)",
+        ),
+        (
+            "wider than two",
+            ["+------+", "|C^^^O;|", "|      |", "|      |", "+------+"],
+            "not two-wide at (1, 2) (wider than two)",
+        ),
+        (
+            "wall fragment",
+            ["+---+", "|C  |", "+---+"],
+            "not two-wide at (1, 1) (dead end)",
+        ),
+        (
+            "wall hole",
+            ["+----+", "|C   |", "|    |", "+- --+"],
+            "not two-wide at (3, 2) (dead end)",
+        ),
+        (
+            "detached box",
+            ["+----+   +--+", "|C   |   |  |", "|    |   |  |", "+----+   +--+"],
+            "geometry not connected to the street at (0, 9) ('+')",
+        ),
+        (
+            "stray fragment",
+            ["+----+", "|C   |", "|    |", "+----+", "   -- "],
+            "geometry not connected to the street at (4, 3) ('-')",
+        ),
+        (
+            "solid island",
+            [
+                "+--------+",
+                "|C       |",
+                "|        |",
+                "|  ++++  |",
+                "|  ++++  |",
+                "|  ++++  |",
+                "|        |",
+                "|        |",
+                "+--------+",
+            ],
+            "geometry not connected to the street at (4, 4) ('+')",
+        ),
+        (
+            "two-wide hole",
+            ["+------+", "|C     |", "|      |", "+--  --+"],
+            "street reaches the edge of the grid at (3, 4): "
+            "the road is not enclosed by walls",
+        ),
+        (
+            "open to edge",
+            ["+-----", "|C    ", "|     ", "+-----"],
+            "street reaches the edge of the grid at (1, 5): "
+            "the road is not enclosed by walls",
+        ),
+        (
+            "corner missing east",
+            ["+----+", "|C   |", "|    |", "+--|-+"],
+            "wall turns without a corner at (3, 2): '-' beside '|' at (3, 3)",
+        ),
+        (
+            "corner missing south",
+            ["+--+", "|C |", "|  |", "-  |", "|  |", "+--+"],
+            "wall turns without a corner at (2, 0): '|' beside '-' at (3, 0)",
+        ),
+    ]
+
+    @pytest.mark.parametrize(("label", "program", "message"), REJECTIONS)
+    def test_rejection_message_is_exact(
+        self, label: str, program: list[str], message: str
+    ) -> None:
+        with pytest.raises(ValueError) as caught:
+            _Machine(program, IO())
+        assert str(caught.value) == message, label
 
 
 class TestStreetcodeStreetWidth:
