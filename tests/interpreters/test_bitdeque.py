@@ -93,11 +93,11 @@ class TestStepMachine:
         from esolangs.interpreters.queue_based.bitdeque import _Machine
 
         machine = _Machine("INVERT PUSH", IO())
-        assert (machine.ind, machine.reg, machine.deq) == (0, 0, [])
+        assert (machine.ind, machine.reg, machine.deq) == (0, 0, ())
         machine.step()  # INVERT flips the register
         assert (machine.ind, machine.reg) == (1, 1)
         machine.step()  # PUSH appends the register
-        assert machine.deq == [1]
+        assert machine.deq == (1,)
         assert machine.halted
         machine.step()  # the post-halt step renders, and moves nothing
         assert machine.ind == 2
