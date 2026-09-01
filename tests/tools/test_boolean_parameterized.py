@@ -131,6 +131,21 @@ def test_parameterized_generators_embed_each_input_once() -> None:
 _SLOT_ORDER_TABLES = ("0110", "01101001", "10101010", "11110000", "00111100")
 
 
+def _all_derived_plans(derived_plans, staged_arities, n: int) -> dict:
+    """Every staging the enumeration places at ``n``, in one pass.
+
+    ``_derived_plans`` is asked for the tables it should look for, so a test
+    that wants the whole arity has to name them.  The arity guard is checked
+    *first*: naming every table means ``2 ** (2 ** n)`` of them, which is
+    unbuildable past four inputs, and the guard is what the unstaged arities
+    are being tested for anyway.
+    """
+    if n not in staged_arities:
+        return derived_plans(n, ())
+    every = tuple(format(v, f"0{2**n}b") for v in range(2 ** (2**n)))
+    return derived_plans(n, every)
+
+
 def _slot_order(gen: object, table: str) -> list[int] | None:
     """The ``{Xi}`` indices in the order ``gen`` emits them, or None."""
     import re
@@ -381,9 +396,7 @@ def test_span_screen_declines_no_reachable_table() -> None:
                 # drifts onto another staging's span after the first slice.
                 # An indexing bug there would fail exactly like a violated
                 # rule, which is not a confusion this test may make.
-                basis = _span_basis(
-                    [pack(staged.col(cell)) for cell in window]
-                )
+                basis = _span_basis([pack(staged.col(cell)) for cell in window])
                 for acc in range(9, _MAX_ACC + 1, 5):
                     for read in _READS:
                         probe = staged.fork()
@@ -435,22 +448,20 @@ def test_span_screen_is_only_offered_where_it_bites() -> None:
 def test_minifuck_five_input_plans_are_derived_per_table() -> None:
     """At five inputs the derivation is asked for one table, not the arity.
 
-    The whole-arity spelling pre-builds a dict over every table, which is
-    ``2**32`` entries at this arity and will not be built.  So five inputs
-    goes table-major, and this pins that: the arity is staged, it is in the
-    table-major set, and asking ``_derived_plans`` for a target set returns
+    A whole-arity spelling would pre-build a dict over every table, which is
+    ``2**32`` entries at this arity and will not be built.  Every arity is
+    now asked for its targets, and this pins what that has to give back: the
+    arity is staged, and asking ``_derived_plans`` for a target set returns
     at most those targets rather than a whole-arity map.
     """
 
     from esolangs.tools.boolean.minifuck import (
         _INSERT_ARITIES,
         _STAGED_ARITIES,
-        _TABLE_MAJOR_ARITIES,
         _derived_plans,
     )
 
     assert 5 in _STAGED_ARITIES
-    assert 5 in _TABLE_MAJOR_ARITIES
     assert 5 in _INSERT_ARITIES
 
     # A target set the enumeration cannot possibly print -- a table and its
@@ -2727,7 +2738,10 @@ class TestParameterizedMinifuck:
         with patch.object(module, "_find_pool", record_all):
             module._derived_plans.cache_clear()  # noqa: SLF001
             module.minifuck.cache_clear()
-            module.minifuck.__wrapped__("0110")
+            # A three-input build, because the sample has to be wide: the
+            # enumeration is asked for the table it wants, so a two-input
+            # build visits 77 sites where this one fills the 400-site cap.
+            module.minifuck.__wrapped__("01101001")
         module.minifuck.cache_clear()
         assert len(wide) > 100, f"expected a cold build's lookups, got {len(wide)}"
 
@@ -2768,7 +2782,8 @@ class TestParameterizedMinifuck:
         with patch.object(module, "_find_pool", record):
             module._derived_plans.cache_clear()  # noqa: SLF001
             module.minifuck.cache_clear()
-            module.minifuck.__wrapped__("0110")
+            # Three inputs for the width of the sample; see the note above.
+            module.minifuck.__wrapped__("01101001")
         module.minifuck.cache_clear()
         assert len(seen) > 100, f"expected a cold build's lookups, got {len(seen)}"
 
@@ -2858,6 +2873,7 @@ class TestParameterizedMinifuck:
         """
 
         from esolangs.tools.boolean.minifuck import _POOL_CODES, _Sim
+
         core = "[[[<["
 
         def run(code: str) -> object:
@@ -3057,6 +3073,7 @@ class TestParameterizedMinifuck:
             _MAX_ACC,
             _MAX_BRACKETS,
             _SEPS,
+            _STAGED_ARITIES,
             _derived_plans,
             _insert_suffixes,
             _stagings,
@@ -3073,7 +3090,9 @@ class TestParameterizedMinifuck:
         # Every staging the derivation hands back is one the enumeration
         # offers -- so the caps and the loops cannot have drifted apart.
         offered = set(expected)
-        for table, staging in _derived_plans(2).items():
+        for table, staging in _all_derived_plans(
+            _derived_plans, _STAGED_ARITIES, 2
+        ).items():
             assert staging in offered, (table, staging)
 
         # Four inputs adds the insert family as a *second pass*, after every
@@ -3148,7 +3167,11 @@ class TestParameterizedMinifuck:
         either side so neither the stub nor the real run is served stale.
         """
 
-        from esolangs.tools.boolean.minifuck import _derived_plans, _Joint
+        from esolangs.tools.boolean.minifuck import (
+            _STAGED_ARITIES,
+            _derived_plans,
+            _Joint,
+        )
 
         real_printed = _Joint.printed
 
@@ -3159,12 +3182,12 @@ class TestParameterizedMinifuck:
         try:
             _derived_plans.cache_clear()
             with patch.object(_Joint, "printed", two_digits):
-                assert _derived_plans(2) == {}
+                assert _all_derived_plans(_derived_plans, _STAGED_ARITIES, 2) == {}
         finally:
             _derived_plans.cache_clear()
         # With the real print restored the enumeration finds its entries
         # again, so the empty result above is the filter and not a cache.
-        assert _derived_plans(2)
+        assert _all_derived_plans(_derived_plans, _STAGED_ARITIES, 2)
 
     def test_reconverged_declines_what_it_cannot_replay(self) -> None:
         """``_reconverged`` bails rather than replaying a staging it lacks.
@@ -3254,11 +3277,11 @@ class TestParameterizedMinifuck:
 
         for n in (1, max(_STAGED_ARITIES) + 1):
             assert n not in _STAGED_ARITIES
-            assert _derived_plans(n) == {}
+            assert _all_derived_plans(_derived_plans, _STAGED_ARITIES, n) == {}
             assert _derive_staging("0" * 2**n, n) is None
         # At a staged arity the enumeration really does have entries, so the
         # empty results above are the guard and not an exhausted search.
-        assert _derived_plans(2)
+        assert _all_derived_plans(_derived_plans, _STAGED_ARITIES, 2)
 
     def test_pool_reaches_refuses_a_code_that_kills_a_row(self) -> None:
         """``_pool_reaches`` rejects code that kills or desynchronises a row.
@@ -4507,9 +4530,9 @@ def test_minifuck_flipped_sweep_claims_and_replays_a_table() -> None:
     wanted = "0" * 16
     real = module._derived_plans  # noqa: SLF001
 
-    def only_one_missing(arity: int):
+    def only_one_missing(arity: int, targets):
         if arity != n:
-            return real(arity)
+            return real(arity, targets)
         return {
             format(value, f"0{2**n}b"): None
             for value in range(2 ** (2**n))
