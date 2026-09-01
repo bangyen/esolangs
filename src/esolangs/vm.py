@@ -404,67 +404,29 @@ class _GraphemeVM(_BaseVM):
         return list(self._machine.stack)
 
 
-class _QoiblVM(_BaseVM):
-    """256-entry variable list; ``ip`` is the expression cursor."""
+class _QoiblVM(_DelegatingVM):
+    """256-entry variable list; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.register_based.qoibl import State, tokenize
 
-        self._state = State(io=self._io)
-        self._state.code = tokenize(program)
-
-    @property
-    def halted(self) -> bool:
-        return self._state.halted
-
-    def step(self) -> None:
-        self._state.step()
-
-    @property
-    def ip(self) -> int:
-        return self._state.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return [self._state.var.get(k, 0) for k in range(256)]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
+        self._machine = State(io=self._io)
+        self._machine.code = tokenize(program)
 
 
-class _EvalVM(_BaseVM):
-    """Two stacks + active index; ``ip`` is the code cursor."""
+class _EvalVM(_DelegatingVM):
+    """Two stacks + active index; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.stack_based.eval import State
 
-        self._state = State(io=self._io, sym=program)
-
-    @property
-    def halted(self) -> bool:
-        return self._state.halted
-
-    def step(self) -> None:
-        self._state.step()
-
-    @property
-    def ip(self) -> int:
-        return self._state.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return []
-
-    @property
-    def stack(self) -> list[object]:
-        return list(self._state.stk[self._state.ptr])
+        self._machine = State(io=self._io, sym=program)
 
 
-class _ModulousVM(_BaseVM):
-    """Stack + variables; ``ip`` is the token cursor."""
+class _ModulousVM(_DelegatingVM):
+    """Stack + variables; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -472,29 +434,10 @@ class _ModulousVM(_BaseVM):
 
         from esolangs.interpreters.stack_based.modulous import State
 
-        self._state = State(var={f"VAR{k}": 0 for k in range(1, 5)}, io=self._io)
-        self._state.tokens = [
+        self._machine = State(var={f"VAR{k}": 0 for k in range(1, 5)}, io=self._io)
+        self._machine.tokens = [
             k[0] for k in re.compile(r'\[([^\[\]\"]*("[^"]*")?)]').findall(program)
         ]
-
-    @property
-    def halted(self) -> bool:
-        return self._state.halted
-
-    def step(self) -> None:
-        self._state.step()
-
-    @property
-    def ip(self) -> int:
-        return self._state.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return []
-
-    @property
-    def stack(self) -> list[object]:
-        return list(self._state.stk)
 
 
 class _ForthVM(_BaseVM):
@@ -1249,44 +1192,14 @@ class _SuptiftamVM(_BaseVM):
         return []
 
 
-class _StreetcodeVM(_BaseVM):
-    """2D street grid; ``ip`` is the car's (row, col, heading), ``memory`` the cells.
-
-    The heading is spelled ``"N"``/``"E"``/``"S"``/``"W"`` on the machine and
-    reported here as its index into that order, so ``ip`` stays all-integer
-    like every other 2D language's.  The tape is a sparse dict keyed by CP,
-    which never goes negative -- ``LEFT`` at zero halts -- so ``memory`` is
-    the dense prefix up to the highest cell touched.
-    """
+class _StreetcodeVM(_DelegatingVM):
+    """2D street grid; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.grid_based.streetcode import _Machine
 
         self._machine = _Machine(program.splitlines(), self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> tuple[int, ...]:
-        machine = self._machine
-        return (machine.row, machine.col, "NESW".index(machine.heading))
-
-    @property
-    def memory(self) -> list[int]:
-        cells = self._machine.cells
-        if not cells:
-            return []
-        return [cells.get(i, 0) for i in range(max(cells) + 1)]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
 
 
 class _FlowchartVM(_BaseVM):
