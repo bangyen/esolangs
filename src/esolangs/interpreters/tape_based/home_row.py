@@ -31,11 +31,43 @@ program or hits ``;``.  A loop whose body never changes the tested cell
 is a genuine state cycle a repeated :meth:`_Machine.snapshot` proves; a
 loop that keeps incrementing the tested cell is unbounded growth and needs
 the wall-clock backstop instead.
+
+The execution model is a pure function over an immutable ``_State``:
+:func:`_advance` maps a state and the loop pairing to the next state, and
+never mutates what it is given.  It takes no ``io`` argument at all, so it
+is total and side-effect free by construction rather than by inspection.
+The grid is a tuple, so a state is a value that can be stored, compared,
+and hashed as it stands.
+
+:class:`_Machine` is the mutable shell the interpreter protocol requires.
+It holds one ``_State`` and rebinds it each step, so the mutation lives in
+exactly one assignment and every rule about what Home Row *does* stays in
+the pure layer.  ``k``'s print is the language's only effect and is done by
+``step`` before it calls the pure transition -- the *clearing* half of
+``k`` stays in the transition, since that is a state change, not an effect.
+
+The grid is a fixed 25 cells, so rebuilding it per write is cheap and this
+needs no write buffer -- unlike NoComment, whose static 4096-cell tape does.
 """
+
+from __future__ import annotations
 
 import sys
 
 from esolangs.interpreters.io import IO
+
+#: One instant of a run: ``(ind, ptr, grid)`` -- the code cursor, the
+#: pointer, and the 25 cells.  A value, not a record: every transition below
+#: returns a new one rather than editing one in place, and the grid is a
+#: ``tuple`` for the same reason.
+#:
+#: This is exactly what ``snapshot`` returns, and always has been, so the
+#: state and its hashable view are the same tuple.
+#:
+#: The code and its loop pairing are deliberately not in here.  Neither
+#: changes during a run, so carrying them would put constant data in every
+#: value the cycle detector stores.  They are parameters to the transition.
+type _State = tuple[int, int, tuple[int, ...]]
 
 
 def _matches(code: str) -> tuple[dict[int, int], set[int]]:
@@ -58,6 +90,61 @@ def _matches(code: str) -> tuple[dict[int, int], set[int]]:
     return match, open_l
 
 
+def _advance(
+    state: _State,
+    code: str,
+    match: dict[int, int],
+    open_l: set[int],
+) -> _State:
+    """Return the state after executing the command at the cursor.
+
+    Pure: it reads ``state`` and returns a new one.  It takes no ``io``
+    argument, so ``k``'s print is the caller's business -- but ``k`` also
+    *clears* the cell it printed, and that half belongs here, because it is
+    a state change rather than an effect.
+
+    ``d`` moves down a row (five cells, mod 25) and ``f`` moves right within
+    the current row, wrapping back to that row's first cell rather than
+    spilling into the next -- which is what makes the grid a torus in both
+    axes rather than a flat 25-cell line.
+
+    ``l`` pairs alternate by their order in the program, so which of a pair
+    a cursor sits on decides the direction of the test: an opening ``l``
+    jumps past its partner on a zero cell, and a closing one jumps back on
+    a nonzero cell.
+
+    Anything else is a no-op and falls through to the shared increment.
+    """
+    ind, ptr, grid = state
+    char = code[ind]
+    if char == "a":
+        grid = (*grid[:ptr], grid[ptr] + 1, *grid[ptr + 1 :])
+    elif char == "s":
+        # Cells are unbounded, so ``s`` on a zero cell yields -1.
+        grid = (*grid[:ptr], grid[ptr] - 1, *grid[ptr + 1 :])
+    elif char == "d":
+        ptr = (ptr + 5) % 25
+    elif char == "f":
+        ptr += 1
+        if ptr % 5 == 0:
+            ptr -= 5
+    elif char == "j":
+        # Skip the next command when the current cell is zero.
+        if grid[ptr] == 0:
+            ind += 1
+    elif char == "k":
+        # The print already happened in the shell; this is the clear.
+        grid = (*grid[:ptr], 0, *grid[ptr + 1 :])
+    elif char == "l":
+        partner = match[ind]
+        if ind in open_l:
+            if grid[ptr] == 0:
+                ind = partner
+        elif grid[ptr] != 0:
+            ind = partner
+    return (ind + 1, ptr, grid)
+
+
 class _Machine:
     """Per-run Home Row state: the grid, pointer, and code cursor.
 
@@ -66,19 +153,38 @@ class _Machine:
     detector and the VM expose this object.
     """
 
+    __slots__ = ("code", "io", "match", "open_l", "size", "state")
+
     def __init__(self, code: str, io: IO) -> None:
         """Match ``code``'s loop pairs and start the grid at all zeros."""
         self.io = io
         self.code = code
         self.match, self.open_l = _matches(code)
-        self.grid = [0] * 25
-        self.ptr = 0
-        self.ind = 0
+        # ``halted`` is read twice per command -- once by ``run``'s loop and
+        # once by ``step``'s guard -- so the length is taken once here.
+        self.size = len(code)
+        self.state: _State = (0, 0, (0,) * 25)
+
+    # The language's own names.  They are views on the current state rather
+    # than fields of their own, so there is one place a step can change.
+
+    @property
+    def grid(self) -> tuple[int, ...]:
+        return self.state[2]
+
+    @property
+    def ptr(self) -> int:
+        return self.state[1]
+
+    @property
+    def ind(self) -> int:
+        return self.state[0]
 
     @property
     def halted(self) -> bool:
         """Whether the cursor has run off the program or hit ``;``."""
-        return self.ind >= len(self.code) or self.code[self.ind] == ";"
+        ind = self.state[0]
+        return ind >= self.size or self.code[ind] == ";"
 
     # The VM's language-shaped view: 5x5 torus grid + pointer; ip the cursor, memory
     # the 25 cells.
@@ -86,12 +192,12 @@ class _Machine:
     @property
     def ip(self) -> int:
         """The current instruction position."""
-        return self.ind
+        return self.state[0]
 
     @property
     def memory(self) -> list[int]:
         """The addressable cells."""
-        return list(self.grid)
+        return list(self.state[2])
 
     @property
     def stack(self) -> list[object]:
@@ -100,37 +206,24 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (self.ind, self.ptr, tuple(self.grid))
+        # The state as it stands: it is already the (ind, ptr, grid) triple
+        # this returned before the split, and it is already hashable.
+        return self.state
 
     def step(self) -> None:
-        """Execute one command, advancing the cursor."""
+        """Execute one command, advancing the cursor.
+
+        ``k``'s print is here rather than in the transition: this is the
+        shell, so it is where an effect belongs.  Only the print, though --
+        ``k`` also clears the cell, and the transition does that, so the
+        two halves land on the right side of the split.
+        """
         if self.halted:
             return
-        c = self.code[self.ind]
-        if c == "a":
-            self.grid[self.ptr] += 1
-        elif c == "s":
-            self.grid[self.ptr] -= 1
-        elif c == "d":
-            self.ptr = (self.ptr + 5) % 25
-        elif c == "f":
-            self.ptr += 1
-            if self.ptr % 5 == 0:
-                self.ptr -= 5
-        elif c == "j":
-            if self.grid[self.ptr] == 0:
-                self.ind += 1
-        elif c == "k":
-            self.io.print_char(chr(self.grid[self.ptr] & 0xFF))
-            self.grid[self.ptr] = 0
-        elif c == "l":
-            partner = self.match[self.ind]
-            if self.ind in self.open_l:
-                if self.grid[self.ptr] == 0:
-                    self.ind = partner
-            elif self.grid[self.ptr] != 0:
-                self.ind = partner
-        self.ind += 1
+        ind, ptr, grid = self.state
+        if self.code[ind] == "k":
+            self.io.print_char(chr(grid[ptr] & 0xFF))
+        self.state = _advance(self.state, self.code, self.match, self.open_l)
 
 
 def run(code: str, io: IO) -> None:
