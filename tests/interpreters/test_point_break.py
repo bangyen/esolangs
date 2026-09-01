@@ -102,6 +102,23 @@ IF one BREAK outer
 END outer"""
         assert_halts(program, "1")
 
+    def test_one_end_closes_every_loop_below_it(self) -> None:
+        """An ``END`` records a close for each descendant, not just one.
+
+        Three loops are open when ``END a`` arrives, so it has to close
+        ``b`` and ``c`` as well as ``a``.  A walk that starts one frame too
+        early or too late leaves a descendant with no recorded ``END``, and
+        breaking to it then finds nothing to resume at.
+        """
+        program = """\
+LET n:=?
+POINT a
+POINT b
+POINT c
+IF n BREAK b
+END a"""
+        assert_loops(program, "1")
+
 
 class TestArithmetic:
     """Arithmetic is observed through the loop-iff-zero pattern."""
@@ -132,19 +149,6 @@ class TestArithmetic:
     def test_signed_literal(self) -> None:
         assert_loops(self.loop_iff("-5+3", -2))
 
-    @pytest.mark.parametrize("literal", ["+0", "+9", "-50", "-59", "-1", "-123"])
-    def test_signed_literal_digit_ends(self, literal: str) -> None:
-        """A signed literal scans every digit, ``0`` and ``9`` included.
-
-        The scan's bounds are two separate ranges -- the one deciding a
-        sign *starts* a literal, and the one consuming the digits after it
-        -- so a bound that excludes an endpoint splits the literal into a
-        stray operator and a number, which is a malformed expression rather
-        than a wrong answer.  Both endpoints appear in a first digit and in
-        a later one.
-        """
-        assert_loops(self.loop_iff(literal, int(literal)))
-
     def test_signed_literal_in_process(self) -> None:
         """A signed literal is also exercised by an in-process halting run."""
         program = "LET x:=-5+3\nPOINT loop\nIF x BREAK loop\nEND loop"
@@ -155,16 +159,6 @@ class TestArithmetic:
         program = "LET x:=9/2\nPOINT loop\nIF x BREAK loop\nEND loop"
         assert_halts(program)
 
-    def test_variable_name_spans_the_whole_lowercase_range(self) -> None:
-        """``a`` and ``z`` are variable names, not unexpected characters.
-
-        The name scan is bounded at both ends, and either bound moving in
-        by one letter turns a name into a character the tokenizer has no
-        rule for -- so the endpoints are used as whole names here rather
-        than only in the middle of one.
-        """
-        assert_halts("LET a:=1\nLET z:=1\nPOINT loop\nIF a BREAK loop\nEND loop")
-
     def test_input_in_expression(self) -> None:
         assert_loops(
             "LET x:=?*2\nLET d:=x-8\nPOINT loop\nIF d BREAK loop\nEND loop", "4"
@@ -172,6 +166,56 @@ class TestArithmetic:
 
     def test_different_value_halts(self) -> None:
         assert_halts(self.loop_iff("2+3*4", 20))
+
+
+class TestTokens:
+    """Where one token stops and the next begins.
+
+    Every scan in the tokenizer is a character range, and a range whose
+    endpoint moves by one letter or digit is not a wrong answer but a
+    differently-shaped token stream -- a name that becomes an unexpected
+    character, a keyword that swallows the name after it, a signed literal
+    that splits into a stray operator and a number.  Those endpoints are
+    what these programs stand on.
+    """
+
+    @staticmethod
+    def loop_on(program: str) -> str:
+        """Append a loop that runs forever iff ``x`` is zero."""
+        return f"{program}\nPOINT loop\nIF x BREAK loop\nEND loop"
+
+    @pytest.mark.parametrize("literal", ["+0", "+9", "-50", "-59", "-1", "-123"])
+    def test_signed_literal_digit_ends(self, literal: str) -> None:
+        """A signed literal scans every digit, ``0`` and ``9`` included.
+
+        Two separate ranges are involved -- the one deciding a sign
+        *starts* a literal, and the one consuming the digits after it -- so
+        each endpoint appears both as a first digit and as a later one.  A
+        bound that excludes one splits the literal into a stray operator
+        and a number, which is a malformed expression rather than a wrong
+        value.
+        """
+        value = int(literal)
+        assert_loops(self.loop_on(f"LET x:={literal}\nLET x:=x-{value}"))
+
+    def test_keyword_run_stops_at_the_first_lowercase_letter(self) -> None:
+        """A keyword needs no space before the name that follows it.
+
+        The uppercase scan is bounded above by ``Z``; raised to ``z`` it
+        swallows the name too, and ``LETx`` becomes one unknown keyword
+        rather than ``LET`` followed by ``x``.
+        """
+        assert_halts(self.loop_on("LETx:=1"))
+
+    def test_variable_name_spans_the_whole_lowercase_range(self) -> None:
+        """``a`` and ``z`` are names, not unexpected characters.
+
+        The name scan is bounded at both ends, and either bound moving in
+        by one letter turns a name into a character the tokenizer has no
+        rule for -- so the endpoints are used as whole names here rather
+        than only in the middle of one.
+        """
+        assert_halts(self.loop_on("LET a:=1\nLET z:=1\nLET x:=a*z"))
 
 
 class TestErrors:
@@ -222,6 +266,10 @@ class TestErrors:
             ("A", "unknown keyword 'A'"),  # the first uppercase letter
             ("LET x:=1A", "unknown keyword 'A'"),  # a letter glued to a number
             ("LET aZ:=1", "unknown keyword 'Z'"),  # a letter glued to a name
+            ("LET x:=-1A", "unknown keyword 'A'"),  # a letter glued to a sign
+            ("LET x:=[", "unexpected character '['"),  # between 'Z' and 'a'
+            ("LET x:=_", "unexpected character '_'"),  # likewise
+            ("LET x:=`", "unexpected character '`'"),  # and just below 'a'
             ("x y", "malformed statement"),  # two names, no keyword
             ("POINT", "malformed statement"),  # missing label
             ("POINT 5", "malformed statement"),  # numeric label
