@@ -399,28 +399,6 @@ class _LaserFuckVM(_DelegatingVM):
         self._machine = _Machine(program.splitlines(), self._io, rng=Seeded(2))
 
 
-class _Wii2dVM(_DelegatingVM):
-    """2D grid; ``?`` turns at random, so the draw is pinned."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.grid_based.wii2d import _Machine
-        from esolangs.interpreters.randomness import Seeded
-
-        self._machine = _Machine(program.splitlines(), self._io, rng=Seeded())
-
-
-class _PainfuckVM(_DelegatingVM):
-    """Tape + cursor; ``y`` skips at random, so the draw is pinned."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.randomness import Seeded
-        from esolangs.interpreters.tape_based.painfuck import _Machine
-
-        self._machine = _Machine(program, self._io, rng=Seeded())
-
-
 class _CODVM(_DelegatingVM):
     """2D grid with possibly many live cods; the interpreter describes its shape.
 
@@ -494,8 +472,6 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Qoibl": _QoiblVM,
     "Eval": _EvalVM,
     "Modulous": _ModulousVM,
-    "WII2D": _Wii2dVM,
-    "Painfuck": _PainfuckVM,
     "LaserFuck": _LaserFuckVM,
     "COD": _CODVM,
     "Point Break": _PointBreakVM,
@@ -507,6 +483,8 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
 
 # Languages whose adapter is pure boilerplate over the registry entry.
 _DERIVED_LANGUAGES = (
+    "Painfuck",
+    "WII2D",
     "Bitdeque",
     "3D Brainfuck",
     "%^2^-1",
@@ -580,6 +558,9 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
         def __init__(self, program: str, stdin: str = "") -> None:
             super().__init__(program, stdin)
             import importlib
+            import inspect
+
+            from esolangs.interpreters.randomness import Seeded
 
             module = importlib.import_module(f"esolangs.interpreters.{module_path}")
             code = program.splitlines() if split else program
@@ -587,7 +568,14 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
             # this whole file is built around; the explicit adapters below
             # import it by name for the same reason.
             machine = getattr(module, "_Machine")  # noqa: B009
-            self._machine = machine(code, self._io)
+            # A language with a random instruction takes a source for it,
+            # and a stepped VM has to be reproducible, so one is passed
+            # wherever it is accepted.  It is optional exactly like ``io``
+            # is: the interpreter falls back to ``secrets`` without it.
+            if "rng" in inspect.signature(machine.__init__).parameters:
+                self._machine = machine(code, self._io, rng=Seeded())
+            else:
+                self._machine = machine(code, self._io)
 
     _Derived.__name__ = _Derived.__qualname__ = f"_{language}VM"
     _Derived.__doc__ = f"Adapter for {language}; the interpreter describes its shape."
