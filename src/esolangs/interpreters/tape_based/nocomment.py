@@ -67,6 +67,20 @@ class _Machine:
         """Whether the cursor has reached the end of the code."""
         return self.ind >= len(self.code)
 
+    # The VM's language-shaped view: cell tape + stack + cursor.  ``stack``
+    # above already is the view, handed back live -- the VM copies what it
+    # exposes, which is why the shape protocol asks only for a Sequence.
+
+    @property
+    def ip(self) -> int:
+        """The code cursor."""
+        return self.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """The tape's cells."""
+        return list(self.tape)
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (

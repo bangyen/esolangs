@@ -56,6 +56,20 @@ class _Machine:
         """Whether the pointer has moved off the end of memory."""
         return self.pc < 0 or self.pc >= len(self.memory)
 
+    # The VM's language-shaped view: OISC cells + program counter.
+    # ``memory`` above already is the store, handed back live -- the VM
+    # copies it on the way out.
+
+    @property
+    def ip(self) -> int:
+        """The program counter."""
+        return self.pc
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (tuple(self.memory), self.pc, self.io.position())

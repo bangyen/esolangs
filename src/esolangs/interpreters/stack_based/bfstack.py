@@ -45,9 +45,9 @@ class _Machine:
 
     # The VM's language-shaped view.  BFStack's store *is* its data stack, so
     # ``stack`` carries it and ``memory`` is empty -- the loop stack is
-    # control flow, not addressable state, and stays out of both.  The
-    # ``list()`` is not just a copy: the VM declares ``list[object]`` and
-    # ``list`` is invariant, so returning ``self.stk`` would not type-check.
+    # control flow, not addressable state, and stays out of both.  The stack
+    # is handed back live: the VM copies what it exposes, so the guarantee
+    # that a caller cannot write into a running machine lives there.
 
     @property
     def ip(self) -> int:
@@ -60,9 +60,9 @@ class _Machine:
         return []
 
     @property
-    def stack(self) -> list[object]:
+    def stack(self) -> list[int]:
         """The data stack, bottom first."""
-        return list(self.stk)
+        return self.stk
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
