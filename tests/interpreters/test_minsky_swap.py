@@ -310,7 +310,7 @@ class TestStepMachine:
 
         machine = _Machine("~\n0", IO())  # zero register, target line 0
         machine.step()
-        assert machine.reg == [0, 0], "nothing to decrement"
+        assert machine.reg == (0, 0), "nothing to decrement"
         assert machine.ind == 1, "the cursor advanced rather than jumping"
 
 
