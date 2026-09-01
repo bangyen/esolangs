@@ -215,6 +215,20 @@ class TestCommands:
         program = "\n".join(["skip", "send data", "data;", "unreachable", "data;"])
         assert _run(program) == ""
 
+    def test_skip_before_a_non_label_line_exits(self) -> None:
+        """``skip`` whose next line is a command, not a label, is clause 3.
+
+        The first clause asks whether the *next* line opens a block; a
+        plain command answers no, so at top level the program exits rather
+        than jumping.  Distinct from the case where ``skip`` is the final
+        line and there is no next line at all.
+        """
+        assert _run("skip\nsend d\nd;\nx\nd;") == ""
+
+    def test_skip_as_the_final_line_exits(self) -> None:
+        """There is no next line to inspect, so clause 3 ends the program."""
+        assert _run("skip") == ""
+
     def test_a_non_command_line_is_data(self) -> None:
         """A line whose first word is not a command executes as a no-op."""
         assert _run("not a command\nsend d\nskip\nd;\nx\nd;") == "x\n"
