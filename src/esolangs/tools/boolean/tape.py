@@ -245,6 +245,10 @@ def circlefuck(truth_table: str) -> str:
     A subtree whose rows all agree folds to a leaf; see
     :func:`circlefuck_byte`, which both share.
     """
+    # Validated here rather than left to ``circlefuck_byte``: that one takes
+    # a *byte* table, where a single entry is a legal constant, so it cannot
+    # carry the boolean generators' "at least one input" rule.
+    _validate_truth_table(truth_table)
     return circlefuck_byte([_ASCII_ZERO + int(bit) for bit in truth_table])
 
 

@@ -533,6 +533,37 @@ _PARITY = "01101001"
 
 
 @pytest.mark.parametrize(
+    ("name", "fn"),
+    sorted(
+        (lang.id, lang.boolean)
+        for lang in LANGUAGES.values()
+        if lang.boolean is not None
+    ),
+    ids=lambda v: v if isinstance(v, str) else "",
+)
+@pytest.mark.parametrize("table", ["0", "1"])
+def test_a_one_entry_table_is_refused(name: str, fn: object, table: str) -> None:
+    """No generator builds a program for a nullary table.
+
+    ``"0"`` and ``"1"`` are well-formed tables of length ``2**0``, so they
+    clear the power-of-two check -- and used to reach the generators, where
+    forty-four of them built a program, twenty-four raised ``IndexError``
+    reaching for an input that was not there, and sixteen more raised
+    ``negative shift count``.  A nullary table is a constant rather than a
+    function of any input, and these generators exist to build programs
+    that read and branch, so every one of them refuses it with the shared
+    validator's ``ValueError``.
+
+    Swept from the registry rather than written per generator: this is the
+    check that has to stay true when the next language lands.
+    """
+    assert callable(fn), name
+    with pytest.raises(ValueError, match="at least one input") as caught:
+        fn(table)
+    assert "at least one input" in str(caught.value), f"{name} on {table!r}"
+
+
+@pytest.mark.parametrize(
     "name",
     sorted(
         n

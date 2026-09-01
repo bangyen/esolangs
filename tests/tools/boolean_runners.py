@@ -425,7 +425,10 @@ _PB_TABLES = {
 }
 
 
-_PB_CONSTANTS = ("0", "1", "00", "11", "0000", "1111")
+# The nullary tables ("0"/"1") are not here: a one-entry table is a
+# constant rather than a function of any input, and every boolean
+# generator refuses it (``test_a_one_entry_table_is_refused``).
+_PB_CONSTANTS = ("00", "11", "0000", "1111")
 
 
 def _pb_random_tables() -> list[str]:

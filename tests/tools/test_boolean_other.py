@@ -219,8 +219,6 @@ class TestCvnc:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("0", 0),  # no inputs at all
-            ("1", 0),
             ("01", 1),  # identity
             ("10", 1),  # NOT
             ("00", 1),  # constant zero
@@ -310,10 +308,11 @@ class TestCvnc:
         program = boolean.cvnc("0110")
         assert program.count("\u0279i") == program.count("fu")
 
-    def test_a_zero_input_table_reads_nothing(self) -> None:
-        """With no inputs there is nothing to branch on."""
-        assert "so" not in boolean.cvnc("1")
-        assert run_cvnc(boolean.cvnc("1"), []) == "1"
+    def test_a_zero_input_table_is_refused(self) -> None:
+        """A one-entry table is a constant, not a function of any input."""
+        for bit in ("0", "1"):
+            with pytest.raises(ValueError, match="at least one input"):
+                boolean.cvnc(bit)
 
     def test_the_hoisted_build_reorders_a_table_the_stream_order_cannot_fold(
         self,
@@ -855,10 +854,11 @@ class TestZtoalc:
                 bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
                 assert run_ztoalc(program, bits) == bit
 
-    def test_zero_input_table(self) -> None:
-        """A single-entry table is a constant with no inputs to read."""
+    def test_zero_input_table_is_refused(self) -> None:
+        """A single-entry table is a constant, not a function of any input."""
         for bit in ("0", "1"):
-            assert run_ztoalc(boolean.ztoalc_l_boolean(bit), []) == bit
+            with pytest.raises(ValueError, match="at least one input"):
+                boolean.ztoalc_l_boolean(bit)
 
     def test_table_past_the_anchor_table_is_refused(self) -> None:
         """A table needing more steps than any committed anchor is refused."""
