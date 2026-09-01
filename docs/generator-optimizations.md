@@ -595,12 +595,35 @@ which name fills each slot while building its tree on the permuted table.
 `forbin_boolean`, `lamfunc`, `bitdeque`, `ram0` (`six_five`, `forth`,
 `streetcode` and `laserfuck` roll their own — the two grid ones because their
 `width` has to choose among *every* candidate, and `best_input_order` returns
-only the shortest; `back` has no width, so it uses the wrapper).
+only the shortest; `back` has no width, so it uses the wrapper), and
+`brainfuck`, `bf_tree`, `factor`, `three_d_brainfuck`, `painfuck`,
+`dimensional` and `dimensional_tree`, which **inherit** one rather than
+calling for it.  The chain is three links deep and only the first names
+anything: `bf_tree` and `dimensional_tree` call the shared
+`decision_tree_program`, which wraps `best_input_order` itself; `brainfuck`
+and `dimensional` are one-line delegations to those two; and `factor`,
+`three_d_brainfuck` and `painfuck` reuse `brainfuck`'s *output* outright —
+encoding it into an integer, transliterating its commands, or both.
+Measured on the shape test's own tables they fold 49.6%
+(the brainfuck family), 54.9% (`painfuck`), 56.5% (`factor`) and 46.9%
+(`dimensional`, `dimensional_tree`) — so a reorder can arrive through a
+*transliteration*, with nothing in the generator naming it.
 
 The authority for that list is
-`grep -rn 'best_input_order(truth_table' src/`, not this paragraph: a
+`grep -rn 'best_input_order' src/`, **then the callers of
+`decision_tree_program`, then — repeatedly — whoever delegates to or reuses
+the output of anything already found**, not this paragraph.  That last step
+has to run to a fixed point rather than once: `painfuck` is three hops out
+(`decision_tree_program` → `bf_tree` → `brainfuck` → `painfuck`), so a
+single pass finds five of the seven and stops.  A
 generator that grows a reorder is not required to touch this file, so the
-names here lag.  `bitdeque`'s is the one worth reading, because it is *not*
+names here lag.  **Do not narrow that pattern to `best_input_order(truth_table`**
+— it was written that way and silently missed all seven inheritors above,
+for exactly one reason: the shared call in `helpers.py` breaks its arguments
+across lines, so the table is not on the same line as the callee.  A grep
+that names the authority is only as good as the spellings it matches, and a
+one-line pattern cannot see a wrapped call or an inherited one.
+`bitdeque`'s is the one worth reading, because it is *not*
 the free reorder the roadmap still lists as open — its rotations happen
 inside the tree (`EJECT PUSH`, `POP INJECT`, two commands per position),
 while the load block stays byte-identical because the `{Xi}` setter's parity
