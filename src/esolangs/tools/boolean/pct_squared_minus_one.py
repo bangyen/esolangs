@@ -125,6 +125,7 @@ share.  Padding can only close an even gap; respelling closes either.
 
 import re
 from functools import cache
+from itertools import product
 
 from esolangs.tools.boolean.helpers import _validate_truth_table
 
@@ -924,6 +925,259 @@ def _ladder(truth_table: str, n: int) -> str | None:
     return header + _HEADER_END + body
 
 
+#: Byte values ``e`` prints as ``"0"`` and ``"1"``.  Unlike ``l``, which prints
+#: the accumulator in decimal and so needs it to *be* 0 or 1, ``e`` prints
+#: ``chr(acc & 0xFF)`` -- the accumulator only has to be *congruent* to these
+#: mod 256, which is what lifts the ceiling every other path runs into.
+_BYTE_ZERO = 48
+_BYTE_ONE = 49
+
+#: The band construction's weights are multiples of this, so every row starts
+#: congruent mod 256 and the residue of a band is decided by one translation.
+_BAND_UNIT = 256
+
+#: Where a band construction parks its survivors after each wipe: positive, so
+#: the next stage's translate can still push them over the limit, and far enough
+#: under it that parking itself never clamps.
+_BAND_PARK = 2000
+
+
+def _band_weightings(n: int) -> dict[tuple[int, ...], tuple[int, ...]]:
+    """One weighting per achievable row order, keyed by the order.
+
+    Weights are multiples of :data:`_BAND_UNIT` so all rows share a residue, and
+    the largest row sum must stay under the limit or stage one would clamp on
+    its own -- together that bounds the unit triple's sum, and every order this
+    box can realise is represented once.
+    """
+    seen: dict[tuple[int, ...], tuple[int, ...]] = {}
+    limit_units = _LIMIT // _BAND_UNIT
+    for units in product(range(1, limit_units + 1), repeat=n):
+        if sum(units) > limit_units:
+            continue
+        weights = tuple(u * _BAND_UNIT for u in units)
+        sums = [
+            sum(w * ((r >> (n - 1 - k)) & 1) for k, w in enumerate(weights))
+            for r in range(2**n)
+        ]
+        if len(set(sums)) != 2**n:
+            continue
+        order = tuple(sorted(range(2**n), key=lambda r: sums[r], reverse=True))
+        seen.setdefault(order, weights)
+    return seen
+
+
+def _translate(value: int, shift: int) -> int:
+    """Apply a translation to one accumulator value, reset included.
+
+    A negative shift is a run of ``s``/``i``; a positive one is ``p`` then a run
+    then ``p``, so it crosses the reset twice.  Modelling that separately from
+    the emitted characters is what let an earlier version claim programs the
+    interpreter contradicted, so this mirrors the spelling exactly.
+    """
+    if shift == 0:
+        return value
+    if value > _LIMIT:
+        value = 0
+    if shift < 0:
+        return value + shift
+    value = -value
+    if value > _LIMIT:
+        value = 0
+    value -= shift
+    if value > _LIMIT:
+        value = 0
+    return -value
+
+
+def _band_stage(vec: tuple[int, ...], up: int) -> tuple[tuple[int, ...], int] | None:
+    """Wipe every row the translation pushes past the limit, then park.
+
+    The wipe is the reset itself: after translating up, the rows above 3003 are
+    zeroed by the next command, which is an ``s`` and so also subtracts 2.  The
+    parking translation then brings the survivors back under the limit, where
+    the next stage can reach them again.
+    """
+    raised = [_translate(value, up) for value in vec]
+    wiped = [(0 if value > _LIMIT else value) - 2 for value in raised]
+    down = _BAND_PARK - max(wiped)
+    if _sub_code(abs(down)) is None:
+        return None
+    parked = tuple(_translate(value, down) for value in wiped)
+    if max(parked) > _LIMIT:
+        return None
+    return parked, down
+
+
+def _band_plan(
+    truth_table: str, n: int, order: tuple[int, ...], weights: tuple[int, ...]
+) -> tuple[tuple[tuple[int, int], ...], int] | None:
+    """Derive the stages and printing shift for one weighting, or ``None``.
+
+    Sorting the rows by the weighted sum turns the table into a sequence of
+    runs, and one stage clears each run from the top, because the reset can only
+    wipe the largest values.  So the number of stages is read off the table
+    rather than searched for.
+
+    Neither is the translation searched.  Once a band is wiped it takes exactly
+    the same translations as the surviving rows, so the parking amount cancels
+    out of the gap between them and the requirement collapses to a congruence:
+    the up-translation must be ``(live - band) - v`` mod 256, where ``v`` is the
+    current value of a row in the bottom run.  Each cut's window is one full
+    residue system wide, so exactly one translation in it satisfies that -- the
+    reason a sweep of a window found precisely one candidate that worked.
+    """
+    rows = range(2**n)
+    sums = tuple(
+        sum(w * ((r >> (n - 1 - k)) & 1) for k, w in enumerate(weights)) for r in rows
+    )
+    cuts = [
+        i for i in range(1, 2**n) if truth_table[order[i]] != truth_table[order[i - 1]]
+    ]
+    anchor = order[-1]
+    live = _BYTE_ONE if truth_table[anchor] == "1" else _BYTE_ZERO
+
+    vec = sums
+    plan: list[tuple[int, int]] = []
+    cleared: set[int] = set()
+    for cut in cuts:
+        # Only rows still carrying a value can be cut; ones an earlier stage
+        # wiped are parked below and would invert the window.
+        wipe = [order[i] for i in range(cut) if order[i] not in cleared]
+        keep = [order[i] for i in range(cut, 2**n)]
+        if not wipe:
+            return None
+        low = _LIMIT - min(vec[r] for r in wipe) + 1
+        high = _LIMIT - max(vec[r] for r in keep)
+        if low > high or low <= 0:
+            return None
+        band = _BYTE_ONE if truth_table[order[cut - 1]] == "1" else _BYTE_ZERO
+        wanted = (live - band - vec[anchor]) % _BAND_UNIT
+        up = low + ((wanted - low) % _BAND_UNIT)
+        if up > high or _sub_code(abs(up)) is None:
+            return None
+        staged = _band_stage(vec, up)
+        if staged is None:
+            return None
+        vec, down = staged
+        plan.append((up, down))
+        cleared.update(wipe)
+
+    # The printing translation is pinned mod 256 by the anchor row, then checked
+    # on every row -- solved, not searched.
+    base = (live - vec[anchor]) % _BAND_UNIT
+    for reps in range(-_BAND_REPS, _BAND_REPS + 1):
+        shift = base + _BAND_UNIT * reps
+        if _sub_code(abs(shift)) is None:
+            continue
+        if all(
+            (_translate(value, shift) & 0xFF)
+            == (_BYTE_ONE if truth_table[r] == "1" else _BYTE_ZERO)
+            for r, value in enumerate(vec)
+        ):
+            return tuple(plan), shift
+    return None
+
+
+#: How far the printing translation may range in whole residue systems.  The
+#: solved shifts land well inside this; it exists so an unspellable ``+/-1``
+#: has somewhere to move to.
+_BAND_REPS = 60
+
+
+def _band_width(weight: int) -> int | None:
+    """Narrowest *even* width spelling a subtraction of ``weight``.
+
+    The hold branch is ``pp`` repeated, which has only even widths, so the
+    subtracting branch has to match one.
+    """
+    if weight == 0:
+        return 0
+    width = -(-weight // 3)
+    if width % 2:
+        width += 1
+    while width <= weight:
+        if _sub_of_width(weight, width) is not None:
+            return width
+        width += 2
+    return None
+
+
+def _band_spell(
+    weights: tuple[int, ...], stages: tuple[tuple[int, int], ...], shift: int
+) -> tuple[tuple[tuple[str, str], ...], str] | None:
+    """Spell a derived plan as setters and a fixed body, or ``None``."""
+    setters = []
+    for weight in weights:
+        width = _band_width(weight)
+        if width is None:  # pragma: no cover - every shipped weight spells
+            return None
+        code = _sub_of_width(weight, width)
+        if code is None:  # pragma: no cover - the width just spelled it
+            return None
+        setters.append(("p" * width, code))
+    # The setters subtract, so the ladder is negative here; one ``p`` turns it
+    # positive, which is what lets the reset reach it.  Dropping it negates
+    # every row and the emitted program computes a different function.
+    body = "p"
+    for up, down in stages:
+        raise_code = _affine_code(1, up)
+        park_code = _affine_code(1, down)
+        if raise_code is None or park_code is None:  # pragma: no cover
+            return None
+        body += raise_code + "s" + park_code
+    tail = _affine_code(1, shift)
+    if tail is None:  # pragma: no cover - the shift was chosen spellable
+        return None
+    return tuple(setters), body + tail + "e"
+
+
+def _band(truth_table: str, n: int) -> str | None:
+    """Build a banded template, or ``None`` if this arity is not derived.
+
+    This is the construction that makes three inputs *total*, and what it turns
+    on is the printing command rather than any new arithmetic.  Every other path
+    here prints with ``l``, which spells the accumulator in decimal and so needs
+    it to *be* 0 or 1; that forces the two answer classes onto two exact values
+    and is what bounds them.  ``e`` prints ``chr(acc & 0xFF)``, so a row only has
+    to be *congruent* to 48 or 49 mod 256, and the whole construction becomes a
+    question about residues, which the reset can control.
+
+    Sorting the rows by a weighted sum turns the table into runs; each stage
+    translates the top run past 3003 and lets the reset wipe it, then parks the
+    survivors back under the limit.  A table needs one stage per run boundary,
+    which is why the stage counts follow the run structure exactly.
+
+    The weighting is chosen for the fewest runs, so the program is the shortest
+    this construction builds rather than the first that works.
+    """
+    ordered = sorted(
+        _band_weightings(n).items(),
+        key=lambda item: (
+            1
+            + sum(
+                1
+                # Consecutive pairs along the order, so the two sequences are
+                # deliberately of different length.
+                for a, b in zip(item[0], item[0][1:], strict=False)
+                if truth_table[a] != truth_table[b]
+            )
+        ),
+    )
+    for order, weights in ordered:
+        plan = _band_plan(truth_table, n, order, weights)
+        if plan is None:
+            continue
+        spelled = _band_spell(weights, *plan)
+        if spelled is None:  # pragma: no cover - a derived plan always spells
+            continue
+        setters, body = spelled
+        header = ";".join(f"{k}={zero}|{one}" for k, (zero, one) in enumerate(setters))
+        placeholders = "".join("{X" + str(k) + "}" for k in range(n))
+        return header + _HEADER_END + placeholders + body
+    return None
+
+
 def _affine(truth_table: str, n: int) -> str | None:
     """Build a composed-affine template, or ``None`` if the table is not one.
 
@@ -1008,15 +1262,24 @@ def pct_squared_minus_one(truth_table: str) -> str:
         # majority.  It is tried last because its programs are the longest by
         # far -- hundreds of characters against the others' dozens.
         ladder = _ladder(truth_table, n)
-        if ladder is None:
+        if ladder is not None:
+            return ladder
+        # Every path above prints with ``l``, which needs the accumulator to be
+        # exactly 0 or 1.  The band construction prints with ``e`` instead --
+        # only the residue mod 256 matters -- and repeated resets then cut the
+        # weighted order into as many bands as the table has runs.  That builds
+        # every three-input table, at the cost of much the longest programs
+        # here, which is why it is tried last.
+        band = _band(truth_table, n)
+        if band is None:
             raise ValueError(
-                f"%^2^-1 builds every two-input table, at any arity a "
-                f"conjunction or disjunction of literals, at three inputs the "
-                f"tables one affine setter per input composes, and the "
-                f"thresholds a weighted ladder crosses; "
+                f"%^2^-1 builds every table at one, two and three inputs; "
+                f"above that a conjunction or disjunction of literals at any "
+                f"arity, the tables one affine setter per input composes, and "
+                f"the thresholds a weighted ladder crosses; "
                 f"got {n} inputs ({truth_table!r})"
             )
-        return ladder
+        return band
     # Widen a one-input table by repeating each entry, so the second input is
     # present in the derivation but cannot change the answer.
     widened = truth_table if n == 2 else "".join(bit * 2 for bit in truth_table)
