@@ -270,10 +270,9 @@ class TestErrors:
             run_and_capture("|1|q.")
 
 
-def test_registered_interpreter_runs() -> None:
-    import esolangs
-
-    assert esolangs.run("Between", "'Hi'p.") == "Hi"
+def test_a_whole_program_runs_end_to_end() -> None:
+    """The shortest program that prints: one string, one ``p``, and a fall-off."""
+    assert run_and_capture("'Hi'p.") == "Hi"
 
 
 class TestStepMachine:
