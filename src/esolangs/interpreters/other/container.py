@@ -17,11 +17,71 @@ values, and the exit code once EXIT fires), so it is step-capable:
 ``step()`` executes one full tick and ``halted`` is true once EXIT fires.
 :func:`run` still raises :class:`SystemExit` on halt, matching the
 original's direct ``sys.exit`` call.
+
+The execution model is a pure function over an immutable ``_State``:
+:func:`_advance` maps a state and the container rules to the next state,
+and never mutates what it is given.  It takes no ``io`` argument at all, so
+it is total and side-effect free by construction rather than by inspection.
+
+A tick is where this language differs from the others in the series.  Every
+container updates at once from the *old* values, and then three things --
+PRINT's output, the empty container's read, and EXIT -- fire on comparisons
+between the old and new values.  So the shell computes what the tick will
+produce, does the two effects, and hands the read byte to the transition,
+which is what actually builds the next state.
+
+:class:`_Machine` is the mutable shell the interpreter protocol requires.
+It holds one ``_State`` and rebinds it each step, so the mutation lives in
+exactly one assignment and every rule about what Container *does* stays in
+the pure layer.
 """
+
+from __future__ import annotations
 
 import sys
 
 from esolangs.interpreters.io import IO
+
+#: The container values, as an immutable name->value mapping in name order,
+#: so one logical set of values has exactly one spelling.
+type _Vars = tuple[tuple[str, int], ...]
+
+#: One instant of a run: ``(vars, queue, exit_code, tick)`` -- the container
+#: values, the pending input characters, the EXIT code once it fires, and
+#: the tick counter.  A value, not a record: every transition below returns
+#: a new one rather than editing one in place.
+#:
+#: ``exit_code`` is state because halting here is a value a tick produces,
+#: not a position: EXIT changing is what stops the run, and the code it
+#: changed to is what ``run`` exits with.
+#:
+#: ``tick`` is deliberately excluded from ``snapshot``: it counts steps, not
+#: state, and including it would make every state unique by construction
+#: and reduce the cycle detector to a step budget.
+type _State = tuple[_Vars, tuple[str, ...], int | None, int]
+
+
+def _get(variables: _Vars, name: str) -> int:
+    """Return the value of container ``name``."""
+    for key, value in variables:
+        if key == name:
+            return value
+    raise KeyError(name)
+
+
+def _has(variables: _Vars, name: str) -> bool:
+    """Whether a container named ``name`` was declared."""
+    return any(key == name for key, _ in variables)
+
+
+def _tick(obj: list[Con], variables: _Vars) -> _Vars:
+    """Return every container's value after one update, in name order.
+
+    All of them update from the same old values, which is what makes a tick
+    simultaneous rather than sequential.
+    """
+    old = dict(variables)
+    return tuple(sorted((o.name, o.update(old)) for o in obj))
 
 
 class Con:
@@ -66,11 +126,8 @@ class _Machine:
     def __init__(self, code: list[str], io: IO) -> None:
         """Parse ``code`` into containers and start every value at rest."""
         self.io = io
-        self.queue: list[str] = []
         self.obj: list[Con] = []
-        self.var: dict[str, int] = {}
-        self.exit_code: int | None = None
-        self.tick = 0
+        start: dict[str, int] = {}
 
         for raw in code:
             line = raw.strip()
@@ -78,20 +135,45 @@ class _Machine:
                 line = line[:-1]
                 if "=" in line:
                     x, y = line.split("=")
-                    self.var[x] = int(y)
+                    start[x] = int(y)
                     self.obj.append(Con(x))
                 else:
-                    self.var[line] = 0
+                    start[line] = 0
                     self.obj.append(Con(line))
             elif line:
                 if not self.obj:
                     raise ValueError("rule line before any container declaration")
                 self.obj[-1].add(line)
 
+        self.state: _State = (tuple(sorted(start.items())), (), None, 0)
+
+    # The language's own names.  They are views on the current state rather
+    # than fields of their own, so there is one place a step can change.
+
+    @property
+    def var(self) -> dict[str, int]:
+        """The container values, by name."""
+        return dict(self.state[0])
+
+    @property
+    def queue(self) -> list[str]:
+        """The input characters read but not yet consumed."""
+        return list(self.state[1])
+
+    @property
+    def exit_code(self) -> int | None:
+        """The code EXIT halted with, or None while the run continues."""
+        return self.state[2]
+
+    @property
+    def tick(self) -> int:
+        """How many ticks have run."""
+        return self.state[3]
+
     @property
     def halted(self) -> bool:
         """Whether EXIT has fired, or there was nothing to evaluate."""
-        return self.exit_code is not None or not self.obj
+        return self.state[2] is not None or not self.obj
 
     # The VM's language-shaped view: Named containers + tick count; ip the tick, memory
     # the values.
@@ -99,12 +181,13 @@ class _Machine:
     @property
     def ip(self) -> int:
         """The current instruction position."""
-        return self.tick
+        return self.state[3]
 
     @property
     def memory(self) -> list[int]:
         """The addressable cells."""
-        return [self.var[k] for k in sorted(self.var)]
+        # The values are kept in name order, so this is already sorted.
+        return [value for _name, value in self.state[0]]
 
     @property
     def stack(self) -> list[object]:
@@ -113,33 +196,67 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (
-            tuple(sorted(self.var.items())),
-            tuple(self.queue),
-            self.exit_code,
-        )  # tick is excluded: it counts steps, not state, and always differs
+        variables, queue, exit_code, _tick_count = self.state
+        return (variables, queue, exit_code)
+        # tick is excluded: it counts steps, not state, and always differs
 
     def step(self) -> None:
-        """Execute one full tick, updating every container's value."""
+        """Execute one full tick, updating every container's value.
+
+        The tick is computed first, because all three of the things that
+        can happen -- PRINT's output, the read, and EXIT -- compare the old
+        values against the new ones.  The two effects are done here, and
+        the read's byte is handed to the transition, which builds the state
+        the tick lands on.
+        """
         if self.halted:
             return
-        var = self.var
-        new = {o.name: o.update(var) for o in self.obj}
+        variables, queue, _exit, _count = self.state
+        new = _tick(self.obj, variables)
 
-        if "PRINT" in var and var["PRINT"] == 0 and bool(new["PRINT"]) and "OUT" in var:
-            self.io.print_char(chr(new["OUT"] % (1 << 7)))
-        if "" in var and var[""] == 0 and bool(new[""]):
-            while not self.queue:
-                s = self.io.input_str()
-                self.queue += list(s)
+        if (
+            _has(variables, "PRINT")
+            and _get(variables, "PRINT") == 0
+            and bool(_get(new, "PRINT"))
+            and _has(variables, "OUT")
+        ):
+            self.io.print_char(chr(_get(new, "OUT") % (1 << 7)))
 
-            new["IN"] = ord(self.queue[0])
-            self.queue = self.queue[1:]
-        if "EXIT" in var and var["EXIT"] != new["EXIT"]:
-            self.exit_code = new["EXIT"]
+        byte = None
+        if _has(variables, "") and _get(variables, "") == 0 and bool(_get(new, "")):
+            # The read blocks until there is a character to take, which is
+            # an effect and so belongs here rather than in the transition.
+            while not queue:
+                queue = tuple(self.io.input_str())
+            byte = ord(queue[0])
+            queue = queue[1:]
 
-        self.var = new
-        self.tick += 1
+        self.state = _advance(self.state, new, queue, byte)
+
+
+def _advance(
+    state: _State,
+    new: _Vars,
+    queue: tuple[str, ...],
+    byte: int | None,
+) -> _State:
+    """Return the state a tick lands on.
+
+    Pure: it reads ``state`` and returns a new one.  ``new`` is the tick the
+    shell already computed, ``queue`` what is left of the input after any
+    read, and ``byte`` the character that read took -- so the two effects
+    are already done and only their consequences arrive here.
+
+    A read writes its byte into IN, overriding whatever the tick computed
+    for that container.  EXIT halts when its value *changes*, and the value
+    it changed to is the code, which is why a program can exit with zero.
+    """
+    variables, _queue, exit_code, count = state
+    if byte is not None:
+        new = tuple(sorted({**dict(new), "IN": byte}.items()))
+    if _has(variables, "EXIT") and _get(variables, "EXIT") != _get(new, "EXIT"):
+        exit_code = _get(new, "EXIT")
+    return (new, queue, exit_code, count + 1)
 
 
 def run(code: list[str], io: IO) -> None:
