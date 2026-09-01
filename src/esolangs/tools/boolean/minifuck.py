@@ -884,6 +884,19 @@ def _complement(column: tuple[int, ...]) -> tuple[int, ...]:
     return tuple(1 - bit for bit in column)
 
 
+# Derived columns, keyed by ``(template, accumulator, orientation)``.  A plain
+# dict rather than ``lru_cache`` because the key is computed from the mutable
+# ``_Joint`` rather than being its arguments, and because ``None`` is a real
+# answer here -- the sentinel keeps it distinguishable from a miss.
+#
+# ``_derived_plans.cache_clear`` empties this too, because a caller asking for
+# a cold derivation means a cold one: tests harvest ``_find_pool`` call sites
+# from a build and assert they saw hundreds, which a warm column cache cuts to
+# seventeen.  Clearing the plan cache alone would leave that trap in place.
+_PRINTED_COLUMNS: dict[tuple[str, int, int], tuple[int, ...] | None] = {}
+_MISSING = object()
+
+
 def _printed_column(j: _Joint, acc: int, cell7: int) -> tuple[int, ...] | None:
     """Return what the ``'[x<[<'`` read prints here, without printing it.
 
@@ -903,17 +916,34 @@ def _printed_column(j: _Joint, acc: int, cell7: int) -> tuple[int, ...] | None:
 
     Returns None when this orientation has no pool pattern or the walk cannot
     reach, which are the two conditions :func:`_endgame` raises on.
+
+    Memoised on the staging's own template, because what this derives does not
+    depend on which tables are wanted: the whole-arity spelling computes each
+    column once and matches it against every table, while the table-major one
+    would recompute the identical column for every build.  Measured at three
+    inputs, the enumeration visits 12612 distinct ``(staging, accumulator,
+    orientation)`` triples however many tables are asked for -- 8 builds make
+    46790 calls and 40 make 206488, both over that same 12612 -- so the cache
+    is what lets asking per table cost what asking for the arity does.
     """
+    key = (j.template(), acc, cell7)
+    hit = _PRINTED_COLUMNS.get(key, _MISSING)
+    if hit is not _MISSING:
+        return hit  # type: ignore[return-value]
     code = _find_pool(j, cell7, acc - 1)
     if code is None:
+        _PRINTED_COLUMNS[key] = None
         return None
     probe = j.fork()
     probe.emit(code)
     try:
         _walk_to(probe, acc - 1)
     except ValueError:
+        _PRINTED_COLUMNS[key] = None
         return None
-    return tuple(probe.col(probe.ms[0].ptr + 1))
+    column = tuple(probe.col(probe.ms[0].ptr + 1))
+    _PRINTED_COLUMNS[key] = column
+    return column
 
 
 def _confirm(
@@ -1734,6 +1764,17 @@ def _derived_plans(
                 if claim(staged, suffix, (sep_index, settle)):
                     return found
     return found
+
+
+def _clear_derived_plans(
+    _wrapped: Callable[[], None] = _derived_plans.cache_clear,
+) -> None:
+    """Clear the plan cache and the derived columns it shares work with."""
+    _wrapped()
+    _PRINTED_COLUMNS.clear()
+
+
+_derived_plans.cache_clear = _clear_derived_plans  # type: ignore[method-assign]
 
 
 # The arities whose enumeration is worth screening before it is run.  Only
