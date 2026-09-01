@@ -83,6 +83,17 @@ class TestCoreInstruction:
         """An empty program produces no output."""
         assert run_bounded("") == ""
 
+    def test_a_difference_of_one_falls_through(self) -> None:
+        """The branch is on ``<= 0``, so a difference of exactly 1 does not
+        take it.
+
+        Every other fall-through leaves a difference well above the
+        boundary, so a threshold one higher would have agreed with all of
+        them.  Here 5 - 4 = 1: falling through reaches the print, while
+        taking the branch jumps straight past the end and prints nothing.
+        """
+        assert run_bounded("9 10 11  -3 12 0  0 0 13  5 4 99 67 99") == "C"
+
 
 class TestSpecialAddresses:
     """The -1 (IP), -2 (input), and -3 (output) addresses."""
@@ -133,6 +144,33 @@ class TestSpecialAddresses:
 
         with pytest.raises(ValueError, match="invalid address"):
             run_bounded("-4 0 3 0 0 5 9")
+
+    def test_output_advances_past_its_own_instruction(self) -> None:
+        """A ``-3`` instruction moves on three cells from where it stands.
+
+        Both output tests put the ``-3`` at address 0, where advancing by
+        three and jumping to the fixed address 3 are the same thing, and
+        where stepping *back* three leaves a negative pointer that halts
+        after the character is already out.  Reaching the print from a
+        jump separates them: from address 3, only a relative advance
+        arrives at the instruction that ends the program, and either fixed
+        landing runs the print again forever.
+        """
+        assert run_bounded("0 0 9  -3 10 0  0 0 11  3 67 99") == "C"
+        assert run_bounded("0 0 9  10 -3 0  0 0 11  3 67 99") == "C"
+
+    def test_a_write_to_the_pointer_redirects_the_fall_through(self) -> None:
+        """Storing to ``-1`` is what moves the pointer, not the address 1.
+
+        ``test_write_instruction_pointer`` writes to ``-1`` and asserts
+        ``""``, which every program here prints -- so dropping the write,
+        or aiming it at any other address, passed.  This one lands on the
+        print: the difference 6 goes to the pointer and the fall-through
+        adds three on top, reaching the ``-3`` at address 9.  Without the
+        write the pointer advances to 3 instead, where the jump target is
+        negative and the program stops with nothing printed.
+        """
+        assert run_bounded("-1 12 0  0 0 12  0 0 0  -3 13 0  -6 67") == "C"
 
 
 class TestMemoryState:
@@ -261,6 +299,53 @@ class TestVariants:
 
         with pytest.raises(ValueError, match="unknown store target"):
             _Machine(io=ScriptedIO(""), mem=[0, 0, 0], store=store)
+
+    def test_the_variant_reaches_run_and_shows_in_the_output(self) -> None:
+        """``run`` forwards ``store``, and the choice is visible in print.
+
+        Every variant test reads memory from a ``_Machine`` built by hand,
+        so ``run`` could have dropped the argument on the floor and passed
+        them all.  This program subtracts into a cell and then prints that
+        same cell: base S*bleq leaves ``b`` alone and prints 3, while both
+        storing variants overwrite it with the difference and print 2.
+        """
+        program = "9 10 3  -3 10 6  0 0 11  5 3 99"
+        assert run_bounded(program, store="a") == "\x03"
+        assert run_bounded(program, store="b") == "\x02"
+        assert run_bounded(program, store="ab") == "\x02"
+
+    def test_runs_own_default_is_the_base_language(self) -> None:
+        """``run`` called with no ``store`` runs base S*bleq.
+
+        Its default is never exercised -- ``run_bounded`` always passes one
+        -- so the signature was free to name a variant, or a spelling the
+        machine rejects outright.
+        """
+        buffer = io.StringIO()
+
+        class _IO(IO):
+            def _read(self, _prompt: str) -> str:
+                return ""
+
+            def _write(self, value: object) -> None:
+                buffer.write(str(value))
+
+        run("9 10 3  -3 10 6  0 0 11  5 3 99", _IO())
+        assert buffer.getvalue() == "\x03"
+
+    def test_a_variant_stores_into_address_zero(self) -> None:
+        """``b`` is an address, and address 0 is one of them.
+
+        The variant's write is guarded on ``b >= 0``, which only address 0
+        distinguishes from a positive-only bound -- and every variant test
+        so far uses ``b = 7``.  With ``b = 0`` the base language leaves
+        cell 0 holding the address it read, while both storing variants
+        replace it with the difference.
+        """
+        program = "5 0 8 0 0 0 0 0 9 3"
+        assert self.mem(program, "a")[0] == 5
+        assert self.mem(program, "b")[0] == -5
+        assert self.mem(program, "ab")[0] == -5
 
     @pytest.mark.parametrize("store", ["a", "ab", "b"])
     def test_documented_store_targets_are_accepted(self, store: str) -> None:
