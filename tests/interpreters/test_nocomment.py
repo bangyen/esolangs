@@ -241,11 +241,11 @@ class TestStepMachine:
         from esolangs.interpreters.tape_based.nocomment import _Machine
 
         machine = _Machine("cino", ScriptedIO())
-        assert (machine.ptr, machine.ind, machine.stack) == (0, 0, [])
+        assert (machine.ptr, machine.ind, machine.stack) == (0, 0, ())
         machine.step()  # c clears the cell
         machine.step()  # i increments it
         machine.step()  # n pushes the cell
-        assert machine.stack == [1]
+        assert machine.stack == (1,)
         machine.step()  # o prints the cell
         assert machine.io.getvalue() == "\x01"
         assert machine.halted
