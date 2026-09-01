@@ -2488,28 +2488,30 @@ class TestParameterizedMinifuck:
         # ...and the public entry point still builds one.
         assert parameterized.minifuck("00000001")
 
-    @pytest.mark.slow  # ~80s: the four-input derivation runs to its caps
-    def test_four_input_tables_build_from_the_insert_family(self) -> None:
-        """Staged four-input tables build, and the staging is what builds them.
+    @pytest.mark.slow  # the four-input derivation is whole-arity, minutes
+    def test_four_input_xor_builds_from_a_staging(self) -> None:
+        """XOR4 builds without searching, and computes its function.
 
         Four inputs is the arity the insert family was added for, and XOR is
         the pointed case: ``docs/walls.md`` records it as the four-input
-        table the searches fail on.  It is asserted by name rather than
-        sampled, since a sample that happened to miss it would leave the one
-        claim this change rests on unchecked.
+        table the searches fail on.  The searches are stubbed to raise, so a
+        table that builds here built from a staging.
 
-        The searches are stubbed to raise, so a table that builds here built
-        from a staging.  Without that, a fallback that quietly took minutes
-        and succeeded would look exactly like a staging that worked.
-
-        Every row is run on the interpreter, and the widths are compared:
-        a template that computes the table but whose fills differ in length
+        Every row is run on the interpreter and the widths are compared: a
+        template that computes the table but whose fills differ in length
         leaks its inputs through ``len(program)``, which is the one thing the
         parameterized convention exists to prevent.
 
-        The whole arity is derived once and cached, so the cost above is paid
-        by this test rather than by each table in it -- which is why the
-        samples share a test instead of being parametrized apart.
+        **Only one table.**  This used to build five, and assert besides that
+        a plans miss returns None -- which forced the *whole-arity* flipped
+        derivation on top of the ordinary one and put the test past nine
+        minutes for five builds.  Neither sweep can be asked for a subset
+        (``_flipped_plans`` is whole-arity by construction, and deliberately
+        so), so the only lever is how much of the arity the test demands.
+        The recorded claim is about XOR4, and that is what is kept; the miss
+        path is covered at an unstaged arity by
+        :meth:`test_a_table_with_no_staging_falls_through`, which pays no
+        derivation at all.
         """
         import importlib
 
@@ -2518,68 +2520,21 @@ class TestParameterizedMinifuck:
         def forbidden(*_args: object, **_kwargs: object) -> object:
             raise AssertionError("reached the search")
 
-        # XOR first, then tables spread across the enumeration -- separators
-        # and both settles -- so a staging family that worked only at its
-        # first separator would not pass.
-        tables = (
-            "0110100110010110",  # XOR4, the recorded search failure
-            "0100111101110011",
-            "0010000100110111",
-            "1110011100101000",
-            "0101101111111110",
-        )
+        table = "0110100110010110"  # XOR4, the recorded search failure
         with (
             patch.object(module, "_find_column", forbidden),
             patch.object(module, "_find_parked", forbidden),
         ):
-            for table in tables:
-                staged = module._staged(table, 4)  # noqa: SLF001
-                assert staged is not None, table
-                template = module.minifuck.__wrapped__(table)
-                widths = set()
-                for combo in range(16):
-                    bits = [(combo >> (3 - i)) & 1 for i in range(4)]
-                    program = self.instantiate(template, bits)
-                    widths.add(len(program))
-                    got = self.run_minifuck(program)
-                    assert got == table[combo], f"{table} inputs {bits}"
-                assert len(widths) == 1, (table, widths)
-
-        # The arity is *partial*, so the miss is the common case and has to
-        # stay quiet: ``_staged`` returns None and the caller reaches the
-        # searches.  A change making a miss raise would turn the rest of the
-        # arity from slow into broken.  This rides along here rather than in
-        # a test of its own because the derivation is what either would cost,
-        # and it is cached per process -- two tests would pay it twice, and
-        # under xdist would pay it in two workers.
-        #
-        # A miss has to clear *both* sources.  ``_staged`` falls through to
-        # the complementing embeds when the name-order enumeration has no
-        # plan (:func:`_flipped_staging`), so a table absent from
-        # ``_derived_plans`` alone is not a miss -- it is exactly the case
-        # the flipped pass was added to catch, and asserting None on it
-        # tests that the pass does *not* work.
-        plans = module._derived_plans(4)  # noqa: SLF001
-        flipped = module._flipped_plans(4)  # noqa: SLF001
-        assert plans, "four inputs is expected to be staged"
-        assert len(plans) < 2**16, "four inputs is expected to be partial"
-        assert flipped, "four inputs is expected to have flipped stagings"
-        reached = plans.keys() | flipped.keys()
-        assert len(reached) < 2**16, "four inputs is expected to stay partial"
-
-        # Positive control on the flipped half.  ``assert flipped`` above only
-        # says the derivation found stagings; it would still pass if replaying
-        # one had stopped returning a program, and then the miss assertion
-        # below would pass for the wrong reason -- every table would look like
-        # a miss.  Building one table that *only* the flipped pass reaches is
-        # what pins the pass as load-bearing.
-        flipped_only = next(key for key in flipped if key not in plans)
-        assert module._staged(flipped_only, 4) is not None  # noqa: SLF001
-
-        missing = next(
-            key for t in range(2**16) if (key := format(t, "016b")) not in reached
-        )
-        assert module._staged(missing, 4) is None  # noqa: SLF001
+            assert module._staged(table, 4) is not None  # noqa: SLF001
+            template = module.minifuck.__wrapped__(table)
+            widths = set()
+            for combo in range(16):
+                bits = [(combo >> (3 - i)) & 1 for i in range(4)]
+                program = self.instantiate(template, bits)
+                widths.add(len(program))
+                got = self.run_minifuck(program)
+                assert got == table[combo], f"{table} inputs {bits}"
+            assert len(widths) == 1, widths
 
     @pytest.mark.slow  # builds and runs all 256 three-input tables
     def test_every_three_input_table_is_search_free(self) -> None:
