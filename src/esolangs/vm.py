@@ -366,15 +366,12 @@ class _DimensionalVM(_DelegatingVM):
         self._machine = _Machine(program, self._io)
 
 
-class _GraphemeVM(_BaseVM):
-    """Stack + variables; ``ip`` is the call stack's cursors, root-to-leaf.
+class _GraphemeVM(_DelegatingVM):
+    """Stack + variables; the interpreter describes its own shape.
 
-    Each active call frame (``G``/``I``/``Q``/``Z`` push one) contributes its
-    ``pc`` to the tuple, so ``ip`` grows and shrinks with recursion depth
-    instead of folding every frame into the active one's position.  A
-    breakpoint on a specific ``ip`` is therefore depth-sensitive: ``(5,)``
-    matches only a single top-level frame at pc 5, not pc 5 one call deeper
-    (``(2, 5)``).
+    The machine is built empty and given its top-level frame here, because
+    the interpreter's own entry point validates and frames the program on
+    the way in and this adapter has to do the same by hand.
     """
 
     def __init__(self, program: str, stdin: str = "") -> None:
@@ -387,28 +384,6 @@ class _GraphemeVM(_BaseVM):
             )
         self._machine = _Machine(self._io, 1_000_000)
         self._machine.frames.append(_Frame(program, 0))
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> tuple[int, ...]:
-        # a frame is only ever popped once its own pc reaches len(code), so
-        # frames == [] implies the top-level frame finished at len(program).
-        frames = self._machine.frames
-        return tuple(f.pc for f in frames) if frames else (len(self._program),)
-
-    @property
-    def memory(self) -> list[int]:
-        return []
-
-    @property
-    def stack(self) -> list[object]:
-        return list(self._machine.stack)
 
 
 class _QoiblVM(_DelegatingVM):
@@ -667,7 +642,16 @@ class _NoCommentVM(_DelegatingVM):
 
 
 class _ThreeDBrainfuckVM(_BaseVM):
-    """2D block grid; ``ip`` is the pointer's position + heading, ``memory`` cells."""
+    """2D block grid; ``ip`` is the pointer's position + heading, ``memory`` cells.
+
+    The one adapter that still spells its shape here.  The machine calls the
+    pointer's 3D position ``ip``, but the VM's ``ip`` is that position *and*
+    the heading -- a different value under the same name, so no property can
+    be added and no attribute can be forwarded.  Moving it would mean
+    renaming the machine's own field (``pos``, as LaserFuck spells it), and
+    that name is asserted directly by this language's interpreter tests; the
+    rename is a decision about the interpreter, not about the VM.
+    """
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -980,39 +964,14 @@ class _BetweenVM(_DelegatingVM):
         self._machine = _Machine(program.splitlines(), self._io)
 
 
-class _MyScriptVM(_BaseVM):
-    """Frame stack + scopes; ``ip`` is (frame depth, position in top frame)."""
+class _MyScriptVM(_DelegatingVM):
+    """Frame stack + scopes; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.register_based.myscript import _Machine
 
         self._machine = _Machine(program, self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> tuple[int, int] | None:
-        if not self._machine.stack:
-            return None
-        top = self._machine.stack[-1]
-        return len(self._machine.stack), top.pos
-
-    @property
-    def memory(self) -> list[int]:
-        if not self._machine.stack:
-            return []
-        scope = self._machine.stack[-1].scope
-        return [v for v in scope.vars.values() if type(v) is int]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
 
 
 class _LamfuncVM(_DelegatingVM):
@@ -1045,8 +1004,8 @@ class _FargoVM(_DelegatingVM):
         self._machine = _Machine(program, self._io)
 
 
-class _ForbinVM(_BaseVM):
-    """Call stack; ``ip`` is each frame's statement cursor, root-to-leaf."""
+class _ForbinVM(_DelegatingVM):
+    """Call stack; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -1054,61 +1013,15 @@ class _ForbinVM(_BaseVM):
 
         self._machine = _Machine(program, self._io)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> tuple[int, ...]:
-        frames = self._machine.frames
-        return tuple(f.pos for f in frames) if frames else (len(self._program),)
-
-    @property
-    def memory(self) -> list[int]:
-        if not self._machine.frames:
-            return []
-        return [v for v in self._machine.frames[-1].locals.values() if type(v) is int]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
-
-
-class _SuptiftamVM(_BaseVM):
-    """Global scope + tapes; ``ip`` is the top-level statement cursor."""
+class _SuptiftamVM(_DelegatingVM):
+    """Global scope + tapes; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
-        from esolangs.interpreters.other.suptiftam import _Machine, _Var
+        from esolangs.interpreters.other.suptiftam import _Machine
 
         self._machine = _Machine(program, self._io)
-        self._Var = _Var
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return [
-            v.value
-            for v in self._machine.state.globals.values()
-            if isinstance(v, self._Var) and v.kind == "int"
-        ]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
 
 
 class _StreetcodeVM(_DelegatingVM):

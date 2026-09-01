@@ -408,12 +408,38 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
         self.scope = Scope()
-        self.stack: list[_Frame] = [_Frame(_block_tree(code), self.scope)]
+        self.frames: list[_Frame] = [_Frame(_block_tree(code), self.scope)]
 
     @property
     def halted(self) -> bool:
         """Whether the frame stack has emptied (or a top-level return fired)."""
-        return not self.stack
+        return not self.frames
+
+    # The VM's language-shaped view.  The call frames are held in
+    # ``frames`` rather than ``stack``: MyScript has no operand stack for
+    # the VM to show, and the old name collided with the one the VM wants.
+
+    @property
+    def ip(self) -> tuple[int, int] | None:
+        """The call depth and the innermost frame's position.
+
+        ``None`` once every frame has returned.
+        """
+        if not self.frames:
+            return None
+        return len(self.frames), self.frames[-1].pos
+
+    @property
+    def memory(self) -> list[int]:
+        """The innermost scope's integer variables."""
+        if not self.frames:
+            return []
+        return [v for v in self.frames[-1].scope.vars.values() if type(v) is int]
+
+    @property
+    def stack(self) -> list[object]:
+        """No operand stack; calls use the frame stack above."""
+        return []
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
@@ -428,7 +454,7 @@ class _Machine:
         return (
             tuple(
                 (id(frame.nodes), frame.pos, self._scope_key(frame.scope))
-                for frame in self.stack
+                for frame in self.frames
             ),
             self.io.position(),
         )
@@ -445,14 +471,14 @@ class _Machine:
         """Execute one top-level-block statement, advancing the frame stack."""
         if self.halted:
             return
-        frame = self.stack[-1]
+        frame = self.frames[-1]
         if frame.pos >= len(frame.nodes):
-            self.stack.pop()
+            self.frames.pop()
             if frame.while_head is not None:
                 cond, _ = _parse_expr(frame.while_head, 0, self.io, frame.scope)
                 if _truthy(cond):
                     while_head = frame.while_head
-                    self.stack.append(_Frame(frame.nodes, frame.scope, while_head))
+                    self.frames.append(_Frame(frame.nodes, frame.scope, while_head))
             return
 
         tokens, children = frame.nodes[frame.pos]
@@ -461,12 +487,12 @@ class _Machine:
         if head == "while":
             cond, _ = _parse_expr(tokens[1:-1], 0, self.io, frame.scope)
             if _truthy(cond):
-                self.stack.append(_Frame(children, frame.scope, tokens[1:-1]))
+                self.frames.append(_Frame(children, frame.scope, tokens[1:-1]))
             return
         try:
             _run_statement(tokens, children, self.io, frame.scope)
         except _ReturnError:
-            self.stack.clear()  # a top-level return ends the program
+            self.frames.clear()  # a top-level return ends the program
 
 
 def run(code: str, io: IO) -> None:
