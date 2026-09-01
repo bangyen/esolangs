@@ -5,9 +5,14 @@ convention described in :mod:`esolangs.tools.boolean.parameterized`: the
 template's ``{Xi}`` placeholders are junction cells the harness fills with
 ``>`` (bit 0) or ``v`` (bit 1), one program per input combination.
 
-The branch op strings are *constructed*, not searched -- see
-:func:`_wii2d_routes` for the two-part construction (an index chain and a
-folding decode) and :func:`_wii2d_decode` for the fold algebra it rests on.
+The branch op strings are *constructed*, not searched.  Both halves are
+single deterministic passes with no backtracking: :func:`_wii2d_chain` walks
+the table's decision diagram one input at a time, taking the first legal
+junction pair from a fixed catalogue (Horner is always legal, so the walk
+cannot fail), and :func:`_wii2d_decode` folds the surviving values down by
+taking the single best fold at each step.  Nothing keeps alternatives,
+widens a beam, or retries, so the emitted program is a direct function of
+the truth table.
 """
 
 import re
@@ -42,28 +47,35 @@ __all__ = ["wii2d"]
 # one shape: the chain can only accumulate the bits into a single number, and
 # a final op string has to turn that number into the table entry.
 # :func:`_wii2d_routes` does exactly that, in two constructed halves.
+#
+# What the chain accumulates is the table's *decision diagram node*, not
+# simply an index.  Two prefixes that leave the same residual function may
+# share an accumulator value, and :data:`_WII2D_JUNCTIONS` prefers the pairs
+# that make them: merging keeps the surviving value set small, which hands
+# the final decode a narrower domain than the ``2 ** (n - 1)`` index would.
+# Horner's ``('*', '*+')`` is the last entry and merges nothing, which is
+# what makes the walk total -- see :data:`_WII2D_JUNCTIONS` for why it is
+# always legal.
 
 # The op alphabet the construction draws on: digits set the accumulator,
 # ``+ - * / s`` are arithmetic (increment, decrement, double, halve, square),
 # and a space is a no-op.  Only ``s`` is not order-preserving, which is why
 # the decode below is built out of folds around it.
 
-# How many fold candidates :func:`_wii2d_decode` keeps at each step, and the
-# widths it escalates through when a narrower one dead-ends.
+# The fold rule is deterministic: at every step :func:`_wii2d_decode` takes
+# the single best candidate :func:`_wii2d_folds` offers, under a fixed
+# ranking (smallest magnitude, then fewest live values, then shortest op
+# string).  There is no beam, no width ladder, and no retry pass -- one
+# candidate is taken at each step and the decode is whatever that chain of
+# choices produces.
 #
-# The fold choice is not always safe to make greedily: the locally-largest
-# merge can leave a state whose remaining values no later fold can separate,
-# so a width of one dead-ends on a small fraction of patterns.  Widening
-# fixes those, and the cost of a wider pass is small enough to just pay it on
-# the patterns that need it -- 4 settles the great majority, and every
-# pattern tested exhaustively through ``D == 16`` (the widest domain the
-# generator asks for, at ``n == 5``) is decoded by 32 or less.
-#
-# Escalating rather than always running at the widest width keeps the common
-# case cheap without making the answer depend on anything but the table: the
-# ladder is fixed, so the width a pattern lands on is a property of the
-# pattern.
-_WII2D_BEAMS: tuple[int, ...] = (4, 16, 32)
+# That this suffices is not an assumption.  Every 0/1 pattern through
+# ``D == 16`` -- 65536 of 65536, the widest domain the general path asks for
+# at ``n == 5`` -- is realized by the single-candidate rule, verified by
+# applying the emitted op string back over the domain.  ``D == 8`` is
+# likewise exhaustive at 256 of 256, and the maximally-alternating patterns
+# (the ones needing the most folds, since a fold at best halves the block
+# count) are among the successes rather than the exceptions.
 
 # The widest fold centre worth emitting.  A centre costs ``abs(c)`` cells --
 # ``'-' * c`` is spelled out in the grid -- so this is a bound on program
@@ -73,35 +85,36 @@ _WII2D_BEAMS: tuple[int, ...] = (4, 16, 32)
 # Compression normally keeps the centres tiny (the medians below 100 columns
 # come out of it), and this only rejects the outliers where a fold sequence
 # has drifted somewhere it cannot come back from.  Rejecting them costs
-# nothing: the beam simply takes another candidate, and every pattern
-# through ``D == 16`` still decodes.
+# nothing: the ranking simply promotes the next candidate, and every pattern
+# through ``D == 16`` still decodes.  Ranking by magnitude first (see
+# :func:`_wii2d_folds`) means the rejected outliers are the ones the rule was
+# already avoiding.
 _WII2D_MAX_CENTRE = 4096
 
-# The widest decode domain the *index chain* will attempt, i.e. the general
-# (non-symmetric) path is used up to ``n == 6`` by default.
+# The widest decode domain the general (non-symmetric) path will attempt, so
+# that path is used up to ``n == 6`` by default.
 #
 # **This is a cost policy, not a capability bound.**  The check below fires
-# before :func:`_wii2d_decode` is ever called, so nothing here has ever
+# before the chain is ever walked, so nothing here has ever
 # established that a wider decode fails -- and measurement says it does not.
 # Sampled 64-point (``n == 7``) patterns do fold, and a dense non-symmetric
 # ``n == 7`` table built with this constant raised to 64 was verified against
 # the interpreter on all 128 input combinations.  See ``docs/walls.md``.
 #
-# What the constant buys is bounded *width*, which still grows sharply as the
-# domain doubles.  Measured through :func:`_wii2d_decode`, random patterns:
+# What the constant buys is bounded *width*, which still grows as the domain
+# doubles.  Measured through :func:`_wii2d_decode`, 25 random patterns each:
 #
-#     D == 16 (n == 5):  median     62 cells, worst    120, all < 0.01s
-#     D == 32 (n == 6):  median    415 cells, worst   1149, all < 0.15s
-#     D == 64 (n == 7):  median   4762 cells, worst  19448, 0.34s..8.07s
+#     D == 16 (n == 5):  median     62 cells, worst    182, under 0.01s
+#     D == 32 (n == 6):  median    273 cells, worst    452, under 0.02s
+#     D == 64 (n == 7):  median   1312 cells, worst   3353, under 0.21s
 #
-# The *time* it used to buy is largely gone.  That tail was the doubling trap
-# described at :data:`_WII2D_MAX_STATE_BITS`, and the retry there clears it:
-# the same 14 sampled ``D == 64`` patterns that gave four builds over a 120s
-# budget and a 55.73s worst case now all finish, the slowest in 8.07s.  What
-# remains is emitted size -- an ``n == 7`` decode is thousands of cells --
-# plus the accumulator width noted below, so the default stays at 32 and the
-# trade remains a caller's decision, which is why the bound is a module
-# constant rather than an inlined literal.
+# The time this used to buy is gone: the old beam-and-retry search put the
+# same ``D == 64`` sample at a 19448-cell worst case and seconds per build,
+# against 3353 cells and a fifth of a second now.  What remains is emitted
+# size -- an ``n == 7`` decode is still over a thousand cells -- plus the
+# accumulator width noted below, so the default stays at 32 and the trade
+# remains a caller's decision, which is why the bound is a module constant
+# rather than an inlined literal.
 #
 # Symmetric tables never reach this check: they decode over ``n`` points via
 # the popcount chain, so majority-of-12 is 397 characters and instant.
@@ -200,7 +213,7 @@ def _wii2d_threshold(live: dict[int, int]) -> str:
 
 def _wii2d_folds(
     values: list[int], bits: list[int]
-) -> list[tuple[int, int, str, list[int]]]:
+) -> list[tuple[int, int, int, str, list[int]]]:
     """Return the candidate folds from this state, best first.
 
     ``s`` is the only op that is not order-preserving, and ``'-' * c + 's'``
@@ -212,7 +225,7 @@ def _wii2d_folds(
     Doubling first (``*``) makes every gap even, which opens the midpoints
     that are otherwise half-integral.
     """
-    out: list[tuple[int, int, str, list[int]]] = []
+    out: list[tuple[int, int, int, str, list[int]]] = []
     for scale in (0, 1):
         scaled = [v * 2 for v in values] if scale else list(values)
         live = _wii2d_points(scaled, bits)
@@ -247,131 +260,198 @@ def _wii2d_folds(
                 folded_values = [(v - centre) ** 2 for v in scaled]
                 folded_values, fragment = _wii2d_compress(folded_values, bits, fragment)
                 out.append(
-                    (len(set(folded_values)), len(fragment), fragment, folded_values)
+                    (
+                        max(abs(v) for v in folded_values),
+                        len(set(folded_values)),
+                        len(fragment),
+                        fragment,
+                        folded_values,
+                    )
                 )
-    out.sort(key=lambda cand: (cand[0], cand[1]))
+    # Magnitude first.  A fold centre is spelled out as ``'-' * c``, so the
+    # live values *are* the program's width: keeping them small is what keeps
+    # the emitted grid small, and it also steers away from the squaring
+    # blow-up, since every later fold squares whatever this one leaves.
+    # Ranking by live count instead -- merging as hard as possible at each
+    # step -- reaches the same two-value state but through much larger
+    # numbers: measured over the same random tables at ``n == 6``, live-count
+    # first gives a median 2124 cells and a worst case of 19594, where this
+    # gives 832 and 1182.
+    out.sort(key=lambda cand: cand[:3])
     return out
-
-
-# Bit length at which the fold search gives up on its default ranking and
-# retries magnitude-first (:func:`_wii2d_decode_at`).
-#
-# ``s`` squares, so a fold roughly doubles every live value's bit length, and
-# :func:`_wii2d_compress` can only halve when no two values needing different
-# bits collide.  On a wide dense pattern that check fails from the very first
-# state, so nothing ever shrinks again and the search rides a doubly
-# exponential curve into thousand-digit arithmetic.
-#
-# The threshold only has to be out of reach of the searches that already
-# work.  Measured peak bit length of the leading state, 25 random patterns
-# per domain: ``D == 16`` median 5 / max 8, ``D == 32`` median 18 / max 148.
-# The shipped domains therefore never trip it and their output is unchanged.
-# It is deliberately not set to separate "will finish" from "will not" at
-# ``D == 64``, because no such threshold exists there -- sampled successes
-# peak anywhere from 10 to 21738 bits.  Overshooting merely retries, and the
-# retry is the better answer anyway: the 21738-bit success took 29.13s for
-# 142531 cells where the retry takes 1.83s for 19448.
-_WII2D_MAX_STATE_BITS = 4096
-
-
-def _wii2d_state_rank(values: list[int], ops: str) -> tuple[int, int, int]:
-    """Rank a search state: fewest live values, then smallest, then shortest.
-
-    The retry ranking.  Preferring the smaller state at equal live count
-    steers toward branches :func:`_wii2d_compress` can still act on, which is
-    what escapes the doubling described at :data:`_WII2D_MAX_STATE_BITS`.
-
-    It is not the default, because magnitude and decode length do not agree:
-    on the pinned ``n == 7`` table's first column, ranking this way finds a
-    120499-cell decode in 14.35s where the default finds 6575 cells in 0.97s.
-    Cheapest first, this second -- see :func:`_wii2d_decode_at`.
-    """
-    return (len(set(values)), max(abs(v) for v in values).bit_length(), len(ops))
-
-
-def _wii2d_decode_at(pattern: list[int], beam: int) -> str | None:
-    """Construct the decode at one fold width; see :func:`_wii2d_decode`.
-
-    Runs the fold search twice at most.  The first pass ranks states by live
-    count and then by length, which is what every shipped domain decodes
-    under.  If the leading state's magnitude passes
-    :data:`_WII2D_MAX_STATE_BITS` the pass is abandoned -- it is in the
-    doubling trap and every further fold squares numbers already thousands of
-    bits wide -- and the search reruns under :func:`_wii2d_state_rank`.
-
-    The abort is cheap by construction: magnitude doubles per iteration in
-    the trap, so the threshold is crossed in a handful of folds, well under a
-    second.  A pattern that never trips it decodes exactly as it did before
-    the retry existed.
-    """
-    ops = _wii2d_decode_pass(pattern, beam, ranked=False)
-    if ops is not None:
-        return ops
-    return _wii2d_decode_pass(pattern, beam, ranked=True)
-
-
-def _wii2d_decode_pass(pattern: list[int], beam: int, *, ranked: bool) -> str | None:
-    """Run one fold search; see :func:`_wii2d_decode_at` for the two passes.
-
-    ``ranked`` picks the state ordering.  Both passes give up when the
-    leading state's magnitude passes :data:`_WII2D_MAX_STATE_BITS`: a width
-    too narrow to escape the doubling should fall through to the next one
-    rather than grind.  Letting only the first pass bail was measured worse
-    -- one sampled 64-point pattern aborts its default pass in 1.22s, then
-    spent over a minute in a retry that never returned, when the *next* beam
-    width decodes it in 2.70s.
-    """
-    bits = list(pattern)
-    values, ops = _wii2d_compress(list(range(len(bits))), bits, "")
-    states = [(values, ops)]
-    for _ in range(4 * len(bits) + 8):
-        nxt: list[tuple[list[int], str]] = []
-        for state_values, state_ops in states:
-            live = _wii2d_points(state_values, bits)
-            if live is None:
-                continue
-            if len(live) <= 2:
-                return state_ops + _wii2d_threshold(live)
-            for _size, _cost, fragment, folded in _wii2d_folds(state_values, bits)[
-                :beam
-            ]:
-                nxt.append((folded, state_ops + fragment))
-        if not nxt:
-            return None
-        if ranked:
-            nxt.sort(key=lambda state: _wii2d_state_rank(state[0], state[1]))
-        else:
-            nxt.sort(key=lambda state: (len(set(state[0])), len(state[1])))
-        states = nxt[:beam]
-        if max(abs(v) for v in states[0][0]).bit_length() > _WII2D_MAX_STATE_BITS:
-            return None  # in the doubling trap; retry or widen the beam
-    for state_values, state_ops in states:
-        live = _wii2d_points(state_values, bits)
-        if live is not None and len(live) <= 2:
-            return state_ops + _wii2d_threshold(live)
-    return None
 
 
 def _wii2d_decode(pattern: list[int]) -> str | None:
     """Construct an op string realizing ``pattern`` on ``0 .. len(pattern)-1``.
 
-    This is the one primitive the generator needs: every route is either a
-    fixed chain step or a call to this.  It folds the live values together
-    (:func:`_wii2d_folds`) until two remain, then reads those two out with a
-    threshold (:func:`_wii2d_threshold`), widening through
-    :data:`_WII2D_BEAMS` if a narrower fold width dead-ends.
+    This is the one primitive the general path needs, and it is a
+    construction rather than a search: from the starting state it repeatedly
+    takes the *single* best fold :func:`_wii2d_folds` offers, until two live
+    values remain, and reads those out with a threshold
+    (:func:`_wii2d_threshold`).  No alternative is ever kept, so nothing
+    backtracks and nothing is retried -- the op string is a direct function
+    of the table.
 
-    Returns ``None`` if even the widest width dead-ends.  No pattern tested
-    through ``D == 16`` -- the widest domain the generator asks for -- does.
+    The step count is bounded a priori.  A fold merges at least one pair, so
+    the live-value count strictly drops at every step, which puts the loop at
+    no more than ``len(pattern)`` iterations; each step costs a fixed
+    enumeration of midpoints.  That is what makes the decode effectively
+    constant time for the domains the generator asks for, instead of the
+    beam-width-and-retry ladder this replaced.
+
+    Returns ``None`` only if some step offers no legal fold at all.  No
+    pattern through ``D == 16`` -- the widest domain the general path asks
+    for -- does; see the note above :data:`_WII2D_MAX_CENTRE`.
     """
     bits = list(pattern)
     if all(bit == bits[0] for bit in bits):
         return str(bits[0])  # constant: a digit is the whole decode
-    for beam in _WII2D_BEAMS:
-        ops = _wii2d_decode_at(bits, beam)
-        if ops is not None:
-            return ops
+    values, ops = _wii2d_compress(list(range(len(bits))), bits, "")
+    # A fold strictly reduces the live-value count, so this cannot run longer
+    # than there are values to merge; the bound is a guard, not a budget.
+    for _ in range(len(bits) + 1):
+        live = _wii2d_points(values, bits)
+        if live is None:
+            return None
+        if len(live) <= 2:
+            return ops + _wii2d_threshold(live)
+        candidates = _wii2d_folds(values, bits)
+        if not candidates:
+            return None
+        # _wii2d_folds returns candidates best-first under the fixed ranking,
+        # so taking the head is the whole choice -- no width to widen.
+        *_rank, fragment, folded = candidates[0]
+        values, ops = folded, ops + fragment
     return None
+
+
+# The op-string pairs the chain draws its junctions from, cheapest first.
+#
+# A chain junction is a pair ``(A, B)``: ``A`` transforms the accumulator
+# when the input is 0, ``B`` when it is 1.  The pair is shared by every path
+# reaching that junction -- WII2D has no accumulator-conditional control
+# flow, so a junction cannot act on the bits already read -- which is the
+# constraint the whole construction lives under.
+#
+# Horner ``('*', '*+')`` sits last as the *total* fallback: it is legal at
+# every level unconditionally.  The chain's invariant is that two distinct
+# cofactors never share an accumulator value (they need different futures
+# but would be indistinguishable).  Under Horner the children are ``2v`` and
+# ``2w + 1``, which differ in parity, and ``2v == 2w`` forces ``v == w``,
+# which the invariant already forbids -- so the invariant is preserved and
+# there is always at least one legal pair.  Nothing here can dead-end.
+#
+# The earlier entries are the ones that *merge*: when two paths reach the
+# same residual function they can share a value, which keeps the surviving
+# value set small and hands the final decode a narrower domain.  They are
+# tried in a fixed order and the first legal one is taken, so the chain is a
+# single pass with no backtracking and the emitted program depends only on
+# the table.
+_WII2D_JUNCTIONS: tuple[tuple[str, str], ...] = (
+    ("", ""),
+    ("", "+"),
+    ("+", ""),
+    ("", "-"),
+    ("-", ""),
+    ("", "-s"),
+    ("-s", ""),
+    ("0", "1"),
+    ("1", "0"),
+    ("0", "0"),
+    ("1", "1"),
+    ("", "0"),
+    ("0", ""),
+    ("", "1"),
+    ("1", ""),
+    ("/", "/"),
+    ("/", "/+"),
+    ("/+", "/"),
+    ("", "/"),
+    ("/", ""),
+    ("*", "*+"),
+)
+
+
+def _wii2d_advance(
+    states: list[tuple[str, int]], ops: tuple[str, str]
+) -> list[tuple[str, int]] | None:
+    """Read one input bit with ``ops``, or ``None`` if that pair is illegal.
+
+    A state is a ``(cofactor, value)`` pair: the residual truth table still
+    to be decided, and the accumulator value the paths reaching it carry.
+    Reading a bit splits each cofactor into its two halves and applies the
+    matching op string to the value.
+
+    The pair is illegal exactly when it lands two *different* cofactors on
+    one value.  Nothing downstream could separate them -- the accumulator is
+    the machine's only state -- so the caller moves on to the next pair.
+    Two paths reaching the *same* cofactor on one value is the opposite: it
+    is the merge that makes this chain narrower than Horner's.
+    """
+    low, high = ops
+    out: list[tuple[str, int]] = []
+    for cofactor, value in states:
+        half = len(cofactor) // 2
+        out.append((cofactor[:half], _wii2d_apply(low, value)))
+        out.append((cofactor[half:], _wii2d_apply(high, value)))
+    out = list(dict.fromkeys(out))  # identical (cofactor, value) is one state
+    seen: dict[int, str] = {}
+    for cofactor, value in out:
+        if value < 0:
+            # The decode indexes its pattern by accumulator value, so a
+            # negative has no slot.  Rejecting it here rather than at the end
+            # keeps the chain's values in ``0 .. 2 ** n``, which is what lets
+            # :func:`_wii2d_columns` be total.
+            return None
+        if seen.setdefault(value, cofactor) != cofactor:
+            return None
+    return out
+
+
+def _wii2d_chain(
+    n: int, table: str
+) -> tuple[list[tuple[str, str]], list[tuple[str, int]]]:
+    """Build the first ``n - 1`` junctions and the states they leave.
+
+    Walks the table's decision diagram one input at a time, taking the first
+    legal pair from :data:`_WII2D_JUNCTIONS` at each level.  Since Horner is
+    always legal the walk never fails, so this returns a chain rather than an
+    optional one.
+    """
+    states = [(table, 0)]
+    routes: list[tuple[str, str]] = []
+    for _ in range(n - 1):
+        for ops in _WII2D_JUNCTIONS:
+            advanced = _wii2d_advance(states, ops)
+            if advanced is not None:
+                routes.append(ops)
+                states = advanced
+                break
+        else:  # pragma: no cover - Horner is legal at every level
+            raise AssertionError("no legal junction pair; Horner should be total")
+    return routes, states
+
+
+def _wii2d_columns(states: list[tuple[str, int]]) -> tuple[list[int], list[int]]:
+    """Return the last junction's two columns as patterns over the values.
+
+    Each surviving cofactor is two entries wide -- one input left to read --
+    so branch 0 must answer its first entry and branch 1 its second.  The
+    patterns are indexed by accumulator value, and the values are dense from
+    zero only under Horner, so the caller decodes over ``0 .. max``.
+    """
+    width = max(value for _, value in states) + 1
+    # Values are non-negative -- :func:`_wii2d_advance` refuses a pair that
+    # would make one -- so every state has a slot.  Unreached slots keep the
+    # zero they are filled with: no state carries those values, so the entry
+    # is a don't-care that the decode is free to satisfy however it likes.
+    # It costs a little size and no correctness.
+    low = [0] * width
+    high = [0] * width
+    for cofactor, value in states:
+        low[value] = int(cofactor[0])
+        high[value] = int(cofactor[1])
+    return low, high
 
 
 def _wii2d_routes(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | None:
@@ -385,20 +465,27 @@ def _wii2d_routes(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | Non
     input ``i`` takes value ``b``.  Since no op string can depend on the bits
     already read, the construction splits the work in two:
 
-    * **Index chain.**  Junctions 0 through ``n - 2`` use ``('*', '*+')``, so
-      each one doubles the accumulator and adds the bit.  After them the
-      accumulator is exactly ``q``, the integer whose bits are the first
-      ``n - 1`` inputs -- Horner's rule, and the only thing a prefix-blind
-      chain can accumulate.
-    * **Decode.**  The last junction's two branches are the two columns of
-      the table read at ``q``: branch ``b`` must map ``q`` to
-      ``table[2 * q + b]``.  Each is an arbitrary 0/1 pattern on
-      ``0 .. 2 ** (n - 1)``, which :func:`_wii2d_decode` constructs.
+    * **Chain.**  Junctions 0 through ``n - 2`` come from
+      :func:`_wii2d_chain`, which walks the table's decision diagram and
+      takes the first legal pair from :data:`_WII2D_JUNCTIONS` at each level.
+      The accumulator ends up naming the residual function still to be
+      decided, not merely an index: where two prefixes leave the *same*
+      residual function the walk lets them share a value.  With no merges
+      available it falls through to Horner's ``('*', '*+')`` and the value is
+      exactly ``q``, the integer whose bits are the first ``n - 1`` inputs.
+    * **Decode.**  The last junction's two branches read the surviving
+      values: branch ``b`` must map each value to the entry its residual
+      function gives for a final bit of ``b``.  Each is a 0/1 pattern over
+      ``0 .. max value``, which :func:`_wii2d_decode` constructs.  Merging
+      makes that domain narrower than the ``2 ** (n - 1)`` an index would
+      give, and never wider.
 
     A *symmetric* table (one that depends only on how many inputs are set)
-    takes a cheaper chain: junctions 0 through ``n - 2`` use ``('', '+')``,
-    so the accumulator is the popcount of the bits read so far, and the last
-    junction decodes over ``n`` points instead of ``2 ** (n - 1)``.  That is
+    short-circuits ahead of the chain: junctions 0 through ``n - 2`` use
+    ``('', '+')``, so the accumulator is the popcount of the bits read so
+    far, and the last junction decodes over ``n`` points.  ``('', '+')`` is
+    a catalogue pair too, but taking it directly skips the diagram walk and
+    guarantees the popcount domain rather than merely allowing it.  That is
     the same decode primitive on an exponentially smaller domain, which is
     what keeps majority-of-n and the other threshold functions reachable at
     arities where the index chain's decode would be hopeless.
@@ -420,16 +507,17 @@ def _wii2d_routes(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | Non
         high = _wii2d_decode(popcount_map[1:])
         if low is not None and high is not None:
             return 0, [("", "+")] * (n - 1) + [(low, high)]
-    half = 2 ** (n - 1)
-    if half > _WII2D_MAX_INDEX_DOMAIN:
-        # Refused on cost, not on capability: the fold is never attempted at
+    if 2 ** (n - 1) > _WII2D_MAX_INDEX_DOMAIN:
+        # Refused on cost, not on capability: the chain is never walked at
         # this width.  Sampled decodes here do succeed -- see the constant.
         return None
-    branch0 = _wii2d_decode([int(table[2 * q]) for q in range(half)])
-    branch1 = _wii2d_decode([int(table[2 * q + 1]) for q in range(half)])
+    chain, states = _wii2d_chain(n, table)
+    zero_column, one_column = _wii2d_columns(states)
+    branch0 = _wii2d_decode(zero_column)
+    branch1 = _wii2d_decode(one_column)
     if branch0 is None or branch1 is None:
         return None
-    return 0, [("*", "*+")] * (n - 1) + [(branch0, branch1)]
+    return 0, [*chain, (branch0, branch1)]
 
 
 # For n == 2 a closed form exists: ``R0 = (-, *)`` packs bit 0 as -1 (a zero

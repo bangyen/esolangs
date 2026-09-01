@@ -374,8 +374,10 @@ saving.  Taglate reduces (451 characters → 21).  What is open:
   byte-indexed, capping every jump at 255" -- which bounds one jump and not a
   composition of them; chaining byte-sized skips lifted it from `n <= 8` to
   the interpreter's tape bound.  WII2D's `n == 7` refusal is likewise a cost
-  guard that fires before the fold is attempted, and raising it builds
-  interpreter-verified `n == 7` programs at a heavy build-time tail.
+  guard that fires before the chain is walked, and raising it builds
+  interpreter-verified `n == 7` programs.  The heavy build-time tail this
+  line used to cite is gone: the decode no longer searches, and 25 sampled
+  `D == 64` patterns all decode in under 0.21s.
   NoComment's and Factor's remaining caps are liftable by host config, and
   `docs/walls.md` has both arguments.  ZTOALC L was on
   this list and its refusals are now *size gates only* -- the anchor table's
