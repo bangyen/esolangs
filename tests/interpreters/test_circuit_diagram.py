@@ -407,6 +407,48 @@ class TestParseErrors:
         assert output_for(["-.~.-:"], "1\n") == "0"
 
 
+class TestGrid:
+    """The padded character grid the parser reads through.
+
+    Its three decisions -- what is stripped from a line, how wide an empty
+    program is, and what lies outside the grid -- are all reachable, and
+    none had a test: every program in the suite is non-empty, written
+    without trailing spaces, and read inside its own bounds.
+    """
+
+    def test_only_the_newline_is_stripped(self) -> None:
+        """Trailing spaces are part of the row, since columns are positions.
+
+        Stripping whitespace generally would shorten a row, and column
+        positions are what the parser navigates by -- so a diagram whose
+        wire ends in spaces would lose them.
+        """
+        from esolangs.interpreters.grid_based.circuit_diagram import _Grid
+
+        grid = _Grid(["ab   \n"])
+        assert grid.rows == ["ab   "]
+        assert grid.width == 5
+
+    def test_an_empty_program_has_zero_width(self) -> None:
+        """With no rows there is no width, and the maximum has no default."""
+        from esolangs.interpreters.grid_based.circuit_diagram import _Grid
+
+        assert _Grid([]).width == 0
+        assert _Grid([]).rows == []
+
+    def test_outside_the_grid_reads_as_one_blank(self) -> None:
+        """A position off the grid is a single space, not a longer string.
+
+        The parser compares this against single characters, so a wider
+        filler would silently stop matching anything.
+        """
+        from esolangs.interpreters.grid_based.circuit_diagram import _Grid
+
+        grid = _Grid(["ab"])
+        assert grid.at(0, 0) == "a"
+        assert grid.at(9, 9) == " "
+
+
 class TestWireLabelErrors:
     """A wire label has to name a width, and the widths have to agree."""
 

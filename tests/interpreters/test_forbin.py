@@ -659,6 +659,41 @@ class TestForbinMutationSurvivors:
         assert out == "AA"
         assert steps == 11
 
+    def test_the_loop_body_cursor_advances_by_exactly_one(self) -> None:
+        """``for_body_pos`` moves one statement at a time, both ways out.
+
+        ``_step_for`` advances the cursor on two separate paths -- the one
+        that pushes a frame for a statement-position call, and the one that
+        runs the statement in place -- and each was invisible to a suite
+        asserting only output.  Setting the cursor rather than incrementing
+        it re-runs a statement forever; adding two skips one.
+
+        The programs below put a call and a plain statement in the same
+        loop body in both orders, so a cursor that lands wrong on either
+        path shows up as a different step count, a different byte string,
+        or a program that stops halting.
+        """
+        # A call first, then a statement: the pushing path's cursor.
+        steps, out, deepest = self._drive(
+            "g { out 0,1,0,0,0,0,0,1; }\nh { out 0,1,0,0,0,1,0,0; }\n"
+            "main { for i:0..0 { g 0; h 0; } }\n"
+        )
+        assert (steps, out, deepest) == (10, "AD", 2)
+
+        # A statement first, then a call: the in-place path's cursor.
+        steps, out, deepest = self._drive(
+            "g { out 0,1,0,0,0,0,0,1; }\n"
+            "main { for i:0..1 { out 0,1,0,0,0,1,0,i; g 0; } }\n"
+        )
+        assert (steps, out, deepest) == (13, "DAEA", 2)
+
+        # Two plain statements over two rows: the in-place path again, with
+        # the row change in between.
+        steps, out, deepest = self._drive(
+            "main { for i:0..1 { out 0,1,0,0,0,0,0,i; out 0,1,0,0,0,0,1,i; } }"
+        )
+        assert (steps, out, deepest) == (9, "@BAC", 1)
+
     def test_an_iteration_loop_selects_the_wildcard_columns(self) -> None:
         """``*`` marks the columns to expand, and the test is ``==``.
 
@@ -1093,6 +1128,51 @@ class TestErrorMessages:
         ):
             with pytest.raises(ValueError, match=message):
                 run(code, ScriptedIO(""))
+
+    def test_the_recursive_evaluator_names_its_bounds_too(self) -> None:
+        """``start``/``end`` are spelled twice, and only one copy was tested.
+
+        A top-level ``for`` is driven by the step machine, which builds its
+        rows in ``_for_rows``; a ``for`` inside an *expression-position*
+        call is evaluated recursively by ``_exec_stmt``, which carries its
+        own copy of the same bound check.  Testing only the first left the
+        second free to mislabel which bound was wrong.
+        """
+        for code, which in (
+            (
+                "h { return 0; }\ng { for i:0..h { return 0; } return 0; }\n"
+                "main { x = (g 0); }\n",
+                "end",
+            ),
+            (
+                "h { return 0; }\ng { for i:h..1 { return 0; } return 0; }\n"
+                "main { x = (g 0); }\n",
+                "start",
+            ),
+        ):
+            with pytest.raises(HaltError) as caught:
+                run(code, ScriptedIO(""))
+            assert str(caught.value).startswith(
+                f"for {which} bound must be a number, got "
+            )
+
+    def test_both_assignment_target_checks_are_reached(self) -> None:
+        """A single target and a target *list* are rejected separately.
+
+        ``_statement`` checks the target twice -- once for ``x = ...``,
+        once per name in ``a, b = ...`` -- and the suite only ever tripped
+        the first.  A multi-target program is what reaches the second.
+        """
+        for code, position in (
+            ("main {\n 1 = 0;\n}\n", 10),
+            ("main {\n 1, b = 0, 1;\n}\n", 14),
+            ("main {\n a, 1 = 0, 1;\n}\n", 14),
+        ):
+            with pytest.raises(ValueError) as caught:
+                run(code, ScriptedIO(""))
+            assert str(caught.value) == (
+                f"assignment target must be a variable at position {position}"
+            )
 
     def test_a_stray_slash_is_not_a_comment(self) -> None:
         """A comment needs *two* slashes, and one at the end of input.
