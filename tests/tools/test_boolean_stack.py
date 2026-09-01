@@ -382,17 +382,17 @@ class TestUnsquare:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.stack_based.unsquare import _Machine
 
-        def apply(ops: str) -> list[int]:
+        def apply(ops: str) -> tuple[int, ...]:
             machine = _Machine(ops, ScriptedIO(""))
-            machine.stack = [10, 20, 30]
+            machine.load((10, 20, 30))
             for _ in range(100):
                 if machine.halted:
                     break
                 machine.step()
             return machine.stack
 
-        assert apply("SASP") == [30, 10, 20]  # the top sank two places
-        assert apply("ASP") == [20, 10, 30]  # the top never moved
+        assert apply("SASP") == (30, 10, 20)  # the top sank two places
+        assert apply("ASP") == (20, 10, 30)  # the top never moved
 
     def test_decision_tree(self) -> None:
         """Each internal node branches on a bit with the flip primitive."""

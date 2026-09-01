@@ -193,6 +193,16 @@ class _Machine:
     def jumps(self) -> tuple[int, ...]:
         return self.state[3]
 
+    def load(self, stack: tuple[int, ...]) -> None:
+        """Put ``stack`` under the machine without running anything.
+
+        Callers seed a stack to watch what a short op-string does to it --
+        the swap-and-sink orderings the boolean generator relies on are
+        only distinguishable from a stack that already has depth.
+        """
+        ind, acc, _stack, jumps = self.state
+        self.state = (ind, acc, tuple(stack), jumps)
+
     @property
     def halted(self) -> bool:
         """Whether the cursor has reached the end of the program."""
