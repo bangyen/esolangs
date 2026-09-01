@@ -36,8 +36,17 @@ class _Machine:
     rings that sustain).
     """
 
-    def __init__(self, code: list[str]) -> None:
-        """Pad ``code`` to a rectangle and reset the machine to the corner."""
+    def __init__(
+        self,
+        code: list[str],
+        io: IO | None = None,  # noqa: ARG002 - see ``run``
+    ) -> None:
+        """Pad ``code`` to a rectangle and reset the machine to the corner.
+
+        ``io`` is accepted and ignored, exactly as :func:`run` accepts it:
+        ArrowQueue defines no I/O, and taking the parameter anyway lets
+        every caller build a machine the same way.
+        """
         self.row = self.col = self.d = 0
         self.queue: list[int] = []
         self.width = max(map(len, code), default=0)
