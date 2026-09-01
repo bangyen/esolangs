@@ -77,6 +77,27 @@ class TestDimensional:
         program = ", $3>0$2, $3<0$2."
         assert run_and_capture(program, ["A", "B"]) == "A"
 
+    def test_the_axis_starts_at_the_byte_pointer(self) -> None:
+        """With no ``$AXIS`` the moves act on pointer 2, addressing bytes.
+
+        Every axis test names its pointer explicitly, so the default was
+        never the thing under test -- a tape that started one level up
+        would still pass them all.  Here nothing selects an axis: a bare
+        move has to walk the byte tape, so the two cells hold their own
+        values and moving back finds the first again.
+        """
+        assert run_and_capture("=41.>0=42.<0.") == "ABA"
+
+    def test_moving_a_higher_pointer_selects_a_fresh_byte(self) -> None:
+        """A level-3 move lands on an untouched level-2 slot.
+
+        This is what makes the hierarchy a hierarchy rather than a second
+        linear tape, and it reads the default axis from the other side:
+        the ``$3`` move must leave the byte behind, and dropping back to
+        the default must find it again.
+        """
+        assert run_and_capture("=41.$3>0.<0.") == "A\x00A"
+
     def test_text_generator_round_trips(self) -> None:
         for text in ("Hi", "Hello, World!", "\x00\x7f\xff"):
             assert run_and_capture(text_gen(text)) == text
