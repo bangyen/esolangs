@@ -86,11 +86,34 @@ class _Machine:
         self.table: dict[int, str] = {}
         self.frames: list[_Frame] = [_Frame(code)]
         self.error = False  # the top-level scope aborted (status 3)
+        # Where the top-level frame ends, kept because ``ip`` still has to
+        # report a position after that frame has been popped.
+        self._length = len(code)
 
     @property
     def halted(self) -> bool:
         """Whether every scope has completed."""
         return not self.frames
+
+    # The VM's language-shaped view: a stack language with a frame stack and
+    # no addressable cells.
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        """Each live frame's pc, outermost first.
+
+        A frame is only ever popped once its own pc reaches the end of its
+        code, so no frames at all means the top-level one finished at the
+        end of the program -- which is what is reported then, rather than an
+        empty tuple that would lose the position.
+        """
+        frames = self.frames
+        return tuple(f.pc for f in frames) if frames else (self._length,)
+
+    @property
+    def memory(self) -> list[int]:
+        """No addressable cells; the store is the stack."""
+        return []
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

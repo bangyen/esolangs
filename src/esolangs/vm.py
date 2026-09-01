@@ -22,9 +22,16 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import RUNNERS
 
 if TYPE_CHECKING:
-    # Only for the chooser stand-in's signature; the interpreters are
+    # Only for the chooser stand-in's signature and the few adapters that
+    # narrow ``_machine`` past the shape protocol; the interpreters are
     # imported lazily inside the VMs that use them.
     from esolangs.interpreters.grid_based.cod import _Direction
+    from esolangs.interpreters.grid_based.laserfuck import (
+        _Machine as _LaserFuckMachine,
+    )
+    from esolangs.interpreters.queue_based.bitdeque import (
+        _Machine as _BitdequeMachine,
+    )
 
 
 @runtime_checkable
@@ -440,15 +447,8 @@ class _ModulousVM(_DelegatingVM):
         ]
 
 
-class _ForthVM(_BaseVM):
-    """Stack + scope table; ``ip`` is the call stack's cursors, root-to-leaf.
-
-    Each active scope (``;``/``(``/``[`` pushes one) contributes its ``pc``
-    to the tuple, so ``ip`` grows and shrinks with call depth instead of
-    folding every frame into the active one's position.  A breakpoint on a
-    specific ``ip`` is therefore depth-sensitive: ``(5,)`` matches only a
-    single top-level frame at pc 5, not pc 5 one call deeper (``(2, 5)``).
-    """
+class _ForthVM(_DelegatingVM):
+    """Stack + scope table; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -456,45 +456,26 @@ class _ForthVM(_BaseVM):
 
         self._machine = _Machine(program, self._io)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> tuple[int, ...]:
-        # a frame is only ever popped once its own pc reaches len(code), so
-        # frames == [] implies the top-level frame finished at len(program).
-        frames = self._machine.frames
-        return tuple(f.pc for f in frames) if frames else (len(self._program),)
-
-    @property
-    def memory(self) -> list[int]:
-        return []
-
-    @property
-    def stack(self) -> list[object]:
-        return list(self._machine.stack)
-
-
-class _LaserFuckVM(_BaseVM):
-    """2D grid; ``ip`` is the active laser's (row, col, heading).
+class _LaserFuckVM(_DelegatingVM):
+    """2D grid; the interpreter describes its own shape.
 
     The heading is fixed to 0 (up) so stepping is reproducible; the
     interpreter's own ``run`` draws a random heading when none is given.
+    ``step()`` is still spelled here because ``run`` dumps the tape after
+    the last laser dies, so stepping only matches running if the adapter
+    does the same -- that is this class's business, not the machine's.
     """
+
+    # Narrowed from the base's protocol type: the step override reads this
+    # machine's own fields, which the shape protocol does not describe.
+    _machine: _LaserFuckMachine
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.grid_based.laserfuck import _Machine
 
         self._machine = _Machine(program.splitlines(), self._io, heading=0)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
     def step(self) -> None:
         machine = self._machine
@@ -503,14 +484,6 @@ class _LaserFuckVM(_BaseVM):
         machine.step()
         if not machine.lsrs:
             machine.dump()
-
-    @property
-    def ip(self) -> tuple[int, ...]:
-        return self._machine.pos
-
-    @property
-    def memory(self) -> list[int]:
-        return [v for v, _ in self._machine.tape]
 
     @property
     def stack(self) -> list[object]:
@@ -530,17 +503,13 @@ class _FirstChoiceRNG:
         return options[0]
 
 
-_COD_HEADINGS = {"N": 0, "S": 1, "E": 2, "W": 3}
+class _CODVM(_DelegatingVM):
+    """2D grid with possibly many live cods; the interpreter describes its shape.
 
-
-class _CODVM(_BaseVM):
-    """2D grid with possibly many live cods.
-
-    ``ip`` is every cod's ``(row, col, heading, value)`` flattened into one
-    tuple (heading coded ``N=0``/``S=1``/``E=2``/``W=3``), sorted for a
-    stable order.  Random junctions (not exercised by the boolean
-    generator's branch-free programs) are resolved deterministically via
-    :class:`_FirstChoiceRNG` so stepping is reproducible.
+    Random junctions (not exercised by the boolean generator's branch-free
+    programs) are resolved deterministically via :class:`_FirstChoiceRNG` so
+    stepping is reproducible.  That is this adapter's business rather than
+    the language's, which is why the constructor stays spelled out here.
     """
 
     def __init__(self, program: str, stdin: str = "") -> None:
@@ -548,29 +517,6 @@ class _CODVM(_BaseVM):
         from esolangs.interpreters.grid_based.cod import _Machine
 
         self._machine = _Machine(program, self._io, rng=_FirstChoiceRNG())
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> tuple[int, ...]:
-        cods = sorted(
-            (cod.r, cod.c, _COD_HEADINGS[cod.d], cod.value)
-            for cod in self._machine.cods
-        )
-        return tuple(v for cod in cods for v in cod)
-
-    @property
-    def memory(self) -> list[int]:
-        return [cod.value for cod in self._machine.cods]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
 
 
 class _PointBreakVM(_DelegatingVM):
@@ -603,18 +549,23 @@ class _ArrowQueueVM(_DelegatingVM):
         self._machine = _Machine(program.splitlines())
 
 
-class _BitdequeVM(_BaseVM):
-    """Token cursor + deque; ``ip`` cursor, ``memory`` deque, ``stack`` register."""
+class _BitdequeVM(_DelegatingVM):
+    """Token cursor + deque; the interpreter describes its own shape.
+
+    ``step()`` is still spelled here: ``run()`` prints the deque *after* the
+    last step, so stepping only matches running if the adapter does the same
+    at the end.  That is this class's business, not the machine's.
+    """
+
+    # Narrowed from the base's protocol type: the step override below reads
+    # this machine's own fields, which the shape protocol does not describe.
+    _machine: _BitdequeMachine
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.queue_based.bitdeque import _Machine
 
         self._machine = _Machine(program, self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
     def step(self) -> None:
         machine = self._machine
@@ -623,18 +574,6 @@ class _BitdequeVM(_BaseVM):
         machine.step()
         if machine.ind >= len(machine.tokens):
             machine.render()  # the deque is printed once the program ends
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return list(self._machine.deq)
-
-    @property
-    def stack(self) -> list[object]:
-        return [self._machine.reg]
 
 
 class _APainterAntVM(_DelegatingVM):
@@ -819,34 +758,14 @@ class _PolynomialVM(_DelegatingVM):
         self._machine = _Machine(program, self._io)
 
 
-class _RAM0VM(_BaseVM):
-    """Two registers + RAM; ``ip`` the token cursor, ``memory`` z, n, then RAM."""
+class _RAM0VM(_DelegatingVM):
+    """Two registers + RAM; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.register_based.ram0 import _Machine
 
         self._machine = _Machine(program, self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        ram = self._machine.ram
-        return [self._machine.z, self._machine.n, *(ram[k] for k in sorted(ram))]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
 
 
 class _MinskySwapVM(_DelegatingVM):
@@ -1202,45 +1121,14 @@ class _StreetcodeVM(_DelegatingVM):
         self._machine = _Machine(program.splitlines(), self._io)
 
 
-class _FlowchartVM(_BaseVM):
-    """Forking 2D pointers; ``ip`` is the first live one, ``memory`` the deques.
-
-    A Flowchart program runs several pointers at once, so there is no single
-    cursor to report: ``ip`` is the first pointer still running, as
-    ``(row, col, drow, dcol)`` with the heading flattened, and ``None`` once
-    every pointer has stopped on an ``(( ))``.  ``memory`` is the shared tape
-    of deques concatenated in index order, which is what the pointers read
-    and write between them.
-    """
+class _FlowchartVM(_DelegatingVM):
+    """Forking 2D pointers; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.grid_based.flowchart import _Machine
 
         self._machine = _Machine(program.splitlines(), self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> tuple[int, ...] | None:
-        for pointer in self._machine.pointers:
-            if not pointer.done:
-                return (pointer.row, pointer.col, *pointer.d)
-        return None
-
-    @property
-    def memory(self) -> list[int]:
-        deques = self._machine.deques
-        return [v for key in sorted(deques) for v in deques[key]]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
 
 
 class _CircuitDiagramVM(_DelegatingVM):

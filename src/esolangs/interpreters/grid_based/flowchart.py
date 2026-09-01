@@ -462,6 +462,35 @@ class _Machine:
         """Whether every pointer has stopped."""
         return all(p.done for p in self.pointers)
 
+    # The VM's language-shaped view.
+
+    @property
+    def ip(self) -> tuple[int, ...] | None:
+        """The first pointer still running, or ``None`` once none is.
+
+        A Flowchart program runs several pointers at once, so there is no
+        single cursor to report: this is the first live one, as
+        ``(row, col, drow, dcol)`` with the heading flattened, and ``None``
+        once every pointer has stopped on an ``(( ))``.
+        """
+        for pointer in self.pointers:
+            if not pointer.done:
+                return (pointer.row, pointer.col, *pointer.d)
+        return None
+
+    @property
+    def memory(self) -> list[int]:
+        """The shared tape of deques, concatenated in index order.
+
+        This is what the pointers read and write between them.
+        """
+        return [v for key in sorted(self.deques) for v in self.deques[key]]
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (
