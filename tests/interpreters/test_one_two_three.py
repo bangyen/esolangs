@@ -159,6 +159,50 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine must not raise
         assert machine.snapshot() == state
 
+    def test_snapshot_carries_the_set_bits(self) -> None:
+        """The tape is part of the state, not just the cursors.
+
+        The check above runs on the empty program, whose tape is empty --
+        so a snapshot that dropped its bits entirely would still compare
+        equal there and look fine.  Cycle detection is what depends on
+        this: two states with the same cursors but different tapes are
+        different states.  ``1`` flips the bit under the pointer and steps
+        left, so each step here adds one location to the set.
+        """
+        from esolangs.interpreters.tape_based.one_two_three import _Machine
+
+        machine = _Machine("111", ScriptedIO())
+        assert machine.snapshot() == (0, 0, (), 0)
+        machine.step()
+        assert machine.snapshot() == (1, -1, (0,), 0)
+        machine.step()
+        assert machine.snapshot() == (2, -2, (-1, 0), 0)
+        machine.step()
+        assert machine.snapshot() == (3, -3, (-2, -1, 0), 0)
+
+    def test_backward_jump_stops_at_an_adjacent_three(self) -> None:
+        """The backward scan starts at the character before the ``3``.
+
+        Starting one further back skips that character, which only matters
+        when it is itself a ``3``: the real scan stops on it immediately,
+        while a scan that steps over it runs on to an earlier one.  In
+        ``33112`` the pair is at the front, and the difference shows as
+        repeated output -- the real machine prints ``\\x80`` once and then
+        cycles, where skipping the adjacent ``3`` keeps re-entering the
+        body and printing a new byte each lap.
+
+        The program never halts (it is a loop by construction), so this
+        steps a fixed number of times rather than running it.
+        """
+        from esolangs.interpreters.tape_based.one_two_three import _Machine
+
+        machine = _Machine("33112", ScriptedIO())
+        for _ in range(20):
+            if machine.halted:
+                break
+            machine.step()
+        assert machine.io.getvalue() == "\x80"
+
 
 class TestContract(EmptyProgramContract):
     """The shared empty-program shape, with this language's data."""
