@@ -240,6 +240,30 @@ class TestErrors:
         with pytest.raises(ValueError, match="uppercase"):
             run_program("hello")
 
+    def test_of_builds_a_runnable_machine_and_validates(self) -> None:
+        """``_Machine.of`` is the one way a program becomes a machine.
+
+        ``run`` and the VM adapter both go through it, having each carried
+        their own copy of the validation and the frame push before.  The
+        tests reach it only via ``run``, which hides three things: the
+        default step limit, and the recorded end of the top-level frame that
+        ``ip`` reports once every frame has popped.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.grapheme import _Machine
+
+        machine = _Machine.of("FAFY", ScriptedIO())
+        assert machine.limit == 1_000_000  # the default, not passed here
+        assert machine.ip == (0,)  # one frame, at its start
+        while not machine.halted:
+            machine.step()
+        assert machine.io.getvalue() == "10"
+        # every frame has popped, so ip falls back to where the program ends
+        assert machine.ip == (len("FAFY"),)
+
+        with pytest.raises(ValueError, match="uppercase"):
+            _Machine.of("hello", ScriptedIO())
+
 
 class TestEdgeCases:
     def test_j_on_an_int_is_identity(self) -> None:
