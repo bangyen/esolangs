@@ -265,8 +265,11 @@ coverage.
 
 The enumeration varies the separator, the settle, the suffix and the
 accumulator.  It never varied **whether a bit lands inverted**, and that is
-worth 15404 → 60546 of 64594 fully-essential four-input tables, **23.9% →
-93.7%**.
+worth 15404 → 60942 of 64594 fully-essential four-input tables, **23.9% →
+94.35%**.  (That figure read 60546/93.7% for a while; re-measuring gives
+60942, and the surplus was checked rather than counted — 40 sampled
+flip-placed tables were replayed and every one printed all 16 rows on the
+shipped interpreter.)
 
 The gadget is `<[x`.  `<` steps back over the cell the setter used and `[`
 flips it, which cascades into the setter's own cell — so the bit standing
@@ -294,35 +297,102 @@ derivation coordinate passed to `_embed` rather than a rewrite: the gadget
 writes the live tape, so a template patched after the fact is not the program
 the derivation simulated.
 
-### The last 4048 fall to slot permutation, which is refused
+### The four-input obstruction is pool cardinality, not nonlinearity
 
-**Which input occupies which slot closes the arity.**  `_embed` lays the
-setters down the tape and every cell downstream is the running prefix-XOR of
-what was crossed, so moving an input to a different slot leaves different
-columns standing at the read — a different drawing, not a relabelling.
-Measured over the whole arity, permutation plus complementation reaches
-**every fully-essential four-input table, residue 0**, and programs built
-that way were verified row by row on the real interpreter at equal width.
+Worth stating because it rules out a whole class of explanation for the
+residue.  Taking the columns standing after a pure bracket run, over every
+separator and settle, and computing each one's algebraic degree by Möbius
+transform:
 
-**It is not shipped, and the reason is the invariant rather than the
-mechanism.**  A permuted embed emits the `{Xi}` out of ascending order, and
-`test_slots_run_in_name_order` holds every generator here to name order.  The
-carve-out was considered and refused: an invariant that holds for every
-generator is a structural property of the repo, not a budget to spend, and
-making a violation loud is not the same as making it acceptable.
+| arity | distinct standing columns | degrees |
+|---|---|---|
+| 2 | 16 | {0: 2, 1: 6, 2: 8} |
+| 3 | 204 | {0: 2, 1: 13, 2: 88, 3: 101} |
+| 4 | 694 | {0: 2, 1: 14, 2: 61, 3: 291, 4: 326} |
 
-**So what is open at four inputs is narrower than it looks.**  It is not
-whether Minifuck can compute the remaining 4048 — it demonstrably can, and
-the programs exist — but whether a *name-order* template reaches them.  That
-also means no impossibility argument is available for them as tables; only a
-statement about the convention would be, and the one algebraic screen that
-could support such a claim (`_span_admits`) is vacuous at this arity.
+**Full degree is reached at every arity**, and the top degree is the *most*
+populated class at four inputs.  The `[` cascade generates top-degree
+functions freely, so nothing about the residue is explained by the family
+being algebraically weak.  What is scarce is *count*: 694 standing columns per
+geometry against 64594 tables.  Any route that closes the arity has to
+multiply the pool, not make it more nonlinear.
 
-Untried and order-preserving, in the order their yield is worth measuring:
-per-gap separators (recorded below as headroom **not** contained in the
-shipped set), the other two gadget spellings, and the chain prototype.  Each
-should be measured *alone* against the leftover before any are crossed —
-crossing all of them is about ten hours of sweeping.
+### Slot permutation is *not* blocked by the name-order invariant
+
+**This section used to read "the last 4048 fall to slot permutation, which is
+refused".  Both halves were wrong** -- the count and the reason -- and each
+error is worth recording, because the section was the standing argument for
+not trying the axis at all.
+
+**The count was stale.**  Re-measured, `_derived_plans` places 15404
+fully-essential four-input tables and `_flipped_plans` 45538 more:
+**60942 of 64594 (94.35%)**, leaving **3652**, not 60546/4048.  Checked rather
+than counted -- 40 sampled flip-placed tables were replayed through
+`_flipped_staging` and every one printed all 16 rows correctly on the shipped
+interpreter.
+
+**The refusal rested on a coupling that is not in the language.**  It was
+right that a permuted embed *as `_embed` spells it* emits the `{Xi}` out of
+ascending order, and right to refuse a carve-out.  What it missed is that
+**emission order and tape geometry are separable.**  The invariant constrains
+the order the placeholders appear in the template *text*; it says nothing
+about which cell a bit lands in.  `<` never writes and clamps at 0, so the
+pointer can be rewound between setters for free -- and then `{X0}` can be
+emitted *first* and still be placed *anywhere*: rewind, walk right to the
+chosen cell, emit the setter, repeat.
+
+`_embed` couples the two only because it marches rightward and never rewinds.
+That is a property of one spelling, not of Minifuck.  **So the axis is open,
+and a name-order template can permute slots.**
+
+**Prototyped and verified, not shipped.**  A `_embed_permuted` doing exactly
+the above was built, integrated, and measured: n=4 coverage
+**94.35% -> 94.98%** (residue 3652 -> 3240), with sampled templates rebuilt,
+checked ascending, and run on the shipped interpreter -- correct rows and one
+width per table.  At n=3 the family alone reaches 218/218, which is a
+mechanism check rather than coverage, that arity already being total.
+
+It was reverted because the yield does not justify the machinery, and the
+*shape* of the yield is the useful part:
+
+| geometry | n=4 residue reached | feasible geometries |
+|---|---|---|
+| sites inherited from the separators, flips=0 | 12 | 10 of 120 |
+| + all 16 flip masks | 62 | 160 of 1920 |
+| gaps swept 2..5 directly | **412** | 1792 of 24576 |
+| descending sites, gaps 2..11 | 126 | 3200 of 16000 |
+
+Descending sites were the *structural* bet -- they guarantee each setter lands
+on blank tape, so feasibility stops binding and the `n!` factor collapses --
+and they returned about a tenth the yield per second of plain permutation.
+Each further coordinate buys less against a residue that barely moves.
+Closing 3240 this way would need roughly 28x the yield of the best axis tried.
+**On that evidence n=4 is not reachable by widening this family**; the residue
+is the hard core, and a different column pool (the chain prototype below) is
+the plausible route rather than another coordinate on this one.
+
+**Two facts decide the geometry**, both measured, and both would have to be
+rediscovered by any reimplementation:
+
+- **The rewind must stop above the pool.**  Clamping to the origin walks back
+  through cells 0..7 and the *return* walk's `[x` rewrites them, leaving a
+  pool no pool code repairs: `_find_pool` answers 0 accumulators against the
+  ordinary embed's 26, and the route scores 0 of 218 at three inputs where
+  stopping at cell 8 scores 58.
+- **The setter is pointer-neutral only on a blank cell.**  `[<` on an occupied
+  one cascades, the skip eats the `<`, and that row ends a cell right -- so the
+  pointer *spreads*, and `<` above 0 preserves a spread.  A setter landing on
+  an occupied cell therefore refuses the geometry, which is an ordinary miss.
+
+**What is still open at four inputs** is a statement about these families
+rather than about Minifuck: the programs for the unreached tables demonstrably
+exist.  No impossibility argument is available for them as tables, and
+`_span_admits`, the one algebraic screen that could support such a claim, is
+vacuous at this arity.
+
+**And none of this bears on totality for all `n`.**  Permutations, flips and
+spacings add a per-arity constant of order `n! * 2 ** n` -- factorial, not
+`2 ** (2 ** n)` -- so the counting argument below stands exactly as written.
 
 ### `n == 5` ships partially; full coverage is out of reach of any flat family
 
