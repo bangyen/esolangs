@@ -4029,31 +4029,32 @@ class TestParameterizedPctSquaredMinusOne:
         assert len(lengths) == 1, lengths
 
     @pytest.mark.slow
-    def test_three_input_coverage_is_what_the_docs_say(self) -> None:
-        """The three constructions together build exactly 106 of the 256 tables.
+    def test_three_inputs_are_total(self) -> None:
+        """All 256 three-input tables build, and every one of them runs.
 
-        Pinned because the number is the cap this generator advertises: the
-        cascade's 48 subcubes, the composed-affine path, which alone reaches 84
-        and overlaps the cascade on all but two, and the ladder, which adds 20
-        the other two cannot reach because they are affine in the accumulator
-        and so cannot merge rows that do not already agree.  Every table that
-        builds is executed, so a construction that grew coverage by emitting a
-        wrong program fails here rather than raising the count.
+        Totality comes from the band construction, which prints with ``e``
+        rather than ``l``: ``e`` writes ``chr(acc & 0xFF)``, so a row only has
+        to be *congruent* to 48 or 49 mod 256 instead of being exactly 0 or 1,
+        and repeated resets then cut the weighted row order into one band per
+        run of the table.  Every table that builds is executed here, so a
+        construction that grew coverage by emitting a wrong program fails
+        rather than raising the count.
         """
         from esolangs.tools.boolean import parameterized
 
-        built = 0
         for value in range(256):
             table = format(value, "08b")
-            try:
-                template = parameterized.pct_squared_minus_one(table)
-            except ValueError:
-                continue
-            built += 1
+            # No ``except`` here: a refusal is a failure now, not a skip.
+            template = parameterized.pct_squared_minus_one(table)
+            lengths = set()
             for row in range(8):
                 bits = [(row >> (2 - k)) & 1 for k in range(3)]
-                assert self.run_pct(self.instantiate(template, bits)) == table[row]
-        assert built == 106
+                program = self.instantiate(template, bits)
+                lengths.add(len(program))
+                assert self.run_pct(program) == table[row], (table, bits)
+            # Both branches of every setter share a width, so no program leaks
+            # its inputs through ``len()``.
+            assert len(lengths) == 1, (table, sorted(lengths))
 
     def test_ladder_builds_majority_three(self) -> None:
         """Majority-3 builds, which no affine composition of setters reaches.
@@ -4107,16 +4108,19 @@ class TestParameterizedPctSquaredMinusOne:
                 assert pair is not None, (zero, one)
                 assert len(pair[0]) == len(pair[1]), (zero, one, pair)
 
-    def test_non_subcube_table_refused_not_miscomputed(self) -> None:
-        """A table the cascade cannot build is refused rather than served wrong.
+    def test_unreached_table_refused_not_miscomputed(self) -> None:
+        """A table no construction builds is refused rather than served wrong.
 
-        ``00000110`` is neither a conjunction of literals nor the complement
-        of one, so no cascade computes it and the generator says so.
+        Three inputs are now total, so the refusal has to be shown at four,
+        where the band construction is not derived.  The table is checked to
+        be one none of the paths reaches, so the test pins the refusal rather
+        than a particular arity's coverage.
         """
         from esolangs.tools.boolean import parameterized
 
+        # Four inputs, and neither a subcube nor a composed-affine table.
         with pytest.raises(ValueError, match="conjunction or disjunction"):
-            parameterized.pct_squared_minus_one("00000110")
+            parameterized.pct_squared_minus_one("0000000000000110")
 
     def test_slope_zero_forgets_the_accumulator(self) -> None:
         """``'`` is the constant map: it discards whatever it was given.
