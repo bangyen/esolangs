@@ -80,9 +80,9 @@ class TestStepMachine:
         from esolangs.interpreters.tape_based.circlefuck import _Machine
 
         machine = _Machine("+.@", ScriptedIO())
-        assert (machine.ind, machine.ptr, machine.cells) == (0, 0, [43, 46, 64])
+        assert (machine.ind, machine.ptr, machine.cells) == (0, 0, (43, 46, 64))
         machine.step()  # + sets the cell
-        assert machine.cells == [44, 46, 64]
+        assert machine.cells == (44, 46, 64)
         machine.step()  # . prints it
         assert machine.io.getvalue() == ","
         machine.step()  # @ halts
@@ -186,7 +186,7 @@ class TestStepMachine:
         machine.step()  # + raises cell 0
         machine.step()  # { inserts a zero before it and steps past both
         assert machine.ind == 3
-        assert machine.cells == [0, 44, 123, 43, 46, 64]
+        assert machine.cells == (0, 44, 123, 43, 46, 64)
 
     def test_delete_last_cell_halts(self) -> None:
         """Deleting the last cell is an invalid operation."""
