@@ -55,6 +55,136 @@ _FUM = -9
 _SPECIAL = set(range(_FUM, _IO + 1))
 
 
+#: One instant of a run: ``(memory, ip, cf, zf, nf, of, fum)`` -- the
+#: self-modifying store, the instruction pointer, the four flags, and the
+#: flag-update mode.  A value, not a record: every transition below returns
+#: a new one rather than editing one in place, and the memory is a ``tuple``
+#: for the same reason.
+#:
+#: The memory is in the state rather than beside it because this language
+#: rewrites it as it runs *and* can extend it: a write past the end grows
+#: the store, and ``halted`` compares the pointer against the current
+#: length.
+type _State = tuple[tuple[int, ...], int, int, int, int, int, int]
+
+
+def _operands(state: _State) -> tuple[int, int, int, int]:
+    """Return the four cells of the instruction under the pointer.
+
+    A trailing instruction that runs off the end reads its missing operands
+    as zero.
+    """
+    memory, ip = state[0], state[1]
+    return (
+        memory[ip],
+        memory[ip + 1] if ip + 1 < len(memory) else 0,
+        memory[ip + 2] if ip + 2 < len(memory) else 0,
+        memory[ip + 3] if ip + 3 < len(memory) else 0,
+    )
+
+
+def _load(state: _State, addr: int, byte: int | None = None) -> int:
+    """Return the value at ``addr``, which may be a special register.
+
+    ``byte`` is what the shell already read from the input port, since the
+    port is the one address whose read consumes something.  Everything
+    else is a pure lookup, and an address outside the store reads as zero.
+    """
+    memory, _ip, cf, zf, nf, of, fum = state
+    if addr == _IO:
+        return byte if byte is not None else 0
+    if addr == _CF:
+        return cf
+    if addr == _ZF:
+        return zf
+    if addr == _NF:
+        return nf
+    if addr == _OF:
+        return of
+    if addr == _ONE:
+        return 1
+    if addr == _ZERO:
+        return 0
+    if addr == _NEG:
+        return -1
+    if addr == _FUM:
+        return fum
+    return memory[addr] if 0 <= addr < len(memory) else 0
+
+
+def _too_large(state: _State, addr: int) -> bool:
+    """Whether writing ``addr`` would grow the store past what is allowed.
+
+    Cell *values* are unbounded, but the memory holding them is a real
+    list: an address that cannot be allocated is a resource the run does
+    not have, so the caller halts rather than raising Python's
+    ``OverflowError``.
+    """
+    memory = state[0]
+    return (
+        addr != _IO
+        and addr not in _SPECIAL
+        and addr >= len(memory)
+        and addr + 1 > _MAX_MEMORY
+    )
+
+
+def _store(state: _State, addr: int, value: int) -> _State:
+    """Return ``state`` with ``addr`` set to ``value``.
+
+    Writing the input/output port is an effect and changes no state, so it
+    is the shell's; writing a special register other than ``fum`` is
+    discarded, as it always was.
+    """
+    memory, ip, cf, zf, nf, of, fum = state
+    if addr == _IO:
+        return state
+    if addr in _SPECIAL:
+        return (memory, ip, cf, zf, nf, of, value) if addr == _FUM else state
+    if addr >= len(memory):
+        memory = (*memory, *([0] * (addr + 1 - len(memory))))
+    memory = (*memory[:addr], value, *memory[addr + 1 :])
+    return (memory, ip, cf, zf, nf, of, fum)
+
+
+def _advance(state: _State, reads: tuple[int, ...]) -> tuple[int, _State]:
+    """Return the value the instruction computed, and the state after it.
+
+    Pure: it reads ``state`` and returns a new one.  ``reads`` holds the
+    bytes the shell already took from the input port, in the order the
+    operands name it, so nothing here consumes anything.
+
+    The value comes back alongside because writing the port is the shell's
+    effect and it needs what to write.
+
+    An instruction subtracts when ``memory[d]`` is positive and adds
+    otherwise; writing to the port is neither, and simply passes ``vb``
+    through.
+    """
+    pending = list(reads)
+
+    def take(addr: int) -> int:
+        return _load(state, addr, pending.pop(0) if addr == _IO else None)
+
+    a, b, c, d = _operands(state)
+    vd = take(d)
+    vb = take(b)
+    if a == _IO:
+        value = vb
+    else:
+        va = take(a)
+        value = va - vb if vd > 0 else va + vb
+
+    after = _store(state, a, value)
+    memory, _ip, cf, zf, nf, of, fum = after
+    if fum:
+        zf = 1 if value == 0 else 0
+        nf = 1 if value < 0 else 0
+        cf = of = 0
+    after = (memory, _ip, cf, zf, nf, of, fum)
+    return value, (memory, _load(after, c), cf, zf, nf, of, fum)
+
+
 class _Machine:
     """Per-run ASJ state: the self-modifying memory, ip, and flags.
 
@@ -66,19 +196,51 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         """Parse ``code`` into memory and reset the pointer and flags."""
         self.io = io
-        self.memory: list[int] = _parse(code)
-        self.cf = self.zf = self.nf = self.of = self.fum = 0
-        self.ip = 0
+        self.state: _State = (tuple(_parse(code)), 0, 0, 0, 0, 0, 0)
+
+    # The language's own names.  They are views on the current state rather
+    # than fields of their own, so there is one place a step can change.
+
+    @property
+    def memory(self) -> list[int]:
+        """The self-modifying store."""
+        return list(self.state[0])
+
+    @property
+    def ip(self) -> int:
+        """The instruction pointer."""
+        return self.state[1]
+
+    @property
+    def cf(self) -> int:
+        return self.state[2]
+
+    @property
+    def zf(self) -> int:
+        return self.state[3]
+
+    @property
+    def nf(self) -> int:
+        return self.state[4]
+
+    @property
+    def of(self) -> int:
+        return self.state[5]
+
+    @property
+    def fum(self) -> int:
+        """Whether the flags follow each instruction's result."""
+        return self.state[6]
 
     @property
     def halted(self) -> bool:
         """Whether the pointer is off the end of memory or a special address."""
-        return self.ip < 0 or self.ip >= len(self.memory)
+        memory, ip = self.state[0], self.state[1]
+        return ip < 0 or ip >= len(memory)
 
     # The VM's language-shaped view: self-modifying memory + instruction
     # pointer.  ``ip`` and ``memory`` above already *are* the view, so only
-    # the empty stack needs saying -- the VM copies ``memory`` on the way
-    # out, so handing back the live list here is safe.
+    # the empty stack needs saying.
 
     @property
     def stack(self) -> list[object]:
@@ -87,84 +249,37 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (
-            tuple(self.memory),
-            self.ip,
-            self.cf,
-            self.zf,
-            self.nf,
-            self.of,
-            self.fum,
-            self.io.position(),
-        )
-
-    def _read(self, addr: int) -> int:
-        if addr == _IO:
-            return self.io.input_char()
-        if addr == _CF:
-            return self.cf
-        if addr == _ZF:
-            return self.zf
-        if addr == _NF:
-            return self.nf
-        if addr == _OF:
-            return self.of
-        if addr == _ONE:
-            return 1
-        if addr == _ZERO:
-            return 0
-        if addr == _NEG:
-            return -1
-        if addr == _FUM:
-            return self.fum
-        if 0 <= addr < len(self.memory):
-            return self.memory[addr]
-        return 0
-
-    def _write(self, addr: int, value: int) -> None:
-        if addr == _IO:
-            self.io.print_char(chr(value & 0xFF))
-        elif addr in _SPECIAL:
-            if addr == _FUM:
-                self.fum = value
-        else:
-            if addr >= len(self.memory):
-                # Cell *values* are unbounded (above), but the memory
-                # holding them is a real list: an address that cannot be
-                # allocated is a resource the run does not have, so it
-                # halts rather than raising Python's OverflowError.
-                if addr + 1 > _MAX_MEMORY:
-                    raise HaltError(f"memory address {addr} is too large")
-                self.memory.extend([0] * (addr + 1 - len(self.memory)))
-            self.memory[addr] = value
+        # The state as it stands plus the input cursor: a repeat that
+        # ignores consumed input is not a real cycle.
+        return (*self.state, self.io.position())
 
     def step(self) -> None:
-        """Execute one instruction, advancing the pointer."""
+        """Execute one instruction, advancing the pointer.
+
+        The two memory-mapped I/O effects and the memory-limit halt live
+        here rather than in the transition: this is the shell, so it is
+        where an effect or a raise belongs.
+
+        Reading is what makes that awkward.  Address ``-1`` *is* the input
+        port, so a read of it consumes a byte -- and one instruction reads
+        up to three operands, any of which may name it.  They are taken
+        here in the order the transition will use them (``d``, then ``b``,
+        then ``a`` unless ``a`` is the port itself, which is written rather
+        than read) and passed along, so the transition consumes nothing.
+        """
         if self.halted:
             return
-        a = self.memory[self.ip]
-        b = self.memory[self.ip + 1] if self.ip + 1 < len(self.memory) else 0
-        c = self.memory[self.ip + 2] if self.ip + 2 < len(self.memory) else 0
-        d = self.memory[self.ip + 3] if self.ip + 3 < len(self.memory) else 0
-
-        vd = self._read(d)
-        vb = self._read(b)
+        a, b, _c, d = _operands(self.state)
+        if _too_large(self.state, a):
+            raise HaltError(f"memory address {a} is too large")
+        reads = tuple(
+            self.io.input_char()
+            for addr in ((d, b) if a == _IO else (d, b, a))
+            if addr == _IO
+        )
+        value, self.state = _advance(self.state, reads)
         if a == _IO:
-            new = vb
-            self._write(_IO, new)
-        elif vd > 0:
-            new = self._read(a) - vb
-            self._write(a, new)
-        else:
-            new = self._read(a) + vb
-            self._write(a, new)
-
-        if self.fum:
-            self.zf = 1 if new == 0 else 0
-            self.nf = 1 if new < 0 else 0
-            self.cf = self.of = 0
-
-        self.ip = self._read(c)
+            self.io.print_char(chr(value & 0xFF))
 
 
 def run(code: str, io: IO, limit: int = 10_000) -> None:
