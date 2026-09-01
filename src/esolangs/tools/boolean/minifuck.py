@@ -133,6 +133,7 @@ from functools import cache
 from itertools import combinations_with_replacement
 
 from esolangs.tools.boolean.helpers import (
+    _validate_shape,
     _validate_truth_table,
     essential_inputs,
     read_at,
@@ -2137,7 +2138,7 @@ def _lift(template: str, essential: list[int], n: int) -> str:
 
 
 @cache
-def minifuck(truth_table: str) -> str:
+def _solve(truth_table: str) -> str:
     """Build a Minifuck template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -2165,7 +2166,7 @@ def minifuck(truth_table: str) -> str:
     deterministic in ``truth_table`` and the result is an immutable string,
     so repeat calls are free either way.
     """
-    n = _validate_truth_table(truth_table)
+    n = _validate_shape(truth_table)
     want = tuple(int(c) for c in truth_table)
 
     # A table that ignores some of its inputs is a *smaller* table wearing
@@ -2196,7 +2197,7 @@ def minifuck(truth_table: str) -> str:
             reconverged = _reconverged(truth_table, essential, n)
             if reconverged is not None:
                 return reconverged
-        inner = minifuck(_project(truth_table, essential, n))
+        inner = _solve(_project(truth_table, essential, n))
         return _lift(inner, essential, n)
 
     # At most one essential input means a constant or a (negated) projection,
@@ -2287,3 +2288,27 @@ def minifuck(truth_table: str) -> str:
                     return hit.template()
 
     raise ValueError(f"the Minifuck boolean generator could not build {truth_table!r}")
+
+
+def minifuck(truth_table: str) -> str:
+    """Build a Minifuck template for the given truth table.
+
+    The construction is :func:`_solve`; this is the public entry, and the
+    difference is the arity check.  ``_solve`` accepts a *nullary* table
+    because it recurses into itself after projecting a table onto its
+    essential inputs, and a constant table projects to a single entry --
+    six such calls happen while building the 276 tables up to three inputs.
+    A one-entry table is not a boolean function of any input, though, so it
+    is refused at the API the way every other generator refuses it.
+    """
+    _validate_truth_table(truth_table)
+    return _solve(truth_table)
+
+
+# The construction's cache and its undecorated body live on ``_solve`` now,
+# but tests and callers reach for them through the public name: keep
+# ``cache_clear``/``cache_info`` and ``__wrapped__`` here so splitting the
+# arity check off did not move the surface.
+minifuck.cache_clear = _solve.cache_clear  # type: ignore[attr-defined]
+minifuck.cache_info = _solve.cache_info  # type: ignore[attr-defined]
+minifuck.__wrapped__ = _solve.__wrapped__  # type: ignore[attr-defined]

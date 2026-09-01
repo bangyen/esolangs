@@ -32,6 +32,35 @@ def _validate_truth_table(truth_table: str) -> int:
 
     A valid table has ``2**n`` binary entries, so ``n`` is recovered from
     the length (a power of two).
+
+    A **one-entry** table is rejected.  It is a well-formed power of two
+    (``2**0``), so it used to pass: forty-four generators built a program
+    for it, twenty-four crashed with an ``IndexError`` reaching for an
+    input that was not there, and sixteen more raised ``negative shift
+    count`` -- a ``ValueError``, but not one that says what is wrong.  Only
+    COD and 123 refused it deliberately.  A nullary table is a *constant*,
+    not a boolean function of any input, and the generators exist to build
+    programs that read their inputs and branch, so it is refused here once
+    rather than crashed on sixty times.
+    """
+    n = _validate_shape(truth_table)
+    if n == 0:
+        raise ValueError(
+            "truth table needs at least one input (n >= 1); "
+            "a one-entry table is a constant, not a boolean function"
+        )
+    return n
+
+
+def _validate_shape(truth_table: str) -> int:
+    """Validate a table's *shape* only, allowing a nullary one.
+
+    The arity rule above is the generators' public contract, but a
+    generator that reduces a table to its essential inputs can legitimately
+    reach a one-entry table on the way down: a constant table projects to
+    exactly that, and the reduced table is then solved as a constant rather
+    than refused.  Minifuck's ``_solve`` is the one caller -- its public
+    entry still validates in full, so the relaxation never reaches an API.
     """
     n = len(truth_table).bit_length() - 1
     if len(truth_table) != 2**n:

@@ -415,8 +415,6 @@ def one_two_three(truth_table: str) -> str:
     the plan decodes.  See ``docs/limitations.md``.
     """
     n = _validate_truth_table(truth_table)
-    if n == 0:
-        raise ValueError("123 needs at least one input")
     if n > 3:
         essential = len(essential_inputs(truth_table, n))
         raise ValueError(
