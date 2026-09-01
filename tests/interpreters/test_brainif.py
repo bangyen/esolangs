@@ -142,9 +142,9 @@ class TestStepMachine:
         from esolangs.interpreters.tape_based.brainif import _Machine
 
         machine = _Machine(["if 0 increment", "if 1 output"], ScriptedIO())
-        assert (machine.ind, machine.cells) == (0, [0])
+        assert (machine.ind, machine.cells) == (0, (0,))
         machine.step()  # cell 0 is 0: increment
-        assert machine.cells == [1]
+        assert machine.cells == (1,)
         machine.step()  # cell 1 is 1: output
         assert machine.io.getvalue() == "\x01"
         assert machine.halted
@@ -159,7 +159,7 @@ class TestStepMachine:
         before = machine.snapshot()
         machine.step()  # input reads the line into the cell
         assert machine.snapshot() != before
-        assert machine.cells == [ord("A")]
+        assert machine.cells == (ord("A"),)
         assert machine.io.position() == 1
 
     def test_goto_loop_is_detected_as_a_cycle(self) -> None:

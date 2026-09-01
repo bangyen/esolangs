@@ -88,11 +88,25 @@ def _read(memory: tuple[int, ...], addr: int) -> int:
 def _written(memory: tuple[int, ...], addr: int, value: int) -> tuple[int, ...]:
     """Return ``memory`` with cell ``addr`` set to ``value``, growing if needed.
 
-    A write past the end extends the store with zeros up to ``addr``, which
-    is what makes the length part of the state: the same program text can
-    reach different lengths depending on what it has written.
+    A write past the *right* end extends the store with zeros up to
+    ``addr``, which is what makes the length part of the state: the same
+    program text can reach different lengths depending on what it has
+    written.
+
+    A negative ``addr`` indexes from the right, as a write through Python's
+    own subscript did before the store became a tuple -- ``-1`` is the last
+    cell.  That is not a nicety: the transpiler fuzz relies on such a write
+    landing somewhere real (or raising on an empty store) rather than
+    growing the store, and growing instead turns a terminating program into
+    a non-terminating one.
     """
-    if addr >= len(memory):
+    if addr < 0:
+        # IndexError on an empty or too-short store, exactly as a list
+        # subscript would raise, which callers above treat as a real error.
+        if addr < -len(memory):
+            raise IndexError("list assignment index out of range")
+        addr += len(memory)
+    elif addr >= len(memory):
         memory = (*memory, *([0] * (addr + 1 - len(memory))))
     return (*memory[:addr], value, *memory[addr + 1 :])
 
@@ -158,9 +172,10 @@ class _Machine:
 
     @pc.setter
     def pc(self, value: int) -> None:
-        # Writable because it was a plain attribute before the state became
-        # a value, and callers position the pointer through it to reach a
-        # state directly rather than running a program up to it.
+        # Writable so a caller can place the pointer directly on a state
+        # that running the program cannot reach cleanly -- the truncated
+        # tail below cell 6 is only reachable past a cell that has since
+        # become the input opcode.
         self.state = (value, self.state[1])
 
     @property
