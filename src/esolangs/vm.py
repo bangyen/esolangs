@@ -324,56 +324,6 @@ class _DelegatingVM(_BaseVM):
         return list(self._machine.stack)
 
 
-class _SbleqVM(_DelegatingVM):
-    """OISC cells + instruction pointer; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.tape_based.sbleq import _Machine
-
-        self._machine = _Machine(io=self._io, mem=[int(tok) for tok in program.split()])
-
-
-class _PointBreakVM(_DelegatingVM):
-    """Variable store + loop frames; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.register_based.point_break import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _ArrowQueueVM(_DelegatingVM):
-    """Direction queue; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.grid_based.arrowqueue import _Machine
-
-        self._machine = _Machine(program.splitlines())
-
-
-class _APainterAntVM(_DelegatingVM):
-    """2D grid; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.grid_based.a_painter_ant import _Machine
-
-        self._machine = _Machine(program)
-
-
-class _SuffolkVM(_DelegatingVM):
-    """Tape + accumulator; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.tape_based.suffolk import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
 # Language name -> VM adapter.  Only interpreters with a step()/halted state
 # object are wrappable; the rest raise UnknownLanguageError.
 # Most adapters are derived from the registry: once an interpreter
@@ -381,17 +331,16 @@ class _SuffolkVM(_DelegatingVM):
 # ``RUNNERS`` already holds.  The rest are spelled out because they need
 # extra setup, override ``step()``, or build their machine differently
 # from the way their runner does.
-_VM_ADAPTERS: dict[str, type[_BaseVM]] = {
-    "S*bleq": _SbleqVM,
-    "Point Break": _PointBreakVM,
-    "ArrowQueue": _ArrowQueueVM,
-    "A Painter Ant": _APainterAntVM,
-    "Suffolk": _SuffolkVM,
-}
+_VM_ADAPTERS: dict[str, type[_BaseVM]] = {}
 
 
 # Languages whose adapter is pure boilerplate over the registry entry.
 _DERIVED_LANGUAGES = (
+    "ArrowQueue",
+    "A Painter Ant",
+    "Suffolk",
+    "Point Break",
+    "S*bleq",
     "Modulous",
     "Qoibl",
     "Grapheme",

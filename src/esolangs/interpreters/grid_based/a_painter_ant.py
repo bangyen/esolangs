@@ -84,8 +84,17 @@ class _Machine:
     generator emits is exactly such a cycle.
     """
 
-    def __init__(self, code: str) -> None:
-        """Validate ``code`` and reset the machine to the origin."""
+    def __init__(
+        self,
+        code: str,
+        io: IO | None = None,  # noqa: ARG002 - see ``run``
+    ) -> None:
+        """Validate ``code`` and reset the machine to the origin.
+
+        ``io`` is accepted and ignored: the language writes only the final
+        render, which :func:`run` prints, and taking the parameter anyway
+        lets every caller build a machine the same way.
+        """
         self.prog = "".join(c for c in code if not c.isspace())
         for c in self.prog:
             if c not in _INSTRUCTIONS:

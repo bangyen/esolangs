@@ -51,6 +51,17 @@ class _Machine:
     store: str = "a"
     _halted: bool = field(default=False, init=False)
 
+    @classmethod
+    def of(cls, code: str, io: IO, store: str = "a") -> "_Machine":
+        """Build a machine over the cells ``code`` parses to.
+
+        The program is a list of integers, not text, so a caller cannot
+        hand the source straight to the constructor.  Parsing lived in
+        ``run`` and was copied into the VM adapter, which is the shape
+        that lets two spellings of the same thing drift apart.
+        """
+        return cls(io=io, mem=_parse(code), store=store)
+
     def __post_init__(self) -> None:
         """Reject a store target outside the three documented variants.
 
@@ -152,7 +163,7 @@ def run(code: str, io: IO, store: str = "a") -> None:
     ``store`` selects the storage variant: ``"a"`` (base S*bleq), ``"ab"``
     (S*bl*q, stores in both a and b), or ``"b"`` (Subl*q, stores in b).
     """
-    mach = _Machine(io=io, mem=_parse(code), store=store)
+    mach = _Machine.of(code, io, store=store)
 
     while not mach.halted:
         mach.step()
