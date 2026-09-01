@@ -17,7 +17,6 @@ from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.other.inject import _Machine, run
 from tests.interpreters.contract import CycleContract, SnapshotContract
 from tests.raises import raises_message
-from tests.samples import INJECT_TRUTH_MACHINE
 
 HELLO_WORLD = "\n".join(
     [
@@ -36,6 +35,30 @@ WIKI_TRUTH_MACHINE = "\n".join(
         "send data",
         "skipq data 0",
         "loop;",
+        "skip",
+        "data;",
+        "data;",
+        "0;",
+        "0",
+        "0;",
+    ]
+)
+
+# A corrected truth machine: the wiki's own is inverted (see the
+# interpreter's module docstring).  Halts on "0" after printing it, loops
+# forever on "1".  Defined here rather than imported from ``tests.samples``
+# because that module pulls in the registry, which the mutation bundle does
+# not inline -- a module-level import of it fails collection there before
+# any mutant runs.  ``tests.samples`` imports this name instead.
+INJECT_TRUTH_MACHINE = "\n".join(
+    [
+        "readto data",
+        "skipq data 0",
+        "loop;",
+        "send data",
+        "skip",
+        "loop;",
+        "send data",
         "skip",
         "data;",
         "data;",
