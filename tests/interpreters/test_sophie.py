@@ -260,6 +260,47 @@ class TestSophieEdgeCases:
         assert f.getvalue() == ""
 
     @pytest.mark.usefixtures("timeout_protection")
+    def test_the_dollar_form_also_swallows_its_bracket(self) -> None:
+        """``#$[`` loads the bracket too: the ``$`` is a marker, not the data.
+
+        Only the plain ``#`` form was covered, so the scan's handling of
+        the optional ``$`` went untested -- an advance that stopped on the
+        marker, or ran one character past it, leaves the bracket standing
+        as structure and the program is rejected.
+        """
+        with redirect_stdout(io.StringIO()) as f:
+            run("#$[", io=IO())
+        assert f.getvalue() == ""
+
+    @pytest.mark.usefixtures("timeout_protection")
+    def test_a_marker_loaded_by_a_marker_leaves_the_next_bracket_standing(
+        self,
+    ) -> None:
+        """``#$#`` consumes the second ``#`` as data, so a following ``[`` is real.
+
+        This is the other side of the previous case, and it is what stops
+        the scan from swallowing too much: the ``[`` here is structure, so
+        it must be reported unmatched.  A scan that steps two characters
+        past the marker would eat it and call the program balanced.
+        """
+        with pytest.raises(ValueError, match="unmatched"):
+            run("#$#[", io=IO())
+
+    @pytest.mark.usefixtures("timeout_protection")
+    def test_a_digit_load_stops_at_the_first_non_digit(self) -> None:
+        """``#$1[`` loads the digits only, leaving the bracket as structure.
+
+        The digit form runs a loop of its own, and every existing case ends
+        the program on the digits -- so a loop that advanced wrongly, or not
+        at all, had nothing to disagree about.  Putting a bracket straight
+        after the number makes the stopping point visible: it stays
+        unmatched.
+        """
+        for code in ("#$1[", "#$123["):
+            with pytest.raises(ValueError, match="unmatched"):
+                run(code, io=IO())
+
+    @pytest.mark.usefixtures("timeout_protection")
     def test_unmatched_brackets(self) -> None:
         """Test program with unmatched brackets."""
         with pytest.raises(ValueError, match="unmatched"):
