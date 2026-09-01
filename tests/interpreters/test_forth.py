@@ -78,6 +78,39 @@ class TestForth:
         # with two elements it leaves the stack untouched (no-op)
         assert run_program("65a.") == "\x05"
 
+    def test_uppercase_past_f_is_not_a_digit(self) -> None:
+        """Only A-F push; G is past the end of the hex run and is ignored."""
+        assert run_program("0G.") == "\x00"
+
+    def test_x_is_neither_an_operator_nor_a_bracket(self) -> None:
+        """X sits outside every command class, so it leaves the stack alone.
+
+        A stray X read as an opener would scan to the end of the program
+        and abort; read as a binary operator it would underflow.  Either
+        way the run would halt instead of printing.
+        """
+        assert run_program("X5.") == "\x05"
+
+    def test_calling_an_unstored_scope_runs_nothing(self) -> None:
+        """``;`` on a key with no scope pushes an empty frame, not nothing."""
+        assert run_program("1;") == ""
+
+    def test_a_branch_scope_stops_at_its_closing_bracket(self) -> None:
+        """The scope excludes the ``)``, so what follows runs once, not twice."""
+        assert run_program("1(5:).") == "\x05"
+
+    def test_a_live_nested_branch_matches_the_outer_bracket(self) -> None:
+        """Depth is counted up as well as down, so the outer scope is whole.
+
+        Truncating the outer scope at the inner ``)`` would leave it with an
+        unterminated ``(``, aborting the nested scope and printing nothing.
+        """
+        assert run_program("1((5.))") == "\x05"
+
+    def test_a_loop_inside_a_called_scope_finishes(self) -> None:
+        """A loop two frames deep re-enters the top frame, not frame 1."""
+        assert run_program("1{3[:1-]A.}1;") == "\n"
+
     def test_empty_stack_pop_halts(self) -> None:
         with pytest.raises(HaltError):
             run_program(".")
@@ -127,6 +160,34 @@ class TestStepMachine:
         while not machine.halted:
             machine.step()
         assert machine.stack == [-501334399]
+
+    def test_the_wrap_folds_at_exactly_two_to_the_thirty_first(self) -> None:
+        """2**31 is the first value that wraps, and it lands on the floor.
+
+        The modulus has to be 2**32: a wider one would leave 2**31 alone,
+        and no smaller product reaches the boundary to show it.  2**16
+        times 2**15 is the product built here.
+        """
+        from esolangs.interpreters.stack_based.forth import _Machine
+
+        machine = _Machine("2:*:*:*:*88*8*8*8**", ScriptedIO())
+        while not machine.halted:
+            machine.step()
+        assert machine.stack == [-2147483648]
+
+    def test_an_unstored_key_calls_an_empty_scope(self) -> None:
+        """``;`` falls back to the empty string, so the pushed frame has code.
+
+        A missing fallback would push ``None`` and the next step would fail
+        measuring its length; a non-empty one would run commands nobody
+        stored.
+        """
+        from esolangs.interpreters.stack_based.forth import _Machine
+
+        machine = _Machine("1;", ScriptedIO())
+        machine.step()  # 1 pushes the key
+        machine.step()  # ; pops it and pushes the stored scope
+        assert [frame.code for frame in machine.frames] == ["1;", ""]
 
     def test_a_loop_reenters_its_frame_each_pass(self) -> None:
         """A loop restarts its body until the top reaches zero.
