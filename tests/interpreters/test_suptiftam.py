@@ -405,9 +405,7 @@ class TestRobustness:
     ]
 
     @pytest.mark.parametrize(("code", "message"), REJECTIONS)
-    def test_each_rejection_says_its_own_thing(
-        self, code: str, message: str
-    ) -> None:
+    def test_each_rejection_says_its_own_thing(self, code: str, message: str) -> None:
         """Every malformed program is paired with the message it raises."""
         with pytest.raises(ValueError) as caught:
             run_program(code)
