@@ -7,19 +7,20 @@ end-to-end.
 
 The execution model is a pure function over an immutable :class:`_State`:
 :func:`_advance` maps a state and a command to the next state, and never
-mutates what it is given.  The tape is a tuple, so a state is a value that
-can be stored, compared, and hashed as it stands -- which is what
-``snapshot`` returns directly rather than rebuilding.  The one effect a
-command can have, ``.`` and ``,``'s I/O, is pushed to the edge: the two
-character commands are handled in :func:`_step_effect` before the pure
-transition runs, so :func:`_advance` itself is total and side-effect free.
+mutates what it is given.  It takes no ``io`` argument at all, so it is
+total and side-effect free by construction rather than by inspection.  The
+tape is a tuple, so a state is a value that can be stored, compared, and
+hashed as it stands -- which is what ``snapshot`` returns directly rather
+than rebuilding.
 
 :class:`_Machine` is the mutable shell the interpreter protocol requires
 (``esolangs.vm`` wraps it, ``run_until_halt_or_cycle`` steps it, and
 ``factor.py`` drives a decoded program through it).  It holds one
 :class:`_State` and rebinds it each step, so the mutation lives in exactly
 one assignment and every rule about what brainfuck *does* stays in the pure
-layer.
+layer.  The one effect a command can have, ``.`` and ``,``'s I/O, is done
+by ``step`` before it calls the pure transition -- effects in the shell,
+rules in the core.
 
 The brainfuck spec defines ``[``/``]`` only for matched pairs; a program
 with unbalanced brackets is malformed, so the interpreter rejects it with a
@@ -121,24 +122,6 @@ def _advance(state: _State, code: str, brackets: dict[int, int]) -> _State:
     return _State(ind + 1, ptr, tape)
 
 
-def _step_effect(state: _State, code: str, io: IO) -> _State:
-    """Run the I/O for the command at ``state.ind``, if it has any.
-
-    This is the whole of the interpreter's contact with the outside world.
-    ``.`` writes and returns the state untouched; ``,`` reads and returns
-    the state with the byte already stored, so that :func:`_advance` has
-    nothing left to do for either.  Every other command returns ``state``
-    unchanged.
-    """
-    ind, ptr, tape = state
-    char = code[ind]
-    if char == ".":
-        io.print_char(chr(tape[ptr]))
-    elif char == ",":
-        return _State(ind, ptr, _written(tape, ptr, io.input_char()))
-    return state
-
-
 class _Machine:
     """A Brainfuck run: one immutable :class:`_State`, rebound per step.
 
@@ -149,12 +132,16 @@ class _Machine:
     needs; the rules themselves are the pure functions above.
     """
 
-    __slots__ = ("brackets", "code", "io", "state")
+    __slots__ = ("brackets", "code", "io", "size", "state")
 
     def __init__(self, code: str, io: IO) -> None:
         self.code = code
         self.io = io
         self.brackets = matches(code)
+        # ``halted`` is read twice per command -- once by ``run``'s loop and
+        # once by ``step``'s guard -- so the length is taken once here
+        # rather than recomputed on every one of those reads.
+        self.size = len(code)
         self.state = _State(ind=0, ptr=0, tape=(0,))
 
     # ``vm.py`` reads these three off the machine, and ``factor.py``
@@ -175,7 +162,7 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        return self.state.ind >= len(self.code)
+        return self.state.ind >= self.size
 
     # The VM's language-shaped view: Tape + pointer; ip is the code cursor, memory the
     # tape.
@@ -203,10 +190,26 @@ class _Machine:
         return (*self.state, self.io.position())
 
     def step(self) -> None:
-        """Execute one command, advancing the code position."""
-        if self.halted:
+        """Execute one command, advancing the code position.
+
+        The two character commands are done here rather than in a function
+        of their own: this is the shell, so it is where an effect belongs,
+        and it keeps :func:`_advance` reachable in one call per step.
+        ``.`` writes and changes no state; ``,`` reads and leaves the byte
+        in the cell, so the pure transition then runs on what they left
+        behind and never needs the ``io`` object at all.
+        """
+        state = self.state
+        ind = state.ind
+        if ind >= self.size:
             return
-        state = _step_effect(self.state, self.code, self.io)
+        char = self.code[ind]
+        if char == ".":
+            self.io.print_char(chr(state.tape[state.ptr]))
+        elif char == ",":
+            ptr = state.ptr
+            byte = self.io.input_char()
+            state = _State(ind, ptr, _written(state.tape, ptr, byte))
         self.state = _advance(state, self.code, self.brackets)
 
 
