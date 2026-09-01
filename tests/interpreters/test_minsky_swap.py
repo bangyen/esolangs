@@ -66,6 +66,20 @@ class TestMinskySwapBasicCommands:
             run("  +  \n  ", io=IO())
         assert f.getvalue().strip() == "1 0"
 
+    def test_stripped_characters_do_not_shift_the_jump_targets(self) -> None:
+        """Padding is removed, rather than replaced with something inert.
+
+        ``test_whitespace_ignored`` pads a ``+`` on both sides, and an
+        unrecognised character is read as a swap -- so an even amount of
+        padding, kept rather than dropped, swaps back and agrees.  Odd
+        padding before a jump target does not: the jump to line 3 must
+        reach the second increment, and any surviving character puts it
+        somewhere else.
+        """
+        with redirect_stdout(io.StringIO()) as f:
+            run(" ~++\n3", io=IO())
+        assert f.getvalue().strip() == "1 0"
+
 
 class TestMinskySwapReadableNotation:
     """Test readable Minsky Swap notation (RMSN)."""
@@ -101,6 +115,60 @@ class TestMinskySwapReadableNotation:
         with redirect_stdout(io.StringIO()) as f:
             run("inc(); +", io=IO())
         assert f.getvalue().strip() == "2 0"
+
+    def test_a_readable_command_contributes_exactly_one_symbol(self) -> None:
+        """Each ``inc()``/``swap()`` becomes one command, not a run of them.
+
+        The compact program a readable one translates to is only visible
+        through where a jump lands in it: with no jump, padding either
+        command with a matching pair of extra symbols cancels out, since
+        an unrecognised character is read as a swap and two swaps undo
+        each other.  Jumping into the middle of such a pair does not
+        cancel -- the increments after it land in the other register.
+        """
+        with redirect_stdout(io.StringIO()) as f:
+            run("decnz(5); inc(); swap(); inc(); inc();", io=IO())
+        assert f.getvalue().strip() == "1 0"
+
+    def test_a_bare_decnz_jumps_to_the_first_line(self) -> None:
+        """``decnz();`` with no argument targets line 1.
+
+        Its target is never asserted because a program that takes the jump
+        loops forever, and one that does not never reads the number.  The
+        step machine sees it directly: the jump to line 1 puts the cursor
+        back at the start, where both a missing target and a target of 2
+        would move it on instead.
+        """
+        from esolangs.interpreters.register_based.minsky_swap import _Machine
+
+        machine = _Machine("decnz();", IO())
+        machine.step()  # zero register, so the tilde jumps
+        assert machine.ind == 0, "the jump returned to the first command"
+        assert not machine.halted
+
+    def test_a_readable_command_is_stripped_with_its_argument(self) -> None:
+        """The cleanup removes the whole ``name(...)``, parentheses included.
+
+        Whatever is left after the readable commands is read as compact
+        notation, so an argument holding a ``+`` would be counted twice --
+        once as the command and again as a stray increment -- if the
+        cleanup only matched the name or matched it case-sensitively the
+        other way.
+        """
+        with redirect_stdout(io.StringIO()) as f:
+            run("inc(1+2); inc();", io=IO())
+        assert f.getvalue().strip() == "1 0"
+
+    def test_the_compact_tail_keeps_only_its_commands(self) -> None:
+        """Spaces in the trailing compact part are dropped, not kept.
+
+        The tail is appended after the readable commands, so anything left
+        in it shifts every command that follows -- and a jump into that
+        tail then lands on the padding instead of the increment.
+        """
+        with redirect_stdout(io.StringIO()) as f:
+            run("decnz(3); + +", io=IO())
+        assert f.getvalue().strip() == "1 0"
 
 
 class TestMinskySwapProgramFlow:
@@ -153,11 +221,17 @@ class TestMinskySwapEdgeCases:
         assert f.getvalue().strip() == "0 0"
 
     def test_tilde_without_target_rejected(self) -> None:
-        """A ~ with no matching jump-line number is malformed."""
+        """A ~ with no matching jump-line number is malformed.
+
+        ``match=`` is a substring search, so the whole message is asserted
+        here: it is the only thing a caller sees when a program is
+        rejected, and nothing else pins its wording.
+        """
         import pytest
 
-        with pytest.raises(ValueError, match="jump target"):
+        with pytest.raises(ValueError) as caught:
             run("~~\n1", io=IO())
+        assert str(caught.value) == "unmatched '~' with no jump target"
 
     def test_multiple_tildes(self) -> None:
         """Test program with multiple tildes and jump targets."""
