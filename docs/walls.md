@@ -1437,7 +1437,7 @@ linear scan rather than a genuine representation limit.  See
   `_WII2D_MAX_INDEX_DOMAIN = 32` compared against the decode domain
   `2 ** (n - 1)`, firing *before* `_wii2d_decode` is called, so it has never
   established that anything fails.  With the constant raised to 64 a dense
-  non-symmetric `n == 7` table builds in 1.54s (13372 characters, 8 rows by
+  non-symmetric `n == 7` table builds in 1.74s (13372 characters, 8 rows by
   6673 columns), verified against the interpreter on **all 128 input
   combinations**.  The guard stays at 32 for two measured reasons:
 
