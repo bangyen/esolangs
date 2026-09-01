@@ -54,11 +54,25 @@ Container's: a byte reader would make identical stdin produce different
 output from the interpreter, which is the point of the differential.  EOF
 halts the run, matching the interpreter's ``EOFError`` unwinding it.
 
-``s``'s parse matches ``_as_int`` composed with the unsigned floor: the
+``s``'s parse follows ``_as_int`` composed with the unsigned floor: the
 line is stripped, an optional sign is taken, and anything that is not then
 all digits reads as 0 -- an empty line and a line of junk are both input a
 user can legitimately type, not invalid operations.  A negative line floors
 at 0.
+
+**Agreement there is over ASCII input, and the narrowing is measured
+rather than assumed.**  ``_as_int`` is Python's ``int()`` after
+``str.strip()``, and both are Unicode-aware in ways the assembly is not:
+``int("4_2")`` is 42, since underscores are legal between digits, and
+``str.strip()`` removes any character ``str.isspace()`` accepts, which
+includes NBSP (U+00A0).  The compiled reader strips only the ASCII
+space/tab family and accepts only ASCII digits, so ``4_2`` and ``\xa042``
+each read as 0 where the interpreter reads 42.  Chasing ``int()``'s full
+grammar -- Unicode decimal digits, the underscore placement rules, every
+``isspace`` codepoint -- into assembly buys nothing any program here
+reaches, so the domain is stated instead, the way Container's value bound
+is.  Everything ASCII agrees, including the sign forms, leading zeros,
+interior tabs, and a 19-digit value.
 
 **Runtime errors halt with exit 0** through ``.halt``, the convention every
 compiler here shares for the interpreter's ``HaltError``: popping an empty
