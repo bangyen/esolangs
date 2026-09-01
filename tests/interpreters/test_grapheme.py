@@ -42,6 +42,19 @@ class TestModes:
         # H Y H makes a function of Y; I runs it on the pushed 10
         assert run_program("FAFHYHIE") == "10"
 
+    def test_an_unterminated_mode_is_flushed_when_its_frame_ends(self) -> None:
+        """Each mode still yields its value when the code runs out.
+
+        At the top level the flushed value lands on the stack after the
+        last command, where nothing is left to print it -- so the flush
+        was only ever checked by the program not raising.  Ending a
+        *called* body in a mode puts the value where the caller can print
+        it, one per mode.
+        """
+        assert run_program("HEABHIY") == "AB"  # string
+        assert run_program("HFABHIY") == "120"  # int
+        assert run_program("EHABEGNY") == "AB"  # function, via N
+
 
 class TestArithmetic:
     def test_add(self) -> None:
@@ -175,6 +188,39 @@ class TestSkips:
         # [0, 10]: X pops 10 (truthy), Y prints the 0, then the K is skipped
         assert run_program("FFFAFXYK") == "0"
 
+    def test_the_command_u_skips_is_one_that_would_have_printed(self) -> None:
+        """Which way ``U`` skips, read from the output rather than the stack.
+
+        The tests above both skip a ``K`` that sits before a ``Y``, and a
+        duplicate the ``Y`` never reaches leaves the printed value the
+        same either way -- so an inverted skip passes both.  Skipping the
+        ``Y`` itself is the difference.
+        """
+        assert run_program("FAFFFUY") == ""  # falsy: the Y is skipped
+        assert run_program("FBFFAFUY") == "20"  # truthy: the Y runs
+
+    def test_x_resumes_two_commands_on(self) -> None:
+        """After the one command it lets through, ``X`` skips exactly one.
+
+        The suite's truthy ``X`` puts the skipped command last, where
+        skipping it and running it off the end look alike.  Following it
+        with more code shows where execution comes back.
+        """
+        # [10, 20, 30]: X pops the truthy 30, Y prints 20, the K is skipped,
+        # and the last Y prints the 10 that is still underneath.
+        assert run_program("FAFFBFFCFXYKY") == "2010"
+
+    def test_x_can_open_the_body_it_governs(self) -> None:
+        """``X`` works at the very start of a called body.
+
+        The pending skip is remembered as a position, and the first
+        position in a frame is the one an offset-based check is most
+        likely to mistake for "nothing pending" -- but the main program
+        can never put ``X`` there, since it would pop an empty stack.
+        """
+        # the body is XYK: X pops the 20, Y prints the 10, the K is skipped
+        assert run_program("FAFFBFHXYKHI") == "10"
+
 
 class TestIO:
     def test_input(self) -> None:
@@ -259,6 +305,118 @@ class TestEdgeCases:
     def test_unterminated_func_mode(self) -> None:
         assert run_program("H") == ""
 
+    def test_v_jumps_forward_over_the_commands_it_counts(self) -> None:
+        """``V`` moves the cursor on, not back.
+
+        The suite's jumping ``V`` uses an offset large enough to leave the
+        program, which ends the frame whichever way it went; a jump of one
+        that lands on a later command is what fixes the direction.
+        """
+        # [20, 1, 0]: V pops the falsy 0 and the offset 1, skipping the M
+        # that would otherwise discard the 20 before Y prints it
+        assert run_program("FBFFFTFFVMY") == "20"
+
+    def test_a_z_lap_starts_with_nothing_pending(self) -> None:
+        """Each pass over a ``Z`` body begins with no skip outstanding.
+
+        The frame is reused rather than rebuilt, so a pending-skip marker
+        left pointing at a position the new lap will reach would swallow a
+        command partway through it.  The suite's ``Z`` bodies are one or
+        two commands long, too short to reach such a position.
+        """
+        # four values, and a body of four commands: dup, drop, drop, print
+        assert run_program("FAFFBFFCFFDFHKMMYHZ") == "3010"
+
+    def test_a_call_does_not_repeat_itself(self) -> None:
+        """Only ``Z`` re-runs its body; ``I`` runs it once.
+
+        The looping flag is empty for every other call, and an empty flag
+        and a set one part ways only when the stack outlives the body --
+        which is exactly what this program leaves behind.
+        """
+        # 10 and 20 on the stack, the function prints one of them and
+        # returns; the 10 is still there, and must not restart the body
+        assert run_program("FAFFBFHYHI") == "20"
+
+    def test_the_last_command_leaves_the_machine_halted(self) -> None:
+        """A frame finishes on the step that runs its final command.
+
+        Reaching the end is otherwise only visible one step later, when
+        the cursor is found past the code -- so a caller stepping exactly
+        as many times as there are commands is what tells the two apart.
+        """
+        from esolangs.interpreters.stack_based.grapheme import _Frame, _Machine
+
+        machine = _Machine(ScriptedIO(), 1_000_000)
+        machine.frames.append(_Frame("FAFY", 0))
+        for _ in range(4):
+            assert not machine.halted
+            machine.step()
+        assert machine.halted
+
+    def test_the_command_limit_counts_from_the_first_command(self) -> None:
+        """A program of exactly ``limit`` commands runs; one more does not.
+
+        The suite pins the limit only where it is plainly exceeded, which
+        every off-by-one spelling of the counter and its test also
+        rejects.  ``FAFY`` is four commands, so it sits on the boundary.
+        """
+        from esolangs.interpreters.stack_based.grapheme import run
+
+        io = ScriptedIO()
+        run("FAFY", io, limit=4)
+        assert io.getvalue() == "10"
+        with pytest.raises(HaltError, match="command limit"):
+            run("FAFY", ScriptedIO(), limit=3)
+
+    def test_the_recursion_limit_admits_five_hundred_frames(self) -> None:
+        """500 nested calls run; 501 is the one that is refused.
+
+        Every other recursion here runs away without bound, so the depth
+        the guard compares -- where counting starts, how fast it climbs,
+        and which side of 500 is allowed -- was pinned only from very far
+        above.  This counts down from an exact depth instead.
+        """
+        # the body decrements the count, keeps a copy, and calls itself
+        # again through Q while the copy is nonzero
+        program = "H" + "FFTBKFAFDQ" + "H" + "FAFC" + "FAFD" + "G"
+        assert run_program("FEZF" + program) == ""
+        with pytest.raises(HaltError, match="recursion limit"):
+            run_program("FEZF" + "FFT" + "A" + program)
+
+    def test_the_error_messages_read_in_full(self) -> None:
+        """Each message entire, not the fragment the tests match on.
+
+        ``match=`` is a substring search, so the assertions above pass on
+        a message padded or reworded around the phrase they look for.  The
+        two "cannot name" sites are separate raises with the same words,
+        so each needs its own program.
+        """
+        import re
+
+        for code, message in (
+            ("M", "popped an empty stack"),
+            ("FFFFR", "division by zero"),
+            ("FAFHHC", "a function cannot name a variable"),
+            ("FAFHHD", "a function cannot name a variable"),
+            ("FAFG", "G needs a string or a function"),
+            ("HABHFFA", "math on a function is undefined"),
+            ("HABHY", "Y cannot output a function"),
+            ("HKGHKG", "recursion limit exceeded"),
+        ):
+            with pytest.raises(HaltError, match=re.escape(message)) as caught:
+                run_program(code)
+            assert str(caught.value) == message
+
+    def test_the_malformed_program_message_reads_in_full(self) -> None:
+        """The rejection names its own rule, in the case it uses."""
+        import re
+
+        message = "Grapheme programs may only contain uppercase Latin letters"
+        with pytest.raises(ValueError, match=re.escape(message)) as caught:
+            run_program("abc")
+        assert str(caught.value) == message
+
 
 class TestStepMachine:
     def test_snapshot_includes_the_input_cursor(self) -> None:
@@ -271,6 +429,29 @@ class TestStepMachine:
         assert machine.snapshot() != before
         assert machine.io.position() == 1
         assert machine.stack == ["hi"]
+
+    def test_a_closed_mode_leaves_the_frame_as_it_found_it(self) -> None:
+        """After a mode ends, the frame reads as one that never opened it.
+
+        The cycle detector compares whole snapshots, so a frame left
+        holding a spent mode name -- or a buffer emptied to something
+        other than a list -- would keep two identical machines apart, or
+        break the snapshot outright.  Nothing else reads those fields once
+        the mode is over, so only the snapshot can say what is in them.
+        """
+        from esolangs.interpreters.stack_based.grapheme import _Frame, _Machine
+
+        for code, value in (("EAEK", "A"), ("FAFK", 10), ("HAHK", ("func", "A"))):
+            machine = _Machine(ScriptedIO(), 1_000_000)
+            machine.frames.append(_Frame(code, 0))
+            for _ in range(3):
+                machine.step()
+            assert machine.snapshot() == (
+                (value,),
+                frozenset(),
+                ((code, 0, 3, "", (), -1, ""),),
+                0,
+            )
 
 
 class TestNumberEncoding:
@@ -305,6 +486,33 @@ class TestNumberEncoding:
         from esolangs.interpreters.stack_based.grapheme import _to_int
 
         assert _to_int("") == 0
+
+    def test_intmode_reads_z_as_zero_too(self) -> None:
+        """The buffer a closing ``F`` parses follows the same rule as ``J``.
+
+        The two conversions are written out separately, and only the ``J``
+        one is read here -- so intmode's own ``Z`` went unchecked, and
+        every program that spells a number avoids ``Z`` by writing the
+        shorter letter instead.
+        """
+        from esolangs.interpreters.stack_based.grapheme import _int_from
+
+        assert _int_from(list("Z")) == 0
+        assert _int_from(list("A")) == 10
+        assert _int_from(list("AZ")) == 100
+        assert _int_from(list("ZA")) == 10
+        assert run_program("FZFY") == "0"
+        assert run_program("FAZFY") == "100"
+
+    def test_an_empty_string_is_worth_nothing_in_arithmetic(self) -> None:
+        """``A`` on two empty strings is 0, not the ord of a stand-in.
+
+        A string operand contributes its first character, and the empty
+        string has none -- so the value the code substitutes for the
+        missing character is what decides the sum, and every other string
+        in the suite has a first character of its own.
+        """
+        assert run_program("EEEEAY") == "0"
 
 
 def _machine(code: object) -> object:
