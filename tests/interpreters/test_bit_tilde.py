@@ -160,6 +160,19 @@ class TestBitTilde:
         with pytest.raises(ValueError, match="unmatched"):
             run_and_capture("~}")
 
+    def test_unmatched_bracket_message_is_exact(self) -> None:
+        """The message itself is pinned, not just a substring of it.
+
+        Both cases above use ``match=``, which is a substring search, so
+        the text could be rewritten around the word "unmatched" and still
+        pass.  One scan raises for both directions, so asserting it once
+        from each side covers the message wherever it comes from.
+        """
+        for code in ("{~", "~}"):
+            with pytest.raises(ValueError) as caught:
+                run_and_capture(code)
+            assert str(caught.value) == "unmatched bit~ bracket"
+
 
 class TestStepMachine:
     def test_step_tracks_pool_and_cursor(self) -> None:
