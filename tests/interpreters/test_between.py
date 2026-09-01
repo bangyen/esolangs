@@ -227,6 +227,18 @@ class TestParsing:
         with pytest.raises(ValueError, match="unterminated"):
             run_and_capture("'abc")
 
+    @pytest.mark.parametrize("code", ["|.+.", "(.+.", "|.=.", "(.=."])
+    def test_malformed_group_running_to_end_of_line(self, code: str) -> None:
+        """A group whose expression ends the line has no closer left to read.
+
+        The inner expression consumes the whole line, so the index of the
+        closer is one past the end -- the bound has to be checked before
+        the character is, or the miss reads off the string and comes back
+        as an ``IndexError`` instead of a rejection.
+        """
+        with pytest.raises(ValueError, match="unbalanced"):
+            run_and_capture(code)
+
     def test_malformed_trailing_characters(self) -> None:
         with pytest.raises(ValueError, match="trailing"):
             run_and_capture("|1|p.x")
@@ -268,6 +280,44 @@ class TestErrors:
     def test_unknown_operation_rejected(self) -> None:
         with pytest.raises(ValueError, match="unknown operation"):
             run_and_capture("|1|q.")
+
+    # Every rejection the interpreter can raise, paired with the program
+    # that raises it.  The assertions elsewhere in this file use
+    # ``pytest.raises(match=...)``, which is a *substring* search and so
+    # passes on any message the real one contains -- these compare the
+    # whole string, which is what pins the wording down.
+    MESSAGES: ClassVar[list[tuple[str, str]]] = [
+        ("(True)p.", "p cannot print this value"),
+        ("|1|v.", "variable name must be a string"),
+        ("|1|s|2|", "s needs a variable on the left"),
+        ("'abc'c.", "c needs a string of numerals or an integer"),
+        ("|1|+'a'", "+ needs two integers or two strings"),
+        ("'a'*|2|", "* needs two integers"),
+        ("|1|>'a'", "> needs two integers"),
+        ("|1|r|2|", "r needs two conditions"),
+        ("|1|n.", "n needs a condition"),
+        ("'a'f.", "goto target must be an integer"),
+        ("|1|f|2|", "goto condition must be a condition"),
+        ("|1|i.", "i needs a variable on the left"),
+        ("[nope]p.", "undeclared variable 'nope'"),
+        ("'x'v.\n[x]s|1|\n|[x]=|1||p.", "expected an integer expression"),
+        ("'x'v.\n[x]s'5'\n([x]c.)p.", "expected a condition expression"),
+        ("'a'p", "missing argument"),
+        ("|1|", "missing operation"),
+        ("|1|q|2|", "unknown operation 'q'"),
+        ("a|1|", "invalid argument 'a'"),
+        ("|[a]+[b|p.", "unbalanced '['"),
+        ("'abc", "unterminated string literal"),
+        ("|1|p.x", "trailing characters"),
+        ("|1|p|2|", "operation 'p' takes no second argument"),
+    ]
+
+    @pytest.mark.parametrize(("code", "message"), MESSAGES)
+    def test_rejection_message_is_exact(self, code: str, message: str) -> None:
+        """Each rejection says exactly what it says, start to end."""
+        with pytest.raises((HaltError, ValueError)) as caught:
+            run_and_capture(code)
+        assert str(caught.value) == message
 
 
 def test_a_whole_program_runs_end_to_end() -> None:
