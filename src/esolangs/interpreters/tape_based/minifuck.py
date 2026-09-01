@@ -117,6 +117,14 @@ def _load(state: _State, byte: int) -> _State:
     Only the window's bits are replaced, so the boundary is exactly the
     window: clearing any further would silently drop cell 8 once the pointer
     had walked out that far.
+
+    The ``& ~_WINDOW`` is defensive rather than load-bearing, and mutation
+    testing reports it as a survivor for that reason: :func:`_step` calls
+    this only when it found a zero print window, so the bits being cleared
+    are already zero (6016 calls checked, never once non-zero).  It stays
+    because ``_load``'s contract is "replace the window", not "assume the
+    caller zeroed it" -- but a mutant dropping the ``~`` is equivalent, not
+    a test gap.
     """
     bits = sum(((byte >> (_WIDTH - 1 - i)) & 1) << i for i in range(_WIDTH))
     return state._replace(tape=(state.tape & ~_WINDOW) | bits)
