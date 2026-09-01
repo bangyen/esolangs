@@ -70,6 +70,28 @@ class TestTape:
         """< at the left edge does nothing (matches the Brainfuck semantics)."""
         assert run_program(build("<<.")) == "\x00"
 
+    def test_right_moves_one_cell_each_time(self) -> None:
+        """``>`` advances the pointer rather than setting it.
+
+        A pointer that jumped to a fixed cell still prints the same values
+        while every write lands where it is read -- so the test has to mark
+        one cell and then print a *different* one.  Here cell 1 is set to
+        2 and two further moves put the pointer on cell 3, which is empty:
+        a pointer that returned to 1 would print the mark instead.
+        """
+        assert run_program(build(">++>>.")) == "\x00"
+        assert run_program(build(">>>+.")) == "\x01"
+
+    def test_minus_decrements_the_current_cell(self) -> None:
+        """``-`` is its own command, distinct from the other seven.
+
+        The wrap test reaches 0 by adding 256 times, so ``-`` was only ever
+        seen through a cell that was already going to be zero.  One
+        decrement from a fresh cell gives 255, which nothing else does.
+        """
+        assert run_program(build("-.")) == "\xff"
+        assert run_program(build("--.")) == "\xfe"
+
     def test_comments_ignored(self) -> None:
         # trailing comments are skipped by the pointer and never rotate
         assert run_program(build("+.") + "abc") == "\x01"
@@ -151,6 +173,38 @@ class TestBrackets:
     def test_unmatched_bracket_that_never_runs_is_fine(self) -> None:
         """Unbalanced sources are legal; only execution matters."""
         assert run_program(build(".")) == "\x00"
+
+    def test_a_nested_opener_is_counted_when_no_partner_exists(self) -> None:
+        """The seek counts nesting even on the way to failing.
+
+        Both seeks are usually watched through a jump that *succeeds*,
+        where a miscounted opener still tends to land on some closer.
+        These programs have no partner at all, so the count is the only
+        thing that decides -- a seek that ignores a nested opener, or that
+        pins its depth at one, finds a false partner and the program runs
+        on instead of halting.
+        """
+        with pytest.raises(HaltError):
+            run_program(build("[[+"))
+        with pytest.raises(HaltError):
+            run_program(build("+[<.]"))
+
+    def test_the_partnerless_bracket_message_names_which_one_fired(self) -> None:
+        """Each direction reports its own bracket, and the text is pinned.
+
+        The cases above only check that *something* halted, so the two
+        messages were free to be rewritten or swapped -- and a bare
+        ``HaltError`` with no message at all reads the same to
+        ``pytest.raises``.  Asserting the string separates the forward seek
+        from the backward one.
+        """
+        with pytest.raises(HaltError) as caught:
+            run_program(build("["))
+        assert str(caught.value) == "an executed '[' has no bracket partner"
+
+        with pytest.raises(HaltError) as caught:
+            run_program(build("+]"))
+        assert str(caught.value) == "an executed ']' has no bracket partner"
 
 
 class TestStepMachine:
