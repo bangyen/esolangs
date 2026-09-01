@@ -319,10 +319,12 @@ class _Connections:
         """
         d_row, d_col = direction
         n_row, n_col = row + d_row, col + d_col
+        # The loop needs no bounds check of its own: ``at`` reads off-grid as
+        # a space, which is never the crossover, so walking past the edge
+        # ends it.  The check below then rejects the off-grid cell it landed
+        # on -- one guard covering both the stepped and the hopped case.
         while self.grid.at(n_row, n_col) == _CROSSOVER:
             n_row, n_col = n_row + d_row, n_col + d_col
-            if not (0 <= n_row < self.grid.height and 0 <= n_col < self.grid.width):
-                return None
         if not (0 <= n_row < self.grid.height and 0 <= n_col < self.grid.width):
             return None
         return n_row, n_col
@@ -354,15 +356,20 @@ class _Gate:
     top-to-bottom order, and ``outputs`` the wirings it drives, likewise
     ordered.  ``row``/``col`` locate it for error messages and for the
     reading order in which outputs print.
+
+    The ports are annotated rather than initialised: ``_build_gates``
+    assigns both lists on the line after it constructs the gate, so an empty
+    list here would never be read.
     """
+
+    inputs: list[_Wiring]
+    outputs: list[_Wiring]
 
     def __init__(self, kind: _GateKind, row: int, col: int) -> None:
         """Create a gate of ``kind`` at ``(row, col)`` with no ports bound."""
         self.kind = kind
         self.row = row
         self.col = col
-        self.inputs: list[_Wiring] = []
-        self.outputs: list[_Wiring] = []
 
 
 class _Parser:
