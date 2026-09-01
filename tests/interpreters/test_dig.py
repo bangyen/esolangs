@@ -39,6 +39,41 @@ class TestDigHaltAndMovement:
         """Test that work commands do nothing while overground."""
         assert run_and_capture([">H:@", "  2 "]) == ""
 
+    def test_a_letter_overground_does_not_steer(self) -> None:
+        """Only ``^>'<`` set the heading; the mole keeps going right.
+
+        A letter admitted into the heading arm would index the glyph string
+        and miss, so the mole would turn around on the -1 and leave the
+        grid before it ever dug.
+        """
+        assert run_and_capture(["X$5:", " 2  "]) == "5"
+
+    def test_the_halt_stops_code_that_follows_it(self) -> None:
+        """``@`` ends the run, rather than the mole walking off the end.
+
+        Every other program halts by leaving the grid, which hides a ``@``
+        that does nothing -- so put work after it that would print.
+        """
+        assert run_and_capture(["@$5:", " 2  "]) == ""
+
+    def test_the_mole_stops_at_the_bottom_row(self) -> None:
+        """Walking off the bottom ends the run as cleanly as off the side.
+
+        A single ``'`` faces the mole down out of a one-row grid, which is
+        the only exit the row bound guards; every other program here leaves
+        through a column.
+        """
+        assert run_and_capture(["'"]) == ""
+
+    def test_a_right_turn_from_the_last_heading_wraps_to_the_first(self) -> None:
+        """The heading is taken modulo four, the number of headings.
+
+        Steering right while facing left is the one turn that runs off the
+        end of the glyph order, so it is the only program that shows the
+        wrap.
+        """
+        assert run_and_capture([" 1'", " #<"]) == ""
+
 
 class TestDigUndergroundCommands:
     """Test work commands that only function underground."""
@@ -58,6 +93,18 @@ class TestDigUndergroundCommands:
     def test_print_character(self) -> None:
         """Test that letters set the mole to their ASCII value."""
         assert run_and_capture([">$H:", " 2 "]) == "H"
+
+    def test_a_letter_underground_is_not_an_input_command(self) -> None:
+        """Only ``=`` and ``~`` read; ``X`` is a letter like any other.
+
+        With no input queued a stray read would raise instead of printing,
+        so the letter has to stay out of the input arm.
+        """
+        assert run_and_capture([">$X:", " 2 "]) == "X"
+
+    def test_printing_clears_the_mole(self) -> None:
+        """``:`` resets the mole to zero, which a second ``:`` reveals."""
+        assert run_and_capture([">$3::", " 3   "]) == "30"
 
     def test_newline_output(self) -> None:
         """Test that % with a 1 beside it outputs a newline."""
@@ -82,6 +129,10 @@ class TestDigArithmetic:
 
     def test_division(self) -> None:
         assert run_and_capture([">$ 9/:", " 4  3 "]) == "3"
+
+    def test_division_keeps_the_quotient_not_the_divisor(self) -> None:
+        """9 over 3 is 3 either way, so divide where the two differ."""
+        assert run_and_capture([">$ 8/:", " 4  2 "]) == "4"
 
     def test_large_result_printed_as_character(self) -> None:
         """Test that values >= 10 are printed as characters."""
@@ -132,6 +183,12 @@ class TestDigEdgeCases:
         """Test that an empty program raises ValueError."""
         with pytest.raises(ValueError, match="empty"):
             run([], io=IO())
+
+    def test_the_empty_program_message_reads_exactly(self) -> None:
+        """``match=`` only looks for a substring, so pin the whole message."""
+        with pytest.raises(ValueError) as caught:
+            run([], io=IO())
+        assert str(caught.value) == "Dig program cannot be empty"
 
     def test_blank_only_program_is_empty(self) -> None:
         """Programs of only blank lines are rejected, not crashing the mole."""
