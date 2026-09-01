@@ -27,6 +27,17 @@ class State:
     sym: str = ""
     ind: int = 0
 
+    @classmethod
+    def of(cls, code: str, io: IO) -> "State":
+        """Build a state running ``code``.
+
+        The program is the ``sym`` field, so positionally it sits behind
+        ``io`` and a caller could not simply pass ``(code, io)`` the way
+        every other interpreter here is built.  Naming the two makes the
+        construction the same shape as everyone else's.
+        """
+        return cls(io=io, sym=code)
+
     @property
     def halted(self) -> bool:
         """Whether the code cursor has run off the program."""
@@ -138,7 +149,7 @@ class State:
 
 def run(code: str, io: IO) -> None:
     """Run an Eval program."""
-    state = State(io=io, sym=code)
+    state = State.of(code, io)
     while not state.halted:
         state.step()
 
