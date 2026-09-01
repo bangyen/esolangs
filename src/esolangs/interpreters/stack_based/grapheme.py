@@ -132,11 +132,29 @@ class _Machine:
         self.limit = limit
         self.steps = 0
         self.frames: list[_Frame] = []
-        # Where the top-level frame ends.  The caller pushes that frame
-        # after construction, so this is filled in the first time ``step()``
-        # sees one -- ``ip`` still has to report a position after every
-        # frame has been popped.
+        # Where the top-level frame ends, so ``ip`` can still report a
+        # position once every frame has been popped.  ``of()`` sets it with
+        # the frame it pushes; a machine built bare has no program yet.
         self._top_length = 0
+
+    @classmethod
+    def of(cls, code: str, io: IO, limit: int = 1_000_000) -> _Machine:
+        """Build a machine running ``code`` as its top-level frame.
+
+        The constructor takes no program -- a machine is a shared stack that
+        frames run against -- so validating the alphabet and pushing the
+        first frame had to happen in the caller.  ``run`` and the VM adapter
+        each carried their own copy of both, which is the shape that lets
+        the two drift.
+        """
+        if any(c not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" for c in code):
+            raise ValueError(
+                "Grapheme programs may only contain uppercase Latin letters"
+            )
+        machine = cls(io, limit)
+        machine.frames.append(_Frame(code, 0))
+        machine._top_length = len(code)
+        return machine
 
     @property
     def halted(self) -> bool:
@@ -209,10 +227,6 @@ class _Machine:
             frame.pc = 0
             frame.pending_at = -1
         else:
-            if len(self.frames) == 1:
-                # The top-level frame is going: remember where it ended, so
-                # ``ip`` can still report a position once nothing is left.
-                self._top_length = len(frame.code)
             self.frames.pop()
 
     def step(self) -> None:
@@ -389,10 +403,7 @@ class _Machine:
 
 def run(code: str, io: IO, limit: int = 1_000_000) -> None:
     """Run a Grapheme program, halting after ``limit`` commands."""
-    if any(c not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" for c in code):
-        raise ValueError("Grapheme programs may only contain uppercase Latin letters")
-    machine = _Machine(io, limit)
-    machine.frames.append(_Frame(code, 0))
+    machine = _Machine.of(code, io, limit)
     while not machine.halted:
         machine.step()
 

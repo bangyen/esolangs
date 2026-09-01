@@ -340,23 +340,13 @@ class _SbleqVM(_DelegatingVM):
 
 
 class _GraphemeVM(_DelegatingVM):
-    """Stack + variables; the interpreter describes its own shape.
-
-    The machine is built empty and given its top-level frame here, because
-    the interpreter's own entry point validates and frames the program on
-    the way in and this adapter has to do the same by hand.
-    """
+    """Stack + variables; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
-        from esolangs.interpreters.stack_based.grapheme import _Frame, _Machine
+        from esolangs.interpreters.stack_based.grapheme import _Machine
 
-        if any(c not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" for c in program):
-            raise ValueError(
-                "Grapheme programs may only contain uppercase Latin letters"
-            )
-        self._machine = _Machine(self._io, 1_000_000)
-        self._machine.frames.append(_Frame(program, 0))
+        self._machine = _Machine.of(program, self._io)
 
 
 class _QoiblVM(_DelegatingVM):
@@ -364,10 +354,9 @@ class _QoiblVM(_DelegatingVM):
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
-        from esolangs.interpreters.register_based.qoibl import State, tokenize
+        from esolangs.interpreters.register_based.qoibl import State
 
-        self._machine = State(io=self._io)
-        self._machine.code = tokenize(program)
+        self._machine = State.of(program, self._io)
 
 
 class _EvalVM(_DelegatingVM):
@@ -385,14 +374,9 @@ class _ModulousVM(_DelegatingVM):
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
-        import re
-
         from esolangs.interpreters.stack_based.modulous import State
 
-        self._machine = State(var={f"VAR{k}": 0 for k in range(1, 5)}, io=self._io)
-        self._machine.tokens = [
-            k[0] for k in re.compile(r'\[([^\[\]\"]*("[^"]*")?)]').findall(program)
-        ]
+        self._machine = State.of(program, self._io)
 
 
 class _LaserFuckVM(_DelegatingVM):
