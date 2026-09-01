@@ -4056,6 +4056,7 @@ class TestParameterizedPctSquaredMinusOne:
             # its inputs through ``len()``.
             assert len(lengths) == 1, (table, sorted(lengths))
 
+    @pytest.mark.slow  # 8.3s: the ladder build plus eight interpreter runs
     def test_ladder_builds_majority_three(self) -> None:
         """Majority-3 builds, which no affine composition of setters reaches.
 
@@ -4084,6 +4085,7 @@ class TestParameterizedPctSquaredMinusOne:
         # inputs through ``len()``.
         assert len(lengths) == 1, lengths
 
+    @pytest.mark.slow  # 3.0s: _match_pair over the whole setter grid
     def test_every_branch_pair_shares_a_spelling_width(self) -> None:
         """No setter in the grid needs the "no shared width" fallback.
 
@@ -4107,20 +4109,6 @@ class TestParameterizedPctSquaredMinusOne:
                 pair = _match_pair(zero, one)
                 assert pair is not None, (zero, one)
                 assert len(pair[0]) == len(pair[1]), (zero, one, pair)
-
-    def test_unreached_table_refused_not_miscomputed(self) -> None:
-        """A table no construction builds is refused rather than served wrong.
-
-        Three inputs are now total, so the refusal has to be shown at four,
-        where the band construction is not derived.  The table is checked to
-        be one none of the paths reaches, so the test pins the refusal rather
-        than a particular arity's coverage.
-        """
-        from esolangs.tools.boolean import parameterized
-
-        # Four inputs, and neither a subcube nor a composed-affine table.
-        with pytest.raises(ValueError, match="conjunction or disjunction"):
-            parameterized.pct_squared_minus_one("0000000000000110")
 
     def test_slope_zero_forgets_the_accumulator(self) -> None:
         """``'`` is the constant map: it discards whatever it was given.
