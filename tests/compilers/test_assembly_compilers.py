@@ -1353,3 +1353,177 @@ class TestCVNCCompiler:
             assert ".global _start" in self.comp("c" + vowel)
         for nasal in "mnŋɲ":
             assert ".global _start" in self.comp("ci" + nasal)
+
+
+class TestMyScriptCompiler:
+    """MyScript lowers closures, a lexical frame chain, and tagged values.
+
+    Excluded from the ``COMPILERS`` sweep above because that sweep compiles
+    the literal text ``"Hello"``, which MyScript parses as a bare variable
+    read of an undeclared name rather than as a program with output.
+    """
+
+    @staticmethod
+    def comp(code: str) -> str:
+        mod = importlib.import_module("esolangs.compilers.myscript")
+        return str(mod.comp(code))
+
+    def test_produces_assembly(self) -> None:
+        assert ".global _start" in self.comp('say "hi"')
+
+    def test_relaxation_is_disabled(self) -> None:
+        """``la`` must not relax to a gp-relative access.
+
+        Nothing initializes ``gp`` under ``-nostdlib``, so a relaxed ``la``
+        yields a garbage arena pointer and every frame would be written
+        outside mapped memory.
+        """
+        assert ".option norelax" in self.comp('say "hi"')
+
+    def test_string_literal_is_a_length_prefixed_record(self) -> None:
+        """A literal is emitted as its length then its bytes, not as text."""
+        out = self.comp('say "hi"')
+        assert "    .dword 2\n    .byte 104\n    .byte 105\n" in out
+
+    def test_float_literal_is_rejected(self) -> None:
+        """Floats are outside the value domain, so a literal cannot compile."""
+        with pytest.raises(ValueError, match="float literals"):
+            self.comp("say 1.5")
+
+    def test_malformed_var_is_rejected(self) -> None:
+        """A ``var`` without ``is`` is malformed, as it is for the interpreter."""
+        with pytest.raises(ValueError, match="malformed var declaration"):
+            self.comp("var x 5")
+
+    def test_bare_is_is_rejected(self) -> None:
+        """``is`` at statement position is the interpreter's malformed form."""
+        with pytest.raises(ValueError, match="malformed statement"):
+            self.comp("is 5")
+
+    def test_malformed_check_case_is_rejected(self) -> None:
+        """A ``check`` case that is neither ``if`` nor ``else`` is malformed."""
+        with pytest.raises(ValueError, match="malformed check case"):
+            self.comp('check 1?\n    when 1,\n        say "a"')
+
+    def test_short_expression_is_rejected(self) -> None:
+        """A builtin whose operands run out cannot compile."""
+        with pytest.raises(ValueError, match="expression ended"):
+            self.comp("say add 1")
+
+    def test_conflicting_arities_are_rejected(self) -> None:
+        """One name bound to two arities has no static call shape.
+
+        ``_parse_expr`` consumes as many arguments as the value in the
+        variable has parameters, so a name meaning both is a program this
+        compiler's agreement domain excludes.
+        """
+        with pytest.raises(ValueError, match="different arities"):
+            self.comp("var f is func a\n    return a\nvar f is func a b\n    return a")
+
+    def test_arity_is_scanned_before_emitting(self) -> None:
+        """A call textually above its declaration still compiles.
+
+        The interpreter resolves a callee at run time, by which point the
+        declaration has executed, so the arity pre-pass walks the whole
+        tree before any code is emitted.
+        """
+        out = self.comp("var g is func\n    say f 1\nvar f is func a\n    return a")
+        assert "call .invoke" in out
+
+    def test_each_func_literal_gets_a_body(self) -> None:
+        """Two ``func`` literals compile to two subroutines."""
+        out = self.comp("var f is func\n    say 1\nvar g is func\n    say 2")
+        assert ".fn0:" in out
+        assert ".fn1:" in out
+
+    def test_closure_is_built_at_the_declaration(self) -> None:
+        """A ``func`` binding allocates its record where it is declared.
+
+        The record captures the frame in effect, so a declaration inside a
+        loop mints a fresh closure per pass -- which is what lets two calls
+        of one factory return functions over separate frames.
+        """
+        assert "call .alloc_closure" in self.comp("var f is func\n    say 1")
+
+    def test_bare_read_emits_the_auto_call(self) -> None:
+        """A read of a name with no ``func`` binding tests for a nullary closure.
+
+        ``_parse_expr`` calls a zero-parameter value rather than yielding
+        it, so a plain load would diverge.
+        """
+        assert "call .autocall" in self.comp("var x is 1\nsay x")
+
+    def test_a_func_bound_name_calls_directly(self) -> None:
+        """A name with a known arity dispatches without the auto-call test."""
+        out = self.comp("var f is func a\n    return a\nsay f 1")
+        assert "call .invoke" in out
+
+    def test_while_re_evaluates_its_condition(self) -> None:
+        """The loop tests truthiness at the top of every pass."""
+        out = self.comp("var i is 0\nwhile less i 3,\n    i is add i 1")
+        assert "call .truthy" in out
+
+    def test_check_compares_with_the_equals_builtin(self) -> None:
+        """A case matches on the same equality ``equals`` uses."""
+        out = self.comp('check 1?\n    if 1,\n        say "a"')
+        assert "call .b_equals" in out
+
+    def test_if_outside_a_check_aborts(self) -> None:
+        """A stray ``if`` is the interpreter's ``if/else outside a check`` halt."""
+        assert "j    .abort\n" in self.comp('if 1,\n    say "a"')
+
+    def test_assignment_walks_outward(self) -> None:
+        """``x is v`` rebinds where the name lives rather than shadowing it."""
+        out = self.comp("var x is 1\nx is 2")
+        assert out.count("sd   a0, 8(t2)") >= 1
+
+    def test_every_builtin_compiles(self) -> None:
+        """Each builtin emits its runtime call.
+
+        A per-builtin sweep rather than a case per arm: ``emit_builtin``
+        dispatches on the name, so this reaches every one the interpreter's
+        ``_ARITY`` table names.  ``ask`` is separate, being answered before
+        the arity lookup.
+        """
+        for name, args in [
+            ("add", "1 2"),
+            ("subtract", "1 2"),
+            ("multiply", "1 2"),
+            ("divide", "1 2"),
+            ("equals", "1 2"),
+            ("less", "1 2"),
+            ("not", "1"),
+            ("concat", '"a" "b"'),
+            ("arrlen", "[ 1 ]"),
+            ("itemat", "[ 1 ] 0"),
+            ("say", "1"),
+        ]:
+            assert f"call .b_{name}" in self.comp(f"say {name} {args}")
+        assert "call .do_ask" in self.comp("var x is ask")
+
+    def test_boolean_literals_compile_to_their_tag(self) -> None:
+        """``yes``/``no`` are a tag of their own, not the integers 1 and 0.
+
+        The interpreter compares them equal to those integers but prints
+        them as words, so the tag is what keeps ``say yes`` from writing
+        ``1``.
+        """
+        assert f"li   a0, {(1 << 3) | 1}\n" in self.comp("say yes")
+        assert f"li   a0, {(0 << 3) | 1}\n" in self.comp("say no")
+
+    def test_array_elements_are_comma_separated(self) -> None:
+        """A comma between elements is consumed, not read as a value."""
+        out = self.comp("var a is [ 1, 2, 3 ]")
+        assert "li   a0, 3\n    call .alloc_arr" in out
+
+    def test_bare_return_yields_none(self) -> None:
+        """``return`` with no value returns ``none``, as ``_ReturnError`` does."""
+        out = self.comp("var f is func\n    return")
+        assert f"li   a0, {(0 << 3) | 2}\n" in out
+
+    def test_check_else_arm_is_emitted(self) -> None:
+        """An ``else`` case runs when no ``if`` matched."""
+        out = self.comp(
+            'check 1?\n    if 2,\n        say "a"\n    else,\n        say "b"'
+        )
+        assert out.count("call .b_say") >= 2

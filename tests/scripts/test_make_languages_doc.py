@@ -78,6 +78,7 @@ def test_compiler_sets_match_the_compiler_modules() -> None:
         "Forþ",
         "Home Row",
         "Jaune",
+        "MyScript",
         "RAM0",
         "S*bleq",
         "Suffolk",

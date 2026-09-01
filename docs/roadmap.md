@@ -106,21 +106,41 @@ generator exercised through a compile-then-fuzz differential) or **intrinsic
 value** (genuine lowering — control flow, calls, memory, dispatch — rather
 than per-command transliteration).
 
-One candidate remains.  Two facts constrain it: the target
-is **`rv64i`**, whose base integer ISA has no float and no hardware
+**The queue is empty.**  Two facts constrained the last candidates: the
+target is **`rv64i`**, whose base integer ISA has no float and no hardware
 multiply (forth already emits software `mul32`/`divmod32`, so integers are
 precedent and floats are not); and a differential is only worth the name
 when the generator *reads input*, since an `_embedded` generator substitutes
 its bits into a fixed template and replays the same program.
 
-- **MyScript** — the richest call graph left: first-class functions,
-  `return`, `while`/`check` blocks, and a `_reader` generator.  Scoping was
-  **probed and is not lexical** (a caller's local is visible inside a callee
-  that never received it), so like Forbin it needs no captured environments.
-  The bill is its *value domain*: `say` prints floats, strings, and arrays,
-  and on `rv64i` that means soft-float plus heap-managed strings and
-  growable arrays — a different league from Forbin's tagged 64-bit words.
-  Worth doing, but scope the value domain before starting.
+MyScript shipped (`src/esolangs/compilers/myscript.py`), the richest call
+graph the set covers: first-class functions, `return`, `while`/`check`
+blocks, and a `_reader` generator whose whole input space runs through the
+compiled code.  Two things this entry used to assert were **wrong, and the
+probes that corrected them are the reusable part**:
+
+- Scoping is **lexical, over live frames**, not dynamic.  The old probe
+  (a caller's local visible inside a callee) does not discriminate: it
+  declared the callee *inside* the caller, which lexical scoping explains
+  just as well.  The discriminating case is a *top-level* `f` reading `x`
+  called from a `g` that declares a local `x` — the interpreter halts with
+  `undefined variable`.  So a function value carries its defining frame
+  and closures genuinely escape, which is the one real departure from
+  Forbin's call-chain design.
+- Arrays are not growable; there is no mutation builtin at all.
+
+The value domain was scoped rather than paid in full, and the compiler's
+docstring carries each exclusion with the probe behind it: float literals
+are rejected at compile time and `divide` is exact integer division
+(matching `_as_str`, which prints an integral float as an integer), and
+`say`/`concat` of an *array* aborts, because the interpreter renders those
+through Python's `str(list)` — `say [ "a" ]` writes `['a']` and
+`say [ yes ]` writes `[True]`, leaking Python's spelling of a value
+MyScript otherwise calls `yes`.  What is left is the third fact the probes
+turned up: **every variable read auto-calls a nullary function**, since
+`_parse_expr` consumes as many arguments as the value in the variable has
+parameters, so each read of a name with no `func` binding emits a runtime
+tag test.
 
 CV(N)(C) shipped (`src/esolangs/compilers/cvnc.py`); its syllable grammar
 cost nothing, since the interpreter's tokenizer and syllabifier are
