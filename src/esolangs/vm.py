@@ -336,16 +336,6 @@ class _DelegatingVM(_BaseVM):
         return list(self._machine.stack)
 
 
-class _BrainfuckVM(_DelegatingVM):
-    """Tape + pointer; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.tape_based.brainfuck import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
 class _SbleqVM(_DelegatingVM):
     """OISC cells + instruction pointer; the interpreter describes its own shape."""
 
@@ -354,16 +344,6 @@ class _SbleqVM(_DelegatingVM):
         from esolangs.interpreters.tape_based.sbleq import _Machine
 
         self._machine = _Machine(io=self._io, mem=[int(tok) for tok in program.split()])
-
-
-class _DimensionalVM(_DelegatingVM):
-    """Pointer hierarchy; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.tape_based.dimensional import _Machine
-
-        self._machine = _Machine(program, self._io)
 
 
 class _GraphemeVM(_DelegatingVM):
@@ -422,16 +402,6 @@ class _ModulousVM(_DelegatingVM):
         ]
 
 
-class _ForthVM(_DelegatingVM):
-    """Stack + scope table; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.stack_based.forth import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
 class _LaserFuckVM(_DelegatingVM):
     """2D grid; the interpreter describes its own shape.
 
@@ -459,10 +429,6 @@ class _LaserFuckVM(_DelegatingVM):
         machine.step()
         if not machine.lsrs:
             machine.dump()
-
-    @property
-    def stack(self) -> list[object]:
-        return []
 
 
 class _FirstChoiceRNG:
@@ -500,16 +466,6 @@ class _PointBreakVM(_DelegatingVM):
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.register_based.point_break import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _AddSubJumpVM(_DelegatingVM):
-    """Self-modifying memory; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.register_based.addsubjump import _Machine
 
         self._machine = _Machine(program, self._io)
 
@@ -561,86 +517,6 @@ class _APainterAntVM(_DelegatingVM):
         self._machine = _Machine(program)
 
 
-class _ClockwiseVM(_DelegatingVM):
-    """2D ring; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.grid_based.clockwise import _Machine
-
-        self._machine = _Machine(program.splitlines(), self._io)
-
-
-class _DigVM(_DelegatingVM):
-    """2D mole grid; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.grid_based.dig import _Machine
-
-        self._machine = _Machine(program.splitlines(), self._io)
-
-
-class _Wii2dVM(_DelegatingVM):
-    """2D wrap-around grid; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.grid_based.wii2d import _Machine
-
-        self._machine = _Machine(program.splitlines(), self._io)
-
-
-class _DecleqVM(_DelegatingVM):
-    """Self-modifying memory + pointer; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.register_based.decleq import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _SixFiveVM(_DelegatingVM):
-    """Token tape + cursor; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.tape_based.six_five import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _BackVM(_DelegatingVM):
-    """2D beam; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.tape_based.back import _Machine
-
-        self._machine = _Machine(program.splitlines(), self._io)
-
-
-class _BIOVM(_DelegatingVM):
-    """Registers + loop stack + cursor; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.register_based.bio import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _NoCommentVM(_DelegatingVM):
-    """Byte tape + stack + cursor; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.tape_based.nocomment import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
 class _ThreeDBrainfuckVM(_BaseVM):
     """2D block grid; ``ip`` is the pointer's position + heading, ``memory`` cells.
 
@@ -682,188 +558,6 @@ class _ThreeDBrainfuckVM(_BaseVM):
         return []
 
 
-class _FactorVM(_DelegatingVM):
-    """Decoded brainfuck machine; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.tape_based.factor import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _BasicfuckVM(_DelegatingVM):
-    """Compiled code + frame stack; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.tape_based.basicfuck import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _PainfuckVM(_DelegatingVM):
-    """Translated tape + cursor; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.tape_based.painfuck import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _BitTildeVM(_DelegatingVM):
-    """Bit pool + pointer; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.tape_based.bit_tilde import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _CollatzMultiverseVM(_DelegatingVM):
-    """Named registers + line pointer; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.register_based.collatz_multiverse import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _PolynomialVM(_DelegatingVM):
-    """Single register + cursor; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.register_based.polynomial import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _RAM0VM(_DelegatingVM):
-    """Two registers + RAM; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.register_based.ram0 import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _MinskySwapVM(_DelegatingVM):
-    """Two registers + pointer; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.register_based.minsky_swap import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _HomeRowVM(_DelegatingVM):
-    """5x5 torus grid + pointer; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.tape_based.home_row import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _UnsquareVM(_DelegatingVM):
-    """Stack + accumulator; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.stack_based.unsquare import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _ROTFuckVM(_DelegatingVM):
-    """Rotating tape + cursor; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.tape_based.rotfuck import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _CirclefuckVM(_DelegatingVM):
-    """Self-modifying circular tape; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.tape_based.circlefuck import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _BFStackVM(_DelegatingVM):
-    """Data stack + loop stack + cursor; the interpreter describes its shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.stack_based.bfstack import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _BrainIfVM(_DelegatingVM):
-    """Cell tape + line cursor; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.tape_based.brainif import _Machine
-
-        self._machine = _Machine(program.splitlines(), self._io)
-
-
-class _MinifuckVM(_DelegatingVM):
-    """Binary tape + cursor; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.tape_based.minifuck import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _TaglateVM(_DelegatingVM):
-    """Queue + token cursor; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.queue_based.taglate import _Machine
-
-        self._machine = _Machine(program.splitlines(), self._io)
-
-
-class _OneTwoThreeVM(_DelegatingVM):
-    """Unbounded bit tape + pointer; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.tape_based.one_two_three import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _PctSquaredMinusOneVM(_DelegatingVM):
-    """Accumulator + cursor; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.register_based.pct_squared_minus_one import (
-            _Machine,
-        )
-
-        self._machine = _Machine(program, self._io)
-
-
 class _SuffolkVM(_DelegatingVM):
     """Tape + accumulator; the interpreter describes its own shape."""
 
@@ -874,192 +568,15 @@ class _SuffolkVM(_DelegatingVM):
         self._machine = _Machine(program, self._io)
 
 
-class _ContainerVM(_DelegatingVM):
-    """Named containers + tick count; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.other.container import _Machine
-
-        self._machine = _Machine(program.splitlines(), self._io)
-
-
-class _NevermindVM(_DelegatingVM):
-    """Named variables + line cursor; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.register_based.nevermind import _Machine
-
-        self._machine = _Machine(program.splitlines(), self._io)
-
-
-class _BFPDAVM(_DelegatingVM):
-    """Bit stack + cursor; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.stack_based.bf_pda import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _ThreeXVM(_DelegatingVM):
-    """Rational stack + cursor; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.stack_based.three_x import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _SophieVM(_DelegatingVM):
-    """Accumulator + loop stack; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.register_based.sophie import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _JauneVM(_DelegatingVM):
-    """Cell tape + hold register; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.tape_based.jaune import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _SlowAcvMammalianVM(_DelegatingVM):
-    """23 arrays + pointer; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _ZtoalcLVM(_DelegatingVM):
-    """Collatz-trajectory pointer; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.other.ztoalc_l import _Machine
-
-        self._machine = _Machine(program.splitlines(), self._io)
-
-
-class _BetweenVM(_DelegatingVM):
-    """Goto-based variables; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.register_based.between import _Machine
-
-        self._machine = _Machine(program.splitlines(), self._io)
-
-
-class _MyScriptVM(_DelegatingVM):
-    """Frame stack + scopes; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.register_based.myscript import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _LamfuncVM(_DelegatingVM):
-    """Prefix-call evaluator; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.other.lamfunc import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _CvncVM(_DelegatingVM):
-    """Accumulator and deque; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.other.cvnc import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _FargoVM(_DelegatingVM):
-    """Prefix-call evaluator; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.other.fargo import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _ForbinVM(_DelegatingVM):
-    """Call stack; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.other.forbin import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _SuptiftamVM(_DelegatingVM):
-    """Global scope + tapes; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.other.suptiftam import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-
-class _StreetcodeVM(_DelegatingVM):
-    """2D street grid; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.grid_based.streetcode import _Machine
-
-        self._machine = _Machine(program.splitlines(), self._io)
-
-
-class _FlowchartVM(_DelegatingVM):
-    """Forking 2D pointers; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.grid_based.flowchart import _Machine
-
-        self._machine = _Machine(program.splitlines(), self._io)
-
-
-class _CircuitDiagramVM(_DelegatingVM):
-    """Generation-based circuit; the interpreter describes its own shape."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.grid_based.circuit_diagram import _Machine
-
-        self._machine = _Machine(program.splitlines(), self._io)
-
-
 # Language name -> VM adapter.  Only interpreters with a step()/halted state
 # object are wrappable; the rest raise UnknownLanguageError.
+# Most adapters are derived from the registry: once an interpreter
+# describes its own shape, the only per-language facts left are the two
+# ``RUNNERS`` already holds.  The rest are spelled out because they need
+# extra setup, override ``step()``, or build their machine differently
+# from the way their runner does.
 _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
-    "brainfuck": _BrainfuckVM,
     "S*bleq": _SbleqVM,
-    "Dimensional": _DimensionalVM,
     "Grapheme": _GraphemeVM,
     "Qoibl": _QoiblVM,
     "Eval": _EvalVM,
@@ -1069,56 +586,102 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Point Break": _PointBreakVM,
     "ArrowQueue": _ArrowQueueVM,
     "A Painter Ant": _APainterAntVM,
-    "Clockwise": _ClockwiseVM,
-    "Dig": _DigVM,
-    "WII2D": _Wii2dVM,
-    "123": _OneTwoThreeVM,
-    "Forþ": _ForthVM,
-    "AddSubJump": _AddSubJumpVM,
     "Bitdeque": _BitdequeVM,
-    "BrainIf": _BrainIfVM,
-    "Minifuck": _MinifuckVM,
-    "Taglate": _TaglateVM,
-    "ROTfuck": _ROTFuckVM,
-    "Circlefuck": _CirclefuckVM,
-    "BFStack": _BFStackVM,
-    "Decleq": _DecleqVM,
-    "6-5": _SixFiveVM,
-    "Back": _BackVM,
-    "BIO": _BIOVM,
-    "NoComment": _NoCommentVM,
     "3D Brainfuck": _ThreeDBrainfuckVM,
-    "Factor": _FactorVM,
-    "Basicfuck": _BasicfuckVM,
-    "Painfuck": _PainfuckVM,
-    "bit~": _BitTildeVM,
-    "Collatz Multiverse": _CollatzMultiverseVM,
-    "Polynomial": _PolynomialVM,
-    "RAM0": _RAM0VM,
-    "Minsky Swap": _MinskySwapVM,
-    "Home Row": _HomeRowVM,
-    "Unsquare": _UnsquareVM,
-    "%^2^-1": _PctSquaredMinusOneVM,
     "Suffolk": _SuffolkVM,
-    "Container": _ContainerVM,
-    "Nevermind": _NevermindVM,
-    "BF-PDA": _BFPDAVM,
-    "3x": _ThreeXVM,
-    "Sophie": _SophieVM,
-    "Jaune": _JauneVM,
-    "SLOW ACV MAMMALIAN": _SlowAcvMammalianVM,
-    "ZTOALC L": _ZtoalcLVM,
-    "Between": _BetweenVM,
-    "MyScript": _MyScriptVM,
-    "Lamfunc": _LamfuncVM,
-    "CV(N)(C)": _CvncVM,
-    "Fargo": _FargoVM,
-    "Forbin": _ForbinVM,
-    "Suptiftam": _SuptiftamVM,
-    "Streetcode": _StreetcodeVM,
-    "Flowchart": _FlowchartVM,
-    "Circuit Diagram": _CircuitDiagramVM,
 }
+
+
+# Languages whose adapter is pure boilerplate over the registry entry.
+_DERIVED_LANGUAGES = (
+    "%^2^-1",
+    "123",
+    "3x",
+    "6-5",
+    "AddSubJump",
+    "BF-PDA",
+    "BFStack",
+    "BIO",
+    "Back",
+    "Basicfuck",
+    "Between",
+    "BrainIf",
+    "CV(N)(C)",
+    "Circlefuck",
+    "Circuit Diagram",
+    "Clockwise",
+    "Collatz Multiverse",
+    "Container",
+    "Decleq",
+    "Dig",
+    "Dimensional",
+    "Factor",
+    "Fargo",
+    "Flowchart",
+    "Forbin",
+    "Forþ",
+    "Home Row",
+    "Jaune",
+    "Lamfunc",
+    "Minifuck",
+    "Minsky Swap",
+    "MyScript",
+    "Nevermind",
+    "NoComment",
+    "Painfuck",
+    "Polynomial",
+    "RAM0",
+    "ROTfuck",
+    "SLOW ACV MAMMALIAN",
+    "Sophie",
+    "Streetcode",
+    "Suptiftam",
+    "Taglate",
+    "Unsquare",
+    "WII2D",
+    "ZTOALC L",
+    "bit~",
+    "brainfuck",
+)
+
+
+def _derived_adapter(language: str) -> type[_DelegatingVM]:
+    """Build the adapter for a language whose wrapper is pure boilerplate.
+
+    Once an interpreter describes its own shape, most adapters differ only
+    in which module to import and whether the program is passed as text or
+    as lines -- and ``RUNNERS`` already records both, because ``run`` needs
+    exactly the same two facts.  Deriving from it means the adapter set
+    cannot drift from the runner set, and adding a language that follows
+    the common shape needs no code here at all.
+
+    The languages this does *not* cover keep an explicit class below: the
+    ones whose machine needs extra setup, whose adapter overrides
+    ``step()``, or whose construction disagrees with their runner's (Point
+    Break's runner splits its program where the machine does not; Suffolk's
+    passes a ``limit`` the VM leaves at its default).
+    """
+    module_path, split, _ = RUNNERS[language]
+
+    class _Derived(_DelegatingVM):
+        def __init__(self, program: str, stdin: str = "") -> None:
+            super().__init__(program, stdin)
+            import importlib
+
+            module = importlib.import_module(f"esolangs.interpreters.{module_path}")
+            code = program.splitlines() if split else program
+            # ``_Machine`` is private to its module but is the state object
+            # this whole file is built around; the explicit adapters below
+            # import it by name for the same reason.
+            machine = getattr(module, "_Machine")  # noqa: B009
+            self._machine = machine(code, self._io)
+
+    _Derived.__name__ = _Derived.__qualname__ = f"_{language}VM"
+    _Derived.__doc__ = f"Adapter for {language}; the interpreter describes its shape."
+    return _Derived
+
+
+_VM_ADAPTERS.update({name: _derived_adapter(name) for name in _DERIVED_LANGUAGES})
 
 
 def make_vm(language: str, program: str, stdin: str = "") -> VM:

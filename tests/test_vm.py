@@ -1332,33 +1332,29 @@ class TestEveryLanguageIsSteppable:
     def test_every_adapter_wraps_a_state_object_with_a_snapshot(self) -> None:
         """``run_until_halt_or_cycle`` needs ``snapshot()`` on the machine.
 
-        The adapters wrap the interpreter class named in their own
-        ``__init__``, so read those imports back and check the classes
-        themselves: the alternative is building all 59, which needs a valid
-        program per language.  An adapter may import several names
-        (Grapheme takes its frame type alongside its machine), so the
-        requirement is that *one* of them carries the state -- a machine
-        without ``snapshot()`` cannot have a hang proven, which is the
-        cycle detector's real precondition.
+        A machine without ``snapshot()`` cannot have a hang proven, which is
+        the cycle detector's real precondition.  The check reads the module
+        each language names in ``RUNNERS`` rather than the adapter's source:
+        most adapters are now derived from that entry and have no import to
+        read back, and the registry is where the association actually lives.
+
+        This deliberately does not build the machines -- that would need a
+        valid program for every language -- so it checks the class each
+        module exposes as its state object.
         """
         import importlib
-        import inspect
-        import re
 
+        from esolangs.registry import RUNNERS
         from esolangs.vm import _VM_ADAPTERS
 
         without: list[str] = []
-        for name, adapter in sorted(_VM_ADAPTERS.items()):
-            source = inspect.getsource(adapter.__init__)
-            found = re.search(
-                r"from (esolangs\.interpreters\.[\w.]+) import "
-                r"\(?\s*([\w,\s]+?)\s*\)?\n",
-                source,
+        for name in sorted(_VM_ADAPTERS):
+            module = importlib.import_module(
+                f"esolangs.interpreters.{RUNNERS[name][0]}"
             )
-            assert found is not None, f"{name}: adapter imports no interpreter"
-            module = importlib.import_module(found.group(1))
-            imported = [n.strip() for n in found.group(2).split(",") if n.strip()]
-            if not any(hasattr(getattr(module, n), "snapshot") for n in imported):
+            # A couple of modules call their state object ``State``.
+            state = getattr(module, "_Machine", None) or getattr(module, "State", None)
+            if state is None or not hasattr(state, "snapshot"):
                 without.append(name)
         assert without == []
 
