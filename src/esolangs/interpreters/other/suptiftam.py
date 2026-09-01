@@ -673,6 +673,28 @@ class _Machine:
         """Whether the cursor has run off the top-level statements."""
         return self.ind >= len(self.top) and not self.frames
 
+    # The VM's language-shaped view: the global scope's integers, since the
+    # tapes and non-integer globals are not addressable cells.
+
+    @property
+    def ip(self) -> int:
+        """The top-level statement cursor."""
+        return self.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """Every integer variable in the global scope, in declaration order."""
+        return [
+            v.value
+            for v in self.state.globals.values()
+            if isinstance(v, _Var) and v.kind == "int"
+        ]
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
 
