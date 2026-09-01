@@ -21,6 +21,7 @@ from tests.tools.boolean_runners import (
     run_fargo,
     run_flowchart,
     run_forbin_boolean,
+    run_inject,
     run_laserfuck,
     run_myscript,
     run_nevermind,
@@ -28,6 +29,70 @@ from tests.tools.boolean_runners import (
     run_taglate,
     run_ztoalc,
 )
+
+
+class TestInject:
+    """The decision tree of ``skipq`` guards over stored input blocks."""
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("01", 1),  # identity
+            ("10", 1),  # NOT
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1000000000000000", 4),  # AND4
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result.
+
+        ``send`` terminates every line it writes and is the only output
+        command, so the answer arrives with a newline after it.
+        """
+        program = boolean.inject(table)
+        for combo in range(2**n):
+            bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+            got = run_inject(program, bits)
+            assert got == table[combo] + "\n", f"inputs {bits}"
+
+    def test_every_two_input_table(self) -> None:
+        """All sixteen two-input tables build and compute their function."""
+        for table in ("".join(t) for t in itertools.product("01", repeat=4)):
+            program = boolean.inject(table)
+            for combo in range(4):
+                bits = [str((combo >> (1 - i)) & 1) for i in range(2)]
+                got = run_inject(program, bits)
+                assert got == table[combo] + "\n", f"{table} inputs {bits}"
+
+    def test_constant_subtrees_are_folded(self) -> None:
+        """A table ignoring its later inputs costs one test, not ``n``.
+
+        The fold is what the shape catalogue asserts of every tree
+        generator; measured here directly so a regression names itself.
+        """
+        one_dependency = len(boolean.inject("00001111"))
+        parity = len(boolean.inject("01101001"))
+        assert one_dependency < parity / 2
+
+    def test_reads_every_input_before_branching(self) -> None:
+        """The reads are hoisted, so every path consumes exactly ``n`` lines.
+
+        The boolean contract requires a constant read count; Inject gets it
+        by reading all the bits up front rather than at the tree's nodes.
+        """
+        program = boolean.inject("0001").splitlines()
+        reads = [i for i, line in enumerate(program) if line.startswith("readto")]
+        first_branch = next(
+            i for i, line in enumerate(program) if line.startswith("skipq")
+        )
+        assert len(reads) == 2, "one readto per input, and no more"
+        assert max(reads) < first_branch, "every read precedes every branch"
 
 
 class TestSuptiftam:
