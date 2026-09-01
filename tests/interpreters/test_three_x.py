@@ -184,6 +184,10 @@ class TestStepMachine:
         assert run_program("[a]b[c]") == "ac"
         assert run_program("[hi][yo]") == "hiyo"
         assert run_program("[]") == ""
+        # An empty literal alone prints nothing whether its closer is found
+        # or missed, so it needs a real literal behind it: a search starting
+        # a character late runs past this closer into the next pair.
+        assert run_program("[][a]") == "a"
 
     def test_printing_uses_the_fraction_form_only_when_it_has_to(self) -> None:
         """A whole number prints bare; anything else prints as a fraction.
