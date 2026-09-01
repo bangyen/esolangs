@@ -9,6 +9,7 @@ from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.tape_based.bit_tilde import run
 from esolangs.tools import text as gen
 from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.raises import raises_message
 
 
 def run_and_capture(code: str) -> str:
@@ -169,9 +170,8 @@ class TestBitTilde:
         from each side covers the message wherever it comes from.
         """
         for code in ("{~", "~}"):
-            with pytest.raises(ValueError) as caught:
+            with raises_message(ValueError, "unmatched bit~ bracket"):
                 run_and_capture(code)
-            assert str(caught.value) == "unmatched bit~ bracket"
 
 
 class TestStepMachine:

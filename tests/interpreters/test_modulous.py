@@ -6,6 +6,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.stack_based.modulous import run
 from tests.interpreters.runner import run_program
+from tests.raises import raises_message
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
@@ -299,9 +300,8 @@ class TestModulous:
         ``match=`` would not see it either way, being a substring search,
         so this asserts the message entire.
         """
-        with pytest.raises(ValueError) as caught:
+        with raises_message(ValueError, "missing operand in JMP F"):
             run("[JMP F]", IO())
-        assert str(caught.value) == "missing operand in JMP F"
 
     def test_empty_block_is_a_noop(self) -> None:
         """An empty ``[]`` block has no command and is skipped, not crashed on."""

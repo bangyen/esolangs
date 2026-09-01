@@ -9,6 +9,7 @@ from esolangs.tools.boolean.tape import dimensional as bool_gen
 from esolangs.tools.text.other import dimensional as text_gen
 from tests.interpreters.contract import SnapshotContract
 from tests.interpreters.runner import run_program
+from tests.raises import raises_message
 
 dim = importlib.import_module("esolangs.interpreters.tape_based.dimensional")
 
@@ -111,9 +112,8 @@ class TestDimensional:
         -- a scan that ran on would quote the following command too, and
         the message is the only place that shows.
         """
-        with pytest.raises(ValueError) as caught:
+        with raises_message(ValueError, "invalid hex literal 'g0'"):
             run_and_capture("=g0.")
-        assert str(caught.value) == "invalid hex literal 'g0'"
 
     def test_bare_move_uses_value_as_dimension(self) -> None:
         assert run_and_capture("+>+.") == "\x01"
