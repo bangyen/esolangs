@@ -641,6 +641,27 @@ class TestGeneratorRoundTrips:
         for heading in range(4):
             assert laserfuck_roundtrip(program, heading) == text
 
+    @pytest.mark.parametrize(("text", "width"), [("¨", 14), ("¨¨", 14), ("Wü", 30)])
+    def test_laserfuck_folds_a_loop_with_no_tail_to_write(
+        self, text: str, width: int
+    ) -> None:
+        r"""A folded loop whose linear remainder is empty still closes.
+
+        The folded path normally carries on with ``fallback`` -- the run of
+        tape code the loop passes did not account for -- and puts the beam's
+        ``x`` wherever that run ends.  When the passes reduce every value to
+        nothing there is no such run, and the ``x`` goes where the fold left
+        the beam instead.
+
+        ``¨`` is U+00A8, whose 168 the generator's base divides exactly, so
+        the remainder is empty while the program still needs a loop: the
+        combination the ASCII samples above never produce.
+        """
+        program = gen.laserfuck(text, width)
+        assert max(len(line) for line in program.split("\n")) <= width
+        for heading in range(4):
+            assert laserfuck_roundtrip(program, heading) == text
+
     def test_laserfuck_linear_fold_is_narrower(self) -> None:
         """Folding actually buys columns, rather than only reshaping."""
         # a text whose bytes are spread out enough that neither the multiply
