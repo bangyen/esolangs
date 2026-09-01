@@ -233,6 +233,75 @@ class TestCommands:
         )
         assert _run(program) == "here\n"
 
+    def test_clause_two_returns_to_the_innermost_block(self) -> None:
+        """With two blocks enclosing the pointer, the inner one wins.
+
+        The spec allows blocks to overlap and names the *innermost* as
+        clause 2's target, so a program inside both must jump to the nearer
+        opening label.  A run of ``send`` calls before and after the jump
+        distinguishes the two: returning to ``outer`` would replay the
+        first ``send`` as well.
+        """
+        program = "\n".join(
+            [
+                "outer;",
+                "send a",
+                "inner;",
+                "send b",
+                "skipif empty",
+                "skip",
+                "inner;",
+                "outer;",
+                "a;",
+                "A",
+                "a;",
+                "b;",
+                "B",
+                "b;",
+                "empty;",
+                "empty;",
+            ]
+        )
+        # The pointer sits in both blocks; ``skip`` returns to ``inner``,
+        # which re-runs "send b" only -- never "send a" a second time.
+        machine = _Machine(program, ScriptedIO(""))
+        for _ in range(24):
+            if machine.halted:
+                break
+            machine.step()
+        assert machine.io.getvalue().startswith("A\nB\nB\n"), machine.io.getvalue()
+
+    def test_overlapping_blocks_pick_the_shorter_span(self) -> None:
+        """``_innermost`` ranks by span width, not by declaration order.
+
+        The two blocks here overlap rather than nest, and the pointer is in
+        both; the shorter span is the innermost one.
+        """
+        program = "\n".join(
+            [
+                "wide;",
+                "narrow;",
+                "send mark",
+                "skip",
+                "narrow;",
+                "send mark",
+                "wide;",
+                "mark;",
+                "M",
+                "mark;",
+            ]
+        )
+        # The ``skip`` is inside both; returning to ``narrow`` re-runs only
+        # the first ``send``, so the output is a stream of M and never
+        # reaches the second one.  Returning to ``wide`` would look the
+        # same on output, so the landing line is what separates them: step
+        # to the jump and read the pointer.
+        machine = _Machine(program, ScriptedIO(""))
+        while machine.lines[machine.ind].strip() != "skip":
+            machine.step()
+        machine.step()
+        assert machine.ind == 1, "clause 2 targets the narrow block's label"
+
     def test_skip_clause_three_exits(self) -> None:
         """A bare ``skip`` outside every block ends the program."""
         program = "\n".join(["skip", "send data", "data;", "unreachable", "data;"])
