@@ -191,6 +191,39 @@ class TestStepMachine:
         with pytest.raises(ValueError, match="malformed"):
             run_and_capture("is 5")
 
+    def test_every_halt_message_is_exact(self) -> None:
+        """Each invalid operation says its own thing, checked whole.
+
+        The suite either matches a fragment or only the exception type, and
+        ``match=`` is a substring search -- so the wording was free and one
+        message could be swapped for another without a failure.  All six
+        come from different checks, and several from the same builtin, so
+        the text is what says which one fired.
+        """
+        for code, message in (
+            ("say x", "undefined variable: x"),
+            ("x is 1", "assignment to undefined variable: x"),
+            ('say add 1 "a"', "expected a number"),
+            ("say itemat 5 0", "expected an array"),
+            ("say itemat [1, 2] 5", "itemat index out of range"),
+            ("if 1", "if/else outside a check"),
+        ):
+            with pytest.raises(HaltError) as caught:
+                run_and_capture(code)
+            assert str(caught.value) == message, code
+
+    def test_itemat_reaches_the_last_item_but_not_past_it(self) -> None:
+        """The index bound is exclusive, which only the last index shows.
+
+        An out-of-range test that overshoots by a wide margin passes
+        whichever way the comparison is written; index 2 on a two-item
+        array is the first that must fail, and index 1 the last that must
+        not.
+        """
+        assert run_and_capture("say itemat [1, 2] 1") == "2"
+        with pytest.raises(HaltError):
+            run_and_capture("say itemat [1, 2] 2")
+
     def test_top_level_assignment(self) -> None:
         assert run_and_capture("var a is 1\na is 2\nsay a") == "2"
 
