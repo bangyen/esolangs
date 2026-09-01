@@ -27,6 +27,12 @@ from esolangs.interpreters.randomness import Randomness, draw
 class _Machine:
     """A LaserFuck run: the grid, the live lasers, and the tape."""
 
+    #: The seed a reproducible run starts from.  It belongs to the
+    #: language, not to whoever is stepping it: 2 draws the initial
+    #: heading 0, up, which is the direction this language's examples
+    #: are written for.
+    reproducible_seed = 2
+
     def __init__(
         self,
         code: list[str],

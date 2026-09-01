@@ -122,6 +122,11 @@ class _Machine:
     tests), and is the shared hook every random language here uses.
     """
 
+    #: The seed a reproducible run starts from.  It belongs to the
+    #: language, not to whoever is stepping it: 1 sends the wiki's own
+    #: junction example East, the way its walkthrough goes.
+    reproducible_seed = 1
+
     def __init__(self, code: str, io: IO, rng: Randomness | None = None) -> None:
         self.io = io
         self._rng = rng
