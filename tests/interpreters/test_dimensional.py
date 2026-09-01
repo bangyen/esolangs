@@ -61,6 +61,48 @@ class TestDimensional:
         """Everything between two *s is ignored."""
         assert run_and_capture("*=[.<]*+.+.+.") == "\x01\x02\x03"
 
+    def test_an_unbalanced_bracket_inside_a_comment_is_ignored(self) -> None:
+        """The bracket scan skips comment regions, so these are not errors.
+
+        ``test_comment_mode``'s comment holds ``[.<]`` -- balanced, so the
+        brackets inside it match whether or not the scan skips them, and a
+        scan that ignored comment regions entirely would pass it too.  An
+        *unbalanced* bracket separates the two: it is a ``ValueError`` in
+        code and nothing at all in a comment.
+        """
+        assert run_and_capture("*]*+.") == "\x01"
+        assert run_and_capture("*[*+.") == "\x01"
+        assert run_and_capture("*[[[*+.") == "\x01"
+        assert run_and_capture("*}{*+.") == "\x01"
+
+    def test_a_comment_closes_at_its_second_star(self) -> None:
+        """Commands after the closing ``*`` run.
+
+        Every other comment test would also pass if the region never
+        closed, because what follows is either nothing or more of the same
+        program.  Two prints after the comment pin the reopening: if the
+        comment swallowed them the output would be empty, and if it closed
+        one character late the first ``+`` would be lost.
+        """
+        assert run_and_capture("*xyz*+.+.") == "\x01\x02"
+
+    def test_a_bracket_after_a_comment_is_still_matched(self) -> None:
+        """The *bracket scan* has to leave comment mode too, not just the run.
+
+        The test above pins the reopening as ``step`` sees it, and passes on
+        a scan whose comment never ends, because the commands after it hold
+        no brackets for the scan to skip.  The scan only shows through the
+        error: an unmatched bracket past the comment is rejected before
+        anything executes, and would be silently ignored if the scan were
+        still inside the comment.
+        """
+        with pytest.raises(ValueError, match="unmatched"):
+            dim.run("*xyz*]", IO())
+        with pytest.raises(ValueError, match="unmatched"):
+            dim.run("*xyz*[", IO())
+        # and a balanced pair past the comment still loops
+        assert run_and_capture("*xyz*=03[.-]") == "\x03\x02\x01"
+
     def test_coordinate_read_clear(self) -> None:
         assert run_and_capture(">0>0?0.") == "\x02"
         assert run_and_capture(">0!0?0.") == "\x00"
@@ -130,6 +172,32 @@ class TestDimensional:
     def test_axis_selection(self) -> None:
         """$AXIS moves a higher pointer; ? reads its coordinate."""
         assert run_and_capture("$3>0?0.") == "\x01"
+
+    def test_the_selected_axis_is_the_one_asked_for(self) -> None:
+        """``$AXIS`` sets the axis to exactly ``AXIS``, clamped below at 2.
+
+        Every other axis test reads the selection back through what it makes
+        the *pointer* do, which several different axis values can produce:
+        ``$2`` and a selection one too high both leave a byte tape looking
+        untouched when nothing moves afterwards.  The axis itself is part of
+        the machine's snapshot, so it can be asserted directly.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.dimensional import _Machine
+
+        def axis_after(program: str) -> int:
+            machine = _Machine(program, ScriptedIO(""))
+            while not machine.halted:
+                machine.step()
+            return machine.tape.axis
+
+        assert axis_after("+.") == 2  # the default, with no $AXIS at all
+        assert axis_after("$2+.") == 2
+        assert axis_after("$3+.") == 3
+        assert axis_after("$9+.") == 9
+        # values below 2 clamp: there is no 1-pointer (a documented choice)
+        assert axis_after("$1+.") == 2
+        assert axis_after("$0+.") == 2
 
     def test_higher_axis_preserves_origin(self) -> None:
         """Moving a higher pointer away and back to the origin restores the tape."""
