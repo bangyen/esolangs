@@ -98,6 +98,24 @@ class _Machine:
         """Whether the pointer hit ``@``."""
         return self._done
 
+    # The VM's language-shaped view: Self-modifying circular tape + cursor; ip cursor,
+    # memory cells.
+
+    @property
+    def ip(self) -> int:
+        """The current instruction position."""
+        return self.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return list(self.cells)
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (tuple(self.cells), self.ind, self.ptr, self.io.position())

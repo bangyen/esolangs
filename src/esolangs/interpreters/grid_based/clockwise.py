@@ -76,6 +76,24 @@ class _Machine:
         """Whether the pointer has returned to the origin."""
         return self._done
 
+    # The VM's language-shaped view: 2D ring; ip is the pointer's (row, col, heading),
+    # memory the acc.
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        """The current instruction position."""
+        return (self.row, self.col, self.r)
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return [self.acc]
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (

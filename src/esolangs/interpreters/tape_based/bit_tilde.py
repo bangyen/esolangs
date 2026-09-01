@@ -78,6 +78,23 @@ class _Machine:
         """Whether the cursor has reached the end of the code."""
         return self.ind >= len(self.code)
 
+    # The VM's language-shaped view: Bit pool + pointer; ip the cursor, memory the pool.
+
+    @property
+    def ip(self) -> int:
+        """The current instruction position."""
+        return self.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return list(self.tape)
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (tuple(self.tape), self.cell, self.ind, self.io.position())

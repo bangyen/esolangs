@@ -310,8 +310,8 @@ class _DelegatingVM(_BaseVM):
         return self._machine.stack
 
 
-class _BrainfuckVM(_BaseVM):
-    """Tape + pointer; ``ip`` is the code cursor, ``memory`` the tape."""
+class _BrainfuckVM(_DelegatingVM):
+    """Tape + pointer; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -319,28 +319,9 @@ class _BrainfuckVM(_BaseVM):
 
         self._machine = _Machine(program, self._io)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return list(self._machine.tape)
-
-    @property
-    def stack(self) -> list[object]:
-        return []
-
-
-class _SbleqVM(_BaseVM):
-    """OISC cells + instruction pointer; ``memory`` is the program memory."""
+class _SbleqVM(_DelegatingVM):
+    """OISC cells + instruction pointer; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -348,54 +329,15 @@ class _SbleqVM(_BaseVM):
 
         self._machine = _Machine(io=self._io, mem=[int(tok) for tok in program.split()])
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ip
-
-    @property
-    def memory(self) -> list[int]:
-        return list(self._machine.mem)
-
-    @property
-    def stack(self) -> list[object]:
-        return []
-
-
-class _DimensionalVM(_BaseVM):
-    """Pointer hierarchy; ``ip`` is the code cursor, ``memory`` the axes."""
+class _DimensionalVM(_DelegatingVM):
+    """Pointer hierarchy; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.tape_based.dimensional import _Machine
 
         self._machine = _Machine(program, self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        # the single byte the pointer hierarchy currently addresses
-        return [self._machine.tape.value()]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
 
 
 class _GraphemeVM(_BaseVM):
@@ -669,33 +611,14 @@ class _CODVM(_BaseVM):
         return []
 
 
-class _PointBreakVM(_BaseVM):
-    """Variable store + loop frames; ``ip`` is the statement cursor."""
+class _PointBreakVM(_DelegatingVM):
+    """Variable store + loop frames; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.register_based.point_break import _Machine
 
         self._machine = _Machine(program, self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.pc
-
-    @property
-    def memory(self) -> list[int]:
-        return [self._machine.variables[k] for k in sorted(self._machine.variables)]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
 
 
 class _AddSubJumpVM(_BaseVM):
@@ -727,33 +650,14 @@ class _AddSubJumpVM(_BaseVM):
         return []
 
 
-class _ArrowQueueVM(_BaseVM):
-    """Direction queue; ``ip`` is the IP's (row, col, heading)."""
+class _ArrowQueueVM(_DelegatingVM):
+    """Direction queue; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.grid_based.arrowqueue import _Machine
 
         self._machine = _Machine(program.splitlines())
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> tuple[int, ...]:
-        return (self._machine.row, self._machine.col, self._machine.d)
-
-    @property
-    def memory(self) -> list[int]:
-        return []
-
-    @property
-    def stack(self) -> list[object]:
-        return list(self._machine.queue)
 
 
 class _BitdequeVM(_BaseVM):
@@ -790,13 +694,8 @@ class _BitdequeVM(_BaseVM):
         return [self._machine.reg]
 
 
-class _APainterAntVM(_BaseVM):
-    """2D grid; ``ip`` is the instruction cursor, ``memory`` the cell colours.
-
-    The program never halts (implicit loop), so the debugger's ``halted``
-    stays ``False`` and the state-cycle hang detector is the only way to
-    prove a program loops.
-    """
+class _APainterAntVM(_DelegatingVM):
+    """2D grid; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -804,53 +703,15 @@ class _APainterAntVM(_BaseVM):
 
         self._machine = _Machine(program)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ip
-
-    @property
-    def memory(self) -> list[int]:
-        return [v for _, v in sorted(self._machine.grid.items())]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
-
-
-class _ClockwiseVM(_BaseVM):
-    """2D ring; ``ip`` is the pointer's (row, col, heading), ``memory`` the acc."""
+class _ClockwiseVM(_DelegatingVM):
+    """2D ring; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.grid_based.clockwise import _Machine
 
         self._machine = _Machine(program.splitlines(), self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> tuple[int, ...]:
-        return (self._machine.row, self._machine.col, self._machine.r)
-
-    @property
-    def memory(self) -> list[int]:
-        return [self._machine.acc]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
 
 
 class _DigVM(_DelegatingVM):
@@ -863,36 +724,14 @@ class _DigVM(_DelegatingVM):
         self._machine = _Machine(program.splitlines(), self._io)
 
 
-class _Wii2dVM(_BaseVM):
-    """2D wrap-around grid.
-
-    ``ip`` is (row, col, heading), ``memory`` the accumulator.
-    """
+class _Wii2dVM(_DelegatingVM):
+    """2D wrap-around grid; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.grid_based.wii2d import _Machine
 
         self._machine = _Machine(program.splitlines(), self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> tuple[int, ...]:
-        return (self._machine.row, self._machine.col, self._machine.vel)
-
-    @property
-    def memory(self) -> list[int]:
-        return [self._machine.acc]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
 
 
 class _DecleqVM(_BaseVM):
@@ -924,8 +763,8 @@ class _DecleqVM(_BaseVM):
         return []
 
 
-class _SixFiveVM(_BaseVM):
-    """Token tape + cursor; ``ip`` the cursor, ``memory`` the cell tape."""
+class _SixFiveVM(_DelegatingVM):
+    """Token tape + cursor; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -933,28 +772,9 @@ class _SixFiveVM(_BaseVM):
 
         self._machine = _Machine(program, self._io)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return list(self._machine.tape)
-
-    @property
-    def stack(self) -> list[object]:
-        return []
-
-
-class _BackVM(_BaseVM):
-    """2D beam; ``ip`` is the beam's (row, col, direction), ``memory`` the bit tape."""
+class _BackVM(_DelegatingVM):
+    """2D beam; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -962,53 +782,15 @@ class _BackVM(_BaseVM):
 
         self._machine = _Machine(program.splitlines(), self._io)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> tuple[int, ...]:
-        return (self._machine.row, self._machine.col, self._machine.a, self._machine.b)
-
-    @property
-    def memory(self) -> list[int]:
-        return list(self._machine.tape)
-
-    @property
-    def stack(self) -> list[object]:
-        return []
-
-
-class _BIOVM(_BaseVM):
-    """Registers + loop stack + cursor; ``ip`` the cursor, ``memory`` the regs."""
+class _BIOVM(_DelegatingVM):
+    """Registers + loop stack + cursor; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.register_based.bio import _Machine
 
         self._machine = _Machine(program, self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return list(self._machine.reg)
-
-    @property
-    def stack(self) -> list[object]:
-        return list(self._machine.stk)
 
 
 class _NoCommentVM(_BaseVM):
@@ -1072,8 +854,8 @@ class _ThreeDBrainfuckVM(_BaseVM):
         return []
 
 
-class _FactorVM(_BaseVM):
-    """Decoded brainfuck machine; ``ip`` the cursor, ``memory`` the tape."""
+class _FactorVM(_DelegatingVM):
+    """Decoded brainfuck machine; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -1081,28 +863,9 @@ class _FactorVM(_BaseVM):
 
         self._machine = _Machine(program, self._io)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.bf.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return list(self._machine.bf.tape)
-
-    @property
-    def stack(self) -> list[object]:
-        return []
-
-
-class _BasicfuckVM(_BaseVM):
-    """Compiled code + frame stack; ``ip`` the top frame's cursor, ``memory`` tape."""
+class _BasicfuckVM(_DelegatingVM):
+    """Compiled code + frame stack; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -1110,28 +873,9 @@ class _BasicfuckVM(_BaseVM):
 
         self._machine = _Machine(program, self._io)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int | None:
-        return self._machine.frames[-1].ptr if self._machine.frames else None
-
-    @property
-    def memory(self) -> list[int]:
-        return list(self._machine.tape.cells())
-
-    @property
-    def stack(self) -> list[object]:
-        return []
-
-
-class _PainfuckVM(_BaseVM):
-    """Translated tape + cursor; ``ip`` the cursor, ``memory`` the tape."""
+class _PainfuckVM(_DelegatingVM):
+    """Translated tape + cursor; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -1139,28 +883,9 @@ class _PainfuckVM(_BaseVM):
 
         self._machine = _Machine(program, self._io)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return list(self._machine.tape)
-
-    @property
-    def stack(self) -> list[object]:
-        return list(self._machine.loop)
-
-
-class _BitTildeVM(_BaseVM):
-    """Bit pool + pointer; ``ip`` the cursor, ``memory`` the pool."""
+class _BitTildeVM(_DelegatingVM):
+    """Bit pool + pointer; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -1168,28 +893,9 @@ class _BitTildeVM(_BaseVM):
 
         self._machine = _Machine(program, self._io)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return list(self._machine.tape)
-
-    @property
-    def stack(self) -> list[object]:
-        return []
-
-
-class _CollatzMultiverseVM(_BaseVM):
-    """Named registers + line pointer; ``ip`` the line, ``memory`` the regs."""
+class _CollatzMultiverseVM(_DelegatingVM):
+    """Named registers + line pointer; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -1197,53 +903,15 @@ class _CollatzMultiverseVM(_BaseVM):
 
         self._machine = _Machine(program, self._io)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ip
-
-    @property
-    def memory(self) -> list[int]:
-        return [self._machine.registers[k] for k in sorted(self._machine.registers)]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
-
-
-class _PolynomialVM(_BaseVM):
-    """Single register + cursor; ``ip`` the cursor, ``memory`` the register."""
+class _PolynomialVM(_DelegatingVM):
+    """Single register + cursor; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.register_based.polynomial import _Machine
 
         self._machine = _Machine(program, self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return [self._machine.reg]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
 
 
 class _RAM0VM(_BaseVM):
@@ -1276,8 +944,8 @@ class _RAM0VM(_BaseVM):
         return []
 
 
-class _MinskySwapVM(_BaseVM):
-    """Two registers + pointer; ``ip`` the cursor, ``memory`` both registers."""
+class _MinskySwapVM(_DelegatingVM):
+    """Two registers + pointer; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -1285,53 +953,15 @@ class _MinskySwapVM(_BaseVM):
 
         self._machine = _Machine(program, self._io)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return list(self._machine.reg)
-
-    @property
-    def stack(self) -> list[object]:
-        return []
-
-
-class _HomeRowVM(_BaseVM):
-    """5x5 torus grid + pointer; ``ip`` the cursor, ``memory`` the 25 cells."""
+class _HomeRowVM(_DelegatingVM):
+    """5x5 torus grid + pointer; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.tape_based.home_row import _Machine
 
         self._machine = _Machine(program, self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return list(self._machine.grid)
-
-    @property
-    def stack(self) -> list[object]:
-        return []
 
 
 class _UnsquareVM(_BaseVM):
@@ -1363,8 +993,8 @@ class _UnsquareVM(_BaseVM):
         return list(self._machine.stack)
 
 
-class _ROTFuckVM(_BaseVM):
-    """Rotating tape + cursor; ``ip`` the cursor, ``memory`` the tape."""
+class _ROTFuckVM(_DelegatingVM):
+    """Rotating tape + cursor; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -1372,53 +1002,15 @@ class _ROTFuckVM(_BaseVM):
 
         self._machine = _Machine(program, self._io)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return list(self._machine.tape)
-
-    @property
-    def stack(self) -> list[object]:
-        return []
-
-
-class _CirclefuckVM(_BaseVM):
-    """Self-modifying circular tape + cursor; ``ip`` cursor, ``memory`` cells."""
+class _CirclefuckVM(_DelegatingVM):
+    """Self-modifying circular tape; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.tape_based.circlefuck import _Machine
 
         self._machine = _Machine(program, self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return list(self._machine.cells)
-
-    @property
-    def stack(self) -> list[object]:
-        return []
 
 
 class _BFStackVM(_DelegatingVM):
@@ -1431,33 +1023,14 @@ class _BFStackVM(_DelegatingVM):
         self._machine = _Machine(program, self._io)
 
 
-class _BrainIfVM(_BaseVM):
-    """Cell tape + line cursor; ``ip`` the cursor, ``memory`` the cells."""
+class _BrainIfVM(_DelegatingVM):
+    """Cell tape + line cursor; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.tape_based.brainif import _Machine
 
         self._machine = _Machine(program.splitlines(), self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return list(self._machine.cells)
-
-    @property
-    def stack(self) -> list[object]:
-        return []
 
 
 class _MinifuckVM(_DelegatingVM):
@@ -1470,8 +1043,8 @@ class _MinifuckVM(_DelegatingVM):
         self._machine = _Machine(program, self._io)
 
 
-class _TaglateVM(_BaseVM):
-    """Queue + token cursor; ``ip`` the cursor, ``memory`` the queue."""
+class _TaglateVM(_DelegatingVM):
+    """Queue + token cursor; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -1479,28 +1052,9 @@ class _TaglateVM(_BaseVM):
 
         self._machine = _Machine(program.splitlines(), self._io)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return list(self._machine.queue)
-
-    @property
-    def stack(self) -> list[object]:
-        return []
-
-
-class _OneTwoThreeVM(_BaseVM):
-    """Unbounded bit tape + pointer; ``ip`` is the code cursor."""
+class _OneTwoThreeVM(_DelegatingVM):
+    """Unbounded bit tape + pointer; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -1508,28 +1062,9 @@ class _OneTwoThreeVM(_BaseVM):
 
         self._machine = _Machine(program, self._io)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ip
-
-    @property
-    def memory(self) -> list[int]:
-        return [self._machine.byte()]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
-
-
-class _PctSquaredMinusOneVM(_BaseVM):
-    """Accumulator + cursor; ``ip`` the cursor, ``memory`` the accumulator."""
+class _PctSquaredMinusOneVM(_DelegatingVM):
+    """Accumulator + cursor; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -1539,33 +1074,9 @@ class _PctSquaredMinusOneVM(_BaseVM):
 
         self._machine = _Machine(program, self._io)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return [self._machine.acc]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
-
-
-class _SuffolkVM(_BaseVM):
-    """Tape + accumulator; ``ip`` the cursor, ``memory`` the tape.
-
-    The wiki's rerun is infinite, so the debugger's ``halted`` stays
-    ``False`` and the state-cycle hang detector is the only way to prove a
-    program loops -- the same reading A Painter Ant's implicit loop gets.
-    """
+class _SuffolkVM(_DelegatingVM):
+    """Tape + accumulator; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -1573,28 +1084,9 @@ class _SuffolkVM(_BaseVM):
 
         self._machine = _Machine(program, self._io)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return list(self._machine.tape)
-
-    @property
-    def stack(self) -> list[object]:
-        return []
-
-
-class _ContainerVM(_BaseVM):
-    """Named containers + tick count; ``ip`` the tick, ``memory`` the values."""
+class _ContainerVM(_DelegatingVM):
+    """Named containers + tick count; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -1602,107 +1094,15 @@ class _ContainerVM(_BaseVM):
 
         self._machine = _Machine(program.splitlines(), self._io)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.tick
-
-    @property
-    def memory(self) -> list[int]:
-        return [self._machine.var[k] for k in sorted(self._machine.var)]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
-
-
-class _InjectVM(_BaseVM):
-    """Label-blocks + line cursor; ``ip`` the line, ``memory`` block sizes.
-
-    Inject has no numbers at all -- its state is the text of its own
-    program -- so ``memory`` reports each block's line count, in label
-    order, which is the one numeric view of the state the language itself
-    can test (``skipif`` asks whether a block has at least one line).
-    ``stack`` is the labels currently enclosing the pointer, innermost
-    last, since ``skip``'s second clause is decided by that nesting.
-    """
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.other.inject import _Machine
-
-        self._machine = _Machine(program.splitlines(), self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        machine = self._machine
-        # A block's size is the gap between its delimiters, so the spans
-        # alone give it -- no need to slice the lines back out.
-        spans = machine.spans
-        return [spans[name][1] - spans[name][0] - 1 for name in sorted(spans)]
-
-    @property
-    def stack(self) -> list[object]:
-        machine = self._machine
-        inside = [
-            name
-            for name, (begin, end) in machine.spans.items()
-            if begin < machine.ind < end
-        ]
-        ordered = sorted(
-            inside, key=lambda n: machine.spans[n][1] - machine.spans[n][0]
-        )
-        return list(reversed(ordered))
-
-
-class _NevermindVM(_BaseVM):
-    """Named variables + line cursor; ``ip`` the line, ``memory`` the vars."""
+class _NevermindVM(_DelegatingVM):
+    """Named variables + line cursor; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.register_based.nevermind import _Machine
 
         self._machine = _Machine(program.splitlines(), self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return [
-            int(v)
-            for v in (self._machine.var[k] for k in sorted(self._machine.var))
-            if isinstance(v, (int, float))
-        ]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
 
 
 class _BFPDAVM(_BaseVM):
@@ -1763,8 +1163,8 @@ class _ThreeXVM(_BaseVM):
         return list(self._machine.stack)
 
 
-class _SophieVM(_BaseVM):
-    """Accumulator + loop stack; ``ip`` the cursor, ``memory`` the acc."""
+class _SophieVM(_DelegatingVM):
+    """Accumulator + loop stack; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -1772,28 +1172,9 @@ class _SophieVM(_BaseVM):
 
         self._machine = _Machine(program, self._io)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return [self._machine.acc]
-
-    @property
-    def stack(self) -> list[object]:
-        return list(self._machine.stk)
-
-
-class _JauneVM(_BaseVM):
-    """Cell tape + hold register; ``ip`` the command position."""
+class _JauneVM(_DelegatingVM):
+    """Cell tape + hold register; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -1801,28 +1182,9 @@ class _JauneVM(_BaseVM):
 
         self._machine = _Machine(program, self._io)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.pos
-
-    @property
-    def memory(self) -> list[int]:
-        return list(self._machine.cells)
-
-    @property
-    def stack(self) -> list[object]:
-        return list(self._machine.call_stack)
-
-
-class _SlowAcvMammalianVM(_BaseVM):
-    """23 arrays + pointer; ``memory`` is the current array, ``stack`` all 23."""
+class _SlowAcvMammalianVM(_DelegatingVM):
+    """23 arrays + pointer; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -1830,28 +1192,9 @@ class _SlowAcvMammalianVM(_BaseVM):
 
         self._machine = _Machine(program, self._io)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return list(self._machine.lst[self._machine.ptr])
-
-    @property
-    def stack(self) -> list[object]:
-        return [row for arr in self._machine.lst for row in arr]
-
-
-class _ZtoalcLVM(_BaseVM):
-    """Collatz-trajectory pointer; ``memory`` is the sorted variable values."""
+class _ZtoalcLVM(_DelegatingVM):
+    """Collatz-trajectory pointer; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -1859,53 +1202,15 @@ class _ZtoalcLVM(_BaseVM):
 
         self._machine = _Machine(program.splitlines(), self._io)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ptr
-
-    @property
-    def memory(self) -> list[int]:
-        return [v for _, v in sorted(self._machine.var.items()) if isinstance(v, int)]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
-
-
-class _BetweenVM(_BaseVM):
-    """Goto-based variables; ``ip`` the program counter, ``memory`` the ints."""
+class _BetweenVM(_DelegatingVM):
+    """Goto-based variables; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.register_based.between import _Machine
 
         self._machine = _Machine(program.splitlines(), self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.pc
-
-    @property
-    def memory(self) -> list[int]:
-        return [v for v in self._machine.state.values() if type(v) is int]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
 
 
 class _MyScriptVM(_BaseVM):
@@ -1943,8 +1248,8 @@ class _MyScriptVM(_BaseVM):
         return []
 
 
-class _LamfuncVM(_BaseVM):
-    """Prefix-call evaluator; ``ip`` is the top-level token cursor."""
+class _LamfuncVM(_DelegatingVM):
+    """Prefix-call evaluator; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -1952,36 +1257,9 @@ class _LamfuncVM(_BaseVM):
 
         self._machine = _Machine(program, self._io)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return [v for v in self._machine.vars.values() if type(v) is int]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
-
-
-class _CvncVM(_BaseVM):
-    """Accumulator and deque; ``ip`` is the command cursor.
-
-    ``memory`` puts the accumulator in front of the deque, the two places a
-    CV(N)(C) program keeps a number.  ``stack`` is the deque itself, which
-    the language pushes and pops from both ends.  The function under
-    construction is neither, so it appears in neither -- it holds symbols
-    rather than values, and ``snapshot`` is what carries it for cycle
-    detection.
-    """
+class _CvncVM(_DelegatingVM):
+    """Accumulator and deque; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -1989,58 +1267,15 @@ class _CvncVM(_BaseVM):
 
         self._machine = _Machine(program, self._io)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.pointer
-
-    @property
-    def memory(self) -> list[int]:
-        return [self._machine.accumulator, *self._machine.deque]
-
-    @property
-    def stack(self) -> list[object]:
-        return list(self._machine.deque)
-
-
-class _FargoVM(_BaseVM):
-    """Prefix-call evaluator; ``ip`` is the top-level line cursor.
-
-    ``memory`` is the language's whole state: the input number it was given
-    and the output number it has built so far.  ``stack`` is the live frame
-    stack, since Fargo's only loop is recursion.
-    """
+class _FargoVM(_DelegatingVM):
+    """Prefix-call evaluator; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.other.fargo import _Machine
 
         self._machine = _Machine(program, self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return [self._machine.number, self._machine.output]
-
-    @property
-    def stack(self) -> list[object]:
-        return list(self._machine.frames)
 
 
 class _ForbinVM(_BaseVM):
@@ -2248,7 +1483,6 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Suffolk": _SuffolkVM,
     "Container": _ContainerVM,
     "Nevermind": _NevermindVM,
-    "Inject": _InjectVM,
     "BF-PDA": _BFPDAVM,
     "3x": _ThreeXVM,
     "Sophie": _SophieVM,

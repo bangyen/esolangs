@@ -61,6 +61,24 @@ class _Machine:
         """Whether the beam has reached a ``*``."""
         return self._done
 
+    # The VM's language-shaped view: 2D beam; ip is the beam's (row, col, direction),
+    # memory the bit tape.
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        """The current instruction position."""
+        return (self.row, self.col, self.a, self.b)
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return list(self.tape)
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (

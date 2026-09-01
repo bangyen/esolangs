@@ -100,6 +100,19 @@ class _Machine:
         """The implicit loop never halts; only a repeated state proves a loop."""
         return False
 
+    # The VM's language-shaped view: 2D grid; ip is the instruction cursor, memory the
+    # cell colours.
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return [v for _, v in sorted(self.grid.items())]
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (frozenset(self.grid.items()), self.x, self.y, self.ip)

@@ -118,6 +118,24 @@ class _Machine:
         """Whether the cursor has reached the end of the code."""
         return self.ind >= self.n
 
+    # The VM's language-shaped view: Translated tape + cursor; ip the cursor, memory
+    # the tape.
+
+    @property
+    def ip(self) -> int:
+        """The current instruction position."""
+        return self.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return list(self.tape)
+
+    @property
+    def stack(self) -> list[object]:
+        """The stack."""
+        return list(self.loop)
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (

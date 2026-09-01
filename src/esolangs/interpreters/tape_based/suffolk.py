@@ -50,6 +50,23 @@ class _Machine:
         """The wiki's rerun never halts; only a repeated state proves a loop."""
         return False
 
+    # The VM's language-shaped view: Tape + accumulator; ip the cursor, memory the tape.
+
+    @property
+    def ip(self) -> int:
+        """The current instruction position."""
+        return self.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return list(self.tape)
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
 
