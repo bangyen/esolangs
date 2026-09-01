@@ -191,6 +191,32 @@ class _Machine:
     def halted(self) -> bool:
         return not self.cods
 
+    # The VM's language-shaped view.
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        """Every live cod's ``(row, col, heading, value)``, flattened.
+
+        A COD program can have several cods running at once, so there is no
+        single cursor: they are sorted for a stable order and concatenated,
+        with the heading coded as its index into ``_DIRS`` above.
+        """
+        order = list(_DIRS)
+        cods = sorted(
+            (cod.r, cod.c, order.index(cod.d), cod.value) for cod in self.cods
+        )
+        return tuple(v for cod in cods for v in cod)
+
+    @property
+    def memory(self) -> list[int]:
+        """Each live cod's carried value."""
+        return [cod.value for cod in self.cods]
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (
