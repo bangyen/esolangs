@@ -3,6 +3,7 @@
 from esolangs.interpreters.tape_based.circlefuck import run
 from tests.interpreters.contract import CycleContract, SnapshotContract
 from tests.interpreters.runner import run_program
+from tests.raises import raises_message
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
@@ -148,11 +149,9 @@ class TestStepMachine:
 
     def test_the_unmatched_bracket_message_reads_exactly(self) -> None:
         """``match=`` only looks for a substring, so pin the whole message."""
-        import pytest
 
-        with pytest.raises(ValueError) as caught:
+        with raises_message(ValueError, "unmatched bracket"):
             run_and_capture("\\0[.@")
-        assert str(caught.value) == "unmatched bracket"
 
     def test_loop_skip_finds_matching_bracket(self) -> None:
         assert run_and_capture("\\0[.]@") == ""
@@ -169,11 +168,9 @@ class TestStepMachine:
 
     def test_the_empty_program_message_reads_exactly(self) -> None:
         """``match=`` only looks for a substring, so pin the whole message."""
-        import pytest
 
-        with pytest.raises(ValueError) as caught:
+        with raises_message(ValueError, "Circlefuck program cannot be empty"):
             run_and_capture("")
-        assert str(caught.value) == "Circlefuck program cannot be empty"
 
     def test_insert_leaves_the_cursor_on_the_cell_after_the_new_one(self) -> None:
         """``{`` steps the cursor past the cell it just pushed forward.

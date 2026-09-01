@@ -9,6 +9,7 @@ import pytest
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.container import run
 from tests.interpreters.contract import SnapshotContract
+from tests.raises import raises_message
 
 HELLO_WORLD = [
     "A:",
@@ -78,9 +79,8 @@ class TestContainer:
 
     def test_the_malformed_program_message_reads_exactly(self) -> None:
         """``match=`` only looks for a substring, so pin the whole message."""
-        with pytest.raises(ValueError) as caught:
+        with raises_message(ValueError, "rule line before any container declaration"):
             run(["+1 A>=0"], IO())
-        assert str(caught.value) == "rule line before any container declaration"
 
     def test_output_is_masked_to_seven_bits(self) -> None:
         """OUT is printed modulo 128, so 200 comes out as 72.

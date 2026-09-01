@@ -11,6 +11,7 @@ import pytest
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.bio import run
 from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.raises import raises_message
 
 
 class TestBIOBasicCommands:
@@ -219,9 +220,8 @@ class TestBIOEdgeCases:
             ("0ox;};1ix;", "BIO: '}' closes no loop"),
             ("0iy{0ox;", "BIO: unmatched '{'"),
         ):
-            with pytest.raises(ValueError) as caught:
+            with raises_message(ValueError, message):
                 run(code, io=IO())
-            assert str(caught.value) == message
 
     def test_negative_register_values(self) -> None:
         """Test handling of negative register values."""

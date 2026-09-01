@@ -12,6 +12,7 @@ from contextlib import redirect_stdout
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.minsky_swap import run
 from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.raises import raises_message
 
 
 class TestMinskySwapBasicCommands:
@@ -227,11 +228,9 @@ class TestMinskySwapEdgeCases:
         here: it is the only thing a caller sees when a program is
         rejected, and nothing else pins its wording.
         """
-        import pytest
 
-        with pytest.raises(ValueError) as caught:
+        with raises_message(ValueError, "unmatched '~' with no jump target"):
             run("~~\n1", io=IO())
-        assert str(caught.value) == "unmatched '~' with no jump target"
 
     def test_multiple_tildes(self) -> None:
         """Test program with multiple tildes and jump targets."""

@@ -6,6 +6,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.three_x import run
 from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.raises import raises_message
 
 
 def run_program(code: str, stdin: str = "") -> str:
@@ -104,9 +105,8 @@ class Test3x:
             assert str(caught.value) == message, code
 
         for code, stdin in (("?", "abc"), ("?", "1/0")):
-            with pytest.raises(ValueError) as raised:
+            with raises_message(ValueError, "input must be an integer or a fraction"):
                 run_program(code, stdin)
-            assert str(raised.value) == "input must be an integer or a fraction"
 
     def test_loop_jumps_back_on_nonzero_top(self) -> None:
         # pass 1 ends with a 3 on top (jump back), pass 2 with a 0 (exit)

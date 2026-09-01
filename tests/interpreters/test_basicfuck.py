@@ -8,6 +8,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.basicfuck import run
 from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.raises import raises_message
 
 
 def run_program(code: str, stdin: str = "") -> str:
@@ -141,9 +142,8 @@ class TestBasicfuck:
             (H + "z += 1;", "Identifier is undefined."),
             (H + "a += ;", "Invalid syntax."),
         ):
-            with pytest.raises(ValueError) as caught:
+            with raises_message(ValueError, message, code):
                 run_program(code)
-            assert str(caught.value) == message, code
 
     def test_invalid_token(self) -> None:
         with pytest.raises(ValueError, match="token"):
