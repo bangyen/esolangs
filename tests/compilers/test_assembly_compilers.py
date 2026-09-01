@@ -1527,3 +1527,33 @@ class TestMyScriptCompiler:
             'check 1?\n    if 2,\n        say "a"\n    else,\n        say "b"'
         )
         assert out.count("call .b_say") >= 2
+
+    def test_distinct_arrays_abort_rather_than_compare_by_address(self) -> None:
+        """``equals`` on two arrays cannot answer by identity.
+
+        Python's ``==`` compares them elementwise, so ``equals [ 1 ] [ 1 ]``
+        is true; two arena addresses would answer ``no``.  Aborting keeps
+        the compiled program from answering where it would answer wrongly.
+        """
+        out = self.comp("say equals [ 1 ] [ 1 ]")
+        assert ".eq_ident_true:" in out
+        # the ARR tag is tested on both operands before the `no` answer
+        assert out.count(f"    li   t1, {4}\n    beq  t0, t1, .abort\n") >= 1
+
+    def test_an_arity_one_closure_read_plainly_is_rejected(self) -> None:
+        """A plain read of a name holding a one-parameter closure cannot compile.
+
+        The interpreter consumes that many argument expressions after the
+        read, which runs the token list out and raises the same
+        ``ValueError`` -- so this is the eager/lazy timing difference, not
+        a value the compiler mishandles.
+        """
+        with pytest.raises(ValueError, match="expression ended"):
+            self.comp(
+                "var mk is func\n"
+                "    var g is func a\n"
+                "        return add a 1\n"
+                "    return g\n"
+                "var h is mk\n"
+                "say h 5"
+            )
