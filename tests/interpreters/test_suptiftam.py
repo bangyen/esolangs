@@ -1,5 +1,7 @@
 """Unit tests for the Suptiftam interpreter."""
 
+from typing import ClassVar
+
 import pytest
 
 from esolangs.exceptions import HaltError
@@ -358,14 +360,58 @@ class TestRobustness:
             "xyz",  # bare identifier statement
             "term=!",  # unexpected character
         ):
-            with pytest.raises(
-                ValueError,
-                match=(
-                    r"malformed|unexpected|needs|missing|without|must be|"
-                    r"cannot|unknown|expected|function|at most"
-                ),
-            ):
+            with pytest.raises(ValueError):
                 run_program(code)
+
+    # Each malformed program above paired with the message it must raise.
+    # The list alone only proves *something* was rejected: its ``match=``
+    # named every message the parser can emit, so a check firing in the
+    # wrong place -- or one message swapped for another -- still passed.
+    # The positions matter too, and were never asserted at all.
+    REJECTIONS: ClassVar[list[tuple[str, str]]] = [
+        ("fi", "fi without a matching fd"),
+        ("fd f :x\nterm='a'", "function 'f' is missing its fi"),
+        ("fd a b c:", "fd header needs a function name"),
+        ("fd x", "fd header needs a colon"),
+        ("fd 5 :x", "fd header needs a function name"),
+        ("fd x 5:", "the fd argument must be an identifier"),
+        ("f(:x:g)", "a call has exactly one function name"),
+        ("f(:x)", "a call needs its argument between two colons"),
+        ("f(:x:)5", "unexpected token ('num', 5) in a call"),
+        ("f(:x:)if(1)if(2)", "a call has at most one if"),
+        ("(:x:)", "a call needs a function name and parentheses"),
+        ("f(:if(1):)", "a call's argument must be a value"),
+        ("f(:'a)", "malformed byte literal at position 3"),
+        ("term='a", "malformed byte literal at position 5"),
+        ("term=%x[1]2%", "malformed math at position 5"),
+        ("term=%+1]2%", "malformed math at position 5"),
+        ("term=%+[1 2%", "malformed math at position 5"),
+        ("term=%+[1]2", "malformed math at position 5"),
+        ("term=%+[1]", "expected a value"),
+        ("term=%+[%+[1]2%]3%", "math cannot be nested at position 5"),
+        ("term=%/[1]%+[1]2%%", "math cannot be nested at position 5"),
+        ("term=%+[1]#%", "expected a value at position 10"),
+        ("term=%+['a]2%", "malformed byte literal"),
+        ("t[]", "malformed tape declaration at position 1"),
+        ("t[xyz]", "unknown tape type 'xyz'"),
+        ("t[integer", "malformed tape declaration at position 1"),
+        ("t[integer] extra", "malformed tape declaration"),
+        ("[integer]", "malformed tape declaration at position 0"),
+        ("x~", "malformed ~ statement"),
+        ("x~)", "malformed ~ statement"),
+        ("x=", "malformed = statement"),
+        ("xyz", "malformed statement: 'xyz'"),
+        ("term=!", "unexpected character '!' at position 5"),
+    ]
+
+    @pytest.mark.parametrize(("code", "message"), REJECTIONS)
+    def test_each_rejection_says_its_own_thing(
+        self, code: str, message: str
+    ) -> None:
+        """Every malformed program is paired with the message it raises."""
+        with pytest.raises(ValueError) as caught:
+            run_program(code)
+        assert str(caught.value) == message
 
     def test_local_assignment_uses_the_frame_scope(self) -> None:
         """A new name inside a function is local, not global."""
