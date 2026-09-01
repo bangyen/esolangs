@@ -629,41 +629,61 @@ class TestWII2D:
             got = self.run_chain(template, bits)
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_doubling_trap_is_abandoned_for_the_ranked_retry(self) -> None:
-        """A pass whose values run away is dropped, and the retry answers.
+    def test_decode_takes_one_candidate_and_never_backtracks(self) -> None:
+        """The decode is a single pass: the head candidate, every step.
 
-        ``s`` squares, so a fold roughly doubles every live value's bit
-        length whenever ``_wii2d_compress`` cannot halve -- and it cannot
-        when halving would collide two values needing different bits.  The
-        default pass gives up once the leading state passes
-        ``_WII2D_MAX_STATE_BITS`` so the magnitude-first retry can run; this
-        pins that the abandonment is what the threshold does, by lowering it
-        far enough that an ordinary pattern trips it.
+        This is the property that makes it a construction rather than a
+        search, so it is pinned directly.  Wrapping ``_wii2d_folds`` to hand
+        back *only* its first candidate cannot change any emitted op string,
+        because the decode never looks at the others.
         """
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.wii2d")
         from esolangs.tools.boolean.wii2d import (
             _wii2d_apply,
-            _wii2d_decode_at,
-            _wii2d_decode_pass,
+            _wii2d_decode,
+            _wii2d_folds,
         )
 
-        pattern = [0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1]
-        with pytest.MonkeyPatch.context() as patch:
-            # A threshold of zero bits is tripped by the first fold, so the
-            # unranked pass can never return and every answer is the retry's.
-            patch.setattr(module, "_WII2D_MAX_STATE_BITS", 0)
-            assert _wii2d_decode_pass(pattern, 4, ranked=False) is None
-            assert _wii2d_decode_pass(pattern, 4, ranked=True) is None
-            assert _wii2d_decode_at(pattern, 4) is None
+        patterns = [
+            [0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1],
+            [0, 1] * 8,
+            [1, 1, 0, 0, 1, 0, 1, 0],
+        ]
+        before = [_wii2d_decode(list(p)) for p in patterns]
 
-        # Undisturbed, the same pattern decodes and the threshold is never
-        # approached: the shipped domains stay on the default pass, which is
-        # why their emitted programs are unchanged by the retry existing.
-        ops = _wii2d_decode_at(pattern, 4)
-        assert ops is not None
-        assert [_wii2d_apply(ops, x) for x in range(len(pattern))] == pattern
+        head_only = _wii2d_folds
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(
+                module,
+                "_wii2d_folds",
+                lambda values, bits: head_only(values, bits)[:1],
+            )
+            after = [_wii2d_decode(list(p)) for p in patterns]
+
+        assert after == before
+        for pattern, ops in zip(patterns, before, strict=True):
+            assert ops is not None
+            assert [_wii2d_apply(ops, x) for x in range(len(pattern))] == pattern
+
+    def test_decode_is_exhaustive_over_the_widest_shipped_domain(self) -> None:
+        """Every eight-point pattern decodes under the single-candidate rule.
+
+        ``D == 8`` is exhaustive here to keep the test quick; the same sweep
+        run over all 65536 patterns at ``D == 16`` -- the widest domain the
+        general path asks for -- also passes, which is what licenses the
+        claim that the rule needs no beam.
+        """
+        import itertools
+
+        from esolangs.tools.boolean.wii2d import _wii2d_apply, _wii2d_decode
+
+        for bits in itertools.product([0, 1], repeat=8):
+            pattern = list(bits)
+            ops = _wii2d_decode(pattern)
+            assert ops is not None, pattern
+            assert [_wii2d_apply(ops, x) for x in range(8)] == pattern
 
     def test_decode_constant_pattern_is_a_single_digit(self) -> None:
         """A constant column needs no folding at all, just a digit."""
@@ -749,70 +769,62 @@ class TestWII2D:
         # The package re-exports the generator under the submodule's own
         # name, so import the module explicitly rather than by attribute.
         module = importlib.import_module("esolangs.tools.boolean.wii2d")
-        from esolangs.tools.boolean.wii2d import _wii2d_decode, _wii2d_decode_at
+        from esolangs.tools.boolean.wii2d import _wii2d_decode
 
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(module, "_wii2d_folds", lambda *_: [])
-            assert _wii2d_decode_at([0, 1, 1, 0], 4) is None
             assert _wii2d_decode([0, 1, 1, 0]) is None
 
-    def test_folds_that_never_shrink_run_the_search_out(self) -> None:
-        """A fold that returns its own state exhausts the iteration cap.
+    def test_folds_that_never_shrink_run_the_loop_out(self) -> None:
+        """A fold that returns its own state exhausts the iteration bound.
 
-        The loop is bounded so a non-shrinking fold cannot spin forever.
-        Past the cap the surviving states get one last look -- a state that
-        did reach two live values still answers -- and anything else is
-        ``None``.
+        Real folds merge at least one pair, so the live count strictly drops
+        and the loop is far shorter than its bound.  A fold that shrinks
+        nothing is the pathological case the bound exists for: it must stop
+        and answer ``None`` rather than spin.
         """
         import importlib
 
         # The package re-exports the generator under the submodule's own
         # name, so import the module explicitly rather than by attribute.
         module = importlib.import_module("esolangs.tools.boolean.wii2d")
-        from esolangs.tools.boolean.wii2d import _wii2d_decode_at
+        from esolangs.tools.boolean.wii2d import _wii2d_decode
 
         def stuck(
             values: list[int], _bits: list[int]
-        ) -> list[tuple[int, int, str, list[int]]]:
-            return [(len(set(values)), 1, "+", list(values))]
+        ) -> list[tuple[int, int, int, str, list[int]]]:
+            return [(max(values), len(set(values)), 1, "+", list(values))]
 
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(module, "_wii2d_folds", stuck)
             # four distinct live values, so the two-value exit never fires
-            assert _wii2d_decode_at([0, 1, 1, 0, 1, 0, 0, 1], 4) is None
+            assert _wii2d_decode([0, 1, 1, 0, 1, 0, 0, 1]) is None
 
         # A fold that collides two inputs needing different bits leaves a
-        # state with no live map at all; that branch is dropped, not decoded.
+        # state with no live map at all; that is a dead end, not a decode.
         def collides(
             _values: list[int], _bits: list[int]
-        ) -> list[tuple[int, int, str, list[int]]]:
-            return [(1, 1, "", [2, 2, 2, 2])]
+        ) -> list[tuple[int, int, int, str, list[int]]]:
+            return [(2, 1, 1, "", [2, 2, 2, 2])]
 
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(module, "_wii2d_folds", collides)
-            assert _wii2d_decode_at([0, 1, 1, 0], 4) is None
+            assert _wii2d_decode([0, 1, 1, 0]) is None
 
-        # A state that only reaches two live values as the cap expires is
-        # still answered, from that last look rather than from the loop.
-        bits = [0, 1, 1, 0]
-        collapse_at = 4 * len(bits) + 8
+    def test_chain_is_a_junction_chain_then_a_decode(self) -> None:
+        """The constructed routes have the shape the docstring claims.
 
-        def late(
-            values: list[int], _bits: list[int]
-        ) -> list[tuple[int, int, str, list[int]]]:
-            calls.append(None)
-            if len(calls) >= collapse_at:
-                return [(2, 1, "", [0, 1, 1, 0])]
-            return [(len(set(values)), 1, "", list(values))]
-
-        calls: list[None] = []
-        with pytest.MonkeyPatch.context() as patch:
-            patch.setattr(module, "_wii2d_folds", late)
-            assert _wii2d_decode_at(bits, 1) is not None
-
-    def test_chain_is_an_index_chain_then_a_decode(self) -> None:
-        """The constructed routes have the shape the docstring claims."""
-        from esolangs.tools.boolean.wii2d import _wii2d_routes
+        The chain junctions are no longer a fixed Horner step: each level
+        takes the first legal pair from ``_WII2D_JUNCTIONS``, so what is
+        pinned here is the *contract* -- one junction per input, drawn from
+        the catalogue, and the whole chain evaluating the table -- rather
+        than the particular pairs a given table happens to select.
+        """
+        from esolangs.tools.boolean.wii2d import (
+            _WII2D_JUNCTIONS,
+            _wii2d_apply,
+            _wii2d_routes,
+        )
 
         n = 4
         # not parity and not symmetric, so neither closed form intercepts it
@@ -822,8 +834,40 @@ class TestWII2D:
         start, routes = result
         assert start == 0
         assert len(routes) == n
-        # every junction but the last is the fixed Horner step
-        assert routes[:-1] == [("*", "*+")] * (n - 1)
+        # every junction but the last comes from the catalogue
+        for pair in routes[:-1]:
+            assert pair in _WII2D_JUNCTIONS
+        # and the chain plus decode reproduces the table
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            value = start
+            for i, bit in enumerate(bits):
+                value = _wii2d_apply(routes[i][bit], value)
+            assert value == int(table[combo]), f"inputs {bits}"
+
+    def test_horner_is_the_catalogue_fallback(self) -> None:
+        """Horner ends the catalogue, and is legal at every level.
+
+        The chain is total because ``('*', '*+')`` never collides two
+        distinct cofactors -- the children differ in parity -- so the walk
+        always has a legal pair to take.  With every merging pair removed the
+        chain must therefore still build, and rebuild the plain index.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.wii2d")
+        from esolangs.tools.boolean.wii2d import _WII2D_JUNCTIONS, _wii2d_chain
+
+        assert _WII2D_JUNCTIONS[-1] == ("*", "*+")
+
+        n = 4
+        table = "0001011001101011"
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_WII2D_JUNCTIONS", (("*", "*+"),))
+            routes, states = _wii2d_chain(n, table)
+        assert routes == [("*", "*+")] * (n - 1)
+        # Horner merges nothing, so the values are the dense index range
+        assert sorted(value for _, value in states) == list(range(2 ** (n - 1)))
 
     def test_symmetric_tables_use_a_popcount_chain(self) -> None:
         """A symmetric table decodes over ``n`` points, not ``2 ** (n - 1)``.
