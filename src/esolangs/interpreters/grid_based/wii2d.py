@@ -10,11 +10,11 @@ Malformed programs raise :class:`ValueError`.
 """
 
 import copy
-import secrets
 import sys
 from collections.abc import Callable
 
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.randomness import Randomness, draw
 
 
 def init(code: list[str]) -> Callable[[int, int, int], tuple[int, int]]:
@@ -93,9 +93,14 @@ class _Machine:
     deterministic machine and the hang detector is unsound on it.
     """
 
-    def __init__(self, code: list[str], io: IO) -> None:
-        """Validate the ``!`` marker and start above it, like :func:`run`."""
+    def __init__(self, code: list[str], io: IO, rng: Randomness | None = None) -> None:
+        """Validate the ``!`` marker and start above it, like :func:`run`.
+
+        ``rng`` overrides the ``?`` command's random turn, which is what
+        makes a stepped run reproducible; ``None`` draws for real.
+        """
         self.io = io
+        self._rng = rng
         starts = [(r, row.find("!")) for r, row in enumerate(code) if "!" in row]
         if len(starts) != 1:
             raise ValueError("WII2D program must contain exactly one '!' start marker")
@@ -149,7 +154,7 @@ class _Machine:
         if op in "^v<>":
             self.vel = "^v<>".index(op)
         elif op == "?":
-            self.vel = secrets.randbelow(4)
+            self.vel = draw(self._rng, 4)
         elif op == "|":
             if self.vel % 2:  # If moving vertically
                 self.vel -= 1
@@ -168,9 +173,14 @@ class _Machine:
         self.row, self.col = self._move_pointer(self.row, self.col, self.vel)
 
 
-def run(code: list[str], io: IO) -> None:
-    """Execute a WII2D program."""
-    machine = _Machine(code, io)
+def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:
+    """Execute a WII2D program.
+
+    ``rng`` overrides ``?``'s random turn, as COD's does: a caller that
+    needs the turns to fall a particular way passes a source rather than
+    patching this module.
+    """
+    machine = _Machine(code, io, rng=rng)
     while not machine.halted:
         machine.step()
 

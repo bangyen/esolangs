@@ -13,8 +13,11 @@ def run_and_capture(code: str, stdin: str = "", limit: int = 1000) -> str:
 
 
 class _FirstChoiceRNG:
-    def choice(self, options: list[str]) -> str:
-        return options[0]
+    """Picks the first option, by returning index zero."""
+
+    def randbelow(self, upper: int) -> int:
+        assert upper > 0
+        return 0
 
 
 class _LastChoiceRNG:
@@ -25,19 +28,26 @@ class _LastChoiceRNG:
     at all; this one disagrees.
     """
 
-    def choice(self, options: list[str]) -> str:
-        return options[-1]
+    def randbelow(self, upper: int) -> int:
+        assert upper > 0
+        return upper - 1
 
 
 class _CountingRNG:
-    """Records how often it was consulted, and which options were offered."""
+    """Records how often it was consulted, and over how many options.
+
+    The hook is ``randbelow``, shared with every other random language
+    here, so what it sees is the *number* of options rather than the
+    directions themselves -- which is still enough to say a draw happened
+    and how wide the choice was.
+    """
 
     def __init__(self) -> None:
-        self.calls: list[list[str]] = []
+        self.calls: list[int] = []
 
-    def choice(self, options: list[str]) -> str:
-        self.calls.append(list(options))
-        return options[0]
+    def randbelow(self, upper: int) -> int:
+        self.calls.append(upper)
+        return 0
 
 
 class TestCOD:
@@ -334,7 +344,7 @@ class TestCOD:
         """
         rng = _CountingRNG()
         run("~~~~~\n~ > ~\n~~~~~", ScriptedIO(), limit=10, rng=rng)
-        assert rng.calls == [["E", "W"]]
+        assert rng.calls == [2]  # one draw, between two open directions
 
     def test_step_on_halted_machine_is_noop(self) -> None:
         machine = _Machine("~~~~~\n~><--", IO())

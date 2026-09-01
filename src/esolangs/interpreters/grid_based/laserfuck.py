@@ -18,17 +18,30 @@ heading through :func:`run`.
 Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
-import secrets
 import sys
 
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.randomness import Randomness, draw
 
 
 class _Machine:
     """A LaserFuck run: the grid, the live lasers, and the tape."""
 
-    def __init__(self, code: list[str], io: IO, heading: int | None = None) -> None:
+    def __init__(
+        self,
+        code: list[str],
+        io: IO,
+        heading: int | None = None,
+        rng: Randomness | None = None,
+    ) -> None:
+        """Start a laser at ``o``, heading ``heading`` if one is given.
+
+        ``heading`` pins only the *initial* direction.  ``*`` splits a beam
+        with a fresh draw every time it runs, so reproducible stepping
+        needs ``rng`` as well; ``None`` draws for real.
+        """
         self.io = io
+        self._rng = rng
         text = [list(ln) for ln in code]
         size = max(len(ln) for ln in text) if text else 0
         self.text = [ln + [" "] * (size - len(ln)) for ln in text]
@@ -51,7 +64,7 @@ class _Machine:
                         return
                     # The random heading is part of LaserFuck's spec, not a
                     # secret.
-                    d = heading if heading is not None else secrets.randbelow(4)
+                    d = heading if heading is not None else draw(rng, 4)
                     self.lsrs.append([row, col, d])
                     self.pos = (row, col, d)
 
@@ -155,7 +168,7 @@ class _Machine:
                 self.ind %= len(self.lsrs)
             return
         elif op == "*":
-            self.lsrs.append([row, col, 2 * (1 - d // 2) + secrets.randbelow(2)])
+            self.lsrs.append([row, col, 2 * (1 - d // 2) + draw(self._rng, 2)])
         elif op in "_(":
             if d < 2 and (self.tape[self.ptr][0] != 0 or op == "_"):
                 d = 1 - d

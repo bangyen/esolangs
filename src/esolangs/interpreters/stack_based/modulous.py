@@ -21,13 +21,13 @@ Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import re
-import secrets
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.randomness import Randomness, draw
 
 #: A command is a bracketed group, which may hold one quoted string.
 _TOKEN = re.compile(r'\[([^\[\]\"]*("[^"]*")?)]')
@@ -43,9 +43,12 @@ class State:
     io: IO = field(default_factory=IO)
     tokens: list[str] = field(default_factory=list, init=False)
     _halted: bool = field(default=False, init=False)
+    # Overrides ``RND``'s draw, which is what makes a stepped run
+    # reproducible; ``None`` draws for real.
+    rng: Randomness | None = None
 
     @classmethod
-    def of(cls, code: str, io: IO) -> "State":
+    def of(cls, code: str, io: IO, rng: Randomness | None = None) -> "State":
         """Build a state for ``code``: its four variables, and its tokens.
 
         ``tokens`` cannot be a constructor field -- it is stored parsed, not
@@ -53,7 +56,7 @@ class State:
         and extract the tokens by hand.  ``run`` and the VM adapter each
         carried their own copy, which is the shape that lets the two drift.
         """
-        state = cls(var={f"VAR{k}": 0 for k in range(1, 5)}, io=io)
+        state = cls(var={f"VAR{k}": 0 for k in range(1, 5)}, io=io, rng=rng)
         state.tokens = [k[0] for k in _TOKEN.findall(code)]
         return state
 
@@ -230,7 +233,7 @@ def _rnd(state: State, _mod: str, arg: list[str]) -> str | None:
     n = int(_operand(arg, 1))
     if n < 1:
         raise HaltError
-    state.stk.append(secrets.randbelow(n))
+    state.stk.append(draw(state.rng, n))
     return None
 
 
