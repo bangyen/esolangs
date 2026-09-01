@@ -1717,3 +1717,18 @@ class TestGeneratorEdgePaths:
 
         assert _six_five_const(5) == "5"
         assert _six_five_const(11) == "65"
+
+    def test_six_five_label_rejects_an_unspellable_operand(self) -> None:
+        """Operands are one character, so the alphabet runs out at 35.
+
+        ``0-9`` then ``A-Z`` is every character 6-5 reads as a number, which
+        caps a 7n/8n operand at 35; past that there is nothing to emit.
+        """
+        from esolangs.tools.boolean.six_five import (
+            _SIX_FIVE_MAX_LABEL,
+            _six_five_label,
+        )
+
+        assert _six_five_label(_SIX_FIVE_MAX_LABEL) == "Z"
+        with pytest.raises(ValueError, match="no operand character for 36"):
+            _six_five_label(_SIX_FIVE_MAX_LABEL + 1)
