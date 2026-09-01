@@ -1970,9 +1970,7 @@ def _flipped_plans(n: int) -> dict[str, _Flipped]:
     found: dict[str, _Flipped] = {}
     remaining = sum(len(tables) for tables in wanted.values())
 
-    def claim(
-        staged: _Joint, head: tuple[int, int, int], suffix: int | str
-    ) -> bool:
+    def claim(staged: _Joint, head: tuple[int, int, int], suffix: int | str) -> bool:
         """Record what every accumulator prints here; True when all are placed."""
         nonlocal remaining
         for acc in range(9, _MAX_ACC + 1):
@@ -1996,9 +1994,7 @@ def _flipped_plans(n: int) -> dict[str, _Flipped]:
     for flips in range(1, 1 << n):
         for sep_index in range(len(_SEPS)):
             for settle in (0, 1):
-                base = _embed(
-                    n, settle=settle, sep=_SEPS[sep_index], flips=flips
-                )
+                base = _embed(n, settle=settle, sep=_SEPS[sep_index], flips=flips)
                 _clamp(base)
                 _walk_to(base, _BASE - 1)
                 head = (flips, sep_index, settle)
