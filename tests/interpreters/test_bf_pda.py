@@ -75,6 +75,20 @@ class TestBrackets:
         """``]`` with a one top jumps back across a nested ``]`` exactly once."""
         assert run_program("<@<@[<@[>@]>]") == ""
 
+    def test_scan_counts_two_levels_of_nesting(self) -> None:
+        """Both scans land past their own match, not an inner one.
+
+        The existing nested cases either skip the whole span or nest only
+        one deep, so a scan that miscounts inner brackets still lands
+        somewhere harmless.  Two levels make the count itself observable:
+        ``<`` pushes a zero, so the outer ``[`` skips forward over *two*
+        nested ``[`` before its match, and the trailing ``@.`` prints from
+        the cell the scan lands on.  A scan that fails to raise its depth
+        on an inner ``[``, or that starts one character further along,
+        stops at the first ``]`` instead and prints a different string.
+        """
+        assert run_program("<[[[.]]].@.") == "01"
+
 
 class TestHalting:
     def test_halts_at_end_of_program(self) -> None:
@@ -115,6 +129,25 @@ class TestMalformed:
             run_program("][")
         with pytest.raises(ValueError, match="unmatched"):
             run_program("<@[.")
+
+    def test_unmatched_open_bracket_reports_the_last_one(self) -> None:
+        """The reported position is the *last* unmatched ``[``, not the first.
+
+        ``match=`` is a substring search, so every case above passes on any
+        position at all -- the number was never asserted.  With two
+        unmatched brackets the choice becomes visible: this program opens
+        at 1 and again at 4, and the message names 4.  Reporting the first
+        would say 1, and a search that finds nothing would say -1.
+        """
+        with pytest.raises(ValueError) as caught:
+            run_program("<[.<[.")
+        assert str(caught.value) == "unmatched '[' at position 4"
+
+    def test_unmatched_close_bracket_reports_its_own_position(self) -> None:
+        """A stray ``]`` names the index it sits at, checked exactly."""
+        with pytest.raises(ValueError) as caught:
+            run_program("<@]")
+        assert str(caught.value) == "unmatched ']' at position 2"
 
 
 class TestStepMachine:
