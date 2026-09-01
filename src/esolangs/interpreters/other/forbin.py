@@ -815,12 +815,14 @@ class _Machine:
                 frame.locals[name] = value
         # This method only runs while the cursor sits on the ``for`` whose
         # rows it is walking, so the statement under it is that ``for``.
-        # The tag is asserted rather than tested: narrowing the union is
-        # what lets ``current[2]`` be read at all, and an ``if`` would make
-        # a broken invariant skip the body assignment silently instead of
-        # saying so.
+        # The tag is checked rather than tested-and-skipped: narrowing the
+        # union is what lets ``current[2]`` be read at all, and a plain
+        # ``if`` would make a broken invariant skip the body assignment
+        # silently instead of saying so.  Raising rather than asserting
+        # keeps the check under ``python -O``.
         current = frame.body[frame.pos]
-        assert current[0] == "for"  # nosec B101
+        if current[0] != "for":
+            raise AssertionError(f"cursor left the for statement: {current[0]}")
         frame.for_body = current[2]
         frame.for_body_pos = 0
 

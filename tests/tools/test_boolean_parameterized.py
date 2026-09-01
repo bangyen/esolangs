@@ -238,14 +238,11 @@ def test_minifuck_reconvergence_declines_outside_one_or_two_essentials() -> None
     erased, and with three or more the route has no embed geometry to fall
     back on -- both decline up front rather than searching.
     """
-    import importlib
 
-    # ``from ... import minifuck`` binds the cache-wrapped generator that the
-    # package re-exports, not the module the helper lives in.
-    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+    from esolangs.tools.boolean.minifuck import _reconverged
 
-    assert module._reconverged("01", [], 1) is None  # noqa: SLF001
-    assert module._reconverged("01011010", [0, 1, 2], 3) is None  # noqa: SLF001
+    assert _reconverged("01", [], 1) is None
+    assert _reconverged("01011010", [0, 1, 2], 3) is None
 
 
 # 2.3s: two three-input minifuck builds, which is the cost, not the asserts.
@@ -337,13 +334,27 @@ def test_span_screen_declines_no_reachable_table() -> None:
     against an older enumeration would silently decline tables the new one
     reaches.  It is deliberately not a sampled check.
     """
-    import importlib
 
-    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+    from esolangs.tools.boolean.minifuck import (
+        _BASE,
+        _MAX_ACC,
+        _MAX_BRACKETS,
+        _READS,
+        _SEPS,
+        _SPAN,
+        _clamp,
+        _embed,
+        _endgame,
+        _in_span,
+        _span_admits,
+        _span_basis,
+        _staging_spans,
+        _walk_to,
+    )
 
     n = 5
-    assert module._staging_spans(n), "no spans built"  # noqa: SLF001
-    window = range(1, module._BASE + n * module._SPAN + 12)  # noqa: SLF001
+    assert _staging_spans(n), "no spans built"
+    window = range(1, _BASE + n * _SPAN + 12)
 
     def pack(table: tuple[int, ...] | str) -> int:
         packed = 0
@@ -354,30 +365,30 @@ def test_span_screen_declines_no_reachable_table() -> None:
     # Replay the enumeration, checking each printed column against the span
     # of the staging that printed it, and against the screen as a whole.
     checked = 0
-    for sep_index in range(len(module._SEPS)):  # noqa: SLF001
+    for sep_index in range(len(_SEPS)):
         for settle in (0, 1):
-            base = module._embed(n, settle=settle, sep=module._SEPS[sep_index])  # noqa: SLF001
-            module._clamp(base)  # noqa: SLF001
-            module._walk_to(base, module._BASE - 1)  # noqa: SLF001
+            base = _embed(n, settle=settle, sep=_SEPS[sep_index])
+            _clamp(base)
+            _walk_to(base, _BASE - 1)
             run = base.fork()
-            for _k in range(module._MAX_BRACKETS + 1):  # noqa: SLF001
+            for _k in range(_MAX_BRACKETS + 1):
                 staged = run.fork()
                 staged.emit("<")
-                module._clamp(staged)  # noqa: SLF001
+                _clamp(staged)
                 # Built in place rather than indexed out of _staging_spans:
                 # that list interleaves each slice's pure runs with its
                 # insert family, so a counter that walks only the pure runs
                 # drifts onto another staging's span after the first slice.
                 # An indexing bug there would fail exactly like a violated
                 # rule, which is not a confusion this test may make.
-                basis = module._span_basis(  # noqa: SLF001
+                basis = _span_basis(
                     [pack(staged.col(cell)) for cell in window]
                 )
-                for acc in range(9, module._MAX_ACC + 1, 5):  # noqa: SLF001
-                    for read in module._READS:  # noqa: SLF001
+                for acc in range(9, _MAX_ACC + 1, 5):
+                    for read in _READS:
                         probe = staged.fork()
                         try:
-                            module._endgame(probe, acc, read, 0)  # noqa: SLF001
+                            _endgame(probe, acc, read, 0)
                         except ValueError:
                             continue
                         printed = probe.printed()
@@ -385,10 +396,10 @@ def test_span_screen_declines_no_reachable_table() -> None:
                             continue
                         column = "".join(printed)
                         checked += 1
-                        assert module._in_span(pack(column), basis), (  # noqa: SLF001
+                        assert _in_span(pack(column), basis), (
                             f"printed column outside its staging's span: {column}"
                         )
-                        assert module._span_admits(column, n), (  # noqa: SLF001
+                        assert _span_admits(column, n), (
                             f"screen declines a reachable table: {column}"
                         )
                 run.emit("[")
@@ -430,19 +441,23 @@ def test_minifuck_five_input_plans_are_derived_per_table() -> None:
     table-major set, and asking ``_derived_plans`` for a target set returns
     at most those targets rather than a whole-arity map.
     """
-    import importlib
 
-    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+    from esolangs.tools.boolean.minifuck import (
+        _INSERT_ARITIES,
+        _STAGED_ARITIES,
+        _TABLE_MAJOR_ARITIES,
+        _derived_plans,
+    )
 
-    assert 5 in module._STAGED_ARITIES  # noqa: SLF001
-    assert 5 in module._TABLE_MAJOR_ARITIES  # noqa: SLF001
-    assert 5 in module._INSERT_ARITIES  # noqa: SLF001
+    assert 5 in _STAGED_ARITIES
+    assert 5 in _TABLE_MAJOR_ARITIES
+    assert 5 in _INSERT_ARITIES
 
     # A target set the enumeration cannot possibly print -- a table and its
     # complement are asked for together, and nothing else may come back.
     table = "".join(str(bin(r).count("1") & 1) for r in range(32))
     complement = "".join(str(1 - int(c)) for c in table)
-    plans = module._derived_plans(5, (table, complement))  # noqa: SLF001
+    plans = _derived_plans(5, (table, complement))
     assert set(plans) <= {table, complement}
 
 
@@ -2392,20 +2407,24 @@ class TestParameterizedMinifuck:
         the pair costs one derivation between them, which is why the sweep
         finds the second member of each pair as readily as the first.
         """
-        import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        from esolangs.tools.boolean.minifuck import (
+            _MAX_ACC,
+            _MAX_BRACKETS,
+            _SEPS,
+            _derive_staging,
+        )
 
         for table_int in range(16):
             table = format(table_int, "04b")
-            plan = module._derive_staging(table, 2)  # noqa: SLF001
+            plan = _derive_staging(table, 2)
             assert plan is not None, table
             sep_index, settle, brackets, acc = plan
-            assert 0 <= sep_index < len(module._SEPS), (table, plan)  # noqa: SLF001
+            assert 0 <= sep_index < len(_SEPS), (table, plan)
             assert settle in (0, 1), (table, plan)
             assert isinstance(brackets, int), (table, plan)
-            assert 0 <= brackets <= module._MAX_BRACKETS, (table, plan)  # noqa: SLF001
-            assert 9 <= acc <= module._MAX_ACC, (table, plan)  # noqa: SLF001
+            assert 0 <= brackets <= _MAX_BRACKETS, (table, plan)
+            assert 9 <= acc <= _MAX_ACC, (table, plan)
 
     @pytest.mark.slow  # builds all 38 degenerate three-input tables
     def test_degenerate_three_input_tables_never_search(self) -> None:
@@ -2582,24 +2601,28 @@ class TestParameterizedMinifuck:
         would multiply the cost of every fallback search.  This pins that
         split, which is easy to undo by looping over ``_SEPS`` out of habit.
         """
-        import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        from esolangs.tools.boolean.minifuck import (
+            _SCAN_SEPS,
+            _SEPS,
+            _rescue,
+            _stagings,
+        )
 
-        assert module._SEPS[:2] == module._SCAN_SEPS, module._SCAN_SEPS  # noqa: SLF001
-        assert len(module._SEPS) > len(module._SCAN_SEPS), module._SEPS  # noqa: SLF001
+        assert _SEPS[:2] == _SCAN_SEPS, _SCAN_SEPS
+        assert len(_SEPS) > len(_SCAN_SEPS), _SEPS
         # Every separator index the enumeration yields must exist, and it
         # must offer all of them -- the ten stragglers that need separators
         # past the scanned pair are the whole reason ``_SEPS`` is wider.
-        offered = {sep_index for sep_index, *_rest in module._stagings(3)}  # noqa: SLF001
-        assert offered == set(range(len(module._SEPS))), offered  # noqa: SLF001
+        offered = {sep_index for sep_index, *_rest in _stagings(3)}
+        assert offered == set(range(len(_SEPS))), offered
         # ...as must the index the rescue derives for the stragglers that
         # miss the enumeration, which is the other route to a staging.
         for key in ("01101101", "10010010"):
-            rescued = module._rescue(key, 3)  # noqa: SLF001
+            rescued = _rescue(key, 3)
             assert rescued is not None, key
             sep_index, *_rest = rescued
-            assert 0 <= sep_index < len(module._SEPS), (key, sep_index)  # noqa: SLF001
+            assert 0 <= sep_index < len(_SEPS), (key, sep_index)
 
     def test_the_pool_codes_cover_every_route(self) -> None:
         """The fixed codes must serve every route that reaches the endgame.
@@ -2833,13 +2856,12 @@ class TestParameterizedMinifuck:
         mark to carry, and ``'[<[<[<<'`` arrives at cell 3 with the pointer
         at 1 rather than 2, so the core spreads marks instead of moving one.
         """
-        import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        from esolangs.tools.boolean.minifuck import _POOL_CODES, _Sim
         core = "[[[<["
 
         def run(code: str) -> object:
-            machine = module._Sim(64)  # noqa: SLF001
+            machine = _Sim(64)
             for char in code:
                 machine.exec(char)
             return machine
@@ -2855,7 +2877,7 @@ class TestParameterizedMinifuck:
                 assert machine.skip is bool(brackets % 2), (start, brackets)  # type: ignore[attr-defined]
 
         shifted = 0
-        for code in module._POOL_CODES:  # noqa: SLF001
+        for code in _POOL_CODES:
             # The decomposition itself holds for every code.
             assert code.count(core) == 1, code
             prefix = code[: code.find(core)]
@@ -2998,9 +3020,8 @@ class TestParameterizedMinifuck:
         The cells are the same at every arity the route serves, which is what
         let one mapping serve all of them.
         """
-        import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        from esolangs.tools.boolean.minifuck import _degenerate_cells
 
         written_down = {
             "const1": 1,
@@ -3011,10 +3032,10 @@ class TestParameterizedMinifuck:
             "b1": 20,
         }
         for n in (2, 3, 4):
-            assert module._degenerate_cells(n) == written_down, n  # noqa: SLF001
+            assert _degenerate_cells(n) == written_down, n
         # One input leaves no ``b1`` to find, and the route asks for whatever
         # is there rather than assuming all six.
-        assert module._degenerate_cells(1) == {  # noqa: SLF001
+        assert _degenerate_cells(1) == {
             "const1": 1,
             "~b0": 16,
             "b0": 17,
@@ -3031,22 +3052,28 @@ class TestParameterizedMinifuck:
         drift between them would silently change which staging each table
         gets while every other test still passed.
         """
-        import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        from esolangs.tools.boolean.minifuck import (
+            _MAX_ACC,
+            _MAX_BRACKETS,
+            _SEPS,
+            _derived_plans,
+            _insert_suffixes,
+            _stagings,
+        )
 
         expected = [
             (sep_index, settle, brackets, acc)
-            for sep_index in range(len(module._SEPS))  # noqa: SLF001
+            for sep_index in range(len(_SEPS))
             for settle in (0, 1)
-            for brackets in range(module._MAX_BRACKETS + 1)  # noqa: SLF001
-            for acc in range(9, module._MAX_ACC + 1)  # noqa: SLF001
+            for brackets in range(_MAX_BRACKETS + 1)
+            for acc in range(9, _MAX_ACC + 1)
         ]
-        assert list(module._stagings(3)) == expected  # noqa: SLF001
+        assert list(_stagings(3)) == expected
         # Every staging the derivation hands back is one the enumeration
         # offers -- so the caps and the loops cannot have drifted apart.
         offered = set(expected)
-        for table, staging in module._derived_plans(2).items():  # noqa: SLF001
+        for table, staging in _derived_plans(2).items():
             assert staging in offered, (table, staging)
 
         # Four inputs adds the insert family as a *second pass*, after every
@@ -3056,12 +3083,12 @@ class TestParameterizedMinifuck:
         # a second time as nested loops, which is what can drift.
         widened = expected + [
             (sep_index, settle, suffix, acc)
-            for sep_index in range(len(module._SEPS))  # noqa: SLF001
+            for sep_index in range(len(_SEPS))
             for settle in (0, 1)
-            for suffix in module._insert_suffixes()  # noqa: SLF001
-            for acc in range(9, module._MAX_ACC + 1)  # noqa: SLF001
+            for suffix in _insert_suffixes()
+            for acc in range(9, _MAX_ACC + 1)
         ]
-        assert list(module._stagings(4)) == widened  # noqa: SLF001
+        assert list(_stagings(4)) == widened
         assert widened[: len(expected)] == expected
 
     @pytest.mark.parametrize(
@@ -3120,25 +3147,24 @@ class TestParameterizedMinifuck:
         Forcing it needs the print itself stubbed, and the caches cleared
         either side so neither the stub nor the real run is served stale.
         """
-        import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        from esolangs.tools.boolean.minifuck import _derived_plans, _Joint
 
-        real_printed = module._Joint.printed  # noqa: SLF001
+        real_printed = _Joint.printed
 
         def two_digits(self: object) -> list[str]:
             # Every row prints two characters, so no column is ever decoded.
             return ["00" for _ in real_printed(self)]
 
         try:
-            module._derived_plans.cache_clear()  # noqa: SLF001
-            with patch.object(module._Joint, "printed", two_digits):  # noqa: SLF001
-                assert module._derived_plans(2) == {}  # noqa: SLF001
+            _derived_plans.cache_clear()
+            with patch.object(_Joint, "printed", two_digits):
+                assert _derived_plans(2) == {}
         finally:
-            module._derived_plans.cache_clear()  # noqa: SLF001
+            _derived_plans.cache_clear()
         # With the real print restored the enumeration finds its entries
         # again, so the empty result above is the filter and not a cache.
-        assert module._derived_plans(2)  # noqa: SLF001
+        assert _derived_plans(2)
 
     def test_reconverged_declines_what_it_cannot_replay(self) -> None:
         """``_reconverged`` bails rather than replaying a staging it lacks.
@@ -3219,17 +3245,20 @@ class TestParameterizedMinifuck:
         lets the caller fall through to the searches rather than paying an
         enumeration that has no entries to give.
         """
-        import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        from esolangs.tools.boolean.minifuck import (
+            _STAGED_ARITIES,
+            _derive_staging,
+            _derived_plans,
+        )
 
-        for n in (1, max(module._STAGED_ARITIES) + 1):  # noqa: SLF001
-            assert n not in module._STAGED_ARITIES  # noqa: SLF001
-            assert module._derived_plans(n) == {}  # noqa: SLF001
-            assert module._derive_staging("0" * 2**n, n) is None  # noqa: SLF001
+        for n in (1, max(_STAGED_ARITIES) + 1):
+            assert n not in _STAGED_ARITIES
+            assert _derived_plans(n) == {}
+            assert _derive_staging("0" * 2**n, n) is None
         # At a staged arity the enumeration really does have entries, so the
         # empty results above are the guard and not an exhausted search.
-        assert module._derived_plans(2)  # noqa: SLF001
+        assert _derived_plans(2)
 
     def test_pool_reaches_refuses_a_code_that_kills_a_row(self) -> None:
         """``_pool_reaches`` rejects code that kills or desynchronises a row.
@@ -3335,17 +3364,24 @@ class TestParameterizedMinifuck:
         enumeration misses and :func:`_rescue` derives, so the second route
         to a staging is held to the same standard as the first.
         """
-        import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        from esolangs.tools.boolean.minifuck import (
+            _BASE,
+            _SEPS,
+            _clamp,
+            _derive_staging,
+            _embed,
+            _find_pool,
+            _walk_to,
+        )
 
         plans = {
             2: {
-                format(t, "04b"): module._derive_staging(format(t, "04b"), 2)  # noqa: SLF001
+                format(t, "04b"): _derive_staging(format(t, "04b"), 2)
                 for t in range(16)
             },
             3: {
-                key: module._derive_staging(key, 3)  # noqa: SLF001
+                key: _derive_staging(key, 3)
                 for key in ("00000001", "01111111", "01101101", "00010111")
             },
         }
@@ -3353,23 +3389,23 @@ class TestParameterizedMinifuck:
             for key, staging in sorted(plan.items()):
                 assert staging is not None, (n, key)
                 sep_index, settle, suffix, acc = staging
-                joint = module._embed(  # noqa: SLF001
+                joint = _embed(
                     n,
                     settle=settle,
-                    sep=module._SEPS[sep_index],  # noqa: SLF001
+                    sep=_SEPS[sep_index],
                 )
-                module._clamp(joint)  # noqa: SLF001
-                module._walk_to(joint, module._BASE - 1)  # noqa: SLF001
+                _clamp(joint)
+                _walk_to(joint, _BASE - 1)
                 joint.emit("[" * suffix + "<" if isinstance(suffix, int) else suffix)
-                module._clamp(joint)  # noqa: SLF001
+                _clamp(joint)
                 arrived = None
                 for cell7 in (0, 1):
                     probe = joint.fork()
-                    code = module._find_pool(probe, cell7, acc - 1)  # noqa: SLF001
+                    code = _find_pool(probe, cell7, acc - 1)
                     if code is None:
                         continue
                     probe.emit(code)
-                    module._walk_to(probe, acc - 1)  # noqa: SLF001
+                    _walk_to(probe, acc - 1)
                     column = "".join(str(b) for b in probe.col(acc))
                     complement = "".join(str(1 - int(c)) for c in column)
                     if key in (column, complement):

@@ -16,7 +16,13 @@ as-drawn silence are pinned below.
 
 import pytest
 
-from esolangs.interpreters.grid_based.circuit_diagram import _Machine, run
+from esolangs.interpreters.grid_based.circuit_diagram import (
+    _OUTPUT,
+    _Grid,
+    _Machine,
+    _Parser,
+    run,
+)
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 
@@ -357,6 +363,21 @@ class TestParseErrors:
 
     def test_an_empty_program_has_nothing_to_run(self) -> None:
         assert output_for([], "") == ""
+
+    def test_an_output_is_exempt_from_the_out_port_count(self) -> None:
+        """An output sinks its wire and drives nothing, so arity skips its ports.
+
+        ``_check_arity`` inspects every parsed gate, outputs included, and
+        returns early for them.  The early return is load-bearing rather than
+        defensive: an output always parses with zero out-ports, so without it
+        the ``wanted_out = 1`` check below would reject every program that
+        prints.  This asserts the port counts the parser actually assigns.
+        """
+        parser = _Parser(_Grid(["-.~.-:"]))
+        outputs = [g for g in parser.gates if g.kind == _OUTPUT]
+        assert outputs, "the program has an output gate"
+        assert [(len(g.inputs), len(g.outputs)) for g in outputs] == [(1, 0)]
+        assert output_for(["-.~.-:"], "1\n") == "0"
 
 
 class TestWireLabelErrors:
