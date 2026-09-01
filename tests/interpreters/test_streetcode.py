@@ -871,6 +871,11 @@ class TestStreetcodeRejectionMessages:
             "not two-wide at (1, 2) (wider than two)",
         ),
         (
+            "wider than two, open block",
+            ["+------+", "|      |", "|C^    |", "|      |", "+------+"],
+            "not two-wide at (1, 2) (wider than two)",
+        ),
+        (
             "wall fragment",
             ["+---+", "|C  |", "+---+"],
             "not two-wide at (1, 1) (dead end)",
