@@ -338,6 +338,19 @@ class TestParseErrors:
         with pytest.raises(ValueError, match="unknown character"):
             run(["-.#.-:"], ScriptedIO(""))
 
+    @pytest.mark.parametrize("prefix", ["   ", "-  ", ".  "])
+    def test_a_bad_character_after_a_valid_one_is_still_rejected(
+        self, prefix: str
+    ) -> None:
+        """Validation scans the whole grid, not up to the first legal cell.
+
+        Every other malformed-grid test here puts the offending character
+        first, so a scan that stopped early would still pass them.  Leading
+        with a space, a wire and a gate covers the arms that skip a cell.
+        """
+        with pytest.raises(ValueError, match="out of scope"):
+            run([f"{prefix}%"], ScriptedIO(""))
+
     @pytest.mark.parametrize(
         ("code", "name"),
         [
@@ -354,12 +367,26 @@ class TestParseErrors:
             run(code, ScriptedIO(""))
 
     def test_letter_labelled_wires_are_rejected(self) -> None:
-        with pytest.raises(ValueError, match="letter-labelled"):
+        """The whole message is asserted, not a substring of it.
+
+        ``match=`` is a search, so it still passes against a message that has
+        grown extra text around the part being matched.  Comparing the string
+        outright is what pins the wording and the position it reports.
+        """
+        with pytest.raises(ValueError, match="letter-labelled") as caught:
             run(["-width-:"], ScriptedIO(""))
+        assert (
+            str(caught.value)
+            == "letter-labelled multi-wires are out of scope: 'w' at (1, 0)"
+        )
 
     def test_a_gate_missing_an_input_is_rejected(self) -> None:
-        with pytest.raises(ValueError, match="input"):
+        """The position is asserted too: it is the only reader of a gate's
+        ``row`` and ``col``, which nothing else on a valid program looks at.
+        """
+        with pytest.raises(ValueError, match="input") as caught:
             run(["-.a.-:"], ScriptedIO("1\n"))
+        assert str(caught.value) == "'a' at (2, 0) takes 2 input(s), found 1"
 
     def test_an_empty_program_has_nothing_to_run(self) -> None:
         assert output_for([], "") == ""
@@ -384,14 +411,23 @@ class TestWireLabelErrors:
     """A wire label has to name a width, and the widths have to agree."""
 
     def test_a_non_numeric_label_is_rejected(self) -> None:
-        """``3+x`` is not a sum of widths, so the label means nothing."""
-        with pytest.raises(ValueError, match="malformed wire label"):
+        """``3+x`` is not a sum of widths, so the label means nothing.
+
+        The whole message is asserted because the position in it is the only
+        thing that reads ``_label_width``'s ``row`` and ``col``: they are
+        used nowhere else, so a substring match leaves both arguments free to
+        be anything.  The label reads ``3+`` rather than ``3+x`` -- the ``x``
+        is not a label character, so it ends the run.
+        """
+        with pytest.raises(ValueError, match="malformed wire label") as caught:
             run(["-3+x-:"], ScriptedIO(""))
+        assert str(caught.value) == "malformed wire label '3+' at (1, 0)"
 
     def test_a_zero_width_label_is_rejected(self) -> None:
         """A wire carrying no bits cannot be read or driven."""
-        with pytest.raises(ValueError, match="must be positive"):
+        with pytest.raises(ValueError, match="must be positive") as caught:
             run(["-0-:"], ScriptedIO(""))
+        assert str(caught.value) == "wire label '0' at (1, 0) must be positive"
 
     def test_a_label_touching_no_wire_is_rejected(self) -> None:
         """A width written beside nothing annotates nothing."""
@@ -405,16 +441,19 @@ class TestWireLabelErrors:
 
     def test_a_splitter_needs_both_its_outputs(self) -> None:
         """``<`` drives two wires; with one the circuit is malformed."""
-        with pytest.raises(ValueError, match="output"):
+        with pytest.raises(ValueError, match="output") as caught:
             run(["-2-<-:"], ScriptedIO(""))
+        assert str(caught.value) == "'<' at (3, 0) drives 2 output(s), found 0"
 
 
 def test_a_crossover_running_off_the_grid_connects_nothing() -> None:
     """A ``=`` chain walked to the edge has no cell on the far side.
 
-    The walk hops crossovers rather than stepping one cell, so it has to
-    check the bounds each hop as well as after the last one; a wire that
-    ends in a crossover at the border simply connects to nothing.
+    The walk hops crossovers rather than stepping one cell, but it needs no
+    bounds check per hop: ``_Grid.at`` reads an off-grid cell as a space,
+    which is never a crossover, so walking past the border ends the loop and
+    the single check after it rejects where the walk landed.  A wire ending
+    in a crossover at the border simply connects to nothing.
     """
     io = ScriptedIO("1\n")
     run(["-1-="], io)
