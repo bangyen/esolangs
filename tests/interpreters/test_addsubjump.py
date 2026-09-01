@@ -214,6 +214,28 @@ class TestHaltAndErrors:
         with pytest.raises(ValueError, match="malformed memory token"):
             _run("12 -6 x -7")
 
+    def test_growing_the_memory_zeroes_the_cells_it_skips(self) -> None:
+        """A write past the end pads with zeros, and pads exactly far enough.
+
+        Writing beyond the memory grows it to reach the address, and every
+        cell in between is created by that growth -- so their value is the
+        padding's, and nothing read one.  Cell 19 here is skipped over on
+        the way to 20: it must read as zero, and the memory must stop at
+        21 cells rather than run one over.
+        """
+        code = memory([[20, -6, 13, -7], [-1, 19, 14, -7]], {13: 4, 14: -1})
+        assert _run(code) == "\x00"
+
+    def test_a_write_at_the_first_absent_address_still_grows(self) -> None:
+        """The growth fires when the address equals the length, not past it.
+
+        Fifteen cells make address 15 the first that does not exist, and it
+        is exactly the edge the comparison sits on: a check that waited for
+        the address to exceed the length would index off the end here.
+        """
+        code = memory([[15, -6, 13, -7], [-1, 15, 14, -7]], {13: 4, 14: -1})
+        assert _run(code) == "\x01"
+
     def test_the_largest_allocatable_address_is_the_last_one_that_works(
         self,
     ) -> None:
