@@ -21,6 +21,12 @@ a language added without an entry fails there rather than being silently
 skipped.
 """
 
+# The corrected Inject truth machine lives beside the interpreter's own
+# tests: the mutation bundle does not inline this module, so a test file
+# importing the program from here would fail collection there before any
+# mutant ran.  Defined there, imported here.
+from tests.interpreters.test_inject import INJECT_TRUTH_MACHINE
+
 # The wiki's street shape: a two-wide road with the instructions in the
 # southern lane, walled all round.  ``C`` starts the car, ``^`` increments
 # the CPth cell, ``O`` prints it, ``;`` halts.
@@ -31,27 +37,6 @@ STREETCODE = "+-----+\n|     |\n|C^^O;|\n+-----+"
 STREETCODE_GAP = "+------+\n|      |\n|C^==^;|\n+------+"
 
 # The wiki's truth machine: read a bit, and on 0 print it once and halt.
-# A corrected Inject truth machine.  The wiki's own example is inverted
-# under the wiki's own prose (see the interpreter's module docstring); this
-# one halts on "0" after printing it and loops forever on "1".
-INJECT_TRUTH_MACHINE = "\n".join(
-    [
-        "readto data",
-        "skipq data 0",
-        "loop;",
-        "send data",
-        "skip",
-        "loop;",
-        "send data",
-        "skip",
-        "data;",
-        "data;",
-        "0;",
-        "0",
-        "0;",
-    ]
-)
-
 FLOWCHART_TRUTH_MACHINE = "\n".join(
     [
         "       ( )──┐        ",
