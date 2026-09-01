@@ -820,9 +820,12 @@ class _Machine:
         # ``if`` would make a broken invariant skip the body assignment
         # silently instead of saying so.  Raising rather than asserting
         # keeps the check under ``python -O``.
+        # The message is a constant: the branch is unreachable, so anything
+        # interpolated into it could never be observed and would only add
+        # mutants no test can kill.
         current = frame.body[frame.pos]
         if current[0] != "for":
-            raise AssertionError(f"cursor left the for statement: {current[0]}")
+            raise AssertionError("cursor left the for statement")
         frame.for_body = current[2]
         frame.for_body_pos = 0
 

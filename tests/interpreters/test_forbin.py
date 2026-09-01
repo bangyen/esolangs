@@ -249,8 +249,15 @@ class TestFunctions:
             run_program("main { f { } f 0; a = !f; }")
 
     def test_malformed_syntax(self) -> None:
-        with pytest.raises(ValueError, match="expected"):
+        """The whole message is asserted, position included.
+
+        ``_fail`` appends ``at position {self.i}``, and that offset is the
+        only reader of the parser's cursor at the point it gives up, so a
+        substring match leaves both the wording and the position untested.
+        """
+        with pytest.raises(ValueError, match="expected") as caught:
             run_program("main { out 0,0,0,0,0,0,0 } extra")
+        assert str(caught.value) == "expected '{' after function name at position 32"
 
 
 class TestKeywordPrefixedNames:
@@ -320,6 +327,17 @@ class TestParserErrors:
         code = "main { // header\n a = 1; // trailing\n out 0,0,0,0,0,0,0,a; }"
         assert run_program(code) == "\x01"
 
+    def test_a_comment_runs_to_the_newline_whatever_it_holds(self) -> None:
+        """Only a line break ends a comment, not any character within it.
+
+        The scan is over the two line-break characters alone, so a comment
+        body is arbitrary text; the existing comment test happens to use
+        only lowercase words, which a scan that also stopped on some other
+        character would still pass.
+        """
+        code = "main { // note X here: 3+4 = }{ ;\n out 0,1,0,0,1,0,0,0; }"
+        assert run_program(code) == "H"
+
     def test_missing_paren_after_anon_func(self) -> None:
         with pytest.raises(ValueError, match="expected"):
             run_program("main { x = (a@ { return 1; }; }")
@@ -349,14 +367,26 @@ class TestParserErrors:
         assert run_program("main { f a, { out 0,0,0,0,0,0,0,0; } }") == ""
 
     def test_unterminated_block(self) -> None:
-        with pytest.raises(ValueError, match="unterminated"):
+        with pytest.raises(ValueError, match="unterminated") as caught:
             run_program("main {")
+        assert str(caught.value) == "unterminated block, expected '}' at position 6"
 
     def test_assignment_target_must_be_a_variable(self) -> None:
-        with pytest.raises(ValueError, match="target must be a variable"):
+        """Both spellings fail, and at their own position.
+
+        The single-target and multi-target paths reach the same message from
+        different offsets, which is what tells them apart.
+        """
+        with pytest.raises(ValueError, match="target must be a variable") as caught:
             run_program("main { (f 1) = 2; }")
-        with pytest.raises(ValueError, match="target must be a variable"):
+        assert str(caught.value) == (
+            "assignment target must be a variable at position 13"
+        )
+        with pytest.raises(ValueError, match="target must be a variable") as caught:
             run_program("main { a, !b = 0, 1; }")
+        assert str(caught.value) == (
+            "assignment target must be a variable at position 14"
+        )
 
     def test_multi_target_needs_equals(self) -> None:
         with pytest.raises(ValueError, match="after assignment"):
@@ -923,8 +953,11 @@ class TestErrorMessages:
         bound it checks matters most where there is no character to look
         at: a lone ``/`` as the last thing in the file.
         """
-        with pytest.raises(ValueError, match="expected an identifier"):
+        with pytest.raises(ValueError, match="expected an identifier") as caught:
             run("main { out 0,1,0,0,1,0,0,0; }\n/", ScriptedIO(""))
+        # Position 30 is the ``/`` itself: the bound held, so the scanner
+        # stopped there rather than reading past the end of the input.
+        assert str(caught.value) == "expected an identifier at position 30"
         assert run_program("main { out 0,1,0,0,1,0,0,0; }\n//") == "H"
         with pytest.raises(ValueError, match="no main function"):
             run("// c", ScriptedIO(""))
