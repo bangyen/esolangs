@@ -26,12 +26,69 @@ executes one command and ``halted`` is true once the cursor reaches the end
 of the program.  The register dump is printed exactly once, on the step
 that halts the machine, matching the original's print-after-the-loop
 behavior.
+
+The execution model is a pure function over an immutable ``_State``:
+:func:`_advance` maps a state and the jump table to the next state, and
+never mutates what it is given.  It takes no ``io`` argument at all, so it
+is total and side-effect free by construction rather than by inspection.
+
+:class:`_Machine` is the mutable shell the interpreter protocol requires.
+It holds one ``_State`` and rebinds it each step, so the mutation lives in
+exactly one assignment and every rule about what Minsky Swap *does* stays
+in the pure layer.  The register dump is the language's only effect and is
+done by ``step``.
 """
+
+from __future__ import annotations
 
 import re
 import sys
 
 from esolangs.interpreters.io import IO
+
+#: One instant of a run: ``(ind, ptr, reg, dumped)`` -- the cursor, the
+#: register pointer, both registers, and whether the end-of-run dump has
+#: been printed.  A value, not a record: every transition below returns a
+#: new one rather than editing one in place, and the registers are a tuple
+#: for the same reason.
+#:
+#: ``dumped`` is state because the dump is a once-per-run effect that
+#: happens *after* the cursor has run off the end, so the position alone
+#: cannot tell "about to dump" from "already dumped".  It stays out of
+#: ``snapshot``, which reports the three fields it always reported.
+#:
+#: The program and its jump table are deliberately not in here.  Neither
+#: changes during a run, so carrying them would put constant data in every
+#: value the cycle detector stores.
+type _State = tuple[int, int, tuple[int, int], bool]
+
+
+def _advance(state: _State, prog: str, targets: dict[int, int]) -> _State:
+    """Return the state after executing one command.
+
+    Pure: it reads ``state`` and returns a new one.  It takes no ``io``
+    argument, so the dump is necessarily the caller's business -- this
+    function only records, through ``dumped``, that it has happened.
+
+    ``~`` is decrement-or-jump: it decrements the current register when it
+    is nonzero, and otherwise jumps to its 1-based target, landing on
+    ``target - 2`` so the shared increment carries it to ``target - 1``.
+
+    The parse strips everything but ``+~*``, so the final branch is ``*``,
+    which swaps which register the pointer addresses.
+    """
+    ind, ptr, reg, dumped = state
+    op = prog[ind]
+    if op == "+":
+        reg = (reg[0] + 1, reg[1]) if ptr == 0 else (reg[0], reg[1] + 1)
+    elif op == "~":
+        if reg[ptr]:
+            reg = (reg[0] - 1, reg[1]) if ptr == 0 else (reg[0], reg[1] - 1)
+        elif target := targets[ind]:
+            ind = target - 2
+    else:
+        ptr ^= 1
+    return (ind + 1, ptr, reg, dumped)
 
 
 def _parse(code: str) -> tuple[str, list[int]]:
@@ -88,14 +145,36 @@ class _Machine:
                     raise ValueError("unmatched '~' with no jump target")
                 self.targets[i] = nums[len(self.targets)]
 
-        self.ind = self.ptr = 0
-        self.reg = [0, 0]
-        self._dumped = False
+        # ``halted`` is read twice per command -- once by ``run``'s loop and
+        # once by ``step``'s guard -- so the length is taken once here.
+        self.size = len(self.prog)
+        self.state: _State = (0, 0, (0, 0), False)
+
+    # The language's own names.  They are views on the current state rather
+    # than fields of their own, so there is one place a step can change.
+
+    @property
+    def ind(self) -> int:
+        return self.state[0]
+
+    @property
+    def ptr(self) -> int:
+        return self.state[1]
+
+    @property
+    def reg(self) -> tuple[int, int]:
+        """Both registers, in pointer order."""
+        return self.state[2]
+
+    @property
+    def dumped(self) -> bool:
+        """Whether the end-of-run register dump has already been printed."""
+        return self.state[3]
 
     @property
     def halted(self) -> bool:
         """Whether the cursor has reached the end of the program."""
-        return self.ind >= len(self.prog)
+        return self.state[0] >= self.size
 
     # The VM's language-shaped view: Two registers + pointer; ip the cursor, memory
     # both registers.
@@ -103,12 +182,12 @@ class _Machine:
     @property
     def ip(self) -> int:
         """The current instruction position."""
-        return self.ind
+        return self.state[0]
 
     @property
     def memory(self) -> list[int]:
         """The addressable cells."""
-        return list(self.reg)
+        return list(self.state[2])
 
     @property
     def stack(self) -> list[object]:
@@ -117,26 +196,27 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (self.ind, self.ptr, tuple(self.reg))
+        # The three fields this returned before ``dumped`` joined the state.
+        # ``dumped`` stays out: the detector compares states of a running
+        # machine, and a stopped run is not something it is asked about.
+        ind, ptr, reg, _dumped = self.state
+        return (ind, ptr, reg)
 
     def step(self) -> None:
-        """Execute one command, dumping the registers once the cursor ends."""
-        if self.halted:
-            if not self._dumped:
-                self.io.print_str(" ".join(map(str, self.reg)))
-                self._dumped = True
+        """Execute one command, dumping the registers once the cursor ends.
+
+        The dump is here rather than in the transition: this is the shell,
+        so it is where an effect belongs.  The transition carries the flag
+        that says it has happened, which keeps it to exactly one dump
+        however many times a halted machine is stepped.
+        """
+        ind, ptr, reg, dumped = self.state
+        if ind >= self.size:
+            if not dumped:
+                self.io.print_str(" ".join(map(str, reg)))
+                self.state = (ind, ptr, reg, True)
             return
-        if (op := self.prog[self.ind]) == "+":
-            self.reg[self.ptr] += 1
-        elif op == "~":
-            if self.reg[self.ptr]:
-                self.reg[self.ptr] -= 1
-            elif target := self.targets[self.ind]:
-                self.ind = target - 2
-        else:
-            # The parse strips everything but "+~*", so this is "*".
-            self.ptr ^= 1
-        self.ind += 1
+        self.state = _advance(self.state, self.prog, self.targets)
 
 
 def run(code: str, io: IO) -> None:
