@@ -56,8 +56,10 @@ from esolangs.tools.boolean.helpers import (
     _validate_truth_table,
     best_input_order,
     decision_tree_tokens,
+    essential_inputs,
     instantiate,
     permute_truth_table,
+    read_at,
 )
 from esolangs.tools.boolean.minifuck import minifuck
 from esolangs.tools.boolean.one_two_three import one_two_three
@@ -581,7 +583,10 @@ def _nocomment_summand_plan(n: int, room: int) -> list[list[tuple[int, int]]]:
             current.append((i, take))
             total += take
             remaining -= take
-    if current:
+    # Each pass appends to ``current`` before it can be flushed, so the only
+    # way to arrive here empty is a table with no inputs -- which
+    # ``_validate_truth_table`` rejects before any caller gets this far.
+    if current:  # pragma: no branch - n == 0 never reaches the planner
         parts.append(current)
     return parts
 
@@ -798,7 +803,26 @@ def nocomment(truth_table: str, tape: int = _TAPE) -> str:
     if n > _NOCOMMENT_NARROW_MAX:
         return _nocomment_wide(truth_table, n, tape)
 
-    k = 2**n
+    # A table that ignores some of its inputs is a smaller table, and almost
+    # everything here is sized by the *index range*: the staircase is one
+    # ``l`` per row, and one output cell per row is preloaded and stepped
+    # through in the setup's sorted climb.  So evaluating over the essential
+    # inputs alone shrinks the dominant term from ``2**n`` to ``2**width``.
+    #
+    # Every input keeps its ``{Xi}`` setter and its NOT-gate prologue -- the
+    # harness has a bit for each one -- and an ignored input costs only its
+    # guarded increment's *run length*, which goes to zero: the weight is
+    # ``["i"] * (2**w)``, a run this generator chooses, so a dropped input
+    # contributes an empty run.  The guard still runs and still leaves the
+    # pointer on its complement cell, so the emitted moves stay consistent.
+    used = essential_inputs(truth_table, n) or [0]
+    table = truth_table if len(used) == n else read_at(truth_table, used, n)
+    width = len(used)
+    # Slot ``s`` carries original input ``used[s]``, so it takes the weight
+    # ``2**(width - 1 - s)``; an ignored input takes none.
+    weights = {i: 2 ** (width - 1 - slot) for slot, i in enumerate(used)}
+
+    k = 2**width
     index = 2 * n
     skip_base = index + 1  # one skip cell per input bit
     tbase = skip_base + n  # the output cells
@@ -821,7 +845,6 @@ def nocomment(truth_table: str, tape: int = _TAPE) -> str:
 
     skip_vals: dict[int, int] = {}
     for i in range(n):
-        w = n - 1 - i
         comp = n + i
         d = skip_base + i
         move(d)
@@ -830,7 +853,7 @@ def nocomment(truth_table: str, tape: int = _TAPE) -> str:
         commands.append("s")
         block = len(commands)
         move(index)
-        commands.extend(["i"] * (2**w))
+        commands.extend(["i"] * weights.get(i, 0))
         move(comp)
         skip_vals[d] = len(commands) - block
     move(index)
@@ -887,9 +910,11 @@ def nocomment(truth_table: str, tape: int = _TAPE) -> str:
     cells: list[tuple[int, int]] = list(skip_vals.items())
     cells.append((sentinel, _ASCII_ZERO))
     for j in range(k):
-        cells.append((tbase + j, _ASCII_ZERO + int(truth_table[j])))
+        cells.append((tbase + j, _ASCII_ZERO + int(table[j])))
     cells.sort(key=lambda cv: cv[1])
-    if cells:
+    # The sentinel is appended unconditionally above, so there is always at
+    # least one cell to walk here.
+    if cells:  # pragma: no branch - the sentinel keeps this non-empty
         first_addr, first_value = cells[0]
         setup_move(first_addr)
         setup.extend(["i"] * first_value)
@@ -1646,13 +1671,26 @@ def home_row(truth_table: str) -> str:
     restore, since every other index has already been ruled out.
     """
     n = _validate_truth_table(truth_table)
+    # A table that ignores some of its inputs is a smaller table, and the
+    # leaf chain -- the whole cost here -- is 2**n lines regardless of what
+    # the table says, so dropping an input halves the program.  The gates
+    # stay: every input keeps its ``{Xi}`` setter and its packing line, and
+    # an ignored one simply carries binary weight zero, so its gate runs and
+    # consumes its guard exactly as before while adding nothing to the
+    # accumulator.  Nothing is relocated and no setter changes width, which
+    # is what keeps the slot-order and equal-width invariants intact.
+    used = essential_inputs(truth_table, n)
+    # A constant table depends on nothing and reduces to a one-input table,
+    # never to the length-1 table, which is not a valid shape.
+    table = truth_table if len(used) == n else read_at(truth_table, used or [0], n)
+    weights = {i: 2 ** (len(used) - 1 - slot) for slot, i in enumerate(used)}
+
     setup = "aaaaaalsffaaaaaaaaffflf"
     bit_lines = [
-        "{X" + str(i) + "}lsffff" + "a" * (2 ** (n - 1 - i)) + "fl" for i in range(n)
+        "{X" + str(i) + "}lsffff" + "a" * weights.get(i, 0) + "fl" for i in range(n)
     ]
     leaves = [
-        "afffflsfsfflflf" + ("a" if bit == "1" else "") + "k;lff"
-        for bit in truth_table[:-1]
+        "afffflsfsfflflf" + ("a" if bit == "1" else "") + "k;lff" for bit in table[:-1]
     ]
-    leaves.append("f" + ("a" if truth_table[-1] == "1" else "") + "k;")
+    leaves.append("f" + ("a" if table[-1] == "1" else "") + "k;")
     return setup + "".join(bit_lines) + "".join(leaves)

@@ -67,9 +67,9 @@ class TestSubprocess:
     def test_transpile(self, tmp_path: Path) -> None:
         program = tmp_path / "prog.bf"
         program.write_text(esolangs.generate("brainfuck", "Hi"))
-        result = run_cli("transpile", "brainfuck", "Circlefuck", str(program))
+        result = run_cli("transpile", "brainfuck", "Painfuck", str(program))
         assert result.returncode == 0
-        assert esolangs.run("Circlefuck", result.stdout) == "Hi"
+        assert esolangs.run("Painfuck", result.stdout) == "Hi"
 
 
 class TestInProcess:
@@ -136,8 +136,8 @@ class TestInProcess:
     ) -> None:
         program = tmp_path / "prog.bf"
         program.write_text(esolangs.generate("brainfuck", "Hi"))
-        out = call_main(["transpile", "brainfuck", "Circlefuck", str(program)], capsys)
-        assert esolangs.run("Circlefuck", out) == "Hi"
+        out = call_main(["transpile", "brainfuck", "Painfuck", str(program)], capsys)
+        assert esolangs.run("Painfuck", out) == "Hi"
 
     def test_transpile_unsupported_pair(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]

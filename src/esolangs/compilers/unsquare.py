@@ -83,7 +83,7 @@ def prep(code: str) -> str:
         ind += 1
 
     code = sub(r"([OI]A[+\-x]*)+", r"\1", code)
-    code = sub("(OO|II|PP)S+", "\1", code)
+    code = sub("(OO|II|PP)S+", r"\1", code)
 
     return code.replace("SS", "")
 
@@ -132,7 +132,9 @@ def comp(code: str) -> str:
         elif c == ">":
             jmp += 1
             res += f".T{jmp}:\n\tli   t0, 2\n\tbltu s2, t0, .B{jmp}\n"
-        elif c == "<":
+        else:
+            # ``prep`` keeps only ``OIASP+-xoi><`` and every other character
+            # of it has an arm above, so what is left here is ``<``.
             res += f"\tj .T{jmp}\n.B{jmp}:\n"
             jmp -= 1
 

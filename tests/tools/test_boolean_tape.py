@@ -1009,11 +1009,14 @@ class TestSlowAcvMammalian:
             ("1110", 2),  # NAND
             ("0", 0),  # zero inputs: a bare constant, with no tree at all
             ("1", 0),
-            # The three-input tables cost 0.68s each now that the landings
-            # are solved rather than searched, down from 3.5s and 3.3s at
-            # one worker, so they no longer sit out the fast run.
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
+            # The three-input tables were 0.68s each when the landings became
+            # solved rather than searched, and were let back into the fast run
+            # on that measurement.  Re-measured 2026-08-31 at one worker they
+            # are 1.68s and 1.65s -- still far better than the 3.5s/3.3s they
+            # started at, but over the one-second budget, so they sit out
+            # again.  CI runs `-m slow`, so both tables still run per push.
+            pytest.param("11111110", 3, marks=pytest.mark.slow),  # NAND3
+            pytest.param("01101001", 3, marks=pytest.mark.slow),  # XOR3
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -1045,6 +1048,8 @@ class TestSlowAcvMammalian:
             run_until_halt_or_cycle(_Machine(program, io_obj))
             assert io_obj.position() == 2
 
+    # 1.6s: it walks the three-input tree, the same build the n=3 tables pay.
+    @pytest.mark.slow
     def test_pointer_never_leaves_array_zero(self) -> None:
         """No ``SPRINT``: the tree lives in code space, not in array space.
 
@@ -1335,8 +1340,25 @@ class TestSuffolk:
         length rose monotonically with the ones-count.  Now it peaks at half
         and falls again -- the signature of picking whichever row-set is
         smaller -- which is what this pins.
+
+        **Every table here depends on all three inputs**, which the prefix
+        family ``1^k 0^(8-k)`` does not: ``11110000`` ignores two of them,
+        and since dependency reduction (10) shipped it is the *cheapest*
+        table of the seven rather than the dearest, so the peak-at-half
+        signature reads as broken when it is only being measured through a
+        second optimization.  Holding the arity fixed isolates the
+        complement, which is what this test is about.
         """
-        lengths = [len(boolean.suffolk("1" * k + "0" * (8 - k))) for k in range(1, 8)]
+        tables = (
+            "10000000",  # 1 one
+            "10010000",  # 2
+            "11100000",  # 3
+            "11101000",  # 4
+            "11111000",  # 5
+            "11111001",  # 6
+            "11111110",  # 7
+        )
+        lengths = [len(boolean.suffolk(table)) for table in tables]
         assert lengths[3] == max(lengths)  # four ones is the worst case
         assert lengths[6] < lengths[3]  # seven ones is cheaper than four
         # and roughly as cheap as its one-one mirror image

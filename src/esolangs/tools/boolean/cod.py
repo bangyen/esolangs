@@ -17,9 +17,14 @@ the column reads three times for one command, and one that dead-ends there
 re-reads until EOF.  See ``docs/parameterized-input-conversion.md``.
 """
 
+import re
 from itertools import zip_longest
 
-from esolangs.tools.boolean.helpers import _validate_truth_table
+from esolangs.tools.boolean.helpers import (
+    _validate_truth_table,
+    essential_inputs,
+    read_at,
+)
 
 __all__ = ["cod"]
 
@@ -190,6 +195,29 @@ def _cod_combine(blocks: list[str]) -> str:
     )
 
 
+def _cod_dead_box(names: list[int]) -> str:
+    """Build a sealed block of ignored inputs' setters, which the cod never enters.
+
+    Every input keeps its ``{Xi}`` -- the harness has a bit for each one --
+    but an input the table ignores must not reach the value the cascade
+    reads.  COD is a *grid*, so unlike a one-dimensional tape it has cells
+    that are genuinely unreachable: a ``~`` wall on every side is water the
+    cod cannot cross, and a ``)`` inside it increments nothing because no
+    cod is ever there.  That makes an ignored setter free rather than merely
+    cheap -- there is nothing to discard (taglate), erase (minifuck), or
+    weigh zero (home_row).
+
+    The box is stacked above or below the reduced program rather than
+    concatenated beside it, because :func:`_cod_combine` pads shorter blocks
+    with *spaces*, and a space in COD is open water rather than inert filler
+    -- padding the reduced program out to a common width lets the cod swim
+    out of it, and the program then prints nothing at all.
+    """
+    inner = "".join("{X" + str(i) + "}" for i in names)
+    wall = "~" * (len(names) + 2)
+    return "\n".join([wall, "~" + inner + "~", wall])
+
+
 def cod(truth_table: str) -> str:
     """Build a COD template for an ``n``-input Boolean function, any ``n >= 1``.
 
@@ -247,6 +275,45 @@ def cod(truth_table: str) -> str:
     if n < 1:
         raise ValueError(f"cod requires n >= 1, got n == {n}")
 
+    # A table that ignores some of its inputs is a smaller table, and COD's
+    # cost is the leaf cascade -- ``2**n - 1`` blocks whatever the table says
+    # -- so dropping an input roughly halves the program.  Build the reduced
+    # table's program, rename its slots to the inputs that survived, and park
+    # the rest in sealed boxes (:func:`_cod_dead_box`) placed either side of
+    # it so every ``{Xi}`` still appears exactly once, in ascending order.
+    used = essential_inputs(truth_table, n) or [0]
+    # A *gapped* dependency set (inputs 0 and 2 but not 1) would emit the
+    # core's slots around the ignored one, leaving ``{X2}`` before ``{X1}``
+    # and breaking name order, so the set is widened to its span.  Taglate
+    # declines a gapped set outright instead, because there the widened
+    # table would ghost-pad itself.
+    #
+    # Widening is not guaranteed to pay: the span's cascade grows as
+    # ``2**len(used)`` while the dead boxes it buys back save only one cell
+    # per ignored input, so a span that is wide but sparse recovers little.
+    # No table measured here comes out longer, but nothing in the
+    # construction forbids it, and the check is two comparisons -- so the
+    # reduced build is measured against the full one and the shorter kept,
+    # the ``shortest``-of-N precedent.  A future change that makes the dead
+    # box cost more per input is exactly what this guard is for.
+    used = list(range(used[0], used[-1] + 1))
+    reduced = None
+    if len(used) < n:
+        core = cod(read_at(truth_table, used, n))
+        # Rename through a private marker: rewriting ``{X0}`` to ``{X2}`` in
+        # place could collide with a ``{X2}`` this loop has not reached yet.
+        for slot in reversed(range(len(used))):
+            core = core.replace("{X" + str(slot) + "}", f"\x01{used[slot]}\x02")
+        core = re.sub(r"\x01(\d+)\x02", lambda m: "{X" + m.group(1) + "}", core)
+        ignored = [i for i in range(n) if i not in used]
+        before = [i for i in ignored if i < used[0]]
+        after = [i for i in ignored if i > used[-1]]
+        parts = [_cod_dead_box(before)] if before else []
+        parts.append(core)
+        if after:
+            parts.append(_cod_dead_box(after))
+        reduced = "\n".join(parts)
+
     blocks = ["~~~\n~> \n~~~"]
     for k in range(n - 1):
         blocks.append(_cod_fork_box(n, k + 1).replace("?", "{X" + str(k) + "}", 1))
@@ -255,7 +322,8 @@ def cod(truth_table: str) -> str:
     box_rows[1] = "{X" + str(n - 1) + "}" + box_rows[1][1:]
     blocks.append("\n".join(box_rows))
 
-    return _cod_combine(blocks)
+    full = _cod_combine(blocks)
+    return reduced if reduced is not None and len(reduced) < len(full) else full
 
 
 _byte_limit = "this truth table needs a skip beyond the 256-cell byte limit"

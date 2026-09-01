@@ -1321,6 +1321,22 @@ class TestGeneratorBranches:
         """A NUL is pushed and printed with an explicit dot."""
         assert gen.forth("a\x00b") == "06F*7+.0.6F*8+."
 
+    @pytest.mark.parametrize("text", ['a"b', "a[b", "a]b", "a\x00b"])
+    def test_modulous_unsafe_character(self, text: str) -> None:
+        """A quote, bracket, or NUL falls back to per-character INT pushes.
+
+        The ``PSH STR`` literal cannot carry these, so the whole string is
+        pushed a character at a time instead of as one literal.
+        """
+        output = gen.modulous(text)
+        assert output == "".join(f"[PSH INT {ord(c)}][PRT]" for c in text) + "[END]"
+        assert "PSH STR" not in output
+        assert roundtrip(modulous_run, output) == text
+
+    def test_modulous_empty(self) -> None:
+        """Empty text takes the fallback branch and emits only the END."""
+        assert gen.modulous("") == "[END]"
+
     def test_main_prints_all(self, capsys: pytest.CaptureFixture[str]) -> None:
         with patch("sys.argv", ["esolangs.tools.text", "Hi"]):
             gen.main()

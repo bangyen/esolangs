@@ -247,6 +247,33 @@ class TestVariants:
         assert self.mem(program) == self.mem(program, "a")
         assert self.mem(program) != self.mem(program, "b")
 
+    @pytest.mark.parametrize("store", ["A", "AB", "B", "c", "", "bb", "abc"])
+    def test_unknown_store_target_is_rejected(self, store: str) -> None:
+        """A store outside the three variants raises rather than running.
+
+        ``step`` tests ``store in ("ab", "b")``, so every unrecognised
+        spelling used to fall through to the *base* language silently: a
+        caller writing ``"A"`` for ``"a"`` got a wrong answer rather than an
+        error, and ``"B"`` ran base S*bleq while claiming to be Subl*q.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.sbleq import _Machine
+
+        with pytest.raises(ValueError, match="unknown store target"):
+            _Machine(io=ScriptedIO(""), mem=[0, 0, 0], store=store)
+
+    @pytest.mark.parametrize("store", ["a", "ab", "b"])
+    def test_documented_store_targets_are_accepted(self, store: str) -> None:
+        """The three wiki variants stay constructible.
+
+        The positive half of the check above: a guard that rejected
+        everything would pass that test just as well.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.sbleq import _Machine
+
+        assert _Machine(io=ScriptedIO(""), mem=[0, 0, 0], store=store).store == store
+
     def mem(self, program: str, store: str = "a", steps: int = 200) -> list[int]:
         """Return the memory ``program`` leaves under the ``store`` variant."""
         from esolangs.interpreters.io import ScriptedIO

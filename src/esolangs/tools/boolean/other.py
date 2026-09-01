@@ -10,7 +10,9 @@ from esolangs.tools.boolean.helpers import (
     _maybe_complement,
     _validate_truth_table,
     best_input_order,
+    essential_inputs,
     minterm_literals,
+    read_at,
 )
 from esolangs.tools.boolean.laserfuck import laserfuck
 from esolangs.tools.boolean.streetcode import streetcode
@@ -191,14 +193,31 @@ def _three_x_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         """If bit i is 0, run ``body``; leaves the stack balanced."""
         return read(i) + not_bit() + "(" + trash + body + _ZERO + ")" + trash
 
+    # A table that ignores some of its inputs is a smaller table, and this
+    # tree does not fold it away on its own: it prunes only the rows that
+    # *differ from the default*, which for a one-dependency table is still
+    # half of them, each carrying a full-depth guard chain.  Reducing to the
+    # essential inputs collapses those to one guard.  The reads stay in
+    # stream order -- every input is still ``?``-read and stored, which is
+    # the interface -- and an ignored one simply lands in a variable the
+    # tree never reads.
+    essential = essential_inputs(truth_table, n) or [0]
+    if len(essential) < n:
+        table = read_at(truth_table, essential, n)
+        width = len(essential)
+    else:
+        table, width = truth_table, n
+
     # Reads run in stream order; only the store target moves.  Stream input
     # ``i`` goes into the name the tree tests at depth ``perm.index(i)``.
+    # A reduced tree tests only ``width`` names, so the ignored inputs take
+    # the leftover ones; ``perm`` is a permutation of all ``n`` either way.
     depth_of = {stream: depth for depth, stream in enumerate(perm)}
     prog = "".join("?" + store(input_vars[depth_of[i]]) for i in range(n))
 
     # Default the result to the majority value so only the minority rows
     # need an override block (combos matching the default are skipped).
-    default = "1" if truth_table.count("1") >= truth_table.count("0") else "0"
+    default = "1" if table.count("1") >= table.count("0") else "0"
     prog += (_ONE if default == "1" else _ZERO) + store(result)
 
     # One decision tree instead of an independent guard chain per differing
@@ -208,23 +227,32 @@ def _three_x_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # their parent's body, and whole subtrees that match the default are
     # pruned.
     def override(combo: int) -> str:
-        return (_ONE if truth_table[combo] == "1" else _ZERO) + store(result)
+        return (_ONE if table[combo] == "1" else _ZERO) + store(result)
+
+    # ``truth_table`` is already the *permuted* table when the reorder
+    # wrapper calls this, so ``essential`` is in the tree's own coordinates:
+    # entry ``s`` names the depth the unreduced tree would have tested, and
+    # the bit for that depth sits in ``input_vars[essential[s]]``.  Going
+    # back through ``depth_of`` would mix stream and tree coordinates, which
+    # agrees only when the essential set is contiguous from 0 -- gapped sets
+    # like ``[0, 2]`` are exactly where that mismatch shows up.
+    slot_var = [input_vars[s] for s in essential]
 
     def build(rows: list[int], depth: int) -> str:
         if not rows:
             return ""
-        if depth == n:
+        if depth == width:
             return override(rows[0])  # rows are pruned, so it differs from default
-        bit = n - 1 - depth
+        bit = width - 1 - depth
         rows1 = [r for r in rows if (r >> bit) & 1]
         rows0 = [r for r in rows if not (r >> bit) & 1]
         sub1 = build(rows1, depth + 1)
         sub0 = build(rows0, depth + 1)
-        return (guard(input_vars[depth], sub1) if sub1 else "") + (
-            guard_not(input_vars[depth], sub0) if sub0 else ""
+        return (guard(slot_var[depth], sub1) if sub1 else "") + (
+            guard_not(slot_var[depth], sub0) if sub0 else ""
         )
 
-    differing = [c for c in range(2**n) if truth_table[c] != default]
+    differing = [c for c in range(2**width) if table[c] != default]
     prog += build(differing, 0)
 
     prog += read(result) + "!"
@@ -484,24 +512,6 @@ def _odd_reduce(pairs: int, level: int, n: int) -> str:
     return "e" * rot + zero + swap + bring + er
 
 
-def _taglate_dependencies(truth_table: str, n: int) -> list[int]:
-    """Which input positions the table's value actually depends on.
-
-    Input ``i`` matters when some row's value changes if only that bit is
-    flipped; a table where none does is constant in ``i``.
-    """
-    used = []
-    for i in range(n):
-        bit = 1 << (n - 1 - i)
-        if any(
-            truth_table[row] != truth_table[row | bit]
-            for row in range(2**n)
-            if not row & bit
-        ):
-            used.append(i)
-    return used
-
-
 def _taglate_reduced_table(truth_table: str, n: int, used: list[int]) -> str:
     """Rewrite the function over just the inputs in ``used``."""
     width = len(used)
@@ -580,7 +590,7 @@ def taglate(truth_table: str) -> str:
     # the reduced program's own reads, and the queue there is not what the
     # following reduce block assumes -- the output comes out arithmetically
     # corrupted rather than merely permuted.
-    used = _taglate_dependencies(truth_table, n)
+    used = essential_inputs(truth_table, n)
     # A constant table depends on nothing, so it reduces to the smallest
     # valid table there is -- a one-input constant, never the length-1
     # table, which is not a valid shape.
@@ -860,7 +870,10 @@ def clockwise(truth_table: str) -> str:
     width = max(x for (x, y) in cells) + 1
     grid = [[" "] * width for _ in range(height)]
     for (x, y), ch in cells.items():
-        if 0 <= x < width and 0 <= y < height:
+        # ``width`` and ``height`` are derived from these very cells, so the
+        # test holds for every one of them; it stays as the guard that keeps
+        # a future caller's stray coordinate from writing outside the grid.
+        if 0 <= x < width and 0 <= y < height:  # pragma: no branch - see above
             grid[y][x] = ch
     # The grid is a fixed-size rectangle of blanks that the cells are painted
     # into, so a row's trailing filler is never reached; the interpreter pads
@@ -974,7 +987,20 @@ def bit_tilde(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
 
-    table, use_complement = _maybe_complement(truth_table)
+    # A table that ignores some of its inputs is a smaller table, and every
+    # cost here is per *one-row* and per *input within it*: each minterm
+    # pre-copies one cell per input and nests one ``{`` test per input, so
+    # dropping an input removes rows and shortens the rows that remain.
+    # The reads stay -- one ``)`` per input, and they are the interface --
+    # so the ignored inputs are still read into their own cells and simply
+    # never copied out of them.
+    used = essential_inputs(truth_table, n) or [0]
+    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
+
+    table, use_complement = _maybe_complement(reduced)
+    # Reads keep their original cells (input ``i`` lands at ``8i+7``), so a
+    # minterm's ``level`` indexes into ``used`` rather than into ``range(n)``.
+    width = len(used)
 
     prog: list[str] = []
     pos = 0
@@ -1009,14 +1035,24 @@ def bit_tilde(truth_table: str) -> str:
 
     scratch = 8 * n
     uses: dict[tuple[int, int], int] = {}
-    for i in range(n):
+    if 0 not in used:
+        # ``(`` prints cell 7's window, and input 0's bit lands there, so it
+        # has to be consumed whether or not the table depends on it.  When
+        # input 0 is essential the first copy below does that as a side
+        # effect; when it is *ignored* nothing else touches cell 7, and the
+        # output comes out as the input bit rather than the answer -- which
+        # is exactly the 16 tables at ``n <= 3`` that ignore input 0.
+        move(7)
+        prog.append("{ ~ }")
+        pos = 7
+    for slot, i in enumerate(used):
         src = 8 * i + 7
-        for k in range(2**n):
+        for k in range(2**width):
             # only one-rows' indicators are used; the first input-0 copy must
             # still run to consume the input bit out of cell 7
-            if table[k] != "1" and not (i == 0 and k == 0):
+            if table[k] != "1" and not (slot == 0 and i == 0 and k == 0):
                 continue
-            c = (k >> (n - 1 - i)) & 1
+            c = (k >> (width - 1 - slot)) & 1
             use = scratch
             keep = scratch + 1
             scratch += 2
@@ -1026,7 +1062,7 @@ def bit_tilde(truth_table: str) -> str:
                 move(use)
                 prog.append("~")
                 pos = use
-            uses[(k, i)] = use
+            uses[(k, slot)] = use
 
     result = scratch
     scratch += 1
@@ -1039,7 +1075,7 @@ def bit_tilde(truth_table: str) -> str:
 
     def node(level: int, k: int) -> None:
         nonlocal pos
-        if level == n:
+        if level == width:
             set_result()
             return
         use = uses[(k, level)]
@@ -1052,7 +1088,7 @@ def bit_tilde(truth_table: str) -> str:
         pos = use
         prog.append("}")
 
-    for k in range(2**n):
+    for k in range(2**width):
         if table[k] == "1":
             node(0, k)
 
@@ -1170,12 +1206,21 @@ def suptiftam(truth_table: str) -> str:
     # One minterm per row selected, so a dense table is summed over its
     # zeros and the sum inverted -- ``1 - sum`` is one line however many
     # minterms it saves.
-    table, invert = _maybe_complement(truth_table)
-    for row in range(2**n):
+    # A table that ignores some of its inputs is a smaller table, and a
+    # minterm costs four lines *per input* on top of one row per selected
+    # row -- so dropping an input removes rows and shortens the rows that
+    # remain.  Every input keeps its read and its normalization (they are
+    # the interface); an ignored one is simply never named as a factor.
+    used = essential_inputs(truth_table, n) or [0]
+    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
+    width = len(used)
+    table, invert = _maybe_complement(reduced)
+    for row in range(2**width):
         if table[row] != "1":
             continue
         lines.append("p=1")
-        for i, negated in minterm_literals(row, n):
+        for slot, negated in minterm_literals(row, width):
+            i = used[slot]
             factor = f"%-[1]{names[i]}%" if negated else names[i]
             lines += ["prod=0", f"a={factor}", "mulStep(:p:)if(p)", "p=prod"]
         lines.append("sum=%+[sum]p%")
