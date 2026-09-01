@@ -418,6 +418,25 @@ class TestRobustness:
         program = "\n".join(["fd f :x", "y=1", "term=y", "fi", "f(:1:)"])
         assert run_program(program) == "1"
 
+    def test_a_parameter_does_not_survive_its_call(self) -> None:
+        """The frame's names are gone once the call returns.
+
+        Output cannot show this: the function prints the same byte whether
+        its parameter was bound in the frame or in the globals, so a
+        binding written to the wrong scope leaves no trace in what the
+        program says.  Reading the global scope afterwards does show it --
+        only the two tapes the language starts with should be there.
+        """
+        from esolangs.interpreters.other.suptiftam import _Machine
+
+        program = "\n".join(["fd f :x", "x=%+[x]1%", "term=x", "fi", "f(:1:)"])
+        io = ScriptedIO("")
+        machine = _Machine(program, io)
+        while not machine.halted:
+            machine.step()
+        assert io.getvalue() == "2"
+        assert sorted(machine.state.globals) == ["read", "term"]
+
     def test_if_malformed_raises(self) -> None:
         for code in ("f(:0:)if(1", "f(:0:)if(:x"):
             with pytest.raises(ValueError, match="malformed if"):
