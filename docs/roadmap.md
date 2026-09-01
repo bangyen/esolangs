@@ -22,9 +22,6 @@ assessed-and-rejected ledger in `docs/limitations.md`.
 - **Packlang** — Turing-complete: packages with the built-in IO package
   (`charGet`/`charPut`), `If`/`While`, XOR/`!`; the truth-machine example
   branches on `input ^ 48`.
-- **Inject** — Turing-complete: label blocks, `readto`/`send` for line I/O,
-  `skipq`/`skipif`/`skip` for control flow; the truth-machine example
-  compares the input block against a `0` block.
 - **Algebraic Programming Language** — Turing-complete: executed lines print
   their result and their variables read user input; `&`/`|` short-circuit
   with `IF(x, c) = x & c()` and a `WHILE` function give the generator its tree.

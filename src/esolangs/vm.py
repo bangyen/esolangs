@@ -1618,6 +1618,56 @@ class _ContainerVM(_BaseVM):
         return []
 
 
+class _InjectVM(_BaseVM):
+    """Label-blocks + line cursor; ``ip`` the line, ``memory`` block sizes.
+
+    Inject has no numbers at all -- its state is the text of its own
+    program -- so ``memory`` reports each block's line count, in label
+    order, which is the one numeric view of the state the language itself
+    can test (``skipif`` asks whether a block has at least one line).
+    ``stack`` is the labels currently enclosing the pointer, innermost
+    last, since ``skip``'s second clause is decided by that nesting.
+    """
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.other.inject import _Machine
+
+        self._machine = _Machine(program.splitlines(), self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        machine = self._machine
+        # A block's size is the gap between its delimiters, so the spans
+        # alone give it -- no need to slice the lines back out.
+        spans = machine.spans
+        return [spans[name][1] - spans[name][0] - 1 for name in sorted(spans)]
+
+    @property
+    def stack(self) -> list[object]:
+        machine = self._machine
+        inside = [
+            name
+            for name, (begin, end) in machine.spans.items()
+            if begin < machine.ind < end
+        ]
+        ordered = sorted(
+            inside, key=lambda n: machine.spans[n][1] - machine.spans[n][0]
+        )
+        return list(reversed(ordered))
+
+
 class _NevermindVM(_BaseVM):
     """Named variables + line cursor; ``ip`` the line, ``memory`` the vars."""
 
@@ -2227,6 +2277,7 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Suffolk": _SuffolkVM,
     "Container": _ContainerVM,
     "Nevermind": _NevermindVM,
+    "Inject": _InjectVM,
     "BF-PDA": _BFPDAVM,
     "3x": _ThreeXVM,
     "Sophie": _SophieVM,

@@ -81,6 +81,12 @@ def run_sophie_from(program: str, feed: Iterator[str]) -> str:
     return _run_from("esolangs.interpreters.register_based.sophie", program, feed)
 
 
+def run_inject(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.other.inject import run
+
+    return run_program(run, program, _stdin(inputs))
+
+
 def run_dimensional(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.dimensional import run
 

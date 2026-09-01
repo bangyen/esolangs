@@ -31,6 +31,27 @@ STREETCODE = "+-----+\n|     |\n|C^^O;|\n+-----+"
 STREETCODE_GAP = "+------+\n|      |\n|C^==^;|\n+------+"
 
 # The wiki's truth machine: read a bit, and on 0 print it once and halt.
+# A corrected Inject truth machine.  The wiki's own example is inverted
+# under the wiki's own prose (see the interpreter's module docstring); this
+# one halts on "0" after printing it and loops forever on "1".
+INJECT_TRUTH_MACHINE = "\n".join(
+    [
+        "readto data",
+        "skipq data 0",
+        "loop;",
+        "send data",
+        "skip",
+        "loop;",
+        "send data",
+        "skip",
+        "data;",
+        "data;",
+        "0;",
+        "0",
+        "0;",
+    ]
+)
+
 FLOWCHART_TRUTH_MACHINE = "\n".join(
     [
         "       ( )──┐        ",
@@ -173,6 +194,10 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Forþ": ("65.", ""),
     "Grapheme": ("FAFY", ""),
     "Home Row": ("ak;", ""),
+    # A corrected truth machine (the wiki's own is inverted -- see the
+    # interpreter's module docstring), on the input that halts: the "1"
+    # branch loops forever.
+    "Inject": (INJECT_TRUTH_MACHINE, "0\n"),
     "Jaune": ("++^", ""),
     "Lamfunc": ("p 5", ""),
     "LaserFuck": ("ÿ   x\n    +\n    o", ""),

@@ -347,6 +347,12 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.home_row,
         id="home_row",
     ),
+    "Inject": Language(
+        "Inject",
+        boolean=_boolean.inject,
+        id="inject",
+        interpreter="other.inject",
+    ),
     "Jaune": Language(
         "Jaune",
         boolean=_boolean.jaune,
