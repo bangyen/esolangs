@@ -104,9 +104,7 @@ class Test123:
 
         # code[0] is the only earlier '3'; landing there means ip == 1.
         machine = _Machine("3xx3", ScriptedIO())
-        machine.pos = 2
-        machine.bits[2] = True
-        machine.ip = 3
+        machine.place(ip=3, pos=2, bits=frozenset((2,)))
         machine.step()
         assert machine.ip == 1
 
@@ -124,7 +122,7 @@ class Test123:
         for _ in range(10):
             machine.step()
         assert machine.pos == 8
-        assert machine.bits.get(9) is True
+        assert 9 in machine.bits
 
     def test_wraparound_from_beyond_seven_reaches_read_position(self) -> None:
         """Marching left from past position 7 still reaches -3 to read.
