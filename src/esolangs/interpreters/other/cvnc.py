@@ -150,6 +150,28 @@ _FUNCTION_SYMBOLS = {
 _ADDITIVE = frozenset("+-")
 _MULTIPLICATIVE = frozenset("*/")
 
+# The individual commands the dispatch tests by name, so each branch body
+# reads as the operation it performs rather than as a comparison against a
+# bare IPA character.  The class frozensets above still spell their members
+# directly: they are membership tests over a whole class, not the per-command
+# dispatch these name.
+_PRINT_NUM = "θ"
+_PRINT_CHAR = "f"
+_READ_NUM = "s"
+_CLEAR_FUNCTION = "c"
+_POP_FRONT_APPEND = "p"
+_INCREMENT = "i"
+_DECREMENT = "ə"
+_SQUARE = "æ"
+_SQRT = "o"
+_PUSH_FRONT = "m"
+_PUSH_BACK = "n"
+_POP_FRONT = "ŋ"
+_GOTO = "ɹ"
+_GOTO_LINE = "j"
+_WHILE_NONZERO = "ɰ"
+_LOOP_END = "ʋ"
+
 
 def _as_int(line: str) -> int:
     """Parse an input line as an integer, taking anything else as zero.
@@ -225,9 +247,9 @@ def _match_loops(tokens: list[str]) -> dict[int, int]:
     pairs: dict[int, int] = {}
     stack: list[int] = []
     for index, token in enumerate(tokens):
-        if token in (_WHILE_ZERO, "ɰ"):
+        if token in (_WHILE_ZERO, _WHILE_NONZERO):
             stack.append(index)
-        elif token == "ʋ":  # nosec B105
+        elif token == _LOOP_END:
             if not stack:
                 raise ValueError("loop end with no matching start")
             start = stack.pop()
@@ -382,11 +404,11 @@ class _Machine:
 
     def _fricative(self, token: str) -> None:
         """Run one I/O command."""
-        if token == "θ":  # nosec B105
+        if token == _PRINT_NUM:
             self.io.print_num(self.accumulator)
-        elif token == "f":  # nosec B105
+        elif token == _PRINT_CHAR:
             self.io.print_char(chr(self.accumulator % 256))
-        elif token == "s":  # nosec B105
+        elif token == _READ_NUM:
             # The accumulator is unsigned, so a negative line floors at zero,
             # and an empty line (a bare Enter) reads as 0 rather than raising.
             line = self.io.input_str().strip()
@@ -396,41 +418,41 @@ class _Machine:
 
     def _plosive(self, token: str) -> None:
         """Append to the function, or reset it."""
-        if token == "c":  # nosec B105
+        if token == _CLEAR_FUNCTION:
             self.function = []
         elif token in _FUNCTION_SYMBOLS:
             self.function.append(_FUNCTION_SYMBOLS[token])
         else:
-            self.function.append(str(self._pop(front=token == "p")))  # nosec B105
+            self.function.append(str(self._pop(front=token == _POP_FRONT_APPEND)))
 
     def _vowel(self, token: str) -> None:
         """Modify the accumulator."""
-        if token == "i":  # nosec B105
+        if token == _INCREMENT:
             self.accumulator += 1
-        elif token == "ə":  # nosec B105
+        elif token == _DECREMENT:
             self.accumulator = max(self.accumulator - 1, 0)
-        elif token == "æ":  # nosec B105
+        elif token == _SQUARE:
             self.accumulator *= self.accumulator
-        elif token == "o":  # nosec B105
+        elif token == _SQRT:
             self.accumulator = math.isqrt(self.accumulator)
         else:
             self._apply()
 
     def _nasal(self, token: str) -> None:
         """Push to or pop from the deque."""
-        if token == "m":  # nosec B105
+        if token == _PUSH_FRONT:
             self.deque.insert(0, self.accumulator)
-        elif token == "n":  # nosec B105
+        elif token == _PUSH_BACK:
             self.deque.append(self.accumulator)
         else:
-            self.accumulator = self._pop(front=token == "ŋ")  # nosec B105
+            self.accumulator = self._pop(front=token == _POP_FRONT)
 
     def _approximant(self, token: str) -> None:
         """Jump: a goto, a loop test, or a loop end."""
-        if token == "ɹ":  # nosec B105
+        if token == _GOTO:
             # Past the end is a halt, which running off the end already is.
             self.pointer = self.offsets.get(self.accumulator, len(self.tokens))
-        elif token == "j":  # nosec B105
+        elif token == _GOTO_LINE:
             self.pointer = (
                 self.starts[self.accumulator]
                 if self.accumulator < len(self.starts)
@@ -441,7 +463,7 @@ class _Machine:
             # loop end would run it and bounce straight back to the test.
             if self.accumulator == 0:
                 self.pointer = self.pairs[self.pointer - 1] + 1
-        elif token == "ɰ":  # nosec B105
+        elif token == _WHILE_NONZERO:
             if self.accumulator != 0:
                 self.pointer = self.pairs[self.pointer - 1] + 1
         else:

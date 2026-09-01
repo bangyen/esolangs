@@ -581,8 +581,11 @@ class _Parser:
                 f"{gate.kind!r} at ({gate.col}, {gate.row}) takes {wanted_in} "
                 f"input(s), found {len(gate.inputs)}"
             )
+        # An output sinks its wire and drives nothing, so the out-port count
+        # below does not apply to it.  Parsing checks every gate, this one
+        # included, so the return is taken by any program with an output.
         if gate.kind == _OUTPUT:
-            return  # pragma: no cover - step() skips these before firing
+            return
         wanted_out = 2 if gate.kind == _SPLIT else 1
         if len(gate.outputs) != wanted_out:
             raise ValueError(
