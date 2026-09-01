@@ -324,82 +324,6 @@ class _DelegatingVM(_BaseVM):
         return list(self._machine.stack)
 
 
-# Language name -> VM adapter.  Only interpreters with a step()/halted state
-# object are wrappable; the rest raise UnknownLanguageError.
-# Most adapters are derived from the registry: once an interpreter
-# describes its own shape, the only per-language facts left are the two
-# ``RUNNERS`` already holds.  The rest are spelled out because they need
-# extra setup, override ``step()``, or build their machine differently
-# from the way their runner does.
-_VM_ADAPTERS: dict[str, type[_BaseVM]] = {}
-
-
-# Languages whose adapter is pure boilerplate over the registry entry.
-_DERIVED_LANGUAGES = (
-    "ArrowQueue",
-    "A Painter Ant",
-    "Suffolk",
-    "Point Break",
-    "S*bleq",
-    "Modulous",
-    "Qoibl",
-    "Grapheme",
-    "Eval",
-    "COD",
-    "LaserFuck",
-    "Painfuck",
-    "WII2D",
-    "Bitdeque",
-    "3D Brainfuck",
-    "%^2^-1",
-    "123",
-    "3x",
-    "6-5",
-    "AddSubJump",
-    "BF-PDA",
-    "BFStack",
-    "BIO",
-    "Back",
-    "Basicfuck",
-    "Between",
-    "BrainIf",
-    "CV(N)(C)",
-    "Circlefuck",
-    "Circuit Diagram",
-    "Clockwise",
-    "Collatz Multiverse",
-    "Container",
-    "Decleq",
-    "Dig",
-    "Dimensional",
-    "Factor",
-    "Fargo",
-    "Flowchart",
-    "Forbin",
-    "Forþ",
-    "Home Row",
-    "Jaune",
-    "Lamfunc",
-    "Minifuck",
-    "Minsky Swap",
-    "MyScript",
-    "Nevermind",
-    "NoComment",
-    "Polynomial",
-    "RAM0",
-    "ROTfuck",
-    "SLOW ACV MAMMALIAN",
-    "Sophie",
-    "Streetcode",
-    "Suptiftam",
-    "Taglate",
-    "Unsquare",
-    "ZTOALC L",
-    "bit~",
-    "brainfuck",
-)
-
-
 def _derived_adapter(language: str) -> type[_DelegatingVM]:
     """Build the adapter for a language whose wrapper is pure boilerplate.
 
@@ -458,7 +382,23 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
     return _Derived
 
 
-_VM_ADAPTERS.update({name: _derived_adapter(name) for name in _DERIVED_LANGUAGES})
+# Language name -> VM adapter.  Only interpreters with a step()/halted state
+# object are wrappable; the rest raise UnknownLanguageError.
+# Most adapters are derived from the registry: once an interpreter
+# describes its own shape, the only per-language facts left are the two
+# ``RUNNERS`` already holds.  The rest are spelled out because they need
+# extra setup, override ``step()``, or build their machine differently
+# from the way their runner does.
+# Every registered language is step-capable, so every one gets a derived
+# adapter.  The set is read off ``RUNNERS`` rather than listed again here:
+# a second copy of sixty-one names is a second thing to keep in step, and
+# ``test_every_registry_language_has_a_vm_adapter`` existed only to catch
+# the two drifting apart.  Building an adapter imports nothing -- the
+# interpreter is imported inside the adapter's ``__init__`` -- so this
+# stays as lazy as the hand-written table was.
+_VM_ADAPTERS: dict[str, type[_BaseVM]] = {
+    name: _derived_adapter(name) for name in RUNNERS
+}
 
 
 def make_vm(language: str, program: str, stdin: str = "") -> VM:
