@@ -520,3 +520,18 @@ class TestCircuitDiagramMutationSurvivors:
         """
         machine = _Machine(["-.~.-:"], ScriptedIO("0\n"))
         assert machine.halted is False
+
+
+def test_a_not_fed_only_diagonally_is_still_rejected() -> None:
+    r"""The level-input rescue needs a level input to find.
+
+    A ``~`` with more than one incoming port is read as a gate some other
+    wiring is routed diagonally past, so the parser retries with the level
+    cell alone and keeps that when it is the only one.  Here both feeders are
+    diagonal -- ``\`` points down-right and ``/`` up-right, so each aims into
+    the gate -- and the cell level with it is blank, so the retry finds
+    nothing and the two diagonals stand.  A NOT takes one input, so the
+    circuit is malformed rather than quietly reading one of them.
+    """
+    with pytest.raises(ValueError, match="takes 1 input"):
+        run(["-\\  ", "  ~-:", "-/  "], ScriptedIO("1\n0\n"))
