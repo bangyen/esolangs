@@ -76,6 +76,34 @@ class TestContainer:
         with pytest.raises(ValueError, match="before any container"):
             run(["+1 A>=0"], IO())
 
+    def test_the_malformed_program_message_reads_exactly(self) -> None:
+        """``match=`` only looks for a substring, so pin the whole message."""
+        with pytest.raises(ValueError) as caught:
+            run(["+1 A>=0"], IO())
+        assert str(caught.value) == "rule line before any container declaration"
+
+    def test_output_is_masked_to_seven_bits(self) -> None:
+        """OUT is printed modulo 128, so 200 comes out as 72.
+
+        Hello, World! never drives OUT past 127, which leaves the width of
+        the mask free -- 200 is the smallest round value above it.
+        """
+        code = [
+            "PRINT:",
+            "+1 PRINT<=0",
+            "-1 PRINT>=1",
+            "",
+            "OUT=200:",
+            "",
+            "EXIT=1:",
+            "-1 PRINT>=1",
+        ]
+        buffer = io.StringIO()
+        with pytest.raises(SystemExit) as exc, redirect_stdout(buffer):
+            run(code, io=IO())
+        assert exc.value.code == 0
+        assert buffer.getvalue() == "H"
+
     def test_empty_program_halts(self) -> None:
         """An empty program halts immediately with no output."""
         run([], IO())
@@ -111,6 +139,35 @@ class TestStepMachine:
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
         assert machine.tick == 0
+
+    def test_each_tick_counts_once(self) -> None:
+        """``tick`` advances by one per step, from zero."""
+        from esolangs.interpreters.other.container import _Machine
+
+        machine = _Machine(["A=0:", "+1 A>=0"], IO())
+        machine.step()
+        machine.step()
+        assert machine.tick == 2
+
+    def test_the_read_container_takes_one_character_per_firing(self) -> None:
+        """The empty-named container reads one character each time it turns on.
+
+        It oscillates 0 -> 1 -> 0, so it fires on every other tick, and the
+        line it read stays queued for the next firing -- one input line
+        feeds two reads, and IN holds the character until then.  Watching
+        the exit code alone would not show which character landed, nor
+        that the second one came from the queue rather than a fresh line.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.container import _Machine
+
+        code = [":", "+1 <=0", "-1 >=1", "", "IN:"]
+        machine = _Machine(code, ScriptedIO("AB"))
+        seen = []
+        for _ in range(4):
+            machine.step()
+            seen.append(machine.var["IN"])
+        assert seen == [65, 65, 66, 66]
 
 
 def _machine(code: object) -> object:
