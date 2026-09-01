@@ -7,6 +7,8 @@ revisits its complete internal state has looped forever, so neither
 ``assert_halts`` nor ``assert_loops`` needs a wall-clock bound at all.
 """
 
+import re
+
 import pytest
 
 from esolangs.exceptions import HaltError
@@ -284,7 +286,7 @@ class TestErrors:
         ],
     )
     def test_malformed_program(self, program: str, message: str) -> None:
-        with pytest.raises(ValueError) as caught:
+        with pytest.raises(ValueError, match=re.escape(message)) as caught:
             run(program, ScriptedIO())
         assert str(caught.value) == message
 
