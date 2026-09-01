@@ -73,6 +73,12 @@ left out, each aborting at runtime or rejected at compile time:
   ``[True]``, leaking Python's own spelling of a value that MyScript
   otherwise calls ``yes``.  Building, measuring, and indexing arrays is
   supported; printing one aborts.
+* **Two distinct arrays reaching ``equals``.**  Python's ``==`` compares
+  them elementwise and recurses into nested ones, so
+  ``equals [ 1 ] [ 1 ]`` is true; comparing the two arena addresses would
+  answer ``no`` instead.  Rather than answer wrongly this aborts, so the
+  one array comparison that stays exact is a value against *itself*,
+  which is equal by address.
 * **Integer width.**  MyScript's integers are Python's, so unbounded;
   these are 64-bit and wrap.
 
@@ -89,9 +95,11 @@ interpreter's ``splitlines`` yields it), and only a read that gets no
 bytes at all is the end of input.
 
 The tokenizer, block builder, and string-literal decoder are imported
-from the interpreter rather than rewritten, so the compiler accepts
-exactly the programs the interpreter parses -- the same acceptance parity
-Forbin and CV(N)(C) get from sharing a parser.
+from the interpreter rather than rewritten, so the two agree on how a
+program *parses* -- the same acceptance parity Forbin and CV(N)(C) get
+from sharing a parser.  That parity is about parsing only: the domain
+exclusions above are enforced afterward, when the tree is walked, so a
+program the interpreter parses can still be rejected here.
 
 Registers: ``s1`` = arena bump pointer, ``s2`` = current frame, ``s3`` =
 arena limit, ``s6`` = this invocation's stack mark.  ``s6`` is saved and
@@ -878,10 +886,10 @@ class _Compiler:
 
         ``equals`` is Python's ``==``: numbers compare across the integer
         and boolean tags (``equals yes 1`` is true), strings compare by
-        content, and values of unlike kinds are simply unequal.  Arrays
-        would need an elementwise walk; they reach here only from a
-        ``check`` on an array, which the interpreter allows but no
-        generator emits, so an array operand compares by identity.
+        content, and values of unlike kinds are simply unequal.  Two
+        arrays would need an elementwise walk that recurses into nested
+        ones, so a pair of *distinct* arrays aborts rather than answering
+        by address, which would be wrong whenever their contents match.
         """
         return (
             # equals(a0, a1) -> tagged boolean
@@ -906,11 +914,21 @@ class _Compiler:
             # anything else: equal exactly when it is the same word
             "    ld   ra, 0(sp)\n"
             "    addi sp, sp, 16\n"
-            "    bne  a1, a2, .eq_ident_false\n"
-            f"    li   a0, {_tagged(1, _T_BOOL)}\n"
-            "    ret\n"
-            ".eq_ident_false:\n"
+            "    beq  a1, a2, .eq_ident_true\n"
+            # Two *different* arrays would need an elementwise walk, which
+            # nests: the interpreter's `==` recurses into them.  Answering
+            # by address would say `no` where the interpreter says `yes`,
+            # so this aborts rather than answering wrongly -- the same
+            # treatment `say` of an array gets.
+            f"    andi t0, a1, {(1 << _TAG_BITS) - 1}\n"
+            f"    li   t1, {_T_ARR}\n"
+            "    beq  t0, t1, .abort\n"
+            f"    andi t0, a2, {(1 << _TAG_BITS) - 1}\n"
+            "    beq  t0, t1, .abort\n"
             f"    li   a0, {_tagged(0, _T_BOOL)}\n"
+            "    ret\n"
+            ".eq_ident_true:\n"
+            f"    li   a0, {_tagged(1, _T_BOOL)}\n"
             "    ret\n"
             ".eq_true:\n"
             f"    li   a0, {_tagged(1, _T_BOOL)}\n"
