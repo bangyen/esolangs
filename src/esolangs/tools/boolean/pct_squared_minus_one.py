@@ -113,18 +113,55 @@ That makes three inputs **total**: all 256 tables build, every one executed on
 the interpreter for all eight input combinations with every fill the same
 length.
 
-Three is also where it stops, for a reason that can be counted.  Distinct row
-sums need weights behaving like a binary code, so at least ``2**n - 1`` units,
-while the limit allows only ``3003 // 256 == 11`` -- and four inputs need 15.
-At unit 256 there are 72 usable weightings at three inputs and none at four.  A
-smaller unit brings weightings back but breaks what the derivation rests on:
-each cut's window is then narrower than the 256 the congruence needs, so the
-required translation falls outside it.  Measured on random samples, 1 of 400
-four-input tables derives (and that one needs no stages at all) and 0 of 120 at
-five.  Four inputs therefore stay at 496 of 65536; tables the other paths do not
-reach there still raise :class:`ValueError` rather than returning a program that
-computes the wrong function.  They are *unreached*, not proved unreachable, and
-``docs/limitations.md`` records what bounds are actually known.
+That construction stops at three inputs, and the count that stops it is real
+but belongs to *it* rather than to the language.  Distinct row sums need
+weights behaving like a binary code, so at least ``2**n - 1`` units, while the
+limit allows only ``3003 // 256 == 11`` -- and four inputs need 15, so
+:func:`_band_weightings` returns nothing at all there.
+
+Both halves of that count are assumptions of the shape, and :func:`_deep_band`
+drops them.  The unit budget exists only because :func:`_band` builds its
+ladder *positive*, so every row sum must sit under the limit at once; building
+it by subtraction puts the whole order below zero, where the reset cannot fire
+and no budget applies.  And distinct sums are more than the table needs: a cut
+*erases*, so every row it wipes lands on zero together whatever the gaps
+between them were, and only the boundaries *between* runs need a full residue
+system.  Rows may therefore collide when they share a class, which prices a
+table's span by its number of runs instead of by ``2**n``, and admits the
+popcount ladder -- every weight one -- on which parity spans ``n`` units rather
+than ``2**n - 1``.
+
+Four inputs are total on that path, all 65536 tables, against the 496 the
+constructions above reach.  Parity has been executed on the interpreter through
+six inputs.
+
+What bounds :func:`_deep_band` is **distinctness**, and the count is worth
+stating because the obvious guess is wrong: it is not the number of runs.  A
+first reading had each run boundary consuming a residue system, which allows
+about ``3003 // 256 == 11`` of them, but random five-input tables refuse at
+five to eight runs, well inside that.
+
+The real budget is the span distinctness costs.  Two rows sharing a value are
+merged by the first cut that reaches them and can never be separated again, so
+a weighting serves a table only if every collision it forces joins rows of one
+class.  Keeping *all* rows distinct needs weights growing like a binary code, a
+span of ``(2**n - 1) * 256``: 1792 at three inputs, which fits under the limit,
+against 3840 at four and 7936 at five, which do not.  From four inputs on,
+then, every weighting inside the limit collides some rows, and a table builds
+only if its structure tolerates the collisions forced on it.
+
+Four inputs are total because 3840 overshoots 3003 only slightly and enough
+weightings survive.  At five the searched family collides two rows of opposite
+classes in all 537792 of its weightings for a random table, which is why
+generic five-input tables are refused -- while *symmetric* tables build at any
+arity, the popcount ladder spanning only ``n * 256`` and colliding exactly the
+rows such a table already agrees on.  Parity-5, majority-5 and threshold-5 all
+build, and parity is executed on the interpreter through six inputs.
+
+As before these tables are *unreached*, not proved unreachable -- the Lean wall
+in ``Esolangs.PctBooleanWall`` covers the reading model only, and nothing here
+bounds embedded-input programs in general.  ``docs/limitations.md`` records
+what bounds are actually known.
 
 Unlike the other parameterized generators, *which* command strings a setter
 uses is derived per table rather than fixed by the language, so a bare
@@ -1358,16 +1395,13 @@ def _deep_body(
     # taking the smallest keeps the program short.  An earlier version scanned
     # from -80 residue systems up and emitted the first that worked, which is a
     # ten-thousand-character run of ``s``.
-    for shift in sorted(
-        (base + _BAND_UNIT * reps for reps in range(-8, 9)), key=abs
-    ):
+    for shift in sorted((base + _BAND_UNIT * reps for reps in range(-8, 9)), key=abs):
         tail = _affine_code(1, shift)
         if tail is None:
             continue
         printed = {r: _apply(v, tail) for r, v in current.items()}
         if all(
-            (printed[r] & 0xFF)
-            == (_BYTE_ONE if truth_table[r] == "1" else _BYTE_ZERO)
+            (printed[r] & 0xFF) == (_BYTE_ONE if truth_table[r] == "1" else _BYTE_ZERO)
             for r in rows
         ):
             return body + tail + "e"
@@ -1565,10 +1599,12 @@ def pct_squared_minus_one(truth_table: str) -> str:
         # is ever made to refuse without enumerating, restore the test.
         if deep is None:  # pragma: no cover - see above
             raise ValueError(
-                f"%^2^-1 builds every table at one, two and three inputs; "
-                f"above that a conjunction or disjunction of literals at any "
-                f"arity, the tables one affine setter per input composes, and "
-                f"the thresholds a weighted ladder crosses; "
+                f"%^2^-1 builds every table at one, two, three and four "
+                f"inputs; above that a conjunction or disjunction of literals "
+                f"at any arity, the thresholds a weighted ladder crosses, and "
+                f"the tables a deep band schedules -- which needs a weighting "
+                f"whose run boundaries fit the {_LIMIT // _BAND_UNIT} residue "
+                f"systems the limit allows; "
                 f"got {n} inputs ({truth_table!r})"
             )
         return deep
