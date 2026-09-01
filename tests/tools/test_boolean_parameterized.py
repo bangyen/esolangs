@@ -4382,8 +4382,11 @@ class TestParameterizedOneTwoThree:
     def test_an_empty_table_is_declined(self) -> None:
         """A table implying zero inputs raises rather than building nothing.
 
-        ``"1"`` is a well-formed truth table of length ``2**0``, so it clears
-        the shape validation and is refused on arity instead.
+        ``"1"`` is a well-formed truth table of length ``2**0``, so it
+        clears the power-of-two check and is refused on arity instead.
+        123 used to carry its own message for this; the rule is now the
+        shared validator's, since every boolean generator owes it (see
+        ``test_boolean_contract``), so this asserts the shared wording.
         """
         from esolangs.tools.boolean import parameterized
 
@@ -4391,7 +4394,10 @@ class TestParameterizedOneTwoThree:
         # actually pins the message.
         with pytest.raises(ValueError, match="at least one input") as caught:
             parameterized.one_two_three("1")
-        assert str(caught.value) == "123 needs at least one input"
+        assert str(caught.value) == (
+            "truth table needs at least one input (n >= 1); "
+            "a one-entry table is a constant, not a boolean function"
+        )
 
     def test_out_of_order_slots_are_refused(self) -> None:
         """The name-order invariant is asserted, not assumed.

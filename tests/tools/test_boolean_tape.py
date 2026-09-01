@@ -1007,8 +1007,6 @@ class TestSlowAcvMammalian:
             ("0110", 2),  # XOR
             ("0001", 2),  # AND
             ("1110", 2),  # NAND
-            ("0", 0),  # zero inputs: a bare constant, with no tree at all
-            ("1", 0),
             # The three-input tables were 0.68s each when the landings became
             # solved rather than searched, and were let back into the fast run
             # on that measurement.  Re-measured 2026-08-31 at one worker they
