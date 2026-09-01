@@ -77,6 +77,44 @@ class TestDimensional:
     def test_negative_dimension(self) -> None:
         assert run_and_capture(">~1+?~1.") == "\x01"
 
+    def test_moving_the_other_way_along_a_negative_dimension(self) -> None:
+        """``<~1`` steps back, so the coordinate wraps to -1 rather than 1.
+
+        The one negative-dimension case moves right, where the ``~`` and
+        the sign it applies both push the same way -- reading the
+        coordinate back as 1 whether the minus is honoured or dropped.
+        Moving left makes the sign visible: the coordinate is -1, which
+        prints as 0xff.
+        """
+        assert run_and_capture("<~1?~1.") == "\xff"
+
+    def test_clearing_a_negative_dimension(self) -> None:
+        """``!~1`` names the same dimension ``>~1`` moved along."""
+        assert run_and_capture(">~1!~1?~1.") == "\x00"
+
+    def test_a_parameterless_command_takes_the_value_as_its_argument(self) -> None:
+        """A bare ``>`` or ``$`` reads the current cell, not the next token.
+
+        ``>$3?0.`` is the discriminating shape: the ``>`` has no number of
+        its own, so it uses the value (0) as its dimension, and the ``$3``
+        that follows is a separate command rather than its argument.  A
+        parser that consumed the ``$`` as the move's operand would move
+        along dimension 3 and read a different coordinate.
+        """
+        assert run_and_capture(">$3?0.") == "\x00"
+        assert run_and_capture("$>0?0.") == "\x01"
+
+    def test_a_hex_literal_stops_at_the_command_after_it(self) -> None:
+        """The rejected text is the literal alone, not the rest of the line.
+
+        ``=`` takes two hex digits, so a bad one has to report just those
+        -- a scan that ran on would quote the following command too, and
+        the message is the only place that shows.
+        """
+        with pytest.raises(ValueError) as caught:
+            run_and_capture("=g0.")
+        assert str(caught.value) == "invalid hex literal 'g0'"
+
     def test_bare_move_uses_value_as_dimension(self) -> None:
         assert run_and_capture("+>+.") == "\x01"
 
