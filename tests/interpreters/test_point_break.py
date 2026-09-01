@@ -1,18 +1,17 @@
 """Unit tests for the Point Break interpreter.
 
 Point Break has no output, so behavior is asserted through the
-halt-vs-loop convention.  The looping side is decided deterministically by
+halt-vs-loop convention.  Both sides are decided deterministically by
 state-cycle detection: the interpreter is step-capable, and a run that
-revisits its complete internal state has looped forever, so ``assert_loops``
-needs no wall-clock bound at all.
+revisits its complete internal state has looped forever, so neither
+``assert_halts`` nor ``assert_loops`` needs a wall-clock bound at all.
 """
 
 import pytest
 
-import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.register_based.point_break import _Machine
+from esolangs.interpreters.register_based.point_break import _Machine, run
 from esolangs.vm import run_until_halt_or_cycle
 
 TRUTH_MACHINE = """\
@@ -36,9 +35,10 @@ LET n:=n-1
 END while"""
 
 
-def run_until_halt(program: str, stdin: str = "") -> str:
-    """Run ``program``; the timeout backstop only fires if it loops."""
-    return esolangs.run("Point Break", program, stdin=stdin, timeout=5)
+def assert_halts(program: str, stdin: str = "") -> None:
+    """Assert ``program`` halts, via deterministic cycle detection."""
+    machine = _Machine(program, ScriptedIO(stdin))
+    assert run_until_halt_or_cycle(machine) is True
 
 
 def assert_loops(program: str, stdin: str = "") -> None:
@@ -59,7 +59,7 @@ END loop"""
         assert_loops(program)
 
     def test_truth_machine_zero_halts(self) -> None:
-        assert run_until_halt(TRUTH_MACHINE, "0") == ""
+        assert_halts(TRUTH_MACHINE, "0")
 
     def test_truth_machine_nonzero_loops(self) -> None:
         for value in ("1", "42", "-1"):
@@ -67,7 +67,7 @@ END loop"""
 
     def test_while_loop_halts_when_counter_hits_zero(self) -> None:
         for value in ("0", "1", "2", "3"):
-            assert run_until_halt(WHILE_LOOP, value) == ""
+            assert_halts(WHILE_LOOP, value)
 
 
 class TestBreakSemantics:
@@ -100,7 +100,7 @@ LET n:=n+1
 END inner
 IF one BREAK outer
 END outer"""
-        assert run_until_halt(program, "1") == ""
+        assert_halts(program, "1")
 
 
 class TestArithmetic:
@@ -135,12 +135,12 @@ class TestArithmetic:
     def test_signed_literal_in_process(self) -> None:
         """A signed literal is also exercised by an in-process halting run."""
         program = "LET x:=-5+3\nPOINT loop\nIF x BREAK loop\nEND loop"
-        assert run_until_halt(program) == ""
+        assert_halts(program)
 
     def test_floor_division_in_process(self) -> None:
         """Floor division is also exercised by an in-process halting run."""
         program = "LET x:=9/2\nPOINT loop\nIF x BREAK loop\nEND loop"
-        assert run_until_halt(program) == ""
+        assert_halts(program)
 
     def test_input_in_expression(self) -> None:
         assert_loops(
@@ -148,25 +148,25 @@ class TestArithmetic:
         )
 
     def test_different_value_halts(self) -> None:
-        assert run_until_halt(self.loop_iff("2+3*4", 20)) == ""
+        assert_halts(self.loop_iff("2+3*4", 20))
 
 
 class TestErrors:
     def test_undefined_variable_in_let(self) -> None:
         with pytest.raises(HaltError, match="undefined variable"):
-            esolangs.run("Point Break", "LET x:=y")
+            run("LET x:=y", ScriptedIO())
 
     def test_undefined_variable_in_if(self) -> None:
         with pytest.raises(HaltError, match="undefined variable"):
-            esolangs.run("Point Break", "POINT loop\nIF x BREAK loop\nEND loop")
+            run("POINT loop\nIF x BREAK loop\nEND loop", ScriptedIO())
 
     def test_division_by_zero(self) -> None:
         with pytest.raises(HaltError, match="division by zero"):
-            esolangs.run("Point Break", "LET x:=1/0")
+            run("LET x:=1/0", ScriptedIO())
 
     def test_exhausted_input(self) -> None:
         with pytest.raises(EOFError):
-            esolangs.run("Point Break", "LET x:=?")
+            run("LET x:=?", ScriptedIO())
 
     @pytest.mark.parametrize(
         "program",
@@ -198,12 +198,12 @@ class TestErrors:
             ValueError,
             match=r"malformed|duplicate|unclosed|unknown|unexpected|outside|open loop",
         ):
-            esolangs.run("Point Break", program)
+            run(program, ScriptedIO())
 
 
 class TestComments:
     def test_comment_only_program_halts(self) -> None:
-        assert run_until_halt("# nothing but comments") == ""
+        assert_halts("# nothing but comments")
 
     def test_inline_comment(self) -> None:
         program = (
@@ -220,10 +220,10 @@ class TestComments:
 
 class TestProgramShape:
     def test_empty_program_halts(self) -> None:
-        assert run_until_halt("") == ""
+        assert_halts("")
 
     def test_blank_lines_are_ignored(self) -> None:
-        assert run_until_halt("\n\nLET zero:=0\n\n") == ""
+        assert_halts("\n\nLET zero:=0\n\n")
 
     def test_program_as_string_and_lines(self) -> None:
         """A program is accepted as one string or as a list of lines, and
