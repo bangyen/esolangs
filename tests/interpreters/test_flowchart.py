@@ -230,6 +230,48 @@ class TestParsing:
         with pytest.raises(ValueError, match="no '\\( \\)' start node"):
             _Machine([], ScriptedIO(""))
 
+    def test_the_rejection_messages_are_exact(self) -> None:
+        """Both messages are pinned whole, position included.
+
+        The cases above use ``match=``, a substring search, so the wording
+        around each fragment was free -- and the unknown character's
+        coordinates were never checked at all.
+        """
+        with pytest.raises(ValueError) as caught:
+            _Machine(["( )─?─(( ))"], ScriptedIO(""))
+        assert str(caught.value) == "unknown character '?' at (4, 0)"
+
+        with pytest.raises(ValueError) as caught:
+            _Machine(["(( ))"], ScriptedIO(""))
+        assert str(caught.value) == "Flowchart program has no '( )' start node"
+
+    def test_turning_left_rotates_every_heading(self) -> None:
+        """A left turn is a rotation, so four of them return the heading.
+
+        Negating the wrong component agrees on the vertical headings and
+        reverses the horizontal ones, which is why the whole cycle has to
+        be walked rather than one turn checked: the two spellings differ
+        only on the headings a vertical-only test never reaches.
+        """
+        from esolangs.interpreters.grid_based.flowchart import _turn_left
+
+        north, south, west, east = (-1, 0), (1, 0), (0, -1), (0, 1)
+        assert _turn_left(north) == west
+        assert _turn_left(west) == south
+        assert _turn_left(south) == east
+        assert _turn_left(east) == north
+
+    def test_only_the_newline_is_stripped_from_a_row(self) -> None:
+        """Trailing spaces stay, since a column is a position in the grid.
+
+        Every program is written without them, so stripping whitespace
+        generally would have gone unnoticed -- but it shortens the row and
+        moves every column after it.
+        """
+        machine = _Machine(["( )  \n"], ScriptedIO(""))
+        assert machine.width == 5
+        assert machine.grid == ["( )  "]
+
     def test_stacked_nodes_do_not_fork(self) -> None:
         """A node drawn directly on top of another is one path, not three.
 
