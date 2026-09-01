@@ -149,7 +149,8 @@ class TestModulous:
 
 class TestLaserFuck:
     def test_ip_is_position_and_heading(self) -> None:
-        # heading is fixed to 0 (up), so the laser at (2,4) moves up
+        # the adapter's generator is seeded so its first draw is 0 (up), so
+        # the laser at (2,4) moves up
         vm = esolangs.make_vm("LaserFuck", "\u00ff   x\n    +\n    o")
         assert vm.ip == (2, 4, 0)  # the laser's start position and heading
         vm.step()
@@ -197,9 +198,9 @@ class TestCOD:
         vm.step()  # stepping a halted VM is a no-op
 
     def test_random_junction_is_deterministic(self) -> None:
-        # forward blocked, East and West both open: _FirstChoiceRNG always
-        # takes the lexicographically-first option ('E'), unlike the
-        # interpreter's default secrets-backed chooser.
+        # forward blocked, East and West both open: the adapter's generator
+        # is seeded so the draw lands on 'E' every run, unlike the
+        # interpreter's default secrets-backed draw.
         code = "\n".join(["~~~~~~~", "~     ~", "~ ~ ~ ~", "~~~>~~~"])
         vm = esolangs.make_vm("COD", code)
         vm.step()  # (3,3,N) -> (2,3,N)
@@ -1396,3 +1397,59 @@ class TestEveryLanguageIsSteppable:
             assert list(vm.stack) == before_stk, f"{name}: stack is live"
             checked += 1
         assert checked > 30, f"only {checked} adapters exercised"
+
+    def test_stepping_is_reproducible_for_the_random_languages(self) -> None:
+        """Five languages have a random instruction; the VM pins every one.
+
+        ``?`` (WII2D), ``y`` (Painfuck), ``RND`` (Modulous), a COD junction
+        and LaserFuck's ``*`` beam splitter all draw at *runtime*, so two
+        runs of the same program could disagree -- which would make a
+        stepped VM unusable and ``run_until_halt_or_cycle``'s argument
+        ("a deterministic machine that revisits a state has looped") false.
+        Each adapter passes a seeded generator to fix that.
+
+        The programs below were chosen because the draw actually fires for
+        them.  Asserting determinism on a program that never reaches its
+        random instruction would pass whatever the adapters did, so the
+        first half of this test proves the instruction executes and the
+        second proves it lands the same way twice.
+        """
+        from esolangs.interpreters import randomness
+
+        cases = {
+            "WII2D": ">?.\n!",
+            "Painfuck": "y",
+            "Modulous": "[RND 9][PRT INT]",
+            "COD": "~~~~~~~\n~     ~\n~ ~ ~ ~\n~~~>~~~",
+            "LaserFuck": "*\no",
+        }
+
+        def trace(language: str, program: str) -> list[object]:
+            vm = esolangs.make_vm(language, program)
+            seen: list[object] = []
+            for _ in range(40):
+                if vm.halted:
+                    break
+                with contextlib.suppress(Exception):
+                    vm.step()
+                ip = vm.ip
+                seen.append(
+                    (tuple(ip) if isinstance(ip, tuple) else ip, tuple(vm.memory))
+                )
+            return seen
+
+        original = randomness.Seeded.randbelow
+        for language, program in cases.items():
+            drawn = []
+
+            def counted(self, upper, _o=original, _d=drawn):
+                _d.append(upper)
+                return _o(self, upper)
+
+            randomness.Seeded.randbelow = counted
+            try:
+                first = trace(language, program)
+            finally:
+                randomness.Seeded.randbelow = original
+            assert drawn, f"{language}: the random instruction never ran"
+            assert trace(language, program) == first, f"{language} is not reproducible"

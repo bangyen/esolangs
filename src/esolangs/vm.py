@@ -15,16 +15,11 @@ ones the VM can wrap; the rest of the registry runs whole programs only.
 from __future__ import annotations
 
 from collections.abc import Hashable, Sequence
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 from esolangs.exceptions import UnknownLanguageError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import RUNNERS
-
-if TYPE_CHECKING:
-    # Only for the chooser stand-in's signature; the interpreters are
-    # imported lazily inside the VMs that use them.
-    from esolangs.interpreters.grid_based.cod import _Direction
 
 
 @runtime_checkable
@@ -374,52 +369,76 @@ class _ModulousVM(_DelegatingVM):
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
+        from esolangs.interpreters.randomness import Seeded
         from esolangs.interpreters.stack_based.modulous import State
 
-        self._machine = State.of(program, self._io)
+        self._machine = State.of(program, self._io, rng=Seeded())
 
 
 class _LaserFuckVM(_DelegatingVM):
     """2D grid; the interpreter describes its own shape.
 
-    The heading is fixed to 0 (up) so stepping is reproducible; the
-    interpreter's own ``run`` draws a random heading when none is given.
+    Both of the language's random draws come from the seeded generator:
+    the laser's initial heading, and ``*``, which splits a beam in a
+    random perpendicular direction every time it runs.  Passing a fixed
+    ``heading`` instead would pin the first and leave the second loose,
+    and would make every stepped run start the same way rather than
+    sampling the four the language allows.
     """
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.grid_based.laserfuck import _Machine
+        from esolangs.interpreters.randomness import Seeded
 
-        self._machine = _Machine(program.splitlines(), self._io, heading=0)
+        # Seed 2 draws 0 first, so the laser starts heading up -- the
+        # direction the language's own examples are written for.  Every
+        # later draw, including each ``*`` split, comes from the same
+        # generator, so the whole run is reproducible without any of the
+        # four headings being unreachable by construction.
+        self._machine = _Machine(program.splitlines(), self._io, rng=Seeded(2))
 
 
-class _FirstChoiceRNG:
-    """A deterministic stand-in for COD's random-junction chooser.
+class _Wii2dVM(_DelegatingVM):
+    """2D grid; ``?`` turns at random, so the draw is pinned."""
 
-    Always takes the first (lexicographically, since ``_open_dirs`` iterates
-    ``N``/``S``/``E``/``W`` in that fixed order) option, so VM stepping is
-    reproducible instead of drawing from ``secrets`` on every genuine
-    junction.
-    """
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.grid_based.wii2d import _Machine
+        from esolangs.interpreters.randomness import Seeded
 
-    def choice(self, options: list[_Direction]) -> _Direction:
-        return options[0]
+        self._machine = _Machine(program.splitlines(), self._io, rng=Seeded())
+
+
+class _PainfuckVM(_DelegatingVM):
+    """Tape + cursor; ``y`` skips at random, so the draw is pinned."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.randomness import Seeded
+        from esolangs.interpreters.tape_based.painfuck import _Machine
+
+        self._machine = _Machine(program, self._io, rng=Seeded())
 
 
 class _CODVM(_DelegatingVM):
     """2D grid with possibly many live cods; the interpreter describes its shape.
 
-    Random junctions (not exercised by the boolean generator's branch-free
-    programs) are resolved deterministically via :class:`_FirstChoiceRNG` so
-    stepping is reproducible.  That is this adapter's business rather than
-    the language's, which is why the constructor stays spelled out here.
+    Random junctions are resolved from a seeded generator so stepping is
+    reproducible.  That is this adapter's business rather than the
+    language's, which is why the constructor stays spelled out here.
     """
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.grid_based.cod import _Machine
+        from esolangs.interpreters.randomness import Seeded
 
-        self._machine = _Machine(program, self._io, rng=_FirstChoiceRNG())
+        # Seed 1 sends the wiki's junction example East, the direction its
+        # own walkthrough takes.  Every later junction draws from the same
+        # generator, so a run is reproducible without any branch being
+        # unreachable the way an always-first chooser would make it.
+        self._machine = _Machine(program, self._io, rng=Seeded(1))
 
 
 class _PointBreakVM(_DelegatingVM):
@@ -475,6 +494,8 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Qoibl": _QoiblVM,
     "Eval": _EvalVM,
     "Modulous": _ModulousVM,
+    "WII2D": _Wii2dVM,
+    "Painfuck": _PainfuckVM,
     "LaserFuck": _LaserFuckVM,
     "COD": _CODVM,
     "Point Break": _PointBreakVM,
@@ -522,7 +543,6 @@ _DERIVED_LANGUAGES = (
     "MyScript",
     "Nevermind",
     "NoComment",
-    "Painfuck",
     "Polynomial",
     "RAM0",
     "ROTfuck",
@@ -532,7 +552,6 @@ _DERIVED_LANGUAGES = (
     "Suptiftam",
     "Taglate",
     "Unsquare",
-    "WII2D",
     "ZTOALC L",
     "bit~",
     "brainfuck",

@@ -43,22 +43,16 @@ occur on a rectangular grid, where at most three cells besides the entry
 exist).  The program terminates once no cod remains.
 """
 
-import secrets
 import sys
-from typing import Literal, Protocol
+from typing import Literal
 
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.randomness import Randomness, draw
 
 # The four directions a cod swims in.  Naming them keeps a direction apart
 # from the grid characters that are also plain strings, so the _DIRS and
 # _OPP lookups are checked rather than trusted.
 _Direction = Literal["N", "S", "E", "W"]
-
-
-class _Chooser(Protocol):
-    """Picks one of several open directions, overriding ``secrets``."""
-
-    def choice(self, options: list[_Direction]) -> _Direction: ...
 
 
 _DIRS: dict[_Direction, tuple[int, int]] = {
@@ -123,12 +117,12 @@ class _Machine:
     ``step()`` advances every live cod by one cell and executes the command
     it lands on; ``halted`` is true once no cod remains.  Randomness (a
     genuine multi-way junction, or a ``+`` split beyond three branches,
-    which cannot occur on a rectangular grid) is drawn from ``secrets`` by
+    which cannot occur on a rectangular grid) is drawn for real by
     default; ``rng`` overrides it for reproducible stepping (the VM and
-    tests).
+    tests), and is the shared hook every random language here uses.
     """
 
-    def __init__(self, code: str, io: IO, rng: _Chooser | None = None) -> None:
+    def __init__(self, code: str, io: IO, rng: Randomness | None = None) -> None:
         self.io = io
         self._rng = rng
         rows = code.split("\n")
@@ -181,9 +175,7 @@ class _Machine:
         ]
 
     def _choose(self, options: list[_Direction]) -> _Direction:
-        if self._rng is not None:
-            return self._rng.choice(options)
-        return options[secrets.randbelow(len(options))]
+        return options[draw(self._rng, len(options))]
 
     # -- state ----------------------------------------------------------
 
@@ -280,7 +272,9 @@ class _Machine:
         return [cod]
 
 
-def run(code: str, io: IO, limit: int = 1_000_000, rng: _Chooser | None = None) -> None:
+def run(
+    code: str, io: IO, limit: int = 1_000_000, rng: Randomness | None = None
+) -> None:
     """Run a COD program until no cod remains, or ``limit`` steps elapse."""
     machine = _Machine(code, io, rng=rng)
     for _ in range(limit):
