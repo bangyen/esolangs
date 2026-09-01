@@ -415,3 +415,83 @@ class TestPointersStop:
     def test_start_touching_only_another_node_stops(self) -> None:
         """A start whose sole neighbour is the node it came from forks nowhere."""
         assert self._halts(["( )( )"])
+
+
+class TestAmbiguousExits:
+    """Junctions where neither memory nor the current heading settles the exit.
+
+    Three of the interpreter's tie-breaks only matter when the obvious answer
+    is unavailable: the pointer's own heading is not among a junction's arms,
+    or a switch's chosen turn is not among a node's exits.  Both need a grid
+    drawn for them -- the wiki's examples always leave the heading available.
+    """
+
+    def test_head_on_junction_falls_past_the_heading(self) -> None:
+        """A rail entered head-on turns, because straight on is not an arm.
+
+        ``├`` carries up, down, and right.  Arriving travelling *left* takes
+        right away as the way back, so the arms are up and down and the
+        pointer's own heading is neither.  Nothing is remembered on a first
+        visit either, so the first arm is taken -- upward here, which is the
+        branch that prints.
+        """
+        grid = [
+            "          (( ))              ( )",
+            "            │                 │",
+            "           \\ \\               [ }",
+            "            │                 │",
+            "            ├─────────────────┘",
+            "            │",
+            "           \\ \\",
+            "            │",
+            "          (( ))",
+        ]
+        io = ScriptedIO("")
+        run(grid, io)
+        assert io.getvalue() == "1"
+
+    def test_switch_with_no_forward_path_takes_the_first_exit(self) -> None:
+        """An empty register sends a switch straight on; with no straight on,
+        neither the preferred heading nor the arrival heading is available.
+
+        The switch is entered from above and its only exits are sideways, so
+        ``{ }`` (which clears the register, choosing "carry on") asks for a
+        direction that is not there.  The pointer leaves by the first exit
+        instead, and the register is empty, so nothing is printed.
+        """
+        grid = [
+            "                   ( )",
+            "                    │",
+            "                   { }",
+            "                    │",
+            "             ┌─────< >─────┐",
+            "             │             │",
+            "            \\ \\           \\ \\",
+            "             │             │",
+            "           (( ))         (( ))",
+        ]
+        io = ScriptedIO("")
+        run(grid, io)
+        assert io.getvalue() == ""
+
+    def test_a_set_register_still_turns_at_that_switch(self) -> None:
+        """The same grid, with the turn available: the switch does turn.
+
+        This is the control for the test above -- it shows the empty-register
+        case is choosing a different exit, not merely failing to print.
+        """
+        for setter, expected in (("[ }", "1"), ("{ ]", "0")):
+            grid = [
+                "                   ( )",
+                "                    │",
+                f"                   {setter}",
+                "                    │",
+                "             ┌─────< >─────┐",
+                "             │             │",
+                "            \\ \\           \\ \\",
+                "             │             │",
+                "           (( ))         (( ))",
+            ]
+            io = ScriptedIO("")
+            run(grid, io)
+            assert io.getvalue() == expected, setter
