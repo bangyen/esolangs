@@ -310,7 +310,23 @@ def _copy_test_helpers(src: str, tests_dir: Path, stem: str) -> str:
         (tests_dir / f"{name}.py").write_text(
             _rewrite_imports(helper.read_text(), stem)
         )
-    return re.sub(r"from tests\.interpreters\.(\w+) import", r"from \1 import", src)
+    src = re.sub(r"from tests\.interpreters\.(\w+) import", r"from \1 import", src)
+
+    # ``tests/raises.py`` is the one *top-level* helper a suite imports, and
+    # it needs the same treatment: no ``tests`` package exists in the work
+    # dir, so ``from tests.raises import raises_message`` failed collection
+    # outright -- before any mutant ran, for every language whose suite uses
+    # it (Container, Forbin and Inject among them).  It imports only the
+    # standard library and pytest, so the copy needs no rewrite of its own.
+    #
+    # Deliberately *not* generalized to ``from tests.<name> import``:
+    # ``tests/samples.py`` imports the registry, which the bundle does not
+    # inline, and copying it would pull that back in.  Tests reaching it are
+    # cut by :func:`_drop_unbundled_tests` instead.
+    if re.search(r"from tests\.raises import", src):
+        (tests_dir / "raises.py").write_text((ROOT / "tests" / "raises.py").read_text())
+        src = re.sub(r"from tests\.raises import", "from raises import", src)
+    return src
 
 
 def _rewrite_imports(src: str, stem: str, module: str = "") -> str:
