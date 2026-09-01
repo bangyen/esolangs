@@ -75,6 +75,16 @@ class _Machine:
         """Whether the pointer is off the end of memory or a special address."""
         return self.ip < 0 or self.ip >= len(self.memory)
 
+    # The VM's language-shaped view: self-modifying memory + instruction
+    # pointer.  ``ip`` and ``memory`` above already *are* the view, so only
+    # the empty stack needs saying -- the VM copies ``memory`` on the way
+    # out, so handing back the live list here is safe.
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (

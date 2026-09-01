@@ -54,6 +54,20 @@ class _Machine:
         """Whether the cursor has reached the end of the code."""
         return self.ind >= len(self.code)
 
+    # The VM's language-shaped view: the store *is* the stack, so ``memory``
+    # is empty.  ``stack`` above is handed back live -- the VM copies what
+    # it exposes, which is why the shape protocol asks only for a Sequence.
+
+    @property
+    def ip(self) -> int:
+        """The code cursor."""
+        return self.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """No addressable cells; the store is the stack."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (

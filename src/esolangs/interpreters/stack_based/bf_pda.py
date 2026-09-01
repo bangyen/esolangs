@@ -86,6 +86,16 @@ class _Machine:
         """Whether the cursor has reached the end of the code."""
         return self.ip >= len(self.code)
 
+    # The VM's language-shaped view: a stack of bits whose top is the
+    # current cell, so the store *is* the stack and ``memory`` is empty.
+    # ``ip`` and ``stack`` above already are the view; the stack is handed
+    # back live, and the VM copies what it exposes.
+
+    @property
+    def memory(self) -> list[int]:
+        """No addressable cells; the store is the stack."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (self.ip, tuple(self.stack))
