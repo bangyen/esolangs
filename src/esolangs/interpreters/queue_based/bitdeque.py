@@ -43,6 +43,9 @@ class _Machine:
         self.ind = 0
         self.reg = 0
         self.deq: list[int] = []
+        # Only ever read as ``not self._rendered``, so mutation reports an
+        # ``= None`` here as a survivor: it is equivalent, not a gap.
+        self._rendered = False
 
     @property
     def halted(self) -> bool:
@@ -80,8 +83,18 @@ class _Machine:
         )
 
     def step(self) -> None:
-        """Execute one token, advancing the cursor."""
+        """Execute one token, printing the deque once the cursor ends.
+
+        The print belongs to the step *after* the halt, as Minsky Swap and
+        RAM0 already spell it, so that stepping a machine to a standstill
+        writes what ``run`` writes.  Keeping it in ``run`` instead left the
+        VM adapter to replicate it, which is how the two drifted apart in
+        the first place.
+        """
         if self.halted:
+            if not self._rendered:
+                self.render()
+                self._rendered = True
             return
         sym = self.tokens[self.ind][0]
         if sym == "PUSH":
@@ -115,7 +128,7 @@ def run(code: str, io: IO) -> None:
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()
-    machine.render()
+    machine.step()  # the post-halt step prints the deque
 
 
 if __name__ == "__main__":

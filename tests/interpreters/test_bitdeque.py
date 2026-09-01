@@ -99,8 +99,30 @@ class TestStepMachine:
         machine.step()  # PUSH appends the register
         assert machine.deq == [1]
         assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
+        machine.step()  # the post-halt step renders, and moves nothing
         assert machine.ind == 2
+
+    def test_the_deque_renders_once_however_far_it_is_stepped(self) -> None:
+        """The post-halt step prints the deque, and only the first one does.
+
+        ``run`` takes exactly one step past the halt, so a render that fired
+        on every step past it would look identical there and only show
+        through a VM, which is stepped by its caller.  A latch that never
+        latched would repeat the output once per extra step.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.queue_based.bitdeque import _Machine
+
+        io_obj = ScriptedIO()
+        machine = _Machine("PUSH INVERT", io_obj)
+        while not machine.halted:
+            machine.step()
+        assert io_obj.getvalue() == ""  # nothing until the step past the halt
+        machine.step()
+        assert io_obj.getvalue() == "0"
+        for _ in range(3):
+            machine.step()
+        assert io_obj.getvalue() == "0"
 
 
 def _machine(code: object) -> object:
