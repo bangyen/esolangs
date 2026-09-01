@@ -120,8 +120,12 @@ ignore = [
 # holds one CV(N)(C) program in its per-language table.
 "src/esolangs/interpreters/other/cvnc.py" = ["RUF001", "RUF002", "RUF003"]
 "src/esolangs/tools/boolean/cvnc.py" = ["RUF001", "RUF002", "RUF003"]
+"src/esolangs/compilers/cvnc.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/interpreters/test_cvnc.py" = ["D", "N802", "RUF001", "RUF002", "RUF003"]
 "tests/samples.py" = ["D", "N802", "RUF001", "RUF002", "RUF003"]
+# The compiler suite is otherwise language-agnostic; its CV(N)(C) class
+# spells IPA programs for the same reason the files above do.
+"tests/compilers/test_assembly_compilers.py" = ["RUF001", "RUF002", "RUF003"]
 
 [tool.mypy]
 strict = true
