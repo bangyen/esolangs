@@ -2,16 +2,15 @@
 
 import io
 from contextlib import redirect_stdout
-from unittest.mock import patch
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.tape_based.suffolk import run
 
 
-def run_and_capture(code: str, limit: int = 1) -> str:
+def run_and_capture(code: str) -> str:
     buffer = io.StringIO()
     with redirect_stdout(buffer):
-        run(code, limit=limit, io=IO())
+        run(code, io=IO())
     return buffer.getvalue()
 
 
@@ -24,23 +23,55 @@ class TestSuffolk:
         assert run_and_capture("!" * 70 + "<.") == "E"
 
     def test_output_requires_accumulator(self) -> None:
-        """A . with no accumulated value prints nothing."""
-        assert run_and_capture("!.") == ""
+        """A . with no accumulated value prints nothing.
+
+        ``!`` clears the accumulator on its way out, so the ``.`` that
+        follows has nothing to print; the ``<<!`` puts cell 0 back so the
+        program ends rather than incrementing it forever.
+        """
+        assert run_and_capture("!.<<!") == ""
 
     def test_no_halt_without_instruction(self) -> None:
-        """Programs without a halt run until the loop limit is reached."""
-        assert run_and_capture("!!!!") == ""
+        """A program that writes nothing still ends, and prints nothing.
+
+        ``!!!!`` alone grows cell 0 by one per pass forever, so it has no
+        stop of its own; ``<<!`` puts the cell back, which makes the state
+        repeat and ends the run.  That is the shape every program the
+        generators emit has, spelled out at its smallest.
+        """
+        assert run_and_capture("!!!!<<!") == ""
 
     def test_move_right(self) -> None:
-        """> moves the pointer to a new tape cell."""
-        assert run_and_capture("!!!!!!!!>!><<<<<<<<<.!") == "@"
+        """> moves the pointer to a new tape cell.
+
+        Driven a step at a time rather than through ``run``: the trailing
+        ``!`` leaves the accumulator loaded at the wrap, so the ``.`` fires
+        again on the second pass and a whole-program run would print twice
+        before its state repeated.  What is under test is where ``>`` puts
+        the pointer, which one pass settles.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.suffolk import _Machine
+
+        program = "!!!!!!!!>!><<<<<<<<<.!"
+        machine = _Machine(program, ScriptedIO())
+        for _ in range(len(program)):
+            machine.step()
+        assert machine.io.getvalue() == "@"
 
     def test_input(self) -> None:
-        """, reads input into the accumulator."""
-        buffer = io.StringIO()
-        with patch("builtins.input", return_value="B"), redirect_stdout(buffer):
-            run(",.", limit=1, io=IO())
-        assert buffer.getvalue() == "A"
+        """, reads input into the accumulator.
+
+        One pass at the machine, for the same reason as above: a second
+        ``,`` has no input left, and what is under test is the first read.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.suffolk import _Machine
+
+        machine = _Machine(",.", ScriptedIO("B\n"))
+        machine.step()
+        machine.step()
+        assert machine.io.getvalue() == "A"
 
     def test_empty_program_rejected(self) -> None:
         """An empty program is malformed.
@@ -54,20 +85,46 @@ class TestSuffolk:
         with pytest.raises(ValueError, match=r"^Suffolk program cannot be empty$"):
             run("", IO())
 
-    def test_default_limit_is_ten_passes(self) -> None:
-        """``run`` defaults to ten whole passes over the code.
+    def test_a_repeated_state_ends_the_run(self) -> None:
+        """``run`` stops on a proof, not a count.
 
-        Every other call here passes ``limit`` explicitly, so nothing pinned
-        the default: it could be any number and the suite would still pass.
-        ``!<.`` prints one byte per pass, so the output length *is* the
-        default.
+        This replaced a test pinning a ten-pass default.  The count was
+        arbitrary -- the wiki's rerun is infinite, so any number would have
+        done -- and it decided nothing: ``!<.`` printed ten bytes because
+        ten was the number, not because the program was finished.  A program
+        that returns to a state it has been in cannot do anything new, so
+        the run ends there and the byte is printed once.
         """
-        assert run_and_capture("!<.", limit=10) == "\x00" * 10
+        assert run_and_capture("!<.<<!") == "\x00"
 
-        buffer = io.StringIO()
-        with redirect_stdout(buffer):
-            run("!<.", IO())
-        assert buffer.getvalue() == "\x00" * 10
+    def test_a_program_that_never_repeats_raises(self) -> None:
+        """The step cap is the backstop for what neither stop covers.
+
+        A cell growing without bound never repeats a state, and a program
+        that reads nothing never runs out of input, so ``!`` alone would run
+        forever.  Reaching the cap raises rather than returning quietly: a
+        program the run could not decide is not reported as finished.
+        """
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError, match="exceeded"):
+            run("!", IO(), steps=500)
+
+    def test_the_step_cap_defaults_to_a_million(self) -> None:
+        """The default is pinned, since every other call passes its own.
+
+        Nothing generated comes near the cap, so its value is invisible in
+        every other test and could drift to anything.  The message carries
+        it, which is the cheapest place to read it back.
+        """
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError, match=r"^execution exceeded the 1000000-"):
+            run("!", IO())
 
     def test_pointer_walks_past_the_second_cell(self) -> None:
         """Consecutive > keep incrementing the pointer, they do not set it.
