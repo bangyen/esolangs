@@ -32,15 +32,18 @@ three.
 | 7 | **Shape-aware width** | honour a width by building a *different* shape, not by reflowing | `laserfuck_layout.py`, `wrap.py` |
 | 8 | **Literal batching** | print a whole string in one statement rather than per character | `text/helpers.py` `_literal_chunks` |
 | 9 | **Equal-width embedding** | *anti*-optimization: pad both bits to equal width so length can't leak inputs | `boolean/helpers.py:97` `instantiate` |
-| 10 | **Dependency reduction** | a table that ignores an input is emitted as the *smaller* table, reading and discarding the rest | `boolean/other.py` `_taglate_dependencies` |
+| 10 | **Dependency reduction** | a table that ignores an input is emitted as the *smaller* table, still reading (or embedding) the rest | `boolean/helpers.py` `essential_inputs` + `read_at`; `taglate`, `minifuck`, `home_row` |
 | 11 | **Input reordering** | the tree splits on its inputs in whichever order emits the shortest program, so more subtrees fold — the bar is that the **emitted program changes** and still **consumes its inputs in the same order**, which rules out only a template whose emitted program is *identical* under the permutation | `boolean/helpers.py` `best_input_order` (`six_five`, `forth`, `streetcode` and `laserfuck` roll their own) |
 
 ## Which shape a boolean generator is
 
 Most of the boolean techniques apply to one shape and are meaningless for
 the other, so the shape is worth knowing before reaching for one. Folding
-(5), input reordering (11) and dependency reduction (10) are tree
-optimizations; complement/polarity (6) is a minterm one.
+(5) and input reordering (11) are tree optimizations; complement/polarity
+(6) is a minterm one. Dependency reduction (10) is the exception that
+belongs to **neither**: it rewrites the table over its essential inputs
+before the shape-specific machinery runs, so a sum benefits as readily as a
+tree — `home_row` is the worked example.
 
 The two are told apart by **what the size depends on**. A minterm sum costs
 one term per selected row, so its size tracks the ones-count and is blind to
@@ -65,10 +68,36 @@ It measured 74.1% when first added and 74.5% once its reorder shipped the
 same day — the one-dependency table it is scored on is exactly the case the
 reorder improves, so this figure moves when that build changes.
 
-**Minterm-shaped (13).** a_painter_ant, bfstack, bit_tilde, cod,
-collatz_multiverse, container, home_row, nocomment, point_break, qoibl,
-rotfuck, suffolk, suptiftam — all within 4% of parity on a one-dependency
-table, because there is no subtree to collapse.
+**Minterm-shaped (3).** a_painter_ant, bfstack, container — all within 4%
+of parity on a one-dependency table, because there is no subtree to
+collapse.
+
+**Reducing (10).** `home_row`, `cod`, `nocomment`, `bit_tilde`, `rotfuck`,
+`suptiftam`, `suffolk`, `qoibl`, `collatz_multiverse` and `point_break` were
+on that list until 2026-08-30/31 and are still minterm sums; they now gain
+**60.6%**, **92.5%**, **27.3%**, **81.5%**, **76.3%**, **69.4%**, **14.7%**,
+**53.2%**, **66.1%** and **50.7%** respectively on a one-dependency table by
+*dependency reduction* (10) rather than by folding.
+
+**That is the whole minterm side bar three**, and the three are measured
+rather than skipped: `container` and `bfstack` are setup-dominated (see the
+split table below) and `a_painter_ant`'s setters *are* its routing geometry,
+so reducing it is a restructure rather than a projection.
+
+`container` and `bfstack` stay minterm-shaped deliberately: measured, a
+constant table is 93% and ~100% of a one-dependency program's length
+respectively, so nearly all of their arity cost is per-input setup that the
+reads pin and reduction cannot reach. See the setup/body note below.
+
+That is most of the minterm side, and the pattern is worth stating: a sum of
+minterms is the *ideal* shape for technique 10, because it pays per selected
+row **and** per input within each row, so dropping an input removes rows and
+shortens every row that survives. Folding-based generators gain less from it
+precisely because they already collapse what a degenerate table repeats. That is a distinction the shape test would
+otherwise lose, so they are carried in their own `_REDUCING` category
+rather than relabelled tree-shaped: the gain tracks dropped *arity*, and
+reordering does not become applicable to them the way it would if they had
+grown a tree.
 
 **Neither.** Eight generators are exempted from the shape test altogether
 (`_UNSHAPED` in `test_boolean_contract.py`, which is the list of record):
@@ -107,13 +136,17 @@ them. Input reordering is therefore vacuous here — there is no read order
 to permute. Worth checking for on any future candidate whose input is
 bit-addressable rather than streamed.
 
-Two entries sit near the boundary and are worth reading as measurements
-rather than labels. `circuit_diagram` folds only 12.6% yet special-cases a
-constant to 57 characters against 2756 — it is a minterm sum whose
-*constants* are special-cased, so the split-order metric puts it on the tree
-side for the wrong reason. `minsky_swap` comes out at 10% only because a
+One entry sits near the boundary and is worth reading as a measurement
+rather than a label: `minsky_swap` comes out at 10% only because a
 one-dependency table is *smaller* than parity there by a few characters of
 embedding, not because anything folds.
+
+`circuit_diagram` used to be the other, at 12.6% — a minterm sum whose
+*constants* were special-cased, so the split-order metric filed it tree-side
+for the wrong reason. It now measures **99.3%** and is tree-side for a real
+one: dependency reduction (10) builds its chains over the essential inputs
+only, so a one-dependency table drops from 2756 characters to **40**. It
+needs no `_REDUCING` exemption, since it clears the folding bar on its own.
 
 Technique 9 is the one deliberate refusal to shorten. A zero embedded as
 nothing makes `len(program)` a function of the inputs, leaking the very bits
@@ -233,10 +266,14 @@ Two constraints a future change must respect:
 
 Two generators look like they have headroom, and it is a missing
 *complement* (6) rather than a missing fold: `a_painter_ant` (all-0 92,
-all-1 444) and `rotfuck` (1404, 1740) are cheap on all-zeros and expensive
+all-1 444) and `rotfuck` (370, 408) are cheap on all-zeros and expensive
 on all-ones, and neither calls `_maybe_complement`. Taking the cheaper
-polarity of every n=3 table would be 17.96% for `a_painter_ant` and 2.99%
+polarity of every n=3 table would be 17.96% for `a_painter_ant` and 2.81%
 for `rotfuck`.
+
+`rotfuck`'s two figures were 1404 and 1740, and its headroom 2.99%, before
+dependency reduction (10) shipped on 2026-08-31; the lever is unchanged and
+still unbuilt, but it is now measured against a much smaller program.
 
 **`a_painter_ant`'s share of that is not reachable, and the reason is the
 output convention rather than the construction.** Its answer is *the colour
@@ -286,11 +323,258 @@ zero rows and inverting — one term saved per row, paid for once.
 | `qoibl`, `bit_tilde`, `grapheme` | fewer minterms; grapheme picks whichever row-set is shorter |
 | `container` | `OUT` spends one `+1 S{row}>=Gout` line per one-row, so a dense table sums its zero rows from a 49 start and subtracts — 12.7% on the densest n=4 table. The per-row survivor blocks are fixed and unaffected |
 
-### Dependency reduction (10) — taglate
+### Dependency reduction (10) — fifteen generators, both shapes
 
-A table ignoring an input is emitted as the *smaller* table, reading and
-discarding the rest (`_taglate_dependencies`). Note `taglate`'s own
-`_reorder_tt` is a different thing despite the name.
+A table ignoring an input is emitted as the *smaller* table, still
+consuming the rest. `essential_inputs` (in `boolean/helpers.py`, promoted
+there 2026-08-30 from three independent spellings) names the inputs whose
+flip changes some row, and `read_at` projects the table onto them.
+
+What differs per generator is **how the ignored inputs are still honoured**,
+and that is set by the interface rather than by the construction:
+
+- **`taglate` reads and discards.** The read count is the interface
+  (`test_every_table_reads_the_same_number_of_inputs`), so the emitted
+  program keeps every read: `h` appends the character to the queue's tail,
+  `e` repeated once per queued cell rotates it back to the front, and `f`
+  drops it — leaving the queue exactly as it was so the reduces' positional
+  arithmetic is undisturbed. Constant tables go from 451 characters to 21.
+  Note `taglate`'s own `_reorder_tt` is a different thing despite the name.
+- **`minifuck` embeds and erases.** A parameterized generator, so the
+  ignored inputs are `{Xi}` slots rather than reads; `_project` handles what
+  it can and `_reconverged` emits the ignored setters first, then drives
+  every row to one identical state.
+- **`cod` embeds into a sealed box, and pays nothing at all.** COD is a
+  *grid*, so unlike a one-dimensional tape it has cells that are genuinely
+  unreachable: `_cod_dead_box` walls an ignored setter in `~` on every
+  side, and its `)` increments nothing because no cod is ever there. The
+  leaf cascade is `2**n - 1` blocks whatever the table says, so dropping
+  inputs takes a one-dependency table from 1504 characters to **113**
+  (92.5%) and a constant to 113 as well.
+
+  Two traps, both worth carrying to the next grid language. **A space is
+  not inert filler** — it is open water, so `_cod_combine`'s space padding
+  cannot be used to line the box up beside the program; padding the reduced
+  program to a common width lets the cod swim out and it prints nothing at
+  all. The boxes are therefore stacked above and below. And a **gapped**
+  dependency set (inputs 0 and 2 but not 1) would emit the core's slots
+  around the ignored one, leaving `{X2}` before `{X1}`; widening the set to
+  its span restores name order, where taglate declines a gapped set
+  outright because there the widened table would ghost-pad itself.
+- **`home_row` embeds and weighs zero.** The cheapest of the three, because
+  the ignored input needs neither a discard nor an erase: its packing line
+  `{Xi}lsffff a^weight fl` simply carries **weight zero**, so the gate still
+  runs and consumes its guard while adding nothing to the accumulator. The
+  setter keeps its two-character width and its position, so equal-width
+  embedding (9) and name order both hold with nothing to reconcile. The
+  saving is the leaf chain: `2**n` lines become `2**k`, taking every
+  one-dependency table at `n == 3` from 213 characters to **84** (60.6%) and
+  a constant to 82, with non-degenerate tables byte-identical.
+
+- **`grapheme` reads and abandons.** Its reads are the interface, so an
+  ignored input keeps one, but it costs a *single character*: `W` pushes
+  the line it read and nothing ever pops it. That is safe by construction
+  rather than by measurement — every operator pops what it consumes and
+  `Y` prints the top of the stack, so a value left below the accumulator
+  is unreachable, not merely unused. Cheaper than taglate's rotate-and-drop,
+  which has a queue's positional arithmetic to keep undisturbed. A
+  one-dependency table at `n == 3` goes from 180 characters to **49**
+  (72.8%), helped by the minterms shortening too: each spends one factor
+  per input, so dropping inputs shrinks every surviving minterm as well as
+  removing minterms.
+
+  Note `grapheme` stays **tree-shaped** in the catalogue and out of
+  `_REDUCING`: it gains 75.0% against parity, well past the folding test's
+  bar, so filing it as a reducer would suppress a check it passes on its
+  own. `_REDUCING` is only for generators whose gain would otherwise look
+  like a contradiction.
+
+- **`nocomment` embeds and weighs zero, like `home_row`.** Its index is
+  built by a guarded run of `i`s per input — `["i"] * (2**w)`, a run length
+  the *generator* picks — so an ignored input contributes an empty run while
+  its guard still executes and still leaves the pointer on its complement
+  cell. The saving is the staircase and the preloaded output cells, both one
+  per row: a one-dependency table at `n == 3` goes from 373 characters to
+  **271** (27.3%).
+
+  The figure to note is that it *grows with arity*, which is the opposite of
+  the usual direction: at `n == 4` it is 653 → **387** (40.7%), because the
+  staircase scales as `2**n` while the NOT-gate prologue and setup do not.
+  A generator whose fixed overhead dominates at small `n` can still be a
+  strong reducer where it matters.
+
+- **`circuit_diagram` drives nothing from the ignored rail, and it is the
+  largest win in the catalogue.** Its cost is entirely the body: one `a`
+  chain per selected row, each a gate per literal plus the runs feeding it.
+  Every input keeps its own `-` row — the rows *are* the read order — but
+  the chains are built over the essential inputs' rails only, and an ignored
+  rail simply drives nothing. A one-dependency table at `n == 3` drops from
+  2756 characters to **40** (98.5%).
+
+  The precedent was already in the generator: a constant table is one
+  self-fed gate over `rails[0]` while every other rail drives nothing, and
+  still consumes all `n` reads. Dependency reduction is that same move
+  generalized from "reads no literal" to "reads the ones that matter" —
+  worth remembering that a generator's own constant special-case is often a
+  reducer already written for one table.
+
+- **`bit_tilde` reads into a cell it then never copies out of.** Its cost is
+  per one-row *and* per input within it — each minterm pre-copies one cell
+  per input and nests one `{` test per input — so dropping an input removes
+  rows and shortens the rows that survive. The reads stay (one `)` each,
+  and they are the interface); an ignored input is simply read into its own
+  cell and never copied out. 778 → **144** at `n == 3` (81.5%), and 2425 →
+  **237** at `n == 4` (90.2%).
+
+  **One trap, and it is the kind only execution finds.** `(` prints cell 7's
+  window and input 0's bit lands there, so it must be consumed whether or
+  not the table depends on it. The stock generator did that as a side effect
+  of its first copy; when input 0 is *ignored* nothing else touches cell 7
+  and the program prints the input bit rather than the answer. That is
+  exactly the 16 tables at `n <= 3` which ignore input 0, and it cost a
+  60-row gate failure before an explicit `{ ~ }` clear was added. **A cell
+  that a construction incidentally cleans is load-bearing.**
+
+- **`rotfuck` reads and normalizes an input it then never guards with.**
+  Its cell layout and block list are both dominated by `2**n` — one mismatch
+  cell and one minterm cell per row, one guarded `[ body ]` block per (row,
+  input) pair — so evaluating over the essential inputs drops the exponent.
+  Every input keeps its `,` read, its cell and its complement; an ignored one
+  is normalized like the rest and then simply never guards a block. 1576 →
+  **373** at `n == 3` (76.3%), and 5123 → **482** at `n == 4` (90.6%).
+  Constants improve too, 1404 → 370.
+
+- **`suptiftam` reads an input it then never names as a factor.** A minterm
+  is four lines per input on top of one row per selected row, so dropping an
+  input removes rows and shortens the survivors. Every input keeps its read
+  and its `%-[read]22%` normalization; an ignored one is simply never used
+  as a factor. 700 → **214** at `n == 3` (69.4%) and 1555 → **247** at
+  `n == 4` (84.1%).
+
+- **`suffolk` reduces the least, and the reason is the more useful finding.**
+  It reads an input it never uses as a literal — the same move its constant
+  branch already made for *every* input — but its win is only 875 → **746**
+  at `n == 3` (14.7%), against a 69% screen. Measured, **96.5% of the
+  reduced program is the per-input read-and-complement setup**: `const`
+  re-walks its gap once per unit, so preloading 48 at each of `n` cells
+  costs 591 characters at `n == 3` while the whole minterm body it replaces
+  is about 3.5%. The setup is the interface and cannot be dropped.
+
+  It is still worth having — nothing grows, and at `n == 4` the body has
+  grown enough to make it 1479 → **1066** (28%) — but it is the clearest
+  case in the catalogue of a **screen measuring headroom that the reads
+  make unreachable**. Where a generator's per-input setup dominates, price
+  the setup before believing an arity screen.
+
+- **`qoibl` reads an input it then never names as a factor.** A minterm is
+  one `qe` factor per input on top of two lines per selected row. 633 →
+  **296** at `n == 3` (53.2%) and 1276 → **369** at `n == 4` (71.1%).
+
+  It is the counterpart to `suffolk` and the pair is the useful comparison:
+  both are minterm sums that read their inputs, but qoibl's per-input setup
+  is **29%** of a one-dependency program against suffolk's **96%**, and the
+  delivered figures track that (53.2% against 14.7%) rather than tracking
+  the screen, which promised both about 70%. **Split the program into
+  per-input setup and per-row body before believing an arity screen** — the
+  screen prices the whole program, and only the body is reachable.
+
+- **`collatz_multiverse` reads an input it never turns into an indicator.**
+  A minterm costs an indicator per input plus an AND chain, on top of one
+  minterm per selected row. 2419 → **821** at `n == 3` (66.1%). Its constant
+  branch was already the reduction for zero essential inputs — reads every
+  input, discards it, prints the constant — so this generalizes it, the same
+  move as `circuit_diagram` and `suffolk`.
+
+- **`point_break` answers by halting, and the reduction is unaffected.** Its
+  result is the termination convention — halt for 0, loop forever for 1 —
+  so the gate compares the halt observable (`point_break_result`, which
+  proves the loop by a state revisit) rather than printed text. The
+  construction reduces like any other minterm sum: each selected row costs a
+  `LET` per factor, so dropping an input removes rows and shortens the rest.
+  292 → **144** at `n == 3` (50.7%). Its own docstring already stated the
+  rule this relies on — *the reads are the interface, and only the body may
+  shrink*.
+
+- **`three_x` is the first *tree* generator reduced deliberately, and it
+  retires the idea that trees have nothing to gain.** Its tree prunes only
+  the rows that *differ from the default*, which for a one-dependency table
+  is still half of them, each carrying a full-depth guard chain; folding
+  never sees the degeneracy. Reducing collapses those to one guard: 603 →
+  **185** at `n == 3` (69.3%).
+
+  **The bug it produced is worth keeping.** `_three_x_ordered` receives an
+  *already-permuted* table from `best_input_order`, so the essential set it
+  computes is in the tree's coordinates, not the input stream's. Mapping
+  slots back through the stream order mixes the two — which agrees only when
+  the essential set is contiguous from 0, so it was invisible on every
+  one-dependency table and produced **522 wrong rows** on gapped sets like
+  `[0, 2]`. When a generator reduces *inside* a reorder wrapper, check which
+  coordinate system the reduced indices live in.
+
+- **`polynomial` can only drop its *leading* ignored inputs, and the reason
+  is worth reading before reducing any read-assigns-to-a-register
+  generator.** A read assigns to the single register, so the tree must
+  consume the stream in order:
+
+  - a **trailing** ignored input is already free — the tree collapses its
+    subtree and drains the read at the leaf, machinery it already had;
+  - a **middle** one cannot be dropped at all, since the drain consumes the
+    stream in order and removing it makes the tree branch on the wrong bit
+    (measured: 92 wrong rows over the 26 tables at `n <= 3` whose ignored
+    set is not a leading run);
+  - only the **leading** run is genuinely wasted, because the tree burns a
+    full branching level before reaching the input that matters.
+
+  So the reduced build keeps every input from the first essential one
+  onward and drains the run before it. `11001100` falls 6855 → **1678** and
+  `10101010` 4106 → **1175**; `11110000` is correctly unchanged, its
+  essential input already being first. Only the *tree* takes the prefix —
+  the DAG indexes its states by how many bits have been read, so prepended
+  instructions shift every state and it answers correctly only while the
+  drained bit is 0, emitting nothing once it is 1.
+
+**Both shapes reduce.** The minterm side is where this started, but the
+discriminator was never the shape — it is the split below. A tree folds a
+degenerate table away only when its fold *direction* matches the essential
+inputs and its cost is leaf-count-bound; `three_x` fails the second (its
+cost is per differing row) and keeps the full gap. `grapheme` (72.8%) and
+`circuit_diagram` (99.3%) were already tree-side counterexamples.
+
+**Before building the next one, split it.** The arity screen prices the
+whole program, but only the per-row **body** is reducible; per-input
+**setup** is the interface and stays. A cheap proxy for the split is the
+length of a *constant* table against a one-dependency one, since a constant
+needs no body:
+
+| generator | setup share | delivered |
+|---|---|---|
+| `point_break` | 12% | 50.7% |
+| `collatz_multiverse` | 21% | 66.1% |
+| `qoibl` | 29% | 53.2% |
+| `container` | 93% | not worth building |
+| `suffolk` | 96% | 14.7% |
+| `bfstack`, `clockwise` | ~100% | not worth building |
+
+The screen called `suffolk` and `qoibl` both about 70%; the split called
+them apart in one measurement each. **Three candidates were retired on this
+evidence without being built.**
+
+**What to check on the next candidate.** The win is available wherever cost
+tracks *arity* rather than the table's contents, which is why it crosses the
+tree/sum divide. The question is only what the ignored input's placeholder or read
+must still do — and the five shipped answers (rotate-and-drop it, erase it,
+weigh it zero, abandon it on a stack, wall it off) are roughly in increasing
+order of cheapness. Two things make it
+free rather than merely cheap: a construction where the ignored input's
+contribution is already multiplied by something the generator picks, so the
+factor can be set to zero; or **a dimension the interpreter cannot reach
+into**, which is why the 2D languages are the better hunting ground — a 1D
+tape has no dead cells, which is exactly why minifuck needed reconvergence
+where cod needs only a wall.
+
+It also **sidesteps the storage wall that closed reordering** for
+`polynomial` (25.1%), `modulous` and `sophie`: those need somewhere to hold
+a read bit, and a discarded or zero-weighted input needs no storage.
 
 ### Input reordering (11) — the decision-tree generators
 
@@ -329,7 +613,12 @@ on split order: `a_painter_ant`, `circlefuck_byte`, `circuit_diagram`, `cod`,
 
 **Measured upside but unreachable as a reorder** — no addressable storage to
 hold a read bit, so a bit can only be branched on before the next read:
-`polynomial` (25.1%), `modulous` (16.4%), `sophie` (16.4%). Residual merging
+`polynomial` (25.1%), `modulous` (16.4%), `sophie` (16.4%).
+
+**Dependency reduction (10) reaches part of this**, because it is
+*order-blind*: it rewrites the table over its essential inputs before any
+split order is chosen, so it needs nowhere to hold a read bit. That is the
+escape the reorder could not take. Residual merging
 collects what the screen was measuring for polynomial and sophie.
 
 **Built 2026-08-30 — `cvnc`, and the walk cost turned out to be zero.** It

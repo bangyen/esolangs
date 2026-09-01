@@ -222,7 +222,9 @@ class _Machine:
                         self._abort()
                     else:
                         self.stack.append(_wrap32(_trunc_mod(one, two)))
-                elif char == "v":
+                else:
+                    # The arm above admits only ``+-*/%v`` and the other
+                    # five are handled, so this is ``v``: the swap.
                     self.stack.append(two)
                     self.stack.append(one)
 

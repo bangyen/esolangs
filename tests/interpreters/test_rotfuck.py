@@ -123,6 +123,16 @@ class TestBrackets:
         """A skipped ``[`` seeks its partner past a nested ``[``."""
         assert run_program("[[.].]") == ""
 
+    def test_forward_skip_passes_a_nested_closer(self) -> None:
+        """The scan steps over a ``]`` that closes the *inner* pair.
+
+        ``[[.].]`` above enters at depth 1 and meets its partner first; here
+        the skipped ``[`` opens over a nested pair, so the first ``]`` the
+        scan reaches is at depth 2 and must not end it.  The program prints
+        after the skipped body, which a scan that stopped early would miss.
+        """
+        assert run_program(build(".[[+-")) == "\x00"
+
     def test_backward_jump_over_nested_bracket(self) -> None:
         """A fired ``]`` jumps back across a nested ``]`` in the rotation."""
         assert run_program("<+..>[]") == "\x01"

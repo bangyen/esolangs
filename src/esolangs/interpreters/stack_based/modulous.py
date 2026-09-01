@@ -206,7 +206,9 @@ def _var_arith(state: State, mod: str) -> None:
         if lhs not in state.var:
             raise HaltError
         state.var[lhs] += int(rhs)
-    elif "-" in mod:
+    else:
+        # The caller only routes a token here when it holds a ``+`` or a
+        # ``-``, so the one that is not a ``+`` is a ``-``.
         lhs, rhs = mod.split("-")
         if lhs not in state.var:
             raise HaltError

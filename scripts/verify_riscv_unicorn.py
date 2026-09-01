@@ -23,7 +23,13 @@ import sys
 
 from riscv_elf_runner import assemble_source, run_elf
 
+from esolangs.tools import boolean as gen_bool
 from esolangs.tools import text as gen
+
+# Forbin has no text generator (its output alphabet is whole bytes built
+# from eight bit arguments), so its text case is the repo's own example.
+with open("examples/hello-world/forbin.txt") as _f:
+    _FORBIN_HELLO = _f.read()
 
 # Generators whose cross-check interpreter lives in extra/assembly/: the
 # generated program must reproduce its text when run as machine code.
@@ -69,10 +75,12 @@ REFERENCE_CASES = [
     ),
 ]
 
-# (name, compiler module, source program, expected output).  Compilers with
-# generators (bfstack, suffolk, unsquare, home_row) round-trip them;
-# the others (jaune, bf_pda, ram0) get fixed programs with known output.
-COMPILER_CASES = []
+# (name, compiler module, source program, expected output[, stdin]).
+# Compilers with generators (bfstack, suffolk, unsquare, home_row)
+# round-trip them; the others (jaune, bf_pda, ram0) get fixed programs with
+# known output.  Forbin and Container read stdin, so their boolean cases
+# carry a fifth element; everything else runs on empty input.
+COMPILER_CASES: list[tuple[str, str, str, str] | tuple[str, str, str, str, str]] = []
 for text in ["Hi", "Hello, World!", "esolangs!"]:
     COMPILER_CASES.append(("bfstack", "bfstack", gen.bfstack(text), text))
     COMPILER_CASES.append(("suffolk", "suffolk", gen.suffolk(text), text))
@@ -84,6 +92,7 @@ for text in ["Hi", "Hello, World!", "esolangs!"]:
     )
     COMPILER_CASES.append(("sbleq", "sbleq", gen.sbleq(text), text))
     COMPILER_CASES.append(("decleq", "decleq", gen.decleq(text), text))
+    COMPILER_CASES.append(("container", "container", gen.container(text), text))
 COMPILER_CASES.append(("home_row", "home_row", "a" * 65 + "k;", "A"))
 COMPILER_CASES.append(("jaune", "jaune", "6+5+^.", "11"))
 COMPILER_CASES.append(("unsquare", "unsquare", "IA" + "+" * 32 + "Po", "A"))
@@ -98,6 +107,38 @@ COMPILER_CASES.append(("forth", "forth", "1(F4*5+.)", "A"))
 COMPILER_CASES.append(("forth", "forth", "0F7*0+F4*C+[.]", "Hi"))
 COMPILER_CASES.append(("forth", "forth", "1{F4*5+.}1;", "A"))
 COMPILER_CASES.append(("forth", "forth", "1{/}1;", ""))
+# Forbin: the text example, then the boolean generator's AND2 program run
+# over its whole input space.  Forbin's `in` is line-faithful (IO.input_char
+# takes one byte per line), so each input bit is its own line.
+_FORBIN_AND2 = gen_bool.forbin_boolean("0001")
+COMPILER_CASES.append(("forbin", "forbin", _FORBIN_HELLO, "Hello, World!"))
+for _a in "01":
+    for _b in "01":
+        COMPILER_CASES.append(
+            (
+                "forbin",
+                "forbin",
+                _FORBIN_AND2,
+                "1" if _a == "1" and _b == "1" else "0",
+                f"{_a}\n{_b}",
+            )
+        )
+# Container: the boolean generator's AND2 program over its whole input
+# space.  Container's reader drains a *line* one character per pulse, so
+# unlike Forbin the bits could share a line; they are written one per line
+# to match the block above, and both spellings run identically.
+_CONTAINER_AND2 = gen_bool.container("0001")
+for _a in "01":
+    for _b in "01":
+        COMPILER_CASES.append(
+            (
+                "container",
+                "container",
+                _CONTAINER_AND2,
+                "1" if _a == "1" and _b == "1" else "0",
+                f"{_a}\n{_b}",
+            )
+        )
 _CM_CONSTANTS = "\n".join(
     [
         "one = negativeOne x + negativeOne, NOT PRINT.",
@@ -145,11 +186,12 @@ def main() -> int:
         ok = out == expected.encode("latin-1") and code == 0
         failures += not ok
         print(f"{name}: {'ok' if ok else 'FAIL'} -> {out!r} (exit {code})")
-    for name, module, source, expected in COMPILER_CASES:
+    for name, module, source, expected, *rest in COMPILER_CASES:
         comp = importlib.import_module(f"esolangs.compilers.{module}").comp
         args = (source, 1) if module == "suffolk" else (source,)
         binary = assemble_source(comp(*args))
-        out, _ = run_elf(binary, b"")
+        stdin = rest[0].encode("latin-1") if rest else b""
+        out, _ = run_elf(binary, stdin)
         # latin-1: one byte per expected char; UTF-8 would expand 0x80+ to
         # multi-byte and never match a single-byte machine-code output.
         ok = out == expected.encode("latin-1")

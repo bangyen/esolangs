@@ -29,6 +29,8 @@ _COMPILER_NAMES = {
     "sbleq": "S*bleq",
     "decleq": "Decleq",
     "forth": "Forþ",
+    "forbin": "Forbin",
+    "container": "Container",
 }
 
 _COMPILER_DIRS = {
@@ -189,8 +191,14 @@ def render() -> str:
         "can branch on what it reads, so their reading models are walled "
         "(the %^2^-1 wall is proved in Lean) and embedding is what reaches "
         "the two-input tables.  %^2^-1 goes further: a subcube cascade "
-        "builds every conjunction or disjunction of literals at any arity "
-        "(see `docs/limitations.md`).",
+        "builds every conjunction or disjunction of literals at any arity, "
+        "a composed-affine search adds the tables that are no subcube, a "
+        "threshold ladder adds the ones neither reaches by letting the "
+        "over-3003 reset read a weighted sum, and a band construction makes "
+        "three inputs **total** -- all 256 -- by printing with `e` "
+        "(`chr(acc & 0xFF)`), so a row need only be congruent to 48 or 49 "
+        "mod 256 rather than exactly 0 or 1, which lets the reset be used "
+        "once per run of the table (see `docs/limitations.md`).",
         "",
         "| Language | Text generator | Python | Cross-check | Boolean | Compiler |",
         "| --- | :---: | :---: | :---: | :---: | :---: |",

@@ -54,6 +54,14 @@ fi
 # two trees differ.
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || ROOT=""
 [ -n "$ROOT" ] || ROOT="$(dirname "$0")/.."
+# Say so before handing off.  Starting python, importing, and working out the
+# scope all happen before verify.py's first line of output, and a push that
+# prints nothing at all looks like a push that has wedged rather than one that
+# is working.  Naming the escape hatch here is the point: the checks take a
+# couple of minutes on a branch that moved the shared machinery, and a user
+# who cannot see why reaches for --no-verify, which skips them entirely.
+echo "pre-push: running scripts/verify.py (a couple of minutes; --no-verify skips it)"
+
 # verify.py picks the project interpreter itself (.venv, then uv run), so
 # the hook can hand it any python that can execute the file.
 if [ -n "$VERIFY_FULL" ] && [ "$VERIFY_FULL" != "0" ]; then

@@ -15,6 +15,7 @@ the budget and still builds arithmetically, so the construction and its
 assembler were retired.
 """
 
+import string
 from contextlib import suppress
 from itertools import permutations
 from math import factorial
@@ -27,9 +28,24 @@ from esolangs.tools.boolean.helpers import (
     permute_truth_table,
     stored_inputs,
 )
-from esolangs.tools.transpilers import _six_five_label
 
 __all__ = ["six_five"]
+
+# The 6-5 spec denotes operands "beyond 9 ... using letters (A=10, B=11
+# etc.)", so ``0..9A..Z`` names 0..35 and there is no character for 36.
+# This interpreter would decode past ``Z`` through an unguarded
+# fallthrough, which is undefined behaviour rather than a language feature
+# (see the conformance note in ``docs/limitations.md``), so nothing may
+# emit into that region.  This lived in ``esolangs.tools.transpilers``
+# while a BF-to-6-5 transpiler existed; it is the generator's now.
+_SIX_FIVE_MAX_LABEL = 10 + len(string.ascii_uppercase) - 1
+
+
+def _six_five_label(value: int) -> str:
+    """Return the single character 6-5 reads as ``value`` for a 7n/8n operand."""
+    if not 0 <= value <= _SIX_FIVE_MAX_LABEL:
+        raise ValueError(f"6-5 has no operand character for {value}")
+    return str(value) if value < 10 else chr(value + 55)
 
 
 def _six_five_markers(table: str) -> int:

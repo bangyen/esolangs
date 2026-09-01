@@ -263,6 +263,7 @@ class TestSyntheticLoopMechanism:
         tape = run(_build_decrement_loop(), io=io)
         assert tape.get(0, 0) == 0
 
+    @pytest.mark.slow  # 1.0s: it runs the interpreter into its step ceiling
     def test_non_halting_loop_hangs_rather_than_returning(self) -> None:
         """A loop with no reachable dead end hangs, per run()'s own docstring."""
 

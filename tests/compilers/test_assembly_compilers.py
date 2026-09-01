@@ -133,6 +133,61 @@ def test_unsquare_emits_syscalls() -> None:
     assert "ecall" in mod.comp("ab")
 
 
+class TestUnsquareLoopCollapse:
+    """A zero-or-one ``OA`` before a *balanced* loop drops the loop.
+
+    The loop can never run in that case, so ``prep`` removes it -- but only
+    once the scan has matched the ``>`` with a ``<``.  An unbalanced ``>``
+    is left exactly as written, since eliding it would change where the
+    program's brackets pair up.
+    """
+
+    def test_a_balanced_loop_after_a_zero_is_dropped(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.unsquare")
+        assert mod.prep("OA><") == "OA"
+        assert mod.prep("OA>OA<") == "OA"
+
+    def test_an_unbalanced_loop_is_left_alone(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.unsquare")
+        assert mod.prep("OA>") == "OA>"
+        assert mod.prep("IA>") == "IA>"
+
+
+class TestUnsquareDoubledPairCollapse:
+    """``(OO|II|PP)S+`` keeps the pair and drops the ``S``s after it.
+
+    The replacement was once written ``"\\1"`` rather than ``r"\\1"``, which
+    is the single byte 1 and not a backreference, so the whole match --
+    including the pair the rewrite exists to keep -- was replaced by a
+    character the dispatch loop then ignored.  A program was silently
+    compiled as though its doubled pair were not there.
+    """
+
+    def test_the_pair_survives_the_rewrite(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.unsquare")
+        assert mod.prep("OOS") == "OO"
+        assert mod.prep("IIS") == "II"
+        assert mod.prep("PPS") == "PP"
+        assert mod.prep("OOSSS") == "OO"
+
+    def test_no_control_byte_reaches_the_output(self) -> None:
+        """The bug's signature was a stray ``\\x01`` in the prepared code."""
+        mod = importlib.import_module("esolangs.compilers.unsquare")
+        for program in ("OOS", "IIS", "PPS", "OOSo", "IISi"):
+            assert "\x01" not in mod.prep(program), program
+
+    def test_the_pair_still_compiles_to_instructions(self) -> None:
+        """``OOS`` emits the body ``OO`` does, not an empty program."""
+        mod = importlib.import_module("esolangs.compilers.unsquare")
+        body = [
+            line
+            for line in mod.comp("OOS").splitlines()
+            if line.startswith("\t") and "a7" not in line and "ecall" not in line
+        ]
+        assert body, "the doubled pair compiled to nothing"
+        assert mod.comp("OOS") == mod.comp("OO")
+
+
 class TestHomeRow:
     def test_arithmetic(self) -> None:
         mod = importlib.import_module("esolangs.compilers.home_row")
@@ -192,6 +247,20 @@ class TestHomeRow:
 
 
 class TestJaune:
+    def test_repeated_markers_collapse(self) -> None:
+        """A run of one marker compiles as a single one.
+
+        The dedup wrote its backreference as ``"\\1"`` in both the pattern
+        and the replacement, which is the byte 1 rather than a group
+        reference, so the pattern matched nothing and the rewrite never
+        fired.  It was harmless -- an earlier pass already collapses these,
+        which is why no output changed when it was corrected -- but a rule
+        that cannot match is not a rule, and this pins that it now can.
+        """
+        mod = importlib.import_module("esolangs.compilers.jaune")
+        for marker in "#.;%":
+            assert mod.comp(marker * 3) == mod.comp(marker), marker
+
     def test_arithmetic(self) -> None:
         mod = importlib.import_module("esolangs.compilers.jaune")
         assert "lw   t0, 0(s1)" in mod.comp("1+")
@@ -765,3 +834,289 @@ class TestCompilerFuzz:
                 random.choice(self.ALPHABET) for _ in range(random.randint(1, 40))
             )
             mod.comp(code, 1)
+
+
+class TestForbinCompiler:
+    """Forbin lowers to a call graph over a runtime frame chain.
+
+    Forbin is excluded from the ``COMPILERS`` sweep above because that
+    sweep compiles the literal text ``"Hello"``, which is not a Forbin
+    program (every program is a set of brace-delimited functions).
+    """
+
+    @staticmethod
+    def comp(code: str) -> str:
+        mod = importlib.import_module("esolangs.compilers.forbin")
+        return mod.comp(code)
+
+    def test_produces_assembly(self) -> None:
+        out = self.comp("main { out 0,1,0,0,1,0,0,0; }")
+        assert ".global _start" in out
+
+    def test_relaxation_is_disabled(self) -> None:
+        """``la`` must not relax to a gp-relative access.
+
+        Nothing initializes ``gp`` under ``-nostdlib``, so a relaxed
+        ``la`` yields a garbage arena pointer and every frame lands
+        outside mapped memory.
+        """
+        assert ".option norelax" in self.comp("main { }")
+
+    def test_no_main_is_rejected(self) -> None:
+        """A program without ``main`` is rejected, as the interpreter does."""
+        with pytest.raises(ValueError, match="no main function"):
+            self.comp("helper { out 0,0,0,0,0,0,0,0; }")
+
+    def test_malformed_source_is_rejected(self) -> None:
+        """Malformed syntax raises, sharing the interpreter's parser."""
+        with pytest.raises(ValueError, match="unterminated block"):
+            self.comp("main {")
+
+    def test_each_function_gets_its_own_epilogue(self) -> None:
+        """Two functions must not share one ``.ret`` label.
+
+        A shared label is a duplicate-symbol assembler error rather than a
+        wrong answer, so it needs its own guard.
+        """
+        out = self.comp("one { return 1; }\nmain { a = (one 0); }")
+        assert ".ret0:" in out
+        assert ".ret1:" in out
+
+    def test_recursive_function_compiles(self) -> None:
+        """A self-call reaches its own body index without recursing forever."""
+        out = self.comp("again { again 0; }\nmain { again 0; }")
+        assert ".global _start" in out
+
+    def test_nested_definitions_emit_a_table(self) -> None:
+        """A function with nested definitions carries a lookup table.
+
+        The table is what makes a caller's nested definition visible to a
+        callee, which is how Forbin's dynamic scoping resolves names.
+        """
+        out = self.comp("main { helper { out 0,0,0,0,0,0,0,0; } helper 0; }")
+        assert ".tbl0:" in out
+
+    def test_function_without_nested_has_no_table(self) -> None:
+        out = self.comp("main { out 0,0,0,0,0,0,0,0; }")
+        assert ".tbl" not in out
+
+    def test_range_loop_emits_a_counter_loop(self) -> None:
+        """A range loop compares its counter against its limit each pass."""
+        out = self.comp("main { for i:0..1 { out 0,0,0,0,0,0,0,i; } }")
+        assert "bgt  s4, s5" in out
+
+    def test_range_bounds_are_checked_for_bitness(self) -> None:
+        """A non-bit bound halts, as the interpreter's _bound does."""
+        out = self.comp("main { for i:0..1 { } }")
+        assert out.count("bgtu a0, t0, .abort") >= 2
+
+    def test_wildcard_expands_at_compile_time(self) -> None:
+        """A wildcard's two fillings are unrolled, not looped at runtime.
+
+        The count is fixed at compile time, so each row is emitted; the
+        body therefore appears once per filling.
+        """
+        one = self.comp("main { for v:(0) { out 0,0,0,0,0,0,0,v; } }")
+        two = self.comp("main { for v:(*) { out 0,0,0,0,0,0,0,v; } }")
+        assert two.count("call .dispatch") > one.count("call .dispatch")
+
+    def test_wildcard_pair_expands_to_four_rows(self) -> None:
+        """``(*,*)`` unrolls to four rows, so the body is emitted four times.
+
+        The fifth dispatch is the entry's call to ``main`` itself.
+        """
+        out = self.comp("main { for (a,b):((*,*)) { out 0,0,0,0,0,0,a,b; } }")
+        assert out.count("call .dispatch") == 4 + 1
+
+    def test_broadcast_assignment_reevaluates_per_target(self) -> None:
+        """``a,b = (in 0)`` reads twice, matching _exec_stmt.
+
+        The interpreter calls _eval inside its target loop, so this is two
+        reads rather than one value bound twice -- the behaviour the
+        boolean generator's eight-name load depends on.
+        """
+        out = self.comp("main { a,b = (in 0); }")
+        assert out.count("li   a0, -2") == 2
+
+    def test_discard_target_consumes_no_read(self) -> None:
+        """``_`` is skipped entirely, so it evaluates nothing."""
+        out = self.comp("main { _,b = (in 0); }")
+        assert out.count("li   a0, -2") == 1
+
+    def test_paired_assignment_pairs_positionally(self) -> None:
+        out = self.comp("main { a,b = 1,0; }")
+        assert ".global _start" in out
+
+    def test_not_rejects_a_non_bit(self) -> None:
+        """``!`` guards its operand, as the interpreter's '! needs a bit'."""
+        assert "xori a0, a0, 1" in self.comp("main { a = !0; }")
+
+    def test_return_targets_its_own_function_epilogue(self) -> None:
+        """A nested function's return must not jump to main's epilogue."""
+        out = self.comp("f { return 1; }\nmain { a = (f 0); return 0; }")
+        assert "j    .ret0" in out
+        assert "j    .ret1" in out
+
+    def test_prologue_saves_the_loop_registers(self) -> None:
+        """s4/s5 are saved per invocation, not only per loop.
+
+        A callee returning from inside its own loop discards that loop's
+        stack save, so without this a mid-loop caller gets its counter
+        clobbered and loses an iteration.
+        """
+        out = self.comp("main { for i:0..1 { } }")
+        assert "sd   s4, 16(sp)" in out
+        assert "ld   s5, 24(sp)" in out
+
+    def test_statement_call_and_builtins_are_reachable(self) -> None:
+        out = self.comp("main { out 0,0,0,0,0,0,0,0; a = (in 0); }")
+        assert ".do_out:" in out
+        assert ".do_in:" in out
+        assert ".readline:" in out
+
+    def test_anonymous_function_literal_compiles(self) -> None:
+        out = self.comp("main { f = (a@{ return a; }); b = (f 1); }")
+        assert ".global _start" in out
+
+    def test_bare_block_literal_compiles(self) -> None:
+        out = self.comp("main { x = { return 1; }; }")
+        assert ".global _start" in out
+
+    def test_iteration_loop_over_named_values(self) -> None:
+        """Each listed value emits the body once, plus the entry's own call."""
+        out = self.comp("main { for v:(0,1) { out 0,0,0,0,0,0,0,v; } }")
+        assert out.count("call .dispatch") == 2 + 1
+
+
+class TestContainerCompiler:
+    """Container lowers a synchronous rule system to a dataflow round.
+
+    Container is excluded from the ``COMPILERS`` sweep above because that
+    sweep compiles the literal text ``"Hello"``, whose first line is a rule
+    with no container to attach it to -- which the shared parser rejects.
+    """
+
+    @staticmethod
+    def comp(code: str) -> str:
+        mod = importlib.import_module("esolangs.compilers.container")
+        return mod.comp(code)
+
+    def test_produces_assembly(self) -> None:
+        out = self.comp("A=1:\n+1 A>=0\nEXIT=1:\n-1 A>=3")
+        assert ".global _start" in out
+
+    def test_relaxation_is_disabled(self) -> None:
+        """``la`` must not relax to a gp-relative access.
+
+        Nothing initializes ``gp`` under ``-nostdlib``, so a relaxed ``la``
+        yields a garbage buffer pointer and every container's store lands
+        outside mapped memory.
+        """
+        assert ".option norelax" in self.comp("A:\nEXIT=1:\n-1 A>=0")
+
+    def test_rule_before_declaration_is_rejected(self) -> None:
+        """A rule with no container raises, sharing the interpreter's parser."""
+        with pytest.raises(ValueError, match="rule line before any container"):
+            self.comp("+1 T>=0")
+
+    def test_undeclared_condition_name_is_rejected(self) -> None:
+        """A name that is neither a container nor a literal is rejected.
+
+        ``update`` calls ``val`` on every operand every tick, so such a
+        program raises on its first tick; rejecting it at compile time
+        matches the interpreter rather than narrowing the accepted class.
+        """
+        with pytest.raises(ValueError, match="undeclared container"):
+            self.comp("A=1:\n+1 ZZ>=0")
+
+    def test_negative_literal_is_accepted(self) -> None:
+        """A negative operand parses as a literal, as ``int()`` does."""
+        assert ".global _start" in self.comp("A=1:\n+1 A>=-1\nEXIT=1:\n-1 A>=3")
+
+    def test_empty_program_halts_immediately(self) -> None:
+        """No containers means ``halted`` before the first tick."""
+        out = self.comp("")
+        assert "li   a7, 93" in out
+        assert ".tick:" not in out
+
+    def test_two_buffers_are_one_symbol(self) -> None:
+        """``old`` and ``new`` are halves of one array, so one ``la`` reaches both."""
+        out = self.comp("A=1:\nEXIT=1:\n-1 A>=0")
+        assert out.count("la   s1, con_cells") == 1
+        assert "con_new" not in out
+
+    def test_print_masks_to_seven_bits(self) -> None:
+        """The interpreter prints ``OUT % (1 << 7)``, so the mask is 0x7f."""
+        out = self.comp("OUT=200:\nPRINT:\n+1 PRINT<=0\nEXIT=1:\n-1 OUT>=0")
+        assert "andi a0, a0, 0x7f" in out
+
+    def test_print_needs_both_print_and_out(self) -> None:
+        """PRINT without OUT prints nothing, as the interpreter's guard does."""
+        assert "call putbyte" not in self.comp("PRINT:\n+1 PRINT<=0")
+
+    def test_reader_without_in_still_consumes(self) -> None:
+        """A program declaring ``""`` but no IN reads the byte and drops it.
+
+        The interpreter writes ``new["IN"]`` into a dict with no IN
+        container, so the value is discarded on the next tick.
+        """
+        out = self.comp(":\n+1 T>=0\nT:\n+1 T>=T")
+        assert "call readqueue" in out
+        assert "sd   a0," not in out
+
+    def test_reader_with_in_stores_the_byte(self) -> None:
+        """With IN declared, the read lands in the *new* buffer.
+
+        Storing to ``new`` rather than ``old`` is what reproduces the
+        interpreter's clobber: the write happens after IN's own rules have
+        already computed a value for this tick.
+        """
+        out = self.comp(":\n+1 T>=0\nT:\n+1 T>=T\nIN=0:\n+1 T>=0")
+        assert "call readqueue\n" in out
+        assert "    sd   a0, 16(s2)\n" in out
+
+    def test_exit_fires_on_any_change(self) -> None:
+        """EXIT halts when its value *changes*, not on an edge to nonzero."""
+        out = self.comp("EXIT=5:\n-1 T>=0\nT:\n+1 T>=T")
+        assert "beq  t0, t1, .no_exit" in out
+
+    def test_clamp_is_once_per_container(self) -> None:
+        """``max(res, 0)`` wraps the whole rule sum, not each rule."""
+        out = self.comp("A=1:\n-1 A>=0\n-1 A>=0\n-1 A>=0\nEXIT=1:\n-1 A>=9")
+        assert out.count("bgez s3, .keep_0") == 1
+
+    def test_duplicate_declaration_shares_one_cell(self) -> None:
+        """Two containers of one name write the same cell, so the last wins.
+
+        The interpreter builds ``new`` as a dict comprehension keyed by
+        name, which is exactly what a second store to one cell reproduces.
+        """
+        out = self.comp("A=1:\n+1 T>=0\nA=2:\n+1 T>=0\nT:\n+1 T>=T")
+        assert out.count("sd   s3, 0(s2)") == 2
+
+    def test_values_are_fixed_width(self) -> None:
+        """The 64-bit value domain is the one place totality stops.
+
+        A delta at ``2**63 - 1`` is emitted as-is, which pins where the
+        compiled form stops agreeing with the interpreter's unbounded
+        integers: a container driven past that wraps negative, and
+        ``max(res, 0)`` then destroys it rather than wrapping back.  The
+        repo's generators peak at 127, so only hand-written programs can
+        reach this.
+        """
+        out = self.comp(f"A=0:\n+{2**63 - 1} A>=0\nEXIT=1:\n-1 A>=1")
+        assert f"li   t2, {2**63 - 1}\n" in out
+
+    def test_far_cells_use_an_indirect_address(self) -> None:
+        """Past the 12-bit ``ld``/``sd`` offset, the address is computed.
+
+        The boolean generator needs ``2**n + 2n + 7`` containers, which
+        passes 255 at ``n == 8``, so this path is reached by real output
+        rather than only by a synthetic program.
+        """
+        lines = ["T:", "+1 T>=T"]
+        for i in range(300):
+            lines.append(f"C{i}={i}:")
+            lines.append(f"+1 T>={i % 5}")
+        out = self.comp("\n".join(lines))
+        assert "add  t6, s1, t6" in out

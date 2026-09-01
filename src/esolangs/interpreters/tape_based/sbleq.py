@@ -39,6 +39,9 @@ from dataclasses import dataclass, field
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.memory import parse_int_memory as _parse
 
+# The three store targets the wiki defines: base S*bleq, S*bl*q, Subl*q.
+_STORES = ("a", "ab", "b")
+
 
 @dataclass
 class _Machine:
@@ -47,6 +50,18 @@ class _Machine:
     ip: int = 0
     store: str = "a"
     _halted: bool = field(default=False, init=False)
+
+    def __post_init__(self) -> None:
+        """Reject a store target outside the three documented variants.
+
+        ``step`` tests ``store in ("ab", "b")``, so any other spelling --
+        ``"A"``, ``""``, a typo -- silently ran the *base* language instead
+        of raising.  A caller's mistake became a wrong answer rather than an
+        error, so the set is checked once here, where it applies however the
+        machine is constructed rather than only through :func:`run`.
+        """
+        if self.store not in _STORES:
+            raise ValueError(f"unknown store target: {self.store!r}")
 
     @property
     def halted(self) -> bool:

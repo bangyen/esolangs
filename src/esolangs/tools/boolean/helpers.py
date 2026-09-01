@@ -156,6 +156,32 @@ def permute_truth_table(truth_table: str, perm: tuple[int, ...]) -> str:
     return read_at(truth_table, perm, len(perm))
 
 
+def essential_inputs(truth_table: str, n: int) -> list[int]:
+    """Which input positions the table's value actually depends on.
+
+    Input ``i`` matters when some row's value changes if only that bit is
+    flipped; a table where none does is constant in ``i``, and an
+    ``n``-input table that ignores some inputs is a smaller table wearing
+    extra ones -- which is what :func:`read_at` projects it back down to.
+
+    Three generators derived this independently before it moved here
+    (``minifuck``, ``one_two_three`` and ``taglate``, the last under the
+    name ``_taglate_dependencies`` and phrased over the rows where the bit
+    is unset rather than over an XOR); ``home_row`` was the fourth caller
+    and the point at which the spelling was worth sharing.  The two
+    phrasings were checked equal over every table to ``n == 4`` before the
+    duplicates were removed.
+    """
+    return [
+        i
+        for i in range(n)
+        if any(
+            truth_table[row] != truth_table[row ^ (1 << (n - 1 - i))]
+            for row in range(2**n)
+        )
+    ]
+
+
 def read_at(truth_table: str, inputs: tuple[int, ...] | list[int], n: int) -> str:
     """Return the ``len(inputs)``-input table read at the given input positions.
 
@@ -337,7 +363,10 @@ def _greedy_input_order(truth_table: str, n: int) -> tuple[int, ...]:
     # Blocks of rows still to be separated: each is a list of row indices
     # that agree on every input chosen so far.
     blocks = [list(range(2**n))]
-    while remaining:
+    # The loop always leaves by the ``break`` below: picking every input
+    # separates every row, so ``blocks`` is empty on the last pass at the
+    # latest, and ``remaining`` is never the condition that ends it.
+    while remaining:  # pragma: no branch - always exits via the break
         best_input = remaining[0]
         best_score = -1
         for i in remaining:

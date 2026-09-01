@@ -63,6 +63,15 @@ from typing import Any
 
 ROOT = Path(__file__).parents[1]
 
+# Git runs this hook with its stdout attached to a pipe, not the terminal, so
+# Python block-buffers our own prints while the steps -- which inherit the
+# same pipe and write to it directly -- stream straight through.  The result
+# is that `scope:`, the `[skip]` lines and the `[....] pytest` banner arrive
+# only when the run ends, after the very silence they exist to explain.  Line
+# buffering puts them in front of the wait, where they belong.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(line_buffering=True)
+
 
 def python_cmd() -> list[str]:
     """Return the project's Python command.
@@ -104,6 +113,11 @@ FULL_ONLY = frozenset(
 # Named once: the step table, STEP_SCOPE and the slow-marker filter all refer
 # to this step, and a typo in any of them would silently stop matching.
 LINE_STEP = "extra/line suites (uv)"
+
+# How often the long step reports that it is still going.  Short enough that
+# the wait never looks stalled, long enough that a normal run prints only a
+# handful of lines.
+HEARTBEAT_SECONDS = 20.0
 
 # Not a STEPS entry: it reads the coverage data file `pytest` writes, and
 # `pytest` is LONG_STEP -- launched with Popen and left running while the
@@ -166,11 +180,28 @@ STEPS = [
     # scripts' imports), so scripts/ is type-checked here, in the project env.
     ("mypy (src + scripts)", [*PY, "-m", "mypy"]),
     # `--cov-report=` writes no report: the run is here for the data file,
-    # which the changed-line gate reads afterwards.  Line coverage keeps
-    # coverage on its sysmon core (~0.9s over this suite); asking for branch
-    # coverage would silently drop it back to the settrace tracer, which
-    # costs several times that -- see docs, and pyproject's `core` setting.
-    ("pytest", [*PY, "-m", "pytest", "-q", "--cov", "--cov-report="]),
+    # which the changed-line gate reads afterwards.
+    #
+    # `--cov-branch` is asked for unconditionally, but only because the
+    # interpreter moved.  It is worth recording why, since the answer has now
+    # flipped twice.  sys.monitoring cannot measure branches before 3.14, so
+    # asking for arcs there drops coverage onto the old tracer -- measured on
+    # 3.13 over this suite (-n 4, coverage 7.13.4, the fast selection):
+    #
+    #     no coverage                36.5s
+    #     --cov (line, sysmon)       36.1s
+    #     --cov --cov-branch         119.3s   <- 3.3x, the no-sysmon fallback
+    #
+    # 3.14's sys.monitoring measures branches, so the fallback never happens
+    # and the flag is free again.  Re-measured on 3.14, same suite and flags:
+    #
+    #     --cov (line, sysmon)       17.81s
+    #     --cov --cov-branch         17.89s   <- free
+    #
+    # An older interpreter would silently pay the 3.3x rather than break, so
+    # if this ever feels slow again, check the interpreter before the tests:
+    # coverage says so on stderr with a `no-sysmon` CoverageWarning.
+    ("pytest", [*PY, "-m", "pytest", "-q", "--cov", "--cov-branch", "--cov-report="]),
     ("bandit", ["uv", "run", "--with", "bandit", "bandit", "-r", "src", "-q"]),
     (
         # These also run under the plain `pytest` step above.  Repeated here
@@ -475,7 +506,20 @@ def _run_steps(
             run_serial(name, cmd, step_env)
 
     if proc is not None:
-        output, _ = proc.communicate()
+        # The short steps are done and pytest holds the only remaining output,
+        # captured rather than streamed so two live subprocesses cannot
+        # interleave into nonsense.  Waiting on it in one blocking call meant
+        # the push sat silent for the ~2 minutes the suite takes, which reads
+        # as a hang -- long enough to invite the Ctrl-C that skips the checks.
+        # Waiting in slices costs nothing and keeps the wait legible.
+        output = ""
+        while True:
+            try:
+                output, _ = proc.communicate(timeout=HEARTBEAT_SECONDS)
+                break
+            except subprocess.TimeoutExpired:
+                waited = time.time() - long_start
+                print(f"[....] {LONG_STEP} still running ({waited:.0f}s elapsed)")
         elapsed = time.time() - long_start
         timings.append((LONG_STEP, elapsed))
         pytest_ok = _report(LONG_STEP, elapsed, proc.returncode, output)

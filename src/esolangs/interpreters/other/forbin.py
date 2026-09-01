@@ -283,11 +283,9 @@ class _Parser:
                     nested[name] = fn
                     continue
                 self.i = save
-            stmt = self._statement()
-            if stmt is not None:
-                stmts.append(stmt)
+            stmts.append(self._statement())
 
-    def _statement(self) -> _Statement | None:
+    def _statement(self) -> _Statement:
         self._skip_ws()
         if self.t.startswith("return", self.i):
             j = self.i + 6
@@ -479,21 +477,23 @@ def _call(
     if isinstance(callee, str):
         if callee == "in":
             return reader.read()
-        if callee == "out":
-            if len(args) != 8:
-                raise HaltError("out needs exactly 8 bit arguments")
-            byte = 0
-            for bit in args:
-                # Same rule as ``!`` above: a bit is 0 or 1, and anything
-                # else has no byte to contribute.
-                if bit == 0:
-                    byte *= 2
-                elif bit == 1:
-                    byte = byte * 2 + 1
-                else:
-                    raise HaltError("out needs bit arguments")
-            reader.io.print_char(chr(byte))
-            return 0
+        # A name only evaluates to a string for the two builtins -- see the
+        # ``("in", "out")`` test in ``_value`` -- so the remaining one is
+        # ``out`` and needs no test of its own.
+        if len(args) != 8:
+            raise HaltError("out needs exactly 8 bit arguments")
+        byte = 0
+        for bit in args:
+            # Same rule as ``!`` above: a bit is 0 or 1, and anything
+            # else has no byte to contribute.
+            if bit == 0:
+                byte *= 2
+            elif bit == 1:
+                byte = byte * 2 + 1
+            else:
+                raise HaltError("out needs bit arguments")
+        reader.io.print_char(chr(byte))
+        return 0
     raise HaltError("called value is not a function")
 
 
@@ -813,12 +813,15 @@ class _Machine:
         for name, value in zip(frame.for_names, row, strict=False):
             if name != "_":
                 frame.locals[name] = value
-        # This method only runs while the cursor sits on the ``for``
-        # whose rows it is walking, so the statement under it is that
-        # ``for``; testing the tag is what lets its body be read.
+        # This method only runs while the cursor sits on the ``for`` whose
+        # rows it is walking, so the statement under it is that ``for``.
+        # The tag is asserted rather than tested: narrowing the union is
+        # what lets ``current[2]`` be read at all, and an ``if`` would make
+        # a broken invariant skip the body assignment silently instead of
+        # saying so.
         current = frame.body[frame.pos]
-        if current[0] == "for":
-            frame.for_body = current[2]
+        assert current[0] == "for"  # nosec B101
+        frame.for_body = current[2]
         frame.for_body_pos = 0
 
     def _pop(self) -> None:

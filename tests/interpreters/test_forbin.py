@@ -271,6 +271,50 @@ class TestKeywordPrefixedNames:
         assert run_program(code) == "\xff\x00"
 
 
+class TestDiscardTarget:
+    """``_`` as an assignment target evaluates the value and drops it."""
+
+    def test_discard_in_a_paired_assignment(self) -> None:
+        """The remaining name still takes the value opposite *its* position.
+
+        Both targets are assigned by position, so the ``_`` consumes the
+        first value and ``x`` the second rather than the first surviving
+        into it.
+        """
+        code = "main { _, x = 1, 0; out 0,0,0,0,0,0,0,x; }"
+        assert run_program(code) == "\x00"
+
+        code = "main { x, _ = 1, 0; out 0,0,0,0,0,0,0,x; }"
+        assert run_program(code) == "\x01"
+
+    def test_discard_in_a_broadcast_assignment(self) -> None:
+        """One value for several targets skips the ``_`` and fills the rest."""
+        code = "main { _, x = 1; out 0,0,0,0,0,0,0,x; }"
+        assert run_program(code) == "\x01"
+
+    def test_discard_is_not_readable_afterwards(self) -> None:
+        """``_`` is dropped rather than stored, so reading it is an error."""
+        with pytest.raises(HaltError, match="undeclared identifier"):
+            run_program("main { _ = 1; out 0,0,0,0,0,0,0,_; }")
+
+
+class TestCallingANonFunction:
+    """A call whose callee resolves to a bit rather than to a function.
+
+    An undeclared name is rejected earlier, as an unknown identifier, so
+    reaching the "not a function" check needs a callee that *does* resolve
+    -- a local holding a bit -- rather than one that does not.
+    """
+
+    def test_calling_a_local_with_arguments(self) -> None:
+        with pytest.raises(HaltError, match="called value is not a function"):
+            run_program("main { y = 1; y 1,0; }")
+
+    def test_calling_a_local_without_arguments(self) -> None:
+        with pytest.raises(HaltError, match="called value is not a function"):
+            run_program("main { y = 1; y; }")
+
+
 class TestParserErrors:
     def test_line_comments_are_ignored(self) -> None:
         code = "main { // header\n a = 1; // trailing\n out 0,0,0,0,0,0,0,a; }"

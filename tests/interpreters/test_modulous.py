@@ -22,6 +22,16 @@ class TestModulous:
     def test_push_string_then_pop(self) -> None:
         assert run_and_capture('[PSH STR "AB"][PRT][PRT][END]') == "AB"
 
+    def test_push_without_a_type_pushes_nothing(self) -> None:
+        """``PSH`` needs one of ``INT``/``STR``/``VAR`` to know what to push.
+
+        Without one it is a no-op rather than an error, so a value pushed
+        before it is still on top afterwards -- printing gives the earlier
+        value, not the typeless push's operand.
+        """
+        assert run_and_capture("[PSH INT 5][PSH 9][PRT INT][END]") == "5"
+        assert run_and_capture("[PSH 5][END]") == ""
+
     def test_add(self) -> None:
         assert run_and_capture("[PSH INT 5][PSH INT 2][ADD 3][PRT INT][END]") == "5"
 

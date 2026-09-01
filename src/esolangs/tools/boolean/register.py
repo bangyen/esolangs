@@ -8,7 +8,9 @@ from esolangs.tools.boolean.helpers import (
     _maybe_complement,
     _validate_truth_table,
     best_input_order,
+    essential_inputs,
     minterm_literals,
+    read_at,
     stored_inputs,
 )
 from esolangs.tools.text.helpers import _cm_constants
@@ -388,12 +390,23 @@ def collatz_multiverse(truth_table: str) -> str:
     # chain, and a flip -- so a dense table is built from its zeros.
     # Inverting is free here: the OR already ends on a ``flip``, so the
     # complement drops it rather than adding one.
-    table, invert = _maybe_complement(truth_table)
-    for k in range(2**n):
+    # A table that ignores some of its inputs is a smaller table, and a
+    # minterm costs an indicator *per input* plus an AND chain on top of one
+    # minterm per selected row -- so dropping an input removes rows and
+    # shortens the rows that remain.  Every input keeps its ``b{i}`` read
+    # (the reads are the interface); an ignored one is simply never turned
+    # into an indicator.  This is the constant branch above generalized from
+    # "no essential inputs" to "the ones that matter".
+    used = essential_inputs(truth_table, n) or [0]
+    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
+    width = len(used)
+    table, invert = _maybe_complement(reduced)
+    for k in range(2**width):
         if table[k] == "0":
             continue
         indicators = []
-        for i, negated in minterm_literals(k, n):
+        for slot, negated in minterm_literals(k, width):
+            i = used[slot]
             if negated:
                 indicators.append(flip(f"b{i}"))
             else:
@@ -652,7 +665,19 @@ def qoibl(truth_table: str) -> str:
     under the size of the sparser half.
     """
     n = _validate_truth_table(truth_table)
-    table, use_complement = _maybe_complement(truth_table)
+    # A table that ignores some of its inputs is a smaller table, and a
+    # minterm costs one ``qe`` factor *per input* on top of two lines per
+    # selected row -- so dropping an input removes rows and shortens the
+    # rows that remain.  Every input keeps its ``et`` read, its
+    # normalization and its complement (they are the interface); an ignored
+    # one is simply never named as a factor.  Measured at ``n == 3``, that
+    # setup is 29% of a one-dependency program and the minterm body the
+    # other 71%, so most of the arity cost here is reachable -- unlike
+    # ``suffolk``, whose per-input setup is 96% of the program.
+    used = essential_inputs(truth_table, n) or [0]
+    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
+    width = len(used)
+    table, use_complement = _maybe_complement(reduced)
     lines = []
     for i in range(n):
         lines.append(f"we {_qoibl_enc(i)} we et ry ey ry {_qoibl_enc(_ASCII_ZERO)} we")
@@ -662,11 +687,12 @@ def qoibl(truth_table: str) -> str:
             f"ry ey ry qe {_qoibl_enc(i)} qe we",
         )
     lines.append(f"we {_qoibl_enc(2 * n)} we {_qoibl_enc(0)} we")
-    for k in range(2**n):
+    for k in range(2**width):
         if table[k] == "0":
             continue
         factors = []
-        for i, negated in minterm_literals(k, n):
+        for slot, negated in minterm_literals(k, width):
+            i = used[slot]
             var = n + i if negated else i
             factors.append(f"qe {_qoibl_enc(var)} qe")
         product = factors[0]
@@ -751,8 +777,50 @@ def polynomial(truth_table: str) -> str:
     table that collapses to few states renders at any width -- parity, the
     old gate's worst case, now renders through n == 8.
     """
-    _validate_truth_table(truth_table)
+    n = _validate_truth_table(truth_table)
     candidates = [_polynomial_tree(truth_table), _polynomial_dag(truth_table)]
+
+    # A table that ignores some of its inputs is a smaller table, and this
+    # generator cannot get there on its own: a read *assigns* to the single
+    # register, so the tree must consume the inputs in stream order and an
+    # ignored one still costs a full level of branching before the tree can
+    # reach the input that matters.  Folding collapses the subtrees, not the
+    # levels above them -- ``10101010`` costs 66 instructions where the
+    # one-input table it really is costs 12.
+    #
+    # Reduction sidesteps that because it is *order-blind*: it rewrites the
+    # table before any tree is built.  The ignored inputs are drained first
+    # -- read, subtract 48 -- which is the same pair the tree already emits
+    # for a collapsed leaf's untaken siblings, so every path still consumes
+    # exactly ``n`` inputs.
+    # Only a *leading* run of ignored inputs can be handled this way. The
+    # drain reads the stream in order, so it can stand in for inputs the
+    # reduced tree would otherwise have read *before* the ones it keeps; an
+    # ignored input sitting after an essential one would be drained out of
+    # turn and the tree would then branch on the wrong bit -- measured, that
+    # is 26 tables at ``n <= 3`` and 92 wrong rows. Reordering the drains is
+    # not available either, since a read assigns to the single register, so
+    # a non-prefix ignored set simply keeps the unreduced build.
+    essential = essential_inputs(truth_table, n) or [0]
+    lead = next((i for i in range(n) if i in essential), n)
+    if lead:
+        prefix: list[list[int]] = []
+        for _ in range(lead):
+            prefix.extend([[0, 2], [_ASCII_ZERO, 2]])  # input; -= 48
+        # Keep every input from the first essential one onward, not just the
+        # essential ones: a *trailing* ignored input is already free, since
+        # the tree collapses its subtree and drains the read at the leaf,
+        # while a middle one cannot be dropped at all -- the drain consumes
+        # the stream in order, so removing it would make the tree branch on
+        # the wrong bit (measured: 92 wrong rows over 26 tables).
+        reduced = read_at(truth_table, list(range(lead, n)), n)
+        # Only the *tree* takes the prefix. The DAG's states are indexed by
+        # how many bits have been read, so instructions prepended ahead of
+        # it shift every state and the machine falls off its own table --
+        # measured, it answers correctly only while the drained bit is 0 and
+        # emits nothing at all once it is 1.
+        candidates.append(prefix + _polynomial_tree(reduced))
+
     fits = [c for c in candidates if len(c) <= _POLYNOMIAL_MAX_INSTRS]
     if not fits:
         raise ValueError(
@@ -1016,13 +1084,24 @@ def point_break(truth_table: str) -> str:
     # a table with more ones than zeros is cheaper summed over its *zero*
     # rows.  Inverting is free: the tail already needs ``1 - f`` for the
     # loop guard, so a complemented sum *is* that guard.
-    table, invert = _maybe_complement(truth_table)
-    for k in range(2**n):
+    # A table that ignores some of its inputs is a smaller table, and each
+    # selected row costs a ``LET`` per factor -- so dropping an input removes
+    # rows and shortens the rows that remain.  The reads and the complements
+    # stay at the full arity, exactly as the constant branch above keeps
+    # them; an ignored input is simply never named as a factor.  This is
+    # that branch generalized from "no essential inputs" to "the ones that
+    # matter", and the docstring's rule -- only the body may shrink -- is
+    # what makes it safe.
+    used = essential_inputs(truth_table, n) or [0]
+    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
+    width = len(used)
+    table, invert = _maybe_complement(reduced)
+    for k in range(2**width):
         if table[k] == "0":
             continue
         factors = [
-            _pb_name(1 + n + i) if negated else _pb_name(1 + i)
-            for i, negated in minterm_literals(k, n)
+            _pb_name(1 + n + used[slot]) if negated else _pb_name(1 + used[slot])
+            for slot, negated in minterm_literals(k, width)
         ]
         lines.append(f"LET {_pb_name(2 + 2 * n)}:={factors[0]}")
         for factor in factors[1:]:

@@ -104,12 +104,58 @@ free), but the toolchain rule does.
 A compiler is worth building for **verification value** (a complex-output
 generator exercised through a compile-then-fuzz differential) or **intrinsic
 value** (genuine lowering — control flow, calls, memory, dispatch — rather
-than per-command transliteration).  No candidate currently clears either bar.
+than per-command transliteration).
 
-**Harness note.**  A fuzz-dependent, input-reading compiler would first need
-fixed stdin cases via `run_elf` or a compile-then-fuzz differential; the
-current differential never compiles and the unicorn cases feed empty stdin.
-Intrinsic-value compilers need none of that.
+Candidates in priority order.  Two facts constrain every entry: the target
+is **`rv64i`**, whose base integer ISA has no float and no hardware
+multiply (forth already emits software `mul32`/`divmod32`, so integers are
+precedent and floats are not); and a differential is only worth the name
+when the generator *reads input*, since an `_embedded` generator substitutes
+its bits into a fixed template and replays the same program.
+
+- **MyScript** — the richest call graph left: first-class functions,
+  `return`, `while`/`check` blocks, and a `_reader` generator.  Scoping was
+  **probed and is not lexical** (a caller's local is visible inside a callee
+  that never received it), so like Forbin it needs no captured environments.
+  The bill is its *value domain*: `say` prints floats, strings, and arrays,
+  and on `rv64i` that means soft-float plus heap-managed strings and
+  growable arrays — a different league from Forbin's tagged 64-bit words.
+  Worth doing, but scope the value domain before starting.
+- **CV(N)(C)** — genuine dispatch, and the most unusual lowering available:
+  the program builds a *function* symbol by symbol and applies it on demand,
+  over an accumulator, a deque, and that function.  Unbounded unsigned
+  integers fit the bounded-agreement rule every compiler here shares
+  ([`docs/limitations.md`](limitations.md#compilers-are-bounded-agreement-not-total-over-unbounded-values)),
+  and it carries both a text and a boolean generator.  Its cost is the syllable grammar — validity is
+  CV(N)(C) structure, so the front end is a real parser rather than a
+  character dispatch.
+
+Standing negatives, unchanged.  Plain brainfuck is the trap answer —
+uncovered, but `home_row`/`suffolk` already cover that shape, so it is
+transliteration; the same disposes of the rest of the bf-shaped tape family.
+Taglate is blocked outright: its `t` command rewrites the queue into a
+Google Translate URL of its text.  Bitdeque is too thin, and Point Break has
+no output command, so its differential could only observe halting.
+Polynomial needs complex-root finding, which is not RISC-V work.  Lamfunc's
+partial application is real lowering, but its generator is `_embedded`, so
+it cannot pay the verification bar the way MyScript can.  The
+2D/grid family stays out under the toolchain rule, and the drawn-control-flow
+item under **Transpilers** already covers that direction.
+
+**Input-reading compilers are now supported.**  `COMPILER_CASES` entries
+take an optional fifth element carrying stdin (pre-existing cases keep
+running on empty input), so a new input-reading compiler needs no harness
+work.  What a compiled reader must match is *its own language's* refill,
+and the two shipped readers differ: Forbin's `in` goes through
+`IO.input_char`, which reads a whole *line* and returns its first
+character, so that reader is line-faithful and byte-consecutive reads
+would diverge.  Container's is not line-faithful — it refills a queue with
+`input_str`'s line *contents* and consumes one character per pulse, and
+since `input_str` strips terminators that queue is exactly the raw byte
+stream minus its newlines.  So `_riscv_common.GETBYTE` plus a newline skip
+is the correct lowering there, and Container is the standing precedent that
+GETBYTE is fine for an exercised reader whose language reads that way.
+Derive the convention from the interpreter's refill, not from a default.
 
 ## Forbin's expression-position recursion
 
@@ -300,13 +346,27 @@ saving.  Taglate reduces (451 characters → 21).  What is open:
 - **Severely constrained boolean generators** — caps are tracked so removal
   or lifting is deliberate.  No language is currently a *removal* candidate:
   every shipped generator covers `n <= 2` at minimum.
-- **Minifuck's three-input coverage** — the one cap here that is liftable
-  rather than a wall.  It builds all sixteen two-input tables but only
-  eight of the fourteen three-input orbits, the other six raising after
-  about two minutes; the failures are depth-cap exhaustion, not an
-  argument, so the reach is set by the search rather than by the language.
-  The route is a *construction* in wii2d's shape instead of a search —
-  `docs/walls.md` has the piece that does not yet compose.  The other six
+- **Minifuck's four-input coverage** — three inputs is **done**: all 256
+  tables build with no search at all, from a derived staging plus `_rescue`
+  for the four the enumeration misses.  What is open is four inputs, where
+  the name-order enumeration reaches 23.9% of the fully-essential tables and
+  a second pass over embeds that **complement inputs as they land** takes it
+  to **93.7%** (60546 of 64594).  The 4048 still open are not unbuildable:
+  permuting which input occupies which slot reaches every one of them, and
+  such programs were verified row by row on the interpreter — but a permuted
+  embed emits the `{Xi}` out of ascending order, which
+  `test_slots_run_in_name_order` enforces on every generator, so that route
+  is refused rather than shipped.  What is open is therefore whether a
+  *name-order* template reaches them.  Untried order-preserving axes:
+  per-gap separators (recorded in `walls.md` as headroom not contained in
+  the shipped set), the other spellings of the complement gadget, and the
+  two-read chain prototype — reads interleaved with chosen walks, a richer
+  pool than the enumerated suffix — which prints 19.5% of a sample of the
+  tables the family misses, 78 of 78 interpreter-verified, and is not
+  shipped.  Wiring it in as a fallback after the staged route is a concrete
+  next step; see
+  `docs/walls.md`, "Why no chain can escape the counting argument", which
+  that prototype refutes.  The other six
   refusing generators stay off this list: 6-5 is the one documented wall
   left (`docs/limitations.md`), %^2^-1 is partly lifted with the rest open,
   and NoComment, Polynomial, Factor and WII2D are resource knobs.  NoComment
@@ -314,8 +374,10 @@ saving.  Taglate reduces (451 characters → 21).  What is open:
   byte-indexed, capping every jump at 255" -- which bounds one jump and not a
   composition of them; chaining byte-sized skips lifted it from `n <= 8` to
   the interpreter's tape bound.  WII2D's `n == 7` refusal is likewise a cost
-  guard that fires before the fold is attempted, and raising it builds
-  interpreter-verified `n == 7` programs at a heavy build-time tail.
+  guard that fires before the chain is walked, and raising it builds
+  interpreter-verified `n == 7` programs.  The heavy build-time tail this
+  line used to cite is gone: the decode no longer searches, and 25 sampled
+  `D == 64` patterns all decode in under 0.21s.
   NoComment's and Factor's remaining caps are liftable by host config, and
   `docs/walls.md` has both arguments.  ZTOALC L was on
   this list and its refusals are now *size gates only* -- the anchor table's

@@ -186,7 +186,9 @@ def wrap_grid(program: str, width: int) -> str:
         # its k cells plus the k-1 separators they absorb.
         row.append(token.rjust(span * cell + span - 1))
         used += span
-    if row:
+    # The loop ends by appending, and an empty ``tokens`` returned above, so
+    # ``row`` always holds the last row by the time it is flushed here.
+    if row:  # pragma: no branch - never empty; see above
         lines.append(" ".join(row))
     return "\n".join(lines)
 
@@ -692,7 +694,9 @@ def _nevermind(program: str, width: int) -> str:
             current = unit
         else:
             current += unit
-    if current:
+    # Every arm of the loop leaves ``current`` holding a unit, so it is empty
+    # here only when there were no units at all -- and then so is ``lines``.
+    if current:  # pragma: no branch - never empty; see above
         lines.append(current)
     return "\n".join("print," + line for line in lines)
 

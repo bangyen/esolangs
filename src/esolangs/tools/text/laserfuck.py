@@ -198,7 +198,11 @@ def _laserfuck_base_ring(
     cells: dict[tuple[int, int], str] = {}
 
     def put(row: int, col: int, char: str) -> None:
-        if char != " ":
+        # The base ring lays only beam characters: its two loops walk a
+        # preload and an op string, and every other call passes a literal.
+        # The blank test matches the snake ring's ``put``, which does take
+        # padded rows, so the two helpers stay the same shape.
+        if char != " ":  # pragma: no branch - the base ring lays no blanks
             cells[(row, col)] = char
 
     # byte-mode marker, then the funnel that normalizes the start heading
