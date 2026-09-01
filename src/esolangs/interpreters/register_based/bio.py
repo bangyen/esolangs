@@ -29,12 +29,67 @@ rejected with :class:`ValueError` before it runs: a loop with no matching
 ``}``, a ``}`` closing nothing, a ``0i`` without its ``{``, and any other
 character the language does not define.  Because that check runs first,
 the loop stack can never be popped empty at run time.
+
+The execution model is a pure function over an immutable ``_State``:
+:func:`_advance` maps a state and the command list to the next state, and
+never mutates what it is given.  It takes no ``io`` argument at all, so it
+is total and side-effect free by construction rather than by inspection.
+
+Nothing needs hoisting out of it beyond the one print: the load check has
+already rejected every malformed program, so no command can fail at run
+time and the transition has no error case of its own.
+
+:class:`_Machine` is the mutable shell the interpreter protocol requires.
+It holds one ``_State`` and rebinds it each step, so the mutation lives in
+exactly one assignment and every rule about what BIO *does* stays in the
+pure layer.
 """
+
+from __future__ import annotations
 
 import re
 import sys
 
 from esolangs.interpreters.io import IO
+
+#: One instant of a run: ``(ind, reg, stk)`` -- the command cursor, the
+#: three registers, and the loop-return stack.  A value, not a record:
+#: every transition below returns a new one rather than editing one in
+#: place, and both stores are tuples for the same reason.
+#:
+#: The commands are deliberately not in here.  They do not change during a
+#: run, so carrying them would put constant data in every value the cycle
+#: detector stores.  They are a parameter to the transition instead.
+#:
+#: The field order starts ``ind`` for consistency with the rest of the
+#: series, but ``snapshot`` still returns ``(reg, stk, ind, ...)`` -- the
+#: order it always returned.
+type _State = tuple[int, tuple[int, int, int], tuple[int, ...]]
+
+
+def _bumped(reg: tuple[int, int, int], index: int, delta: int) -> tuple[int, int, int]:
+    """Return ``reg`` with register ``index`` moved by ``delta``."""
+    values = list(reg)
+    values[index] += delta
+    return (values[0], values[1], values[2])
+
+
+def _skip(commands: list[str], ind: int) -> int:
+    """Return the index of the ``};`` closing the loop opened at ``ind``.
+
+    Braces are counted rather than ``0i`` triples: the opener is the triple
+    *with* its ``{``, and ``parse`` has already matched them, so the closer
+    exists and this cannot run off the end.
+    """
+    mat = 1
+    while mat:
+        ind += 1
+        if commands[ind].endswith("{"):
+            mat += 1
+        elif commands[ind] == "};":
+            mat -= 1
+    return ind
+
 
 # A BIO command: an increment/decrement/output triple ended by its ``;``, a
 # loop-open triple carrying the ``{`` that opens its body, or the ``};``
@@ -89,14 +144,32 @@ class _Machine:
         """Parse ``code`` into commands and reset the registers."""
         self.io = io
         self.commands = parse(code)
-        self.reg: list[int] = [0] * 3
-        self.stk: list[int] = []
-        self.ind = 0
+        # ``halted`` is read twice per command -- once by ``run``'s loop and
+        # once by ``step``'s guard -- so the length is taken once here.
+        self.size = len(self.commands)
+        self.state: _State = (0, (0, 0, 0), ())
+
+    # The language's own names.  They are views on the current state rather
+    # than fields of their own, so there is one place a step can change.
+
+    @property
+    def ind(self) -> int:
+        return self.state[0]
+
+    @property
+    def reg(self) -> tuple[int, int, int]:
+        """The three registers, x then y then z."""
+        return self.state[1]
+
+    @property
+    def stk(self) -> tuple[int, ...]:
+        """The loop-return stack."""
+        return self.state[2]
 
     @property
     def halted(self) -> bool:
         """Whether the cursor has reached the end of the command list."""
-        return self.ind >= len(self.commands)
+        return self.state[0] >= self.size
 
     # The VM's language-shaped view: Registers + loop stack + cursor; ip the cursor,
     # memory the regs.
@@ -104,57 +177,74 @@ class _Machine:
     @property
     def ip(self) -> int:
         """The current instruction position."""
-        return self.ind
+        return self.state[0]
 
     @property
     def memory(self) -> list[int]:
         """The addressable cells."""
-        return list(self.reg)
+        return list(self.state[1])
 
     @property
     def stack(self) -> list[object]:
         """The stack."""
-        return list(self.stk)
+        return list(self.state[2])
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (tuple(self.reg), tuple(self.stk), self.ind, self.io.position())
+        # Both stores are already tuples, in the order this returned before
+        # the fields moved into a state value.
+        ind, reg, stk = self.state
+        return (reg, stk, ind, self.io.position())
 
     def step(self) -> None:
-        """Execute one command, advancing the cursor."""
-        if self.halted:
-            return
-        command = self.commands[self.ind]
-        # A loop-open command carries the ``{`` that opens its body, so the
-        # register is the triple's own last letter rather than the token's.
-        r = "xyz".find(command[2]) if command != "};" else -1
-        c = command[:2]
+        """Execute one command, advancing the cursor.
 
-        if c == "0o":
-            self.reg[r] += 1
-        elif c == "1o":
-            self.reg[r] -= 1
-        elif c == "1i":
+        The one print lives here rather than in the transition: this is the
+        shell, so it is where an effect belongs.  Nothing else needs
+        hoisting -- the load check has rejected every malformed program, so
+        no command can fail once a run has started.
+        """
+        ind, reg, _stk = self.state
+        if ind >= self.size:
+            return
+        command = self.commands[ind]
+        if command[:2] == "1i":
             # Handle negative values by converting to unsigned 8-bit
-            self.io.print_char(chr(self.reg[r] % 256))
-        elif command == "};":
-            # ``parse`` matched the braces, so a ``}`` always has a loop.
-            self.ind = self.stk.pop() - 1
-        elif self.reg[r]:
-            self.stk.append(self.ind)
-        else:
-            # Skip the loop block, counting braces rather than ``0i``
-            # triples: the opener is the triple *with* its ``{``, and
-            # ``parse`` has already matched them, so the closer exists.
-            mat = 1
-            while mat:
-                self.ind += 1
-                command = self.commands[self.ind]
-                if command.endswith("{"):
-                    mat += 1
-                elif command == "};":
-                    mat -= 1
-        self.ind += 1
+            self.io.print_char(chr(reg["xyz".find(command[2])] % 256))
+        self.state = _advance(self.state, self.commands)
+
+
+def _advance(state: _State, commands: list[str]) -> _State:
+    """Return the state after executing one command.
+
+    Pure, and total: ``parse`` has already matched every brace, so a ``};``
+    always has a loop to return to and a skip always finds its closer.  It
+    takes no ``io`` argument, so ``1i``'s print is the caller's business --
+    it changes no state at all.
+
+    A ``};`` returns to one before the command that opened the loop, so the
+    shared increment lands back *on* the opener and re-tests its register.
+    """
+    ind, reg, stk = state
+    command = commands[ind]
+    # A loop-open command carries the ``{`` that opens its body, so the
+    # register is the triple's own last letter rather than the token's.
+    r = "xyz".find(command[2]) if command != "};" else -1
+    code = command[:2]
+
+    if code == "0o":
+        reg = _bumped(reg, r, 1)
+    elif code == "1o":
+        reg = _bumped(reg, r, -1)
+    elif code == "1i":
+        pass  # the print already happened in the shell
+    elif command == "};":
+        ind, stk = stk[-1] - 1, stk[:-1]
+    elif reg[r]:
+        stk = (*stk, ind)
+    else:
+        ind = _skip(commands, ind)
+    return (ind + 1, reg, stk)
 
 
 def run(code: str, io: IO) -> None:
