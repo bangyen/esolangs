@@ -2249,9 +2249,17 @@ def minifuck(truth_table: str) -> str:
     # Last, and only if everything cheaper failed: park the pointer on the
     # answer as part of what is searched for, so no walk intervenes between
     # producing the column and reading it -- a walk back would re-cross, and
-    # so change, that very cell.  This is the most expensive route, and it
-    # earns its place at n == 2 (it is the only one reaching the XOR family)
-    # while contributing no hits at all in an n == 3 sample, so it goes last.
+    # so change, that very cell.  This is the most expensive route, so it goes
+    # last.
+    #
+    # It used to be justified as the only route reaching the XOR family at
+    # n == 2.  That is no longer true and has not been since the stagings
+    # landed: the algorithmic prefix alone builds all 16 two-input tables and
+    # all 256 three-input ones, ``0110`` and ``1001`` among them, verified
+    # row by row on the interpreter.  No search of any kind runs below four
+    # inputs now, so what this stage is worth is a question about the four-
+    # input residue -- the 4048 tables (6.3%) the staging family misses --
+    # and that has not been measured.
     for sep in _SCAN_SEPS:
         for code, _cell in _find_parked(
             _embed(n, settle=_SETTLE, sep=sep),
