@@ -22,6 +22,21 @@ class TestBuiltins:
     def test_print_binary_literal(self) -> None:
         assert run_program("p 0b101") == "101"
 
+    def test_a_binary_literal_needs_digits_and_only_binary_ones(self) -> None:
+        """``0b`` alone is a name, and so is ``0b`` followed by a 2.
+
+        Only well-formed literals were ever written, so the two halves of
+        the check never had to hold: a prefix with nothing after it, and a
+        digit outside ``01``.  Both make the token a plain name, which
+        prints as itself rather than as a number -- and ``0b0`` is the
+        shortest well-formed one, which a check reading past the first
+        digit would reject.
+        """
+        assert run_program("p 0b") == "0b"
+        assert run_program("p 0b2") == "0b2"
+        assert run_program("p 0b12") == "0b12"
+        assert run_program("p 0b0") == "0"
+
     def test_equality(self) -> None:
         assert run_program("p eq 1 1") == "1"
         assert run_program("p eq 1 2") == "0"
