@@ -82,18 +82,22 @@ class TestOperations:
     def test_multiply(self) -> None:
         assert run_and_capture("||3|*|4||p.") == "12"
 
-    def test_arithmetic_reads_through_a_variable(self) -> None:
-        """An operand may be a variable, which has to be resolved first.
+    def test_operands_on_both_sides_may_be_variables(self) -> None:
+        """Either side of an operation can be a name needing resolution.
 
-        Both operands are literals everywhere else, so the step that looks
-        a name up before operating on it was never exercised on this path
-        -- an operand left unresolved is not an integer at all.
+        Elsewhere at least one operand is a literal, so the lookup that
+        turns a name into a value was never exercised on both sides of the
+        same operation -- and an operand left unresolved is not a value of
+        any usable type.  Each operation is driven with variables in both
+        slots.
         """
-        assert run_and_capture("'x'v.\n[x]s|3|\n|[x]*|2||p.") == "6"
+        decl = "'x'v.\n[x]s|3|\n'y'v.\n[y]s|2|\n"
+        assert run_and_capture(decl + "|[x]*[y]|p.") == "6"
+        assert run_and_capture(decl + "|[x]+[y]|p.") == "5"
         assert (
-            run_and_capture("'x'v.\n[x]s|3|\n|4|f([x]>|1|)\n'no'p.\n'yes'p.")
-            == "yes"
+            run_and_capture(decl + "|6|f([x]=[y])\n'no'p.\n'yes'p.") == "noyes"
         )
+        assert run_and_capture(decl + "|6|f([x]>[y])\n'no'p.\n'yes'p.") == "yes"
 
     def test_multiply_non_integer_halts(self) -> None:
         with pytest.raises(HaltError, match="two integers"):
