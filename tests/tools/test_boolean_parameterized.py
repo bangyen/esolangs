@@ -4115,6 +4115,61 @@ class TestParameterizedPctSquaredMinusOne:
             # its inputs through ``len()``.
             assert len(lengths) == 1, (table, sorted(lengths))
 
+    def test_deep_band_builds_four_input_parity(self) -> None:
+        """Parity-4 builds and runs, which no shipped path reached.
+
+        The shipped band caps its weights at ``3003 // 256 == 11`` units
+        because it builds its ladder positive, so every row sum has to sit
+        under the limit at once; four inputs need ``2**4 - 1 == 15`` and it has
+        no weighting at all.  The deep band subtracts instead, so the ladder is
+        negative -- nothing resets below zero -- and the budget does not exist.
+
+        Parity is the case the popcount ladder serves: every weight is one, so
+        the span is ``n`` units rather than ``2**n - 1``.
+        """
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.pct_squared_minus_one import (
+            _band,
+            _band_weightings,
+        )
+
+        table = "0110100110010110"
+        # The shipped band has no weighting to try at this arity at all, which
+        # is the wall this construction lifts.
+        assert _band_weightings(4) == {}
+        assert _band(table, 4) is None
+        template = parameterized.pct_squared_minus_one(table)
+        lengths = set()
+        for row in range(16):
+            bits = [(row >> (3 - k)) & 1 for k in range(4)]
+            program = self.instantiate(template, bits)
+            lengths.add(len(program))
+            assert self.run_pct(program) == table[row], (table, bits)
+        assert len(lengths) == 1, sorted(lengths)
+
+    def test_deep_band_refuses_a_class_splitting_collision(self) -> None:
+        """A weighting whose collision splits a class is refused, not served.
+
+        Rows sharing a value are merged by the first cut that reaches them and
+        can never be told apart again, so a weighting that collides two rows of
+        different classes cannot compute the table.  The planner has to reject
+        it rather than emit a program for the wrong function.
+        """
+        from esolangs.tools.boolean.pct_squared_minus_one import (
+            _deep_plan,
+            _deep_values,
+        )
+
+        # Weights (1, 1) collide rows 01 and 10 on one value.  XOR puts both in
+        # the same class, so the collision is harmless and the table plans.
+        collided = _deep_values(2, (1, 1), 0)
+        assert collided[1] == collided[2]
+        assert _deep_plan("0110", 2, collided) is not None
+        # A table that disagrees on exactly those two rows is refused: no
+        # schedule can separate rows the ladder has already merged.  ``"0010"``
+        # is 1 on row 10 and 0 on row 01.
+        assert _deep_plan("0010", 2, collided) is None
+
     @pytest.mark.slow  # 8.3s: the ladder build plus eight interpreter runs
     def test_ladder_builds_majority_three(self) -> None:
         """Majority-3 builds, which no affine composition of setters reaches.

@@ -1204,6 +1204,243 @@ def _band(truth_table: str, n: int) -> str | None:
     return None
 
 
+#: How far the deep band's weights range, in whole residue systems.  Six is
+#: where the measured coverage stops improving at four inputs; the search is
+#: over weightings rather than programs, so this bounds a derivation's input,
+#: not a program space.
+_DEEP_CAP = 6
+
+#: Where the deep band parks its survivors between cuts.  Positive and under
+#: the limit, so a later cut's translation can still carry them across it.
+_DEEP_PARK = 2000
+
+
+def _deep_values(n: int, units: tuple[int, ...], mask: int) -> list[int]:
+    """Row values for a weighting, with ``mask`` naming the complemented inputs.
+
+    A weight applies when input ``k`` differs from its mask bit, so ``mask``
+    relabels which corner of the cube carries the largest sum.  With
+    nonnegative weights alone the all-ones row is always on top and the
+    all-zeros row always at the bottom, which fixes most of the run structure
+    a table can present; complementing an input is free -- the setter's two
+    branches simply swap -- and it is what frees the order.
+    """
+    return [
+        sum(
+            u * _BAND_UNIT * (((r >> (n - 1 - k)) & 1) ^ ((mask >> k) & 1))
+            for k, u in enumerate(units)
+        )
+        for r in range(2**n)
+    ]
+
+
+def _deep_plan(truth_table: str, n: int, values: list[int]) -> str | None:
+    """Derive a deep band's body for one value vector, or ``None``.
+
+    The ladder is built by *subtraction*, so every row sits at ``-sum``:
+    negative, where the over-3003 reset cannot fire however large the weights
+    are.  That is the whole escape from the shipped band's unit budget, which
+    exists only because :func:`_band` builds its ladder positive and so must
+    keep every row sum under the limit at once.
+
+    Rows may share a value provided they share a class.  A cut erases -- every
+    row it wipes lands on zero together, whatever the gaps between them were --
+    so only the boundaries *between* runs need a full residue system, and the
+    span a table costs is set by its number of runs rather than by ``2**n``.
+    """
+    rows = range(2**n)
+    groups: dict[int, set[str]] = {}
+    for row in rows:
+        groups.setdefault(values[row], set()).add(truth_table[row])
+    # Two rows sharing a value can never be told apart again, so a collision
+    # across classes would emit a program computing the wrong function.
+    if any(len(classes) > 1 for classes in groups.values()):
+        return None
+
+    order = sorted(rows, key=lambda r: values[r], reverse=True)
+    anchor = order[-1]
+    live = _BYTE_ONE if truth_table[anchor] == "1" else _BYTE_ZERO
+
+    for prefix in range(2**n):
+        if prefix and len({truth_table[r] for r in order[:prefix]}) > 1:
+            break
+        rest = order[prefix:]
+        if not rest:
+            break
+        if max(values[r] for r in rest) - min(values[r] for r in rest) > _LIMIT:
+            continue
+        high = _LIMIT - max(values[r] for r in rest)
+        low = (_LIMIT - min(values[r] for r in order[:prefix]) + 1) if prefix else 0
+        low = max(low, 0)
+        if low > high:
+            continue
+        drop = next(
+            (
+                d
+                for d in range(low, min(high, low + _BAND_UNIT) + 1)
+                if _sub_code(d) is not None
+            ),
+            None,
+        )
+        if drop is None:
+            continue
+        body = _deep_body(truth_table, n, values, order, anchor, live, prefix, drop)
+        if body is not None:
+            return body
+    return None
+
+
+def _deep_body(
+    truth_table: str,
+    n: int,
+    values: list[int],
+    order: list[int],
+    anchor: int,
+    live: int,
+    prefix: int,
+    drop: int,
+) -> str | None:
+    """Spell one deep-band schedule, or ``None`` if a stage will not close."""
+    rows = range(2**n)
+    dropped = _sub_code(drop) if drop else ""
+    if dropped is None:  # pragma: no cover - the caller chose a spellable drop
+        return None
+    # The ladder subtracted, so one ``p`` turns the order positive; the rows
+    # the drop carried past the limit are wiped by the next command's reset.
+    body = dropped + "p"
+    current = {r: _apply(-values[r], dropped + "p") for r in rows}
+    if {r for r in rows if current[r] > _LIMIT} != set(order[:prefix]):
+        return None
+    cleared = set(order[:prefix])
+    for row in cleared:
+        current[row] = 0
+
+    live_order = [r for r in order if r not in cleared]
+    cuts = [
+        i
+        for i in range(1, len(live_order))
+        if truth_table[live_order[i]] != truth_table[live_order[i - 1]]
+    ]
+    for cut in cuts:
+        wipe = [live_order[i] for i in range(cut) if live_order[i] not in cleared]
+        keep = [live_order[i] for i in range(cut, len(live_order))]
+        if not wipe or len({truth_table[r] for r in wipe}) > 1:
+            return None
+        low = _LIMIT - min(current[r] for r in wipe) + 1
+        high = _LIMIT - max(current[r] for r in keep)
+        if low > high or low <= 0:
+            return None
+        band = _BYTE_ONE if truth_table[wipe[0]] == "1" else _BYTE_ZERO
+        # A wiped band thereafter takes the same translations as the survivors,
+        # so the parking cancels from their gap and one congruence fixes the
+        # cut: the translation is solved, not searched.
+        wanted = (live - band - current[anchor]) % _BAND_UNIT
+        up = low + ((wanted - low) % _BAND_UNIT)
+        if up > high:
+            return None
+        raise_code = _affine_code(1, up)
+        if raise_code is None:
+            return None
+        raised = {r: _apply(v, raise_code + "s") for r, v in current.items()}
+        down = _DEEP_PARK - max(raised.values())
+        park = _affine_code(1, down)
+        if park is None:
+            return None
+        parked = {r: _apply(v, park) for r, v in raised.items()}
+        if max(parked.values()) > _LIMIT:
+            return None
+        body += raise_code + "s" + park
+        current = parked
+        cleared.update(wipe)
+
+    base = (live - current[anchor]) % _BAND_UNIT
+    # Nearest zero first: a shift is spelled one character per two units, so
+    # taking the smallest keeps the program short.  An earlier version scanned
+    # from -80 residue systems up and emitted the first that worked, which is a
+    # ten-thousand-character run of ``s``.
+    for shift in sorted(
+        (base + _BAND_UNIT * reps for reps in range(-8, 9)), key=abs
+    ):
+        tail = _affine_code(1, shift)
+        if tail is None:
+            continue
+        printed = {r: _apply(v, tail) for r, v in current.items()}
+        if all(
+            (printed[r] & 0xFF)
+            == (_BYTE_ONE if truth_table[r] == "1" else _BYTE_ZERO)
+            for r in rows
+        ):
+            return body + tail + "e"
+    return None
+
+
+def _deep_setters(
+    units: tuple[int, ...], mask: int
+) -> tuple[tuple[str, str], ...] | None:
+    """Spell one setter per input, both branches at a common width."""
+    setters = []
+    for index, unit in enumerate(units):
+        amount = unit * _BAND_UNIT
+        if amount == 0:
+            setters.append(("", ""))
+            continue
+        width = _even_width_for(amount)
+        if width is None:  # pragma: no cover - every multiple of 256 spells
+            return None
+        code = _sub_of_width(amount, width)
+        if code is None:  # pragma: no cover - the width just spelled it
+            return None
+        hold = "p" * width
+        # The hold branch is ``pp`` repeated, two negations composing to the
+        # identity, so both branches run the same number of commands and no
+        # program leaks its inputs through ``len()``.
+        setters.append((hold, code) if not (mask >> index) & 1 else (code, hold))
+    return tuple(setters)
+
+
+def _deep_band(truth_table: str, n: int) -> str | None:
+    """Build a deep-band template, or ``None`` if no weighting schedules it.
+
+    This is :func:`_band` with the two restrictions that bounded it removed.
+    The shipped band caps its weights at ``3003 // 256 == 11`` units because it
+    builds the ladder positive, so every row sum has to sit under the limit at
+    once; four inputs would need ``2**4 - 1 == 15`` and there is no weighting
+    at all.  Here the ladder is negative -- nothing resets below zero -- so the
+    unit budget does not exist, and rows are allowed to collide when they share
+    a class, which prices a table's span by its number of runs instead of by
+    ``2**n``.  Parity rides the popcount ladder, every weight one, and so costs
+    ``n`` units rather than ``2**n - 1``.
+
+    Weightings are tried in order of the span they cost -- which is the sum of
+    the units, since each is a multiple of 256 -- so the emitted program is the
+    shortest this construction builds rather than the first that schedules.
+    Ties go to the *flattest* weighting first, largest unit smallest: a table's
+    span is set by its number of runs, and an even weighting is what collapses
+    rows into runs.  Parity is the extreme case, built by the popcount ladder
+    with every unit one, and ordering by ``max`` is what finds it immediately
+    rather than after every degenerate weighting that ignores an input.
+    """
+    for units in sorted(
+        product(range(_DEEP_CAP + 1), repeat=n), key=lambda u: (sum(u), max(u), u)
+    ):
+        if not any(units):
+            continue
+        for mask in range(2**n):
+            values = _deep_values(n, units, mask)
+            body = _deep_plan(truth_table, n, values)
+            if body is None:
+                continue
+            setters = _deep_setters(units, mask)
+            if setters is None:  # pragma: no cover - a planned weighting spells
+                continue
+            header = ";".join(
+                f"{k}={zero}|{one}" for k, (zero, one) in enumerate(setters)
+            )
+            placeholders = "".join("{X" + str(k) + "}" for k in range(n))
+            return header + _HEADER_END + placeholders + body
+    return None
+
+
 def _affine(truth_table: str, n: int) -> str | None:
     """Build a composed-affine template, or ``None`` if the table is not one.
 
@@ -1279,9 +1516,19 @@ def pct_squared_minus_one(truth_table: str) -> str:
             return cascade
         # Tables that are not subcubes may still compose from one affine
         # setter per input, which is what reaches XOR at three inputs.
-        affine = _affine(truth_table, n)
-        if affine is not None:
-            return affine
+        #
+        # Only at three.  This path derives a whole arity at once and its
+        # composition frontier grows 90 -> 1630 -> 36458 states at n = 2, 3, 4,
+        # so a four-input table costs about two minutes here whether or not it
+        # ends up served -- parity-4 was measured at 125s, against 0.01s for the
+        # deep band that serves it instead.  The deep band covers every table
+        # this path reaches above three inputs, so the enumeration is skipped
+        # rather than paid for; at three inputs it stays, where it is instant
+        # and its programs are much the shorter.
+        if n == 3:
+            affine = _affine(truth_table, n)
+            if affine is not None:
+                return affine
         # Everything above is affine in the accumulator, so it cannot merge
         # rows that do not already agree.  The ladder path is the one that
         # uses the over-3003 reset as a threshold, which is what reaches a
@@ -1297,6 +1544,14 @@ def pct_squared_minus_one(truth_table: str) -> str:
         # every three-input table, at the cost of much the longest programs
         # here, which is why it is tried last.
         band = _band(truth_table, n)
+        if band is not None:
+            return band
+        # The band above keeps its ladder positive, so every row sum must sit
+        # under the limit at once and there is no weighting at all past three
+        # inputs.  The deep band builds the ladder negative, where nothing
+        # resets, and lets rows of one class collide -- which is what carries
+        # the construction above three inputs.
+        deep = _deep_band(truth_table, n)
         # No test reaches this branch.  Reaching it means exhausting every
         # construction, and `_affine` is the expensive one: it derives a whole
         # arity at once, and the composition frontier grows 90 -> 1630 -> 36458
@@ -1308,7 +1563,7 @@ def pct_squared_minus_one(truth_table: str) -> str:
         # bills CI for it.  The guard stays because emitting nothing is better
         # than emitting a program that computes the wrong function; if `_affine`
         # is ever made to refuse without enumerating, restore the test.
-        if band is None:  # pragma: no cover - see above
+        if deep is None:  # pragma: no cover - see above
             raise ValueError(
                 f"%^2^-1 builds every table at one, two and three inputs; "
                 f"above that a conjunction or disjunction of literals at any "
@@ -1316,7 +1571,7 @@ def pct_squared_minus_one(truth_table: str) -> str:
                 f"the thresholds a weighted ladder crosses; "
                 f"got {n} inputs ({truth_table!r})"
             )
-        return band
+        return deep
     # Widen a one-input table by repeating each entry, so the second input is
     # present in the derivation but cannot change the answer.
     widened = truth_table if n == 2 else "".join(bit * 2 for bit in truth_table)
