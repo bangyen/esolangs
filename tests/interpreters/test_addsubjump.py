@@ -127,6 +127,49 @@ class TestSpecialAddresses:
         assert _run(code) == "\x01"
 
 
+class TestFlags:
+    """The flag update mode and the four flags it refreshes.
+
+    Nothing exercised these: the mode starts off, so a suite that never
+    writes ``-9`` leaves the whole update block unreached, and the flags it
+    would have set unread.  Each program here turns the mode on, performs
+    one arithmetic step whose result is known, and prints one flag.
+    """
+
+    @staticmethod
+    def _flag(op: int, flag: int) -> str:
+        """Turn the mode on, apply ``op`` to cell 12, then print ``flag``."""
+        return memory(
+            [[-9, -6, 13, -7], [12, op, 14, -6], [-1, flag, 15, -7]],
+            {13: 4, 14: 8, 15: -1},
+        )
+
+    def test_negative_flag_follows_the_sign_of_the_result(self) -> None:
+        """``NF`` is set when the result is below zero, and only then."""
+        assert _run(self._flag(-6, -4)) == "\x01"  # 0 - 1 = -1
+        assert _run(self._flag(-7, -4)) == "\x00"  # 0 - 0 =  0
+
+    def test_zero_flag_follows_the_result_being_zero(self) -> None:
+        """``ZF`` is set when the result is exactly zero, and only then."""
+        assert _run(self._flag(-7, -3)) == "\x01"  # 0 - 0 =  0
+        assert _run(self._flag(-6, -3)) == "\x00"  # 0 - 1 = -1
+
+    def test_carry_and_overflow_stay_zero(self) -> None:
+        """Cells are unbounded, so neither flag has anything to report.
+
+        They are still cleared on every update, which is what keeps them
+        from holding a stale value; a mode that set them instead would be
+        reporting a carry that cannot happen.
+        """
+        assert _run(self._flag(-6, -2)) == "\x00"
+        assert _run(self._flag(-6, -5)) == "\x00"
+
+    def test_flags_do_not_update_while_the_mode_is_off(self) -> None:
+        """The mode starts at zero, so a negative result leaves ``NF`` clear."""
+        code = memory([[12, -6, 13, -6], [-1, -4, 14, -7]], {13: 4, 14: -1})
+        assert _run(code) == "\x00"
+
+
 class TestHaltAndErrors:
     def test_jump_off_the_end_halts(self) -> None:
         # The jump target (a data cell) is huge, past the memory.
@@ -143,6 +186,24 @@ class TestHaltAndErrors:
     def test_malformed_token(self) -> None:
         with pytest.raises(ValueError, match="malformed memory token"):
             _run("12 -6 x -7")
+
+    def test_the_largest_allocatable_address_is_the_last_one_that_works(
+        self,
+    ) -> None:
+        """A write halts only once the address is past the memory ceiling.
+
+        The ceiling itself was never approached, so the comparison deciding
+        it was free to sit a cell either side, and the padding that grows
+        the memory to reach the address was free to be one cell short or
+        long.  Writing to the last legal address succeeds; the next one up
+        halts, and says so.
+        """
+        ceiling = 1 << 24
+        assert _run(memory([[ceiling - 1, -6, 13, -7]], {13: -1})) == ""
+
+        with pytest.raises(HaltError) as caught:
+            _run(memory([[ceiling, -6, 13, -7]], {13: -1}))
+        assert str(caught.value) == f"memory address {ceiling} is too large"
 
     def test_carry_and_overflow_flags_read_as_zero(self) -> None:
         # The carry (-2) and overflow (-5) flags are always 0 in this
