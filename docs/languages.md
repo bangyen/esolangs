@@ -46,6 +46,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | Forþ | yes | yes |  | yes | yes |
 | Grapheme |  | yes |  | yes |  |
 | Home Row | yes | yes |  | yes | yes |
+| Inject |  | yes |  | yes |  |
 | Jaune |  | yes |  | yes | yes |
 | Lamfunc |  | yes |  | yes |  |
 | LaserFuck | yes | yes |  | yes |  |

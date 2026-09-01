@@ -481,6 +481,14 @@ def _register() -> None:
             split=True,
             note="halts by exiting with status 0",
         ),
+        # ``send`` terminates every line it writes, so the answer arrives
+        # with a newline after it -- there is no other output command.
+        "inject": _reader(
+            b.inject,
+            "other.inject",
+            expected="0\n",
+            note="send terminates each line, so the answer ends in a newline",
+        ),
         "circuit_diagram": _reader(
             b.circuit_diagram,
             "grid_based.circuit_diagram",
