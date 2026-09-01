@@ -4395,3 +4395,153 @@ class TestParameterizedOneTwoThree:
                 xs = re.findall(r"\{X(\d+)\}", template)
                 assert sorted(xs) == [str(i) for i in range(n)], (table, xs)
                 assert not re.findall(r"\{C(\d+)\}", template), table
+
+
+class TestPctSquaredHelpers:
+    """The %^2^-1 spelling helpers, at the inputs their guards exist for.
+
+    These are pure functions over small integers, so the edges the search
+    itself only reaches incidentally are reachable directly: a width that
+    admits no spelling, the zero shortcut, and the resets ``_translate``
+    models because the accumulator wraps at :data:`_LIMIT`.
+    """
+
+    @staticmethod
+    def module():
+        return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+
+    def test_sub_of_width_rejects_an_unreachable_split(self) -> None:
+        """A width too narrow to spell ``k`` has no ``i``/``s`` split."""
+        assert self.module()._sub_of_width(1, 1) is None  # noqa: SLF001
+
+    @pytest.mark.parametrize("name", ["_even_width_for", "_band_width"])
+    def test_zero_needs_no_width(self, name: str) -> None:
+        """Subtracting nothing is width zero, not a search."""
+        assert getattr(self.module(), name)(0) == 0
+
+    @pytest.mark.parametrize("name", ["_even_width_for", "_band_width"])
+    @pytest.mark.parametrize("k", [1, 2, 3, 7])
+    def test_unspellable_weights_return_none(self, name: str, k: int) -> None:
+        """Some weights have no even-width spelling at all."""
+        assert getattr(self.module(), name)(k) is None
+
+    @pytest.mark.parametrize("name", ["_even_width_for", "_band_width"])
+    def test_odd_starting_width_is_bumped_even(self, name: str) -> None:
+        """``k == 8`` starts the scan at an odd width, so it is bumped."""
+        width = getattr(self.module(), name)(8)
+        assert width is not None
+        assert width % 2 == 0
+
+    def test_translate_is_identity_at_zero_shift(self) -> None:
+        m = self.module()
+        assert m._translate(5, 0) == 5  # noqa: SLF001
+
+    def test_translate_resets_a_value_past_the_limit(self) -> None:
+        """A value over the limit is zeroed before a negative shift lands."""
+        m = self.module()
+        assert m._translate(m._LIMIT + 10, -3) == -3  # noqa: SLF001
+
+    def test_translate_crosses_the_reset_twice_going_up(self) -> None:
+        """A positive shift negates, so both later resets are reachable.
+
+        The negation is what puts a value over the limit: a value below
+        ``-_LIMIT`` is past it once flipped, and is zeroed there rather than
+        at the first reset, which only sees the value as it arrived.
+        """
+        m = self.module()
+        assert m._translate(-5, 4000) == 3995  # noqa: SLF001
+        assert m._translate(-5, m._LIMIT + 5) == m._LIMIT  # noqa: SLF001
+        # zeroed after the negation, so only the shift is left
+        assert m._translate(-(m._LIMIT + 10), 3) == 3  # noqa: SLF001
+
+
+class TestMinifuckArityGates:
+    """The staging passes that decline outside the arities they serve.
+
+    Each pass is gated on an arity tuple, and the gate is what keeps a
+    three-input table from paying a four-input sweep.  Asking at an arity
+    outside the gate returns ``None`` without building anything.
+    """
+
+    @staticmethod
+    def module():
+        return importlib.import_module("esolangs.tools.boolean.minifuck")
+
+    def test_rescue_declines_outside_its_arity(self) -> None:
+        m = self.module()
+        assert 2 not in m._RESCUE_ARITIES  # noqa: SLF001
+        assert m._rescue("0110", 2) is None  # noqa: SLF001
+
+    def test_flipped_declines_outside_its_arity(self) -> None:
+        m = self.module()
+        assert 2 not in m._FLIPPED_ARITIES  # noqa: SLF001
+        assert m._flipped_staging("0110", 2) is None  # noqa: SLF001
+
+    def test_staging_spans_skips_the_insert_suffixes(self) -> None:
+        """Two inputs are not an insert arity, so only the bracket runs are
+        spanned -- the suffix loop is skipped rather than run and discarded.
+        """
+        m = self.module()
+        assert 2 not in m._INSERT_ARITIES  # noqa: SLF001
+        assert m._staging_spans(2)  # noqa: SLF001
+
+
+def test_minifuck_flipped_sweep_claims_and_replays_a_table() -> None:
+    """The complementing-embed sweep, run against a single wanted table.
+
+    :func:`_flipped_plans` is whole-arity by design: it derives one embed per
+    ``(flips, separator, settle)`` and tests every table still wanting one,
+    which at four inputs means the ~50k tables the plain enumeration misses.
+    Measured, that sweep runs for over fifteen minutes -- far past what any
+    test can pay, and the reason this path had no coverage.
+
+    Narrowing *what is wanted* rather than what is derived gets the same code
+    to run in under a second: with everything but one table reported as
+    already placed, the sweep claims that table on its first staging and
+    returns.  ``_replay_flipped`` then rebuilds it and checks the printed
+    rows, so this still holds the module's standing rule -- nothing is
+    returned that has not been seen to print.
+    """
+    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+    n = 4
+    wanted = "0" * 16
+    real = module._derived_plans  # noqa: SLF001
+
+    def only_one_missing(arity: int):
+        if arity != n:
+            return real(arity)
+        return {
+            format(value, f"0{2**n}b"): None
+            for value in range(2 ** (2**n))
+            if format(value, f"0{2**n}b") != wanted
+        }
+
+    # The plan cache has to be cleared on both sides: a warm cache would skip
+    # the sweep entirely, and a cache left warm afterwards would hand the
+    # patched result to every later four-input build.
+    module._derived_plans = only_one_missing  # noqa: SLF001
+    module._flipped_plans.cache_clear()  # noqa: SLF001
+    try:
+        found = module._flipped_plans(n)  # noqa: SLF001
+        assert wanted in found, "the first staging should claim the one table left"
+        template = module._replay_flipped(wanted, n, found[wanted])  # noqa: SLF001
+        assert template is not None
+    finally:
+        module._derived_plans = real  # noqa: SLF001
+        module._flipped_plans.cache_clear()  # noqa: SLF001
+
+
+def test_nocomment_wide_declines_when_the_plan_outgrows_the_skip() -> None:
+    """Past fifteen inputs the summand plan leaves no room to widen.
+
+    ``room`` is what is left of a byte-sized skip once the guarded
+    contribution's move-add-return block is paid for, and it goes negative at
+    ``n == 15`` -- the plan stays at its one-cell form rather than being
+    re-planned wider.  The build then stops on the tape limit, which is the
+    reachable end of this path: the cell it would need is past 4096.
+    """
+    from esolangs.tools.boolean import parameterized
+
+    table = "0" * (2**15 - 1) + "1"
+    with pytest.raises(ValueError, match="past the interpreter's 4096-cell tape"):
+        parameterized._nocomment_wide(table, 15, parameterized._TAPE)  # noqa: SLF001
