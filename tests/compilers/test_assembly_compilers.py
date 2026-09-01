@@ -1303,3 +1303,32 @@ class TestCVNCCompiler:
         assert "li   t1, 58\n" in out  # and its ceiling
         assert "li   t1, 45\n" in out  # a leading '-', which floors at 0
         assert "li   t1, 43\n" in out  # a leading '+'
+
+    def test_computed_gotos_index_their_own_table(self) -> None:
+        """``ɹ`` counts codepoints and ``j`` counts syllables, so they differ.
+
+        Both are runtime indices, so each bounds-checks against its own
+        length and reads its own table; a shared one would make ``j`` land
+        mid-syllable on any program with a ``ɰ̊`` in it.
+        """
+        assert "la   t1, cvnc_offsets" in self.comp("ɹi")
+        assert "la   t1, cvnc_starts" in self.comp("ji")
+
+    def test_goto_past_the_end_halts(self) -> None:
+        """An index past the table halts, which running off the end does."""
+        assert "bgeu s1, t0, .halt" in self.comp("ɹi")
+
+    def test_while_nonzero_is_the_opposite_test(self) -> None:
+        """``ɰ`` skips the body when the accumulator is *non*zero."""
+        assert "bnez s1, .t3" in self.comp("ɰiʋi")
+
+    def test_deque_pushes_both_ends(self) -> None:
+        """``m``/``n`` push to the front and back, ``ŋ``/``ɲ`` pop them.
+
+        The buffer is circular, so a front push is O(1) rather than a
+        shift; all four go through the same indexed helpers.
+        """
+        assert "call push_front" in self.comp("cim")
+        assert "call push_back" in self.comp("cin")
+        assert "call pop_front" in self.comp("coŋ")
+        assert "call pop_back" in self.comp("coɲ")
