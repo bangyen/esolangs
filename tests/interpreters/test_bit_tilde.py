@@ -106,7 +106,7 @@ class TestBitTilde:
         machine = _Machine(">><<)", ScriptedIO("A"))
         while not machine.halted:
             machine.step()
-        assert machine.tape == [0, 1, 0, 0, 0, 0, 0, 1, 0]
+        assert machine.tape == (0, 1, 0, 0, 0, 0, 0, 1, 0)
 
     def test_loop_skips_when_the_bit_is_zero(self) -> None:
         """``{`` jumps past its body when the current bit is zero."""
