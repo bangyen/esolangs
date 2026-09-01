@@ -45,6 +45,17 @@ class TestDimensional:
     def test_bracket_loop(self) -> None:
         assert run_and_capture("+[.-]") == "\x01"
 
+    def test_a_loop_runs_its_body_once_per_count(self) -> None:
+        """One iteration cannot show how many the loop takes.
+
+        ``+[.-]`` prints once whether the body runs once, or the jump lands
+        somewhere that happens to end the run -- the output is the same
+        length either way.  Counting down from three separates them: the
+        body has to run exactly three times, and each pass prints the value
+        it is standing on.
+        """
+        assert run_and_capture("=03[.-]") == "\x03\x02\x01"
+
     def test_comment_mode(self) -> None:
         """Everything between two *s is ignored."""
         assert run_and_capture("*=[.<]*+.+.+.") == "\x01\x02\x03"
@@ -52,6 +63,16 @@ class TestDimensional:
     def test_coordinate_read_clear(self) -> None:
         assert run_and_capture(">0>0?0.") == "\x02"
         assert run_and_capture(">0!0?0.") == "\x00"
+
+    def test_clearing_a_dimension_never_moved_along(self) -> None:
+        """``!`` on a coordinate that was never set is a no-op, not an error.
+
+        The clear above always follows a move, so the coordinate it removes
+        is always present -- a clear that insisted on finding one would
+        never notice.  At the origin nothing has been recorded, and the
+        clear has to leave it that way.
+        """
+        assert run_and_capture("!0?0.") == "\x00"
 
     def test_negative_dimension(self) -> None:
         assert run_and_capture(">~1+?~1.") == "\x01"
