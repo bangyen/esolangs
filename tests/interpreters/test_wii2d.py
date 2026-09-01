@@ -212,19 +212,22 @@ class TestWII2DControlFlow:
 
     def test_reverse_horizontal_direction(self) -> None:
         """Test | reversing an east-moving pointer back to the west."""
-        from unittest.mock import patch
+
+        class _Scripted:
+            """Hands out a fixed sequence of turns, one per ``?``."""
+
+            def __init__(self, draws: list[int]) -> None:
+                self._draws = list(draws)
+
+            def randbelow(self, upper: int) -> int:
+                assert upper > 0
+                return self._draws.pop(0)
 
         # ? forced east runs the pointer into | (reverses it west); then ? forced
         # north wraps the pointer down to the halt.
         code = [" ?|.", " !  ", " .  "]
-        with (
-            patch(
-                "esolangs.interpreters.grid_based.wii2d.secrets.randbelow",
-                side_effect=[3, 0],
-            ),
-            redirect_stdout(io.StringIO()) as f,
-        ):
-            run(code, IO())
+        with redirect_stdout(io.StringIO()) as f:
+            run(code, IO(), rng=_Scripted([3, 0]))
         assert f.getvalue() == ""
 
 

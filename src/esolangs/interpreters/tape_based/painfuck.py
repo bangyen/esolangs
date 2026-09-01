@@ -53,11 +53,11 @@ command and ``halted`` is true once the cursor reaches the end of the code.
 non-deterministic and is excluded from the state-cycle hang check.
 """
 
-import secrets
 import sys
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.randomness import Randomness, draw
 
 # The two substitution cycles, in the order the cross-check scans them.
 _CYCLES = ("pevkjzwr", "yuctsobqihald")
@@ -102,9 +102,14 @@ class _Machine:
     hang detector must exclude it).
     """
 
-    def __init__(self, code: str, io: IO) -> None:
-        """Translate ``code`` and start at the first command."""
+    def __init__(self, code: str, io: IO, rng: Randomness | None = None) -> None:
+        """Translate ``code`` and start at the first command.
+
+        ``rng`` overrides the ``y`` command's coin flip, which is what
+        makes a stepped run reproducible; ``None`` draws for real.
+        """
         self.io = io
+        self._rng = rng
         self.prog = _translate(code)
         self.n = len(self.prog)
         self.tape: list[int] = [0]
@@ -222,7 +227,7 @@ class _Machine:
             elif c == "y":
                 # The wiki specifies a random skip; match the cross-check's
                 # coin flip (the generator and differential avoid `y`).
-                if secrets.randbelow(2) and self.ind < self.n:
+                if draw(self._rng, 2) and self.ind < self.n:
                     c = self.prog[self.ind]
                     self.ind += 1
             elif c == "e":
