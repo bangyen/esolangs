@@ -241,3 +241,11 @@ exclude_lines = [
     # case without dispatching it fails the type check instead.
     "assert_never",
 ]
+
+# A condition that is always true where it stands, but whose body is live and
+# must stay measured.  `exclude_lines` is the wrong tool for these: it drops
+# the whole block, hiding real code.  `partial_branches` retires only the
+# untaken arc.
+partial_branches = [
+    "pragma: no branch",
+]
