@@ -127,6 +127,33 @@ class TestSpecialAddresses:
         assert _run(code) == "\x01"
 
 
+class TestTruncatedInstruction:
+    """An instruction running off the end of memory reads zeros for the rest.
+
+    Every other program holds whole four-cell instructions, so the guards
+    that decide whether each operand exists were never false and the zero
+    they fall back to was never used.  These programs stop mid-instruction,
+    one cell shorter each time.
+    """
+
+    def test_a_missing_operand_reads_as_zero(self) -> None:
+        # One cell: b, c and d are all absent, so each reads 0. a is -1, so
+        # the instruction prints *b = memory[0] = -1, a byte of 0xff.
+        assert _run("-1") == "\xff"
+
+    def test_the_second_operand_is_the_first_that_can_be_present(self) -> None:
+        # Two cells: b exists (address 4, an absent cell, so 0) while c and
+        # d do not. Printing *b gives NUL rather than the -1 above.
+        assert _run("-1 4") == "\x00"
+        # ... and b really is read, not defaulted: -6 is the constant 1.
+        assert _run("-1 -6") == "\x01"
+
+    def test_a_present_third_operand_still_ends_the_run(self) -> None:
+        # Three cells: c exists and holds 0, so the jump goes to memory[0]
+        # = -1, a special address, which halts.
+        assert _run("-1 4 0") == "\x00"
+
+
 class TestFlags:
     """The flag update mode and the four flags it refreshes.
 
