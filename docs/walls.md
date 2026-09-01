@@ -261,6 +261,69 @@ misses.  The caps are not slack: coverage climbs to both of them (12256
 tables at `k <= 24` against 15404 at 28), so trimming to buy time trims
 coverage.
 
+### Complementing an input on the way in is a free coordinate (shipped)
+
+The enumeration varies the separator, the settle, the suffix and the
+accumulator.  It never varied **whether a bit lands inverted**, and that is
+worth 15404 → 60546 of 64594 fully-essential four-input tables, **23.9% →
+93.7%**.
+
+The gadget is `<[x`.  `<` steps back over the cell the setter used and `[`
+flips it, which cascades into the setter's own cell — so the bit standing
+there is inverted with the pointer left where the setter left it.
+
+**This is not the input negation this file refuses elsewhere.**  "Why input
+negation is not a shortcut" rejects having the *harness* fill `{Xi}` with the
+complement of its bit, because then the emitted program computes a table the
+caller pre-transformed for it.  Here the harness fill is untouched — the same
+`[<`/`xx` every other generator gets — and the template complements the bit
+itself, at runtime, from its own `{Xi}`.  That is the alternative that
+section endorses, the one `nocomment` takes with its `s`-as-NOT gate.
+
+**The third character is not padding.**  `[` on a zero cell sets the
+interpreter's skip flag, so the two-character `<[` ends mid-cascade and eats
+the *next* template instruction, shifting every later embedding by a cell.  It
+passes a probe that compares tape and pointer, and tables built on it printed
+**0 of 12** on the real interpreter.  `skip` is part of the state; a probe
+that omits it reports a gadget that is not one.  `<[[` and `<[<` are the
+other two spellings that clear it, and they leave different debris, so they
+are untried coordinates rather than synonyms.
+
+**Post-hoc template surgery does not work**, which is why this is a
+derivation coordinate passed to `_embed` rather than a rewrite: the gadget
+writes the live tape, so a template patched after the fact is not the program
+the derivation simulated.
+
+### The last 4048 fall to slot permutation, which is refused
+
+**Which input occupies which slot closes the arity.**  `_embed` lays the
+setters down the tape and every cell downstream is the running prefix-XOR of
+what was crossed, so moving an input to a different slot leaves different
+columns standing at the read — a different drawing, not a relabelling.
+Measured over the whole arity, permutation plus complementation reaches
+**every fully-essential four-input table, residue 0**, and programs built
+that way were verified row by row on the real interpreter at equal width.
+
+**It is not shipped, and the reason is the invariant rather than the
+mechanism.**  A permuted embed emits the `{Xi}` out of ascending order, and
+`test_slots_run_in_name_order` holds every generator here to name order.  The
+carve-out was considered and refused: an invariant that holds for every
+generator is a structural property of the repo, not a budget to spend, and
+making a violation loud is not the same as making it acceptable.
+
+**So what is open at four inputs is narrower than it looks.**  It is not
+whether Minifuck can compute the remaining 4048 — it demonstrably can, and
+the programs exist — but whether a *name-order* template reaches them.  That
+also means no impossibility argument is available for them as tables; only a
+statement about the convention would be, and the one algebraic screen that
+could support such a claim (`_span_admits`) is vacuous at this arity.
+
+Untried and order-preserving, in the order their yield is worth measuring:
+per-gap separators (recorded below as headroom **not** contained in the
+shipped set), the other two gadget spellings, and the chain prototype.  Each
+should be measured *alone* against the leftover before any are crossed —
+crossing all of them is about ten hours of sweeping.
+
 ### `n == 5` ships partially; full coverage is out of reach of any flat family
 
 **The heading here used to read "`n >= 5` is out of reach of *any* staging

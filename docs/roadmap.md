@@ -349,12 +349,22 @@ saving.  Taglate reduces (451 characters → 21).  What is open:
 - **Minifuck's four-input coverage** — three inputs is **done**: all 256
   tables build with no search at all, from a derived staging plus `_rescue`
   for the four the enumeration misses.  What is open is four inputs, where
-  the shipped staging family reaches 23.9% of the fully-essential tables.
-  That is a ceiling of the *family*, not of the language: a two-read chain
-  prototype — reads interleaved with chosen walks, a richer pool than the
-  enumerated suffix — prints 19.5% of a sample of the tables the family
-  misses, 78 of 78 interpreter-verified, and is not shipped.  Wiring it in
-  as a fallback after the staged route is the concrete next step; see
+  the name-order enumeration reaches 23.9% of the fully-essential tables and
+  a second pass over embeds that **complement inputs as they land** takes it
+  to **93.7%** (60546 of 64594).  The 4048 still open are not unbuildable:
+  permuting which input occupies which slot reaches every one of them, and
+  such programs were verified row by row on the interpreter — but a permuted
+  embed emits the `{Xi}` out of ascending order, which
+  `test_slots_run_in_name_order` enforces on every generator, so that route
+  is refused rather than shipped.  What is open is therefore whether a
+  *name-order* template reaches them.  Untried order-preserving axes:
+  per-gap separators (recorded in `walls.md` as headroom not contained in
+  the shipped set), the other spellings of the complement gadget, and the
+  two-read chain prototype — reads interleaved with chosen walks, a richer
+  pool than the enumerated suffix — which prints 19.5% of a sample of the
+  tables the family misses, 78 of 78 interpreter-verified, and is not
+  shipped.  Wiring it in as a fallback after the staged route is a concrete
+  next step; see
   `docs/walls.md`, "Why no chain can escape the counting argument", which
   that prototype refutes.  The other six
   refusing generators stay off this list: 6-5 is the one documented wall

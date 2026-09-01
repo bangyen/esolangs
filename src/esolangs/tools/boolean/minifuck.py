@@ -55,18 +55,37 @@ derived, and the derivation is done for a whole arity at a time -- measured,
 for itself.  So the first three-input table costs the arity and the other
 255 are free; that is the trade deriving makes against storing.
 
-Four inputs is *partial* and staged anyway: 15404 of the 64594 fully
-essential four-input tables (23.9%), four-input XOR among them.  What buys
-those is one widening of the suffix -- a single ``<`` inside the bracket run,
-enumerated after every pure run -- and the family that widening generalises
-is :func:`_rescue`'s, one insert shallower.
+Four inputs is *partial* and staged anyway.  The name-order enumeration
+reaches 15404 of the 64594 fully essential four-input tables (23.9%),
+four-input XOR among them.  What buys those is one widening of the suffix --
+a single ``<`` inside the bracket run, enumerated after every pure run -- and
+the family that widening generalises is :func:`_rescue`'s, one insert
+shallower.
 Partial coverage is worth gating on because a miss is not a failure: it falls
 through to the searches below, which is why those remain -- a missing staging
 degrades rather than raises.  What a four-input table does pay for is the
 derivation, which at this arity cannot stop early; see
 :data:`_STAGED_ARITIES`.
 
-That 23.9% is the ceiling of *this* family, and it is not the ceiling of the
+A second pass then takes the arity to **60546 of 64594 (93.7%)** by
+complementing inputs as they land -- see :func:`_flipped_staging`.  Whether a
+bit is inverted on the way in is a coordinate the enumeration never varied,
+and it costs nothing in slot order, because the gadget follows the setter it
+complements rather than replacing a different one.
+
+**Four inputs is not closed, and what would close it is known and refused.**
+Permuting *which* input occupies which slot reaches every remaining table --
+measured, the residue is zero -- but a permuted embed emits the ``{Xi}`` out
+of ascending order, which ``tests/tools/test_boolean_parameterized.py``
+enforces on every generator here.  So the remaining 4048 are left to the
+searches rather than bought with the invariant.  They are not unbuildable:
+programs for them were built through a permuted embed and verified row by row
+on the real interpreter, so what is open is whether a *name-order* template
+reaches them, not whether Minifuck can compute them.  Untried
+order-preserving axes remain -- per-gap separators, the other spellings of
+the complement gadget, and the chain prototype below.
+
+The 93.7% is the ceiling of *this* family, and it is not the ceiling of the
 language.  A prototype that interleaves two reads with chosen walks -- a
 richer pool than the suffix this module enumerates, coordinates
 ``(separator, settle, k, cell, read1, gap, read2, accumulator, orientation)``
@@ -330,7 +349,27 @@ def _clamp(j: _Joint) -> None:
     j.emit("<" * (max(j.ptrs()) + 1))
 
 
-def _embed(n: int, settle: int = 0, sep: str = _SEP) -> _Joint:
+# What complements the bit a setter just wrote.  ``<`` steps back over the
+# cell the setter used and ``[`` flips it, which cascades into the setter's
+# own cell -- so the bit standing there is inverted, and the pointer is left
+# where the setter left it.
+#
+# The trailing character is not padding.  That cascade sets the interpreter's
+# skip flag, and a gadget that ends there eats the *next* instruction of the
+# template, shifting every later embedding by a cell; the third character
+# feeds the skip instead.  Measured rather than reasoned: the two-character
+# ``<[`` passes a probe that compares tape and pointer, and the tables built
+# on it printed 0 of 12 on the real interpreter.  ``skip`` is part of the
+# state, and a probe that omits it reports a gadget that is not one.
+_FLIP = "<[x"
+
+
+def _embed(
+    n: int,
+    settle: int = 0,
+    sep: str = _SEP,
+    flips: int = 0,
+) -> _Joint:
     """Emit the embed: each ``{Xi}`` once, separated by :data:`_SEP`.
 
     The separator is not arbitrary.  A plain run of ``[x`` leaves the bits'
@@ -339,11 +378,25 @@ def _embed(n: int, settle: int = 0, sep: str = _SEP) -> _Joint:
     cell so the parities stay distinguishable.  ``settle`` re-crosses the
     region that many times, which advances the affine state and offers the
     searches a different set of columns.
+
+    ``flips`` is a mask of the inputs whose bit is complemented as it lands,
+    and it defaults to what this always did.  It is a *derivation coordinate*
+    rather than post-processing: the gadget writes the live tape and leaves
+    interpreter state behind, so a joint that did not emit it would be
+    simulating a different program than the one that ships.  See
+    :func:`_flipped_staging` for what varying it buys.
+
+    The setters are emitted in ascending name order whatever the mask says --
+    the gadget goes *after* the setter it complements, never in place of a
+    different one -- so a flipped embed satisfies the slot-order invariant
+    ``tests/tools/test_boolean_parameterized.py`` holds every generator to.
     """
     j = _Joint(n)
     _walk_to(j, _BASE - 1)
     for i in range(n):
         j.emit_setter(i)
+        if (flips >> i) & 1:
+            j.emit(_FLIP)
         j.emit("[x")
         if i + 1 < n:
             j.emit(sep)
@@ -1871,14 +1924,175 @@ def _derive_staging(truth_table: str, n: int) -> _Staging | None:
     return _rescue(truth_table, n)
 
 
+# The arities offered the flipped-embed pass below.  Two and three inputs are
+# already closed by the enumeration and :func:`_rescue`, so offering it there
+# could only change programs that already build.  Five is left out
+# deliberately rather than by oversight: that arity derives one table at a
+# time and a miss costs a measured 143 seconds, so sweeping 16 flip masks
+# behind it would trade a great deal of time for an arity nothing claims to
+# close.
+_FLIPPED_ARITIES = (4,)
+
+_Flipped = tuple[int, int, int, int | str, int, str, int]
+
+
+@cache
+def _flipped_plans(n: int) -> dict[str, _Flipped]:
+    """Derive a flipped staging for every table the enumeration misses.
+
+    **Whole-arity, for the same reason :func:`_derived_plans` is.**  An embed
+    is expensive to build and cheap to test against a table, so the loops run
+    staging-major -- one embed per ``(flips, separator, settle)``, the bracket
+    run extended one ``[`` at a time, and each printed column looked up among
+    the tables still wanting one.
+
+    Doing it table-major instead is what the first cut did, and the cost is
+    not a constant factor: a table whose flip mask sits late in the
+    enumeration re-derives every earlier one for itself, and sampled tables
+    took 20 to 190 seconds each that way.  The ``2 ** (2**n)`` dict that
+    forces table-major at five inputs is ordinary at four, so this arity can
+    afford the spelling that pays once.
+
+    Cached, so the sweep is paid by the first four-input table that misses
+    the name-order enumeration, and every later one reads its answer off.
+    """
+    # What the enumeration already places is read off its own cached
+    # whole-arity pass rather than asked table by table: this is the same
+    # dict :func:`_derive_staging` consults, so "missed" here means exactly
+    # what it means there.
+    placed = _derived_plans(n)
+    wanted: dict[tuple[int, ...], list[str]] = {}
+    for value in range(2 ** (2**n)):
+        table = format(value, f"0{2**n}b")
+        if table in placed:
+            continue
+        wanted.setdefault(tuple(int(b) for b in table), []).append(table)
+    found: dict[str, _Flipped] = {}
+    remaining = sum(len(tables) for tables in wanted.values())
+
+    def claim(
+        staged: _Joint, head: tuple[int, int, int], suffix: int | str
+    ) -> bool:
+        """Record what every accumulator prints here; True when all are placed."""
+        nonlocal remaining
+        for acc in range(9, _MAX_ACC + 1):
+            for cell7 in (0, 1):
+                derived = _printed_column(staged, acc, cell7)
+                if derived is None:
+                    continue
+                for read in _READS:
+                    column = derived if read == _READS[1] else _complement(derived)
+                    for table in wanted.get(column, ()):
+                        if table in found:
+                            continue
+                        if not _confirm(staged, acc, read, cell7, column):
+                            continue
+                        found[table] = (*head, suffix, acc, read, cell7)
+                        remaining -= 1
+            if not remaining:
+                return True
+        return False
+
+    for flips in range(1, 1 << n):
+        for sep_index in range(len(_SEPS)):
+            for settle in (0, 1):
+                base = _embed(
+                    n, settle=settle, sep=_SEPS[sep_index], flips=flips
+                )
+                _clamp(base)
+                _walk_to(base, _BASE - 1)
+                head = (flips, sep_index, settle)
+                run = base.fork()
+                for brackets in range(_MAX_BRACKETS + 1):
+                    staged = run.fork()
+                    staged.emit("<")
+                    _clamp(staged)
+                    if claim(staged, head, brackets):
+                        return found
+                    run.emit("[")
+                for suffix in _insert_suffixes():
+                    staged = base.fork()
+                    staged.emit(suffix + "<")
+                    _clamp(staged)
+                    if claim(staged, head, suffix):
+                        return found
+    return found
+
+
+def _replay_flipped(truth_table: str, n: int, plan: _Flipped) -> str | None:
+    """Rebuild one flipped staging and return its template, or None.
+
+    The same standard the rest of the module holds to: the plan records where
+    the answer was found, and this emits it again and checks the rows rather
+    than trusting the record.
+    """
+    flips, sep_index, settle, suffix, acc, read, cell7 = plan
+    j = _embed(n, settle=settle, sep=_SEPS[sep_index], flips=flips)
+    _clamp(j)
+    _walk_to(j, _BASE - 1)
+    j.emit("[" * suffix + "<" if isinstance(suffix, int) else suffix)
+    _clamp(j)
+    try:
+        _endgame(j, acc, read, cell7)
+    except ValueError:
+        return None
+    return j.template() if j.printed() == list(truth_table) else None
+
+
+def _flipped_staging(truth_table: str, n: int) -> str | None:
+    """Build on an embed that complements some inputs, or None if none does.
+
+    **Whether an input lands complemented is a free coordinate the
+    enumeration never varied.**  :func:`_embed` lays the setters down the tape
+    and every cell downstream is the running prefix-XOR of what was crossed,
+    so inverting a bit as it lands changes the columns standing at the read.
+    That is a different construction, not a renaming of one, which is why it
+    reaches tables the plain embed cannot.
+
+    **It costs nothing in slot order.**  ``_FLIP`` is emitted after the setter
+    it complements, so the placeholders stay ascending and the invariant
+    ``tests/tools/test_boolean_parameterized.py`` enforces on every generator
+    holds here unchanged.  Permuting which input occupies which slot would
+    reach further still -- measured, it closes the arity -- and is *not* done,
+    because it emits the placeholders out of order.
+
+    **This derives; it does not rewrite.**  The obvious cheaper route --
+    solve a transformed table on the ordinary embed, then patch the template
+    afterwards -- does not work, and the failure is not subtle.  The gadget
+    writes the live tape and leaves interpreter state behind, so a template
+    patched after the fact is not the program the derivation simulated: built
+    that way, 12 of 12 sampled tables printed the wrong rows on the real
+    interpreter.  Passing the mask to :func:`_embed` puts the gadget inside
+    the joint simulation, where every side effect is accounted for, and the
+    module's standing rule -- nothing is returned that has not been seen to
+    print -- keeps holding.
+
+    **The unflipped embed comes first**, which is what makes this safe to
+    add: every table the plain enumeration reaches is answered before this
+    runs, so those keep the staging and the template they already had, byte
+    for byte.
+    """
+    if n not in _FLIPPED_ARITIES:
+        return None
+    plan = _flipped_plans(n).get(truth_table)
+    return None if plan is None else _replay_flipped(truth_table, n, plan)
+
+
 def _staged(truth_table: str, n: int) -> str | None:
     """Build from a derived staging without searching, or None if there is none.
 
     None rather than an exception on a miss, so the caller falls through to
     the searches and coverage cannot regress.
+
+    A miss at an arity in :data:`_FLIPPED_ARITIES` gets one more pass, over
+    the embeds that complement some inputs -- see :func:`_flipped_staging`
+    for what varying the polarity reaches, and why the unflipped embed is
+    tried first.
     """
     plan = _derive_staging(truth_table, n)
-    return None if plan is None else _replay(truth_table, n, plan)
+    if plan is not None:
+        return _replay(truth_table, n, plan)
+    return _flipped_staging(truth_table, n)
 
 
 def _lift_leaves_name_order(essential: list[int], n: int) -> bool:
