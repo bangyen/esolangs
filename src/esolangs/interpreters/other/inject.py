@@ -160,7 +160,7 @@ class _Machine:
         return self.spans[name]
 
     def _contents(self, name: str) -> list[str]:
-        """The lines strictly between a label's two delimiters."""
+        """Return the lines strictly between a label's two delimiters."""
         begin, end = self._span(name)
         return self.lines[begin + 1 : end]
 
@@ -193,7 +193,7 @@ class _Machine:
     # -- control flow -------------------------------------------------
 
     def _begins_block(self, index: int) -> str | None:
-        """The label beginning a block at ``index``, if any."""
+        """Return the label beginning a block at ``index``, if any."""
         if index >= len(self.lines):
             return None
         match = _LABEL.fullmatch(self.lines[index].strip())
@@ -204,7 +204,7 @@ class _Machine:
         return name if span is not None and span[0] == index else None
 
     def _innermost(self) -> str | None:
-        """The shortest block strictly containing the pointer."""
+        """Return the shortest block strictly containing the pointer."""
         inside = [n for n, (b, e) in self.spans.items() if b < self.ind < e]
         if not inside:
             return None
@@ -303,6 +303,7 @@ class _Machine:
 
 
 def run(code: str | list[str], io: IO) -> None:
+    """Run an Inject program to completion."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()
