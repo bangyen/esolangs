@@ -177,6 +177,19 @@ itself bounded, and bounded-agreement when it is not:
   than arithmetic; its docstring accordingly claims *acceptance* totality,
   which is the distinction this whole section turns on.
 
+**CV(N)(C) adds a second axis**, and it is the reason this list is a rule
+rather than a table: an unbounded *structure* bounds a compiler the same
+way an unbounded value does.  Its interpreter's deque and its built
+function are Python lists, so the compiled form fixes both at 4096 entries
+alongside the 64-bit word — but the two axes fail differently.  A value
+that overruns its width wraps silently, as above; a structure that overruns
+its buffer **aborts**, because the push is range-checked and jumps to
+`.halt`. A diagnosed stop is the better failure, and it is available here
+only because a push is a call rather than an arithmetic result. Its word
+is also *unsigned*, the interpreter being explicit that memory is unsigned,
+so its wrap point is `2**64` and its subtractions floor at zero rather than
+going negative.
+
 Two measured boundary checks, both at the same place, one per shape of
 entry:
 
@@ -196,7 +209,12 @@ programs, the largest integer any compiler emits is **65536** — a tape or
 buffer constant in the OISC compilers (addsubjump, S*bleq, decleq); the
 byte-oriented ones peak around 93–114, and Container's own containers peak
 at 127 at run time.  That leaves fourteen orders of magnitude of headroom,
-so this bounds hand-written programs only.
+so this bounds hand-written programs only.  CV(N)(C)'s boolean generator is
+the largest runtime value measured anywhere — **6,765,201**, the halt
+gadget that squares twice to jump past the end of the program — and even
+that is twelve orders of magnitude inside the bound, with a deque holding
+one entry per input read (depth 4 at `n == 4`, against 4096) and a function
+it never builds.
 
 ### Why it is recorded rather than checked or widened
 

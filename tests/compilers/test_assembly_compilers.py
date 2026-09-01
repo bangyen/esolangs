@@ -1166,3 +1166,124 @@ class TestForbinDiscardTarget:
         )
         assert ".global _start" in out
         assert len(out) < len(named)
+
+
+class TestCVNCCompiler:
+    """CV(N)(C) lowers a runtime-built function and two computed gotos.
+
+    Excluded from the ``COMPILERS`` sweep above because that sweep compiles
+    the literal text ``"Hello"``, which is not a syllable string -- the
+    shared tokenizer rejects it on ``H``.
+    """
+
+    @staticmethod
+    def comp(code: str) -> str:
+        mod = importlib.import_module("esolangs.compilers.cvnc")
+        return str(mod.comp(code))
+
+    def test_produces_assembly(self) -> None:
+        assert ".global _start" in self.comp("cici")
+
+    def test_relaxation_is_disabled(self) -> None:
+        """``la`` must not relax to a gp-relative access.
+
+        Nothing initializes ``gp`` under ``-nostdlib``, so a relaxed ``la``
+        yields a garbage table pointer and every computed goto would read
+        outside mapped memory.
+        """
+        assert ".option norelax" in self.comp("cici")
+
+    def test_empty_program_is_rejected(self) -> None:
+        """An empty source is malformed, as it is for the interpreter."""
+        with pytest.raises(ValueError, match="program is empty"):
+            self.comp("")
+
+    def test_non_symbol_is_rejected(self) -> None:
+        """A character outside the command set makes the program malformed."""
+        with pytest.raises(ValueError, match=r"not a CV\(N\)\(C\) symbol"):
+            self.comp("ciZ")
+
+    def test_unsyllabifiable_source_is_rejected(self) -> None:
+        """The wiki's own counterexample: a nasal with no vowel of its own."""
+        with pytest.raises(ValueError, match="syllable must start with a consonant"):
+            self.comp("susŋ")
+
+    def test_unbalanced_loop_is_rejected(self) -> None:
+        """A ``ʋ`` with no opener is malformed, from the shared matcher."""
+        with pytest.raises(ValueError, match="loop end with no matching start"):
+            self.comp("ʋi")
+
+    def test_every_token_is_a_jump_target(self) -> None:
+        """``ɹ``/``j`` can land anywhere, so each token gets its own label."""
+        out = self.comp("cici")
+        assert all(f".t{i}:" in out for i in range(4))
+
+    def test_ring_command_spans_two_offsets(self) -> None:
+        """``ɰ̊`` is two codepoints and one command, so both offsets map to it.
+
+        ``ɹ`` counts characters, so landing on the ring must resume at the
+        ``ɰ̊`` itself -- there is no command in the middle of one.
+        """
+        out = self.comp("ɰ̊iʋi")
+        table = out.split("cvnc_offsets:\n")[1].split("cvnc_starts:")[0]
+        assert table.split()[:4] == [".dword", "0", ".dword", "0"]
+
+    def test_ascii_g_folds_to_the_script_form(self) -> None:
+        """The page's Hello, world! spells the multiplication plosive ``g``."""
+        assert self.comp("giɡi") == self.comp("ɡiɡi")
+
+    def test_loop_opener_jumps_past_its_end(self) -> None:
+        """``ɰ̊`` clears the ``ʋ`` rather than landing on it.
+
+        Landing *on* the loop end would run it and bounce straight back to
+        the test that just failed, which is an infinite loop for the very
+        case the test escapes.
+        """
+        out = self.comp("ɰ̊iʋi")
+        assert "beqz s1, .t3" in out  # past the ``ʋ`` at token 2
+
+    def test_loop_end_jumps_onto_its_opener(self) -> None:
+        """``ʋ`` returns *to* the opener, which re-tests the condition."""
+        assert "j    .t0" in self.comp("ɰ̊iʋi")
+
+    def test_decrement_floors_at_zero(self) -> None:
+        """The accumulator is unsigned, so ``ə`` cannot go below zero."""
+        assert "beqz s1, 1f" in self.comp("cə")
+
+    def test_literal_symbol_carries_a_value(self) -> None:
+        """``p``/``k`` append a popped *number*, so an entry is a tagged pair.
+
+        The other seven symbols are fixed, but a popped literal is an
+        arbitrary 64-bit value, which is why the array is two words wide.
+        """
+        out = self.comp("pi")
+        assert "call pop_front" in out
+        assert f"li   a0, {7}" in out  # the literal tag
+
+    def test_apply_is_a_runtime_evaluator(self) -> None:
+        """``u`` parses the array at run time, not at compile time."""
+        out = self.comp("cu")
+        assert "call apply" in out
+        assert "expr:" in out
+        assert "term:" in out
+        assert "factor:" in out
+
+    def test_division_by_zero_halts(self) -> None:
+        """A zero divisor is an invalid *operation*, not a malformed function."""
+        assert "beqz a1, .halt" in self.comp("cu")
+
+    def test_reader_is_line_faithful(self) -> None:
+        """Both reads take a whole line, matching the interpreter's refill.
+
+        ``s`` goes through ``IO.input_str`` and ``ʒ`` through
+        ``IO.input_char``, which reads a line and returns its first
+        character -- so a byte reader would diverge on identical stdin.
+        """
+        assert "call readline" in self.comp("soʒo")
+
+    def test_arithmetic_is_software(self) -> None:
+        """``rv64i`` has no multiply or divide, so both are emitted."""
+        out = self.comp("cæco")
+        assert "mul64:" in out
+        assert "divu64:" in out
+        assert "isqrt64:" in out
