@@ -40,41 +40,65 @@ import sys
 from esolangs.interpreters.brackets import match_brackets as matches
 from esolangs.interpreters.io import IO
 
-#: One instant of a run: ``(ind, ptr, tape)`` -- the code position, the
-#: pointer, and the tape.  A value, not a record: every transition below
-#: returns a new one rather than editing one in place, and the tape is a
-#: ``tuple`` for the same reason.  That also buys the hashability the cycle
-#: detector needs, so ``snapshot`` can unpack a state as it stands instead
-#: of copying a list into a tuple first.
+#: One instant of a run: ``(ind, ptr, tape, acc, dirty)`` -- the code
+#: position, the pointer, the tape, and a write buffer for the cell under
+#: the pointer.  A value, not a record: every transition below returns a new
+#: one rather than editing one in place, and the tape is a ``tuple`` for the
+#: same reason.
+#:
+#: ``acc`` always holds the true value of the cell under the pointer.  While
+#: ``dirty`` is set, ``tape[ptr]`` is stale and ``acc`` is the truth; the
+#: tape is brought back up to date by :func:`_committed`, which every path
+#: that leaves the cell goes through.  This is what makes a run of ``+`` or
+#: ``-`` cost one tape rebuild instead of one per command -- 58% of the
+#: commands real generated programs execute are ``+``/``-``, in runs
+#: averaging 3.8 and reaching 49.
+#:
+#: The stale window is invisible from outside: ``snapshot`` and the ``tape``
+#: property both commit first, so an observer always sees one canonical
+#: tape.  That is not just for tidiness -- the cycle detector hashes what
+#: ``snapshot`` returns, and a logical state with two spellings (dirty and
+#: committed) would make a real repeat look like a new state.
 #:
 #: A plain tuple rather than a ``NamedTuple``: the fields are read by
-#: unpacking in the two places that use them, so the names bought little,
-#: and ``NamedTuple.__new__`` is Python-level where the tuple constructor is
-#: C-level -- measured 2.7x slower to build, at one build per step.  The
-#: state is internal, so the representation is not observable: ``snapshot``
-#: returns unpacked contents either way.
+#: unpacking in the functions that use them, so the names bought little, and
+#: ``NamedTuple.__new__`` is Python-level where the tuple constructor is
+#: C-level -- measured 2.7x slower to build, at one build per step.
 #:
 #: The code and its bracket map are deliberately *not* in here.  Neither
 #: changes during a run, so carrying them would put constant data in every
 #: value the cycle detector stores.  They are parameters to the transition
 #: functions instead.
 #:
-#: The field order is ``ind, ptr, tape`` because ``snapshot`` unpacks a
-#: state directly into its return value, and that was the order it returned
-#: before the state became a value.  Reordering would silently reorder every
-#: snapshot with it.
-type _State = tuple[int, int, tuple[int, ...]]
+#: The field order starts ``ind, ptr, tape`` because that is the order
+#: ``snapshot`` returns, and it returned exactly those three before the
+#: buffer existed.  Reordering would silently reorder every snapshot.
+type _State = tuple[int, int, tuple[int, ...], int, bool]
 
 
 def _written(tape: tuple[int, ...], ptr: int, value: int) -> tuple[int, ...]:
     """Return ``tape`` with cell ``ptr`` set to ``value``.
 
     The tape is rebuilt around the one changed cell, which is what an
-    immutable tape costs.  It is cheap here because a brainfuck tape is the
-    handful of cells a program actually touches -- the repo's own generated
-    programs finish in three to five -- not a preallocated array.
+    immutable tape costs.  It stays affordable because the buffer above
+    means a run of ``+``/``-`` reaches this once rather than once per
+    command, and because a brainfuck tape is the handful of cells a program
+    actually touches -- the repo's generated programs run to nine, and
+    longer text to eighteen -- not a preallocated array.
     """
     return (*tape[:ptr], value, *tape[ptr + 1 :])
+
+
+def _committed(state: _State) -> tuple[int, ...]:
+    """Return ``state``'s tape with the buffered cell written back if stale.
+
+    The one place the buffer's invariant is discharged.  Every path that
+    leaves the cell under the pointer -- a move, and the observers on
+    :class:`_Machine` -- goes through here, so no caller has to remember
+    what ``dirty`` means.
+    """
+    _, ptr, tape, acc, dirty = state
+    return _written(tape, ptr, acc) if dirty else tape
 
 
 def _advance(state: _State, code: str, brackets: dict[int, int]) -> _State:
@@ -97,26 +121,39 @@ def _advance(state: _State, code: str, brackets: dict[int, int]) -> _State:
     through to the shared increment, which is what makes the code position
     advance exactly once per call.
     """
-    ind, ptr, tape = state
+    ind, ptr, tape, acc, dirty = state
     char = code[ind]
-    if char == ">":
-        # A ``>`` past the right end grows the tape by one zero cell.
+    if char == "+":
+        # The buffered cell absorbs the write; the tape is not touched.
+        acc = (acc + 1) % 256
+        dirty = True
+    elif char == "-":
+        acc = (acc - 1) % 256
+        dirty = True
+    elif char == ">":
+        # Leaving the cell, so the buffer is discharged first.  A ``>`` past
+        # the right end grows the tape by one zero cell.
+        tape = _committed(state)
+        dirty = False
         ptr += 1
         if ptr == len(tape):
             tape = (*tape, 0)
+        acc = tape[ptr]
     elif char == "<":
-        # ``<`` at the left edge is clamped rather than an error.
+        # ``<`` at the left edge is clamped rather than an error, and a
+        # clamped move never leaves the cell, so it must not commit either.
         if ptr:
+            tape = _committed(state)
+            dirty = False
             ptr -= 1
-    elif char == "+":
-        tape = _written(tape, ptr, (tape[ptr] + 1) % 256)
-    elif char == "-":
-        tape = _written(tape, ptr, (tape[ptr] - 1) % 256)
-    elif (char == "[" and tape[ptr] == 0) or (char == "]" and tape[ptr] != 0):
-        # Both brackets are one rule with the test inverted, and the jump
-        # lands on the partner: the increment below steps past it.
+            acc = tape[ptr]
+    elif (char == "[" and acc == 0) or (char == "]" and acc != 0):
+        # The test reads the buffer, which is the cell's true value whether
+        # or not the tape has caught up.  Both brackets are one rule with
+        # the test inverted, and the jump lands on the partner: the
+        # increment below steps past it.
         ind = brackets[ind]
-    return (ind + 1, ptr, tape)
+    return (ind + 1, ptr, tape, acc, dirty)
 
 
 class _Machine:
@@ -139,15 +176,21 @@ class _Machine:
         # once by ``step``'s guard -- so the length is taken once here
         # rather than recomputed on every one of those reads.
         self.size = len(code)
-        self.state: _State = (0, 0, (0,))
+        self.state: _State = (0, 0, (0,), 0, False)
 
     # ``vm.py`` reads these three off the machine, and ``factor.py``
     # snapshots through it.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
+    #
+    # ``tape`` and ``snapshot`` commit the write buffer before reporting.
+    # An observer must never see the stale window: the tape it gets is the
+    # one the program has actually written, and -- because the cycle
+    # detector hashes snapshots -- one logical state must have exactly one
+    # spelling, or a real repeat would not compare equal to itself.
 
     @property
     def tape(self) -> tuple[int, ...]:
-        return self.state[2]
+        return _committed(self.state)
 
     @property
     def ptr(self) -> int:
@@ -181,10 +224,13 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The state is already a hashable tuple of exactly the fields a
-        # step can change, so this only appends the input cursor: a repeat
-        # that ignores consumed input is not a real cycle.
-        return (*self.state, self.io.position())
+        # The committed tape, not the raw one, plus the input cursor: a
+        # repeat that ignores consumed input is not a real cycle.  ``acc``
+        # and ``dirty`` are deliberately absent -- they are a
+        # representation of the tape, not state of their own, and including
+        # them would give one logical state two hashes.
+        ind, ptr = self.state[0], self.state[1]
+        return (ind, ptr, _committed(self.state), self.io.position())
 
     def step(self) -> None:
         """Execute one command, advancing the code position.
@@ -195,16 +241,20 @@ class _Machine:
         ``.`` writes and changes no state; ``,`` reads and leaves the byte
         in the cell, so the pure transition then runs on what they left
         behind and never needs the ``io`` object at all.
+
+        Both go through the write buffer rather than the tape: ``acc`` is
+        the cell's true value, so printing reads it directly, and a read
+        stores into it and marks the tape stale exactly as ``+`` would.
         """
         state = self.state
         if state[0] >= self.size:
             return
-        ind, ptr, tape = state
+        ind, ptr, tape, acc, _dirty = state
         char = self.code[ind]
         if char == ".":
-            self.io.print_char(chr(tape[ptr]))
+            self.io.print_char(chr(acc))
         elif char == ",":
-            state = (ind, ptr, _written(tape, ptr, self.io.input_char()))
+            state = (ind, ptr, tape, self.io.input_char(), True)
         self.state = _advance(state, self.code, self.brackets)
 
 
