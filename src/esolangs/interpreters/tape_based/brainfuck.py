@@ -178,9 +178,9 @@ class _Machine:
         self.size = len(code)
         self.state: _State = (0, 0, (0,), 0, False)
 
-    # ``vm.py`` reads these three off the machine, and ``factor.py``
-    # snapshots through it.  They are views on the current state rather
-    # than fields of their own, so there is one place a step can change.
+    # The language's own names, which ``factor.py`` reads.  They are views
+    # on the current state rather than fields of their own, so there is one
+    # place a step can change.
     #
     # ``tape`` and ``snapshot`` commit the write buffer before reporting.
     # An observer must never see the stale window: the tape it gets is the
@@ -205,7 +205,8 @@ class _Machine:
         return self.state[0] >= self.size
 
     # The VM's language-shaped view: Tape + pointer; ip is the code cursor, memory the
-    # tape.
+    # tape.  ``memory`` goes through ``tape``, so it commits the write
+    # buffer like every other observer.
 
     @property
     def ip(self) -> int:
