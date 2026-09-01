@@ -197,6 +197,53 @@ _OP_NAMES = {
 }
 
 
+def _read_line(body: str) -> str:
+    r"""Emit ``read_line``, or nothing when ``,`` never appears.
+
+    ``,`` is the only command that calls it, so a program without one can
+    never reach the routine -- the same ``used``-flag gate the tape
+    compilers apply to their subroutines, keyed off the emitted call site
+    rather than a separate flag threaded through the compiler.
+    """
+    if "call read_line\n" not in body:
+        return ""
+
+    return (
+        "# read_line() -- read one byte at a time until '\\n' or EOF, pushing\n"
+        "# each byte (rightmost/last-read on top), matching io.input_str's\n"
+        "# whole-line reads: ScriptedIO.splitlines() lets a final line with\n"
+        "# no trailing newline through as one valid (short) read, so EOF\n"
+        "# only halts the whole program (matching EOFError, uncaught by\n"
+        "# run()) when it is hit before this call has read any byte at all\n"
+        "# -- EOF after at least one byte just ends that last, unterminated\n"
+        "# line normally, the same as hitting '\\n'.\n"
+        "read_line:\n"
+        "    addi sp, sp, -16\n"
+        "    sd   ra, 0(sp)\n"
+        "    li   t2, 0\n"  # any byte read yet for this call?
+        "1:\n"
+        "    li   a7, 63\n"
+        "    li   a0, 0\n"
+        "    addi a1, sp, 8\n"
+        "    li   a2, 1\n"
+        "    ecall\n"
+        "    bgtz a0, 3f\n"
+        "    beqz t2, .halt\n"
+        "    j    2f\n"
+        "3:\n"
+        "    li   t2, 1\n"
+        "    lbu  t0, 8(sp)\n"
+        "    li   t1, 10\n"
+        "    beq  t0, t1, 2f\n"
+        "    call push\n"
+        "    j    1b\n"
+        "2:\n"
+        "    ld   ra, 0(sp)\n"
+        "    addi sp, sp, 16\n"
+        "    ret\n"
+    )
+
+
 def comp(code: str) -> str:
     """Compile a Forþ program to RISC-V assembly."""
     compiler = _Compiler()
@@ -273,40 +320,7 @@ def comp(code: str) -> str:
         "    ld   ra, 0(sp)\n"
         "    addi sp, sp, 32\n"
         "    ret\n"
-        "\n"
-        "# read_line() -- read one byte at a time until '\\n' or EOF, pushing\n"
-        "# each byte (rightmost/last-read on top), matching io.input_str's\n"
-        "# whole-line reads: ScriptedIO.splitlines() lets a final line with\n"
-        "# no trailing newline through as one valid (short) read, so EOF\n"
-        "# only halts the whole program (matching EOFError, uncaught by\n"
-        "# run()) when it is hit before this call has read any byte at all\n"
-        "# -- EOF after at least one byte just ends that last, unterminated\n"
-        "# line normally, the same as hitting '\\n'.\n"
-        "read_line:\n"
-        "    addi sp, sp, -16\n"
-        "    sd   ra, 0(sp)\n"
-        "    li   t2, 0\n"  # any byte read yet for this call?
-        "1:\n"
-        "    li   a7, 63\n"
-        "    li   a0, 0\n"
-        "    addi a1, sp, 8\n"
-        "    li   a2, 1\n"
-        "    ecall\n"
-        "    bgtz a0, 3f\n"
-        "    beqz t2, .halt\n"
-        "    j    2f\n"
-        "3:\n"
-        "    li   t2, 1\n"
-        "    lbu  t0, 8(sp)\n"
-        "    li   t1, 10\n"
-        "    beq  t0, t1, 2f\n"
-        "    call push\n"
-        "    j    1b\n"
-        "2:\n"
-        "    ld   ra, 0(sp)\n"
-        "    addi sp, sp, 16\n"
-        "    ret\n"
-        "\n"
+        "\n" + _read_line(body) + "\n"
         "# reverse() -- reverse the whole data stack in place\n"
         "reverse:\n"
         "    mv   t3, s1\n"

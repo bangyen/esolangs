@@ -652,15 +652,21 @@ class _Compiler:
             ".top_end:\n"
             "    j    .halt\n"
             + self.emit_dispatch()
-            + self.emit_runtime()
+            + self.emit_runtime(top + bodies)
             + bodies
             + self.emit_data()
         )
 
     # -- runtime ----------------------------------------------------------
 
-    def emit_runtime(self) -> str:
-        """Emit the builtins, the allocators, and the shared abort."""
+    def emit_runtime(self, body: str) -> str:
+        """Emit the builtins, the allocators, and the shared abort.
+
+        ``ask`` is emitted only when ``body`` calls it -- ``ask`` is the
+        only command that does, and nothing dispatches to it indirectly --
+        so a program that never reads carries no reader, matching the
+        ``used``-flag gate the tape compilers apply to their subroutines.
+        """
         return (
             self.emit_alloc()
             + self.emit_autocall()
@@ -669,7 +675,7 @@ class _Compiler:
             + self.emit_strings()
             + self.emit_arrays()
             + self.emit_say()
-            + self.emit_ask()
+            + (self.emit_ask() if "    call .do_ask\n" in body else "")
             + self.emit_abort()
         )
 
