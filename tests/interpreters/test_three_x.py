@@ -147,8 +147,8 @@ class TestStepMachine:
         machine = _Machine("?)", ScriptedIO("0\n"))
         while not machine.halted:
             machine.step()
-        assert machine.stack == [0], "the zero is still there, unlooped"
-        assert machine.jumps == []
+        assert machine.stack == (0,), "the zero is still there, unlooped"
+        assert machine.jumps == ()
 
         def drain(machine: _Machine) -> None:
             while not machine.halted:
@@ -215,7 +215,7 @@ class TestStepMachine:
         machine = _Machine("", ScriptedIO())
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
-        assert machine.stack == []
+        assert machine.stack == ()
 
 
 def _machine(code: object) -> object:
