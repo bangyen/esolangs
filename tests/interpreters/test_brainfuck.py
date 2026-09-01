@@ -79,6 +79,29 @@ class TestBrainfuck:
         """A doubly-nested loop leaves a known value in the printed cell."""
         assert run_and_capture("+++[>++[>+<-]<-]>+++.") == "\x03"
 
+    def test_machine_exposes_its_state(self) -> None:
+        """``ind``/``ptr``/``tape`` track the run and stay in step.
+
+        The three are views onto one immutable state rather than fields
+        that are assigned separately, and they are the surface ``vm.py``
+        reads off the machine (``ip``, ``memory``) -- so a state that
+        stopped being rebound, or a view that went stale, would show up
+        here rather than as a wrong answer somewhere downstream.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainfuck import _Machine
+
+        machine = _Machine(">+>++", ScriptedIO())
+        assert (machine.ind, machine.ptr, machine.tape) == (0, 0, (0,))
+
+        for _ in range(3):  # ">+>" -- grow, write, grow again
+            machine.step()
+        assert (machine.ind, machine.ptr, machine.tape) == (3, 2, (0, 1, 0))
+
+        while not machine.halted:
+            machine.step()
+        assert (machine.ind, machine.ptr, machine.tape) == (5, 2, (0, 1, 2))
+
     def test_unmatched_bracket_rejected(self) -> None:
         """Unbalanced brackets are a malformed program, not a halt."""
         import pytest
