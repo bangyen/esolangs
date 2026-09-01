@@ -196,6 +196,27 @@ class _Machine:
     def ind(self) -> int:
         return self.state.ind
 
+    # The VM's language-shaped view.  Minifuck is a binary tape walked by a
+    # cursor: ``ip`` is that cursor, ``memory`` the cells, and there is no
+    # stack.  These live here rather than in ``esolangs.vm`` so the mapping
+    # sits with the machine that knows it; the lists are fresh copies, so a
+    # caller cannot reach back into the tape through them.
+
+    @property
+    def ip(self) -> int:
+        """The code cursor."""
+        return self.state.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """The tape's cells."""
+        return self.state.cells
+
+    @property
+    def stack(self) -> list[object]:
+        """Minifuck has no stack."""
+        return []
+
     @property
     def halted(self) -> bool:
         """Whether the cursor has reached the end of the code."""
