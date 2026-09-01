@@ -517,47 +517,6 @@ class _APainterAntVM(_DelegatingVM):
         self._machine = _Machine(program)
 
 
-class _ThreeDBrainfuckVM(_BaseVM):
-    """2D block grid; ``ip`` is the pointer's position + heading, ``memory`` cells.
-
-    The one adapter that still spells its shape here.  The machine calls the
-    pointer's 3D position ``ip``, but the VM's ``ip`` is that position *and*
-    the heading -- a different value under the same name, so no property can
-    be added and no attribute can be forwarded.  Moving it would mean
-    renaming the machine's own field (``pos``, as LaserFuck spells it), and
-    that name is asserted directly by this language's interpreter tests; the
-    rename is a decision about the interpreter, not about the VM.
-    """
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.tape_based.three_d_brainfuck import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> tuple[int, ...]:
-        return (
-            *self._machine.ip,
-            *self._machine.heading,
-        )
-
-    @property
-    def memory(self) -> list[int]:
-        return [v for _, v in sorted(self._machine.cells.items())]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
-
-
 class _SuffolkVM(_DelegatingVM):
     """Tape + accumulator; the interpreter describes its own shape."""
 
@@ -587,13 +546,13 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "ArrowQueue": _ArrowQueueVM,
     "A Painter Ant": _APainterAntVM,
     "Bitdeque": _BitdequeVM,
-    "3D Brainfuck": _ThreeDBrainfuckVM,
     "Suffolk": _SuffolkVM,
 }
 
 
 # Languages whose adapter is pure boilerplate over the registry entry.
 _DERIVED_LANGUAGES = (
+    "3D Brainfuck",
     "%^2^-1",
     "123",
     "3x",
