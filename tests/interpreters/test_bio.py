@@ -206,6 +206,23 @@ class TestBIOEdgeCases:
         with pytest.raises(ValueError, match="closes no loop"):
             run("0ox;};1ix;", io=IO())
 
+    def test_load_error_messages_are_exact(self) -> None:
+        """Each of the three load errors says exactly what it says.
+
+        Every case above uses ``match=``, which is a substring search, so
+        the wording around the matched fragment was free -- the language
+        prefix could be dropped or recased and nothing would notice.  All
+        three messages come from ``parse``, so they are pinned together.
+        """
+        for code, message in (
+            ("0ox;invalid;1ix;", "BIO: not a command"),
+            ("0ox;};1ix;", "BIO: '}' closes no loop"),
+            ("0iy{0ox;", "BIO: unmatched '{'"),
+        ):
+            with pytest.raises(ValueError) as caught:
+                run(code, io=IO())
+            assert str(caught.value) == message
+
     def test_negative_register_values(self) -> None:
         """Test handling of negative register values."""
         with redirect_stdout(io.StringIO()) as f:
