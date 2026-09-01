@@ -756,6 +756,38 @@ class _Machine:
             return 0
         return 1 if value.strip() == "1" else 0
 
+    # The VM's language-shaped view.
+
+    @property
+    def ip(self) -> None:
+        """Always ``None``: nothing moves through a Circuit Diagram.
+
+        ``step()`` advances one generation of the whole drawing at once, so
+        there is no instruction position to report.
+        """
+        return None
+
+    @property
+    def memory(self) -> list[int]:
+        """The bits driven this generation, in wiring order.
+
+        Wiring values are per-generation events rather than stored charge, so
+        this is what fired *now*, not an accumulated store; a wiring nothing
+        drove is Null and contributes nothing, which is why the length varies
+        from one step to the next.
+        """
+        return [
+            bit
+            for wiring in self.wirings
+            if wiring.value is not None
+            for bit in wiring.value
+        ]
+
+    @property
+    def stack(self) -> list[object]:
+        """Circuit Diagram has no stack."""
+        return []
+
     def step(self) -> None:
         """Advance one generation: latch arrivals, fire, then re-drive wires."""
         self._emit()

@@ -43,6 +43,27 @@ class _Machine:
         """Whether the cursor has reached the end of the code."""
         return self.ind >= len(self.code)
 
+    # The VM's language-shaped view.  BFStack's store *is* its data stack, so
+    # ``stack`` carries it and ``memory`` is empty -- the loop stack is
+    # control flow, not addressable state, and stays out of both.  The
+    # ``list()`` is not just a copy: the VM declares ``list[object]`` and
+    # ``list`` is invariant, so returning ``self.stk`` would not type-check.
+
+    @property
+    def ip(self) -> int:
+        """The code cursor."""
+        return self.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """BFStack addresses no cells; its store is the stack."""
+        return []
+
+    @property
+    def stack(self) -> list[object]:
+        """The data stack, bottom first."""
+        return list(self.stk)
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (tuple(self.stk), tuple(self.lst), self.ind, self.io.position())

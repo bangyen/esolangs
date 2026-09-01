@@ -47,6 +47,30 @@ class _StepMachine(Protocol):
         """Return the complete internal state, hashable for cycle detection."""
 
 
+@runtime_checkable
+class _StepMachineWithShape(_StepMachine, Protocol):
+    """A step-capable machine that also describes its own VM shape.
+
+    The three properties are the ones :class:`VM` exposes; an interpreter
+    that defines them can be wrapped by :class:`_DelegatingVM` without any
+    per-language code in this module.  ``stack`` is ``list[object]`` to match
+    :class:`VM` exactly -- ``list`` is invariant, so an interpreter declaring
+    ``list[int]`` would not satisfy this.
+    """
+
+    @property
+    def ip(self) -> int | tuple[int, ...] | None:
+        """The current code/instruction position."""
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells, or ``[]`` where there is no such store."""
+
+    @property
+    def stack(self) -> list[object]:
+        """The stack, or ``[]`` where the language has none."""
+
+
 def run_until_halt_or_cycle(machine: _StepMachine) -> bool:
     """Step ``machine`` until it halts or revisits an exact state.
 
@@ -247,6 +271,43 @@ class _BaseVM:
     @property
     def stack(self) -> list[object]:
         raise NotImplementedError
+
+
+class _DelegatingVM(_BaseVM):
+    """A VM for an interpreter that describes its own shape.
+
+    The older adapters below spell ``ip``/``memory``/``stack`` here, in
+    ``vm.py``, as expressions reaching into a ``_Machine``'s attributes.
+    That put the language-shaped mapping -- which is genuinely different for
+    all 61 of them -- in a file that does not otherwise know the languages.
+    An interpreter whose ``_Machine`` exposes those three properties itself
+    keeps the mapping next to the state it describes, and its adapter
+    shrinks to the one thing that really is per-language: how the machine is
+    constructed.
+
+    Subclasses provide ``__init__`` only.  Everything else forwards.
+    """
+
+    _machine: _StepMachineWithShape
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int | tuple[int, ...] | None:
+        return self._machine.ip
+
+    @property
+    def memory(self) -> list[int]:
+        return self._machine.memory
+
+    @property
+    def stack(self) -> list[object]:
+        return self._machine.stack
 
 
 class _BrainfuckVM(_BaseVM):
@@ -792,33 +853,14 @@ class _ClockwiseVM(_BaseVM):
         return []
 
 
-class _DigVM(_BaseVM):
-    """2D mole grid; ``ip`` is the mole's (row, col, heading), ``memory`` the mole."""
+class _DigVM(_DelegatingVM):
+    """2D mole grid; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.grid_based.dig import _Machine
 
         self._machine = _Machine(program.splitlines(), self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> tuple[int, ...]:
-        return (self._machine.row, self._machine.col, self._machine.move)
-
-    @property
-    def memory(self) -> list[int]:
-        return [self._machine.mole]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
 
 
 class _Wii2dVM(_BaseVM):
@@ -1379,33 +1421,14 @@ class _CirclefuckVM(_BaseVM):
         return []
 
 
-class _BFStackVM(_BaseVM):
-    """Data stack + loop stack + cursor; ``ip`` the cursor, ``stack`` the data."""
+class _BFStackVM(_DelegatingVM):
+    """Data stack + loop stack + cursor; the interpreter describes its shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.stack_based.bfstack import _Machine
 
         self._machine = _Machine(program, self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return []
-
-    @property
-    def stack(self) -> list[object]:
-        return list(self._machine.stk)
 
 
 class _BrainIfVM(_BaseVM):
@@ -1437,33 +1460,14 @@ class _BrainIfVM(_BaseVM):
         return []
 
 
-class _MinifuckVM(_BaseVM):
-    """Binary tape + cursor; ``ip`` the cursor, ``memory`` the tape."""
+class _MinifuckVM(_DelegatingVM):
+    """Binary tape + cursor; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.tape_based.minifuck import _Machine
 
         self._machine = _Machine(program, self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return list(self._machine.tape)
-
-    @property
-    def stack(self) -> list[object]:
-        return []
 
 
 class _TaglateVM(_BaseVM):
@@ -2186,47 +2190,14 @@ class _FlowchartVM(_BaseVM):
         return []
 
 
-class _CircuitDiagramVM(_BaseVM):
-    """Generation-based circuit; ``ip`` is ``None``, ``memory`` the live wires.
-
-    Nothing moves through a Circuit Diagram -- ``step()`` advances one
-    generation of the whole drawing at once -- so there is no instruction
-    position to report and ``ip`` is always ``None``.  Wiring values are
-    per-generation events rather than stored charge, so ``memory`` is the
-    bits driven this generation, in wiring order; a wiring nothing drove is
-    Null and contributes nothing, which is why its length varies from one
-    step to the next.
-    """
+class _CircuitDiagramVM(_DelegatingVM):
+    """Generation-based circuit; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.grid_based.circuit_diagram import _Machine
 
         self._machine = _Machine(program.splitlines(), self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> None:
-        return None
-
-    @property
-    def memory(self) -> list[int]:
-        return [
-            bit
-            for wiring in self._machine.wirings
-            if wiring.value is not None
-            for bit in wiring.value
-        ]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
 
 
 # Language name -> VM adapter.  Only interpreters with a step()/halted state
