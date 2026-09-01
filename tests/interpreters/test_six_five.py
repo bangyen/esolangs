@@ -91,7 +91,7 @@ class TestSixFive:
         while not machine.halted:
             machine.step()
         assert machine.io.getvalue() == "00"
-        assert (machine.cell, machine.tape) == (1, [0, 48, 48])
+        assert (machine.cell, machine.tape) == (1, (0, 48, 48))
 
         # two moves right compound rather than landing on a fixed cell
         twice = _Machine("11", ScriptedIO())
@@ -239,11 +239,11 @@ class TestStepMachine:
         from esolangs.interpreters.tape_based.six_five import _Machine
 
         machine = _Machine("55A", ScriptedIO())
-        assert (machine.ind, machine.cell, machine.tape) == (0, 0, [0])
+        assert (machine.ind, machine.cell, machine.tape) == (0, 0, (0,))
         machine.step()  # 5 adds 5 to the cell
-        assert machine.tape == [5]
+        assert machine.tape == (5,)
         machine.step()  # 5 adds 5 more
-        assert machine.tape == [10]
+        assert machine.tape == (10,)
         machine.step()  # A prints the cell
         assert machine.io.getvalue() == "\n"
         assert machine.halted
