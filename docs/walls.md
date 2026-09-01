@@ -1474,19 +1474,44 @@ linear scan rather than a genuine representation limit.  See
   branches are op strings that transform the accumulator before re-merging
   ahead of the next junction; the final accumulator is the table entry.
 
-  The op strings are **constructed, not searched**: because no cell's
-  behaviour can depend on the accumulator, a junction's two op strings are
-  shared by every prefix that reaches it, which leaves exactly one shape.
-  The first `n - 1` junctions accumulate the bits into an index by Horner's
-  rule, and the last junction's two branches decode that index into the
-  table's two columns.  The decode is built out of *folds*: `s` is the only
-  op that is not order-preserving, and `'-' * c + 's'` merges exactly the
-  pairs equidistant from `c`, so folding drives the live values together
-  until two remain — which a threshold `'-' * t + '/' * k + '+'` reads out.
-  Symmetric tables get their own routes first: parity/XNOR is exact and O(1)
-  at any `n`, and others take a popcount-accumulator prefix plus the same
-  fold over `n` points instead of `2**n` rows, so majority-of-20 constructs
-  in a fraction of a second.
+  The op strings are **constructed, not searched**, and since 2026-08-31 that
+  is literally true of every step: nothing keeps an alternative, widens a
+  beam, or retries.  Because no cell's behaviour can depend on the
+  accumulator, a junction's two op strings are shared by every prefix that
+  reaches it, which leaves exactly one shape — a chain that folds the bits
+  into a single number, then a decode that turns that number into the entry.
+
+  *The chain* walks the table's decision diagram one input at a time, taking
+  the first legal pair from a fixed catalogue (`_WII2D_JUNCTIONS`).  A pair
+  is legal unless it lands two *different* residual functions on one
+  accumulator value, which nothing downstream could separate.  Horner's
+  `('*', '*+')` ends the catalogue and is legal unconditionally — its
+  children `2v` and `2w + 1` differ in parity, and `2v == 2w` forces
+  `v == w` — so **the walk is total and cannot dead-end**.  The earlier
+  entries are the ones that *merge*: two prefixes leaving the same residual
+  function share a value, which narrows the domain handed to the decode.
+  Several catalogue entries are the shapes the hand-written special cases
+  use — parity's `('', '-s')` and the popcount prefix's `('', '+')` are both
+  in it — but the special cases still short-circuit ahead of the chain,
+  because they are shorter than what the general walk produces.
+
+  *The decode* is built out of folds: `s` is the only op that is not
+  order-preserving, and `'-' * c + 's'` merges exactly the pairs equidistant
+  from `c`, so folding drives the live values together until two remain —
+  which a threshold `'-' * t + '/' * k + '+'` reads out.  At each step it
+  takes the **single** best fold under a fixed ranking (magnitude, then live
+  count, then length); there is no beam and no width ladder.  A fold merges
+  at least one pair, so the live count strictly drops and the loop is bounded
+  by the domain size.
+
+  **The single-candidate rule is exhaustively verified, not sampled.**  All
+  256 patterns at `D == 8` and all **65536 at `D == 16`** — the widest domain
+  the general path asks for — decode under it, each checked by applying the
+  emitted op string back over the domain.  The maximally-alternating
+  patterns, which need the most folds since a fold at best halves the block
+  count, are among the successes.  Four different rankings were swept
+  exhaustively at `D == 16` and **all four are total**, so the result is a
+  property of the fold algebra rather than of a lucky tie-break.
 
   **The pool-counting bound this entry used to cite is withdrawn.**  It
   measured how many decodes could be *drawn from a fixed pool of short
@@ -1497,64 +1522,51 @@ linear scan rather than a genuine representation limit.  See
   `n == 5` domain folds, the case the old note put at 0.04%.
 
   **`n == 7` stops on a cost guard, not a capability limit.**  The refusal is
-  `_WII2D_MAX_INDEX_DOMAIN = 32` compared against the decode domain
-  `2 ** (n - 1)`, firing *before* `_wii2d_decode` is called, so it has never
-  established that anything fails.  With the constant raised to 64 a dense
-  non-symmetric `n == 7` table builds in 1.74s (13372 characters, 8 rows by
-  6673 columns), verified against the interpreter on **all 128 input
-  combinations**.  The guard stays at 32 for two measured reasons:
+  `_WII2D_MAX_INDEX_DOMAIN = 32` compared against `2 ** (n - 1)`, firing
+  *before* the chain is walked, so it has never established that anything
+  fails.
 
-  *Width.*  Random patterns give median/worst decode lengths of 62/120 cells
-  at `D == 16`, 415/1149 at `D == 32`, and 4762/19448 at `D == 64`.  An
-  `n == 7` decode is thousands of cells wide however fast it is found.
+  **The doubling trap and its retry are gone, by construction.**  The old
+  note recorded a "sizeable minority" of tables sending the fold somewhere it
+  took minutes to return from: `s` squares, so a fold roughly doubles every
+  live value's bit length, and `_wii2d_compress` can only halve when no two
+  values needing different bits collide.  Instrumented on a 64-point pattern
+  that never returned, `max|v|` went from 3 to over 4300 *digits* while the
+  live count crawled 60 → 19.  That was a property of ranking by live count —
+  merging as hard as possible at each step, through ever-larger numbers.
+  Ranking by **magnitude first** removes the cause rather than detecting it,
+  so the `_WII2D_MAX_STATE_BITS` threshold and the second ranked pass it
+  guarded no longer exist.
 
-  **The heavy tail this entry used to cite is gone, and it had one cause.**
-  The old note recorded four of five `D == 64` patterns taking 0.7s to 17s
-  and the fifth exceeding a 120s budget, with a "sizeable minority" of tables
-  sending the fold somewhere it took minutes to return from.  That minority
-  was the *doubling trap*: `s` squares, so a fold roughly doubles every live
-  value's bit length, and `_wii2d_compress` can only halve when no two values
-  needing different bits collide — a check that fails from the very first
-  state on a wide dense pattern, so nothing ever shrinks again.  Instrumented
-  on a 64-point pattern that never returned, the live count crawled 60 → 19
-  over 14 iterations while `max|v|` went from 3 to over 4300 *digits*, with
-  compress a no-op at every step.  The search was not exploring; it was doing
-  arithmetic on thousand-digit integers.
+  Measured over the same random tables, old (beam ladder plus retry) against
+  new (single candidate), median/worst emitted characters and build time:
 
-  Ranking states by magnitude escapes it, but is no strict improvement — over
-  25 sampled 64-point patterns it was 8 wins, 6 losses and 9 ties, and on the
-  pinned `n == 7` table's first column it finds a 120499-cell decode in
-  14.35s where the default finds 6575 in 0.97s.  So it ships as a *fallback*
-  (`_WII2D_MAX_STATE_BITS`): the default pass runs first and is abandoned
-  only once the leading state's magnitude passes the threshold, then the
-  search reruns magnitude-first.  Shipped domains never reach the threshold —
-  peak leading-state bit length is at most 8 at `D == 16` and 148 at
-  `D == 32` over 25 patterns each, against 4096 — so **every shipped program
-  is byte-for-byte what it was**, verified over a 492-record corpus.
-  Measured at `D == 64`, 14 sampled patterns: all 14 now decode, median 1.28s
-  and worst 8.07s, against four over a 120s budget and a 55.73s worst before.
-  One pattern that had not finished in 595s takes 2.73s.
+  | `n` | old size | new size | old time | new time |
+  |----|----------|----------|----------|----------|
+  | 4 | 175 / 213 | 172 / 222 | 0.77 / 1.51 ms | 0.39 / 0.60 ms |
+  | 5 | 300 / 546 | 330 / 556 | 8.68 / 35.22 ms | 1.96 / 10.67 ms |
+  | 6 | 913 / 13411 | **820 / 1198** | 113.65 / 393.27 ms | **13.47 / 29.61 ms** |
 
-  *Accumulator magnitude.*  The fold squares, so intermediates grow.  Peak
-  `|acc|` was 9 bits for a sampled dense `n == 5` table and 16 for an
-  `n == 6` one; across five sampled `D == 64` decodes it ranges from 321 to
-  1723 bits, tracking decode length rather than arity.  (Before the fallback
-  above, the same measurement reached 45766 bits — magnitude is exactly what
-  the retry reduces, though it bounds nothing in principle.)  Measured over every
-  start `q` in the domain, not just `q == 0` — with repeated squaring the
-  `q == 0` trajectory is not representative.  The wiki specifies no
+  The `n == 6` worst case is where the trap lived: 13411 characters and 393ms
+  becomes 1198 and 30ms.  Programs are **not** byte-for-byte what they were
+  wherever the general path runs: the ranking changed.  (The committed
+  example is `n == 2`, which the untouched closed form still answers, so that
+  file is unchanged.)
+
+  *Accumulator magnitude.*  The fold squares, so intermediates grow, and
+  magnitude-first ranking is what now holds them down.  The wiki specifies no
   accumulator bound and this interpreter uses arbitrary-precision integers,
-  so nothing here contradicts the spec; but the region a wide `n == 7` decode
-  exercises is far outside anything the shipped examples cover (the
-  hello-world program's largest intermediate is 81), so it rests on spec
-  silence rather than ground truth.
+  so nothing here contradicts the spec.
 
   There is no universal fallback (a tree would need each input re-embedded at
-  every node, which WII2D has no way to store).  What remains genuinely open
-  is **completeness**: every pattern is verified to fold exhaustively only
-  through `D == 8`, with `D == 16` sampled, and the fold is a beam search
-  that can dead-end in principle.  No sampled pattern has failed, and an
-  unproven completeness claim is not a wall.
+  every node, which WII2D has no way to store).  The *chain* half is now
+  proved total — Horner is always legal, so the walk cannot dead-end — and
+  the *decode* half is exhaustively verified through `D == 16`, the widest
+  domain the general path asks for.  What remains genuinely open is
+  completeness **beyond** that: the fold could dead-end in principle at
+  `D == 32` or wider, where verification is sampled rather than exhaustive.
+  No sampled pattern has failed, and an unproven completeness claim is not a
+  wall.
 
 ## 2dFish (the WII2D-style merging chain is affine-only; a decision tree is the universal construction)
 
