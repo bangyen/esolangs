@@ -4170,6 +4170,31 @@ class TestParameterizedPctSquaredMinusOne:
         # is 1 on row 10 and 0 on row 01.
         assert _deep_plan("0010", 2, collided) is None
 
+    def test_deep_band_builds_symmetric_tables_at_five_inputs(self) -> None:
+        """Symmetric tables build past four inputs; generic ones are refused.
+
+        What bounds the deep band is distinctness rather than run count.  Two
+        rows sharing a value are merged by the first cut that reaches them and
+        can never be separated, so a weighting serves a table only if every
+        collision it forces joins rows of one class.  Keeping all rows distinct
+        needs a span of ``(2**n - 1) * 256``, which is 7936 at five inputs
+        against a limit of 3003, so every weighting inside the limit collides
+        *some* rows there.  A symmetric table tolerates exactly that: the
+        popcount ladder spans only ``n * 256`` and merges the rows such a table
+        already agrees on.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        majority = "".join("1" if bin(r).count("1") >= 3 else "0" for r in range(32))
+        template = parameterized.pct_squared_minus_one(majority)
+        lengths = set()
+        for row in range(32):
+            bits = [(row >> (4 - k)) & 1 for k in range(5)]
+            program = self.instantiate(template, bits)
+            lengths.add(len(program))
+            assert self.run_pct(program) == majority[row], (majority, bits)
+        assert len(lengths) == 1, sorted(lengths)
+
     @pytest.mark.slow  # 8.3s: the ladder build plus eight interpreter runs
     def test_ladder_builds_majority_three(self) -> None:
         """Majority-3 builds, which no affine composition of setters reaches.
