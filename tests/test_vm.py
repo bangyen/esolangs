@@ -1,5 +1,7 @@
 """Tests for the step-and-inspect VM wrapper."""
 
+import contextlib
+
 import pytest
 
 import esolangs
@@ -1359,3 +1361,31 @@ class TestEveryLanguageIsSteppable:
             if not any(hasattr(getattr(module, n), "snapshot") for n in imported):
                 without.append(name)
         assert without == []
+
+    def test_memory_and_stack_are_copies_not_the_live_store(self) -> None:
+        """A caller must not be able to write into a running machine.
+
+        An interpreter may hand back its store directly -- several hold the
+        list under exactly the VM's name, which is why the shape protocol
+        asks only for a ``Sequence`` -- so the copy that keeps the boundary
+        honest is ``_DelegatingVM``'s, made once rather than in every
+        interpreter.  Nothing else covers it: every other test reads these
+        properties without writing to them.
+        """
+        from esolangs.vm import _VM_ADAPTERS, _DelegatingVM
+
+        checked = 0
+        for name, adapter in sorted(_VM_ADAPTERS.items()):
+            if not issubclass(adapter, _DelegatingVM):
+                continue
+            program, stdin = SAMPLES[name]
+            vm = esolangs.make_vm(name, program, stdin)
+            with contextlib.suppress(Exception):
+                vm.step()
+            before_mem, before_stk = list(vm.memory), list(vm.stack)
+            vm.memory.append(12345)
+            vm.stack.append("scribble")
+            assert list(vm.memory) == before_mem, f"{name}: memory is live"
+            assert list(vm.stack) == before_stk, f"{name}: stack is live"
+            checked += 1
+        assert checked > 30, f"only {checked} adapters exercised"

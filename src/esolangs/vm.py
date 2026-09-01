@@ -51,11 +51,23 @@ class _StepMachine(Protocol):
 class _StepMachineWithShape(_StepMachine, Protocol):
     """A step-capable machine that also describes its own VM shape.
 
-    The three properties are the ones :class:`VM` exposes; an interpreter
-    that defines them can be wrapped by :class:`_DelegatingVM` without any
-    per-language code in this module.  ``stack`` is ``list[object]`` to match
-    :class:`VM` exactly -- ``list`` is invariant, so an interpreter declaring
-    ``list[int]`` would not satisfy this.
+    The three members are the ones :class:`VM` exposes; an interpreter that
+    defines them can be wrapped by :class:`_DelegatingVM` without any
+    per-language code in this module.
+
+    They are ``Sequence``, not ``list``, and that is what makes the
+    interpreter free to expose its store *directly*.  ``list`` is invariant,
+    so a machine holding ``self.stack: list[int]`` -- which several do, under
+    exactly this name -- could never satisfy a ``list[object]`` member, and
+    could not add a converting property either, because the attribute is the
+    name.  ``Sequence`` is covariant, so the live attribute satisfies it as
+    it stands, and :class:`_DelegatingVM` materializes the ``list`` that
+    :class:`VM` promises.
+
+    That also puts the fresh-copy contract in one place.  A caller must not
+    be able to reach back into a machine through ``vm.memory``, and the
+    copy that guarantees it belongs at the boundary that owes it rather
+    than in every interpreter.
     """
 
     @property
@@ -63,12 +75,12 @@ class _StepMachineWithShape(_StepMachine, Protocol):
         """The current code/instruction position."""
 
     @property
-    def memory(self) -> list[int]:
-        """The addressable cells, or ``[]`` where there is no such store."""
+    def memory(self) -> Sequence[int]:
+        """The addressable cells, or empty where there is no such store."""
 
     @property
-    def stack(self) -> list[object]:
-        """The stack, or ``[]`` where the language has none."""
+    def stack(self) -> Sequence[object]:
+        """The stack, or empty where the language has none."""
 
 
 def run_until_halt_or_cycle(machine: _StepMachine) -> bool:
@@ -286,6 +298,13 @@ class _DelegatingVM(_BaseVM):
     constructed.
 
     Subclasses provide ``__init__`` only.  Everything else forwards.
+
+    ``memory`` and ``stack`` are copied on the way out.  The machine may
+    hand back its live store -- several expose the list itself, under
+    exactly these names -- and a caller holding ``vm.memory`` must not be
+    able to write into a running machine through it.  Copying here rather
+    than in each interpreter keeps that guarantee in one place, and turns
+    the widening from ``Sequence`` into the ``list`` :class:`VM` promises.
     """
 
     _machine: _StepMachineWithShape
@@ -303,11 +322,11 @@ class _DelegatingVM(_BaseVM):
 
     @property
     def memory(self) -> list[int]:
-        return self._machine.memory
+        return list(self._machine.memory)
 
     @property
     def stack(self) -> list[object]:
-        return self._machine.stack
+        return list(self._machine.stack)
 
 
 class _BrainfuckVM(_DelegatingVM):
@@ -621,33 +640,14 @@ class _PointBreakVM(_DelegatingVM):
         self._machine = _Machine(program, self._io)
 
 
-class _AddSubJumpVM(_BaseVM):
-    """Self-modifying memory + instruction pointer; ``memory`` is the cells."""
+class _AddSubJumpVM(_DelegatingVM):
+    """Self-modifying memory; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.register_based.addsubjump import _Machine
 
         self._machine = _Machine(program, self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ip
-
-    @property
-    def memory(self) -> list[int]:
-        return list(self._machine.memory)
-
-    @property
-    def stack(self) -> list[object]:
-        return []
 
 
 class _ArrowQueueVM(_DelegatingVM):
@@ -734,33 +734,14 @@ class _Wii2dVM(_DelegatingVM):
         self._machine = _Machine(program.splitlines(), self._io)
 
 
-class _DecleqVM(_BaseVM):
-    """Self-modifying memory + pointer; ``memory`` the cells."""
+class _DecleqVM(_DelegatingVM):
+    """Self-modifying memory + pointer; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.register_based.decleq import _Machine
 
         self._machine = _Machine(program, self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.pc
-
-    @property
-    def memory(self) -> list[int]:
-        return list(self._machine.memory)
-
-    @property
-    def stack(self) -> list[object]:
-        return []
 
 
 class _SixFiveVM(_DelegatingVM):
@@ -793,33 +774,14 @@ class _BIOVM(_DelegatingVM):
         self._machine = _Machine(program, self._io)
 
 
-class _NoCommentVM(_BaseVM):
-    """Byte tape + stack + cursor; ``ip`` the cursor, ``memory`` the tape."""
+class _NoCommentVM(_DelegatingVM):
+    """Byte tape + stack + cursor; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.tape_based.nocomment import _Machine
 
         self._machine = _Machine(program, self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return list(self._machine.tape)
-
-    @property
-    def stack(self) -> list[object]:
-        return list(self._machine.stack)
 
 
 class _ThreeDBrainfuckVM(_BaseVM):
@@ -964,33 +926,14 @@ class _HomeRowVM(_DelegatingVM):
         self._machine = _Machine(program, self._io)
 
 
-class _UnsquareVM(_BaseVM):
-    """Stack + accumulator; ``ip`` the cursor, ``memory`` the accumulator."""
+class _UnsquareVM(_DelegatingVM):
+    """Stack + accumulator; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.stack_based.unsquare import _Machine
 
         self._machine = _Machine(program, self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return [self._machine.acc]
-
-    @property
-    def stack(self) -> list[object]:
-        return list(self._machine.stack)
 
 
 class _ROTFuckVM(_DelegatingVM):
@@ -1105,8 +1048,8 @@ class _NevermindVM(_DelegatingVM):
         self._machine = _Machine(program.splitlines(), self._io)
 
 
-class _BFPDAVM(_BaseVM):
-    """Bit stack + cursor; ``ip`` the cursor, ``stack`` the bits."""
+class _BFPDAVM(_DelegatingVM):
+    """Bit stack + cursor; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -1114,53 +1057,15 @@ class _BFPDAVM(_BaseVM):
 
         self._machine = _Machine(program, self._io)
 
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
 
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ip
-
-    @property
-    def memory(self) -> list[int]:
-        return []
-
-    @property
-    def stack(self) -> list[object]:
-        return list(self._machine.stack)
-
-
-class _ThreeXVM(_BaseVM):
-    """Rational stack + cursor; ``ip`` the cursor, ``stack`` the rationals."""
+class _ThreeXVM(_DelegatingVM):
+    """Rational stack + cursor; the interpreter describes its own shape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
         from esolangs.interpreters.stack_based.three_x import _Machine
 
         self._machine = _Machine(program, self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> int:
-        return self._machine.ind
-
-    @property
-    def memory(self) -> list[int]:
-        return []
-
-    @property
-    def stack(self) -> list[object]:
-        return list(self._machine.stack)
 
 
 class _SophieVM(_DelegatingVM):
