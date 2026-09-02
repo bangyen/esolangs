@@ -105,10 +105,6 @@ class Language:
     boolean: Callable[[str], str] | None = None
 
 
-def _kw(**kwargs: int) -> tuple[tuple[str, int], ...]:
-    return tuple(kwargs.items())
-
-
 LANGUAGES: dict[str, Language] = {
     "AddSubJump": Language(
         "AddSubJump",
