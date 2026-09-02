@@ -91,7 +91,7 @@ Runtime error contract:
 """
 
 import sys
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping
 from typing import Literal, NamedTuple, NewType, assert_never
 
 from esolangs.exceptions import HaltError
@@ -1340,7 +1340,12 @@ class _Machine:
             *starts[0], _initial_heading(self.grid, starts[0]), _NO_LATCHES
         )
         self.cp = 0
-        self.cells: dict[int, int] = {}
+        # The tape, as a value: an instruction returns the cells that
+        # follow rather than writing into a dict.  It is bounded by how
+        # far CP has travelled, which a program grows one cell at a time,
+        # so rebuilding it per write is a constant rather than the
+        # quadratic a growable stack would cost.
+        self.cells: Mapping[int, int] = {}
         self._done = False
         # The enumerated drive-state graph, or ``None`` when there is no
         # graph to consult: a program whose geometry is not a street
@@ -1458,7 +1463,8 @@ class _Machine:
         return self.cells.get(self.cp, 0)
 
     def _set_cell(self, value: int) -> None:
-        self.cells[self.cp] = value
+        """Write the CPth cell, replacing the tape rather than editing it."""
+        self.cells = {**self.cells, self.cp: value}
 
     def _block(self, cell: _ReachableCell) -> tuple[str, ...]:
         """Return the three-by-three neighbourhood around a reachable cell.
