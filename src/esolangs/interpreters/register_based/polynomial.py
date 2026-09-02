@@ -34,13 +34,25 @@ The interpreter runs on a :class:`_Machine` (the recovered instructions, the
 integer register, and the instruction cursor), so it is step-capable:
 ``step()`` executes one instruction and ``halted`` is true once the cursor
 reaches the end of the instructions.
+
+The execution model is a pure function over an immutable ``_State``: the
+register and the cursor, as a plain pair.  :func:`_step` maps a state and
+the instruction table to the next state and never mutates what it is given;
+:meth:`_Machine.step` rebinds the two fields from what it returned, so the
+mutation lives in exactly one place.
+
+The instructions stay out of the state -- Polynomial never rewrites its own
+program, and recovering them means factoring the polynomial, which is done
+once when the machine is built.  The two ports stay in the shell: an
+instruction prints or reads at most once, so the byte can be read before
+the transition and the printed value handed back after it.
 """
 
 import functools
 import math
 import re
 import sys
-from typing import Any
+from collections.abc import Callable
 
 import sympy as sp
 
@@ -206,6 +218,86 @@ def _find_roots(coefficients: list[int]) -> list[complex]:
     return list(_factor_roots(tuple(coefficients)))
 
 
+#: The arithmetic instructions, in the order their codes select them.
+#: Each is a function of the register and the instruction's operand, so
+#: none of them reaches the machine the way the old bound lambdas did.
+_ARITH: tuple[Callable[[int, int], int], ...] = (
+    lambda r, a: r + a,  # +=
+    lambda r, a: r - a,  # -=
+    lambda r, a: r * a,  # *=
+    lambda r, a: r // a,  # /=
+    lambda r, a: r % a,  # %=
+    lambda r, a: r**a,  # ^
+)
+
+#: The branch conditions, keyed by ``(code - 1) % 4`` the way the
+#: instruction codes reach them.  The old table held these in the same list
+#: as the arithmetic above, with an integer ``0`` wedged into the endif slot
+#: to keep the indices lining up; splitting them means neither table has a
+#: hole and every entry has one signature.
+#:
+#: Key 1 -- the endif slot -- is deliberately absent, because nothing
+#: reaches it.  ``convert`` emits single-element codes 1..8 only, so the
+#: final arm would need ``one == 10`` and cannot get it, and the bracket arm
+#: would need a closer whose *partner* is also a 6, which ``brackets``
+#: rejects as unmatched before any condition is consulted.  Enumerating
+#: every 2- and 3-instruction table over 1..8 from every cursor and all
+#: three register signs -- 4992 combinations -- reaches it zero times, and
+#: calling the old slot directly does raise, so the sweep's probe fires.
+_COND: dict[int, Callable[[int], bool]] = {
+    0: lambda reg: reg > 0,
+    2: lambda reg: reg < 0,
+    3: lambda reg: not reg,
+}
+
+#: One instant of a run: ``(reg, ind)`` -- the single integer register and
+#: the instruction cursor.  A value, not a record: :func:`_step` returns a
+#: new pair rather than editing one in place.
+type _State = tuple[int, int]
+
+
+def _step(
+    state: _State,
+    instructions: list[list[int]],
+    byte: int | None = None,
+) -> tuple[_State, str | None]:
+    """Return the state after one instruction, and anything it prints.
+
+    Pure: it reads ``state`` and returns a new one, and reaches no ``IO``.
+    The character an output instruction would write is reported to the
+    caller rather than printed here, and an input instruction's byte
+    arrives as ``byte``.
+
+    The cursor always advances by one at the end, including after a branch
+    has moved it to its partner -- a taken jump lands *on* the bracket and
+    steps past it, which is what makes the body run rather than the bracket
+    re-test itself.
+    """
+    reg, ind = state
+    instruction = instructions[ind]
+    one = instruction[0]
+    rest = instruction[1:] if len(instruction) > 1 else []
+    output: str | None = None
+
+    if two := ([*rest, 0])[0]:
+        if one:
+            reg = _ARITH[two - 1](reg, one)
+        elif two - 1:
+            reg = byte if byte else -1
+        else:
+            # Negative registers print as NUL: the wiki says output ignores
+            # them, and clamping is this interpreter's documented reading.
+            output = chr(max(0, reg))
+    elif one in [2, 6]:
+        beg = instructions[brackets(instructions, ind)][0]
+        if beg > 4 and _COND[(beg - 1) % 4](reg):
+            ind = brackets(instructions, ind)
+    elif not _COND[(one - 1) % 4](reg):
+        ind = brackets(instructions, ind)
+
+    return (reg, ind + 1), output
+
+
 class _Machine:
     """Per-run Polynomial state: the instructions, the register, and the cursor.
 
@@ -234,19 +326,6 @@ class _Machine:
 
         self.ind = 0
         self.reg = 0
-        # Use Any to avoid complex type checking issues with mixed lambda types
-        self._sym: list[Any] = [
-            lambda r, a: r + a,  # +=
-            lambda r, a: r - a,  # -=
-            lambda r, a: r * a,  # *=
-            lambda r, a: r // a,  # /=
-            lambda r, a: r % a,  # %=
-            lambda r, a: r**a,  # ^
-            lambda: self.reg > 0,  # if > 0
-            0,  # endif
-            lambda: self.reg < 0,  # if < 0
-            lambda: not self.reg,  # if == 0
-        ]
 
     @property
     def halted(self) -> bool:
@@ -275,29 +354,36 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         return (self.ind, self.reg, self.io.position())
 
+    @property
+    def _state(self) -> _State:
+        """The machine's fields as the value the transition works on."""
+        return (self.reg, self.ind)
+
     def step(self) -> None:
-        """Execute one instruction, advancing the cursor."""
+        """Execute one instruction, advancing the cursor.
+
+        The two ports live here rather than in the transition: this is the
+        shell.  An instruction reads or prints at most once, so the byte can
+        be read before the transition runs and the character it reports
+        printed after.
+        """
         if self.halted:
             return
         instruction = self.instructions[self.ind]
         one = instruction[0]
-        rest = instruction[1:] if len(instruction) > 1 else []
+        two = ([*instruction[1:], 0])[0]
 
-        if two := ([*rest, 0])[0]:
-            if one:
-                self.reg = self._sym[two - 1](self.reg, one)
-            elif two - 1:
-                val = self.io.input_str() + chr(0)
-                self.reg = ord(val[0]) or -1
-            else:
-                self.io.print_char(chr(max(0, self.reg)))
-        elif one in [2, 6]:
-            beg = self.instructions[brackets(self.instructions, self.ind)][0]
-            if beg > 4 and self._sym[(beg - 1) % 4 + 6]():
-                self.ind = brackets(self.instructions, self.ind)
-        elif not self._sym[((one - 1) % 4) + 6]():
-            self.ind = brackets(self.instructions, self.ind)
-        self.ind += 1
+        byte = None
+        if two and not one and two - 1:
+            # An empty line reads as -1, which is what the trailing NUL in
+            # the original's ``input_str() + chr(0)`` produced: ``ord`` of
+            # that NUL is 0, and ``0 or -1`` is -1.
+            val = self.io.input_str() + chr(0)
+            byte = ord(val[0])
+
+        (self.reg, self.ind), output = _step(self._state, self.instructions, byte)
+        if output is not None:
+            self.io.print_char(output)
 
 
 def run(code: str, io: IO, limit: int = 10_000) -> None:
