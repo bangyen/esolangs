@@ -15,6 +15,7 @@ from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
 )
+from tests.raises import raises_message
 
 run = importlib.import_module("esolangs.interpreters.stack_based.bf_pda").run
 
@@ -75,6 +76,36 @@ class TestBrackets:
         """``]`` with a one top jumps back across a nested ``]`` exactly once."""
         assert run_program("<@<@[<@[>@]>]") == ""
 
+    def test_forward_scan_skips_an_empty_inner_loop(self) -> None:
+        """The forward scan counts an inner ``[`` even with nothing inside it.
+
+        Every nested case here puts commands between the inner brackets, so
+        a scan that miscounts still lands on a command and prints the same
+        thing.  An *empty* inner loop is the tight case: in ``[[]@]`` the
+        skip from the outer ``[`` has to pass ``[]`` and stop after the
+        outer ``]``.  A scan that starts one character further along, or
+        that never raises its depth on an inner ``[``, stops at the inner
+        ``]`` instead and resumes inside the loop.
+
+        The leading ``.`` prints the empty stack's zero, and the outer
+        ``[`` reads that same zero and skips -- so the program prints once
+        and halts, where a mis-landed scan runs ``@`` and prints again.
+        """
+        assert run_program(".[[]@]") == "0"
+        assert run_program(".[[].]") == "0"
+
+    def test_backward_scan_lands_on_the_matching_open(self) -> None:
+        """``]`` resumes at its own ``[``, counting a nested ``]`` on the way.
+
+        The jump-back tests all sit next to a command, so a scan returning
+        one index either side still lands on something equivalent.  Here
+        the outer ``]`` is preceded directly by an inner ``][``, so the
+        index it computes is the difference between resuming at the outer
+        ``[`` and resuming one cell off it.
+        """
+        assert run_program("@<@.[>][]") == "1"
+        assert run_program("@<@[>.][]") == "10"
+
 
 class TestHalting:
     def test_halts_at_end_of_program(self) -> None:
@@ -116,6 +147,23 @@ class TestMalformed:
         with pytest.raises(ValueError, match="unmatched"):
             run_program("<@[.")
 
+    def test_unmatched_open_bracket_reports_the_last_one(self) -> None:
+        """The reported position is the *last* unmatched ``[``, not the first.
+
+        ``match=`` is a substring search, so every case above passes on any
+        position at all -- the number was never asserted.  With two
+        unmatched brackets the choice becomes visible: this program opens
+        at 1 and again at 4, and the message names 4.  Reporting the first
+        would say 1, and a search that finds nothing would say -1.
+        """
+        with raises_message(ValueError, "unmatched '[' at position 4"):
+            run_program("<[.<[.")
+
+    def test_unmatched_close_bracket_reports_its_own_position(self) -> None:
+        """A stray ``]`` names the index it sits at, checked exactly."""
+        with raises_message(ValueError, "unmatched ']' at position 2"):
+            run_program("<@]")
+
 
 class TestStepMachine:
     def test_snapshot_changes_after_a_step(self) -> None:
@@ -125,7 +173,7 @@ class TestStepMachine:
         before = machine.snapshot()
         machine.step()  # < pushes a zero
         assert machine.snapshot() != before
-        assert machine.stack == [0]
+        assert machine.stack == (0,)
 
     def test_step_after_halt_is_a_noop(self) -> None:
         from esolangs.interpreters.stack_based.bf_pda import _Machine
@@ -134,7 +182,7 @@ class TestStepMachine:
         machine.step()  # < pushes a zero
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
-        assert machine.stack == [0]
+        assert machine.stack == (0,)
 
 
 def _machine(code: object) -> object:

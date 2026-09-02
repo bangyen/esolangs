@@ -132,10 +132,60 @@ class _Machine:
         self.limit = limit
         self.steps = 0
         self.frames: list[_Frame] = []
+        # Where the top-level frame ends, so ``ip`` can still report a
+        # position once every frame has been popped.  ``of()`` sets it with
+        # the frame it pushes; a machine built bare has no program yet.
+        self._top_length = 0
+
+    @classmethod
+    def of(cls, code: str, io: IO, limit: int = 1_000_000) -> _Machine:
+        """Build a machine running ``code`` as its top-level frame.
+
+        The constructor takes no program -- a machine is a shared stack that
+        frames run against -- so validating the alphabet and pushing the
+        first frame had to happen in the caller.  ``run`` and the VM adapter
+        each carried their own copy of both, which is the shape that lets
+        the two drift.
+        """
+        if any(c not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" for c in code):
+            raise ValueError(
+                "Grapheme programs may only contain uppercase Latin letters"
+            )
+        machine = cls(io, limit)
+        machine.frames.append(_Frame(code, 0))
+        machine._top_length = len(code)
+        return machine
 
     @property
     def halted(self) -> bool:
         return not self.frames
+
+    # The VM's language-shaped view: a stack language whose call frames each
+    # carry their own cursor, and with no addressable cells.
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        """Each active frame's pc, root-to-leaf.
+
+        Every call frame (``G``/``I``/``Q``/``Z`` push one) contributes its
+        ``pc``, so this grows and shrinks with recursion depth instead of
+        folding every frame into the active one's position.  A breakpoint on
+        a specific position is therefore depth-sensitive: ``(5,)`` matches
+        only a single top-level frame at pc 5, not pc 5 one call deeper
+        (``(2, 5)``).
+
+        A frame is only ever popped once its own pc reaches the end of its
+        code, so no frames at all means the top-level one finished at the
+        end of the program -- which is what is reported then.
+        """
+        if self.frames:
+            return tuple(f.pc for f in self.frames)
+        return (self._top_length,)
+
+    @property
+    def memory(self) -> list[int]:
+        """No addressable cells; the store is the stack."""
+        return []
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
@@ -353,10 +403,7 @@ class _Machine:
 
 def run(code: str, io: IO, limit: int = 1_000_000) -> None:
     """Run a Grapheme program, halting after ``limit`` commands."""
-    if any(c not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" for c in code):
-        raise ValueError("Grapheme programs may only contain uppercase Latin letters")
-    machine = _Machine(io, limit)
-    machine.frames.append(_Frame(code, 0))
+    machine = _Machine.of(code, io, limit)
     while not machine.halted:
         machine.step()
 

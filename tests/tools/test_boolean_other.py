@@ -21,6 +21,7 @@ from tests.tools.boolean_runners import (
     run_fargo,
     run_flowchart,
     run_forbin_boolean,
+    run_inject,
     run_laserfuck,
     run_myscript,
     run_nevermind,
@@ -28,6 +29,70 @@ from tests.tools.boolean_runners import (
     run_taglate,
     run_ztoalc,
 )
+
+
+class TestInject:
+    """The decision tree of ``skipq`` guards over stored input blocks."""
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("01", 1),  # identity
+            ("10", 1),  # NOT
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1000000000000000", 4),  # AND4
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result.
+
+        ``send`` terminates every line it writes and is the only output
+        command, so the answer arrives with a newline after it.
+        """
+        program = boolean.inject(table)
+        for combo in range(2**n):
+            bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+            got = run_inject(program, bits)
+            assert got == table[combo] + "\n", f"inputs {bits}"
+
+    def test_every_two_input_table(self) -> None:
+        """All sixteen two-input tables build and compute their function."""
+        for table in ("".join(t) for t in itertools.product("01", repeat=4)):
+            program = boolean.inject(table)
+            for combo in range(4):
+                bits = [str((combo >> (1 - i)) & 1) for i in range(2)]
+                got = run_inject(program, bits)
+                assert got == table[combo] + "\n", f"{table} inputs {bits}"
+
+    def test_constant_subtrees_are_folded(self) -> None:
+        """A table ignoring its later inputs costs one test, not ``n``.
+
+        The fold is what the shape catalogue asserts of every tree
+        generator; measured here directly so a regression names itself.
+        """
+        one_dependency = len(boolean.inject("00001111"))
+        parity = len(boolean.inject("01101001"))
+        assert one_dependency < parity / 2
+
+    def test_reads_every_input_before_branching(self) -> None:
+        """The reads are hoisted, so every path consumes exactly ``n`` lines.
+
+        The boolean contract requires a constant read count; Inject gets it
+        by reading all the bits up front rather than at the tree's nodes.
+        """
+        program = boolean.inject("0001").splitlines()
+        reads = [i for i, line in enumerate(program) if line.startswith("readto")]
+        first_branch = next(
+            i for i, line in enumerate(program) if line.startswith("skipq")
+        )
+        assert len(reads) == 2, "one readto per input, and no more"
+        assert max(reads) < first_branch, "every read precedes every branch"
 
 
 class TestSuptiftam:
@@ -154,8 +219,6 @@ class TestCvnc:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("0", 0),  # no inputs at all
-            ("1", 0),
             ("01", 1),  # identity
             ("10", 1),  # NOT
             ("00", 1),  # constant zero
@@ -245,10 +308,11 @@ class TestCvnc:
         program = boolean.cvnc("0110")
         assert program.count("\u0279i") == program.count("fu")
 
-    def test_a_zero_input_table_reads_nothing(self) -> None:
-        """With no inputs there is nothing to branch on."""
-        assert "so" not in boolean.cvnc("1")
-        assert run_cvnc(boolean.cvnc("1"), []) == "1"
+    def test_a_zero_input_table_is_refused(self) -> None:
+        """A one-entry table is a constant, not a function of any input."""
+        for bit in ("0", "1"):
+            with pytest.raises(ValueError, match="at least one input"):
+                boolean.cvnc(bit)
 
     def test_the_hoisted_build_reorders_a_table_the_stream_order_cannot_fold(
         self,
@@ -790,10 +854,11 @@ class TestZtoalc:
                 bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
                 assert run_ztoalc(program, bits) == bit
 
-    def test_zero_input_table(self) -> None:
-        """A single-entry table is a constant with no inputs to read."""
+    def test_zero_input_table_is_refused(self) -> None:
+        """A single-entry table is a constant, not a function of any input."""
         for bit in ("0", "1"):
-            assert run_ztoalc(boolean.ztoalc_l_boolean(bit), []) == bit
+            with pytest.raises(ValueError, match="at least one input"):
+                boolean.ztoalc_l_boolean(bit)
 
     def test_table_past_the_anchor_table_is_refused(self) -> None:
         """A table needing more steps than any committed anchor is refused."""
@@ -1717,3 +1782,18 @@ class TestGeneratorEdgePaths:
 
         assert _six_five_const(5) == "5"
         assert _six_five_const(11) == "65"
+
+    def test_six_five_label_rejects_an_unspellable_operand(self) -> None:
+        """Operands are one character, so the alphabet runs out at 35.
+
+        ``0-9`` then ``A-Z`` is every character 6-5 reads as a number, which
+        caps a 7n/8n operand at 35; past that there is nothing to emit.
+        """
+        from esolangs.tools.boolean.six_five import (
+            _SIX_FIVE_MAX_LABEL,
+            _six_five_label,
+        )
+
+        assert _six_five_label(_SIX_FIVE_MAX_LABEL) == "Z"
+        with pytest.raises(ValueError, match="no operand character for 36"):
+            _six_five_label(_SIX_FIVE_MAX_LABEL + 1)

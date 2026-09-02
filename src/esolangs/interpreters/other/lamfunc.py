@@ -197,6 +197,24 @@ class _Machine:
         """Whether the top-level cursor has run off the call sequence."""
         return self.ind >= len(self.main) and not self.frames
 
+    # The VM's language-shaped view: Prefix-call evaluator; ip is the top-level token
+    # cursor.
+
+    @property
+    def ip(self) -> int:
+        """The current instruction position."""
+        return self.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return [v for v in self.vars.values() if type(v) is int]
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
 

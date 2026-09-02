@@ -27,6 +27,17 @@ class TestArithmetic:
     def test_counted_command(self) -> None:
         assert run_program("++^.") == "2"
 
+    def test_an_explicit_zero_count_still_adjusts_by_one(self) -> None:
+        """``0+`` parses to a count of 0, which falls back to 1.
+
+        Every other program spells its counts as a run or a positive
+        number, so the ``or 1`` fallback was only ever reached through the
+        bare ``+`` -- where the count is already 1 and the fallback is
+        invisible.  A literal ``0`` is the one spelling that exercises it.
+        """
+        assert run_program("0+^.") == "1"
+        assert run_program("0-^.") == "-1"
+
 
 class TestInput:
     def test_read_digit(self) -> None:
@@ -36,9 +47,23 @@ class TestInput:
         # the spec's adder: v+ reads a digit and adds it
         assert run_program("v+v+^.", "4\n5\n") == "9"
 
+    def test_subtract_input(self) -> None:
+        # 'v-' reads a digit and subtracts it, the mirror of 'v+'
+        assert run_program("9+v-^.", "4\n") == "5"
+
     def test_input_eof(self) -> None:
         with pytest.raises(EOFError):
             run_program("v.", "")
+
+    def test_an_empty_line_reads_as_zero(self) -> None:
+        """A line the user ended immediately holds no digit, so it is 0.
+
+        Running out of input raises, so the suite only ever reached the
+        two ends of the read -- a digit, or EOF -- and never the line that
+        is present but empty, which is where the fallback lives.
+        """
+        assert run_program("v^.", "\n") == "0"
+        assert run_program("5+v+^.", "\n") == "5"
 
 
 class TestMultiply:
@@ -78,6 +103,25 @@ class TestMemory:
         # '<' at cell 0 inserts a fresh zero cell to the left
         assert run_program("<^.") == "0"
 
+    def test_the_inserted_cell_is_left_of_the_old_one(self) -> None:
+        """``<`` at cell 0 puts the new cell *before* the old contents.
+
+        On a blank tape every cell is 0, so which side the insert lands on
+        makes no difference to what prints.  Writing a value first tells
+        the two apart: the pointer must end on the fresh zero, with the
+        old value one step to its right.
+        """
+        assert run_program("5+<^.") == "0"
+        assert run_program("5+<>^.") == "5"
+
+    def test_the_hold_cell_starts_at_zero(self) -> None:
+        """``&`` before any ``#`` adds nothing.
+
+        Every other program copies into the hold cell before adding from
+        it, so its initial value was never read.
+        """
+        assert run_program("&^.") == "0"
+
 
 class TestControlFlow:
     def test_loop_adder(self) -> None:
@@ -100,6 +144,16 @@ class TestControlFlow:
         # v+>v+1@^.1$#<&; : read a, b; subroutine 1 adds hold to a; print
         assert run_program("v+>v+1@^.1$#<&;", "3\n4\n") == "7"
 
+    def test_a_return_ends_only_itself(self) -> None:
+        """``;`` consumes one character, leaving the next definition whole.
+
+        Every ``;`` the suite runs is the last character of its program,
+        so a ``;`` that swallowed what follows it would look identical.
+        Two subroutines in a row put a definition in that position.
+        """
+        # call 1 then 2; subroutine 1 adds 5, subroutine 2 adds 3
+        assert run_program("1@2@^.1$5+;2$3+;") == "8"
+
 
 class TestParsing:
     def test_bare_number_is_ignored(self) -> None:
@@ -108,6 +162,28 @@ class TestParsing:
 
     def test_unknown_characters_are_ignored(self) -> None:
         assert run_program("x^.") == "0"
+
+    def test_an_uppercase_letter_is_no_more_a_command_than_a_lowercase_one(
+        self,
+    ) -> None:
+        """``X`` is ignored, as every unrecognized character is.
+
+        The alphabets the parser tests against are written as strings, and
+        a string only ever contained the operators themselves -- so a
+        character that is *nearly* one of them, differing only in case,
+        never came through to show that the sets are exact.
+        """
+        assert run_program("X^.") == "0"
+        assert run_program("1X^.") == "0"
+
+    def test_an_ignored_character_after_the_first_still_advances(self) -> None:
+        """The parser steps past an unknown character, wherever it sits.
+
+        Every program that skips one puts it at the very start, where
+        advancing to index 1 and *assigning* index 1 agree; a second
+        command in front of it is what separates them.
+        """
+        assert run_program("^x^.") == "00"
 
     def test_bare_operator_requires_a_number(self) -> None:
         with pytest.raises(ValueError, match="requires a number"):
@@ -164,6 +240,16 @@ class TestErrors:
     def test_return_without_a_call(self) -> None:
         with pytest.raises(HaltError, match="no active subroutine"):
             run_program(";^")
+
+    def test_the_return_error_reads_in_full(self) -> None:
+        """The whole message, not the fragment the other tests match on.
+
+        ``match=`` is a substring search, so every assertion above passes
+        on a message padded or reworded around the phrase it looks for.
+        """
+        with pytest.raises(HaltError) as caught:
+            run_program(";^")
+        assert str(caught.value) == "; with no active subroutine call"
 
 
 class TestMachine:

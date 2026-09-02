@@ -1120,3 +1120,440 @@ class TestContainerCompiler:
             lines.append(f"+1 T>={i % 5}")
         out = self.comp("\n".join(lines))
         assert "add  t6, s1, t6" in out
+
+
+class TestForbinDiscardTarget:
+    """``_`` as a binding target, which the compiler emits no bind for.
+
+    Forbin's ``_`` is an ordinary identifier to the lexer, so every place
+    that binds a name has to special-case it.  There are three -- a
+    multi-target assignment, a range loop's counter, and an iteration row --
+    and each drops the store while still evaluating the value, matching the
+    interpreter.  The programs are compiled, not assembled, so these need no
+    cross-compiler.
+    """
+
+    @staticmethod
+    def comp(code: str) -> str:
+        mod = importlib.import_module("esolangs.compilers.forbin")
+        return str(mod.comp(code))
+
+    def test_multi_target_assignment_skips_the_discard(self) -> None:
+        """``x,_ = 1,0`` binds ``x`` and drops the second store."""
+        out = self.comp("main {\n  x,_ = 1,0;\n}\n")
+        assert ".global _start" in out
+        # one bind for x, none for the discard: the second value is still
+        # evaluated, so the difference is the store, not the expression.
+        assert (
+            out.count("sd   a0, ")
+            == self.comp("main {\n  x,y = 1,0;\n}\n").count("sd   a0, ") - 1
+        )
+
+    def test_range_loop_counter_may_be_discarded(self) -> None:
+        """``for _:0..1`` runs its body without binding the counter."""
+        out = self.comp("main {\n  for _:0..1 {\n    out 0,1,0,0,0,0,0,1;\n  }\n}\n")
+        named = self.comp("main {\n  for i:0..1 {\n    out 0,1,0,0,0,0,0,1;\n  }\n}\n")
+        assert ".global _start" in out
+        assert len(out) < len(named)  # the bind is what the named form adds
+
+    def test_iteration_row_may_discard_a_column(self) -> None:
+        """``for (_,x):((0,1))`` binds only the column that is named."""
+        out = self.comp(
+            "main {\n  for (_,x):((0,1)) {\n    out 0,1,0,0,0,0,0,1;\n  }\n}\n"
+        )
+        named = self.comp(
+            "main {\n  for (w,x):((0,1)) {\n    out 0,1,0,0,0,0,0,1;\n  }\n}\n"
+        )
+        assert ".global _start" in out
+        assert len(out) < len(named)
+
+
+class TestCVNCCompiler:
+    """CV(N)(C) lowers a runtime-built function and two computed gotos.
+
+    Excluded from the ``COMPILERS`` sweep above because that sweep compiles
+    the literal text ``"Hello"``, which is not a syllable string -- the
+    shared tokenizer rejects it on ``H``.
+    """
+
+    @staticmethod
+    def comp(code: str) -> str:
+        mod = importlib.import_module("esolangs.compilers.cvnc")
+        return str(mod.comp(code))
+
+    def test_produces_assembly(self) -> None:
+        assert ".global _start" in self.comp("cici")
+
+    def test_relaxation_is_disabled(self) -> None:
+        """``la`` must not relax to a gp-relative access.
+
+        Nothing initializes ``gp`` under ``-nostdlib``, so a relaxed ``la``
+        yields a garbage table pointer and every computed goto would read
+        outside mapped memory.
+        """
+        assert ".option norelax" in self.comp("cici")
+
+    def test_empty_program_is_rejected(self) -> None:
+        """An empty source is malformed, as it is for the interpreter."""
+        with pytest.raises(ValueError, match="program is empty"):
+            self.comp("")
+
+    def test_non_symbol_is_rejected(self) -> None:
+        """A character outside the command set makes the program malformed."""
+        with pytest.raises(ValueError, match=r"not a CV\(N\)\(C\) symbol"):
+            self.comp("ciZ")
+
+    def test_unsyllabifiable_source_is_rejected(self) -> None:
+        """The wiki's own counterexample: a nasal with no vowel of its own."""
+        with pytest.raises(ValueError, match="syllable must start with a consonant"):
+            self.comp("susŋ")
+
+    def test_unbalanced_loop_is_rejected(self) -> None:
+        """A ``ʋ`` with no opener is malformed, from the shared matcher."""
+        with pytest.raises(ValueError, match="loop end with no matching start"):
+            self.comp("ʋi")
+
+    def test_every_token_is_a_jump_target(self) -> None:
+        """``ɹ``/``j`` can land anywhere, so each token gets its own label."""
+        out = self.comp("cici")
+        assert all(f".t{i}:" in out for i in range(4))
+
+    def test_ring_command_spans_two_offsets(self) -> None:
+        """``ɰ̊`` is two codepoints and one command, so both offsets map to it.
+
+        ``ɹ`` counts characters, so landing on the ring must resume at the
+        ``ɰ̊`` itself -- there is no command in the middle of one.
+        """
+        out = self.comp("ɰ̊iʋi")
+        table = out.split("cvnc_offsets:\n")[1].split("cvnc_starts:")[0]
+        assert table.split()[:4] == [".dword", "0", ".dword", "0"]
+
+    def test_ascii_g_folds_to_the_script_form(self) -> None:
+        """The page's Hello, world! spells the multiplication plosive ``g``."""
+        assert self.comp("giɡi") == self.comp("ɡiɡi")
+
+    def test_loop_opener_jumps_past_its_end(self) -> None:
+        """``ɰ̊`` clears the ``ʋ`` rather than landing on it.
+
+        Landing *on* the loop end would run it and bounce straight back to
+        the test that just failed, which is an infinite loop for the very
+        case the test escapes.
+        """
+        out = self.comp("ɰ̊iʋi")
+        assert "beqz s1, .t3" in out  # past the ``ʋ`` at token 2
+
+    def test_loop_end_jumps_onto_its_opener(self) -> None:
+        """``ʋ`` returns *to* the opener, which re-tests the condition."""
+        assert "j    .t0" in self.comp("ɰ̊iʋi")
+
+    def test_decrement_floors_at_zero(self) -> None:
+        """The accumulator is unsigned, so ``ə`` cannot go below zero."""
+        assert "beqz s1, 1f" in self.comp("cə")
+
+    def test_literal_symbol_carries_a_value(self) -> None:
+        """``p``/``k`` append a popped *number*, so an entry is a tagged pair.
+
+        The other seven symbols are fixed, but a popped literal is an
+        arbitrary 64-bit value, which is why the array is two words wide.
+        """
+        out = self.comp("pi")
+        assert "call pop_front" in out
+        assert f"li   a0, {7}" in out  # the literal tag
+
+    def test_apply_is_a_runtime_evaluator(self) -> None:
+        """``u`` parses the array at run time, not at compile time."""
+        out = self.comp("cu")
+        assert "call apply" in out
+        assert "expr:" in out
+        assert "term:" in out
+        assert "factor:" in out
+
+    def test_division_by_zero_halts(self) -> None:
+        """A zero divisor is an invalid *operation*, not a malformed function."""
+        assert "beqz a1, .halt" in self.comp("cu")
+
+    def test_reader_is_line_faithful(self) -> None:
+        """Both reads take a whole line, matching the interpreter's refill.
+
+        ``s`` goes through ``IO.input_str`` and ``ʒ`` through
+        ``IO.input_char``, which reads a line and returns its first
+        character -- so a byte reader would diverge on identical stdin.
+        """
+        assert "call readline" in self.comp("soʒo")
+
+    def test_arithmetic_is_software(self) -> None:
+        """``rv64i`` has no multiply or divide, so both are emitted."""
+        out = self.comp("cæco")
+        assert "mul64:" in out
+        assert "divu64:" in out
+        assert "isqrt64:" in out
+
+    def test_number_parse_is_ascii_only(self) -> None:
+        """``s`` accepts the ASCII forms, and the narrowing is deliberate.
+
+        ``_as_int`` is Python's ``int()`` after ``str.strip()``, both of
+        which are Unicode-aware: an underscore is legal between digits and
+        ``strip`` removes any ``str.isspace()`` character.  The assembly
+        strips only the ASCII space/tab family and accepts only ASCII
+        digits, so those two forms read as 0 -- a stated domain rather than
+        a silent divergence, which is what this pins.
+        """
+        out = self.comp("so")
+        assert "li   t1, 48\n" in out  # the ASCII digit floor
+        assert "li   t1, 58\n" in out  # and its ceiling
+        assert "li   t1, 45\n" in out  # a leading '-', which floors at 0
+        assert "li   t1, 43\n" in out  # a leading '+'
+
+    def test_computed_gotos_index_their_own_table(self) -> None:
+        """``ɹ`` counts codepoints and ``j`` counts syllables, so they differ.
+
+        Both are runtime indices, so each bounds-checks against its own
+        length and reads its own table; a shared one would make ``j`` land
+        mid-syllable on any program with a ``ɰ̊`` in it.
+        """
+        assert "la   t1, cvnc_offsets" in self.comp("ɹi")
+        assert "la   t1, cvnc_starts" in self.comp("ji")
+
+    def test_goto_past_the_end_halts(self) -> None:
+        """An index past the table halts, which running off the end does."""
+        assert "bgeu s1, t0, .halt" in self.comp("ɹi")
+
+    def test_while_nonzero_is_the_opposite_test(self) -> None:
+        """``ɰ`` skips the body when the accumulator is *non*zero."""
+        assert "bnez s1, .t3" in self.comp("ɰiʋi")
+
+    def test_deque_pushes_both_ends(self) -> None:
+        """``m``/``n`` push to the front and back, ``ŋ``/``ɲ`` pop them.
+
+        The buffer is circular, so a front push is O(1) rather than a
+        shift; all four go through the same indexed helpers.
+        """
+        assert "call push_front" in self.comp("cim")
+        assert "call push_back" in self.comp("cin")
+        assert "call pop_front" in self.comp("coŋ")
+        assert "call pop_back" in self.comp("coɲ")
+
+    def test_every_command_compiles(self) -> None:
+        """Each of the language's commands emits something.
+
+        A per-command sweep rather than a case per branch: the emit
+        functions dispatch on the command, so this reaches every arm of all
+        five of them.  The alphabet is spelled out rather than imported
+        from the interpreter, so a command that gains a lowering here but
+        no interpretation -- or the reverse -- shows up as a failure rather
+        than as two files agreeing with each other.
+        """
+        # Consonants that stand alone, each with an inert vowel.
+        for onset in "θfsʒpkdbtɡqʔʡcɹj":
+            assert ".global _start" in self.comp(onset + "i")
+        # A loop opener and the loop end only parse as a matched pair.
+        for opener in ["ɰ̊", "ɰ"]:
+            assert ".global _start" in self.comp(opener + "iʋi")
+        for vowel in "iəæou":
+            assert ".global _start" in self.comp("c" + vowel)
+        for nasal in "mnŋɲ":
+            assert ".global _start" in self.comp("ci" + nasal)
+
+
+class TestMyScriptCompiler:
+    """MyScript lowers closures, a lexical frame chain, and tagged values.
+
+    Excluded from the ``COMPILERS`` sweep above because that sweep compiles
+    the literal text ``"Hello"``, which MyScript parses as a bare variable
+    read of an undeclared name rather than as a program with output.
+    """
+
+    @staticmethod
+    def comp(code: str) -> str:
+        mod = importlib.import_module("esolangs.compilers.myscript")
+        return str(mod.comp(code))
+
+    def test_produces_assembly(self) -> None:
+        assert ".global _start" in self.comp('say "hi"')
+
+    def test_relaxation_is_disabled(self) -> None:
+        """``la`` must not relax to a gp-relative access.
+
+        Nothing initializes ``gp`` under ``-nostdlib``, so a relaxed ``la``
+        yields a garbage arena pointer and every frame would be written
+        outside mapped memory.
+        """
+        assert ".option norelax" in self.comp('say "hi"')
+
+    def test_string_literal_is_a_length_prefixed_record(self) -> None:
+        """A literal is emitted as its length then its bytes, not as text."""
+        out = self.comp('say "hi"')
+        assert "    .dword 2\n    .byte 104\n    .byte 105\n" in out
+
+    def test_float_literal_is_rejected(self) -> None:
+        """Floats are outside the value domain, so a literal cannot compile."""
+        with pytest.raises(ValueError, match="float literals"):
+            self.comp("say 1.5")
+
+    def test_malformed_var_is_rejected(self) -> None:
+        """A ``var`` without ``is`` is malformed, as it is for the interpreter."""
+        with pytest.raises(ValueError, match="malformed var declaration"):
+            self.comp("var x 5")
+
+    def test_bare_is_is_rejected(self) -> None:
+        """``is`` at statement position is the interpreter's malformed form."""
+        with pytest.raises(ValueError, match="malformed statement"):
+            self.comp("is 5")
+
+    def test_malformed_check_case_is_rejected(self) -> None:
+        """A ``check`` case that is neither ``if`` nor ``else`` is malformed."""
+        with pytest.raises(ValueError, match="malformed check case"):
+            self.comp('check 1?\n    when 1,\n        say "a"')
+
+    def test_short_expression_is_rejected(self) -> None:
+        """A builtin whose operands run out cannot compile."""
+        with pytest.raises(ValueError, match="expression ended"):
+            self.comp("say add 1")
+
+    def test_conflicting_arities_are_rejected(self) -> None:
+        """One name bound to two arities has no static call shape.
+
+        ``_parse_expr`` consumes as many arguments as the value in the
+        variable has parameters, so a name meaning both is a program this
+        compiler's agreement domain excludes.
+        """
+        with pytest.raises(ValueError, match="different arities"):
+            self.comp("var f is func a\n    return a\nvar f is func a b\n    return a")
+
+    def test_arity_is_scanned_before_emitting(self) -> None:
+        """A call textually above its declaration still compiles.
+
+        The interpreter resolves a callee at run time, by which point the
+        declaration has executed, so the arity pre-pass walks the whole
+        tree before any code is emitted.
+        """
+        out = self.comp("var g is func\n    say f 1\nvar f is func a\n    return a")
+        assert "call .invoke" in out
+
+    def test_each_func_literal_gets_a_body(self) -> None:
+        """Two ``func`` literals compile to two subroutines."""
+        out = self.comp("var f is func\n    say 1\nvar g is func\n    say 2")
+        assert ".fn0:" in out
+        assert ".fn1:" in out
+
+    def test_closure_is_built_at_the_declaration(self) -> None:
+        """A ``func`` binding allocates its record where it is declared.
+
+        The record captures the frame in effect, so a declaration inside a
+        loop mints a fresh closure per pass -- which is what lets two calls
+        of one factory return functions over separate frames.
+        """
+        assert "call .alloc_closure" in self.comp("var f is func\n    say 1")
+
+    def test_bare_read_emits_the_auto_call(self) -> None:
+        """A read of a name with no ``func`` binding tests for a nullary closure.
+
+        ``_parse_expr`` calls a zero-parameter value rather than yielding
+        it, so a plain load would diverge.
+        """
+        assert "call .autocall" in self.comp("var x is 1\nsay x")
+
+    def test_a_func_bound_name_calls_directly(self) -> None:
+        """A name with a known arity dispatches without the auto-call test."""
+        out = self.comp("var f is func a\n    return a\nsay f 1")
+        assert "call .invoke" in out
+
+    def test_while_re_evaluates_its_condition(self) -> None:
+        """The loop tests truthiness at the top of every pass."""
+        out = self.comp("var i is 0\nwhile less i 3,\n    i is add i 1")
+        assert "call .truthy" in out
+
+    def test_check_compares_with_the_equals_builtin(self) -> None:
+        """A case matches on the same equality ``equals`` uses."""
+        out = self.comp('check 1?\n    if 1,\n        say "a"')
+        assert "call .b_equals" in out
+
+    def test_if_outside_a_check_aborts(self) -> None:
+        """A stray ``if`` is the interpreter's ``if/else outside a check`` halt."""
+        assert "j    .abort\n" in self.comp('if 1,\n    say "a"')
+
+    def test_assignment_walks_outward(self) -> None:
+        """``x is v`` rebinds where the name lives rather than shadowing it."""
+        out = self.comp("var x is 1\nx is 2")
+        assert out.count("sd   a0, 8(t2)") >= 1
+
+    def test_every_builtin_compiles(self) -> None:
+        """Each builtin emits its runtime call.
+
+        A per-builtin sweep rather than a case per arm: ``emit_builtin``
+        dispatches on the name, so this reaches every one the interpreter's
+        ``_ARITY`` table names.  ``ask`` is separate, being answered before
+        the arity lookup.
+        """
+        for name, args in [
+            ("add", "1 2"),
+            ("subtract", "1 2"),
+            ("multiply", "1 2"),
+            ("divide", "1 2"),
+            ("equals", "1 2"),
+            ("less", "1 2"),
+            ("not", "1"),
+            ("concat", '"a" "b"'),
+            ("arrlen", "[ 1 ]"),
+            ("itemat", "[ 1 ] 0"),
+            ("say", "1"),
+        ]:
+            assert f"call .b_{name}" in self.comp(f"say {name} {args}")
+        assert "call .do_ask" in self.comp("var x is ask")
+
+    def test_boolean_literals_compile_to_their_tag(self) -> None:
+        """``yes``/``no`` are a tag of their own, not the integers 1 and 0.
+
+        The interpreter compares them equal to those integers but prints
+        them as words, so the tag is what keeps ``say yes`` from writing
+        ``1``.
+        """
+        assert f"li   a0, {(1 << 3) | 1}\n" in self.comp("say yes")
+        assert f"li   a0, {(0 << 3) | 1}\n" in self.comp("say no")
+
+    def test_array_elements_are_comma_separated(self) -> None:
+        """A comma between elements is consumed, not read as a value."""
+        out = self.comp("var a is [ 1, 2, 3 ]")
+        assert "li   a0, 3\n    call .alloc_arr" in out
+
+    def test_bare_return_yields_none(self) -> None:
+        """``return`` with no value returns ``none``, as ``_ReturnError`` does."""
+        out = self.comp("var f is func\n    return")
+        assert f"li   a0, {(0 << 3) | 2}\n" in out
+
+    def test_check_else_arm_is_emitted(self) -> None:
+        """An ``else`` case runs when no ``if`` matched."""
+        out = self.comp(
+            'check 1?\n    if 2,\n        say "a"\n    else,\n        say "b"'
+        )
+        assert out.count("call .b_say") >= 2
+
+    def test_distinct_arrays_abort_rather_than_compare_by_address(self) -> None:
+        """``equals`` on two arrays cannot answer by identity.
+
+        Python's ``==`` compares them elementwise, so ``equals [ 1 ] [ 1 ]``
+        is true; two arena addresses would answer ``no``.  Aborting keeps
+        the compiled program from answering where it would answer wrongly.
+        """
+        out = self.comp("say equals [ 1 ] [ 1 ]")
+        assert ".eq_ident_true:" in out
+        # the ARR tag is tested on both operands before the `no` answer
+        assert out.count(f"    li   t1, {4}\n    beq  t0, t1, .abort\n") >= 1
+
+    def test_an_arity_one_closure_read_plainly_is_rejected(self) -> None:
+        """A plain read of a name holding a one-parameter closure cannot compile.
+
+        The interpreter consumes that many argument expressions after the
+        read, which runs the token list out and raises the same
+        ``ValueError`` -- so this is the eager/lazy timing difference, not
+        a value the compiler mishandles.
+        """
+        with pytest.raises(ValueError, match="expression ended"):
+            self.comp(
+                "var mk is func\n"
+                "    var g is func a\n"
+                "        return add a 1\n"
+                "    return g\n"
+                "var h is mk\n"
+                "say h 5"
+            )

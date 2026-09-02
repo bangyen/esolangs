@@ -8,6 +8,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.basicfuck import run
 from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.raises import raises_message
 
 
 def run_program(code: str, stdin: str = "") -> str:
@@ -108,6 +109,41 @@ class TestBasicfuck:
             run_program(H + "read a b ;")  # missing the -> arrow
         with pytest.raises(ValueError, match="syntax"):
             run_program(H + "if (a { a += 1; }")  # missing the closing )
+
+    def test_every_rejection_message_is_exact(self) -> None:
+        """Each load error is pinned whole, not by a fragment of itself.
+
+        ``match=`` is a substring search, so ``"identifier"`` also matches
+        ``"Missing/Invalid identifiers."`` -- the two checks above cannot
+        tell each other apart, and every message was free to be reworded.
+        Two more rejections had no test at all: an unrecognised overflow
+        mode falls in with the malformed directives, and a zero-cell tape
+        is refused for its size.
+        """
+        for code, message in (
+            ("not a directive\n#allocate a\n", "Missing/Invalid directives."),
+            (
+                "#basicfuck t=1 r=0~255 o=bad\n#allocate a\n",
+                "Missing/Invalid directives.",
+            ),
+            ("#basicfuck t=1 r=0~255\n#allocate a\n", "Missing overflow directive."),
+            (
+                "#basicfuck t=1 r=0~255 o=nearest\nbad alloc\n",
+                "Missing/Invalid identifiers.",
+            ),
+            (
+                "#basicfuck t=1 r=0~255 o=nearest\n#allocate write\n",
+                "Invalid identifier.",
+            ),
+            (
+                "#basicfuck t=0 r=0~255 o=nearest\n#allocate a\n",
+                "Insufficient memory.",
+            ),
+            (H + "z += 1;", "Identifier is undefined."),
+            (H + "a += ;", "Invalid syntax."),
+        ):
+            with raises_message(ValueError, message, code):
+                run_program(code)
 
     def test_invalid_token(self) -> None:
         with pytest.raises(ValueError, match="token"):

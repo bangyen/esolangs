@@ -107,6 +107,24 @@ class _Machine:
         """Whether a negative LEAPFROG fired or the cursor reached the end."""
         return self._halted_by_command or self.ind >= len(self.tokens)
 
+    # The VM's language-shaped view: 23 arrays + pointer; memory is the current array,
+    # stack all 23.
+
+    @property
+    def ip(self) -> int:
+        """The current instruction position."""
+        return self.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return list(self.lst[self.ptr])
+
+    @property
+    def stack(self) -> list[object]:
+        """The stack."""
+        return [row for arr in self.lst for row in arr]
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (

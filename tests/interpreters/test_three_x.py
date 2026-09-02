@@ -6,6 +6,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.three_x import run
 from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.raises import raises_message
 
 
 def run_program(code: str, stdin: str = "") -> str:
@@ -80,6 +81,33 @@ class Test3x:
         with pytest.raises(ValueError, match="integer or a fraction"):
             run_program("?", "1/0")
 
+    def test_every_error_message_is_exact(self) -> None:
+        """All four messages are pinned whole, from each place they are raised.
+
+        The suite either checks the exception type alone or matches a
+        fragment of the text, and ``match=`` is a substring search -- so
+        the wording was free to change, and a message could be dropped
+        entirely without a test noticing.  ``empty stack`` is raised from
+        four separate places and the two bracket errors from one each, so
+        this walks a program to every one of them.
+        """
+        for code, stdin, message in (
+            ("!", "", "empty stack"),  # through _pop
+            ("x", "", "empty stack"),  # the arithmetic's first pop
+            ("(", "", "empty stack"),  # the loop head's own guard
+            (")", "", "empty stack"),  # and the loop tail's
+            ("333x33x!", "", "division by zero"),
+            ("333x(", "", "unmatched ("),
+            ("3)", "", "unmatched )"),
+        ):
+            with pytest.raises(HaltError) as caught:
+                run_program(code, stdin)
+            assert str(caught.value) == message, code
+
+        for code, stdin in (("?", "abc"), ("?", "1/0")):
+            with raises_message(ValueError, "input must be an integer or a fraction"):
+                run_program(code, stdin)
+
     def test_loop_jumps_back_on_nonzero_top(self) -> None:
         # pass 1 ends with a 3 on top (jump back), pass 2 with a 0 (exit)
         assert run_program("333(33x#)!") == "0"
@@ -119,8 +147,8 @@ class TestStepMachine:
         machine = _Machine("?)", ScriptedIO("0\n"))
         while not machine.halted:
             machine.step()
-        assert machine.stack == [0], "the zero is still there, unlooped"
-        assert machine.jumps == []
+        assert machine.stack == (0,), "the zero is still there, unlooped"
+        assert machine.jumps == ()
 
         def drain(machine: _Machine) -> None:
             while not machine.halted:
@@ -143,6 +171,39 @@ class TestStepMachine:
             machine.step()
         assert machine.io.getvalue() == ""
 
+    def test_a_literal_ends_at_its_own_closer(self) -> None:
+        """Each ``[`` takes the *nearest* following ``]``, and may be empty.
+
+        One literal in a program cannot show which closer is chosen, and a
+        non-empty one cannot show where the search starts.  Two literals
+        settle the first: taking the last ``]`` instead would swallow the
+        text between them.  An empty one settles the second, since a search
+        beginning a character later steps straight over its closer and
+        finds nothing.
+        """
+        assert run_program("[a]b[c]") == "ac"
+        assert run_program("[hi][yo]") == "hiyo"
+        assert run_program("[]") == ""
+        # An empty literal alone prints nothing whether its closer is found
+        # or missed, so it needs a real literal behind it: a search starting
+        # a character late runs past this closer into the next pair.
+        assert run_program("[][a]") == "a"
+
+    def test_printing_uses_the_fraction_form_only_when_it_has_to(self) -> None:
+        """A whole number prints bare; anything else prints as a fraction.
+
+        Every printing test uses a value that is already whole, so the
+        branch deciding between the two forms was only ever taken one way.
+        A half prints as ``1/2``, and 4/2 reduces to a whole 2 -- which
+        pins the test on the reduced denominator rather than the input's.
+        """
+        assert run_program("?!", "1/2") == "1/2"
+        assert run_program("?!", "4/2") == "2"
+
+    def test_a_closed_literal_prints_its_contents(self) -> None:
+        """The companion to the unterminated case: a closed ``[`` prints."""
+        from esolangs.interpreters.stack_based.three_x import _Machine
+
         closed = _Machine("[abc]", ScriptedIO())
         while not closed.halted:
             closed.step()
@@ -154,7 +215,7 @@ class TestStepMachine:
         machine = _Machine("", ScriptedIO())
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
-        assert machine.stack == []
+        assert machine.stack == ()
 
 
 def _machine(code: object) -> object:

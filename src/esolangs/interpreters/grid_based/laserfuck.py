@@ -18,17 +18,36 @@ heading through :func:`run`.
 Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
-import secrets
 import sys
 
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.randomness import Randomness, draw
 
 
 class _Machine:
     """A LaserFuck run: the grid, the live lasers, and the tape."""
 
-    def __init__(self, code: list[str], io: IO, heading: int | None = None) -> None:
+    #: The seed a reproducible run starts from.  It belongs to the
+    #: language, not to whoever is stepping it: 2 draws the initial
+    #: heading 0, up, which is the direction this language's examples
+    #: are written for.
+    reproducible_seed = 2
+
+    def __init__(
+        self,
+        code: list[str],
+        io: IO,
+        heading: int | None = None,
+        rng: Randomness | None = None,
+    ) -> None:
+        """Start a laser at ``o``, heading ``heading`` if one is given.
+
+        ``heading`` pins only the *initial* direction.  ``*`` splits a beam
+        with a fresh draw every time it runs, so reproducible stepping
+        needs ``rng`` as well; ``None`` draws for real.
+        """
         self.io = io
+        self._rng = rng
         text = [list(ln) for ln in code]
         size = max(len(ln) for ln in text) if text else 0
         self.text = [ln + [" "] * (size - len(ln)) for ln in text]
@@ -40,6 +59,7 @@ class _Machine:
         self.ind = 0
         self.pos = (0, 0, 0)
         self._second_start = False
+        self._dumped = False
 
         self.lsrs: list[list[int]] = []
         for row, line in enumerate(self.text):
@@ -50,13 +70,32 @@ class _Machine:
                         return
                     # The random heading is part of LaserFuck's spec, not a
                     # secret.
-                    d = heading if heading is not None else secrets.randbelow(4)
+                    d = heading if heading is not None else draw(rng, 4)
                     self.lsrs.append([row, col, d])
                     self.pos = (row, col, d)
 
     @property
     def halted(self) -> bool:
         return self._second_start or not self.lsrs
+
+    # The VM's language-shaped view.  Dumping the tape once the last laser
+    # dies is *not* here -- that is what ``run()`` does after the final
+    # step, so the VM's adapter drives it rather than ``step()``.
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        """The active laser's ``(row, col, heading)``."""
+        return self.pos
+
+    @property
+    def memory(self) -> list[int]:
+        """The tape's cell values, without their paint flags."""
+        return [v for v, _ in self.tape]
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
@@ -70,8 +109,23 @@ class _Machine:
         )
 
     def step(self) -> None:
-        """Move the active laser one step and execute the command it lands on."""
+        """Move the active laser one step, dumping the tape once halted.
+
+        The dump belongs to the step *after* the halt, as Minsky Swap and
+        RAM0 already spell it, so that stepping a machine to a standstill
+        writes what ``run`` writes.  Keeping it in ``run`` instead left the
+        VM adapter to replicate it, and the two had drifted: the adapter
+        dumped on ``not lsrs`` where ``run`` dumps on ``halted``, so a
+        program stopped by the second start marker printed its tape under
+        ``run`` and nothing at all under the VM.  Guarding on ``halted``
+        covers both ways of stopping, and ``lsrs`` is the wrong test
+        besides -- a beam splitter appends to it, so it grows as well as
+        shrinks.
+        """
         if self.halted:
+            if not self._dumped:
+                self.dump()
+                self._dumped = True
             return
         row, col, d = self.lsrs[self.ind]
 
@@ -120,7 +174,7 @@ class _Machine:
                 self.ind %= len(self.lsrs)
             return
         elif op == "*":
-            self.lsrs.append([row, col, 2 * (1 - d // 2) + secrets.randbelow(2)])
+            self.lsrs.append([row, col, 2 * (1 - d // 2) + draw(self._rng, 2)])
         elif op in "_(":
             if d < 2 and (self.tape[self.ptr][0] != 0 or op == "_"):
                 d = 1 - d
@@ -178,7 +232,7 @@ def run(code: list[str], io: IO, heading: int | None = None) -> None:
     machine = _Machine(code, io, heading)
     while not machine.halted:
         machine.step()
-    machine.dump()
+    machine.step()  # the post-halt step dumps the tape
 
 
 if __name__ == "__main__":

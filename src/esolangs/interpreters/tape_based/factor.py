@@ -64,6 +64,24 @@ class _Machine:
     def halted(self) -> bool:
         return self.bf.halted
 
+    # The VM's language-shaped view: Decoded brainfuck machine; ip the cursor, memory
+    # the tape.
+
+    @property
+    def ip(self) -> int:
+        """The current instruction position."""
+        return self.bf.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return list(self.bf.tape)
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def step(self) -> None:
         self.bf.step()
 

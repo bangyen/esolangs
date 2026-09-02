@@ -22,9 +22,6 @@ assessed-and-rejected ledger in `docs/limitations.md`.
 - **Packlang** — Turing-complete: packages with the built-in IO package
   (`charGet`/`charPut`), `If`/`While`, XOR/`!`; the truth-machine example
   branches on `input ^ 48`.
-- **Inject** — Turing-complete: label blocks, `readto`/`send` for line I/O,
-  `skipq`/`skipif`/`skip` for control flow; the truth-machine example
-  compares the input block against a `0` block.
 - **Algebraic Programming Language** — Turing-complete: executed lines print
   their result and their variables read user input; `&`/`|` short-circuit
   with `IF(x, c) = x & c()` and a `WHILE` function give the generator its tree.
@@ -106,29 +103,47 @@ generator exercised through a compile-then-fuzz differential) or **intrinsic
 value** (genuine lowering — control flow, calls, memory, dispatch — rather
 than per-command transliteration).
 
-Candidates in priority order.  Two facts constrain every entry: the target
-is **`rv64i`**, whose base integer ISA has no float and no hardware
+**The queue is empty.**  Two facts constrained the last candidates: the
+target is **`rv64i`**, whose base integer ISA has no float and no hardware
 multiply (forth already emits software `mul32`/`divmod32`, so integers are
 precedent and floats are not); and a differential is only worth the name
 when the generator *reads input*, since an `_embedded` generator substitutes
 its bits into a fixed template and replays the same program.
 
-- **MyScript** — the richest call graph left: first-class functions,
-  `return`, `while`/`check` blocks, and a `_reader` generator.  Scoping was
-  **probed and is not lexical** (a caller's local is visible inside a callee
-  that never received it), so like Forbin it needs no captured environments.
-  The bill is its *value domain*: `say` prints floats, strings, and arrays,
-  and on `rv64i` that means soft-float plus heap-managed strings and
-  growable arrays — a different league from Forbin's tagged 64-bit words.
-  Worth doing, but scope the value domain before starting.
-- **CV(N)(C)** — genuine dispatch, and the most unusual lowering available:
-  the program builds a *function* symbol by symbol and applies it on demand,
-  over an accumulator, a deque, and that function.  Unbounded unsigned
-  integers fit the bounded-agreement rule every compiler here shares
-  ([`docs/limitations.md`](limitations.md#compilers-are-bounded-agreement-not-total-over-unbounded-values)),
-  and it carries both a text and a boolean generator.  Its cost is the syllable grammar — validity is
-  CV(N)(C) structure, so the front end is a real parser rather than a
-  character dispatch.
+MyScript shipped (`src/esolangs/compilers/myscript.py`), the richest call
+graph the set covers: first-class functions, `return`, `while`/`check`
+blocks, and a `_reader` generator whose whole input space runs through the
+compiled code.  Two things this entry used to assert were **wrong, and the
+probes that corrected them are the reusable part**:
+
+- Scoping is **lexical, over live frames**, not dynamic.  The old probe
+  (a caller's local visible inside a callee) does not discriminate: it
+  declared the callee *inside* the caller, which lexical scoping explains
+  just as well.  The discriminating case is a *top-level* `f` reading `x`
+  called from a `g` that declares a local `x` — the interpreter halts with
+  `undefined variable`.  So a function value carries its defining frame
+  and closures genuinely escape, which is the one real departure from
+  Forbin's call-chain design.
+- Arrays are not growable; there is no mutation builtin at all.
+
+The value domain was scoped rather than paid in full, and the compiler's
+docstring carries each exclusion with the probe behind it: float literals
+are rejected at compile time and `divide` is exact integer division
+(matching `_as_str`, which prints an integral float as an integer), and
+`say`/`concat` of an *array* aborts, because the interpreter renders those
+through Python's `str(list)` — `say [ "a" ]` writes `['a']` and
+`say [ yes ]` writes `[True]`, leaking Python's spelling of a value
+MyScript otherwise calls `yes`.  What is left is the third fact the probes
+turned up: **every variable read auto-calls a nullary function**, since
+`_parse_expr` consumes as many arguments as the value in the variable has
+parameters, so each read of a name with no `func` binding emits a runtime
+tag test.
+
+CV(N)(C) shipped (`src/esolangs/compilers/cvnc.py`); its syllable grammar
+cost nothing, since the interpreter's tokenizer and syllabifier are
+imported the way `container` imports its parser, and the bill was instead
+the runtime-built function and the two computed gotos that the entry named
+as its value.  The compiler's own docstring carries the design.
 
 Standing negatives, unchanged.  Plain brainfuck is the trap answer —
 uncovered, but `home_row`/`suffolk` already cover that shape, so it is
@@ -214,11 +229,11 @@ generator that validates its own output needs that check frame-mapped too.
 
 ## Mutation-testing sweep
 
-All 60 suites are measured, and nineteen are at 100%.  Per-language scores
+All 61 suites are measured, and twenty-four are at 100%.  Per-language scores
 and survivor counts are *not* recorded here: they go stale on any test change
-and are cheap to re-derive — 56 of the 60 finish in under half a minute, and
-only Streetcode and Forbin run to minutes.  Re-run the language you touched;
-re-run everything after a change to the shared machinery.
+and are cheap to re-derive — 55 of the 61 finish in under half a minute, and
+only Streetcode passes a minute.  Re-run the language you touched; re-run
+everything after a change to the shared machinery.
 
 What is worth keeping is what a triage pass has to get right, each learned by
 getting it wrong first.
@@ -312,6 +327,45 @@ Triage from the test file, not the diffs — six mechanical shapes recur
 truth-only `bool` flags, one-sided boundaries, write-only attributes,
 assertions on a constant).  A score is a means: stop where the survivors stop
 teaching anything.
+
+**Sweeping survivors against a corpus.**  Triaging one mutant at a time is
+the slow way.  `mutate_one.py --keep` leaves the mutated bundle on disk, and
+every survivor can be run against a list of programs at once: import
+`mutants/bundled.py`, set `MUTANT_UNDER_TEST=bundled.<name>` in the
+environment, run each program, and report the first whose output differs.
+Test-writing then aims at a witness instead of a guess.  Three mechanics
+matter, and each cost a debugging cycle:
+
+- **The environment variable is the only switch.**  mutmut selects a mutant
+  through `MUTANT_UNDER_TEST`, read by the trampoline; rebinding the module
+  attribute does nothing.  The signature of getting this wrong is *every*
+  mutant reading equivalent.  (A module that builds a dispatch table at
+  import — `_DISPATCH = {...: _fn}` — needs the table entry patched for the
+  same reason, which is how Modulous's jump mutants first read as
+  unkillable.)
+- **Drive the machine, not `run`.**  A goto loop or an unbounded tape walk is
+  legal in most of these languages, so an uncapped sweep hangs on its own
+  corpus.  Step with a limit.
+- **Match the entry convention.**  Between's `run` takes a list of lines; a
+  corpus of strings is parsed character by character, every program is
+  malformed, and the sweep measures nothing while looking like it worked.
+
+**The yield is a function of corpus breadth, so a no-witness result is not an
+equivalence proof.**  It means *not reached by this corpus*.  Dimensional's
+56 survivors gave 2 witnesses against 35 ordinary programs and **11** once the
+corpus grew negative dimensions, bare parameterless commands, multi-digit
+numbers and multi-pass loops — and the wider run overturned an equivalence
+verdict already recorded for `_Tape.__init__`.  Read the diffs of the
+no-witness set and ask what input shape each one *needs*: they cluster, and
+one missing feature usually explains several.  Between's remaining `_exec`
+survivors hand `_eval` a null `state`, which only a variable node reads, so
+they are invisible until a name sits in that exact operand slot — a corpus
+with variables in both slots of every operation found five more.
+
+A corpus worth writing covers each command with a non-default argument, both
+directions of every movement, a zero and a maximum operand, an empty
+container and one of length three, a loop of more than one pass, each error
+path, and every optional token both present and absent.
 
 ## Dependency reduction
 

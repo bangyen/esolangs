@@ -197,10 +197,42 @@ class State:
     code: list[list[str]] = field(default_factory=list, init=False)
     ind: int = 0
 
+    @classmethod
+    def of(cls, code: str | list[str], io: IO) -> "State":
+        """Build a state for ``code``, tokenized.
+
+        ``code`` cannot be a constructor field: it is stored tokenized, not
+        as text.  Without this, every caller had to tokenize and assign it
+        by hand -- ``run`` and the VM adapter each with their own copy of
+        the same two lines, which is the shape that lets the two drift.
+        """
+        state = cls(io=io)
+        state.code = tokenize(code if isinstance(code, str) else "\n".join(code))
+        return state
+
     @property
     def halted(self) -> bool:
         """Whether the expression pointer has run off the program."""
         return self.ind >= len(self.code)
+
+    # The VM's language-shaped view: a 256-entry variable list addressed by
+    # number, so ``memory`` is that list densified -- absent keys read as
+    # zero, which is what the language says an unset variable holds.
+
+    @property
+    def ip(self) -> int:
+        """The expression cursor."""
+        return self.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """The 256 variables, unset ones reading as zero."""
+        return [self.var.get(k, 0) for k in range(256)]
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
@@ -286,8 +318,7 @@ def run(code: list[str] | str, io: IO) -> None:
     program is one character stream, since the language draws no distinction
     between a newline and any other ignored character.
     """
-    state = State(io=io)
-    state.code = tokenize(code if isinstance(code, str) else "\n".join(code))
+    state = State.of(code, io)
 
     while not state.halted:
         state.step()

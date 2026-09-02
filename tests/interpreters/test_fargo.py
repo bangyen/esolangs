@@ -34,6 +34,28 @@ class TestBuiltins:
     def test_setting_a_bit_to_zero_clears_it(self) -> None:
         assert run_program("% 0 1\n% 0 0\n$") == "0"
 
+    def test_setting_one_bit_leaves_the_others_alone(self) -> None:
+        """Each ``%`` adds to the number rather than replacing it.
+
+        Every case above sets a single bit, where writing the number
+        outright and folding the bit into it give the same answer.  Two
+        bits tell them apart: 1 and 2 together read 3, where an assignment
+        would leave only whichever was set last.
+        """
+        assert run_program("% 0 1\n% 1 1\n$") == "3"
+        assert run_program("% 1 1\n% 0 1\n$") == "3"
+
+    def test_clearing_a_bit_leaves_the_others_alone(self) -> None:
+        """Clearing picks out its own bit, which bit 0 cannot show.
+
+        The mask that clears bit ``n`` is built by shifting, and at bit 0
+        a shift either way gives the same mask -- so the existing case
+        passes whichever direction it shifts.  Clearing bit 1 out of 3
+        leaves 1; a mask built by shifting the wrong way clears nothing
+        and leaves 3.
+        """
+        assert run_program("% 0 1\n% 1 1\n% 1 0\n$") == "1"
+
     def test_shifts(self) -> None:
         assert run_program("% 0 > 1\n$") == "0"  # 1 << 1 = 2, bit 0 is 0
         assert run_program("% 0 < 10\n$") == "1"  # 2 >> 1 = 1

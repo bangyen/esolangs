@@ -3,6 +3,8 @@
 import sys
 from re import sub
 
+from esolangs.compilers._riscv_common import Routine
+
 
 def count(code: str, ind: int) -> tuple[int, int]:
     """Return the run length of the command at ``ind`` and the next index."""
@@ -28,10 +30,14 @@ def comp(code: str) -> str:
     """Compile a Home Row program to RISC-V assembly on a 5x5 zeroed grid."""
     res = ""
 
+    # Gated so a program carries only the subroutines it calls, using the
+    # shared `Routine` the other tape compilers use.  `looped` rides along
+    # with `used` here: every call site passes a count in `t3`, so `print`
+    # always needs its counter loop once anything calls it.
     func = {
-        "d": ["down", False, False],
-        "f": ["right", False, False],
-        "k": ["print", False, False],
+        "d": Routine("down"),
+        "f": Routine("right"),
+        "k": Routine("print"),
     }
 
     reg = [
@@ -69,9 +75,9 @@ def comp(code: str) -> str:
             # between counted and single calls, so a single call must not
             # rely on a stale t3 from a previous counted run
             res += f"\tli   t3, {num}\n"
-            res += f"\tcall {func[c][0]}\n"
-            func[c][1] = True
-            func[c][2] = True
+            res += f"\tcall {func[c].label}\n"
+            func[c].used = True
+            func[c].looped = True
         elif c == "j":
             skip += 1
             ind = new
@@ -116,7 +122,7 @@ def comp(code: str) -> str:
             "\tadd  s1, t1, t2\n"
         )
 
-    if func["d"][1]:
+    if func["d"].used:
         s = "\tadd  s4, s4, t3\n"
         # wrap mod 5 (the 5x5 grid): subtract 5 once the index reaches 5
         s += "\tli   t4, 5\n\tblt  s4, t4, .down_ok\n\taddi s4, s4, -5\n.down_ok:\n"
@@ -124,15 +130,15 @@ def comp(code: str) -> str:
         s += "\tmv   t0, s4\n" + cell("t0")
 
         res += "\ndown:\n" + s + "\tret\n"
-    if func["f"][1]:
+    if func["f"].used:
         s = "\tadd  s5, s5, t3\n"
         s += "\tli   t4, 5\n\tblt  s5, t4, .right_ok\n\taddi s5, s5, -5\n.right_ok:\n"
 
         s += "\tmv   t0, s5\n" + cell("t0")
 
         res += "\nright:\n" + s + "\tret\n"
-    if func["k"][1]:
-        b = func["k"][2]
+    if func["k"].used:
+        b = func["k"].looped
         res += (
             "\nprint:\n"
             "\tli   a7, 64\n"
