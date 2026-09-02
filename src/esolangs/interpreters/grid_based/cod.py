@@ -272,12 +272,6 @@ class _Machine:
 
     # -- geometry -----------------------------------------------------
 
-    def _cell(self, r: int, c: int) -> str:
-        return _cell(self.grid, r, c)
-
-    def _is_open(self, r: int, c: int) -> bool:
-        return _open(self.grid, r, c)
-
     def _open_dirs(
         self, r: int, c: int, exclude: _Direction | None = None
     ) -> list[_Direction]:

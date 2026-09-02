@@ -11,6 +11,7 @@ from esolangs.interpreters.tape_based.home_row import run
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
+    StateViewContract,
 )
 
 
@@ -179,10 +180,12 @@ def _machine(code: object) -> object:
     return _Machine(code, ScriptedIO())
 
 
-class TestContract(EmptyProgramContract, CycleContract):
+class TestContract(EmptyProgramContract, CycleContract, StateViewContract):
     """The shared empty-program shape, with this language's data."""
 
     run = staticmethod(run_program)
     machine = staticmethod(_machine)
     halting_program = "ak;"
     looping_program = "all"
+    state_views = ("ind", "ip", "memory")
+    viewing_program = "ak;"

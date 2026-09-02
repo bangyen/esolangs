@@ -181,3 +181,65 @@ class CycleContract:
             raise AssertionError("halting_program did not halt")
         machine.step()  # must not raise
         assert machine.halted
+
+
+class StateViewContract:
+    """That a machine's named views really read the state they claim.
+
+    The purity refactors moved each interpreter's fields into one immutable
+    ``_State`` tuple and re-exposed the old names as properties over its
+    slots::
+
+        @property
+        def acc(self) -> int:
+            return self.state[1]
+
+    Before that, ``machine.acc`` *was* the field, so anything touching a
+    machine exercised it.  After, it only runs when something reads it by
+    name -- and the suites drive ``run``/``step``/``snapshot`` instead.  So
+    these views stopped being covered without any behaviour changing, and a
+    property wired to the wrong slot would pass every other test in its
+    file.  They are real API: ``debug.py`` reads the tape through
+    ``vm.memory``, and ``vm.py`` looks up ``of`` on a state class.
+
+    The named views are asserted to be *distinct* rather than pinned to
+    values: what a slot holds is the language's business, but two names
+    reading one slot is the failure this shape invites, and it is the same
+    check for every language.
+    """
+
+    machine: ClassVar[Any]
+
+    #: The names to read off the machine.  Per file, because each language
+    #: spells its own state -- ``acc``/``jumps`` in Unsquare, ``z``/``n`` in
+    #: RAM0 -- and a name absent here is simply not part of that view.
+    state_views: ClassVar[tuple[str, ...]]
+
+    #: A program that leaves at least two views holding different values, so
+    #: "distinct" has something to distinguish.
+    viewing_program: ClassVar[Any]
+
+    def test_every_named_view_reads_the_machine(self) -> None:
+        """Each name resolves, before and after a step, without raising."""
+        machine = type(self).machine(self.viewing_program)
+        for name in self.state_views:
+            getattr(machine, name)
+        if not machine.halted:
+            machine.step()
+        for name in self.state_views:
+            getattr(machine, name)
+
+    def test_the_views_do_not_alias_one_slot(self) -> None:
+        """Stepping moves at least one view, so they are not one field twice.
+
+        A property returning the wrong tuple index still reads *something*,
+        so resolving is not enough: the run has to move the views apart.
+        """
+        machine = type(self).machine(self.viewing_program)
+        before = [repr(getattr(machine, n)) for n in self.state_views]
+        for _ in range(_HALT_BUDGET):
+            if machine.halted:
+                break
+            machine.step()
+        after = [repr(getattr(machine, n)) for n in self.state_views]
+        assert before != after, "no named view changed over the whole run"
