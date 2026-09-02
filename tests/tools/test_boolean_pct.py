@@ -460,6 +460,50 @@ class TestParameterizedPctSquaredMinusOne:
             bits = [(row >> (2 - k)) & 1 for k in range(3)]
             assert self.run_pct(self.instantiate(template, bits)) == bit
 
+    @pytest.mark.slow  # three arities' worth of interpreter runs
+    @pytest.mark.parametrize(
+        ("table", "reaches"),
+        [
+            # A weighting whose setter spelling is empty for some input --
+            # the pair `_deep_setters` appends when a unit contributes
+            # nothing, which every other table's weighting avoids.
+            ("1100110001110111", "an empty setter pair"),
+            # The deep band's own refusal, reached through the dispatch:
+            # this table exhausts the weighting family before the fold
+            # picks it up.
+            ("1101000011010101", "the deep band's refusal"),
+            # The fold's narrow-gap endgame: the two surviving points land
+            # within 258 of each other, so `finish` cannot solve the
+            # congruence directly and parks the upper point past the limit
+            # to reopen the gap first.
+            ("00001111101010010010001011101101", "finish's narrow-gap reopen"),
+        ],
+    )
+    def test_tables_that_reach_the_rarer_arms(self, table: str, reaches: str) -> None:
+        """Witnesses for arms no other table in the suite takes.
+
+        Found by tracing the public entry over every table at one, two and
+        three inputs and a few hundred at four and five, then keeping the
+        first table to reach each arm -- so these are reachable in
+        production, not constructed by calling an internal with a state its
+        caller cannot produce.
+
+        Executed rather than merely built: a program that reaches a new arm
+        and computes the wrong function is the failure this is here to
+        catch, so every row runs and the fills stay one width.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        n = (len(table) - 1).bit_length()
+        template = parameterized.pct_squared_minus_one(table)
+        lengths = set()
+        for row in range(2**n):
+            bits = [(row >> (n - 1 - k)) & 1 for k in range(n)]
+            program = self.instantiate(template, bits)
+            lengths.add(len(program))
+            assert self.run_pct(program) == table[row], (reaches, table, bits)
+        assert len(lengths) == 1, sorted(lengths)
+
     def test_dispatch_falls_through_to_the_fold(self) -> None:
         """The public entry reaches the fold, not just ``_fold`` called directly.
 

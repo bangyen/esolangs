@@ -2189,18 +2189,6 @@ _MUX_ARITIES = (2, 3, 4, 5)
 _MUX_SEPARATED: dict[int, _Joint] = {}
 
 
-def _mux_embed(n: int) -> _Joint:
-    """Emit the standard embed shape, laid down at ``_MUX_BASE``."""
-    j = _Joint(n)
-    _walk_to(j, _MUX_BASE - 1)
-    for i in range(n):
-        j.emit_setter(i)
-        j.emit("[x")
-        if i + 1 < n:
-            j.emit(_SEP)
-    return j
-
-
 def _mux_reference(n: int) -> _Joint:
     """Return a joint walked to the embed's start with nothing embedded yet.
 
