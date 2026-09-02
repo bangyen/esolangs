@@ -196,13 +196,12 @@ def render() -> str:
         "builds every conjunction or disjunction of literals at any arity, "
         "a composed-affine search adds the tables that are no subcube, a "
         "threshold ladder adds the ones neither reaches by letting the "
-        "over-3003 reset read a weighted sum, a band construction makes "
-        "three inputs **total** -- all 256 -- by printing with `e` "
-        "(`chr(acc & 0xFF)`), so a row need only be congruent to 48 or 49 "
-        "mod 256 rather than exactly 0 or 1, a deep band carries that to "
-        "**all 65536 four-input tables**, and a fold closes **five inputs** "
-        "by planning relocations instead of reading the table off a "
-        "weighting (see `docs/limitations.md`).",
+        "over-3003 reset read a weighted sum, a deep band makes three and "
+        "four inputs **total** -- all 256 and all 65536 -- by printing with "
+        "`e` (`chr(acc & 0xFF)`), so a row need only be congruent to 48 or "
+        "49 mod 256 rather than exactly 0 or 1, and a fold closes **five "
+        "inputs** by planning relocations instead of reading the table off "
+        "a weighting (see `docs/limitations.md`).",
         "",
         "| Language | Text generator | Python | Cross-check | Boolean | Compiler |",
         "| --- | :---: | :---: | :---: | :---: | :---: |",
