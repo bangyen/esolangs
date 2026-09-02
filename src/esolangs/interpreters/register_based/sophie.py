@@ -80,6 +80,91 @@ def find(code: str, ind: int) -> int:
     return ind
 
 
+#: One instant of a run: ``(acc, ind, skp, stk, halted)`` -- the
+#: accumulator, the cursor, the break flag, the stack of loop-entry
+#: positions, and whether ``&`` fired.  A value :func:`_advance` maps
+#: forward, with the stack as a ``tuple`` for the same reason.
+#:
+#: ``skp`` is state, not a detail of one command.  ``*`` sets it and a
+#: *later* ``[`` reads it to decide whether to enter its loop or jump past
+#: it, so the flag outlives the command that raised it -- which is what
+#: makes a break escape a whole nest rather than one level.
+#:
+#: The code is not here: Sophie never rewrites itself, so a step is handed
+#: the program rather than carrying it.
+type _State = tuple[int, int, bool, tuple[int, ...], bool]
+
+
+def _advance(state: _State, code: str, value: int | None = None) -> _State:
+    """Return the state after executing the command under the cursor.
+
+    Pure: it reads ``state`` and returns a new one.  The four I/O commands
+    are the caller's -- ``.`` and ``,`` print the accumulator this carries
+    forward unchanged, and ``:``/``;`` arrive as ``value``, already read
+    and already rejected if the input did not qualify, in which case it is
+    ``None`` and the accumulator stands.
+
+    Two jumps land deliberately short.  ``]`` and ``*`` return to one
+    before the loop's ``[`` so the trailing advance re-reads it, and a
+    conditional that fails jumps to its block's ``}`` -- or to the ``{`` of
+    an else-block if one follows, so the trailing advance enters it.
+    """
+    acc, ind, skp, stk, halted = state
+
+    if (c := code[ind]) == "[":
+        if skp:
+            ind = find(code, ind)
+            if not stk:
+                skp = False
+        else:
+            stk = (*stk, ind)
+    elif c in "]*":
+        if not stk:
+            raise HaltError
+        ind = stk[-1] - 1
+        stk = stk[:-1]
+        if c == "*":
+            skp = True
+    elif c in ".,":
+        pass  # printed by the caller; the accumulator is unchanged
+    elif c in ":;":
+        if value is not None:
+            acc = value
+    elif c == "{":
+        ind = find(code, ind)
+    elif c == "&":
+        return (acc, ind, skp, stk, True)
+    else:
+        val = code[ind:]
+        if m := re.match(r"@\$(\d+){", val):
+            ind = _branch(code, ind, m.end() - 1, taken=acc == int(m[1]))
+        elif m := re.match(r"@\$?(.){", val):
+            ind = _branch(code, ind, m.end() - 1, taken=acc == ord(m[1]))
+        elif m := re.match(r"#\$(\d+)", val):
+            acc = int(m[1])
+            ind += m.end() - 1
+        elif m := re.match(r"#\$?(.)", val):
+            acc = ord(m[1])
+            ind += m.end() - 1
+
+    return (acc, ind + 1, skp, stk, halted)
+
+
+def _branch(code: str, ind: int, width: int, *, taken: bool) -> int:
+    """Return the cursor for a conditional, entered or skipped.
+
+    A taken branch steps over the ``@c`` header onto its block.  A failed
+    one jumps to the block's close, and one place further when an
+    else-block starts there, so the trailing advance lands inside it.
+    """
+    if taken:
+        return ind + width
+    end = find(code, ind + width)
+    if end + 1 < len(code) and code[end + 1] == "{":
+        return end + 1
+    return end
+
+
 class _Machine:
     """Per-run Sophie state: the code, accumulator, loop stack, and cursor."""
 
@@ -130,72 +215,50 @@ class _Machine:
             self._halted_by_command,
         )
 
+    @property
+    def _state(self) -> _State:
+        """The machine's fields as the value the transition works on."""
+        return (self.acc, self.ind, self.skp, tuple(self.stk), self._halted_by_command)
+
+    def _restore(self, state: _State) -> None:
+        """Write a transition's result back onto the machine's fields.
+
+        The fields are this class's published shape -- the VM's views and
+        the tests read them -- so they stay; the one assignment a step
+        makes is here rather than scattered through the rules above.
+        """
+        self.acc, self.ind, self.skp, stk, self._halted_by_command = state
+        self.stk = list(stk)
+
     def step(self) -> None:
-        """Execute one command, advancing (or jumping) the cursor."""
+        """Execute one command, advancing (or jumping) the cursor.
+
+        The four I/O commands live here rather than in the transition: this
+        is the shell.  ``.`` and ``,`` print the accumulator the transition
+        carries forward unchanged, and ``:``/``;`` read here -- including
+        the test that decides whether the input counts, since an input that
+        does not qualify must leave the accumulator alone rather than
+        writing a zero over it.
+        """
         if self.halted:
             return
-        code = self.code
-        ind = self.ind
-        if (c := code[ind]) == "[":
-            if self.skp:
-                ind = find(code, ind)
-                if not self.stk:
-                    self.skp = False
-            else:
-                self.stk.append(ind)
-        elif c in "]*":
-            if not self.stk:
-                raise HaltError
-            ind = self.stk.pop() - 1
-            if c == "*":
-                self.skp = True
-        elif c == ".":
+        c = self.code[self.ind]
+
+        value: int | None = None
+        if c == ".":
             self.io.print_num(self.acc)
+        elif c == ",":
+            self.io.print_char(chr(self.acc))
         elif c == ":":
             num = self.io.input_str()
             if num.isdigit():
-                self.acc = int(num)
-        elif c == ",":
-            self.io.print_char(chr(self.acc))
+                value = int(num)
         elif c == ";":
             val = self.io.input_str()
             if val:
-                self.acc = ord(val[0])
-        elif c == "{":
-            ind = find(code, ind)
-        elif c == "&":
-            self._halted_by_command = True
-            return
-        else:
-            val = code[ind:]
-            if m := re.match(r"@\$(\d+){", val):
-                n = m.end() - 1
-                if self.acc == int(m[1]):
-                    ind += n
-                else:
-                    end = find(code, ind + n)
-                    if end + 1 < len(code) and code[end + 1] == "{":
-                        ind = end + 1
-                    else:
-                        ind = end
-            elif m := re.match(r"@\$?(.){", val):
-                n = m.end() - 1
-                if self.acc == ord(m[1]):
-                    ind += n
-                else:
-                    end = find(code, ind + n)
-                    if end + 1 < len(code) and code[end + 1] == "{":
-                        ind = end + 1
-                    else:
-                        ind = end
-            elif m := re.match(r"#\$(\d+)", val):
-                self.acc = int(m[1])
-                ind += m.end() - 1
-            elif m := re.match(r"#\$?(.)", val):
-                self.acc = ord(m[1])
-                ind += m.end() - 1
+                value = ord(val[0])
 
-        self.ind = ind + 1
+        self._restore(_advance(self._state, self.code, value))
 
 
 def run(code: str, io: IO) -> None:
