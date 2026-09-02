@@ -1801,6 +1801,45 @@ _FOLD_DESCENT_TARGET = 2
 #: tables, where the derived bound builds 3 of 3 and prints all 512 rows.
 #:
 #: What it is not any more is *arity-capping* by accident.
+#: **Plan length is not program length, and for size it is close to the
+#: wrong objective.**  Ops have wildly different prices: within one plan a
+#: dive at 3004 costs 1490 characters from a resting accumulator and 4 when
+#: the accumulator is already near, a doubling costs 751, and the finish
+#: over a thousand.  The charge is the arithmetic distance travelled,
+#: spelled in unary -- :func:`_sub_code` is ``k // 2`` characters -- so op
+#: count barely correlates with emitted length.  Cutting a plan from 17 ops
+#: to 6 was measured to save 13% of characters; optimising characters
+#: directly saves 60% and more.
+#:
+#: **The cost model is closed form**, verified to zero error on all 56
+#: constructible three-input tables.  Each op is priced by mirroring the
+#: emitter's position updates, and :meth:`_FoldEmitter.finish` solves a
+#: single congruence -- ``need = (-(byte(hi) - byte(lo)) - pos[lo]) % 256``,
+#: whose unique in-window solution ``u`` costs ``u // 2 + 31``.  A candidate
+#: plan can therefore be priced without emitting it.
+#:
+#: That model explains a fact worth recording: character cost is **not**
+#: complement-invariant, though plan length is.  The answer bytes are 48 and
+#: 49, so which class lands on top flips a ``+-1`` and moves the congruence
+#: by 2 mod 256 -- about 127 characters.  ``01100111`` costs 5424 where its
+#: complement ``10011000`` costs 5306.
+#:
+#: **One construction ships nothing yet but is verified:** every three-run
+#: table builds from three greedy rises, no search -- 3176 to 3185
+#: characters against this generator's 9838 to 10640, within 1 to 8 of the
+#: enumerated optimum, each program executed on the interpreter with every
+#: row correct at one fill width.  The cost is nearly independent of the run
+#: lengths and of the arity.
+#:
+#: Three attempts to generalise that failed, recorded so they are not
+#: retried.  Reranking this descent by characters instead of point count
+#: looked like a 27.7% win and is **272% worse** on tables all variants
+#: build -- the apparent saving was selection bias from abandoning hard
+#: tables, at 116/254 coverage against 206/254.  A fixed catalogue of the
+#: observed optimal shapes, walked greedily, saturates at 34 of 40 however
+#: wide the amount branching.  And greedy on the exact cost model builds 8
+#: of 40 at a mean of **-67%**.  Exact edge weights are not enough without a
+#: cost-to-go term; the choice of move is not greedily determined.
 _FOLD_STEP_SLOPE = 8
 _FOLD_STEP_SLACK = 16
 
