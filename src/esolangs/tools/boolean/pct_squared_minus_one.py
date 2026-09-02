@@ -1415,13 +1415,30 @@ def _fold_sig(state: _FoldState) -> tuple[tuple[int, int, str], ...]:
 
 
 def _fold_search(
-    state: _FoldState, maxdepth: int = 40, cap: int = 2_000_000
+    state: _FoldState, maxdepth: int = 40, cap: int = 5_000
 ) -> list[_FoldOp] | None:
     """Best-first search to a two-point state, or ``None``.
 
     States are keyed by their relative geometry -- ids do not matter for
     reachability -- and ranked by point count first, so contractions are
     pursued before excursions.
+
+    **The cap is what makes a miss returnable.**  It was 2_000_000, and at
+    that size it did not do a cap's job: states are expanded at about 3700 a
+    second, so exhausting it took roughly nine minutes per call and a wide
+    table refused only after tens of minutes -- which is the failure this
+    module elsewhere refuses to ship, since a caller can handle a raise and
+    cannot handle a build that does not return.
+
+    5_000 is measured rather than tuned, against the arities that carry a
+    claim.  Every table at ``n <= 5`` builds exactly as it did at the old
+    value -- all 256 at three inputs and 40-table samples at four and five,
+    the same *sets* either way, every row re-executed on the interpreter at
+    one fill width -- while a six-input sample builds 8 of 8 with a slowest
+    build of 1.6s.  What it buys is the refusal: an eight-input table now
+    raises in about 13 seconds where it used to take over nine minutes.
+    Acceptance above six inputs is partial under either value and carries no
+    claim, so the trade is bounded by what is documented.
     """
     import heapq
 
