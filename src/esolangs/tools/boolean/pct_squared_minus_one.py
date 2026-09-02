@@ -70,13 +70,16 @@ first.
 
 A third construction, :func:`_affine`, catches tables that are no subcube.
 It composes one affine setter per input the way the two-input derivation
-does, but *searches* the composition instead of reading slopes off columns,
-so it is not restricted to two inputs.  Two things make that search finite:
-states are deduplicated by the **partition** they induce on the input
-combinations rather than by their values, since only which combinations share
-an accumulator decides the table; and each setter's two branches are spelled
-at a common width by :func:`_spellings_by_width` rather than padded, which is
-what lets an odd width gap close.  That gap was the binding constraint --
+does, and like it the setters are **solved rather than searched**: after two
+setters the accumulator is a vector of four values that the third maps by one
+branch per value of the last input, so the table's even and odd rows are two
+affine images of one shared vector.  Reading that backwards gives the whole
+construction -- the vector's partition is forced by which rows the table
+agrees on, two points fix each branch of the last setter, and the first two
+setters invert by division.  An enumeration over branch pairs stood here
+before, reaching the same 86 tables at 6.4 seconds for the arity against 0.8
+and emitting longer programs; what is left of it is the equal-width spelling
+by :func:`_spellings_by_width`, which is what lets an odd width gap close --
 ``_pad_pair`` pads with ``pp`` and refuses an odd shortfall, and parity-3's
 witness wants branches of width 6 and 5.
 
@@ -625,35 +628,6 @@ _SPELL_WINDOW = range(-90, 91)
 #: Longest command string the speller enumerates for one branch.
 _SPELL_MAX = 7
 
-#: Distinct value vectors kept per induced partition.  One is too few: the
-#: first witness found for parity-3 has no equal-width spelling while a
-#: sibling with the same partition does.  Keying on the full vector instead
-#: explodes the frontier, and the count stops mattering past four -- measured
-#: 82 tables at two witnesses, 84 at four, and 84 at every count up to
-#: sixteen.
-#:
-#: The count is not what binds, which is why raising it does nothing: *which*
-#: witnesses are kept is what matters, and they are chosen by
-#: :func:`_witness_rank` rather than by arrival.
-_WITNESSES = 6
-
-
-def _witness_rank(vec: tuple[int, ...]) -> int:
-    """How far a value vector sits from zero -- smaller is more useful.
-
-    A later setter can only translate by ``|b| <= 12``, so two vectors with
-    the same partition are *not* interchangeable: one near zero can still be
-    moved onto the values a tail needs, and one far from zero cannot.  The
-    frontier keeps witnesses by arrival otherwise, and that lost tables --
-    ``x0 ^ x2`` and its complement need ``(-12, -12, -11, -11)`` at the
-    second layer, while the six vectors already banked for that partition
-    were ``(-24, -24, -23, -23)`` through ``(-19, -19, -18, -18)``, every one
-    of them out of the last layer's reach.  Ranking by magnitude keeps the
-    reachable representative and lifts the arity's coverage 84 -> 86 at the
-    same witness count.
-    """
-    return max(abs(value) for value in vec)
-
 
 @cache
 def _spellings_by_width(a: int, b: int) -> dict[int, str]:
@@ -684,173 +658,8 @@ def _spellings_by_width(a: int, b: int) -> dict[int, str]:
     return out
 
 
-def _match_pair(
-    branch_zero: tuple[int, int], branch_one: tuple[int, int]
-) -> tuple[str, str] | None:
-    """Spell a setter's two branches at a common width, or ``None``.
-
-    The narrowest shared width is taken, so the setter is as short as this
-    construction makes it -- though not necessarily the shortest program for
-    the table, since the branches are chosen before the tail is known.
-
-    The empty-intersection return is never taken for the shipped grid: all
-    30625 branch pairs over :data:`_WIDE_A_VALS` x :data:`_WIDE_B_VALS` share
-    a width, and every map in it has some spelling.  It is kept because that
-    is a property of the grid and the depth, not of the function -- narrowing
-    either would make it fire -- and returning ``None`` is what lets
-    :func:`_affine_tables` skip a state rather than emit a setter whose two
-    branches differ in length, which would leak the input through ``len()``.
-    """
-    zero = _spellings_by_width(*branch_zero)
-    one = _spellings_by_width(*branch_one)
-    shared = sorted(set(zero) & set(one))
-    if not shared:  # pragma: no cover - no pair in the shipped grid lacks one
-        return None
-    width = shared[0]
-    return zero[width], one[width]
-
-
-def _partition(vec: tuple[int, ...]) -> tuple[int, ...]:
-    """Relabel a vector by first appearance, keeping only its equality pattern.
-
-    The tail separates two classes, so what decides the table is which input
-    combinations share an accumulator value, not the values themselves.
-    Deduplicating on the pattern keeps the frontier flat across layers; an
-    earlier sweep that deduplicated on values instead did not finish, and one
-    that capped the values reported *fewer* tables than the cascade already
-    builds -- the signature of a truncated search rather than a result.
-    """
-    seen: dict[int, int] = {}
-    return tuple(seen.setdefault(v, len(seen)) for v in vec)
-
-
-def _reindex(vec: tuple[int, ...], n: int) -> tuple[int, ...]:
-    """Reorder a composed vector into truth-table index order.
-
-    :func:`_compose` appends each input's results as ``zero + one``, so input
-    ``k`` lands in bit ``k`` of the index and the *last* input is most
-    significant.  A truth table indexes the other way round, most significant
-    first.  The two are a bit reversal; composing without correcting it
-    harvests a permuted table, which shows up as inverted outputs on setters
-    that do not even differ.
-    """
-    out = [0] * len(vec)
-    for index, value in enumerate(vec):
-        combo = 0
-        for k in range(n):
-            combo |= ((index >> k) & 1) << (n - 1 - k)
-        out[combo] = value
-    return tuple(out)
-
-
 #: One branch of a setter as an affine map, ``(a, b)`` for ``x -> a*x + b``.
 _Branch = tuple[int, int]
-
-#: A setter: the branch taken when the input is 0, and when it is 1.
-_Setter = tuple[_Branch, _Branch]
-
-#: A composition state: the accumulator per input combination, paired with the
-#: setters that produced it.
-_State = tuple[tuple[int, ...], tuple[_Setter, ...]]
-
-#: A state inside a partition's bucket, carrying the witness rank it is
-#: sorted by.  The rank is bookkeeping for the bucket, so it is dropped when
-#: the frontier is rebuilt.
-_Ranked = tuple[int, tuple[int, ...], tuple[_Setter, ...]]
-
-
-def _compose(n: int) -> list[_State]:
-    """Every accumulator vector one affine setter per input can produce.
-
-    Enumerating setter *assignments* is a product over inputs and blows up.
-    Only the value vector carries from one input to the next, so the layers are
-    composed with deduplication instead: start from the accumulator's initial
-    zero and, at each input, apply every branch pair to every vector kept so
-    far.  That is a fixpoint over vectors rather than a product over programs.
-
-    The affine model ignores the over-3003 reset, which is sound only while the
-    values stay small.  With ``|a| <= 4`` and ``|b| <= 12`` over three layers
-    the magnitude cannot exceed ``4*(4*(4*0 + 12) + 12) + 12 == 252``, far
-    under the limit, so no reset fires inside a setter and the composition is
-    exactly what the interpreter computes.  A wider arity must re-derive this
-    before trusting the model.
-    """
-    branches: list[_Branch] = [(a, b) for a in _WIDE_A_VALS for b in _WIDE_B_VALS]
-    frontier: list[_State] = [((0,), ())]
-    for _ in range(n):
-        layer: dict[tuple[int, ...], list[_Ranked]] = {}
-        for vec, assign in frontier:
-            for zero_branch in branches:
-                zero = tuple(zero_branch[0] * v + zero_branch[1] for v in vec)
-                for one_branch in branches:
-                    one = tuple(one_branch[0] * v + one_branch[1] for v in vec)
-                    candidate = zero + one
-                    bucket = layer.setdefault(_partition(candidate), [])
-                    rank = _witness_rank(candidate)
-                    if len(bucket) >= _WITNESSES and rank >= bucket[-1][0]:
-                        # The bucket is full of nearer vectors; this one
-                        # cannot displace any, so skip the equality scan.
-                        continue
-                    if any(candidate == seen for _, seen, _ in bucket):
-                        continue
-                    entry = (
-                        rank,
-                        candidate,
-                        (*assign, (zero_branch, one_branch)),
-                    )
-                    if len(bucket) < _WITNESSES:
-                        bucket.append(entry)
-                    else:
-                        bucket[-1] = entry
-                    # Kept sorted by rank so the last element is the one a
-                    # nearer candidate displaces, which is what makes the
-                    # ranking cost a comparison rather than a scan.
-                    bucket.sort(key=lambda item: item[0])
-        # Drop the rank, which is bookkeeping for the bucket rather than part
-        # of a state.
-        frontier = [
-            (vec, assign) for bucket in layer.values() for _, vec, assign in bucket
-        ]
-    return frontier
-
-
-@cache
-def _affine_tables(n: int) -> dict[str, tuple[tuple[tuple[str, str], ...], str]]:
-    """Every table the composed-affine path builds at ``n`` inputs.
-
-    Derived for a whole arity in one pass and cached, because the composition
-    is shared: the states already carry the table each one induces, so
-    harvesting them costs one sweep rather than one per table.
-    """
-    built: dict[str, tuple[tuple[tuple[str, str], ...], str]] = {}
-    for raw, assign in _compose(n):
-        vec = _reindex(raw, n)
-        values = set(vec)
-        if len(values) != 2:
-            continue
-        for one_value in values:
-            table = "".join("1" if v == one_value else "0" for v in vec)
-            if table in built:
-                continue
-            zero_value = next(v for v in vec if v != one_value)
-            tail = _tail_for(one_value, zero_value)
-            if tail is None:
-                continue
-            setters = [_match_pair(zero, one) for zero, one in assign]
-            # Unreachable for the shipped grid, where every branch pair shares
-            # a width -- see :func:`_match_pair`.  It stays because a narrower
-            # grid or a shallower spelling depth would make it fire, and
-            # skipping the state is what keeps a setter from being emitted
-            # with branches of different lengths.
-            if any(pair is None for pair in setters):  # pragma: no cover
-                continue
-            # ``mypy`` cannot see the guard above, which is what makes the
-            # cast safe rather than assumed.
-            built[table] = (
-                tuple(pair for pair in setters if pair is not None),
-                tail,
-            )
-    return built
 
 
 #: Ladders the search runs, as ``(weights, base)``.  Every value is a multiple
@@ -1929,85 +1738,241 @@ def _fold(truth_table: str, n: int) -> str | None:
     return header + _HEADER_END + placeholders + "".join(emitter.body)
 
 
-def _affine_admits(truth_table: str, n: int) -> bool:
-    """Whether :func:`_affine` could build this table, without enumerating.
+#: How many candidate pre-vectors the construction weighs before taking the
+#: shortest program among them, and how many spellings of each it prices.
+#: Both are budgets on *output length*, not on reachability: the first
+#: candidate that solves already computes the table, and every table the
+#: model admits is built at ``(1, 1)``.  Measured over the whole three-input
+#: arity, ``(12, 6)`` is where no table's program comes out longer than the
+#: enumeration this replaced; ``(6, 3)`` leaves four longer, the worst
+#: 36 -> 41.
+_CANDIDATES = 12
+_SPELLINGS = 6
 
-    Exact at three inputs, and the reason to have it is latency rather than
-    throughput.  :func:`_affine_tables` derives a whole arity in one pass and
-    caches it, so the first three-input table to reach that step pays about
-    4.7 seconds -- and 170 of the 208 tables that get there cannot be built
-    by the path at all, so the enumeration is filled, refused, and then never
-    reused.  A one-shot build of such a table costs 6.3s against 1.6s with
-    this check.  A whole-arity sweep in one process sees no difference: the
-    cache amortises the fill over 256 tables either way.
+#: Steps between the classes of a pre-vector.  The step decides how far apart
+#: the rows sit before the last setter maps them onto the answer values, and
+#: a smaller spread spells shorter, so these are tried in the order that
+#: tends to produce the shortest program rather than by magnitude alone.
+_STEPS = (1, 2, 3, 4, -1, -2, 6, -3, 8, 12, -4)
 
-    The rule is the **shared-cofactor law on the last input** -- the setters
-    compose into a shared value, so fixing the last input leaves each
-    cofactor a constant or an affine image of one shared function, hence the
-    two cofactors must be equal, complementary, or constant.  Two families
-    satisfy it and are still not built: the constants (which the cascade
-    serves first, so the path never needs them) and ``x0 ^ x2`` with its
-    complement, whose dependence *skips the middle input* -- setters compose
-    in slot order, so a slot cannot be passed over.  ``x1 ^ x2`` and
-    ``x0 ^ x1 ^ x2`` both build, which is what makes the exclusion specific
-    rather than a statement about parity.
 
-    Returns ``True`` at other arities: the containment is known to hold at
-    four inputs too (486 reached, every one admissible), but sufficiency is
-    not, and the dispatch only calls the path at three inputs anyway.
-    ``test_affine_reach_is_exactly_characterized`` pins the equality, so a
-    change to either side that breaks it fails rather than silently costing
-    a table.
+def _solve_affine(values: tuple[int, ...], wanted: tuple[int, ...]) -> _Branch | None:
+    """Solve ``a * v + b == p`` over the grid, or ``None`` if unsolvable.
+
+    Two points determine a line, so this divides rather than searches: the
+    first pair of entries with distinct ``values`` fixes the multiplier, the
+    offset follows, and the rest are checked.  Constant ``values`` leave the
+    multiplier free, and then the first that spells an in-grid offset wins.
     """
-    if n != 3:
-        return True
-    if len(set(truth_table)) == 1:
-        return False
-    low = "".join(truth_table[r] for r in range(2**n) if not r & 1)
-    high = "".join(truth_table[r] for r in range(2**n) if r & 1)
-    return (
-        low == high
-        or _complement_bits(low) == high
-        or len(set(low)) == 1
-        or len(set(high)) == 1
-    )
+    anchor: tuple[int, int] | None = None
+    for value, want in zip(values, wanted, strict=True):
+        if anchor is None:
+            anchor = (value, want)
+        elif value != anchor[0]:
+            num, den = want - anchor[1], value - anchor[0]
+            if num % den:
+                return None
+            a = num // den
+            b = anchor[1] - a * anchor[0]
+            if a not in _WIDE_A_VALS or b not in _WIDE_B_VALS:
+                return None
+            fits = all(a * x + b == p for x, p in zip(values, wanted, strict=True))
+            return (a, b) if fits else None
+    if anchor is None or len(set(wanted)) != 1:
+        return None
+    for a in _WIDE_A_VALS:
+        b = wanted[0] - a * anchor[0]
+        if b in _WIDE_B_VALS:
+            return (a, b)
+    return None
 
 
-def _complement_bits(bits: str) -> str:
-    """Flip every bit of a binary string."""
-    return "".join("1" if c == "0" else "0" for c in bits)
+def _realisations(
+    values: tuple[int, ...],
+) -> list[tuple[_Branch, _Branch, _Branch]]:
+    """Every way the first two setters produce ``values``.
+
+    The first setter runs on a zero accumulator, so its two branches
+    contribute only their offsets ``(p, q)``.  The second maps those by
+    ``(a, c)`` and ``(b, d)``, giving
+    ``values = (a*p + c, b*p + d, a*q + c, b*q + d)``.  Differencing the
+    entries that share a branch leaves ``values[0] - values[2] = a*(p - q)``
+    and ``values[1] - values[3] = b*(p - q)``, so once the first setter's
+    offsets are chosen the multipliers are divisions and the second setter's
+    offsets follow.  Nothing here enumerates programs.
+    """
+    out: list[tuple[_Branch, _Branch, _Branch]] = []
+    first, second = values[0] - values[2], values[1] - values[3]
+    for p in _WIDE_B_VALS:
+        for q in _WIDE_B_VALS:
+            gap = p - q
+            if gap == 0:
+                if first or second:
+                    continue
+                for a in _WIDE_A_VALS:
+                    c = values[0] - a * p
+                    if c not in _WIDE_B_VALS:
+                        continue
+                    for b in _WIDE_A_VALS:
+                        d = values[1] - b * p
+                        if d in _WIDE_B_VALS:
+                            out.append(((p, q), (a, c), (b, d)))
+                continue
+            if first % gap or second % gap:
+                continue
+            a, b = first // gap, second // gap
+            if a not in _WIDE_A_VALS or b not in _WIDE_A_VALS:
+                continue
+            c, d = values[0] - a * p, values[1] - b * p
+            if c in _WIDE_B_VALS and d in _WIDE_B_VALS:
+                out.append(((p, q), (a, c), (b, d)))
+    return out
+
+
+def _merge_classes(truth_table: str) -> list[int]:
+    """Which pre-vector entries may share a value.
+
+    Entry ``j`` carries the rows whose leading bits are ``j``, and the last
+    setter maps it by one branch per value of the last input.  Two entries
+    holding the same value are therefore mapped alike by *both* branches, so
+    they may share only where the table agrees on both of their rows.  That
+    makes the pre-vector's partition a reading of the table rather than a
+    choice, which is what removes the search.
+    """
+    even = tuple(int(truth_table[2 * j]) for j in range(4))
+    odd = tuple(int(truth_table[2 * j + 1]) for j in range(4))
+    groups: list[list[int]] = []
+    for j in range(4):
+        for group in groups:
+            if even[j] == even[group[0]] and odd[j] == odd[group[0]]:
+                group.append(j)
+                break
+        else:
+            groups.append([j])
+    classes = [0] * 4
+    for index, group in enumerate(groups):
+        for j in group:
+            classes[j] = index
+    return classes
 
 
 def _affine(truth_table: str, n: int) -> str | None:
     """Build a composed-affine template, or ``None`` if the table is not one.
 
-    This is the wide construction above two inputs.  The two-input derivation
-    reads one slope per column and does not generalise; the cascade builds only
-    subcubes.  Composing one affine setter per input reaches neither's limit:
-    it builds 84 of the 256 three-input tables, XOR and XNOR among them, which
-    no subcube is.
+    This is the wide construction above two inputs, and it is **derived**
+    rather than searched.  Composing one affine setter per input makes the
+    accumulator, after the first two setters, a vector of four values that
+    the last setter maps by one branch for each value of the last input --
+    so the table's even and odd rows are two affine images of one shared
+    vector.  That is exactly the shared-cofactor law, and reading it
+    backwards is a construction:
 
-    The 84 is measured and stable -- widening the multipliers, the offsets, the
-    spelling depth and the witness count each reach no further table -- but it
-    is *not* known to be a maximum.  The shared-cofactor law admits 88, and it
-    is tempting to read that as the ceiling; it is not one, because the law
-    constrains the last input alone.  Measured against it, this path reaches 32
-    tables the law does not admit and misses 36 that it does, so the two sets
-    cross rather than nest.  What the path does not reach is an OR of several
-    disjoint subcubes, majority-3 being the smallest.  That was recorded here
-    as a limit of the *model* -- chaining indicator gadgets was said to need a
-    running total to survive a gadget that erases, and there is one register --
-    but the argument does not bind: :func:`_ladder` keeps the running total in
-    the accumulator itself and lets the over-3003 reset read it as a threshold,
-    which builds majority-3.  What is true is narrower, that no composition of
-    *affine* setters reaches it.  See ``docs/limitations.md``.
+    * :func:`_merge_classes` reads the pre-vector's partition off the table,
+      since two entries may share a value only where both of their rows
+      agree;
+    * choosing values for those classes and calling :func:`_solve_affine`
+      twice *solves* the last setter's two branches, two points fixing a
+      line;
+    * :func:`_realisations` inverts the first two setters by division.
+
+    An enumeration used to stand here instead, composing every branch pair
+    layer by layer and deduplicating by induced partition.  It reached the
+    same 86 tables -- exhaustively verified, since the dispatch only calls
+    this at three inputs -- but cost 6.4 seconds against 0.4 for the whole
+    arity and emitted longer programs, because it kept whichever witness
+    arrived first rather than the one that spells short.  Its subtlety is
+    worth recording even though the code is gone: witnesses sharing a
+    partition are *not* interchangeable, since a later setter translates by
+    a bounded offset and cannot move a distant vector onto the values a tail
+    needs, and selecting them by arrival silently cost two tables.
+
+    Only at three inputs.  The dispatch does not call this above that -- the
+    deep band covers every table it would reach there -- so the budgets in
+    :data:`_CANDIDATES` and :data:`_SPELLINGS`, which are tuned for program
+    length rather than coverage, are measured over the arity this serves.
     """
-    found = _affine_tables(n).get(truth_table)
-    if found is None:
+    if n != 3 or len(set(truth_table)) == 1:
         return None
-    setters, tail = found
-    header = ";".join(f"{k}={zero}|{one}" for k, (zero, one) in enumerate(setters))
-    body = "".join("{X" + str(k) + "}" for k in range(n)) + tail
+    classes = _merge_classes(truth_table)
+    even = tuple(int(truth_table[2 * j]) for j in range(4))
+    odd = tuple(int(truth_table[2 * j + 1]) for j in range(4))
+    candidates = sorted(
+        (
+            max(abs(base + step * classes[j]) for j in range(4)),
+            tuple(base + step * classes[j] for j in range(4)),
+        )
+        for step in _STEPS
+        for base in _WIDE_B_VALS
+    )
+    best: str | None = None
+    weighed = 0
+    for _, values in candidates:
+        if _solve_affine(values, even) is None:
+            continue
+        if _solve_affine(values, odd) is None:
+            continue
+        spellings = _realisations(values)
+        if not spellings:
+            continue
+        # Cheapest first: a setter's length follows the magnitude of what it
+        # subtracts, so the smallest offsets spell the shortest program.
+        spellings.sort(
+            key=lambda r: max(abs(r[0][0]), abs(r[0][1]), abs(r[1][1]), abs(r[2][1]))
+        )
+        for offsets, low, high in spellings[:_SPELLINGS]:
+            for one, other in ((1, 0), (0, 1)):
+                last_low = _solve_affine(
+                    values, tuple(one if bit else other for bit in even)
+                )
+                last_high = _solve_affine(
+                    values, tuple(one if bit else other for bit in odd)
+                )
+                if last_low is None or last_high is None:
+                    continue
+                template = _spell_affine(
+                    ((0, offsets[0]), (0, offsets[1])),
+                    (low, high),
+                    (last_low, last_high),
+                    one,
+                    other,
+                )
+                if template is not None and (best is None or len(template) < len(best)):
+                    best = template
+        weighed += 1
+        if weighed >= _CANDIDATES:
+            break
+    return best
+
+
+def _spell_affine(
+    first: tuple[_Branch, _Branch],
+    second: tuple[_Branch, _Branch],
+    third: tuple[_Branch, _Branch],
+    one: int,
+    other: int,
+) -> str | None:
+    """Spell three solved setters as a template, or ``None``.
+
+    Both branches of a setter come out at a width they share, so every
+    instantiation has the same length and no program leaks its inputs
+    through ``len()``.
+    """
+    setters = []
+    for zero_branch, one_branch in (first, second, third):
+        zero_widths = _spellings_by_width(*zero_branch)
+        one_widths = _spellings_by_width(*one_branch)
+        shared = set(zero_widths) & set(one_widths)
+        if not shared:
+            return None
+        width = min(shared)
+        setters.append((zero_widths[width], one_widths[width]))
+    tail = _tail_for(one, other)
+    if tail is None:
+        return None
+    header = ";".join(
+        f"{k}={zero}|{one_code}" for k, (zero, one_code) in enumerate(setters)
+    )
+    body = "".join("{X" + str(k) + "}" for k in range(3)) + tail
     return header + _HEADER_END + body
 
 
@@ -2066,13 +2031,7 @@ def pct_squared_minus_one(truth_table: str) -> str:
         # this path reaches above three inputs, so the enumeration is skipped
         # rather than paid for; at three inputs it stays, where it is instant
         # and its programs are much the shorter.
-        # The admissibility check is exact at three inputs and costs O(2**n),
-        # against the 4.7s whole-arity enumeration the path fills on its first
-        # call.  It spares that fill for the 170 of 208 tables reaching this
-        # step that the path cannot build -- a one-shot build of one of them
-        # goes 6.3s -> 1.6s.  A sweep in one process is unaffected, since the
-        # cache amortises the fill either way.
-        if n == 3 and _affine_admits(truth_table, n):
+        if n == 3:
             affine = _affine(truth_table, n)
             if affine is not None:
                 return affine
