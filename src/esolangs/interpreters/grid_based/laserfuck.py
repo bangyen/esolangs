@@ -23,6 +23,110 @@ import sys
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
 
+#: One instant of a run: ``(tape, ptr, lsrs, ind, jmp, pos)`` -- the cells
+#: with their touched flags, the cell pointer, the live beams as
+#: ``(row, col, heading)`` triples, which beam moves next, whether the
+#: previous cell was a ``#``, and where the active beam now sits.
+#:
+#: The beams are the reason this is a list rather than a position: ``*``
+#: appends one and ``x`` removes one, so the round-robin index has to
+#: survive a store that grows and shrinks under it.
+#:
+#: The grid is not here -- LaserFuck never writes to its own text -- so a
+#: step is handed it rather than carrying it.
+type _Beams = tuple[tuple[int, int, int], ...]
+type _Tape = tuple[tuple[int, int], ...]
+type _State = tuple[_Tape, int, _Beams, int, bool, tuple[int, int, int]]
+
+
+def _write(tape: _Tape, ptr: int, value: int, touched: int) -> _Tape:
+    """Return ``tape`` with the cell at ``ptr`` set and marked."""
+    return (*tape[:ptr], (value, touched), *tape[ptr + 1 :])
+
+
+def _move(row: int, col: int, d: int, rows: int) -> tuple[int, int]:
+    """Return the cell one step along heading ``d``.
+
+    Stepping off the top or left edge is spelled as a row past the bottom,
+    which the grid read then treats as off-grid -- the same fate as any
+    other exit, and what makes a beam that leaves die rather than wrap.
+    """
+    if (row == 0 and d == 0) or (col == 0 and d == 2):
+        return (rows, col)
+    if d == 0:
+        return (row - 1, col)
+    if d == 1:
+        return (row + 1, col)
+    if d == 2:
+        return (row, col - 1)
+    return (row, col + 1)
+
+
+def _advance(
+    state: _State,
+    op: str,
+    row: int,
+    col: int,
+    d: int,
+    byte: int | None = None,
+    split: int = 0,
+) -> _State:
+    """Return the state after the active beam executes ``op``.
+
+    Pure: it reads ``state`` and returns a new one.  ``,``'s byte arrives
+    as ``byte``, and ``*``'s coin as ``split``, so the two things a step
+    cannot decide for itself are decided by the caller.
+
+    ``x`` kills the active beam, which is why the index is renormalised
+    rather than advanced: the beam that was next has just shifted down one.
+    Every other command hands the turn on in round-robin order.
+
+    ``pos`` is carried through untouched.  It is the position the VM
+    reports for *this* step, recorded by the caller at the arrival heading,
+    so a turn steers the beam without rewriting where it just was.
+    """
+    tape, ptr, lsrs, ind, jmp, pos = state
+
+    if op == ">":
+        ptr += 1
+        if ptr == len(tape):
+            tape = (*tape, (0, 0))
+    elif op == "<":
+        if ptr > 0:
+            ptr -= 1
+        else:
+            tape = ((0, 0), *tape)
+    elif op == ",":
+        tape = _write(tape, ptr, byte if byte is not None else 0, 1)
+    elif op == "x":
+        lsrs = (*lsrs[:ind], *lsrs[ind + 1 :])
+        if lsrs:
+            ind %= len(lsrs)
+        return (tape, ptr, lsrs, ind, jmp, pos)
+    elif op == "*":
+        lsrs = (*lsrs, (row, col, 2 * (1 - d // 2) + split))
+    elif op in "_(":
+        if d < 2 and (tape[ptr][0] != 0 or op == "_"):
+            d = 1 - d
+    elif op in "|)":
+        if d > 1 and (tape[ptr][0] != 0 or op == "|"):
+            d = 5 - d
+    elif op == "/":
+        d = 3 - d
+    elif op in "^v{}":
+        d = "^v{}".find(op)
+    elif op == "\\":
+        d = (d + 2) % 4
+    elif op == "+":
+        tape = _write(tape, ptr, tape[ptr][0] + 1, 1)
+    elif op == "-":
+        tape = _write(tape, ptr, tape[ptr][0] - 1, 1)
+    elif op == "#":
+        jmp = True
+
+    lsrs = (*lsrs[:ind], (row, col, d), *lsrs[ind + 1 :])
+    return (tape, ptr, lsrs, (ind + 1) % len(lsrs), jmp, pos)
+
 
 class _Machine:
     """A LaserFuck run: the grid, the live lasers, and the tape."""
@@ -108,6 +212,29 @@ class _Machine:
             self.io.position(),
         )
 
+    @property
+    def _state(self) -> _State:
+        """The machine's fields as the value the transition works on."""
+        return (
+            tuple((v, t) for v, t in self.tape),
+            self.ptr,
+            tuple((r, c, d) for r, c, d in self.lsrs),
+            self.ind,
+            self.jmp,
+            self.pos,
+        )
+
+    def _restore(self, state: _State) -> None:
+        """Write a transition's result back onto the machine's fields.
+
+        The fields are this class's published shape -- ``dump`` walks the
+        tape and the VM reads the beams -- so they stay; the one assignment
+        a step makes is here rather than in the rules above.
+        """
+        tape, self.ptr, lsrs, self.ind, self.jmp, self.pos = state
+        self.tape = [list(cell) for cell in tape]
+        self.lsrs = [list(laser) for laser in lsrs]
+
     def step(self) -> None:
         """Move the active laser one step, dumping the tape once halted.
 
@@ -121,6 +248,11 @@ class _Machine:
         covers both ways of stopping, and ``lsrs`` is the wrong test
         besides -- a beam splitter appends to it, so it grows as well as
         shrinks.
+
+        The two things a step cannot decide for itself are decided here:
+        ``,`` takes a line from the input port, and ``*`` draws the coin
+        that picks the new beam's heading.  Both are read only when the
+        cell under the beam is actually that command.
         """
         if self.halted:
             if not self._dumped:
@@ -128,19 +260,7 @@ class _Machine:
                 self._dumped = True
             return
         row, col, d = self.lsrs[self.ind]
-
-        # move one step in the current direction
-        if (row == 0 and d == 0) or (col == 0 and d == 2):
-            row = self.rows  # step off the grid (top/left edges)
-        elif d == 0:
-            row -= 1
-        elif d == 1:
-            row += 1
-        elif d == 2:
-            col -= 1
-        else:
-            col += 1  # d == 3, the only heading left
-
+        row, col = _move(row, col, d, self.rows)
         self.pos = (row, col, d)
 
         if self.jmp:
@@ -155,49 +275,14 @@ class _Machine:
             else "x"
         )
 
-        if op == ">":
-            self.ptr += 1
-            if self.ptr == len(self.tape):
-                self.tape.append([0, 0])
-        elif op == "<":
-            if self.ptr > 0:
-                self.ptr -= 1
-            else:
-                self.tape.insert(0, [0, 0])
-        elif op == ",":
-            line_val = self.io.input_str()
+        byte = None
+        if op == ",":
             # an empty (or blank) input line reads a zero, per the cross-check
-            self.tape[self.ptr] = [ord(line_val[0]) if line_val else 0, 1]
-        elif op == "x":
-            self.lsrs.pop(self.ind)
-            if self.lsrs:
-                self.ind %= len(self.lsrs)
-            return
-        elif op == "*":
-            self.lsrs.append([row, col, 2 * (1 - d // 2) + draw(self._rng, 2)])
-        elif op in "_(":
-            if d < 2 and (self.tape[self.ptr][0] != 0 or op == "_"):
-                d = 1 - d
-        elif op in "|)":
-            if d > 1 and (self.tape[self.ptr][0] != 0 or op == "|"):
-                d = 5 - d
-        elif op == "/":
-            d = 3 - d
-        elif op in "^v{}":
-            d = "^v{}".find(op)
-        elif op == "\\":
-            d = (d + 2) % 4
-        elif op == "+":
-            self.tape[self.ptr][0] += 1
-            self.tape[self.ptr][1] = 1
-        elif op == "-":
-            self.tape[self.ptr][0] -= 1
-            self.tape[self.ptr][1] = 1
-        elif op == "#":
-            self.jmp = True
+            line_val = self.io.input_str()
+            byte = ord(line_val[0]) if line_val else 0
+        split = draw(self._rng, 2) if op == "*" else 0
 
-        self.lsrs[self.ind] = [row, col, d]
-        self.ind = (self.ind + 1) % len(self.lsrs)
+        self._restore(_advance(self._state, op, row, col, d, byte, split))
 
     def dump(self) -> None:
         r"""Print the tape, honoring the ``\xff`` byte-mode marker.
