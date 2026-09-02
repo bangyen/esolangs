@@ -87,10 +87,30 @@ it terminates every line it writes, so no Inject program can print text
 that does not end in a newline -- which is what the hello-world harness
 asks for.  The language is registered with a boolean generator only, the
 way Fargo is for its own output-alphabet reason.
+
+The execution model is a pure function over an immutable ``_State``: the
+program's lines, its label spans, the pointer, and whether it has exited.
+:func:`_step` maps one state to the next and never edits what it is given;
+:meth:`_Machine.step` rebinds the machine's four fields from what it
+returned, so the mutation lives in exactly one place.
+
+The *lines* are in the state, which is what makes this language different
+from the rest of the series.  Inject's memory is the text of its own
+program: ``readto`` and ``inject`` rewrite it as they run, and a rewrite
+that changes a block's length moves every later line -- the executing one
+included.  So the program cannot be handed to the transition as a fixed
+table the way a tape-based language's source is; it *is* the state.
+
+Output is collected rather than performed.  A single ``send`` writes one
+line per line of its block, so a step makes any number of writes, which is
+the shape COD and ZTOALC L use for the same reason.  ``readto`` is the one
+port that has to be read before the transition runs, and its line arrives
+as an argument.
 """
 
 import re
 import sys
+from collections.abc import Mapping, Sequence
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -124,6 +144,174 @@ def _spans(lines: list[str]) -> dict[str, tuple[int, int]]:
     if opened:
         raise ValueError(f"unclosed label-block: {sorted(opened)[0]}")
     return spans
+
+
+#: A label's two delimiter line numbers, by name.
+type _Spans = Mapping[str, tuple[int, int]]
+
+#: One instant of a run: ``(lines, spans, ind, done)`` -- the program text,
+#: the label spans over it, the line cursor, and whether ``skip``'s third
+#: clause has exited.  A value, not a record: :func:`_step` returns a new
+#: tuple rather than editing one in place.
+#:
+#: The lines are *in* here because they are the memory: ``readto`` and
+#: ``inject`` rewrite the running program, and the spans move with them.
+type _State = tuple[Sequence[str], _Spans, int, bool]
+
+
+def _span(spans: _Spans, name: str) -> tuple[int, int]:
+    """Return ``name``'s delimiters, rejecting a label that has none."""
+    if name not in spans:
+        raise ValueError(f"unknown label: {name}")
+    return spans[name]
+
+
+def _contents(state: _State, name: str) -> list[str]:
+    """Return the lines strictly between a label's two delimiters."""
+    lines, spans, _, _ = state
+    begin, end = _span(spans, name)
+    return list(lines[begin + 1 : end])
+
+
+def _replaced(state: _State, name: str, body: list[str]) -> _State:
+    """Return ``state`` with a block's contents overwritten.
+
+    The program text is also the code being executed, so a rewrite that
+    changes a block's length moves every line after it -- including the
+    instruction pointer, when the rewritten block sits *before* the
+    currently executing line.  Without that the pointer would be left
+    pointing at a different line than the one it was on, and a ``readto``
+    into an earlier block would re-execute itself.
+    """
+    lines, spans, ind, done = state
+    begin, end = _span(spans, name)
+    grown = [*lines[: begin + 1], *body, *lines[end:]]
+    shift = len(body) - (end - begin - 1)
+    if not shift:
+        return (grown, spans, ind, done)
+    if begin < ind:
+        ind += shift
+    # Only positions strictly after the opening delimiter move: an
+    # overlapping block that begins earlier keeps its own start and has its
+    # end pushed along, which is what keeps the two nestings consistent
+    # after a rewrite.
+    moved = {
+        label: (b + shift * (b > begin), e + shift * (e > begin))
+        for label, (b, e) in spans.items()
+    }
+    return (grown, moved, ind, done)
+
+
+def _begins_block(state: _State, index: int) -> str | None:
+    """Return the label beginning a block at ``index``, if any."""
+    lines, spans, _, _ = state
+    if index >= len(lines):
+        return None
+    match = _LABEL.fullmatch(lines[index].strip())
+    if match is None:
+        return None
+    name = match.group(1)
+    span = spans.get(name)
+    return name if span is not None and span[0] == index else None
+
+
+def _innermost(state: _State) -> str | None:
+    """Return the shortest block strictly containing the pointer."""
+    _, spans, ind, _ = state
+    inside = [n for n, (b, e) in spans.items() if b < ind < e]
+    if not inside:
+        return None
+    return min(inside, key=lambda n: spans[n][1] - spans[n][0])
+
+
+def _skipped(state: _State) -> _State:
+    """Return the state after ``skip``'s three-clause jump."""
+    lines, spans, ind, _ = state
+    ahead = _begins_block(state, ind + 1)
+    if ahead is not None:
+        return (lines, spans, spans[ahead][1] + 1, False)
+    inner = _innermost(state)
+    if inner is not None:
+        return (lines, spans, spans[inner][0], False)
+    return (lines, spans, ind, True)
+
+
+def _injected(state: _State, rest: str) -> _State:
+    """Run ``inject X=S/R``: substitute ``S`` with ``R`` in block ``X``."""
+    name, sep, expression = rest.partition("=")
+    if not sep:
+        raise ValueError(f"inject needs a label and a regex: {rest}")
+    # The pattern cannot contain a slash, so the *first* slash is the
+    # separator and everything after it is the replacement -- which may
+    # itself contain slashes.
+    pattern, sep, replacement = expression.partition("/")
+    if not sep:
+        raise ValueError(f"inject needs a replacement: {rest}")
+    try:
+        compiled = re.compile(pattern)
+    except re.error as exc:
+        raise HaltError(f"invalid regex: {pattern}") from exc
+    body = [compiled.sub(replacement, line) for line in _contents(state, name)]
+    return _replaced(state, name, body)
+
+
+def _step(state: _State, line_in: str | None = None) -> tuple[_State, list[str]]:
+    """Return the state after one line, and everything it printed.
+
+    Pure: it reads ``state`` and returns a new one, and reaches no ``IO``.
+    A ``send`` reports the lines it would write rather than writing them --
+    one per line of its block, so a step makes any number of them -- and
+    ``readto``'s line arrives as ``line_in``.
+    """
+    lines, spans, ind, done = state
+    line = lines[ind].strip()
+
+    # A blank line and a label line are both no-ops; the hello-world
+    # example runs straight through its block's delimiters.
+    if not line or _LABEL.fullmatch(line):
+        return (lines, spans, ind + 1, done), []
+
+    command, _, rest = line.partition(" ")
+    rest = rest.strip()
+    output: list[str] = []
+
+    if command == "send":
+        output = [text + "\n" for text in _contents(state, rest)]
+    elif command == "readto":
+        # An empty line stores an *empty* block rather than one empty line:
+        # the cat example loops on ``skipif`` ("at least one line") and
+        # terminates on empty input, which only happens if a blank line
+        # leaves nothing behind.
+        value = line_in or ""
+        state = _replaced(state, rest, [value] if value else [])
+        lines, spans, ind, done = state
+    elif command == "inject":
+        state = _injected(state, rest)
+        lines, spans, ind, done = state
+    elif command == "skip":
+        if rest:
+            raise ValueError(f"skip takes no argument: {line}")
+        return _skipped(state), output
+    elif command == "skipif":
+        if len(_contents(state, rest)) >= 1:
+            return _skipped(state), output
+    elif command == "skipq":
+        left, _, right = rest.partition(" ")
+        right = right.strip()
+        if not left or not right:
+            raise ValueError(f"skipq takes two labels: {line}")
+        if _contents(state, left) == _contents(state, right):
+            return _skipped(state), output
+    # Anything else is a *data* line and executes as a no-op.  This is
+    # forced by the wiki's truth machine: on the falling-through branch
+    # control jumps the ``data`` block, lands on the ``0`` block's
+    # delimiter, and flows through the bare ``0`` inside it.  It is also
+    # the language's namesake working as designed -- ``readto`` and
+    # ``inject`` write arbitrary text into blocks that control can later
+    # flow through, so the dispatch is "a command word runs, everything
+    # else is text".
+
+    return (lines, spans, ind + 1, done), output
 
 
 class _Machine:
@@ -187,154 +375,43 @@ class _Machine:
         # separates a re-read from a genuine cycle.
         return (self.ind, self.done, tuple(self.lines), self.io.position())
 
-    # -- blocks -------------------------------------------------------
-
-    def _span(self, name: str) -> tuple[int, int]:
-        if name not in self.spans:
-            raise ValueError(f"unknown label: {name}")
-        return self.spans[name]
-
-    def _contents(self, name: str) -> list[str]:
-        """Return the lines strictly between a label's two delimiters."""
-        begin, end = self._span(name)
-        return self.lines[begin + 1 : end]
-
-    def _replace(self, name: str, body: list[str]) -> None:
-        """Overwrite a block's contents, moving every later delimiter.
-
-        The program text is also the code being executed, so a rewrite that
-        changes a block's length moves every line after it -- including the
-        instruction pointer, when the rewritten block sits *before* the
-        currently executing line.  Without that the pointer would be left
-        pointing at a different line than the one it was on, and a
-        ``readto`` into an earlier block would re-execute itself.
-        """
-        begin, end = self._span(name)
-        self.lines[begin + 1 : end] = body
-        shift = len(body) - (end - begin - 1)
-        if not shift:
-            return
-        if begin < self.ind:
-            self.ind += shift
-        # Only positions strictly after the opening delimiter move: an
-        # overlapping block that begins earlier keeps its own start and has
-        # its end pushed along, which is what keeps the two nestings
-        # consistent after a rewrite.
-        self.spans = {
-            label: (b + shift * (b > begin), e + shift * (e > begin))
-            for label, (b, e) in self.spans.items()
-        }
-
-    # -- control flow -------------------------------------------------
-
-    def _begins_block(self, index: int) -> str | None:
-        """Return the label beginning a block at ``index``, if any."""
-        if index >= len(self.lines):
-            return None
-        match = _LABEL.fullmatch(self.lines[index].strip())
-        if match is None:
-            return None
-        name = match.group(1)
-        span = self.spans.get(name)
-        return name if span is not None and span[0] == index else None
-
-    def _innermost(self) -> str | None:
-        """Return the shortest block strictly containing the pointer."""
-        inside = [n for n, (b, e) in self.spans.items() if b < self.ind < e]
-        if not inside:
-            return None
-        return min(inside, key=lambda n: self.spans[n][1] - self.spans[n][0])
-
-    def _skip(self) -> None:
-        """Perform the three-clause ``skip`` jump."""
-        ahead = self._begins_block(self.ind + 1)
-        if ahead is not None:
-            self.ind = self.spans[ahead][1] + 1
-            return
-        inner = self._innermost()
-        if inner is not None:
-            self.ind = self.spans[inner][0]
-            return
-        self.done = True
-
     # -- one command --------------------------------------------------
 
+    @property
+    def _state(self) -> _State:
+        """The machine's fields as the value the transition works on."""
+        return (self.lines, self.spans, self.ind, self.done)
+
+    def _restore(self, state: _State) -> None:
+        """Write a transition's result back onto the machine's fields."""
+        lines, spans, self.ind, self.done = state
+        self.lines = list(lines)
+        self.spans = dict(spans)
+
     def step(self) -> None:
-        """Execute one line, advancing the pointer."""
+        """Execute one line, advancing the pointer.
+
+        The two ports live here rather than in the transition: this is the
+        shell.  ``readto``'s line is read before the transition runs, and
+        the lines a ``send`` reports are written after it.
+        """
         # A halted machine ignores a further step, so a caller can drive it
         # without checking first.
         if self.halted:
             return
+
         line = self.lines[self.ind].strip()
+        command, _, _ = line.partition(" ")
 
-        # A blank line and a label line are both no-ops; the hello-world
-        # example runs straight through its block's delimiters.
-        if not line or _LABEL.fullmatch(line):
-            self.ind += 1
-            return
+        # ``readto`` is the one command that needs its input before the
+        # transition can run, and it must be read even at EOF: the port
+        # raises there, which is the language's documented halt for it.
+        line_in = self.io.input_str() if command == "readto" else None
 
-        command, _, rest = line.partition(" ")
-        rest = rest.strip()
-
-        if command == "send":
-            for text in self._contents(rest):
-                self.io.print_str(text + "\n")
-        elif command == "readto":
-            # An empty line stores an *empty* block rather than one empty
-            # line: the cat example loops on ``skipif`` ("at least one
-            # line") and terminates on empty input, which only happens if
-            # a blank line leaves nothing behind.
-            value = self.io.input_str()
-            self._replace(rest, [value] if value else [])
-        elif command == "inject":
-            self._inject(rest)
-        elif command == "skip":
-            if rest:
-                raise ValueError(f"skip takes no argument: {line}")
-            self._skip()
-            return
-        elif command == "skipif":
-            if len(self._contents(rest)) >= 1:
-                self._skip()
-                return
-        elif command == "skipq":
-            left, _, right = rest.partition(" ")
-            right = right.strip()
-            if not left or not right:
-                raise ValueError(f"skipq takes two labels: {line}")
-            if self._contents(left) == self._contents(right):
-                self._skip()
-                return
-        # Anything else is a *data* line and executes as a no-op.  This is
-        # forced by the wiki's truth machine: on the falling-through branch
-        # control jumps the ``data`` block, lands on the ``0`` block's
-        # delimiter, and flows through the bare ``0`` inside it.  It is
-        # also the language's namesake working as designed -- ``readto``
-        # and ``inject`` write arbitrary text into blocks that control can
-        # later flow through, so the dispatch is "a command word runs,
-        # everything else is text".
-
-        self.ind += 1
-
-    def _inject(self, rest: str) -> None:
-        """Run ``inject X=S/R``: substitute ``S`` with ``R`` in block ``X``."""
-        name, sep, expression = rest.partition("=")
-        if not sep:
-            raise ValueError(f"inject needs a label and a regex: {rest}")
-        # The pattern cannot contain a slash, so the *first* slash is the
-        # separator and everything after it is the replacement -- which
-        # may itself contain slashes.
-        pattern, sep, replacement = expression.partition("/")
-        if not sep:
-            raise ValueError(f"inject needs a replacement: {rest}")
-        try:
-            body = [
-                re.sub(pattern, replacement, text)
-                for text in self._contents(name.strip())
-            ]
-        except re.error as err:
-            raise HaltError(f"invalid regex: {pattern}") from err
-        self._replace(name.strip(), body)
+        state, output = _step(self._state, line_in)
+        self._restore(state)
+        for text in output:
+            self.io.print_str(text)
 
 
 def run(code: str | list[str], io: IO) -> None:
