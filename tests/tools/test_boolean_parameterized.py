@@ -8,6 +8,7 @@ generators that follow the same convention.
 import importlib
 import io
 import random
+import re
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
@@ -2566,6 +2567,67 @@ class TestParameterizedMinifuck:
                 assert got == table[combo], f"{table} inputs {bits}"
             assert len(widths) == 1, widths
 
+    @pytest.mark.slow  # the four-input separation derivation, ~15s once
+    def test_sculpted_route_computes_and_is_row_addressable(self) -> None:
+        """``_mux`` builds a fully-essential table and every row is run.
+
+        The sculpted route is what closes four inputs: a derived,
+        table-independent suffix drives the sixteen rows to sixteen distinct
+        pointer positions -- each input still embedded exactly once, the
+        rule every generator here holds to -- and the printed column is then
+        fixed one row at a time from the highest position down.  XOR4 is
+        used because it is this file's historically pointed table; the route
+        itself never consults the stagings, so this exercises it directly
+        without paying the four-input whole-arity derivation.
+
+        The separation claim is asserted structurally too: sixteen rows at
+        sixteen distinct pointers, with each ``{Xi}`` appearing once,
+        because row addressability without re-embedding is exactly what the
+        route contributes.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        separated = module._mux_separate(4)  # noqa: SLF001
+        positions = separated.ptrs()
+        assert len(set(positions)) == 16, positions
+        for i in range(4):
+            assert separated.template().count("{X" + str(i) + "}") == 1, i
+
+        table = "0110100110010110"
+        template = module._mux(table, 4)  # noqa: SLF001
+        assert template is not None
+        names = [int(m) for m in re.findall(r"\{X(\d+)\}", template)]
+        assert names == sorted(names), names
+        widths = set()
+        for combo in range(16):
+            bits = [(combo >> (3 - i)) & 1 for i in range(4)]
+            program = self.instantiate(template, bits)
+            widths.add(len(program))
+            assert self.run_minifuck(program) == table[combo], (table, bits)
+        assert len(widths) == 1, widths
+
+    def test_sculpted_route_declines_an_unseparated_arity_immediately(
+        self,
+    ) -> None:
+        """``_mux`` returns None at five inputs without deriving anything.
+
+        The gate is the separation, not the sculpting: no derivation has
+        driven 32 rows to 32 distinct pointers, and the searches take about
+        three minutes to fail at it -- so an ungated miss would spend that
+        on every five-input table the stagings miss.  What is pinned is that
+        the decline is immediate, which is what keeps the miss cheap.
+        """
+        import importlib
+        import time
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        start = time.monotonic()
+        assert module._mux("0" * 31 + "1", 5) is None  # noqa: SLF001
+        assert time.monotonic() - start < 1.0
+
     @pytest.mark.slow  # builds and runs all 256 three-input tables
     def test_every_three_input_table_is_search_free(self) -> None:
         """All 256 three-input tables build without searching.
@@ -2993,6 +3055,11 @@ class TestParameterizedMinifuck:
                     # it strands in the searches exactly as it would have
                     # before the rescue existed.
                     patch.object(module, "_rescue", lambda *_a, **_k: None),
+                    # ``_mux`` is a fallthrough for the same reason: it
+                    # sculpts with whatever pool codes remain, so a live one
+                    # would rebuild most of what a dropped code strands and
+                    # report the drop as nearly free.
+                    patch.object(module, "_mux", lambda *_a, **_k: None),
                 ):
                     for table_int in range(256):
                         table = format(table_int, "08b")
