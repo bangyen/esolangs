@@ -44,6 +44,7 @@ def _slot_order(gen: object, table: str) -> list[int] | None:
         return None  # a generator need not cover every arity
     return [int(s[2:-1]) for s in re.findall(r"\{X\d+\}", template)]
 
+
 @pytest.mark.slow  # the degenerate tables are the fast closed-form path
 def test_minifuck_slots_run_in_name_order() -> None:
     """Minifuck emits in name order, including the tables that once did not.
@@ -349,6 +350,7 @@ def test_minifuck_five_input_plans_are_derived_per_table() -> None:
     complement = "".join(str(1 - int(c)) for c in table)
     plans = _derived_plans(5, (table, complement))
     assert set(plans) <= {table, complement}
+
 
 class TestParameterizedMinifuck:
     """Input-by-substitution boolean generator for Minifuck.
@@ -1881,4 +1883,3 @@ class TestMinifuckArityGates:
         m = self.module()
         assert 2 not in m._INSERT_ARITIES  # noqa: SLF001
         assert m._staging_spans(2)  # noqa: SLF001
-
