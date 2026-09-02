@@ -7,6 +7,7 @@ from pathlib import Path
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.tape_based.slow_acv_mammalian import run
 from tests.interpreters.contract import SnapshotContract
+from tests.raises import raises_message
 
 
 def run_and_capture(code: str) -> str:
@@ -176,6 +177,72 @@ class TestPartial:
         assert curr == [0]
         assert partial(2, curr, 321) == 0
         assert curr == [0, 65]
+
+
+class TestTotal:
+    """``total`` is the published mutating shape for the whole-memory ops."""
+
+    def test_seed_adds_each_arrays_index_to_its_head(self) -> None:
+        """``SEED`` adds ``index + 1`` to every array's first cell.
+
+        The offset is what separates the arrays: a shell that dropped the
+        index would give all 23 the same head.  Only the head moves, so a
+        second cell pins that the rest of the array is left alone.
+        """
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import total
+
+        lst = [[10, 0] for _ in range(23)]
+        total(0, lst)
+        assert [arr[0] for arr in lst] == [11 + k for k in range(23)]
+        assert all(arr[1] == 0 for arr in lst)
+
+    def test_seed_skips_an_empty_array(self) -> None:
+        """An empty array has no head to seed, so it stays empty.
+
+        The arrays still count for the offset, though -- index 5 is seeded
+        with 6, not with whatever a re-numbering over the non-empty ones
+        would have given it.
+        """
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import total
+
+        lst: list[list[int]] = [[] for _ in range(23)]
+        lst[5] = [1]
+        total(0, lst)
+        assert lst[0] == []
+        assert lst[5] == [7]
+
+    def test_conflagrate_pairs_the_flattened_memory(self) -> None:
+        """``CONFLAGRATE`` folds the memory end to end, across array bounds.
+
+        The write-back is the part the shell owns: the pure core returns
+        tuples, and the caller's own lists have to carry the result.
+        """
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import total
+
+        lst: list[list[int]] = [[] for _ in range(23)]
+        lst[0] = [9, 2]
+        total(1, lst)
+        assert lst[0] == [5, 6]
+
+
+class TestSprintIndex:
+    """``SPRINT`` indexes from the far end on a negative accumulator."""
+
+    def test_an_accumulator_past_the_far_end_reports_a_list(self) -> None:
+        """Walking off the front raises, and says "list", not "tuple".
+
+        The arrays are tuples inside the transition, so letting the
+        subscript fault would reword the message callers already see.  The
+        guard is one cell out from the legal end: on a one-cell array
+        ``-1`` still indexes it and only ``-2`` is out of range.
+        """
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _advance
+
+        arrays = tuple((0,) for _ in range(23))
+        with raises_message(IndexError, "list index out of range"):
+            _advance((arrays, 0, -2, 0, False), 6)
+
+        assert _advance((arrays, 0, -1, 0, False), 6)[1] == 0
 
 
 class TestLeapfrog:

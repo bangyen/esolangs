@@ -60,6 +60,16 @@ class TestModulous:
     def test_input_string(self) -> None:
         assert run_and_capture("[INP][PRT][PRT][END]", inputs=["AB"]) == "AB"
 
+    def test_empty_int_read_pushes_nothing(self) -> None:
+        """``INP INT`` on a blank line leaves the stack alone.
+
+        The bare form would push the line's characters, and an empty line
+        has none; ``INT`` has no number to parse either, so it pushes
+        nothing rather than a zero.  Printing afterwards therefore gives
+        the value pushed *before* the read.
+        """
+        assert run_and_capture("[PSH INT 7][INP INT][PRT INT][END]", inputs=[""]) == "7"
+
     def test_swap(self) -> None:
         assert (
             run_and_capture("[PSH INT 1][PSH INT 2][SWP][PRT INT][PRT INT][END]")

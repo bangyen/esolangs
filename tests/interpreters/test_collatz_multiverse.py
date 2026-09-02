@@ -258,6 +258,41 @@ class TestInput:
         with pytest.raises(ValueError, match="redefined"):
             run_program("input = negativeOne x + zero, NOT PRINT.")
 
+    def test_an_array_index_can_be_read_from_input(self) -> None:
+        """``arr[input]`` takes the subscript from stdin, not just the value.
+
+        Which cell is read has to depend on what was typed: storing 3 at
+        index 2 and then reading ``arr[input]`` gives 3 for an input of 2
+        and the empty default for an input of 0.  A shell that pre-read
+        only the *bare* ``input`` operands would leave the index unread.
+        """
+        program = "\n".join(
+            [
+                CONSTANTS,
+                "arr[two] = negativeOne x + three, NOT PRINT.",
+                "y = negativeOne x + arr[input], DO PRINT.",
+            ]
+        )
+        assert run_program(program, "2") == chr(3)
+        assert run_program(program, "0") == chr(0)
+
+    def test_an_index_is_read_before_the_operand_it_subscripts(self) -> None:
+        """One line can name ``input`` twice, and the order is fixed.
+
+        The operands are read left to right, so the bare ``input`` in the
+        ``var2`` slot consumes the first line and the index in ``var3``
+        consumes the second: ``0 * 5 + arr[2]`` is 3, where swapping the
+        two reads would index with 5 and find an empty cell.
+        """
+        program = "\n".join(
+            [
+                CONSTANTS,
+                "arr[two] = negativeOne x + three, NOT PRINT.",
+                "y = input x + arr[input], DO PRINT.",
+            ]
+        )
+        assert run_program(program, "5\n2") == chr(3)
+
 
 class TestMalformed:
     def test_numeric_literals_are_rejected(self) -> None:

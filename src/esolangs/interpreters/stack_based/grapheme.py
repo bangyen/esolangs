@@ -253,10 +253,8 @@ def _step(
     pushes: tuple[_Value, ...] = ()
     reverse = False
 
-    if pc >= len(code):
-        state, fx = _finished(state, view, (pops, pushes, reverse))
-        return state, fx, None
-
+    # A frame whose code has run out never reaches here: the shell flushes
+    # and pops it without spending a step, so ``pc`` indexes a command.
     c = code[pc]
 
     # In a mode, every character but the closing one is data.
@@ -490,11 +488,6 @@ class _Machine:
             tuple(self.frames),
             self.io.position(),
         )
-
-    def pop(self) -> _Value:
-        if not self.stack:
-            raise HaltError("popped an empty stack")
-        return self.stack.pop()
 
     @property
     def _state(self) -> _State:

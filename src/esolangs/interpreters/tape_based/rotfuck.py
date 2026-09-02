@@ -138,14 +138,6 @@ class _Program:
         """Return the effective command at ``i`` under the current rotation."""
         return _at(self.chars(), self._rot, i)
 
-    def forward(self, i: int) -> int | None:
-        """Return the ``]`` matching the effective ``[`` at ``i``, if any."""
-        return _forward(self.chars(), self._rot, i)
-
-    def backward(self, i: int) -> int | None:
-        """Return the ``[`` matching the effective ``]`` at ``i``, if any."""
-        return _backward(self.chars(), self._rot, i)
-
 
 def _advance(state: _State, chars: tuple[str, ...], byte: int | None = None) -> _State:
     """Return the state after executing the command under the cursor.
