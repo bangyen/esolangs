@@ -210,6 +210,22 @@ already records, re-measured on the states a sculpt actually reaches: 50
 `(state, code, cell7)` triples over walk-outs 9 to 41, no triple changing
 answer.
 
+**Four other length levers were tried and do not pay.**  The accumulator is
+the only one that does:
+
+| lever | result |
+|---|---|
+| shorten the separation prefix | already minimal — 210 characters, and its floor pad is already zero |
+| start the embed further left (smaller row positions ⇒ smaller rewinds) | start 32 is the floor: 30 and below scribble the guarded region, which strands every pool probe |
+| reorder the separation weights so cheap rows sit where the sculpt hits | any order but descending fails to separate at all — the heaviest gadget needs the most headroom |
+| drop the round's trailing `x` | works and is verified 20/20 on the interpreter, but saves 1 character per round (594 → 589, 0.8%) and spends the `_FLIP` guard that keeps a cascade from eating the next instruction; not taken |
+
+The round order is also fixed by the termination argument — fixing the
+highest disagreeing row is what makes a round provably unable to disturb the
+rows above it — and the cost is not concentrated in the first round anyway
+(measured: the first rewind is 29% of total round cost), so there is no
+cheap reordering to find.
+
 ### The staging enumeration is invertible, but there is no closed form
 
 The staged route used to run its enumeration **per table**, testing
