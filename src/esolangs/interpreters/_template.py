@@ -50,6 +50,16 @@ Every interpreter follows the same conventions:
   thing (Dimensional's hierarchy is ``_Tape``).  An interpreter that cannot
   be stepped -- one whose execution is not a command-at-a-time loop -- says
   so in its module docstring instead.
+* Write the language as a *pure transition* over an immutable state, with
+  ``_Machine.step`` as the thin shell around it -- the shape below.
+  :func:`_step` takes the state and returns the next one, reaching no
+  ``IO``: a read is taken by the shell and arrives as an argument, and a
+  write leaves as a returned value the shell performs.  That is what lets
+  a test call the transition on a hand-built state, and it keeps the
+  mutation in one assignment instead of scattered through the dispatch.
+  A language whose store cannot be threaded cheaply -- one that grows
+  without bound, like a stack -- returns *effects* for the shell to apply
+  instead of a whole new store; ``grapheme.py`` shows that variant.
 * Document decisions for genuinely neutral gaps in the language's wiki spec
   in the module docstring rather than choosing silently; do not use this to
   define away invalid operations.  ``suffolk.py`` shows a *spec-gap* note --
@@ -88,6 +98,38 @@ import sys
 
 from esolangs.interpreters.io import IO
 
+#: The whole run state as a value: the code cursor and the data cell.  A
+#: real language's is bigger -- a tape, a stack, a grid and a pointer --
+#: but it stays a *value*, so that ``snapshot`` can hand it out and the
+#: transition below can return a new one rather than editing one in place.
+type _State = tuple[int, int]
+
+
+def _step(
+    state: _State, code: str, byte: int | None = None
+) -> tuple[_State, str | None]:
+    """Return the state after one command, and the character to print.
+
+    Pure: it reads ``state`` and returns a new one, reaching no ``IO`` and
+    editing nothing it was given.  The two ports are the shell's, so a
+    read arrives as ``byte`` and a write leaves as the returned character.
+
+    Writing the language here rather than in :meth:`_Machine.step` is what
+    lets a test call it on a hand-built state, and what keeps the mutation
+    in exactly one place -- the single assignment in the shell.
+    """
+    ind, data = state
+    c = code[ind]
+    out = None
+    if c == "+":  # placeholder: increment the data cell
+        data = (data + 1) % 256
+    elif c == ".":  # placeholder: print the data cell
+        out = chr(data)
+    elif c in ",;" and byte is not None:  # store the byte the shell read
+        data = byte
+    # add the language's real instructions here
+    return (ind + 1, data), out
+
 
 class _Machine:
     """The run state: the data cell and the code position.
@@ -108,6 +150,16 @@ class _Machine:
     def halted(self) -> bool:
         return self.ind >= len(self.code)
 
+    @property
+    def _state(self) -> _State:
+        """The machine's fields as the value the transition works on."""
+        return (self.ind, self.data)
+
+    @_state.setter
+    def _state(self, state: _State) -> None:
+        """Write a transition's result back onto the machine's fields."""
+        self.ind, self.data = state
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         # Every field ``step`` can change, plus the input cursor: a repeat
@@ -115,25 +167,39 @@ class _Machine:
         return (self.ind, self.data, self.io.position())
 
     def step(self) -> None:
-        """Execute one command, advancing the code position."""
+        """Execute one command, advancing the code position.
+
+        This is the *shell*: the two ports live here, and nothing else
+        does.  A read is taken before the transition runs and a write is
+        performed after it, so :func:`_step` never reaches ``io`` and
+        stays a function of its arguments alone.
+
+        Keeping the shell this thin is the point.  Everything that
+        decides *what the command does* belongs in :func:`_step`, where
+        it can be read -- and tested -- without a machine around it.
+        """
         c = self.code[self.ind]
-        if c == "+":  # placeholder: increment the data cell
-            self.data = (self.data + 1) % 256
-        elif c == ".":  # placeholder: print the data cell
-            self.io.print_char(chr(self.data))
-        elif c == ",":  # placeholder: read a byte of input
-            self.data = self.io.input_char()
-        elif c == ";":  # placeholder: read a line and take its first character
-            # ``input_char`` handles the empty line itself, but ``input_str``
-            # hands back the raw line: an empty one is legal (the user pressed
-            # Enter), so guard before indexing or a bare Enter is an
-            # IndexError.  Running out of input is the different case, and
-            # still raises EOFError.
+
+        # A read is decided from the command about to run, and taken
+        # before the transition, which receives the byte as an argument.
+        byte = None
+        if c == ",":
+            byte = self.io.input_char()
+        elif c == ";":
+            # ``input_char`` handles the empty line itself, but
+            # ``input_str`` hands back the raw line: an empty one is legal
+            # (the user pressed Enter), so guard before indexing or a bare
+            # Enter is an IndexError.  Running out of input is the
+            # different case, and still raises EOFError.
             val = self.io.input_str()
-            if val:
-                self.data = ord(val[0])
-        # add the language's real instructions here
-        self.ind += 1
+            byte = ord(val[0]) if val else None
+
+        self._state, out = _step(self._state, self.code, byte)
+
+        # A write reports what the transition decided to print; the
+        # transition itself performs no output.
+        if out is not None:
+            self.io.print_char(out)
 
 
 def run(code: str, io: IO) -> None:
