@@ -5,7 +5,20 @@ from esolangs.tools.boolean.helpers import _validate_truth_table, best_input_ord
 #: The variable names inputs are read into, in the order the harness feeds
 #: them.  APL binds a variable by *naming* it on an executed line, so the
 #: names must appear in ascending order in the program text.
-_NAMES = "abcdefghijklmnopqrstuvwxyz"
+#:
+#: The wiki allows "any lowercase Latin (including accents), Cyrillic, or
+#: Greek letters" as a variable, so the alphabet is not the 26 ASCII
+#: letters.  The accented Latin range is appended, which more than
+#: covers any arity a minterm sum can materialize -- ``n == 54`` is
+#: already a ``2**54``-row table.  Cyrillic and Greek are left out
+#: deliberately: they are legal, but Greek alpha and Cyrillic u are
+#: confusable with Latin a and y in a generated program (ruff's RUF001
+#: says so), and there is no arity that needs them.
+#:
+#: The sequence is codepoint-ascending, which :func:`_order_key` relies
+#: on: literals are sorted by name so the emitted line names ``a`` before
+#: ``b``, and a non-monotone alphabet would put the reads out of order.
+_NAMES = "abcdefghijklmnopqrstuvwxyzàáâãäåæçèéêëìíîïñòóôõöøùúûüý"
 
 #: The complement operator, spelled exactly as the wiki spells it.
 _NOT = "!x = {\nx & $0\n$1\n}"
@@ -38,6 +51,23 @@ def algebraic_programming_language(truth_table: str) -> str:
     names it, and the emitted line always names ``a`` before ``b``, so
     reordering changes which minterm literal comes first, never the input
     order.
+
+    **The construction is total**, and structurally rather than by
+    search.  Every table is the disjunction of one term per ``1`` row,
+    each term the conjunction of ``n`` literals, and the choice of
+    literal is decided bit by bit from the row index -- so there is no
+    table shape that can fail to expand, no staging to miss a case, and
+    no arity at which the emission stops working.  The two boundaries
+    are handled explicitly: a table with no ``1`` rows takes the
+    constant-zero branch below, and a table with every row set expands
+    to ``2**n`` terms like any other.
+
+    **What bounds it is size, not reach.**  The program is about
+    ``n * 2**(n-1)`` characters, and the *table* is ``2**n`` -- so the
+    arity that exhausts memory arrives far below the point where
+    :data:`_NAMES` runs out.  Running out of names would need a table of
+    ``2**55`` rows, which cannot be constructed to pass in, so there is
+    no alphabet check here: it would be a guard no argument could reach.
     """
     return best_input_order(truth_table, _apl_ordered)
 
