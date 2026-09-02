@@ -2534,15 +2534,15 @@ class TestParameterizedMinifuck:
         parameterized convention exists to prevent.
 
         **Only one table.**  This used to build five, and assert besides that
-        a plans miss returns None -- which forced the *whole-arity* flipped
-        derivation on top of the ordinary one and put the test past nine
-        minutes for five builds.  Neither sweep can be asked for a subset
-        (``_flipped_plans`` is whole-arity by construction, and deliberately
-        so), so the only lever is how much of the arity the test demands.
-        The recorded claim is about XOR4, and that is what is kept; the miss
-        path is covered at an unstaged arity by
-        :meth:`test_a_table_with_no_staging_falls_through`, which pays no
-        derivation at all.
+        a plans miss returns None -- which forced a *whole-arity* derivation
+        on top of the ordinary one and put the test past nine minutes for
+        five builds.  That second sweep (the flipped-embed pass) has since
+        been removed outright, but the lever is unchanged: a four-input miss
+        still runs the staged enumeration to its caps, so what this costs is
+        how much of the arity it demands.  The recorded claim is about XOR4,
+        and that is what is kept; the miss path is covered at an unstaged
+        arity by :meth:`test_a_table_with_no_staging_falls_through`, which
+        pays no derivation at all.
         """
         import importlib
 
@@ -4906,11 +4906,6 @@ class TestMinifuckArityGates:
         assert 2 not in m._RESCUE_ARITIES  # noqa: SLF001
         assert m._rescue("0110", 2) is None  # noqa: SLF001
 
-    def test_flipped_declines_outside_its_arity(self) -> None:
-        m = self.module()
-        assert 2 not in m._FLIPPED_ARITIES  # noqa: SLF001
-        assert m._flipped_staging("0110", 2) is None  # noqa: SLF001
-
     def test_staging_spans_skips_the_insert_suffixes(self) -> None:
         """Two inputs are not an insert arity, so only the bracket runs are
         spanned -- the suffix loop is skipped rather than run and discarded.
@@ -4918,51 +4913,6 @@ class TestMinifuckArityGates:
         m = self.module()
         assert 2 not in m._INSERT_ARITIES  # noqa: SLF001
         assert m._staging_spans(2)  # noqa: SLF001
-
-
-def test_minifuck_flipped_sweep_claims_and_replays_a_table() -> None:
-    """The complementing-embed sweep, run against a single wanted table.
-
-    :func:`_flipped_plans` is whole-arity by design: it derives one embed per
-    ``(flips, separator, settle)`` and tests every table still wanting one,
-    which at four inputs means the ~50k tables the plain enumeration misses.
-    Measured, that sweep runs for over fifteen minutes -- far past what any
-    test can pay, and the reason this path had no coverage.
-
-    Narrowing *what is wanted* rather than what is derived gets the same code
-    to run in under a second: with everything but one table reported as
-    already placed, the sweep claims that table on its first staging and
-    returns.  ``_replay_flipped`` then rebuilds it and checks the printed
-    rows, so this still holds the module's standing rule -- nothing is
-    returned that has not been seen to print.
-    """
-    module = importlib.import_module("esolangs.tools.boolean.minifuck")
-    n = 4
-    wanted = "0" * 16
-    real = module._derived_plans  # noqa: SLF001
-
-    def only_one_missing(arity: int, targets):
-        if arity != n:
-            return real(arity, targets)
-        return {
-            format(value, f"0{2**n}b"): None
-            for value in range(2 ** (2**n))
-            if format(value, f"0{2**n}b") != wanted
-        }
-
-    # The plan cache has to be cleared on both sides: a warm cache would skip
-    # the sweep entirely, and a cache left warm afterwards would hand the
-    # patched result to every later four-input build.
-    module._derived_plans = only_one_missing  # noqa: SLF001
-    module._flipped_plans.cache_clear()  # noqa: SLF001
-    try:
-        found = module._flipped_plans(n)  # noqa: SLF001
-        assert wanted in found, "the first staging should claim the one table left"
-        template = module._replay_flipped(wanted, n, found[wanted])  # noqa: SLF001
-        assert template is not None
-    finally:
-        module._derived_plans = real  # noqa: SLF001
-        module._flipped_plans.cache_clear()  # noqa: SLF001
 
 
 def test_nocomment_wide_declines_when_the_plan_outgrows_the_skip() -> None:

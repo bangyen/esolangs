@@ -67,11 +67,11 @@ degrades rather than raises.  What a four-input table does pay for is the
 derivation, which at this arity cannot stop early; see
 :data:`_STAGED_ARITIES`.
 
-A second pass then takes the arity to **60942 of 64594 (94.35%)** by
-complementing inputs as they land -- see :func:`_flipped_staging`.  Whether a
-bit is inverted on the way in is a coordinate the enumeration never varied,
-and it costs nothing in slot order, because the gadget follows the setter it
-complements rather than replacing a different one.
+A second pass once took the arity to **60942 of 64594 (94.35%)** by
+complementing inputs as they land.  It has been removed: every table it
+placed is one the sculpted route below also builds, and it cost a
+300-second whole-arity sweep to place them.  ``docs/walls.md`` keeps the
+mechanism and the measurement.
 
 **The remaining 3652 fall to the sculpted route**, :func:`_mux`, which is a
 different construction rather than another coordinate on this one -- and it
@@ -378,8 +378,9 @@ def _embed(
     and it defaults to what this always did.  It is a *derivation coordinate*
     rather than post-processing: the gadget writes the live tape and leaves
     interpreter state behind, so a joint that did not emit it would be
-    simulating a different program than the one that ships.  See
-    :func:`_flipped_staging` for what varying it buys.
+    simulating a different program than the one that ships.  The pass that
+    varied it has been removed (see below); the parameter stays because the
+    coordinate is real and cheap to keep open.
 
     The setters are emitted in ascending name order whatever the mask says --
     the gadget goes *after* the setter it complements, never in place of a
@@ -1926,156 +1927,26 @@ def _derive_staging(truth_table: str, n: int) -> _Staging | None:
     return _rescue(truth_table, n)
 
 
-# The arities offered the flipped-embed pass below.  Two and three inputs are
-# already closed by the enumeration and :func:`_rescue`, so offering it there
-# could only change programs that already build.  Five is left out
-# deliberately rather than by oversight: that arity derives one table at a
-# time and a miss costs a measured 143 seconds, so sweeping 16 flip masks
-# behind it would trade a great deal of time for an arity nothing claims to
-# close.
-_FLIPPED_ARITIES = (4,)
-
-_Flipped = tuple[int, int, int, int | str, int, str, int]
-
-
-@cache
-def _flipped_plans(n: int) -> dict[str, _Flipped]:
-    """Derive a flipped staging for every table the enumeration misses.
-
-    **Whole-arity, for the same reason :func:`_derived_plans` is.**  An embed
-    is expensive to build and cheap to test against a table, so the loops run
-    staging-major -- one embed per ``(flips, separator, settle)``, the bracket
-    run extended one ``[`` at a time, and each printed column looked up among
-    the tables still wanting one.
-
-    Doing it table-major instead is what the first cut did, and the cost is
-    not a constant factor: a table whose flip mask sits late in the
-    enumeration re-derives every earlier one for itself, and sampled tables
-    took 20 to 190 seconds each that way.  The ``2 ** (2**n)`` dict that
-    forces table-major at five inputs is ordinary at four, so this arity can
-    afford the spelling that pays once.
-
-    Cached, so the sweep is paid by the first four-input table that misses
-    the name-order enumeration, and every later one reads its answer off.
-    """
-    # What the enumeration already places is read off one pass that is handed
-    # every table at the arity, rather than asked table by table: this is the
-    # same enumeration :func:`_derive_staging` consults one table at a time,
-    # so "missed" here means exactly what it means there.  Sixteen thousand
-    # entries is affordable where the five-input equivalent (``2**32``) is
-    # not, and this function is four-input only.
-    every = tuple(format(value, f"0{2**n}b") for value in range(2 ** (2**n)))
-    placed = _derived_plans(n, every)
-    wanted: dict[tuple[int, ...], list[str]] = {}
-    for table in every:
-        if table in placed:
-            continue
-        wanted.setdefault(tuple(int(b) for b in table), []).append(table)
-    found: dict[str, _Flipped] = {}
-    remaining = sum(len(tables) for tables in wanted.values())
-
-    def claim(staged: _Joint, head: tuple[int, int, int], suffix: int | str) -> bool:
-        """Record what every accumulator prints here; True when all are placed."""
-        nonlocal remaining
-        for acc in range(9, _MAX_ACC + 1):
-            for cell7 in (0, 1):
-                derived = _printed_column(staged, acc, cell7)
-                if derived is None:
-                    continue
-                for read in _READS:
-                    column = derived if read == _READS[1] else _complement(derived)
-                    for table in wanted.get(column, ()):
-                        if table in found:
-                            continue
-                        if not _confirm(staged, acc, read, cell7, column):
-                            continue
-                        found[table] = (*head, suffix, acc, read, cell7)
-                        remaining -= 1
-            if not remaining:
-                return True
-        return False
-
-    for flips in range(1, 1 << n):
-        for sep_index in range(len(_SEPS)):
-            for settle in (0, 1):
-                base = _embed(n, settle=settle, sep=_SEPS[sep_index], flips=flips)
-                _clamp(base)
-                _walk_to(base, _BASE - 1)
-                head = (flips, sep_index, settle)
-                run = base.fork()
-                for brackets in range(_MAX_BRACKETS + 1):
-                    staged = run.fork()
-                    staged.emit("<")
-                    _clamp(staged)
-                    if claim(staged, head, brackets):
-                        return found
-                    run.emit("[")
-                for suffix in _insert_suffixes():
-                    staged = base.fork()
-                    staged.emit(suffix + "<")
-                    _clamp(staged)
-                    if claim(staged, head, suffix):
-                        return found
-    return found
-
-
-def _replay_flipped(truth_table: str, n: int, plan: _Flipped) -> str | None:
-    """Rebuild one flipped staging and return its template, or None.
-
-    The same standard the rest of the module holds to: the plan records where
-    the answer was found, and this emits it again and checks the rows rather
-    than trusting the record.
-    """
-    flips, sep_index, settle, suffix, acc, read, cell7 = plan
-    j = _embed(n, settle=settle, sep=_SEPS[sep_index], flips=flips)
-    _clamp(j)
-    _walk_to(j, _BASE - 1)
-    j.emit("[" * suffix + "<" if isinstance(suffix, int) else suffix)
-    _clamp(j)
-    try:
-        _endgame(j, acc, read, cell7)
-    except ValueError:
-        return None
-    return j.template() if j.printed() == list(truth_table) else None
-
-
-def _flipped_staging(truth_table: str, n: int) -> str | None:
-    """Build on an embed that complements some inputs, or None if none does.
-
-    **Whether an input lands complemented is a free coordinate the
-    enumeration never varied.**  :func:`_embed` lays the setters down the tape
-    and every cell downstream is the running prefix-XOR of what was crossed,
-    so inverting a bit as it lands changes the columns standing at the read.
-    That is a different construction, not a renaming of one, which is why it
-    reaches tables the plain embed cannot.
-
-    **It costs nothing in slot order.**  ``_FLIP`` is emitted after the setter
-    it complements, so the placeholders stay ascending and the invariant
-    ``tests/tools/test_boolean_parameterized.py`` enforces on every generator
-    holds here unchanged.  Permuting which input occupies which slot would
-    reach further still -- measured, it closes the arity -- and is *not* done,
-    because it emits the placeholders out of order.
-
-    **This derives; it does not rewrite.**  The obvious cheaper route --
-    solve a transformed table on the ordinary embed, then patch the template
-    afterwards -- does not work, and the failure is not subtle.  The gadget
-    writes the live tape and leaves interpreter state behind, so a template
-    patched after the fact is not the program the derivation simulated: built
-    that way, 12 of 12 sampled tables printed the wrong rows on the real
-    interpreter.  Passing the mask to :func:`_embed` puts the gadget inside
-    the joint simulation, where every side effect is accounted for, and the
-    module's standing rule -- nothing is returned that has not been seen to
-    print -- keeps holding.
-
-    **The unflipped embed comes first**, which is what makes this safe to
-    add: every table the plain enumeration reaches is answered before this
-    runs, so those keep the staging and the template they already had, byte
-    for byte.
-    """
-    if n not in _FLIPPED_ARITIES:
-        return None
-    plan = _flipped_plans(n).get(truth_table)
-    return None if plan is None else _replay_flipped(truth_table, n, plan)
+# **The flipped-embed pass was here, and it is gone.**  It complemented some
+# inputs as they landed, which took four inputs from 23.9% to 94.35% -- a real
+# gain at the time, and dead weight now.  Every table it placed is a table the
+# plain enumeration missed, and :func:`_mux` builds all 49190 of those (swept
+# exhaustively, not sampled), so nothing reached it that the sculpted route
+# does not reach.  Nor was it a fallback for another arity: it was gated to
+# four inputs alone, which :data:`_MUX_ARITIES` also covers.
+#
+# What it cost was the whole-arity sweep behind it -- over 300 seconds, paid
+# by the first four-input table to miss the stagings, against about 11ms for
+# the same table through :func:`_mux`.  Deleting it takes that miss from
+# minutes to the sculpted route's own derivation.
+#
+# The trade is program length: the flipped pass emitted shorter templates for
+# the tables it placed, and those tables now get the sculpted route's longer
+# ones.  Taken deliberately -- a shorter program is not worth minutes to
+# compute -- and paid only by tables the plain enumeration already missed.
+#
+# ``docs/walls.md`` keeps the mechanism and the 94.35% measurement, which are
+# still true and still the reason the residue was worth attacking.
 
 
 def _staged(truth_table: str, n: int) -> str | None:
@@ -2084,15 +1955,15 @@ def _staged(truth_table: str, n: int) -> str | None:
     None rather than an exception on a miss, so the caller falls through to
     the searches and coverage cannot regress.
 
-    A miss at an arity in :data:`_FLIPPED_ARITIES` gets one more pass, over
-    the embeds that complement some inputs -- see :func:`_flipped_staging`
-    for what varying the polarity reaches, and why the unflipped embed is
-    tried first.
+    A miss falls through to :func:`_mux`, which closes four inputs.  The
+    flipped-embed pass that used to sit here was removed once that route was
+    shown to build every table it placed; see the note above
+    :data:`_MUX_BASE`.
     """
     plan = _derive_staging(truth_table, n)
     if plan is not None:
         return _replay(truth_table, n, plan)
-    return _flipped_staging(truth_table, n)
+    return _mux(truth_table, n)
 
 
 # ---------------------------------------------------------------------------
