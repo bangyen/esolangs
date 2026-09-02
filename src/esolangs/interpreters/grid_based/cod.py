@@ -44,6 +44,9 @@ exist).  The program terminates once no cod remains.
 """
 
 import sys
+from collections.abc import Sequence
+from collections.abc import Set as AbstractSet
+from dataclasses import dataclass
 from typing import Literal
 
 from esolangs.interpreters.io import IO
@@ -102,13 +105,120 @@ def _edge_dot_cells(grid: list[str]) -> set[tuple[int, int]]:
     return cells
 
 
+@dataclass(frozen=True)
 class _Cod:
-    """A single instruction pointer: position, heading, and value."""
+    """A single instruction pointer: position, heading, and value.
 
-    __slots__ = ("c", "d", "r", "value")
+    Frozen, because the cods *are* the state: a step maps each one forward
+    into zero, one, or several successors rather than editing it in place.
+    """
 
-    def __init__(self, r: int, c: int, d: _Direction, value: int = 0) -> None:
-        self.r, self.c, self.d, self.value = r, c, d, value
+    r: int
+    c: int
+    d: _Direction
+    value: int = 0
+
+
+def _cell(grid: Sequence[str], r: int, c: int) -> str:
+    """Return the character at ``(r, c)``; off the grid reads as water."""
+    if r < 0 or r >= len(grid) or c < 0 or c >= len(grid[0]):
+        return "~"
+    return grid[r][c]
+
+
+def _open(grid: Sequence[str], r: int, c: int) -> bool:
+    """Whether a cod can swim into ``(r, c)``."""
+    return _cell(grid, r, c) != "~"
+
+
+def _open_dirs(
+    grid: Sequence[str], r: int, c: int, exclude: _Direction | None = None
+) -> list[_Direction]:
+    """Return the headings out of ``(r, c)`` that are not water."""
+    return [
+        d
+        for d, (dr, dc) in _DIRS.items()
+        if d != exclude and _open(grid, r + dr, c + dc)
+    ]
+
+
+#: What one cod's step wants done: print its value, or take a number from
+#: the input port.  A step advances *every* live cod, so the effects are a
+#: list -- Eval's shape, for the same reason.
+@dataclass(frozen=True)
+class _Print:
+    """Write a cod's value."""
+
+    value: int
+
+
+@dataclass(frozen=True)
+class _Read:
+    """Take a number; the cod that asked is at ``index`` in the new list."""
+
+    index: int
+
+
+type _Effect = _Print | _Read
+
+
+def _step_cod(
+    cod: _Cod,
+    grid: Sequence[str],
+    dashes: AbstractSet[tuple[int, int]],
+    dots: AbstractSet[tuple[int, int]],
+    turn: int | None,
+) -> tuple[list[_Cod], list[_Effect]]:
+    """Return the cods that follow ``cod``, and what it wants done.
+
+    Pure: it reads its arguments and returns a description.  A cod that
+    reaches a dash on the border prints and dies, one that reaches a dot
+    reads, one that meets a bare dash or a failed zero-test dies, and one
+    that meets a junction becomes several.
+
+    ``turn`` is the caller's draw, used only when more than one way out is
+    open; everything else about the move is decided here.
+    """
+    dr, dc = _DIRS[cod.d]
+    if _open(grid, cod.r + dr, cod.c + dc):
+        move_dir = cod.d
+    else:
+        alts = _open_dirs(grid, cod.r, cod.c, exclude=_OPP[cod.d])
+        if not alts:
+            move_dir = _OPP[cod.d]
+        elif len(alts) == 1:
+            move_dir = alts[0]
+        else:
+            move_dir = alts[turn if turn is not None else 0]
+    mdr, mdc = _DIRS[move_dir]
+    r, c = cod.r + mdr, cod.c + mdc
+    moved = _Cod(r, c, move_dir, cod.value)
+
+    if (r, c) in dashes:
+        return ([], [_Print(moved.value)])
+
+    ch = _cell(grid, r, c)
+    if (r, c) in dots:
+        return ([moved], [_Read(0)])
+    if ch == ")":
+        return ([_Cod(r, c, move_dir, moved.value + 1)], [])
+    if ch == "(":
+        return ([_Cod(r, c, move_dir, moved.value - 1)], [])
+    if ch == "-":
+        return ([], [])
+    if ch == "<":
+        return ([], []) if moved.value == 0 else ([moved], [])
+    if ch == "_":
+        if move_dir == "N" and moved.value != 0:
+            return ([_Cod(r, c, "S", moved.value)], [])
+        return ([moved], [])
+    if ch == "+":
+        came_from = _OPP[move_dir]
+        branches = _open_dirs(grid, r, c, exclude=came_from)
+        if not branches:
+            return ([_Cod(r, c, came_from, moved.value)], [])
+        return ([_Cod(r, c, bd, moved.value) for bd in branches], [])
+    return ([moved], [])
 
 
 class _Machine:
@@ -163,21 +273,15 @@ class _Machine:
     # -- geometry -----------------------------------------------------
 
     def _cell(self, r: int, c: int) -> str:
-        if r < 0 or r >= len(self.grid) or c < 0 or c >= len(self.grid[0]):
-            return "~"
-        return self.grid[r][c]
+        return _cell(self.grid, r, c)
 
     def _is_open(self, r: int, c: int) -> bool:
-        return self._cell(r, c) != "~"
+        return _open(self.grid, r, c)
 
     def _open_dirs(
         self, r: int, c: int, exclude: _Direction | None = None
     ) -> list[_Direction]:
-        return [
-            d
-            for d, (dr, dc) in _DIRS.items()
-            if d != exclude and self._is_open(r + dr, c + dc)
-        ]
+        return _open_dirs(self.grid, r, c, exclude)
 
     def _choose(self, options: list[_Direction]) -> _Direction:
         return options[draw(self._rng, len(options))]
@@ -224,57 +328,43 @@ class _Machine:
     # -- stepping ---------------------------------------------------------
 
     def step(self) -> None:
-        """Advance every live cod by one cell, executing what it lands on."""
+        """Advance every live cod by one cell, executing what it lands on.
+
+        The ports live here rather than in the transition: this is the
+        shell.  A cod that reaches a dash on the border prints, and one
+        that reaches a dot reads -- both in cod order, so a step with
+        several live cods writes what they write in the order they are
+        carried.  A junction's draw is made here too, and only when more
+        than one way out is open.
+        """
         if not self.cods:
             return
         next_cods: list[_Cod] = []
-        for cod in self.cods:
-            next_cods.extend(self._advance(cod))
+        remaining = list(self.cods)
+        for index, cod in enumerate(remaining):
+            turn = None
+            if not _open(self.grid, cod.r + _DIRS[cod.d][0], cod.c + _DIRS[cod.d][1]):
+                alts = _open_dirs(self.grid, cod.r, cod.c, exclude=_OPP[cod.d])
+                if len(alts) > 1:
+                    turn = draw(self._rng, len(alts))
+            grown, effects = _step_cod(
+                cod, self.grid, self._edge_dashes, self._edge_dots, turn
+            )
+            for effect in effects:
+                if isinstance(effect, _Print):
+                    self.io.print_str(str(effect.value))
+                else:
+                    # The cod has already swum onto the dot by the time it
+                    # reads, and the original left it there when the port
+                    # raised at EOF -- so commit the move first.
+                    self.cods = [*next_cods, *grown, *remaining[index + 1 :]]
+                    read = self.io.input_num()
+                    grown = [
+                        _Cod(k.r, k.c, k.d, read) if i == effect.index else k
+                        for i, k in enumerate(grown)
+                    ]
+            next_cods.extend(grown)
         self.cods = next_cods
-
-    def _advance(self, cod: _Cod) -> list[_Cod]:
-        dr, dc = _DIRS[cod.d]
-        if self._is_open(cod.r + dr, cod.c + dc):
-            move_dir = cod.d
-        else:
-            alts = self._open_dirs(cod.r, cod.c, exclude=_OPP[cod.d])
-            if not alts:
-                move_dir = _OPP[cod.d]
-            elif len(alts) == 1:
-                move_dir = alts[0]
-            else:
-                move_dir = self._choose(alts)
-        mdr, mdc = _DIRS[move_dir]
-        r, c = cod.r + mdr, cod.c + mdc
-        cod.r, cod.c, cod.d = r, c, move_dir
-
-        if (r, c) in self._edge_dashes:
-            self.io.print_str(str(cod.value))
-            return []
-
-        ch = self._cell(r, c)
-        if (r, c) in self._edge_dots:
-            cod.value = self.io.input_num()
-            return [cod]
-        if ch == ")":
-            cod.value += 1
-        elif ch == "(":
-            cod.value -= 1
-        elif ch == "-":
-            return []
-        elif ch == "<":
-            if cod.value == 0:
-                return []
-        elif ch == "_":
-            if cod.d == "N" and cod.value != 0:
-                cod.d = "S"
-        elif ch == "+":
-            came_from = _OPP[cod.d]
-            branches = self._open_dirs(r, c, exclude=came_from)
-            if not branches:
-                return [_Cod(r, c, came_from, cod.value)]
-            return [_Cod(r, c, bd, cod.value) for bd in branches]
-        return [cod]
 
 
 def run(
