@@ -1471,23 +1471,30 @@ def _fold_search(
 
 def _fold_beam(
     state: _FoldState,
-    target: int = 8,
-    width: int = 48,
+    target: int = 12,
+    width: int = 1,
     maxsteps: int = 90,
 ) -> list[_FoldOp] | None:
-    """Beam-reduce a wide state down to ``target`` points, or ``None``.
+    """Reduce a wide state down to ``target`` points, or ``None``.
 
     Near-parity tables have up to 32 runs and the exhaustive search drowns
-    there; a narrow beam ranked by point count finds the reduction pattern
-    (it is nearly forced) and hands the small remainder to the search.
+    there; reducing by point count first finds the pattern (it is forced)
+    and hands the small remainder to the search.
 
-    The target is 8 rather than the state width at which the search *starts*
-    to struggle, and the difference is not cosmetic: at 21 points the search
-    explores for fifty seconds and then gives up, while beaming the same
-    state to 8 takes 0.37s and the search finishes it instantly.  A target
+    The target must clear the width at which the search *starts* to
+    struggle, and the difference is not cosmetic: at 21 points the search
+    explores for fifty seconds and then gives up, while reducing the same
+    state first takes 0.37s and the search finishes it instantly.  A target
     just under the drowning width leaves exactly the states that are too
-    wide to search and too narrow to beam, which is a hole rather than a
-    threshold -- so the beam runs whenever it can help at all.
+    wide to search and too narrow to reduce, which is a hole rather than a
+    threshold -- so the reduction runs whenever it can help at all.
+
+    It is **not a beam any more**.  ``width`` defaults to 1, which takes the
+    best-ranked move each step and never reconsiders; the parameter survives
+    so the old breadth can be re-measured, not because anything asks for it.
+    The old default of 8 was what forced breadth in the first place -- see
+    :data:`_FOLD_BEAM_WIDTHS` for the measurement that showed the width
+    requirement tracking the target rather than the table.
     """
     start = _fold_norm(list(state))
     if len(start) <= target:
@@ -1521,6 +1528,44 @@ def _fold_apply(state: _FoldState, op: _FoldOp) -> _FoldState | None:
     return None
 
 
+#: **The beam's breadth was the target's fault, and this removes it.**
+#:
+#: Width 1 is not a beam at all -- it takes the single best-ranked move each
+#: step and never reconsiders, which is a deterministic rule.  At the old
+#: target of 8 that very nearly worked (76 of 80 six-input tables), and the
+#: four exceptions looked like a property of those tables.  They are not.
+#: Varying the target while measuring the width each exception needs shows
+#: the requirement moving with the *target*, not with the table:
+#:
+#:     table        tgt4  tgt6  tgt8  tgt10  tgt12
+#:     w8-loser        9     9     9      2      1
+#:     needs9-a        9     9     9      1      1
+#:     needs9-b        9     9     9      9      9
+#:
+#: Two of the three stop needing breadth entirely once the beam is allowed to
+#: stop at 10 rather than 8.  The reduction is forced; asking it to land on
+#: exactly 8 points is what was not.
+#:
+#: So the target moves to 12 and the width to 1.  Measured against the old
+#: ``target=8, width=48`` over 416 tables -- all 256 at three inputs,
+#: 60-table samples at four and five, 40 at six -- the built set is
+#: **identical**, nothing lost and nothing gained, every row re-executed on
+#: the interpreter at one fill width, and the sweep runs in 56.8s against
+#: 131.5s.  At seven inputs, which carries no claim, the two disagree on one
+#: table each way.
+#:
+#: The target is not free to grow: at 16 the *five*-input tables start
+#: refusing (28 of 30), since a wide remainder hands ``_fold_search`` more
+#: than it can close.  10, 12 and 14 all give full greedy acceptance; 12 is
+#: the middle of that band.
+#:
+#: A first structural guess -- that run count predicts the requirement -- was
+#: measured and is wrong: the tables needing width appeared at 31, 33 and 36
+#: runs while 40-, 42- and 43-run tables reduced greedily.  The target
+#: explains what run structure did not.
+_FOLD_BEAM_WIDTHS = (1,)
+
+
 def _fold_plan(state: _FoldState) -> list[_FoldOp] | None:
     """Plan a full reduction, or ``None`` if the search gives up.
 
@@ -1532,6 +1577,7 @@ def _fold_plan(state: _FoldState) -> list[_FoldOp] | None:
     st = _fold_norm(list(state))
     pre: list[_FoldOp] = []
     guard = 0
+    # (see _FOLD_BEAM_WIDTHS for why the beam is tried narrow first)
     while any(s > 0 for _, s, _, _ in st) and len(st) > 1:
         guard += 1
         if guard > 2 * len(state) + 4:
@@ -1545,7 +1591,11 @@ def _fold_plan(state: _FoldState) -> list[_FoldOp] | None:
             break
         pre.append(hit[0])
         st = hit[1]
-    wide = _fold_beam(st)
+    wide = None
+    for _width in _FOLD_BEAM_WIDTHS:
+        wide = _fold_beam(st, width=_width)
+        if wide is not None:
+            break
     if wide is None:
         wide = []
     cur: _FoldState | None = st
