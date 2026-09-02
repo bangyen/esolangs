@@ -4171,7 +4171,7 @@ class TestParameterizedPctSquaredMinusOne:
         assert _deep_plan("0010", 2, collided) is None
 
     def test_deep_band_builds_symmetric_tables_at_five_inputs(self) -> None:
-        """Symmetric tables build past four inputs; generic ones are refused.
+        """Symmetric tables build past four inputs on the deep band.
 
         What bounds the deep band is distinctness rather than run count.  Two
         rows sharing a value are merged by the first cut that reaches them and
@@ -4194,6 +4194,106 @@ class TestParameterizedPctSquaredMinusOne:
             lengths.add(len(program))
             assert self.run_pct(program) == majority[row], (majority, bits)
         assert len(lengths) == 1, sorted(lengths)
+
+    def test_fold_doubling_is_what_reorders(self) -> None:
+        """The fold computes a table whose runs alternate four times.
+
+        ``00000101`` has four runs, and under the wipe-only algebra the
+        groups' cyclic order is invariant -- each wipe caps the spread at
+        3003, one short of the 3004 a relocation jumps, so a landing can
+        never split two survivors and an alternating word of four or more
+        runs can never contract to two points.  The doubling is what breaks
+        that: it regrows a gap past 3004, the landing splits it, and the
+        order changes.  This table is the smallest that *needs* the escape,
+        so it pins the mechanism rather than merely exercising the path.
+        """
+        from esolangs.tools.boolean.pct_squared_minus_one import _fold
+
+        table = "00000101"
+        template = _fold(table, 3)
+        assert template is not None
+        assert "m" in template.partition("\n")[2], "the doubling never fired"
+        lengths = set()
+        for row in range(8):
+            bits = [(row >> (2 - k)) & 1 for k in range(3)]
+            program = self.instantiate(template, bits)
+            lengths.add(len(program))
+            assert self.run_pct(program) == table[row], (table, bits)
+        assert len(lengths) == 1, sorted(lengths)
+
+    @pytest.mark.slow  # a 19-run plan plus 32 interpreter runs
+    def test_fold_closes_five_inputs(self) -> None:
+        """A five-input table the deep band refuses computes on the fold.
+
+        The table is pinned because finding one is expensive, not because
+        they are rare: ``_deep_band`` refuses it only after exhausting its
+        whole weighting family, an ~18s sweep that was run once to select
+        this witness and is not re-run here.  (Near-parity is *not* such a
+        witness -- a weighting tolerates its collisions and the deep band
+        serves it in milliseconds -- which is why a random table is pinned
+        instead.)  The fold is called directly to keep the test at its own
+        cost; the dispatch reaches it by falling through the same refusal.
+        The template is executed on all 32 rows at equal fill length.
+        """
+        from esolangs.tools.boolean.pct_squared_minus_one import _fold
+
+        table = "11011111100100101001101110111000"
+        template = _fold(table, 5)
+        assert template is not None
+        lengths = set()
+        for row in range(32):
+            bits = [(row >> (4 - k)) & 1 for k in range(5)]
+            program = self.instantiate(template, bits)
+            lengths.add(len(program))
+            assert self.run_pct(program) == table[row], (table, bits)
+        assert len(lengths) == 1, sorted(lengths)
+
+    @pytest.mark.slow  # a 21-point plan plus 32 interpreter runs
+    def test_fold_beams_the_states_too_wide_to_search(self) -> None:
+        """A 21-point table plans quickly instead of exhausting the search.
+
+        The beam's target is what makes this table cheap.  With the target
+        set just under the width at which the exhaustive search starts to
+        struggle, a 21-point state was too wide to search and too narrow to
+        beam: the search explored for fifty seconds and gave up, so the
+        generator *refused a table it can build*.  Beaming to eight points
+        plans it in under a second.  Pinned as the regression, and executed
+        rather than merely planned, because a plan that does not compute is
+        not a fix.
+        """
+        from esolangs.tools.boolean.pct_squared_minus_one import _fold
+
+        table = "01010101000101111111010101011110"
+        template = _fold(table, 5)
+        assert template is not None
+        lengths = set()
+        for row in range(32):
+            bits = [(row >> (4 - k)) & 1 for k in range(5)]
+            program = self.instantiate(template, bits)
+            lengths.add(len(program))
+            assert self.run_pct(program) == table[row], (table, bits)
+        assert len(lengths) == 1, sorted(lengths)
+
+    def test_deep_band_is_screened_above_four_inputs(self) -> None:
+        """Asymmetric five-input tables are screened, symmetric ones built.
+
+        The deep band cannot serve a five-input table unless the table
+        agrees on every popcount class -- its weightings force collisions
+        there -- and proving that by enumeration cost about eighteen
+        seconds per table.  The screen settles it immediately, so the
+        expensive refusal is skipped while the tables it really does build
+        still take its (much shorter) programs.
+        """
+        from esolangs.tools.boolean.pct_squared_minus_one import _deep_band
+
+        parity = "".join(str(bin(r).count("1") % 2) for r in range(32))
+        majority = "".join("1" if bin(r).count("1") >= 3 else "0" for r in range(32))
+        assert _deep_band(parity, 5) is not None
+        assert _deep_band(majority, 5) is not None
+        # One flipped row breaks the popcount symmetry and is screened out.
+        asymmetric = list(parity)
+        asymmetric[7] = "0" if asymmetric[7] == "1" else "1"
+        assert _deep_band("".join(asymmetric), 5) is None
 
     @pytest.mark.slow  # 8.3s: the ladder build plus eight interpreter runs
     def test_ladder_builds_majority_three(self) -> None:
