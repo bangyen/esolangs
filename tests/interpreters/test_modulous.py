@@ -139,10 +139,10 @@ class TestModulous:
         """
         import re
 
-        from esolangs.interpreters.stack_based.modulous import State
+        from esolangs.interpreters.stack_based.modulous import _Machine
 
         io = ScriptedIO()
-        machine = State(var={f"VAR{k}": 0 for k in range(1, 5)}, io=io)
+        machine = _Machine(var={f"VAR{k}": 0 for k in range(1, 5)}, io=io)
         reg = re.compile(r'\[([^\[\]"]*("[^"]*")?)]')
         machine.tokens = [
             k[0] for k in reg.findall("[PSH INT 9][PRT INT][JMP B 2][END]")
@@ -333,16 +333,16 @@ class TestModulous:
 
 class TestStepMachine:
     def test_a_token_less_state_starts_halted(self) -> None:
-        from esolangs.interpreters.stack_based.modulous import State
+        from esolangs.interpreters.stack_based.modulous import _Machine
 
         # `step` has no halted guard of its own -- the caller checks first,
         # which is what the VM's run loop does.
-        assert State(io=IO()).halted
+        assert _Machine(io=IO()).halted
 
     def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
-        from esolangs.interpreters.stack_based.modulous import State
+        from esolangs.interpreters.stack_based.modulous import _Machine
 
-        state = State(io=IO())
+        state = _Machine(io=IO())
         state.tokens = ["PSH INT 5", "PRT INT", "END"]
         before = state.snapshot()
         hash(before)  # must not raise

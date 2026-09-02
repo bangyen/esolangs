@@ -154,7 +154,7 @@ def _reads(entry: tuple, table: str) -> int:
     whole sweep drops from minutes to well under a second, and the read
     count at that point is the same number either way.
     """
-    fn, lang, run = entry
+    fn, lang, _run = entry
     try:
         program = str(fn(table))
     except ValueError:
@@ -168,14 +168,17 @@ def _reads(entry: tuple, table: str) -> int:
     io = ScriptedIO("0\n" * 8)
     source = program.splitlines() if lang.split else program
     module = importlib.import_module("esolangs.interpreters." + lang.interpreter)
-    machine_cls = getattr(module, "_Machine", None)
+    machine_cls = getattr(module, "_Machine")  # noqa: B009
+    # Every interpreter names its state object ``_Machine``, so this reads
+    # the same count for every language.  It used to fall back to ``run``
+    # for the three that spelled the class ``State``: that measured a whole
+    # run rather than a stepped one, silently, for exactly those three.
     # A program may halt through its own error path or call exit; either way the
     # read count up to that point is what matters here.
     with contextlib.suppress(Exception, SystemExit):
-        if machine_cls is not None:
-            run_until_halt_or_cycle(machine_cls(source, io))
-        else:
-            run(source, io=io, **dict(lang.kwargs))
+        of = getattr(machine_cls, "of", None)
+        build = of if callable(of) else machine_cls
+        run_until_halt_or_cycle(build(source, io))
     return io.position()
 
 

@@ -1095,20 +1095,20 @@ class TestRunUntilHaltOrCycle:
 
     def test_modulous_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.stack_based.modulous import State
+        from esolangs.interpreters.stack_based.modulous import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
-        state = State(var={f"VAR{k}": 0 for k in range(1, 5)}, io=ScriptedIO())
+        state = _Machine(var={f"VAR{k}": 0 for k in range(1, 5)}, io=ScriptedIO())
         state.tokens = ["END"]
         assert run_until_halt_or_cycle(state) is True
 
     def test_modulous_looping_run_is_detected_as_a_cycle(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.stack_based.modulous import State
+        from esolangs.interpreters.stack_based.modulous import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
         # RST resets the pointer to the start of the program on every pass
-        state = State(var={f"VAR{k}": 0 for k in range(1, 5)}, io=ScriptedIO())
+        state = _Machine(var={f"VAR{k}": 0 for k in range(1, 5)}, io=ScriptedIO())
         state.tokens = ["RST"]
         assert run_until_halt_or_cycle(state) is False
 
@@ -1353,8 +1353,8 @@ class TestEveryLanguageIsSteppable:
         without: list[str] = []
         for language, (module_path, _split, _kwargs) in sorted(RUNNERS.items()):
             module = importlib.import_module(f"esolangs.interpreters.{module_path}")
-            state = getattr(module, "_Machine", None) or getattr(module, "State", None)
-            if state is None or not hasattr(state, "step"):
+            state = getattr(module, "_Machine")  # noqa: B009
+            if not hasattr(state, "step"):
                 without.append(language)
         assert without == []
 
@@ -1381,9 +1381,8 @@ class TestEveryLanguageIsSteppable:
             module = importlib.import_module(
                 f"esolangs.interpreters.{RUNNERS[name][0]}"
             )
-            # A couple of modules call their state object ``State``.
-            state = getattr(module, "_Machine", None) or getattr(module, "State", None)
-            if state is None or not hasattr(state, "snapshot"):
+            state = getattr(module, "_Machine")  # noqa: B009
+            if not hasattr(state, "snapshot"):
                 without.append(name)
         assert without == []
 
