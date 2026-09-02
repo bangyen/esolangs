@@ -25,7 +25,6 @@ and ``halted`` is true once the pointer reaches 1.
 """
 
 import sys
-
 from collections.abc import Mapping
 from dataclasses import dataclass
 
@@ -113,7 +112,9 @@ class _Reader:
         return value
 
 
-def _atom(exp: str, pos: int, var: Mapping[str, Value], reader: _Reader) -> tuple[Value, int]:
+def _atom(
+    exp: str, pos: int, var: Mapping[str, Value], reader: _Reader
+) -> tuple[Value, int]:
     """Parse the leading atom of ``exp`` from ``pos``.
 
     Returns ``(value, next_position)``.  An atom is ``[expr]`` (array
@@ -138,7 +139,9 @@ def _atom(exp: str, pos: int, var: Mapping[str, Value], reader: _Reader) -> tupl
     raise HaltError
 
 
-def _eval(exp: str, pos: int, var: Mapping[str, Value], reader: _Reader) -> tuple[Value, int]:
+def _eval(
+    exp: str, pos: int, var: Mapping[str, Value], reader: _Reader
+) -> tuple[Value, int]:
     """Evaluate the expression ``exp`` from ``pos``, returning (value, pos).
 
     An expression is an atom followed by any number of ``[index]``
@@ -235,7 +238,9 @@ def _advance(
         op = lst[1] if len(lst) > 1 else ""
         target = _operand(lst, 0)
         if op == "=":
-            effects.append(_store_effect(target, _val(_operand(lst, 2), var, reader), var, reader))
+            effects.append(
+                _store_effect(target, _val(_operand(lst, 2), var, reader), var, reader)
+            )
         elif op in ("+=", "+"):
             effects.append(
                 _store_effect(
