@@ -67,33 +67,26 @@ degrades rather than raises.  What a four-input table does pay for is the
 derivation, which at this arity cannot stop early; see
 :data:`_STAGED_ARITIES`.
 
-A second pass then takes the arity to **60546 of 64594 (93.7%)** by
+A second pass then takes the arity to **60942 of 64594 (94.35%)** by
 complementing inputs as they land -- see :func:`_flipped_staging`.  Whether a
 bit is inverted on the way in is a coordinate the enumeration never varied,
 and it costs nothing in slot order, because the gadget follows the setter it
 complements rather than replacing a different one.
 
-**Four inputs is not closed, and what would close it is known and refused.**
-Permuting *which* input occupies which slot reaches every remaining table --
-measured, the residue is zero -- but a permuted embed emits the ``{Xi}`` out
-of ascending order, which ``tests/tools/test_boolean_parameterized.py``
-enforces on every generator here.  So the remaining 4048 are left to the
-searches rather than bought with the invariant.  They are not unbuildable:
-programs for them were built through a permuted embed and verified row by row
-on the real interpreter, so what is open is whether a *name-order* template
-reaches them, not whether Minifuck can compute them.  Untried
-order-preserving axes remain -- per-gap separators, the other spellings of
-the complement gadget, and the chain prototype below.
-
-The 93.7% is the ceiling of *this* family, and it is not the ceiling of the
-language.  A prototype that interleaves two reads with chosen walks -- a
-richer pool than the suffix this module enumerates, coordinates
-``(separator, settle, k, cell, read1, gap, read2, accumulator, orientation)``
--- prints 19.5% of a 400-table sample of the tables the enumeration misses,
-78 of 78 verified on the interpreter.  It is not shipped and nothing here
-calls it, but it means a miss below is a miss of the staging family rather
-than of Minifuck.  See ``docs/walls.md``, "Why no chain can escape the
-counting argument", which the prototype refutes.
+**The remaining 3652 fall to the sculpted route**, :func:`_mux`, which is a
+different construction rather than another coordinate on this one -- and it
+still embeds each input exactly once.  The embed already left the whole row
+identity on the tape (its walk transform is affine and invertible), so a
+derived, table-independent suffix of reads can drive the ``2**n`` rows to
+``2**n`` *distinct pointer positions* -- and separated rows can be edited
+individually: the printed column is fixed one row at a time from the highest
+position down, each round exact for its target row and provably unable to
+disturb the rows above it, so the loop terminates in at most ``2**n``
+rounds.  With it the arity is closed: all 64594 fully-essential four-input
+tables build, the 3652 verified row by row on the shipped interpreter.  See
+the comment block above :data:`_MUX_BASE` for the mechanism, the
+measurements, and why five inputs waits on a separation rather than on any
+new idea.
 
 Five inputs is staged on the same terms and a far thinner slice: the family
 produces 24582 fully-essential 32-bit columns against 4294642034 such tables,
@@ -2102,6 +2095,392 @@ def _staged(truth_table: str, n: int) -> str | None:
     return _flipped_staging(truth_table, n)
 
 
+# ---------------------------------------------------------------------------
+# The sculpted route: separate every row into its own pointer position, then
+# fix the printed column one row at a time, from the highest position down.
+#
+# This is the construction that closes the four-input residue, and it embeds
+# each input **exactly once** -- the repo-wide rule every parameterized
+# generator holds to (see ``docs/limitations.md``) is kept, not carved out.
+# The observation it stands on is that the embed already put the whole row
+# identity on the tape: ``_embed``'s walk transform is affine and invertible,
+# so after the embed no two rows are in the same state, and converting that
+# state difference into a *pointer* difference needs reads of what is already
+# there, never another copy of an input.
+#
+# **Separation** is that conversion, and it is derived per arity -- the
+# suffix depends only on ``n``, never on the table.  Four searches feed it,
+# tried cheapest first, each accepting only suffixes that leave every cell
+# left of the embed untouched (a write there lands in the pool codes'
+# working range, and a separation that scrambles it strands every probe --
+# measured: 0 usable pool probes against 14 with the region intact, which is
+# also why the embed sits at ``_MUX_BASE`` rather than ``_BASE``):
+#
+# * a breadth-first search for the shortest suffix over ``<[x`` that strictly
+#   increases the number of distinct pointers -- the workhorse, but its state
+#   space explodes past depth ~8 at sixteen machines;
+# * a greedy pass over *aimed reads*, ``'<' * a + '[x' * b + '[<'`` -- rewind,
+#   walk to a chosen cell, read it -- committing the best measured strict
+#   improvement;
+# * a short beam over aimed-read sequences, for the plateaus where no single
+#   read gains (a lone improvement needs two coordinated reads);
+# * a two-machine BFS on one still-colliding pair alone -- 2 machines make
+#   depth 14 affordable where 16 machines make depth 9 unaffordable -- with
+#   each candidate then measured on the full joint for collateral.
+#
+# What resists longest is always the *first* input: its distinguishing cells
+# are furthest left and every later walk smears prefix-XOR junk over them.
+# Reading a bit as it lands does not help and cannot: the setter-read unit is
+# shift-invariant over the uniform wake, so only the Hamming weight survives
+# -- measured, ``n + 1`` distinct states out of ``2**n`` at every arity and
+# every spacer tried.  Post-hoc reads of an intact embed are the whole trick.
+#
+# **Sculpting** then edits the separated rows individually.  Fix a target
+# cell ``C`` below every row.  One round ``'<' * K + '[x' * K`` with
+# ``K = b - C + 1`` has three provable effects:
+#
+# * the row at position ``b`` rewinds to ``C - 1`` and its first landing is
+#   ``C`` -- an *unconditional* flip, nothing crossed before it, so the flip
+#   is clean whatever that row's tape holds;
+# * a row above ``b`` starts its walk right of ``C`` and writes nothing below
+#   its own rewind point, so its cells at and left of ``C`` -- and therefore
+#   the value the endgame will read for it -- are untouched;
+# * rows below ``b`` cross ``C`` on the way back and pick up value-dependent
+#   cascade debris from crossing ``C - 1``: scrambled, not controlled.
+#
+# So repeatedly fixing the *highest* disagreeing row strictly lowers the
+# frontier, and the loop lands in at most ``2**n`` rounds.  The one
+# non-structural residue is the pool code: the probe re-derives it each
+# round, and a state-driven switch could in principle disturb a fixed row
+# through the walkout, which is why the loop carries a small allowance and
+# falls through rather than looping.  The trailing ``x`` on every round is
+# the ``_FLIP`` lesson again: a walk whose last ``[`` cascades leaves the
+# skip flag set, and the next instruction must be one the program can afford
+# to lose.
+#
+# **Coverage and cost, measured.**  All 3652 four-input tables the staged
+# families miss build through this route and print all 16 rows correctly on
+# the shipped interpreter, at one program width per table and with the slots
+# in name order -- which closes the arity: 64594 of 64594.  A build costs
+# about 7ms once the arity's separation is derived (a measured 15-17s at four
+# inputs, cached per process).
+#
+# Measure this route with :func:`_mux` directly, not through
+# :func:`minifuck`: a fully-essential four-input table that misses the
+# stagings pays ``_flipped_plans``' whole-arity sweep -- minutes -- before it
+# ever reaches here, so timing the public entry reports that sweep and not
+# this.  Timing three such tables that way looked like a hang and was one,
+# in the staged pass this route sits behind.
+#
+# The route sits *after* the staged families in
+# :func:`_solve`, so every table they already build keeps its template byte
+# for byte, and *before* the searches, which now serve only as the net should
+# a pool code refuse every ``(C, orientation, read)`` this tries.
+#
+# **The gate is the separation, not the sculpting.**  Five inputs is not in
+# :data:`_MUX_ARITIES` because no derivation here has separated 32 rows --
+# the searches above run 191 seconds and fail, always stalling on pairs that
+# differ in the first input -- and an arity that will fail must not spend
+# minutes doing it on every miss.  Pre-splitting that input at embed time
+# (walk over ``X0``'s landing cell first, so the setter itself splits) was
+# tried and stalls at the same 20 of 32, so the obstruction is deeper than
+# the first bit.  Nothing else in the route is arity-specific, so lifting
+# five is exactly one successful separation away; see ``docs/walls.md``.
+
+# Where the sculpted route embeds, and how much of the tape to its left the
+# separation searches must not write.  The pool codes were designed against
+# the uniform wake ``_walk_to`` leaves and their marks reach to about cell
+# fourteen, so a separation that scribbles there strands every probe --
+# measured, 0 usable pool probes against 14 with the region intact.  Eight
+# cells between the guard and the embed are deliberately left writable:
+# scratch there is what lets the searches finish, and sealing it turns the
+# four-input separation from a 15-second derivation into a failure.
+_MUX_BASE = _BASE + 16
+_MUX_GUARD = _MUX_BASE - 8
+
+# The arities the route is offered.  Two and three never reach it (the
+# stagings are total there); four is the arity it closes.  See the section
+# comment for why five is absent.
+_MUX_ARITIES = (2, 3, 4)
+
+# One derived separation per arity, handed out as forks.  A plain dict
+# rather than ``lru_cache`` because the value is a mutable ``_Joint``.
+_MUX_SEPARATED: dict[int, _Joint] = {}
+
+
+def _mux_embed(n: int) -> _Joint:
+    """Emit the standard embed shape, laid down at ``_MUX_BASE``."""
+    j = _Joint(n)
+    _walk_to(j, _MUX_BASE - 1)
+    for i in range(n):
+        j.emit_setter(i)
+        j.emit("[x")
+        if i + 1 < n:
+            j.emit(_SEP)
+    return j
+
+
+def _mux_intact(before: _Joint, after: _Joint) -> bool:
+    """Whether every cell left of the guard survived, on every row."""
+    return all(
+        m.tape[:_MUX_GUARD] == m0.tape[:_MUX_GUARD]
+        for m, m0 in zip(after.ms, before.ms, strict=True)
+    )
+
+
+def _mux_split_bfs(j: _Joint, want: int, maxlen: int) -> str | None:
+    """Shortest suffix over ``<[x`` reaching more than ``want`` pointers.
+
+    The same shape as :func:`_search` with two changes it cannot absorb: the
+    acceptance is on the pointer census rather than a column, and states
+    that wrote left of the embed are pruned outright -- acceptance-time
+    filtering would still explore them, and their subtrees are all poisoned.
+    """
+    root = tuple(m.copy() for m in j.ms)
+    seen = {tuple(m.key() for m in root)}
+    queue = deque([(root, "")])
+    while queue:
+        states, prog = queue.popleft()
+        if len(prog) >= maxlen:
+            continue
+        for ch in "<[x":
+            new = []
+            for m in states:
+                clone = m.copy()
+                clone.exec(ch)
+                new.append(clone)
+            if any(m.dead for m in new):
+                continue
+            if any(
+                m.tape[:_MUX_GUARD] != m0.tape[:_MUX_GUARD]
+                for m, m0 in zip(new, root, strict=True)
+            ):
+                continue
+            key = tuple(m.key() for m in new)
+            if key in seen:
+                continue
+            seen.add(key)
+            code = prog + ch
+            if not any(m.skip for m in new) and len({m.ptr for m in new}) > want:
+                return code
+            queue.append((tuple(new), code))
+    return None
+
+
+def _mux_aimed(j: _Joint) -> Iterator[str]:
+    """Aimed reads: rewind ``a``, walk ``b``, read -- one cell, chosen."""
+    low = min(j.ptrs())
+    for a in range(low + 1):
+        for b in range(24):
+            yield "<" * a + "[x" * b + "[<"
+
+
+def _mux_beam(j: _Joint, cur: int, width: int = 40, depth: int = 3) -> str | None:
+    """Beam over aimed-read sequences for a strict pointer-census increase."""
+    beam: list[tuple[tuple[int, int], str, _Joint]] = [((cur, 0), "", j)]
+    for _ in range(depth):
+        grown: list[tuple[tuple[int, int], str, _Joint]] = []
+        for _key, prog, state in beam:
+            for move in _mux_aimed(state):
+                probe = state.fork()
+                probe.emit(move)
+                if any(m.dead for m in probe.ms) or not _mux_intact(j, probe):
+                    continue
+                count = len(set(probe.ptrs()))
+                if count > cur:
+                    return prog + move
+                grown.append(((count, -len(prog + move)), prog + move, probe))
+        grown.sort(key=lambda entry: entry[0], reverse=True)
+        beam = grown[:width]
+        if not beam:
+            return None
+    return None
+
+
+def _mux_pair_bfs(j: _Joint, rows: list[int], maxlen: int = 14) -> list[str]:
+    """Suffixes splitting just these rows, searched on their machines alone.
+
+    Two machines make depth 14 affordable where sixteen make depth 9
+    unaffordable; the caller re-measures every hit on the full joint, so
+    nothing is accepted on the pair's evidence alone.
+    """
+    root = tuple(j.ms[r].copy() for r in rows)
+    seen = {tuple(m.key() for m in root)}
+    queue = deque([(root, "")])
+    hits: list[str] = []
+    while queue:
+        states, prog = queue.popleft()
+        if len(prog) >= maxlen:
+            continue
+        for ch in "<[x":
+            new = []
+            for m in states:
+                clone = m.copy()
+                clone.exec(ch)
+                new.append(clone)
+            if any(m.dead for m in new):
+                continue
+            if any(
+                m.tape[:_MUX_GUARD] != m0.tape[:_MUX_GUARD]
+                for m, m0 in zip(new, root, strict=True)
+            ):
+                continue
+            key = tuple(m.key() for m in new)
+            if key in seen:
+                continue
+            seen.add(key)
+            code = prog + ch
+            if not any(m.skip for m in new) and len({m.ptr for m in new}) > 1:
+                hits.append(code)
+                if len(hits) >= 40:
+                    return hits
+                continue
+            queue.append((tuple(new), code))
+    return hits
+
+
+def _mux_separate(n: int) -> _Joint | None:
+    """Derive a suffix leaving all ``2**n`` rows at distinct pointers.
+
+    Table-independent, so it is derived once per arity and cached; callers
+    get a fork.  The searches run cheapest first -- see the section comment
+    -- and a failure returns None so the caller falls through, which is what
+    the arity gate exists to make rare rather than slow.
+    """
+    if n in _MUX_SEPARATED:
+        return _MUX_SEPARATED[n].fork()
+    j = _mux_embed(n)
+    goal = 2**n
+    while True:
+        cur = len(set(j.ptrs()))
+        if cur == goal:
+            break
+        hit = _mux_split_bfs(j, cur, 8)
+        if hit is None:
+            best_key = None
+            for move in _mux_aimed(j):
+                probe = j.fork()
+                probe.emit(move)
+                if any(m.dead for m in probe.ms) or not _mux_intact(j, probe):
+                    continue
+                count = len(set(probe.ptrs()))
+                if count <= cur:
+                    continue
+                key = (count, -len(move))
+                if best_key is None or key > best_key:
+                    hit, best_key = move, key
+        if hit is None:
+            hit = _mux_beam(j, cur)
+        if hit is None:
+            colliding: dict[int, list[int]] = {}
+            for row, m in enumerate(j.ms):
+                colliding.setdefault(m.ptr, []).append(row)
+            candidates = []
+            for rows in colliding.values():
+                if len(rows) > 1:
+                    candidates.extend(_mux_pair_bfs(j, rows[:2]))
+            best_key = None
+            for code in candidates:
+                probe = j.fork()
+                probe.emit(code)
+                if any(m.dead for m in probe.ms) or not _mux_intact(j, probe):
+                    continue
+                key = (len(set(probe.ptrs())), -len(code))
+                if best_key is None or key > best_key:
+                    hit, best_key = code, key
+        if hit is None:
+            return None
+        j.emit(hit)
+    # Pad right so the sculpting rewinds fit: every round needs
+    # ``b - C + 1 <= min(ptr) - 8`` with ``C`` below the lowest row.
+    q = j.ptrs()
+    floor = (max(q) - min(q)) + 24
+    if min(q) < floor:
+        j.emit("[x" * (floor - min(q)))
+    _MUX_SEPARATED[n] = j.fork()
+    return j
+
+
+def _mux_column(j: _Joint, acc: int, cell7: int) -> tuple[int, ...] | None:
+    """Return what the ``'[x<[<'`` read would print at ``acc``, uncached.
+
+    The same derivation as :func:`_printed_column`, minus the memoisation:
+    sculpting never revisits a state, so the module-level caches would grow
+    one entry per probe and pay for lookups that can never hit.  The pool
+    codes are tried directly instead.
+    """
+    probe = j.fork()
+    probe.emit("x")  # absorb a pending skip so the clamp below is exact
+    _clamp(probe)
+    code = None
+    for candidate in _POOL_CODES:
+        if _pool_reaches(probe, candidate, cell7, acc - 1):
+            code = candidate
+            break
+    if code is None:
+        return None
+    probe.emit(code)
+    try:
+        _walk_to(probe, acc - 1)
+    except ValueError:
+        return None
+    return tuple(probe.col(probe.ms[0].ptr + 1))
+
+
+def _mux(truth_table: str, n: int) -> str | None:
+    """Build by separating the rows, then sculpting the column they print.
+
+    Every ``(C, orientation, read)`` combination runs the same loop: derive
+    the column the endgame would print, take the highest-positioned row that
+    disagrees, flip its cell ``C`` with one clean round, repeat.  The
+    frontier argument in the section comment bounds the loop; the cap is
+    that bound plus a small allowance for a pool-code switch, and a stall
+    falls through to the next combination rather than looping.  The
+    finished joint is handed to :func:`_try_print`, so what is returned was
+    seen to print the table.
+    """
+    if n not in _MUX_ARITIES:
+        return None
+    base = _mux_separate(n)
+    if base is None:
+        return None
+    want = tuple(int(c) for c in truth_table)
+    positions = base.ptrs()
+    lowest, highest = min(positions), max(positions)
+    for acc in range(highest - lowest + 9, lowest - 1):
+        for cell7 in (0, 1):
+            for direct in (True, False):
+                j = base.fork()
+                stalled = False
+                for _ in range(2**n + 4):
+                    column = _mux_column(j, acc, cell7)
+                    if column is None:
+                        stalled = True
+                        break
+                    got = column if direct else _complement(column)
+                    disagree = [
+                        p for p, g, w in zip(j.ptrs(), got, want, strict=True) if g != w
+                    ]
+                    if not disagree:
+                        break
+                    frontier = max(disagree)
+                    rewind = frontier - acc + 1
+                    if rewind > min(j.ptrs()) - 8:
+                        stalled = True
+                        break
+                    j.emit("<" * rewind + "[x" * rewind + "x")
+                else:
+                    stalled = True
+                if stalled:
+                    continue
+                j.emit("x")
+                _clamp(j)
+                hit = _try_print(j, truth_table, acc)
+                if hit is not None:
+                    return hit.template()
+    return None
+
+
 def _lift_leaves_name_order(essential: list[int], n: int) -> bool:
     """Whether lifting would emit the ``{Xi}`` out of ascending order.
 
@@ -2216,6 +2595,14 @@ def _solve(truth_table: str) -> str:
     derived = _staged(truth_table, n)
     if derived is not None:
         return derived
+
+    # The sculpted route: it closes four inputs (all 3652 tables the staged
+    # families miss, interpreter-verified) at milliseconds a table, so it
+    # goes ahead of the searches -- which stay below purely as the safety
+    # net for a pool code refusing every combination it tries.
+    sculpted = _mux(truth_table, n)
+    if sculpted is not None:
+        return sculpted
 
     frontier = _BASE + n * _SPAN + 6
 

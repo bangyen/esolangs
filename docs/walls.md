@@ -368,8 +368,8 @@ and they returned about a tenth the yield per second of plain permutation.
 Each further coordinate buys less against a residue that barely moves.
 Closing 3240 this way would need roughly 28x the yield of the best axis tried.
 **On that evidence n=4 is not reachable by widening this family**; the residue
-is the hard core, and a different column pool (the chain prototype below) is
-the plausible route rather than another coordinate on this one.
+is the hard core, and closing it took a different construction, not another
+coordinate on this one -- see "Four inputs is closed" below.
 
 **Two facts decide the geometry**, both measured, and both would have to be
 rediscovered by any reimplementation:
@@ -384,15 +384,78 @@ rediscovered by any reimplementation:
   pointer *spreads*, and `<` above 0 preserves a spread.  A setter landing on
   an occupied cell therefore refuses the geometry, which is an ordinary miss.
 
-**What is still open at four inputs** is a statement about these families
-rather than about Minifuck: the programs for the unreached tables demonstrably
-exist.  No impossibility argument is available for them as tables, and
-`_span_admits`, the one algebraic screen that could support such a claim, is
-vacuous at this arity.
+**Nothing is open at four inputs any more** -- the residue these families
+leave is closed by the sculpted route in the next section.  What this
+section still establishes is narrower and stands: the *staging* families do
+not reach it, and no impossibility argument was ever available for the
+residue as tables (`_span_admits`, the one algebraic screen that could have
+supported one, is vacuous at this arity).
 
 **And none of this bears on totality for all `n`.**  Permutations, flips and
 spacings add a per-arity constant of order `n! * 2 ** n` -- factorial, not
 `2 ** (2 ** n)` -- so the counting argument below stands exactly as written.
+
+### Four inputs is closed: separate the rows, then edit them one at a time
+
+**64594 of 64594.**  The 3652 tables every axis above left standing all
+build through the sculpted route (`_mux` in the module), and the whole
+residue was verified rather than sampled: each of the 3652 built through the
+public entry and printed all 16 rows correctly on the shipped interpreter,
+at one program width per table and with the slots in name order.  Build cost
+is ~10ms a table after a per-arity separation derivation (~15s, once per
+process); the staged families run first, so every table they reach keeps its
+template byte for byte.
+
+The route is not another coordinate on the staging family, and it does not
+spend the exactly-once rule -- each input is still embedded once.  Two
+observations carry it, each the negation of an assumption every earlier
+argument quietly made:
+
+- **The flat-pool count assumed one read of the tape.**  A staging offers
+  the columns *standing* at the read, so demand squares against a fixed
+  pool.  But the embed's walk transform is affine and invertible -- after
+  the embed no two rows share a state -- and a table-independent suffix of
+  reads can convert that state difference into a **pointer** difference:
+  all `2**n` rows at distinct positions.  Derived per arity by four searches
+  (shortest-split BFS, greedy aimed reads, a short beam, a two-machine BFS
+  on one stuck pair at a time), cheapest first.  The searches must leave
+  everything left of the embed untouched -- junk in the pool codes' working
+  range strands every probe (measured: 0 usable probes against 14) -- which
+  is why the route embeds sixteen cells right of `_BASE`, and why eight
+  scratch cells just left of the embed stay deliberately writable: sealing
+  them turns the derivation into a failure.
+
+- **The position-decode refutation assumed rows shared positions.**  Its
+  mechanism -- `ptr = entry + v + answer` sums the selector into the answer,
+  and the per-row plant a live band needs is "not producible" -- is true of
+  co-located rows and dissolves for separated ones.  A round of
+  `'<' * K + '[x' * K` with `K = b - C + 1` flips a low target cell `C` for
+  a *position-selected* set of rows: the row at `b` rewinds to `C - 1` and
+  its first landing is `C` (an unconditional flip, clean whatever its tape
+  holds); rows above `b` never touch cells at or left of `C`; rows below get
+  scrambled.  So fixing the **highest** disagreeing row per round strictly
+  lowers the frontier, and the printed column is sculpted to any target in
+  at most `2**n` rounds -- a termination *argument*, not a search.
+
+Two negatives worth keeping, both measured, so the design is not re-derived
+the hard way: reading a bit **as it lands** loses everything but the Hamming
+weight (the setter-read unit is shift-invariant over the uniform wake --
+`n + 1` distinct states out of `2**n` at every arity and spacer tried), and
+what resists separation longest is always the **first** input, whose
+distinguishing cells are furthest left under everything later walks smear
+over them.
+
+**Five inputs is now gated on the separation alone.**  The sculpting is
+arity-generic; what no derivation here has done is drive 32 rows to 32
+distinct pointers -- the searches run ~191s and fail, stalling every time on
+pairs that differ in the first input.  Pre-splitting that input at embed
+time was tried and is not the fix: walking over `X0`'s landing cell first
+makes the setter itself split (`[<` on a crossed cell cascades and ends one
+right, leaving `NOT v0` standing -- nothing consumed), and the machinery
+then stalls at the same 20 of 32 anyway, so the obstruction is deeper than
+the first bit.  Lifting `n == 5` to total is exactly one successful
+separation away, and nothing about the counting argument below forbids it:
+the sculpted route is not a flat family, its rounds are chosen per table.
 
 ### `n == 5` ships partially; full coverage is out of reach of any flat family
 
@@ -857,13 +920,17 @@ a family producing tens of thousands of columns to cover a real fraction of
 it.  The table count squares at each step while the family grows
 polynomially, and four is where those curves cross.
 
-**What a higher arity would actually need** is a construction that
-*composes* — building an `n`-input function from solved sub-functions already
-on the tape, so cost is additive in `n` rather than a lookup into a flat pool
-of columns.  The two attempts at that are `4 -> 8` doubling and a decode from
-an accumulated position.  The second has since been worked out in full and
-refuted with its mechanism for *position decoding* specifically — see
-"Composition through the pointer" above.  The companion claim that no chain
+**What a higher arity would actually need** is a construction whose cost is
+per *table* rather than a lookup into a flat pool of columns — and one now
+exists: the sculpted route ("Four inputs is closed" above) chooses its
+rounds against the target table, so nothing here counts it.  Its own gate is
+the row separation, not any pool.  The two earlier attempts at escaping the
+count were `4 -> 8` doubling and a decode from an accumulated position.  The
+second has since been worked out in full and refuted with its mechanism for
+*position decoding* specifically — see "Composition through the pointer"
+above, whose scope note now matters: that refutation is about co-located
+rows, and separated rows are what the sculpted route edits.  The companion
+claim that no chain
 escapes this count has since been **refuted by construction**: a chain is not
 a suffix the enumeration emits, and 78 interpreter-verified four-input
 programs sit outside the family counted here.
