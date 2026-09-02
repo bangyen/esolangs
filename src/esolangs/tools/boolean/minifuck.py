@@ -2133,9 +2133,21 @@ def _staged(truth_table: str, n: int) -> str | None:
 # **Coverage and cost, measured.**  All 3652 four-input tables the staged
 # families miss build through this route and print all 16 rows correctly on
 # the shipped interpreter, at one program width per table and with the slots
-# in name order -- which closes the arity: 64594 of 64594.  A build costs
-# about 7ms, and the arity's separation, which used to be a 15-17s search, is
-# now 0.0007s of construction.
+# in name order -- which closes the arity: 64594 of 64594.  The arity's
+# separation, which used to be a 15-17s search, is now 0.0007s of
+# construction.
+#
+# **A build costs about 220ms and buys a 43% shorter program.**  It used to
+# cost 7ms by returning the first ``(C, orientation, read)`` that printed;
+# it now sculpts all of them and keeps the shortest, because the accumulator
+# sets the price of every round -- a round is ``3 * K + 1`` characters for a
+# rewind of ``K = frontier - C + 1`` -- and the first is a poor choice.
+# Measured over sampled four-input tables: first-ascending 1046 characters,
+# first-descending 700, minimum over all 594.  At five inputs the same change
+# takes XOR5 from 2511 characters to 1174.  Two probe savings pay part of the
+# extra work back (a hint carried between rounds, and scanning the pool codes
+# at the fixed probe distance rather than at the caller's accumulator), and
+# both are verified to leave the emitted template byte for byte identical.
 #
 # **Five inputs is no longer gated.**  This section used to say five was
 # absent because no derivation had separated 32 rows -- the searches ran 191
@@ -2310,20 +2322,42 @@ def _mux_separate(n: int) -> _Joint | None:
     return j
 
 
-def _mux_column(j: _Joint, acc: int, cell7: int) -> tuple[int, ...] | None:
-    """Return what the ``'[x<[<'`` read would print at ``acc``, uncached.
+def _mux_probe(
+    j: _Joint, acc: int, cell7: int, hint: str | None = None
+) -> tuple[tuple[int, ...], str] | None:
+    """Return the column printed at ``acc`` and the pool code that got it.
 
     The same derivation as :func:`_printed_column`, minus the memoisation:
     sculpting never revisits a state, so the module-level caches would grow
     one entry per probe and pay for lookups that can never hit.  The pool
     codes are tried directly instead.
+
+    ``hint`` is the code the previous round of the same sculpt used, tried
+    ahead of the list.  Scanning the list is what dominates a sculpt --
+    measured, 61% of a four-input build -- and the code never changes between
+    rounds of one sculpt (measured over sampled builds: zero switches), so
+    the hint hits every time.  The scan stays behind it rather than being
+    replaced by it: :func:`_mux`'s loop is built to survive a switch, and a
+    hint that had become mandatory would turn a survivable switch into a
+    stall.  The code is returned so the caller can pass it back.
+
+    The scan probes at :data:`_PROBE_WALK_OUT` rather than at this caller's
+    accumulator, which is what makes it cheap: a probe walks the pool out to
+    the accumulator, so asking at ``acc - 1`` costs up to 36 walk steps on
+    every row for every candidate, where the fixed probe costs 9.  The
+    verdict does not depend on the distance -- that is the invariance
+    :data:`_PROBE_WALK_OUT` already documents, re-measured here on the states
+    a sculpt actually reaches (50 ``(state, code, cell7)`` triples over
+    walk-outs 9 to 41, no triple changes answer).  The walk that *does* need
+    the real accumulator is the one below, and it runs once.
     """
     probe = j.fork()
     probe.emit("x")  # absorb a pending skip so the clamp below is exact
     _clamp(probe)
     code = None
-    for candidate in _POOL_CODES:
-        if _pool_reaches(probe, candidate, cell7, acc - 1):
+    candidates = _POOL_CODES if hint is None else (hint, *_POOL_CODES)
+    for candidate in candidates:
+        if _pool_reaches(probe, candidate, cell7, _PROBE_WALK_OUT):
             code = candidate
             break
     if code is None:
@@ -2333,61 +2367,104 @@ def _mux_column(j: _Joint, acc: int, cell7: int) -> tuple[int, ...] | None:
         _walk_to(probe, acc - 1)
     except ValueError:
         return None
-    return tuple(probe.col(probe.ms[0].ptr + 1))
+    return tuple(probe.col(probe.ms[0].ptr + 1)), code
+
+
+def _mux_column(j: _Joint, acc: int, cell7: int) -> tuple[int, ...] | None:
+    """Return what the ``'[x<[<'`` read would print at ``acc``, uncached."""
+    found = _mux_probe(j, acc, cell7)
+    return None if found is None else found[0]
+
+
+def _mux_sculpt(
+    base: _Joint,
+    truth_table: str,
+    n: int,
+    acc: int,
+    cell7: int,
+    *,
+    direct: bool,
+    hint: str | None = None,
+) -> str | None:
+    """Sculpt the printed column at one ``(C, orientation, read)``.
+
+    Derive the column the endgame would print, take the highest-positioned
+    row that disagrees, flip its cell ``C`` with one clean round, repeat.
+    The frontier argument in the section comment bounds the loop; the cap is
+    that bound plus a small allowance for a pool-code switch, and a stall
+    returns None rather than looping.  The finished joint is handed to
+    :func:`_try_print`, so what is returned was seen to print the table.
+    """
+    want = tuple(int(c) for c in truth_table)
+    j = base.fork()
+    for _ in range(2**n + 4):
+        found = _mux_probe(j, acc, cell7, hint)
+        if found is None:
+            return None
+        column, hint = found
+        got = column if direct else _complement(column)
+        disagree = [p for p, g, w in zip(j.ptrs(), got, want, strict=True) if g != w]
+        if not disagree:
+            break
+        frontier = max(disagree)
+        rewind = frontier - acc + 1
+        if rewind > min(j.ptrs()) - 8:
+            return None
+        j.emit("<" * rewind + "[x" * rewind + "x")
+    else:
+        return None
+    j.emit("x")
+    _clamp(j)
+    hit = _try_print(j, truth_table, acc)
+    return None if hit is None else hit.template()
 
 
 def _mux(truth_table: str, n: int) -> str | None:
     """Build by separating the rows, then sculpting the column they print.
 
-    Every ``(C, orientation, read)`` combination runs the same loop: derive
-    the column the endgame would print, take the highest-positioned row that
-    disagrees, flip its cell ``C`` with one clean round, repeat.  The
-    frontier argument in the section comment bounds the loop; the cap is
-    that bound plus a small allowance for a pool-code switch, and a stall
-    falls through to the next combination rather than looping.  The
-    finished joint is handed to :func:`_try_print`, so what is returned was
-    seen to print the table.
+    **Every combination is tried and the shortest program wins.**  This used
+    to return the first ``(C, orientation, read)`` that printed, and that is
+    a poor choice for length: a sculpting round costs ``3 * K + 1``
+    characters for a rewind of ``K = frontier - C + 1``, so the accumulator
+    decides the price of every round the table needs, and the cheapest one is
+    not the first.  Taking the first ascending accumulator measured a mean of
+    1046 characters over sampled four-input tables; descending measured 700
+    and the minimum over all of them 595, a **43% reduction**.  The curve is
+    not monotone in either direction -- sampled tables put their minimum at
+    the top, the bottom and the middle -- so there is no cheap rule to prefer
+    over measuring, and measuring is what this does.
+
+    Nothing about *which* tables build changes: a combination that stalls
+    still contributes nothing, and this returns None exactly when the old
+    loop did, having tried the same set.
     """
     if n not in _MUX_ARITIES:
         return None
     base = _mux_separate(n)
     if base is None:
         return None
-    want = tuple(int(c) for c in truth_table)
     positions = base.ptrs()
     lowest, highest = min(positions), max(positions)
+    best: str | None = None
     for acc in range(highest - lowest + 9, lowest - 1):
         for cell7 in (0, 1):
+            # Which pool code serves this ``(acc, cell7)`` is settled on the
+            # separation, before any sculpting: measured at four inputs, one
+            # code answers every accumulator and ``cell7 == 1`` is answered
+            # by none, so half the combinations below are decided here rather
+            # than by re-scanning the list inside each sculpt.  A pair no
+            # code reaches cannot be sculpted at all, so it is skipped -- the
+            # same outcome the sculpt would reach, without the work.
+            seed = _mux_probe(base, acc, cell7)
+            if seed is None:
+                continue
             for direct in (True, False):
-                j = base.fork()
-                stalled = False
-                for _ in range(2**n + 4):
-                    column = _mux_column(j, acc, cell7)
-                    if column is None:
-                        stalled = True
-                        break
-                    got = column if direct else _complement(column)
-                    disagree = [
-                        p for p, g, w in zip(j.ptrs(), got, want, strict=True) if g != w
-                    ]
-                    if not disagree:
-                        break
-                    frontier = max(disagree)
-                    rewind = frontier - acc + 1
-                    if rewind > min(j.ptrs()) - 8:
-                        stalled = True
-                        break
-                    j.emit("<" * rewind + "[x" * rewind + "x")
-                else:
-                    stalled = True
-                if stalled:
-                    continue
-                j.emit("x")
-                _clamp(j)
-                hit = _try_print(j, truth_table, acc)
-                if hit is not None:
-                    return hit.template()
-    return None
+                built = _mux_sculpt(
+                    base, truth_table, n, acc, cell7, direct=direct, hint=seed[1]
+                )
+                if built is not None and (best is None or len(built) < len(best)):
+                    best = built
+    return best
 
 
 def _lift_leaves_name_order(essential: list[int], n: int) -> bool:

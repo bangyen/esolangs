@@ -173,6 +173,43 @@ staging.  `src/esolangs/tools/boolean/minifuck.py` carries the mechanism and
 the pool-code derivation; what follows is only what is *not* reachable and
 what was disproved along the way.
 
+### The sculpted route's program length is set by the accumulator
+
+`_mux` used to return the first `(C, orientation, read)` combination that
+printed.  That is a poor choice for *length*, and the reason is structural: a
+sculpting round emits `'<' * K + '[x' * K + 'x'`, so it costs **`3K + 1`
+characters** for a rewind of `K = frontier - C + 1`.  The accumulator `C`
+therefore sets the price of every round the table needs, and the first
+accumulator tried is not the cheapest.
+
+Measured over sampled four-input tables:
+
+| accumulator order | mean template |
+|---|---|
+| first ascending (what shipped) | 1046 |
+| first descending | 700 |
+| **minimum over all** | **594** |
+
+A 43% reduction, and at five inputs the same change takes five-input XOR from
+2511 characters to 1174 (53%).  Across the whole 336-table baseline the 61
+mux-route templates shrink 42.1% in total.
+
+**There is no cheap rule to substitute for measuring.**  The length curve is
+not monotone in the accumulator — sampled tables put their minimum at the
+top, the bottom and the middle — and although the winner clusters high (15 of
+20 in the top six accumulators), pruning to those loses the optimum on a
+quarter of tables.  So the route sculpts every combination and keeps the
+shortest; a build costs about 220ms where it cost 7ms.
+
+Two savings pay part of that back, both verified to leave the emitted
+template byte for byte identical: the pool code is carried between rounds as
+a hint (it never changes within one sculpt — measured, zero switches), and
+the code scan probes at the fixed `_PROBE_WALK_OUT` rather than at the
+caller's accumulator.  The second rests on the walk-out invariance this file
+already records, re-measured on the states a sculpt actually reaches: 50
+`(state, code, cell7)` triples over walk-outs 9 to 41, no triple changing
+answer.
+
 ### The staging enumeration is invertible, but there is no closed form
 
 The staged route used to run its enumeration **per table**, testing
