@@ -1473,7 +1473,7 @@ def _fold_beam(
     state: _FoldState,
     target: int = 2,
     width: int = 1,
-    maxsteps: int = 400,
+    maxsteps: int | None = None,
 ) -> list[_FoldOp] | None:
     """Reduce a state down to ``target`` points, or ``None``.
 
@@ -1489,14 +1489,17 @@ def _fold_beam(
     confluent, and descending the whole way builds everything the old split
     built while reaching an arity it refused.
 
-    ``maxsteps`` is 400 because the full descent is longer than the partial
-    one, and the budget is what used to bind: near-parity tables have up to
-    32 runs, and at 90 the reduction was still descending when it expired --
-    which is what made a handful of tables look like they needed a wide beam.
+    ``maxsteps`` defaults to ``None``, meaning the budget is *derived from
+    the state* -- ``_FOLD_STEP_SLOPE * points + _FOLD_STEP_SLACK``, where
+    the starting points are the table's runs.  The budget is what used to
+    bind, and binding it to a flat number capped the arity by accident: see
+    :data:`_FOLD_STEP_SLOPE`.  Pass an integer to override.
     """
     start = _fold_norm(list(state))
     if len(start) <= target:
         return []
+    if maxsteps is None:
+        maxsteps = _FOLD_STEP_SLOPE * len(start) + _FOLD_STEP_SLACK
     beam: list[tuple[_FoldState, list[_FoldOp]]] = [(start, [])]
     seen = {_fold_sig(start)}
     for _ in range(maxsteps):
@@ -1594,6 +1597,31 @@ def _fold_apply(state: _FoldState, op: _FoldOp) -> _FoldState | None:
 #: descent finds its own ending rather than the search's), which is why this
 #: is a behaviour change rather than a refactor.
 _FOLD_DESCENT_TARGET = 2
+
+#: The descent's step budget, as ``slope * points + slack`` rather than a
+#: flat number.  **The starting point count is the run count** -- the fold
+#: opens with one point per run of the sorted table, so a budget written
+#: against points is written against the table's own structure.
+#:
+#: Measured over 160 descents at four through eight inputs, including parity,
+#: the fully alternating word and thresholds, the steps used run 1.5 to 2.7
+#: times the starting points with a worst observed ratio of **4.67**.  A
+#: slope of 8 leaves about 1.7x headroom over that worst case, and refuses
+#: none of the 160.
+#:
+#: Substituting it for the flat 400 is a **no-op where 400 was enough**: over
+#: 387 tables at three through eight inputs the emitted programs are
+#: byte-identical, every one re-executed on the interpreter.  Where 400 was
+#: *not* enough it lifts an arity, which is the point -- eight inputs already
+#: used 359 steps, so nine overran the flat budget and built 1 of 3 random
+#: tables, where the derived bound builds 3 of 3 and prints all 512 rows.
+#:
+#: This is still a measured constant rather than a proved one: nothing here
+#: shows the ratio cannot exceed 8 on some table, only that 160 descents
+#: spanning five arities and the structured worst cases stayed under 4.67.
+#: What it is not any more is *arity-capping* by accident.
+_FOLD_STEP_SLOPE = 8
+_FOLD_STEP_SLACK = 16
 
 
 def _fold_plan(state: _FoldState) -> list[_FoldOp] | None:
