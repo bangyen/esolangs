@@ -5,7 +5,11 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.three_x import run
-from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.interpreters.contract import (
+    CycleContract,
+    SnapshotContract,
+    StateViewContract,
+)
 from tests.raises import raises_message
 
 
@@ -225,10 +229,12 @@ def _machine(code: object) -> object:
     return _Machine(code, ScriptedIO())
 
 
-class TestContract(SnapshotContract, CycleContract):
+class TestContract(SnapshotContract, CycleContract, StateViewContract):
     """The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     stepping_program = "3"
     halting_program = "3!"
     looping_program = "3()"
+    state_views = ("ind", "variables", "ip", "memory")
+    viewing_program = "3!"

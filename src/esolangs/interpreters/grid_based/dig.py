@@ -218,10 +218,6 @@ class _Machine:
             self.io.position(),
         )
 
-    def _value(self) -> int:
-        """Get the first digit value from cells adjacent to the mole."""
-        return _value(tuple(self.code), self.row, self.col, self.size)
-
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""

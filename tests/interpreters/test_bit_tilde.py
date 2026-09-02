@@ -8,7 +8,11 @@ import pytest
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.tape_based.bit_tilde import run
 from esolangs.tools import text as gen
-from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.interpreters.contract import (
+    CycleContract,
+    SnapshotContract,
+    StateViewContract,
+)
 from tests.raises import raises_message
 
 
@@ -197,10 +201,12 @@ def _machine(code: object) -> object:
     return _Machine(code, ScriptedIO())
 
 
-class TestContract(SnapshotContract, CycleContract):
+class TestContract(SnapshotContract, CycleContract, StateViewContract):
     """The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     stepping_program = "~("
     halting_program = "~("
     looping_program = "~{}"
+    state_views = ("ind", "cell", "ip", "memory")
+    viewing_program = "~("
