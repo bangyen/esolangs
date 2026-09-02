@@ -32,10 +32,30 @@ The interpreter runs on a :class:`_Machine` (the parsed program, variable
 state, and program counter), so it is step-capable: ``step()`` executes
 one instruction and ``halted`` is true once ``x`` fires or the counter
 runs off the program.
+
+Evaluation is pure over an immutable ``_Vars``: :func:`_eval` and
+:func:`_exec` take the variables they see and return the value together
+with the variables and the control decision the instruction left behind.
+Neither edits what it is handed.  The control decision -- a jump target,
+or that ``x`` fired -- used to be a dictionary passed down the recursion
+and written into from the bottom; it is a returned value now, so an arm
+that sets it cannot be confused with one that merely reads it.
+
+The two ports stay callbacks rather than being hoisted into the shell,
+since :func:`_eval` recurses and the shell cannot know ahead of time how
+many reads a line will make.  In practice a *nested* argument never has a
+side effect at all: a group must produce an integer or a condition, and
+every operation that reads, prints, declares, assigns or exits returns
+none, so none of them can sit inside one.  The threading through nested
+arguments is therefore uniform rather than load-bearing, and two mutants
+that break it -- discarding the variables an ``s``'s value expression
+returns, and swapping the order the two operands of a binary operation are
+evaluated in -- are equivalent for that reason rather than untested.
 """
 
 import sys
-from typing import Any, Literal, get_args
+from collections.abc import Callable, Mapping
+from typing import Literal, get_args
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -157,119 +177,143 @@ def _parse_line(line: str) -> _Instr:
     return node
 
 
+#: The variable store.  A value, not a record: every function below
+#: returns a new mapping rather than editing the one it was handed, so an
+#: instruction that assigns and then raises leaves the caller's copy alone.
+type _Vars = Mapping[str, ValueT]
+
+#: What an instruction decided about control: ``(jump, exit)`` -- the line
+#: to go to, or ``None`` to fall through, and whether ``x`` fired.  Returned
+#: rather than written into a dictionary handed down the recursion.
+type _Control = tuple[int | None, bool]
+
+#: The two ports.  Callbacks, because arguments nest: one line can read and
+#: print several times, at points that depend on values computed part-way
+#: through evaluating it.
+type _Read = Callable[[], str]
+type _Emit = Callable[[ValueT], None]
+
+_FALL: _Control = (None, False)
+
+
 def _eval(
-    node: _Arg, state: dict[str, ValueT], control: dict[str, Any], io: IO
-) -> ValueT:
-    """Evaluate a value node (or run an instruction) and return its value."""
+    node: _Arg, state: _Vars, control: _Control, read: _Read, emit: _Emit
+) -> tuple[ValueT, _Vars, _Control]:
+    """Evaluate a value node (or run an instruction) and return its value.
+
+    Pure in its state: it reads ``state`` and returns a new one.  The
+    control decision is threaded through so a nested instruction -- an
+    ``f`` inside an argument -- can still make one.
+    """
     if node[0] == "str":
-        return node[1]
+        return node[1], state, control
     if node[0] == "int":
-        return node[1]
+        return node[1], state, control
     if node[0] == "cond":
-        return node[1]
+        return node[1], state, control
     if node[0] == "none":
-        return None
+        return None, state, control
     if node[0] == "var":
-        try:
-            return state[node[1]]
-        except KeyError:
-            raise HaltError(f"undeclared variable {node[1]!r}") from None
-    value = _exec(node[2], state, control, io)
+        if node[1] not in state:
+            raise HaltError(f"undeclared variable {node[1]!r}")
+        return state[node[1]], state, control
+    value, state, control = _exec(node[2], state, control, read, emit)
     expected = node[1]
     if expected == "int" and type(value) is not int:
         raise HaltError("expected an integer expression")
     if expected == "cond" and type(value) is not bool:
         raise HaltError("expected a condition expression")
-    return value
+    return value, state, control
 
 
 def _exec(
-    instr: _Instr, state: dict[str, ValueT], control: dict[str, Any], io: IO
-) -> ValueT:
-    """Execute one instruction, returning the value it produces (usually none)."""
+    instr: _Instr, state: _Vars, control: _Control, read: _Read, emit: _Emit
+) -> tuple[ValueT, _Vars, _Control]:
+    """Execute one instruction, returning the value it produces (usually none).
+
+    Pure in its state, like :func:`_eval`.  ``read`` and ``emit`` are the
+    two ports; everything else is a function of the arguments and the
+    variables.
+    """
     op, arg1, arg2 = instr[0], instr[1], instr[2]
     if op == "p":
-        value = _eval(arg1, state, control, io)
+        value, state, control = _eval(arg1, state, control, read, emit)
         if type(value) is str or type(value) is int:
-            io.print_value(value)
+            emit(value)
         else:
             raise HaltError("p cannot print this value")
-        return None
+        return None, state, control
     if op == "v":
-        name = _eval(arg1, state, control, io)
+        name, state, control = _eval(arg1, state, control, read, emit)
         if type(name) is not str:
             raise HaltError("variable name must be a string")
-        state[name] = 0
-        return None
+        return None, {**state, name: 0}, control
     if op == "s":
         if arg1[0] != "var":
             raise HaltError("s needs a variable on the left")
-        state[arg1[1]] = _eval(arg2, state, control, io)
-        return None
+        value, state, control = _eval(arg2, state, control, read, emit)
+        return None, {**state, arg1[1]: value}, control
     if op == "c":
-        value = _eval(arg1, state, control, io)
+        value, state, control = _eval(arg1, state, control, read, emit)
         if type(value) is int:
-            return str(value)
+            return str(value), state, control
         if type(value) is str and value.isdigit():
-            return int(value)
+            return int(value), state, control
         raise HaltError("c needs a string of numerals or an integer")
     if op == "+":
-        left = _eval(arg1, state, control, io)
-        right = _eval(arg2, state, control, io)
+        left, state, control = _eval(arg1, state, control, read, emit)
+        right, state, control = _eval(arg2, state, control, read, emit)
         if type(left) is int and type(right) is int:
-            return left + right
+            return left + right, state, control
         if type(left) is str and type(right) is str:
-            return left + right
+            return left + right, state, control
         raise HaltError("+ needs two integers or two strings")
     if op == "*":
-        left = _eval(arg1, state, control, io)
-        right = _eval(arg2, state, control, io)
+        left, state, control = _eval(arg1, state, control, read, emit)
+        right, state, control = _eval(arg2, state, control, read, emit)
         if type(left) is int and type(right) is int:
-            return left * right
+            return left * right, state, control
         raise HaltError("* needs two integers")
     if op == "=":
-        left = _eval(arg1, state, control, io)
-        right = _eval(arg2, state, control, io)
-        return type(left) is type(right) and left == right
+        left, state, control = _eval(arg1, state, control, read, emit)
+        right, state, control = _eval(arg2, state, control, read, emit)
+        return type(left) is type(right) and left == right, state, control
     if op == ">":
-        left = _eval(arg1, state, control, io)
-        right = _eval(arg2, state, control, io)
+        left, state, control = _eval(arg1, state, control, read, emit)
+        right, state, control = _eval(arg2, state, control, read, emit)
         if type(left) is int and type(right) is int:
-            return left > right
+            return left > right, state, control
         raise HaltError("> needs two integers")
     if op == "r":
-        left = _eval(arg1, state, control, io)
-        right = _eval(arg2, state, control, io)
+        left, state, control = _eval(arg1, state, control, read, emit)
+        right, state, control = _eval(arg2, state, control, read, emit)
         if type(left) is bool and type(right) is bool:
-            return left or right
+            return left or right, state, control
         raise HaltError("r needs two conditions")
     if op == "n":
-        value = _eval(arg1, state, control, io)
+        value, state, control = _eval(arg1, state, control, read, emit)
         if type(value) is bool:
-            return not value
+            return not value, state, control
         raise HaltError("n needs a condition")
     if op == "f":
-        target = _eval(arg1, state, control, io)
+        target, state, control = _eval(arg1, state, control, read, emit)
         if type(target) is not int:
             raise HaltError("goto target must be an integer")
         if arg2 == ("none",):
-            control["jump"] = target
-        else:
-            value = _eval(arg2, state, control, io)
-            if type(value) is not bool:
-                raise HaltError("goto condition must be a condition")
-            if value:
-                control["jump"] = target
-        return None
+            return None, state, (target, control[1])
+        value, state, control = _eval(arg2, state, control, read, emit)
+        if type(value) is not bool:
+            raise HaltError("goto condition must be a condition")
+        if value:
+            return None, state, (target, control[1])
+        return None, state, control
     if op == "i":
         if arg1[0] != "var":
             raise HaltError("i needs a variable on the left")
-        state[arg1[1]] = io.input_str()
-        return None
+        return None, {**state, arg1[1]: read()}, control
     # The twelve arms above are the other operations, so what is left is
     # ``x``.
-    control["exit"] = True
-    return None
+    return None, state, (control[0], True)
 
 
 class _Machine:
@@ -321,15 +365,28 @@ class _Machine:
         )
 
     def step(self) -> None:
-        """Execute one instruction, advancing (or jumping) the counter."""
+        """Execute one instruction, advancing (or jumping) the counter.
+
+        The two ports live here rather than in the transition: this is the
+        shell.  They are handed over as callbacks because an instruction's
+        arguments nest, so a read or a print happens part-way through
+        evaluating a line rather than before or after it.
+        """
         if self.halted:
             return
-        control: dict[str, Any] = {"jump": None, "exit": False}
-        _exec(self.program[self.pc], self.state, control, self.io)
-        if control["exit"]:
+        _, state, control = _exec(
+            self.program[self.pc],
+            self.state,
+            _FALL,
+            self.io.input_str,
+            self.io.print_value,
+        )
+        self.state = dict(state)
+        jump, exited = control
+        if exited:
             self._exited = True
             return
-        self.pc = control["jump"] if control["jump"] is not None else self.pc + 1
+        self.pc = jump if jump is not None else self.pc + 1
 
 
 def run(code: list[str], io: IO) -> None:
