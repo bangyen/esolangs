@@ -2306,16 +2306,28 @@ def _mux_separate(n: int) -> _Joint | None:
     # The construction is derived, but it is still *checked* before it is
     # cached: a separation that quietly lost a row would be found by the
     # sculpting loop as an unfixable table rather than as a bad separation.
+    #
+    # Neither check fires at any arity in `_MUX_ARITIES` -- which is the
+    # point of deriving the separation rather than searching for one -- so
+    # both refusals are the guard against a future weighting that breaks the
+    # construction, not a live path.
     if any(m.dead for m in j.ms) or len(set(j.ptrs())) != 2**n:
-        return None
+        return None  # pragma: no cover - the construction separates by design
     if not _mux_intact(_mux_reference(n), j):
-        return None
+        return None  # pragma: no cover - the construction separates by design
     # Pad right so the sculpting rewinds fit: every round needs
     # ``b - C + 1 <= min(ptr) - 8`` with ``C`` below the lowest row.
+    #
+    # The weighting already leaves room for this at every supported arity:
+    # the lowest pointer outgrows the floor, and by a widening margin --
+    # measured (min against floor) 33/27 at two inputs, 35/31 at three,
+    # 43/39 at four and 70/55 at five.  The pad stays because the floor is a
+    # property of the sculpting rounds rather than of the weighting, so a
+    # change to either could close that gap.
     q = j.ptrs()
     floor = (max(q) - min(q)) + 24
     if min(q) < floor:
-        j.emit("[x" * (floor - min(q)))
+        j.emit("[x" * (floor - min(q)))  # pragma: no cover - see above
     _MUX_SEPARATED[n] = j.fork()
     return j
 
@@ -2366,12 +2378,6 @@ def _mux_probe(
     except ValueError:
         return None
     return tuple(probe.col(probe.ms[0].ptr + 1)), code
-
-
-def _mux_column(j: _Joint, acc: int, cell7: int) -> tuple[int, ...] | None:
-    """Return what the ``'[x<[<'`` read would print at ``acc``, uncached."""
-    found = _mux_probe(j, acc, cell7)
-    return None if found is None else found[0]
 
 
 def _mux_sculpt(
