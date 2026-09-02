@@ -2014,7 +2014,13 @@ class _FoldEmitter:
             lo, hi = pts
             t = (self.byte(hi) - self.pos[hi]) % 256
             room = _LIMIT - self.pos[hi]
-            while t > room:
+            # Unreachable here, unlike in the one-point branch above: the
+            # block just put ``hi`` at 0 and then shifted everything down
+            # by 2, so ``room`` is exactly ``_LIMIT + 2`` while ``t`` is a
+            # residue mod 256.  255 < 3005, so the lift never fires.  The
+            # loop stays because the one-point branch's does, and the two
+            # read as one rule.
+            while t > room:  # pragma: no cover - room is _LIMIT + 2 > 255
                 t -= 256
             self.preshift(t)
         for p in self.pos:
@@ -2324,7 +2330,11 @@ def _spell_affine(
         zero_widths = _spellings_by_width(*zero_branch)
         one_widths = _spellings_by_width(*one_branch)
         shared = set(zero_widths) & set(one_widths)
-        if not shared:
+        if not shared:  # pragma: no cover - every grid branch spells at 6 and 7
+            # Measured over all 7 * 25 ``(a, b)`` the grid admits: every one
+            # of them has a spelling at width 6 and at width 7, so any two
+            # branches share at least those.  The guard stays because the
+            # grid is a constant that could widen.
             return None
         width = min(shared)
         setters.append((zero_widths[width], one_widths[width]))
