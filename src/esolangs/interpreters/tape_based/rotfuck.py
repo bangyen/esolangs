@@ -49,6 +49,61 @@ _CYCLE = "+-><,.[]"
 _COMMANDS = frozenset(_CYCLE)
 
 
+#: One instant of a run: ``(tape, ptr, ind, rot)`` -- the cells, the cell
+#: pointer, the cursor, and how many commands have executed.  A value
+#: :func:`_advance` maps forward, with the tape as a ``tuple``.
+#:
+#: ``rot`` is the language.  The source text never changes, but the
+#: *effective* command at a position is its character advanced ``rot``
+#: steps along the cycle, so the rotation count is what a step is really
+#: reading -- which is why it belongs in the state and the characters do
+#: not.
+type _State = tuple[tuple[int, ...], int, int, int]
+
+
+def _at(chars: tuple[str, ...], rot: int, i: int) -> str:
+    """Return the effective command at ``i`` under rotation ``rot``.
+
+    A comment never rotates and never changes, so it reads as itself.
+    """
+    ch = chars[i]
+    if ch in _COMMANDS:
+        return _CYCLE[(_CYCLE.index(ch) + rot) % len(_CYCLE)]
+    return ch
+
+
+def _forward(chars: tuple[str, ...], rot: int, i: int) -> int | None:
+    """Return the ``]`` matching the effective ``[`` at ``i``, if any."""
+    depth = 1
+    j = i + 1
+    while j < len(chars):
+        ch = _at(chars, rot, j)
+        if ch == "[":
+            depth += 1
+        elif ch == "]":
+            depth -= 1
+            if depth == 0:
+                return j
+        j += 1
+    return None
+
+
+def _backward(chars: tuple[str, ...], rot: int, i: int) -> int | None:
+    """Return the ``[`` matching the effective ``]`` at ``i``, if any."""
+    depth = 1
+    j = i - 1
+    while j >= 0:
+        ch = _at(chars, rot, j)
+        if ch == "]":
+            depth += 1
+        elif ch == "[":
+            depth -= 1
+            if depth == 0:
+                return j
+        j -= 1
+    return None
+
+
 class _Program:
     """A ROTfuck program with an implicit rotation count.
 
@@ -71,42 +126,75 @@ class _Program:
         """Return how many commands have executed (the implicit rotation)."""
         return self._rot
 
+    def set_rotation(self, rot: int) -> None:
+        """Set the rotation count, for a caller that computed it elsewhere."""
+        self._rot = rot
+
+    def chars(self) -> tuple[str, ...]:
+        """Return the unrotated source characters."""
+        return tuple(self._chars)
+
     def at(self, i: int) -> str:
         """Return the effective command at ``i`` under the current rotation."""
-        ch = self._chars[i]
-        if ch in _COMMANDS:
-            return _CYCLE[(_CYCLE.index(ch) + self._rot) % len(_CYCLE)]
-        return ch
+        return _at(self.chars(), self._rot, i)
 
     def forward(self, i: int) -> int | None:
         """Return the ``]`` matching the effective ``[`` at ``i``, if any."""
-        depth = 1
-        j = i + 1
-        while j < len(self._chars):
-            ch = self.at(j)
-            if ch == "[":
-                depth += 1
-            elif ch == "]":
-                depth -= 1
-                if depth == 0:
-                    return j
-            j += 1
-        return None
+        return _forward(self.chars(), self._rot, i)
 
     def backward(self, i: int) -> int | None:
         """Return the ``[`` matching the effective ``]`` at ``i``, if any."""
-        depth = 1
-        j = i - 1
-        while j >= 0:
-            ch = self.at(j)
-            if ch == "]":
-                depth += 1
-            elif ch == "[":
-                depth -= 1
-                if depth == 0:
-                    return j
-            j -= 1
-        return None
+        return _backward(self.chars(), self._rot, i)
+
+
+def _advance(state: _State, chars: tuple[str, ...], byte: int | None = None) -> _State:
+    """Return the state after executing the command under the cursor.
+
+    Pure: it reads ``state`` and returns a new one.  ``.``'s printing is
+    the caller's business -- the cell it prints is carried forward
+    unchanged -- and ``,``'s byte arrives as ``byte``.
+
+    A bracket that jumps rotates *before* seeking its partner, so the
+    partner is looked up in the program the jump lands in rather than the
+    one it left.  Both jumps land one past the partner.
+
+    A comment advances the cursor without rotating: the spec rotates
+    "every time an instruction is executed", and a comment is passed over,
+    not executed.  A bracket whose guard is false does rotate -- it is an
+    executed instruction that simply did not jump.
+    """
+    tape, ptr, ind, rot = state
+    char = _at(chars, rot, ind)
+
+    if char == ">":
+        ptr += 1
+        if ptr == len(tape):
+            tape = (*tape, 0)
+    elif char == "<":
+        if ptr:
+            ptr -= 1
+    elif char == "+":
+        tape = (*tape[:ptr], (tape[ptr] + 1) % 256, *tape[ptr + 1 :])
+    elif char == "-":
+        tape = (*tape[:ptr], (tape[ptr] - 1) % 256, *tape[ptr + 1 :])
+    elif char == ",":
+        tape = (*tape[:ptr], byte if byte is not None else 0, *tape[ptr + 1 :])
+    elif char == "[" and tape[ptr] == 0:
+        rot += 1
+        partner = _forward(chars, rot, ind)
+        if partner is None:
+            raise HaltError("an executed '[' has no bracket partner")
+        return (tape, ptr, partner + 1, rot)
+    elif char == "]" and tape[ptr] != 0:
+        rot += 1
+        partner = _backward(chars, rot, ind)
+        if partner is None:
+            raise HaltError("an executed ']' has no bracket partner")
+        return (tape, ptr, partner + 1, rot)
+
+    if char in _COMMANDS:
+        rot += 1
+    return (tape, ptr, ind + 1, rot)
 
 
 class _Machine:
@@ -162,51 +250,51 @@ class _Machine:
             self.io.position(),
         )
 
+    @property
+    def _state(self) -> _State:
+        """The machine's fields as the value the transition works on."""
+        return (tuple(self.tape), self.ptr, self.ind, self.prog.rotation())
+
+    def _restore(self, state: _State) -> None:
+        """Write a transition's result back onto the machine's fields.
+
+        The fields are this class's published shape -- the VM's views and
+        the tests read them -- so they stay, and the rotation goes back
+        through _Program, which is what ``at`` consults.
+        """
+        tape, self.ptr, self.ind, rot = state
+        self.tape = list(tape)
+        self.prog.set_rotation(rot)
+
     def step(self) -> None:
-        """Execute one command, advancing the cursor and rotation."""
+        """Execute one command, advancing the cursor and rotation.
+
+        The two ports live here rather than in the transition: this is the
+        shell.  ``.`` prints the cell the transition carries forward
+        unchanged, and ``,``'s byte is read here and handed over.  Which
+        command a cell *is* depends on the rotation, so both consult the
+        effective character rather than the source one.
+        """
         if self.halted:
             return
-        prog = self.prog
-        char = prog.at(self.ind)
-        if char == ">":
-            self.ptr += 1
-            if self.ptr == len(self.tape):
-                self.tape.append(0)
-        elif char == "<":
-            if self.ptr:
-                self.ptr -= 1
-        elif char == "+":
-            self.tape[self.ptr] = (self.tape[self.ptr] + 1) % 256
-        elif char == "-":
-            self.tape[self.ptr] = (self.tape[self.ptr] - 1) % 256
-        elif char == ".":
+        char = self.prog.at(self.ind)
+
+        byte = None
+        if char == ".":
             self.io.print_char(chr(self.tape[self.ptr]))
         elif char == ",":
-            self.tape[self.ptr] = self.io.input_char()
-        elif char == "[" and self.tape[self.ptr] == 0:
-            prog.rotate()
-            partner = prog.forward(self.ind)
-            if partner is None:
-                raise HaltError("an executed '[' has no bracket partner")
-            self.ind = partner + 1
-            return
-        elif char == "]" and self.tape[self.ptr] != 0:
-            prog.rotate()
-            partner = prog.backward(self.ind)
-            if partner is None:
-                raise HaltError("an executed ']' has no bracket partner")
-            self.ind = partner + 1
-            return
+            byte = self.io.input_char()
 
-        # The spec rotates "every time an instruction is executed", so a
-        # comment character advances the cursor without rotating: it is
-        # passed over, not executed.  The two non-executing bracket cases
-        # above fall through to here and *do* rotate -- a bracket whose
-        # guard is false is still an executed instruction, it just does
-        # not jump.
-        if char in _COMMANDS:
-            prog.rotate()
-        self.ind += 1
+        chars = self.prog.chars()
+        try:
+            self._restore(_advance(self._state, chars, byte))
+        except HaltError:
+            # A jumping bracket rotates before it seeks, so a partnerless
+            # one leaves the rotation advanced even though it never moved.
+            # The original mutated the program first and raised second;
+            # keeping that means recording the rotation on the way out.
+            self.prog.rotate()
+            raise
 
 
 def run(code: str, io: IO) -> None:
