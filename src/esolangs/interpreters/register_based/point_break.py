@@ -25,7 +25,7 @@ permitted (it loops forever) and an empty program is a no-op.
 Exhausted input raises :class:`EOFError` (the repo-wide convention).
 
 The execution model is a pure function over an immutable ``_State``: the
-variables, the open loop frames, and the statement cursor.  :func:`_step`
+variables, the open loop frames, and the statement cursor.  :func:`_advance`
 maps a state and the program's static tables to the next state and never
 edits what it is given; :meth:`_Machine.step` rebinds the three fields from
 what it returned, so the mutation lives in exactly one place.
@@ -289,7 +289,7 @@ def _eval(expr: list[Token], variables: _Vars, read: _Read) -> int:
     return add()
 
 
-def _step(
+def _advance(
     state: _State,
     stmts: list[Statement],
     ends: Mapping[int, tuple[int, bool]],
@@ -411,7 +411,7 @@ class _Machine:
         """
         if self.halted:
             return
-        self._restore(_step(self._state, self.stmts, self.ends, self.io.input_num))
+        self._restore(_advance(self._state, self.stmts, self.ends, self.io.input_num))
 
 
 def run(code: str | list[str], io: IO) -> None:

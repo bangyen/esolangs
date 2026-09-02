@@ -31,7 +31,7 @@ backstop stays for the unbounded-growth class (a loop whose body keeps
 growing a tape cell).
 
 The execution model is a pure function over an immutable ``_State``: the
-tape cells and the frame stack.  :func:`_step` maps one state to the next
+tape cells and the frame stack.  :func:`_advance` maps one state to the next
 and never edits what it is given; :meth:`_Machine.step` rebinds the two
 fields from what it returned, so the mutation lives in exactly one place.
 A frame becomes a tuple rather than a class, which is what lets the whole
@@ -324,7 +324,7 @@ def _scan_body(prog: tuple[int, ...], start: int) -> int:
     return end
 
 
-def _step(
+def _advance(
     state: _State,
     bot: int,
     top: int,
@@ -514,7 +514,7 @@ class _Machine:
             if ptr < len(prog) and prog[ptr] == -6:
                 byte = self.io.input_char()
 
-        state, output = _step((cells, frames), self.bot, self.top, self.mode, byte)
+        state, output = _advance((cells, frames), self.bot, self.top, self.mode, byte)
         self.cells, self.frames = state
         if output is not None:
             self.io.print_char(output)

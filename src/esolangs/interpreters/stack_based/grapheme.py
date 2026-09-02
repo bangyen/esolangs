@@ -33,7 +33,7 @@ wall-clock bound instead.
 
 The execution model is a pure function over an immutable ``_State`` -- the
 variables and the call stack -- paired with *collected effects* on the value
-stack.  :func:`_step` returns the next state, what it wants done to the
+stack.  :func:`_advance` returns the next state, what it wants done to the
 stack, and anything it printed; :meth:`_Machine.step` rebinds the two fields
 and applies the effects, so the mutation lives in exactly one place.  A
 frame is a tuple rather than a record for the same reason Eval's is: the
@@ -232,7 +232,7 @@ def _finished(state: _State, view: _StackView, fx: _StackFx) -> tuple[_State, _S
     return (variables, frames[:-1]), fx
 
 
-def _step(
+def _advance(
     state: _State, view: _StackView, line_in: str | None = None
 ) -> tuple[_State, _StackFx, _Value | None]:
     """Execute one command: the new state, the stack effects, any output.
@@ -550,7 +550,7 @@ class _Machine:
         if mode == "" and code[pc] == "W":
             line_in = self.io.input_str()
 
-        state, fx, output = _step(self._state, self.stack, line_in)
+        state, fx, output = _advance(self._state, self.stack, line_in)
         self._restore(state)
         self._apply(fx)
 

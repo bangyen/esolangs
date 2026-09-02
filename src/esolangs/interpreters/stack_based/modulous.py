@@ -103,7 +103,7 @@ class State:
         )
 
     @property
-    def _core(self) -> _Core:
+    def _state(self) -> _Core:
         """The state's fields as the value the handlers work on."""
         return (tuple(self.stk), self.var, self.ind)
 
@@ -132,7 +132,7 @@ class State:
         handler = _DISPATCH.get(arg[0])
         if handler is None:
             if "+" in mod or "-" in mod:
-                self._restore(_var_arith(self._core, mod))
+                self._restore(_var_arith(self._state, mod))
             return
 
         value: str | int | None = None
@@ -147,7 +147,7 @@ class State:
         elif arg[0] == "END":
             self._halted = True
 
-        self._restore(handler(self._core, mod, arg, value))
+        self._restore(handler(self._state, mod, arg, value))
 
     def _print(self, mod: str, arg: list[str]) -> None:
         """Write what ``PRT`` names: a variable, or the top of the stack."""

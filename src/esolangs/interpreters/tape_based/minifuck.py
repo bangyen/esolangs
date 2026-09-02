@@ -12,7 +12,7 @@ Exhausted input raises :class:`EOFError` (the repo-wide convention).
 
 Minifuck is the smallest interpreter in the repo, which makes it the one
 worth writing as a *functional core with an imperative shell*: :class:`_State`
-is an immutable snapshot of the machine, :func:`_step` is a pure function
+is an immutable snapshot of the machine, :func:`_advance` is a pure function
 from one state to the next, and :class:`_Machine` is the thin mutable shell
 the VM and the hang detector need (their protocol wants an in-place
 ``step()``, so the shell rebinds ``self.state`` rather than the core mutating
@@ -20,7 +20,7 @@ anything).
 
 The one effect in the language is ``.``, whose behaviour depends on the tape:
 a non-zero print window prints, a zero one reads.  A pure step cannot decide
-that *and* perform it, so :func:`_step` returns the next state paired with an
+that *and* perform it, so :func:`_advance` returns the next state paired with an
 :class:`_Effect` describing what the shell owes the outside world.  Input
 comes back the same way: :func:`_load` is the pure half of a read, splicing a
 byte the shell has already fetched into the print window.  Nothing in the
@@ -119,7 +119,7 @@ def _load(state: _State, byte: int) -> _State:
     had walked out that far.
 
     The ``& ~_WINDOW`` is defensive rather than load-bearing, and mutation
-    testing reports it as a survivor for that reason: :func:`_step` calls
+    testing reports it as a survivor for that reason: :func:`_advance` calls
     this only when it found a zero print window, so the bits being cleared
     are already zero (6016 calls checked, never once non-zero).  It stays
     because ``_load``'s contract is "replace the window", not "assume the
@@ -130,7 +130,7 @@ def _load(state: _State, byte: int) -> _State:
     return state._replace(tape=(state.tape & ~_WINDOW) | bits)
 
 
-def _step(state: _State) -> tuple[_State, _Effect]:
+def _advance(state: _State) -> tuple[_State, _Effect]:
     """Execute one instruction, returning the next state and its effect.
 
     Pure: the caller owns every side effect.  Stepping a halted state is a
@@ -242,7 +242,7 @@ class _Machine:
 
     def step(self) -> None:
         """Execute one instruction, advancing the cursor."""
-        state, effect = _step(self.state)
+        state, effect = _advance(self.state)
         if effect.char is not None:
             self.io.print_char(effect.char)
         elif effect.reads:

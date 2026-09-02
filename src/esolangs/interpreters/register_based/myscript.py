@@ -232,7 +232,7 @@ class Scope:
 #:
 #: A tuple rather than a class, so the frame stack is a value the
 #: transition returns rather than a list it edits.  The ``scope`` it holds
-#: is deliberately *not* a value -- see :func:`_step`.
+#: is deliberately *not* a value -- see :func:`_advance`.
 type _Frame = tuple[list[Node], int, "Scope", list[str] | None]
 
 
@@ -405,7 +405,7 @@ def _run_statement(
 type _Frames = tuple[_Frame, ...]
 
 
-def _step(frames: _Frames, io: IO) -> _Frames:
+def _advance(frames: _Frames, io: IO) -> _Frames:
     """Execute one statement, returning the frame stack that follows.
 
     Pure in the *stack*: it returns a new tuple rather than editing the one
@@ -524,7 +524,7 @@ class _Machine:
         """
         if self.halted:
             return
-        self.frames = _step(self.frames, self.io)
+        self.frames = _advance(self.frames, self.io)
 
 
 def run(code: str, io: IO) -> None:

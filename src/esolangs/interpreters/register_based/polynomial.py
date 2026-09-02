@@ -36,7 +36,7 @@ integer register, and the instruction cursor), so it is step-capable:
 reaches the end of the instructions.
 
 The execution model is a pure function over an immutable ``_State``: the
-register and the cursor, as a plain pair.  :func:`_step` maps a state and
+register and the cursor, as a plain pair.  :func:`_advance` maps a state and
 the instruction table to the next state and never mutates what it is given;
 :meth:`_Machine.step` rebinds the two fields from what it returned, so the
 mutation lives in exactly one place.
@@ -251,12 +251,12 @@ _COND: dict[int, Callable[[int], bool]] = {
 }
 
 #: One instant of a run: ``(reg, ind)`` -- the single integer register and
-#: the instruction cursor.  A value, not a record: :func:`_step` returns a
+#: the instruction cursor.  A value, not a record: :func:`_advance` returns a
 #: new pair rather than editing one in place.
 type _State = tuple[int, int]
 
 
-def _step(
+def _advance(
     state: _State,
     instructions: list[list[int]],
     byte: int | None = None,
@@ -381,7 +381,7 @@ class _Machine:
             val = self.io.input_str() + chr(0)
             byte = ord(val[0])
 
-        (self.reg, self.ind), output = _step(self._state, self.instructions, byte)
+        (self.reg, self.ind), output = _advance(self._state, self.instructions, byte)
         if output is not None:
             self.io.print_char(output)
 
