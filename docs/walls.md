@@ -416,12 +416,14 @@ argument quietly made:
   pool.  But the embed's walk transform is affine and invertible -- after
   the embed no two rows share a state -- and a table-independent suffix of
   reads can convert that state difference into a **pointer** difference:
-  all `2**n` rows at distinct positions.  Derived per arity by four searches
-  (shortest-split BFS, greedy aimed reads, a short beam, a two-machine BFS
-  on one stuck pair at a time), cheapest first.  The searches must leave
-  everything left of the embed untouched -- junk in the pool codes' working
-  range strands every probe (measured: 0 usable probes against 14) -- which
-  is why the route embeds sixteen cells right of `_BASE`, and why eight
+  all `2**n` rows at distinct positions.  Four searches derived that per
+  arity (shortest-split BFS, greedy aimed reads, a short beam, a two-machine
+  BFS on one stuck pair at a time); all four are now gone, replaced by
+  weighting each input as it lands — see the constructed-separation section
+  below.  The construction must still leave everything left of the embed
+  untouched -- junk in the pool codes' working range strands every probe
+  (measured: 0 usable probes against 14) -- which is why the route embeds
+  sixteen cells right of `_BASE`, and why eight
   scratch cells just left of the embed stay deliberately writable: sealing
   them turns the derivation into a failure.
 
@@ -548,6 +550,40 @@ finding and the "13 of 16 saturation" were real measurements of a
 misconfigured probe, and each read as a property of the language.  When a
 primitive is documented as saturating, check whether the sweep that found
 the saturation could have expressed the non-overlapping case at all.
+
+### The generator no longer searches at all
+
+With the separation constructed, the remaining searches were each one table
+away from being unnecessary, and all of them are now gone.  There is no
+breadth-first search anywhere in `minifuck.py`.
+
+| search | what replaced it |
+|---|---|
+| four separation searches (BFS, greedy aimed reads, beam, pair BFS) | weight each input as it lands; pointer = the row's binary expansion |
+| `_find_reset` (reconverging reset, BFS to depth 13) | `_RESET_HEAD + "<" * (ignored + 1)`, closed form |
+| `_find_column` (degenerate route's column search) | the six tables it served build through `_mux` in milliseconds |
+| `_find_parked` | already dead — reachable from nothing |
+| `_search` (the shared BFS engine) | no callers left |
+
+**The reset was the cleanest.**  Its search found length 12 at two ignored
+inputs, the same string plus one `<` at three, and **nothing at four** — its
+depth cap bit before the answer.  The pattern is just a fixed nine-character
+head followed by `ignored + 1` clamping steps, and it converges at every
+arity tried, 1 through 8.  A search that fails at four inputs and a
+construction that works at eight were separated by noticing that two hits
+differed by one character.
+
+**The column search served six tables** — `X2` and its complement at three
+inputs, `X2`/`X3` and theirs at four, the projections whose cell the
+degenerate route does not read off directly.  All six build through `_mux`
+in milliseconds and print every row on the shipped interpreter, and `_solve`
+runs that route directly after the degenerate one, so deleting the search
+strictly improved the fallback: a construction instead of a sweep.
+
+What is left when a table cannot be built is a **raise**, which is a bounded
+failure a caller can handle.  That was already the design for `n >= 5` — the
+searches there turned a fast failure into an indefinite one — and it is now
+the design everywhere.
 
 ### `n == 5` ships partially; full coverage is out of reach of any flat family
 

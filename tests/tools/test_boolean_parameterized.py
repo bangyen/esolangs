@@ -2404,20 +2404,17 @@ class TestParameterizedMinifuck:
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
-        def forbidden(*_args: object, **_kwargs: object) -> object:
-            raise AssertionError("a two-input table reached the search")
-
-        with (
-            patch.object(module, "_find_column", forbidden),
-            patch.object(module, "_find_parked", forbidden),
-        ):
-            for table_int in range(16):
-                table = format(table_int, "04b")
-                # ``minifuck`` is cached, so go through the wrapped function
-                # to be sure the build actually runs under the patch.
-                template = module.minifuck.__wrapped__(format(table_int, "04b"))
-                assert "{X0}" in template, table
-                assert "{X1}" in template, table
+        # The searches these used to stub are gone; assert that structurally
+        # instead of patching them, then build as before.
+        assert not hasattr(module, "_find_column")
+        assert not hasattr(module, "_find_parked")
+        for table_int in range(16):
+            table = format(table_int, "04b")
+            # ``minifuck`` is cached, so go through the wrapped function
+            # to be sure the build actually runs under the patch.
+            template = module.minifuck.__wrapped__(format(table_int, "04b"))
+            assert "{X0}" in template, table
+            assert "{X1}" in template, table
         # And the public entry point still agrees with what it built.
         assert parameterized.minifuck("0110").count("{X") == 2
 
@@ -2474,24 +2471,21 @@ class TestParameterizedMinifuck:
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
-        def forbidden(*_args: object, **_kwargs: object) -> object:
-            raise AssertionError("a degenerate table reached the search")
-
         checked = 0
-        with (
-            patch.object(module, "_find_column", forbidden),
-            patch.object(module, "_find_parked", forbidden),
-        ):
-            for table_int in range(256):
-                table = format(table_int, "08b")
-                if len(essential_inputs(table, 3)) > 2:
-                    continue
-                checked += 1
-                template = module.minifuck.__wrapped__(table)
-                for combo in range(8):
-                    bits = [(combo >> (2 - i)) & 1 for i in range(3)]
-                    got = self.run_minifuck(self.instantiate(template, bits))
-                    assert got == table[combo], f"{table} inputs {bits}"
+        # The searches these used to stub are gone; assert that structurally
+        # instead of patching them, then build as before.
+        assert not hasattr(module, "_find_column")
+        assert not hasattr(module, "_find_parked")
+        for table_int in range(256):
+            table = format(table_int, "08b")
+            if len(essential_inputs(table, 3)) > 2:
+                continue
+            checked += 1
+            template = module.minifuck.__wrapped__(table)
+            for combo in range(8):
+                bits = [(combo >> (2 - i)) & 1 for i in range(3)]
+                got = self.run_minifuck(self.instantiate(template, bits))
+                assert got == table[combo], f"{table} inputs {bits}"
         assert checked == 38, checked
 
     # 2.4s: the three-input derivation is the cost.  The gate probe at the
@@ -2564,24 +2558,21 @@ class TestParameterizedMinifuck:
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
-        def forbidden(*_args: object, **_kwargs: object) -> object:
-            raise AssertionError("reached the search")
-
         table = "0110100110010110"  # XOR4, the recorded search failure
-        with (
-            patch.object(module, "_find_column", forbidden),
-            patch.object(module, "_find_parked", forbidden),
-        ):
-            assert module._staged(table, 4) is not None  # noqa: SLF001
-            template = module.minifuck.__wrapped__(table)
-            widths = set()
-            for combo in range(16):
-                bits = [(combo >> (3 - i)) & 1 for i in range(4)]
-                program = self.instantiate(template, bits)
-                widths.add(len(program))
-                got = self.run_minifuck(program)
-                assert got == table[combo], f"{table} inputs {bits}"
-            assert len(widths) == 1, widths
+        # The searches these used to stub are gone; assert that structurally
+        # instead of patching them, then build as before.
+        assert not hasattr(module, "_find_column")
+        assert not hasattr(module, "_find_parked")
+        assert module._staged(table, 4) is not None  # noqa: SLF001
+        template = module.minifuck.__wrapped__(table)
+        widths = set()
+        for combo in range(16):
+            bits = [(combo >> (3 - i)) & 1 for i in range(4)]
+            program = self.instantiate(template, bits)
+            widths.add(len(program))
+            got = self.run_minifuck(program)
+            assert got == table[combo], f"{table} inputs {bits}"
+        assert len(widths) == 1, widths
 
     @pytest.mark.slow  # the four-input separation derivation, ~15s once
     def test_sculpted_route_computes_and_is_row_addressable(self) -> None:
@@ -2758,25 +2749,22 @@ class TestParameterizedMinifuck:
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
-        def forbidden(*_args: object, **_kwargs: object) -> object:
-            raise AssertionError("reached the search")
-
         searched = []
-        with (
-            patch.object(module, "_find_column", forbidden),
-            patch.object(module, "_find_parked", forbidden),
-        ):
-            for table_int in range(256):
-                table = format(table_int, "08b")
-                try:
-                    template = module.minifuck.__wrapped__(table)
-                except AssertionError:
-                    searched.append(table)
-                    continue
-                for combo in range(8):
-                    bits = [(combo >> (2 - i)) & 1 for i in range(3)]
-                    got = self.run_minifuck(self.instantiate(template, bits))
-                    assert got == table[combo], f"{table} inputs {bits}"
+        # The searches these used to stub are gone; assert that structurally
+        # instead of patching them, then build as before.
+        assert not hasattr(module, "_find_column")
+        assert not hasattr(module, "_find_parked")
+        for table_int in range(256):
+            table = format(table_int, "08b")
+            try:
+                template = module.minifuck.__wrapped__(table)
+            except AssertionError:
+                searched.append(table)
+                continue
+            for combo in range(8):
+                bits = [(combo >> (2 - i)) & 1 for i in range(3)]
+                got = self.run_minifuck(self.instantiate(template, bits))
+                assert got == table[combo], f"{table} inputs {bits}"
         assert searched == [], searched
 
     def test_only_the_first_separators_are_scanned(self) -> None:
@@ -3118,9 +3106,6 @@ class TestParameterizedMinifuck:
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
         codes = module._POOL_CODES  # noqa: SLF001
 
-        def forbidden(*_args: object, **_kwargs: object) -> object:
-            raise AssertionError("a table fell through to the searches")
-
         def out_of_order() -> int:
             count = 0
             for table_int in range(256):
@@ -3150,15 +3135,12 @@ class TestParameterizedMinifuck:
             for dropped in range(len(codes)):
                 reset(tuple(c for i, c in enumerate(codes) if i != dropped))
                 stranded = []
-                with (
-                    patch.object(module, "_find_column", forbidden),
-                    patch.object(module, "_find_parked", forbidden),
-                    # ``_mux`` is a fallthrough for the same reason: it
-                    # sculpts with whatever pool codes remain, so a live one
-                    # would rebuild most of what a dropped code strands and
-                    # report the drop as nearly free.
-                    patch.object(module, "_mux", lambda *_a, **_k: None),
-                ):
+                # The column and parked searches used to be stubbed here too;
+                # they no longer exist.  ``_mux`` is still a fallthrough for
+                # the same reason they were: it sculpts with whatever pool
+                # codes remain, so a live one would rebuild most of what a
+                # dropped code strands and report the drop as nearly free.
+                with patch.object(module, "_mux", lambda *_a, **_k: None):
                     for table_int in range(256):
                         table = format(table_int, "08b")
                         # This pair has no staged route by construction --
@@ -3414,33 +3396,50 @@ class TestParameterizedMinifuck:
         with patch.object(module, "_derive_staging", literal_suffix):
             assert module._reconverged(table, list(pair), n) is None  # noqa: SLF001
 
-    def test_reconverged_skips_a_reset_that_splits_the_rows(self) -> None:
-        """A reset that leaves the rows in different states is passed over.
+    def test_reconverged_declines_a_reset_that_splits_the_rows(self) -> None:
+        """A reset leaving the rows in different states is not built on.
 
-        Every reset ``_find_reset`` currently offers reconverges all rows, so
-        this is the guard that keeps a wider search from committing to one
-        that does not: the route's whole premise is that the ignored inputs
-        are gone, which a split state has not achieved.
+        The route's whole premise is that the ignored inputs are gone, which
+        a split state has not achieved.  The reset is constructed now rather
+        than searched, so there is one of them and the guard *declines*
+        instead of trying the next candidate -- which is safe because
+        ``_solve`` falls through to a route that does not need the reset.
         """
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
-        real = module._find_reset  # noqa: SLF001
-
-        def diverging(ignored: int, *args: object, **kwargs: object) -> list[str]:
-            # ``[`` alone reads a row-dependent cell, so the rows stop
-            # agreeing -- prepended, it is tried and skipped before the real
-            # resets are reached.
-            return ["[", *real(ignored, *args, **kwargs)]  # type: ignore[arg-type]
-
         table, n = "0101", 2  # input 1 alone decides it; input 0 is ignored
         essential = essential_inputs(table, n)
-        # The route builds this table when its resets are the real ones.
+        # The route builds this table from the constructed reset.
         assert module._reconverged(table, essential, n) is not None  # noqa: SLF001
-        with patch.object(module, "_find_reset", diverging):
-            # It still does: the split reset is skipped, not fatal.
-            assert module._reconverged(table, essential, n) is not None  # noqa: SLF001
+
+        # ``[`` alone reads a row-dependent cell, so the rows stop agreeing.
+        def diverging(_ignored: int) -> str:
+            return "["
+
+        with patch.object(module, "_reset_code", diverging):
+            assert module._reconverged(table, essential, n) is None  # noqa: SLF001
+
+    def test_the_constructed_reset_converges_every_arity(self) -> None:
+        """``_reset_code`` drives all ``2**k`` rows to one identical state.
+
+        This is what the breadth-first search used to look for, and it found
+        the answer only up to three ignored inputs -- its depth cap bit at
+        four.  The construction has no cap, so the property is asserted well
+        past where the search stopped.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        for ignored in range(1, 7):
+            joint = module._Joint(ignored)  # noqa: SLF001
+            for slot in range(ignored):
+                joint.emit_setter(slot)
+            joint.emit(module._reset_code(ignored))  # noqa: SLF001
+            assert not any(m.dead for m in joint.ms), ignored
+            assert len({m.key() for m in joint.ms}) == 1, ignored
 
     def test_the_staging_enumeration_is_offered_only_at_its_arities(self) -> None:
         """Outside ``_STAGED_ARITIES`` the derivation offers nothing.
@@ -3513,42 +3512,6 @@ class TestParameterizedMinifuck:
             if module._pool_reaches(joint, code, cell7, walk_out)  # noqa: SLF001
         ]
         assert len(served) == 1, served
-
-    def test_find_column_reports_a_hit_and_a_miss(self) -> None:
-        """``_find_column`` answers a reachable column and declines others.
-
-        The staged route serves every supported table, so this search is
-        never entered from ``minifuck`` itself; calling it directly is what
-        pins that it still finds a column when one is within its depth, and
-        returns ``None`` rather than guessing when none is.
-        """
-        import importlib
-
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
-
-        seen: list[object] = []
-        real = module._find_pool  # noqa: SLF001
-
-        def record(joint: object, cell7: int, walk_out: int) -> object:
-            if not seen:
-                seen.append(joint.fork())  # type: ignore[attr-defined]
-            return real(joint, cell7, walk_out)
-
-        with patch.object(module, "_find_pool", record):
-            module.minifuck.cache_clear()
-            module.minifuck.__wrapped__("0110")
-        assert seen, "no pool lookups were observed"
-        joint = seen[0]
-
-        # A column the state already holds is found at shallow depth, and the
-        # cell it names is a real cell of the window.
-        found = module._find_column(joint.fork(), (0, 0, 0, 0), 20, 3)  # noqa: SLF001
-        assert found is not None
-        code, cell = found
-        assert set(code) <= set("[<x")
-        assert 1 <= cell < 20
-        # A column no code of this depth delivers is declined outright.
-        assert module._find_column(joint.fork(), (0, 1, 1, 0), 20, 3) is None  # noqa: SLF001
 
     @pytest.mark.slow  # re-simulates a derived staging for every table
     def test_stagings_deliver_the_column_the_read_sees(self) -> None:
@@ -3696,31 +3659,6 @@ class TestParameterizedMinifuck:
         assert zero.dead, "printing a zero byte ends the row"
         assert zero.out == []
 
-    def test_a_search_from_a_dead_row_expands_nothing(self) -> None:
-        """A state holding a dead row is pruned rather than explored.
-
-        A dead row cannot be steered back, so every state below it is one
-        the generator could never use.  Nothing in the search's own
-        alphabet kills a row -- only a print does -- so the prune exists
-        for a state that arrived dead, which is what this hands it.
-        """
-        from esolangs.tools.boolean.minifuck import _clamp, _embed, _search
-
-        joint = _embed(2)
-        _clamp(joint)
-        # A print reads cells 0..7 as one byte and dies when it is zero, so
-        # clear the byte and print from past it, where the flip lands outside.
-        row = joint.ms[0]
-        row.tape[:8] = [0] * 8
-        row.ptr = 9
-        row.exec(".")
-        assert row.dead
-
-        def accept(_new: list[object], _code: str) -> str | None:
-            raise AssertionError("a pruned state must never reach accept")
-
-        assert _search(joint, accept, 3) is None
-
     def test_the_walk_needs_a_converged_pointer_going_right(self) -> None:
         """``[x`` walks are only safe rightward from one shared position.
 
@@ -3740,37 +3678,6 @@ class TestParameterizedMinifuck:
         _clamp(clamped)
         with pytest.raises(ValueError, match="cannot walk left"):
             _walk_to(clamped, -5)
-
-    def test_the_parked_search_finds_a_column_under_the_pointer(self) -> None:
-        """The last route asks for the answer *and* the pointer that reads it.
-
-        Producing the column is not enough on its own: walking back to it
-        re-crosses, and so changes, that very cell.  So a hit is a state
-        whose rows agree on the pointer, with the wanted column (or its
-        complement) immediately to the right of it, inside the window.
-        """
-        from esolangs.tools.boolean.minifuck import (
-            _BASE,
-            _SETTLE,
-            _SPAN,
-            _embed,
-            _find_parked,
-        )
-
-        want = (0, 1, 1, 0)  # XOR's column
-        window = _BASE + 2 * _SPAN + 14
-
-        hits = _find_parked(_embed(2, settle=_SETTLE), want, window, 6, 3)
-        assert hits, "the XOR column should be parked on within six steps"
-        for code, cell in hits:
-            assert set(code) <= set("<[x")
-            assert 8 <= cell < window
-
-        # The limit stops the collection early rather than filling it.
-        assert len(_find_parked(_embed(2, settle=_SETTLE), want, window, 8, 1)) == 1
-
-        # A window that excludes the answer's cell yields nothing.
-        assert _find_parked(_embed(2, settle=_SETTLE), want, 10, 6, 3) == []
 
     def test_the_pool_search_needs_the_rows_to_agree_on_the_pointer(self) -> None:
         """A pool is only a pool if every row reads it from one place.
@@ -3814,113 +3721,6 @@ class TestParameterizedMinifuck:
             patch.setattr(module, "_find_pool", lambda *_a, **_k: None)
             with pytest.raises(ValueError, match="no pool pattern"):
                 _endgame(joint.fork(), 12, "[<", 0)
-
-    def test_the_routes_are_tried_in_order_and_then_give_up(self) -> None:
-        """With every route failing the generator refuses rather than guesses.
-
-        The three routes are ordered by cost -- the scans, the column
-        search, then the parked search -- and the cheap ones answer every
-        table at this arity, so the later ones are never reached by a real
-        build.  Blocking each in turn is what runs them: the column search
-        is stubbed away and the parked search shrunk to a depth it cannot
-        succeed at, leaving the final refusal.
-
-        ``__wrapped__`` steps around the cache, so a stubbed build cannot
-        be handed to a later caller as if it were real.
-        """
-        import importlib
-
-        # The package re-exports the generator under the submodule's own
-        # name, so import the module explicitly rather than by attribute.
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
-
-        with pytest.MonkeyPatch.context() as patch:
-            patch.setattr(module, "_try_print", lambda *_a, **_k: None)
-            patch.setattr(module, "_find_column", lambda *_a, **_k: None)
-            patch.setattr(module, "_PARKED_DEPTH", 6)
-            patch.setattr(module, "_PARKED_LIMIT", 2)
-            with pytest.raises(ValueError, match="could not build"):
-                module.minifuck.__wrapped__("0110")
-
-    def test_a_park_the_walk_refuses_is_skipped(self) -> None:
-        """The column route walks to each park in turn; some cannot be reached.
-
-        ``_walk_to`` refuses a target it cannot reach rightward from a
-        converged pointer, and that is a reason to try the next park rather
-        than to fail the build.
-        """
-        import importlib
-
-        # The package re-exports the generator under the submodule's own
-        # name, so import the module explicitly rather than by attribute.
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
-        from esolangs.tools.boolean.minifuck import _BASE
-        from esolangs.tools.boolean.minifuck import _walk_to as real_walk
-
-        refused = {"n": 0}
-
-        def refuse_first(joint: object, target: int) -> None:
-            # The embed walks too, and to a fixed target; the route's parks
-            # start one cell below it, so that is the one to refuse.
-            if refused["n"] == 0 and target == _BASE - 2:
-                refused["n"] += 1
-                raise ValueError("forced: this park is unreachable")
-            real_walk(joint, target)  # type: ignore[arg-type]
-
-        with pytest.MonkeyPatch.context() as patch:
-            patch.setattr(module, "_try_print", lambda *_a, **_k: None)
-            patch.setattr(module, "_find_column", lambda *_a, **_k: None)
-            patch.setattr(module, "_walk_to", refuse_first)
-            patch.setattr(module, "_PARKED_DEPTH", 4)
-            patch.setattr(module, "_PARKED_LIMIT", 1)
-            with pytest.raises(ValueError, match="could not build"):
-                module.minifuck.__wrapped__("0110")
-
-        assert refused["n"] == 1, "the forced refusal never fired"
-
-    @pytest.mark.slow  # 2.4s: the XOR arm scans every accumulator and fails
-    def test_a_degenerate_table_falls_back_to_searching_for_its_column(self) -> None:
-        """Past the fixed cells the degenerate route searches, then reports.
-
-        A table depending on at most one input is a constant, a projection,
-        or a negated projection, and each of those already stands as a
-        column somewhere after the embed -- at a known cell for the first
-        two inputs, and at a searched one beyond that.  Every table at this
-        arity is answered by the known cells, so the search below them only
-        runs when those are taken away.
-        """
-        import importlib
-
-        # The package re-exports the generator under the submodule's own
-        # name, so import the module explicitly rather than by attribute.
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
-        from esolangs.tools.boolean.minifuck import _degenerate, _degenerate_cells
-
-        # b1's cell carries "0101" at n == 2, so pointing the stubbed search
-        # at it stands in for a search that succeeded.  The cell is measured
-        # off the embed rather than written down, so read it from there.
-        b1_cell = _degenerate_cells(2)["b1"]
-
-        with pytest.MonkeyPatch.context() as patch:
-            patch.setattr(module, "_degenerate_cells", lambda _n: {})
-            patch.setattr(module, "_find_column", lambda *_a, **_k: ("", b1_cell))
-            found = _degenerate("0101", 2)
-        assert found is not None, "the searched column should still print"
-        assert "{X0}" in found
-        assert "{X1}" in found
-
-        # XOR is not degenerate, so no accumulator prints it however the
-        # search claims to have gone: the scan runs out and reports that.
-        with pytest.MonkeyPatch.context() as patch:
-            patch.setattr(module, "_degenerate_cells", lambda _n: {})
-            patch.setattr(module, "_find_column", lambda *_a, **_k: ("", b1_cell))
-            assert _degenerate("0110", 2) is None
-
-        # And a search that finds nothing at all reports that directly.
-        with pytest.MonkeyPatch.context() as patch:
-            patch.setattr(module, "_degenerate_cells", lambda _n: {})
-            patch.setattr(module, "_find_column", lambda *_a, **_k: None)
-            assert _degenerate("0101", 2) is None
 
 
 @pytest.mark.slow  # 1.9s: builds every generator to compare fill widths
