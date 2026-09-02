@@ -8,8 +8,9 @@ a tape language exposes its cells and code cursor, an OISC its cells and
 instruction pointer, and a stack language its stack (empty ``stack`` where a
 language has none).
 
-The interpreters whose state objects expose ``step()``/``halted`` are the
-ones the VM can wrap; the rest of the registry runs whole programs only.
+Every registered interpreter exposes a ``step()``/``halted`` state object,
+so every language in the registry can be wrapped; only an unregistered name
+is refused.
 """
 
 from __future__ import annotations
@@ -244,55 +245,16 @@ class VM(Protocol):
         """The stack, or ``[]`` where the language has none."""
 
 
-class _BaseVM:
-    """Shared ``output`` capture and the run-state accessor plumbing.
-
-    Subclasses supply ``step``, ``halted``, and the language-shaped
-    ``ip``/``memory``/``stack``; ``output`` is captured here.
-    """
-
-    def __init__(self, program: str | list[str], stdin: str = "") -> None:
-        """Create a VM for ``program`` reading input from ``stdin``."""
-        self._io = ScriptedIO(stdin)
-        self._program = program
-
-    @property
-    def output(self) -> str:
-        return self._io.getvalue()
-
-    def step(self) -> None:
-        raise NotImplementedError
-
-    @property
-    def halted(self) -> bool:
-        raise NotImplementedError
-
-    @property
-    def ip(self) -> int | tuple[int, ...] | None:
-        raise NotImplementedError
-
-    @property
-    def memory(self) -> list[int]:
-        raise NotImplementedError
-
-    @property
-    def stack(self) -> list[object]:
-        raise NotImplementedError
-
-
-class _DelegatingVM(_BaseVM):
+class _DelegatingVM:
     """A VM for an interpreter that describes its own shape.
 
-    The older adapters below spell ``ip``/``memory``/``stack`` here, in
-    ``vm.py``, as expressions reaching into a ``_Machine``'s attributes.
-    That put the language-shaped mapping -- which is genuinely different for
-    all 61 of them -- in a file that does not otherwise know the languages.
-    An interpreter whose ``_Machine`` exposes those three properties itself
-    keeps the mapping next to the state it describes, and its adapter
-    shrinks to the one thing that really is per-language: how the machine is
-    constructed.
-
-    Subclasses provide ``__init__`` only.  Everything else forwards.
+    The language-shaped mapping -- ``ip``/``memory``/``stack``, genuinely
+    different for all 63 of them -- lives on each interpreter's
+    ``_Machine`` rather than here, in a file that does not otherwise know
+    the languages.  Keeping it next to the state it describes leaves the
+    adapter with the one thing that really is per-language: how the machine
+    is constructed.  Subclasses provide ``__init__`` only; everything else
+    forwards, and ``output`` is captured here.
 
     ``memory`` and ``stack`` are copied on the way out.  The machine may
     hand back its live store -- several expose the list itself, under
@@ -303,6 +265,15 @@ class _DelegatingVM(_BaseVM):
     """
 
     _machine: _StepMachineWithShape
+
+    def __init__(self, program: str | list[str], stdin: str = "") -> None:
+        """Create a VM for ``program`` reading input from ``stdin``."""
+        self._io = ScriptedIO(stdin)
+        self._program = program
+
+    @property
+    def output(self) -> str:
+        return self._io.getvalue()
 
     @property
     def halted(self) -> bool:
@@ -334,11 +305,10 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
     cannot drift from the runner set, and adding a language that follows
     the common shape needs no code here at all.
 
-    The languages this does *not* cover keep an explicit class below: the
-    ones whose machine needs extra setup, whose adapter overrides
-    ``step()``, or whose construction disagrees with their runner's (Point
-    Break's runner splits its program where the machine does not; Suffolk's
-    passes a ``limit`` the VM leaves at its default).
+    Every registered language now goes through here.  The exceptions that
+    once kept a hand-written class -- extra setup, an overridden ``step()``,
+    a construction disagreeing with the runner's -- were absorbed by the
+    ``of``/``rng`` handling below, so no per-language code is left.
     """
     module_path, split, _ = RUNNERS[language]
 
@@ -386,21 +356,16 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
     return _Derived
 
 
-# Language name -> VM adapter.  Only interpreters with a step()/halted state
-# object are wrappable; the rest raise UnknownLanguageError.
-# Most adapters are derived from the registry: once an interpreter
-# describes its own shape, the only per-language facts left are the two
-# ``RUNNERS`` already holds.  The rest are spelled out because they need
-# extra setup, override ``step()``, or build their machine differently
-# from the way their runner does.
-# Every registered language is step-capable, so every one gets a derived
-# adapter.  The set is read off ``RUNNERS`` rather than listed again here:
-# a second copy of sixty-one names is a second thing to keep in step, and
+# Language name -> VM adapter.  Every registered language is step-capable,
+# so every one gets a derived adapter and an unregistered name is the only
+# thing that raises UnknownLanguageError.  The set is read off ``RUNNERS``
+# rather than listed again here: a second copy of sixty-three names is a
+# second thing to keep in step, and
 # ``test_every_registry_language_has_a_vm_adapter`` existed only to catch
 # the two drifting apart.  Building an adapter imports nothing -- the
 # interpreter is imported inside the adapter's ``__init__`` -- so this
 # stays as lazy as the hand-written table was.
-_VM_ADAPTERS: dict[str, type[_BaseVM]] = {
+_VM_ADAPTERS: dict[str, type[_DelegatingVM]] = {
     name: _derived_adapter(name) for name in RUNNERS
 }
 
@@ -410,14 +375,10 @@ def make_vm(language: str, program: str, stdin: str = "") -> VM:
 
     The wrapper exposes ``step()``, ``halted``, ``output``, ``ip``,
     ``memory``, and ``stack`` between commands.  ``stdin`` is fed to the
-    program line by line, like :func:`esolangs.run`.  A language whose
-    interpreter does not expose a step-capable state object raises
+    program line by line, like :func:`esolangs.run`.  Every registered
+    language is step-capable, so only a name outside the registry raises
     :class:`UnknownLanguageError`.
     """
-    if language not in RUNNERS:
+    if language not in _VM_ADAPTERS:
         raise UnknownLanguageError(language)
-    try:
-        adapter = _VM_ADAPTERS[language]
-    except KeyError:
-        raise UnknownLanguageError(language) from None
-    return adapter(program, stdin)
+    return _VM_ADAPTERS[language](program, stdin)
