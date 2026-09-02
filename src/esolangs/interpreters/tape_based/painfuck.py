@@ -446,7 +446,23 @@ class _Machine:
                 # A fault partway through a step still moved the cursor,
                 # spent repeats, and may already have printed -- the
                 # original wrote all of that before it raised.
-                for effect in halt.effects:
+                #
+                # No current command reaches the body: `effects` is appended
+                # to only by `o` and `u`, `_Halted` is raised only by `i`
+                # and `b`, and one step runs one command -- a `c`/`t` run
+                # repeats that same command rather than mixing two -- so a
+                # step that prints cannot fault and a step that faults
+                # cannot have printed.  Confirmed by exhaustive search over
+                # every program to length 5 containing a repeat and a
+                # faulting command, instrumented at the raise itself: the
+                # effects list was empty at all of them, with the probe
+                # firing on each fault as its own control.
+                #
+                # It stays because the cross-check preserves partial output
+                # across a fault, and a command that both prints and faults
+                # would need it -- deleting it would leave `_Halted`'s
+                # `effects` written at both raise sites and never read.
+                for effect in halt.effects:  # pragma: no cover - see above
                     self._write(effect)
                 self._restore(halt.state)
                 raise halt.error from None
