@@ -4116,28 +4116,22 @@ class TestParameterizedPctSquaredMinusOne:
             assert len(lengths) == 1, (table, sorted(lengths))
 
     def test_deep_band_builds_four_input_parity(self) -> None:
-        """Parity-4 builds and runs, which no shipped path reached.
+        """Parity-4 builds and runs, which no earlier path reached.
 
-        The shipped band caps its weights at ``3003 // 256 == 11`` units
-        because it builds its ladder positive, so every row sum has to sit
-        under the limit at once; four inputs need ``2**4 - 1 == 15`` and it has
-        no weighting at all.  The deep band subtracts instead, so the ladder is
+        An earlier *positive* band construction capped its weights at
+        ``3003 // 256 == 11`` units, because building the ladder upward makes
+        every row sum sit under the limit at once; four inputs need
+        ``2**4 - 1 == 15``, so it had no weighting at all and was removed once
+        the deep band strictly dominated it (same coverage, a quarter the
+        program length).  The deep band subtracts instead, so the ladder is
         negative -- nothing resets below zero -- and the budget does not exist.
 
         Parity is the case the popcount ladder serves: every weight is one, so
         the span is ``n`` units rather than ``2**n - 1``.
         """
         from esolangs.tools.boolean import parameterized
-        from esolangs.tools.boolean.pct_squared_minus_one import (
-            _band,
-            _band_weightings,
-        )
 
         table = "0110100110010110"
-        # The shipped band has no weighting to try at this arity at all, which
-        # is the wall this construction lifts.
-        assert _band_weightings(4) == {}
-        assert _band(table, 4) is None
         template = parameterized.pct_squared_minus_one(table)
         lengths = set()
         for row in range(16):
@@ -4616,8 +4610,7 @@ class TestPctSquaredHelpers:
 
     These are pure functions over small integers, so the edges the search
     itself only reaches incidentally are reachable directly: a width that
-    admits no spelling, the zero shortcut, and the resets ``_translate``
-    models because the accumulator wraps at :data:`_LIMIT`.
+    admits no spelling and the zero shortcut.
     """
 
     @staticmethod
@@ -4628,45 +4621,23 @@ class TestPctSquaredHelpers:
         """A width too narrow to spell ``k`` has no ``i``/``s`` split."""
         assert self.module()._sub_of_width(1, 1) is None  # noqa: SLF001
 
-    @pytest.mark.parametrize("name", ["_even_width_for", "_band_width"])
+    @pytest.mark.parametrize("name", ["_even_width_for"])
     def test_zero_needs_no_width(self, name: str) -> None:
         """Subtracting nothing is width zero, not a search."""
         assert getattr(self.module(), name)(0) == 0
 
-    @pytest.mark.parametrize("name", ["_even_width_for", "_band_width"])
+    @pytest.mark.parametrize("name", ["_even_width_for"])
     @pytest.mark.parametrize("k", [1, 2, 3, 7])
     def test_unspellable_weights_return_none(self, name: str, k: int) -> None:
         """Some weights have no even-width spelling at all."""
         assert getattr(self.module(), name)(k) is None
 
-    @pytest.mark.parametrize("name", ["_even_width_for", "_band_width"])
+    @pytest.mark.parametrize("name", ["_even_width_for"])
     def test_odd_starting_width_is_bumped_even(self, name: str) -> None:
         """``k == 8`` starts the scan at an odd width, so it is bumped."""
         width = getattr(self.module(), name)(8)
         assert width is not None
         assert width % 2 == 0
-
-    def test_translate_is_identity_at_zero_shift(self) -> None:
-        m = self.module()
-        assert m._translate(5, 0) == 5  # noqa: SLF001
-
-    def test_translate_resets_a_value_past_the_limit(self) -> None:
-        """A value over the limit is zeroed before a negative shift lands."""
-        m = self.module()
-        assert m._translate(m._LIMIT + 10, -3) == -3  # noqa: SLF001
-
-    def test_translate_crosses_the_reset_twice_going_up(self) -> None:
-        """A positive shift negates, so both later resets are reachable.
-
-        The negation is what puts a value over the limit: a value below
-        ``-_LIMIT`` is past it once flipped, and is zeroed there rather than
-        at the first reset, which only sees the value as it arrived.
-        """
-        m = self.module()
-        assert m._translate(-5, 4000) == 3995  # noqa: SLF001
-        assert m._translate(-5, m._LIMIT + 5) == m._LIMIT  # noqa: SLF001
-        # zeroed after the negation, so only the shift is left
-        assert m._translate(-(m._LIMIT + 10), 3) == 3  # noqa: SLF001
 
 
 class TestMinifuckArityGates:

@@ -95,41 +95,41 @@ subcubes, and one the composed-affine search cannot reach.
 One bound is known about the ladder: a single reset is one threshold, and only
 104 of the 256 three-input tables are linearly separable, so that shape cannot
 be made total by widening its grid.  What lifts it is not more arithmetic but a
-different *printing command*, which is the fifth construction, :func:`_band`.
+different *printing command*, which is the fifth construction,
+:func:`_deep_band`.
 
 Every path above prints with ``l``, which spells the accumulator in decimal and
 so needs it to *be* 0 or 1 -- that is what pins the two answer classes to two
 exact values.  ``e`` prints ``chr(acc & 0xFF)``, so a row only has to be
 **congruent** to 48 or 49 mod 256, and with residues rather than values as the
 target the reset can be used once per run of the table instead of once in total.
-The band construction weights each input by a multiple of 256, so every row
-starts congruent; sorting the rows by the weighted sum turns the table into
-runs; and one stage clears each run from the top, since the reset wipes only the
-largest values.  Nothing is searched -- a wiped band thereafter takes the same
-translations as the survivors, so the parking amount cancels out of their
-residue gap and each stage's translation is fixed by a single congruence.
+The band weights each input by a multiple of 256, so every row starts
+congruent; sorting the rows by the weighted sum turns the table into runs; and
+one stage clears each run, since the reset wipes only values past the limit.
+Nothing is searched -- a wiped band thereafter takes the same translations as
+the survivors, so the parking amount cancels out of their residue gap and each
+stage's translation is fixed by a single congruence.
 
-That makes three inputs **total**: all 256 tables build, every one executed on
-the interpreter for all eight input combinations with every fill the same
-length.
+Two choices decide how far that reaches, and both are assumptions of the shape
+rather than of the language.  Building the ladder **positive** makes every row
+sum sit under the limit at once, so distinct sums need weights behaving like a
+binary code -- at least ``2**n - 1`` units against the ``3003 // 256 == 11``
+the limit allows, which stops at three inputs because four needs 15.  Building
+it by **subtraction** instead puts the whole order below zero, where the reset
+cannot fire and no budget applies.  And distinct sums are more than the table
+needs: a cut *erases*, so every row it wipes lands on zero together whatever
+the gaps between them were, and only the boundaries *between* runs need a full
+residue system.  Rows may therefore collide when they share a class, which
+prices a table's span by its number of runs instead of by ``2**n``, and admits
+the popcount ladder -- every weight one -- on which parity spans ``n`` units
+rather than ``2**n - 1``.
 
-That construction stops at three inputs, and the count that stops it is real
-but belongs to *it* rather than to the language.  Distinct row sums need
-weights behaving like a binary code, so at least ``2**n - 1`` units, while the
-limit allows only ``3003 // 256 == 11`` -- and four inputs need 15, so
-:func:`_band_weightings` returns nothing at all there.
-
-Both halves of that count are assumptions of the shape, and :func:`_deep_band`
-drops them.  The unit budget exists only because :func:`_band` builds its
-ladder *positive*, so every row sum must sit under the limit at once; building
-it by subtraction puts the whole order below zero, where the reset cannot fire
-and no budget applies.  And distinct sums are more than the table needs: a cut
-*erases*, so every row it wipes lands on zero together whatever the gaps
-between them were, and only the boundaries *between* runs need a full residue
-system.  Rows may therefore collide when they share a class, which prices a
-table's span by its number of runs instead of by ``2**n``, and admits the
-popcount ladder -- every weight one -- on which parity spans ``n`` units rather
-than ``2**n - 1``.
+:func:`_deep_band` makes both of those choices, which is what carries it from
+three inputs to four.  A positive-ladder version shipped alongside it for a
+while and was removed once measured: it served no table the deep band does not
+(0 of 256 at three inputs, where it was the only arity it reached) and its
+programs were about four times longer (median 11492 characters against 3144),
+so it was strictly dominated on both axes.
 
 Four inputs are total on that path, all 65536 tables, against the 496 the
 constructions above reach.  Parity has been executed on the interpreter through
@@ -1036,249 +1036,6 @@ _BAND_UNIT = 256
 _BAND_PARK = 2000
 
 
-def _band_weightings(n: int) -> dict[tuple[int, ...], tuple[int, ...]]:
-    """One weighting per achievable row order, keyed by the order.
-
-    Weights are multiples of :data:`_BAND_UNIT` so all rows share a residue, and
-    the largest row sum must stay under the limit or stage one would clamp on
-    its own -- together that bounds the unit triple's sum, and every order this
-    box can realise is represented once.
-    """
-    seen: dict[tuple[int, ...], tuple[int, ...]] = {}
-    limit_units = _LIMIT // _BAND_UNIT
-    for units in product(range(1, limit_units + 1), repeat=n):
-        if sum(units) > limit_units:
-            continue
-        weights = tuple(u * _BAND_UNIT for u in units)
-        sums = [
-            sum(w * ((r >> (n - 1 - k)) & 1) for k, w in enumerate(weights))
-            for r in range(2**n)
-        ]
-        if len(set(sums)) != 2**n:
-            continue
-        order = tuple(sorted(range(2**n), key=lambda r: sums[r], reverse=True))
-        seen.setdefault(order, weights)
-    return seen
-
-
-def _translate(value: int, shift: int) -> int:
-    """Apply a translation to one accumulator value, reset included.
-
-    A negative shift is a run of ``s``/``i``; a positive one is ``p`` then a run
-    then ``p``, so it crosses the reset twice.  Modelling that separately from
-    the emitted characters is what let an earlier version claim programs the
-    interpreter contradicted, so this mirrors the spelling exactly.
-    """
-    if shift == 0:
-        return value
-    if value > _LIMIT:
-        value = 0
-    if shift < 0:
-        return value + shift
-    value = -value
-    if value > _LIMIT:
-        value = 0
-    value -= shift
-    # The third crossing cannot fire, and is kept because the emitted run
-    # crosses the reset here: the value above is at most ``_LIMIT`` after its
-    # own reset, and ``shift`` is positive on this path, so subtracting only
-    # lowers it.  Checked exhaustively over ``value`` and ``shift`` in
-    # [-4000, 4000]: the first two resets fire 379476 and 190143 times, this
-    # one zero.  Spelling the reset out at every crossing is what keeps this
-    # function a mirror of the characters it models.
-    if value > _LIMIT:  # pragma: no cover - shift > 0 leaves value under it
-        value = 0
-    return -value
-
-
-def _band_stage(vec: tuple[int, ...], up: int) -> tuple[tuple[int, ...], int] | None:
-    """Wipe every row the translation pushes past the limit, then park.
-
-    The wipe is the reset itself: after translating up, the rows above 3003 are
-    zeroed by the next command, which is an ``s`` and so also subtracts 2.  The
-    parking translation then brings the survivors back under the limit, where
-    the next stage can reach them again.
-    """
-    raised = [_translate(value, up) for value in vec]
-    wiped = [(0 if value > _LIMIT else value) - 2 for value in raised]
-    down = _BAND_PARK - max(wiped)
-    if _sub_code(abs(down)) is None:
-        return None
-    parked = tuple(_translate(value, down) for value in wiped)
-    if max(parked) > _LIMIT:
-        return None
-    return parked, down
-
-
-def _band_plan(
-    truth_table: str, n: int, order: tuple[int, ...], weights: tuple[int, ...]
-) -> tuple[tuple[tuple[int, int], ...], int] | None:
-    """Derive the stages and printing shift for one weighting, or ``None``.
-
-    Sorting the rows by the weighted sum turns the table into a sequence of
-    runs, and one stage clears each run from the top, because the reset can only
-    wipe the largest values.  So the number of stages is read off the table
-    rather than searched for.
-
-    Neither is the translation searched.  Once a band is wiped it takes exactly
-    the same translations as the surviving rows, so the parking amount cancels
-    out of the gap between them and the requirement collapses to a congruence:
-    the up-translation must be ``(live - band) - v`` mod 256, where ``v`` is the
-    current value of a row in the bottom run.  Each cut's window is one full
-    residue system wide, so exactly one translation in it satisfies that -- the
-    reason a sweep of a window found precisely one candidate that worked.
-    """
-    rows = range(2**n)
-    sums = tuple(
-        sum(w * ((r >> (n - 1 - k)) & 1) for k, w in enumerate(weights)) for r in rows
-    )
-    cuts = [
-        i for i in range(1, 2**n) if truth_table[order[i]] != truth_table[order[i - 1]]
-    ]
-    anchor = order[-1]
-    live = _BYTE_ONE if truth_table[anchor] == "1" else _BYTE_ZERO
-
-    vec = sums
-    plan: list[tuple[int, int]] = []
-    cleared: set[int] = set()
-    for cut in cuts:
-        # Only rows still carrying a value can be cut; ones an earlier stage
-        # wiped are parked below and would invert the window.
-        wipe = [order[i] for i in range(cut) if order[i] not in cleared]
-        keep = [order[i] for i in range(cut, 2**n)]
-        if not wipe:
-            return None
-        low = _LIMIT - min(vec[r] for r in wipe) + 1
-        high = _LIMIT - max(vec[r] for r in keep)
-        if low > high or low <= 0:
-            return None
-        band = _BYTE_ONE if truth_table[order[cut - 1]] == "1" else _BYTE_ZERO
-        wanted = (live - band - vec[anchor]) % _BAND_UNIT
-        up = low + ((wanted - low) % _BAND_UNIT)
-        if up > high or _sub_code(abs(up)) is None:
-            return None
-        staged = _band_stage(vec, up)
-        if staged is None:
-            return None
-        vec, down = staged
-        plan.append((up, down))
-        cleared.update(wipe)
-
-    # The printing translation is pinned mod 256 by the anchor row, then checked
-    # on every row -- solved, not searched.
-    base = (live - vec[anchor]) % _BAND_UNIT
-    for reps in range(-_BAND_REPS, _BAND_REPS + 1):
-        shift = base + _BAND_UNIT * reps
-        if _sub_code(abs(shift)) is None:
-            continue
-        if all(
-            (_translate(value, shift) & 0xFF)
-            == (_BYTE_ONE if truth_table[r] == "1" else _BYTE_ZERO)
-            for r, value in enumerate(vec)
-        ):
-            return tuple(plan), shift
-    return None
-
-
-#: How far the printing translation may range in whole residue systems.  The
-#: solved shifts land well inside this; it exists so an unspellable ``+/-1``
-#: has somewhere to move to.
-_BAND_REPS = 60
-
-
-def _band_width(weight: int) -> int | None:
-    """Narrowest *even* width spelling a subtraction of ``weight``.
-
-    The hold branch is ``pp`` repeated, which has only even widths, so the
-    subtracting branch has to match one.
-    """
-    if weight == 0:
-        return 0
-    width = -(-weight // 3)
-    if width % 2:
-        width += 1
-    while width <= weight:
-        if _sub_of_width(weight, width) is not None:
-            return width
-        width += 2
-    return None
-
-
-def _band_spell(
-    weights: tuple[int, ...], stages: tuple[tuple[int, int], ...], shift: int
-) -> tuple[tuple[tuple[str, str], ...], str] | None:
-    """Spell a derived plan as setters and a fixed body, or ``None``."""
-    setters = []
-    for weight in weights:
-        width = _band_width(weight)
-        if width is None:  # pragma: no cover - every shipped weight spells
-            return None
-        code = _sub_of_width(weight, width)
-        if code is None:  # pragma: no cover - the width just spelled it
-            return None
-        setters.append(("p" * width, code))
-    # The setters subtract, so the ladder is negative here; one ``p`` turns it
-    # positive, which is what lets the reset reach it.  Dropping it negates
-    # every row and the emitted program computes a different function.
-    body = "p"
-    for up, down in stages:
-        raise_code = _affine_code(1, up)
-        park_code = _affine_code(1, down)
-        if raise_code is None or park_code is None:  # pragma: no cover
-            return None
-        body += raise_code + "s" + park_code
-    tail = _affine_code(1, shift)
-    if tail is None:  # pragma: no cover - the shift was chosen spellable
-        return None
-    return tuple(setters), body + tail + "e"
-
-
-def _band(truth_table: str, n: int) -> str | None:
-    """Build a banded template, or ``None`` if this arity is not derived.
-
-    This is the construction that makes three inputs *total*, and what it turns
-    on is the printing command rather than any new arithmetic.  Every other path
-    here prints with ``l``, which spells the accumulator in decimal and so needs
-    it to *be* 0 or 1; that forces the two answer classes onto two exact values
-    and is what bounds them.  ``e`` prints ``chr(acc & 0xFF)``, so a row only has
-    to be *congruent* to 48 or 49 mod 256, and the whole construction becomes a
-    question about residues, which the reset can control.
-
-    Sorting the rows by a weighted sum turns the table into runs; each stage
-    translates the top run past 3003 and lets the reset wipe it, then parks the
-    survivors back under the limit.  A table needs one stage per run boundary,
-    which is why the stage counts follow the run structure exactly.
-
-    The weighting is chosen for the fewest runs, so the program is the shortest
-    this construction builds rather than the first that works.
-    """
-    ordered = sorted(
-        _band_weightings(n).items(),
-        key=lambda item: (
-            1
-            + sum(
-                1
-                # Consecutive pairs along the order, so the two sequences are
-                # deliberately of different length.
-                for a, b in zip(item[0], item[0][1:], strict=False)
-                if truth_table[a] != truth_table[b]
-            )
-        ),
-    )
-    for order, weights in ordered:
-        plan = _band_plan(truth_table, n, order, weights)
-        if plan is None:
-            continue
-        spelled = _band_spell(weights, *plan)
-        if spelled is None:  # pragma: no cover - a derived plan always spells
-            continue
-        setters, body = spelled
-        header = ";".join(f"{k}={zero}|{one}" for k, (zero, one) in enumerate(setters))
-        placeholders = "".join("{X" + str(k) + "}" for k in range(n))
-        return header + _HEADER_END + placeholders + body
-    return None
-
-
 #: How far the deep band's weights range, in whole residue systems.  Six is
 #: where the measured coverage stops improving at four inputs; the search is
 #: over weightings rather than programs, so this bounds a derivation's input,
@@ -1314,9 +1071,9 @@ def _deep_plan(truth_table: str, n: int, values: list[int]) -> str | None:
 
     The ladder is built by *subtraction*, so every row sits at ``-sum``:
     negative, where the over-3003 reset cannot fire however large the weights
-    are.  That is the whole escape from the shipped band's unit budget, which
-    exists only because :func:`_band` builds its ladder positive and so must
-    keep every row sum under the limit at once.
+    are.  That is the whole escape from a positive ladder's unit budget, which
+    exists only because building upward makes every row sum sit under the
+    limit at once.
 
     Rows may share a value provided they share a class.  A cut erases -- every
     row it wipes lands on zero together, whatever the gaps between them were --
@@ -1473,15 +1230,15 @@ def _deep_setters(
 def _deep_band(truth_table: str, n: int) -> str | None:
     """Build a deep-band template, or ``None`` if no weighting schedules it.
 
-    This is :func:`_band` with the two restrictions that bounded it removed.
-    The shipped band caps its weights at ``3003 // 256 == 11`` units because it
-    builds the ladder positive, so every row sum has to sit under the limit at
-    once; four inputs would need ``2**4 - 1 == 15`` and there is no weighting
-    at all.  Here the ladder is negative -- nothing resets below zero -- so the
-    unit budget does not exist, and rows are allowed to collide when they share
-    a class, which prices a table's span by its number of runs instead of by
-    ``2**n``.  Parity rides the popcount ladder, every weight one, and so costs
-    ``n`` units rather than ``2**n - 1``.
+    This is the band shape with the two restrictions that bounded it removed.
+    A positive ladder caps its weights at ``3003 // 256 == 11`` units, because
+    every row sum has to sit under the limit at once; four inputs would need
+    ``2**4 - 1 == 15`` and there is no weighting at all.  Here the ladder is
+    negative -- nothing resets below zero -- so the unit budget does not
+    exist, and rows are allowed to collide when they share a class, which
+    prices a table's span by its number of runs instead of by ``2**n``.
+    Parity rides the popcount ladder, every weight one, and so costs ``n``
+    units rather than ``2**n - 1``.
 
     Weightings are tried in order of the span they cost -- which is the sum of
     the units, since each is a multiple of 256 -- so the emitted program is the
@@ -2183,9 +1940,9 @@ def pct_squared_minus_one(truth_table: str) -> str:
     or disjunction of literals at any arity, :func:`_affine` for the tables
     one affine setter per input composes, :func:`_ladder`, which weights the
     inputs and lets the over-3003 reset read the sum as a threshold,
-    :func:`_band` and :func:`_deep_band`, which print with ``e`` so residues
-    mod 256 are the target and repeated resets cut a weighted order into
-    runs, and :func:`_fold`, which drops the weighting altogether and plans
+    :func:`_deep_band`, which prints with ``e`` so residues mod 256 are the
+    target and repeated resets cut a weighted order into runs, and
+    :func:`_fold`, which drops the weighting altogether and plans
     a sequence of relocations instead -- the path that closes five inputs.
     A table none of them covers raises :class:`ValueError`, because emitting
     nothing is better than emitting a program that computes the wrong
@@ -2227,19 +1984,12 @@ def pct_squared_minus_one(truth_table: str) -> str:
         if ladder is not None:
             return ladder
         # Every path above prints with ``l``, which needs the accumulator to be
-        # exactly 0 or 1.  The band construction prints with ``e`` instead --
-        # only the residue mod 256 matters -- and repeated resets then cut the
-        # weighted order into as many bands as the table has runs.  That builds
-        # every three-input table, at the cost of much the longest programs
-        # here, which is why it is tried last.
-        band = _band(truth_table, n)
-        if band is not None:
-            return band
-        # The band above keeps its ladder positive, so every row sum must sit
-        # under the limit at once and there is no weighting at all past three
-        # inputs.  The deep band builds the ladder negative, where nothing
-        # resets, and lets rows of one class collide -- which is what carries
-        # the construction above three inputs.
+        # exactly 0 or 1.  The deep band prints with ``e`` instead -- only the
+        # residue mod 256 matters -- and repeated resets cut a weighted order
+        # into as many bands as the table has runs.  Its ladder is built by
+        # subtraction, so the whole order sits below zero where the reset
+        # cannot fire, and rows of one class may collide; that is what makes
+        # three and four inputs total.
         deep = _deep_band(truth_table, n)
         if deep is not None:
             return deep
