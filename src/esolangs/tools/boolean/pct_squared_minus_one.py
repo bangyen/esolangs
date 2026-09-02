@@ -1708,7 +1708,7 @@ _FOLD_DESCENT_TARGET = 2
 #: complement share one -- which is where the cost's complement-invariance
 #: comes from.
 #:
-#: Measured over **1090 words with zero mismatches**: exhaustive at three
+#: Measured over **1091 words with zero mismatches**: exhaustive at three
 #: inputs for ``r <= 6`` (all 119 words) plus two of the seven ``r == 7``
 #: words, the ones with the defect at either end; exhaustive
 #: over ``>1``-patterns at four and five inputs for ``r <= 5``, each pattern
@@ -1723,12 +1723,14 @@ _FOLD_DESCENT_TARGET = 2
 #: matters: at four inputs ``(1, 1, 2, 1, 1, 10)`` and ``(1, 1, 1, 2, 1, 10)``
 #: each cost 9 with one middle slot long, while ``(1, 1, 2, 2, 1, 9)`` costs
 #: 10 with both.  At ``r == 7`` the middle is the single slot 3, and
-#: ``(1, 1, 1, 2, 1, 1, 25)`` is proved to cost more than 10 by exhausting
-#: depths 9 and 10 with no solution -- against ``base(7) == 10``, which is
-#: itself proved twice: a full BFS on ``(2, 1, 1, 1, 1, 1, 1)`` and on
-#: ``(1, 1, 1, 1, 1, 1, 2)`` at three inputs (1.17M states, 344s and 195s),
-#: and an iterative deepening on ``(1, 1, 1, 1, 1, 1, 26)`` at five that
-#: finds nothing at depth 9 and a plan at depth 10.
+#: ``(1, 1, 1, 2, 1, 1, 25)`` costs exactly 11 -- depths 9 and 10 exhaust
+#: with no solution and depth 11 finds a plan (393s) -- so the ``+1`` is
+#: present at a run count no other measurement reached.  It is measured
+#: against ``base(7) == 10``, which is itself proved twice: a full BFS on
+#: ``(2, 1, 1, 1, 1, 1, 1)`` and on ``(1, 1, 1, 1, 1, 1, 2)`` at three inputs
+#: (1.17M states, 344s and 195s), and an iterative deepening on
+#: ``(1, 1, 1, 1, 1, 1, 26)`` at five that finds nothing at depth 9 and a
+#: plan at depth 10.
 #:
 #: **The delta's mechanism, re-derived.**  A one-move finish from three
 #: points requires an untouched span-0 point, and *only a wipe zeroes a
