@@ -369,10 +369,10 @@ class TestEdgeCases:
         the cursor is found past the code -- so a caller stepping exactly
         as many times as there are commands is what tells the two apart.
         """
-        from esolangs.interpreters.stack_based.grapheme import _Frame, _Machine
+        from esolangs.interpreters.stack_based.grapheme import _frame, _Machine
 
         machine = _Machine(ScriptedIO(), 1_000_000)
-        machine.frames.append(_Frame("FAFY", 0))
+        machine.frames = (_frame("FAFY", 0),)
         for _ in range(4):
             assert not machine.halted
             machine.step()
@@ -444,10 +444,10 @@ class TestEdgeCases:
 
 class TestStepMachine:
     def test_snapshot_includes_the_input_cursor(self) -> None:
-        from esolangs.interpreters.stack_based.grapheme import _Frame, _Machine
+        from esolangs.interpreters.stack_based.grapheme import _frame, _Machine
 
         machine = _Machine(ScriptedIO("hi"), 1_000_000)
-        machine.frames.append(_Frame("W", 0))
+        machine.frames = (_frame("W", 0),)
         before = machine.snapshot()
         machine.step()  # W reads a line, pushing it
         assert machine.snapshot() != before
@@ -463,11 +463,11 @@ class TestStepMachine:
         break the snapshot outright.  Nothing else reads those fields once
         the mode is over, so only the snapshot can say what is in them.
         """
-        from esolangs.interpreters.stack_based.grapheme import _Frame, _Machine
+        from esolangs.interpreters.stack_based.grapheme import _frame, _Machine
 
         for code, value in (("EAEK", "A"), ("FAFK", 10), ("HAHK", ("func", "A"))):
             machine = _Machine(ScriptedIO(), 1_000_000)
-            machine.frames.append(_Frame(code, 0))
+            machine.frames = (_frame(code, 0),)
             for _ in range(3):
                 machine.step()
             assert machine.snapshot() == (
@@ -545,10 +545,10 @@ def _machine(code: object) -> object:
     Grapheme's machine takes no program: it is built empty and a frame is
     appended, which is why the shared constructor shape does not fit it.
     """
-    from esolangs.interpreters.stack_based.grapheme import _Frame, _Machine
+    from esolangs.interpreters.stack_based.grapheme import _frame, _Machine
 
     machine = _Machine(ScriptedIO(), 1_000_000)
-    machine.frames.append(_Frame(str(code), 0))
+    machine.frames = (_frame(str(code), 0),)
     return machine
 
 

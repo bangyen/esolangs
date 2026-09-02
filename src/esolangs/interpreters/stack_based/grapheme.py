@@ -30,12 +30,50 @@ and a repeated :meth:`_Machine.snapshot` proves a loop (e.g. ``Z`` re-running
 a function whose net effect on the stack is a no-op).  A program whose stack
 keeps growing without repeating a state is not caught this way and needs a
 wall-clock bound instead.
+
+The execution model is a pure function over an immutable ``_State`` -- the
+variables and the call stack -- paired with *collected effects* on the value
+stack.  :func:`_step` returns the next state, what it wants done to the
+stack, and anything it printed; :meth:`_Machine.step` rebinds the two fields
+and applies the effects, so the mutation lives in exactly one place.  A
+frame is a tuple rather than a record for the same reason Eval's is: the
+call stack is then a value, which is what lets :meth:`snapshot` hash it and
+the cycle detector prove a loop.
+
+The value stack is the one thing *not* threaded, and the reason is cost.  A
+Grapheme program can push without bound -- ``HKHKZ`` does, and the
+million-command limit is the backstop for exactly that class -- so rebuilding
+a stack tuple per command is quadratic in the stack's depth.  Measured, it
+is not a constant factor: 200,000 commands of ``HKHKZ`` take 0.21s against a
+mutable list and 445s against a rebuilt tuple.  So the stack stays a list in
+the shell, and a step reports its intent as ``(pops, pushes, reverse)``
+instead: a count to remove, the values to add, and whether ``P`` reversed
+what was left.  COD's per-cod transition reports what it wants done for the
+same reason.
+
+That model leans on an invariant worth stating, because nothing enforces it:
+**every command pops before it pushes.**  The pure layer therefore reads its
+operands from the live stack by index -- ``stack[-1 - pops]``, counting up as
+it goes -- and never has to see a value it has itself pushed.
+
+Finishing a frame is part of the transition, not of the shell.  A frame
+whose code has run out flushes any open mode buffer onto the stack and is
+then popped -- or, for ``Z``, rewound to its start while the stack is
+non-empty.  None of that touches a port, and doing it inside the step is
+what makes ``halted`` true as soon as the last command runs rather than one
+step later.  The emptiness tests there read the stack's *virtual* depth --
+its length less the pending pops, plus the pending pushes -- since the
+effects have not been applied yet.
+
+``steps`` and ``limit`` stay in the shell.  They are a budget rather than
+language state, and ``steps`` is excluded from ``snapshot`` for the same
+reason: it rises every step, so a state carrying it could never repeat.
 """
 
 from __future__ import annotations
 
 import sys
-from dataclasses import dataclass, field
+from collections.abc import Mapping, Sequence
 from typing import Final, Literal
 
 from esolangs.exceptions import HaltError
@@ -109,17 +147,266 @@ def _truthy(value: _Value) -> bool:
     return value[1] != ""
 
 
-@dataclass
-class _Frame:
-    """One ``_exec`` context: its code, cursor, mode, and pending skip."""
+#: One call context: ``(code, depth, pc, mode, buf, pending_at, repeat)``.
+#:
+#: A tuple rather than a record, so the whole call stack is a value that
+#: :meth:`_Machine.snapshot` can hash -- Eval's frames are tuples for the
+#: same reason.  ``repeat`` carries ``Z``'s body: a frame holding one is
+#: rewound instead of popped while the stack is non-empty.
+type _Frame = tuple[str, int, int, str, tuple[str, ...], int, str]
 
-    code: str
-    depth: int
-    pc: int = 0
-    mode: str = ""
-    buf: list[str] = field(default_factory=list)
-    pending_at: int = -1
-    repeat: str = ""  # for ``Z``: re-run this body while the stack is nonempty
+#: The part of a run the pure layer owns: the variables and the call stack.
+#: Both are small -- recursion is capped at 500 frames and a frame is seven
+#: fields -- so rebuilding them per step costs nothing.  The value stack is
+#: deliberately absent; see the module docstring.
+type _Vars = Mapping[_Value, _Value]
+type _State = tuple[_Vars, tuple[_Frame, ...]]
+
+#: A read-only view of the live value stack, which the pure layer indexes
+#: but never writes.
+type _StackView = Sequence[_Value]
+
+#: What a step wants done to the value stack: how many to remove from the
+#: top, what to add after that, and whether ``P`` reversed what was left.
+#: Applied in exactly that order.
+type _StackFx = tuple[int, tuple[_Value, ...], bool]
+
+
+#: The command that opens each mode, and the one that closes it.  The two
+#: are the same letter: ``E`` opens string mode and ``E`` ends it.  Naming
+#: them once keeps the open and close arms from drifting apart.
+_OPENS: Final = {"E": "string", "F": "int", "H": "func"}
+_CLOSES: Final = {mode: char for char, mode in _OPENS.items()}
+
+
+def _frame(code: str, depth: int, repeat: str = "") -> _Frame:
+    """Build a fresh frame for ``code``, at the start and in no mode."""
+    return (code, depth, 0, "", (), -1, repeat)
+
+
+def _pop(view: _StackView, pops: int) -> tuple[int, _Value]:
+    """Read the next value down the stack, and the pop count that consumes it.
+
+    The pure layer never edits the stack, so a pop is bookkeeping: the value
+    is read at ``-1 - pops`` and the count goes up.  This is sound only
+    because every command pops before it pushes, so a read can never need a
+    value this same step has pushed.
+    """
+    if pops >= len(view):
+        raise HaltError("popped an empty stack")
+    return pops + 1, view[-1 - pops]
+
+
+def _flush_of(frame: _Frame) -> tuple[_Value, ...]:
+    """Return what an unterminated mode leaves behind, as at end of program."""
+    _, _, _, mode, buf, _, _ = frame
+    if mode == "string":
+        return ("".join(buf),)
+    if mode == "int":
+        return (_int_from(list(buf)),)
+    if mode == "func":
+        return ((_FUNC, "".join(buf)),)
+    return ()
+
+
+def _finished(state: _State, view: _StackView, fx: _StackFx) -> tuple[_State, _StackFx]:
+    """Flush the top frame's mode and pop it -- or rewind it, for ``Z``.
+
+    Pure, and part of the step rather than the shell: nothing here reaches
+    a port, and running it inside the transition is what makes ``halted``
+    true as soon as the last command does its work.
+
+    ``Z``'s "while the stack is non-empty" test reads the *virtual* depth,
+    since the effects collected so far have not been applied yet.
+    """
+    variables, frames = state
+    frame = frames[-1]
+    pops, pushes, reverse = fx
+    pushes = (*pushes, *_flush_of(frame))
+    fx = (pops, pushes, reverse)
+
+    code, depth, _, _, _, _, repeat = frame
+    if repeat and len(view) - pops + len(pushes) > 0:
+        rewound = (code, depth, 0, "", (), -1, repeat)
+        return (variables, (*frames[:-1], rewound)), fx
+    return (variables, frames[:-1]), fx
+
+
+def _step(
+    state: _State, view: _StackView, line_in: str | None = None
+) -> tuple[_State, _StackFx, _Value | None]:
+    """Execute one command: the new state, the stack effects, any output.
+
+    Pure: it reads ``state`` and ``view`` and returns new values, and
+    reaches no ``IO``.  ``Y`` reports the value it would write -- the shell
+    picks ``print_str`` or ``print_value`` on its type -- and ``W``'s line
+    arrives as ``line_in``.
+
+    The stack is reported rather than rebuilt: see the module docstring for
+    why, and for the pop-before-push invariant the reporting relies on.
+    """
+    variables, frames = state
+    frame = frames[-1]
+    code, depth, pc, mode, buf, pending_at, repeat = frame
+
+    pops = 0
+    pushes: tuple[_Value, ...] = ()
+    reverse = False
+
+    if pc >= len(code):
+        state, fx = _finished(state, view, (pops, pushes, reverse))
+        return state, fx, None
+
+    c = code[pc]
+
+    # In a mode, every character but the closing one is data.
+    if mode in _CLOSES:
+        grown: _Frame
+        if c == _CLOSES[mode]:
+            pushes = _flush_of(frame)
+            grown = (code, depth, pc + 1, "", (), pending_at, repeat)
+        else:
+            grown = (code, depth, pc + 1, mode, (*buf, c), pending_at, repeat)
+        return (variables, (*frames[:-1], grown)), (pops, pushes, reverse), None
+
+    body: str | None = None
+    call_repeat = ""
+    output: _Value | None = None
+    new_depth = depth + 1
+
+    if c == "A":
+        pops, b = _pop(view, pops)
+        pops, a = _pop(view, pops)
+        pushes = (_as_num(a) + _as_num(b),)
+    elif c == "B":
+        pops, b = _pop(view, pops)
+        pops, a = _pop(view, pops)
+        pushes = (_as_num(a) - _as_num(b),)
+    elif c == "R":
+        pops, b = _pop(view, pops)
+        pops, a = _pop(view, pops)
+        if _as_num(b) == 0:
+            raise HaltError("division by zero")
+        pushes = (_as_num(a) // _as_num(b),)
+    elif c == "S":
+        pops, b = _pop(view, pops)
+        pops, a = _pop(view, pops)
+        pushes = (_as_num(a) * _as_num(b),)
+    elif c == "C":
+        pops, name = _pop(view, pops)
+        pops, value = _pop(view, pops)
+        if isinstance(name, tuple):
+            raise HaltError("a function cannot name a variable")
+        variables = {**variables, name: value}
+    elif c == "D":
+        pops, name = _pop(view, pops)
+        if isinstance(name, tuple):
+            raise HaltError("a function cannot name a variable")
+        if name not in variables:
+            raise HaltError(f"undeclared variable {name!r}")
+        pushes = (variables[name],)
+    elif c in _OPENS:
+        mode, buf = _OPENS[c], ()
+    elif c == "G":
+        pops, value = _pop(view, pops)
+        raw = value[1] if isinstance(value, tuple) and value[0] == _FUNC else value
+        if not isinstance(raw, str):
+            raise HaltError("G needs a string or a function")
+        body = raw
+    elif c == "I":
+        pops, value = _pop(view, pops)
+        if isinstance(value, tuple) and value[0] == _FUNC:
+            body = value[1]
+        else:
+            pushes = (value,)
+    elif c == "J":
+        pops, value = _pop(view, pops)
+        pushes = (_to_int(value),)
+    elif c == "K":
+        pops, value = _pop(view, pops)
+        pushes = (value, value)
+    elif c == "L":
+        pops, a = _pop(view, pops)
+        pops, b = _pop(view, pops)
+        pushes = (a, b)
+    elif c == "M":
+        pops, _ = _pop(view, pops)
+    elif c == "N":
+        pops, value = _pop(view, pops)
+        pushes = (_to_str(value),)
+    elif c == "O":
+        pops, value = _pop(view, pops)
+        pushes = (len(value) if isinstance(value, str) else value,)
+    elif c == "P":
+        reverse = True
+    elif c == "Q":
+        pops, a = _pop(view, pops)
+        pops, b = _pop(view, pops)
+        if isinstance(a, tuple) and a[0] == _FUNC and _truthy(b):
+            body = a[1]
+    elif c == "T":
+        pops, value = _pop(view, pops)
+        pushes = (1 if not _truthy(value) else 0,)
+    elif c == "U":
+        pops, value = _pop(view, pops)
+        if not _truthy(value):
+            pc += 1
+    elif c == "V":
+        pops, a = _pop(view, pops)
+        pops, b = _pop(view, pops)
+        if not _truthy(a):
+            pc += _to_int(b)
+    elif c == "W":
+        pushes = (line_in if line_in is not None else "",)
+    elif c == "X":
+        pops, value = _pop(view, pops)
+        if _truthy(value):
+            # execute the next command, then skip the one after it
+            pending_at = pc
+        else:
+            # skip the next command entirely
+            pc += 1
+    elif c == "Y":
+        pops, value = _pop(view, pops)
+        if isinstance(value, tuple):
+            raise HaltError("Y cannot output a function")
+        output = value
+    elif c == "Z":
+        pops, value = _pop(view, pops)
+        if (
+            isinstance(value, tuple)
+            and value[0] == _FUNC
+            and len(view) - pops + len(pushes) > 0
+        ):
+            body = value[1]
+            call_repeat = value[1]
+    else:
+        # a string read from input and executed via G/I may carry any
+        # character; reject it like the top-level program validation would
+        raise ValueError(f"unhandled command {c!r}")
+
+    pc += 1
+    if pending_at >= 0 and pc == pending_at + 2:
+        pc += 1
+        pending_at = -1
+
+    frames = (*frames[:-1], (code, depth, pc, mode, buf, pending_at, repeat))
+
+    if body is not None:
+        if new_depth > 500:
+            raise HaltError("recursion limit exceeded")
+        frames = (*frames, _frame(body, new_depth, call_repeat))
+
+    # a command that left the current frame finished (the program ended or
+    # a call returned) is completed now, so a caller sees ``halted`` as
+    # soon as the last command runs instead of one step later.
+    state = (variables, frames)
+    fx = (pops, pushes, reverse)
+    while frames and frames[-1][2] >= len(frames[-1][0]):
+        state, fx = _finished(state, view, fx)
+        frames = state[1]
+
+    return state, fx, output
 
 
 class _Machine:
@@ -127,11 +414,11 @@ class _Machine:
 
     def __init__(self, io: IO, limit: int) -> None:
         self.stack: list[_Value] = []
-        self.vars: dict[_Value, _Value] = {}
+        self.vars: _Vars = {}
         self.io = io
         self.limit = limit
         self.steps = 0
-        self.frames: list[_Frame] = []
+        self.frames: tuple[_Frame, ...] = ()
         # Where the top-level frame ends, so ``ip`` can still report a
         # position once every frame has been popped.  ``of()`` sets it with
         # the frame it pushes; a machine built bare has no program yet.
@@ -152,7 +439,7 @@ class _Machine:
                 "Grapheme programs may only contain uppercase Latin letters"
             )
         machine = cls(io, limit)
-        machine.frames.append(_Frame(code, 0))
+        machine.frames = (_frame(code, 0),)
         machine._top_length = len(code)
         return machine
 
@@ -179,7 +466,7 @@ class _Machine:
         end of the program -- which is what is reported then.
         """
         if self.frames:
-            return tuple(f.pc for f in self.frames)
+            return tuple(f[2] for f in self.frames)
         return (self._top_length,)
 
     @property
@@ -194,13 +481,13 @@ class _Machine:
         guard and increases every step, so including it would mean no state
         ever repeats and defeat cycle detection entirely.
         """
+        # A frame is already a tuple of its seven fields, so the call stack
+        # goes in as it stands rather than being unpacked field by field --
+        # which is what a frame being a value rather than a record buys.
         return (
             tuple(self.stack),
             frozenset(self.vars.items()),
-            tuple(
-                (f.code, f.depth, f.pc, f.mode, tuple(f.buf), f.pending_at, f.repeat)
-                for f in self.frames
-            ),
+            tuple(self.frames),
             self.io.position(),
         )
 
@@ -209,196 +496,76 @@ class _Machine:
             raise HaltError("popped an empty stack")
         return self.stack.pop()
 
-    def _flush(self, frame: _Frame) -> None:
-        """Push any unterminated mode buffer, as at the end of a program."""
-        if frame.mode == "string":
-            self.stack.append("".join(frame.buf))
-        elif frame.mode == "int":
-            self.stack.append(_int_from(frame.buf))
-        elif frame.mode == "func":
-            self.stack.append((_FUNC, "".join(frame.buf)))
-        frame.mode = ""
-        frame.buf = []
+    @property
+    def _state(self) -> _State:
+        """The machine's fields as the value the transition works on.
 
-    def _finish(self, frame: _Frame) -> None:
-        """Flush ``frame``'s mode and pop it (or re-run it for ``Z``)."""
-        self._flush(frame)
-        if frame.repeat and self.stack:
-            frame.pc = 0
-            frame.pending_at = -1
-        else:
-            self.frames.pop()
+        No copying: both are already the immutable values the transition
+        returns, so this is a read rather than a conversion.
+        """
+        return (self.vars, self.frames)
+
+    def _restore(self, state: _State) -> None:
+        """Write a transition's result back onto the machine's fields."""
+        self.vars, self.frames = state
+
+    def _apply(self, fx: _StackFx) -> None:
+        """Apply a step's stack effects, in order: pops, reverse, pushes.
+
+        The order is what the commands mean: an operand is consumed before
+        its result is pushed, and ``P`` reverses what is left rather than
+        what a later push will add.  No command currently reverses *and*
+        pushes, so nothing depends on the last two being in this order --
+        fixing it here is what keeps that from becoming a question.
+        """
+        pops, pushes, reverse = fx
+        if pops:
+            del self.stack[len(self.stack) - pops :]
+        if reverse:
+            self.stack.reverse()
+        self.stack.extend(pushes)
 
     def step(self) -> None:
-        """Execute one command, finishing any frames that are now complete."""
+        """Execute one command, finishing any frames that are now complete.
+
+        The two ports live here rather than in the transition: this is the
+        shell.  ``W``'s line is read before the transition runs and ``Y``'s
+        value is written after it, dispatched on the value's type.
+        """
         if self.halted:
             return
-        frame = self.frames[-1]
-        if frame.pc >= len(frame.code):
-            self._finish(frame)
+
+        code, _, pc, mode, _, _, _ = self.frames[-1]
+
+        # A frame whose code has run out does no work and costs no step: it
+        # only flushes and pops, which the transition does.
+        if pc >= len(code):
+            state, fx = _finished(self._state, self.stack, (0, (), False))
+            self._restore(state)
+            self._apply(fx)
             return
+
         self.steps += 1
         if self.steps > self.limit:
             raise HaltError(f"execution exceeded the {self.limit}-command limit")
 
-        stack = self.stack
-        code = frame.code
-        c = code[frame.pc]
+        # ``W`` reads only when it is a *command*.  Inside a mode every
+        # character is data, so a ``W`` accumulating into a string must not
+        # touch the port -- reading there turns a program that prints into
+        # one that raises at EOF.
+        line_in = None
+        if mode == "" and code[pc] == "W":
+            line_in = self.io.input_str()
 
-        if frame.mode == "string":
-            if c == "E":
-                frame.mode = ""
-                stack.append("".join(frame.buf))
-                frame.buf = []
-            else:
-                frame.buf.append(c)
-            frame.pc += 1
-            return
-        if frame.mode == "int":
-            if c == "F":
-                frame.mode = ""
-                stack.append(_int_from(frame.buf))
-                frame.buf = []
-            else:
-                frame.buf.append(c)
-            frame.pc += 1
-            return
-        if frame.mode == "func":
-            if c == "H":
-                frame.mode = ""
-                stack.append((_FUNC, "".join(frame.buf)))
-                frame.buf = []
-            else:
-                frame.buf.append(c)
-            frame.pc += 1
-            return
+        state, fx, output = _step(self._state, self.stack, line_in)
+        self._restore(state)
+        self._apply(fx)
 
-        body: str | None = None
-        repeat = ""
-        depth = frame.depth + 1
-
-        if c == "A":
-            b, a = self.pop(), self.pop()
-            stack.append(_as_num(a) + _as_num(b))
-        elif c == "B":
-            b, a = self.pop(), self.pop()
-            stack.append(_as_num(a) - _as_num(b))
-        elif c == "R":
-            b, a = self.pop(), self.pop()
-            if _as_num(b) == 0:
-                raise HaltError("division by zero")
-            stack.append(_as_num(a) // _as_num(b))
-        elif c == "S":
-            b, a = self.pop(), self.pop()
-            stack.append(_as_num(a) * _as_num(b))
-        elif c == "C":
-            name, value = self.pop(), self.pop()
-            if isinstance(name, tuple):
-                raise HaltError("a function cannot name a variable")
-            self.vars[name] = value
-        elif c == "D":
-            name = self.pop()
-            if isinstance(name, tuple):
-                raise HaltError("a function cannot name a variable")
-            try:
-                stack.append(self.vars[name])
-            except KeyError:
-                raise HaltError(f"undeclared variable {name!r}") from None
-        elif c == "E":
-            frame.mode, frame.buf = "string", []
-        elif c == "F":
-            frame.mode, frame.buf = "int", []
-        elif c == "G":
-            value = self.pop()
-            raw = value[1] if isinstance(value, tuple) and value[0] == _FUNC else value
-            if not isinstance(raw, str):
-                raise HaltError("G needs a string or a function")
-            body = raw
-        elif c == "H":
-            frame.mode, frame.buf = "func", []
-        elif c == "I":
-            value = self.pop()
-            if isinstance(value, tuple) and value[0] == _FUNC:
-                body = value[1]
+        if output is not None:
+            if isinstance(output, str):
+                self.io.print_str(output)
             else:
-                stack.append(value)
-        elif c == "J":
-            stack.append(_to_int(self.pop()))
-        elif c == "K":
-            value = self.pop()
-            stack.append(value)
-            stack.append(value)
-        elif c == "L":
-            a, b = self.pop(), self.pop()
-            stack.append(a)
-            stack.append(b)
-        elif c == "M":
-            self.pop()
-        elif c == "N":
-            stack.append(_to_str(self.pop()))
-        elif c == "O":
-            value = self.pop()
-            stack.append(len(value) if isinstance(value, str) else value)
-        elif c == "P":
-            stack.reverse()
-        elif c == "Q":
-            a, b = self.pop(), self.pop()
-            if isinstance(a, tuple) and a[0] == _FUNC and _truthy(b):
-                body = a[1]
-        elif c == "T":
-            value = self.pop()
-            stack.append(1 if not _truthy(value) else 0)
-        elif c == "U":
-            value = self.pop()
-            if not _truthy(value):
-                frame.pc += 1
-        elif c == "V":
-            a, b = self.pop(), self.pop()
-            if not _truthy(a):
-                frame.pc += _to_int(b)
-        elif c == "W":
-            stack.append(self.io.input_str())
-        elif c == "X":
-            value = self.pop()
-            if _truthy(value):
-                # execute the next command, then skip the one after it
-                frame.pending_at = frame.pc
-            else:
-                # skip the next command entirely
-                frame.pc += 1
-        elif c == "Y":
-            value = self.pop()
-            if isinstance(value, str):
-                self.io.print_str(value)
-            elif isinstance(value, int):
-                self.io.print_value(value)
-            else:
-                raise HaltError("Y cannot output a function")
-        elif c == "Z":
-            value = self.pop()
-            if isinstance(value, tuple) and value[0] == _FUNC and self.stack:
-                body = value[1]
-                repeat = value[1]
-        else:
-            # a string read from input and executed via G/I may carry any
-            # character; reject it like the top-level program validation would
-            raise ValueError(f"unhandled command {c!r}")
-
-        frame.pc += 1
-        if frame.pending_at >= 0 and frame.pc == frame.pending_at + 2:
-            frame.pc += 1
-            frame.pending_at = -1
-
-        if body is not None:
-            if depth > 500:
-                raise HaltError("recursion limit exceeded")
-            self.frames.append(_Frame(body, depth, repeat=repeat))
-
-        # a command that left the current frame finished (the program ended or
-        # a call returned) is completed now, so a caller sees ``halted`` as
-        # soon as the last command runs instead of one step later.
-        while self.frames and self.frames[-1].pc >= len(self.frames[-1].code):
-            self._finish(self.frames[-1])
+                self.io.print_value(output)
 
 
 def run(code: str, io: IO, limit: int = 1_000_000) -> None:
