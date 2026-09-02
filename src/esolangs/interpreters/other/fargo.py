@@ -284,6 +284,24 @@ class _Machine:
         """Whether every top-level call has run to completion."""
         return self.ind >= len(self.calls) and not self.frames
 
+    # The VM's language-shaped view: Prefix-call evaluator; ip is the top-level line
+    # cursor.
+
+    @property
+    def ip(self) -> int:
+        """The current instruction position."""
+        return self.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return [self.number, self.output]
+
+    @property
+    def stack(self) -> list[object]:
+        """The stack."""
+        return list(self.frames)
+
     def snapshot(self) -> Hashable:
         """Return the complete internal state, hashable for cycle detection.
 

@@ -319,10 +319,12 @@ class _Connections:
         """
         d_row, d_col = direction
         n_row, n_col = row + d_row, col + d_col
+        # The loop needs no bounds check of its own: ``at`` reads off-grid as
+        # a space, which is never the crossover, so walking past the edge
+        # ends it.  The check below then rejects the off-grid cell it landed
+        # on -- one guard covering both the stepped and the hopped case.
         while self.grid.at(n_row, n_col) == _CROSSOVER:
             n_row, n_col = n_row + d_row, n_col + d_col
-            if not (0 <= n_row < self.grid.height and 0 <= n_col < self.grid.width):
-                return None
         if not (0 <= n_row < self.grid.height and 0 <= n_col < self.grid.width):
             return None
         return n_row, n_col
@@ -354,15 +356,20 @@ class _Gate:
     top-to-bottom order, and ``outputs`` the wirings it drives, likewise
     ordered.  ``row``/``col`` locate it for error messages and for the
     reading order in which outputs print.
+
+    The ports are annotated rather than initialised: ``_build_gates``
+    assigns both lists on the line after it constructs the gate, so an empty
+    list here would never be read.
     """
+
+    inputs: list[_Wiring]
+    outputs: list[_Wiring]
 
     def __init__(self, kind: _GateKind, row: int, col: int) -> None:
         """Create a gate of ``kind`` at ``(row, col)`` with no ports bound."""
         self.kind = kind
         self.row = row
         self.col = col
-        self.inputs: list[_Wiring] = []
-        self.outputs: list[_Wiring] = []
 
 
 class _Parser:
@@ -581,8 +588,11 @@ class _Parser:
                 f"{gate.kind!r} at ({gate.col}, {gate.row}) takes {wanted_in} "
                 f"input(s), found {len(gate.inputs)}"
             )
+        # An output sinks its wire and drives nothing, so the out-port count
+        # below does not apply to it.  Parsing checks every gate, this one
+        # included, so the return is taken by any program with an output.
         if gate.kind == _OUTPUT:
-            return  # pragma: no cover - step() skips these before firing
+            return
         wanted_out = 2 if gate.kind == _SPLIT else 1
         if len(gate.outputs) != wanted_out:
             raise ValueError(
@@ -745,6 +755,38 @@ class _Machine:
         except (EOFError, IndexError):
             return 0
         return 1 if value.strip() == "1" else 0
+
+    # The VM's language-shaped view.
+
+    @property
+    def ip(self) -> None:
+        """Always ``None``: nothing moves through a Circuit Diagram.
+
+        ``step()`` advances one generation of the whole drawing at once, so
+        there is no instruction position to report.
+        """
+        return None
+
+    @property
+    def memory(self) -> list[int]:
+        """The bits driven this generation, in wiring order.
+
+        Wiring values are per-generation events rather than stored charge, so
+        this is what fired *now*, not an accumulated store; a wiring nothing
+        drove is Null and contributes nothing, which is why the length varies
+        from one step to the next.
+        """
+        return [
+            bit
+            for wiring in self.wirings
+            if wiring.value is not None
+            for bit in wiring.value
+        ]
+
+    @property
+    def stack(self) -> list[object]:
+        """Circuit Diagram has no stack."""
+        return []
 
     def step(self) -> None:
         """Advance one generation: latch arrivals, fire, then re-drive wires."""

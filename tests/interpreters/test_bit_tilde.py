@@ -9,6 +9,7 @@ from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.tape_based.bit_tilde import run
 from esolangs.tools import text as gen
 from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.raises import raises_message
 
 
 def run_and_capture(code: str) -> str:
@@ -105,7 +106,7 @@ class TestBitTilde:
         machine = _Machine(">><<)", ScriptedIO("A"))
         while not machine.halted:
             machine.step()
-        assert machine.tape == [0, 1, 0, 0, 0, 0, 0, 1, 0]
+        assert machine.tape == (0, 1, 0, 0, 0, 0, 0, 1, 0)
 
     def test_loop_skips_when_the_bit_is_zero(self) -> None:
         """``{`` jumps past its body when the current bit is zero."""
@@ -159,6 +160,18 @@ class TestBitTilde:
         """A ``}`` that would jump to a missing ``{`` is malformed."""
         with pytest.raises(ValueError, match="unmatched"):
             run_and_capture("~}")
+
+    def test_unmatched_bracket_message_is_exact(self) -> None:
+        """The message itself is pinned, not just a substring of it.
+
+        Both cases above use ``match=``, which is a substring search, so
+        the text could be rewritten around the word "unmatched" and still
+        pass.  One scan raises for both directions, so asserting it once
+        from each side covers the message wherever it comes from.
+        """
+        for code in ("{~", "~}"):
+            with raises_message(ValueError, "unmatched bit~ bracket"):
+                run_and_capture(code)
 
 
 class TestStepMachine:

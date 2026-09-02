@@ -107,6 +107,24 @@ class _Machine:
         """Whether the cursor has passed the last token."""
         return self.ind >= len(self.tokens)
 
+    # The VM's language-shaped view: Queue + token cursor; ip the cursor, memory the
+    # queue.
+
+    @property
+    def ip(self) -> int:
+        """The current instruction position."""
+        return self.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return list(self.queue)
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (tuple(self.queue), self.ind, self.io.position())

@@ -481,6 +481,14 @@ def _register() -> None:
             split=True,
             note="halts by exiting with status 0",
         ),
+        # ``send`` terminates every line it writes, so the answer arrives
+        # with a newline after it -- there is no other output command.
+        "inject": _reader(
+            b.inject,
+            "other.inject",
+            expected="0\n",
+            note="send terminates each line, so the answer ends in a newline",
+        ),
         "circuit_diagram": _reader(
             b.circuit_diagram,
             "grid_based.circuit_diagram",
@@ -532,12 +540,7 @@ def _register() -> None:
         "s*bleq": _reader(b.sbleq, "tape_based.sbleq"),
         "sophie": _reader(b.sophie, "register_based.sophie"),
         "streetcode": _reader(b.streetcode, "grid_based.streetcode", split=True),
-        "suffolk": _reader(
-            b.suffolk,
-            "tape_based.suffolk",
-            kwargs=_kw(limit=1),
-            note="run with the loop count set to one",
-        ),
+        "suffolk": _reader(b.suffolk, "tape_based.suffolk"),
         "suptiftam": _reader(b.suptiftam, "other.suptiftam"),
         "taglate": _reader(b.taglate, "queue_based.taglate", split=True),
         "unsquare": _reader(b.unsquare, "stack_based.unsquare"),

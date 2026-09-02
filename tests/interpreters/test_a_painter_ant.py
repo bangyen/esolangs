@@ -71,6 +71,22 @@ class TestImplicitLoop:
         # diamond, with the east move blocked by the newly painted cell.
         assert run_program("PnPwPsPe", 3) == ".##\n###\n##.\n.#o"
 
+    def test_one_cycle_is_the_default(self) -> None:
+        """``run`` defaults to a single whole pass.
+
+        Every other test routes through ``run_program``, which always
+        passes ``cycles=`` explicitly, so the default itself was never
+        exercised and could be widened without complaint.  The programs
+        that *have* an answer are cycle-stable fixed points, where a second
+        pass changes nothing and cannot show the difference -- so this uses
+        a program that is deliberately not stable: a lone ``e`` walks onto
+        a fresh black cell every pass, adding one column per cycle.
+        """
+        io = ScriptedIO()
+        run("e", io)
+        assert io.getvalue() == ".o"
+        assert run_program("e", 2) == "..o"
+
 
 class TestFormat:
     def test_whitespace_is_ignored(self) -> None:

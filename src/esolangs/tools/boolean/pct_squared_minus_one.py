@@ -95,35 +95,109 @@ subcubes, and one the composed-affine search cannot reach.
 One bound is known about the ladder: a single reset is one threshold, and only
 104 of the 256 three-input tables are linearly separable, so that shape cannot
 be made total by widening its grid.  What lifts it is not more arithmetic but a
-different *printing command*, which is the fifth construction, :func:`_band`.
+different *printing command*, which is the fifth construction,
+:func:`_deep_band`.
 
 Every path above prints with ``l``, which spells the accumulator in decimal and
 so needs it to *be* 0 or 1 -- that is what pins the two answer classes to two
 exact values.  ``e`` prints ``chr(acc & 0xFF)``, so a row only has to be
 **congruent** to 48 or 49 mod 256, and with residues rather than values as the
 target the reset can be used once per run of the table instead of once in total.
-The band construction weights each input by a multiple of 256, so every row
-starts congruent; sorting the rows by the weighted sum turns the table into
-runs; and one stage clears each run from the top, since the reset wipes only the
-largest values.  Nothing is searched -- a wiped band thereafter takes the same
-translations as the survivors, so the parking amount cancels out of their
-residue gap and each stage's translation is fixed by a single congruence.
+The band weights each input by a multiple of 256, so every row starts
+congruent; sorting the rows by the weighted sum turns the table into runs; and
+one stage clears each run, since the reset wipes only values past the limit.
+Nothing is searched -- a wiped band thereafter takes the same translations as
+the survivors, so the parking amount cancels out of their residue gap and each
+stage's translation is fixed by a single congruence.
 
-That makes three inputs **total**: all 256 tables build, every one executed on
-the interpreter for all eight input combinations with every fill the same
-length.
+Two choices decide how far that reaches, and both are assumptions of the shape
+rather than of the language.  Building the ladder **positive** makes every row
+sum sit under the limit at once, so distinct sums need weights behaving like a
+binary code -- at least ``2**n - 1`` units against the ``3003 // 256 == 11``
+the limit allows, which stops at three inputs because four needs 15.  Building
+it by **subtraction** instead puts the whole order below zero, where the reset
+cannot fire and no budget applies.  And distinct sums are more than the table
+needs: a cut *erases*, so every row it wipes lands on zero together whatever
+the gaps between them were, and only the boundaries *between* runs need a full
+residue system.  Rows may therefore collide when they share a class, which
+prices a table's span by its number of runs instead of by ``2**n``, and admits
+the popcount ladder -- every weight one -- on which parity spans ``n`` units
+rather than ``2**n - 1``.
 
-Three is also where it stops, for a reason that can be counted.  Distinct row
-sums need weights behaving like a binary code, so at least ``2**n - 1`` units,
-while the limit allows only ``3003 // 256 == 11`` -- and four inputs need 15.
-At unit 256 there are 72 usable weightings at three inputs and none at four.  A
-smaller unit brings weightings back but breaks what the derivation rests on:
-each cut's window is then narrower than the 256 the congruence needs, so the
-required translation falls outside it.  Measured on random samples, 1 of 400
-four-input tables derives (and that one needs no stages at all) and 0 of 120 at
-five.  Four inputs therefore stay at 496 of 65536; tables the other paths do not
-reach there still raise :class:`ValueError` rather than returning a program that
-computes the wrong function.  They are *unreached*, not proved unreachable, and
+:func:`_deep_band` makes both of those choices, which is what carries it from
+three inputs to four.  A positive-ladder version shipped alongside it for a
+while and was removed once measured: it served no table the deep band does not
+(0 of 256 at three inputs, where it was the only arity it reached) and its
+programs were about four times longer (median 11492 characters against 3144),
+so it was strictly dominated on both axes.
+
+Four inputs are total on that path, all 65536 tables, against the 496 the
+constructions above reach.  Parity has been executed on the interpreter through
+six inputs.
+
+What bounds :func:`_deep_band` is **distinctness**, and the count is worth
+stating because the obvious guess is wrong: it is not the number of runs.  A
+first reading had each run boundary consuming a residue system, which allows
+about ``3003 // 256 == 11`` of them, but random five-input tables refuse at
+five to eight runs, well inside that.
+
+The real budget is the span distinctness costs.  Two rows sharing a value are
+merged by the first cut that reaches them and can never be separated again, so
+a weighting serves a table only if every collision it forces joins rows of one
+class.  Keeping *all* rows distinct needs weights growing like a binary code, a
+span of ``(2**n - 1) * 256``: 1792 at three inputs, which fits under the limit,
+against 3840 at four and 7936 at five, which do not.  From four inputs on,
+then, every weighting inside the limit collides some rows, and a table builds
+only if its structure tolerates the collisions forced on it.
+
+Four inputs are total because 3840 overshoots 3003 only slightly and enough
+weightings survive.  At five the searched family collides two rows of opposite
+classes in all 537792 of its weightings for a random table, which is why
+generic five-input tables are refused by the deep band -- while *symmetric*
+tables build at any arity, the popcount ladder spanning only ``n * 256`` and
+colliding exactly the rows such a table already agrees on.  Parity-5,
+majority-5 and threshold-5 all build, and parity is executed on the
+interpreter through six inputs.
+
+The distinctness budget is a property of reading the table off **one**
+weighting, and :func:`_fold` is the construction that stops doing that.  It
+treats the program as a sequence of *relocations*: rows start on a rigid
+ladder, each use of the reset moves a group of rows by exactly ``3004`` plus
+a slack bounded by the gap to its nearest survivor, the doubling ``m``
+regrows gaps -- without it every wipe caps the spread at 3003, one short of
+the jump, and the groups' cyclic order would be provably invariant -- and
+rows of one class are merged by landing them on a shared value.  Once each
+class is a single point, only their mutual gap carries a residue
+requirement, and the final relocation's window spans a full residue system.
+The plan is found by a search over the relative geometry, and the emitted
+program is then mirrored on every row and asserted rather than trusted.
+
+Five inputs close on that path: every table tried plans and executes -- all
+256 at three inputs, 120 random at four, 300 random at five plus parity,
+every threshold, near-parity and the fully alternating 32-run worst case,
+and 40 at six inputs -- against the 496 the weighted constructions reach at
+five.  The fold is not *proved* total, and its own workspace bound (the row
+ladder must fit the 6006 values a ``p`` can traverse) gives out above ten
+inputs.
+
+Cost, since it decides where the fold sits in the chain: a fold build is
+0.8ms at three inputs, 2.7ms at four, 89ms at five and 0.53s at six
+(medians; worst observed 0.37s at five, 0.93s at six).  Two things make
+that hold rather than degrade.  The beam runs down to eight points rather
+than to the width at which the exhaustive search *starts* to struggle --
+a target just under that width leaves states too wide to search and too
+narrow to beam, and one 21-point table spent fifty seconds there and then
+gave up, where beaming it to eight takes 0.37s.  And :func:`_deep_band` is
+screened above four inputs instead of enumerated, because a refusal there
+cost about eighteen seconds and a generic five-input table can never
+build: only tables agreeing on every popcount class survive the collisions
+its weightings force.  Screening moved a generic five-input build from
+~18.3s to ~0.13s, at the price of the shorter programs the deep band would
+have found for the asymmetric tables it happened to serve.
+
+As before whatever it misses is *unreached*, not proved unreachable -- the
+Lean wall in ``Esolangs.PctBooleanWall`` covers the reading model only, and
+nothing here bounds embedded-input programs in general.
 ``docs/limitations.md`` records what bounds are actually known.
 
 Unlike the other parameterized generators, *which* command strings a setter
@@ -143,8 +217,9 @@ share.  Padding can only close an even gap; respelling closes either.
 """
 
 import re
+from collections.abc import Iterator
 from functools import cache
-from itertools import product
+from itertools import pairwise, product
 
 from esolangs.tools.boolean.helpers import _validate_truth_table
 
@@ -961,240 +1036,903 @@ _BAND_UNIT = 256
 _BAND_PARK = 2000
 
 
-def _band_weightings(n: int) -> dict[tuple[int, ...], tuple[int, ...]]:
-    """One weighting per achievable row order, keyed by the order.
+#: How far the deep band's weights range, in whole residue systems.  Six is
+#: where the measured coverage stops improving at four inputs; the search is
+#: over weightings rather than programs, so this bounds a derivation's input,
+#: not a program space.
+_DEEP_CAP = 6
 
-    Weights are multiples of :data:`_BAND_UNIT` so all rows share a residue, and
-    the largest row sum must stay under the limit or stage one would clamp on
-    its own -- together that bounds the unit triple's sum, and every order this
-    box can realise is represented once.
+#: Where the deep band parks its survivors between cuts.  Positive and under
+#: the limit, so a later cut's translation can still carry them across it.
+_DEEP_PARK = 2000
+
+
+def _deep_values(n: int, units: tuple[int, ...], mask: int) -> list[int]:
+    """Row values for a weighting, with ``mask`` naming the complemented inputs.
+
+    A weight applies when input ``k`` differs from its mask bit, so ``mask``
+    relabels which corner of the cube carries the largest sum.  With
+    nonnegative weights alone the all-ones row is always on top and the
+    all-zeros row always at the bottom, which fixes most of the run structure
+    a table can present; complementing an input is free -- the setter's two
+    branches simply swap -- and it is what frees the order.
     """
-    seen: dict[tuple[int, ...], tuple[int, ...]] = {}
-    limit_units = _LIMIT // _BAND_UNIT
-    for units in product(range(1, limit_units + 1), repeat=n):
-        if sum(units) > limit_units:
-            continue
-        weights = tuple(u * _BAND_UNIT for u in units)
-        sums = [
-            sum(w * ((r >> (n - 1 - k)) & 1) for k, w in enumerate(weights))
-            for r in range(2**n)
-        ]
-        if len(set(sums)) != 2**n:
-            continue
-        order = tuple(sorted(range(2**n), key=lambda r: sums[r], reverse=True))
-        seen.setdefault(order, weights)
-    return seen
+    return [
+        sum(
+            u * _BAND_UNIT * (((r >> (n - 1 - k)) & 1) ^ ((mask >> k) & 1))
+            for k, u in enumerate(units)
+        )
+        for r in range(2**n)
+    ]
 
 
-def _translate(value: int, shift: int) -> int:
-    """Apply a translation to one accumulator value, reset included.
+def _deep_plan(truth_table: str, n: int, values: list[int]) -> str | None:
+    """Derive a deep band's body for one value vector, or ``None``.
 
-    A negative shift is a run of ``s``/``i``; a positive one is ``p`` then a run
-    then ``p``, so it crosses the reset twice.  Modelling that separately from
-    the emitted characters is what let an earlier version claim programs the
-    interpreter contradicted, so this mirrors the spelling exactly.
-    """
-    if shift == 0:
-        return value
-    if value > _LIMIT:
-        value = 0
-    if shift < 0:
-        return value + shift
-    value = -value
-    if value > _LIMIT:
-        value = 0
-    value -= shift
-    if value > _LIMIT:
-        value = 0
-    return -value
+    The ladder is built by *subtraction*, so every row sits at ``-sum``:
+    negative, where the over-3003 reset cannot fire however large the weights
+    are.  That is the whole escape from a positive ladder's unit budget, which
+    exists only because building upward makes every row sum sit under the
+    limit at once.
 
-
-def _band_stage(vec: tuple[int, ...], up: int) -> tuple[tuple[int, ...], int] | None:
-    """Wipe every row the translation pushes past the limit, then park.
-
-    The wipe is the reset itself: after translating up, the rows above 3003 are
-    zeroed by the next command, which is an ``s`` and so also subtracts 2.  The
-    parking translation then brings the survivors back under the limit, where
-    the next stage can reach them again.
-    """
-    raised = [_translate(value, up) for value in vec]
-    wiped = [(0 if value > _LIMIT else value) - 2 for value in raised]
-    down = _BAND_PARK - max(wiped)
-    if _sub_code(abs(down)) is None:
-        return None
-    parked = tuple(_translate(value, down) for value in wiped)
-    if max(parked) > _LIMIT:
-        return None
-    return parked, down
-
-
-def _band_plan(
-    truth_table: str, n: int, order: tuple[int, ...], weights: tuple[int, ...]
-) -> tuple[tuple[tuple[int, int], ...], int] | None:
-    """Derive the stages and printing shift for one weighting, or ``None``.
-
-    Sorting the rows by the weighted sum turns the table into a sequence of
-    runs, and one stage clears each run from the top, because the reset can only
-    wipe the largest values.  So the number of stages is read off the table
-    rather than searched for.
-
-    Neither is the translation searched.  Once a band is wiped it takes exactly
-    the same translations as the surviving rows, so the parking amount cancels
-    out of the gap between them and the requirement collapses to a congruence:
-    the up-translation must be ``(live - band) - v`` mod 256, where ``v`` is the
-    current value of a row in the bottom run.  Each cut's window is one full
-    residue system wide, so exactly one translation in it satisfies that -- the
-    reason a sweep of a window found precisely one candidate that worked.
+    Rows may share a value provided they share a class.  A cut erases -- every
+    row it wipes lands on zero together, whatever the gaps between them were --
+    so only the boundaries *between* runs need a full residue system, and the
+    span a table costs is set by its number of runs rather than by ``2**n``.
     """
     rows = range(2**n)
-    sums = tuple(
-        sum(w * ((r >> (n - 1 - k)) & 1) for k, w in enumerate(weights)) for r in rows
-    )
-    cuts = [
-        i for i in range(1, 2**n) if truth_table[order[i]] != truth_table[order[i - 1]]
-    ]
+    groups: dict[int, set[str]] = {}
+    for row in rows:
+        groups.setdefault(values[row], set()).add(truth_table[row])
+    # Two rows sharing a value can never be told apart again, so a collision
+    # across classes would emit a program computing the wrong function.
+    if any(len(classes) > 1 for classes in groups.values()):
+        return None
+
+    order = sorted(rows, key=lambda r: values[r], reverse=True)
     anchor = order[-1]
     live = _BYTE_ONE if truth_table[anchor] == "1" else _BYTE_ZERO
 
-    vec = sums
-    plan: list[tuple[int, int]] = []
-    cleared: set[int] = set()
+    for prefix in range(2**n):
+        if prefix and len({truth_table[r] for r in order[:prefix]}) > 1:
+            break
+        rest = order[prefix:]
+        if not rest:
+            break
+        if max(values[r] for r in rest) - min(values[r] for r in rest) > _LIMIT:
+            continue
+        high = _LIMIT - max(values[r] for r in rest)
+        low = (_LIMIT - min(values[r] for r in order[:prefix]) + 1) if prefix else 0
+        low = max(low, 0)
+        if low > high:
+            continue
+        drop = next(
+            (
+                d
+                for d in range(low, min(high, low + _BAND_UNIT) + 1)
+                if _sub_code(d) is not None
+            ),
+            None,
+        )
+        if drop is None:
+            continue
+        body = _deep_body(truth_table, n, values, order, anchor, live, prefix, drop)
+        if body is not None:
+            return body
+    return None
+
+
+def _deep_body(
+    truth_table: str,
+    n: int,
+    values: list[int],
+    order: list[int],
+    anchor: int,
+    live: int,
+    prefix: int,
+    drop: int,
+) -> str | None:
+    """Spell one deep-band schedule, or ``None`` if a stage will not close."""
+    rows = range(2**n)
+    dropped = _sub_code(drop) if drop else ""
+    if dropped is None:  # pragma: no cover - the caller chose a spellable drop
+        return None
+    # The ladder subtracted, so one ``p`` turns the order positive; the rows
+    # the drop carried past the limit are wiped by the next command's reset.
+    body = dropped + "p"
+    current = {r: _apply(-values[r], dropped + "p") for r in rows}
+    if {r for r in rows if current[r] > _LIMIT} != set(order[:prefix]):
+        return None
+    cleared = set(order[:prefix])
+    for row in cleared:
+        current[row] = 0
+
+    live_order = [r for r in order if r not in cleared]
+    cuts = [
+        i
+        for i in range(1, len(live_order))
+        if truth_table[live_order[i]] != truth_table[live_order[i - 1]]
+    ]
     for cut in cuts:
-        # Only rows still carrying a value can be cut; ones an earlier stage
-        # wiped are parked below and would invert the window.
-        wipe = [order[i] for i in range(cut) if order[i] not in cleared]
-        keep = [order[i] for i in range(cut, 2**n)]
-        if not wipe:
+        wipe = [live_order[i] for i in range(cut) if live_order[i] not in cleared]
+        keep = [live_order[i] for i in range(cut, len(live_order))]
+        if not wipe or len({truth_table[r] for r in wipe}) > 1:
             return None
-        low = _LIMIT - min(vec[r] for r in wipe) + 1
-        high = _LIMIT - max(vec[r] for r in keep)
+        low = _LIMIT - min(current[r] for r in wipe) + 1
+        high = _LIMIT - max(current[r] for r in keep)
         if low > high or low <= 0:
             return None
-        band = _BYTE_ONE if truth_table[order[cut - 1]] == "1" else _BYTE_ZERO
-        wanted = (live - band - vec[anchor]) % _BAND_UNIT
+        band = _BYTE_ONE if truth_table[wipe[0]] == "1" else _BYTE_ZERO
+        # A wiped band thereafter takes the same translations as the survivors,
+        # so the parking cancels from their gap and one congruence fixes the
+        # cut: the translation is solved, not searched.
+        wanted = (live - band - current[anchor]) % _BAND_UNIT
         up = low + ((wanted - low) % _BAND_UNIT)
-        if up > high or _sub_code(abs(up)) is None:
+        if up > high:
             return None
-        staged = _band_stage(vec, up)
-        if staged is None:
+        raise_code = _affine_code(1, up)
+        if raise_code is None:
             return None
-        vec, down = staged
-        plan.append((up, down))
+        raised = {r: _apply(v, raise_code + "s") for r, v in current.items()}
+        down = _DEEP_PARK - max(raised.values())
+        park = _affine_code(1, down)
+        if park is None:
+            return None
+        parked = {r: _apply(v, park) for r, v in raised.items()}
+        if max(parked.values()) > _LIMIT:
+            return None
+        body += raise_code + "s" + park
+        current = parked
         cleared.update(wipe)
 
-    # The printing translation is pinned mod 256 by the anchor row, then checked
-    # on every row -- solved, not searched.
-    base = (live - vec[anchor]) % _BAND_UNIT
-    for reps in range(-_BAND_REPS, _BAND_REPS + 1):
-        shift = base + _BAND_UNIT * reps
-        if _sub_code(abs(shift)) is None:
+    base = (live - current[anchor]) % _BAND_UNIT
+    # Nearest zero first: a shift is spelled one character per two units, so
+    # taking the smallest keeps the program short.  An earlier version scanned
+    # from -80 residue systems up and emitted the first that worked, which is a
+    # ten-thousand-character run of ``s``.
+    for shift in sorted((base + _BAND_UNIT * reps for reps in range(-8, 9)), key=abs):
+        tail = _affine_code(1, shift)
+        if tail is None:
             continue
+        printed = {r: _apply(v, tail) for r, v in current.items()}
         if all(
-            (_translate(value, shift) & 0xFF)
-            == (_BYTE_ONE if truth_table[r] == "1" else _BYTE_ZERO)
-            for r, value in enumerate(vec)
+            (printed[r] & 0xFF) == (_BYTE_ONE if truth_table[r] == "1" else _BYTE_ZERO)
+            for r in rows
         ):
-            return tuple(plan), shift
+            return body + tail + "e"
     return None
 
 
-#: How far the printing translation may range in whole residue systems.  The
-#: solved shifts land well inside this; it exists so an unspellable ``+/-1``
-#: has somewhere to move to.
-_BAND_REPS = 60
-
-
-def _band_width(weight: int) -> int | None:
-    """Narrowest *even* width spelling a subtraction of ``weight``.
-
-    The hold branch is ``pp`` repeated, which has only even widths, so the
-    subtracting branch has to match one.
-    """
-    if weight == 0:
-        return 0
-    width = -(-weight // 3)
-    if width % 2:
-        width += 1
-    while width <= weight:
-        if _sub_of_width(weight, width) is not None:
-            return width
-        width += 2
-    return None
-
-
-def _band_spell(
-    weights: tuple[int, ...], stages: tuple[tuple[int, int], ...], shift: int
-) -> tuple[tuple[tuple[str, str], ...], str] | None:
-    """Spell a derived plan as setters and a fixed body, or ``None``."""
+def _deep_setters(
+    units: tuple[int, ...], mask: int
+) -> tuple[tuple[str, str], ...] | None:
+    """Spell one setter per input, both branches at a common width."""
     setters = []
-    for weight in weights:
-        width = _band_width(weight)
-        if width is None:  # pragma: no cover - every shipped weight spells
+    for index, unit in enumerate(units):
+        amount = unit * _BAND_UNIT
+        if amount == 0:
+            setters.append(("", ""))
+            continue
+        width = _even_width_for(amount)
+        if width is None:  # pragma: no cover - every multiple of 256 spells
             return None
-        code = _sub_of_width(weight, width)
+        code = _sub_of_width(amount, width)
         if code is None:  # pragma: no cover - the width just spelled it
             return None
-        setters.append(("p" * width, code))
-    # The setters subtract, so the ladder is negative here; one ``p`` turns it
-    # positive, which is what lets the reset reach it.  Dropping it negates
-    # every row and the emitted program computes a different function.
-    body = "p"
-    for up, down in stages:
-        raise_code = _affine_code(1, up)
-        park_code = _affine_code(1, down)
-        if raise_code is None or park_code is None:  # pragma: no cover
-            return None
-        body += raise_code + "s" + park_code
-    tail = _affine_code(1, shift)
-    if tail is None:  # pragma: no cover - the shift was chosen spellable
-        return None
-    return tuple(setters), body + tail + "e"
+        hold = "p" * width
+        # The hold branch is ``pp`` repeated, two negations composing to the
+        # identity, so both branches run the same number of commands and no
+        # program leaks its inputs through ``len()``.
+        setters.append((hold, code) if not (mask >> index) & 1 else (code, hold))
+    return tuple(setters)
 
 
-def _band(truth_table: str, n: int) -> str | None:
-    """Build a banded template, or ``None`` if this arity is not derived.
+def _deep_band(truth_table: str, n: int) -> str | None:
+    """Build a deep-band template, or ``None`` if no weighting schedules it.
 
-    This is the construction that makes three inputs *total*, and what it turns
-    on is the printing command rather than any new arithmetic.  Every other path
-    here prints with ``l``, which spells the accumulator in decimal and so needs
-    it to *be* 0 or 1; that forces the two answer classes onto two exact values
-    and is what bounds them.  ``e`` prints ``chr(acc & 0xFF)``, so a row only has
-    to be *congruent* to 48 or 49 mod 256, and the whole construction becomes a
-    question about residues, which the reset can control.
+    This is the band shape with the two restrictions that bounded it removed.
+    A positive ladder caps its weights at ``3003 // 256 == 11`` units, because
+    every row sum has to sit under the limit at once; four inputs would need
+    ``2**4 - 1 == 15`` and there is no weighting at all.  Here the ladder is
+    negative -- nothing resets below zero -- so the unit budget does not
+    exist, and rows are allowed to collide when they share a class, which
+    prices a table's span by its number of runs instead of by ``2**n``.
+    Parity rides the popcount ladder, every weight one, and so costs ``n``
+    units rather than ``2**n - 1``.
 
-    Sorting the rows by a weighted sum turns the table into runs; each stage
-    translates the top run past 3003 and lets the reset wipe it, then parks the
-    survivors back under the limit.  A table needs one stage per run boundary,
-    which is why the stage counts follow the run structure exactly.
+    Weightings are tried in order of the span they cost -- which is the sum of
+    the units, since each is a multiple of 256 -- so the emitted program is the
+    shortest this construction builds rather than the first that schedules.
+    Ties go to the *flattest* weighting first, largest unit smallest: a table's
+    span is set by its number of runs, and an even weighting is what collapses
+    rows into runs.  Parity is the extreme case, built by the popcount ladder
+    with every unit one, and ordering by ``max`` is what finds it immediately
+    rather than after every degenerate weighting that ignores an input.
 
-    The weighting is chosen for the fewest runs, so the program is the shortest
-    this construction builds rather than the first that works.
+    Above four inputs the enumeration is **screened** rather than run.  Its
+    own budget says why: keeping all rows distinct needs a span of
+    ``(2**n - 1) * 256``, which is 3840 at four inputs -- close enough to
+    the 3003 limit that enough weightings survive -- but 7936 at five, so
+    every weighting there collides some rows and only a table whose
+    structure tolerates the forced collisions builds.  In practice that
+    means the symmetric tables, which the popcount ladder serves because
+    its collisions are exactly the rows of equal popcount.  Measured: 0 of
+    8 random five-input tables build, at about 18 seconds each to prove it,
+    while parity-5 and majority-5 build in 0.14s.  Paying eighteen seconds
+    for a refusal that a popcount check settles instantly is not worth the
+    shorter program it occasionally finds, so the check runs first and the
+    enumeration is skipped when it cannot pay off.
     """
-    ordered = sorted(
-        _band_weightings(n).items(),
-        key=lambda item: (
-            1
-            + sum(
-                1
-                # Consecutive pairs along the order, so the two sequences are
-                # deliberately of different length.
-                for a, b in zip(item[0], item[0][1:], strict=False)
-                if truth_table[a] != truth_table[b]
+    if n > 4 and any(
+        len({truth_table[r] for r in range(2**n) if bin(r).count("1") == pop}) > 1
+        for pop in range(n + 1)
+    ):
+        return None
+    for units in sorted(
+        product(range(_DEEP_CAP + 1), repeat=n), key=lambda u: (sum(u), max(u), u)
+    ):
+        if not any(units):
+            continue
+        for mask in range(2**n):
+            values = _deep_values(n, units, mask)
+            body = _deep_plan(truth_table, n, values)
+            if body is None:
+                continue
+            setters = _deep_setters(units, mask)
+            if setters is None:  # pragma: no cover - a planned weighting spells
+                continue
+            header = ";".join(
+                f"{k}={zero}|{one}" for k, (zero, one) in enumerate(setters)
             )
-        ),
-    )
-    for order, weights in ordered:
-        plan = _band_plan(truth_table, n, order, weights)
-        if plan is None:
-            continue
-        spelled = _band_spell(weights, *plan)
-        if spelled is None:  # pragma: no cover - a derived plan always spells
-            continue
-        setters, body = spelled
-        header = ";".join(f"{k}={zero}|{one}" for k, (zero, one) in enumerate(setters))
-        placeholders = "".join("{X" + str(k) + "}" for k in range(n))
-        return header + _HEADER_END + placeholders + body
+            placeholders = "".join("{X" + str(k) + "}" for k in range(n))
+            return header + _HEADER_END + placeholders + body
     return None
+
+
+_FOLD_STEP = 4
+
+#: One point of a fold plan: ``(top, span, cls, rows)`` -- the group's highest
+#: row value relative to the state's top, how far its rows extend below it
+#: (0 once it has been wiped and its rows merged), its class, and the rows.
+_FoldPoint = tuple[int, int, str, frozenset[int]]
+_FoldState = tuple[_FoldPoint, ...]
+
+#: One move: ``(kind, k, c, victims)`` -- ``"m"`` doubles, ``"d"``/``"u"``
+#: wipe the bottom/top ``k`` groups with relocation amount ``c``.
+_FoldOp = tuple[str, int, int, frozenset[int]]
+
+#: A point in the emitter's mirror: a raw row or a merged set of rows.
+_FoldKey = int | frozenset[int]
+
+
+def _fold_norm(items: list[_FoldPoint]) -> _FoldState:
+    """Sort by top descending and rebase so the highest top is 0."""
+    ordered = sorted(items, key=lambda t: (-t[0], t[1]))
+    top = ordered[0][0]
+    return tuple((p - top, s, c, i) for p, s, c, i in ordered)
+
+
+def _fold_merge(items: list[_FoldPoint]) -> _FoldState | None:
+    """Coalesce equal positions, or ``None`` on a cross-class collision.
+
+    Two points at one value are indistinguishable forever after, so a
+    collision is a merge -- legal only within a class, and only between
+    already-wiped points (a group with extent has rows at *several* values,
+    so an "equal top" is not an equal anything).
+    """
+    by_pos: dict[int, list[tuple[int, str, frozenset[int]]]] = {}
+    for p, s, c, i in items:
+        by_pos.setdefault(p, []).append((s, c, i))
+    out: list[_FoldPoint] = []
+    for p, grp in by_pos.items():
+        if len(grp) == 1:
+            s, c, i = grp[0]
+            out.append((p, s, c, i))
+        else:
+            if len({c for _, c, _ in grp}) != 1:
+                return None
+            if any(s != 0 for s, _, _ in grp):
+                return None
+            out.append((p, 0, grp[0][1], frozenset(x for _, _, i in grp for x in i)))
+    return _fold_norm(out)
+
+
+def _fold_moves(
+    state: _FoldState, kcap: int | None = None
+) -> "Iterator[tuple[str, int, int, frozenset[int], _FoldState]]":
+    """Yield every candidate move from ``state``.
+
+    The algebra is relative: a wipe relocates its victims by exactly
+    ``3004 + slack`` (the reset line is at 3003 and a landing is at 0), so a
+    dive of the bottom ``k`` groups maps each survivor ``q_i`` above the
+    victims to ``q_i - c`` for any ``c`` in ``[3004, 3003 + q_1]`` -- the
+    window is the gap to the nearest survivor's *bottom*, and every choice
+    of absolute placement realises every ``c`` in it.  Rises mirror.  The
+    doubling ``m`` scales every gap and is what lets a gap outgrow 3004,
+    without which a landing can never split two survivors (each wipe caps
+    the spread at 3003, so the cyclic order of the groups would be invariant
+    and any table whose runs alternate four or more times would be out of
+    reach -- an exhaustive search over wipe-only plans finds exactly that).
+    """
+    m = len(state)
+    kmax = m if (kcap is None or m <= 8) else min(m, kcap)
+    top_all = max(p for p, _, _, _ in state)
+    bot_all = min(p - s for p, s, _, _ in state)
+    spread = top_all - bot_all
+    # Doubling needs the whole state inside [-3003, 3003] afterwards, and an
+    # odd spread of 3003 has no integer placement, hence the -2.
+    if 0 < spread * 2 <= 2 * _LIMIT - 2:
+        yield (
+            "m",
+            0,
+            0,
+            frozenset(),
+            _fold_norm([(p * 2, s * 2, c, i) for p, s, c, i in state]),
+        )
+    if len({c for _, _, c, _ in state}) == 1 and any(s or p for p, s, _, _ in state):
+        allids = frozenset(x for _, _, _, i in state for x in i)
+        yield ("d", m, _LIMIT + 1, allids, ((0, 0, state[0][2], allids),))
+    asc = sorted(state, key=lambda t: t[0])
+    for k in range(1, min(m, kmax + 1) if m > 8 else m):
+        vic = asc[:k]
+        if len({c for _, _, c, _ in vic}) != 1:
+            continue
+        vcls = vic[0][2]
+        vt = vic[-1][0]
+        surv = asc[k:]
+        q1 = min(p - s for p, s, _, _ in surv) - vt
+        if q1 < 1:
+            continue
+        cmin, cmax = _LIMIT + 1, _LIMIT + q1
+        cands = {cmin, cmax}
+        qtops = [(p - vt, s, c) for p, s, c, _ in surv]
+        for qt, qspan, qcls in qtops:
+            if qspan == 0 and qcls == vcls and cmin <= qt <= cmax:
+                cands.add(qt)
+            for adj in (qt - 4, qt - 2, qt + 2, qt + 4):
+                if cmin <= adj <= cmax:
+                    cands.add(adj)
+        for (qa, _, _), (qb, _, _) in pairwise(qtops):
+            mid = (qa + qb) // 2
+            if cmin <= mid <= cmax:
+                cands.add(mid)
+        for amount in cands:
+            items = [(p - vt - amount, s, cc, ii) for p, s, cc, ii in surv]
+            items.append((0, 0, vcls, frozenset(x for _, _, _, i in vic for x in i)))
+            hi = max(p for p, _, _, _ in items)
+            lo = min(p - s for p, s, _, _ in items)
+            if hi - lo > 2 * _LIMIT:
+                continue
+            merged = _fold_merge(items)
+            if merged is not None:
+                yield (
+                    "d",
+                    k,
+                    amount,
+                    frozenset(x for _, _, _, i in vic for x in i),
+                    merged,
+                )
+    desc = sorted(state, key=lambda t: -t[0])
+    for k in range(1, min(m, kmax + 1) if m > 8 else m):
+        vic = desc[:k]
+        if len({c for _, _, c, _ in vic}) != 1:
+            continue
+        vcls = vic[0][2]
+        vb = min(p - s for p, s, _, _ in vic)
+        surv = desc[k:]
+        q1 = vb - max(p for p, _, _, _ in surv)
+        if q1 < 1:
+            continue
+        cmin, cmax = _LIMIT + 1, _LIMIT + q1
+        cands = {cmin, cmax}
+        qtops = [(vb - p, s, c) for p, s, c, _ in surv]
+        for qt, qspan, qcls in qtops:
+            if qspan == 0 and qcls == vcls and cmin <= qt <= cmax:
+                cands.add(qt)
+            for adj in (qt - 4, qt - 2, qt + 2, qt + 4):
+                if cmin <= adj <= cmax:
+                    cands.add(adj)
+        for (qa, _, _), (qb, _, _) in pairwise(qtops):
+            mid = (qa + qb) // 2
+            if cmin <= mid <= cmax:
+                cands.add(mid)
+        for amount in cands:
+            items = [(amount - (vb - p), s, cc, ii) for p, s, cc, ii in surv]
+            items.append((0, 0, vcls, frozenset(x for _, _, _, i in vic for x in i)))
+            hi = max(p for p, _, _, _ in items)
+            lo = min(p - s for p, s, _, _ in items)
+            if hi - lo > 2 * _LIMIT:
+                continue
+            merged = _fold_merge(items)
+            if merged is not None:
+                yield (
+                    "u",
+                    k,
+                    amount,
+                    frozenset(x for _, _, _, i in vic for x in i),
+                    merged,
+                )
+
+
+def _fold_done(state: _FoldState) -> bool:
+    """Two wiped points at most: one value per class, nothing unmerged."""
+    return len(state) <= 2 and all(t[1] == 0 for t in state)
+
+
+def _fold_sig(state: _FoldState) -> tuple[tuple[int, int, str], ...]:
+    return tuple((p, s, c) for p, s, c, _ in state)
+
+
+def _fold_search(
+    state: _FoldState, maxdepth: int = 40, cap: int = 2_000_000
+) -> list[_FoldOp] | None:
+    """Best-first search to a two-point state, or ``None``.
+
+    States are keyed by their relative geometry -- ids do not matter for
+    reachability -- and ranked by point count first, so contractions are
+    pursued before excursions.
+    """
+    import heapq
+
+    start = _fold_norm(list(state))
+    if _fold_done(start):
+        return []
+    seen = {_fold_sig(start)}
+    ctr = 0
+    heap: list[tuple[int, int, int, _FoldState, list[_FoldOp]]] = [
+        (len(start), 0, 0, start, [])
+    ]
+    while heap:
+        if len(seen) > cap:
+            return None
+        _, depth, _, st, ops = heapq.heappop(heap)
+        if depth >= maxdepth:
+            continue
+        for kind, k, c_, vids, nb in _fold_moves(st, kcap=3):
+            sg = _fold_sig(nb)
+            if sg in seen:
+                continue
+            nops = [*ops, (kind, k, c_, vids)]
+            if _fold_done(nb):
+                return nops
+            seen.add(sg)
+            ctr += 1
+            heapq.heappush(heap, (len(nb), depth + 1, ctr, nb, nops))
+    return None
+
+
+def _fold_beam(
+    state: _FoldState,
+    target: int = 8,
+    width: int = 48,
+    maxsteps: int = 90,
+) -> list[_FoldOp] | None:
+    """Beam-reduce a wide state down to ``target`` points, or ``None``.
+
+    Near-parity tables have up to 32 runs and the exhaustive search drowns
+    there; a narrow beam ranked by point count finds the reduction pattern
+    (it is nearly forced) and hands the small remainder to the search.
+
+    The target is 8 rather than the state width at which the search *starts*
+    to struggle, and the difference is not cosmetic: at 21 points the search
+    explores for fifty seconds and then gives up, while beaming the same
+    state to 8 takes 0.37s and the search finishes it instantly.  A target
+    just under the drowning width leaves exactly the states that are too
+    wide to search and too narrow to beam, which is a hole rather than a
+    threshold -- so the beam runs whenever it can help at all.
+    """
+    start = _fold_norm(list(state))
+    if len(start) <= target:
+        return []
+    beam: list[tuple[_FoldState, list[_FoldOp]]] = [(start, [])]
+    seen = {_fold_sig(start)}
+    for _ in range(maxsteps):
+        nxt: list[tuple[_FoldState, list[_FoldOp]]] = []
+        for st, ops in beam:
+            for kind, k, c_, vids, nb in _fold_moves(st, kcap=3):
+                sg = _fold_sig(nb)
+                if sg in seen:
+                    continue
+                seen.add(sg)
+                nops = [*ops, (kind, k, c_, vids)]
+                if len(nb) <= target:
+                    return nops
+                nxt.append((nb, nops))
+        if not nxt:
+            return None
+        nxt.sort(key=lambda t: (len(t[0]), len(t[1])))
+        beam = nxt[:width]
+    return None
+
+
+def _fold_apply(state: _FoldState, op: _FoldOp) -> _FoldState | None:
+    kind, k, c_, vids = op
+    for kk, k2, cc, vv, nb in _fold_moves(state, kcap=None):
+        if (kk, k2, cc, vv) == (kind, k, c_, vids):
+            return nb
+    return None
+
+
+def _fold_plan(state: _FoldState) -> list[_FoldOp] | None:
+    """Plan a full reduction, or ``None`` if the search gives up.
+
+    A rotation pre-pass first wipes every unwiped group once (a bottom wipe
+    at the minimum relocation lands above everything and preserves the
+    cyclic order), because a group with extent cannot be a collision target
+    and the search stalls while any remain.
+    """
+    st = _fold_norm(list(state))
+    pre: list[_FoldOp] = []
+    guard = 0
+    while any(s > 0 for _, s, _, _ in st) and len(st) > 1:
+        guard += 1
+        if guard > 2 * len(state) + 4:
+            break
+        hit = None
+        for kk, k2, cc, vv, nb in _fold_moves(st, kcap=1):
+            if kk == "d" and k2 == 1 and cc == _LIMIT + 1:
+                hit = ((kk, k2, cc, vv), nb)
+                break
+        if hit is None:
+            break
+        pre.append(hit[0])
+        st = hit[1]
+    wide = _fold_beam(st)
+    if wide is None:
+        wide = []
+    cur: _FoldState | None = st
+    for op in wide:
+        assert cur is not None
+        cur = _fold_apply(cur, op)
+        if cur is None:  # pragma: no cover - replays a move the beam made
+            return None
+    assert cur is not None
+    rest = _fold_search(cur)
+    if rest is None:
+        return None
+    return pre + wide + rest
+
+
+class _FoldEmitter:
+    """Exact mirror of every row's accumulator, emitting body characters.
+
+    Each method both appends the characters and applies their effect to all
+    rows, asserting after every step that the interpreter would agree --
+    which points get wiped, that nothing leaves the workspace, and finally
+    that every row's value is congruent to its answer byte.
+    """
+
+    def __init__(self, truth_table: str, n: int) -> None:
+        self.table = truth_table
+        self.rows = 2**n
+        self.pos: dict[_FoldKey, int] = {r: -_FOLD_STEP * r for r in range(self.rows)}
+        self.cls: dict[_FoldKey, str] = {r: truth_table[r] for r in range(self.rows)}
+        self.body: list[str] = []
+
+    def _sub(self, k: int) -> str:
+        code = _sub_code(k)
+        assert code is not None, k
+        return code
+
+    def descend(self, k: int) -> None:
+        if k == 0:
+            return
+        if k == 1:
+            self.descend(3)
+            self.plain_rise(2)
+            return
+        assert k >= 2
+        assert all(v <= _LIMIT for v in self.pos.values())
+        self.body.append(self._sub(k))
+        for p in self.pos:
+            self.pos[p] -= k
+
+    def plain_rise(self, k: int) -> None:
+        if k == 0:
+            return
+        if k == 1:
+            self.plain_rise(3)
+            self.descend(2)
+            return
+        assert k >= 2
+        assert all(-_LIMIT <= v <= _LIMIT for v in self.pos.values())
+        assert all(v + k <= _LIMIT for v in self.pos.values())
+        self.body.append("p" + self._sub(k) + "p")
+        for p in self.pos:
+            self.pos[p] += k
+
+    def preshift(self, delta: int) -> None:
+        if delta < 0:
+            self.descend(-delta)
+        elif delta > 0:
+            self.plain_rise(delta)
+
+    def double(self, *, next_is_rise: bool) -> None:
+        top = max(self.pos.values())
+        bot = min(self.pos.values())
+        spread = top - bot
+        assert 2 * spread <= 2 * _LIMIT
+        want_top = 1501
+        if next_is_rise:
+            # The next command sequence opens with ``p``, which wipes
+            # anything below -3003, so the doubled state must fit both ways.
+            want_top = max(spread - 1501, 0)
+            assert want_top <= 1501, spread
+        self.preshift(want_top - top)
+        assert all(2 * v <= _LIMIT for v in self.pos.values())
+        self.body.append("m")
+        for p in self.pos:
+            self.pos[p] *= 2
+
+    def _vic(self, vids: frozenset[int]) -> set[_FoldKey]:
+        vic: set[_FoldKey] = {
+            p for p in self.pos if (set(p) if isinstance(p, frozenset) else {p}) <= vids
+        }
+        got: set[int] = set()
+        for p in vic:
+            got |= set(p) if isinstance(p, frozenset) else {p}
+        assert vic, vids
+        assert got == vids, vids
+        return vic
+
+    def dive(self, c: int, vids: frozenset[int]) -> None:
+        vic = self._vic(vids)
+        assert len({self.cls[v] for v in vic}) == 1
+        vt = max(self.pos[v] for v in vic)
+        surv = [p for p in self.pos if p not in vic]
+        q1 = (min(self.pos[p] for p in surv) - vt) if surv else 40
+        assert _LIMIT + 1 <= c <= _LIMIT + q1, (c, q1)
+        d = c + vt
+        if d < 2:
+            self.preshift(2 - d)
+            d = c + max(self.pos[v] for v in vic)
+        self.descend(d)
+        below = {p for p, v in self.pos.items() if v < -_LIMIT}
+        assert below == vic, (below, vic)
+        self.body.append("pp")
+        for p in vic:
+            self.pos[p] = 0
+        for p in self.pos:
+            assert -_LIMIT <= self.pos[p] <= _LIMIT
+        self._land(vic)
+
+    def rise(self, c: int, vids: frozenset[int]) -> None:
+        vic = self._vic(vids)
+        assert len({self.cls[v] for v in vic}) == 1
+        vb = min(self.pos[v] for v in vic)
+        surv = [p for p in self.pos if p not in vic]
+        q1 = (vb - max(self.pos[p] for p in surv)) if surv else 40
+        assert _LIMIT + 1 <= c <= _LIMIT + q1, (c, q1)
+        u = c - vb
+        if u < 2:
+            self.preshift(-(2 - u))
+            u = c - min(self.pos[v] for v in vic)
+        assert min(self.pos.values()) >= -_LIMIT
+        assert all(self.pos[p] + u <= _LIMIT for p in surv)
+        self.body.append("p" + self._sub(u) + "p")
+        for p in self.pos:
+            self.pos[p] += u
+        over = {p for p, v in self.pos.items() if v > _LIMIT}
+        assert over == vic, (over, vic)
+        # Any next command's pre-check resets the victims; one ``s`` makes
+        # that flush explicit and costs a uniform -2 everyone absorbs.
+        self.body.append("s")
+        for p in vic:
+            self.pos[p] = 0
+        for p in self.pos:
+            self.pos[p] -= 2
+        self._land(vic)
+
+    def _land(self, vic: set[_FoldKey]) -> None:
+        val = self.pos[next(iter(vic))]
+        new = frozenset(
+            x for v in vic for x in (v if isinstance(v, frozenset) else [v])
+        )
+        c = self.cls[next(iter(vic))]
+        absorbed = [p for p in self.pos if p not in vic and self.pos[p] == val]
+        for o in absorbed:
+            assert self.cls[o] == c, "cross-class landing"
+            new = new | (o if isinstance(o, frozenset) else frozenset([o]))
+        for v in set(vic) | set(absorbed):
+            del self.pos[v], self.cls[v]
+        self.pos[new] = val
+        self.cls[new] = c
+
+    def byte(self, p: _FoldKey) -> int:
+        return _BYTE_ONE if self.cls[p] == "1" else _BYTE_ZERO
+
+    def finish(self) -> None:
+        """Set the one residue that matters and align the print.
+
+        Two points remain, one per class (or one, for a constant table).
+        Their final gap must be congruent to the difference of their answer
+        bytes; the last relocation of the upper point has the whole
+        lower-point gap as its window, which spans a full residue system
+        once the gap exceeds 257, so exactly one amount in it qualifies.
+        A uniform tail shift then puts the pair onto the bytes themselves.
+        """
+        if len(self.pos) == 1:
+            p = next(iter(self.pos))
+            t = (self.byte(p) - self.pos[p]) % 256
+            room = _LIMIT - self.pos[p]
+            while t > room:
+                t -= 256
+            self.preshift(t)
+        else:
+            pts = sorted(self.pos, key=lambda q: self.pos[q])
+            lo, hi = pts
+            if self.pos[hi] - self.pos[lo] < 258:
+                self.preshift(-(self.pos[lo] + 2600))
+                u1 = max(_LIMIT + 1 - self.pos[hi], 2)
+                assert self.pos[lo] + u1 <= _LIMIT
+                self.body.append("p" + self._sub(u1) + "ps")
+                for p in self.pos:
+                    self.pos[p] += u1
+                assert self.pos[hi] > _LIMIT
+                assert self.pos[lo] <= _LIMIT
+                self.pos[hi] = 0
+                for p in self.pos:
+                    self.pos[p] -= 2
+                pts = sorted(self.pos, key=lambda q: self.pos[q])
+                lo, hi = pts
+            gap = self.pos[hi] - self.pos[lo]
+            assert gap >= 258, gap
+            need = (-(self.byte(hi) - self.byte(lo)) - self.pos[lo]) % 256
+            umin = max(_LIMIT + 1 - self.pos[hi], 2)
+            umax = _LIMIT - self.pos[lo]
+            u = next(
+                (c0 for c0 in range(umin, umax + 1) if c0 % 256 == need),
+                None,
+            )
+            assert u is not None, (umin, umax, need)
+            self.body.append("p" + self._sub(u) + "ps")
+            for p in self.pos:
+                self.pos[p] += u
+            assert self.pos[hi] > _LIMIT
+            assert self.pos[lo] <= _LIMIT
+            self.pos[hi] = 0
+            for p in self.pos:
+                self.pos[p] -= 2
+            pts = sorted(self.pos, key=lambda q: self.pos[q])
+            lo, hi = pts
+            t = (self.byte(hi) - self.pos[hi]) % 256
+            room = _LIMIT - self.pos[hi]
+            while t > room:
+                t -= 256
+            self.preshift(t)
+        for p in self.pos:
+            assert self.pos[p] % 256 == self.byte(p) % 256, (
+                self.pos[p],
+                self.cls[p],
+            )
+            assert self.pos[p] <= _LIMIT
+        self.body.append("e")
+
+
+def _fold_setters(n: int) -> list[tuple[str, str]]:
+    """One subtracting branch per input; ``pp`` holds at equal width."""
+    out = []
+    for i in range(n):
+        width = _FOLD_STEP * 2 ** (n - 1 - i) // 2
+        out.append(("pp" * (width // 2), "s" * width))
+    return out
+
+
+def _fold(truth_table: str, n: int) -> str | None:
+    """Build a fold template, or ``None`` if no plan is found.
+
+    The constructions above all place every row's value in a single pass
+    and read the table's structure off a weighting, which is what bounded
+    the deep band at five inputs: an additive weighting has ``n`` degrees
+    of freedom against ``2**n`` residue constraints.  The fold instead
+    treats the program as a sequence of *relocations*.  Rows start on a
+    rigid ladder (``acc = -4r``); each wipe -- push a group over the reset
+    line, top or bottom -- relocates it by exactly ``3004 + slack``, where
+    the slack is bounded by the gap to its nearest survivor; the doubling
+    ``m`` regrows gaps past 3004, which is what lets a landing split two
+    survivors and change the groups' cyclic order (wipes alone cap the
+    spread at 3003 and provably never can); and rows of one class are
+    merged by landing them on the same value, which erases their history.
+    The plan is found by search, but the emitted program is *checked*, not
+    trusted: every step is mirrored on all ``2**n`` rows and asserted.
+
+    Only the final two points carry a residue requirement -- their gap must
+    be congruent to the difference of the answer bytes mod 256 -- and the
+    last relocation's window spans a full residue system, so the residue
+    work needs no weighting at all.  That is why the fold has no arity wall
+    of its own below the workspace bound: the ladder must fit inside the
+    6006 values a ``p`` can traverse, which holds through ``n == 10``.
+    The search is exhaustive only below ~20 groups; wider states go
+    through a beam first, so a plan is found in practice for every table
+    tried (all of ``n <= 3``, large samples at 4 and 5, and the worst
+    case, a fully alternating 32-run table) but is not proved total.
+    """
+    if _FOLD_STEP * (2**n - 1) > 2 * _LIMIT:
+        return None
+    runs: list[list[int]] = []
+    for r in range(2**n):
+        if runs and truth_table[runs[-1][-1]] == truth_table[r]:
+            runs[-1].append(r)
+        else:
+            runs.append([r])
+    state = [
+        (
+            -_FOLD_STEP * rn[0],
+            _FOLD_STEP * (len(rn) - 1),
+            truth_table[rn[0]],
+            frozenset(rn),
+        )
+        for rn in runs
+    ]
+    ops = _fold_plan(_fold_norm(state))
+    if ops is None:
+        return None
+    emitter = _FoldEmitter(truth_table, n)
+    for idx, (kind, _, c, vids) in enumerate(ops):
+        if kind == "m":
+            emitter.double(next_is_rise=(idx + 1 < len(ops) and ops[idx + 1][0] == "u"))
+        elif kind == "d":
+            emitter.dive(c, vids)
+        else:
+            emitter.rise(c, vids)
+    emitter.finish()
+    header = ";".join(
+        f"{k}={zero}|{one}" for k, (zero, one) in enumerate(_fold_setters(n))
+    )
+    placeholders = "".join("{X" + str(k) + "}" for k in range(n))
+    return header + _HEADER_END + placeholders + "".join(emitter.body)
+
+
+def _affine_admits(truth_table: str, n: int) -> bool:
+    """Whether :func:`_affine` could build this table, without enumerating.
+
+    Exact at three inputs, and the reason to have it is latency rather than
+    throughput.  :func:`_affine_tables` derives a whole arity in one pass and
+    caches it, so the first three-input table to reach that step pays about
+    4.7 seconds -- and 170 of the 208 tables that get there cannot be built
+    by the path at all, so the enumeration is filled, refused, and then never
+    reused.  A one-shot build of such a table costs 6.3s against 1.6s with
+    this check.  A whole-arity sweep in one process sees no difference: the
+    cache amortises the fill over 256 tables either way.
+
+    The rule is the **shared-cofactor law on the last input** -- the setters
+    compose into a shared value, so fixing the last input leaves each
+    cofactor a constant or an affine image of one shared function, hence the
+    two cofactors must be equal, complementary, or constant.  Two families
+    satisfy it and are still not built: the constants (which the cascade
+    serves first, so the path never needs them) and ``x0 ^ x2`` with its
+    complement, whose dependence *skips the middle input* -- setters compose
+    in slot order, so a slot cannot be passed over.  ``x1 ^ x2`` and
+    ``x0 ^ x1 ^ x2`` both build, which is what makes the exclusion specific
+    rather than a statement about parity.
+
+    Returns ``True`` at other arities: the containment is known to hold at
+    four inputs too (486 reached, every one admissible), but sufficiency is
+    not, and the dispatch only calls the path at three inputs anyway.
+    ``test_affine_reach_is_exactly_characterized`` pins the equality, so a
+    change to either side that breaks it fails rather than silently costing
+    a table.
+    """
+    if n != 3:
+        return True
+    if len(set(truth_table)) == 1:
+        return False
+    skip_middle = "".join(str(((row >> 2) & 1) ^ (row & 1)) for row in range(2**n))
+    if truth_table in (skip_middle, _complement_bits(skip_middle)):
+        return False
+    low = "".join(truth_table[r] for r in range(2**n) if not r & 1)
+    high = "".join(truth_table[r] for r in range(2**n) if r & 1)
+    return (
+        low == high
+        or _complement_bits(low) == high
+        or len(set(low)) == 1
+        or len(set(high)) == 1
+    )
+
+
+def _complement_bits(bits: str) -> str:
+    """Flip every bit of a binary string."""
+    return "".join("1" if c == "0" else "0" for c in bits)
 
 
 def _affine(truth_table: str, n: int) -> str | None:
@@ -1233,8 +1971,8 @@ def _affine(truth_table: str, n: int) -> str | None:
 def pct_squared_minus_one(truth_table: str) -> str:
     """Build a %^2^-1 template for the given truth table.
 
-    ``truth_table`` is a binary string of length ``2`` or ``4``, indexed by
-    the inputs (most significant first); the table length implies ``n``.
+    ``truth_table`` is a binary string of length ``2**n``, indexed by the
+    inputs (most significant first); the table length implies ``n``.
 
     %^2^-1 has no usable branch -- ``t`` only ever jumps to position 0 -- so
     this generator computes the answer arithmetically instead of routing a
@@ -1249,12 +1987,16 @@ def pct_squared_minus_one(truth_table: str) -> str:
     the derivation rather than needing a second path.
 
     Above two inputs the derivation does not apply -- it reads one slope per
-    column of a two-input table -- and three other constructions take over, in
+    column of a two-input table -- and the other constructions take over, in
     increasing order of program length: :func:`_cascade` for any conjunction
     or disjunction of literals at any arity, :func:`_affine` for the tables
-    one affine setter per input composes, and :func:`_ladder`, which weights
-    the inputs and lets the over-3003 reset read the sum as a threshold.  A
-    table none of them covers raises :class:`ValueError`, because emitting
+    one affine setter per input composes, :func:`_ladder`, which weights the
+    inputs and lets the over-3003 reset read the sum as a threshold,
+    :func:`_deep_band`, which prints with ``e`` so residues mod 256 are the
+    target and repeated resets cut a weighted order into runs, and
+    :func:`_fold`, which drops the weighting altogether and plans
+    a sequence of relocations instead -- the path that closes five inputs.
+    A table none of them covers raises :class:`ValueError`, because emitting
     nothing is better than emitting a program that computes the wrong
     function.
     """
@@ -1272,9 +2014,25 @@ def pct_squared_minus_one(truth_table: str) -> str:
             return cascade
         # Tables that are not subcubes may still compose from one affine
         # setter per input, which is what reaches XOR at three inputs.
-        affine = _affine(truth_table, n)
-        if affine is not None:
-            return affine
+        #
+        # Only at three.  This path derives a whole arity at once and its
+        # composition frontier grows 90 -> 1630 -> 36458 states at n = 2, 3, 4,
+        # so a four-input table costs about two minutes here whether or not it
+        # ends up served -- parity-4 was measured at 125s, against 0.01s for the
+        # deep band that serves it instead.  The deep band covers every table
+        # this path reaches above three inputs, so the enumeration is skipped
+        # rather than paid for; at three inputs it stays, where it is instant
+        # and its programs are much the shorter.
+        # The admissibility check is exact at three inputs and costs O(2**n),
+        # against the 4.7s whole-arity enumeration the path fills on its first
+        # call.  It spares that fill for the 170 of 208 tables reaching this
+        # step that the path cannot build -- a one-shot build of one of them
+        # goes 6.3s -> 1.6s.  A sweep in one process is unaffected, since the
+        # cache amortises the fill either way.
+        if n == 3 and _affine_admits(truth_table, n):
+            affine = _affine(truth_table, n)
+            if affine is not None:
+                return affine
         # Everything above is affine in the accumulator, so it cannot merge
         # rows that do not already agree.  The ladder path is the one that
         # uses the over-3003 reset as a threshold, which is what reaches a
@@ -1284,32 +2042,41 @@ def pct_squared_minus_one(truth_table: str) -> str:
         if ladder is not None:
             return ladder
         # Every path above prints with ``l``, which needs the accumulator to be
-        # exactly 0 or 1.  The band construction prints with ``e`` instead --
-        # only the residue mod 256 matters -- and repeated resets then cut the
-        # weighted order into as many bands as the table has runs.  That builds
-        # every three-input table, at the cost of much the longest programs
-        # here, which is why it is tried last.
-        band = _band(truth_table, n)
-        # No test reaches this branch.  Reaching it means exhausting every
-        # construction, and `_affine` is the expensive one: it derives a whole
-        # arity at once, and the composition frontier grows 90 -> 1630 -> 36458
-        # states at n = 2, 3, 4, so one four-input refusal costs 121s of the
-        # 124s.  Three inputs are total (0 of 256 refused), so the refusal
-        # cannot be shown any cheaper than that -- the test that pinned it cost
-        # 162s under xdist, more than the rest of the suite put together, and
-        # was removed 2026-08-31 rather than marked, since a marked test still
-        # bills CI for it.  The guard stays because emitting nothing is better
-        # than emitting a program that computes the wrong function; if `_affine`
-        # is ever made to refuse without enumerating, restore the test.
-        if band is None:  # pragma: no cover - see above
+        # exactly 0 or 1.  The deep band prints with ``e`` instead -- only the
+        # residue mod 256 matters -- and repeated resets cut a weighted order
+        # into as many bands as the table has runs.  Its ladder is built by
+        # subtraction, so the whole order sits below zero where the reset
+        # cannot fire, and rows of one class may collide; that is what makes
+        # three and four inputs total.
+        deep = _deep_band(truth_table, n)
+        if deep is not None:
+            return deep
+        # The deep band still reads the table's structure off one additive
+        # weighting, and from five inputs on every weighting inside the limit
+        # collides rows of opposite classes for a generic table.  The fold
+        # drops the weighting altogether: it plans a sequence of relocations
+        # (each wipe moves a group by exactly 3004 plus a bounded slack, the
+        # doubling regrows gaps) that merges each class onto one value, and
+        # only the final two-point gap carries a residue requirement -- with
+        # a full residue system as its window.  It closes five inputs whole.
+        fold = _fold(truth_table, n)
+        # Reaching this raise means the fold's plan search gave up, which no
+        # tested table does -- all of n <= 3, large executed samples at four
+        # and five inputs, and the fully alternating worst case all plan.
+        # The guard stays because emitting nothing is better than emitting a
+        # program that computes the wrong function.
+        if fold is None:  # pragma: no cover - no known table reaches this
             raise ValueError(
-                f"%^2^-1 builds every table at one, two and three inputs; "
-                f"above that a conjunction or disjunction of literals at any "
-                f"arity, the tables one affine setter per input composes, and "
-                f"the thresholds a weighted ladder crosses; "
+                f"%^2^-1 builds every table at one, two, three and four "
+                f"inputs, and every five-input table tried; beyond those a "
+                f"conjunction or disjunction of literals at any arity, the "
+                f"thresholds a weighted ladder crosses, the tables a deep "
+                f"band schedules, and the tables the fold can plan -- which "
+                f"needs the row ladder to fit the workspace (n <= 10) and "
+                f"the plan search to close; "
                 f"got {n} inputs ({truth_table!r})"
             )
-        return band
+        return fold
     # Widen a one-input table by repeating each entry, so the second input is
     # present in the derivation but cannot change the answer.
     widened = truth_table if n == 2 else "".join(bit * 2 for bit in truth_table)

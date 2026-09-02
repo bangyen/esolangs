@@ -695,6 +695,9 @@ class _Machine:
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
+        # Where the source ends, kept because ``ip`` still has to report a
+        # position once every frame has been popped.
+        self._length = len(code)
         self.globals = _Parser(code).parse()
         if "main" not in self.globals:
             raise ValueError("Forbin program has no main function")
@@ -711,6 +714,31 @@ class _Machine:
     def halted(self) -> bool:
         """Whether the frame stack has emptied (``main`` returned or ended)."""
         return not self.frames
+
+    # The VM's language-shaped view: a call-frame language whose store is
+    # the innermost frame's integer locals.
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        """Each live frame's statement position, outermost first.
+
+        No frames at all means ``main`` has returned, which is reported as
+        the end of the source rather than an empty tuple.
+        """
+        frames = self.frames
+        return tuple(f.pos for f in frames) if frames else (self._length,)
+
+    @property
+    def memory(self) -> list[int]:
+        """The innermost frame's integer locals."""
+        if not self.frames:
+            return []
+        return [v for v in self.frames[-1].locals.values() if type(v) is int]
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language; calls use explicit frames."""
+        return []
 
     def frame_entry_key(self, frame: _Frame) -> tuple[object, ...]:
         """Return what ``frame`` is about to run, for the ancestor check.
@@ -815,12 +843,18 @@ class _Machine:
                 frame.locals[name] = value
         # This method only runs while the cursor sits on the ``for`` whose
         # rows it is walking, so the statement under it is that ``for``.
-        # The tag is asserted rather than tested: narrowing the union is
-        # what lets ``current[2]`` be read at all, and an ``if`` would make
-        # a broken invariant skip the body assignment silently instead of
-        # saying so.
+        # The tag is checked rather than tested-and-skipped: narrowing the
+        # union is what lets ``current[2]`` be read at all, and a plain
+        # ``if`` would make a broken invariant skip the body assignment
+        # silently instead of saying so.  Raising rather than asserting
+        # keeps the check under ``python -O``.
+        # The message names the tag actually found.  Being unreachable, the
+        # line carries mutants no test can kill whatever it says -- measured
+        # at three for a constant string and three for this -- so the
+        # spelling is chosen for what it reports if the impossible happens.
         current = frame.body[frame.pos]
-        assert current[0] == "for"  # nosec B101
+        if current[0] != "for":
+            raise AssertionError(f"cursor left the for statement: {current[0]}")
         frame.for_body = current[2]
         frame.for_body_pos = 0
 

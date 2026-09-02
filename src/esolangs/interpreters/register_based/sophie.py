@@ -102,6 +102,24 @@ class _Machine:
         """Whether ``&`` fired or the cursor reached the end of the code."""
         return self._halted_by_command or self.ind >= len(self.code)
 
+    # The VM's language-shaped view: Accumulator + loop stack; ip the cursor, memory
+    # the acc.
+
+    @property
+    def ip(self) -> int:
+        """The current instruction position."""
+        return self.ind
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return [self.acc]
+
+    @property
+    def stack(self) -> list[object]:
+        """The stack."""
+        return list(self.stk)
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (

@@ -398,6 +398,29 @@ class TestSurvivorGaps:
         """
         assert run_and_capture(["o+-x"]) == "0"
 
+    def test_the_tape_dumps_once_however_far_it_is_stepped(self) -> None:
+        """The post-halt step dumps the tape, and only the first one does.
+
+        ``run`` takes exactly one step past the halt, so a dump that fired
+        on every step past it would look identical there and only show
+        through a VM, which is stepped by its caller.  A latch that never
+        latched would repeat the tape once per extra step.
+        """
+        from esolangs.interpreters.grid_based.laserfuck import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        io_obj = ScriptedIO()
+        machine = _Machine(["o+x"], io_obj, heading=3)
+        while not machine.halted:
+            machine.step()
+        assert io_obj.getvalue() == ""  # nothing until the step past the halt
+        machine.step()
+        first = io_obj.getvalue()
+        assert first  # the dump actually produced something to repeat
+        for _ in range(3):
+            machine.step()
+        assert io_obj.getvalue() == first
+
     def test_a_split_beam_entered_leftward_leaves_vertically(self) -> None:
         r"""``*`` entered *leftward* sends its child up or down.
 
@@ -499,6 +522,20 @@ class TestSurvivorGaps:
         with patch("secrets.randbelow", return_value=0):
             for heading in range(4):
                 assert run_and_capture(cage, heading=heading) == "2", heading
+
+    def test_the_jump_flag_starts_false(self) -> None:
+        """``jmp`` begins ``False``, and the snapshot carries that value.
+
+        Any falsy value behaves alike wherever the flag is only tested for
+        truth, but it is part of the state the cycle detector compares --
+        so what it *is* matters, not just whether it is falsy.
+        """
+        from esolangs.interpreters.grid_based.laserfuck import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        machine = _Machine(["+"], ScriptedIO(), heading=3)
+        assert machine.jmp is False
+        assert machine.snapshot()[2] is False
 
 
 def _machine(code: object) -> object:

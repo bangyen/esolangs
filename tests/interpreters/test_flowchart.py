@@ -13,6 +13,7 @@ import pytest
 from esolangs.interpreters.grid_based.flowchart import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
+from tests.raises import raises_message
 
 # The wiki's truth machine: read a bit, and on 0 print it once and halt, on
 # 1 print it forever.  The switch is entered travelling downward, so its
@@ -230,6 +231,46 @@ class TestParsing:
         with pytest.raises(ValueError, match="no '\\( \\)' start node"):
             _Machine([], ScriptedIO(""))
 
+    def test_the_rejection_messages_are_exact(self) -> None:
+        """Both messages are pinned whole, position included.
+
+        The cases above use ``match=``, a substring search, so the wording
+        around each fragment was free -- and the unknown character's
+        coordinates were never checked at all.
+        """
+        with raises_message(ValueError, "unknown character '?' at (4, 0)"):
+            _Machine(["( )─?─(( ))"], ScriptedIO(""))
+
+        with raises_message(ValueError, "Flowchart program has no '( )' start node"):
+            _Machine(["(( ))"], ScriptedIO(""))
+
+    def test_turning_left_rotates_every_heading(self) -> None:
+        """A left turn is a rotation, so four of them return the heading.
+
+        Negating the wrong component agrees on the vertical headings and
+        reverses the horizontal ones, which is why the whole cycle has to
+        be walked rather than one turn checked: the two spellings differ
+        only on the headings a vertical-only test never reaches.
+        """
+        from esolangs.interpreters.grid_based.flowchart import _turn_left
+
+        north, south, west, east = (-1, 0), (1, 0), (0, -1), (0, 1)
+        assert _turn_left(north) == west
+        assert _turn_left(west) == south
+        assert _turn_left(south) == east
+        assert _turn_left(east) == north
+
+    def test_only_the_newline_is_stripped_from_a_row(self) -> None:
+        """Trailing spaces stay, since a column is a position in the grid.
+
+        Every program is written without them, so stripping whitespace
+        generally would have gone unnoticed -- but it shortens the row and
+        moves every column after it.
+        """
+        machine = _Machine(["( )  \n"], ScriptedIO(""))
+        assert machine.width == 5
+        assert machine.grid == ["( )  "]
+
     def test_stacked_nodes_do_not_fork(self) -> None:
         """A node drawn directly on top of another is one path, not three.
 
@@ -415,3 +456,83 @@ class TestPointersStop:
     def test_start_touching_only_another_node_stops(self) -> None:
         """A start whose sole neighbour is the node it came from forks nowhere."""
         assert self._halts(["( )( )"])
+
+
+class TestAmbiguousExits:
+    """Junctions where neither memory nor the current heading settles the exit.
+
+    Three of the interpreter's tie-breaks only matter when the obvious answer
+    is unavailable: the pointer's own heading is not among a junction's arms,
+    or a switch's chosen turn is not among a node's exits.  Both need a grid
+    drawn for them -- the wiki's examples always leave the heading available.
+    """
+
+    def test_head_on_junction_falls_past_the_heading(self) -> None:
+        """A rail entered head-on turns, because straight on is not an arm.
+
+        ``├`` carries up, down, and right.  Arriving travelling *left* takes
+        right away as the way back, so the arms are up and down and the
+        pointer's own heading is neither.  Nothing is remembered on a first
+        visit either, so the first arm is taken -- upward here, which is the
+        branch that prints.
+        """
+        grid = [
+            "          (( ))              ( )",
+            "            │                 │",
+            "           \\ \\               [ }",
+            "            │                 │",
+            "            ├─────────────────┘",
+            "            │",
+            "           \\ \\",
+            "            │",
+            "          (( ))",
+        ]
+        io = ScriptedIO("")
+        run(grid, io)
+        assert io.getvalue() == "1"
+
+    def test_switch_with_no_forward_path_takes_the_first_exit(self) -> None:
+        """An empty register sends a switch straight on; with no straight on,
+        neither the preferred heading nor the arrival heading is available.
+
+        The switch is entered from above and its only exits are sideways, so
+        ``{ }`` (which clears the register, choosing "carry on") asks for a
+        direction that is not there.  The pointer leaves by the first exit
+        instead, and the register is empty, so nothing is printed.
+        """
+        grid = [
+            "                   ( )",
+            "                    │",
+            "                   { }",
+            "                    │",
+            "             ┌─────< >─────┐",
+            "             │             │",
+            "            \\ \\           \\ \\",
+            "             │             │",
+            "           (( ))         (( ))",
+        ]
+        io = ScriptedIO("")
+        run(grid, io)
+        assert io.getvalue() == ""
+
+    def test_a_set_register_still_turns_at_that_switch(self) -> None:
+        """The same grid, with the turn available: the switch does turn.
+
+        This is the control for the test above -- it shows the empty-register
+        case is choosing a different exit, not merely failing to print.
+        """
+        for setter, expected in (("[ }", "1"), ("{ ]", "0")):
+            grid = [
+                "                   ( )",
+                "                    │",
+                f"                   {setter}",
+                "                    │",
+                "             ┌─────< >─────┐",
+                "             │             │",
+                "            \\ \\           \\ \\",
+                "             │             │",
+                "           (( ))         (( ))",
+            ]
+            io = ScriptedIO("")
+            run(grid, io)
+            assert io.getvalue() == expected, setter

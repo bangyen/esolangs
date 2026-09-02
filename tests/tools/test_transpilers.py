@@ -447,3 +447,19 @@ def test_decleq_fuzz_countdowns() -> None:
         assert esolangs.run("S*bleq", sb_program) == expected
         checked += 1
     assert checked > 10, f"only {checked} countdowns terminated"
+
+
+def test_assembler_rejects_a_duplicate_label() -> None:
+    """A label may be attached to only one instruction.
+
+    ``mark`` records where a label lands so later jumps can resolve it, so a
+    second use would silently move an existing jump's target rather than
+    add one.  The assemblers are internal, but the guard is what keeps a
+    macro that mints its own labels from colliding with a hand-written one.
+    """
+    from esolangs.tools.transpilers import _SbleqAsm
+
+    asm = _SbleqAsm()
+    asm.mark("loop")
+    with pytest.raises(ValueError, match="duplicate label loop"):
+        asm.mark("loop")

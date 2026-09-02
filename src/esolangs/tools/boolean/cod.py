@@ -272,8 +272,6 @@ def cod(truth_table: str) -> str:
     prints exactly one line.
     """
     n = _validate_truth_table(truth_table)
-    if n < 1:
-        raise ValueError(f"cod requires n >= 1, got n == {n}")
 
     # A table that ignores some of its inputs is a smaller table, and COD's
     # cost is the leaf cascade -- ``2**n - 1`` blocks whatever the table says

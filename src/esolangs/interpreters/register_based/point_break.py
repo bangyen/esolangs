@@ -282,6 +282,24 @@ class _Machine:
         """Whether the cursor has run past the last statement."""
         return self.pc >= len(self.stmts)
 
+    # The VM's language-shaped view: Variable store + loop frames; ip is the statement
+    # cursor.
+
+    @property
+    def ip(self) -> int:
+        """The current instruction position."""
+        return self.pc
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return [self.variables[k] for k in sorted(self.variables)]
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (

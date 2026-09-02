@@ -1,5 +1,7 @@
 """Tests for the step-and-inspect VM wrapper."""
 
+import contextlib
+
 import pytest
 
 import esolangs
@@ -10,6 +12,7 @@ from esolangs.vm import VM
 # live in the table rather than being spelled twice.
 from .samples import (
     CIRCUIT_PRIME_TESTER,
+    DUMPS_ON_THE_POST_HALT_STEP,
     FLOWCHART_CAT,
     FLOWCHART_TRUTH_MACHINE,
     SAMPLES,
@@ -146,7 +149,8 @@ class TestModulous:
 
 class TestLaserFuck:
     def test_ip_is_position_and_heading(self) -> None:
-        # heading is fixed to 0 (up), so the laser at (2,4) moves up
+        # the adapter's generator is seeded so its first draw is 0 (up), so
+        # the laser at (2,4) moves up
         vm = esolangs.make_vm("LaserFuck", "\u00ff   x\n    +\n    o")
         assert vm.ip == (2, 4, 0)  # the laser's start position and heading
         vm.step()
@@ -155,9 +159,12 @@ class TestLaserFuck:
         vm.step()
         assert vm.ip == (0, 4, 0)  # moved up onto the 'x', died
         assert vm.halted
-        assert vm.output == "\x01"
+        assert vm.output == ""  # the tape is not dumped until the next step
         assert vm.stack == []
-        vm.step()  # stepping a halted VM is a no-op
+        vm.step()  # the post-halt step dumps it, as run's own last step does
+        assert vm.output == "\x01"
+        vm.step()  # and the dump happens once, not once per step past the halt
+        assert vm.output == "\x01"
 
     def test_dump_output_matches_interpreter(self) -> None:
         from esolangs.interpreters.grid_based.laserfuck import run as lf_run
@@ -167,7 +174,9 @@ class TestLaserFuck:
         io_obj = ScriptedIO()
         lf_run(program.splitlines(), io_obj, heading=0)
         vm = esolangs.make_vm("LaserFuck", program)
-        assert _run_all(vm) == io_obj.getvalue()
+        _run_all(vm)
+        vm.step()  # the dump, which run performs as its own last step
+        assert vm.output == io_obj.getvalue()
 
 
 class TestCOD:
@@ -189,9 +198,9 @@ class TestCOD:
         vm.step()  # stepping a halted VM is a no-op
 
     def test_random_junction_is_deterministic(self) -> None:
-        # forward blocked, East and West both open: _FirstChoiceRNG always
-        # takes the lexicographically-first option ('E'), unlike the
-        # interpreter's default secrets-backed chooser.
+        # forward blocked, East and West both open: the adapter's generator
+        # is seeded so the draw lands on 'E' every run, unlike the
+        # interpreter's default secrets-backed draw.
         code = "\n".join(["~~~~~~~", "~     ~", "~ ~ ~ ~", "~~~>~~~"])
         vm = esolangs.make_vm("COD", code)
         vm.step()  # (3,3,N) -> (2,3,N)
@@ -482,11 +491,13 @@ class TestBitdeque:
         assert (vm.ip, vm.memory, vm.stack) == (0, [], [0])
         vm.step()  # PUSH appends the register
         assert (vm.ip, vm.memory) == (1, [0])
-        vm.step()  # INVERT flips the register, then the run renders
+        vm.step()  # INVERT flips the register
         assert vm.stack == [1]
         assert vm.halted
+        assert vm.output == ""  # the deque is not rendered until the next step
+        vm.step()  # the post-halt step renders it, as run's own last step does
         assert vm.output == "0"
-        vm.step()  # stepping a halted VM is a no-op
+        vm.step()  # and rendering happens once, not once per step past the halt
         assert vm.output == "0"
 
 
@@ -1309,7 +1320,10 @@ def test_vm_output_matches_run(language: str, program: str) -> None:
     except EOFError:
         pytest.skip(f"{language} needs input")
     vm = esolangs.make_vm(language, program)
-    assert _run_all(vm) == expected
+    _run_all(vm)
+    if language in DUMPS_ON_THE_POST_HALT_STEP:
+        vm.step()  # the dump, which run performs after its own loop
+    assert vm.output == expected
 
 
 class TestEveryLanguageIsSteppable:
@@ -1321,41 +1335,138 @@ class TestEveryLanguageIsSteppable:
     lists would notice.
     """
 
-    def test_every_registry_language_has_a_vm_adapter(self) -> None:
-        from esolangs.registry import RUNNERS
-        from esolangs.vm import _VM_ADAPTERS
+    def test_every_registry_language_is_step_capable(self) -> None:
+        """Every language can be wrapped, which is why the table is derived.
 
-        assert set(RUNNERS) - set(_VM_ADAPTERS) == set()
+        The adapters are built from ``RUNNERS`` itself, so "every language
+        has an adapter" is now true by construction and worth nothing as an
+        assertion.  What is *not* automatic is the fact that made deriving
+        them safe: that every registered interpreter actually exposes a
+        step-capable state object.  A new language that ran only as a whole
+        program would still get an adapter built for it, and would fail on
+        the first ``step()`` rather than here -- so that is what is checked.
+        """
+        import importlib
+
+        from esolangs.registry import RUNNERS
+
+        without: list[str] = []
+        for language, (module_path, _split, _kwargs) in sorted(RUNNERS.items()):
+            module = importlib.import_module(f"esolangs.interpreters.{module_path}")
+            state = getattr(module, "_Machine", None) or getattr(module, "State", None)
+            if state is None or not hasattr(state, "step"):
+                without.append(language)
+        assert without == []
 
     def test_every_adapter_wraps_a_state_object_with_a_snapshot(self) -> None:
         """``run_until_halt_or_cycle`` needs ``snapshot()`` on the machine.
 
-        The adapters wrap the interpreter class named in their own
-        ``__init__``, so read those imports back and check the classes
-        themselves: the alternative is building all 59, which needs a valid
-        program per language.  An adapter may import several names
-        (Grapheme takes its frame type alongside its machine), so the
-        requirement is that *one* of them carries the state -- a machine
-        without ``snapshot()`` cannot have a hang proven, which is the
-        cycle detector's real precondition.
+        A machine without ``snapshot()`` cannot have a hang proven, which is
+        the cycle detector's real precondition.  The check reads the module
+        each language names in ``RUNNERS`` rather than the adapter's source:
+        most adapters are now derived from that entry and have no import to
+        read back, and the registry is where the association actually lives.
+
+        This deliberately does not build the machines -- that would need a
+        valid program for every language -- so it checks the class each
+        module exposes as its state object.
         """
         import importlib
-        import inspect
-        import re
 
+        from esolangs.registry import RUNNERS
         from esolangs.vm import _VM_ADAPTERS
 
         without: list[str] = []
-        for name, adapter in sorted(_VM_ADAPTERS.items()):
-            source = inspect.getsource(adapter.__init__)
-            found = re.search(
-                r"from (esolangs\.interpreters\.[\w.]+) import "
-                r"\(?\s*([\w,\s]+?)\s*\)?\n",
-                source,
+        for name in sorted(_VM_ADAPTERS):
+            module = importlib.import_module(
+                f"esolangs.interpreters.{RUNNERS[name][0]}"
             )
-            assert found is not None, f"{name}: adapter imports no interpreter"
-            module = importlib.import_module(found.group(1))
-            imported = [n.strip() for n in found.group(2).split(",") if n.strip()]
-            if not any(hasattr(getattr(module, n), "snapshot") for n in imported):
+            # A couple of modules call their state object ``State``.
+            state = getattr(module, "_Machine", None) or getattr(module, "State", None)
+            if state is None or not hasattr(state, "snapshot"):
                 without.append(name)
         assert without == []
+
+    def test_memory_and_stack_are_copies_not_the_live_store(self) -> None:
+        """A caller must not be able to write into a running machine.
+
+        An interpreter may hand back its store directly -- several hold the
+        list under exactly the VM's name, which is why the shape protocol
+        asks only for a ``Sequence`` -- so the copy that keeps the boundary
+        honest is ``_DelegatingVM``'s, made once rather than in every
+        interpreter.  Nothing else covers it: every other test reads these
+        properties without writing to them.
+        """
+        from esolangs.vm import _VM_ADAPTERS, _DelegatingVM
+
+        checked = 0
+        for name, adapter in sorted(_VM_ADAPTERS.items()):
+            if not issubclass(adapter, _DelegatingVM):
+                continue
+            program, stdin = SAMPLES[name]
+            vm = esolangs.make_vm(name, program, stdin)
+            with contextlib.suppress(Exception):
+                vm.step()
+            before_mem, before_stk = list(vm.memory), list(vm.stack)
+            vm.memory.append(12345)
+            vm.stack.append("scribble")
+            assert list(vm.memory) == before_mem, f"{name}: memory is live"
+            assert list(vm.stack) == before_stk, f"{name}: stack is live"
+            checked += 1
+        assert checked > 30, f"only {checked} adapters exercised"
+
+    def test_stepping_is_reproducible_for_the_random_languages(self) -> None:
+        """Five languages have a random instruction; the VM pins every one.
+
+        ``?`` (WII2D), ``y`` (Painfuck), ``RND`` (Modulous), a COD junction
+        and LaserFuck's ``*`` beam splitter all draw at *runtime*, so two
+        runs of the same program could disagree -- which would make a
+        stepped VM unusable and ``run_until_halt_or_cycle``'s argument
+        ("a deterministic machine that revisits a state has looped") false.
+        Each adapter passes a seeded generator to fix that.
+
+        The programs below were chosen because the draw actually fires for
+        them.  Asserting determinism on a program that never reaches its
+        random instruction would pass whatever the adapters did, so the
+        first half of this test proves the instruction executes and the
+        second proves it lands the same way twice.
+        """
+        from esolangs.interpreters import randomness
+
+        cases = {
+            "WII2D": ">?.\n!",
+            "Painfuck": "y",
+            "Modulous": "[RND 9][PRT INT]",
+            "COD": "~~~~~~~\n~     ~\n~ ~ ~ ~\n~~~>~~~",
+            "LaserFuck": "*\no",
+        }
+
+        def trace(language: str, program: str) -> list[object]:
+            vm = esolangs.make_vm(language, program)
+            seen: list[object] = []
+            for _ in range(40):
+                if vm.halted:
+                    break
+                with contextlib.suppress(Exception):
+                    vm.step()
+                ip = vm.ip
+                seen.append(
+                    (tuple(ip) if isinstance(ip, tuple) else ip, tuple(vm.memory))
+                )
+            return seen
+
+        original = randomness.Seeded.randbelow
+        for language, program in cases.items():
+            drawn = []
+
+            def counted(self, upper, _o=original, _d=drawn):
+                _d.append(upper)
+                return _o(self, upper)
+
+            randomness.Seeded.randbelow = counted
+            try:
+                first = trace(language, program)
+            finally:
+                randomness.Seeded.randbelow = original
+            assert drawn, f"{language}: the random instruction never ran"
+            assert trace(language, program) == first, f"{language} is not reproducible"

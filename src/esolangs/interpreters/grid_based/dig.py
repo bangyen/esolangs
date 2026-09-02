@@ -62,6 +62,26 @@ class _Machine:
         """Whether the mole has halted or left the grid."""
         return self._done
 
+    # The VM's language-shaped view.  Dig is a 2D grid walked by a mole, so
+    # the instruction position is where the mole is *and* which way it faces
+    # -- a bare index would not say where the next step lands.  ``memory`` is
+    # the one value the mole carries; there is no stack.
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        """The mole's ``(row, col, heading)``."""
+        return (self.row, self.col, self.move)
+
+    @property
+    def memory(self) -> list[int]:
+        """The value the mole is carrying."""
+        return [self.mole]
+
+    @property
+    def stack(self) -> list[object]:
+        """Dig has no stack."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
 

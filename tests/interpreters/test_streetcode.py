@@ -14,6 +14,7 @@ import io
 import re
 from contextlib import redirect_stdout
 from pathlib import Path
+from typing import ClassVar
 from unittest.mock import patch
 
 import pytest
@@ -51,6 +52,7 @@ from esolangs.interpreters.grid_based.streetcode import (
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.vm import _StepMachine, run_until_halt_or_cycle
 from tests.interpreters.runner import run_program
+from tests.raises import raises_message
 
 
 def street(instructions: str) -> list[str]:
@@ -336,6 +338,34 @@ class TestStreetcodeAmbiguousTurns:
                 car = _Car(state.row, state.col, state.heading)
                 for road in _junction_choices(machine.grid, car):
                     assert _open_toward(machine.grid, car, road), (path, state, road)
+
+    def test_the_examples_reach_exactly_these_drive_states(self) -> None:
+        """The size of each example's drive graph is pinned.
+
+        The junction, merge and heading helpers decide which states are
+        reachable, and *no program's output distinguishes them* -- the car
+        still reaches its ``;`` and prints the same bytes whichever way a
+        turn is resolved.  The graph is what those helpers actually build,
+        so it is the observable that can tell them apart: a rule that turns
+        one cell early, hugs the wrong wall, or reads a junction's shape
+        from the wrong neighbour opens or closes states and moves the
+        count.
+
+        The numbers are properties of the committed examples.  If an
+        example is redrawn they change with it, and the fix is to re-derive
+        them rather than to loosen the assertion.
+        """
+        root = Path(__file__).resolve().parents[2]
+        for path, expected in (
+            ("examples/hello-world/streetcode.txt", 469),
+            ("examples/boolean/streetcode.txt", 316),
+        ):
+            code = (root / path).read_text().split("\n")
+            if code and code[-1] == "":
+                code = code[:-1]
+            machine = _Machine(code, IO())
+            assert machine._graph is not None  # noqa: SLF001
+            assert len(machine._graph) == expected, path  # noqa: SLF001
 
     # A mouth whose gap opens ahead of the car (its near ``+`` sighted at
     # depth 0 or +1) and whose far ``+`` has open interior beneath it (so
@@ -823,6 +853,130 @@ class TestStreetcodeMalformedPrograms:
     def test_multiple_cars_is_malformed(self) -> None:
         with pytest.raises(ValueError, match="exactly one C"):
             run(["C  ", "  C"], io=IO())
+
+
+class TestStreetcodeRejectionMessages:
+    """Every rejection paired with the message it must raise.
+
+    The tests elsewhere use ``pytest.raises(match=...)``, a *substring*
+    search, so a rejection firing in the wrong place still passes: all
+    four width failures share the prefix ``not two-wide``, and the shape
+    label in parentheses is the only part that says which arm fired.  The
+    coordinates each message quotes were never asserted at all.
+
+    One case shows the hazard directly.  The wall-hole program is asserted
+    against ``not two-wide|malformed wall``, and it resolves to the width
+    check -- so the second half of that alternation has never fired, and a
+    mutant moving the rejection between the two would not be noticed.
+    """
+
+    REJECTIONS: ClassVar[list[tuple[str, list[str], str]]] = [
+        ("empty", [], "Streetcode program cannot be empty"),
+        ("blank", ["   ", ""], "Streetcode program cannot be empty"),
+        (
+            "no car",
+            ["   ", " ; "],
+            "Streetcode program must have exactly one C, found 0",
+        ),
+        (
+            "two cars",
+            ["C  ", "  C"],
+            "Streetcode program must have exactly one C, found 2",
+        ),
+        (
+            "dead end",
+            ["+----+", "|C^O;|", "+----+"],
+            "not two-wide at (1, 1) (dead end)",
+        ),
+        ("horizontal", ["C^O;", "+---+"], "not two-wide at (0, 1) (horizontal)"),
+        (
+            "vertical",
+            [
+                "+-+    ",
+                "|C|    ",
+                "|^+-+  ",
+                "|^^^|  ",
+                "+-+^|  ",
+                "  |;|  ",
+                "  +-+  ",
+            ],
+            "not two-wide at (2, 1) (vertical)",
+        ),
+        (
+            "wider than two",
+            ["+------+", "|C^^^O;|", "|      |", "|      |", "+------+"],
+            "not two-wide at (1, 2) (wider than two)",
+        ),
+        (
+            "wider than two, open block",
+            ["+------+", "|      |", "|C^    |", "|      |", "+------+"],
+            "not two-wide at (1, 2) (wider than two)",
+        ),
+        (
+            "wall fragment",
+            ["+---+", "|C  |", "+---+"],
+            "not two-wide at (1, 1) (dead end)",
+        ),
+        (
+            "wall hole",
+            ["+----+", "|C   |", "|    |", "+- --+"],
+            "not two-wide at (3, 2) (dead end)",
+        ),
+        (
+            "detached box",
+            ["+----+   +--+", "|C   |   |  |", "|    |   |  |", "+----+   +--+"],
+            "geometry not connected to the street at (0, 9) ('+')",
+        ),
+        (
+            "stray fragment",
+            ["+----+", "|C   |", "|    |", "+----+", "   -- "],
+            "geometry not connected to the street at (4, 3) ('-')",
+        ),
+        (
+            "solid island",
+            [
+                "+--------+",
+                "|C       |",
+                "|        |",
+                "|  ++++  |",
+                "|  ++++  |",
+                "|  ++++  |",
+                "|        |",
+                "|        |",
+                "+--------+",
+            ],
+            "geometry not connected to the street at (4, 4) ('+')",
+        ),
+        (
+            "two-wide hole",
+            ["+------+", "|C     |", "|      |", "+--  --+"],
+            "street reaches the edge of the grid at (3, 4): "
+            "the road is not enclosed by walls",
+        ),
+        (
+            "open to edge",
+            ["+-----", "|C    ", "|     ", "+-----"],
+            "street reaches the edge of the grid at (1, 5): "
+            "the road is not enclosed by walls",
+        ),
+        (
+            "corner missing east",
+            ["+----+", "|C   |", "|    |", "+--|-+"],
+            "wall turns without a corner at (3, 2): '-' beside '|' at (3, 3)",
+        ),
+        (
+            "corner missing south",
+            ["+--+", "|C |", "|  |", "-  |", "|  |", "+--+"],
+            "wall turns without a corner at (2, 0): '|' beside '-' at (3, 0)",
+        ),
+    ]
+
+    @pytest.mark.parametrize(("label", "program", "message"), REJECTIONS)
+    def test_rejection_message_is_exact(
+        self, label: str, program: list[str], message: str
+    ) -> None:
+        with raises_message(ValueError, message, label):
+            _Machine(program, IO())
 
 
 class TestStreetcodeStreetWidth:
@@ -1459,13 +1613,10 @@ def test_the_generated_ring_program_runs() -> None:
     lap is where that latch is followed through to the turn -- so running a
     generated program is what exercises the merge bookkeeping end to end.
     """
-    import esolangs
-    from esolangs.registry import LANGUAGES
+    from esolangs.tools.text.streetcode import streetcode as generate
 
-    generate = LANGUAGES["Streetcode"].text
-    assert generate is not None
     for text in ("Hi", "Hello, World!"):
-        assert esolangs.run("Streetcode", generate(text)) == text
+        assert run_and_capture(generate(text).split("\n")) == text
 
 
 class TestStreetcodeDriveStates:
@@ -1749,10 +1900,8 @@ class TestStreetcodeGraphBackedStepping:
     @pytest.mark.parametrize("text", ["Hi", "Hello, World!"])
     def test_a_generated_ring_agrees(self, text: str) -> None:
         """The ring program latches a merge, so it drives the latch path."""
-        from esolangs.registry import LANGUAGES
+        from esolangs.tools.text.streetcode import streetcode as generate
 
-        generate = LANGUAGES["Streetcode"].text
-        assert generate is not None
         assert self._lockstep(generate(text).split("\n")) > 1
 
     def test_an_off_graph_state_falls_back(self) -> None:

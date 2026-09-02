@@ -11,6 +11,7 @@ import pytest
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.bio import run
 from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.raises import raises_message
 
 
 class TestBIOBasicCommands:
@@ -206,6 +207,22 @@ class TestBIOEdgeCases:
         with pytest.raises(ValueError, match="closes no loop"):
             run("0ox;};1ix;", io=IO())
 
+    def test_load_error_messages_are_exact(self) -> None:
+        """Each of the three load errors says exactly what it says.
+
+        Every case above uses ``match=``, which is a substring search, so
+        the wording around the matched fragment was free -- the language
+        prefix could be dropped or recased and nothing would notice.  All
+        three messages come from ``parse``, so they are pinned together.
+        """
+        for code, message in (
+            ("0ox;invalid;1ix;", "BIO: not a command"),
+            ("0ox;};1ix;", "BIO: '}' closes no loop"),
+            ("0iy{0ox;", "BIO: unmatched '{'"),
+        ):
+            with raises_message(ValueError, message):
+                run(code, io=IO())
+
     def test_negative_register_values(self) -> None:
         """Test handling of negative register values."""
         with redirect_stdout(io.StringIO()) as f:
@@ -284,15 +301,15 @@ class TestStepMachine:
         from esolangs.interpreters.register_based.bio import _Machine
 
         machine = _Machine("0ox;0ix{1ox;};", ScriptedIO())
-        assert (machine.reg, machine.stk, machine.ind) == ([0, 0, 0], [], 0)
+        assert (machine.reg, machine.stk, machine.ind) == ((0, 0, 0), (), 0)
         machine.step()  # 0ox sets x to 1
-        assert machine.reg == [1, 0, 0]
+        assert machine.reg == (1, 0, 0)
         machine.step()  # 0ix sees x nonzero and pushes the loop
-        assert machine.stk == [1]
+        assert machine.stk == (1,)
         machine.step()  # 1ox decrements x
-        assert machine.reg == [0, 0, 0]
+        assert machine.reg == (0, 0, 0)
         machine.step()  # } pops the loop and lands back on the 0ix
-        assert machine.stk == []
+        assert machine.stk == ()
         assert machine.ind == 1
         machine.step()  # 0ix sees x zero and skips the body
         assert machine.halted

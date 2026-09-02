@@ -6,6 +6,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.lamfunc import run
 from tests.interpreters.contract import SnapshotContract
+from tests.raises import raises_message
 
 
 def run_program(code: str) -> str:
@@ -21,6 +22,60 @@ class TestBuiltins:
 
     def test_print_binary_literal(self) -> None:
         assert run_program("p 0b101") == "101"
+
+    def test_combining_bits_with_a_zero_operand(self) -> None:
+        """``cb`` concatenates unless *both* operands are zero.
+
+        The only case tested had two nonzero operands, where every part of
+        this is satisfied whichever way it is spelled.  A single zero still
+        concatenates -- ``cb 0 1`` is 1 and ``cb 1 0`` is 10 -- so the
+        empty-result guard is an ``or``; two zeros give 0 rather than the
+        empty string ``int()`` would refuse.
+
+        Zero also stands next to the interpreter's own sanity check, which
+        asserts that neither operand is negative.  No Lamfunc value can be,
+        so the check never fires -- but a comparison written one step
+        further in would reject zero, which is why these cases have to run
+        rather than merely be argued about.
+        """
+        assert run_program("p cb 0 1") == "1"
+        assert run_program("p cb 1 0") == "10"
+        assert run_program("p cb 5 0") == "1010"
+        assert run_program("p cb 0 0") == "0"
+
+    def test_printing_a_function_reference(self) -> None:
+        """``p .f`` prints the function's name once.
+
+        ``.f`` only ever appeared as an argument to something else, so the
+        frame a reference opens was never the one whose value was printed
+        -- and a frame started one token along repeats the name.
+        """
+        assert run_program("p .p") == "p"
+
+    def test_a_stored_variable_reads_back_as_its_value(self) -> None:
+        """``vs`` stores a value under a name, and the name resolves to it.
+
+        The existing case stores and reads within one expression; storing
+        on one line and reading on the next makes the lookup go through the
+        variable table rather than the expression's own operands, so a
+        lookup that returned the name would show as the name being printed.
+        """
+        assert run_program("vs 'a' 1\np 'a'") == "1"
+
+    def test_a_binary_literal_needs_digits_and_only_binary_ones(self) -> None:
+        """``0b`` alone is a name, and so is ``0b`` followed by a 2.
+
+        Only well-formed literals were ever written, so the two halves of
+        the check never had to hold: a prefix with nothing after it, and a
+        digit outside ``01``.  Both make the token a plain name, which
+        prints as itself rather than as a number -- and ``0b0`` is the
+        shortest well-formed one, which a check reading past the first
+        digit would reject.
+        """
+        assert run_program("p 0b") == "0b"
+        assert run_program("p 0b2") == "0b2"
+        assert run_program("p 0b12") == "0b12"
+        assert run_program("p 0b0") == "0"
 
     def test_equality(self) -> None:
         assert run_program("p eq 1 1") == "1"
@@ -138,6 +193,34 @@ class TestErrors:
         # lb of a function value is not a number
         with pytest.raises(HaltError, match="expected a number"):
             run_program("lb .p")
+
+    def test_the_rejection_messages_are_exact(self) -> None:
+        """Each message is pinned whole, and names what it is complaining about.
+
+        The cases above match a fragment, and ``match=`` is a substring
+        search -- so the wording was free and the name each message quotes
+        was never checked.  The undefined-function message is raised from
+        two separate places, a bare call and a ``.`` reference, and both
+        have to name the function.
+
+        ``expected a number`` is deliberately not compared whole: it
+        interpolates a function object with no ``__repr__``, so the text
+        carries a memory address and would differ between runs.
+        """
+        with raises_message(ValueError, "function 'f' redefined"):
+            run_program("F f x - x\nF f y - y")
+
+        with raises_message(ValueError, "function definition must contain '-'"):
+            run_program("F f x x")
+
+        for code in ("nosuch 1", ".nosuch"):
+            with pytest.raises(HaltError) as caught:
+                run_program(code)
+            assert str(caught.value) == "calling undefined function 'nosuch'"
+
+        with pytest.raises(HaltError) as caught:
+            run_program("lb .p")
+        assert str(caught.value).startswith("expected a number, got ")
 
 
 class TestMachine:

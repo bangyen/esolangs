@@ -57,6 +57,41 @@ class TestPainfuck:
     def test_half(self) -> None:
         assert run_program("pphue") == "\x02"  # 4 // 2 = 2
 
+    def test_half_truncates_a_negative_toward_zero(self) -> None:
+        """Halving rounds toward zero, which only shows below it.
+
+        Python's ``//`` rounds *down*, so a negative cell needs the sign
+        handled separately -- and the positive case cannot tell that
+        handling from its absence.  Seven subtractions give -7, whose half
+        is -3: flooring would give -4, and dropping the sign 3.  An odd
+        value is essential, since an even one halves the same either way.
+        """
+        assert run_program("ssssssshoe") == "-3"
+        assert run_program("ssshoe") == "-1"  # -3 -> -1, not -2
+
+    def test_the_pointer_moves_by_two_right_and_one_left(self) -> None:
+        """``r`` and ``l`` move by their own distances, from where they are.
+
+        Marking a single cell cannot show either distance -- the write and
+        the read land together wherever the pointer went.  This marks three
+        cells with different values (2 at cell 0, 4 at cell 2, 6 at cell 4)
+        so each position prints something only that position holds: two
+        ``r`` moves reach the 6, and two ``l`` moves back from there reach
+        the 4 rather than the 6 or the 2.
+        """
+        assert run_program("prpprpppoe") == "6"
+        assert run_program("prpprppplloe") == "4"
+
+    def test_growing_the_tape_fills_with_zeros(self) -> None:
+        """``r`` past the end appends empty cells, not marked ones.
+
+        The cells the pointer skips are created by the growth, so their
+        value is the growth's -- and every test read the cell it had just
+        written.  Cell 3 is only ever created, never written.
+        """
+        assert run_program("prpprppploe") == "0"
+        assert run_program("prroe") == "0"
+
     def test_copy_neighbor(self) -> None:
         assert run_program("ppwue") == "\x00"  # copy 0 from the right neighbor
         assert run_program("ppwque") == "\x00"  # copy back

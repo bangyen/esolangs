@@ -21,6 +21,12 @@ a language added without an entry fails there rather than being silently
 skipped.
 """
 
+# The corrected Inject truth machine lives beside the interpreter's own
+# tests: the mutation bundle does not inline this module, so a test file
+# importing the program from here would fail collection there before any
+# mutant ran.  Defined there, imported here.
+from tests.interpreters.test_inject import INJECT_TRUTH_MACHINE
+
 # The wiki's street shape: a two-wide road with the instructions in the
 # southern lane, walled all round.  ``C`` starts the car, ``^`` increments
 # the CPth cell, ``O`` prints it, ``;`` halts.
@@ -93,7 +99,15 @@ def bits_of(value: int) -> str:
 # one more ``machine.step()`` to dump the final registers, so "stepping to
 # the halt writes what run writes" is false for them by design, and the
 # no-op step is the second one past the halt, not the first.
-DUMPS_ON_THE_POST_HALT_STEP = frozenset({"Minsky Swap", "RAM0"})
+#
+# Bitdeque and LaserFuck joined them when their dumps moved out of ``run``.
+# Both had been replicated in the VM adapter instead, and LaserFuck's copy
+# had drifted: it dumped on ``not lsrs`` where ``run`` dumps on ``halted``,
+# so a program stopped by the second start marker printed under ``run`` and
+# not under the VM.  One implementation, in the machine, cannot drift.
+DUMPS_ON_THE_POST_HALT_STEP = frozenset(
+    {"Minsky Swap", "RAM0", "Bitdeque", "LaserFuck"}
+)
 
 # Languages with no self-halt at all: ``esolangs.run`` stops them from
 # outside, by the ``limit``/``cycles`` bound the registry passes it, and a
@@ -173,6 +187,10 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Forþ": ("65.", ""),
     "Grapheme": ("FAFY", ""),
     "Home Row": ("ak;", ""),
+    # A corrected truth machine (the wiki's own is inverted -- see the
+    # interpreter's module docstring), on the input that halts: the "1"
+    # branch loops forever.
+    "Inject": (INJECT_TRUTH_MACHINE, "0\n"),
     "Jaune": ("++^", ""),
     "Lamfunc": ("p 5", ""),
     "LaserFuck": ("ÿ   x\n    +\n    o", ""),

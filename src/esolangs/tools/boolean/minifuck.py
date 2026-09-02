@@ -100,9 +100,10 @@ produces 24582 fully-essential 32-bit columns against 4294642034 such tables,
 so this is 0.00057% of the arity rather than a quarter of it.  It ships for
 the reason four did -- a miss costs nothing but the fall-through -- and
 because the tables it *does* reach include five-input XOR, which no search
-here builds at all.  The one thing that had to change is the spelling: the
-whole-arity derivation cannot run at 2**32 tables, so this arity derives one
-table at a time.  See :data:`_TABLE_MAJOR_ARITIES` for what that trades.
+here builds at all.  The one thing that had to change is the spelling: a
+derivation over all ``2**32`` tables cannot run, so the enumeration is asked
+for the table it wants -- see :func:`_derived_plans`, which every arity now
+uses that way.
 
 Paying that per table is what makes a *screen* worth having, and there is
 one: everything the endgame emits after the suffix is GF(2)-affine in the
@@ -132,6 +133,7 @@ from functools import cache
 from itertools import combinations_with_replacement
 
 from esolangs.tools.boolean.helpers import (
+    _validate_shape,
     _validate_truth_table,
     essential_inputs,
     read_at,
@@ -884,6 +886,19 @@ def _complement(column: tuple[int, ...]) -> tuple[int, ...]:
     return tuple(1 - bit for bit in column)
 
 
+# Derived columns, keyed by ``(template, accumulator, orientation)``.  A plain
+# dict rather than ``lru_cache`` because the key is computed from the mutable
+# ``_Joint`` rather than being its arguments, and because ``None`` is a real
+# answer here -- the sentinel keeps it distinguishable from a miss.
+#
+# ``_derived_plans.cache_clear`` empties this too, because a caller asking for
+# a cold derivation means a cold one: tests harvest ``_find_pool`` call sites
+# from a build and assert they saw hundreds, which a warm column cache cuts to
+# seventeen.  Clearing the plan cache alone would leave that trap in place.
+_PRINTED_COLUMNS: dict[tuple[str, int, int], tuple[int, ...] | None] = {}
+_MISSING = object()
+
+
 def _printed_column(j: _Joint, acc: int, cell7: int) -> tuple[int, ...] | None:
     """Return what the ``'[x<[<'`` read prints here, without printing it.
 
@@ -903,17 +918,34 @@ def _printed_column(j: _Joint, acc: int, cell7: int) -> tuple[int, ...] | None:
 
     Returns None when this orientation has no pool pattern or the walk cannot
     reach, which are the two conditions :func:`_endgame` raises on.
+
+    Memoised on the staging's own template, because what this derives does not
+    depend on which tables are wanted: the whole-arity spelling computes each
+    column once and matches it against every table, while the table-major one
+    would recompute the identical column for every build.  Measured at three
+    inputs, the enumeration visits 12612 distinct ``(staging, accumulator,
+    orientation)`` triples however many tables are asked for -- 8 builds make
+    46790 calls and 40 make 206488, both over that same 12612 -- so the cache
+    is what lets asking per table cost what asking for the arity does.
     """
+    key = (j.template(), acc, cell7)
+    hit = _PRINTED_COLUMNS.get(key, _MISSING)
+    if hit is not _MISSING:
+        return hit  # type: ignore[return-value]
     code = _find_pool(j, cell7, acc - 1)
     if code is None:
+        _PRINTED_COLUMNS[key] = None
         return None
     probe = j.fork()
     probe.emit(code)
     try:
         _walk_to(probe, acc - 1)
     except ValueError:
+        _PRINTED_COLUMNS[key] = None
         return None
-    return tuple(probe.col(probe.ms[0].ptr + 1))
+    column = tuple(probe.col(probe.ms[0].ptr + 1))
+    _PRINTED_COLUMNS[key] = column
+    return column
 
 
 def _confirm(
@@ -1425,8 +1457,9 @@ _Staging = tuple[int, int, int | str, int]
 # fully-essential 32-bit columns, complement-closed, five-input XOR among
 # them.  It is a 0.00057% slice rather than four inputs' quarter, and it
 # ships on the same argument -- a miss falls through, so admitting the arity
-# cannot cost coverage.  See :data:`_TABLE_MAJOR_ARITIES` for the one thing
-# that had to change to make it runnable at all.
+# cannot cost coverage.  The one thing that had to change to make it runnable
+# at all is that :func:`_derived_plans` is asked for the tables it wants
+# rather than for the whole arity.
 #
 # Four inputs is gated on measurement rather than hope: the insert family
 # below reaches 15404 of the 64594 fully-essential four-input tables (23.9%),
@@ -1451,30 +1484,6 @@ _Staging = tuple[int, int, int | str, int]
 # coverage.  ``_stagings`` takes ``n`` for arity-dependent caps; measurement
 # says this arity wants the full ones.
 _STAGED_ARITIES = (2, 3, 4, 5)
-
-# The arities whose plans are derived one table at a time rather than for the
-# whole arity at once.  This is a *spelling* of the same enumeration, not a
-# different search: :func:`_derived_plans` runs identical loops in identical
-# order either way, and only the set it looks its printed columns up in
-# changes.
-#
-# Five inputs is here because the whole-arity spelling is not merely slow at
-# that arity but impossible: it pre-builds a dict over all ``2 ** (2 ** n)``
-# tables, and ``2**32`` entries will not be built.  Asking for one table and
-# its complement makes that dict two entries.
-#
-# The cost this trades into is real and worth stating: at ``n <= 4`` the
-# enumeration is paid once per process and every table after the first is
-# free, while here it is paid *per table*.  Measured through
-# :func:`_derive_staging` rather than through a harness that merely resembles
-# it: a random fully-essential five-input table misses in 143.0 seconds,
-# which is the full sweep to the caps and so the worst case.
-#
-# A table the family *reaches* stops where it lands and costs far less --
-# 3.7s for five-input XOR, 0.6s for five-input AND, both early in the
-# enumeration.  So the arity's headline cost is the miss, and quoting it as
-# what every five-input table pays would overstate it by two orders.
-_TABLE_MAJOR_ARITIES = (5,)
 
 # How far the enumeration runs.  Both caps are the measured maximum over
 # every table plus a margin, not guesses: sweeping to a bracket count of 30
@@ -1596,34 +1605,31 @@ def _replay(truth_table: str, n: int, plan: _Staging) -> str | None:
 
 
 @cache
-def _derived_plans(
-    n: int, targets: tuple[str, ...] | None = None
-) -> dict[str, _Staging]:
-    """Derive a staging for every table at this arity, in one pass.
+def _derived_plans(n: int, targets: tuple[str, ...]) -> dict[str, _Staging]:
+    """Derive a staging for the wanted tables, in one pass of the enumeration.
 
-    The whole arity is done at once because a staging is expensive to *build*
-    and cheap to *test against a table*: the embed, the bracket run and the
-    endgame do not depend on which table is wanted, and only the comparison
-    at the very end does.  So the loops run staging-major -- one embed per
-    ``(separator, settle)``, the bracket run extended one ``[`` at a time
-    rather than rebuilt, and the endgame emitted once per
-    ``(k, accumulator, read, orientation)`` -- and each printed column is
-    looked up among the tables still wanting one.
-
-    Doing it table-major instead re-derives the same stagings once per table
-    and costs minutes rather than seconds, which is what an earlier version
-    of this did.  The result is identical either way: a table is assigned the
-    first staging in :func:`_stagings` order that prints it.
+    A staging is expensive to *build* and cheap to *test against a table*: the
+    embed, the bracket run and the endgame do not depend on which table is
+    wanted, and only the comparison at the very end does.  So the loops run
+    staging-major -- one embed per ``(separator, settle)``, the bracket run
+    extended one ``[`` at a time rather than rebuilt, and the endgame emitted
+    once per ``(k, accumulator, read, orientation)`` -- and each printed column
+    is looked up among the tables still wanting one.
 
     ``targets`` narrows *what is being looked for* without changing the
-    enumeration at all -- the same loops, the same order, the same first-hit
-    rule.  It exists because the whole-arity spelling above cannot run at
-    five inputs: it pre-builds ``wanted`` over all ``2 ** (2 ** n)`` tables,
-    which is ``2**32`` entries at ``n == 5``.  Passing the one table (and its
-    complement) makes ``wanted`` a two-entry dict, so the arity becomes
-    reachable at the cost of paying the enumeration per table rather than
-    once.  ``None`` keeps the whole-arity behaviour, and ``n <= 4`` is
-    unchanged table for table.
+    enumeration: the same loops, the same order, the same first-hit rule.  A
+    table is assigned the first staging in :func:`_stagings` order that prints
+    it, whatever else was asked for alongside it.
+
+    This used to offer a whole-arity spelling as well, which pre-built
+    ``wanted`` over all ``2 ** (2 ** n)`` tables so that one pass answered the
+    entire arity.  That could not run at five inputs -- ``2**32`` entries --
+    and it is no longer worth its place below five either: what made it faster
+    was deriving each column once, and :func:`_printed_column` now memoises
+    exactly that, so asking per table costs what asking for the arity did.
+    Measured across the whole suite, the two spellings finish within a second
+    of each other (105.1s against 104.2s), so the narrower one is the only one
+    kept.
 
     Returns a mapping from truth table to staging.  A table that no staging
     reaches is simply absent, so the caller falls through to the searches.
@@ -1635,13 +1641,8 @@ def _derived_plans(
     # share a staging, so both spellings map to their own table and whichever
     # is reached first assigns both.
     wanted: dict[tuple[int, ...], list[str]] = {}
-    if targets is None:
-        for r in range(2 ** (2**n)):
-            table = format(r, f"0{2**n}b")
-            wanted.setdefault(tuple(int(c) for c in table), []).append(table)
-    else:
-        for table in targets:
-            wanted.setdefault(tuple(int(c) for c in table), []).append(table)
+    for table in targets:
+        wanted.setdefault(tuple(int(c) for c in table), []).append(table)
     remaining = sum(len(tables) for tables in wanted.values())
 
     found: dict[str, _Staging] = {}
@@ -1718,6 +1719,17 @@ def _derived_plans(
                 if claim(staged, suffix, (sep_index, settle)):
                     return found
     return found
+
+
+def _clear_derived_plans(
+    _wrapped: Callable[[], None] = _derived_plans.cache_clear,
+) -> None:
+    """Clear the plan cache and the derived columns it shares work with."""
+    _wrapped()
+    _PRINTED_COLUMNS.clear()
+
+
+_derived_plans.cache_clear = _clear_derived_plans  # type: ignore[method-assign]
 
 
 # The arities whose enumeration is worth screening before it is run.  Only
@@ -1912,13 +1924,10 @@ def _derive_staging(truth_table: str, n: int) -> _Staging | None:
     # to fail.
     if not _span_admits(truth_table, n):
         return None
-    if n in _TABLE_MAJOR_ARITIES:
-        # The whole-arity dict cannot be built here, so ask for this table
-        # and its complement only.  Both are passed because they share a
-        # staging and whichever the enumeration reaches first assigns it.
-        plan = _derived_plans(n, (truth_table, complement)).get(truth_table)
-    else:
-        plan = _derived_plans(n).get(truth_table)
+    # Ask for this table and its complement only.  Both are passed because
+    # they share a staging and whichever the enumeration reaches first
+    # assigns it.
+    plan = _derived_plans(n, (truth_table, complement)).get(truth_table)
     if plan is not None:
         return plan
     return _rescue(truth_table, n)
@@ -1956,14 +1965,16 @@ def _flipped_plans(n: int) -> dict[str, _Flipped]:
     Cached, so the sweep is paid by the first four-input table that misses
     the name-order enumeration, and every later one reads its answer off.
     """
-    # What the enumeration already places is read off its own cached
-    # whole-arity pass rather than asked table by table: this is the same
-    # dict :func:`_derive_staging` consults, so "missed" here means exactly
-    # what it means there.
-    placed = _derived_plans(n)
+    # What the enumeration already places is read off one pass that is handed
+    # every table at the arity, rather than asked table by table: this is the
+    # same enumeration :func:`_derive_staging` consults one table at a time,
+    # so "missed" here means exactly what it means there.  Sixteen thousand
+    # entries is affordable where the five-input equivalent (``2**32``) is
+    # not, and this function is four-input only.
+    every = tuple(format(value, f"0{2**n}b") for value in range(2 ** (2**n)))
+    placed = _derived_plans(n, every)
     wanted: dict[tuple[int, ...], list[str]] = {}
-    for value in range(2 ** (2**n)):
-        table = format(value, f"0{2**n}b")
+    for table in every:
         if table in placed:
             continue
         wanted.setdefault(tuple(int(b) for b in table), []).append(table)
@@ -2127,7 +2138,7 @@ def _lift(template: str, essential: list[int], n: int) -> str:
 
 
 @cache
-def minifuck(truth_table: str) -> str:
+def _solve(truth_table: str) -> str:
     """Build a Minifuck template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -2155,7 +2166,7 @@ def minifuck(truth_table: str) -> str:
     deterministic in ``truth_table`` and the result is an immutable string,
     so repeat calls are free either way.
     """
-    n = _validate_truth_table(truth_table)
+    n = _validate_shape(truth_table)
     want = tuple(int(c) for c in truth_table)
 
     # A table that ignores some of its inputs is a *smaller* table wearing
@@ -2186,7 +2197,7 @@ def minifuck(truth_table: str) -> str:
             reconverged = _reconverged(truth_table, essential, n)
             if reconverged is not None:
                 return reconverged
-        inner = minifuck(_project(truth_table, essential, n))
+        inner = _solve(_project(truth_table, essential, n))
         return _lift(inner, essential, n)
 
     # At most one essential input means a constant or a (negated) projection,
@@ -2249,9 +2260,17 @@ def minifuck(truth_table: str) -> str:
     # Last, and only if everything cheaper failed: park the pointer on the
     # answer as part of what is searched for, so no walk intervenes between
     # producing the column and reading it -- a walk back would re-cross, and
-    # so change, that very cell.  This is the most expensive route, and it
-    # earns its place at n == 2 (it is the only one reaching the XOR family)
-    # while contributing no hits at all in an n == 3 sample, so it goes last.
+    # so change, that very cell.  This is the most expensive route, so it goes
+    # last.
+    #
+    # It used to be justified as the only route reaching the XOR family at
+    # n == 2.  That is no longer true and has not been since the stagings
+    # landed: the algorithmic prefix alone builds all 16 two-input tables and
+    # all 256 three-input ones, ``0110`` and ``1001`` among them, verified
+    # row by row on the interpreter.  No search of any kind runs below four
+    # inputs now, so what this stage is worth is a question about the four-
+    # input residue -- the 4048 tables (6.3%) the staging family misses --
+    # and that has not been measured.
     for sep in _SCAN_SEPS:
         for code, _cell in _find_parked(
             _embed(n, settle=_SETTLE, sep=sep),
@@ -2269,3 +2288,27 @@ def minifuck(truth_table: str) -> str:
                     return hit.template()
 
     raise ValueError(f"the Minifuck boolean generator could not build {truth_table!r}")
+
+
+def minifuck(truth_table: str) -> str:
+    """Build a Minifuck template for the given truth table.
+
+    The construction is :func:`_solve`; this is the public entry, and the
+    difference is the arity check.  ``_solve`` accepts a *nullary* table
+    because it recurses into itself after projecting a table onto its
+    essential inputs, and a constant table projects to a single entry --
+    six such calls happen while building the 276 tables up to three inputs.
+    A one-entry table is not a boolean function of any input, though, so it
+    is refused at the API the way every other generator refuses it.
+    """
+    _validate_truth_table(truth_table)
+    return _solve(truth_table)
+
+
+# The construction's cache and its undecorated body live on ``_solve`` now,
+# but tests and callers reach for them through the public name: keep
+# ``cache_clear``/``cache_info`` and ``__wrapped__`` here so splitting the
+# arity check off did not move the surface.
+minifuck.cache_clear = _solve.cache_clear  # type: ignore[attr-defined]
+minifuck.cache_info = _solve.cache_info  # type: ignore[attr-defined]
+minifuck.__wrapped__ = _solve.__wrapped__  # type: ignore[attr-defined]

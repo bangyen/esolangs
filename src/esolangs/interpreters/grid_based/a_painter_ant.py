@@ -84,8 +84,17 @@ class _Machine:
     generator emits is exactly such a cycle.
     """
 
-    def __init__(self, code: str) -> None:
-        """Validate ``code`` and reset the machine to the origin."""
+    def __init__(
+        self,
+        code: str,
+        io: IO | None = None,  # noqa: ARG002 - see ``run``
+    ) -> None:
+        """Validate ``code`` and reset the machine to the origin.
+
+        ``io`` is accepted and ignored: the language writes only the final
+        render, which :func:`run` prints, and taking the parameter anyway
+        lets every caller build a machine the same way.
+        """
         self.prog = "".join(c for c in code if not c.isspace())
         for c in self.prog:
             if c not in _INSTRUCTIONS:
@@ -99,6 +108,19 @@ class _Machine:
     def halted(self) -> bool:
         """The implicit loop never halts; only a repeated state proves a loop."""
         return False
+
+    # The VM's language-shaped view: 2D grid; ip is the instruction cursor, memory the
+    # cell colours.
+
+    @property
+    def memory(self) -> list[int]:
+        """The addressable cells."""
+        return [v for _, v in sorted(self.grid.items())]
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

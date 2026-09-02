@@ -64,6 +64,25 @@ class TestWII2DBasicCommands:
             run_with_timeout(lambda: run(code, IO()))
         assert f.getvalue() == "\x00"
 
+    def test_each_heading_moves_its_own_way(self) -> None:
+        """All four headings are distinct, and each is the one it names.
+
+        Only ``>`` was ever driven, so the other three entries of the
+        heading table were free -- a table that repeated a direction, or
+        swapped two, would still pass.  Each program here lays a different
+        digit in the path of one heading, so the printed byte says which
+        way the pointer actually went.
+        """
+        for code, expected in (
+            ([">3~.", "!  "], "\x03"),
+            (["~4<.", "  ! "], "\x04"),
+            ([".", "~", "5", "^", "!"], "\x05"),
+            (["v", "6", "!", "~", "."], "\x06"),
+        ):
+            with redirect_stdout(io.StringIO()) as f:
+                run_with_timeout(lambda c=code: run(c, IO()))
+            assert f.getvalue() == expected, code
+
     def test_arithmetic_operations(self) -> None:
         """Test arithmetic operations (+-*/s)."""
         # Test increment - move right, increment, output, halt
@@ -193,19 +212,22 @@ class TestWII2DControlFlow:
 
     def test_reverse_horizontal_direction(self) -> None:
         """Test | reversing an east-moving pointer back to the west."""
-        from unittest.mock import patch
+
+        class _Scripted:
+            """Hands out a fixed sequence of turns, one per ``?``."""
+
+            def __init__(self, draws: list[int]) -> None:
+                self._draws = list(draws)
+
+            def randbelow(self, upper: int) -> int:
+                assert upper > 0
+                return self._draws.pop(0)
 
         # ? forced east runs the pointer into | (reverses it west); then ? forced
         # north wraps the pointer down to the halt.
         code = [" ?|.", " !  ", " .  "]
-        with (
-            patch(
-                "esolangs.interpreters.grid_based.wii2d.secrets.randbelow",
-                side_effect=[3, 0],
-            ),
-            redirect_stdout(io.StringIO()) as f,
-        ):
-            run(code, IO())
+        with redirect_stdout(io.StringIO()) as f:
+            run(code, IO(), rng=_Scripted([3, 0]))
         assert f.getvalue() == ""
 
 

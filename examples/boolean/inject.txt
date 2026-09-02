@@ -1,0 +1,30 @@
+i0;
+i0;
+i1;
+i1;
+readto i0
+readto i1
+skipq i0 zero
+b0_1;
+skipq i1 zero
+b1_0;
+send one
+skip
+e2;
+b1_0;
+send zero
+skip
+e1;
+b0_1;
+send zero
+skip
+e0;
+e0;
+e1;
+e2;
+zero;
+0
+zero;
+one;
+1
+one;

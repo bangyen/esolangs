@@ -126,6 +126,7 @@ middle, or no ``( )`` to start from) raise :class:`ValueError`.
 """
 
 import sys
+from typing import Literal, assert_never
 
 from esolangs.interpreters.io import IO
 
@@ -136,10 +137,34 @@ _LEFT = (0, -1)
 _RIGHT = (0, 1)
 _HEADINGS = (_RIGHT, _DOWN, _LEFT, _UP)
 
+# The spellings, as a type.  ``_parse`` is the only writer of ``self.nodes``
+# and it copies out of :data:`_NODES`, so every spelling the interpreter ever
+# dispatches on is one of these -- which lets ``_execute`` end in an ``else``
+# that mypy narrows to the last one, rather than a branch nothing can take.
+# Adding a node means adding it here as well as to ``_NODES``, or the tuple
+# stops type-checking.
+_Spelling = Literal[
+    "(( ))",
+    "\\[ ]/",
+    "/[ ]\\",
+    "\\{ }/",
+    "/{ }\\",
+    "( )",
+    "[ ]",
+    "{ ]",
+    "[ }",
+    "{ }",
+    "< >",
+    "/ /",
+    "\\ \\",
+    "< ]",
+    "[ >",
+]
+
 # Node spellings, longest first: ``\[ ]/`` contains ``[ ]``, and ``[ }``,
 # ``[ >`` and ``[ ]`` share a prefix, so a shorter spelling must never be
 # matched inside a longer one.
-_NODES = (
+_NODES: tuple[_Spelling, ...] = (
     "(( ))",
     "\\[ ]/",
     "/[ ]\\",
@@ -254,7 +279,7 @@ class _Machine:
         # (row, col) -> (node spelling, col of the node's first character); every
         # cell a node covers maps to that node, so a pointer arriving at any
         # column of the box executes it.
-        self.nodes: dict[tuple[int, int], tuple[str, int]] = {}
+        self.nodes: dict[tuple[int, int], tuple[_Spelling, int]] = {}
         self._parse()
 
         self.deques: dict[int, list[int]] = {}
@@ -437,6 +462,35 @@ class _Machine:
         """Whether every pointer has stopped."""
         return all(p.done for p in self.pointers)
 
+    # The VM's language-shaped view.
+
+    @property
+    def ip(self) -> tuple[int, ...] | None:
+        """The first pointer still running, or ``None`` once none is.
+
+        A Flowchart program runs several pointers at once, so there is no
+        single cursor to report: this is the first live one, as
+        ``(row, col, drow, dcol)`` with the heading flattened, and ``None``
+        once every pointer has stopped on an ``(( ))``.
+        """
+        for pointer in self.pointers:
+            if not pointer.done:
+                return (pointer.row, pointer.col, *pointer.d)
+        return None
+
+    @property
+    def memory(self) -> list[int]:
+        """The shared tape of deques, concatenated in index order.
+
+        This is what the pointers read and write between them.
+        """
+        return [v for key in sorted(self.deques) for v in self.deques[key]]
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (
@@ -615,6 +669,12 @@ class _Machine:
             p.deque -= 1
         elif spelling == "[ >":
             p.deque += 1
+        else:
+            # Unreachable, and checked to be: ``_Spelling`` is exhausted by
+            # the arms above, so mypy narrows this to ``Never``.  A node added
+            # to the type but not dispatched here fails the type check rather
+            # than silently falling through to ``_leave``.
+            assert_never(spelling)
 
         self._leave(p)
 

@@ -3,21 +3,8 @@
 import itertools
 import re
 import sys
-from dataclasses import dataclass
 
-
-@dataclass
-class _Routine:
-    """One of the four helper subroutines a BFStack program may call.
-
-    ``used`` records that the program calls it at all (so its body is
-    emitted), and ``looped`` that some call site passed a repeat count (so
-    the body needs the counter loop around it).
-    """
-
-    label: str
-    used: bool = False
-    looped: bool = False
+from esolangs.compilers._riscv_common import Routine
 
 
 def parse(code: str) -> list[tuple[str, int]]:
@@ -82,10 +69,10 @@ def comp(code: str) -> str:
     )
 
     ins = {
-        ">": _Routine("right"),
-        "<": _Routine("left"),
-        ".": _Routine("output"),
-        ",": _Routine("input"),
+        ">": Routine("right"),
+        "<": Routine("left"),
+        ".": Routine("output"),
+        ",": Routine("input"),
     }
 
     for char, num in tokens:

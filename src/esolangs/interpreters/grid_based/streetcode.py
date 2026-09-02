@@ -92,7 +92,7 @@ Runtime error contract:
 
 import sys
 from collections.abc import Callable, Iterator
-from typing import Literal, NamedTuple, NewType
+from typing import Literal, NamedTuple, NewType, assert_never
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -1359,6 +1359,36 @@ class _Machine:
         """Whether the car has halted."""
         return self._done
 
+    # The VM's language-shaped view.
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        """The car's ``(row, col, heading)``.
+
+        The heading is spelled ``"N"``/``"E"``/``"S"``/``"W"`` internally and
+        reported as its index into that order, so ``ip`` stays all-integer
+        like every other 2D language's.
+        """
+        return (self.row, self.col, "NESW".index(self.heading))
+
+    @property
+    def memory(self) -> list[int]:
+        """The tape's cells, densified.
+
+        The tape is a sparse dict keyed by CP, which never goes negative --
+        ``LEFT`` at zero halts -- so this is the dense prefix up to the
+        highest cell touched.
+        """
+        cells = self.cells
+        if not cells:
+            return []
+        return [cells.get(i, 0) for i in range(max(cells) + 1)]
+
+    @property
+    def stack(self) -> list[object]:
+        """No stack in this language."""
+        return []
+
     # Where the car is, as read-only views onto the one record that holds
     # it.  They are reads and not writes on purpose: a caller that wants
     # to *move* the car states the whole position at once through
@@ -2007,9 +2037,18 @@ class _Machine:
                 raise HaltError
             self._state = turned
             return
-        # "NOP" is the remaining case: ``C``, space, and every character
-        # the spec does not define all fold to it (see ``_Op``), so there
-        # is nothing to do and nothing left to test for.
+        elif op == "NOP":
+            # ``C``, space, and every character the spec does not define all
+            # fold to NOP (see ``_Op``), so there is nothing to do.  Spelling
+            # it out rather than falling through lets the ``else`` below be
+            # the type checker's exhaustiveness proof.
+            pass
+        else:
+            # Unreachable, and checked to be: ``HALT`` returned above and the
+            # arms exhaust the rest of ``_Op``, so mypy narrows this to
+            # ``Never``.  A glyph added to ``_Op`` without an arm here fails
+            # the type check rather than silently behaving as a no-op.
+            assert_never(op)
 
         # Where the car goes next was worked out for every reachable state
         # at construction, so the ordinary case is a dictionary lookup

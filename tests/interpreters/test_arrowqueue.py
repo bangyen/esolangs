@@ -110,7 +110,7 @@ class TestMachineState:
         separates a strict bound from a non-strict one.
         """
         machine = _Machine(["...", "..."])
-        machine.row, machine.col = 2, 0
+        machine.place(2, 0)
         machine.step()
         assert machine.halted
         assert (machine.row, machine.col) == (2, 0)

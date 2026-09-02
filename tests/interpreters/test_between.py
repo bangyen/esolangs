@@ -82,6 +82,21 @@ class TestOperations:
     def test_multiply(self) -> None:
         assert run_and_capture("||3|*|4||p.") == "12"
 
+    def test_operands_on_both_sides_may_be_variables(self) -> None:
+        """Either side of an operation can be a name needing resolution.
+
+        Elsewhere at least one operand is a literal, so the lookup that
+        turns a name into a value was never exercised on both sides of the
+        same operation -- and an operand left unresolved is not a value of
+        any usable type.  Each operation is driven with variables in both
+        slots.
+        """
+        decl = "'x'v.\n[x]s|3|\n'y'v.\n[y]s|2|\n"
+        assert run_and_capture(decl + "|[x]*[y]|p.") == "6"
+        assert run_and_capture(decl + "|[x]+[y]|p.") == "5"
+        assert run_and_capture(decl + "|6|f([x]=[y])\n'no'p.\n'yes'p.") == "noyes"
+        assert run_and_capture(decl + "|6|f([x]>[y])\n'no'p.\n'yes'p.") == "yes"
+
     def test_multiply_non_integer_halts(self) -> None:
         with pytest.raises(HaltError, match="two integers"):
             run_and_capture("'a'*|2|")
@@ -184,6 +199,18 @@ class TestParsing:
     def test_apostrophe_escape(self) -> None:
         assert run_and_capture("'can''t'p.") == "can't"
 
+    def test_a_string_that_is_only_an_escaped_apostrophe(self) -> None:
+        """``''''`` is one apostrophe, and the tightest case for the scan.
+
+        ``'can''t'`` has letters on both sides of the pair, so the scan
+        reaches it already inside the literal and leaves it with more to
+        read.  Here the pair is the whole content: the scan meets it
+        immediately after the opening quote, and mistaking either half for
+        the terminator ends the string early.
+        """
+        assert run_and_capture("''''p.") == "'"
+        assert run_and_capture("''p.") == ""
+
     def test_nested_pipe_expression(self) -> None:
         code = "'v'v.\n[v]s|[v]+|1||\n[v]p."
         assert run_and_capture(code) == "1"
@@ -227,6 +254,18 @@ class TestParsing:
         with pytest.raises(ValueError, match="unterminated"):
             run_and_capture("'abc")
 
+    @pytest.mark.parametrize("code", ["|.+.", "(.+.", "|.=.", "(.=."])
+    def test_malformed_group_running_to_end_of_line(self, code: str) -> None:
+        """A group whose expression ends the line has no closer left to read.
+
+        The inner expression consumes the whole line, so the index of the
+        closer is one past the end -- the bound has to be checked before
+        the character is, or the miss reads off the string and comes back
+        as an ``IndexError`` instead of a rejection.
+        """
+        with pytest.raises(ValueError, match="unbalanced"):
+            run_and_capture(code)
+
     def test_malformed_trailing_characters(self) -> None:
         with pytest.raises(ValueError, match="trailing"):
             run_and_capture("|1|p.x")
@@ -269,11 +308,48 @@ class TestErrors:
         with pytest.raises(ValueError, match="unknown operation"):
             run_and_capture("|1|q.")
 
+    # Every rejection the interpreter can raise, paired with the program
+    # that raises it.  The assertions elsewhere in this file use
+    # ``pytest.raises(match=...)``, which is a *substring* search and so
+    # passes on any message the real one contains -- these compare the
+    # whole string, which is what pins the wording down.
+    MESSAGES: ClassVar[list[tuple[str, str]]] = [
+        ("(True)p.", "p cannot print this value"),
+        ("|1|v.", "variable name must be a string"),
+        ("|1|s|2|", "s needs a variable on the left"),
+        ("'abc'c.", "c needs a string of numerals or an integer"),
+        ("|1|+'a'", "+ needs two integers or two strings"),
+        ("'a'*|2|", "* needs two integers"),
+        ("|1|>'a'", "> needs two integers"),
+        ("|1|r|2|", "r needs two conditions"),
+        ("|1|n.", "n needs a condition"),
+        ("'a'f.", "goto target must be an integer"),
+        ("|1|f|2|", "goto condition must be a condition"),
+        ("|1|i.", "i needs a variable on the left"),
+        ("[nope]p.", "undeclared variable 'nope'"),
+        ("'x'v.\n[x]s|1|\n|[x]=|1||p.", "expected an integer expression"),
+        ("'x'v.\n[x]s'5'\n([x]c.)p.", "expected a condition expression"),
+        ("'a'p", "missing argument"),
+        ("|1|", "missing operation"),
+        ("|1|q|2|", "unknown operation 'q'"),
+        ("a|1|", "invalid argument 'a'"),
+        ("|[a]+[b|p.", "unbalanced '['"),
+        ("'abc", "unterminated string literal"),
+        ("|1|p.x", "trailing characters"),
+        ("|1|p|2|", "operation 'p' takes no second argument"),
+    ]
 
-def test_registered_interpreter_runs() -> None:
-    import esolangs
+    @pytest.mark.parametrize(("code", "message"), MESSAGES)
+    def test_rejection_message_is_exact(self, code: str, message: str) -> None:
+        """Each rejection says exactly what it says, start to end."""
+        with pytest.raises((HaltError, ValueError)) as caught:
+            run_and_capture(code)
+        assert str(caught.value) == message
 
-    assert esolangs.run("Between", "'Hi'p.") == "Hi"
+
+def test_a_whole_program_runs_end_to_end() -> None:
+    """The shortest program that prints: one string, one ``p``, and a fall-off."""
+    assert run_and_capture("'Hi'p.") == "Hi"
 
 
 class TestStepMachine:

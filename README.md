@@ -121,7 +121,7 @@ just test
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 61 languages</summary>
+<summary>Show all 62 languages</summary>
 
 The full capability matrix (generators, cross-check and boolean support, examples) is in [`docs/languages.md`](docs/languages.md).
 
@@ -212,6 +212,7 @@ Languages that don't fit into the above categories.
 - [Container](https://esolangs.org/wiki/Container) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/container.py))
 - [Fargo](https://esolangs.org/wiki/Fargo) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/fargo.py))
 - [Forbin](https://esolangs.org/wiki/Forbin) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/forbin.py))
+- [Inject](https://esolangs.org/wiki/Inject) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/inject.py))
 - [Lamfunc](https://esolangs.org/wiki/Lamfunc) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/lamfunc.py))
 - [Suptiftam](https://esolangs.org/wiki/Suptiftam) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/suptiftam.py))
 - [ZTOALC L](https://esolangs.org/wiki/ZTOALC_L) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/ztoalc_l.py))
@@ -261,7 +262,7 @@ interpreters, so they are not listed above:
 <details>
 <!-- COMPILERS:START -->
 
-<summary>Show all 14 compilers</summary>
+<summary>Show all 16 compilers</summary>
 
 Compilers that translate esoteric languages to other target languages.
 
@@ -270,6 +271,7 @@ Compilers that translate esoteric languages to other target languages.
 - [AddSubJump](https://esolangs.org/wiki/AddSubJump)
 - [BF-PDA](https://esolangs.org/wiki/BF-PDA)
 - [BFStack](https://esolangs.org/wiki/BFStack)
+- [CV(N)(C)](https://esolangs.org/wiki/CV(N)(C))
 - [Collatz Multiverse](https://esolangs.org/wiki/Collatz_Multiverse)
 - [Container](https://esolangs.org/wiki/Container)
 - [Decleq](https://esolangs.org/wiki/Decleq)
@@ -277,6 +279,7 @@ Compilers that translate esoteric languages to other target languages.
 - [Forþ](https://esolangs.org/wiki/Forþ)
 - [Home Row](https://esolangs.org/wiki/Home_Row)
 - [Jaune](https://esolangs.org/wiki/Jaune)
+- [MyScript](https://esolangs.org/wiki/MyScript)
 - [RAM0](https://esolangs.org/wiki/RAM0)
 - [S*bleq](https://esolangs.org/wiki/S*bleq)
 - [Suffolk](https://esolangs.org/wiki/Suffolk)

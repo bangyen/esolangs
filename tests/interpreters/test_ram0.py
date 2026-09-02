@@ -428,7 +428,7 @@ class TestDumpFormat:
         from esolangs.interpreters.register_based.ram0 import _Machine
 
         machine = _Machine("A", ScriptedIO())
-        assert machine._dumped is False  # noqa: SLF001
+        assert machine.dumped is False
         while not machine.halted:
             machine.step()
         for _ in range(3):

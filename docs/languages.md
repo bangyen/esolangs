@@ -8,7 +8,7 @@ Python means an in-repo interpreter under `esolangs.interpreters`;
 Cross-check means an implementation in `extra/` that runs as a
 standalone program (Lean or RISC-V assembly), used to
 differentially verify the Python interpreter.  The Boolean
-column marks the boolean-function generators; the no-input languages (Back, BIO, NoComment, BF-PDA, Lamfunc, Bitdeque, RAM0, Minsky Swap, Eval, ArrowQueue, A Painter Ant, WII2D) use parameterized generators (the harness substitutes input bits into a template).  Minifuck and %^2^-1 use parameterized generators too, for a different reason: both *have* an input command, but neither can branch on what it reads, so their reading models are walled (the %^2^-1 wall is proved in Lean) and embedding is what reaches the two-input tables.  %^2^-1 goes further: a subcube cascade builds every conjunction or disjunction of literals at any arity, a composed-affine search adds the tables that are no subcube, a threshold ladder adds the ones neither reaches by letting the over-3003 reset read a weighted sum, and a band construction makes three inputs **total** -- all 256 -- by printing with `e` (`chr(acc & 0xFF)`), so a row need only be congruent to 48 or 49 mod 256 rather than exactly 0 or 1, which lets the reset be used once per run of the table (see `docs/limitations.md`).
+column marks the boolean-function generators; the no-input languages (Back, BIO, NoComment, BF-PDA, Lamfunc, Bitdeque, RAM0, Minsky Swap, Eval, ArrowQueue, A Painter Ant, WII2D) use parameterized generators (the harness substitutes input bits into a template).  Minifuck and %^2^-1 use parameterized generators too, for a different reason: both *have* an input command, but neither can branch on what it reads, so their reading models are walled (the %^2^-1 wall is proved in Lean) and embedding is what reaches the two-input tables.  %^2^-1 goes further: a subcube cascade builds every conjunction or disjunction of literals at any arity, a composed-affine search adds the tables that are no subcube, a threshold ladder adds the ones neither reaches by letting the over-3003 reset read a weighted sum, a deep band makes three and four inputs **total** -- all 256 and all 65536 -- by printing with `e` (`chr(acc & 0xFF)`), so a row need only be congruent to 48 or 49 mod 256 rather than exactly 0 or 1, and a fold closes **five inputs** by planning relocations instead of reading the table off a weighting (see `docs/limitations.md`).
 
 | Language | Text generator | Python | Cross-check | Boolean | Compiler |
 | --- | :---: | :---: | :---: | :---: | :---: |
@@ -29,7 +29,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | Bitdeque |  | yes |  | yes |  |
 | BrainIf | yes | yes |  | yes |  |
 | COD |  | yes |  | yes |  |
-| CV(N)(C) | yes | yes |  | yes |  |
+| CV(N)(C) | yes | yes |  | yes | yes |
 | Circlefuck | yes | yes |  | yes |  |
 | Circuit Diagram |  | yes |  | yes |  |
 | Clockwise | yes | yes |  | yes |  |
@@ -46,13 +46,14 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | Forþ | yes | yes |  | yes | yes |
 | Grapheme |  | yes |  | yes |  |
 | Home Row | yes | yes |  | yes | yes |
+| Inject |  | yes |  | yes |  |
 | Jaune |  | yes |  | yes | yes |
 | Lamfunc |  | yes |  | yes |  |
 | LaserFuck | yes | yes |  | yes |  |
 | Minifuck | yes | yes |  | yes |  |
 | Minsky Swap |  | yes | yes | yes |  |
 | Modulous | yes | yes |  | yes |  |
-| MyScript | yes | yes |  | yes |  |
+| MyScript | yes | yes |  | yes | yes |
 | Nevermind | yes | yes |  | yes |  |
 | NoComment | yes | yes | yes | yes |  |
 | Painfuck | yes | yes |  | yes |  |

@@ -120,8 +120,12 @@ ignore = [
 # holds one CV(N)(C) program in its per-language table.
 "src/esolangs/interpreters/other/cvnc.py" = ["RUF001", "RUF002", "RUF003"]
 "src/esolangs/tools/boolean/cvnc.py" = ["RUF001", "RUF002", "RUF003"]
+"src/esolangs/compilers/cvnc.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/interpreters/test_cvnc.py" = ["D", "N802", "RUF001", "RUF002", "RUF003"]
 "tests/samples.py" = ["D", "N802", "RUF001", "RUF002", "RUF003"]
+# The compiler suite is otherwise language-agnostic; its CV(N)(C) class
+# spells IPA programs for the same reason the files above do.
+"tests/compilers/test_assembly_compilers.py" = ["RUF001", "RUF002", "RUF003"]
 
 [tool.mypy]
 strict = true
@@ -235,4 +239,17 @@ exclude_lines = [
     # Imports guarded by TYPE_CHECKING exist for the type checker and are
     # never executed, so they can only ever read as uncovered.
     "if TYPE_CHECKING:",
+    # An `assert_never` arm is the type checker's exhaustiveness proof: mypy
+    # only accepts it where it has narrowed the value to `Never`, so reaching
+    # it at run time is impossible by the same check that admits it.  Adding a
+    # case without dispatching it fails the type check instead.
+    "assert_never",
+]
+
+# A condition that is always true where it stands, but whose body is live and
+# must stay measured.  `exclude_lines` is the wrong tool for these: it drops
+# the whole block, hiding real code.  `partial_branches` retires only the
+# untaken arc.
+partial_branches = [
+    "pragma: no branch",
 ]
