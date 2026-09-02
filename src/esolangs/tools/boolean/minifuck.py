@@ -34,8 +34,8 @@ makes a table build, and that choice is **derived, not stored**: the product
 is small enough to walk, so :func:`_derive_staging` enumerates it in a fixed
 order and takes the first entry that prints.  Each candidate is run and its
 rows compared against the table, so nothing is accepted on a recorded claim.
-The tables whose suffix no bracket run spells are answered by a second
-family rather than by a stored answer; see :func:`_rescue`.
+The one pair whose suffix no bracket run spells is answered by the
+sculpted route below, which is why no third suffix family is carried here.
 
 The selection rule is the load-bearing part, and it is why the enumeration
 tests rather than predicts: the accumulator that works is the one whose
@@ -58,9 +58,9 @@ for itself.  So the first three-input table costs the arity and the other
 Four inputs is *partial* and staged anyway.  The name-order enumeration
 reaches 15404 of the 64594 fully essential four-input tables (23.9%),
 four-input XOR among them.  What buys those is one widening of the suffix --
-a single ``<`` inside the bracket run, enumerated after every pure run -- and
-the family that widening generalises is :func:`_rescue`'s, one insert
-shallower.
+a single ``<`` inside the bracket run, enumerated after every pure run.  A
+two-insert family one step wider existed here and was removed: it served a
+single three-input pair that the sculpted route now builds.
 Partial coverage is worth gating on because a miss is not a failure: it falls
 through to the searches below, which is why those remain -- a missing staging
 degrades rather than raises.  What a four-input table does pay for is the
@@ -123,7 +123,6 @@ import re
 from collections import deque
 from collections.abc import Callable, Iterator
 from functools import cache
-from itertools import combinations_with_replacement
 
 from esolangs.tools.boolean.helpers import (
     _validate_shape,
@@ -1599,7 +1598,8 @@ def _insert_suffixes() -> Iterator[str]:
     the pure run that that suffix proves necessary: it interleaves ``<`` into
     its bracket run, so a family no wider than "the same run with a ``<`` in
     it" was already known to reach columns no ``'[' * k`` reaches.  A second
-    ``<`` is what :func:`_rescue` adds, for the tables even this misses.
+    A second ``<`` reaches further still; that family was removed once the
+    sculpted route covered the one pair it served.
     What was not known, and what
     the measurement settled, is how *many*: at four inputs the pure runs
     reach 1650 fully-essential columns and this family reaches 15404.
@@ -1645,31 +1645,6 @@ def _stagings(n: int) -> Iterator[_Staging]:
             for suffix in _insert_suffixes():
                 for acc in range(9, _MAX_ACC + 1):
                     yield sep_index, settle, suffix, acc
-
-
-# The arities offered the two-insert family below, and only on a miss.  Three
-# inputs is the arity whose stragglers it closes; the wider arities are left
-# alone deliberately, because a family that stages tables they currently solve
-# another way would change their programs for no coverage they lack.
-_RESCUE_ARITIES = (3,)
-
-
-def _rescue_suffixes() -> Iterator[str]:
-    """Enumerate bracket runs with *two* ``<`` inside, shortest first.
-
-    :func:`_insert_suffixes` is the same idea one ``<`` shallower, and the
-    step from one to two is what the three-input stragglers need: their
-    columns are carried to the read by a suffix that breaks the run twice,
-    which no ``'[' * k`` and no single insert spells.
-
-    Ordered by length and then by the two cut positions from the left, so it
-    is as deterministic as the families it extends.
-    """
-    for k in range(_MAX_BRACKETS + 1):
-        for first, second in combinations_with_replacement(range(k + 1), 2):
-            yield (
-                "[" * first + "<" + "[" * (second - first) + "<" + "[" * (k - second)
-            )
 
 
 def _replay(truth_table: str, n: int, plan: _Staging) -> str | None:
@@ -1947,64 +1922,6 @@ def _span_admits(truth_table: str, n: int) -> bool:
     return any(_in_span(packed, list(b)) for b in _staging_spans(n))
 
 
-@cache
-def _rescue(truth_table: str, n: int) -> _Staging | None:
-    """Derive a two-insert staging for one table, or None if none reaches it.
-
-    This is where the tables the enumeration cannot reach are answered.  It
-    used to be a stored constant: one three-input pair was found by a 29
-    minute search and kept as data because re-deriving it was not affordable.
-    Deriving what the endgame prints rather than printing it to find out made
-    it affordable -- the same pair now falls out of this family in about a
-    quarter of a second -- so the answer is computed and nothing is stored.
-
-    It closes three inputs completely.  Four tables miss the enumeration, and
-    this serves exactly one pair of them -- ``01101101``/``10010010``, the
-    pair that used to be stored.  The other two, ``00100010``/``11011101``,
-    are not essential in all three inputs, so they are projected onto the
-    two-input arity and solved there before this is ever consulted; the
-    family reaches them too, but never has to.
-
-    The order is :func:`_rescue_suffixes` within ``(separator, settle)``,
-    matching the enumeration's own ordering, so which staging a table gets is
-    fixed by that order rather than by a stored answer.  Every candidate is
-    confirmed by a real endgame before it is returned.
-    """
-    if n not in _RESCUE_ARITIES:
-        return None
-    want = tuple(int(c) for c in truth_table)
-    complement = _complement(want)
-    for sep_index in range(len(_SEPS)):
-        for settle in (0, 1):
-            base = _embed(n, settle=settle, sep=_SEPS[sep_index])
-            _clamp(base)
-            _walk_to(base, _BASE - 1)
-            for suffix in _rescue_suffixes():
-                staged = base.fork()
-                staged.emit(suffix + "<")
-                _clamp(staged)
-                for acc in range(9, _MAX_ACC + 1):
-                    for cell7 in (0, 1):
-                        derived = _printed_column(staged, acc, cell7)
-                        if derived is None:
-                            continue
-                        for read in _READS:
-                            column = (
-                                derived if read == _READS[1] else _complement(derived)
-                            )
-                            if column not in (want, complement):
-                                continue
-                            if column == want and _confirm(
-                                staged, acc, read, cell7, column
-                            ):
-                                # The terminator is part of the stored
-                                # suffix, because :func:`_replay` emits a
-                                # string suffix verbatim and only appends a
-                                # ``<`` to the bracket *counts*.
-                                return (sep_index, settle, suffix + "<", acc)
-    return None
-
-
 def _derive_staging(truth_table: str, n: int) -> _Staging | None:
     """Return the staging that builds ``truth_table``, or None if none does.
 
@@ -2015,7 +1932,7 @@ def _derive_staging(truth_table: str, n: int) -> _Staging | None:
     program a truth table gets.
 
     A table the enumeration misses gets one more pass at the arities in
-    :data:`_RESCUE_ARITIES`, over the two-insert family.  That pass is
+    the two-insert family that used to sit here.  That pass was
     targeted at the one table rather than folded into the enumeration on
     purpose: run for the whole arity it would sweep 44950 suffixes to
     exhaustion in a measured 159 seconds, hunting columns for tables that
@@ -2034,10 +1951,7 @@ def _derive_staging(truth_table: str, n: int) -> _Staging | None:
     # Ask for this table and its complement only.  Both are passed because
     # they share a staging and whichever the enumeration reaches first
     # assigns it.
-    plan = _derived_plans(n, (truth_table, complement)).get(truth_table)
-    if plan is not None:
-        return plan
-    return _rescue(truth_table, n)
+    return _derived_plans(n, (truth_table, complement)).get(truth_table)
 
 
 # **The flipped-embed pass was here, and it is gone.**  It complemented some
@@ -2524,7 +2438,7 @@ def _solve(truth_table: str) -> str:
     this module costs -- seconds to tens of seconds a table, against
     effectively zero to *run* the program it returns.  Below that nothing
     searches at all: two and three inputs are derived from the staging
-    enumeration and :func:`_rescue`, and all 276 tables up to three inputs
+    enumeration and the sculpted route, and all 276 tables up to three inputs
     build in about three and a half seconds together.  The build is
     deterministic in ``truth_table`` and the result is an immutable string,
     so repeat calls are free either way.
@@ -2572,7 +2486,7 @@ def _solve(truth_table: str) -> str:
 
     # A planned staging is the cheapest route by far, so it goes first.  Two
     # and three inputs are both complete -- the enumeration closes two, and
-    # the enumeration plus :func:`_rescue` closes three -- so no search ever
+    # the enumeration plus the sculpted route closes three -- so nothing ever
     # runs below four inputs.  A miss at a wider arity falls through to the
     # searches below.
     derived = _staged(truth_table, n)

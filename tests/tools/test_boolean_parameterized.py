@@ -2748,7 +2748,6 @@ class TestParameterizedMinifuck:
         from esolangs.tools.boolean.minifuck import (
             _SCAN_SEPS,
             _SEPS,
-            _rescue,
             _stagings,
         )
 
@@ -2759,13 +2758,6 @@ class TestParameterizedMinifuck:
         # past the scanned pair are the whole reason ``_SEPS`` is wider.
         offered = {sep_index for sep_index, *_rest in _stagings(3)}
         assert offered == set(range(len(_SEPS))), offered
-        # ...as must the index the rescue derives for the stragglers that
-        # miss the enumeration, which is the other route to a staging.
-        for key in ("01101101", "10010010"):
-            rescued = _rescue(key, 3)
-            assert rescued is not None, key
-            sep_index, *_rest = rescued
-            assert 0 <= sep_index < len(_SEPS), (key, sep_index)
 
     def test_the_pool_codes_cover_every_route(self) -> None:
         """The fixed codes must serve every route that reaches the endgame.
@@ -3071,8 +3063,8 @@ class TestParameterizedMinifuck:
         The searches are stubbed, so a table that loses its pool fails here
         rather than being rebuilt slowly by a fallback -- with the
         fallthrough open this test would pass on any list at all.
-        ``_rescue`` is stubbed for the same reason, and the two tables only
-        it reaches are skipped: they have no other route, so they would
+        The one pair the two-insert family used to reach is skipped for the
+        same reason it always was: it has no staged route, so it would
         strand under every drop and add a flat 2 to every count.  Three
         inputs, because two is not enough: two of the codes strand nothing
         at ``n == 2`` and 20 and 18 tables at ``n == 3``.
@@ -3099,10 +3091,6 @@ class TestParameterizedMinifuck:
             module._POOL_CODES = new_codes  # noqa: SLF001
             module._derived_plans.cache_clear()  # noqa: SLF001
             module._degenerate_cells.cache_clear()  # noqa: SLF001
-            # ``_rescue`` derives against the pool codes too, so a warm cache
-            # here would answer an ablated list with a staging built from the
-            # full one and hide exactly what this measures.
-            module._rescue.cache_clear()  # noqa: SLF001
             module.minifuck.cache_clear()
 
         original = codes
@@ -3118,13 +3106,6 @@ class TestParameterizedMinifuck:
                 with (
                     patch.object(module, "_find_column", forbidden),
                     patch.object(module, "_find_parked", forbidden),
-                    # ``_rescue`` is a fallthrough like the searches, and a
-                    # live one would let a dropped code look free while
-                    # quietly moving tables onto a 44950-suffix sweep.  It
-                    # returns None rather than raising, so a table that needs
-                    # it strands in the searches exactly as it would have
-                    # before the rescue existed.
-                    patch.object(module, "_rescue", lambda *_a, **_k: None),
                     # ``_mux`` is a fallthrough for the same reason: it
                     # sculpts with whatever pool codes remain, so a live one
                     # would rebuild most of what a dropped code strands and
@@ -3133,11 +3114,11 @@ class TestParameterizedMinifuck:
                 ):
                     for table_int in range(256):
                         table = format(table_int, "08b")
-                        # The two tables only ``_rescue`` reaches have no
-                        # other route by construction, so with it stubbed
-                        # they strand under every drop and would add a flat
-                        # 2 to every count.  What this measures is the pool
-                        # codes, so they are left out.
+                        # This pair has no staged route by construction --
+                        # no bracket run carries its column to the read --
+                        # so it strands under every drop and would add a
+                        # flat 2 to every count.  What this measures is the
+                        # pool codes, so it is left out.
                         if table in ("01101101", "10010010"):
                             continue
                         try:
@@ -3527,9 +3508,13 @@ class TestParameterizedMinifuck:
         test than this one and would catch a broken staging on its own.  What
         this adds is the reason: it pins that the column arrives at the read,
         so a future change that made the printing accidental rather than
-        earned would show up here.  It also covers ``01101101``, which the
-        enumeration misses and :func:`_rescue` derives, so the second route
-        to a staging is held to the same standard as the first.
+        earned would show up here.
+
+        ``01101101`` used to be listed here as the table only the two-insert
+        family reached.  That family is gone and the sculpted route builds
+        the pair instead, so the table has no staging to check -- it is not
+        an omission, and adding it back would assert on a route that no
+        longer produces stagings at all.
         """
 
         from esolangs.tools.boolean.minifuck import (
@@ -3549,7 +3534,7 @@ class TestParameterizedMinifuck:
             },
             3: {
                 key: _derive_staging(key, 3)
-                for key in ("00000001", "01111111", "01101101", "00010111")
+                for key in ("00000001", "01111111", "00010111")
             },
         }
         for n, plan in sorted(plans.items()):
@@ -4916,11 +4901,6 @@ class TestMinifuckArityGates:
     @staticmethod
     def module():
         return importlib.import_module("esolangs.tools.boolean.minifuck")
-
-    def test_rescue_declines_outside_its_arity(self) -> None:
-        m = self.module()
-        assert 2 not in m._RESCUE_ARITIES  # noqa: SLF001
-        assert m._rescue("0110", 2) is None  # noqa: SLF001
 
     def test_staging_spans_skips_the_insert_suffixes(self) -> None:
         """Two inputs are not an insert arity, so only the bracket runs are
