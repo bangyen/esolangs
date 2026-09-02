@@ -26,6 +26,9 @@ and ``halted`` is true once the pointer reaches 1.
 
 import sys
 
+from collections.abc import Mapping
+from dataclasses import dataclass
+
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
@@ -49,6 +52,231 @@ def _freeze(value: Value) -> object:
     if isinstance(value, list):
         return tuple(_freeze(v) for v in value)
     return value
+
+
+#: What a step decides to do, for the shell to carry out.  ``Print`` holds
+#: the codepoint to write; ``Store`` names the variable, the index
+#: expressions that walk into it, and the value to put there.
+#:
+#: The effects exist because a store has to reach the *live* list.  Two
+#: names can share one array, so writing through a copy would lose the
+#: other name's view of it -- and a value can even contain itself, which no
+#: frozen form survives.
+@dataclass(frozen=True)
+class _Print:
+    """Write one codepoint."""
+
+    value: int
+
+
+@dataclass(frozen=True)
+class _Store:
+    """Assign ``value`` to ``name`` walked through ``indexes``.
+
+    The indexes are already evaluated.  They have to be: an index can read
+    ``input``, and that read is part of the step's evaluation rather than
+    of applying its result.
+    """
+
+    name: str
+    indexes: tuple[int, ...]
+    value: Value
+
+
+type _Effect = _Print | _Store
+
+
+class _NeedInput(Exception):  # noqa: N818 - a control signal, not an error
+    """Raised by the core when evaluation wants a byte it was not given.
+
+    The shell answers by reading one and running the step again from the
+    start.  That re-run is why the core must stay pure: it happens once per
+    ``input`` in the line, and anything it did the first time would happen
+    twice.
+    """
+
+
+class _Reader:
+    """Hands out the bytes already read, then asks for one more."""
+
+    def __init__(self, reads: tuple[int, ...]) -> None:
+        """Start at the beginning of ``reads``."""
+        self._reads = reads
+        self._pos = 0
+
+    def take(self) -> int:
+        """Return the next byte read, or signal that another is needed."""
+        if self._pos >= len(self._reads):
+            raise _NeedInput
+        value = self._reads[self._pos]
+        self._pos += 1
+        return value
+
+
+def _atom(exp: str, pos: int, var: Mapping[str, Value], reader: _Reader) -> tuple[Value, int]:
+    """Parse the leading atom of ``exp`` from ``pos``.
+
+    Returns ``(value, next_position)``.  An atom is ``[expr]`` (array
+    creation), the ``input`` keyword, a number, or a variable name.
+    """
+    if not exp:
+        raise ValueError("missing expression")
+    if exp[pos] == "[":
+        size, pos = _eval(exp, pos + 1, var, reader)
+        pos += 1  # the closing ']'
+        return [0] * _as_int(size), pos
+    j = pos
+    while j < len(exp) and exp[j] not in "[]":
+        j += 1
+    tok = exp[pos:j]
+    if tok == "input":
+        return reader.take(), j
+    if _is_int(tok):
+        return int(tok), j
+    if tok in var:
+        return var[tok], j
+    raise HaltError
+
+
+def _eval(exp: str, pos: int, var: Mapping[str, Value], reader: _Reader) -> tuple[Value, int]:
+    """Evaluate the expression ``exp`` from ``pos``, returning (value, pos).
+
+    An expression is an atom followed by any number of ``[index]``
+    indexings, so ``array[index]`` with a general ``array`` expression
+    (including further indexings) works.
+    """
+    value, pos = _atom(exp, pos, var, reader)
+    while pos < len(exp) and exp[pos] == "[":
+        index, pos = _eval(exp, pos + 1, var, reader)
+        pos += 1  # the closing ']'
+        if not isinstance(value, list):
+            raise HaltError
+        i = _as_int(index)
+        if i < 0 or i >= len(value):
+            raise HaltError
+        value = value[i]
+    return value, pos
+
+
+def _val(exp: str, var: Mapping[str, Value], reader: _Reader) -> Value:
+    """Evaluate the expression ``exp``."""
+    value, _ = _eval(exp, 0, var, reader)
+    return value
+
+
+def _operand(lst: list[str], n: int) -> str:
+    """Return the ``n``-th token of a command, rejecting a missing one."""
+    if n >= len(lst):
+        raise ValueError("missing operand in " + " ".join(lst))
+    return lst[n]
+
+
+def _split(lhs: str) -> tuple[str, list[str]]:
+    """Split ``lhs`` into its base atom and index-expression strings."""
+    atom = lhs[: lhs.find("[")]
+    indexes: list[str] = []
+    pos = lhs.find("[")
+    while pos < len(lhs):
+        depth = 1
+        j = pos + 1
+        while depth:
+            if j >= len(lhs):
+                raise ValueError(f"unbalanced brackets in {lhs!r}")
+            if lhs[j] == "[":
+                depth += 1
+            elif lhs[j] == "]":
+                depth -= 1
+            j += 1
+        indexes.append(lhs[pos + 1 : j - 1])
+        pos = j
+    return atom, indexes
+
+
+def _next_ptr(ptr: int) -> int:
+    """Return the next line in the Collatz trajectory of ``ptr``."""
+    return 3 * ptr + 1 if ptr % 2 else ptr // 2
+
+
+def _advance(
+    ptr: int, code: list[str], var: Mapping[str, Value], reads: tuple[int, ...]
+) -> tuple[int, list[_Effect]]:
+    """Return the next pointer and what the line under ``ptr`` wants done.
+
+    Pure: it reads its arguments and returns a description.  Nothing is
+    written and nothing is printed -- the caller does both, which is what
+    lets a store reach the live arrays and keeps the aliasing the language
+    has.
+
+    ``reads`` is the input consumed so far.  Wanting one more raises
+    :class:`_NeedInput`, and the caller reads a byte and calls again.
+
+    A taken ``jump`` returns ``ptr + 1`` rather than the Collatz successor:
+    it is the one line that chooses where to go.
+    """
+    p = ptr - 1
+    if p < 0:
+        raise HaltError
+    ins = code[p] if p < len(code) else ""
+    lst = ins.split()
+    reader = _Reader(reads)
+    effects: list[_Effect] = []
+
+    if not lst:
+        pass
+    elif lst[0] == "print":
+        value = _as_int(_val(_operand(lst, 1), var, reader))
+        if not 0 <= value <= 0x10FFFF:
+            raise HaltError
+        effects.append(_Print(value))
+    elif lst[0] == "jump":
+        if _as_int(_val(_operand(lst, 2), var, reader)):
+            return (ptr + 1, effects)
+    else:
+        op = lst[1] if len(lst) > 1 else ""
+        target = _operand(lst, 0)
+        if op == "=":
+            effects.append(_store_effect(target, _val(_operand(lst, 2), var, reader), var, reader))
+        elif op in ("+=", "+"):
+            effects.append(
+                _store_effect(
+                    target,
+                    _as_int(_val(target, var, reader))
+                    + _as_int(_val(_operand(lst, 2), var, reader)),
+                    var,
+                    reader,
+                )
+            )
+        elif op in ("-=", "-"):
+            effects.append(
+                _store_effect(
+                    target,
+                    _as_int(_val(target, var, reader))
+                    - _as_int(_val(_operand(lst, 2), var, reader)),
+                    var,
+                    reader,
+                )
+            )
+
+    return (_next_ptr(ptr), effects)
+
+
+def _store_effect(
+    lhs: str, value: Value, var: Mapping[str, Value], reader: _Reader
+) -> _Store:
+    """Describe an assignment to ``lhs``, evaluating its index path.
+
+    The indexes are evaluated here rather than by the caller, because an
+    index expression can contain ``input`` and that read happens while the
+    step runs, not while its result is written.
+    """
+    if "[" not in lhs:
+        return _Store(lhs, (), value)
+    atom, indexes = _split(lhs)
+    return _Store(
+        atom,
+        tuple(_as_int(_eval(idx, 0, var, reader)[0]) for idx in indexes),
+        value,
+    )
 
 
 class _Machine:
@@ -93,145 +321,55 @@ class _Machine:
             self.io.position(),
         )
 
-    def _atom(self, exp: str, pos: int) -> tuple[Value, int]:
-        """Parse the leading atom of ``exp`` from ``pos``.
+    def _apply(self, effect: _Effect) -> None:
+        """Carry out one effect the core described.
 
-        Returns ``(value, next_position)``.  An atom is ``[expr]`` (array
-        creation), the ``input`` keyword, a number, or a variable name.
+        A store walks the live arrays and writes into the last one, which
+        is what keeps two names sharing an array in step with each other.
         """
-        if not exp:
-            raise ValueError("missing expression")
-        if exp[pos] == "[":
-            size, pos = self._eval(exp, pos + 1)
-            pos += 1  # the closing ']'
-            return [0] * _as_int(size), pos
-        j = pos
-        while j < len(exp) and exp[j] not in "[]":
-            j += 1
-        tok = exp[pos:j]
-        if tok == "input":
-            return self.io.input_char(), j
-        if _is_int(tok):
-            return int(tok), j
-        if tok in self.var:
-            return self.var[tok], j
-        raise HaltError
-
-    def _eval(self, exp: str, pos: int) -> tuple[Value, int]:
-        """Evaluate the expression ``exp`` from ``pos``, returning (value, pos).
-
-        An expression is an atom followed by any number of ``[index]``
-        indexings, so ``array[index]`` with a general ``array`` expression
-        (including further indexings) works.
-        """
-        value, pos = self._atom(exp, pos)
-        while pos < len(exp) and exp[pos] == "[":
-            index, pos = self._eval(exp, pos + 1)
-            pos += 1  # the closing ']'
-            if not isinstance(value, list):
-                raise HaltError
-            i = _as_int(index)
-            if i < 0 or i >= len(value):
-                raise HaltError
-            value = value[i]
-        return value, pos
-
-    def _val(self, exp: str) -> Value:
-        """Evaluate the expression ``exp``."""
-        value, _ = self._eval(exp, 0)
-        return value
-
-    @staticmethod
-    def _operand(lst: list[str], n: int) -> str:
-        """Return the ``n``-th token of a command, rejecting a missing one."""
-        if n >= len(lst):
-            raise ValueError("missing operand in " + " ".join(lst))
-        return lst[n]
-
-    @staticmethod
-    def _split(lhs: str) -> tuple[str, list[str]]:
-        """Split ``lhs`` into its base atom and index-expression strings."""
-        atom = lhs[: lhs.find("[")]
-        indexes: list[str] = []
-        pos = lhs.find("[")
-        while pos < len(lhs):
-            depth = 1
-            j = pos + 1
-            while depth:
-                if j >= len(lhs):
-                    raise ValueError(f"unbalanced brackets in {lhs!r}")
-                if lhs[j] == "[":
-                    depth += 1
-                elif lhs[j] == "]":
-                    depth -= 1
-                j += 1
-            indexes.append(lhs[pos + 1 : j - 1])
-            pos = j
-        return atom, indexes
-
-    def _store(self, lhs: str, value: Value) -> None:
-        """Assign ``value`` to ``lhs`` (a name or an ``array[index]``)."""
-        if "[" not in lhs:
-            self.var[lhs] = value
+        if isinstance(effect, _Print):
+            self.io.print_char(chr(effect.value))
             return
-        atom, indexes = self._split(lhs)
-        target, _ = self._atom(atom, 0)
-        for idx_exp in indexes[:-1]:
+        if not effect.indexes:
+            self.var[effect.name] = effect.value
+            return
+        target, _ = _atom(effect.name, 0, self.var, _Reader(()))
+        for i in effect.indexes[:-1]:
             if not isinstance(target, list):
                 raise HaltError
-            i = _as_int(self._eval(idx_exp, 0)[0])
             if i < 0 or i >= len(target):
                 raise HaltError
             target = target[i]
         if not isinstance(target, list):
             raise HaltError
-        i = _as_int(self._eval(indexes[-1], 0)[0])
+        i = effect.indexes[-1]
         if i < 0 or i >= len(target):
             raise HaltError
-        target[i] = value
+        target[i] = effect.value
 
     def step(self) -> None:
-        """Execute the line at ``ptr`` and advance to the next in trajectory."""
+        """Execute the line at ``ptr`` and advance to the next in trajectory.
+
+        The input port lives here.  ``input`` is an atom, so a line can
+        read several times partway through an expression: the core is run
+        with the bytes taken so far and asks for another when it needs one,
+        which is read here before running it again.  The reads stay
+        consumed even if a later part of the same line faults, as they did
+        when the original read them inline.
+        """
         if self.halted:
             return
-        ptr = self.ptr
-        p = ptr - 1
-        if p < 0:
-            raise HaltError
-        ins = self.code[p] if p < len(self.code) else ""
-        lst = ins.split()
-        if not lst:
-            pass
-        elif lst[0] == "print":
-            value = _as_int(self._val(self._operand(lst, 1)))
-            if not 0 <= value <= 0x10FFFF:
-                raise HaltError
-            self.io.print_char(chr(value))
-        elif lst[0] == "jump":
-            if _as_int(self._val(self._operand(lst, 2))):
-                self.ptr = ptr + 1
-                return
-        else:
-            op = lst[1] if len(lst) > 1 else ""
-            if op == "=":
-                self._store(self._operand(lst, 0), self._val(self._operand(lst, 2)))
-            elif op in ("+=", "+"):
-                self._store(
-                    self._operand(lst, 0),
-                    _as_int(self._val(self._operand(lst, 0)))
-                    + _as_int(self._val(self._operand(lst, 2))),
-                )
-            elif op in ("-=", "-"):
-                self._store(
-                    self._operand(lst, 0),
-                    _as_int(self._val(self._operand(lst, 0)))
-                    - _as_int(self._val(self._operand(lst, 2))),
-                )
-
-        if ptr % 2:
-            self.ptr = 3 * ptr + 1
-        else:
-            self.ptr = ptr // 2
+        reads: tuple[int, ...] = ()
+        while True:
+            try:
+                ptr, effects = _advance(self.ptr, self.code, self.var, reads)
+            except _NeedInput:
+                reads = (*reads, self.io.input_char())
+                continue
+            break
+        for effect in effects:
+            self._apply(effect)
+        self.ptr = ptr
 
 
 def run(code: list[str], io: IO) -> None:
