@@ -2608,6 +2608,76 @@ class TestParameterizedMinifuck:
             assert self.run_minifuck(program) == table[combo], (table, bits)
         assert len(widths) == 1, widths
 
+    def test_staging_budget_is_counted_in_stagings_not_seconds(self) -> None:
+        """The budget is machine-independent, and it ships disabled.
+
+        A wall-clock budget would make this generator non-deterministic: the
+        same table would build on a fast host and fall through on a slow
+        one, and which template a table got would depend on machine load.
+        Counting *stagings* -- one ``(separator, settle, suffix,
+        accumulator)`` tuple of :func:`_stagings` -- is identical everywhere,
+        so a budget selects the same tables on any hardware.
+
+        Two properties are pinned.  The default is ``None``, because
+        anything else would change every recorded template.  And the slice
+        order is the plain enumeration order while unbudgeted -- yield
+        ordering only applies when something is actually being given up, and
+        only at the arity it was measured at.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        assert module._STAGING_BUDGET is None  # noqa: SLF001
+
+        plain = tuple(
+            (sep, settle)
+            for sep in range(len(module._SEPS))  # noqa: SLF001
+            for settle in (0, 1)
+        )
+        assert module._slices(4) == plain  # noqa: SLF001
+        assert module._slices(3) == plain  # noqa: SLF001
+
+        # The ranking is a permutation of the slices, not a subset: a budget
+        # reorders what is spent first, it never drops a slice outright.
+        assert sorted(module._SLICE_YIELD_ORDER) == sorted(plain)  # noqa: SLF001
+
+    def test_a_budget_gives_up_length_not_coverage(self) -> None:
+        """A table the budget skips still builds, through the sculpted route.
+
+        This is the property that makes lowering the budget safe on a slow
+        machine: the staged route is what emits *short* templates, and
+        :func:`_mux` is total at four inputs, so a budget trades program
+        length for time and never coverage.
+
+        Uses a tiny budget and a table the staged route would otherwise
+        place, so the fall-through is what is exercised.  Every row is run:
+        an emitted template is not evidence it computes.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        table = "0110100110010110"  # XOR4, which the staged route places
+        original = module._STAGING_BUDGET  # noqa: SLF001
+        try:
+            module._STAGING_BUDGET = 1  # noqa: SLF001
+            module._derived_plans.cache_clear()  # noqa: SLF001
+            assert module._derive_staging(table, 4) is None  # noqa: SLF001
+            template = module._mux(table, 4)  # noqa: SLF001
+            assert template is not None
+        finally:
+            module._STAGING_BUDGET = original  # noqa: SLF001
+            module._derived_plans.cache_clear()  # noqa: SLF001
+
+        widths = set()
+        for combo in range(16):
+            bits = [(combo >> (3 - i)) & 1 for i in range(4)]
+            program = self.instantiate(template, bits)
+            widths.add(len(program))
+            assert self.run_minifuck(program) == table[combo], (table, bits)
+        assert len(widths) == 1, widths
+
     def test_sculpted_route_declines_an_unseparated_arity_immediately(
         self,
     ) -> None:

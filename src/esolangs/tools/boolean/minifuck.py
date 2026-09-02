@@ -1487,6 +1487,72 @@ _STAGED_ARITIES = (2, 3, 4, 5)
 _MAX_BRACKETS = 28
 _MAX_ACC = 34
 
+# How much of the enumeration a caller is willing to spend, counted in
+# **stagings visited** rather than in seconds.
+#
+# The unit is the point.  A wall-clock budget would make the generator
+# non-deterministic across machines: the same table would build on a fast
+# host and raise on a slow one, and the template a table gets would depend
+# on how loaded the box was.  A staging is one ``(separator, settle,
+# suffix, accumulator)`` tuple in :func:`_stagings` order, so counting them
+# is identical everywhere -- a budget picks out the *same* set of tables on
+# a Raspberry Pi and on an M3, and the emitted programs stay byte-identical.
+# The count also tracks real work, since :func:`_printed_column` memoises
+# what a staging derives, making a visited staging roughly a constant unit.
+#
+# **A budget costs program length, not coverage.**  A table the budget stops
+# short of falls through to :func:`_mux`, which is total at four inputs at
+# about 11ms -- so lowering this cannot make a table unbuildable.  What it
+# trades is the staged route's much shorter template (measured at four
+# inputs: 205 characters against the sculpted route's 952) for the tables it
+# gives up.  That is why a slow host can lower it safely.
+#
+# ``None`` means no budget, which is what ships: the default must reproduce
+# the enumeration exactly, or every recorded template changes.
+_STAGING_BUDGET: int | None = None
+
+# The ``(separator, settle)`` slices in descending measured yield at four
+# inputs, which is what makes a budget worth having.  Every slice costs the
+# same 12064 stagings, and what they return is not close to even -- 2874
+# tables for the best against 424 for the worst -- so spending a budget in
+# this order buys 77% of the hits for half the work, and 91% for 70% of it.
+# Enumerating in the plain ``(sep, settle)`` order instead makes a budget a
+# flat trade, since hits are spread uniformly through the enumeration.
+#
+# Measured at ``n == 4`` and **not** assumed to hold elsewhere: at another
+# arity the ranking is unmeasured, so the full enumeration order is used
+# unless a budget is actually set.  Ordering only matters when something is
+# going to be given up.
+_SLICE_YIELD_ORDER = (
+    (3, 0),
+    (2, 0),
+    (3, 1),
+    (2, 1),
+    (4, 0),
+    (4, 1),
+    (0, 0),
+    (0, 1),
+    (1, 1),
+    (1, 0),
+)
+
+
+def _slices(n: int) -> tuple[tuple[int, int], ...]:
+    """Return the ``(separator, settle)`` slices, in the order to spend them.
+
+    Plain enumeration order when there is no budget, so the shipped
+    behaviour is exactly what it was.  Under a budget at the arity the
+    ranking was measured at, yield order instead -- what is given up should
+    be the slices that place the fewest tables.
+    """
+    plain = tuple(
+        (sep_index, settle) for sep_index in range(len(_SEPS)) for settle in (0, 1)
+    )
+    if _STAGING_BUDGET is None or n != 4:
+        return plain
+    return _SLICE_YIELD_ORDER
+
+
 # The arities whose enumeration includes the insert family below.  It is not
 # offered at two or three inputs because the pure runs already close those
 # arities completely, and enumerating a family that can only be reached after
@@ -1677,22 +1743,39 @@ def _derived_plans(n: int, targets: tuple[str, ...]) -> dict[str, _Staging]:
                 return True
         return False
 
-    for sep_index in range(len(_SEPS)):
-        for settle in (0, 1):
-            base = _embed(n, settle=settle, sep=_SEPS[sep_index])
-            _clamp(base)
-            _walk_to(base, _BASE - 1)
-            run = base.fork()
-            for brackets in range(_MAX_BRACKETS + 1):
-                staged = run.fork()
-                staged.emit("<")
-                _clamp(staged)
-                if claim(staged, brackets, (sep_index, settle)):
-                    return found
-                # Extending the run is what makes this cheap: the next
-                # bracket count is one instruction on from this one, not a
-                # rebuild from the embed.
-                run.emit("[")
+    # Stagings visited, against :data:`_STAGING_BUDGET`.  Counted per
+    # accumulator sweep rather than per emitted suffix, because a staging is
+    # a ``(separator, settle, suffix, accumulator)`` tuple and ``claim``
+    # walks the accumulators for one suffix in a single call.
+    spent = 0
+    budget = _STAGING_BUDGET
+    accs = _MAX_ACC - 8
+
+    def exhausted() -> bool:
+        return budget is not None and spent >= budget
+
+    slices = _slices(n)
+
+    for sep_index, settle in slices:
+        if exhausted():
+            return found
+        base = _embed(n, settle=settle, sep=_SEPS[sep_index])
+        _clamp(base)
+        _walk_to(base, _BASE - 1)
+        run = base.fork()
+        for brackets in range(_MAX_BRACKETS + 1):
+            staged = run.fork()
+            staged.emit("<")
+            _clamp(staged)
+            if claim(staged, brackets, (sep_index, settle)):
+                return found
+            spent += accs
+            if exhausted():
+                return found
+            # Extending the run is what makes this cheap: the next
+            # bracket count is one instruction on from this one, not a
+            # rebuild from the embed.
+            run.emit("[")
 
     # The insert family, in a second pass so that every pure run is tried
     # first and the arities the pure runs close keep the stagings they had.
@@ -1701,17 +1784,21 @@ def _derived_plans(n: int, targets: tuple[str, ...]) -> dict[str, _Staging]:
     # each string is emitted onto a fork of the embed.
     if n not in _INSERT_ARITIES:
         return found
-    for sep_index in range(len(_SEPS)):
-        for settle in (0, 1):
-            base = _embed(n, settle=settle, sep=_SEPS[sep_index])
-            _clamp(base)
-            _walk_to(base, _BASE - 1)
-            for suffix in _insert_suffixes():
-                staged = base.fork()
-                staged.emit(suffix + "<")
-                _clamp(staged)
-                if claim(staged, suffix, (sep_index, settle)):
-                    return found
+    for sep_index, settle in slices:
+        if exhausted():
+            return found
+        base = _embed(n, settle=settle, sep=_SEPS[sep_index])
+        _clamp(base)
+        _walk_to(base, _BASE - 1)
+        for suffix in _insert_suffixes():
+            staged = base.fork()
+            staged.emit(suffix + "<")
+            _clamp(staged)
+            if claim(staged, suffix, (sep_index, settle)):
+                return found
+            spent += accs
+            if exhausted():
+                return found
     return found
 
 
