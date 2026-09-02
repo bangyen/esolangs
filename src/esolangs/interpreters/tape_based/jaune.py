@@ -32,6 +32,7 @@ Documented decisions for gaps in the wiki spec:
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
@@ -135,6 +136,107 @@ def _parse(code: str) -> list[_Command]:
     return out
 
 
+#: One instant of a run: ``(cells, ptr, hold, pos, calls)`` -- the tape,
+#: the cell pointer, the ``#`` hold register, the command cursor, and the
+#: stack of return positions.
+#:
+#: The commands and the label and subroutine tables stay out: Jaune parses
+#: its program once and never rewrites it, so a step is handed them rather
+#: than carrying them.
+type _State = tuple[tuple[int, ...], int, int, int, tuple[int, ...]]
+
+
+def _set(cells: tuple[int, ...], ptr: int, value: int) -> tuple[int, ...]:
+    """Return ``cells`` with the cell at ``ptr`` set to ``value``."""
+    return (*cells[:ptr], value, *cells[ptr + 1 :])
+
+
+def _find(commands: Sequence[_Command], op: str, num: int | None) -> int | None:
+    """Return the index of the ``op`` marker whose argument is ``num``."""
+    for i, cmd in enumerate(commands):
+        if cmd.op == op and cmd.arg == num:
+            return i
+    return None
+
+
+def _advance(
+    state: _State,
+    commands: Sequence[_Command],
+    value: int | None = None,
+) -> _State:
+    """Return the state after executing ``cmd``.
+
+    Pure: it reads ``state`` and returns a new one.  ``^``'s printing is
+    the caller's business -- the cell it prints is carried forward
+    unchanged -- and the three reading forms arrive as ``value``, already
+    taken from the port and already converted from its digit.
+
+    The tape grows at both ends: ``>`` past the right edge appends a cell,
+    while ``<`` at the left inserts one and leaves the pointer where it is,
+    so the new cell becomes cell zero.
+
+    A jump that is taken, a call, and a return all set the cursor outright
+    rather than stepping it, which is why each returns early.
+    """
+    cells, ptr, hold, pos, calls = state
+    cmd = commands[pos]
+    c = cmd.op
+
+    if c == "^":
+        pass  # printed by the caller; the cell is unchanged
+    elif c == "v":
+        cells = _set(cells, ptr, value if value is not None else 0)
+    elif c in ("v+", "v-"):
+        val = value if value is not None else 0
+        cells = _set(cells, ptr, cells[ptr] + (val if c == "v+" else -val))
+    elif c == ">":
+        ptr += 1
+        if ptr == len(cells):
+            cells = (*cells, 0)
+    elif c == "<":
+        if ptr == 0:
+            cells = (0, *cells)
+        else:
+            ptr -= 1
+    elif c == "#":
+        hold = cells[ptr]
+    elif c == "&":
+        cells = _set(cells, ptr, cells[ptr] + hold)
+    elif c == "%":
+        cells = _set(cells, ptr, 0)
+    elif c == "+":
+        cells = _set(cells, ptr, cells[ptr] + (cmd.arg or 1))
+    elif c == "-":
+        cells = _set(cells, ptr, cells[ptr] - (cmd.arg or 1))
+    elif c == "?":
+        target = _find(commands, ":", cmd.arg)
+        if target is None:
+            raise HaltError(f"jump to undefined label {cmd.arg}")
+        if cells[ptr] != 0:
+            return (cells, ptr, hold, target, calls)
+    elif c == "!":
+        target = _find(commands, ":", cmd.arg)
+        if target is None:
+            raise HaltError(f"jump to undefined label {cmd.arg}")
+        if cells[ptr] == 0:
+            return (cells, ptr, hold, target, calls)
+    elif c == "@":
+        target = _find(commands, "$", cmd.arg)
+        if target is None:
+            raise HaltError(f"call to undefined subroutine {cmd.arg}")
+        return (cells, ptr, hold, target, (*calls, pos + 1))
+    elif c == ";":
+        if not calls:
+            raise HaltError("; with no active subroutine call")
+        return (cells, ptr, hold, calls[-1], calls[:-1])
+    elif c == ".":
+        return (cells, ptr, hold, len(commands), calls)
+    # ":" and "$" are positions rather than commands -- a label and a
+    # subroutine definition -- so execution falls through them in place.
+
+    return (cells, ptr, hold, pos + 1, calls)
+
+
 class _Machine:
     """One Jaune run: cells, pointer, hold cell, and parsed commands."""
 
@@ -193,79 +295,50 @@ class _Machine:
                 return i
         return None
 
+    @property
+    def _state(self) -> _State:
+        """The machine's fields as the value the transition works on."""
+        return (
+            tuple(self.cells),
+            self.ptr,
+            self.hold,
+            self.pos,
+            tuple(self.call_stack),
+        )
+
+    def _restore(self, state: _State) -> None:
+        """Write a transition's result back onto the machine's fields.
+
+        The fields are this class's published shape -- ``snapshot`` reads
+        all five -- so they stay; the one assignment a step makes is here
+        rather than in the rules above.
+        """
+        cells, self.ptr, self.hold, self.pos, calls = state
+        self.cells = list(cells)
+        self.call_stack = list(calls)
+
     def step(self) -> None:
-        """Execute one command, advancing (or jumping) the position."""
+        """Execute one command, advancing (or jumping) the position.
+
+        The ports live here rather than in the transition: this is the
+        shell.  ``^`` prints the cell the transition carries forward
+        unchanged, and the three reading forms take a line here and convert
+        it from its digit before handing the value over -- an empty line
+        reads as zero, which is the language's own rule rather than a
+        default the transition invents.
+        """
         if self.halted:
             return
         cmd = self.commands[self.pos]
-        c = cmd.op
 
-        if c == "^":
+        value = None
+        if cmd.op == "^":
             self.io.print_num(self.cells[self.ptr])
-        elif c == "v":
+        elif cmd.op in ("v", "v+", "v-"):
             ch = self.io.input_str()
-            self.cells[self.ptr] = ord(ch[0]) - 48 if ch else 0
-        elif c in ("v+", "v-"):
-            ch = self.io.input_str()
-            val = ord(ch[0]) - 48 if ch else 0
-            self.cells[self.ptr] += val if c == "v+" else -val
-        elif c == ">":
-            self.ptr += 1
-            if self.ptr == len(self.cells):
-                self.cells.append(0)
-        elif c == "<":
-            if self.ptr == 0:
-                self.cells.insert(0, 0)
-            else:
-                self.ptr -= 1
-        elif c == "#":
-            self.hold = self.cells[self.ptr]
-        elif c == "&":
-            self.cells[self.ptr] += self.hold
-        elif c == "%":
-            self.cells[self.ptr] = 0
-        elif c == "+":
-            self.cells[self.ptr] += cmd.arg or 1
-        elif c == "-":
-            self.cells[self.ptr] -= cmd.arg or 1
-        elif cmd.op == "?":
-            target = self._label(cmd.arg)
-            if target is None:
-                raise HaltError(f"jump to undefined label {cmd.arg}")
-            if self.cells[self.ptr] != 0:
-                self.pos = target
-                return
-        elif cmd.op == "!":
-            target = self._label(cmd.arg)
-            if target is None:
-                raise HaltError(f"jump to undefined label {cmd.arg}")
-            if self.cells[self.ptr] == 0:
-                self.pos = target
-                return
-        elif cmd.op == "@":
-            target = self._subroutine(cmd.arg)
-            if target is None:
-                raise HaltError(f"call to undefined subroutine {cmd.arg}")
-            self.call_stack.append(self.pos + 1)
-            self.pos = target
-            return
-        elif c == ";":
-            if not self.call_stack:
-                raise HaltError("; with no active subroutine call")
-            self.pos = self.call_stack.pop()
-            return
-        elif c == ".":
-            self.pos = len(self.commands)
-            return
-        else:
-            # ":" and "$" are positions rather than commands -- a label and
-            # a subroutine definition -- so execution falls through them in
-            # place.  They are the else rather than two arms of their own so
-            # that the chain's last test has both its outcomes taken: every
-            # other op is named above, so nothing reaches "." and declines.
-            pass
+            value = ord(ch[0]) - 48 if ch else 0
 
-        self.pos += 1
+        self._restore(_advance(self._state, self.commands, value))
 
 
 def run(code: str, io: IO) -> None:
