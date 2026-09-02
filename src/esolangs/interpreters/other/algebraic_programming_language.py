@@ -50,6 +50,14 @@ Decisions for gaps in the wiki spec (documented):
   ``1(2)`` (bracket multiplication is invalid syntax).
 - Division or modulo by zero, and ``0 ** -1``, raise
   :class:`~esolangs.exceptions.HaltError`.
+- **An uppercase name defined without parentheses** (``F = 7``) is a
+  nullary function, called as ``F()``.  The wiki only writes ``F() =
+  123``, but its own rule that a bare-variable left-hand side is an
+  assignment is restricted to *lowercase* names, so this is the reading
+  that leaves the uppercase case meaning something.  Printing a function
+  rather than calling it is an invalid operation
+  (:class:`~esolangs.exceptions.HaltError`), since the only printable
+  values are numbers.
 
 ``_Machine`` evaluates on an explicit stack of :class:`_Frame` objects
 rather than by Python recursion, because in this language recursion *is*
@@ -213,10 +221,17 @@ class _Parser:
         return self.tokens[self.ind] if self.ind < len(self.tokens) else None
 
     def take(self) -> str:
-        """Consume and return the next token."""
-        token = self.peek()
-        if token is None:
-            raise ValueError("unexpected end of expression")
+        """Consume and return the next token.
+
+        Every call site has already established that a token is there:
+        the precedence levels and ``_unary`` peek before consuming,
+        ``_try_pattern`` returns None on a mismatch before taking, and
+        the loops in ``_atom`` and ``_arguments`` carry the end check in
+        their own conditions.  So there is no unreachable "ran out"
+        branch here -- ``_atom`` raises that message where it *can*
+        happen.
+        """
+        token = self.tokens[self.ind]
         self.ind += 1
         return token
 
@@ -248,10 +263,9 @@ class _Parser:
         node = self._binary(level + 1)
         while True:
             token = self.peek()
-            # ``**`` is two ``*`` tokens, so a ``*`` at the multiplicative
-            # level must not swallow the first of them.
-            if token == "*" and self._at_power():
-                return node
+            # No ``**`` guard is needed here: ``_power`` consumes one
+            # before returning, so the cursor never sits on the first
+            # ``*`` of a ``**`` by the time this loop sees it.
             if token is None or token not in self._LEVELS[level]:
                 return node
             self.take()
@@ -480,8 +494,9 @@ def _parse_lhs(lhs: str) -> tuple[str, list[str]]:
                     raise ValueError(f"bad parameter {tokens[ind]!r}")
                 params.append(tokens[ind])
                 ind += 1
-            if ind >= len(tokens):
-                raise ValueError("unbalanced ( in definition")
+            # The loop cannot run out of tokens: getting past it needs a
+            # closer, and ``)`` ends it here while ``}`` fails the
+            # ``bad parameter`` check above.
             ind += 1
         if ind != len(tokens):
             raise ValueError(f"trailing input in header {lhs!r}")
@@ -535,7 +550,9 @@ def _body(rhs: str, defs: dict[str, _Definition]) -> list[_Node]:
     text = rhs.strip()
     if text.startswith("{"):
         if not text.endswith("}"):
-            raise ValueError("unbalanced { in definition")
+            # ``_blocks`` has already balanced the braces, so what is left
+            # is a block with something after its closer -- ``F() = {1} 2``.
+            raise ValueError(f"trailing input after block in {text!r}")
         inner = text[1:-1]
         return [
             _Parser(_tokens(line), defs).parse()
@@ -779,7 +796,7 @@ class _Machine:
             self._resolve(frame, self._lookup(frame, node[1]))
             return
         if node[0] == "ref":
-            self._resolve(frame, self._lookup_function(frame, node[1]))
+            self._resolve(frame, self._lookup_function(node[1]))
             return
         if node[0] == "neg":
             if not done:
@@ -810,10 +827,15 @@ class _Machine:
             return self.globals[name]
         raise ValueError(f"unknown variable {name!r}")
 
-    def _lookup_function(self, frame: _Frame, name: str) -> object:
-        """Resolve a bare uppercase name to the definition it refers to."""
-        if name in frame.locals:
-            return frame.locals[name]
+    def _lookup_function(self, name: str) -> object:
+        """Resolve a bare uppercase name to the definition it refers to.
+
+        Only the globals are searched.  A ``ref`` node's name is
+        uppercase by construction and every parameter is validated
+        lowercase, so a bare name can never be a local; a *parameter*
+        holding a function is called as ``c()``, which resolves through
+        ``_step_call``'s own locals lookup instead.
+        """
         if name in self.defs:
             return self.defs[name]
         raise ValueError(f"unknown function {name!r}")
@@ -934,7 +956,13 @@ def _as_number(value: object) -> _Number:
 
 
 def _arith(op: str, left: _Number, right: _Number) -> _Number:
-    """Apply one arithmetic operator, keeping integers exact."""
+    """Apply one arithmetic operator, keeping integers exact.
+
+    ``op`` is one of the six the parser emits for a ``bin`` node other
+    than ``&``/``|``, which short-circuit and never reach here.  The
+    parser is the only producer, so ``**`` is the fallthrough rather
+    than a tested case followed by an unreachable "unknown operator".
+    """
     if op == "+":
         return left + right
     if op == "-":
@@ -952,11 +980,9 @@ def _arith(op: str, left: _Number, right: _Number) -> _Number:
         if right == 0:
             raise HaltError("modulo by zero")
         return left % right
-    if op == "**":
-        if left == 0 and right < 0:
-            raise HaltError("zero to a negative power")
-        return left**right
-    raise ValueError(f"unknown operator {op!r}")
+    if left == 0 and right < 0:
+        raise HaltError("zero to a negative power")
+    return left**right
 
 
 def _contains_return(node: _Node) -> bool:
