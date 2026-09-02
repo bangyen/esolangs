@@ -1675,69 +1675,87 @@ _FOLD_DESCENT_TARGET = 2
 #: a fixed run count the optimal cost takes exactly **two adjacent values**
 #: (spread 1, against the greedy spread of 9), and it does *not* depend on
 #: the exact run lengths at all -- only on which runs exceed 1, with zero
-#: ambiguity at every run count.  So the incompressibility recorded below is
-#: a fact about the heuristic, not about the fold.
+#: ambiguity at every run count.  So the incompressibility this docstring
+#: used to record is a fact about the heuristic, not about the fold: the
+#: exact lengths that "matter without limit" matter only to greedy's walk.
 #:
-#: A rule for the optimal cost was found and then falsified, which is worth
-#: recording because it is the third candidate to die the same way.  At
-#: three inputs, ``cost = base(runs) + delta`` with ``delta = 1`` exactly
-#: when every *middle* slot of the word exceeds 1 -- the single slot
-#: ``r // 2`` for odd ``r``, both middle slots for even -- fits all 98
-#: words.  It has a mechanism, too, and the mechanism is verified rather
-#: than fitted: :func:`_fold_merge` refuses to coalesce points unless every
-#: one has span 0, so a run longer than 1 (span ``4 * (len - 1)``) must be
-#: wiped before anything can merge onto it; and every wipe takes ``asc[:k]``
-#: or ``desc[:k]``, a contiguous prefix or suffix of the position order
-#: (160 of 160 moves checked), so a *middle* group cannot be swept up by
-#: either without taking its neighbours.  The middle is the expensive place
-#: to need a wipe.
+#: **The optimal cost has a closed form.**  Writing ``r`` for the run count
+#: and calling a slot *long* when its run exceeds 1::
 #:
-#: It is still false at four inputs.  There the 3-run words all cost 2
-#: whether the middle slot is 1 or 3 -- 26 words checked, every one -- and
-#: the 2-run words all cost 0, where three inputs separated both families
-#: cleanly.  Runs 4 and 5 still match the rule exactly (14 of 14 each at
-#: both arities).  So the middle-extent penalty is real but only binds when
-#: the ladder is tight; a wider ladder absorbs it, and the rule is
-#: arity-dependent rather than a law.
+#:     cost(word) = 2 * r - 3 - (r % 2) + [every middle slot is long]
 #:
-#: **The word cannot be compressed, and that is measured rather than
-#: assumed.**  An entropy-guided search over word features found one
-#: candidate sufficient statistic -- the cumulative run boundaries mod 4
-#: together with each run capped at 6 -- which is exactly sufficient at four
-#: inputs, separating all 32767 words with a single ambiguity resolved by
-#: the cap.  It is false at five: ``(19, 2, 11)`` costs 7 and ``(23, 2, 7)``
-#: costs 6 under the same key.  Nor is the cap the problem.  Swapping two
-#: runs that both sit above a cap ``K`` leaves any ``min(x, K)`` key
-#: unchanged by construction, and at six inputs such swaps change the cost
-#: for every ``K`` tried -- 20 of 25 at ``K == 4``, 16 of 25 at 6, 17 of 25
-#: at 8, 14 of 25 at 12, 6 of 18 at 16.  ``(34, 20, 10)`` costs 5 and
-#: ``(10, 20, 34)`` costs 6; ``(40, 4, 8, 12)`` costs 9 and
-#: ``(12, 4, 8, 40)`` costs 10.
+#: where the *middle* slots are ``{(r - 1) // 2, r // 2}`` -- one slot for
+#: odd ``r``, two for even.  The first three terms are ``base(r)``, the
+#: minimum cost at that run count: 1, 2, 5, 6, 9, 10, 13 at ``r = 2..8``.
+#: The bracket is the ``delta``, which is 0 or 1, so the two-adjacent-values
+#: spread above is exactly this term.
 #:
-#: So no bounded-alphabet recoding of the run lengths determines the cost:
-#: exact lengths matter without limit, and the domain of any closed form can
-#: be no coarser than the word itself.  The mod-4 half of that key is not an
-#: accident -- the descent starts on a ladder of :data:`_FOLD_STEP`, so a
-#: word's cumulative boundaries *are* its geometry, gaps being four times
-#: the run lengths -- but the residues alone are lossy the moment a run
-#: exceeds the lattice step.
+#: **Definitions, because the quantity is what the prior investigation got
+#: wrong.**  ``cost`` is the breadth-first distance from the start state --
+#: one point per run, at ``-_FOLD_STEP * first_row`` with span
+#: ``_FOLD_STEP * (len - 1)`` -- to a :func:`_fold_done` state, over
+#: :func:`_fold_sig` signatures with a *global* visited set, generating
+#: successors with :func:`_fold_moves` at ``kcap=None``.  ``kcap`` does not
+#: bind below nine points (``kmax = m if m <= 8``), so this is the shipped
+#: move set for every word measured; at ``r >= 9`` the descent's ``kcap=3``
+#: is a different graph and is not covered by this rule.
 #:
-#: So a closed form exists in principle -- the cost is a function of an
-#: object with at most ``2**n`` parts -- and finding it is open.  Part of the
-#: mechanism *is* identified.  Sliding the defect gives long stretches where
-#: each slot costs a constant amount more than the last, and that increment
-#: is entirely **relocations**: across the seven consecutive ``+4`` steps at
-#: five inputs the emitted plan gains exactly four ``d`` moves each time
-#: while the ``m`` and ``u`` counts do not move at all, and the plans end in
-#: the same tail.  A later run of slots repeats it at ``+5`` per slot, ``d``
-#: climbing 105, 110, 115, 120, 125, 130, 135 with ``m`` pinned at 10.  So
-#: within a regime, pushing the defect one place further costs a fixed
-#: number of extra wipes and nothing else.
+#: Measured over **1073 words with zero mismatches**: exhaustive at three
+#: inputs for ``r <= 6`` (all 119 words) plus one ``r == 7`` word; exhaustive
+#: over ``>1``-patterns at four and five inputs for ``r <= 5``, each pattern
+#: carried by several words that vary *where* the mass sits (the axis that
+#: killed the earlier candidates), 322 and 468 words; 300 uniformly random
+#: words at five and six inputs; and an adversarial round on the shapes the
+#: rule is most likely to get wrong -- pairs differing only at a middle slot,
+#: extreme mass contrasts, the same pattern at 8, 16, 32 and 64 rows.
 #:
-#: What is not explained is where the regimes start and stop -- the same
-#: slide also shows jumps of +29 and -24, and the final slot collapses from
-#: 149 steps to 43 -- so the formula would have to say which regime a word
-#: is in before it could say what the word costs.
+#: **The delta's mechanism, re-derived.**  A one-move finish from three
+#: points requires an untouched span-0 point, and *only a wipe zeroes a
+#: span*: the wipe collapses its victims to ``(0, 0, cls, ids)`` while every
+#: survivor keeps its span, and :func:`_fold_merge` refuses to coalesce
+#: anything whose span is nonzero.  Since every wipe takes ``asc[:k]`` or
+#: ``desc[:k]`` -- 8116 of 8116 moves checked contiguous, none interior -- a
+#: long *middle* run is the one group no prefix or suffix reaches without
+#: dragging a neighbour, so it costs the extra move.  Verified as a
+#: necessary condition on all 1005 reachable three-point states, with 462 of
+#: them admitting a one-move finish as a positive control.
+#:
+#: The earlier telling of this mechanism was wrong in one detail worth
+#: keeping straight: a ``k >= 2`` wipe does *not* require span-0 victims
+#: (414 of 840 partial sweeps observed have a spanned victim).  The span-0
+#: requirement lives in the landing, not the sweep.
+#:
+#: The ``base(r)`` half is regularity rather than proof.  Censusing optimal
+#: plans gives ``r - 1 + 2 * floor((r - 2) / 2)`` moves, split as
+#: ``floor((r - 2) / 2)`` doublings and the rest wipes -- ``(1, 15)`` is one
+#: ``d``; ``(1, 1, 14)`` is ``d`` then ``u``; ``(1, 1, 1, 13)`` is
+#: ``d, m, d, u, u``; ``(1, 1, 1, 1, 1, 11)`` is four ``d``, two ``m``,
+#: three ``u``.  A doubling is what lets a landing split two survivors, so
+#: the count tracks how often the cyclic order must be broken.  That is a
+#: mechanism sketch, not a lower-bound argument: the closed form is
+#: validated by measurement, and the ``m``-count is observed rather than
+#: derived.
+#:
+#: **Four recorded counterexamples were greedy artifacts, and the record is
+#: corrected here.**  Every pair below was measured against the descent's
+#: path length, not against a distance, and under BFS each pair *agrees*:
+#: ``(19, 2, 11)`` and ``(23, 2, 7)`` both cost 3; ``(34, 20, 10)`` and
+#: ``(10, 20, 34)`` both cost 3; ``(40, 4, 8, 12)`` and ``(12, 4, 8, 40)``
+#: both cost 6.  So the cums-mod-4-with-cap key and the ``min(x, K)``
+#: recodings were never falsified against the true cost -- and the middle
+#: -slot rule's supposed death at four inputs was the same mistake:
+#: ``(1, 14, 1)`` costs 3 where ``(1, 1, 14)`` costs 2, exactly as the rule
+#: says, against the claim that all 3-run words there cost 2 alike.  The
+#: recorded ``base`` table was wrong too: ``base(2) = 1`` at every arity, not
+#: 0 at four inputs -- a two-run word always has a run longer than 1, so its
+#: start state has a nonzero span and cannot already be done.
+#:
+#: What this does *not* say: the ``>1``-pattern is sufficient only where it
+#: was measured (``r <= 5`` at four and five inputs, ``r <= 6`` at three),
+#: and ``r >= 8`` is untested at every arity -- ``base(8) = 13`` is the
+#: closed form's prediction, not a measurement.  A full BFS at seven runs
+#: costs about six minutes and 1.2M states, so the ladder above that is a
+#: compute question rather than an open one.
 #:
 #: One law was found and refuted: ``3 * points`` bounds the exhaustive
 #: three-input maxima exactly, with the bound attained.  It does not survive
