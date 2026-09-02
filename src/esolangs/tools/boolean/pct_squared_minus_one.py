@@ -1603,11 +1603,37 @@ _FOLD_DESCENT_TARGET = 2
 #: opens with one point per run of the sorted table, so a budget written
 #: against points is written against the table's own structure.
 #:
-#: Measured over 160 descents at four through eight inputs, including parity,
-#: the fully alternating word and thresholds, the steps used run 1.5 to 2.7
-#: times the starting points with a worst observed ratio of **4.67**.  A
-#: slope of 8 leaves about 1.7x headroom over that worst case, and refuses
-#: none of the 160.
+#: **Half of the budget is exact and half is a guard.**  A descent's steps
+#: split into those that reduce the point count and those that do not, and
+#: the reducing half is derivable: the point count is *monotone* -- over 36
+#: instrumented descents at five through seven inputs it never once rose --
+#: so at most ``points - target`` steps can ever be productive.  Everything
+#: above that is the barren wander between merges, and that is what no
+#: argument here bounds.
+#:
+#: The slope is therefore fitted to the barren half, and fitting is all it
+#: is.  Over 143 descents at three through nine inputs, up to 282 points and
+#: including parity and the fully alternating word, steps run a median 1.92
+#: times the starting points with a worst of **5.10**; ``4 * points + 32``
+#: refuses none of them and a slope of 8 leaves about 1.6x headroom.
+#:
+#: **Do not read that as convergence.**  The worst observed ratio has risen
+#: with every widening of the sample -- 4.25, then 4.67, then 4.88, then
+#: 5.10 -- so sampling is not going to turn this slope into a computed
+#: number.  A real one needs a termination argument for the barren stretches
+#: (the longest seen is 69 steps, 1.06x the starting points), of the kind
+#: the repo prefers elsewhere: a certificate that no further merge is
+#: reachable, rather than a count that reports "out of steps" when the true
+#: answer is "cannot reduce".  Until then the generous slope is deliberate,
+#: and it is cheap: the fold is the last route tried, so a loose budget
+#: costs refusal latency and nothing on a table that builds.
+#:
+#: One thing measured and *rejected*: widening ``kcap`` from 3 to 6 in the
+#: descent's move generation.  A re-implemented harness suggested it removed
+#: long plateaus, but that harness started from ``2**n`` points where the
+#: real descent starts from the run count, so it was not this algorithm.
+#: Instrumenting the shipped beam gives byte-identical ratios at both values
+#: -- median 1.92, worst 5.10 either way -- so the widening buys nothing.
 #:
 #: Substituting it for the flat 400 is a **no-op where 400 was enough**: over
 #: 387 tables at three through eight inputs the emitted programs are
@@ -1616,9 +1642,6 @@ _FOLD_DESCENT_TARGET = 2
 #: used 359 steps, so nine overran the flat budget and built 1 of 3 random
 #: tables, where the derived bound builds 3 of 3 and prints all 512 rows.
 #:
-#: This is still a measured constant rather than a proved one: nothing here
-#: shows the ratio cannot exceed 8 on some table, only that 160 descents
-#: spanning five arities and the structured worst cases stayed under 4.67.
 #: What it is not any more is *arity-capping* by accident.
 _FOLD_STEP_SLOPE = 8
 _FOLD_STEP_SLACK = 16
