@@ -1645,6 +1645,40 @@ _FOLD_DESCENT_TARGET = 2
 #: the fold being the last route tried, so a loose budget costs refusal
 #: latency and nothing on a table that builds.
 #:
+#: **What the cost actually depends on is the run-length word**, and that is
+#: exhaustive rather than sampled: writing each table as its sequence of run
+#: lengths, every one of the 127 distinct words at three inputs and all
+#: 32767 at four map to a *single* step count, with no exceptions.  Since
+#: 65534 tables share those 32767 words in pairs -- a table and its
+#: complement -- the cost is complement-invariant too, and nothing about the
+#: table beyond the word matters.
+#:
+#: The dependence is on the word as a *sequence*, not as a multiset: only 27
+#: of the 2248 rotation-and-reflection classes at four inputs are
+#: cost-invariant.  Position is what moves it.  Holding the point count,
+#: run count and class sizes fixed and sliding one length-2 run through an
+#: otherwise alternating word takes the cost from 27 steps to 78 -- the same
+#: table shape, three times the work, decided by where the defect sits.  The
+#: worst tables in the whole four-input enumeration are exactly that: near
+#: alternating with a single late defect.
+#:
+#: So a closed form exists in principle -- the cost is a function of an
+#: object with at most ``2**n`` parts -- and finding it is open.  Part of the
+#: mechanism *is* identified.  Sliding the defect gives long stretches where
+#: each slot costs a constant amount more than the last, and that increment
+#: is entirely **relocations**: across the seven consecutive ``+4`` steps at
+#: five inputs the emitted plan gains exactly four ``d`` moves each time
+#: while the ``m`` and ``u`` counts do not move at all, and the plans end in
+#: the same tail.  A later run of slots repeats it at ``+5`` per slot, ``d``
+#: climbing 105, 110, 115, 120, 125, 130, 135 with ``m`` pinned at 10.  So
+#: within a regime, pushing the defect one place further costs a fixed
+#: number of extra wipes and nothing else.
+#:
+#: What is not explained is where the regimes start and stop -- the same
+#: slide also shows jumps of +29 and -24, and the final slot collapses from
+#: 149 steps to 43 -- so the formula would have to say which regime a word
+#: is in before it could say what the word costs.
+#:
 #: One law was found and refuted: ``3 * points`` bounds the exhaustive
 #: three-input maxima exactly, with the bound attained.  It does not survive
 #: -- four inputs violate it at ten points and five inputs reach 5.65 -- so
