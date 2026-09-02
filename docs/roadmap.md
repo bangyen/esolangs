@@ -22,13 +22,15 @@ assessed-and-rejected ledger in `docs/limitations.md`.
 - **Packlang** — Turing-complete: packages with the built-in IO package
   (`charGet`/`charPut`), `If`/`While`, XOR/`!`; the truth-machine example
   branches on `input ^ 48`.
-- **Algebraic Programming Language** — Turing-complete: executed lines print
-  their result and their variables read user input; `&`/`|` short-circuit
-  with `IF(x, c) = x & c()` and a `WHILE` function give the generator its tree.
-- **Interprogck8** — weaker candidate: `u` input, `div` output, and IFT/IFQ
-  conditionals make a truth-machine, but the `[a b]` random range and `~`'s
-  10% side effect need the seeded-randomness judgment call, and the
-  function-based conditional is convoluted.
+- **Interprogck8** — weakest candidate: `u` input, `div` output, and IFT/IFQ
+  plus self-`EXE` (the loop its cat example demonstrates) make a
+  truth-machine, but the conditionals compare the accumulator against
+  *fixed* ASCII codes (84/81), so a generator steers values to `T`/`Q`
+  rather than branching on a bit.  `developer` prints the interpreter's own
+  source — "technically implementation-dependent" on the page — which is a
+  documented judgment call in Taglate's `t` mould rather than a blocker.
+  The randomness is **not** an objection: `[a b]` and `~` are seedable, as
+  LaserFuck's heading already is.
 
 No 2D/grid candidates remain open: the `Category:Two-dimensional` ×
 `Category:Unimplemented` pass produced Streetcode, Flowchart, Line, and

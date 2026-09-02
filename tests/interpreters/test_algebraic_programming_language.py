@@ -7,7 +7,6 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.algebraic_programming_language import _Machine, run
-from esolangs.vm import run_until_halt_or_ancestor, run_until_halt_or_cycle
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -313,34 +312,76 @@ class TestCycles(CycleContract):
     looping_program: ClassVar = None
 
 
-class TestHangDetection:
-    """The truth machine is the shape the explicit frame stack exists for."""
+class TestFrameBookkeeping:
+    """The state the hang detectors read, asserted without importing them.
 
-    def test_a_halting_program_is_reported_as_halting(self) -> None:
-        assert run_until_halt_or_cycle(machine("1 + 1")) is True
+    A test naming ``esolangs.vm`` is dropped from the mutation bundle, so
+    these deliberately drive ``_Machine`` directly: a mutant in
+    ``snapshot()`` or ``frame_entry_key()`` has to be killable by tests
+    that survive the drop.  The detectors' own verdicts are covered in
+    ``test_algebraic_programming_language_vm.py``.
+    """
 
-    def test_the_truth_machine_halts_on_zero(self) -> None:
-        assert run_until_halt_or_ancestor(machine(TRUTH_MACHINE, "0\n")) is True
+    def test_a_recursion_pushes_one_frame_per_lap(self) -> None:
+        """This is what makes the ancestor check applicable at all."""
+        machine_ = machine(TRUTH_MACHINE, "1\n")
+        depths = []
+        for _ in range(60):
+            machine_.step()
+            depths.append(len(machine_.frames))
+        assert max(depths) > 3, depths
 
-    def test_the_truth_machine_is_proven_to_hang_on_one(self) -> None:
-        """Each lap re-enters ``?`` with the same binding and input cursor.
+    def test_two_laps_of_the_truth_machine_share_a_frame_key(self) -> None:
+        """Same operator, same binding, same input cursor -- so it repeats."""
+        machine_ = machine(TRUTH_MACHINE, "1\n")
+        keys = []
+        seen = 0
+        for _ in range(200):
+            machine_.step()
+            if len(machine_.frames) > seen and machine_.frames:
+                keys.append(machine_.frame_entry_key(machine_.frames[-1]))
+            seen = len(machine_.frames)
+        recursive = [k for k in keys if k[0] == "\0?"]
+        assert len(recursive) >= 2
+        assert recursive[0] == recursive[1]
 
-        ``run_until_halt_or_cycle`` cannot catch this: the frame stack
-        grows forever, so no whole-machine snapshot ever repeats.
+    def test_the_frame_key_carries_the_input_cursor(self) -> None:
+        """Two calls either side of a read must not compare equal."""
+        machine_ = machine("F(x) = x\nF(1)\nn\nF(1)", "5\n")
+        keys = []
+        seen = 0
+        for _ in range(400):
+            if machine_.halted:
+                break
+            machine_.step()
+            if len(machine_.frames) > seen and machine_.frames:
+                frame = machine_.frames[-1]
+                if frame.fn.name == "F":
+                    keys.append(machine_.frame_entry_key(frame))
+            seen = len(machine_.frames)
+        assert len(keys) == 2
+        assert keys[0] != keys[1], "the read between them must change the key"
+
+    def test_the_snapshot_distinguishes_two_stages_of_one_expression(self) -> None:
+        """Recording the work stack's depth alone made these compare equal.
+
+        ``1 + 1`` with its left operand resolved and with both resolved
+        are different states; a snapshot that conflated them made the
+        cycle detector call a halting program a hang.
         """
-        assert run_until_halt_or_ancestor(machine(TRUTH_MACHINE, "1\n")) is False
+        machine_ = machine("1 + 1")
+        seen = []
+        while not machine_.halted:
+            seen.append(machine_.snapshot())
+            machine_.step()
+        assert len(seen) == len(set(seen)), "a halting run repeated a state"
 
-    def test_a_recursion_whose_bindings_differ_each_lap_is_undecided(self) -> None:
-        """The check proves *repeats*, not every infinite recursion.
-
-        ``F(x) = F(x + 1)`` enters with a new binding every lap, so no
-        frame ever replays an ancestor and the walk exhausts its budget
-        rather than returning a verdict -- the documented limit that
-        keeps a wall-clock backstop necessary.
-        """
-        program = "F(x) = F(x + 1)\nF(0)"
-        with pytest.raises(TimeoutError):
-            run_until_halt_or_ancestor(machine(program))
+    def test_the_snapshot_is_hashable_and_moves(self) -> None:
+        machine_ = machine("1 + 1")
+        before = machine_.snapshot()
+        assert hash(before) is not None
+        machine_.step()
+        assert machine_.snapshot() != before
 
     def test_only_executed_lines_read_input(self) -> None:
         """A variable inside a function body is *not* input-bound.
