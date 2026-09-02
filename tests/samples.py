@@ -149,6 +149,7 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "%^2^-1": ("ie", ""),
     "6-5": ("55A", ""),
     "A Painter Ant": ("Pnn", ""),
+    "Algebraic Programming Language": ("a + 1", "41\n"),
     "AddSubJump": ("-1 1 0 -7", ""),
     "ArrowQueue": ("~*+", ""),
     "BF-PDA": ("<@.", ""),

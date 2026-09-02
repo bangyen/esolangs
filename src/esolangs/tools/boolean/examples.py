@@ -465,6 +465,14 @@ def _register() -> None:
         "addsubjump": _reader(
             b.addsubjump, "register_based.addsubjump", table=XOR2, expected="1"
         ),
+        # An executed line prints its result and nothing else, so the
+        # answer arrives with the newline that ends that line.
+        "algebraic-programming-language": _reader(
+            b.algebraic_programming_language,
+            "other.algebraic_programming_language",
+            expected="0\n",
+            note="an executed line prints its result, so the answer ends in a newline",
+        ),
         "basicfuck": _reader(b.basicfuck, "tape_based.basicfuck"),
         "between": _reader(b.between, "register_based.between", split=True),
         "bfstack": _reader(b.bfstack, "stack_based.bfstack", table=XOR2, expected="1"),

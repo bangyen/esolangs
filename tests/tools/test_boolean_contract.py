@@ -436,6 +436,7 @@ def test_greedy_order_is_correct_when_it_is_not_the_identity() -> None:
 # so this test is what keeps them true rather than a comment that rots.
 _MINTERM_SHAPED = {
     "a_painter_ant",
+    "algebraic_programming_language",
     "bfstack",
     "container",
 }
