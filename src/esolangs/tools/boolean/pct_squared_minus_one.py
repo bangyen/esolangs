@@ -1662,6 +1662,44 @@ _FOLD_DESCENT_TARGET = 2
 #: worst tables in the whole four-input enumeration are exactly that: near
 #: alternating with a single late defect.
 #:
+#: **All of the above is about the greedy descent's path length, which is
+#: not an invariant of anything.**  It is one policy's walk, tie-broken by
+#: the order :func:`_fold_moves` yields and carrying a ``seen`` set that
+#: makes each step depend on the whole history, so it is not even a graph
+#: distance.  Comparing it against one -- a breadth-first search over
+#: signatures with a global visited set -- it is *optimal on 4 of 196*
+#: three-input words, and can be 14 steps where 6 suffice.  Some words the
+#: descent takes 9 steps on are 2 steps from done.
+#:
+#: Against the true distance the structure is completely different.  Within
+#: a fixed run count the optimal cost takes exactly **two adjacent values**
+#: (spread 1, against the greedy spread of 9), and it does *not* depend on
+#: the exact run lengths at all -- only on which runs exceed 1, with zero
+#: ambiguity at every run count.  So the incompressibility recorded below is
+#: a fact about the heuristic, not about the fold.
+#:
+#: A rule for the optimal cost was found and then falsified, which is worth
+#: recording because it is the third candidate to die the same way.  At
+#: three inputs, ``cost = base(runs) + delta`` with ``delta = 1`` exactly
+#: when every *middle* slot of the word exceeds 1 -- the single slot
+#: ``r // 2`` for odd ``r``, both middle slots for even -- fits all 98
+#: words.  It has a mechanism, too, and the mechanism is verified rather
+#: than fitted: :func:`_fold_merge` refuses to coalesce points unless every
+#: one has span 0, so a run longer than 1 (span ``4 * (len - 1)``) must be
+#: wiped before anything can merge onto it; and every wipe takes ``asc[:k]``
+#: or ``desc[:k]``, a contiguous prefix or suffix of the position order
+#: (160 of 160 moves checked), so a *middle* group cannot be swept up by
+#: either without taking its neighbours.  The middle is the expensive place
+#: to need a wipe.
+#:
+#: It is still false at four inputs.  There the 3-run words all cost 2
+#: whether the middle slot is 1 or 3 -- 26 words checked, every one -- and
+#: the 2-run words all cost 0, where three inputs separated both families
+#: cleanly.  Runs 4 and 5 still match the rule exactly (14 of 14 each at
+#: both arities).  So the middle-extent penalty is real but only binds when
+#: the ladder is tight; a wider ladder absorbs it, and the rule is
+#: arity-dependent rather than a law.
+#:
 #: **The word cannot be compressed, and that is measured rather than
 #: assumed.**  An entropy-guided search over word features found one
 #: candidate sufficient statistic -- the cumulative run boundaries mod 4
