@@ -786,6 +786,104 @@ class TestParameterizedMinifuck:
             assert self.run_minifuck(program) == table[combo], (table, bits)
         assert len(widths) == 1, widths
 
+    def test_a_budget_stops_the_suffix_pass_too(self) -> None:
+        """The budget is checked in the insert pass, not only the first one.
+
+        ``test_a_budget_gives_up_length_not_coverage`` above spends the
+        budget immediately, so the enumeration stops in the bracket-run loop
+        and the suffix pass that follows it never runs.  A budget that
+        outlives the first loop and expires inside the second is what proves
+        the later checks are wired: without them a budget would be ignored
+        for the whole insert pass, which is the more expensive half.
+
+        The table matters as much as the budget.  A table the staged route
+        *places* is claimed before the budget can bite, so this uses one the
+        enumeration never places -- the sculpted route is what serves it --
+        and the spend was measured rather than guessed: the insert pass is
+        entered at 7540 stagings and the whole enumeration costs 120640, so
+        8000 lands inside it.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        orphan = "1101000011010000"  # no staging in the enumeration prints it
+        original = module._STAGING_BUDGET  # noqa: SLF001
+        try:
+            module._STAGING_BUDGET = 8000  # noqa: SLF001
+            module._derived_plans.cache_clear()  # noqa: SLF001
+            assert module._derive_staging(orphan, 4) is None  # noqa: SLF001
+        finally:
+            module._STAGING_BUDGET = original  # noqa: SLF001
+            module._derived_plans.cache_clear()  # noqa: SLF001
+
+        # And it still builds, by the route that does not need a staging.
+        template = module.minifuck(orphan)
+        widths = set()
+        for combo in range(16):
+            bits = [(combo >> (3 - i)) & 1 for i in range(4)]
+            program = self.instantiate(template, bits)
+            widths.add(len(program))
+            assert self.run_minifuck(program) == orphan[combo], (orphan, bits)
+        assert len(widths) == 1, widths
+
+    def test_a_spent_budget_stops_before_the_first_staging(self) -> None:
+        """A budget of zero derives nothing at all, in both spellings.
+
+        The exhaustion check runs before the first embed rather than after
+        it, so a budget already spent costs nothing rather than one staging.
+        Both the oracle and the index it is compared against are asked, since
+        each carries its own copy of the loop and a budget honoured in only
+        one of them would make the two disagree for a reason unrelated to
+        the enumeration order they exist to pin.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        original = module._STAGING_BUDGET  # noqa: SLF001
+        try:
+            module._STAGING_BUDGET = 0  # noqa: SLF001
+            module._derived_plans.cache_clear()  # noqa: SLF001
+            assert module._derived_plans(2, ("0110",)) == {}  # noqa: SLF001
+            module._derived_plans.cache_clear()  # noqa: SLF001
+            assert module._staging_index(2) == {}  # noqa: SLF001
+        finally:
+            module._STAGING_BUDGET = original  # noqa: SLF001
+            module._derived_plans.cache_clear()  # noqa: SLF001
+
+    @pytest.mark.slow  # ~3.6s: a five-input screen plus a sculpted build
+    def test_the_span_screen_costs_length_not_coverage(self) -> None:
+        """A table the span screen declines still builds, the other way.
+
+        ``_span_admits`` is a linear-algebra screen run before the staging
+        tabulation, and it only ever declines -- so the danger is not that it
+        admits something wrong but that a table it rejects stops being built
+        at all.  Nothing drove that arm: every table the suite derives is
+        admitted, so the refusal and the fall-through below it were unrun.
+
+        Executed on every row rather than merely emitted, because a screen
+        that quietly rerouted a table to a *wrong* program would look
+        identical to one that rerouted it to a longer one.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        table = "01001100001110000110000011001011"
+        assert not module._span_admits(table, 5)  # noqa: SLF001
+        module._derived_plans.cache_clear()  # noqa: SLF001
+        assert module._derive_staging(table, 5) is None  # noqa: SLF001
+
+        template = module.minifuck(table)
+        widths = set()
+        for combo in range(32):
+            bits = [(combo >> (4 - i)) & 1 for i in range(5)]
+            program = self.instantiate(template, bits)
+            widths.add(len(program))
+            assert self.run_minifuck(program) == table[combo], (table, bits)
+        assert len(widths) == 1, widths
+
     def test_sculpted_route_separates_every_arity_by_construction(self) -> None:
         """The separation is constructed, so it is exact and immediate.
 
