@@ -2377,6 +2377,19 @@ def _mux_separate(n: int) -> _Joint | None:
     a fork.  The return type keeps the ``None`` case the searches needed, so
     :func:`_mux` is unchanged, but the construction does not fail: the
     verification below is what the arity gate now rests on.
+
+    **No right-pad is emitted, because the weighting cannot need one.**  The
+    sculpting rounds want ``min(ptrs)`` to stand clear of the span, and the
+    lowest pointer is
+
+        min(q) = start + (n-1) * (pad + 1) - 1
+
+    against a span of ``2**n - 1``.  With ``pad + 1 = 2**(n-2)`` the leading
+    term is ``(n-1) * 2**(n-2)``, which passes ``2**n`` at five inputs and
+    then runs away from it -- the difference is ``2**(n-2) * (n-5)`` -- so the
+    clearance is never tight: it is 30, 28, 28, 39, 71, 151 cells at two
+    through seven inputs and grows from there.  A right-pad guarding that
+    gap used to sit here and could not fire at any arity.
     """
     if n in _MUX_SEPARATED:
         return _MUX_SEPARATED[n].fork()
@@ -2401,19 +2414,6 @@ def _mux_separate(n: int) -> _Joint | None:
         return None  # pragma: no cover - the construction separates by design
     if not _mux_intact(_mux_reference(n), j):
         return None  # pragma: no cover - the construction separates by design
-    # Pad right so the sculpting rewinds fit: every round needs
-    # ``b - C + 1 <= min(ptr) - _POOL_WIDTH`` with ``C`` below the lowest row.
-    #
-    # The weighting already leaves room for this at every supported arity:
-    # the lowest pointer outgrows the floor, and by a widening margin --
-    # measured (min against floor) 33/27 at two inputs, 35/31 at three,
-    # 43/39 at four and 70/55 at five.  The pad stays because the floor is a
-    # property of the sculpting rounds rather than of the weighting, so a
-    # change to either could close that gap.
-    q = j.ptrs()
-    floor = (max(q) - min(q)) + 24
-    if min(q) < floor:
-        j.emit("[x" * (floor - min(q)))  # pragma: no cover - see above
     _MUX_SEPARATED[n] = j.fork()
     return j
 
