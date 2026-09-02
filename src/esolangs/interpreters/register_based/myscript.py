@@ -222,27 +222,25 @@ class Scope:
         raise HaltError(f"assignment to undefined variable: {name}")
 
 
-class _Frame:
-    """One block on the machine's explicit call stack.
+#: One block on the machine's explicit call stack:
+#: ``(nodes, pos, scope, while_head)``.
+#:
+#: ``nodes``/``pos`` is the statement list and cursor a block is executing;
+#: ``scope`` is the variables in effect; ``while_head`` is the condition
+#: tokens to re-check when a ``while`` body's frame finishes (``None`` for
+#: a plain block or function body).
+#:
+#: A tuple rather than a class, so the frame stack is a value the
+#: transition returns rather than a list it edits.  The ``scope`` it holds
+#: is deliberately *not* a value -- see :func:`_step`.
+type _Frame = tuple[list[Node], int, "Scope", list[str] | None]
 
-    ``nodes``/``pos`` is the statement list and cursor a block is
-    executing; ``scope`` is the variables in effect; ``while_head`` is the
-    condition tokens to re-check when a ``while`` body's frame finishes
-    (``None`` for a plain block or function body).
-    """
 
-    __slots__ = ("nodes", "pos", "scope", "while_head")
-
-    def __init__(
-        self,
-        nodes: list[Node],
-        scope: "Scope",
-        while_head: list[str] | None = None,
-    ) -> None:
-        self.nodes = nodes
-        self.pos = 0
-        self.scope = scope
-        self.while_head = while_head
+def _frame(
+    nodes: list[Node], scope: "Scope", while_head: list[str] | None = None
+) -> _Frame:
+    """Build a fresh frame for ``nodes``, at its start."""
+    return (nodes, 0, scope, while_head)
 
 
 def _run_block(nodes: list[Node], io: IO, scope: Scope) -> None:
@@ -402,13 +400,63 @@ def _run_statement(
     _parse_expr(tokens, 0, io, scope)
 
 
+#: The frame stack, as a value.  A step returns a new one rather than
+#: editing a list in place.
+type _Frames = tuple[_Frame, ...]
+
+
+def _step(frames: _Frames, io: IO) -> _Frames:
+    """Execute one statement, returning the frame stack that follows.
+
+    Pure in the *stack*: it returns a new tuple rather than editing the one
+    it was handed.  It is deliberately not pure in the scopes, and that is
+    a property of the language rather than a shortcut.  A function value
+    closes over the scope object it was declared in, so a later assignment
+    to that scope is visible through the closure -- ``var x is 1`` /
+    ``func`` / ``var x is 9`` prints 9.  Rebuilding scopes as values per
+    statement would sever exactly that aliasing, which is why the
+    interpreter's own ``snapshot`` says scopes "are not meaningfully
+    hashable (a function closes over a live, mutable scope)" and settles
+    for a ``repr``-based view of them.
+
+    ``io`` is likewise threaded through rather than lifted into the shell:
+    a statement's expression may read and print any number of times, at
+    points that depend on values computed part-way through it.
+    """
+    nodes, pos, scope, while_head = frames[-1]
+
+    if pos >= len(nodes):
+        rest = frames[:-1]
+        if while_head is not None:
+            cond, _ = _parse_expr(while_head, 0, io, scope)
+            if _truthy(cond):
+                return (*rest, _frame(nodes, scope, while_head))
+        return rest
+
+    tokens, children = nodes[pos]
+    advanced = (*frames[:-1], (nodes, pos + 1, scope, while_head))
+    head = tokens[0]
+
+    if head == "while":
+        cond, _ = _parse_expr(tokens[1:-1], 0, io, scope)
+        if _truthy(cond):
+            return (*advanced, _frame(children, scope, tokens[1:-1]))
+        return advanced
+
+    try:
+        _run_statement(tokens, children, io, scope)
+    except _ReturnError:
+        return ()  # a top-level return ends the program
+    return advanced
+
+
 class _Machine:
     """One MyScript run: the frame stack, I/O, and the root scope."""
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
         self.scope = Scope()
-        self.frames: list[_Frame] = [_Frame(_block_tree(code), self.scope)]
+        self.frames: _Frames = (_frame(_block_tree(code), self.scope),)
 
     @property
     def halted(self) -> bool:
@@ -427,14 +475,14 @@ class _Machine:
         """
         if not self.frames:
             return None
-        return len(self.frames), self.frames[-1].pos
+        return len(self.frames), self.frames[-1][1]
 
     @property
     def memory(self) -> list[int]:
         """The innermost scope's integer variables."""
         if not self.frames:
             return []
-        return [v for v in self.frames[-1].scope.vars.values() if type(v) is int]
+        return [v for v in self.frames[-1][2].vars.values() if type(v) is int]
 
     @property
     def stack(self) -> list[object]:
@@ -453,7 +501,7 @@ class _Machine:
         """
         return (
             tuple(
-                (id(frame.nodes), frame.pos, self._scope_key(frame.scope))
+                (id(frame[0]), frame[1], self._scope_key(frame[2]))
                 for frame in self.frames
             ),
             self.io.position(),
@@ -468,31 +516,15 @@ class _Machine:
         return tuple(chain)
 
     def step(self) -> None:
-        """Execute one top-level-block statement, advancing the frame stack."""
+        """Execute one top-level-block statement, advancing the frame stack.
+
+        The ports stay inside the transition rather than in this shell: a
+        statement's expression may read and print any number of times, at
+        points that depend on values computed part-way through it.
+        """
         if self.halted:
             return
-        frame = self.frames[-1]
-        if frame.pos >= len(frame.nodes):
-            self.frames.pop()
-            if frame.while_head is not None:
-                cond, _ = _parse_expr(frame.while_head, 0, self.io, frame.scope)
-                if _truthy(cond):
-                    while_head = frame.while_head
-                    self.frames.append(_Frame(frame.nodes, frame.scope, while_head))
-            return
-
-        tokens, children = frame.nodes[frame.pos]
-        frame.pos += 1
-        head = tokens[0]
-        if head == "while":
-            cond, _ = _parse_expr(tokens[1:-1], 0, self.io, frame.scope)
-            if _truthy(cond):
-                self.frames.append(_Frame(children, frame.scope, tokens[1:-1]))
-            return
-        try:
-            _run_statement(tokens, children, self.io, frame.scope)
-        except _ReturnError:
-            self.frames.clear()  # a top-level return ends the program
+        self.frames = _step(self.frames, self.io)
 
 
 def run(code: str, io: IO) -> None:
