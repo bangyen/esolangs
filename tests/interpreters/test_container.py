@@ -8,7 +8,7 @@ import pytest
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.container import run
-from tests.interpreters.contract import SnapshotContract
+from tests.interpreters.contract import SnapshotContract, StateViewContract
 from tests.raises import raises_message
 
 HELLO_WORLD = [
@@ -177,8 +177,13 @@ def _machine(code: object) -> object:
     return _Machine(code, IO())
 
 
-class TestContract(SnapshotContract):
+class TestContract(SnapshotContract, StateViewContract):
     """The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     stepping_program: ClassVar[list[str]] = ["A=0:", "+1 A>=0"]
+    # `queue` is the input read but not yet consumed, which this program
+    # never fills -- it is read either side regardless, and `memory` (the
+    # containers' values) is what the tick moves.
+    state_views: ClassVar[tuple[str, ...]] = ("queue", "ip", "memory")
+    viewing_program: ClassVar[list[str]] = ["A=0:", "+1 A>=0"]

@@ -66,7 +66,14 @@ def _get(variables: _Vars, name: str) -> int:
     for key, value in variables:
         if key == name:
             return value
-    raise KeyError(name)
+    # Unreachable from this module's call sites, and kept as the contract
+    # rather than as a live path.  Every `_get` against the *old* variables
+    # is guarded by a matching `_has`, and every `_get` against the *new*
+    # ones is safe for a structural reason: `_tick` rebuilds its result from
+    # `obj` -- one entry per declared container -- so a tick cannot drop a
+    # name that was there before it.  Measured over a run of the input
+    # example: zero key-set differences between a tick's input and output.
+    raise KeyError(name)  # pragma: no cover - see above
 
 
 def _has(variables: _Vars, name: str) -> bool:
