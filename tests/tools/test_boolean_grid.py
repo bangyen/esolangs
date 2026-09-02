@@ -761,6 +761,24 @@ class TestWII2D:
         # the plain nor the doubled scaling offers a fold.
         assert _wii2d_folds([2, 2], [0, 1]) == []
 
+    def test_a_centre_too_far_out_to_spell_is_skipped(self) -> None:
+        """A midpoint past the cap is correct but too wide for the grid.
+
+        The offset is spelled out in the program, so a centre far from the
+        origin costs more characters than the grid has room for.  The two
+        states here are the same shape -- two points needing one bit and a
+        third needing the other -- and differ only in how far from zero
+        they sit, so the empty result is the cap and not the pattern.
+        """
+        from esolangs.tools.boolean.wii2d import _WII2D_MAX_CENTRE, _wii2d_folds
+
+        near = _wii2d_folds([0, 4, 10], [1, 1, 0])
+        assert near, "the positive control must fold"
+
+        centre = (20000 + 20004) // 2
+        assert centre > _WII2D_MAX_CENTRE
+        assert _wii2d_folds([20000, 20004, 20010], [1, 1, 0]) == []
+
     def test_the_beam_search_gives_up_when_no_fold_survives(self) -> None:
         """With every fold rejected the search has nowhere to go.
 

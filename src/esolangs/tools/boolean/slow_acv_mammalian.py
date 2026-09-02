@@ -465,7 +465,7 @@ def slow_acv_mammalian_boolean(truth_table: str) -> str:
     for the combination it was given.  It is a decision tree of uniform depth
     ``n``, so a constant table still reads all ``n`` inputs.
     """
+    # ``_validate_truth_table`` refuses a one-entry table, so the tree
+    # always has at least one level to read.
     n = _validate_truth_table(truth_table)
-    if n == 0:
-        return " ".join(_leaf([0], 0, int(truth_table)))
     return " ".join(_subtree(truth_table, n, 0, "", [0], 0, 0))
