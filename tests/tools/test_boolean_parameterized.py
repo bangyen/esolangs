@@ -3441,6 +3441,37 @@ class TestParameterizedMinifuck:
             assert not any(m.dead for m in joint.ms), ignored
             assert len({m.key() for m in joint.ms}) == 1, ignored
 
+    def test_the_sculpted_route_returns_its_shortest_build(self) -> None:
+        """``_mux`` keeps the shortest build, not the first one that prints.
+
+        The accumulator sets the price of every sculpting round -- a round is
+        ``3 * K + 1`` characters for a rewind of ``K`` -- so which one is
+        chosen decides the program's length, and the first is a poor choice.
+        This pins the property rather than a number: no ``(C, orientation,
+        read)`` combination may produce a build shorter than the one
+        returned.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        table = "1010000110011011"
+        built = module._mux(table, 4)  # noqa: SLF001
+        assert built is not None
+
+        base = module._mux_separate(4)  # noqa: SLF001
+        assert base is not None
+        positions = base.ptrs()
+        lowest, highest = min(positions), max(positions)
+        for acc in range(highest - lowest + 9, lowest - 1):
+            for cell7 in (0, 1):
+                for direct in (True, False):
+                    other = module._mux_sculpt(  # noqa: SLF001
+                        base, table, 4, acc, cell7, direct=direct
+                    )
+                    if other is not None:
+                        assert len(other) >= len(built), (acc, cell7, direct)
+
     def test_the_staging_index_agrees_with_the_enumeration(self) -> None:
         """The inverted index assigns exactly what the per-table sweep does.
 
