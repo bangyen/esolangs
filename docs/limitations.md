@@ -48,6 +48,7 @@ predictable across languages:
 | Language | Why it cannot emit arbitrary text |
 | --- | --- |
 | A Painter Ant | No I/O; prints the visited-grid bounding box (a `#` white / `.` black raster, with the ant's cell as `@` or `o`). Has a general (any-arity) boolean generator; no text generator. |
+| Algebraic Programming Language | The only datatype is a number and an executed line prints its *result*, so the output alphabet is digits (plus `.` and `-`) — the same wall as Jaune and COD. The wiki's own hello-world prints the ASCII values `72 101 108 …` rather than the characters, which is the spec conceding the point. Has an uncapped boolean generator; no text generator. |
 | ArrowQueue | No output at all; the IP walks the grid and halts, printing nothing. |
 | Back | Prints the tape as a number list. |
 | BF-PDA | `.` prints the top bit as the `'0'`/`'1'` character, so the output alphabet is just the two digits. |
