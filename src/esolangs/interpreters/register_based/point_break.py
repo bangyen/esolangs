@@ -23,9 +23,28 @@ and are rejected with :class:`ValueError`.  An empty loop body is
 permitted (it loops forever) and an empty program is a no-op.
 
 Exhausted input raises :class:`EOFError` (the repo-wide convention).
+
+The execution model is a pure function over an immutable ``_State``: the
+variables, the open loop frames, and the statement cursor.  :func:`_step`
+maps a state and the program's static tables to the next state and never
+edits what it is given; :meth:`_Machine.step` rebinds the three fields from
+what it returned, so the mutation lives in exactly one place.
+
+The statements and the loop structure stay out of the state: Point Break
+never rewrites its own program, and both are computed once when the machine
+is parsed.
+
+``?`` is the language's only port, and it stays a callback rather than
+being hoisted into the shell.  An expression may hold several of them, and
+they are read *as the evaluation reaches them* -- so an expression that
+divides by zero or names an undefined variable stops without consuming the
+inputs to its right.  Reading them all up front would consume input the
+original run leaves alone, which is a difference a corpus of programs whose
+expressions raise mid-way can see.
 """
 
 import sys
+from collections.abc import Callable, Mapping, Sequence
 from typing import Literal
 
 from esolangs.exceptions import HaltError
@@ -201,8 +220,30 @@ def _structure(stmts: list[Statement]) -> dict[int, tuple[int, bool]]:
     return ends
 
 
-def _eval(expr: list[Token], variables: dict[str, int], io: IO) -> int:
-    """Evaluate a validated expression; ``?`` reads a number from input."""
+#: The variable store, as a mapping.  A value, not a record: the transition
+#: returns a new one rather than editing the one it was handed.
+type _Vars = Mapping[str, int]
+
+#: The open loop frames, innermost last: ``(label, the POINT's index)``.
+type _Frames = Sequence[tuple[str, int]]
+
+#: The ``?`` port.  A callback rather than a pre-read list, because an
+#: expression holding several of them reads each as the evaluation reaches
+#: it -- see :func:`_eval`.
+type _Read = Callable[[], int]
+
+#: One instant of a run: ``(variables, frames, pc)``.
+type _State = tuple[_Vars, _Frames, int]
+
+
+def _eval(expr: list[Token], variables: _Vars, read: _Read) -> int:
+    """Evaluate a validated expression; ``?`` reads a number from input.
+
+    Pure in its state: it only reads ``variables``.  ``read`` is the ``?``
+    port, and it is called *as the walk reaches it* -- an expression that
+    raises part-way therefore leaves the inputs to its right unread, which
+    is behaviour the input cursor records.
+    """
     pos = 0
 
     def factor() -> int:
@@ -210,7 +251,7 @@ def _eval(expr: list[Token], variables: dict[str, int], io: IO) -> int:
         kind, value = expr[pos]
         pos += 1
         if kind == "input":
-            return io.input_num()
+            return read()
         if kind == "name":
             if value not in variables:
                 raise HaltError(f"undefined variable {value!r}")
@@ -246,6 +287,47 @@ def _eval(expr: list[Token], variables: dict[str, int], io: IO) -> int:
         return value
 
     return add()
+
+
+def _step(
+    state: _State,
+    stmts: list[Statement],
+    ends: Mapping[int, tuple[int, bool]],
+    read: _Read,
+) -> _State:
+    """Return the state after executing one statement.
+
+    Pure in its state: it reads ``state`` and returns a new one.  ``read``
+    is the ``?`` port, reached only through :func:`_eval`.
+
+    ``END`` and a taken ``BREAK`` both cut the frame stack back to the
+    loop they name.  They differ in where they resume: ``END`` jumps to the
+    ``POINT`` that opened the loop, so the body runs again, while ``BREAK``
+    resumes after the ``END`` that closes it -- or *at* that ``END`` when
+    the loop is closed implicitly by an ancestor's, which is what makes the
+    wiki's examples behave as named.
+    """
+    variables, frames, pc = state
+    stmt = stmts[pc]
+
+    if stmt[0] == "let":
+        value = _eval(stmt[2], variables, read)
+        return ({**variables, stmt[1]: value}, frames, pc + 1)
+    if stmt[0] == "point":
+        return (variables, [*frames, (stmt[1], pc)], pc + 1)
+    if stmt[0] == "end":
+        pos = _frame_index(list(frames), stmt[1])
+        return (variables, frames[:pos], frames[pos][1])
+
+    # if_break
+    _, var, label = stmt
+    if var not in variables:
+        raise HaltError(f"undefined variable {var!r}")
+    if not variables[var]:
+        return (variables, frames, pc + 1)
+    pos = _frame_index(list(frames), label)
+    end, implicit = ends[frames[pos][1]]
+    return (variables, frames[:pos], end if implicit else end + 1)
 
 
 class _Machine:
@@ -309,33 +391,27 @@ class _Machine:
             self.io.position(),
         )
 
+    @property
+    def _state(self) -> _State:
+        """The machine's fields as the value the transition works on."""
+        return (self.variables, self.frames, self.pc)
+
+    def _restore(self, state: _State) -> None:
+        """Write a transition's result back onto the machine's fields."""
+        variables, frames, self.pc = state
+        self.variables = dict(variables)
+        self.frames = list(frames)
+
     def step(self) -> None:
-        """Execute one statement, advancing the machine."""
+        """Execute one statement, advancing the machine.
+
+        The one port lives here rather than in the transition: this is the
+        shell.  It is handed over as a callback because ``?`` is read as
+        the expression walk reaches it, not before the statement runs.
+        """
         if self.halted:
             return
-        stmt = self.stmts[self.pc]
-        if stmt[0] == "let":
-            self.variables[stmt[1]] = _eval(stmt[2], self.variables, self.io)
-            self.pc += 1
-        elif stmt[0] == "point":
-            self.frames.append((stmt[1], self.pc))
-            self.pc += 1
-        elif stmt[0] == "end":
-            label = stmt[1]
-            pos = _frame_index(self.frames, label)
-            self.pc = self.frames[pos][1]
-            del self.frames[pos:]
-        else:  # if_break
-            _, var, label = stmt
-            if var not in self.variables:
-                raise HaltError(f"undefined variable {var!r}")
-            if self.variables[var]:
-                pos = _frame_index(self.frames, label)
-                end, implicit = self.ends[self.frames[pos][1]]
-                del self.frames[pos:]
-                self.pc = end if implicit else end + 1
-            else:
-                self.pc += 1
+        self._restore(_step(self._state, self.stmts, self.ends, self.io.input_num))
 
 
 def run(code: str | list[str], io: IO) -> None:
