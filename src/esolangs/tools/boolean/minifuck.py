@@ -2564,6 +2564,23 @@ def _solve(truth_table: str) -> str:
 
     frontier = _BASE + n * _SPAN + 6
 
+    # **Everything below is unreachable at ``n <= 4`` and is not dead code.**
+    # Measured with both searches stubbed to raise: every table at one, two
+    # and three inputs builds without them (4, 16 and 256 of each), and so
+    # does a 370-table four-input sample that deliberately included 120
+    # degenerate tables.  The routes above cover those arities between them.
+    #
+    # They stay because ``n >= 5`` has nothing else.  Staging is partial
+    # there -- a measured 0.00057% of the arity -- and :func:`_mux` declines,
+    # since no derivation has separated 32 rows; see :data:`_MUX_ARITIES`.
+    # Deleting these would turn every five-input miss from slow into a
+    # raise, which is a coverage regression rather than a cleanup.
+    #
+    # So the right reading of "unreachable" here is *unreachable at the
+    # arities something better closes*, which is a statement about
+    # :func:`_mux` rather than about these searches.  Lift five inputs and
+    # they become deletable; until then they are the last line.
+
     # The scans first, across *both* separators, because they are by far the
     # cheapest route and a good share of tables land in one of them: the
     # embed's carry chain computes AND, NOR and XOR as a byproduct, so the
