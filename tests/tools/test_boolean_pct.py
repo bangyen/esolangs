@@ -908,3 +908,58 @@ class TestPctSquaredHelpers:
         width = getattr(self.module(), name)(8)
         assert width is not None
         assert width % 2 == 0
+
+    def test_a_ladder_refuses_an_unspellable_base(self) -> None:
+        """The lead is spelled first, so its width decides before any weight.
+
+        7 is one of the four values with no even-width spelling, and a
+        ladder led by it cannot be built whatever its weights are.
+        """
+        assert self.module()._ladder_setters((12,), 7) is None  # noqa: SLF001
+
+    def test_a_ladder_refuses_an_unspellable_weight(self) -> None:
+        """One bad weight refuses the ladder even under a legal lead.
+
+        The base here spells at width 4, so the refusal can only come from
+        the weight -- which separates this from the lead's own guard.
+        """
+        assert self.module()._ladder_setters((7,), 12) is None  # noqa: SLF001
+
+    def test_a_ladder_spells_both_branches_at_one_width(self) -> None:
+        """A legal ladder holds and subtracts at the same length.
+
+        The hold is ``pp`` repeated and the subtraction is the same width,
+        so no program leaks which bit it embeds through ``len()``.
+        """
+        got = self.module()._ladder_setters((12,), 12)  # noqa: SLF001
+        assert got is not None
+        setters, lead = got
+        hold, code = setters[0]
+        assert len(hold) == len(code)
+        assert lead == code
+
+    def test_parameter_sets_leaving_one_vector_are_searched_once(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Distinct ladder parameters can leave the same rungs.
+
+        The suffix search depends only on the stage-one vector, so a repeat
+        of one is skipped rather than swept again.  No shipped pair
+        collides, so the guard is driven by duplicating an entry: the
+        tables built must be exactly those the single entry builds.
+        """
+        module = self.module()
+        entry = ((250, 500, 250), 1000)
+
+        monkeypatch.setattr(module, "_LADDERS", (entry, entry))
+        module._ladder_tables.cache_clear()  # noqa: SLF001
+        twice = module._ladder_tables(3)  # noqa: SLF001
+
+        monkeypatch.setattr(module, "_LADDERS", (entry,))
+        module._ladder_tables.cache_clear()  # noqa: SLF001
+        once = module._ladder_tables(3)  # noqa: SLF001
+
+        assert twice == once
+        # The cache outlives the patch, so the shipped table has to be the
+        # one memoized when this test leaves.
+        module._ladder_tables.cache_clear()  # noqa: SLF001

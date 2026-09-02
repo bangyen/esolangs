@@ -188,14 +188,6 @@ class _Machine:
         mem, self.ip, self._halted = state
         self.mem = list(mem)
 
-    def read(self, addr: int) -> int:
-        """Read a value: a special address or a memory cell."""
-        return _read(self._state, addr, self.input_byte() if addr == -2 else None)
-
-    def write(self, addr: int, value: int) -> None:
-        """Set ``addr`` to ``value``; ``-1`` moves the pointer."""
-        self._restore(_write(self._state, addr, value))
-
     def input_byte(self) -> int:
         # -2 returns the next byte of input; EOF reads as zero
         try:
