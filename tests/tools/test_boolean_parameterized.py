@@ -4268,6 +4268,79 @@ class TestParameterizedPctSquaredMinusOne:
             assert self.run_pct(program) == table[row], (table, bits)
         assert len(lengths) == 1, sorted(lengths)
 
+    @pytest.mark.slow  # derives the whole three-input arity once
+    def test_affine_reach_is_exactly_characterized(self) -> None:
+        """The composed-affine path's 84/256 is a predicate, not a measurement.
+
+        A three-input table is reachable iff its cofactors on the **last**
+        input are equal, complementary or constant -- the shared-cofactor
+        law -- except for the two constants, which earlier paths serve, and
+        ``x0 ^ x2`` with its complement.  That last exclusion is the
+        construction's shape showing through: the setters compose in slot
+        order, so a function whose dependence skips the middle input cannot
+        be built, while ``x1 ^ x2`` and ``x0 ^ x1 ^ x2`` both can.
+
+        Pinned because the docs used to record the law as *crossing* this
+        path rather than containing it -- a claim that came from testing the
+        law on the first input instead of the last.
+        """
+        from esolangs.tools.boolean.pct_squared_minus_one import _affine_tables
+
+        def complement(bits: str) -> str:
+            return "".join("1" if c == "0" else "0" for c in bits)
+
+        def cofactor(table: str, index: int, value: int) -> str:
+            return "".join(
+                table[row] for row in range(8) if (row >> (2 - index)) & 1 == value
+            )
+
+        def predicted(table: str) -> bool:
+            skip_middle = "".join(str(((row >> 2) & 1) ^ (row & 1)) for row in range(8))
+            if len(set(table)) == 1 or table in (skip_middle, complement(skip_middle)):
+                return False
+            low, high = cofactor(table, 2, 0), cofactor(table, 2, 1)
+            return (
+                low == high
+                or complement(low) == high
+                or len(set(low)) == 1
+                or len(set(high)) == 1
+            )
+
+        reached = set(_affine_tables(3))
+        assert reached == {
+            format(v, "08b") for v in range(256) if predicted(format(v, "08b"))
+        }
+        assert len(reached) == 84
+
+    def test_cascade_reach_is_exactly_the_subcubes(self) -> None:
+        """The cascade builds exactly the tables that are a subcube or one's
+        complement, which is what its docstring claims at any arity.
+
+        Checked at three inputs against the whole arity.  A subcube here is
+        the 1-set agreeing on some inputs and free on the rest, so the count
+        of ones is ``2 ** (free inputs)``.
+        """
+        from esolangs.tools.boolean.pct_squared_minus_one import _cascade
+
+        def is_subcube(table: str) -> bool:
+            ones = [row for row in range(8) if table[row] == "1"]
+            if not ones:
+                return True
+            fixed = [
+                k for k in range(3) if len({(r >> (2 - k)) & 1 for r in ones}) == 1
+            ]
+            return len(ones) == 2 ** (3 - len(fixed))
+
+        def predicted(table: str) -> bool:
+            flipped = "".join("1" if c == "0" else "0" for c in table)
+            return is_subcube(table) or is_subcube(flipped)
+
+        reached = {t for t in (format(v, "08b") for v in range(256)) if _cascade(t, 3)}
+        assert reached == {
+            format(v, "08b") for v in range(256) if predicted(format(v, "08b"))
+        }
+        assert len(reached) == 48
+
     def test_deep_band_is_screened_above_four_inputs(self) -> None:
         """Asymmetric five-input tables are screened, symmetric ones built.
 
