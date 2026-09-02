@@ -123,6 +123,12 @@ LANGUAGES: dict[str, Language] = {
         id="a_painter_ant",
         interpreter="grid_based.a_painter_ant",
     ),
+    "Algebraic Programming Language": Language(
+        "Algebraic Programming Language",
+        boolean=_boolean.algebraic_programming_language,
+        id="algebraic_programming_language",
+        interpreter="other.algebraic_programming_language",
+    ),
     "123": Language(
         "123",
         _generate.one_two_three,

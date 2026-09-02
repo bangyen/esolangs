@@ -12,6 +12,9 @@ The generators live in ``esolangs.tools.boolean``, split by language family
 module re-exports them for compatibility.
 """
 
+from esolangs.tools.boolean.algebraic_programming_language import (
+    algebraic_programming_language,
+)
 from esolangs.tools.boolean.circuit_diagram import circuit_diagram
 from esolangs.tools.boolean.cvnc import cvnc
 from esolangs.tools.boolean.fargo import fargo
@@ -88,6 +91,7 @@ __all__ = [
     "BOOLEAN",
     "a_painter_ant",
     "addsubjump",
+    "algebraic_programming_language",
     "arrowqueue",
     "back",
     "basicfuck",
