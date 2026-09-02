@@ -4270,19 +4270,20 @@ class TestParameterizedPctSquaredMinusOne:
 
     @pytest.mark.slow  # derives the whole three-input arity once
     def test_affine_reach_is_exactly_characterized(self) -> None:
-        """The composed-affine path's 84/256 is a predicate, not a measurement.
+        """The composed-affine path's 86/256 is a predicate, not a measurement.
 
         A three-input table is reachable iff its cofactors on the **last**
         input are equal, complementary or constant -- the shared-cofactor
-        law -- except for the two constants, which earlier paths serve, and
-        ``x0 ^ x2`` with its complement.  That last exclusion is the
-        construction's shape showing through: the setters compose in slot
-        order, so a function whose dependence skips the middle input cannot
-        be built, while ``x1 ^ x2`` and ``x0 ^ x1 ^ x2`` both can.
+        law -- and it is not constant, the constants being served by earlier
+        paths.  The law and the path coincide exactly: 86 of the 88 tables
+        the law admits, the two missing ones being the constants.
 
         Pinned because the docs used to record the law as *crossing* this
         path rather than containing it -- a claim that came from testing the
-        law on the first input instead of the last.
+        law on the first input instead of the last.  ``x0 ^ x2`` was also
+        excluded for a while, and that was a witness-selection artefact
+        rather than a property of the model: see
+        ``test_affine_keeps_the_witness_a_bounded_tail_can_reach``.
         """
         from esolangs.tools.boolean.pct_squared_minus_one import _affine_tables
 
@@ -4295,8 +4296,7 @@ class TestParameterizedPctSquaredMinusOne:
             )
 
         def predicted(table: str) -> bool:
-            skip_middle = "".join(str(((row >> 2) & 1) ^ (row & 1)) for row in range(8))
-            if len(set(table)) == 1 or table in (skip_middle, complement(skip_middle)):
+            if len(set(table)) == 1:
                 return False
             low, high = cofactor(table, 2, 0), cofactor(table, 2, 1)
             return (
@@ -4310,7 +4310,40 @@ class TestParameterizedPctSquaredMinusOne:
         assert reached == {
             format(v, "08b") for v in range(256) if predicted(format(v, "08b"))
         }
-        assert len(reached) == 84
+        assert len(reached) == 86
+
+    @pytest.mark.slow  # derives the whole three-input arity once
+    def test_affine_keeps_the_witness_a_bounded_tail_can_reach(self) -> None:
+        """Witnesses are chosen by magnitude, which is worth two tables.
+
+        Vectors sharing a partition are not interchangeable: a later setter
+        translates by ``|b| <= 12``, so a vector far from zero cannot be
+        moved onto the values a tail needs.  Keeping witnesses by arrival
+        banked ``(-24, -24, -23, -23)`` through ``(-19, -19, -18, -18)`` for
+        one partition and dropped ``(-12, -12, -11, -11)``, the only one of
+        them the last layer could still use -- so ``x0 ^ x2`` and its
+        complement were refused despite the model admitting them, and each
+        cost a 3054-character deep-band program instead of a 43-character
+        one.  Raising the witness count does not fix it (84 tables at every
+        count up to sixteen); ranking by magnitude does.
+        """
+        from esolangs.tools.boolean.pct_squared_minus_one import (
+            _affine,
+            _witness_rank,
+        )
+
+        assert _witness_rank((-12, -12, -11, -11)) == 12
+        assert _witness_rank((-24, -24, -23, -23)) == 24
+        for table in ("01011010", "10100101"):
+            template = _affine(table, 3)
+            assert template is not None, table
+            lengths = set()
+            for row in range(8):
+                bits = [(row >> (2 - k)) & 1 for k in range(3)]
+                program = self.instantiate(template, bits)
+                lengths.add(len(program))
+                assert self.run_pct(program) == table[row], (table, bits)
+            assert len(lengths) == 1, sorted(lengths)
 
     @pytest.mark.slow  # derives the whole three-input arity once
     def test_affine_gate_matches_the_path_it_skips(self) -> None:
