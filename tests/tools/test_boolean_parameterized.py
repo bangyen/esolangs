@@ -216,6 +216,22 @@ def test_minifuck_slots_run_in_name_order() -> None:
         assert slots is not None, table
         assert slots == sorted(slots), (table, slots)
 
+    # **The whole arity, not a list.**  Ten tables used to emit
+    # ``{X0}{X2}{X1}`` -- every one of them with the ignored input in the
+    # *middle* -- and they survived precisely because this test named
+    # specific tables and none of them had that shape.  A hand-picked list
+    # cannot fail on the case nobody thought of, so the sweep is the
+    # assertion that matters and the tables above are the regressions it
+    # grew from.  They are sorted now because ``_solve`` hands exactly that
+    # residue to ``_mux``, which embeds at full arity in ascending order.
+    unsorted_tables = []
+    for value in range(256):
+        table = format(value, "08b")
+        slots = _slot_order(parameterized.minifuck, table)
+        if slots is not None and slots != sorted(slots):
+            unsorted_tables.append((table, slots))
+    assert not unsorted_tables, unsorted_tables
+
 
 @pytest.mark.slow  # two closed-form builds plus eight interpreter runs each
 def test_minifuck_reconverged_tables_compute_their_function() -> None:
@@ -3097,7 +3113,11 @@ class TestParameterizedMinifuck:
         try:
             reset(original)
             baseline = out_of_order()
-            assert baseline == 10, baseline
+            # Zero, and it used to be ten.  The ten were the tables whose
+            # ignored input is the *middle* one, which no projection could
+            # sort; ``_mux`` solves them at full arity, where the slots are
+            # ascending by construction.
+            assert baseline == 0, baseline
 
             stranding = {}
             for dropped in range(len(codes)):
@@ -3141,10 +3161,20 @@ class TestParameterizedMinifuck:
             free = [c for c, n in stranding.items() if not n]
             assert len(free) == 2, stranding
             reset(tuple(c for c in codes if c not in free))
-            assert out_of_order() > baseline, (
-                "dropping the non-stranding codes no longer costs slot order; "
-                "if that holds, the list can lose them"
-            )
+            # **The reason these two were kept has expired, and this records
+            # that rather than hiding it.**  They strand no table; what
+            # justified them was the quiet property -- dropping both used to
+            # take the out-of-name-order count from 10 to 18.  It no longer
+            # does: ``_mux`` sorts those tables whatever the pool list holds,
+            # so both counts are 0 and the slot-order argument is gone.
+            #
+            # They are still shipped, because "no longer justified by this
+            # measurement" is not the same as "measured to be worthless" --
+            # the ablation above only covers three inputs, and which code
+            # answers shifts with arity.  Whoever wants to trim the list now
+            # has to measure at four, which is the honest version of the
+            # question this assertion used to answer.
+            assert out_of_order() == baseline == 0, out_of_order()
         finally:
             reset(original)
 
