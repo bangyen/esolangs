@@ -358,9 +358,13 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
             # Some state objects cannot take a program positionally -- a
             # dataclass whose parsed field is ``init=False``, or one whose
             # code field sits behind ``io``.  Those offer ``of(code, io)``
-            # instead, which is the same construction under a name.
+            # instead, which is the same construction under a name.  A
+            # state class may also use ``of`` for one of the language's own
+            # names (AddSubJump's overflow flag is a property), so only a
+            # callable ``of`` counts as the constructor.
             state = getattr(module, "_Machine", None) or module.State
-            machine = getattr(state, "of", state)
+            of = getattr(state, "of", None)
+            machine = of if callable(of) else state
             # A language with a random instruction takes a source for it,
             # and a stepped VM has to be reproducible, so one is passed
             # wherever it is accepted.  It is optional exactly like ``io``
