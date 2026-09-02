@@ -61,7 +61,7 @@ _ARRAY = {
 _Point = tuple[int, int, int]
 
 
-def _advance(point: _Point, delta: _Point) -> _Point:
+def _moved(point: _Point, delta: _Point) -> _Point:
     """Return ``point`` moved by ``delta``, one component at a time.
 
     Both pointers move this way, so they share it.  Spelled out at each site
@@ -91,7 +91,7 @@ type _Cells = Mapping[_Point, int]
 type _State = tuple[_Cells, _Point, _Point, _Point]
 
 
-def _step(
+def _advance(
     state: _State,
     grid: Mapping[_Point, str],
     match: Mapping[int, int],
@@ -113,7 +113,7 @@ def _step(
     if char in _HEADING:
         heading = _HEADING[char]
     elif char in _ARRAY:
-        ap = _advance(ap, _ARRAY[char])
+        ap = _moved(ap, _ARRAY[char])
     elif char == "+":
         cells = {**cells, ap: (cells.get(ap, 0) + 1) % 256}
     elif char == "-":
@@ -128,7 +128,7 @@ def _step(
     elif char == "]" and cells.get(ap, 0) != 0:
         return (cells, ap, (match[pos[0]] + 1, 0, 0), heading)
 
-    return (cells, ap, _advance(pos, heading), heading)
+    return (cells, ap, _moved(pos, heading), heading)
 
 
 class _Machine:
@@ -216,7 +216,7 @@ class _Machine:
         elif char == ",":
             byte = self.io.input_char()
 
-        self._restore(_step(self._state, self.grid, self.m, byte))
+        self._restore(_advance(self._state, self.grid, self.m, byte))
 
 
 def run(code: str, io: IO) -> None:

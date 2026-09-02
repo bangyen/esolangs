@@ -528,7 +528,7 @@ def _step_body(
     return (1, (waiting, child)), vars_, ind, None
 
 
-def _step(
+def _advance(
     view: Sequence[_Frame],
     vars_: _Vars,
     ind: int,
@@ -639,7 +639,7 @@ class _Machine:
             self.frames.append(_Frame(self.main, self.ind, start=self.ind))
             return
 
-        (pops, pushes), variables, ind, output = _step(
+        (pops, pushes), variables, ind, output = _advance(
             self.frames, self.vars, self.ind, self.defs, self.main
         )
         if pops:

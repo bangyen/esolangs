@@ -200,7 +200,7 @@ def _next_ptr(ptr: int) -> int:
     return 3 * ptr + 1 if ptr % 2 else ptr // 2
 
 
-def _advance(
+def _advance_line(
     ptr: int, code: list[str], var: Mapping[str, Value], reads: tuple[int, ...]
 ) -> tuple[int, list[_Effect]]:
     """Return the next pointer and what the line under ``ptr`` wants done.
@@ -367,7 +367,7 @@ class _Machine:
         reads: tuple[int, ...] = ()
         while True:
             try:
-                ptr, effects = _advance(self.ptr, self.code, self.var, reads)
+                ptr, effects = _advance_line(self.ptr, self.code, self.var, reads)
             except _NeedInput:
                 reads = (*reads, self.io.input_char())
                 continue
