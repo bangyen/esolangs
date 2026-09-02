@@ -1891,3 +1891,58 @@ class TestAlgebraicProgrammingLanguage:
         """A nullary table is a constant, not a function of any input."""
         with pytest.raises(ValueError, match="a one-entry table is a constant"):
             boolean.algebraic_programming_language("0")
+
+
+class TestAlgebraicProgrammingLanguageShapes:
+    """The structural corners of the minterm expansion, at four inputs.
+
+    The exhaustive n<=3 sweep above already covers every shape the
+    construction can take -- empty minterm set, full set, and everything
+    between -- and the expansion is mechanical rather than searched, so
+    sweeping all 65536 four-input tables costs about eight minutes to
+    re-cover the same ground.  These four pin the corners instead: the
+    two constants, the table that expands to the most terms, and the one
+    that expands to the fewest.
+    """
+
+    @staticmethod
+    def _check(table: str, n: int = 4) -> None:
+        program = boolean.algebraic_programming_language(table)
+        for combo in range(2**n):
+            bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+            got = run_algebraic_programming_language(program, bits)
+            assert got == table[combo] + "\n", f"{table} inputs {bits}"
+
+    def test_the_all_zero_table(self) -> None:
+        """No minterms at all: the constant-zero branch."""
+        self._check("0" * 16)
+
+    def test_the_all_one_table(self) -> None:
+        """Every row set, so the sum carries all sixteen terms."""
+        self._check("1" * 16)
+
+    def test_a_single_minterm(self) -> None:
+        """One term, which is the fewest a non-constant table can have."""
+        self._check("0000000000000001")
+
+    def test_four_input_parity(self) -> None:
+        """Eight terms and no constant subtree anywhere -- nothing folds."""
+        self._check("0110100110010110")
+
+    def test_the_all_zero_table_still_reads_every_input(self) -> None:
+        """The constant needs its reads: the contract wants ``n`` of them."""
+        program = boolean.algebraic_programming_language("0" * 16)
+        for name in "abcd":
+            assert name in program
+
+    def test_the_name_alphabet_is_codepoint_ascending(self) -> None:
+        """``_order_key`` sorts literals by name to keep reads in order.
+
+        That only puts the reads in *input* order if the alphabet itself
+        ascends, so a name appended out of sequence would silently swap
+        two inputs rather than fail.
+        """
+        from esolangs.tools.boolean.algebraic_programming_language import _NAMES
+
+        assert list(_NAMES) == sorted(_NAMES)
+        assert len(set(_NAMES)) == len(_NAMES)
