@@ -1124,7 +1124,7 @@ def _weighting_is_legal(
 
 @cache
 def _deep_weightings(n: int) -> tuple[tuple[int, ...], ...]:
-    """Unit vectors worth trying, cheapest span first.
+    """Return the unit vectors worth trying, cheapest span first.
 
     Ordered by the span they cost, then flattest, which is the order the
     emitted program's length follows.  Vectors whose span exceeds the limit
@@ -1513,11 +1513,11 @@ def _fold_plan(state: _FoldState) -> list[_FoldOp] | None:
         wide = []
     cur: _FoldState | None = st
     for op in wide:
-        assert cur is not None
+        assert cur is not None  # nosec B101
         cur = _fold_apply(cur, op)
         if cur is None:  # pragma: no cover - replays a move the beam made
             return None
-    assert cur is not None
+    assert cur is not None  # nosec B101
     rest = _fold_search(cur)
     if rest is None:
         return None
@@ -1542,7 +1542,7 @@ class _FoldEmitter:
 
     def _sub(self, k: int) -> str:
         code = _sub_code(k)
-        assert code is not None, k
+        assert code is not None, k  # nosec B101
         return code
 
     def descend(self, k: int) -> None:
@@ -1552,8 +1552,8 @@ class _FoldEmitter:
             self.descend(3)
             self.plain_rise(2)
             return
-        assert k >= 2
-        assert all(v <= _LIMIT for v in self.pos.values())
+        assert k >= 2  # nosec B101
+        assert all(v <= _LIMIT for v in self.pos.values())  # nosec B101
         self.body.append(self._sub(k))
         for p in self.pos:
             self.pos[p] -= k
@@ -1565,9 +1565,9 @@ class _FoldEmitter:
             self.plain_rise(3)
             self.descend(2)
             return
-        assert k >= 2
-        assert all(-_LIMIT <= v <= _LIMIT for v in self.pos.values())
-        assert all(v + k <= _LIMIT for v in self.pos.values())
+        assert k >= 2  # nosec B101
+        assert all(-_LIMIT <= v <= _LIMIT for v in self.pos.values())  # nosec B101
+        assert all(v + k <= _LIMIT for v in self.pos.values())  # nosec B101
         self.body.append("p" + self._sub(k) + "p")
         for p in self.pos:
             self.pos[p] += k
@@ -1582,15 +1582,15 @@ class _FoldEmitter:
         top = max(self.pos.values())
         bot = min(self.pos.values())
         spread = top - bot
-        assert 2 * spread <= 2 * _LIMIT
+        assert 2 * spread <= 2 * _LIMIT  # nosec B101
         want_top = 1501
         if next_is_rise:
             # The next command sequence opens with ``p``, which wipes
             # anything below -3003, so the doubled state must fit both ways.
             want_top = max(spread - 1501, 0)
-            assert want_top <= 1501, spread
+            assert want_top <= 1501, spread  # nosec B101
         self.preshift(want_top - top)
-        assert all(2 * v <= _LIMIT for v in self.pos.values())
+        assert all(2 * v <= _LIMIT for v in self.pos.values())  # nosec B101
         self.body.append("m")
         for p in self.pos:
             self.pos[p] *= 2
@@ -1602,49 +1602,49 @@ class _FoldEmitter:
         got: set[int] = set()
         for p in vic:
             got |= set(p) if isinstance(p, frozenset) else {p}
-        assert vic, vids
-        assert got == vids, vids
+        assert vic, vids  # nosec B101
+        assert got == vids, vids  # nosec B101
         return vic
 
     def dive(self, c: int, vids: frozenset[int]) -> None:
         vic = self._vic(vids)
-        assert len({self.cls[v] for v in vic}) == 1
+        assert len({self.cls[v] for v in vic}) == 1  # nosec B101
         vt = max(self.pos[v] for v in vic)
         surv = [p for p in self.pos if p not in vic]
         q1 = (min(self.pos[p] for p in surv) - vt) if surv else 40
-        assert _LIMIT + 1 <= c <= _LIMIT + q1, (c, q1)
+        assert _LIMIT + 1 <= c <= _LIMIT + q1, (c, q1)  # nosec B101
         d = c + vt
         if d < 2:
             self.preshift(2 - d)
             d = c + max(self.pos[v] for v in vic)
         self.descend(d)
         below = {p for p, v in self.pos.items() if v < -_LIMIT}
-        assert below == vic, (below, vic)
+        assert below == vic, (below, vic)  # nosec B101
         self.body.append("pp")
         for p in vic:
             self.pos[p] = 0
         for p in self.pos:
-            assert -_LIMIT <= self.pos[p] <= _LIMIT
+            assert -_LIMIT <= self.pos[p] <= _LIMIT  # nosec B101
         self._land(vic)
 
     def rise(self, c: int, vids: frozenset[int]) -> None:
         vic = self._vic(vids)
-        assert len({self.cls[v] for v in vic}) == 1
+        assert len({self.cls[v] for v in vic}) == 1  # nosec B101
         vb = min(self.pos[v] for v in vic)
         surv = [p for p in self.pos if p not in vic]
         q1 = (vb - max(self.pos[p] for p in surv)) if surv else 40
-        assert _LIMIT + 1 <= c <= _LIMIT + q1, (c, q1)
+        assert _LIMIT + 1 <= c <= _LIMIT + q1, (c, q1)  # nosec B101
         u = c - vb
         if u < 2:
             self.preshift(-(2 - u))
             u = c - min(self.pos[v] for v in vic)
-        assert min(self.pos.values()) >= -_LIMIT
-        assert all(self.pos[p] + u <= _LIMIT for p in surv)
+        assert min(self.pos.values()) >= -_LIMIT  # nosec B101
+        assert all(self.pos[p] + u <= _LIMIT for p in surv)  # nosec B101
         self.body.append("p" + self._sub(u) + "p")
         for p in self.pos:
             self.pos[p] += u
         over = {p for p, v in self.pos.items() if v > _LIMIT}
-        assert over == vic, (over, vic)
+        assert over == vic, (over, vic)  # nosec B101
         # Any next command's pre-check resets the victims; one ``s`` makes
         # that flush explicit and costs a uniform -2 everyone absorbs.
         self.body.append("s")
@@ -1662,7 +1662,7 @@ class _FoldEmitter:
         c = self.cls[next(iter(vic))]
         absorbed = [p for p in self.pos if p not in vic and self.pos[p] == val]
         for o in absorbed:
-            assert self.cls[o] == c, "cross-class landing"
+            assert self.cls[o] == c, "cross-class landing"  # nosec B101
             new = new | (o if isinstance(o, frozenset) else frozenset([o]))
         for v in set(vic) | set(absorbed):
             del self.pos[v], self.cls[v]
@@ -1695,19 +1695,19 @@ class _FoldEmitter:
             if self.pos[hi] - self.pos[lo] < 258:
                 self.preshift(-(self.pos[lo] + 2600))
                 u1 = max(_LIMIT + 1 - self.pos[hi], 2)
-                assert self.pos[lo] + u1 <= _LIMIT
+                assert self.pos[lo] + u1 <= _LIMIT  # nosec B101
                 self.body.append("p" + self._sub(u1) + "ps")
                 for p in self.pos:
                     self.pos[p] += u1
-                assert self.pos[hi] > _LIMIT
-                assert self.pos[lo] <= _LIMIT
+                assert self.pos[hi] > _LIMIT  # nosec B101
+                assert self.pos[lo] <= _LIMIT  # nosec B101
                 self.pos[hi] = 0
                 for p in self.pos:
                     self.pos[p] -= 2
                 pts = sorted(self.pos, key=lambda q: self.pos[q])
                 lo, hi = pts
             gap = self.pos[hi] - self.pos[lo]
-            assert gap >= 258, gap
+            assert gap >= 258, gap  # nosec B101
             need = (-(self.byte(hi) - self.byte(lo)) - self.pos[lo]) % 256
             umin = max(_LIMIT + 1 - self.pos[hi], 2)
             umax = _LIMIT - self.pos[lo]
@@ -1715,12 +1715,12 @@ class _FoldEmitter:
                 (c0 for c0 in range(umin, umax + 1) if c0 % 256 == need),
                 None,
             )
-            assert u is not None, (umin, umax, need)
+            assert u is not None, (umin, umax, need)  # nosec B101
             self.body.append("p" + self._sub(u) + "ps")
             for p in self.pos:
                 self.pos[p] += u
-            assert self.pos[hi] > _LIMIT
-            assert self.pos[lo] <= _LIMIT
+            assert self.pos[hi] > _LIMIT  # nosec B101
+            assert self.pos[lo] <= _LIMIT  # nosec B101
             self.pos[hi] = 0
             for p in self.pos:
                 self.pos[p] -= 2
@@ -1732,11 +1732,11 @@ class _FoldEmitter:
                 t -= 256
             self.preshift(t)
         for p in self.pos:
-            assert self.pos[p] % 256 == self.byte(p) % 256, (
+            assert self.pos[p] % 256 == self.byte(p) % 256, (  # nosec B101
                 self.pos[p],
                 self.cls[p],
             )
-            assert self.pos[p] <= _LIMIT
+            assert self.pos[p] <= _LIMIT  # nosec B101
         self.body.append("e")
 
 
