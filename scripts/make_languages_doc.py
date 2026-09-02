@@ -194,7 +194,7 @@ def render() -> str:
         "(the %^2^-1 wall is proved in Lean) and embedding is what reaches "
         "the two-input tables.  %^2^-1 goes further: a subcube cascade "
         "builds every conjunction or disjunction of literals at any arity, "
-        "a composed-affine search adds the tables that are no subcube, a "
+        "a composed-affine derivation adds the tables that are no subcube, a "
         "threshold ladder adds the ones neither reaches by letting the "
         "over-3003 reset read a weighted sum, a deep band makes three and "
         "four inputs **total** -- all 256 and all 65536 -- by printing with "

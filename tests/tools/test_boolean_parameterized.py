@@ -4281,11 +4281,10 @@ class TestParameterizedPctSquaredMinusOne:
         Pinned because the docs used to record the law as *crossing* this
         path rather than containing it -- a claim that came from testing the
         law on the first input instead of the last.  ``x0 ^ x2`` was also
-        excluded for a while, and that was a witness-selection artefact
-        rather than a property of the model: see
-        ``test_affine_keeps_the_witness_a_bounded_tail_can_reach``.
+        excluded for a while, and that was an artefact of the enumeration
+        this path used to run rather than a property of the model.
         """
-        from esolangs.tools.boolean.pct_squared_minus_one import _affine_tables
+        from esolangs.tools.boolean.pct_squared_minus_one import _affine
 
         def complement(bits: str) -> str:
             return "".join("1" if c == "0" else "0" for c in bits)
@@ -4306,34 +4305,34 @@ class TestParameterizedPctSquaredMinusOne:
                 or len(set(high)) == 1
             )
 
-        reached = set(_affine_tables(3))
+        reached = {
+            table
+            for table in (format(v, "08b") for v in range(256))
+            if _affine(table, 3) is not None
+        }
         assert reached == {
             format(v, "08b") for v in range(256) if predicted(format(v, "08b"))
         }
         assert len(reached) == 86
 
-    @pytest.mark.slow  # derives the whole three-input arity once
-    def test_affine_keeps_the_witness_a_bounded_tail_can_reach(self) -> None:
-        """Witnesses are chosen by magnitude, which is worth two tables.
+    def test_affine_builds_the_table_the_enumeration_missed(self) -> None:
+        """``x0 ^ x2`` builds, and short, which the old enumeration refused.
 
-        Vectors sharing a partition are not interchangeable: a later setter
-        translates by ``|b| <= 12``, so a vector far from zero cannot be
-        moved onto the values a tail needs.  Keeping witnesses by arrival
-        banked ``(-24, -24, -23, -23)`` through ``(-19, -19, -18, -18)`` for
-        one partition and dropped ``(-12, -12, -11, -11)``, the only one of
-        them the last layer could still use -- so ``x0 ^ x2`` and its
-        complement were refused despite the model admitting them, and each
-        cost a 3054-character deep-band program instead of a 43-character
-        one.  Raising the witness count does not fix it (84 tables at every
-        count up to sixteen); ranking by magnitude does.
+        The path used to compose every branch pair layer by layer, keeping
+        six value vectors per induced partition and choosing them by
+        arrival.  Vectors sharing a partition are not interchangeable -- a
+        later setter translates by a bounded offset, so one far from zero
+        cannot be moved onto the values a tail needs -- and for this table's
+        partition the six banked witnesses were all out of reach while the
+        usable one was dropped.  The construction has no such choice to get
+        wrong: it reads the partition off the table and solves.
+
+        Kept as the regression, with the length checked too: the table was
+        served by the deep band at 3054 characters while this path builds it
+        in well under a hundred.
         """
-        from esolangs.tools.boolean.pct_squared_minus_one import (
-            _affine,
-            _witness_rank,
-        )
+        from esolangs.tools.boolean.pct_squared_minus_one import _affine
 
-        assert _witness_rank((-12, -12, -11, -11)) == 12
-        assert _witness_rank((-24, -24, -23, -23)) == 24
         for table in ("01011010", "10100101"):
             template = _affine(table, 3)
             assert template is not None, table
@@ -4344,37 +4343,21 @@ class TestParameterizedPctSquaredMinusOne:
                 lengths.add(len(program))
                 assert self.run_pct(program) == table[row], (table, bits)
             assert len(lengths) == 1, sorted(lengths)
+            assert len(template) < 100, len(template)
 
-    @pytest.mark.slow  # derives the whole three-input arity once
-    def test_affine_gate_matches_the_path_it_skips(self) -> None:
-        """The dispatch's admissibility check agrees with the path exactly.
+    def test_affine_declines_outside_three_inputs(self) -> None:
+        """The construction serves the arity the dispatch calls it for.
 
-        The check exists to skip a 4.7s whole-arity enumeration for tables
-        the path cannot build, so a disagreement would not raise -- it would
-        silently refuse a buildable table and hand it to a later, longer
-        construction.  Pinned over the whole arity for that reason.
+        The pre-vector it solves has four entries, one per pair of leading
+        bits, so the derivation is written for three inputs; the deep band
+        covers every table this would reach above that, and the dispatch
+        calls it at three only.  Declining rather than guessing keeps the
+        two facts in one place.
         """
-        from esolangs.tools.boolean.pct_squared_minus_one import (
-            _affine_admits,
-            _affine_tables,
-        )
+        from esolangs.tools.boolean.pct_squared_minus_one import _affine
 
-        reached = set(_affine_tables(3))
-        for value in range(256):
-            table = format(value, "08b")
-            assert _affine_admits(table, 3) == (table in reached), table
-
-    def test_affine_gate_defers_at_other_arities(self) -> None:
-        """Outside three inputs the check admits everything.
-
-        The containment holds at four inputs but sufficiency does not, and
-        the dispatch calls the path at three only -- so the check must not
-        be read as a claim about arities it has not been shown for.
-        """
-        from esolangs.tools.boolean.pct_squared_minus_one import _affine_admits
-
-        assert _affine_admits("0110", 2)
-        assert _affine_admits("0110100110010110", 4)
+        assert _affine("0110", 2) is None
+        assert _affine("0110100110010110", 4) is None
 
     def test_cascade_reach_is_exactly_the_subcubes(self) -> None:
         """The cascade builds exactly the tables that are a subcube or one's
@@ -4455,30 +4438,30 @@ class TestParameterizedPctSquaredMinusOne:
         # inputs through ``len()``.
         assert len(lengths) == 1, lengths
 
-    @pytest.mark.slow  # 3.0s: _match_pair over the whole setter grid
+    @pytest.mark.slow  # the whole setter grid, pairwise
     def test_every_branch_pair_shares_a_spelling_width(self) -> None:
         """No setter in the grid needs the "no shared width" fallback.
 
         Both branches of a setter must be the same width or the program leaks
-        its inputs through ``len()``.  ``_match_pair`` returns ``None`` when
-        two branches share no width, and ``_affine_tables`` then skips the
-        state -- but for the shipped grid that never happens, which is why
-        both guards carry a coverage pragma.  Pinned here so the pragma rests
-        on a checked property: narrowing the grid or the spelling depth makes
-        this fail rather than silently making dead code live.
+        its inputs through ``len()``.  :func:`_spell_affine` gives up when two
+        branches share no width -- but for the shipped grid that never
+        happens, which is why the guard carries a coverage pragma.  Pinned
+        here so the pragma rests on a checked property: narrowing the grid or
+        the spelling depth makes this fail rather than silently making dead
+        code live.
         """
         from esolangs.tools.boolean.pct_squared_minus_one import (
             _WIDE_A_VALS,
             _WIDE_B_VALS,
-            _match_pair,
+            _spellings_by_width,
         )
 
         grid = [(a, b) for a in _WIDE_A_VALS for b in _WIDE_B_VALS]
         for zero in grid:
+            zero_widths = _spellings_by_width(*zero)
             for one in grid:
-                pair = _match_pair(zero, one)
-                assert pair is not None, (zero, one)
-                assert len(pair[0]) == len(pair[1]), (zero, one, pair)
+                shared = set(zero_widths) & set(_spellings_by_width(*one))
+                assert shared, (zero, one)
 
     def test_slope_zero_forgets_the_accumulator(self) -> None:
         """``'`` is the constant map: it discards whatever it was given.
