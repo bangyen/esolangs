@@ -62,8 +62,8 @@ a single ``<`` inside the bracket run, enumerated after every pure run.  A
 two-insert family one step wider existed here and was removed: it served a
 single three-input pair that the sculpted route now builds.
 Partial coverage is worth gating on because a miss is not a failure: it falls
-through to the searches below, which is why those remain -- a missing staging
-degrades rather than raises.  What a four-input table does pay for is the
+through to the sculpted route below, which closes the arity -- a missing
+staging degrades rather than raises.  What a four-input table does pay for is the
 derivation, which at this arity cannot stop early; see
 :data:`_STAGED_ARITIES`.
 
@@ -111,19 +111,31 @@ built before builds differently now.
 A table that ignores some inputs is solved at the arity it uses and renumbered
 back, so a wide table with a narrow core is as cheap as that core.
 
-Nothing here is hand-tracked: :class:`_Joint` runs all ``2**n`` instantiations
-in lockstep as the template is emitted, every choice is made against the
-simulated truth, and :func:`minifuck` raises rather than returning a program
-it has not seen print the table.
+**Nothing here searches.**  Every route is a construction or an enumeration
+of a small derived product: the staged families enumerate a bounded plan
+space, the degenerate route reads a cell off the embed, the reconverging
+reset is a closed form in the number of ignored inputs, and the sculpted
+route separates by weighting each input as it lands and then sculpts under a
+termination argument.  A breadth-first search over ``<[x`` used to back all
+of them -- a column search, a parked search, a reconverging-reset search, and
+four more inside the sculpted route's separation.  All are gone: each was
+replaced by something that derives the answer instead of hunting for it, and
+what they used to reach is now reached faster and further.  A table no route
+builds raises, which is a bounded failure a caller can handle; a search that
+cannot finish is not.
+
+Nothing here is hand-tracked either: :class:`_Joint` runs all ``2**n``
+instantiations in lockstep as the template is emitted, every choice is made
+against the simulated truth, and :func:`minifuck` raises rather than
+returning a program it has not seen print the table.
 
 ``docs/walls.md`` carries the history this docstring used to: which
 mechanisms were disproved outright, which were merely unfound, what the
-runtime-read model reaches, and how the staged route came to cover tables the
-searches fail on.
+runtime-read model reaches, and how the constructed routes came to cover
+tables the searches failed on.
 """
 
 import re
-from collections import deque
 from collections.abc import Callable, Iterator
 from functools import cache
 
@@ -177,21 +189,6 @@ _POOL = (0, 0, 1, 1, 0, 0, 0)
 # every reachable pool conserves that XOR, so the read polarity -- not the
 # pool -- is what makes a table and its complement both printable.
 _READS = ("[<", "[x<[<")
-
-# Depth cap for the column search, a joint search over 2**n machines whose
-# cost is exponential in the cap; this is the smallest value covering every
-# two-input table.  (The pool no longer has one: see :data:`_POOL_CODES`.)
-_COLUMN_DEPTH = 13
-
-# The parked search is the fallback, and the deepest of the three; it needs
-# 15 to cover the XOR family.  ``_PARKED_LIMIT`` candidates are collected
-# because which one survives the endgame is settled by running it.
-_PARKED_DEPTH = 15
-_PARKED_LIMIT = 12
-
-# Re-crossings of the bit region before the parked search.  Each advances the
-# affine state, which offers the search a different set of columns.
-_SETTLE = 2
 
 
 class _Sim:
@@ -404,52 +401,6 @@ def _embed(
     return j
 
 
-def _search[Hit](
-    j: _Joint,
-    accept: Callable[[list[_Sim], str], Hit | None],
-    maxlen: int,
-) -> Hit | None:
-    """Breadth-first over ``<[x`` from the live joint state.
-
-    ``accept`` sees the advanced machines and returns a result (or None).
-    Searching from the *live* state is what makes the junk already on the
-    tape part of the starting condition rather than a precondition to
-    establish -- and the search must start with the pointer in the data, not
-    at the origin: a depth-``d`` walk from cell 0 never reaches cell
-    ``_BASE``, so every state it can see is input-independent.
-    """
-    root = tuple(m.copy() for m in j.ms)
-    seen = {tuple(m.key() for m in root)}
-    queue = deque([(root, "")])
-    while queue:
-        states, prog = queue.popleft()
-        if len(prog) >= maxlen:
-            continue
-        for ch in "<[x":
-            new = []
-            for m in states:
-                clone = m.copy()
-                clone.exec(ch)
-                new.append(clone)
-            # A dead row can no longer be steered, so a state holding one is
-            # not worth expanding.  Nothing in the alphabet below kills a row
-            # -- only a print does -- so this fires on a state that arrived
-            # dead, not on one this search killed.
-            if any(m.dead for m in new):
-                continue
-            key = tuple(m.key() for m in new)
-            if key in seen:
-                continue
-            seen.add(key)
-            code = prog + ch
-            if not any(m.skip for m in new):
-                hit = accept(new, code)
-                if hit is not None:
-                    return hit
-            queue.append((tuple(new), code))
-    return None
-
-
 # The pool codes: one construction at five parameters.
 #
 # They read as five unrelated strings and are not.  One law runs through all
@@ -614,12 +565,13 @@ def _search[Hit](
 # for that: better pool codes cannot help, because there is nothing left for
 # them to fix.
 #
-# Depth alone is not the whole answer either.  Raising :data:`_COLUMN_DEPTH`
-# and :data:`_PARKED_DEPTH` together by four and by eight, with the two codes
-# above in place, does not build four-input XOR within ten minutes either way.
-# So "search depth" names where the constraint lives, not a setting that would
-# lift it; what a wider arity needs is a cheaper route, which is what
-# :data:`_STAGED_ARITIES` gates.
+# Depth alone was not the whole answer either.  Back when the column and
+# parked searches were still here, raising both depth caps by four and by
+# eight, with the two codes above in place, did not build four-input XOR
+# within ten minutes either way.  So "search depth" named where the
+# constraint lived, not a setting that would lift it -- what a wider arity
+# needed was a cheaper route, and the constructed routes are now the whole
+# generator; the searches and their caps are gone.
 #
 # The family also regenerates what the list already has: complete substitutes
 # for the third code (a dropped-code gap of 22 tables refilled by either of two
@@ -984,56 +936,6 @@ def _try_print(j: _Joint, truth_table: str, acc: int) -> _Joint | None:
     return None
 
 
-def _find_column(
-    j: _Joint, target: tuple[int, ...], window: int, maxlen: int
-) -> tuple[str, int] | None:
-    """Find code after which some cell holds ``target`` (or its complement)."""
-    comp = tuple(1 - v for v in target)
-
-    def accept(new: list[_Sim], code: str) -> tuple[str, int] | None:
-        for cell in range(1, window):
-            col = tuple(m.tape[cell] for m in new)
-            if col in (target, comp):
-                return code, cell
-        return None
-
-    return _search(j, accept, maxlen)
-
-
-def _find_parked(
-    j: _Joint, target: tuple[int, ...], window: int, maxlen: int, limit: int
-) -> list[tuple[str, int]]:
-    """Find states holding ``target`` with the pointer parked to read it.
-
-    Producing the column is not enough on its own: walking back to it
-    re-crosses, and so changes, the very cell.  Requiring the pointer to sit
-    immediately left of the answer removes that walk, and several candidates
-    are collected because which one survives the endgame is decided by
-    running it, not by predicting it.
-    """
-    comp = tuple(1 - v for v in target)
-    hits: list[tuple[str, int]] = []
-
-    def accept(new: list[_Sim], code: str) -> list[tuple[str, int]] | None:
-        ptrs = {m.ptr for m in new}
-        if len(ptrs) != 1:
-            return None
-        cell = ptrs.pop() + 1
-        if not 8 <= cell < window:
-            return None
-        col = tuple(m.tape[cell] for m in new)
-        if col in (target, comp):
-            hits.append((code, cell))
-            if len(hits) >= limit:
-                return hits
-        return None
-
-    return _search(j, accept, maxlen) or hits
-
-
-# The columns a degenerate table can be built from: a constant, one of the
-# first two inputs, or one of their complements.  A table depending on at
-# most one input is exactly one of these, which is why naming them is enough.
 _DEGENERATE_COLUMNS = ("const1", "~b0", "b0", "const0", "~b1", "b1")
 
 
@@ -1067,9 +969,9 @@ def _degenerate_cells(n: int) -> dict[str, int]:
     the route serves.
 
     Later inputs are not separable here at any settle count -- the affine
-    transform fixes which bits stay apart -- but a column search finds them
-    in a fraction of a second, which is why the degenerate path still beats
-    the ladder without being wholly search-free.
+    transform fixes which bits stay apart.  A column search used to pick
+    those up; :func:`_mux` builds them instead, so this route is now a pure
+    lookup and the whole generator is search-free.
 
     Only the default settle count is meaningful: :func:`_degenerate` embeds
     with it, and re-crossing the region moves these columns elsewhere.
@@ -1090,51 +992,33 @@ def _degenerate_cells(n: int) -> dict[str, int]:
     return found
 
 
-def _degenerate(
-    truth_table: str, n: int, *, fixed_cells_only: bool = False
-) -> str | None:
+def _degenerate(truth_table: str, n: int) -> str | None:
     """Build a table depending on at most one input, without the ladder.
 
     Such a table is a constant, a projection, or a negated projection, and
-    every one of those already stands as a *column* somewhere after the
-    embed -- at a known cell for the first two inputs, and at a cheaply
-    searched one beyond that.  So the whole construction is: find the cell
-    holding the answer, then run the endgame on it.
+    every one of those already stands as a *column* at a known cell after the
+    embed.  So the whole construction is: read off the cell holding the
+    answer, then run the endgame on it.
 
     This is the piece that composes upward: a table with ``k`` essential
     inputs is a ``k``-input problem whatever its arity, so four of the
     fourteen three-input orbits are handled here for free.
 
-    ``fixed_cells_only`` stops after the six known cells, skipping the column
-    search.  That is for the caller who has a working fallback and wants a
-    cheap *attempt* rather than an answer: the search costs about five
-    seconds to fail at ``n == 3`` and the lookup under one, and every table
-    the name-order caller below wins is won at the lookup.
+    This route is now **entirely a lookup**.  A column search used to sit
+    below the cell reads, for the projections of a *later* input the read-off
+    cells do not hold -- six tables at ``n <= 4``: ``X2`` and its complement
+    at three inputs, ``X2``/``X3`` and theirs at four.  All six build through
+    :func:`_mux` in milliseconds and print every row on the shipped
+    interpreter, and :func:`_solve` runs that route directly after this one,
+    so declining is strictly better than searching: the caller reaches a
+    construction rather than a sweep.  A ``fixed_cells_only`` flag that let
+    the name-order caller skip the search went with it.
     """
-    want = tuple(int(c) for c in truth_table)
     base = _embed(n, sep=_SEP)
     _clamp(base)
 
-    # The fixed cells first, then a search for the rest.
-    candidates = list(_degenerate_cells(n).values())
-    for acc in candidates:
+    for acc in _degenerate_cells(n).values():
         hit = _try_print(base, truth_table, acc)
-        if hit is not None:
-            return hit.template()
-
-    if fixed_cells_only:
-        return None
-
-    probe = _embed(n, sep=_SEP)
-    _clamp(probe)
-    _walk_to(probe, _BASE - 1)
-    found = _find_column(probe, want, _BASE + n * _SPAN + 14, _COLUMN_DEPTH)
-    if found is None:
-        return None
-    probe.emit(found[0])
-    _clamp(probe)
-    for acc in range(9, _BASE + n * _SPAN + 14):
-        hit = _try_print(probe, truth_table, acc)
         if hit is not None:
             return hit.template()
     return None
@@ -1154,41 +1038,36 @@ def _project(truth_table: str, essential: list[int], n: int) -> str:
     return read_at(truth_table, essential, n)
 
 
-# How far to search for a reconverging reset, and how many to try.  The
-# first one is found at length 12 and is the one that builds, but the cap is
-# a little higher so the search is not pinned to that exact string.
-_RESET_DEPTH = 13
-_RESET_LIMIT = 4
+# The fixed head of the reconverging reset.  What follows it is a run of
+# ``<``, which clamps rather than writing, so the run only has to be long
+# enough to bring every row home; see :func:`_reset_code`.
+_RESET_HEAD = "[<[<<[<[<"
 
 
-def _find_reset(ignored: int, maxlen: int = _RESET_DEPTH) -> list[str]:
-    """Find code after which the ignored inputs leave no trace.
+def _reset_code(ignored: int) -> str:
+    """Return code after which the ignored inputs leave no trace.
 
     The setters for the inputs a table ignores still have to be emitted --
     the harness has a bit for every input -- and emitting them first is what
-    keeps the placeholders in name order.  They do write the tape, though,
-    so what follows must erase the difference: this searches for a suffix
-    after which all ``2**ignored`` rows are in *identical* states.
+    keeps the placeholders in name order.  They do write the tape, though, so
+    what follows must erase the difference: after this suffix all
+    ``2**ignored`` rows are in *identical* states.
 
     Identical, not blank.  A blank tape is unreachable -- the all-ones row
     ends a cell to the right of the others and ``<`` clamps without writing,
     so the rows cannot be driven back to the origin together -- but they can
     be driven to a common non-blank state, which is all the rest of the
     construction needs.
+
+    Constructed, not searched.  A breadth-first search used to find this, and
+    what it found was a *family*: length 12 at two ignored inputs, the same
+    string with one more ``<`` at three, and nothing at all at four, where
+    its depth cap bit before the answer.  The pattern is just
+    :data:`_RESET_HEAD` followed by ``ignored + 1`` clamping steps, and it
+    converges at every arity tried, 1 through 8 -- so the cap that made four
+    unreachable went with the search.
     """
-    j = _Joint(ignored)
-    for i in range(ignored):
-        j.emit_setter(i)
-    hits: list[str] = []
-
-    def accept(new: list[_Sim], code: str) -> list[str] | None:
-        if len({m.key() for m in new}) != 1:
-            return None
-        hits.append(code)
-        return hits if len(hits) >= _RESET_LIMIT else None
-
-    _search(j, accept, maxlen)
-    return hits
+    return _RESET_HEAD + "<" * (ignored + 1)
 
 
 def _reconverged(truth_table: str, essential: list[int], n: int) -> str | None:
@@ -1207,7 +1086,7 @@ def _reconverged(truth_table: str, essential: list[int], n: int) -> str | None:
     and the fixed-cell lookup decides in a fraction of a second.  The
     junk the reset leaves behind is not a problem -- the rows are identical
     by then, so it is a constant starting condition, which is exactly what
-    the searches here are built to run from.
+    the lookup here is built to run from.
     """
     if not 1 <= len(essential) <= 2:
         return None
@@ -1240,13 +1119,15 @@ def _reconverged(truth_table: str, essential: list[int], n: int) -> str | None:
         setup = (sep_index, settle, brackets, acc)
         accumulators = (acc,)
 
-    for reset in _find_reset(len(ignored)):
-        j = _Joint(n)
-        for i in ignored:
-            j.emit_setter(i)
-        j.emit(reset)
-        if len({m.key() for m in j.ms}) != 1:
-            continue
+    # One constructed reset rather than a handful of searched ones.  The
+    # convergence is still *checked* before anything is built on it: the
+    # construction came from measurement, and a silent failure here would
+    # surface much later as a table that will not print.
+    j = _Joint(n)
+    for i in ignored:
+        j.emit_setter(i)
+    j.emit(_reset_code(len(ignored)))
+    if len({m.key() for m in j.ms}) == 1:
         _walk_to(j, _BASE - 1)
         if setup is None:
             j.emit_setter(essential[0])
@@ -1412,18 +1293,13 @@ _Staging = tuple[int, int, int | str, int]
 # first anyway because it carries every two-input table on its own, and
 # :data:`_SEP` and :data:`_SCAN_SEPS` use it.
 #
-# Two more things look removable and are not.  ``_SETTLE`` is unused by the
-# enumeration but parameterises the parked search, which still serves
-# ``n >= 4``; and the searches themselves are unreachable at ``n <= 3`` yet
-# are what a wider table falls through to.  Neither is dead.
-#
-# **What happens at four inputs.**  Four-input AND and NAND build in 0.2s and
-# a table depending on one input in 2.4s -- all before the staging, by the
-# degenerate and projection routes.  What the searches could not build was
-# four-input XOR, and the diagnosis at the time was that the pool was fine
-# and the search depth was the wall: XOR's failed attempt made 1016 pool
-# lookups, 508 of them successful, the same one-in-two rate the three-input
-# arity shows.
+# **What happened at four inputs, back when the searches were here.**
+# Four-input AND and NAND build in 0.2s and a table depending on one input in
+# 2.4s -- all before the staging, by the degenerate and projection routes.
+# What the searches could not build was four-input XOR, and the diagnosis at
+# the time was that the pool was fine and the search depth was the wall:
+# XOR's failed attempt made 1016 pool lookups, 508 of them successful, the
+# same one-in-two rate the three-input arity shows.
 #
 # That reading was right about the pool and incomplete about the wall.  XOR
 # now builds from a staging, and the thing that had to change was neither the
@@ -1696,7 +1572,7 @@ def _derived_plans(n: int, targets: tuple[str, ...]) -> dict[str, _Staging]:
     kept.
 
     Returns a mapping from truth table to staging.  A table that no staging
-    reaches is simply absent, so the caller falls through to the searches.
+    reaches is simply absent, so the caller falls through to :func:`_mux`.
     """
     if n not in _STAGED_ARITIES:
         return {}
@@ -1983,7 +1859,7 @@ def _staged(truth_table: str, n: int) -> str | None:
     """Build from a derived staging without searching, or None if there is none.
 
     None rather than an exception on a miss, so the caller falls through to
-    the searches and coverage cannot regress.
+    :func:`_mux` and coverage cannot regress.
 
     A miss falls through to :func:`_mux`, which closes four inputs.  The
     flipped-embed pass that used to sit here was removed once that route was
@@ -2092,10 +1968,11 @@ def _staged(truth_table: str, n: int) -> str | None:
 # is a sample of 4294642034 -- but nothing in the construction is aware of
 # ``n``, and no sampled table has failed.
 #
-# The route sits *after* the staged families in
-# :func:`_solve`, so every table they already build keeps its template byte
-# for byte, and *before* the searches, which now serve only as the net should
-# a pool code refuse every ``(C, orientation, read)`` this tries.
+# The route sits *after* the staged families in :func:`_solve`, so every
+# table they already build keeps its template byte for byte.  It is the last
+# route: the searches that used to sit behind it are gone, so a table it
+# cannot build -- a pool code refusing every ``(C, orientation, read)`` --
+# raises rather than sweeping.
 
 # Where the sculpted route embeds, and how much of the tape to its left the
 # separation searches must not write.  The pool codes were designed against
@@ -2413,15 +2290,15 @@ def _solve(truth_table: str) -> str:
         # in-order by construction -- try it first for exactly the tables the
         # lift would disorder, and only when it is the cheap closed-form
         # path.  A table with two or more essential inputs is not: measured
-        # at n == 3, ``00000101`` runs the searches for 132 seconds and still
-        # fails, against seconds to project.  Coverage comes first, so a miss
-        # here falls through to the projection rather than raising.  The
-        # attempt is capped at the fixed-cell lookup because that is where
-        # every table it wins is won; letting it run the column search only
-        # adds about five seconds to the tables it cannot build anyway.
+        # at n == 3, ``00000101`` ran the old searches for 132 seconds and
+        # still failed, against seconds to project.  Coverage comes first, so
+        # a miss here falls through to the projection rather than raising.
+        # The attempt is a fixed-cell lookup, which is where every table it
+        # wins is won; the column search that used to sit behind it is gone,
+        # so this is cheap by construction rather than by a flag.
         if _lift_leaves_name_order(essential, n):
             if len(essential) <= 1:
-                in_order = _degenerate(truth_table, n, fixed_cells_only=True)
+                in_order = _degenerate(truth_table, n)
                 if in_order is not None:
                     return in_order
             reconverged = _reconverged(truth_table, essential, n)
