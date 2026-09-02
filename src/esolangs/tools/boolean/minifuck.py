@@ -1433,22 +1433,28 @@ _MAX_ACC = 34
 # recorded template changes.
 _STAGING_BUDGET: int | None = None
 
-# Five inputs is budgeted by default, and that is a different decision from
-# the one above.  At four inputs a budget is an option a slow host may take;
-# here it ships on, because the arity is *only* reached by tables the
-# cheaper routes could not place and the enumeration cannot stop early on a
-# miss.  Measured on a table the span screen admits: 54.7s unbudgeted, 12.6s
-# at 30000 stagings, 3.5s at 8000 -- against 1.4s for five-input XOR, which
-# still builds at 30000.  The value below keeps the flagship hits and takes
-# the miss from a minute to seconds.
+# Five inputs used to ship a budget of 30000 stagings, and the reason it no
+# longer does is that its rationale was consumed by the tabulation.  The
+# argument was that the arity is only reached by tables the cheaper routes
+# could not place, and that "the enumeration cannot stop early on a miss" --
+# so a miss paid the whole sweep, a measured 54.7 seconds.  A miss is now a
+# dict lookup: :func:`_staging_index` walks the enumeration once per arity,
+# and after that neither a hit nor a miss enumerates anything.
 #
-# What it gives up is tables that sit late in the enumeration, and they are
-# given up to a *raise* rather than to a slower route, since nothing below
-# this arity's staged family reaches them.  That is the trade being made
-# deliberately: at five inputs the generator refuses quickly instead of
-# building slowly, and the refused tables are unreached rather than
-# unbuildable -- see ``docs/walls.md``.
-_STAGING_BUDGET_N5 = 30000
+# So the budget bought nothing but lost coverage.  Measured: the budgeted
+# pass is 2.4s and reaches 6340 columns, the full pass 8.5s and 28096 --
+# **21756 more**, for six seconds once per process.  And the two agree
+# wherever they overlap: every column both reach gets the *same* staging,
+# because a budget truncates the enumeration without reordering it, so
+# lifting it cannot change a template that already existed.
+#
+# What it does change is coverage, which is why it is a deliberate,
+# separately-verified step rather than a tidy-up: tables that sat late in the
+# enumeration went from a raise to a build.  Sampled 20 of the newly reached
+# and every one builds and prints all 32 rows on the shipped interpreter.
+#
+# ``None`` means no budget, which is now what ships at every arity.
+_STAGING_BUDGET_N5: int | None = None
 
 
 def _budget(n: int) -> int | None:
