@@ -126,6 +126,7 @@ middle, or no ``( )`` to start from) raise :class:`ValueError`.
 """
 
 import sys
+from dataclasses import dataclass, replace
 from typing import Literal, assert_never
 
 from esolangs.interpreters.io import IO
@@ -211,6 +212,7 @@ def _turn_right(d: tuple[int, int]) -> tuple[int, int]:
     return (d_col, -d_row)
 
 
+@dataclass(frozen=True)
 class _Pointer:
     """One program pointer: a position, a heading, a register, a cursor.
 
@@ -218,31 +220,39 @@ class _Pointer:
     heading it is travelling on, ``reg`` its own register (``None`` when
     empty), and ``deque`` its index into the shared tape of deques.  A
     pointer that has reached an ``(( ))`` is ``done``.
+
+    Frozen: a step returns the pointers that follow rather than editing the
+    ones it was handed, so a pointer is a value.  ``replace`` builds the
+    changed copy, and ``memory`` is a tuple of pairs so the whole pointer
+    stays hashable -- which is what :meth:`state` already wanted it to be.
     """
 
-    def __init__(
-        self,
-        row: int,
-        col: int,
-        d: tuple[int, int],
-        reg: int | None = None,
-        deque: int = 0,
-    ) -> None:
-        """Place the pointer at ``(row, col)`` heading ``d``."""
-        self.row = row
-        self.col = col
-        self.d = d
-        self.reg = reg
-        self.deque = deque
-        self.done = False
-        # The cell stepped away from, so a multi-cell node knows which of
-        # its neighbours the pointer entered through.
-        self.prev: tuple[int, int] | None = None
-        # Where this pointer last left each node or path cell.  The spec
-        # makes re-entry a property of the pointer ("a node or path *it's*
-        # been through"), so each carries its own; a node's entry is keyed
-        # by its anchor cell, not by whichever column the pointer stood on.
-        self.memory: dict[tuple[int, int], tuple[int, int]] = {}
+    row: int
+    col: int
+    d: tuple[int, int]
+    reg: int | None = None
+    deque: int = 0
+    done: bool = False
+    # The cell stepped away from, so a multi-cell node knows which of its
+    # neighbours the pointer entered through.
+    prev: tuple[int, int] | None = None
+    # Where this pointer last left each node or path cell.  The spec makes
+    # re-entry a property of the pointer ("a node or path *it's* been
+    # through"), so each carries its own; a node's entry is keyed by its
+    # anchor cell, not by whichever column the pointer stood on.
+    memory: tuple[tuple[tuple[int, int], tuple[int, int]], ...] = ()
+
+    def remembered(self, cell: tuple[int, int]) -> tuple[int, int] | None:
+        """Return the heading this pointer last left ``cell`` on."""
+        for key, value in self.memory:
+            if key == cell:
+                return value
+        return None
+
+    def remembering(self, cell: tuple[int, int], d: tuple[int, int]) -> "_Pointer":
+        """Return this pointer with ``cell``'s exit heading recorded."""
+        kept = tuple((k, v) for k, v in self.memory if k != cell)
+        return replace(self, memory=(*kept, (cell, d)))
 
     def state(self) -> tuple[object, ...]:
         """Return this pointer's state, hashable for cycle detection."""
@@ -254,7 +264,7 @@ class _Pointer:
             self.deque,
             self.done,
             self.prev,
-            tuple(sorted(self.memory.items())),
+            tuple(sorted(self.memory)),
         )
 
 
@@ -354,14 +364,9 @@ class _Machine:
         here = (p.row, p.col)
         exits = self._reading_order(self._exits_from_node(p.row, p.col, None))
         if not exits:
-            p.done = True
+            self.pointers[0] = replace(p, done=True)
             return
-        started = []
-        for row, col, d in exits:
-            fresh = _Pointer(row, col, d)
-            fresh.prev = here
-            started.append(fresh)
-        self.pointers = started
+        self.pointers = [_Pointer(row, col, d, prev=here) for row, col, d in exits]
 
     def _cells_of(self, row: int, col: int) -> list[tuple[int, int]]:
         """Return every cell covered by the node at ``(row, col)``."""
@@ -503,19 +508,30 @@ class _Machine:
         """Advance every live pointer one cell, in creation order."""
         if self.halted:
             return
-        for p in list(self.pointers):
-            if not p.done:
-                self._advance(p)
+        for i in range(len(self.pointers)):
+            if not self.pointers[i].done:
+                self._advance(i)
 
-    def _advance(self, p: _Pointer) -> None:
-        """Execute the cell under ``p``, then move it one cell on."""
+    def _put(self, i: int, p: _Pointer) -> None:
+        """Write ``p`` back as the ``i``th pointer.
+
+        A pointer is frozen, so every change to one is a replacement.  The
+        pointer *list* stays a list: a ``( )`` forks by appending, and the
+        count grows with the program rather than with how long it runs.
+        """
+        self.pointers[i] = p
+
+    def _advance(self, i: int) -> None:
+        """Execute the cell under pointer ``i``, then move it one cell on."""
+        p = self.pointers[i]
         if (p.row, p.col) in self.nodes:
-            self._execute(p)
+            self._execute(i)
         else:
-            self._follow_path(p)
+            self._follow_path(i)
 
-    def _follow_path(self, p: _Pointer) -> None:
-        """Move ``p`` along the line character it is standing on."""
+    def _follow_path(self, i: int) -> None:
+        """Move pointer ``i`` along the line character it is standing on."""
+        p = self.pointers[i]
         c = self.grid[p.row][p.col]
         back = (-p.d[0], -p.d[1])
         allowed = [d for d in _EXITS.get(c, ()) if d != back]
@@ -525,7 +541,7 @@ class _Machine:
             # always one of this cell's arms.  Removing it empties `allowed`
             # only for a one-armed character, and _EXITS has none -- but the
             # guard stays so adding one later stops rather than crashes.
-            p.done = True
+            self._put(i, replace(p, done=True))
             return
         if len(allowed) > 1:
             remembered = self._remembered(p, p.row, p.col, allowed)
@@ -534,8 +550,8 @@ class _Machine:
             elif p.d in allowed:
                 allowed = [p.d]
         d = allowed[0]
-        p.memory[self._anchor(p.row, p.col)] = d
-        self._move(p, d)
+        self._put(i, p.remembering(self._anchor(p.row, p.col), d))
+        self._move(i, d)
 
     def _remembered(
         self, p: _Pointer, row: int, col: int, allowed: list[tuple[int, int]]
@@ -546,7 +562,7 @@ class _Machine:
         turn the pointer 180 degrees, so a rail that re-enters a cell head-on
         falls back to the ordinary rules instead.
         """
-        d = p.memory.get(self._anchor(row, col))
+        d = p.remembered(self._anchor(row, col))
         if d is None or d not in allowed:
             return None
         if d == (-p.d[0], -p.d[1]):
@@ -557,16 +573,16 @@ class _Machine:
             return None  # pragma: no cover - no known grid reaches it
         return d
 
-    def _move(self, p: _Pointer, d: tuple[int, int]) -> None:
-        """Step ``p`` one cell along ``d``, stopping if that leaves the grid."""
+    def _move(self, i: int, d: tuple[int, int]) -> None:
+        """Step pointer ``i`` one cell along ``d``, stopping off the grid."""
+        p = self.pointers[i]
         n_row, n_col = p.row + d[0], p.col + d[1]
         if not self._accepts(n_row, n_col, d):
-            p.done = True
+            self._put(i, replace(p, done=True))
             return
-        p.prev = (p.row, p.col)
-        p.row, p.col, p.d = n_row, n_col, d
+        self._put(i, replace(p, prev=(p.row, p.col), row=n_row, col=n_col, d=d))
 
-    def _leave(self, p: _Pointer, prefer: tuple[int, int] | None = None) -> None:
+    def _leave(self, i: int, prefer: tuple[int, int] | None = None) -> None:
         """Move ``p`` off the node it occupies.
 
         ``prefer`` is a heading a node's own semantics have chosen (a
@@ -574,101 +590,114 @@ class _Machine:
         direction settles the choice and the pointer's current heading
         breaks any remaining tie.
         """
+        p = self.pointers[i]
         exits = self._exits_from_node(p.row, p.col, p.prev)
         if not exits:
-            p.done = True
+            self._put(i, replace(p, done=True))
             return
         if prefer is not None:
             for n_row, n_col, d in exits:
                 if d == prefer:
-                    self._step_to(p, n_row, n_col, d)
+                    self._step_to(i, n_row, n_col, d)
                     return
         if len(exits) > 1:
             remembered = self._remembered(p, p.row, p.col, [d for _, _, d in exits])
             for n_row, n_col, d in exits:
                 if d == remembered:
-                    self._step_to(p, n_row, n_col, d)
+                    self._step_to(i, n_row, n_col, d)
                     return
             for n_row, n_col, d in exits:
                 if d == p.d:
-                    self._step_to(p, n_row, n_col, d)
+                    self._step_to(i, n_row, n_col, d)
                     return
         n_row, n_col, d = exits[0]
-        self._step_to(p, n_row, n_col, d)
+        self._step_to(i, n_row, n_col, d)
 
-    def _step_to(self, p: _Pointer, row: int, col: int, d: tuple[int, int]) -> None:
-        """Record the exit taken from ``p``'s node and move it to ``(row, col)``."""
-        p.memory[self._anchor(p.row, p.col)] = d
-        p.prev = (p.row, p.col)
-        p.row, p.col, p.d = row, col, d
+    def _step_to(self, i: int, row: int, col: int, d: tuple[int, int]) -> None:
+        """Record the exit taken from the node and move to ``(row, col)``."""
+        p = self.pointers[i]
+        p = p.remembering(self._anchor(p.row, p.col), d)
+        self._put(i, replace(p, prev=(p.row, p.col), row=row, col=col, d=d))
 
-    def _fork(self, p: _Pointer) -> None:
-        """Split ``p`` across every path leaving a ``( )`` node.
+    def _fork(self, i: int) -> None:
+        """Split pointer ``i`` across every path leaving a ``( )`` node.
 
         The pointer itself continues along the first exit and a new pointer,
         carrying a copy of the register and deque cursor, is appended for
         each of the others.
         """
+        p = self.pointers[i]
         exits = self._reading_order(self._exits_from_node(p.row, p.col, p.prev))
         if not exits:
-            p.done = True
+            self._put(i, replace(p, done=True))
             return
         here = (p.row, p.col)
         for n_row, n_col, d in exits[1:]:
-            forked = _Pointer(n_row, n_col, d, p.reg, p.deque)
-            forked.prev = here
-            forked.memory = dict(p.memory)
-            self.pointers.append(forked)
+            self.pointers.append(
+                _Pointer(n_row, n_col, d, p.reg, p.deque, prev=here, memory=p.memory)
+            )
         n_row, n_col, d = exits[0]
-        self._step_to(p, n_row, n_col, d)
+        self._step_to(i, n_row, n_col, d)
 
     def _deque(self, p: _Pointer) -> list[int]:
         """Return ``p``'s currently selected deque, creating it if needed."""
         return self.deques.setdefault(p.deque, [])
 
-    def _execute(self, p: _Pointer) -> None:
-        """Run the node under ``p``, then move it off that node."""
+    def _execute(self, i: int) -> None:
+        """Run the node under pointer ``i``, then move it off that node.
+
+        The register and deque cursor are computed into locals and written
+        back once, since a pointer is a value: a node changes at most one
+        of them, and the three nodes that route instead of computing
+        (``(( ))``, ``( )``, ``< >``) return before the write-back.
+
+        The deques stay a mutable dict on the machine.  They are shared by
+        every pointer -- that sharing is the language's only channel
+        between forks -- and a fork copies a pointer, not the tape.
+        """
+        p = self.pointers[i]
         spelling = self.nodes[(p.row, p.col)][0]
 
         if spelling == "(( ))":
-            p.done = True
+            self._put(i, replace(p, done=True))
             return
         if spelling == "( )":
-            self._fork(p)
+            self._fork(i)
             return
         if spelling == "< >":
-            self._switch(p)
+            self._switch(i)
             return
 
+        reg, deque = p.reg, p.deque
         if spelling == "[ ]":
-            p.reg = 1 if p.reg is None else p.reg ^ 1
+            reg = 1 if reg is None else reg ^ 1
         elif spelling == "{ ]":
-            p.reg = 0
+            reg = 0
         elif spelling == "[ }":
-            p.reg = 1
+            reg = 1
         elif spelling == "{ }":
-            p.reg = None
+            reg = None
         elif spelling == "/ /":
-            p.reg = self._read_bit()
+            reg = self._read_bit()
         elif spelling == "\\ \\":
-            if p.reg is not None:
-                self.io.print_str(str(p.reg))
+            if reg is not None:
+                self.io.print_str(str(reg))
         elif spelling == "\\[ ]/":
-            if p.reg is not None:
-                self._deque(p).append(p.reg)
+            if reg is not None:
+                self._deque(p).append(reg)
         elif spelling == "/[ ]\\":
-            if p.reg is not None:
-                self._deque(p).insert(0, p.reg)
+            if reg is not None:
+                self._deque(p).insert(0, reg)
         elif spelling == "\\{ }/":
             cells = self._deque(p)
-            p.reg = cells.pop() if cells else None
+            reg = cells.pop() if cells else None
         elif spelling == "/{ }\\":
             cells = self._deque(p)
-            p.reg = cells.pop(0) if cells else None
+            reg = cells.pop(0) if cells else None
         elif spelling == "< ]":
-            p.deque -= 1
+            deque -= 1
         elif spelling == "[ >":
-            p.deque += 1
+            deque += 1
         else:
             # Unreachable, and checked to be: ``_Spelling`` is exhausted by
             # the arms above, so mypy narrows this to ``Never``.  A node added
@@ -676,23 +705,25 @@ class _Machine:
             # than silently falling through to ``_leave``.
             assert_never(spelling)
 
-        self._leave(p)
+        self._put(i, replace(p, reg=reg, deque=deque))
+        self._leave(i)
 
-    def _switch(self, p: _Pointer) -> None:
+    def _switch(self, i: int) -> None:
         """Route ``p`` by its register: 1 turns left, 0 right, empty goes on.
 
         Left and right are relative to the heading the pointer arrived on
         (see the module docstring); when the chosen side has no path
         attached, the spec sends the pointer straight forward instead.
         """
+        p = self.pointers[i]
         if p.reg is None:
-            self._leave(p, p.d)
+            self._leave(i, p.d)
             return
         prefer = _turn_left(p.d) if p.reg == 1 else _turn_right(p.d)
         exits = self._exits_from_node(p.row, p.col, p.prev)
         if not any(d == prefer for _, _, d in exits):
             prefer = p.d
-        self._leave(p, prefer)
+        self._leave(i, prefer)
 
     def _read_bit(self) -> int | None:
         """Read one bit of input, or ``None`` once the input is exhausted."""
