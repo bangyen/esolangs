@@ -1700,14 +1700,35 @@ _FOLD_DESCENT_TARGET = 2
 #: move set for every word measured; at ``r >= 9`` the descent's ``kcap=3``
 #: is a different graph and is not covered by this rule.
 #:
-#: Measured over **1073 words with zero mismatches**: exhaustive at three
-#: inputs for ``r <= 6`` (all 119 words) plus one ``r == 7`` word; exhaustive
+#: The harness's start state is the same object :func:`_fold` builds, and
+#: that is checked rather than assumed: over all 65534 non-constant
+#: four-input tables, the state constructed from the run-length word alone
+#: has the identical :func:`_fold_sig` to the one built from the table, 65534
+#: of 65534.  Those tables carry only 32767 distinct words -- a table and its
+#: complement share one -- which is where the cost's complement-invariance
+#: comes from.
+#:
+#: Measured over **1088 words with zero mismatches**: exhaustive at three
+#: inputs for ``r <= 6`` (all 119 words) plus both ``r == 7`` words with a
+#: single long run; exhaustive
 #: over ``>1``-patterns at four and five inputs for ``r <= 5``, each pattern
 #: carried by several words that vary *where* the mass sits (the axis that
 #: killed the earlier candidates), 322 and 468 words; 300 uniformly random
 #: words at five and six inputs; and an adversarial round on the shapes the
 #: rule is most likely to get wrong -- pairs differing only at a middle slot,
 #: extreme mass contrasts, the same pattern at 8, 16, 32 and 64 rows.
+#:
+#: The delta is pinned at the run counts where its shape changes.  At
+#: ``r == 6`` the middle is a *pair* of slots and the conjunction is what
+#: matters: at four inputs ``(1, 1, 2, 1, 1, 10)`` and ``(1, 1, 1, 2, 1, 10)``
+#: each cost 9 with one middle slot long, while ``(1, 1, 2, 2, 1, 9)`` costs
+#: 10 with both.  At ``r == 7`` the middle is the single slot 3, and
+#: ``(1, 1, 1, 2, 1, 1, 25)`` is proved to cost more than 10 by exhausting
+#: depths 9 and 10 with no solution -- against ``base(7) == 10``, which is
+#: itself proved twice: a full BFS on ``(2, 1, 1, 1, 1, 1, 1)`` and on
+#: ``(1, 1, 1, 1, 1, 1, 2)`` at three inputs (1.17M states, 344s and 195s),
+#: and an iterative deepening on ``(1, 1, 1, 1, 1, 1, 26)`` at five that
+#: finds nothing at depth 9 and a plan at depth 10.
 #:
 #: **The delta's mechanism, re-derived.**  A one-move finish from three
 #: points requires an untouched span-0 point, and *only a wipe zeroes a
