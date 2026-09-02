@@ -1603,30 +1603,53 @@ _FOLD_DESCENT_TARGET = 2
 #: opens with one point per run of the sorted table, so a budget written
 #: against points is written against the table's own structure.
 #:
-#: **Half of the budget is exact and half is a guard.**  A descent's steps
-#: split into those that reduce the point count and those that do not, and
-#: the reducing half is derivable: the point count is *monotone* -- over 36
-#: instrumented descents at five through seven inputs it never once rose --
-#: so at most ``points - target`` steps can ever be productive.  Everything
-#: above that is the barren wander between merges, and that is what no
-#: argument here bounds.
+#: **The descent terminates without it.**  The budget is a latency guard,
+#: not the reason the loop stops, and the argument is structural rather than
+#: measured:
 #:
-#: The slope is therefore fitted to the barren half, and fitting is all it
-#: is.  Over 143 descents at three through nine inputs, up to 282 points and
-#: including parity and the fully alternating word, steps run a median 1.92
-#: times the starting points with a worst of **5.10**; ``4 * points + 32``
-#: refuses none of them and a slope of 8 leaves about 1.6x headroom.
+#: * *The point count never rises.*  ``_fold_merge`` only ever coalesces
+#:   equal positions, and every branch of :func:`_fold_moves` passes its
+#:   items through it -- the doubling ``m`` and the full-collapse ``d`` map
+#:   ``p`` points to ``p`` and 1 respectively.  So ``p`` is non-increasing
+#:   along any trajectory, and at most ``points - target`` steps can ever be
+#:   productive.
+#: * *Every state stays in the workspace.*  Both relocation branches guard
+#:   with ``if hi - lo > 2 * _LIMIT: continue``, and the doubling is offered
+#:   only when ``spread * 2 <= 2 * _LIMIT - 2``.  Positions therefore live in
+#:   a window of ``2 * _LIMIT + 1`` values, so the signatures available at a
+#:   fixed ``p`` are finitely many.
+#: * *Revisits are forbidden.*  The descent adds every generated successor to
+#:   ``seen`` and skips anything already there.
 #:
-#: **Do not read that as convergence.**  The worst observed ratio has risen
-#: with every widening of the sample -- 4.25, then 4.67, then 4.88, then
-#: 5.10 -- so sampling is not going to turn this slope into a computed
-#: number.  A real one needs a termination argument for the barren stretches
-#: (the longest seen is 69 steps, 1.06x the starting points), of the kind
-#: the repo prefers elsewhere: a certificate that no further merge is
-#: reachable, rather than a count that reports "out of steps" when the true
-#: answer is "cannot reduce".  Until then the generous slope is deliberate,
-#: and it is cheap: the fold is the last route tried, so a loose budget
-#: costs refusal latency and nothing on a table that builds.
+#: A non-increasing measure, finitely many states per value of that measure,
+#: and no revisits: the loop must either reduce ``p`` or run out of
+#: successors, and running out is the ``if not cands`` refusal.  Checked as
+#: well as argued -- over 53110 successor states sampled at four through six
+#: inputs, none raised the point count and none left the workspace.
+#:
+#: So the slope only has to be generous enough not to cut a descent short,
+#: and **four inputs is enumerated rather than sampled**: folding all 65534
+#: non-constant four-input tables gives a worst of 78 steps at 16 points,
+#: against the 144 this budget allows there -- 1.8x headroom over an
+#: exhaustive population, not a lucky sample.  The whole ``pts -> steps``
+#: table is regular: the maximum climbs smoothly with the point count and
+#: the worst ratio peaks at **5.25** around 12 points, then falls away.
+#:
+#: Sampling at wider arities agrees (worst 5.65 at five inputs, at 17
+#: points) and, importantly, does *not* converge downward -- the worst
+#: observed ratio rose with every widening, 4.25 through 5.65.  That is why
+#: the slope is not presented as derived: it is a bound chosen to sit well
+#: above an observed peak that small states, not large ones, produce.  What
+#: makes that acceptable is the termination argument above -- the budget
+#: does not decide what builds, only how long a doomed descent runs -- plus
+#: the fold being the last route tried, so a loose budget costs refusal
+#: latency and nothing on a table that builds.
+#:
+#: One law was found and refuted: ``3 * points`` bounds the exhaustive
+#: three-input maxima exactly, with the bound attained.  It does not survive
+#: -- four inputs violate it at ten points and five inputs reach 5.65 -- so
+#: the tight small-arity fit is a coincidence of small states rather than
+#: the shape of the algorithm.
 #:
 #: One thing measured and *rejected*: widening ``kcap`` from 3 to 6 in the
 #: descent's move generation.  A re-implemented harness suggested it removed
