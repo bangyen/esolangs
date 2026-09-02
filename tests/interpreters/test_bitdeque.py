@@ -5,7 +5,11 @@ from contextlib import redirect_stdout
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.queue_based.bitdeque import run
-from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.interpreters.contract import (
+    CycleContract,
+    SnapshotContract,
+    StateViewContract,
+)
 
 
 def run_and_capture(code: str) -> str:
@@ -132,10 +136,15 @@ def _machine(code: object) -> object:
     return _Machine(code, IO())
 
 
-class TestContract(SnapshotContract, CycleContract):
+class TestContract(SnapshotContract, CycleContract, StateViewContract):
     """The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     stepping_program = "PUSH"
     halting_program = "INVERT PUSH"
     looping_program = "INVERT GOTO 1"
+    # `rendered` guards the end-of-run deque dump, so it only flips on the
+    # step past the halt; it is read either side here, and `ip`/`memory` are
+    # what the run moves.
+    state_views = ("rendered", "ip", "memory")
+    viewing_program = "INVERT PUSH"

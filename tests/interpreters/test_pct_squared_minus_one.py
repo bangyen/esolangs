@@ -3,7 +3,11 @@
 import importlib
 
 from esolangs.interpreters.io import ScriptedIO
-from tests.interpreters.contract import CycleContract, EmptyProgramContract
+from tests.interpreters.contract import (
+    CycleContract,
+    EmptyProgramContract,
+    StateViewContract,
+)
 
 run = importlib.import_module(
     "esolangs.interpreters.register_based.pct_squared_minus_one"
@@ -141,7 +145,7 @@ def _machine(code: object) -> object:
     return _Machine(code, ScriptedIO(""))
 
 
-class TestContract(EmptyProgramContract, CycleContract):
+class TestContract(EmptyProgramContract, CycleContract, StateViewContract):
     """The shared shapes.
 
     ``mipt`` settles into a genuine 4-state cycle: (0,3) -> (1,6) -> (2,3)
@@ -153,3 +157,5 @@ class TestContract(EmptyProgramContract, CycleContract):
     machine = staticmethod(_machine)
     halting_program = "i"
     looping_program = "mipt"
+    state_views = ("ind", "acc", "ip", "memory")
+    viewing_program = "pl"  # `p` raises the accumulator, `l` prints it

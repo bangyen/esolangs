@@ -11,7 +11,11 @@ from contextlib import redirect_stdout
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.minsky_swap import run
-from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.interpreters.contract import (
+    CycleContract,
+    SnapshotContract,
+    StateViewContract,
+)
 from tests.raises import raises_message
 
 
@@ -321,10 +325,16 @@ def _machine(code: object) -> object:
     return _Machine(code, IO())
 
 
-class TestContract(SnapshotContract, CycleContract):
+class TestContract(SnapshotContract, CycleContract, StateViewContract):
     """The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     stepping_program = "+"
     halting_program = "+"
     looping_program = "~\n1"
+    # `dumped` only flips on the step *after* the halt, where this language
+    # prints its registers, so the contract's run-to-halt leaves it False.
+    # It is still read either side, which is what the view is here to pin;
+    # `reg` and `ip` are what move.
+    state_views = ("ptr", "reg", "dumped", "ip", "memory")
+    viewing_program = "+"

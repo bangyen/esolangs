@@ -3,7 +3,7 @@
 from typing import ClassVar
 
 from esolangs.interpreters.tape_based.brainif import run
-from tests.interpreters.contract import CycleContract
+from tests.interpreters.contract import CycleContract, StateViewContract
 from tests.interpreters.runner import run_program
 
 
@@ -197,9 +197,11 @@ def _machine(code: object) -> object:
     return _Machine(code, ScriptedIO())
 
 
-class TestContract(CycleContract):
+class TestContract(CycleContract, StateViewContract):
     """The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     halting_program: ClassVar[list[str]] = ["if 0 output"]
     looping_program: ClassVar[list[str]] = ["if 0 goto 1"]
+    state_views: ClassVar[tuple[str, ...]] = ("ptr", "ip", "memory")
+    viewing_program: ClassVar[list[str]] = ["if 0 right", "if 0 output"]
