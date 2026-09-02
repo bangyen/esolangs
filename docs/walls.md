@@ -173,6 +173,53 @@ staging.  `src/esolangs/tools/boolean/minifuck.py` carries the mechanism and
 the pool-code derivation; what follows is only what is *not* reachable and
 what was disproved along the way.
 
+### The staging enumeration is invertible, but there is no closed form
+
+The staged route used to run its enumeration **per table**, testing
+`(separator, settle, suffix, accumulator)` candidates until one printed.  It
+now walks the enumeration once per arity, tabulating *column -> first
+staging*, and a table is a dict lookup.  Two findings made that possible and
+one is a negative worth keeping.
+
+**The pool code does not depend on the accumulator.**  `_find_pool` is asked
+for a `walk_out`, so it *could* answer differently per accumulator — measured
+over every `(separator, settle, suffix, orientation)` at two, three and four
+inputs, it never does (160/160 constant at each arity).  So one walk answers
+the whole accumulator range instead of one walk per accumulator, which is
+what made the enumeration cheap enough to invert: a four-input table the span
+screen admits but no staging places went from **27.7s to 4.8s**.
+
+**The reachable column set is small**, which is why a table beats a formula:
+
+| n | tabulation pass | distinct reachable columns |
+|---|---|---|
+| 2 | 0.1s | 16 |
+| 3 | 0.2s | 252 |
+| 4 | 5.0s | 15994 |
+| 5 (budgeted) | 2.4s | 6340 |
+| 5 (full) | 8.5s | 28096 |
+
+**The negative: the printed column has no closed form in `(suffix, acc)`.**
+Three translation hypotheses were tested against the measured grid and all
+fail — `acc - ceil(k/2)` leaves 38 of 40 shift classes ambiguous, and the
+diagonals `grid[k-1][a-1]` and `grid[k-2][a-1]` are violated 306 and 274
+times out of 700.  The grid *does* saturate the way the bracket-run law
+predicts (past `k` of about `2 * (acc - 16) + 1` the column stops moving),
+but the pool code depends on the state the staging leaves behind, so the
+column is not pure tape algebra.  Inverting by tabulation is not a fallback
+from an algebraic form that exists — it is the mechanism.
+
+**The order is the contract, and a correctness check cannot see it.**  A
+table takes the *first* staging that prints it, so the index must walk
+`_stagings` order exactly: both passes, every pure bracket run across every
+slice before any insert suffix, same budget accounting.  A draft interleaved
+the two passes per slice.  Every column it produced was reachable and valid,
+every program it emitted printed its table, and it still assigned five-input
+XOR `None` where the enumeration assigns `(2, 0, 0, 33)`.  Only a diff of the
+staging *tuples* against the per-table enumeration caught it, which is why
+that enumeration is kept as an oracle and pinned by a test rather than
+deleted as dead code.
+
 ### The read polarity is the free variable
 
 The printed digit is `NOT(v XOR cell7)` for accumulator value `v`, and every
