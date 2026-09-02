@@ -17,11 +17,29 @@ with an unrecognized operator is a malformed program and is rejected with
 :class:`ValueError`.
 
 Exhausted input raises :class:`EOFError` (the repo-wide convention).
+
+Evaluation is a pure function over an immutable ``_Vars``: :func:`_eval`
+takes an expression and the variables it sees, and returns the value with
+the variables that the expression left behind.  It never reaches an
+:class:`IO`.  The mutation lives in :meth:`State.step`, which rebinds one
+field from what the transition returned.
+
+The ports cannot be lifted out of the recursion the way a one-command step
+lifts them.  A statement is Qoibl's unit of execution -- ``rr`` runs its
+body to completion inside a single ``step()`` -- so how many times a nested
+``et`` reads, and what an ``rr`` prints on the way, depends on values that
+only exist part-way through the evaluation.  :func:`_eval` therefore takes
+the two ports as callbacks: ``read`` for ``et`` and ``emit`` for ``tt``.
+That keeps the *state* threading pure and total, which is what the mutation
+net tests, while leaving the effects at the one seam that has to stay
+ordered.  Eval's frame stack is the other answer to this shape and does not
+fit here: there a step is one command, so nesting can be unwound onto an
+explicit stack; here the language defines the statement as the step.
 """
 
 import re
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 
 from esolangs.exceptions import HaltError
@@ -106,11 +124,14 @@ def _scan(line: str, accept: Callable[[list[str]], bool]) -> list[str]:
 
 
 def _wellformed(expr: list[str]) -> bool:
-    """Whether ``expr`` parses, mirroring :meth:`State._parse` without effects.
+    """Whether ``expr`` parses, mirroring :func:`_eval` without effects.
 
-    :meth:`State._parse` prints and consumes input as it goes, so it cannot be
-    used to test a candidate tokenization.  The split points here are the same
-    ones it uses, so a candidate accepted here is one it can run.
+    :func:`_eval` prints and consumes input as it goes, so it cannot be used
+    to test a candidate tokenization.  The split points here are the same
+    ones it uses, so a candidate accepted here is one it can run -- including
+    the order of the arms: a ``ry``/``yr`` marker is found before the ``qe``
+    arm is reached, so an arithmetic value inside a ``qe`` key is rejected
+    here and unreachable there.
     """
     if not expr:
         return False
@@ -188,6 +209,123 @@ def _split(tokens: list[str], out: list[list[str]]) -> bool:
     return False
 
 
+#: The part of a run the pure layer owns: the variable list, as a mapping
+#: from number to value.  A value, not a record: :func:`_eval` returns a new
+#: one rather than editing the one it was handed, so an expression that
+#: assigns half-way through and then raises leaves the caller's copy intact.
+type _Vars = Mapping[int, int]
+
+#: What ``et`` and ``tt`` reach.  The ports stay callbacks because a
+#: statement is the unit of execution: an ``rr`` body can read and print any
+#: number of times inside one step, at points that depend on values computed
+#: part-way through, so neither can be hoisted into the shell ahead of the
+#: evaluation the way a one-command step hoists them.
+type _Read = Callable[[], int]
+type _Emit = Callable[[str], None]
+
+
+def _eval(expr: list[str], var: _Vars, read: _Read, emit: _Emit) -> tuple[int, _Vars]:
+    """Return ``expr``'s value and the variables it leaves behind.
+
+    Pure in its state: it reads ``var`` and returns a new mapping, and never
+    edits the one it was given.  ``read`` and ``emit`` are the two ports.
+
+    ``we`` evaluates its target before its value, and ``rr`` re-evaluates
+    its condition against the variables its body just returned -- the
+    threading is what makes a loop terminate, so it is the part a mutant
+    breaks first.
+    """
+    if not expr:
+        raise ValueError("malformed expression")
+
+    if (op := expr[0]) == "tt":
+        value, var = _eval(expr[1:-1], var, read, emit)
+        emit(chr(value))
+        return 0, var
+    if op == "we":
+        ind = expr.index("we", 1)
+        target, var = _eval(expr[1:ind], var, read, emit)
+        value, var = _eval(expr[ind + 1 : -1], var, read, emit)
+        return 0, {**var, target: value}
+    if op == "rr":
+        ind = expr.index("rr", 1)
+        cond, var = _eval(expr[1:ind], var, read, emit)
+        while cond:
+            _, var = _eval(expr[ind + 1 : -1], var, read, emit)
+            cond, var = _eval(expr[1:ind], var, read, emit)
+        return 0, var
+    if "yr" in expr:
+        return _compare(expr, var, read, emit)
+    if "ry" in expr:
+        return _arithmetic(expr, var, read, emit)
+    if op == "qe":
+        key, var = _eval(expr[1:-1], var, read, emit)
+        return var.get(key, 0), var
+    if op == "et":
+        return read(), var
+    # ``tokenize`` only accepts a split under which every statement parses,
+    # so the tokens that reach here are the keywords above, a binary
+    # ``[ey]+`` literal, or ``yr``/``ry`` -- and those two are taken by the
+    # ``in expr`` arms before the keyword tests run.  The fallback stays for
+    # a hand-built expression list.
+    if re.fullmatch("[ey]+", op):  # pragma: no branch - see above
+        return int(op.replace("e", "0").replace("y", "1"), 2), var
+    return 0, var
+
+
+def _operands(
+    expr: list[str], marker: str, var: _Vars, read: _Read, emit: _Emit
+) -> tuple[str, int, int, _Vars]:
+    """Return the operator and both operands around ``marker``.
+
+    The left side is evaluated before the right, which is observable: either
+    may read input or print, and swapping them reverses both.
+    """
+    beg = expr.index(marker)
+    if beg + 1 >= len(expr):
+        raise ValueError(
+            "malformed comparison" if marker == "yr" else "malformed arithmetic"
+        )
+    num = expr[beg + 1]
+    x, var = _eval(expr[:beg], var, read, emit)
+    y, var = _eval(expr[beg + 3 :], var, read, emit)
+    return num, x, y, var
+
+
+def _compare(
+    expr: list[str], var: _Vars, read: _Read, emit: _Emit
+) -> tuple[int, _Vars]:
+    """Evaluate a ``yr``-marked comparison."""
+    num, x, y, var = _operands(expr, "yr", var, read, emit)
+    if num == "ee":
+        return int(x == y), var
+    if num == "ey":
+        return int(x > y), var
+    if num == "ye":
+        return int(x < y), var
+    if num == "yy":
+        return int(x != y), var
+    raise ValueError("unrecognized comparison operator")
+
+
+def _arithmetic(
+    expr: list[str], var: _Vars, read: _Read, emit: _Emit
+) -> tuple[int, _Vars]:
+    """Evaluate a ``ry``-marked arithmetic expression."""
+    num, x, y, var = _operands(expr, "ry", var, read, emit)
+    if num == "ee":
+        return x + y, var
+    if num == "ey":
+        return x - y, var
+    if num == "ye":
+        return x * y, var
+    if num == "yy":
+        if y == 0:
+            raise HaltError
+        return x // y, var
+    raise ValueError("unrecognized arithmetic operator")
+
+
 @dataclass
 class State:
     """Per-run state for a Qoibl interpreter: variables and the code cursor."""
@@ -239,67 +377,17 @@ class State:
         return (self.ind, tuple(sorted(self.var.items())), self.io.position())
 
     def _parse(self, expr: str | list[str]) -> int:
-        """Parse and execute a single Qoibl expression."""
-        if not expr:
-            raise ValueError("malformed expression")
-        if (op := expr[0]) == "tt":
-            self.io.print_char(chr(self._parse(expr[1:-1])))
-        elif op == "we":
-            ind = expr.index("we", 1)
-            self.var[self._parse(expr[1:ind])] = self._parse(expr[ind + 1 : -1])
-        elif op == "rr":
-            ind = expr.index("rr", 1)
-            while self._parse(expr[1:ind]):
-                self._parse(expr[ind + 1 : -1])
-        elif "yr" in expr:
-            beg = expr.index("yr")
-            if beg + 1 >= len(expr):
-                raise ValueError("malformed comparison")
-            num = expr[beg + 1]
-            x = self._parse(expr[:beg])
-            y = self._parse(expr[beg + 3 :])
+        """Evaluate one expression, committing what it assigns.
 
-            if num == "ee":
-                return x == y
-            if num == "ey":
-                return x > y
-            if num == "ye":
-                return x < y
-            if num == "yy":
-                return x != y
-            raise ValueError("unrecognized comparison operator")
-        elif "ry" in expr:
-            beg = expr.index("ry")
-            if beg + 1 >= len(expr):
-                raise ValueError("malformed arithmetic")
-            num = expr[beg + 1]
-            x = self._parse(expr[:beg])
-            y = self._parse(expr[beg + 3 :])
-
-            if num == "ee":
-                return x + y
-            if num == "ey":
-                return x - y
-            if num == "ye":
-                return x * y
-            if num == "yy":
-                if y == 0:
-                    raise HaltError
-                return x // y
-            raise ValueError("unrecognized arithmetic operator")
-        elif op == "qe":
-            return self.var.get(self._parse(expr[1:-1]), 0)
-        elif op == "et":
-            return self.io.input_char()
-        # ``tokenize`` only accepts a split under which every statement
-        # parses, so the tokens that reach here are the keywords above, a
-        # binary ``[ey]+`` literal, or ``yr``/``ry`` -- and those two are
-        # taken by the ``in expr`` arms before the keyword tests run.  The
-        # fallback stays for a hand-built expression list.
-        elif re.fullmatch("[ey]+", op):  # pragma: no branch - see above
-            op = op.replace("e", "0").replace("y", "1")
-            return int(op, 2)
-        return 0
+        Kept as a method because the tokenizer's siblings and the tests
+        reach it by this name.  It is now the shell around :func:`_eval`:
+        the ports are bound here, and the variables the evaluation returns
+        are written back in one place.
+        """
+        tokens = list(expr) if isinstance(expr, list) else [expr]
+        value, var = _eval(tokens, self.var, self.io.input_char, self.io.print_char)
+        self.var = dict(var)
+        return value
 
     def step(self) -> None:
         """Execute one statement, advancing the cursor."""
