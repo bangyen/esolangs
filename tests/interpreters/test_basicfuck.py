@@ -245,15 +245,15 @@ class TestStepMachine:
 
         prog = "#basicfuck t=1 r=0~255 o=nearest\n#allocate a\n"
         machine = _Machine(prog + "a += 65;\nwrite <- a ;", ScriptedIO())
-        assert (machine.frames[-1].ptr, list(machine.tape.cells())) == (0, [0])
+        assert (machine.frames[-1][1], list(machine.cells)) == (0, [0])
         machine.step()  # a += 65
-        assert list(machine.tape.cells()) == [65]
+        assert list(machine.cells) == [65]
         machine.step()  # write prints a
         assert machine.io.getvalue() == "A"
         machine.step()  # the finished frame is finalized
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
-        assert machine.frames == []
+        assert machine.frames == ()
 
     def test_a_frame_reports_what_kind_of_scope_it_is(self) -> None:
         """The snapshot carries each frame's loop bookkeeping, not just its
