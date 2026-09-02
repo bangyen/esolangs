@@ -25,7 +25,7 @@ repos:
       - id: ruff-format
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.3.0
+    rev: v2.3.1
     hooks:
       - id: mypy
         # The mirror's default --ignore-missing-imports would suppress the
@@ -41,6 +41,12 @@ repos:
 
   - repo: local
     hooks:
+      - id: check-hook-pins
+        name: Check hook revs match pyproject pins
+        entry: python3 scripts/check_hook_pins.py
+        language: system
+        files: ^(\.pre-commit-config\.yaml|pyproject\.toml)$
+        pass_filenames: false
       - id: check-interpreter-syntax
         name: Check interpreter syntax
         entry: python3 -m py_compile
