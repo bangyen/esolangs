@@ -42,7 +42,7 @@ class TestBreakpoints:
         dbg = esolangs.make_debugger("Eval", "0^")
         dbg.break_on_stack(0, 0)
         dbg.run()
-        assert dbg.ip == 1
+        assert dbg.ip == (1, 1)  # one frame deep, its cursor past the 0
         assert dbg.stack == [0]
 
     def test_break_on_output(self) -> None:
