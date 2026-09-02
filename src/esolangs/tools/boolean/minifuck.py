@@ -184,6 +184,33 @@ _SPAN = 6
 # are fixed and cell 7 carries the answer.
 _POOL = (0, 0, 1, 1, 0, 0, 0)
 
+# How wide the pool is.  ``.`` reads ``tape[:8]`` as one byte, so this is a
+# byte and not a tunable: it is the same 8 that ``_POOL`` above spells out.
+#
+# **Several numbers in this module are this one wearing different hats**, and
+# spelling them as literals hid a relationship the totality argument in
+# ``docs/walls.md`` turns on.  What derives from it:
+#
+# * the accumulator floor -- ``_endgame`` refuses ``acc < _POOL_WIDTH``,
+#   because the accumulator has to sit past the pool;
+# * the sculpting rewind guard, ``rewind > min(ptrs) - _POOL_WIDTH``, which
+#   is what keeps a round's writes off the pool;
+# * :data:`_PROBE_WALK_OUT` and the lowest cell a round may write, both
+#   ``_POOL_WIDTH + 1``;
+# * the sculpting accumulator loop's start, ``span + _POOL_WIDTH + 1``.
+#
+# That last pair is the load-bearing one.  The loop starting one *past* the
+# guard is exactly what makes the rewind bound tight rather than slack: the
+# worst rewind is ``lo - _POOL_WIDTH``, which is the guard itself, so the
+# guard can never fire.  Written as ``8`` and ``9`` the two look independent
+# and the identity looks like a coincidence.
+#
+# Not every ``8`` in this file is this constant.  ``_MUX_GUARD``'s is a
+# scratch width and ``_MAX_ACC - 8`` is a staging-search bound; both are
+# separate quantities that happen to share the value, and collapsing them
+# would assert a relationship that does not hold.
+_POOL_WIDTH = len(_POOL) + 1
+
 # The two reads.  ``[<`` leaves the pointer at ``(acc-1) + v``; ``[x<[<``
 # leaves it at ``(acc-1) + NOT v``, restores the cell, and flips its
 # neighbour unconditionally.  The printed digit is ``NOT(v XOR cell7)`` and
@@ -713,7 +740,7 @@ def _pool_reaches(j: _Joint, code: str, cell7: int, walk_out: int) -> bool:
         for char in "[x":
             for m in probe:
                 m.exec(char)
-    for cell in range(8):
+    for cell in range(_POOL_WIDTH):
         col = {m.tape[cell] for m in probe}
         if len(col) != 1 or probe[0].tape[cell] != target[cell]:
             return False
@@ -726,7 +753,7 @@ def _pool_reaches(j: _Joint, code: str, cell7: int, walk_out: int) -> bool:
 # lets the memo key omit it.  The smallest legal accumulator, since
 # :func:`_endgame` rejects anything under 8 and the probe should sit where
 # every caller's does or further left.
-_PROBE_WALK_OUT = 9
+_PROBE_WALK_OUT = _POOL_WIDTH + 1
 
 
 @cache
@@ -809,7 +836,7 @@ def _endgame(j: _Joint, acc: int, read: str, cell7: int) -> None:
     one cell further right than for a column with a zero row, and measuring
     from there would short the walk by one.
     """
-    if acc < 8:
+    if acc < _POOL_WIDTH:
         raise ValueError("accumulator must sit past the pool")
     code = _find_pool(j, cell7, acc - 1)
     if code is None:
@@ -817,14 +844,14 @@ def _endgame(j: _Joint, acc: int, read: str, cell7: int) -> None:
     j.emit(code)
     _walk_to(j, acc - 1)
     j.emit(read)
-    j.emit("<" * (acc - 7))
+    j.emit("<" * (acc - (_POOL_WIDTH - 1)))
     # ``_find_pool`` accepts a code only after checking the pool *past* the
     # walk out, which is the state reached here -- so this is that check
     # restated on what was actually emitted rather than on a simulated walk.
     # It is an AssertionError rather than a ValueError deliberately: the two
     # disagreeing is a bug in the pair, and ``_try_print`` swallows every
     # ValueError, which would turn it into a silently skipped accumulator.
-    for cell in range(8):
+    for cell in range(_POOL_WIDTH):
         if len(set(j.col(cell))) != 1:
             raise AssertionError(f"pool cell {cell} is input-dependent")
     j.emit("[x.")
@@ -2344,7 +2371,7 @@ def _mux_separate(n: int) -> _Joint | None:
     if not _mux_intact(_mux_reference(n), j):
         return None  # pragma: no cover - the construction separates by design
     # Pad right so the sculpting rewinds fit: every round needs
-    # ``b - C + 1 <= min(ptr) - 8`` with ``C`` below the lowest row.
+    # ``b - C + 1 <= min(ptr) - _POOL_WIDTH`` with ``C`` below the lowest row.
     #
     # The weighting already leaves room for this at every supported arity:
     # the lowest pointer outgrows the floor, and by a widening margin --
@@ -2444,7 +2471,7 @@ def _mux_sculpt(
             break
         frontier = max(disagree)
         rewind = frontier - acc + 1
-        if rewind > min(j.ptrs()) - 8:
+        if rewind > min(j.ptrs()) - _POOL_WIDTH:
             # Not observed, but the closest of any guard here: measured over
             # every table at two and three inputs, 38144 rewinds with a
             # margin (bound minus rewind) between 0 and 24 -- so the padding
@@ -2496,7 +2523,9 @@ def _mux(truth_table: str, n: int) -> str | None:
     positions = base.ptrs()
     lowest, highest = min(positions), max(positions)
     best: str | None = None
-    for acc in range(highest - lowest + 9, lowest - 1):
+    # ``+ 1`` past the rewind guard's ``_POOL_WIDTH``, which is what makes the
+    # guard exactly tight rather than slack -- see the constant's own comment.
+    for acc in range(highest - lowest + _POOL_WIDTH + 1, lowest - 1):
         for cell7 in (0, 1):
             # Which pool code serves this ``(acc, cell7)`` is settled on the
             # separation, before any sculpting: measured at four inputs, one
