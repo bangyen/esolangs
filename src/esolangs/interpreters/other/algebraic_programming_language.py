@@ -291,10 +291,10 @@ class _Parser:
     def _unary(self) -> _Node:
         """Parse unary ``-``, the ``$`` return operator, and prefix operators."""
         token = self.peek()
-        if token == "-":
+        if token == "-":  # nosec B105
             self.take()
             return ("neg", self._unary())
-        if token == "$":
+        if token == "$":  # nosec B105
             self.take()
             return ("ret", self._unary())
         return self._operand()
@@ -396,7 +396,7 @@ class _Parser:
             if self.peek() == "(":
                 raise ValueError("bracket multiplication is invalid syntax")
             return self._implied(node)
-        if token == "(":
+        if token == "(":  # nosec B105
             self.take()
             inner = self.expr()
             self.expect(")")
@@ -702,7 +702,7 @@ class _Machine:
         read from returning, not looping.  See
         :func:`esolangs.vm.run_until_halt_or_ancestor`.
         """
-        assert isinstance(frame, _Frame)
+        assert isinstance(frame, _Frame)  # nosec B101
         return (
             frame.fn.name,
             tuple(sorted((k, repr(v)) for k, v in frame.locals.items())),
