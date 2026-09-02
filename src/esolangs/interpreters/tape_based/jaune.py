@@ -281,20 +281,6 @@ class _Machine:
             self.io.position(),
         )
 
-    def _label(self, num: int) -> int | None:
-        """Return the command index of the ``num`` label, or None."""
-        for i, cmd in enumerate(self.commands):
-            if cmd.op == ":" and cmd.arg == num:
-                return i
-        return None
-
-    def _subroutine(self, num: int) -> int | None:
-        """Return the command index of the ``num`` subroutine, or None."""
-        for i, cmd in enumerate(self.commands):
-            if cmd.op == "$" and cmd.arg == num:
-                return i
-        return None
-
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""

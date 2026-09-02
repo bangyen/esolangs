@@ -299,6 +299,53 @@ class TestStepMachine:
         assert hash(machine.snapshot()) is not None
         assert machine.io.position() == 0
 
+    def test_the_flag_registers_are_readable_off_the_machine(self) -> None:
+        """The five flag names report the state fields they are named for.
+
+        ``TestFlags`` above proves the flags through *programs*, which read
+        them back out of memory at ``-3``..``-5``; nothing read them off the
+        machine object.  They are the language's own names on the stepped
+        surface, and ``of`` in particular is load-bearing elsewhere: the VM
+        looks up ``of`` on a state class to find an alternative constructor
+        and only accepts it when callable, precisely because AddSubJump
+        spells its overflow flag that way.
+
+        The program enables flag-update mode and then produces a zero
+        result, so ``fum`` and ``zf`` both have to move -- a property wired
+        to a neighbouring tuple slot would stay put.
+        """
+        from esolangs.interpreters.register_based.addsubjump import _Machine
+
+        code = memory(
+            [
+                [-9, -6, 40, -7],
+                [30, -7, 41, -7],
+                [31, -3, 42, -7],
+                [-1, 31, -8, -7],
+            ],
+            {40: 4, 41: 8, 42: 12},
+        )
+        machine = _Machine(code, ScriptedIO())
+        assert (machine.cf, machine.zf, machine.nf, machine.of, machine.fum) == (
+            0,
+            0,
+            0,
+            0,
+            0,
+        )
+        seen = set()
+        while not machine.halted:
+            machine.step()
+            seen.add((machine.fum, machine.zf))
+        assert machine.fum == 1  # -9 turned the mode on and it stayed on
+        assert (1, 1) in seen  # and the zero result set ZF while it was on
+        # The three flags this program never disturbs stay clear, so the
+        # accessors are not all reading one field.
+        assert (machine.cf, machine.nf, machine.of) == (0, 0, 0)
+        # AddSubJump has no stack, and the shared VM view says so with an
+        # empty one rather than by omitting the name.
+        assert machine.stack == []
+
 
 def _machine(code: object) -> object:
     from esolangs.interpreters.io import ScriptedIO
