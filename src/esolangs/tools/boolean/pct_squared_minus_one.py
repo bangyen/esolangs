@@ -631,7 +631,28 @@ _SPELL_MAX = 7
 #: explodes the frontier, and the count stops mattering past four -- measured
 #: 82 tables at two witnesses, 84 at four, and 84 at every count up to
 #: sixteen.
+#:
+#: The count is not what binds, which is why raising it does nothing: *which*
+#: witnesses are kept is what matters, and they are chosen by
+#: :func:`_witness_rank` rather than by arrival.
 _WITNESSES = 6
+
+
+def _witness_rank(vec: tuple[int, ...]) -> int:
+    """How far a value vector sits from zero -- smaller is more useful.
+
+    A later setter can only translate by ``|b| <= 12``, so two vectors with
+    the same partition are *not* interchangeable: one near zero can still be
+    moved onto the values a tail needs, and one far from zero cannot.  The
+    frontier keeps witnesses by arrival otherwise, and that lost tables --
+    ``x0 ^ x2`` and its complement need ``(-12, -12, -11, -11)`` at the
+    second layer, while the six vectors already banked for that partition
+    were ``(-24, -24, -23, -23)`` through ``(-19, -19, -18, -18)``, every one
+    of them out of the last layer's reach.  Ranking by magnitude keeps the
+    reachable representative and lifts the arity's coverage 84 -> 86 at the
+    same witness count.
+    """
+    return max(abs(value) for value in vec)
 
 
 @cache
@@ -732,6 +753,11 @@ _Setter = tuple[_Branch, _Branch]
 #: setters that produced it.
 _State = tuple[tuple[int, ...], tuple[_Setter, ...]]
 
+#: A state inside a partition's bucket, carrying the witness rank it is
+#: sorted by.  The rank is bookkeeping for the bucket, so it is dropped when
+#: the frontier is rebuilt.
+_Ranked = tuple[int, tuple[int, ...], tuple[_Setter, ...]]
+
 
 def _compose(n: int) -> list[_State]:
     """Every accumulator vector one affine setter per input can produce.
@@ -752,7 +778,7 @@ def _compose(n: int) -> list[_State]:
     branches: list[_Branch] = [(a, b) for a in _WIDE_A_VALS for b in _WIDE_B_VALS]
     frontier: list[_State] = [((0,), ())]
     for _ in range(n):
-        layer: dict[tuple[int, ...], list[_State]] = {}
+        layer: dict[tuple[int, ...], list[_Ranked]] = {}
         for vec, assign in frontier:
             for zero_branch in branches:
                 zero = tuple(zero_branch[0] * v + zero_branch[1] for v in vec)
@@ -760,11 +786,31 @@ def _compose(n: int) -> list[_State]:
                     one = tuple(one_branch[0] * v + one_branch[1] for v in vec)
                     candidate = zero + one
                     bucket = layer.setdefault(_partition(candidate), [])
-                    if len(bucket) < _WITNESSES and all(
-                        candidate != seen for seen, _ in bucket
-                    ):
-                        bucket.append((candidate, (*assign, (zero_branch, one_branch))))
-        frontier = [state for bucket in layer.values() for state in bucket]
+                    rank = _witness_rank(candidate)
+                    if len(bucket) >= _WITNESSES and rank >= bucket[-1][0]:
+                        # The bucket is full of nearer vectors; this one
+                        # cannot displace any, so skip the equality scan.
+                        continue
+                    if any(candidate == seen for _, seen, _ in bucket):
+                        continue
+                    entry = (
+                        rank,
+                        candidate,
+                        (*assign, (zero_branch, one_branch)),
+                    )
+                    if len(bucket) < _WITNESSES:
+                        bucket.append(entry)
+                    else:
+                        bucket[-1] = entry
+                    # Kept sorted by rank so the last element is the one a
+                    # nearer candidate displaces, which is what makes the
+                    # ranking cost a comparison rather than a scan.
+                    bucket.sort(key=lambda item: item[0])
+        # Drop the rank, which is bookkeeping for the bucket rather than part
+        # of a state.
+        frontier = [
+            (vec, assign) for bucket in layer.values() for _, vec, assign in bucket
+        ]
     return frontier
 
 
@@ -1916,9 +1962,6 @@ def _affine_admits(truth_table: str, n: int) -> bool:
     if n != 3:
         return True
     if len(set(truth_table)) == 1:
-        return False
-    skip_middle = "".join(str(((row >> 2) & 1) ^ (row & 1)) for row in range(2**n))
-    if truth_table in (skip_middle, _complement_bits(skip_middle)):
         return False
     low = "".join(truth_table[r] for r in range(2**n) if not r & 1)
     high = "".join(truth_table[r] for r in range(2**n) if r & 1)
