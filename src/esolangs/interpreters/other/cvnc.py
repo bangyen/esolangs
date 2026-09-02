@@ -158,6 +158,7 @@ _MULTIPLICATIVE = frozenset("*/")
 _PRINT_NUM = "θ"
 _PRINT_CHAR = "f"
 _READ_NUM = "s"
+_READ_CHAR = "ʒ"
 _CLEAR_FUNCTION = "c"
 _POP_FRONT_APPEND = "p"
 _INCREMENT = "i"
@@ -338,6 +339,151 @@ class _InvalidFunctionError(Exception):
     """The built function does not parse, so ``u`` leaves the accumulator."""
 
 
+#: One instant of a run: ``(accumulator, deque, function, pointer)``.
+#:
+#: A value, not a record: every handler below returns a new core rather
+#: than editing the one it was handed.  The deque and the function are
+#: tuples for the same reason -- and both are bounded by what the program
+#: has pushed, which no loop grows without also growing the accumulator.
+#:
+#: The tokens, the syllable starts, the loop pairs and the offset table
+#: stay out: CV(N)(C) never rewrites its own source, so they are computed
+#: once and handed to the transition.
+type _Core = tuple[int, tuple[int, ...], tuple[str, ...], int]
+
+
+def _popped(deque: tuple[int, ...], *, front: bool) -> tuple[tuple[int, ...], int]:
+    """Pop one end of the deque, refusing an empty one."""
+    if not deque:
+        raise HaltError("pop from an empty deque")
+    return (deque[1:], deque[0]) if front else (deque[:-1], deque[-1])
+
+
+def _applied(accumulator: int, function: tuple[str, ...]) -> int:
+    """Return the function applied to the accumulator, if it parses."""
+    try:
+        return _Parser(list(function), accumulator).parse()
+    except _InvalidFunctionError:
+        return accumulator
+
+
+def _fricative(
+    core: _Core, token: str, line: str | None, byte: int | None
+) -> tuple[_Core, str | int | None]:
+    """Run one I/O command, reporting anything it prints."""
+    accumulator, deque, function, pointer = core
+    if token == _PRINT_NUM:
+        return core, accumulator
+    if token == _PRINT_CHAR:
+        return core, chr(accumulator % 256)
+    if token == _READ_NUM:
+        # The accumulator is unsigned, so a negative line floors at zero,
+        # and an empty line (a bare Enter) reads as 0 rather than raising.
+        return (max(_as_int((line or "").strip()), 0), deque, function, pointer), None
+    # what is left is ``ʒ``, the character read
+    return ((byte or 0) % 256, deque, function, pointer), None
+
+
+def _plosive(core: _Core, token: str) -> _Core:
+    """Append to the function, or reset it."""
+    accumulator, deque, function, pointer = core
+    if token == _CLEAR_FUNCTION:
+        return (accumulator, deque, (), pointer)
+    if token in _FUNCTION_SYMBOLS:
+        return (accumulator, deque, (*function, _FUNCTION_SYMBOLS[token]), pointer)
+    deque, value = _popped(deque, front=token == _POP_FRONT_APPEND)
+    return (accumulator, deque, (*function, str(value)), pointer)
+
+
+def _vowel(core: _Core, token: str) -> _Core:
+    """Modify the accumulator."""
+    accumulator, deque, function, pointer = core
+    if token == _INCREMENT:
+        accumulator += 1
+    elif token == _DECREMENT:
+        accumulator = max(accumulator - 1, 0)
+    elif token == _SQUARE:
+        accumulator *= accumulator
+    elif token == _SQRT:
+        accumulator = math.isqrt(accumulator)
+    else:
+        accumulator = _applied(accumulator, function)
+    return (accumulator, deque, function, pointer)
+
+
+def _nasal(core: _Core, token: str) -> _Core:
+    """Push to or pop from the deque."""
+    accumulator, deque, function, pointer = core
+    if token == _PUSH_FRONT:
+        return (accumulator, (accumulator, *deque), function, pointer)
+    if token == _PUSH_BACK:
+        return (accumulator, (*deque, accumulator), function, pointer)
+    deque, accumulator = _popped(deque, front=token == _POP_FRONT)
+    return (accumulator, deque, function, pointer)
+
+
+def _approximant(
+    core: _Core,
+    token: str,
+    starts: list[int],
+    pairs: dict[int, int],
+    offsets: dict[int, int],
+    end: int,
+) -> _Core:
+    """Jump: a goto, a loop test, or a loop end."""
+    accumulator, deque, function, pointer = core
+    if token == _GOTO:
+        # Past the end is a halt, which running off the end already is.
+        pointer = offsets.get(accumulator, end)
+    elif token == _GOTO_LINE:
+        pointer = starts[accumulator] if accumulator < len(starts) else end
+    elif token == _WHILE_ZERO:
+        # Jumping *past* the ``ʋ`` rather than onto it: landing on the loop
+        # end would run it and bounce straight back to the test.
+        if accumulator == 0:
+            pointer = pairs[pointer - 1] + 1
+    elif token == _WHILE_NONZERO:
+        if accumulator != 0:
+            pointer = pairs[pointer - 1] + 1
+    else:
+        # ``ʋ`` jumps back *to* its opener, which re-tests the condition.
+        pointer = pairs[pointer - 1]
+    return (accumulator, deque, function, pointer)
+
+
+def _step(
+    core: _Core,
+    token: str,
+    starts: list[int],
+    pairs: dict[int, int],
+    offsets: dict[int, int],
+    end: int,
+    line: str | None = None,
+    byte: int | None = None,
+) -> tuple[_Core, str | int | None]:
+    """Execute one command, returning the new core and anything it prints.
+
+    Pure: it reads ``core`` and returns a new one, and reaches no ``IO``.
+    The two reading commands take their input as ``line`` and ``byte``, and
+    the two printing ones report what they would write -- an integer for
+    ``θ`` and a character for ``f``, which the shell tells apart by type
+    because the language prints them through different ports.
+
+    The pointer has already been advanced past this token by the caller,
+    which is what the loop arms rely on: they read ``pointer - 1`` to find
+    the command's own position in the pair table.
+    """
+    if token in _FRICATIVES:
+        return _fricative(core, token, line, byte)
+    if token in _PLOSIVES:
+        return _plosive(core, token), None
+    if token in _VOWELS:
+        return _vowel(core, token), None
+    if token in _NASALS:
+        return _nasal(core, token), None
+    return _approximant(core, token, starts, pairs, offsets, end), None
+
+
 class _Machine:
     """The run state of one CV(N)(C) program, steppable one command at a time."""
 
@@ -360,8 +506,8 @@ class _Machine:
             offset += len(token)
         self.io = io
         self.accumulator = 0
-        self.deque: list[int] = []
-        self.function: list[str] = []
+        self.deque: tuple[int, ...] = ()
+        self.function: tuple[str, ...] = ()
         self.pointer = 0
 
     @property
@@ -402,103 +548,49 @@ class _Machine:
             self.io.position(),
         )
 
+    @property
+    def _core(self) -> _Core:
+        """The machine's fields as the value the handlers work on."""
+        return (self.accumulator, self.deque, self.function, self.pointer)
+
     def step(self) -> None:
-        """Execute one command, advancing the pointer."""
+        """Execute one command, advancing the pointer.
+
+        The ports live here rather than in the handlers: this is the shell.
+        A command reads at most once, so its input is taken before the
+        transition runs, and the value a print reports is written after --
+        an integer through ``print_num`` and a character through
+        ``print_char``, which is why the transition reports the two as
+        different types rather than as one rendered string.
+        """
         if self.halted:
             return
         token = self.tokens[self.pointer]
         self.pointer += 1
-        if token in _FRICATIVES:
-            self._fricative(token)
-        elif token in _PLOSIVES:
-            self._plosive(token)
-        elif token in _VOWELS:
-            self._vowel(token)
-        elif token in _NASALS:
-            self._nasal(token)
-        else:
-            self._approximant(token)
 
-    def _fricative(self, token: str) -> None:
-        """Run one I/O command."""
-        if token == _PRINT_NUM:
-            self.io.print_num(self.accumulator)
-        elif token == _PRINT_CHAR:
-            self.io.print_char(chr(self.accumulator % 256))
-        elif token == _READ_NUM:
-            # The accumulator is unsigned, so a negative line floors at zero,
-            # and an empty line (a bare Enter) reads as 0 rather than raising.
-            line = self.io.input_str().strip()
-            self.accumulator = max(_as_int(line), 0)
-        else:
-            self.accumulator = self.io.input_char() % 256
+        line = None
+        byte = None
+        if token == _READ_NUM:
+            line = self.io.input_str()
+        elif token == _READ_CHAR:
+            byte = self.io.input_char()
 
-    def _plosive(self, token: str) -> None:
-        """Append to the function, or reset it."""
-        if token == _CLEAR_FUNCTION:
-            self.function = []
-        elif token in _FUNCTION_SYMBOLS:
-            self.function.append(_FUNCTION_SYMBOLS[token])
-        else:
-            self.function.append(str(self._pop(front=token == _POP_FRONT_APPEND)))
+        core, output = _step(
+            self._core,
+            token,
+            self.starts,
+            self.pairs,
+            self.offsets,
+            len(self.tokens),
+            line,
+            byte,
+        )
+        self.accumulator, self.deque, self.function, self.pointer = core
 
-    def _vowel(self, token: str) -> None:
-        """Modify the accumulator."""
-        if token == _INCREMENT:
-            self.accumulator += 1
-        elif token == _DECREMENT:
-            self.accumulator = max(self.accumulator - 1, 0)
-        elif token == _SQUARE:
-            self.accumulator *= self.accumulator
-        elif token == _SQRT:
-            self.accumulator = math.isqrt(self.accumulator)
-        else:
-            self._apply()
-
-    def _nasal(self, token: str) -> None:
-        """Push to or pop from the deque."""
-        if token == _PUSH_FRONT:
-            self.deque.insert(0, self.accumulator)
-        elif token == _PUSH_BACK:
-            self.deque.append(self.accumulator)
-        else:
-            self.accumulator = self._pop(front=token == _POP_FRONT)
-
-    def _approximant(self, token: str) -> None:
-        """Jump: a goto, a loop test, or a loop end."""
-        if token == _GOTO:
-            # Past the end is a halt, which running off the end already is.
-            self.pointer = self.offsets.get(self.accumulator, len(self.tokens))
-        elif token == _GOTO_LINE:
-            self.pointer = (
-                self.starts[self.accumulator]
-                if self.accumulator < len(self.starts)
-                else len(self.tokens)
-            )
-        elif token == _WHILE_ZERO:
-            # Jumping *past* the ``ʋ`` rather than onto it: landing on the
-            # loop end would run it and bounce straight back to the test.
-            if self.accumulator == 0:
-                self.pointer = self.pairs[self.pointer - 1] + 1
-        elif token == _WHILE_NONZERO:
-            if self.accumulator != 0:
-                self.pointer = self.pairs[self.pointer - 1] + 1
-        else:
-            # ``ʋ`` jumps back *to* its opener, which re-tests the condition.
-            self.pointer = self.pairs[self.pointer - 1]
-
-    def _pop(self, *, front: bool) -> int:
-        """Pop one end of the deque, refusing an empty one."""
-        if not self.deque:
-            raise HaltError("pop from an empty deque")
-        return self.deque.pop(0) if front else self.deque.pop()
-
-    def _apply(self) -> None:
-        """Set the accumulator to the function applied to it, if it parses."""
-        try:
-            self.accumulator = _Parser(self.function, self.accumulator).parse()
-        except _InvalidFunctionError:
-            return
+        if isinstance(output, int):
+            self.io.print_num(output)
+        elif output is not None:
+            self.io.print_char(output)
 
 
 def run(code: str, io: IO) -> None:
