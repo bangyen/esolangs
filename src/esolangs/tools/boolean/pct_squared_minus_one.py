@@ -1546,6 +1546,20 @@ def _fold_apply(state: _FoldState, op: _FoldOp) -> _FoldState | None:
 #: stop at 10 rather than 8.  The reduction is forced; asking it to land on
 #: exactly 8 points is what was not.
 #:
+#: **And the underlying cause is the step budget, not the target.**  Tracing
+#: the greedy reduction on the exceptions shows it never reaching a dead end:
+#: it is still descending when ``maxsteps`` expires, one or two moves short --
+#: `needs9-b` stands at 9 points on the last permitted step.  Many steps make
+#: no progress (runs of ``19 -> 19``, ``13 -> 13 -> 13``) because the best
+#: available move does not always reduce the count, and the final points are
+#: the slowest.  So the "width 9" the exceptions appeared to need was not a
+#: property of those tables at all: raising ``maxsteps`` from 90 to 150
+#: builds **all five** of them at target 8 and width 1.  Both knobs work
+#: because both buy the same thing -- a target of 12 is reached sooner, and a
+#: budget of 150 lets 8 be reached at all.  The target is what ships because
+#: it costs nothing per table that already builds, where a larger budget is
+#: paid on every refusal.
+#:
 #: So the target moves to 12 and the width to 1.  Measured against the old
 #: ``target=8, width=48`` over 416 tables -- all 256 at three inputs,
 #: 60-table samples at four and five, 40 at six -- the built set is
@@ -1559,10 +1573,11 @@ def _fold_apply(state: _FoldState, op: _FoldOp) -> _FoldState | None:
 #: than it can close.  10, 12 and 14 all give full greedy acceptance; 12 is
 #: the middle of that band.
 #:
-#: A first structural guess -- that run count predicts the requirement -- was
-#: measured and is wrong: the tables needing width appeared at 31, 33 and 36
-#: runs while 40-, 42- and 43-run tables reduced greedily.  The target
-#: explains what run structure did not.
+#: What is *not* established is a rule for the remaining choice.  The greedy
+#: reduction still meets steps where several candidate moves tie at the best
+#: rank -- 5 to 12 of them -- and it takes an arbitrary one.  Those ties are
+#: where a derivation replacing this reduction would have to say which move
+#: is right, and nothing measured so far explains them.
 _FOLD_BEAM_WIDTHS = (1,)
 
 
