@@ -215,6 +215,57 @@ def test_minifuck_builds_five_input_xor() -> None:
 # rather than a sample -- a screen that declines one reachable table is a
 # silent coverage regression, which no sampled test would catch.
 @pytest.mark.slow
+def test_the_fused_column_walk_matches_the_one_at_a_time_derivation() -> None:
+    """``_column_sweep`` agrees with ``_printed_column``, which is its oracle.
+
+    The sweep reads every accumulator's column off a *single* walk, which is
+    sound only because the pool code does not depend on the accumulator --
+    ``_find_pool`` takes a ``walk_out`` and so could answer differently per
+    accumulator, in which case the fused walk would be wrong.  That is an
+    empirical fact about the pool patterns, not a guarantee, so the
+    one-at-a-time derivation is kept as the reference and the equivalence is
+    checked rather than argued.
+
+    Nothing else calls ``_printed_column``: production takes the sweep, so
+    the oracle only runs when something compares them.  Left uncompared it
+    would rot, and a future pool family that broke the accumulator
+    independence would be caught by nothing.
+
+    The stagings are the real ones -- captured from a build rather than
+    constructed -- and every accumulator is compared for both ``cell7``
+    values, including the unreachable ones where the sweep omits the key and
+    the oracle returns None.
+    """
+    from esolangs.tools.boolean.minifuck import (
+        _MAX_ACC,
+        _column_sweep,
+        _printed_column,
+        minifuck,
+    )
+
+    captured: list[tuple[object, int]] = []
+    real = _column_sweep
+
+    def spy(joint: object, cell7: int) -> dict:
+        if len(captured) < 6:
+            captured.append((joint, cell7))
+        return real(joint, cell7)
+
+    with patch("esolangs.tools.boolean.minifuck._column_sweep", spy):
+        minifuck("0110")
+
+    assert captured, "the build derived no columns, so nothing was compared"
+    compared = 0
+    for joint, cell7 in captured:
+        sweep = real(joint, cell7)
+        for acc in range(9, _MAX_ACC + 1):
+            # An accumulator the walk cannot reach is absent from the
+            # mapping, which is exactly the None the oracle returns.
+            assert _printed_column(joint, acc, cell7) == sweep.get(acc), (acc, cell7)
+            compared += 1
+    assert compared >= 100, compared  # the sweep really did cover a range
+
+
 def test_span_screen_declines_no_reachable_table() -> None:
     """The span screen never declines a table some staging prints.
 
