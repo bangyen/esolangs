@@ -963,3 +963,67 @@ class TestPctSquaredHelpers:
         # The cache outlives the patch, so the shipped table has to be the
         # one memoized when this test leaves.
         module._ladder_tables.cache_clear()  # noqa: SLF001
+
+
+class TestPctFoldEmitter:
+    """The emitter's mirror, driven at the steps the descent rarely asks for.
+
+    :class:`_FoldEmitter` tracks every row's accumulator exactly, so its
+    moves can be checked as arithmetic: build one over a small table and
+    read ``pos`` before and after.  ``s`` subtracts 2 and ``i`` subtracts
+    3, and ``p`` negates, so a rise is spelled as a negated descent.
+    """
+
+    @staticmethod
+    def emitter(table: str = "01", n: int = 1):
+        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        return module._FoldEmitter(table, n)  # noqa: SLF001
+
+    def test_a_zero_step_emits_nothing(self) -> None:
+        """Moving by zero is not spelled at all, in either direction."""
+        for move in ("descend", "plain_rise"):
+            em = self.emitter()
+            getattr(em, move)(0)
+            assert em.body == []
+
+    def test_a_single_step_is_spelled_as_three_against_two(self) -> None:
+        """One has no spelling of its own: ``s`` is 2 and ``i`` is 3.
+
+        So a step of 1 is a step of 3 the other way against a step of 2
+        back -- the only combination of the two primitives that lands one
+        away.  Both directions net exactly one, and every row moves
+        together, since the accumulator is shared.
+        """
+        em = self.emitter()
+        before = dict(em.pos)
+        em.descend(1)
+        assert em.body == ["i", "psp"]
+        assert all(em.pos[r] - before[r] == -1 for r in before)
+
+        em = self.emitter()
+        before = dict(em.pos)
+        em.plain_rise(1)
+        assert em.body == ["pip", "s"]
+        assert all(em.pos[r] - before[r] == 1 for r in before)
+
+    def test_the_final_alignment_wraps_when_it_would_overshoot(self) -> None:
+        """The last shift is a residue, and only one lift of it fits.
+
+        ``finish`` moves the surviving point onto its answer byte, which
+        pins it only modulo 256.  Taken as a positive residue that shift
+        can exceed the headroom to the limit, so it is lowered by 256 until
+        it fits -- the same residue, reached from below.  A point near the
+        ceiling therefore ends up *under* where it started while still
+        landing on the byte.
+        """
+        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+
+        for start, expected in ((0, 48), (2900, 2864)):
+            em = self.emitter("0", 0)
+            key = next(iter(em.pos))
+            em.pos = {key: start}
+            em.cls = {key: "0"}
+            em.finish()
+            assert em.pos[key] == expected
+            assert em.pos[key] % 256 == em.byte(key) % 256
+            assert abs(em.pos[key]) <= module._LIMIT  # noqa: SLF001
