@@ -29,6 +29,23 @@ finite-state cycle the state-cycle hang detector can prove (an empty body
 loop is a no-op step whose repeated snapshot proves a hang); the ``run()``
 backstop stays for the unbounded-growth class (a loop whose body keeps
 growing a tape cell).
+
+The execution model is a pure function over an immutable ``_State``: the
+tape cells and the frame stack.  :func:`_step` maps one state to the next
+and never edits what it is given; :meth:`_Machine.step` rebinds the two
+fields from what it returned, so the mutation lives in exactly one place.
+A frame becomes a tuple rather than a class, which is what lets the whole
+stack go into ``snapshot`` as a value.
+
+Threading the tape is affordable here, unlike Grapheme's stack, because it
+cannot grow: ``#allocate`` fixes its size before the first instruction
+runs, so a rebuilt tape costs a constant set by the program text rather
+than by how long the program has been running.  The corpus times a hot loop
+on both sides of the change to keep that claim honest.
+
+The overflow limits and the mode are not state.  They come off the
+directive line and never change, so they are handed to the transition
+rather than carried in it.
 """
 
 from __future__ import annotations
@@ -215,33 +232,179 @@ def _parser(tokens: list[str], var: list[tuple[str, int]]) -> tuple[int, ...]:
     return tuple(result)
 
 
-class _Frame:
-    """One active scope: its code, cursor, and the while loop it serves.
+#: One active scope: ``(prog, ptr, loop, cond_pos, neg, body)``.
+#:
+#: A frame whose ``loop`` is True is the owner of a running ``while`` body
+#: (the body itself is a separate frame on top of it); when that body
+#: completes, the owner re-checks its condition and re-runs the body or
+#: continues past the loop.
+#:
+#: A tuple rather than a class, so the whole stack is a value ``snapshot``
+#: can hash without unpacking each frame's fields.
+type _Frame = tuple[tuple[int, ...], int, bool, int, bool, tuple[int, ...] | None]
 
-    A frame whose ``loop`` is True is the owner of a running ``while`` body
-    (the body itself is a separate frame on top of it); when that body
-    completes, the owner re-checks its condition and re-runs the body or
-    continues past the loop.
+#: The tape, as a value.  Fixed size: ``#allocate`` sets it before the
+#: first instruction runs, so rebuilding it per step is a constant.
+type _Cells = tuple[int, ...]
+
+#: One instant of a run: the tape and the frame stack.
+type _State = tuple[_Cells, tuple[_Frame, ...]]
+
+
+def _frame(prog: tuple[int, ...]) -> _Frame:
+    """Build a fresh frame for ``prog``, at its start and owning no loop."""
+    return (prog, 0, False, -1, False, None)
+
+
+def _read_cell(cells: _Cells, index: int) -> int:
+    """Read a tape cell, rejecting an index outside the allocation."""
+    if not 0 <= index < len(cells):
+        raise HaltError("tape index out of bounds")
+    return cells[index]
+
+
+def _write_cell(cells: _Cells, index: int, value: int) -> _Cells:
+    """Return ``cells`` with one cell replaced, bounds-checked."""
+    if not 0 <= index < len(cells):
+        raise HaltError("tape index out of bounds")
+    return (*cells[:index], value, *cells[index + 1 :])
+
+
+def _cond_of(cells: _Cells, frame: _Frame, cond_pos: int, *, neg: bool) -> bool:
+    """Evaluate the condition at ``cond_pos`` in ``frame``'s code."""
+    return bool(_read_cell(cells, frame[0][cond_pos])) ^ neg
+
+
+def _finalize(state: _State) -> _State:
+    """Pop completed frames, re-running a while body while it holds.
+
+    Only the top frame can be finished at a time; a loop body that still
+    has its condition met starts a fresh pass (finalized by a later step,
+    so an empty body is a no-op step whose repeated snapshot proves a
+    hang).
     """
+    cells, frames = state
+    while frames:
+        prog, ptr, _, _, _, _ = frames[-1]
+        if ptr < len(prog):
+            return (cells, frames)  # an active frame is still running
+        frames = frames[:-1]
+        if frames and frames[-1][2]:
+            parent = frames[-1]
+            if _cond_of(cells, parent, parent[3], neg=parent[4]):
+                return (cells, (*frames, _frame(parent[5] or ())))
+            frames = (*frames[:-1], (*parent[:2], False, *parent[3:]))
+    return (cells, frames)
 
-    __slots__ = ("body", "cond_pos", "loop", "neg", "prog", "ptr")
 
-    def __init__(
-        self,
-        prog: tuple[int, ...],
-        ptr: int = 0,
-        *,
-        loop: bool = False,
-        cond_pos: int = -1,
-        neg: bool = False,
-        body: tuple[int, ...] | None = None,
-    ) -> None:
-        self.prog = prog
-        self.ptr = ptr
-        self.loop = loop
-        self.cond_pos = cond_pos
-        self.neg = neg
-        self.body = body
+def _clamp(value: int, bot: int, top: int, mode: str) -> int:
+    """Apply the directive's overflow rule to an out-of-range value."""
+    if value < bot:
+        if mode == "h":
+            raise HaltError("Underflow error.")
+        return top if mode == "w" else bot
+    if value > top:
+        if mode == "h":
+            raise HaltError("Overflow error.")
+        return bot if mode == "w" else top
+    return value
+
+
+def _scan_body(prog: tuple[int, ...], start: int) -> int:
+    """Return the index of the ``}`` closing the block opened at ``start``."""
+    end = start
+    pair = 1
+    while pair != 0:
+        end += 1
+        inner = prog[end]
+        if inner == -8:
+            pair += 1
+        elif inner == -9:
+            pair -= 1
+    return end
+
+
+def _step(
+    state: _State,
+    bot: int,
+    top: int,
+    mode: str,
+    byte: int | None = None,
+) -> tuple[_State, str | None]:
+    """Execute one instruction of the active frame.
+
+    Pure: it reads ``state`` and returns a new one, and reaches no ``IO``.
+    A ``write`` reports the character it would print and a ``read``'s byte
+    arrives as ``byte``.
+
+    The overflow limits arrive as arguments rather than as state: they come
+    off the directive line and never change.
+    """
+    cells, frames = _finalize(state)
+    if not frames:
+        return (cells, frames), None
+
+    prog, ptr, loop, cond_pos_f, neg_f, body_f = frames[-1]
+    if ptr >= len(prog):
+        return (cells, frames), None  # a finished empty loop body
+
+    op = prog[ptr]
+    ptr += 1
+    output: str | None = None
+
+    if op > -3:  # += / -=
+        num = prog[ptr + 1]
+        if num < 0:  # a constant, encoded below -10
+            num += 10
+            num = (num - 1) // -2 if num % 2 else num // 2
+        else:  # a variable: read its current value
+            num = _read_cell(cells, num)
+        if op == -2:
+            num = -num
+        cell = prog[ptr]
+        cells = _write_cell(
+            cells, cell, _clamp(_read_cell(cells, cell) + num, bot, top, mode)
+        )
+        ptr += 2
+        top_frame: _Frame = (prog, ptr, loop, cond_pos_f, neg_f, body_f)
+        return (cells, (*frames[:-1], top_frame)), output
+
+    if op > -5:  # if / while
+        cond_pos = ptr  # the position of the condition variable
+        neg = False
+        if prog[ptr] == -7:
+            neg = True
+            ptr += 1
+        ptr += 1  # past the condition variable, at the body start
+        end = _scan_body(prog, ptr)
+        body = prog[ptr + 1 : end]
+        cond = _cond_of(
+            cells,
+            (prog, ptr, loop, cond_pos_f, neg_f, body_f),
+            cond_pos + (1 if neg else 0),
+            neg=neg,
+        )
+        if op == -3:  # if
+            owner: _Frame = (prog, end + 1, loop, cond_pos_f, neg_f, body_f)
+            grown = (*frames[:-1], owner)
+            if cond:
+                grown = (*grown, _frame(body))
+            return (cells, grown), output
+        # while: the owner keeps the loop's condition and body
+        owner = (prog, end + 1, True, cond_pos + (1 if neg else 0), neg, body)
+        grown = (*frames[:-1], owner)
+        if cond:
+            grown = (*grown, _frame(body))
+        return (cells, grown), output
+
+    if op == -5:  # write
+        output = chr(_read_cell(cells, prog[ptr]))
+        ptr += 1
+    else:  # read
+        cells = _write_cell(cells, prog[ptr], byte if byte is not None else 0)
+        ptr += 1
+
+    return (cells, (*frames[:-1], (prog, ptr, loop, cond_pos_f, neg_f, body_f))), output
 
 
 class _Machine:
@@ -287,8 +450,8 @@ class _Machine:
         self.mode = mode
         self.bot = bot
         self.top = top
-        self.tape = _BoundedTape(tape)
-        self.frames: list[_Frame] = [_Frame(instructions)]
+        self.cells: _Cells = tuple(tape)
+        self.frames: tuple[_Frame, ...] = (_frame(instructions),)
 
     @property
     def halted(self) -> bool:
@@ -301,12 +464,12 @@ class _Machine:
     @property
     def ip(self) -> int | None:
         """The current instruction position."""
-        return self.frames[-1].ptr if self.frames else None
+        return self.frames[-1][1] if self.frames else None
 
     @property
     def memory(self) -> list[int]:
         """The addressable cells."""
-        return list(self.tape.cells())
+        return list(self.cells)
 
     @property
     def stack(self) -> list[object]:
@@ -315,114 +478,46 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (
-            self.tape.cells(),
-            tuple(
-                (f.prog, f.ptr, f.loop, f.cond_pos, f.neg, f.body) for f in self.frames
-            ),
-            self.io.position(),
-        )
+        # A frame is already a tuple of its six fields, so the stack goes
+        # in as it stands rather than being unpacked field by field.
+        return (self.cells, self.frames, self.io.position())
 
-    def _cond(self, frame: _Frame, cond_pos: int, *, neg: bool) -> bool:
-        """Evaluate the condition at ``cond_pos`` in ``frame``'s code."""
-        return bool(self.tape[frame.prog[cond_pos]]) ^ neg
+    @property
+    def _state(self) -> _State:
+        """The machine's fields as the value the transition works on.
 
-    def _finalize_finished(self) -> None:
-        """Pop completed frames, re-running a while body while it holds.
-
-        Only the top frame can be finished at a time; a loop body that still
-        has its condition met starts a fresh pass (finalized by a later step,
-        so an empty body is a no-op step whose repeated snapshot proves a
-        hang).
+        No copying: both are already the immutable values the transition
+        returns, so this is a read rather than a conversion.
         """
-        while self.frames:
-            frame = self.frames[-1]
-            if frame.ptr < len(frame.prog):
-                return  # an active frame is still running
-            self.frames.pop()
-            if self.frames and self.frames[-1].loop:
-                parent = self.frames[-1]
-                if self._cond(parent, parent.cond_pos, neg=parent.neg):
-                    self.frames.append(_Frame(parent.body or ()))
-                    return
-                parent.loop = False
+        return (self.cells, self.frames)
 
     def step(self) -> None:
-        """Execute one instruction of the active frame."""
+        """Execute one instruction of the active frame.
+
+        The two ports live here rather than in the transition: this is the
+        shell.  A ``read``'s byte is taken before the transition runs and a
+        ``write``'s character is printed after it.
+
+        Whether this instruction reads is decided from the frame the
+        transition will actually run, which is the one left after finishing
+        any completed frames -- not the one on top now.  A ``read`` sitting
+        first in a loop body would otherwise be missed on the lap that
+        re-enters it.
+        """
         if self.halted:
             return
-        self._finalize_finished()
-        if not self.frames:
-            return
-        frame = self.frames[-1]
-        prog = frame.prog
-        if frame.ptr >= len(prog):
-            return  # a finished empty loop body is a no-op step
-        op = prog[frame.ptr]
-        frame.ptr += 1
 
-        if op > -3:  # += / -=
-            num = prog[frame.ptr + 1]
-            if num < 0:  # a constant, encoded below -10
-                num += 10
-                if num % 2:
-                    num = (num - 1) // -2
-                else:
-                    num //= 2
-            else:  # a variable: read its current value
-                num = self.tape[num]
-            if op == -2:
-                num = -num
-            cell = prog[frame.ptr]
-            value = self.tape[cell] + num
-            if value < self.bot:
-                if self.mode == "h":
-                    raise HaltError("Underflow error.")
-                value = self.top if self.mode == "w" else self.bot
-            if value > self.top:
-                if self.mode == "h":
-                    raise HaltError("Overflow error.")
-                value = self.bot if self.mode == "w" else self.top
-            self.tape[cell] = value
-            frame.ptr += 2
-        elif op > -5:  # if / while
-            cond_pos = frame.ptr  # the position of the condition variable
-            neg = False
-            if prog[frame.ptr] == -7:
-                neg = True
-                frame.ptr += 1
-            frame.ptr += 1  # past the condition variable, at the body start
-            body_start = frame.ptr
-            end = body_start
-            frame.ptr += 1
-            pair = 1
-            while pair != 0:
-                end += 1
-                inner = prog[end]
-                if inner == -8:
-                    pair += 1
-                elif inner == -9:
-                    pair -= 1
-            body = prog[frame.ptr : end]
-            cond = self._cond(frame, cond_pos + (1 if neg else 0), neg=neg)
-            if op == -3:  # if
-                if cond:
-                    self.frames.append(_Frame(body))
-                frame.ptr = end + 1
-            else:  # while
-                frame.ptr = end + 1  # the continuation past the loop
-                frame.loop = True
-                frame.cond_pos = cond_pos + (1 if neg else 0)
-                frame.neg = neg
-                frame.body = body
-                if cond:
-                    self.frames.append(_Frame(body))
-        elif op == -5:  # write
-            self.io.print_char(chr(self.tape[prog[frame.ptr]]))
-            frame.ptr += 1
-        else:  # read
-            self.tape[prog[frame.ptr]] = self.io.input_char()
-            frame.ptr += 1
+        cells, frames = _finalize(self._state)
+        byte = None
+        if frames:
+            prog, ptr, _, _, _, _ = frames[-1]
+            if ptr < len(prog) and prog[ptr] == -6:
+                byte = self.io.input_char()
+
+        state, output = _step((cells, frames), self.bot, self.top, self.mode, byte)
+        self.cells, self.frames = state
+        if output is not None:
+            self.io.print_char(output)
 
 
 def run(code: str, io: IO) -> None:
@@ -430,33 +525,6 @@ def run(code: str, io: IO) -> None:
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()
-
-
-class _BoundedTape:
-    """A tape that treats an out-of-allocation index as an invalid operation.
-
-    An array access past its allocation (``X->n`` beyond the array) is
-    undefined in the cross-check; both it and the interpreter now halt with an
-    invalid operation instead of reading or writing memory.
-    """
-
-    def __init__(self, cells: list[int]) -> None:
-        """Wrap the allocated ``cells`` with bounds checks."""
-        self._cells = cells
-
-    def cells(self) -> tuple[int, ...]:
-        """Return the allocated cells as a tuple (hashable for snapshots)."""
-        return tuple(self._cells)
-
-    def __getitem__(self, index: int) -> int:
-        if not 0 <= index < len(self._cells):
-            raise HaltError("tape index out of bounds")
-        return self._cells[index]
-
-    def __setitem__(self, index: int, value: int) -> None:
-        if not 0 <= index < len(self._cells):
-            raise HaltError("tape index out of bounds")
-        self._cells[index] = value
 
 
 if __name__ == "__main__":
