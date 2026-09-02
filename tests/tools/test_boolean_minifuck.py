@@ -286,6 +286,39 @@ def test_the_fused_column_walk_matches_the_one_at_a_time_derivation() -> None:
         assert _printed_column(joint, 9, cell7) == first
 
 
+def test_a_flipped_embed_complements_in_place_and_keeps_slot_order() -> None:
+    """``flips`` is a live derivation coordinate, not dead weight.
+
+    The pass that varied it was removed and the parameter kept, so no build
+    passes a mask any more -- which left the gadget it emits unrun.  Kept
+    open, it should still do what its docstring says, and the two claims are
+    separable:
+
+    First, the mask *lands*: each set bit adds exactly one ``_FLIP`` gadget,
+    so the template grows by three characters per bit and by nothing at all
+    for the empty mask.  Second, the setters stay in ascending name order
+    whatever the mask says -- the gadget goes after the setter it
+    complements, never in place of a different one -- which is the invariant
+    every generator here is held to, and the one a "complement input i"
+    coordinate is most likely to break.
+    """
+    import re
+
+    from esolangs.tools.boolean.minifuck import _FLIP, _embed
+
+    for n in (2, 3):
+        plain = _embed(n).template()
+        slots = [int(s[2:-1]) for s in re.findall(r"\{X\d+\}", plain)]
+        assert slots == sorted(slots), slots
+        assert _embed(n, flips=0).template() == plain  # the default is no-op
+
+        for mask in range(1, 2**n):
+            flipped = _embed(n, flips=mask).template()
+            assert len(flipped) == len(plain) + len(_FLIP) * mask.bit_count(), mask
+            order = [int(s[2:-1]) for s in re.findall(r"\{X\d+\}", flipped)]
+            assert order == slots, (mask, order)
+
+
 def test_span_screen_declines_no_reachable_table() -> None:
     """The span screen never declines a table some staging prints.
 
@@ -828,6 +861,11 @@ class TestParameterizedMinifuck:
             module._STAGING_BUDGET = 8000  # noqa: SLF001
             module._derived_plans.cache_clear()  # noqa: SLF001
             assert module._derive_staging(orphan, 4) is None  # noqa: SLF001
+            # And the oracle, which carries its own copy of both loops: a
+            # budget honoured in only one of the two would make the pair
+            # disagree for a reason unrelated to the order they exist to pin.
+            module._derived_plans.cache_clear()  # noqa: SLF001
+            assert module._derived_plans(4, (orphan,)) == {}  # noqa: SLF001
         finally:
             module._STAGING_BUDGET = original  # noqa: SLF001
             module._derived_plans.cache_clear()  # noqa: SLF001
@@ -863,6 +901,14 @@ class TestParameterizedMinifuck:
             assert module._derived_plans(2, ("0110",)) == {}  # noqa: SLF001
             module._derived_plans.cache_clear()  # noqa: SLF001
             assert module._staging_index(2) == {}  # noqa: SLF001
+
+            # One staging's worth spends inside the bracket-run loop instead
+            # of before it, which is the other end of the same check: the
+            # budget is consumed per staging visited, so a budget of one
+            # gets exactly one look before it stops.
+            module._STAGING_BUDGET = 1  # noqa: SLF001
+            module._derived_plans.cache_clear()  # noqa: SLF001
+            assert module._derived_plans(2, ("0001",)) == {}  # noqa: SLF001
         finally:
             module._STAGING_BUDGET = original  # noqa: SLF001
             module._derived_plans.cache_clear()  # noqa: SLF001

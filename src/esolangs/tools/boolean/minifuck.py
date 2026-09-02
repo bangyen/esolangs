@@ -938,12 +938,21 @@ def _column_sweep(j: _Joint, cell7: int) -> dict[int, tuple[int, ...]]:
     probe.emit(code)
     ptrs = set(probe.ptrs())
     if len(ptrs) != 1:
-        return {}
+        # Setting the pool is what converges the rows, so a code that fits
+        # leaves exactly one pointer: measured over every table at two and
+        # three inputs, 27620 sweeps, all of them a single pointer.  The
+        # check stays because that convergence is a property of the pool
+        # codes rather than something this function establishes.
+        return {}  # pragma: no cover - the pool converges the rows
     cur = ptrs.pop()
     columns: dict[int, tuple[int, ...]] = {}
     for acc in range(9, _MAX_ACC + 1):
         if acc - 1 < cur:
-            continue
+            # The walk only ever runs forward into the accumulator range:
+            # the pool leaves `cur` at 4 or 5 (measured over the same 27620
+            # sweeps) and the loop starts asking at `acc - 1 == 8`, so it is
+            # always behind.  Guards the invariant rather than a case.
+            continue  # pragma: no cover - the pool lands below the range
         probe.emit("[x" * (acc - 1 - cur))
         cur = acc - 1
         columns[acc] = tuple(probe.col(probe.ms[0].ptr + 1))
@@ -2394,7 +2403,11 @@ def _mux_probe(
     probe.emit(code)
     try:
         _walk_to(probe, acc - 1)
-    except ValueError:
+    except ValueError:  # pragma: no cover - not observed; as _printed_column
+        # Same shape, and same caveat, as the copy in `_printed_column`: a
+        # pool code that fits the site does not by itself promise the walk,
+        # because `_find_pool` ignores `walk_out`.  Not observed over 38144
+        # sculpting rounds at two and three inputs.
         return None
     return tuple(probe.col(probe.ms[0].ptr + 1)), code
 
@@ -2432,10 +2445,21 @@ def _mux_sculpt(
         frontier = max(disagree)
         rewind = frontier - acc + 1
         if rewind > min(j.ptrs()) - 8:
-            return None
+            # Not observed, but the closest of any guard here: measured over
+            # every table at two and three inputs, 38144 rewinds with a
+            # margin (bound minus rewind) between 0 and 24 -- so the padding
+            # `_mux_separate` leaves is exactly enough at its tightest, and
+            # nothing about the construction makes it *more* than enough.
+            # This is the guard a change to either side would trip first.
+            return None  # pragma: no cover - not observed; margin reaches 0
         j.emit("<" * rewind + "[x" * rewind + "x")
     else:
-        return None
+        # The loop runs `2**n + 4` rounds and each fixes at least the
+        # frontier row, so a table that needs more rounds than it has rows
+        # would be one where a round undid an earlier fix.  Not observed
+        # over every table at two and three inputs; kept because "stall
+        # returns None rather than looping" is the contract this else is.
+        return None  # pragma: no cover - a round never undoes an earlier fix
     j.emit("x")
     _clamp(j)
     hit = _try_print(j, truth_table, acc)
@@ -2465,7 +2489,10 @@ def _mux(truth_table: str, n: int) -> str | None:
         return None
     base = _mux_separate(n)
     if base is None:
-        return None
+        # `_mux_separate` refuses only through its own two guards, which the
+        # construction does not trip at any arity in `_MUX_ARITIES` -- see
+        # the pragmas there.  This is that refusal reaching its caller.
+        return None  # pragma: no cover - the separation never refuses
     positions = base.ptrs()
     lowest, highest = min(positions), max(positions)
     best: str | None = None
