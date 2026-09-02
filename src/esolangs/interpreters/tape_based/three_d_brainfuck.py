@@ -37,6 +37,7 @@ keeps growing the array).
 """
 
 import sys
+from collections.abc import Mapping
 
 from esolangs.interpreters.brackets import match_brackets as _matches
 from esolangs.interpreters.io import IO
@@ -73,6 +74,61 @@ def _advance(point: _Point, delta: _Point) -> _Point:
     x, y, z = point
     dx, dy, dz = delta
     return (x + dx, y + dy, z + dz)
+
+
+#: One instant of a run: ``(cells, ap, pos, heading)`` -- the sparse cell
+#: map, the array pointer, the instruction pointer, and the direction the
+#: instruction pointer is travelling.
+#:
+#: The heading is state because a turn outlives the command that made it:
+#: an uppercase ``N``/``E``/``U`` sets it and every later step follows it,
+#: which is what makes the program a path through the grid rather than a
+#: line of text.
+#:
+#: The grid and its bracket table stay out -- 3D Brainfuck never rewrites
+#: its own source -- so a step is handed them.
+type _Cells = Mapping[_Point, int]
+type _State = tuple[_Cells, _Point, _Point, _Point]
+
+
+def _step(
+    state: _State,
+    grid: Mapping[_Point, str],
+    match: Mapping[int, int],
+    byte: int | None = None,
+) -> _State:
+    """Return the state after executing the block under the pointer.
+
+    Pure: it reads ``state`` and returns a new one.  ``.``'s printing is
+    the caller's business -- the cell it prints is carried forward
+    unchanged -- and ``,``'s byte arrives as ``byte``.
+
+    A loop that jumps lands at the start of the line after its partner,
+    with the other two coordinates reset: the brackets are matched by line
+    rather than by position, so a jump is to a *row*, not to a cell.
+    """
+    cells, ap, pos, heading = state
+    char = grid[pos]
+
+    if char in _HEADING:
+        heading = _HEADING[char]
+    elif char in _ARRAY:
+        ap = _advance(ap, _ARRAY[char])
+    elif char == "+":
+        cells = {**cells, ap: (cells.get(ap, 0) + 1) % 256}
+    elif char == "-":
+        cells = {**cells, ap: (cells.get(ap, 0) - 1) % 256}
+    elif char == ".":
+        pass  # printed by the caller; the cell is unchanged
+    elif char == ",":
+        cells = {**cells, ap: byte if byte is not None else 0}
+    elif char == "[":
+        if cells.get(ap, 0) == 0:
+            return (cells, ap, (match[pos[0]] + 1, 0, 0), heading)
+    elif char == "]" and cells.get(ap, 0) != 0:
+        return (cells, ap, (match[pos[0]] + 1, 0, 0), heading)
+
+    return (cells, ap, _advance(pos, heading), heading)
 
 
 class _Machine:
@@ -133,32 +189,34 @@ class _Machine:
             self.io.position(),
         )
 
+    @property
+    def _state(self) -> _State:
+        """The machine's fields as the value the transition works on."""
+        return (self.cells, self.ap, self.pos, self.heading)
+
+    def _restore(self, state: _State) -> None:
+        """Write a transition's result back onto the machine's fields."""
+        cells, self.ap, self.pos, self.heading = state
+        self.cells = dict(cells)
+
     def step(self) -> None:
-        """Execute one block, moving the instruction pointer."""
+        """Execute one block, moving the instruction pointer.
+
+        The two ports live here rather than in the transition: this is the
+        shell.  ``.`` prints the addressed cell the transition carries
+        forward unchanged, and ``,``'s byte is read here and handed over.
+        """
         if self.halted:
             return
         char = self.grid[self.pos]
-        if char in _HEADING:
-            self.heading = _HEADING[char]
-        elif char in _ARRAY:
-            self.ap = _advance(self.ap, _ARRAY[char])
-        elif char in "+-.,":
-            if char == "+":
-                self.cells[self.ap] = (self.cells.get(self.ap, 0) + 1) % 256
-            elif char == "-":
-                self.cells[self.ap] = (self.cells.get(self.ap, 0) - 1) % 256
-            elif char == ".":
-                self.io.print_char(chr(self.cells.get(self.ap, 0)))
-            else:
-                self.cells[self.ap] = self.io.input_char()
-        elif char == "[":
-            if self.cells.get(self.ap, 0) == 0:
-                self.pos = (self.m[self.pos[0]] + 1, 0, 0)
-                return
-        elif char == "]" and self.cells.get(self.ap, 0) != 0:
-            self.pos = (self.m[self.pos[0]] + 1, 0, 0)
-            return
-        self.pos = _advance(self.pos, self.heading)
+
+        byte = None
+        if char == ".":
+            self.io.print_char(chr(self.cells.get(self.ap, 0)))
+        elif char == ",":
+            byte = self.io.input_char()
+
+        self._restore(_step(self._state, self.grid, self.m, byte))
 
 
 def run(code: str, io: IO) -> None:
