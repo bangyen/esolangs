@@ -2694,25 +2694,52 @@ class TestParameterizedMinifuck:
             assert self.run_minifuck(program) == table[combo], (table, bits)
         assert len(widths) == 1, widths
 
-    def test_sculpted_route_declines_an_unseparated_arity_immediately(
-        self,
-    ) -> None:
-        """``_mux`` returns None at five inputs without deriving anything.
+    def test_sculpted_route_separates_every_arity_by_construction(self) -> None:
+        """The separation is constructed, so it is exact and immediate.
 
-        The gate is the separation, not the sculpting: no derivation has
-        driven 32 rows to 32 distinct pointers, and the searches take about
-        three minutes to fail at it -- so an ungated miss would spend that
-        on every five-input table the stagings miss.  What is pinned is that
-        the decline is immediate, which is what keeps the miss cheap.
+        This used to pin the opposite: that five inputs declined, because no
+        derivation had driven 32 rows to 32 distinct pointers and the
+        searches took about three minutes to fail at it.  Weighting each
+        input as it lands makes the pointer the row's binary expansion, so
+        every arity separates in closed form -- and five is now built rather
+        than declined.  What is pinned is the property the searches could
+        not guarantee: ``2**n`` rows, ``2**n`` distinct pointers, fast.
         """
         import importlib
         import time
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
-        start = time.monotonic()
-        assert module._mux("0" * 31 + "1", 5) is None  # noqa: SLF001
-        assert time.monotonic() - start < 1.0
+        for arity in (2, 3, 4, 5):
+            start = time.monotonic()
+            joint = module._mux_separate(arity)  # noqa: SLF001
+            assert joint is not None, arity
+            assert len(set(joint.ptrs())) == 2**arity, arity
+            assert time.monotonic() - start < 1.0, arity
+
+    def test_five_input_tables_build_and_print_every_row(self) -> None:
+        """A five-input table builds through the sculpted route and runs.
+
+        Five-input XOR is the pointed one: ``docs/walls.md`` records it as a
+        table no search here builds at all.  Every row is run on the shipped
+        interpreter, because a template that emits without computing would
+        otherwise pass silently.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        table = "01101001100101101001011001101001"  # five-input XOR
+        template = module._mux(table, 5)  # noqa: SLF001
+        assert template is not None
+
+        widths = set()
+        for combo in range(32):
+            bits = [(combo >> (4 - i)) & 1 for i in range(5)]
+            program = self.instantiate(template, bits)
+            widths.add(len(program))
+            assert self.run_minifuck(program) == table[combo], (table, bits)
+        assert len(widths) == 1, widths
 
     @pytest.mark.slow  # builds and runs all 256 three-input tables
     def test_every_three_input_table_is_search_free(self) -> None:

@@ -437,76 +437,117 @@ argument quietly made:
   lowers the frontier, and the printed column is sculpted to any target in
   at most `2**n` rounds -- a termination *argument*, not a search.
 
-Two negatives worth keeping, both measured, so the design is not re-derived
-the hard way: reading a bit **as it lands** loses everything but the Hamming
-weight (the setter-read unit is shift-invariant over the uniform wake --
-`n + 1` distinct states out of `2**n` at every arity and spacer tried), and
-what resists separation longest is always the **first** input, whose
-distinguishing cells are furthest left under everything later walks smear
-over them.
+One negative here has since been **falsified**, and it is worth stating that
+plainly because it was measured, recorded, and wrong.  "Reading a bit as it
+lands loses everything but the Hamming weight — the setter-read unit is
+shift-invariant over the uniform wake, `n + 1` distinct states out of `2**n`
+at every arity and spacer tried" is true only of a bit a walk has already
+crossed.  Read while **fresh**, and spaced so gadgets do not overlap, the
+same unit carries arbitrary integer weight and separates every arity in
+closed form.  See the section below; the shipped separation is built on
+exactly the move this paragraph said could not work.
 
-**Five inputs is now gated on the separation alone.**  The sculpting is
-arity-generic; what no derivation here has done is drive 32 rows to 32
-distinct pointers -- the searches run ~191s and fail, stalling every time on
-pairs that differ in the first input.  Pre-splitting that input at embed
-time was tried and is not the fix: walking over `X0`'s landing cell first
-makes the setter itself split (`[<` on a crossed cell cascades and ends one
-right, leaving `NOT v0` standing -- nothing consumed), and the machinery
-then stalls at the same 20 of 32 anyway, so the obstruction is deeper than
-the first bit.  Lifting `n == 5` to total is exactly one successful
-separation away, and nothing about the counting argument below forbids it:
-the sculpted route is not a flat family, its rounds are chosen per table.
+The other negative stands as an observation about the *searches*: what
+resisted them longest was always the first input, whose distinguishing cells
+are furthest left under everything later walks smear over them.  The
+construction does not care, because it never has to find those cells.
 
-### Separation has an algorithmic primitive, and it saturates at three inputs
+**Five inputs is no longer gated.**  This paragraph used to say the searches
+run ~191s and fail, stalling on pairs that differ in the first input, and
+that lifting `n == 5` was "exactly one successful separation away".  The
+constructed separation below does it in 0.004s, and `_MUX_ARITIES` now
+carries five.  Pre-splitting the first input at embed time — walking over
+`X0`'s landing cell so the setter itself splits — remains a recorded dead
+end: it stalls at the same 20 of 32, which is why the fix had to be a
+different construction rather than a better search.
 
-Asked whether `_mux` can be made algorithmic rather than searched.  Half of
-it already is — the sculpting loop is a termination argument, not a search —
-and the answer for the other half is a **usable primitive that does not
-reach far enough**, which is worth recording in full because both halves of
-that are load-bearing.
+### Separation is constructed, not searched — the saturation was a sandbox bug
 
-**A single read displaces by exactly `v`, whatever the walk.**  Measured for
-walk distances 0 to 5 after a setter: the displacement is `(0, 1)` every
-time, because the `[x` walk carries the bit forward as prefix-XOR.  So one
-read is weight 1 and no amount of walking changes that.
+This section used to read "separation has an algorithmic primitive, and it
+saturates at three inputs", recording a weighting scheme that reached 13 of
+16 at four inputs and no further.  **The saturation was an artefact of how
+the weights were spaced, not a property of the primitive**, and the
+construction that fixes it removed every search from `_mux_separate` and
+lifted `n == 5` at the same time.  The superseded reasoning is kept below,
+because the shape of the error is the reusable part.
 
-**Repeating a read does not accumulate, and that is the collapse.**  The
-first read *consumes* the bit, so later reads see a cleared cell:
-`n + 1` distinct states out of `2**n` at every arity, for both `'[<'` and
-the restoring `'[x<[<'`.  This is the same shift-invariance recorded above,
-now measured against both reads rather than inferred.
+**What was right.**  A restoring read `'[x<[<'` displaces the pointer by the
+bit and puts the cell back, and rewinding one cell between such reads
+compounds them exactly:
 
-**But one spelling does accumulate, exactly and linearly.**  Rewinding a
-single cell between restoring reads compounds:
+    ('[x<[<' + '<') * (k-1) + '[x<[<'   →   displacement −k
 
-    ('[x<[<' + '<') * k + '[x<[<'   →   spread = -(k + 1)
+measured linear for `k` of 1 to 8 with no row dying.  So arbitrary integer
+weight is constructible, and positional weighting is expressible.
 
-verified for `k` of 1 to 6, giving spreads -2 through -7 with no row dying.
-So **arbitrary integer weight is constructible**, at `w - 1` repeats for
-weight `w`, and positional weighting is expressible after all.
+**What was wrong.**  The old sweep swept *gaps 1 to 3*, and a weight-`k`
+gadget writes up to `k − 3` cells left of its setter — so at `k >= 4` every
+gadget in that sweep reached back into the previous one's cells **by
+construction**.  That is exactly the reported symptom: "realised weights
+permuted and rescaled by earlier gadgets' debris, `(−3, −1, −2)` where
+`(1, 2, 4)` was intended".  The debris was not a fact about the language; it
+was the sweep measuring gadgets that overlapped.  The corner of the design
+space where `gap_i >= reach(k_i)` was never tested, and it is the corner
+that works.
 
-**It closes two and three inputs and saturates at four.**  Solving for the
-weight vector rather than assuming `2**i` — the realised weights are
-permuted and rescaled by the debris earlier gadgets leave, measured at
-`(-3, -1, -2)` where `(1, 2, 4)` was intended — gives full separation at
-`n == 2` with `(2, 1)` and at `n == 3` with `(4, 2, 2)`, the latter landing
-*consecutive*, which is what the searches independently converge on.  At
-`n == 4` an exhaustive sweep of weights 1..8, gaps 1..3 and both separator
-shapes reaches **13 of 16 and no further**.
+**The construction.**  Weight each input as it lands, then pad past the
+damage:
 
-**The hybrid is worse than either half.**  Seeding the searches from the
-best weighted state (13 of 16) stalls at 14 after 6.6s, against 15.4s for
-the searches alone from the plain embed — so the weighted state is not on
-the path the searches can finish from.  Do not reach for this combination
-again without a different finisher.
+    for i in range(n):
+        setter(i)
+        weight(2**(n-1-i))            # bit is FRESH — no walk in between
+        pad "[x" * (2**(n-1-i) + extra)
 
-What this leaves is a sharpened specification rather than an algorithm.  The
-target is a **dense packing far from the pool**: `spread + 3 <= min_ptr - 8`
-(at `n == 4`: spread 16 against headroom 32), and the searches land on runs
-that are consecutive but for a single gap — 36..43 at three inputs, one gap
-of 2 at four.  A construction that produces such a packing directly would
-lift `n == 5` and remove the 5x-per-arity search cost (0s, 2.8s, 15.4s at
-two, three, four inputs) at the same time.
+    extra = max(2**(n-2) − 1, 1)
+    start = _MUX_BASE + max(0, 2**(n-1) − 9)
+
+The pointer lands at `c0 − Σ 2**(n-1-i)·x_i`: affine in the inputs, injective
+by binary expansion, so all `2**n` rows separate **by construction**.
+Verified affine with exactly the intended coefficients at every arity 2..6.
+
+Two conditions are load-bearing and both were found by measuring:
+
+* **The bit must be fresh.**  A single `[x` between the setter and the gadget
+  folds the bit into the running prefix-XOR and every weight collapses to 1.
+  This is what the old text's "reading a bit as it lands does not help and
+  cannot — only the Hamming weight survives" was actually measuring: a
+  *stale* bit.  Once banked into the pointer, the displacement survives
+  arbitrary rightward padding (measured 0 to 10), so later gadgets cannot
+  undo earlier weights.
+* **`extra >= 2**(n-2) − 1` is sharp.**  At `n == 4` pads 1 and 2 give 14 of
+  16 and pad 3 gives 16 of 16; at `n == 5` pads 1..6 give 21..30 of 32 and
+  pad 7 closes it; at `n == 6` pad 15 is the first that separates.  Below the
+  threshold the coefficients are still exactly right — the misses are rows
+  whose leading bits clamp at the tape's floor, not a weighting error.
+
+**Cost and reach.**
+
+| n | searched | constructed | rows separated |
+|---|---|---|---|
+| 3 | 2.8s | 0.0002s | 8/8 |
+| 4 | 15.0s | 0.0007s | 16/16 |
+| 5 | fails after ~191s | 0.004s | **32/32** |
+| 6 | — | 0.008s | 64/64 |
+
+Four searches were deleted with it: a pointer-census BFS, a greedy pass over
+aimed reads, a beam over aimed-read sequences, and a two-machine BFS on one
+colliding pair.
+
+**`n == 5` is no longer gated.**  The heading above this one said lifting it
+was "exactly one successful separation away"; this is that separation.
+Sampled end to end, 200 of 200 fully-essential five-input tables build
+through `_mux` and print all 32 rows correctly on the shipped interpreter —
+five-input XOR among them, the table this file records as one no search here
+builds at all — at about 0.14s each.  The arity is **not closed**: 200 is a
+sample of 4294642034, and what is claimed is that no sampled table failed,
+not that none can.
+
+**The reusable lesson.**  A sweep whose parameter range makes its units
+overlap measures the overlap, not the units.  Both the "shift-invariance"
+finding and the "13 of 16 saturation" were real measurements of a
+misconfigured probe, and each read as a property of the language.  When a
+primitive is documented as saturating, check whether the sweep that found
+the saturation could have expressed the non-overlapping case at all.
 
 ### `n == 5` ships partially; full coverage is out of reach of any flat family
 
