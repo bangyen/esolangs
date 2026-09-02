@@ -206,9 +206,14 @@ _POOL = (0, 0, 1, 1, 0, 0, 0)
 # and the identity looks like a coincidence.
 #
 # Not every ``8`` in this file is this constant.  ``_MUX_GUARD``'s is a
-# scratch width and ``_MAX_ACC - 8`` is a staging-search bound; both are
-# separate quantities that happen to share the value, and collapsing them
-# would assert a relationship that does not hold.
+# scratch width and ``_MAX_ACC - 8`` is a staging-search bound; neither is a
+# pool width, and collapsing them into this would assert a relationship that
+# does not hold.
+#
+# The scratch is not *independent* either, though, which is a separate point:
+# :func:`_mux_start`'s offset is derived from it, because the embed starts at
+# the shortest position whose leftmost write still clears the guard.  So the
+# two are coupled -- just not through this constant.
 _POOL_WIDTH = len(_POOL) + 1
 
 # The two reads.  ``[<`` leaves the pointer at ``(acc-1) + v``; ``[x<[<``
@@ -2321,15 +2326,41 @@ def _mux_pad(n: int) -> int:
 def _mux_start(n: int) -> int:
     """Return where to lay the embed so no gadget writes left of the guard.
 
-    The leftmost write is the first gadget's, and it is the heaviest: weight
-    ``2**(n-1)`` reaches ``2**(n-1) - 3`` cells left of its setter, which sits
-    eight cells above the guard.  So the embed starts ``2**(n-1) - 9`` cells
-    further right than :data:`_MUX_BASE`, which is nothing at two, three and
-    four inputs -- they already clear the guard -- and 7 and 23 cells at five
-    and six.  Measured: those are exactly the smallest starts that leave the
-    guarded region untouched on every row.
+    The leftmost write is the first gadget's, and it is the heaviest.  The
+    setter lays its bit at the start cell itself, and a weight-``k`` gadget
+    then reaches ``k - 2`` cells left of that -- measured directly, and note
+    it is ``k - 2`` from the *bit* where the module's older prose says
+    ``k - 3``; the two differ by where they count from, not in the geometry.
+    With ``start = _MUX_BASE + 2**(n-1) - offset`` and ``k = 2**(n-1)``, the
+    ``2**(n-1)`` cancels:
+
+        leftmost write = start - k + 2 = _MUX_BASE - offset + 2
+
+    which does not depend on ``n`` at all -- it is 25 at every arity.  Asking
+    that it clear :data:`_MUX_GUARD` by one gives
+
+        offset = _MUX_BASE - _MUX_GUARD + 1
+
+    the expression below, and 9 as shipped.
+
+    **The offset is derived rather than written down, because it is pinned
+    rather than chosen.**  It used to be the literal ``9``, which read as a
+    tuning; it is not.  Every offset builds and larger ones are shorter --
+    measured at five inputs, a mean template of 1443, 1431, 1419, 1407, 1395
+    and 1383 characters for offsets 3 through 13 -- so nothing about *length*
+    stops the count rising.  What stops it is the guard: the leftmost write
+    tracks the offset cell for cell and lands on :data:`_MUX_GUARD` exactly
+    here, so one more takes it to cell 22 and :func:`_mux_intact` fails, at
+    five and six inputs alike.  The separation still separates there; only
+    the guard catches it.  So this is the *shortest legal* start, and moving
+    :data:`_MUX_GUARD` should move it too -- which is what spelling it this
+    way buys.
+
+    The offset applies only once the first gadget outgrows it, so it is
+    nothing at two, three and four inputs -- they already clear the guard --
+    and 7 and 23 cells at five and six.
     """
-    return _MUX_BASE + max(0, (1 << (n - 1)) - 9)
+    return _MUX_BASE + max(0, (1 << (n - 1)) - (_MUX_BASE - _MUX_GUARD + 1))
 
 
 def _mux_separate(n: int) -> _Joint | None:
