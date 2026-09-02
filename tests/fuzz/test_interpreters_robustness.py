@@ -156,10 +156,10 @@ def _empty_machine(module: str, io: IO) -> object:
 
         return _Machine("", io)
     if module == "esolangs.interpreters.stack_based.grapheme":
-        from esolangs.interpreters.stack_based.grapheme import _Frame, _Machine
+        from esolangs.interpreters.stack_based.grapheme import _frame, _Machine
 
         machine = _Machine(io, 1_000_000)
-        machine.frames.append(_Frame("", 0))
+        machine.frames = (_frame("", 0),)
         return machine
     if module == "esolangs.interpreters.register_based.ram0":
         from esolangs.interpreters.register_based.ram0 import _Machine
