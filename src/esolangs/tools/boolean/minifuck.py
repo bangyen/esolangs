@@ -2473,6 +2473,31 @@ def _solve(truth_table: str) -> str:
             reconverged = _reconverged(truth_table, essential, n)
             if reconverged is not None:
                 return reconverged
+            # **The last ten out-of-order tables are sorted here.**
+            #
+            # Ten three-input tables used to emit ``{X0}{X2}{X1}``, all with
+            # the same shape: the ignored input is the *middle* one.  The two
+            # routes above cannot sort those -- emitting the ignored setter
+            # first does not help when it already follows ``{X0}``, and
+            # reconvergence drives every row to one state, so it cannot
+            # collapse ``x1`` while preserving ``x0``.  Searched to depth 14,
+            # no reset exists.  The comment that recorded this closed with
+            # "sorting those needs the solver to assign names".
+            #
+            # It does not.  :func:`_mux` lays every slot down in ascending
+            # order at the *full* arity and never projects, so it emits in
+            # name order by construction -- and it does not care that the
+            # table ignores an input, because it sculpts the printed column
+            # row by row rather than reading a column the ignored bit would
+            # have disturbed.  Measured: all ten come back ascending and
+            # print every row correctly on the shipped interpreter.
+            #
+            # It goes *after* the two cheap routes because it is the more
+            # expensive one and they already sort everything they reach; what
+            # is left here is exactly the residue they cannot.
+            sculpted = _mux(truth_table, n)
+            if sculpted is not None:
+                return sculpted
         inner = _solve(_project(truth_table, essential, n))
         return _lift(inner, essential, n)
 
