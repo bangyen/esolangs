@@ -523,3 +523,17 @@ class TestQoiblParserGuards:
         assert _wellformed(["e", "yr", "ee", "yr", "y"]) is True
         assert _wellformed(["e", "yr", "ee", "ry", "y"]) is False  # wrong close
         assert _wellformed(["e", "yr", "ee"]) is False  # no close at all
+
+    def test_an_unrecognised_token_evaluates_to_zero(self) -> None:
+        """The evaluator's last arm answers a token no keyword claims.
+
+        ``tokenize`` only accepts a split under which every statement
+        parses, so this is unreachable from source; it is the fallback for
+        a hand-built expression list, and it must leave the variables it
+        was handed alone rather than inventing an entry.
+        """
+        from esolangs.interpreters.register_based.qoibl import _eval
+
+        value, var = _eval(["zz"], {"e": 1}, lambda: 0, lambda _s: None)
+        assert value == 0
+        assert var == {"e": 1}

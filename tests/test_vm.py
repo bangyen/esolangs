@@ -1470,3 +1470,21 @@ class TestEveryLanguageIsSteppable:
                 randomness.Seeded.randbelow = original
             assert drawn, f"{language}: the random instruction never ran"
             assert trace(language, program) == first, f"{language} is not reproducible"
+
+    def test_the_seeded_source_rejects_an_empty_range(self) -> None:
+        """``randbelow`` checks its bound instead of ignoring it.
+
+        A stub that never read its argument would answer an impossible
+        request -- choosing among no options -- as readily as a real one,
+        and the mistake would surface somewhere far from its cause.
+        ``secrets.randbelow``, the default source, raises here too, so the
+        seeded stand-in agrees with what it replaces.
+        """
+        from esolangs.interpreters.randomness import Seeded
+
+        source = Seeded(0)
+        for bad in (0, -1):
+            with pytest.raises(ValueError, match=f"must be positive, got {bad}"):
+                source.randbelow(bad)
+
+        assert source.randbelow(1) == 0
