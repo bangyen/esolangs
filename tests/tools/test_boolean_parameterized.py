@@ -4388,6 +4388,68 @@ class TestParameterizedPctSquaredMinusOne:
         }
         assert len(reached) == 48
 
+    @pytest.mark.slow  # every weighting inside the budget, over a table sample
+    def test_a_legal_weighting_always_schedules(self) -> None:
+        """Legality decides the deep band; the schedule then follows.
+
+        A weighting collides rows whose weighted sums tie, and a collision is
+        survivable exactly when it joins rows of one class -- so a weighting
+        is *legal* for a table when no cross-class pair ties.  The
+        construction rests on legality being sufficient as well as necessary:
+        it picks the first legal weighting inside the span budget and calls
+        the planner once, where the search called it per candidate.
+
+        Pinned because a counterexample would not raise.  The planner would
+        return ``None``, the loop would move on, and the only visible effect
+        would be a longer program from a later construction -- so the
+        property is checked rather than assumed.  Failures do exist outside
+        the budget, at ``sum(units) * 256`` past the limit, which is why
+        :func:`_deep_weightings` drops those rather than trying them.
+        """
+        from esolangs.tools.boolean.pct_squared_minus_one import (
+            _cross_class_diffs,
+            _deep_plan,
+            _deep_values,
+            _deep_weightings,
+            _weighting_is_legal,
+        )
+
+        checked = 0
+        for value in range(0, 256, 17):
+            table = format(value, "08b")
+            diffs = _cross_class_diffs(table, 3)
+            for units in _deep_weightings(3):
+                for mask in range(8):
+                    if not _weighting_is_legal(units, mask, diffs):
+                        continue
+                    checked += 1
+                    values = _deep_values(3, units, mask)
+                    assert _deep_plan(table, 3, values) is not None, (
+                        table,
+                        units,
+                        mask,
+                    )
+        assert checked > 3000, checked
+
+    def test_span_budget_is_what_rejects_a_legal_weighting(self) -> None:
+        """The dropped weightings are dropped for a stated reason.
+
+        A weighting is measured in whole residue systems, so its span is
+        ``sum(units) * 256`` and the limit allows ``3003 // 256 == 11`` of
+        them.  Every weighting seen to fail with legal collisions failed
+        exactly there -- sum 12, span 3072 -- which is what makes the budget
+        a derivation rather than a tuning knob.
+        """
+        from esolangs.tools.boolean.pct_squared_minus_one import (
+            _BAND_UNIT,
+            _LIMIT,
+            _deep_weightings,
+        )
+
+        for units in _deep_weightings(4):
+            assert sum(units) * _BAND_UNIT <= _LIMIT, units
+        assert max(sum(u) for u in _deep_weightings(4)) == _LIMIT // _BAND_UNIT
+
     def test_deep_band_is_screened_above_four_inputs(self) -> None:
         """Asymmetric five-input tables are screened, symmetric ones built.
 
