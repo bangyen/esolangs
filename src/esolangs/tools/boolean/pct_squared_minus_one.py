@@ -1662,6 +1662,28 @@ _FOLD_DESCENT_TARGET = 2
 #: worst tables in the whole four-input enumeration are exactly that: near
 #: alternating with a single late defect.
 #:
+#: **The word cannot be compressed, and that is measured rather than
+#: assumed.**  An entropy-guided search over word features found one
+#: candidate sufficient statistic -- the cumulative run boundaries mod 4
+#: together with each run capped at 6 -- which is exactly sufficient at four
+#: inputs, separating all 32767 words with a single ambiguity resolved by
+#: the cap.  It is false at five: ``(19, 2, 11)`` costs 7 and ``(23, 2, 7)``
+#: costs 6 under the same key.  Nor is the cap the problem.  Swapping two
+#: runs that both sit above a cap ``K`` leaves any ``min(x, K)`` key
+#: unchanged by construction, and at six inputs such swaps change the cost
+#: for every ``K`` tried -- 20 of 25 at ``K == 4``, 16 of 25 at 6, 17 of 25
+#: at 8, 14 of 25 at 12, 6 of 18 at 16.  ``(34, 20, 10)`` costs 5 and
+#: ``(10, 20, 34)`` costs 6; ``(40, 4, 8, 12)`` costs 9 and
+#: ``(12, 4, 8, 40)`` costs 10.
+#:
+#: So no bounded-alphabet recoding of the run lengths determines the cost:
+#: exact lengths matter without limit, and the domain of any closed form can
+#: be no coarser than the word itself.  The mod-4 half of that key is not an
+#: accident -- the descent starts on a ladder of :data:`_FOLD_STEP`, so a
+#: word's cumulative boundaries *are* its geometry, gaps being four times
+#: the run lengths -- but the residues alone are lossy the moment a run
+#: exceeds the lattice step.
+#:
 #: So a closed form exists in principle -- the cost is a function of an
 #: object with at most ``2**n`` parts -- and finding it is open.  Part of the
 #: mechanism *is* identified.  Sliding the defect gives long stretches where
