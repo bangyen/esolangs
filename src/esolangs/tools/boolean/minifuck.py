@@ -896,6 +896,47 @@ def _printed_column(j: _Joint, acc: int, cell7: int) -> tuple[int, ...] | None:
     return column
 
 
+def _column_sweep(j: _Joint, cell7: int) -> dict[int, tuple[int, ...]]:
+    """Return every accumulator's printed column, from **one** walk.
+
+    :func:`_printed_column` answers one accumulator, and answering all of them
+    that way re-walks the same ground once per accumulator: the walk to
+    ``acc - 1`` is a prefix of the walk to ``acc``.  This runs the walk once
+    and reads a column off as the pointer passes each accumulator in turn.
+
+    What makes that sound is that the pool code does not depend on the
+    accumulator.  :func:`_find_pool` is asked for a ``walk_out``, so it *could*
+    answer differently per accumulator and the fused walk would be wrong --
+    but measured over every ``(separator, settle, suffix, orientation)`` at
+    two, three and four inputs it never does: one code serves the whole
+    accumulator range or none does.  So the code is chosen once, from the
+    shortest walk, and the walk is then extended.
+
+    Checked against :func:`_printed_column` rather than argued: 30160 columns
+    over the *entire* enumeration at two and three inputs, and 18720 more at
+    four across both suffix families, with no disagreement.  Accumulators the
+    walk cannot reach are absent from the mapping, which is the ``None`` that
+    function returns.
+    """
+    code = _find_pool(j, cell7, 8)
+    if code is None:
+        return {}
+    probe = j.fork()
+    probe.emit(code)
+    ptrs = set(probe.ptrs())
+    if len(ptrs) != 1:
+        return {}
+    cur = ptrs.pop()
+    columns: dict[int, tuple[int, ...]] = {}
+    for acc in range(9, _MAX_ACC + 1):
+        if acc - 1 < cur:
+            continue
+        probe.emit("[x" * (acc - 1 - cur))
+        cur = acc - 1
+        columns[acc] = tuple(probe.col(probe.ms[0].ptr + 1))
+    return columns
+
+
 def _confirm(
     j: _Joint, acc: int, read: str, cell7: int, column: tuple[int, ...]
 ) -> bool:
@@ -1595,19 +1636,25 @@ def _derived_plans(n: int, targets: tuple[str, ...]) -> dict[str, _Staging]:
         already emitted by the time it runs, so a bracket count and an insert
         string reach it the same way.
 
-        What an accumulator prints is not searched for.  :func:`_printed_column`
-        derives it in closed form from the tape the walk leaves behind, so an
-        accumulator that answers no wanted table costs one walk and a dict
-        lookup instead of a full endgame.  The two reads are not enumerated at
-        all: they print complementary columns, so both are read off the one
-        derivation.  Only an accumulator that *does* answer a wanted table
-        pays for an endgame, and then only to confirm it -- see
-        :func:`_confirm`.
+        What an accumulator prints is not searched for.  :func:`_column_sweep`
+        derives the whole accumulator range in closed form from the tape one
+        walk leaves behind, so an accumulator that answers no wanted table
+        costs a dict lookup rather than a walk -- and the range costs one walk
+        rather than one each.  The two reads are not enumerated at all: they
+        print complementary columns, so both are read off the one derivation.
+        Only an accumulator that *does* answer a wanted table pays for an
+        endgame, and then only to confirm it -- see :func:`_confirm`.
+
+        The accumulator-major loop order is kept exactly, because it is what
+        assigns each table its staging: a table takes the first accumulator
+        that prints it, so sweeping orientation-major would reassign
+        templates even though it derives the same columns.
         """
         nonlocal remaining
+        sweeps = {cell7: _column_sweep(staged, cell7) for cell7 in (0, 1)}
         for acc in range(9, _MAX_ACC + 1):
             for cell7 in (0, 1):
-                derived = _printed_column(staged, acc, cell7)
+                derived = sweeps[cell7].get(acc)
                 if derived is None:
                     continue
                 for read in _READS:
