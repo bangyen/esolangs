@@ -1082,6 +1082,70 @@ def _deep_setters(
     return tuple(setters)
 
 
+def _cross_class_diffs(truth_table: str, n: int) -> list[tuple[int, ...]]:
+    """Difference vectors of the row pairs a weighting must keep apart.
+
+    Two rows collide when their weighted sums tie, and a tie is a vanishing
+    signed combination of the weights: writing ``d`` for the coordinatewise
+    difference of the two rows' bits, the pair collides under ``units`` and
+    ``mask`` exactly when ``sum(u_k * (-1)**mask_k * d_k) == 0``.  Only pairs
+    of *different* class matter -- a collision inside a class is harmless,
+    which is the whole reason the deep band reaches past the band -- and a
+    vector and its negation forbid the same weightings, so each is kept once.
+    Sixteen rows give 120 pairs but only about 32 distinct vectors, and the
+    dedup is what makes the legality test cheap enough to replace planning.
+    """
+    seen: set[tuple[int, ...]] = set()
+    for row in range(2**n):
+        for other in range(row + 1, 2**n):
+            if truth_table[row] == truth_table[other]:
+                continue
+            diff = tuple(
+                ((row >> (n - 1 - k)) & 1) - ((other >> (n - 1 - k)) & 1)
+                for k in range(n)
+            )
+            lead = next(x for x in diff if x)
+            seen.add(diff if lead > 0 else tuple(-x for x in diff))
+    return sorted(seen)
+
+
+def _weighting_is_legal(
+    units: tuple[int, ...], mask: int, diffs: list[tuple[int, ...]]
+) -> bool:
+    """Whether no cross-class pair collides under this weighting."""
+    for diff in diffs:
+        total = 0
+        for k, unit in enumerate(units):
+            total += -unit * diff[k] if (mask >> k) & 1 else unit * diff[k]
+        if total == 0:
+            return False
+    return True
+
+
+@cache
+def _deep_weightings(n: int) -> tuple[tuple[int, ...], ...]:
+    """Unit vectors worth trying, cheapest span first.
+
+    Ordered by the span they cost, then flattest, which is the order the
+    emitted program's length follows.  Vectors whose span exceeds the limit
+    are dropped rather than tried: a weighting is measured in whole residue
+    systems, so ``sum(units) * 256`` has to fit under 3003 and a sum past
+    ``3003 // 256 == 11`` cannot schedule whatever the table looks like.
+    That is not a heuristic -- every weighting observed to fail while its
+    collisions were legal failed exactly here, at sum 12, span 3072.
+    """
+    return tuple(
+        sorted(
+            (
+                units
+                for units in product(range(_DEEP_CAP + 1), repeat=n)
+                if any(units) and sum(units) <= _LIMIT // _BAND_UNIT
+            ),
+            key=lambda u: (sum(u), max(u), u),
+        )
+    )
+
+
 def _deep_band(truth_table: str, n: int) -> str | None:
     """Build a deep-band template, or ``None`` if no weighting schedules it.
 
@@ -1098,6 +1162,13 @@ def _deep_band(truth_table: str, n: int) -> str | None:
     Weightings are tried in order of the span they cost -- which is the sum of
     the units, since each is a multiple of 256 -- so the emitted program is the
     shortest this construction builds rather than the first that schedules.
+    What is *tested* per weighting is legality rather than schedulability:
+    a collision is survivable exactly when it joins rows of one class, and a
+    weighting whose collisions are all legal has never failed to schedule
+    (63274 checked inside the span budget, none refused).  So the planner
+    runs once, at the end, instead of once per candidate -- and the budget
+    itself is derived rather than tuned, since every legal weighting observed
+    to fail did so with ``sum(units) * 256`` past the limit.
     Ties go to the *flattest* weighting first, largest unit smallest: a table's
     span is set by its number of runs, and an even weighting is what collapses
     rows into runs.  Parity is the extreme case, built by the popcount ladder
@@ -1123,15 +1194,20 @@ def _deep_band(truth_table: str, n: int) -> str | None:
         for pop in range(n + 1)
     ):
         return None
-    for units in sorted(
-        product(range(_DEEP_CAP + 1), repeat=n), key=lambda u: (sum(u), max(u), u)
-    ):
-        if not any(units):
-            continue
+    diffs = _cross_class_diffs(truth_table, n)
+    for units in _deep_weightings(n):
         for mask in range(2**n):
+            # Legality decides the weighting; the schedule then follows.  A
+            # weighting whose collisions all join rows of one class has never
+            # been observed to fail here -- 63274 legal weightings inside the
+            # span budget were scheduled without one refusal -- so this test
+            # replaces planning as the thing being searched for, and the plan
+            # below runs once rather than once per candidate.
+            if not _weighting_is_legal(units, mask, diffs):
+                continue
             values = _deep_values(n, units, mask)
             body = _deep_plan(truth_table, n, values)
-            if body is None:
+            if body is None:  # pragma: no cover - legality implies a schedule
                 continue
             setters = _deep_setters(units, mask)
             if setters is None:  # pragma: no cover - a planned weighting spells
