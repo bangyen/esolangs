@@ -593,3 +593,66 @@ class TestMutationGaps:
     def test_a_recursive_operator_sees_its_own_pattern(self) -> None:
         """Registering the name before parsing is what makes this parse."""
         assert run_and_capture("x? = x & x?\n0?") == "0\n"
+
+
+class TestNestedTraversals:
+    """The two tree walks, exercised at every branch they recurse through.
+
+    ``_contains_return`` decides whether a statement prints, and
+    ``_free_variables`` decides what gets read and in what order.  Both
+    recurse through negation, both operands of a binary node, and call
+    arguments -- and the wiki's examples only ever nest a ``$`` in a
+    binary node's *right* operand, so the other paths need their own
+    programs or a mutant that stops recursing survives.
+    """
+
+    def test_a_return_inside_a_negation_suppresses_the_print(self) -> None:
+        """``-$1`` is a ``$`` under a ``neg``.
+
+        The result is ``1``, not ``-1``: ``$`` exits the function
+        immediately, so the negation wrapped around it never applies.
+        That is the documented reading of the return operator, and this
+        is the program that discriminates it.
+        """
+        assert run_and_capture("M() = {\n-$1\n9\n}\nM()") == "1\n"
+
+    def test_a_return_in_a_binary_left_operand_suppresses_the_print(
+        self,
+    ) -> None:
+        """``$1 + 2`` returns before the addition, and prints nothing."""
+        assert run_and_capture("M() = {\n$1 + 2\n9\n}\nM()") == "1\n"
+
+    def test_a_return_in_a_call_argument_suppresses_the_print(self) -> None:
+        """``F($1)`` is a ``$`` inside a call's argument list."""
+        assert run_and_capture("F(x) = x\nM() = {\nF($1)\n9\n}\nM()") == "1\n"
+
+    def test_a_statement_with_no_return_anywhere_still_prints(self) -> None:
+        """The other side of the same decision, at the same depth."""
+        assert run_and_capture("F(x) = x\nM() = {\nF(-(1 + 2))\n9\n}\nM()") == (
+            "-3\n9\n"
+        )
+
+    def test_a_variable_under_a_negation_is_read(self) -> None:
+        assert run_and_capture("-a", "5\n") == "-5\n"
+
+    def test_variables_in_both_operands_are_read_left_to_right(self) -> None:
+        assert run_and_capture("a - b", "9\n4\n") == "5\n"
+
+    def test_a_variable_inside_a_call_argument_is_read(self) -> None:
+        assert run_and_capture("F(x) = x * 2\nF(a)", "6\n") == "12\n"
+
+    def test_variables_across_call_arguments_are_read_in_order(self) -> None:
+        """``F(a, b)`` reads a then b, so swapping the feed swaps the answer."""
+        assert run_and_capture("F(x, y) = x - y\nF(a, b)", "9\n4\n") == "5\n"
+
+    def test_a_variable_under_a_return_is_read(self) -> None:
+        """``$a`` still names ``a``, so the pre-scan must reach through it."""
+        assert run_and_capture("$a", "7\n") == "7\n"
+
+    def test_a_repeated_variable_is_read_once(self) -> None:
+        """First-appearance order dedupes, so ``a + a`` takes one input."""
+        assert run_and_capture("a + a", "5\n") == "10\n"
+
+    def test_a_variable_repeated_across_operands_is_read_once(self) -> None:
+        """``a + (b - a)`` reads a and b, in that order -- not a, b, a."""
+        assert run_and_capture("a + (b - a)", "3\n10\n") == "10\n"
