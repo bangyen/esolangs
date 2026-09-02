@@ -137,7 +137,7 @@ class TestFlipFlop:
         machine = _Machine(FLIP_FLOP, ScriptedIO("1\n"))
         seen = []
         for _ in range(6):
-            value = machine.wirings[0].value
+            value = machine.values[0]
             seen.append("N" if value is None else str(value[0]))
             machine.step()
         assert "".join(seen) == "1N1N1N"
@@ -150,7 +150,7 @@ class TestFlipFlop:
         machine = _Machine(FLIP_FLOP, ScriptedIO("0\n"))
         seen = []
         for _ in range(4):
-            value = machine.wirings[0].value
+            value = machine.values[0]
             seen.append("N" if value is None else str(value[0]))
             machine.step()
         assert "".join(seen) == "0N0N"
@@ -168,7 +168,7 @@ class TestConstantOutput:
         machine = _Machine(CONSTANT, ScriptedIO("1\n"))
         for _ in range(3):
             machine.step()
-        held = [w.value for w in machine.wirings if w.value == (1,)]
+        held = [v for v in machine.values if v == (1,)]
         assert held, "no wiring is holding a 1"
 
     def test_a_wiring_may_feed_both_sides_of_a_gate(self) -> None:
