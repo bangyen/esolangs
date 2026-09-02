@@ -457,6 +457,57 @@ the first bit.  Lifting `n == 5` to total is exactly one successful
 separation away, and nothing about the counting argument below forbids it:
 the sculpted route is not a flat family, its rounds are chosen per table.
 
+### Separation has an algorithmic primitive, and it saturates at three inputs
+
+Asked whether `_mux` can be made algorithmic rather than searched.  Half of
+it already is — the sculpting loop is a termination argument, not a search —
+and the answer for the other half is a **usable primitive that does not
+reach far enough**, which is worth recording in full because both halves of
+that are load-bearing.
+
+**A single read displaces by exactly `v`, whatever the walk.**  Measured for
+walk distances 0 to 5 after a setter: the displacement is `(0, 1)` every
+time, because the `[x` walk carries the bit forward as prefix-XOR.  So one
+read is weight 1 and no amount of walking changes that.
+
+**Repeating a read does not accumulate, and that is the collapse.**  The
+first read *consumes* the bit, so later reads see a cleared cell:
+`n + 1` distinct states out of `2**n` at every arity, for both `'[<'` and
+the restoring `'[x<[<'`.  This is the same shift-invariance recorded above,
+now measured against both reads rather than inferred.
+
+**But one spelling does accumulate, exactly and linearly.**  Rewinding a
+single cell between restoring reads compounds:
+
+    ('[x<[<' + '<') * k + '[x<[<'   →   spread = -(k + 1)
+
+verified for `k` of 1 to 6, giving spreads -2 through -7 with no row dying.
+So **arbitrary integer weight is constructible**, at `w - 1` repeats for
+weight `w`, and positional weighting is expressible after all.
+
+**It closes two and three inputs and saturates at four.**  Solving for the
+weight vector rather than assuming `2**i` — the realised weights are
+permuted and rescaled by the debris earlier gadgets leave, measured at
+`(-3, -1, -2)` where `(1, 2, 4)` was intended — gives full separation at
+`n == 2` with `(2, 1)` and at `n == 3` with `(4, 2, 2)`, the latter landing
+*consecutive*, which is what the searches independently converge on.  At
+`n == 4` an exhaustive sweep of weights 1..8, gaps 1..3 and both separator
+shapes reaches **13 of 16 and no further**.
+
+**The hybrid is worse than either half.**  Seeding the searches from the
+best weighted state (13 of 16) stalls at 14 after 6.6s, against 15.4s for
+the searches alone from the plain embed — so the weighted state is not on
+the path the searches can finish from.  Do not reach for this combination
+again without a different finisher.
+
+What this leaves is a sharpened specification rather than an algorithm.  The
+target is a **dense packing far from the pool**: `spread + 3 <= min_ptr - 8`
+(at `n == 4`: spread 16 against headroom 32), and the searches land on runs
+that are consecutive but for a single gap — 36..43 at three inputs, one gap
+of 2 at four.  A construction that produces such a packing directly would
+lift `n == 5` and remove the 5x-per-arity search cost (0s, 2.8s, 15.4s at
+two, three, four inputs) at the same time.
+
 ### `n == 5` ships partially; full coverage is out of reach of any flat family
 
 **The heading here used to read "`n >= 5` is out of reach of *any* staging
