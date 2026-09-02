@@ -1732,9 +1732,18 @@ def _derived_plans(n: int, targets: tuple[str, ...]) -> dict[str, _Staging]:
 def _clear_derived_plans(
     _wrapped: Callable[[], None] = _derived_plans.cache_clear,
 ) -> None:
-    """Clear the plan cache and the derived columns it shares work with."""
+    """Clear the plan cache and everything derived alongside it.
+
+    The staging index goes too, and that is the load-bearing part now that it
+    is what :func:`_derive_staging` reads: a caller asking for a cold
+    derivation means a cold one.  Tests harvest ``_find_pool`` call sites
+    from a build and assert they saw hundreds, which a warm index cuts to
+    six -- clearing the plan cache alone would leave that trap in place, and
+    did, until the index was added here.
+    """
     _wrapped()
     _PRINTED_COLUMNS.clear()
+    _staging_index.cache_clear()
 
 
 _derived_plans.cache_clear = _clear_derived_plans  # type: ignore[method-assign]
@@ -1848,36 +1857,135 @@ def _span_admits(truth_table: str, n: int) -> bool:
     return any(_in_span(packed, list(b)) for b in _staging_spans(n))
 
 
+@cache
+def _staging_index(n: int) -> dict[tuple[int, ...], _Staging]:
+    """Map every column the stagings reach to the staging that prints it.
+
+    The inverse of the enumeration, tabulated once per arity.  With it a
+    table is a dict lookup rather than a sweep: :func:`_derive_staging` no
+    longer enumerates per table at all.
+
+    **Why a table and not a formula.**  The printed column does not reduce to
+    a closed form in ``(suffix, accumulator)``.  Three translation
+    hypotheses were tested against the measured grid and all fail --
+    ``acc - ceil(k/2)`` leaves 38 of 40 shift classes ambiguous, and the
+    diagonals ``grid[k][a] == grid[k-1][a-1]`` and ``grid[k-2][a-1]`` are
+    violated 306 and 274 times in 700.  The grid *does* saturate the way the
+    bracket-run law predicts -- past ``k`` of about ``2 * (acc - 16) + 1``
+    the column stops moving -- but the pool code depends on the state the
+    staging leaves behind (see :func:`_find_pool`), so the column is not
+    pure tape algebra.  The reachable set is small enough that this does not
+    matter: 16 columns at two inputs, 252 at three, 15994 at four.
+
+    **The order is the contract.**  A table takes the *first* staging that
+    prints it, so this fills each column once, walking the enumeration in
+    exactly :func:`_stagings` order -- both passes, pure bracket runs across
+    every slice before any insert suffix, and the same budget accounting.
+    Interleaving the passes per slice instead produces columns that are all
+    reachable and all valid, and still assigns five-input XOR ``None`` where
+    the enumeration assigns ``(2, 0, 0, 33)``.  That is why the test for this
+    compares staging *tuples* against :func:`_derived_plans` rather than
+    checking that the programs work.
+
+    Measured: 0.1s at two inputs, 0.2s at three, 4.9s at four, 2.4s at five.
+    Five is the budgeted pass, which is what ships today; see
+    :data:`_STAGING_BUDGET_N5`.
+    """
+    index: dict[tuple[int, ...], _Staging] = {}
+    spent = 0
+    budget = _budget(n)
+    accs = _MAX_ACC - 8
+
+    def exhausted() -> bool:
+        return budget is not None and spent >= budget
+
+    def claim(staged: _Joint, suffix: int | str, head: tuple[int, int]) -> None:
+        sweeps = {cell7: _column_sweep(staged, cell7) for cell7 in (0, 1)}
+        for acc in range(9, _MAX_ACC + 1):
+            for cell7 in (0, 1):
+                derived = sweeps[cell7].get(acc)
+                if derived is None:
+                    continue
+                for read in _READS:
+                    column = derived if read == _READS[1] else _complement(derived)
+                    if column not in index:
+                        index[column] = (*head, suffix, acc)
+
+    slices = _slices(n)
+    for sep_index, settle in slices:
+        if exhausted():
+            return index
+        base = _embed(n, settle=settle, sep=_SEPS[sep_index])
+        _clamp(base)
+        _walk_to(base, _BASE - 1)
+        run = base.fork()
+        for brackets in range(_MAX_BRACKETS + 1):
+            staged = run.fork()
+            staged.emit("<")
+            _clamp(staged)
+            claim(staged, brackets, (sep_index, settle))
+            spent += accs
+            if exhausted():
+                return index
+            run.emit("[")
+
+    if n not in _INSERT_ARITIES:
+        return index
+    for sep_index, settle in slices:
+        if exhausted():
+            return index
+        base = _embed(n, settle=settle, sep=_SEPS[sep_index])
+        _clamp(base)
+        _walk_to(base, _BASE - 1)
+        for suffix in _insert_suffixes():
+            staged = base.fork()
+            staged.emit(suffix)
+            _clamp(staged)
+            claim(staged, suffix, (sep_index, settle))
+            spent += accs
+            if exhausted():
+                return index
+    return index
+
+
 def _derive_staging(truth_table: str, n: int) -> _Staging | None:
     """Return the staging that builds ``truth_table``, or None if none does.
 
-    Every staging is accepted on the evidence of its own output -- the
-    endgame is emitted and the rows are compared against the table -- so this
-    needs no table of answers.  The enumeration order in :func:`_stagings` is
-    the whole specification: it, and not a stored answer, decides which
-    program a truth table gets.
+    A lookup in :func:`_staging_index`, which tabulates the enumeration once
+    per arity.  The enumeration order is still the whole specification -- it,
+    and not a stored answer, decides which program a truth table gets -- but
+    it is now walked once for the arity rather than once per table.
 
-    A table the enumeration misses gets one more pass at the arities in
-    the two-insert family that used to sit here.  That pass was
-    targeted at the one table rather than folded into the enumeration on
-    purpose: run for the whole arity it would sweep 44950 suffixes to
-    exhaustion in a measured 159 seconds, hunting columns for tables that
-    already have stagings, while asking it for a single table stops at the
-    first hit in about a quarter of a second.
+    That moves where the cost falls, the same trade :func:`_mux_separate`
+    makes.  The first staged table at an arity pays the whole pass (a
+    measured 4.9s at four inputs, 0.2s at three) and every table after it is
+    a dict lookup; before, each table paid its own sweep -- 0.05s for a
+    four-input hit and 4.8s for a span-admitted miss, every time.  So this is
+    slower only for a process that builds a single four-input table and
+    exits, and much faster for anything that builds several or misses once.
+
+    Nothing is returned on the strength of the algebra alone.  The
+    enumeration used to run :func:`_confirm` on each column it claimed;
+    confirming all of them here would mean an endgame per reachable column
+    (15994 of them at four inputs) for the few a process actually asks about,
+    so the check moves to the lookup instead -- the plan this hands back is
+    the one that gets confirmed, which is the same standard applied to
+    exactly the plans that are used.  A plan that fails it is reported as a
+    miss, so the caller falls through to :func:`_mux` rather than receiving a
+    program that does not print.
     """
     if n not in _STAGED_ARITIES:
         return None
-    complement = "".join(str(1 - int(c)) for c in truth_table)
-    # A linear-algebra screen before the enumeration, where one is worth
-    # running.  It only ever declines -- see :func:`_span_admits` -- so the
-    # result is the same and a table it rejects skips a sweep that was going
-    # to fail.
+    # A linear-algebra screen before the pass, where one is worth running.
+    # It only ever declines -- see :func:`_span_admits` -- so the result is
+    # the same and a table it rejects skips a tabulation that was going to
+    # fail to answer it.
     if not _span_admits(truth_table, n):
         return None
-    # Ask for this table and its complement only.  Both are passed because
-    # they share a staging and whichever the enumeration reaches first
-    # assigns it.
-    return _derived_plans(n, (truth_table, complement)).get(truth_table)
+    plan = _staging_index(n).get(tuple(int(c) for c in truth_table))
+    if plan is None:
+        return None
+    return plan if _replay(truth_table, n, plan) is not None else None
 
 
 # **The flipped-embed pass was here, and it is gone.**  It complemented some
