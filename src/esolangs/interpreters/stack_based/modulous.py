@@ -43,7 +43,7 @@ type _Core = tuple[tuple[int, ...], Mapping[str, int], int]
 
 
 @dataclass
-class State:
+class _Machine:
     """Stack, variables, and instruction pointer for a Modulous run."""
 
     stk: list[int] = field(default_factory=list)
@@ -57,7 +57,7 @@ class State:
     rng: Randomness | None = None
 
     @classmethod
-    def of(cls, code: str, io: IO, rng: Randomness | None = None) -> "State":
+    def of(cls, code: str, io: IO, rng: Randomness | None = None) -> "_Machine":
         """Build a state for ``code``: its four variables, and its tokens.
 
         ``tokens`` cannot be a constructor field -- it is stored parsed, not
@@ -333,7 +333,7 @@ _DISPATCH: dict[str, Callable[[_Core, str, list[str], str | int | None], _Core]]
 
 def run(code: str, io: IO) -> None:
     """Run a Modulous program."""
-    state = State.of(code, io)
+    state = _Machine.of(code, io)
 
     while not state.halted:
         state.step()

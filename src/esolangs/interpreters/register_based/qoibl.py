@@ -21,7 +21,7 @@ Exhausted input raises :class:`EOFError` (the repo-wide convention).
 Evaluation is a pure function over an immutable ``_Vars``: :func:`_eval`
 takes an expression and the variables it sees, and returns the value with
 the variables that the expression left behind.  It never reaches an
-:class:`IO`.  The mutation lives in :meth:`State.step`, which rebinds one
+:class:`IO`.  The mutation lives in :meth:`_Machine.step`, which rebinds one
 field from what the transition returned.
 
 The ports cannot be lifted out of the recursion the way a one-command step
@@ -327,7 +327,7 @@ def _arithmetic(
 
 
 @dataclass
-class State:
+class _Machine:
     """Per-run state for a Qoibl interpreter: variables and the code cursor."""
 
     var: dict[int, int] = field(default_factory=dict)
@@ -336,7 +336,7 @@ class State:
     ind: int = 0
 
     @classmethod
-    def of(cls, code: str | list[str], io: IO) -> "State":
+    def of(cls, code: str | list[str], io: IO) -> "_Machine":
         """Build a state for ``code``, tokenized.
 
         ``code`` cannot be a constructor field: it is stored tokenized, not
@@ -406,7 +406,7 @@ def run(code: list[str] | str, io: IO) -> None:
     program is one character stream, since the language draws no distinction
     between a newline and any other ignored character.
     """
-    state = State.of(code, io)
+    state = _Machine.of(code, io)
 
     while not state.halted:
         state.step()

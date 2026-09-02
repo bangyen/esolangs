@@ -435,19 +435,19 @@ class TestQoiblCycleDetection:
         exercised it before, because ``run`` drives the machine itself.
         """
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.qoibl import State
+        from esolangs.interpreters.register_based.qoibl import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
-        state = State(io=ScriptedIO(""))
+        state = _Machine(io=ScriptedIO(""))
         state.code = tokenize("we y we yyeeee we\ntt qe y qe tt")
         assert run_until_halt_or_cycle(state) is True
 
     def test_the_snapshot_moves_when_a_statement_runs(self) -> None:
         """A step that assigns changes the snapshot, so it is not a cycle."""
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.qoibl import State
+        from esolangs.interpreters.register_based.qoibl import _Machine
 
-        state = State(io=ScriptedIO(""))
+        state = _Machine(io=ScriptedIO(""))
         state.code = tokenize("we y we yyeeee we\ntt qe y qe tt")
         before = state.snapshot()
         state.step()
@@ -468,9 +468,9 @@ class TestQoiblIncompleteTokens:
     def test_stepping_an_empty_statement_advances_the_cursor(self) -> None:
         """An empty statement is a no-op, not a parse of nothing."""
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.qoibl import State
+        from esolangs.interpreters.register_based.qoibl import _Machine
 
-        state = State(io=ScriptedIO(""))
+        state = _Machine(io=ScriptedIO(""))
         state.code = tokenize("w")
         assert state.code == [[]]
         state.step()
