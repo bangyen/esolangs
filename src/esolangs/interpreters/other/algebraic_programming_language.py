@@ -585,8 +585,8 @@ class _Frame:
         definition: _Definition,
         args: dict[str, object],
         *,
-        printing: bool = False,
-        assign: str | None = None,
+        printing: bool,
+        assign: str | None,
     ) -> None:
         self.fn = definition
         self.locals = args
