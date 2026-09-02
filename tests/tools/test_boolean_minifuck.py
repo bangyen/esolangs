@@ -19,6 +19,11 @@ import pytest
 from esolangs.tools.boolean.helpers import essential_inputs
 
 
+def _unreachable(*_args: object, **_kwargs: object) -> None:
+    """Stand in for a function a test asserts is never called."""
+    raise AssertionError("this should not have been called")
+
+
 def _all_derived_plans(derived_plans, staged_arities, n: int) -> dict:
     """Every staging the enumeration places at ``n``, in one pass.
 
@@ -269,6 +274,16 @@ def test_the_fused_column_walk_matches_the_one_at_a_time_derivation() -> None:
             assert _printed_column(joint, acc, cell7) == sweep.get(acc), (acc, cell7)
             compared += 1
     assert compared >= 100, compared  # the sweep really did cover a range
+
+    # The memo is what makes asking per table cost what asking for the arity
+    # does, so a second ask for a key already answered must come back from
+    # the cache rather than re-deriving.  Checked by making a re-derivation
+    # impossible: `_find_pool` is the first thing a miss reaches, so a repeat
+    # that touches it is a repeat that missed.
+    joint, cell7 = captured[0]
+    first = _printed_column(joint, 9, cell7)
+    with patch("esolangs.tools.boolean.minifuck._find_pool", _unreachable):
+        assert _printed_column(joint, 9, cell7) == first
 
 
 def test_span_screen_declines_no_reachable_table() -> None:

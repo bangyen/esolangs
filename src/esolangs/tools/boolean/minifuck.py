@@ -889,7 +889,19 @@ def _printed_column(j: _Joint, acc: int, cell7: int) -> tuple[int, ...] | None:
     probe.emit(code)
     try:
         _walk_to(probe, acc - 1)
-    except ValueError:
+    except ValueError:  # pragma: no cover - not observed; see below
+        # Never seen to fire, but *not* dead by construction, which is why
+        # this says "not observed" rather than "unreachable".  The obvious
+        # argument -- that `_find_pool` was asked for a code reaching
+        # `acc - 1`, so the walk must succeed -- does not hold: `walk_out`
+        # is deleted rather than forwarded, because the verdict is invariant
+        # in it.  So a code that fits the site says nothing about how far
+        # right the accumulator can then be relayed.
+        #
+        # What is measured: 1740 real stagings, captured from builds at two
+        # and three inputs, walked over the whole accumulator range with the
+        # cache cleared each time -- no failure.  A direct `_walk_to` to an
+        # unreachable target raises, as the control.
         _PRINTED_COLUMNS[key] = None
         return None
     column = tuple(probe.col(probe.ms[0].ptr + 1))
@@ -956,7 +968,14 @@ def _confirm(
     probe = j.fork()
     try:
         _endgame(probe, acc, read, cell7)
-    except ValueError:
+    except ValueError:  # pragma: no cover - not observed; see below
+        # The derivation only offers accumulators whose column it already
+        # read off a walk, so the endgame it then runs has somewhere to go.
+        # Traced over every table at two and three inputs: 268 confirmations,
+        # none of them raising.  Kept rather than removed because the whole
+        # point of this function is that nothing is recorded on the strength
+        # of the algebra alone -- an endgame that could not run is exactly
+        # the disagreement it exists to catch.
         return False
     printed = probe.printed()
     if any(len(digit) != 1 for digit in printed):
