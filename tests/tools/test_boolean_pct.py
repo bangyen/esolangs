@@ -1027,3 +1027,298 @@ class TestPctFoldEmitter:
             assert em.pos[key] == expected
             assert em.pos[key] % 256 == em.byte(key) % 256
             assert abs(em.pos[key]) <= module._LIMIT  # noqa: SLF001
+
+    def test_a_rise_with_no_headroom_preshifts_first(self) -> None:
+        """``p`` needs two to work with, so a shorter rise makes room.
+
+        The rise is ``p``, a subtraction, ``p``, and the subtraction has
+        no spelling below 2.  When the victims sit so high that the
+        relocation leaves less than that, the emitter drops everything
+        first and recomputes the distance from the new bottom.  A victim
+        one lower needs no preshift, which is what separates the two.
+        """
+        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        limit = module._LIMIT  # noqa: SLF001
+
+        def rise_from(victim_top: int) -> list[str]:
+            em = self.emitter()
+            keys = list(em.pos)
+            em.pos = {keys[0]: victim_top, keys[1]: -10}
+            em.cls = {keys[0]: "0", keys[1]: "1"}
+            em.rise(limit + 1, frozenset({keys[0]}))
+            return em.body
+
+        # u == 1: below the floor, so a preshift of 1 is spelled first.
+        assert rise_from(limit) == ["i", "psp", "psp", "s"]
+        # u == 2: exactly the floor, so the rise is spelled on its own.
+        assert rise_from(limit - 1) == ["psp", "s"]
+
+
+class TestPctFoldMoves:
+    """The fold's move generator, at the guards that refuse a relocation.
+
+    A ``_FoldPoint`` is ``(top, span, class, ids)`` and a state is a tuple
+    of them.  The guards below are properties of the arithmetic, so they
+    are driven with states built by hand: the spacings involved are wider
+    than any table's own starting layout, which is four per run.
+    """
+
+    @staticmethod
+    def module():
+        return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+
+    def test_a_collision_across_classes_is_not_a_merge(self) -> None:
+        """Two points at one value are indistinguishable forever after.
+
+        So a collision is legal only within a class -- and only between
+        points already wiped, since a group with extent has rows at
+        several values and an equal top is not an equal anything.
+        """
+        module = self.module()
+        merge = module._fold_merge  # noqa: SLF001
+
+        cross = [(0, 0, "0", frozenset({0})), (0, 0, "1", frozenset({1}))]
+        assert merge(cross) is None
+
+        extent = [(0, 0, "0", frozenset({0})), (0, 3, "0", frozenset({1}))]
+        assert merge(extent) is None
+
+        legal = [(0, 0, "0", frozenset({0})), (0, 0, "0", frozenset({1}))]
+        assert merge(legal) == ((0, 0, "0", frozenset({0, 1})),)
+
+    def test_a_survivor_reaching_below_the_victims_offers_no_window(self) -> None:
+        """The relocation window is the gap to the nearest survivor's bottom.
+
+        A survivor whose span reaches down past the victims' top closes
+        that gap entirely, so there is no amount to relocate by and the
+        dive is skipped rather than spelled.  Both the ascending and the
+        descending half apply the same rule.
+        """
+        state = (
+            (0, 400, "0", frozenset({0})),
+            (-100, 0, "0", frozenset({1})),
+            (-200, 0, "1", frozenset({2})),
+        )
+        assert len(list(self.module()._fold_moves(state, kcap=3))) == 1  # noqa: SLF001
+
+    def test_a_relocation_that_would_overflow_the_span_is_skipped(self) -> None:
+        """Every wipe caps the spread, so a move that widens it is refused.
+
+        Two survivors far from *each other* are what reaches this: the
+        near one bounds how far the state may travel, and the far one is
+        still far after travelling that distance.  The guard is what keeps
+        the yielded states inside the accumulator's range, so it is
+        checked on the output rather than only executed.
+        """
+        module = self.module()
+        state = (
+            (0, 0, "0", frozenset({0})),
+            (-10, 0, "1", frozenset({1})),
+            (-12000, 0, "0", frozenset({2})),
+        )
+        moves = list(module._fold_moves(state, kcap=3))  # noqa: SLF001
+        assert moves, "the positive control must offer some move"
+        for *_rest, nxt in moves:
+            hi = max(p for p, _, _, _ in nxt)
+            lo = min(p - span for p, span, _, _ in nxt)
+            assert hi - lo <= 2 * module._LIMIT  # noqa: SLF001
+
+
+class TestPctFoldPlanners:
+    """The two planners' refusals, driven through their own budgets.
+
+    ``_fold_search`` is a breadth-first search kept as the fallback for a
+    state the descent leaves short, and ``_fold_beam`` is the descent
+    itself.  Both answer ``None`` rather than raising when they cannot
+    finish, and each budget is a parameter, so the refusals are reachable
+    without contriving an unsolvable table.
+    """
+
+    @staticmethod
+    def module():
+        return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+
+    #: Four points, alternating classes: not already finished, and small
+    #: enough that the planners answer quickly.
+    STATE = (
+        (0, 0, "0", frozenset({0})),
+        (-4, 0, "1", frozenset({1})),
+        (-8, 0, "0", frozenset({2})),
+        (-12, 0, "1", frozenset({3})),
+    )
+
+    def test_the_search_gives_up_on_its_own_budgets(self) -> None:
+        """Each budget refuses on its own: the visit cap and the depth.
+
+        A cap of zero is exceeded by the first state examined, and a depth
+        of zero pops the start and expands nothing.  Both answer ``None``
+        rather than a partial plan, which is what lets the caller fall
+        through to the next construction.
+        """
+        search = self.module()._fold_search  # noqa: SLF001
+
+        assert search(self.STATE, cap=0) is None
+        assert search(self.STATE, maxdepth=0) is None
+        assert search(self.STATE, maxdepth=1) is None
+
+    def test_the_search_finds_a_plan_when_it_is_given_room(self) -> None:
+        """The positive control: the refusals above are the budgets.
+
+        Without this a ``None`` could just as well mean the state was
+        malformed, or that no plan exists for any budget.
+        """
+        found = self.module()._fold_search(  # noqa: SLF001
+            (
+                *self.STATE,
+                (-16, 0, "0", frozenset({4})),
+            ),
+            maxdepth=6,
+        )
+        assert found is not None
+        assert len(found) == 6
+
+    def test_the_descent_gives_up_when_its_steps_run_out(self) -> None:
+        """A step budget of zero descends nowhere, and one is not enough."""
+        beam = self.module()._fold_beam  # noqa: SLF001
+
+        assert beam(self.STATE, maxsteps=0) is None
+        assert beam(self.STATE, maxsteps=1) is None
+
+    def test_the_descent_gives_up_when_no_move_is_left(self) -> None:
+        """A target below what the moves can reach exhausts the frontier.
+
+        Two points cannot be folded to one -- the two classes are what the
+        printed answer is read from -- so every move is either seen or
+        illegal and the descent runs out of states rather than steps.
+        """
+        beam = self.module()._fold_beam  # noqa: SLF001
+
+        two = ((0, 0, "0", frozenset({0})), (-4, 0, "1", frozenset({1})))
+        assert beam(two, target=1, maxsteps=30) is None
+
+        # A lone point offers no move whatever: the frontier is empty on
+        # the first step rather than after exhausting the seen set.
+        single = ((0, 0, "0", frozenset({0})),)
+        assert beam(single, target=0, maxsteps=5) is None
+
+    def test_replaying_a_move_the_state_does_not_offer_answers_none(self) -> None:
+        """``_fold_apply`` re-derives a move rather than trusting it.
+
+        It looks the operation up among the moves the state actually
+        offers, so one that is not there cannot be applied by accident.
+        """
+        bogus = ("d", 99, 99999, frozenset({42}))
+        assert self.module()._fold_apply(self.STATE, bogus) is None  # noqa: SLF001
+
+
+class TestPctFoldPlan:
+    """The plan's rotation pre-pass, and the bound that refuses a table.
+
+    ``_fold_plan`` wipes every group that still has extent before
+    descending, because a group with extent cannot be a collision target.
+    The pre-pass stops on its own when no such wipe is on offer.
+    """
+
+    @staticmethod
+    def module():
+        return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+
+    def test_the_pre_pass_stops_when_no_bottom_wipe_is_offered(self) -> None:
+        """Extent that no minimum-relocation wipe can clear ends the plan.
+
+        Two groups whose spans nearly fill the workspace leave no room for
+        the relocation a wipe needs, so the pre-pass breaks out with the
+        extent still there and the descent that follows has nothing to
+        work with.  The answer is ``None``, not a partial plan.
+        """
+        stuck = (
+            (0, 3000, "0", frozenset({0})),
+            (-10, 3000, "1", frozenset({1})),
+        )
+        assert self.module()._fold_plan(stuck) is None  # noqa: SLF001
+
+    def test_the_pre_pass_clears_extent_when_it_can(self) -> None:
+        """The positive control: ordinary extent is wiped and descends.
+
+        Three groups with room around them plan normally, so the refusal
+        above is the geometry and not the presence of extent.
+        """
+        ok = (
+            (0, 8, "0", frozenset({0, 1, 2})),
+            (-40, 8, "1", frozenset({3, 4, 5})),
+            (-80, 8, "0", frozenset({6, 7, 8})),
+        )
+        plan = self.module()._fold_plan(ok)  # noqa: SLF001
+        assert plan is not None
+        assert plan
+
+    def test_a_table_too_wide_for_the_workspace_is_refused(self) -> None:
+        """The ladder must fit in the 6006 values a ``p`` can traverse.
+
+        Rows start ``_FOLD_STEP`` apart, so the initial spread is
+        ``4 * (2**n - 1)``; that passes 6006 at eleven inputs, which is
+        why the fold's own bound is documented as holding through ten.
+        The refusal is immediate, before any planning.
+        """
+        module = self.module()
+        assert module._FOLD_STEP * (2**11 - 1) > 2 * module._LIMIT  # noqa: SLF001
+        assert module._FOLD_STEP * (2**10 - 1) <= 2 * module._LIMIT  # noqa: SLF001
+
+        assert module._fold("01" * (2**10), 11) is None  # noqa: SLF001
+        # A table inside the bound still builds, so the ``None`` above is
+        # the workspace and not the arity itself.
+        assert module._fold("0011", 2) is not None  # noqa: SLF001
+
+
+class TestPctAffineSolver:
+    """The wide band's line solver, at the inputs it has to refuse.
+
+    ``_solve_affine`` fits ``a * v + b == p`` over a fixed grid of
+    multipliers and offsets, dividing rather than searching: two points
+    with distinct values determine the line.  Constant values leave the
+    multiplier free, which is the separate arm below.
+    """
+
+    @staticmethod
+    def module():
+        return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+
+    def test_constant_values_cannot_meet_differing_wants(self) -> None:
+        """One value cannot map to two answers, whatever the line.
+
+        With every ``value`` equal there is no second point to fix the
+        multiplier, so the fit is possible only when every ``wanted`` is
+        equal too.  Mixed wants are refused before the grid is searched.
+        """
+        solve = self.module()._solve_affine  # noqa: SLF001
+
+        assert solve((5, 5, 5), (1, 2, 3)) is None
+        # The same shape with one want is solvable, so the refusal is the
+        # disagreement and not the constant values.
+        assert solve((0, 0), (4, 4)) == (0, 4)
+
+    def test_a_constant_want_outside_the_offset_grid_is_refused(self) -> None:
+        """The offset has to be one the language can spell.
+
+        With the values all zero the offset *is* the wanted value, so a
+        want beyond the grid leaves no multiplier that helps -- the loop
+        runs out rather than returning a line off the grid.
+        """
+        module = self.module()
+        beyond = max(module._WIDE_B_VALS) + 100  # noqa: SLF001
+
+        assert module._solve_affine((0, 0), (beyond, beyond)) is None  # noqa: SLF001
+        assert module._solve_affine((0, 1), (3, 5)) == (2, 3)  # noqa: SLF001
+
+    def test_a_multiplier_off_the_grid_drops_the_realisation(self) -> None:
+        """A ratio the grid does not carry is skipped, not rounded.
+
+        ``_realisations`` divides the two differences by the pivot gap, and
+        a quotient outside the admitted multipliers cannot be spelled, so
+        that placement is dropped.  Values a few apart realise many ways;
+        values a thousand apart realise none.
+        """
+        realise = self.module()._realisations  # noqa: SLF001
+
+        assert realise((0, 1, 2, 3))
+        assert realise((0, 1000, 1, 3)) == []
