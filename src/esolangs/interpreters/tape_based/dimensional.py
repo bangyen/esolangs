@@ -32,6 +32,8 @@ Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import sys
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from typing import cast
 
 from esolangs.interpreters.io import IO
@@ -172,6 +174,142 @@ def _number(code: str, ind: int, default: int | None) -> tuple[int | None, int]:
     return default, ind
 
 
+#: One instant of a run: ``(ind, comment, axis)`` -- the code cursor,
+#: whether a ``*`` region is open, and how many pointer levels ``$`` has
+#: asked for.
+#:
+#: The tape is *not* here.  It is a chain of lazily grown levels holding
+#: sparse maps, so freezing one per step would rebuild the whole structure
+#: for every command -- the cost that made A Painter Ant's tests 1300x
+#: slower.  Nothing shares a level, so there is no aliasing to preserve
+#: either: the transition names what it wants done to the tape and the
+#: shell does it.
+type _State = tuple[int, bool, int]
+
+
+#: What a command wants done to the tape.  Every Dimensional command makes
+#: at most one such change, so this is Minifuck's single-effect shape
+#: rather than the list Eval and Painfuck need.
+@dataclass(frozen=True)
+class _Move:
+    """Step one place along ``dim``; ``None`` means the current value."""
+
+    dim: int | None
+    delta: int
+
+
+@dataclass(frozen=True)
+class _SetValue:
+    """Write a value into the addressed byte."""
+
+    value: int
+
+
+@dataclass(frozen=True)
+class _AddValue:
+    """Add to the addressed byte."""
+
+    delta: int
+
+
+@dataclass(frozen=True)
+class _FromCoord:
+    """Write a coordinate into the addressed byte, as a byte."""
+
+    dim: int
+
+
+@dataclass(frozen=True)
+class _Clear:
+    """Forget the position along ``dim``."""
+
+    dim: int
+
+
+type _Effect = _Move | _SetValue | _AddValue | _FromCoord | _Clear
+
+
+def _advance(
+    state: _State,
+    code: str,
+    match: Mapping[int, int],
+    value: Callable[[], int],
+    coord: Callable[[int], int],
+    port: int | None = None,
+) -> tuple[_State, _Effect | None]:
+    """Return the state after one command, and what it wants done.
+
+    Pure in the sense the series means: it reads its arguments and returns
+    a description.  The tape is reached only through ``value`` and
+    ``coord``, which the two loop forms need to decide where the cursor
+    goes, and the three reading commands arrive as ``port``.
+
+    The cursor is already past the command.  Its advance is the caller's,
+    because several commands can reject their operand -- a ``:`` with
+    nothing after it, a ``=`` without two hex digits -- and the original
+    had moved the cursor before it looked.
+    """
+    ind, comment, axis = state
+    c = code[ind - 1]
+
+    if comment:
+        return ((ind, c != "*", axis), None)
+    if c == "*":
+        return ((ind, True, axis), None)
+    if c == ">":
+        dim, ind = _number(code, ind, None)
+        return ((ind, comment, axis), _Move(dim, 1))
+    if c == "<":
+        dim, ind = _number(code, ind, None)
+        return ((ind, comment, axis), _Move(dim, -1))
+    if c == "+":
+        return ((ind, comment, axis), _AddValue(1))
+    if c == "-":
+        return ((ind, comment, axis), _AddValue(-1))
+    if c == ".":
+        # The print already happened in the shell.
+        return ((ind, comment, axis), None)
+    if c in ",dx":
+        return ((ind, comment, axis), _SetValue(port if port is not None else 0))
+    if c == ":":
+        if ind >= len(code):
+            raise ValueError("':' must be followed by a character")
+        return ((ind + 1, comment, axis), _SetValue(ord(code[ind])))
+    if c == "=":
+        if ind + 2 > len(code):
+            raise ValueError("'=' must be followed by two hex digits")
+        try:
+            literal = int(code[ind : ind + 2], 16)
+        except ValueError as exc:
+            raise ValueError(f"invalid hex literal {code[ind : ind + 2]!r}") from exc
+        return ((ind + 2, comment, axis), _SetValue(literal))
+    if c == "$":
+        wanted, ind = _number(code, ind, 2)
+        return ((ind, comment, max(2, wanted if wanted is not None else 2)), None)
+    if c == "[":
+        if value() == 0:
+            return ((match[ind - 1] + 1, comment, axis), None)
+        return ((ind, comment, axis), None)
+    if c == "]":
+        return ((match[ind - 1], comment, axis), None)
+    if c == "{":
+        open_i = ind - 1
+        dim, ind = _number(code, ind, 0)
+        if coord(dim if dim is not None else 0) == 0:
+            return ((match[open_i] + 1, comment, axis), None)
+        return ((ind, comment, axis), None)
+    if c == "}":
+        return ((match[ind - 1], comment, axis), None)
+    if c == "?":
+        dim, ind = _number(code, ind, 0)
+        return ((ind, comment, axis), _FromCoord(dim if dim is not None else 0))
+    if c == "!":
+        dim, ind = _number(code, ind, 0)
+        return ((ind, comment, axis), _Clear(dim if dim is not None else 0))
+    # any other character is not a command and is ignored
+    return ((ind, comment, axis), None)
+
+
 class _Machine:
     """One Dimensional run: the code position, comment mode, and tape.
 
@@ -222,75 +360,70 @@ class _Machine:
             self.io.position(),
         )
 
+    @property
+    def _state(self) -> _State:
+        """The machine's fields as the value the transition works on."""
+        return (self.ind, self.comment, self.tape.axis)
+
+    def _restore(self, state: _State) -> None:
+        """Write a transition's result back onto the machine's fields.
+
+        The tape object itself never moves through the state, so only its
+        axis is written back here; ``snapshot`` still reads the same tape
+        it always did.
+        """
+        self.ind, self.comment, self.tape.axis = state
+
+    def _apply(self, effect: _Effect) -> None:
+        """Carry out the one tape change a command asked for."""
+        tape = self.tape
+        if isinstance(effect, _Move):
+            dim = tape.value() if effect.dim is None else effect.dim
+            tape.move(dim, effect.delta)
+        elif isinstance(effect, _SetValue):
+            tape.set_value(effect.value)
+        elif isinstance(effect, _AddValue):
+            tape.set_value(tape.value() + effect.delta)
+        elif isinstance(effect, _FromCoord):
+            tape.set_value(tape.coord(effect.dim) % 256)
+        else:
+            tape.clear(effect.dim)
+
     def step(self) -> None:
-        """Execute one command (or comment character), advancing the position."""
+        """Execute one command (or comment character), advancing the position.
+
+        The ports live here rather than in the transition: this is the
+        shell.  ``.`` prints the addressed byte, and ``,``/``d``/``x`` read
+        one -- as a character, a decimal number, and a hex number.
+
+        The cursor is advanced before the command runs, because several
+        commands reject their operand after the original had already moved
+        it: a ``:`` at the end of the code, a ``=`` without two hex digits,
+        and any of the three reads at EOF.
+        """
         if self.halted:
             return
         code = self.code
-        tape = self.tape
         c = code[self.ind]
         self.ind += 1
-        if self.comment:
-            if c == "*":
-                self.comment = False
-            return
-        if c == "*":
-            self.comment = True
-        elif c == ">":
-            dim, self.ind = _number(code, self.ind, None)
-            tape.move(tape.value() if dim is None else dim, 1)
-        elif c == "<":
-            dim, self.ind = _number(code, self.ind, None)
-            tape.move(tape.value() if dim is None else dim, -1)
-        elif c == "+":
-            tape.set_value(tape.value() + 1)
-        elif c == "-":
-            tape.set_value(tape.value() - 1)
-        elif c == ".":
-            self.io.print_char(chr(tape.value()))
-        elif c == ",":
-            tape.set_value(self.io.input_char())
-        elif c == "d":
-            tape.set_value(self.io.input_num())
-        elif c == "x":
-            tape.set_value(int(self.io.input_str(), 16))
-        elif c == ":":
-            if self.ind >= len(code):
-                raise ValueError("':' must be followed by a character")
-            tape.set_value(ord(code[self.ind]))
-            self.ind += 1
-        elif c == "=":
-            if self.ind + 2 > len(code):
-                raise ValueError("'=' must be followed by two hex digits")
-            try:
-                tape.set_value(int(code[self.ind : self.ind + 2], 16))
-            except ValueError as exc:
-                raise ValueError(
-                    f"invalid hex literal {code[self.ind : self.ind + 2]!r}"
-                ) from exc
-            self.ind += 2
-        elif c == "$":
-            axis, self.ind = _number(code, self.ind, 2)
-            tape.axis = max(2, axis if axis is not None else 2)
-        elif c == "[":
-            if tape.value() == 0:
-                self.ind = self.m[self.ind - 1] + 1
-        elif c == "]":
-            self.ind = self.m[self.ind - 1]
-        elif c == "{":
-            open_i = self.ind - 1
-            dim, self.ind = _number(code, self.ind, 0)
-            if tape.coord(dim if dim is not None else 0) == 0:
-                self.ind = self.m[open_i] + 1
-        elif c == "}":
-            self.ind = self.m[self.ind - 1]
-        elif c == "?":
-            dim, self.ind = _number(code, self.ind, 0)
-            tape.set_value(tape.coord(dim if dim is not None else 0) % 256)
-        elif c == "!":
-            dim, self.ind = _number(code, self.ind, 0)
-            tape.clear(dim if dim is not None else 0)
-        # any other character is not a command and is ignored
+
+        port = None
+        if not self.comment:
+            if c == ".":
+                self.io.print_char(chr(self.tape.value()))
+            elif c == ",":
+                port = self.io.input_char()
+            elif c == "d":
+                port = self.io.input_num()
+            elif c == "x":
+                port = int(self.io.input_str(), 16)
+
+        state, effect = _advance(
+            self._state, code, self.m, self.tape.value, self.tape.coord, port
+        )
+        self._restore(state)
+        if effect is not None:
+            self._apply(effect)
 
 
 def run(code: str, io: IO) -> None:
