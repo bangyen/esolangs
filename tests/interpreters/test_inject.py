@@ -15,7 +15,11 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.other.inject import _Machine, run
-from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.interpreters.contract import (
+    CycleContract,
+    SnapshotContract,
+    StateViewContract,
+)
 from tests.raises import raises_message
 
 HELLO_WORLD = "\n".join(
@@ -373,6 +377,14 @@ class TestMalformed:
 class TestSnapshot(SnapshotContract):
     machine = staticmethod(_machine)
     stepping_program: ClassVar[str] = INJECT_TRUTH_MACHINE
+
+
+class TestStateView(StateViewContract):
+    machine = staticmethod(_machine)
+    # Inject's cursor is a *line* index and its memory is each labelled
+    # block's line count, so the two are different shapes over one program.
+    state_views: ClassVar[tuple[str, ...]] = ("ip", "memory")
+    viewing_program: ClassVar[str] = HELLO_WORLD
 
 
 class TestCycle(CycleContract):
