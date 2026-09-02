@@ -13,6 +13,19 @@ and a boolean-generator capability (input, a value conditional, output).
 Per-language verdicts on everything ruled out are in the
 assessed-and-rejected ledger in `docs/limitations.md`.
 
+- **Super SNUSP** — a SNUSP derivative with a charcode-indexed opcode table:
+  `,` KEY (char in) and `@` IN (decimal in), `.` EMIT and `#` OUT, and two
+  value conditionals, `?` SKIPZ (skip if the cell is zero) and `` ` `` SKIPN
+  (skip if negative).  Native `^` XOR, `&` AND, `|` OR and shifts make boolean
+  tables unusually cheap: a two-input XOR is **15 characters**
+  (`48{,-> ,-<^{>^.`) against a suite median of 218, and four more of the
+  sixteen two-input tables price at 12-15.  Those five were executed under an
+  interpreter written from the wiki table, not modelled — see
+  `notes/twod-unimplemented-audit.md`.  Base SNUSP is wiki-Implemented with
+  external interpreters, but Super SNUSP has none, so it is a real gap.
+  Two open items before building: the remaining eleven two-input tables need
+  complementation via a `?` branch (expected to stay in the same size class,
+  unmeasured), and `=` RAND must be avoided by the generator.
 - **function x(y)** — Turing-complete: functions with defaults, `[~]`/`` `~ ``
   input, `[a]`/`` `a `` output, comparison operators, a ternary, recursion; a
   boolean generator branches on a comparison and prints 0/1.
@@ -32,9 +45,16 @@ assessed-and-rejected ledger in `docs/limitations.md`.
   The randomness is **not** an objection: `[a b]` and `~` are seedable, as
   LaserFuck's heading already is.
 
-No 2D/grid candidates remain open: the `Category:Two-dimensional` ×
-`Category:Unimplemented` pass produced Streetcode, Flowchart, Line, and
-Circuit Diagram, all implemented.
+The 2D/grid pass has been redone.  The earlier claim here cited
+`Category:Two-dimensional`, which does not exist on the wiki; the real
+category is `Category:Two-dimensional languages`, and intersecting it with
+`Category:Unimplemented` gives **111 pages**, not the four previously
+recorded.  Of those, one is implemented here (COD, whose wiki tag is stale),
+five already carry a ledger verdict, and 36 survived a triage screen and were
+read against the criteria above: Super SNUSP is promoted (see the list),
+Alight and Pinyin are plausible but **unpriced**, seven more have a single
+named blocker, and seventeen are rejected on named grounds.  Full per-language
+table in `notes/twod-unimplemented-audit.md`.
 
 ## Transpilers
 
@@ -52,8 +72,11 @@ rewrite; `docs/limitations.md` carries the measured argument and the
 worked examples.  This is the same class of future work as the OISC pair.
 
 The remaining candidates (a second Forth dialect ↔ Forþ,
-Boolfuck ↔ ABCDirection/Minifuck) each need a *new* interpreter first, so
-they belong under "New interpreters" if that language is ever added.
+Boolfuck ↔ Minifuck) each need a *new* interpreter first, so they belong
+under "New interpreters" if that language is ever added.  ABCDirection used
+to be named here as a third; it was implemented and then removed in
+`c7d19dac` (its generator emitted 15,729 characters for a two-input XOR, ~72x
+the current suite median), so it is not a candidate for anything.
 
 ## Deferred-removal candidates
 
