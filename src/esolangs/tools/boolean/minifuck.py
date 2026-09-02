@@ -95,8 +95,9 @@ produces 24582 fully-essential 32-bit columns against 4294642034 such tables,
 so this is 0.00057% of the arity rather than a quarter of it.  It ships for
 the reason four did -- a miss costs nothing but the fall-through.  The one
 thing that had to change is the spelling: a derivation over all ``2**32``
-tables cannot run, so the enumeration is asked for the table it wants -- see
-:func:`_derived_plans`, which every arity now uses that way.  What catches
+tables cannot run, so the enumeration is *inverted* rather than run per
+table -- see :func:`_staging_index`, which every arity now uses that way.
+What catches
 the rest is the sculpted route, which since its separation became a
 construction reaches five as readily as four: 200 of 200 sampled
 fully-essential five-input tables build and print every row.
@@ -1416,8 +1417,9 @@ _MAX_ACC = 34
 # suffix, accumulator)`` tuple in :func:`_stagings` order, so counting them
 # is identical everywhere -- a budget picks out the *same* set of tables on
 # a Raspberry Pi and on an M3, and the emitted programs stay byte-identical.
-# The count also tracks real work, since :func:`_printed_column` memoises
-# what a staging derives, making a visited staging roughly a constant unit.
+# The count also tracks real work: :func:`_column_sweep` derives a staging's
+# whole accumulator range from one walk, making a visited staging roughly a
+# constant unit.
 #
 # **A budget costs program length, not coverage.**  A table the budget stops
 # short of falls through to :func:`_mux`, which is total at four inputs at
@@ -1548,10 +1550,17 @@ def _stagings(n: int) -> Iterator[_Staging]:
     already close is assigned exactly the stagings it was assigned before the
     family existed.  Two and three inputs are unchanged, table for table.
 
-    :func:`_derived_plans` does not call this: it interleaves the same loops
-    with the machines it is advancing, so that a bracket count costs one
-    instruction rather than a rebuild.  This states the order those loops
-    implement, and the test suite checks the two agree.
+    Neither :func:`_derived_plans` nor :func:`_staging_index` calls this:
+    both interleave the same loops with the machines they are advancing, so
+    that a bracket count costs one instruction rather than a rebuild.  This
+    states the order those loops implement.
+
+    There are therefore *three* spellings of one order -- this one, the
+    per-table enumeration, and the inverted index production reads -- and the
+    test suite checks they agree.  That is not redundancy for its own sake:
+    an index that walks the order wrongly still produces columns that are
+    reachable and valid, so only a comparison against another spelling of the
+    order catches it.
     """
     for sep_index in range(len(_SEPS)):
         for settle in (0, 1):
@@ -1588,6 +1597,16 @@ def _replay(truth_table: str, n: int, plan: _Staging) -> str | None:
 @cache
 def _derived_plans(n: int, targets: tuple[str, ...]) -> dict[str, _Staging]:
     """Derive a staging for the wanted tables, in one pass of the enumeration.
+
+    **This is the oracle, not the production path.**  :func:`_derive_staging`
+    reads :func:`_staging_index`, which inverts the same enumeration once per
+    arity; this walks it per table.  It stays because the index's correctness
+    claim is *agreement with an independent implementation of the same
+    order*, and an oracle that no longer exists cannot be compared against.
+    ``tests/tools/test_boolean_parameterized.py`` pins the two together --
+    the interesting failure is an index that walks the order wrongly, which
+    still yields reachable, valid columns and so is invisible to any check
+    that only asks whether the program prints.
 
     A staging is expensive to *build* and cheap to *test against a table*: the
     embed, the bracket run and the endgame do not depend on which table is

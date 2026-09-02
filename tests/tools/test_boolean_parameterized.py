@@ -3441,6 +3441,71 @@ class TestParameterizedMinifuck:
             assert not any(m.dead for m in joint.ms), ignored
             assert len({m.key() for m in joint.ms}) == 1, ignored
 
+    def test_the_staging_index_agrees_with_the_enumeration(self) -> None:
+        """The inverted index assigns exactly what the per-table sweep does.
+
+        ``_derive_staging`` reads ``_staging_index``, which walks the
+        enumeration once per arity and tabulates column -> first staging;
+        ``_derived_plans`` walks the same order per table.  They must agree
+        tuple for tuple, because the order -- not a stored answer -- is what
+        decides which program a truth table gets.
+
+        This is the regression net for one specific mistake, and it is worth
+        stating what makes it hard to catch: an index that walks the order
+        wrongly still produces columns that are all reachable and all valid.
+        A draft of the index interleaved the two enumeration passes per
+        slice instead of running every pure bracket run before any insert
+        suffix, and the only symptom was five-input XOR being assigned
+        ``None`` where the enumeration assigns ``(2, 0, 0, 33)``.  Every
+        program it did emit still printed its table.  So the assertion here
+        is on the staging *tuple*, never on whether the build works.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        for arity in (2, 3):
+            index = module._staging_index(arity)  # noqa: SLF001
+            for value in range(2 ** (2**arity)):
+                table = format(value, f"0{2**arity}b")
+                column = tuple(int(bit) for bit in table)
+                complement = "".join(str(1 - int(bit)) for bit in table)
+                expected = module._derived_plans(  # noqa: SLF001
+                    arity, (table, complement)
+                ).get(table)
+                assert index.get(column) == expected, (arity, table)
+
+    @pytest.mark.slow  # runs the per-table enumeration, which is the slow half
+    def test_the_staging_index_agrees_at_the_wider_arities(self) -> None:
+        """The same agreement where the insert family and the budget live.
+
+        Four inputs is the first arity with a second enumeration pass (the
+        insert suffixes), and five is the only one that runs under a staging
+        budget and in slice-yield rather than plain order.  Both are code
+        paths the two- and three-input check above never reaches, and both
+        are where an index that mis-walks the order would show up.
+        """
+        import importlib
+        import random
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        random.seed(20260902)
+        wide = [format(value, "016b") for value in range(65536)]
+        wide = [t for t in wide if len(essential_inputs(t, 4)) == 4]
+        samples = [(4, t) for t in random.sample(wide, 40)]
+        samples.append((4, "0110100110010110"))  # four-input XOR
+        samples.append((5, "01101001100101101001011001101001"))  # five-input
+
+        for arity, table in samples:
+            index = module._staging_index(arity)  # noqa: SLF001
+            complement = "".join(str(1 - int(bit)) for bit in table)
+            expected = module._derived_plans(  # noqa: SLF001
+                arity, (table, complement)
+            ).get(table)
+            column = tuple(int(bit) for bit in table)
+            assert index.get(column) == expected, (arity, table)
+
     def test_the_staging_enumeration_is_offered_only_at_its_arities(self) -> None:
         """Outside ``_STAGED_ARITIES`` the derivation offers nothing.
 
