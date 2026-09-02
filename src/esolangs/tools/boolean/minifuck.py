@@ -1507,9 +1507,35 @@ _MAX_ACC = 34
 # inputs: 205 characters against the sculpted route's 952) for the tables it
 # gives up.  That is why a slow host can lower it safely.
 #
-# ``None`` means no budget, which is what ships: the default must reproduce
-# the enumeration exactly, or every recorded template changes.
+# ``None`` means no budget, which is what ships at four inputs and below:
+# the default must reproduce the enumeration exactly there, or every
+# recorded template changes.
 _STAGING_BUDGET: int | None = None
+
+# Five inputs is budgeted by default, and that is a different decision from
+# the one above.  At four inputs a budget is an option a slow host may take;
+# here it ships on, because the arity is *only* reached by tables the
+# cheaper routes could not place and the enumeration cannot stop early on a
+# miss.  Measured on a table the span screen admits: 54.7s unbudgeted, 12.6s
+# at 30000 stagings, 3.5s at 8000 -- against 1.4s for five-input XOR, which
+# still builds at 30000.  The value below keeps the flagship hits and takes
+# the miss from a minute to seconds.
+#
+# What it gives up is tables that sit late in the enumeration, and they are
+# given up to a *raise* rather than to a slower route, since nothing below
+# this arity's staged family reaches them.  That is the trade being made
+# deliberately: at five inputs the generator refuses quickly instead of
+# building slowly, and the refused tables are unreached rather than
+# unbuildable -- see ``docs/walls.md``.
+_STAGING_BUDGET_N5 = 30000
+
+
+def _budget(n: int) -> int | None:
+    """Return the staging budget for this arity, in stagings visited."""
+    if n >= 5 and _STAGING_BUDGET is None:
+        return _STAGING_BUDGET_N5
+    return _STAGING_BUDGET
+
 
 # The ``(separator, settle)`` slices in descending measured yield at four
 # inputs, which is what makes a budget worth having.  Every slice costs the
@@ -1548,7 +1574,7 @@ def _slices(n: int) -> tuple[tuple[int, int], ...]:
     plain = tuple(
         (sep_index, settle) for sep_index in range(len(_SEPS)) for settle in (0, 1)
     )
-    if _STAGING_BUDGET is None or n != 4:
+    if _budget(n) is None or n != 4:
         return plain
     return _SLICE_YIELD_ORDER
 
@@ -1748,7 +1774,7 @@ def _derived_plans(n: int, targets: tuple[str, ...]) -> dict[str, _Staging]:
     # a ``(separator, settle, suffix, accumulator)`` tuple and ``claim``
     # walks the accumulators for one suffix in a single call.
     spent = 0
-    budget = _STAGING_BUDGET
+    budget = _budget(n)
     accs = _MAX_ACC - 8
 
     def exhausted() -> bool:
@@ -2504,7 +2530,6 @@ def _solve(truth_table: str) -> str:
     so repeat calls are free either way.
     """
     n = _validate_shape(truth_table)
-    want = tuple(int(c) for c in truth_table)
 
     # A table that ignores some of its inputs is a *smaller* table wearing
     # extra ones, so solve it at the arity it actually uses and renumber the
@@ -2562,93 +2587,36 @@ def _solve(truth_table: str) -> str:
     if sculpted is not None:
         return sculpted
 
-    frontier = _BASE + n * _SPAN + 6
-
-    # **Everything below is unreachable at ``n <= 4`` and is not dead code.**
-    # Measured with both searches stubbed to raise: every table at one, two
-    # and three inputs builds without them (4, 16 and 256 of each), and so
-    # does a 370-table four-input sample that deliberately included 120
-    # degenerate tables.  The routes above cover those arities between them.
+    # **A miss raises here rather than searching, and that is a deliberate
+    # trade of coverage for a bounded cost.**
     #
-    # They stay because ``n >= 5`` has nothing else.  Staging is partial
-    # there -- a measured 0.00057% of the arity -- and :func:`_mux` declines,
-    # since no derivation has separated 32 rows; see :data:`_MUX_ARITIES`.
-    # Deleting these would turn every five-input miss from slow into a
-    # raise, which is a coverage regression rather than a cleanup.
+    # The column and parked searches used to sit at this point.  They were
+    # measurably unreachable at ``n <= 4`` -- stubbed to raise, every table
+    # at one, two and three inputs still built (4, 16 and 256 of each), and
+    # so did a 370-table four-input sample that deliberately included 120
+    # degenerate tables -- because the routes above close those arities
+    # between them.
     #
-    # So the right reading of "unreachable" here is *unreachable at the
-    # arities something better closes*, which is a statement about
-    # :func:`_mux` rather than about these searches.  Lift five inputs and
-    # they become deletable; until then they are the last line.
-
-    # The scans first, across *both* separators, because they are by far the
-    # cheapest route and a good share of tables land in one of them: the
-    # embed's carry chain computes AND, NOR and XOR as a byproduct, so the
-    # answer is often already sitting in a cell.  Interleaving them with the
-    # searches (one separator fully, then the next) made tables that only the
-    # second separator's scan reaches pay for three failed searches first --
-    # measured at 69-82s each, against about 35s for the searches that do hit.
-    for sep in _SCAN_SEPS:
-        base = _embed(n, sep=sep)
-        _clamp(base)
-        for acc in range(9, frontier):
-            hit = _try_print(base, truth_table, acc)
-            if hit is not None:
-                return hit.template()
-
-    for sep in _SCAN_SEPS:
-        # Otherwise search for the answer column outright.  The search has to
-        # launch from the frontier, with the pointer already in the data: a
-        # depth-``d`` walk from the origin never reaches cell ``_BASE``, so
-        # every state it could see is input-independent.
-        for park in range(_BASE - 2, _BASE + 2 * n + 4):
-            probe = _embed(n, sep=sep)
-            _clamp(probe)
-            try:
-                _walk_to(probe, park)
-            except ValueError:
-                continue
-            found = _find_column(probe, want, frontier + 8, _COLUMN_DEPTH)
-            if found is None:
-                continue
-            code, _cell = found
-            probe.emit(code)
-            _clamp(probe)
-            for acc in range(9, frontier + 8):
-                hit = _try_print(probe, truth_table, acc)
-                if hit is not None:
-                    return hit.template()
-
-    # Last, and only if everything cheaper failed: park the pointer on the
-    # answer as part of what is searched for, so no walk intervenes between
-    # producing the column and reading it -- a walk back would re-cross, and
-    # so change, that very cell.  This is the most expensive route, so it goes
-    # last.
+    # At ``n >= 5`` they were reachable and *unbounded*.  A five-input table
+    # the staged enumeration cannot place ran past a 240-second cap and was
+    # still going, against 3.4 seconds for a table it can place (five-input
+    # XOR) and about 55 seconds for the enumeration itself to give up.  So
+    # the searches turned a fast failure into an indefinite one, which is
+    # worse than refusing: a caller can handle a raise, and cannot handle a
+    # build that never returns.
     #
-    # It used to be justified as the only route reaching the XOR family at
-    # n == 2.  That is no longer true and has not been since the stagings
-    # landed: the algorithmic prefix alone builds all 16 two-input tables and
-    # all 256 three-input ones, ``0110`` and ``1001`` among them, verified
-    # row by row on the interpreter.  No search of any kind runs below four
-    # inputs now, so what this stage is worth is a question about the four-
-    # input residue -- the 4048 tables (6.3%) the staging family misses --
-    # and that has not been measured.
-    for sep in _SCAN_SEPS:
-        for code, _cell in _find_parked(
-            _embed(n, settle=_SETTLE, sep=sep),
-            want,
-            frontier + 8,
-            _PARKED_DEPTH,
-            _PARKED_LIMIT,
-        ):
-            probe = _embed(n, settle=_SETTLE, sep=sep)
-            probe.emit(code)
-            _clamp(probe)
-            for acc in range(9, frontier + 8):
-                hit = _try_print(probe, truth_table, acc)
-                if hit is not None:
-                    return hit.template()
-
+    # What is kept is the fast half.  Five inputs still builds every table
+    # the staged family reaches -- a measured 0.00057% slice, five-input XOR
+    # among them, which no search here ever built anyway -- and a table
+    # outside it now raises at once instead of hanging.  ``_span_admits``
+    # declines most misses in milliseconds, so the common miss is fast too.
+    #
+    # This is a *cost* gate, not a claim about the language.  The tables it
+    # refuses are unreached, not unbuildable, and lifting them needs the
+    # 32-row separation :data:`_MUX_ARITIES` is waiting on -- see
+    # ``docs/walls.md``.  Restore the searches and the old behaviour returns
+    # unchanged; they are recorded in git history rather than carried as
+    # code no arity can afford to run.
     raise ValueError(f"the Minifuck boolean generator could not build {truth_table!r}")
 
 

@@ -3142,7 +3142,14 @@ class TestParameterizedMinifuck:
                             continue
                         try:
                             module.minifuck.__wrapped__(table)
-                        except AssertionError:
+                        except (AssertionError, ValueError):
+                            # ``AssertionError`` is a stub firing.  A
+                            # ``ValueError`` is ``_solve`` giving up, which
+                            # is what a strand looks like now that the
+                            # column and parked searches are gone: there is
+                            # no route left below to rebuild it quietly.
+                            # Both mean the same thing here -- this drop
+                            # cost this table.
                             stranded.append(table)
                 stranding[codes[dropped]] = len(stranded)
 
@@ -3790,67 +3797,6 @@ class TestParameterizedMinifuck:
             patch.setattr(module, "_find_column", lambda *_a, **_k: None)
             patch.setattr(module, "_PARKED_DEPTH", 6)
             patch.setattr(module, "_PARKED_LIMIT", 2)
-            with pytest.raises(ValueError, match="could not build"):
-                module.minifuck.__wrapped__("0110")
-
-    def test_the_parked_route_returns_the_program_it_prints(self) -> None:
-        """A parked candidate that prints ends the search there.
-
-        Which of the collected candidates survives the endgame is settled
-        by running it, so the route tries each in turn and returns the
-        first that prints the table -- it does not rank them or keep
-        looking once one works.
-        """
-        import importlib
-
-        # The package re-exports the generator under the submodule's own
-        # name, so import the module explicitly rather than by attribute.
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
-        from esolangs.tools.boolean.minifuck import _find_parked as real_parked
-
-        parked = {"fired": False}
-
-        def spy(*args: object, **kwargs: object) -> list[tuple[str, int]]:
-            parked["fired"] = True
-            return real_parked(*args, **kwargs)  # type: ignore[arg-type]
-
-        class _Printed:
-            def template(self) -> str:
-                return "SENTINEL"
-
-        def only_after_parking(*_a: object, **_k: object) -> object:
-            return _Printed() if parked["fired"] else None
-
-        with pytest.MonkeyPatch.context() as patch:
-            patch.setattr(module, "_find_parked", spy)
-            patch.setattr(module, "_try_print", only_after_parking)
-            patch.setattr(module, "_find_column", lambda *_a, **_k: None)
-            patch.setattr(module, "_PARKED_DEPTH", 6)
-            patch.setattr(module, "_PARKED_LIMIT", 2)
-            assert module.minifuck.__wrapped__("0110") == "SENTINEL"
-
-        assert parked["fired"], "the parked route never ran"
-
-    def test_a_found_column_is_walked_out_and_printed_from(self) -> None:
-        """The column route emits its find, re-clamps, and scans for the print.
-
-        A column is only half an answer -- the pointer still has to reach
-        it -- so the route emits the search's code, clamps the rows back
-        together, and then tries the accumulators in turn.  Stubbing the
-        search to a cell it can reach is what exercises that body without
-        paying for the search that normally finds it.
-        """
-        import importlib
-
-        # The package re-exports the generator under the submodule's own
-        # name, so import the module explicitly rather than by attribute.
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
-
-        with pytest.MonkeyPatch.context() as patch:
-            patch.setattr(module, "_try_print", lambda *_a, **_k: None)
-            patch.setattr(module, "_find_column", lambda *_a, **_k: ("", 20))
-            patch.setattr(module, "_PARKED_DEPTH", 4)
-            patch.setattr(module, "_PARKED_LIMIT", 1)
             with pytest.raises(ValueError, match="could not build"):
                 module.minifuck.__wrapped__("0110")
 
