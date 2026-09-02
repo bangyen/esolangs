@@ -437,6 +437,54 @@ class TestParameterizedPctSquaredMinusOne:
             assert self.run_pct(program) == table[row], (table, bits)
         assert len(lengths) == 1, sorted(lengths)
 
+    @pytest.mark.parametrize("bit", ["0", "1"])
+    def test_fold_finishes_a_single_class(self, bit: str) -> None:
+        """A constant table leaves one point, which ``finish`` aligns alone.
+
+        Every other fold test lands two points, one per class, so the pair's
+        mutual gap carries the residue.  A constant table has no second
+        class: ``finish`` takes its one-point arm instead, where there is no
+        gap to make congruent and the only work is shifting that point onto
+        its answer byte within the room left below the limit.
+
+        Both constants are run because the arm subtracts 256 until the shift
+        fits, and the two answer bytes sit at different distances from the
+        limit -- so they do not take that loop the same number of times.
+        """
+        from esolangs.tools.boolean.pct_squared_minus_one import _fold
+
+        table = bit * 8
+        template = _fold(table, 3)
+        assert template is not None
+        for row in range(8):
+            bits = [(row >> (2 - k)) & 1 for k in range(3)]
+            assert self.run_pct(self.instantiate(template, bits)) == bit
+
+    def test_dispatch_falls_through_to_the_fold(self) -> None:
+        """The public entry reaches the fold, not just ``_fold`` called directly.
+
+        Both fold tests above call ``_fold`` themselves to keep their cost
+        to the plan they are pinning, so nothing exercised the last arm of
+        ``pct_squared_minus_one``'s own ordering -- the one that runs after
+        the deep band refuses.  A generator whose dispatch stopped handing
+        five-input tables to the fold would still pass every test here.
+
+        Cheap because the witness is already pinned: the ~18s sweep that
+        found a table the deep band refuses was paid once, above.  This
+        asserts the refusal still holds (so the fall-through is the arm
+        being taken, not a deep band that quietly started serving it) and
+        that the dispatch returns what the fold returns.
+        """
+        from esolangs.tools.boolean.pct_squared_minus_one import (
+            _deep_band,
+            _fold,
+            pct_squared_minus_one,
+        )
+
+        table = "11011111100100101001101110111000"
+        assert _deep_band(table, 5) is None  # the arm above must still refuse
+        assert pct_squared_minus_one(table) == _fold(table, 5)
+
     @pytest.mark.slow  # derives the whole three-input arity once
     def test_affine_reach_is_exactly_characterized(self) -> None:
         """The composed-affine path's 86/256 is a predicate, not a measurement.
