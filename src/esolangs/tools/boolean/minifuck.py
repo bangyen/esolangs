@@ -1737,8 +1737,15 @@ def _derived_plans(n: int, targets: tuple[str, ...]) -> dict[str, _Staging]:
     if n not in _INSERT_ARITIES:
         return found
     for sep_index, settle in slices:
+        # Never taken, and kept for symmetry with the loop above rather than
+        # as a live exit: every `spent += accs` is immediately followed by
+        # its own `exhausted()` that returns, so no spend happens between
+        # that check and this one -- a budget that would stop the pass has
+        # already stopped it inside the body.  Measured over nine budgets
+        # spanning the insert pass (7540, where it is entered, to 120640,
+        # the whole enumeration): evaluated 35 times, taken 0.
         if exhausted():
-            return found
+            return found  # pragma: no cover - see above
         base = _embed(n, settle=settle, sep=_SEPS[sep_index])
         _clamp(base)
         _walk_to(base, _BASE - 1)
@@ -1957,8 +1964,11 @@ def _staging_index(n: int) -> dict[tuple[int, ...], _Staging]:
     if n not in _INSERT_ARITIES:
         return index
     for sep_index, settle in slices:
+        # Never taken, for the same reason as the oracle's copy of this
+        # loop: the spend inside the body is followed immediately by its own
+        # `exhausted()` return, so nothing accrues across the loop boundary.
         if exhausted():
-            return index
+            return index  # pragma: no cover - see _derived_plans
         base = _embed(n, settle=settle, sep=_SEPS[sep_index])
         _clamp(base)
         _walk_to(base, _BASE - 1)
