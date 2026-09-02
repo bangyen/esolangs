@@ -488,3 +488,108 @@ class TestCoveragePaths:
         machine_ = machine("1 + 1")
         machine_.step()
         assert len(machine_.stack) == 1
+
+
+class TestMutationGaps:
+    """Behaviour the wiki's examples exercise but do not *discriminate*.
+
+    Each of these pins a decision that a plausible alternative
+    implementation would get wrong while still passing every test above:
+    the order operators are tried in, the exact `**` lookahead, and which
+    fields of a snapshot actually vary.
+    """
+
+    def test_a_longer_operator_pattern_wins_over_a_shorter_prefix(self) -> None:
+        """``^a^b^`` must not be matched as ``^a^`` followed by junk.
+
+        Patterns are tried longest-first for exactly this case; trying
+        them in definition order would match the two-argument operator's
+        opening ``^`` with the one-argument pattern instead.
+        """
+        program = "^a^ = a * 10\n^a^b^ = a + b\n^1^2^"
+        assert run_and_capture(program) == "3\n"
+
+    def test_a_shorter_pattern_still_matches_when_the_longer_cannot(self) -> None:
+        assert run_and_capture("^a^ = a * 10\n^a^b^ = a + b\n^7^") == "70\n"
+
+    def test_a_single_star_is_multiplication_not_a_power(self) -> None:
+        """The ``**`` lookahead needs both tokens, not just the first."""
+        assert run_and_capture("2 * 3") == "6\n"
+
+    def test_a_power_of_a_product_binds_tighter_than_the_product(self) -> None:
+        assert run_and_capture("2 * 3 ** 2") == "18\n"
+
+    def test_a_trailing_star_at_the_end_of_input_is_not_a_power(self) -> None:
+        """The lookahead's bounds check is what stops this indexing off."""
+        with raises_message(ValueError, "unexpected end of expression"):
+            run_and_capture("2 *")
+
+    def test_the_snapshot_line_cursor_varies(self) -> None:
+        """Two programs differing only in how far they have got differ."""
+        first = machine("1\n2")
+        second = machine("1\n2")
+        second.step()
+        while second.frames:
+            second.step()
+        assert first.snapshot() != second.snapshot()
+
+    def test_the_snapshot_carries_the_globals(self) -> None:
+        """Two machines at the same cursor with different bindings differ."""
+        one = machine("n\nn", "1\n")
+        two = machine("n\nn", "2\n")
+        for machine_ in (one, two):
+            while machine_.frames or machine_.line == 0:
+                machine_.step()
+        assert one.snapshot() != two.snapshot()
+
+    def test_the_snapshot_carries_the_input_cursor(self) -> None:
+        """A loop that keeps reading is not a repeat, so reads must show."""
+        machine_ = machine("a\nb", "1\n1\n")
+        seen = set()
+        while not machine_.halted:
+            seen.add(machine_.snapshot())
+            machine_.step()
+        # Both lines print the same value from identical-looking state;
+        # only the input cursor separates them.
+        assert len(seen) == len([1 for _ in seen])
+
+    def test_the_frame_key_carries_the_bindings(self) -> None:
+        """Two calls of one function with different arguments differ."""
+        machine_ = machine("F(x) = x\nF(1)\nF(2)")
+        keys = []
+        seen = 0
+        while not machine_.halted:
+            machine_.step()
+            if len(machine_.frames) > seen and machine_.frames:
+                frame = machine_.frames[-1]
+                if frame.fn.name == "F":
+                    keys.append(machine_.frame_entry_key(frame))
+            seen = len(machine_.frames)
+        assert len(keys) == 2
+        assert keys[0] != keys[1]
+
+    def test_the_frame_key_carries_the_function_name(self) -> None:
+        """Two different nullary functions must not share a key."""
+        machine_ = machine("F() = 1\nG() = 1\nF()\nG()")
+        keys = []
+        seen = 0
+        while not machine_.halted:
+            machine_.step()
+            if len(machine_.frames) > seen and machine_.frames:
+                frame = machine_.frames[-1]
+                if frame.fn.name:
+                    keys.append(machine_.frame_entry_key(frame))
+            seen = len(machine_.frames)
+        assert len(keys) == 2
+        assert keys[0] != keys[1]
+
+    def test_a_definition_body_replaces_its_placeholder(self) -> None:
+        """The self-reference trick registers an empty body first.
+
+        If the real body never replaced it, every call would return 0.
+        """
+        assert run_and_capture("F() = 42\nF()") == "42\n"
+
+    def test_a_recursive_operator_sees_its_own_pattern(self) -> None:
+        """Registering the name before parsing is what makes this parse."""
+        assert run_and_capture("x? = x & x?\n0?") == "0\n"
