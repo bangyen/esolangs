@@ -451,7 +451,7 @@ def _approximant(
     return (accumulator, deque, function, pointer)
 
 
-def _step(
+def _advance(
     core: _Core,
     token: str,
     starts: list[int],
@@ -549,7 +549,7 @@ class _Machine:
         )
 
     @property
-    def _core(self) -> _Core:
+    def _state(self) -> _Core:
         """The machine's fields as the value the handlers work on."""
         return (self.accumulator, self.deque, self.function, self.pointer)
 
@@ -575,8 +575,8 @@ class _Machine:
         elif token == _READ_CHAR:
             byte = self.io.input_char()
 
-        core, output = _step(
-            self._core,
+        core, output = _advance(
+            self._state,
             token,
             self.starts,
             self.pairs,

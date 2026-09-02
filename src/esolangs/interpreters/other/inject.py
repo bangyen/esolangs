@@ -90,7 +90,7 @@ way Fargo is for its own output-alphabet reason.
 
 The execution model is a pure function over an immutable ``_State``: the
 program's lines, its label spans, the pointer, and whether it has exited.
-:func:`_step` maps one state to the next and never edits what it is given;
+:func:`_advance` maps one state to the next and never edits what it is given;
 :meth:`_Machine.step` rebinds the machine's four fields from what it
 returned, so the mutation lives in exactly one place.
 
@@ -151,7 +151,7 @@ type _Spans = Mapping[str, tuple[int, int]]
 
 #: One instant of a run: ``(lines, spans, ind, done)`` -- the program text,
 #: the label spans over it, the line cursor, and whether ``skip``'s third
-#: clause has exited.  A value, not a record: :func:`_step` returns a new
+#: clause has exited.  A value, not a record: :func:`_advance` returns a new
 #: tuple rather than editing one in place.
 #:
 #: The lines are *in* here because they are the memory: ``readto`` and
@@ -255,7 +255,7 @@ def _injected(state: _State, rest: str) -> _State:
     return _replaced(state, name, body)
 
 
-def _step(state: _State, line_in: str | None = None) -> tuple[_State, list[str]]:
+def _advance(state: _State, line_in: str | None = None) -> tuple[_State, list[str]]:
     """Return the state after one line, and everything it printed.
 
     Pure: it reads ``state`` and returns a new one, and reaches no ``IO``.
@@ -408,7 +408,7 @@ class _Machine:
         # raises there, which is the language's documented halt for it.
         line_in = self.io.input_str() if command == "readto" else None
 
-        state, output = _step(self._state, line_in)
+        state, output = _advance(self._state, line_in)
         self._restore(state)
         for text in output:
             self.io.print_str(text)
