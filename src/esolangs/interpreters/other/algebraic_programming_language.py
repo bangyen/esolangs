@@ -580,15 +580,22 @@ class _Frame:
     call, whose value simply returns to its caller.
     """
 
-    def __init__(self, definition: _Definition, args: dict[str, object]) -> None:
+    def __init__(
+        self,
+        definition: _Definition,
+        args: dict[str, object],
+        *,
+        printing: bool = False,
+        assign: str | None = None,
+    ) -> None:
         self.fn = definition
         self.locals = args
         self.stmt = 0
         self.work: list[tuple[_Node, list[object]]] = []
         self.value: object = 0
         self.returned = False
-        self.printing = False
-        self.assign: str | None = None
+        self.printing = printing
+        self.assign = assign
 
     def __repr__(self) -> str:
         """Identify the frame by its function and cursor."""
@@ -750,9 +757,7 @@ class _Machine:
         assign: str | None = None,
     ) -> None:
         """Push a frame for ``definition`` and queue its first statement."""
-        frame = _Frame(definition, args)
-        frame.printing = printing
-        frame.assign = assign
+        frame = _Frame(definition, args, printing=printing, assign=assign)
         frame.work.append((definition.body[0], []))
         self.frames.append(frame)
 
