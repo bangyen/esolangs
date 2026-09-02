@@ -170,11 +170,7 @@ def _tokens(line: str) -> list[str]:
                 ind += 1
             # A fractional part only counts when a digit follows the dot;
             # otherwise the dot is an operator symbol in its own right.
-            if (
-                ind + 1 < len(line)
-                and line[ind] == "."
-                and line[ind + 1] in _DIGITS
-            ):
+            if ind + 1 < len(line) and line[ind] == "." and line[ind + 1] in _DIGITS:
                 ind += 1
                 while ind < len(line) and line[ind] in _DIGITS:
                     ind += 1
@@ -213,7 +209,7 @@ class _Parser:
         self.ind = 0
 
     def peek(self) -> str | None:
-        """The next token, or None at the end of the expression."""
+        """Return the next token, or None at the end of the expression."""
         return self.tokens[self.ind] if self.ind < len(self.tokens) else None
 
     def take(self) -> str:
@@ -313,7 +309,7 @@ class _Parser:
             node = match
 
     def _operators(self) -> list[_Definition]:
-        """The custom operators, longest pattern first."""
+        """Return the custom operators, longest pattern first."""
         return sorted(
             (d for d in self.defs.values() if "\0" in d.name),
             key=lambda d: -len(d.name),
@@ -340,9 +336,9 @@ class _Parser:
     def _try_pattern(
         self, definition: _Definition, left: _Node | None
     ) -> list[_Node] | None:
-        """Match ``definition``'s pattern, with ``left`` filling a leading slot.
+        r"""Match ``definition``'s pattern, with ``left`` filling a leading slot.
 
-        The pattern is the operator's stored name with ``\\0`` marking each
+        The pattern is the operator's stored name with ``\0`` marking each
         argument slot; a leading slot is the operand already parsed, so it
         consumes no tokens.
         """
@@ -449,14 +445,17 @@ def _split_definition(line: str) -> tuple[str, str] | None:
 
 
 def _parse_lhs(lhs: str) -> tuple[str, list[str]]:
-    """Parse a definition's left-hand side into a name and parameters.
+    r"""Parse a definition's left-hand side into a name and parameters.
 
     Three shapes: a bare variable (``n = 123``), a function with
     parentheses (``F(x) = ...``), and a custom operator pattern
     (``a ~ b = ...``, ``a@ = ...``), whose name records its symbols with
-    ``\\0`` standing in for each argument slot so the parser can match it
+    ``\0`` standing in for each argument slot so the parser can match it
     against the token stream.
     """
+    # The surrounding whitespace is not part of the header, and quoting it
+    # back in an error message only misleads the reader.
+    lhs = lhs.strip()
     tokens = _tokens(lhs)
     if not tokens:
         raise ValueError("definition has no left-hand side")
@@ -686,7 +685,6 @@ class _Machine:
             self.io.position(),
         )
 
-
     # -- stepping -----------------------------------------------------
 
     def step(self) -> None:
@@ -771,31 +769,38 @@ class _Machine:
             self._advance(frame)
             return
         node, done = frame.work[-1]
-        kind = node[0]
-        if kind == "lit":
+        # Narrowed on ``node`` itself rather than through a ``kind`` local,
+        # so mypy can discriminate the tuple union: binding the tag to a
+        # variable first loses the link between it and the node's shape.
+        if node[0] == "lit":
             self._resolve(frame, node[1])
-        elif kind == "var":
+            return
+        if node[0] == "var":
             self._resolve(frame, self._lookup(frame, node[1]))
-        elif kind == "ref":
+            return
+        if node[0] == "ref":
             self._resolve(frame, self._lookup_function(frame, node[1]))
-        elif kind == "neg":
+            return
+        if node[0] == "neg":
             if not done:
                 self._descend(frame, node[1])
             else:
                 self._resolve(frame, -_as_number(done[0]))
-        elif kind == "ret":
+            return
+        if node[0] == "ret":
             if not done:
                 self._descend(frame, node[1])
-            else:
-                # ``$`` exits the function immediately, so the rest of the
-                # expression around it is abandoned rather than resumed.
-                frame.returned = True
-                frame.value = done[0]
-                frame.work.clear()
-        elif kind == "bin":
+                return
+            # ``$`` exits the function immediately, so the rest of the
+            # expression around it is abandoned rather than resumed.
+            frame.returned = True
+            frame.value = done[0]
+            frame.work.clear()
+            return
+        if node[0] == "bin":
             self._step_binary(frame, node, done)
-        else:
-            self._step_call(frame, node, done)
+            return
+        self._step_call(frame, node, done)
 
     def _lookup(self, frame: _Frame, name: str) -> object:
         """Resolve a variable against the frame's locals, then the globals."""
@@ -817,7 +822,7 @@ class _Machine:
         """Queue ``node`` as the next sub-evaluation of the current one."""
         frame.work.append((node, []))
 
-    def _step_binary(self, frame: _Frame, node: _Node, done: list[object]) -> None:
+    def _step_binary(self, frame: _Frame, node: _Bin, done: list[object]) -> None:
         """Resolve one stage of a binary operator, short-circuiting & and |.
 
         ``&`` and ``|`` evaluate their left side first and skip the right
@@ -847,7 +852,7 @@ class _Machine:
             return
         self._resolve(frame, _arith(op, _as_number(left), _as_number(right)))
 
-    def _step_call(self, frame: _Frame, node: _Node, done: list[object]) -> None:
+    def _step_call(self, frame: _Frame, node: _Call, done: list[object]) -> None:
         """Evaluate a call's arguments, then push the callee's frame."""
         name, args = node[1], node[2]
         if len(done) < len(args):
@@ -956,14 +961,13 @@ def _arith(op: str, left: _Number, right: _Number) -> _Number:
 
 def _contains_return(node: _Node) -> bool:
     """Whether ``$`` appears anywhere in ``node``; see :class:`_Definition`."""
-    kind = node[0]
-    if kind == "ret":
+    if node[0] == "ret":
         return True
-    if kind == "neg":
+    if node[0] == "neg":
         return _contains_return(node[1])
-    if kind == "bin":
+    if node[0] == "bin":
         return _contains_return(node[2]) or _contains_return(node[3])
-    if kind == "call":
+    if node[0] == "call":
         return any(_contains_return(arg) for arg in node[2])
     return False
 
@@ -973,16 +977,18 @@ def _free_variables(node: _Node) -> list[str]:
     out: list[str] = []
 
     def walk(current: _Node) -> None:
-        kind = current[0]
-        if kind == "var":
+        if current[0] == "var":
             if current[1] not in out:
                 out.append(current[1])
-        elif kind in ("neg", "ret"):
+            return
+        if current[0] in ("neg", "ret"):
             walk(current[1])
-        elif kind == "bin":
+            return
+        if current[0] == "bin":
             walk(current[2])
             walk(current[3])
-        elif kind == "call":
+            return
+        if current[0] == "call":
             for arg in current[2]:
                 walk(arg)
 

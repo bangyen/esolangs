@@ -81,6 +81,12 @@ def run_sophie_from(program: str, feed: Iterator[str]) -> str:
     return _run_from("esolangs.interpreters.register_based.sophie", program, feed)
 
 
+def run_algebraic_programming_language(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.other.algebraic_programming_language import run
+
+    return run_program(run, program, _stdin(inputs))
+
+
 def run_inject(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.other.inject import run
 
