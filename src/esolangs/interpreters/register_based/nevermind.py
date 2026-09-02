@@ -38,12 +38,13 @@ reaches the end of the program.
 """
 
 import sys
+from collections.abc import Mapping, Sequence
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
 
-def find(code: list[list[str | int | float]], ind: int) -> int:
+def find(code: Sequence[Sequence[str | int | float]], ind: int) -> int:
     """Return the index of the matching ``if``/``loop`` partner for ``ind``.
 
     Raises :class:`ValueError` when the partner is missing: the wiki defines
@@ -111,6 +112,125 @@ def _number(value: str | int | float, op: str) -> int | float:
     return value
 
 
+#: One instant of a run: ``(code, ind, var, skip)`` -- the parsed program,
+#: the line cursor, the variables, and the suppression flag.
+#:
+#: The program is state rather than a fixed text, for two reasons: a
+#: ``$name`` is replaced by its value in the line that used it, and
+#: ``loop`` counts down by rewriting its own count.  ``snapshot`` already
+#: carried it for that reason.
+#:
+#: ``skip`` is carried because the field exists and the guard reads it, not
+#: because it can be observed: a zero ``loop`` sets it and the same step
+#: clears it before returning, so no step has ever started with it true.
+#: It is kept exactly as it was rather than quietly dropped.
+type _Line = tuple[str | int | float, ...]
+type _Code = tuple[_Line, ...]
+type _Vars = Mapping[str, int | float | str]
+type _State = tuple[_Code, int, _Vars, bool]
+
+
+def _resolve(line: _Line, var: _Vars) -> _Line:
+    """Return ``line`` with ``$name`` references replaced by their values.
+
+    The replacement is written back into the line, so a name is looked up
+    once however often the line runs again -- which is the language's own
+    behaviour, not an optimisation.  A number spelled as text is converted
+    at the same time.  An unknown name is a halt: there is no value to put
+    in its place.
+    """
+    out = list(line)
+    for i, val in enumerate(out[1:]):
+        if isinstance(val, str):
+            if val[0] == "$":
+                name = val[1:].strip()
+                if name not in var:
+                    raise HaltError
+                out[i + 1] = var[name]
+            nxt = out[i + 1]
+            if isinstance(nxt, str) and (num := _as_number(nxt)) is not None:
+                out[i + 1] = num
+    return tuple(out)
+
+
+def _arith(c: _Line) -> int | float | str:
+    """Return the value of a five-token ``make``: two operands and an op."""
+    if (o := c[3]) == "++":
+        return str(c[2]) + str(c[4])
+    name = str(o)
+    left, right = _number(c[2], name), _number(c[4], name)
+    if o == "+":
+        return left + right
+    if o == "-":
+        return left - right
+    if o == "*":
+        return left * right
+    if right == 0:
+        raise HaltError
+    return left / right
+
+
+def _advance(state: _State, answer: str | None = None) -> _State:
+    """Return the state after executing the line under the cursor.
+
+    Pure: it reads ``state`` and returns a new one.  ``print`` writes
+    nothing here -- the caller does that from the resolved line -- and
+    ``input``'s reply arrives as ``answer``.
+
+    The line arrives already resolved, and the state already carries that
+    rewrite.  That ordering is the original's: it replaced every ``$name``
+    first and only then checked the command had the operands its form
+    needs, so a line rejected as malformed still kept its resolved values.
+
+    A blank line and a suppressed one both fall straight through to the
+    cursor advance, which is what makes a blank line legal anywhere.
+    """
+    code, ind, var, skip = state
+    c = code[ind]
+
+    if c and not skip:
+        # Already resolved by the caller, and already written back: a line
+        # rejected below for its shape keeps the values it was given, which
+        # is what the original left behind when it validated after
+        # rewriting.
+        op = c[0]
+
+        if op == "input":
+            if len(c) < 2:
+                raise ValueError("input requires a prompt")
+            var = {**var, "answer": answer if answer is not None else ""}
+        elif op == "make":
+            if len(c) < 3:
+                raise ValueError("make requires a name and a value")
+            value = _arith(c) if len(c) == 5 else c[2]
+            var = {**var, str(c[1]): value}
+        elif op == "if":
+            if len(c) < 4:
+                raise ValueError("if requires two operands and a comparison")
+            lhs, cmp_op, rhs = c[1:4]
+            if cmp_op == ">":
+                b = _number(lhs, ">") > _number(rhs, ">")
+            elif cmp_op == "<":
+                b = _number(lhs, "<") < _number(rhs, "<")
+            else:
+                b = lhs == rhs
+            if not b:
+                ind = find(code, ind)
+        elif op == "loop":
+            if len(c) < 2:
+                raise ValueError("loop requires a count")
+            if c[1]:
+                c = (c[0], _number(c[1], "loop") - 1, *c[2:])
+                code = (*code[:ind], c, *code[ind + 1 :])
+            else:
+                ind = find(code, ind)
+                skip = True
+        elif op == "endloop":
+            ind = find(code, ind) + 1
+
+    return (code, ind + 1, var, False)
+
+
 class _Machine:
     """Per-run Nevermind state: the parsed program, variables, and cursor."""
 
@@ -162,75 +282,60 @@ class _Machine:
             tuple(tuple(c) for c in self.code),
         )
 
+    @property
+    def _state(self) -> _State:
+        """The machine's fields as the value the transition works on."""
+        return (
+            tuple(tuple(line) for line in self.code),
+            self.ind,
+            self.var,
+            self.skip,
+        )
+
+    def _restore(self, state: _State) -> None:
+        """Write a transition's result back onto the machine's fields.
+
+        The fields are this class's published shape -- ``snapshot`` reads
+        all four -- so they stay; the one assignment a step makes is here
+        rather than in the rules above.
+        """
+        code, self.ind, var, self.skip = state
+        self.code = [list(line) for line in code]
+        self.var = dict(var)
+
     def step(self) -> None:
-        """Execute one line, resolving ``$name`` references in place."""
+        """Execute one line, resolving ``$name`` references in place.
+
+        The two ports live here rather than in the transition: this is the
+        shell.  ``print`` writes the resolved line, and ``input`` asks with
+        the line's own prompt and hands the reply over.  Both need the line
+        *after* its references are resolved, so the resolution runs here
+        too and the transition is given the state it produced.
+        """
         if self.halted:
             return
-        if (c := self.code[self.ind]) and not self.skip:
-            for i, val in enumerate(c[1:]):
-                if isinstance(val, str):
-                    if val[0] == "$":
-                        name = val[1:].strip()
-                        if name not in self.var:
-                            raise HaltError
-                        c[i + 1] = self.var[name]
-                    nxt = c[i + 1]
-                    if isinstance(nxt, str) and (num := _as_number(nxt)) is not None:
-                        c[i + 1] = num
+        state = self._state
+        code, ind, var, skip = state
+        line = code[ind]
 
-            if (op := c[0]) == "print":
-                self.io.print_str("".join(map(str, c[1:])))
-            elif op == "input":
-                if len(c) < 2:
-                    raise ValueError("input requires a prompt")
-                self.var["answer"] = self.io.input_str(str(c[1]))
-            elif op == "make":
-                if len(c) < 3:
-                    raise ValueError("make requires a name and a value")
-                if len(c) == 5:
-                    v: int | float | str
-                    if (o := c[3]) == "++":
-                        v = str(c[2]) + str(c[4])
-                    else:
-                        name = str(o)
-                        left, right = _number(c[2], name), _number(c[4], name)
-                        if o == "+":
-                            v = left + right
-                        elif o == "-":
-                            v = left - right
-                        elif o == "*":
-                            v = left * right
-                        else:
-                            if right == 0:
-                                raise HaltError
-                            v = left / right
-                    self.var[str(c[1])] = v
-                else:
-                    self.var[str(c[1])] = c[2]
-            elif op == "if":
-                if len(c) < 4:
-                    raise ValueError("if requires two operands and a comparison")
-                lhs, cmp_op, rhs = c[1:4]
-                if cmp_op == ">":
-                    b = _number(lhs, ">") > _number(rhs, ">")
-                elif cmp_op == "<":
-                    b = _number(lhs, "<") < _number(rhs, "<")
-                else:
-                    b = lhs == rhs
-                if not b:
-                    self.ind = find(self.code, self.ind)
-            elif op == "loop":
-                if len(c) < 2:
-                    raise ValueError("loop requires a count")
-                if c[1]:
-                    c[1] = _number(c[1], "loop") - 1
-                else:
-                    self.ind = find(self.code, self.ind)
-                    self.skip = True
-            elif op == "endloop":
-                self.ind = find(self.code, self.ind) + 1
-        self.skip = False
-        self.ind += 1
+        answer = None
+        if line and not skip:
+            # Resolve once, here, and hand the transition the state that
+            # rewrite produced: the values stand even if the command turns
+            # out to be malformed, exactly as they did before.
+            line = _resolve(line, var)
+            code = (*code[:ind], line, *code[ind + 1 :])
+            state = (code, ind, var, skip)
+            # Commit the rewrite now, not after the transition returns: a
+            # malformed command raises out of _advance, and the original
+            # had already written these values into the line by then.
+            self.code = [list(row) for row in code]
+            if line[0] == "print":
+                self.io.print_str("".join(map(str, line[1:])))
+            elif line[0] == "input" and len(line) >= 2:
+                answer = self.io.input_str(str(line[1]))
+
+        self._restore(_advance(state, answer))
 
 
 def run(lines: list[str], io: IO) -> None:
