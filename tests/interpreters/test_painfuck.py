@@ -178,6 +178,92 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 2
 
+    def test_the_vm_view_reports_the_tape_and_the_loop_stack(self) -> None:
+        """``ip``/``memory``/``stack`` are the shared names over painfuck's state.
+
+        ``stack`` is the loop stack here, which is the one that actually
+        carries something -- so an open loop is stepped into to see it fill
+        and the matching close to see it drain.  The source is encoded
+        first, like every other program in this file: the interpreter reads
+        the Caesar-shifted text, not these letters.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.painfuck import _Machine
+
+        machine = _Machine(_encode("pabe"), ScriptedIO())
+        assert (machine.ip, machine.memory, machine.stack) == (0, [0], [])
+        machine.step()  # p adds 2, so the loop is entered rather than skipped
+        assert machine.memory == [2]
+        machine.step()  # a pushes the loop's return point
+        assert (machine.ip, machine.stack) == (2, [1])
+        machine.step()  # b jumps back to it, draining the stack
+        assert (machine.ip, machine.stack) == (1, [])
+
+    def test_an_eof_read_still_writes_back_what_the_step_spent(self) -> None:
+        """EOF propagates, but the cursor the step already moved is kept.
+
+        The core re-runs the whole step once the shell has a value, so the
+        shell holds the state from *before* it.  On EOF there is no value
+        and nothing to re-run -- yet the original interpreter had already
+        advanced past the read command and spent one repeat before it
+        raised, so the shell writes that much back by hand.  Without it a
+        caller that catches the EOFError sees a machine still parked on the
+        read, and a resumed run would execute it twice.
+
+        Both spellings raise: ``i`` reads a number and ``j`` a byte, and
+        each is retried through the same port.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.painfuck import _Machine
+
+        for prog in ("i", "j"):
+            machine = _Machine(_encode(prog), ScriptedIO(""))  # nothing to read
+            assert machine.ind == 0
+            with pytest.raises(EOFError):
+                machine.step()
+            assert machine.ind == 1, prog  # advanced past the read, not parked
+
+    def test_a_fault_keeps_what_the_step_already_did(self) -> None:
+        """A ``_Halted`` fault writes its effects and state back before raising.
+
+        Same reason as the EOF path above, for the other way a step can end
+        early: the core raises out of the middle of a step, carrying the
+        state and any effects it had accumulated, and the shell replays
+        them so the machine is left where the original interpreter left it
+        rather than back at the start of the step.
+
+        Both raise sites are covered -- ``i`` handed something that is not a
+        number, and a ``b`` with nothing on the loop stack, which is the one
+        that carries a message.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.painfuck import _Machine
+
+        machine = _Machine(_encode("i"), ScriptedIO("hello\n"))
+        with pytest.raises(HaltError):
+            machine.step()
+        assert machine.ind == 1  # the cursor the faulting step moved is kept
+
+        loose = _Machine(_encode("b"), ScriptedIO(""))
+        with pytest.raises(HaltError, match="unmatched 'b'"):
+            loose.step()
+        assert loose.ind == 1
+
+    def test_growing_the_tape_leaves_an_addressable_pointer_alone(self) -> None:
+        """``_grow`` returns the tape untouched when the pointer already fits.
+
+        Every program here walks right one cell at a time, so the tape is
+        always grown by exactly the cell being stepped onto and the
+        already-addressable case never came up.  Called directly: the guard
+        is what keeps a re-visit from re-extending the tape.
+        """
+        from esolangs.interpreters.tape_based.painfuck import _grow
+
+        tape = (1, 2, 3)
+        assert _grow(tape, 0) is tape  # in range, so the same object comes back
+        assert _grow(tape, 2) is tape  # the last addressable cell
+        assert _grow(tape, 4) == (1, 2, 3, 0, 0)  # past the end, so extended
+
     def test_skipping_a_loop_steps_over_a_nested_one(self) -> None:
         """A zero cell skips to the loop's own 'b', not to a nested one."""
         # cell 0 is zero, so the outer 'a' skips forward; the inner 'a...b'
