@@ -4,6 +4,12 @@
 # has no pre-commit ecosystem, so those are updated by `pre-commit autoupdate`
 # by hand.  Keep the ruff and mypy revs there in step with the exact pins in
 # pyproject.toml's dev extra, which this file does watch.
+#
+# That rule is now enforced: the check-hook-pins hook fails when a rev and a
+# pin disagree.  So a Dependabot PR that bumps ruff or mypy here will fail
+# its own CI until the matching rev is bumped too -- that is the intended
+# workflow, not a broken PR.  A bump often also reformats files; run the
+# formatter in the same PR.
 version: 2
 updates:
   # pyproject.toml: `ruff` and `mypy` are pinned exactly, so a release of
