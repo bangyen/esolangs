@@ -332,7 +332,7 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
             # state class may also use ``of`` for one of the language's own
             # names (AddSubJump's overflow flag is a property), so only a
             # callable ``of`` counts as the constructor.
-            state = getattr(module, "_Machine", None) or module.State
+            state = getattr(module, "_Machine")  # noqa: B009
             of = getattr(state, "of", None)
             machine = of if callable(of) else state
             # A language with a random instruction takes a source for it,

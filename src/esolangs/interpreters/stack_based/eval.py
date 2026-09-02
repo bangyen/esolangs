@@ -31,13 +31,14 @@ snapshot grows forever and never repeats -- the unbounded-growth class
 :func:`esolangs.vm.run_until_halt_or_cycle` cannot decide.
 :func:`esolangs.vm.run_until_halt_or_ancestor` decides it instead, by
 comparing each pushed frame against the ones beneath it, and
-:meth:`State.frame_entry_key` is what it compares.
+:meth:`_Machine.frame_entry_key` is what it compares.
 
 Because a step is one command again, it prints at most once, so the effects
 stay in the shell the way every other interpreter here does it.
 
-:class:`State` keeps its name and its ``of`` constructor: the VM builds
-this one through ``.of()`` rather than the usual ``_Machine(code, io)``.
+:class:`_Machine` keeps its ``of`` constructor: the parsed code is not a
+constructor field, so the VM builds this one through ``.of(code, io)``
+rather than the usual ``_Machine(code, io)``.
 """
 
 from __future__ import annotations
@@ -160,7 +161,7 @@ def _iterate(
 
 
 @dataclass
-class State:
+class _Machine:
     """Two stacks with an index choosing the active one, and a frame stack."""
 
     ptr: int = 0
@@ -170,7 +171,7 @@ class State:
     frames: list[_Frame] = field(default_factory=list)
 
     @classmethod
-    def of(cls, code: str, io: IO) -> State:
+    def of(cls, code: str, io: IO) -> _Machine:
         """Build a state running ``code``.
 
         The program is the ``sym`` field, so positionally it sits behind
@@ -302,7 +303,7 @@ class State:
 
 def run(code: str, io: IO) -> None:
     """Run an Eval program."""
-    state = State.of(code, io)
+    state = _Machine.of(code, io)
     while not state.halted:
         state.step()
 
