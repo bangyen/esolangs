@@ -4312,6 +4312,37 @@ class TestParameterizedPctSquaredMinusOne:
         }
         assert len(reached) == 84
 
+    @pytest.mark.slow  # derives the whole three-input arity once
+    def test_affine_gate_matches_the_path_it_skips(self) -> None:
+        """The dispatch's admissibility check agrees with the path exactly.
+
+        The check exists to skip a 4.7s whole-arity enumeration for tables
+        the path cannot build, so a disagreement would not raise -- it would
+        silently refuse a buildable table and hand it to a later, longer
+        construction.  Pinned over the whole arity for that reason.
+        """
+        from esolangs.tools.boolean.pct_squared_minus_one import (
+            _affine_admits,
+            _affine_tables,
+        )
+
+        reached = set(_affine_tables(3))
+        for value in range(256):
+            table = format(value, "08b")
+            assert _affine_admits(table, 3) == (table in reached), table
+
+    def test_affine_gate_defers_at_other_arities(self) -> None:
+        """Outside three inputs the check admits everything.
+
+        The containment holds at four inputs but sufficiency does not, and
+        the dispatch calls the path at three only -- so the check must not
+        be read as a claim about arities it has not been shown for.
+        """
+        from esolangs.tools.boolean.pct_squared_minus_one import _affine_admits
+
+        assert _affine_admits("0110", 2)
+        assert _affine_admits("0110100110010110", 4)
+
     def test_cascade_reach_is_exactly_the_subcubes(self) -> None:
         """The cascade builds exactly the tables that are a subcube or one's
         complement, which is what its docstring claims at any arity.

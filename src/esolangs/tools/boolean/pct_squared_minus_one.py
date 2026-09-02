@@ -1883,6 +1883,58 @@ def _fold(truth_table: str, n: int) -> str | None:
     return header + _HEADER_END + placeholders + "".join(emitter.body)
 
 
+def _affine_admits(truth_table: str, n: int) -> bool:
+    """Whether :func:`_affine` could build this table, without enumerating.
+
+    Exact at three inputs, and the reason to have it is latency rather than
+    throughput.  :func:`_affine_tables` derives a whole arity in one pass and
+    caches it, so the first three-input table to reach that step pays about
+    4.7 seconds -- and 170 of the 208 tables that get there cannot be built
+    by the path at all, so the enumeration is filled, refused, and then never
+    reused.  A one-shot build of such a table costs 6.3s against 1.6s with
+    this check.  A whole-arity sweep in one process sees no difference: the
+    cache amortises the fill over 256 tables either way.
+
+    The rule is the **shared-cofactor law on the last input** -- the setters
+    compose into a shared value, so fixing the last input leaves each
+    cofactor a constant or an affine image of one shared function, hence the
+    two cofactors must be equal, complementary, or constant.  Two families
+    satisfy it and are still not built: the constants (which the cascade
+    serves first, so the path never needs them) and ``x0 ^ x2`` with its
+    complement, whose dependence *skips the middle input* -- setters compose
+    in slot order, so a slot cannot be passed over.  ``x1 ^ x2`` and
+    ``x0 ^ x1 ^ x2`` both build, which is what makes the exclusion specific
+    rather than a statement about parity.
+
+    Returns ``True`` at other arities: the containment is known to hold at
+    four inputs too (486 reached, every one admissible), but sufficiency is
+    not, and the dispatch only calls the path at three inputs anyway.
+    ``test_affine_reach_is_exactly_characterized`` pins the equality, so a
+    change to either side that breaks it fails rather than silently costing
+    a table.
+    """
+    if n != 3:
+        return True
+    if len(set(truth_table)) == 1:
+        return False
+    skip_middle = "".join(str(((row >> 2) & 1) ^ (row & 1)) for row in range(2**n))
+    if truth_table in (skip_middle, _complement_bits(skip_middle)):
+        return False
+    low = "".join(truth_table[r] for r in range(2**n) if not r & 1)
+    high = "".join(truth_table[r] for r in range(2**n) if r & 1)
+    return (
+        low == high
+        or _complement_bits(low) == high
+        or len(set(low)) == 1
+        or len(set(high)) == 1
+    )
+
+
+def _complement_bits(bits: str) -> str:
+    """Flip every bit of a binary string."""
+    return "".join("1" if c == "0" else "0" for c in bits)
+
+
 def _affine(truth_table: str, n: int) -> str | None:
     """Build a composed-affine template, or ``None`` if the table is not one.
 
@@ -1971,7 +2023,13 @@ def pct_squared_minus_one(truth_table: str) -> str:
         # this path reaches above three inputs, so the enumeration is skipped
         # rather than paid for; at three inputs it stays, where it is instant
         # and its programs are much the shorter.
-        if n == 3:
+        # The admissibility check is exact at three inputs and costs O(2**n),
+        # against the 4.7s whole-arity enumeration the path fills on its first
+        # call.  It spares that fill for the 170 of 208 tables reaching this
+        # step that the path cannot build -- a one-shot build of one of them
+        # goes 6.3s -> 1.6s.  A sweep in one process is unaffected, since the
+        # cache amortises the fill either way.
+        if n == 3 and _affine_admits(truth_table, n):
             affine = _affine(truth_table, n)
             if affine is not None:
                 return affine
