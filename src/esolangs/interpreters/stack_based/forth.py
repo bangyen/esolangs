@@ -39,6 +39,7 @@ the original status-returning ``_execute``.
 """
 
 import sys
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 from esolangs.exceptions import HaltError
@@ -60,13 +61,203 @@ def _trunc_mod(a: int, b: int) -> int:
     return a - _trunc_div(a, b) * b
 
 
-@dataclass
+@dataclass(frozen=True)
 class _Frame:
-    """One active scope: its code, cursor, and whether it is a ``[`` loop body."""
+    """One active scope: its code, cursor, and whether it is a ``[`` loop body.
+
+    Frozen: a frame is part of the state a step maps forward, so advancing
+    a cursor makes a new frame rather than editing one in place.
+    """
 
     code: str
     pc: int = 0
     loop: bool = False
+
+
+#: One instant of a run: ``(stack, table, frames, error)`` -- the shared
+#: operand stack, the scope table ``{`` fills and ``;`` calls, the frame
+#: stack, and whether the *top-level* scope aborted.
+#:
+#: The frames are the reason this is a stack rather than a cursor: ``;``
+#: and all three bracket forms push one, and a ``[`` body is re-pushed
+#: whenever it finishes with a nonzero top.  A frame carries its own code,
+#: because a called scope runs text that is not the program's.
+#:
+#: ``error`` is state and not an exception: an abort ends the innermost
+#: scope the way completing it would, and only at the top level does it
+#: mean the run failed.  ``run`` reads it after the loop.
+type _Frames = tuple[_Frame, ...]
+type _State = tuple[tuple[int, ...], Mapping[int, str], _Frames, bool]
+
+
+def _top(stack: tuple[int, ...]) -> int:
+    """Return the top of ``stack``, halting when there is none."""
+    if not stack:
+        raise HaltError
+    return stack[-1]
+
+
+def _at(frame: _Frame, pc: int) -> _Frame:
+    """Return ``frame`` with its cursor moved to ``pc``."""
+    return _Frame(frame.code, pc, frame.loop)
+
+
+def _finalize(state: _State) -> _State:
+    """Pop completed frames, re-running a ``[`` body while its top holds.
+
+    Only the top frame can be finished at a time; a loop body that still
+    has a nonzero top starts a fresh pass, which a later step finalizes --
+    so an empty body is a no-op step whose repeated snapshot proves a hang.
+    """
+    stack, table, frames, error = state
+    while frames and frames[-1].pc >= len(frames[-1].code):
+        frame = frames[-1]
+        if frame.loop and _top(stack) != 0:
+            return (
+                stack,
+                table,
+                (*frames[:-1], _Frame(frame.code, 0, loop=True)),
+                error,
+            )
+        frames = frames[:-1]
+    return (stack, table, frames, error)
+
+
+def _abort(state: _State) -> _State:
+    """End the innermost scope on an invalid operation (status 3).
+
+    The abort behaves like the scope completing: a loop body re-checks its
+    condition, a nested scope pops back to its caller (which discards the
+    status), and a top-level scope halts with ``error`` set.
+    """
+    stack, table, frames, error = state
+    top_level = len(frames) == 1
+    frame = frames[-1]
+    ended = (stack, table, (*frames[:-1], _at(frame, len(frame.code))), error)
+    stack, table, frames, error = _finalize(ended)
+    return (stack, table, frames, error or top_level)
+
+
+def _scan(frame: _Frame, add: str, sub: str) -> tuple[str, int] | None:
+    """Return a bracket's body and the cursor past it, or ``None`` if open.
+
+    ``frame.pc`` is already one past the opening bracket.  ``None`` means
+    the bracket is never closed, which aborts the scope.
+    """
+    start = frame.pc - 1
+    pc = frame.pc
+    match = 1
+    while True:
+        if pc >= len(frame.code):
+            return None
+        inner = frame.code[pc]
+        pc += 1
+        if inner == add:
+            match += 1
+        elif inner == sub:
+            match -= 1
+        # Tested after the advance, so the cursor ends one *past* the
+        # closing bracket rather than on it.
+        if match == 0:
+            break
+    return (frame.code[start + 1 : pc - 1], pc)
+
+
+def _advance(state: _State, line: str | None = None) -> _State:
+    """Return the state after executing one command of the active frame.
+
+    Pure: it reads ``state`` and returns a new one.  ``.``'s printing is
+    the caller's business -- the value it prints is popped here and the
+    caller reads it from the stack first -- and ``,``'s whole input line
+    arrives as ``line``.
+
+    An abort is a value, not a raise: ``_abort`` ends the innermost scope,
+    which is why an invalid operation inside a called scope is swallowed by
+    its caller while the same operation at the top level fails the run.
+    """
+    state = _finalize(state)
+    stack, table, frames, error = state
+    if not frames:
+        return state
+    frame = frames[-1]
+    if frame.pc >= len(frame.code):
+        return state  # a finished pass (an empty loop body) is a no-op step
+
+    char = frame.code[frame.pc]
+    frames = (*frames[:-1], _at(frame, frame.pc + 1))
+    frame = frames[-1]
+    state = (stack, table, frames, error)
+
+    if "0" <= char <= "9":
+        return ((*stack, ord(char) - 48), table, frames, error)
+    if "A" <= char <= "F":
+        return ((*stack, ord(char) - 55), table, frames, error)
+    if char == ":":
+        return ((*stack, _top(stack)), table, frames, error)
+    if char == "~":
+        return ((*stack[:-1], ~_top(stack)), table, frames, error)
+    if char == ".":
+        # The print already happened in the shell; this only pops.
+        _top(stack)
+        return (stack[:-1], table, frames, error)
+    if char == ",":
+        read = tuple(ord(ch) & 0xFF for ch in (line or ""))
+        return ((*stack, *read), table, frames, error)
+    if char == ";":
+        scope = table.get(_top(stack), "")
+        return (stack[:-1], table, (*frames, _Frame(scope)), error)
+    if char == "o":
+        return (tuple(reversed(stack)), table, frames, error)
+    if char == "c":
+        if len(stack) < 3:
+            return _abort(state)
+        return ((*stack[:-3], *stack[-2:], stack[-3]), table, frames, error)
+    if char in "([{":
+        sub = ")" if char == "(" else "]" if char == "[" else "}"
+        found = _scan(frame, char, sub)
+        if found is None:
+            # The scan walked to the end without closing, and the original
+            # left the cursor there before aborting.
+            ended = (stack, table, (*frames[:-1], _at(frame, len(frame.code))), error)
+            return _abort(ended)
+        scope, pc = found
+        frames = (*frames[:-1], _at(frame, pc))
+        state = (stack, table, frames, error)
+        if char == "(":
+            if _top(stack):
+                return (stack, table, (*frames, _Frame(scope)), error)
+            return state
+        if char == "[":
+            if _top(stack):
+                return (stack, table, (*frames, _Frame(scope, 0, loop=True)), error)
+            return state
+        return (stack, {**table, _top(stack): scope}, frames, error)
+    if char in "+-*/%v":
+        if len(stack) < 2:
+            return _abort(state)
+        two, one = stack[-1], stack[-2]
+        rest = stack[:-2]
+        # Both operands are consumed before the divisor is tested, so a
+        # zero-divisor abort leaves the stack without them.
+        popped = (rest, table, frames, error)
+        if char == "+":
+            return ((*rest, _wrap32(one + two)), table, frames, error)
+        if char == "-":
+            return ((*rest, _wrap32(one - two)), table, frames, error)
+        if char == "*":
+            return ((*rest, _wrap32(one * two)), table, frames, error)
+        if char == "/":
+            if two == 0:
+                return _abort(popped)
+            return ((*rest, _wrap32(_trunc_div(one, two))), table, frames, error)
+        if char == "%":
+            if two == 0:
+                return _abort(popped)
+            return ((*rest, _wrap32(_trunc_mod(one, two))), table, frames, error)
+        # The arm admits only ``+-*/%v`` and the other five are handled, so
+        # this is ``v``: the swap.
+        return ((*rest, two, one), table, frames, error)
+    return state
 
 
 class _Machine:
@@ -124,132 +315,65 @@ class _Machine:
             self.io.position(),
         )
 
-    def _top(self) -> int:
-        if not self.stack:
-            raise HaltError
-        return self.stack[-1]
+    @property
+    def _state(self) -> _State:
+        """The machine's fields as the value the transition works on."""
+        return (tuple(self.stack), self.table, tuple(self.frames), self.error)
 
-    def _pop(self) -> int:
-        value = self._top()
-        self.stack.pop()
-        return value
+    def _restore(self, state: _State) -> None:
+        """Write a transition's result back onto the machine's fields.
 
-    def _finalize_finished(self) -> None:
-        """Pop completed frames, re-running a ``[`` loop body while it holds.
-
-        Only the top frame can be finished at a time; a loop body that still
-        has a nonzero top starts a fresh pass (finalized by a later step, so
-        an empty body is a no-op step whose repeated snapshot proves a hang).
+        The fields are this class's published shape -- ``ip`` and
+        ``snapshot`` read all four -- so they stay; the one assignment a
+        step makes is here rather than in the rules above.
         """
-        while self.frames and self.frames[-1].pc >= len(self.frames[-1].code):
-            frame = self.frames[-1]
-            if frame.loop and self._top() != 0:
-                self.frames[-1] = _Frame(frame.code, 0, loop=True)
-                return
-            self.frames.pop()
-
-    def _abort(self) -> None:
-        """Abort the innermost scope on an invalid operation (status 3).
-
-        The abort behaves like the scope completing: a loop body re-checks
-        its condition, a nested scope pops back to its caller (which
-        discards the status), and a top-level scope halts with ``error``.
-        """
-        top_level = len(self.frames) == 1
-        self.frames[-1].pc = len(self.frames[-1].code)
-        self._finalize_finished()
-        if top_level:
-            self.error = True
+        stack, table, frames, self.error = state
+        self.stack = list(stack)
+        self.table = dict(table)
+        self.frames = list(frames)
 
     def step(self) -> None:
-        """Execute one command of the active frame."""
+        """Execute one command of the active frame.
+
+        The two ports live here rather than in the transition: this is the
+        shell.  ``.`` prints the stack top the transition then pops, and
+        ``,``'s whole input line is read here and handed over.  Both look
+        at the frame the transition is about to run, which means finalizing
+        finished frames first -- the same order the original used.
+        """
         if self.halted:
             return
-        self._finalize_finished()
-        if not self.frames:
-            return
-        frame = self.frames[-1]
-        if frame.pc >= len(frame.code):
-            return  # a finished pass (an empty loop body) is a no-op step
-        char = frame.code[frame.pc]
-        frame.pc += 1
+        state = _finalize(self._state)
+        stack, _table, frames, _error = state
+        char = ""
+        if frames and frames[-1].pc < len(frames[-1].code):
+            char = frames[-1].code[frames[-1].pc]
 
-        if "0" <= char <= "9":
-            self.stack.append(ord(char) - 48)
-        elif "A" <= char <= "F":
-            self.stack.append(ord(char) - 55)
-        elif char == ":":
-            self.stack.append(self._top())
-        elif char == "~":
-            self.stack.append(~self._pop())
-        elif char == ".":
-            self.io.print_char(chr(self._pop() & 0xFF))
-        elif char == ",":
-            for ch in self.io.input_str():
-                self.stack.append(ord(ch) & 0xFF)
-        elif char == ";":
-            scope = self.table.get(self._pop(), "")
-            self.frames.append(_Frame(scope))
-        elif char == "o":
-            self.stack.reverse()
-        elif char == "c":
-            if len(self.stack) < 3:
-                self._abort()
-            else:
-                self.stack.append(self.stack.pop(-3))
-        elif char in "([{":
-            add = char
-            sub = ")" if char == "(" else "]" if char == "[" else "}"
-            start = frame.pc - 1
-            match = 1
-            while True:
-                if frame.pc >= len(frame.code):
-                    self._abort()
-                    return
-                inner = frame.code[frame.pc]
-                frame.pc += 1
-                if inner == add:
-                    match += 1
-                elif inner == sub:
-                    match -= 1
-                if match == 0:
-                    break
-            scope = frame.code[start + 1 : frame.pc - 1]
-            if add == "(":
-                if self._top():
-                    self.frames.append(_Frame(scope))
-            elif add == "[":
-                if self._top():
-                    self.frames.append(_Frame(scope, 0, loop=True))
-            else:
-                self.table[self._top()] = scope
-        elif char in "+-*/%v":
-            if len(self.stack) < 2:
-                self._abort()
-            else:
-                two = self._pop()
-                one = self._pop()
-                if char == "+":
-                    self.stack.append(_wrap32(one + two))
-                elif char == "-":
-                    self.stack.append(_wrap32(one - two))
-                elif char == "*":
-                    self.stack.append(_wrap32(one * two))
-                elif char == "/":
-                    if two == 0:
-                        self._abort()
-                    else:
-                        self.stack.append(_wrap32(_trunc_div(one, two)))
-                elif char == "%":
-                    if two == 0:
-                        self._abort()
-                    else:
-                        self.stack.append(_wrap32(_trunc_mod(one, two)))
-                else:
-                    # The arm above admits only ``+-*/%v`` and the other
-                    # five are handled, so this is ``v``: the swap.
-                    self.stack.append(two)
-                    self.stack.append(one)
+        # The cursor moves past the command before the command runs, and
+        # the original had already written that when anything it did
+        # raised -- an empty stack, or the input port at EOF.  Committing
+        # the advance up front reproduces that for every route out.
+        #
+        # A bracket walks further than one place: its scan runs before the
+        # condition is tested, so a raise afterwards leaves the cursor past
+        # the whole body.
+        stack, table, frames, error = state
+        if frames and frames[-1].pc < len(frames[-1].code):
+            frame = _at(frames[-1], frames[-1].pc + 1)
+            if char in "([{":
+                sub = ")" if char == "(" else "]" if char == "[" else "}"
+                found = _scan(frame, char, sub)
+                frame = _at(frame, found[1] if found else len(frame.code))
+            frames = (*frames[:-1], frame)
+        self._restore((stack, table, frames, error))
+
+        line = None
+        if char == ",":
+            line = self.io.input_str()
+        elif char == "." and stack:
+            self.io.print_char(chr(stack[-1] & 0xFF))
+
+        self._restore(_advance(state, line))
 
 
 def run(code: str, io: IO) -> None:
