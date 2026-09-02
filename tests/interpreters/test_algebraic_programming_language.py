@@ -5,7 +5,7 @@ from typing import ClassVar
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.algebraic_programming_language import _Machine, run
 from esolangs.vm import run_until_halt_or_ancestor, run_until_halt_or_cycle
 from tests.interpreters.contract import (
@@ -18,7 +18,21 @@ from tests.raises import raises_message
 
 # The wiki's own examples, which are the specification's ground truth.
 HELLO_WORLD = "\n".join(
-    "72 101 108 108 111 44 32 87 111 114 108 100 33".split()
+    [
+        "72",
+        "101",
+        "108",
+        "108",
+        "111",
+        "44",
+        "32",
+        "87",
+        "111",
+        "114",
+        "108",
+        "100",
+        "33",
+    ]
 )
 TRUTH_MACHINE = "x? = x & x?\nn?"
 NOT = "!x = {\nx & $0\n$1\n}"
@@ -188,9 +202,7 @@ class TestErrors:
 
     def test_bracket_multiplication_is_rejected(self) -> None:
         """The wiki says ``1(2)`` raises an error."""
-        with raises_message(
-            ValueError, "bracket multiplication is invalid syntax"
-        ):
+        with raises_message(ValueError, "bracket multiplication is invalid syntax"):
             run_and_capture("1(2)")
 
     def test_an_unknown_variable_is_rejected(self) -> None:
@@ -339,3 +351,99 @@ class TestHangDetection:
         """
         with raises_message(ValueError, "unknown variable 'n'"):
             run_and_capture("F() = n\nF()", "1\n")
+
+
+class TestCoveragePaths:
+    """The error and shape paths the wiki's own examples do not reach."""
+
+    def test_an_operator_argument_slot_with_nothing_after_it(self) -> None:
+        """A pattern that runs out of tokens mid-match is not a match."""
+        with raises_message(ValueError, "trailing input at '#'"):
+            run_and_capture("a # b = a\n1 #")
+
+    def test_a_stray_comma_is_rejected(self) -> None:
+        with raises_message(ValueError, "unexpected token ','"):
+            run_and_capture(",")
+
+    def test_a_bare_return_operator_is_rejected(self) -> None:
+        with raises_message(ValueError, "unexpected end of expression"):
+            run_and_capture("$")
+
+    def test_trailing_input_in_a_function_header_is_rejected(self) -> None:
+        with raises_message(ValueError, "trailing input in header 'F(x) y'"):
+            run_and_capture("F(x) y = 1\n1")
+
+    def test_a_digit_leading_operator_pattern_is_rejected(self) -> None:
+        with raises_message(ValueError, "bad operator pattern '1a'"):
+            run_and_capture("1a = 2\n1")
+
+    def test_a_postfix_operator_applies_twice(self) -> None:
+        """The postfix loop keeps matching until no pattern fits."""
+        assert run_and_capture("a@ = a * 2\n3@@") == "12\n"
+
+    def test_a_blank_line_inside_a_block_is_skipped(self) -> None:
+        assert run_and_capture("F() = {\n1\n\n2\n}\nF()") == "1\n2\n"
+
+    def test_an_uppercase_name_without_parentheses_is_a_nullary_function(
+        self,
+    ) -> None:
+        """``F = 7`` defines a function, since only *lowercase* names assign."""
+        assert run_and_capture("F = 7\nF()") == "7\n"
+
+    def test_printing_a_function_rather_than_calling_it_is_a_halt(self) -> None:
+        """Only numbers are printable, so a bare function is an error."""
+        with pytest.raises(HaltError):
+            run_and_capture("F = 7\nF")
+
+    def test_a_blank_line_between_executed_lines_is_skipped(self) -> None:
+        """At depth 0 a blank line is dropped rather than joined."""
+        assert run_and_capture("1\n\n2") == "1\n2\n"
+
+    def test_trailing_input_after_a_block_is_rejected(self) -> None:
+        """``F() = {1} 2`` balances its braces but does not end at one.
+
+        ``_blocks`` joins by brace depth, so a one-line definition with
+        something after its closer reaches ``_body`` intact.
+        """
+        with raises_message(ValueError, "trailing input after block in '{1} 2'"):
+            run_and_capture("F() = {1} 2\nF()")
+
+    def test_a_parameter_holding_a_function_is_looked_up_locally(self) -> None:
+        """``F(c) = c()`` resolves ``c`` from the frame, not the globals."""
+        assert run_and_capture("F(c) = c()\nG() = 5\nF(G)") == "5\n"
+
+    def test_a_function_value_is_truthy(self) -> None:
+        """``&`` with a function on the left proceeds to its right side."""
+        assert run_and_capture("F() = 1\nG(x) = x & 9\nG(F)") == "9\n"
+
+    def test_the_evaluation_budget_is_enforced(self) -> None:
+        """A runaway expression halts rather than allocating without bound."""
+        machine_ = machine("F(x) = F(x + 1)\nF(0)")
+        machine_._WORK_LIMIT = 50  # noqa: SLF001
+        with raises_message(HaltError, "expression exceeded the evaluation budget"):
+            while not machine_.halted:
+                machine_.step()
+
+    def test_the_line_cursor_and_frames_are_reported_as_the_ip(self) -> None:
+        """``ip`` is the line cursor followed by each live frame's statement."""
+        machine_ = machine("1 + 1")
+        machine_.step()
+        assert machine_.ip == (1, 0)
+
+    def test_memory_reports_the_bound_variables(self) -> None:
+        """APL has no addressable store; ``memory`` is what input has bound."""
+        machine_ = machine("a + b", "3\n4\n")
+        machine_.step()
+        assert machine_.memory == [3, 4]
+
+    def test_memory_reports_zero_for_a_non_numeric_binding(self) -> None:
+        """A function-valued global has no integer to report."""
+        machine_ = machine("n = 1.5\nn")
+        while not machine_.halted:
+            machine_.step()
+        assert machine_.memory == [1]
+
+    def test_stack_reports_the_live_frames(self) -> None:
+        machine_ = machine("1 + 1")
+        machine_.step()
+        assert len(machine_.stack) == 1
