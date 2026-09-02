@@ -272,11 +272,13 @@ class _Grid:
 
 
 class _Wiring:
-    """One group of mutually connected wires, holding a single value.
+    """One group of mutually connected wires.
 
-    ``cells`` is every wire cell in the group, ``width`` the number of
-    wires it carries (1 unless a ``-n-`` label widens it), and ``value`` a
-    tuple of ``width`` bits, or ``None`` while the wiring is Null.
+    ``cells`` is every wire cell in the group and ``width`` the number of
+    wires it carries (1 unless a ``-n-`` label widens it).  The *value* it
+    carries is not held here: it lives in the machine's state, indexed by
+    the wiring's position, so a generation is one value rather than a
+    write scattered across every wiring object.
     """
 
     def __init__(self, cells: frozenset[tuple[int, int]]) -> None:
@@ -284,7 +286,6 @@ class _Wiring:
         self.cells = cells
         self.width = 1
         self.labelled = False
-        self.value: tuple[int, ...] | None = None
 
 
 class _Connections:
@@ -677,6 +678,114 @@ def _apply_gate(kind: _LogicGate, inputs: list[tuple[int, ...]]) -> tuple[int, .
     return (result,)
 
 
+def _drive(
+    gate: "_Gate", inputs: list[tuple[int, ...]]
+) -> list[tuple["_Wiring", tuple[int, ...]]]:
+    """Return the values ``gate`` writes to each of its outputs."""
+    if gate.kind == _SPLIT:
+        wires = inputs[0]
+        upper = gate.outputs[0].width
+        return [
+            (gate.outputs[0], wires[:upper]),
+            (gate.outputs[1], wires[upper:]),
+        ]
+    if gate.kind == _COMBINE:
+        return [(gate.outputs[0], inputs[0] + inputs[1])]
+    if gate.kind == _OUTPUT:
+        # An output gate drives nothing by definition, and ``step``
+        # skips them before firing, so this is a shape rather than a
+        # path: it is what lets _apply_gate take only logic gates.
+        return []  # pragma: no cover - step() skips these before firing
+    return [(gate.outputs[0], _apply_gate(gate.kind, inputs))]
+
+
+def _merge(driven: list[tuple[int, ...]]) -> tuple[int, ...]:
+    """Combine several drivers of one wiring by XOR, per the spec."""
+    if len(driven) == 1:
+        return driven[0]
+    width = max(len(value) for value in driven)
+    merged = [0] * width
+    for value in driven:
+        for i, bit in enumerate(value):
+            merged[i] ^= bit
+    return tuple(merged)
+
+
+#: One instant of a run: the value on each wiring and each gate's latched
+#: inputs, both indexed by position.  A value, not a record: a generation
+#: returns a new pair rather than editing the wirings in place.
+#:
+#: The wirings and gates themselves stay out: a diagram is parsed once and
+#: never rewrites itself, so they are handed to the transition.
+type _Values = tuple[tuple[int, ...] | None, ...]
+type _Latches = tuple[tuple[tuple[int, ...] | None, ...], ...]
+type _State = tuple[_Values, _Latches]
+
+
+def _emitted(
+    state: _State, wirings: list["_Wiring"], gates: list["_Gate"]
+) -> list[str]:
+    """Return what each ``:`` gate writes this generation, in gate order.
+
+    Pure: a step makes any number of writes -- one per output gate whose
+    wire carries a value -- so they are reported rather than performed,
+    which is the shape COD and Inject use for the same reason.
+    """
+    values, _ = state
+    index = {id(w): i for i, w in enumerate(wirings)}
+    out = []
+    for gate in gates:
+        if gate.kind != _OUTPUT:
+            continue
+        value = values[index[id(gate.inputs[0])]]
+        if value is not None:
+            out.append("".join(str(bit) for bit in value))
+    return out
+
+
+def _generation(
+    state: _State, wirings: list["_Wiring"], gates: list["_Gate"]
+) -> tuple[_State, bool]:
+    """Return the state after one generation, and whether the run went quiet.
+
+    Pure: it reads ``state`` and returns a new one, and reaches no ``IO``.
+
+    A generation latches whatever arrived on each gate's inputs, fires
+    every gate whose slots are all full, and then re-drives every wiring
+    from what fired.  A wiring nothing drove goes Null again, which is what
+    makes a value an *event* rather than a store.
+    """
+    values, latches = state
+    index = {id(w): i for i, w in enumerate(wirings)}
+
+    pending: dict[int, list[tuple[int, ...]]] = {}
+    fired = False
+    grown = list(latches)
+    for position, gate in enumerate(gates):
+        if gate.kind == _OUTPUT:
+            continue
+        slots = list(latches[position])
+        live = False
+        for slot, wiring in enumerate(gate.inputs):
+            arrived = values[index[id(wiring)]]
+            if arrived is not None:
+                slots[slot] = arrived
+                live = True
+        grown[position] = tuple(slots)
+        if not live or any(slot is None for slot in slots):
+            continue
+        fired = True
+        inputs = [slot for slot in slots if slot is not None]
+        for wiring, value in _drive(gate, inputs):
+            pending.setdefault(index[id(wiring)], []).append(value)
+
+    quiet = not fired and all(value is None for value in values)
+    driven = tuple(
+        _merge(pending[i]) if i in pending else None for i in range(len(wirings))
+    )
+    return (driven, tuple(grown)), quiet
+
+
 class _Machine:
     """Per-run Circuit Diagram state: the wirings, the gates, their latches.
 
@@ -710,10 +819,15 @@ class _Machine:
         self.wirings = parsed.wirings
         self.gates = parsed.gates
         self.halted = False
-        # Each gate's remembered inputs, one slot per input wiring.
-        self.latches: dict[int, list[tuple[int, ...] | None]] = {
-            id(gate): [None] * len(gate.inputs) for gate in self.gates
-        }
+        # The value on each wiring and each gate's remembered inputs, both
+        # indexed by position rather than by ``id``: the wirings and gates
+        # are fixed once parsed, so a position is a stable name and the
+        # whole state is two tuples.
+        self.index = {id(w): i for i, w in enumerate(self.wirings)}
+        self.values: tuple[tuple[int, ...] | None, ...] = (None,) * len(self.wirings)
+        self.latches: tuple[tuple[tuple[int, ...] | None, ...], ...] = tuple(
+            (None,) * len(gate.inputs) for gate in self.gates
+        )
         self._load_inputs()
 
     def _load_inputs(self) -> None:
@@ -735,9 +849,17 @@ class _Machine:
             # A row opening on "-" always has its own unvalued wiring: the
             # wirings are built from those very cells, and each input row is
             # read once.
-            if wiring is None or wiring.value is not None:  # pragma: no cover
+            if wiring is None:  # pragma: no cover - see above
                 continue
-            wiring.value = tuple(self._read_bit() for _ in range(wiring.width))
+            position = self.index[id(wiring)]
+            if self.values[position] is not None:  # pragma: no cover - see above
+                continue
+            value = tuple(self._read_bit() for _ in range(wiring.width))
+            self.values = (
+                *self.values[:position],
+                value,
+                *self.values[position + 1 :],
+            )
 
     def _wiring_at(self, cell: tuple[int, int]) -> _Wiring | None:
         """Return the wiring covering ``cell``, if any."""
@@ -776,12 +898,7 @@ class _Machine:
         drove is Null and contributes nothing, which is why the length varies
         from one step to the next.
         """
-        return [
-            bit
-            for wiring in self.wirings
-            if wiring.value is not None
-            for bit in wiring.value
-        ]
+        return [bit for value in self.values if value is not None for bit in value]
 
     @property
     def stack(self) -> list[object]:
@@ -789,81 +906,34 @@ class _Machine:
         return []
 
     def step(self) -> None:
-        """Advance one generation: latch arrivals, fire, then re-drive wires."""
-        self._emit()
+        """Advance one generation: latch arrivals, fire, then re-drive wires.
 
-        pending: dict[int, list[tuple[int, ...]]] = {}
-        fired = False
-        for gate in self.gates:
-            if gate.kind == _OUTPUT:
-                continue
-            slots = self.latches[id(gate)]
-            live = False
-            for index, wiring in enumerate(gate.inputs):
-                if wiring.value is not None:
-                    slots[index] = wiring.value
-                    live = True
-            if not live or any(slot is None for slot in slots):
-                continue
-            fired = True
-            inputs = [slot for slot in slots if slot is not None]
-            for wiring, value in self._drive(gate, inputs):
-                pending.setdefault(id(wiring), []).append(value)
-
-        quiet = not fired and all(w.value is None for w in self.wirings)
-        for wiring in self.wirings:
-            driven = pending.get(id(wiring))
-            wiring.value = self._merge(driven) if driven else None
-        if quiet:
+        The one port lives here rather than in the transition: this is the
+        shell.  Every ``:`` gate whose wire carries a value this generation
+        prints, so a step makes any number of writes and the transition
+        reports them in gate order.
+        """
+        for text in _emitted(self._state, self.wirings, self.gates):
+            self.io.print_str(text)
+        state, halted = _generation(self._state, self.wirings, self.gates)
+        self._restore(state)
+        if halted:
             self.halted = True
 
-    def _drive(
-        self, gate: _Gate, inputs: list[tuple[int, ...]]
-    ) -> list[tuple[_Wiring, tuple[int, ...]]]:
-        """Return the values ``gate`` writes to each of its outputs."""
-        if gate.kind == _SPLIT:
-            wires = inputs[0]
-            upper = gate.outputs[0].width
-            return [
-                (gate.outputs[0], wires[:upper]),
-                (gate.outputs[1], wires[upper:]),
-            ]
-        if gate.kind == _COMBINE:
-            return [(gate.outputs[0], inputs[0] + inputs[1])]
-        if gate.kind == _OUTPUT:
-            # An output gate drives nothing by definition, and ``step``
-            # skips them before firing, so this is a shape rather than a
-            # path: it is what lets _apply_gate take only logic gates.
-            return []  # pragma: no cover - step() skips these before firing
-        return [(gate.outputs[0], _apply_gate(gate.kind, inputs))]
+    @property
+    def _state(self) -> _State:
+        """The machine's fields as the value the transition works on."""
+        return (self.values, self.latches)
 
-    def _merge(self, driven: list[tuple[int, ...]]) -> tuple[int, ...]:
-        """Combine several drivers of one wiring by XOR, per the spec."""
-        if len(driven) == 1:
-            return driven[0]
-        width = max(len(value) for value in driven)
-        merged = [0] * width
-        for value in driven:
-            for i, bit in enumerate(value):
-                merged[i] ^= bit
-        return tuple(merged)
-
-    def _emit(self) -> None:
-        """Print each ``:`` whose wire carries a value this generation."""
-        for gate in self.gates:
-            if gate.kind != _OUTPUT:
-                continue
-            value = gate.inputs[0].value
-            if value is not None:
-                self.io.print_str("".join(str(bit) for bit in value))
+    def _restore(self, state: _State) -> None:
+        """Write a transition's result back onto the machine's fields."""
+        self.values, self.latches = state
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the machine's state, hashable for cycle detection."""
-        return (
-            tuple(w.value for w in self.wirings),
-            tuple(tuple(self.latches[id(g)]) for g in self.gates),
-            self.halted,
-        )
+        # The two halves of the state are already the tuples this wants,
+        # which is what freezing them bought: no per-call rebuild.
+        return (*self._state, self.halted)
 
 
 def run(code: list[str], io: IO) -> None:
