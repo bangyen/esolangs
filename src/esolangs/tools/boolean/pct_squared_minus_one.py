@@ -1471,30 +1471,28 @@ def _fold_search(
 
 def _fold_beam(
     state: _FoldState,
-    target: int = 12,
+    target: int = 2,
     width: int = 1,
-    maxsteps: int = 90,
+    maxsteps: int = 400,
 ) -> list[_FoldOp] | None:
-    """Reduce a wide state down to ``target`` points, or ``None``.
+    """Reduce a state down to ``target`` points, or ``None``.
 
-    Near-parity tables have up to 32 runs and the exhaustive search drowns
-    there; reducing by point count first finds the pattern (it is forced)
-    and hands the small remainder to the search.
+    **A deterministic descent, not a beam.**  ``width`` defaults to 1: take
+    the best-ranked move each step and never reconsider.  The name and the
+    parameter survive so the old breadth can be re-measured, not because
+    anything asks for it.
 
-    The target must clear the width at which the search *starts* to
-    struggle, and the difference is not cosmetic: at 21 points the search
-    explores for fifty seconds and then gives up, while reducing the same
-    state first takes 0.37s and the search finishes it instantly.  A target
-    just under the drowning width leaves exactly the states that are too
-    wide to search and too narrow to reduce, which is a hole rather than a
-    threshold -- so the reduction runs whenever it can help at all.
+    ``target`` defaults to 2, which is the whole reduction -- the plan no
+    longer stops at a remainder for :func:`_fold_search` to close.  Two
+    measurements license that, both recorded on
+    :data:`_FOLD_DESCENT_TARGET`: the rank ties this breaks arbitrarily are
+    confluent, and descending the whole way builds everything the old split
+    built while reaching an arity it refused.
 
-    It is **not a beam any more**.  ``width`` defaults to 1, which takes the
-    best-ranked move each step and never reconsiders; the parameter survives
-    so the old breadth can be re-measured, not because anything asks for it.
-    The old default of 8 was what forced breadth in the first place -- see
-    :data:`_FOLD_BEAM_WIDTHS` for the measurement that showed the width
-    requirement tracking the target rather than the table.
+    ``maxsteps`` is 400 because the full descent is longer than the partial
+    one, and the budget is what used to bind: near-parity tables have up to
+    32 runs, and at 90 the reduction was still descending when it expired --
+    which is what made a handful of tables look like they needed a wide beam.
     """
     start = _fold_norm(list(state))
     if len(start) <= target:
@@ -1573,12 +1571,29 @@ def _fold_apply(state: _FoldState, op: _FoldOp) -> _FoldState | None:
 #: than it can close.  10, 12 and 14 all give full greedy acceptance; 12 is
 #: the middle of that band.
 #:
-#: What is *not* established is a rule for the remaining choice.  The greedy
-#: reduction still meets steps where several candidate moves tie at the best
-#: rank -- 5 to 12 of them -- and it takes an arbitrary one.  Those ties are
-#: where a derivation replacing this reduction would have to say which move
-#: is right, and nothing measured so far explains them.
-_FOLD_BEAM_WIDTHS = (1,)
+#: **The ties do not matter, and the search is not needed.**  The reduction
+#: meets steps where 5 to 12 candidate moves tie at the best rank and it
+#: takes an arbitrary one, which looked like the one place a rule was still
+#: missing.  It is not: breaking those ties at *random* -- a fresh
+#: permutation before every ranking, so no two runs agree -- builds 20 of 20
+#: six-input tables under every seed tried, at three seeds by four budgets.
+#: (At the old ``maxsteps`` of 90 the same test built 5 to 11, which is the
+#: budget artefact again and not the ties.)  Arrival order therefore buys
+#: step-efficiency, not correctness, and the reduction is confluent.
+#:
+#: Given that, the descent has no reason to stop early and hand a remainder
+#: to :func:`_fold_search`.  Running it to two points instead builds every
+#: table the old split built -- 424 tables at three through seven inputs,
+#: none lost -- and *gains* five at seven inputs, with every row executed on
+#: the interpreter.  It also reaches an arity the split refused outright:
+#: two random eight-input tables build in about four seconds each and print
+#: all 256 rows, where the shipped configuration raises.
+#:
+#: So the fold's plan is now a single deterministic descent.  The programs
+#: are byte-identical at three and four inputs and differ above that (the
+#: descent finds its own ending rather than the search's), which is why this
+#: is a behaviour change rather than a refactor.
+_FOLD_DESCENT_TARGET = 2
 
 
 def _fold_plan(state: _FoldState) -> list[_FoldOp] | None:
@@ -1606,11 +1621,9 @@ def _fold_plan(state: _FoldState) -> list[_FoldOp] | None:
             break
         pre.append(hit[0])
         st = hit[1]
-    wide = None
-    for _width in _FOLD_BEAM_WIDTHS:
-        wide = _fold_beam(st, width=_width)
-        if wide is not None:
-            break
+    # Descend all the way, not to a remainder the search then closes: see
+    # :data:`_FOLD_DESCENT_TARGET`.
+    wide = _fold_beam(st, target=_FOLD_DESCENT_TARGET, width=1)
     if wide is None:
         wide = []
     cur: _FoldState | None = st
@@ -1620,6 +1633,9 @@ def _fold_plan(state: _FoldState) -> list[_FoldOp] | None:
         if cur is None:  # pragma: no cover - replays a move the beam made
             return None
     assert cur is not None  # nosec B101
+    # Normally a no-op: the descent already reached two points, and
+    # :func:`_fold_search` returns ``[]`` for a finished state.  It stays as
+    # the fallback for a state the descent leaves short.
     rest = _fold_search(cur)
     if rest is None:
         return None
