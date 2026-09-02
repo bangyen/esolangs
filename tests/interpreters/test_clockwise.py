@@ -6,7 +6,11 @@ import pytest
 
 from esolangs.interpreters.grid_based.clockwise import run
 from esolangs.interpreters.io import IO, ScriptedIO
-from tests.interpreters.contract import CycleContract, EmptyProgramContract
+from tests.interpreters.contract import (
+    CycleContract,
+    EmptyProgramContract,
+    StateViewContract,
+)
 from tests.interpreters.runner import run_program
 
 
@@ -186,7 +190,7 @@ def _machine(code: object) -> object:
     return _Machine(code, IO())
 
 
-class TestContract(EmptyProgramContract, CycleContract):
+class TestContract(EmptyProgramContract, CycleContract, StateViewContract):
     """The shared shapes.
 
     The halt condition is a return to the origin with a non-zero heading,
@@ -199,4 +203,8 @@ class TestContract(EmptyProgramContract, CycleContract):
     empty_program: ClassVar[list[str]] = []
     empty_raises = "Clockwise program cannot be empty"
     halting_program: ClassVar[list[str]] = ["+;S;S;S;S;S;+;R", "R             R"]
+    # `out` holds the parity bits not yet flushed as a byte, so it fills as
+    # the ring runs rather than only at the end.
+    state_views: ClassVar[tuple[str, ...]] = ("out", "inp", "ip", "memory")
+    viewing_program: ClassVar[list[str]] = ["+;S;S;S;S;S;+;R", "R             R"]
     looping_program: ClassVar[list[str]] = ["SS?R ", "+?+S-", "R!!RS"]

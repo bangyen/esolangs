@@ -239,6 +239,7 @@ def test_the_fused_column_walk_matches_the_one_at_a_time_derivation() -> None:
     from esolangs.tools.boolean.minifuck import (
         _MAX_ACC,
         _column_sweep,
+        _derived_plans,
         _printed_column,
         minifuck,
     )
@@ -251,6 +252,10 @@ def test_the_fused_column_walk_matches_the_one_at_a_time_derivation() -> None:
             captured.append((joint, cell7))
         return real(joint, cell7)
 
+    # A warm cache answers from `_PRINTED_COLUMNS` without ever deriving, so
+    # the build has to be cold or the spy sees nothing -- which is exactly
+    # what the assertion below caught when this ran after other builds.
+    _derived_plans.cache_clear()
     with patch("esolangs.tools.boolean.minifuck._column_sweep", spy):
         minifuck("0110")
 
