@@ -1252,6 +1252,25 @@ class TestPctFoldPlan:
         assert plan is not None
         assert plan
 
+    def test_a_descent_that_cannot_finish_leaves_the_plan_empty(self) -> None:
+        """The pre-pass can clear extent the descent still cannot use.
+
+        Here the wipes run to completion but the descent that follows
+        reaches no two-point state, so it answers ``None`` and the plan
+        falls back to the pre-pass alone -- which the fallback search then
+        cannot close either.  The whole plan is ``None``, so the caller
+        moves on to the next construction rather than emitting a partial
+        one.
+        """
+        state = (
+            (-40, 0, "0", frozenset({0})),
+            (-48, 0, "1", frozenset({1})),
+            (-3048, 8, "1", frozenset({2})),
+            (-3448, 4, "0", frozenset({3})),
+            (-3452, 400, "1", frozenset({4})),
+        )
+        assert self.module()._fold_plan(state) is None  # noqa: SLF001
+
     def test_a_table_too_wide_for_the_workspace_is_refused(self) -> None:
         """The ladder must fit in the 6006 values a ``p`` can traverse.
 
@@ -1268,6 +1287,23 @@ class TestPctFoldPlan:
         # A table inside the bound still builds, so the ``None`` above is
         # the workspace and not the arity itself.
         assert module._fold("0011", 2) is not None  # noqa: SLF001
+
+    def test_a_table_whose_plan_fails_builds_nothing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """No plan means no template, not a partial one.
+
+        Every table tried plans successfully -- the fold is documented as
+        found in practice rather than proved total -- so the refusal is
+        driven by making the planner decline instead of hunting for a
+        table that defeats it.  The table used here builds normally when
+        the planner is left alone.
+        """
+        module = self.module()
+        assert module._fold("0011", 2) is not None  # noqa: SLF001
+
+        monkeypatch.setattr(module, "_fold_plan", lambda *_a, **_k: None)
+        assert module._fold("0011", 2) is None  # noqa: SLF001
 
 
 class TestPctAffineSolver:
@@ -1322,3 +1358,74 @@ class TestPctAffineSolver:
 
         assert realise((0, 1, 2, 3))
         assert realise((0, 1000, 1, 3)) == []
+
+
+class TestPctAffineBand:
+    """The three-input band's two skips, which the shipped budget hides.
+
+    ``_affine`` weighs its candidate pre-vectors cheapest first and stops
+    after :data:`_CANDIDATES` of them.  Both guards below sit past that
+    cut at the shipped value of 12 -- measured over all 256 three-input
+    tables, neither runs -- because the vectors that trip them are built
+    from the largest offsets and sort last.  They are not dead: widening
+    the budget reaches both, which is what these tests do.  The budget is
+    a bound on *program length*, not on which tables build, so widening
+    it changes nothing about the answers.
+    """
+
+    @staticmethod
+    def module():
+        return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+
+    def test_the_shipped_budget_stops_before_both_skips(self) -> None:
+        """The premise: at 12 candidates neither guard is reached.
+
+        Without this the tests below would look like ordinary coverage of
+        a path the generator walks every day, when in fact the shipped
+        configuration never gets there.
+        """
+        module = self.module()
+        assert module._CANDIDATES == 12  # noqa: SLF001
+
+    def test_a_candidate_with_no_realisation_is_skipped(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Solving the two halves does not mean the vector can be spelled.
+
+        ``_solve_affine`` asks whether a line exists over the grid;
+        ``_realisations`` asks whether the pair of setters that produce
+        the vector can be written down.  A candidate can pass the first
+        and fail the second, and then it is dropped rather than priced.
+        """
+        module = self.module()
+        values = (12, 13, 13, 12)
+
+        assert module._solve_affine(values, (0, 0, 0, 0)) is not None  # noqa: SLF001
+        assert module._solve_affine(values, (0, 1, 1, 0)) is not None  # noqa: SLF001
+        assert module._realisations(values) == []  # noqa: SLF001
+
+        monkeypatch.setattr(module, "_CANDIDATES", 1000)
+        assert module._affine("00010100", 3) is not None  # noqa: SLF001
+
+    def test_a_relabelling_that_will_not_solve_is_skipped(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The final setter is solved again against the answer bits.
+
+        The earlier solves fit the table's own halves; this one fits the
+        0/1 the program actually prints, both ways round.  One of the two
+        can fail where the halves succeeded, and that spelling is passed
+        over rather than emitted half-formed.
+        """
+        module = self.module()
+        values = (12, 12, 12, 13)
+        even, odd = (0, 0, 0, 0), (0, 0, 0, 1)
+
+        assert module._solve_affine(values, even) is not None  # noqa: SLF001
+        assert module._solve_affine(values, odd) is not None  # noqa: SLF001
+        # Relabelling with one=0, other=1 leaves the odd half unsolvable.
+        relabelled = tuple(0 if bit else 1 for bit in odd)
+        assert module._solve_affine(values, relabelled) is None  # noqa: SLF001
+
+        monkeypatch.setattr(module, "_CANDIDATES", 1000)
+        assert module._affine("00000001", 3) is not None  # noqa: SLF001
