@@ -14,6 +14,7 @@ import pytest
 from esolangs.interpreters.io import IO
 from esolangs.tools import boolean, laserfuck_layout
 from tests.tools.boolean_runners import (
+    run_algebraic_programming_language,
     run_between,
     run_clockwise,
     run_container,
@@ -1797,3 +1798,96 @@ class TestGeneratorEdgePaths:
         assert _six_five_label(_SIX_FIVE_MAX_LABEL) == "Z"
         with pytest.raises(ValueError, match="no operand character for 36"):
             _six_five_label(_SIX_FIVE_MAX_LABEL + 1)
+
+
+class TestAlgebraicProgrammingLanguage:
+    """The minterm-sum generator, whose whole program is one executed line."""
+
+    @staticmethod
+    def _run(program: str, n: int, combo: int) -> str:
+        bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+        return run_algebraic_programming_language(program, bits)
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("01", 1),  # identity
+            ("10", 1),  # not
+            ("0001", 2),  # AND2
+            ("0111", 2),  # OR2
+            ("0110", 2),  # XOR2
+            ("01101001", 3),  # parity
+            ("1000000000000000", 4),  # AND4
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result.
+
+        An executed line prints its result, so the answer arrives with the
+        newline that ends the line.
+        """
+        program = boolean.algebraic_programming_language(table)
+        for combo in range(2**n):
+            got = self._run(program, n, combo)
+            assert got == table[combo] + "\n", f"table {table} combo {combo}"
+
+    def test_every_one_and_two_input_table(self) -> None:
+        """All 4 one-input and 16 two-input tables build and compute."""
+        for n in (1, 2):
+            for table in ("".join(t) for t in itertools.product("01", repeat=2**n)):
+                program = boolean.algebraic_programming_language(table)
+                for combo in range(2**n):
+                    got = self._run(program, n, combo)
+                    assert got == table[combo] + "\n", f"{table} combo {combo}"
+
+    def test_every_three_input_table(self) -> None:
+        """All 256 three-input tables build and compute their function."""
+        for table in ("".join(t) for t in itertools.product("01", repeat=8)):
+            program = boolean.algebraic_programming_language(table)
+            for combo in range(8):
+                got = self._run(program, 3, combo)
+                assert got == table[combo] + "\n", f"{table} combo {combo}"
+
+    def test_the_constant_zero_table_still_reads_every_input(self) -> None:
+        """A table with no minterms names each input so the reads still happen.
+
+        The boolean contract requires a constant read count, and APL reads
+        by *naming*, so the constant-0 program has to name every variable
+        even though none of them can change the answer.
+        """
+        program = boolean.algebraic_programming_language("0000")
+        for name in ("a", "b"):
+            assert name in program
+        for combo in range(4):
+            assert self._run(program, 2, combo) == "0\n"
+
+    def test_reads_are_in_ascending_name_order(self) -> None:
+        """A variable is read when the line first names it.
+
+        So the emitted line must name ``a`` before ``b`` before ``c``, or
+        the harness's inputs would arrive in the wrong slots.
+        """
+        program = boolean.algebraic_programming_language("01101001")
+        line = program.splitlines()[-1]
+        firsts = [min(line.index(n) for n in (v,)) for v in "abc"]
+        assert firsts == sorted(firsts)
+
+    def test_every_value_stays_zero_or_one(self) -> None:
+        """The program prints a bit, not an arbitrary truth value.
+
+        ``!`` returns exactly 0 or 1 and the connectives pass those
+        through, so nothing rests on how APL spells a non-zero truth.
+        """
+        program = boolean.algebraic_programming_language("0110")
+        for combo in range(4):
+            assert self._run(program, 2, combo).strip() in {"0", "1"}
+
+    def test_the_complement_operator_is_the_wikis_own(self) -> None:
+        """The header is the wiki's ``!x`` definition, verbatim."""
+        program = boolean.algebraic_programming_language("0001")
+        assert program.startswith("!x = {\nx & $0\n$1\n}\n")
+
+    def test_a_one_entry_table_is_refused(self) -> None:
+        """A nullary table is a constant, not a function of any input."""
+        with pytest.raises(ValueError, match="a one-entry table is a constant"):
+            boolean.algebraic_programming_language("0")

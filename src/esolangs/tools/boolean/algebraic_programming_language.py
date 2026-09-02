@@ -43,7 +43,10 @@ def algebraic_programming_language(truth_table: str) -> str:
 
 
 def _apl_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one input order's APL program; see :func:`algebraic_programming_language`."""
+    """Emit one input order's APL program.
+
+    See :func:`algebraic_programming_language`.
+    """
     n = _validate_truth_table(truth_table)
     rows = [row for row, bit in enumerate(truth_table) if bit == "1"]
     if not rows:
