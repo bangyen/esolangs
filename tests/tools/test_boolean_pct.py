@@ -816,4 +816,3 @@ class TestPctSquaredHelpers:
         width = getattr(self.module(), name)(8)
         assert width is not None
         assert width % 2 == 0
-
