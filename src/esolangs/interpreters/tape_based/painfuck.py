@@ -54,6 +54,7 @@ non-deterministic and is excluded from the state-cycle hang check.
 """
 
 import sys
+from dataclasses import dataclass
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -91,6 +92,245 @@ def _translate(code: str) -> str:
 def _trunc2(n: int) -> int:
     """Half of ``n``, truncating toward zero (C++ ``/= 2`` semantics)."""
     return n // 2 if n >= 0 else -((-n) // 2)
+
+
+#: One instant of a run: ``(tape, loop, ptr, ind, rep)`` -- the cells, the
+#: stack of loop-entry positions, the cell pointer, the cursor, and the
+#: repeat counter.
+#:
+#: ``rep`` is what makes a step more than one command.  ``c`` multiplies it
+#: by seven and ``t`` by three, and the *whole* command then runs that many
+#: times, so a single step can print or read repeatedly -- which is why the
+#: effects are collected in a list rather than left to the shell one at a
+#: time, the shape Eval already needed.
+type _State = tuple[tuple[int, ...], tuple[int, ...], int, int, int]
+
+
+@dataclass(frozen=True)
+class _Print:
+    """Write a value, as a number (``o``) or a character (``u``)."""
+
+    value: int
+    as_char: bool
+
+
+type _Effect = _Print
+
+
+class _NeedRead(Exception):  # noqa: N818 - a control signal, not an error
+    """Raised by the core when it wants an input it was not given.
+
+    The shell answers by reading one and running the step again.  The core
+    is pure, so re-running is safe; the reads it already had are handed
+    back in order, which keeps a repeated ``i`` reading the same number of
+    times as the original did.
+    """
+
+    def __init__(self, *, line: bool) -> None:
+        """Record whether a whole line is wanted, or one character."""
+        super().__init__()
+        self.line = line
+
+
+class _NeedCoin(Exception):  # noqa: N818 - a control signal, not an error
+    """Raised by the core when ``y`` wants a coin flip it was not given."""
+
+
+class _Halted(Exception):  # noqa: N818 - carries a state, not a message
+    """A HaltError raised partway through a step, with the state reached.
+
+    ``c`` spends cursor and multiplies the repeat counter before the
+    command it repeats runs, so how much of a step happened before a fault
+    is not something the caller can reconstruct.  The core hands it over.
+    """
+
+    def __init__(self, state: _State, effects: list[_Effect], error: HaltError) -> None:
+        """Record the partial state, the writes already made, and the cause."""
+        super().__init__()
+        self.state = state
+        self.effects = effects
+        self.error = error
+
+
+class _Reader:
+    """Hands out the inputs already supplied, then asks for one more.
+
+    Both input forms draw from this one sequence, in the order the program
+    asks for them; the request carries which kind the shell should fetch.
+    """
+
+    def __init__(self, values: tuple[str | int, ...]) -> None:
+        """Start at the beginning of ``values``."""
+        self._values = values
+        self._pos = 0
+
+    def take(self, *, line: bool) -> str | int:
+        """Return the next input, or signal that another is needed."""
+        if self._pos >= len(self._values):
+            raise _NeedRead(line=line)
+        value = self._values[self._pos]
+        self._pos += 1
+        return value
+
+
+class _Coins:
+    """Hands out the coin flips already drawn, then asks for one more."""
+
+    def __init__(self, values: tuple[int, ...]) -> None:
+        """Start at the beginning of ``values``."""
+        self._values = values
+        self._pos = 0
+
+    def take(self) -> int:
+        """Return the next flip, or signal that another is needed."""
+        if self._pos >= len(self._values):
+            raise _NeedCoin
+        value = self._values[self._pos]
+        self._pos += 1
+        return value
+
+
+def _grow(tape: tuple[int, ...], ptr: int) -> tuple[int, ...]:
+    """Return ``tape`` extended with zeros so ``ptr`` is addressable."""
+    if ptr < len(tape):
+        return tape
+    return (*tape, *([0] * (ptr + 1 - len(tape))))
+
+
+def _set(tape: tuple[int, ...], ptr: int, value: int) -> tuple[int, ...]:
+    """Return ``tape`` with the cell at ``ptr`` set to ``value``."""
+    return (*tape[:ptr], value, *tape[ptr + 1 :])
+
+
+def _skip_loop(prog: str, ind: int, n: int) -> int:
+    """Return the cursor past the ``b`` matching an ``a`` that did not run."""
+    val = 1
+    while val != 0 and ind < n:
+        ch = prog[ind]
+        ind += 1
+        if ch == "a":
+            val += 1
+        elif ch == "b":
+            val -= 1
+    return ind
+
+
+def _advance(
+    state: _State,
+    prog: str,
+    n: int,
+    reads: tuple[str | int, ...],
+    coins: tuple[int, ...],
+) -> tuple[_State, list[_Effect]]:
+    """Return the state after one step, and what it wants written.
+
+    Pure: it reads its arguments and returns a description.  The two output
+    forms are collected rather than performed, because the repeat counter
+    can make one step print many times; the inputs arrive in ``reads`` and
+    the ``y`` coin flips in ``coins``.
+
+    The command being run is a local, not state: ``c``, ``y``, ``v`` and
+    ``t`` each fetch a *different* command partway through the repeat loop,
+    and ``j`` rewrites itself to a newline so a repeated read only reads
+    once.  All of that lives inside one step.
+    """
+    tape, loop, ptr, ind, rep = state
+    reader = _Reader(reads)
+    coin = _Coins(coins)
+    effects: list[_Effect] = []
+    c = prog[ind]
+    ind += 1
+
+    while rep > 0:
+        rep -= 1
+
+        if c == "p":
+            tape = _set(tape, ptr, tape[ptr] + 2)
+        elif c == "s":
+            tape = _set(tape, ptr, tape[ptr] - 1)
+        elif c == "r":
+            ptr += 2
+            tape = _grow(tape, ptr)
+        elif c == "l":
+            if ptr:
+                ptr -= 1
+        elif c == "i":
+            line = reader.take(line=True)
+            try:
+                tape = _set(tape, ptr, int(str(line)))
+            except ValueError:
+                raise _Halted(
+                    (tape, loop, ptr, ind, rep), effects, HaltError()
+                ) from None
+        elif c == "j":
+            # ``j`` is answered with a character code, so this is already an int.
+            tape = _set(tape, ptr, int(str(reader.take(line=False))))
+            # The cross-check's discard-to-end-of-line loop leaves the main
+            # command variable holding '\n', so a ``c``/``t``-repeated ``j``
+            # only reads once and then no-ops.
+            c = "\n"
+        elif c == "o":
+            effects.append(_Print(tape[ptr], as_char=False))
+        elif c == "u":
+            effects.append(_Print(tape[ptr] & 0xFF, as_char=True))
+        elif c == "a":
+            if tape[ptr] != 0:
+                loop = (*loop, ind - 1)
+            else:
+                ind = _skip_loop(prog, ind, n)
+        elif c == "b":
+            if not loop:
+                raise _Halted(
+                    (tape, loop, ptr, ind, rep),
+                    effects,
+                    HaltError("unmatched 'b': the loop stack is empty"),
+                )
+            ind = loop[-1]
+            loop = loop[:-1]
+        elif c == "k":
+            tape = _set(tape, ptr, tape[ptr] * tape[ptr])
+        elif c == "z":
+            tape = _set(tape, ptr, 0)
+        elif c == "h":
+            tape = _set(tape, ptr, _trunc2(tape[ptr]))
+        elif c == "w":
+            tape = _set(tape, ptr, tape[ptr + 1] if ptr + 1 < len(tape) else 0)
+        elif c == "q":
+            if ptr:
+                tape = _set(tape, ptr, tape[ptr - 1])
+        elif c == "c":
+            rep = 1
+            while c == "c":
+                c = prog[ind] if ind < n else _NUL
+                ind += 1
+                rep *= 7
+        elif c == "y":
+            # The wiki specifies a random skip; match the cross-check's
+            # coin flip (the generator and differential avoid `y`).
+            if coin.take() and ind < n:
+                c = prog[ind]
+                ind += 1
+        elif c == "e":
+            return ((tape, loop, ptr, n, 0), effects)
+        elif c == "v" and tape[ptr] != 0 and ind < n:
+            c = prog[ind]
+            ind += 1
+        elif c == "d":
+            ptr = 0
+        elif c == "t":
+            val = ind
+            rep = 1
+            found = False
+            while ind > 0:
+                ind -= 1
+                if prog[ind] != "t":
+                    found = True
+                    break
+                rep *= 3
+            c = prog[ind] if found else _NUL
+            ind = val
+
+    return ((tape, loop, ptr, ind, rep + 1), effects)
 
 
 class _Machine:
@@ -152,107 +392,75 @@ class _Machine:
             self.io.position(),
         )
 
+    @property
+    def _state(self) -> _State:
+        """The machine's fields as the value the transition works on."""
+        return (tuple(self.tape), tuple(self.loop), self.ptr, self.ind, self.rep)
+
+    def _restore(self, state: _State) -> None:
+        """Write a transition's result back onto the machine's fields.
+
+        The fields are this class's published shape -- ``snapshot`` reads
+        all five -- so they stay; the one assignment a step makes is here
+        rather than in the rules above.
+        """
+        tape, loop, self.ptr, self.ind, self.rep = state
+        self.tape = list(tape)
+        self.loop = list(loop)
+
     def step(self) -> None:
-        """Execute one command, advancing the cursor."""
+        """Execute one command, advancing the cursor.
+
+        The ports live here rather than in the transition: this is the
+        shell.  A step can print or read more than once, because the repeat
+        counter runs the same command many times -- so the core collects
+        what it wants written and asks for each input as it needs it, and
+        this reads one and runs it again.  Re-running is safe because the
+        core is pure, and the inputs it already had are handed back in
+        order.
+        """
         if self.halted:
             return
-        c = self.prog[self.ind]
-        self.ind += 1
-
-        while self.rep > 0:
-            self.rep -= 1
-
-            if c == "p":
-                self.tape[self.ptr] += 2
-            elif c == "s":
-                self.tape[self.ptr] -= 1
-            elif c == "r":
-                self.ptr += 2
-                while self.ptr >= len(self.tape):
-                    self.tape.append(0)
-            elif c == "l":
-                if self.ptr:
-                    self.ptr -= 1
-            elif c == "i":
-                line = self.io.input_str()
+        start = self._state
+        reads: tuple[str | int, ...] = ()
+        coins: tuple[int, ...] = ()
+        while True:
+            try:
+                state, effects = _advance(start, self.prog, self.n, reads, coins)
+            except _NeedRead as want:
                 try:
-                    self.tape[self.ptr] = int(line)
-                except ValueError:
-                    raise HaltError from None
-            elif c == "j":
-                self.tape[self.ptr] = self.io.input_char()
-                # The cross-check's discard-to-end-of-line loop leaves the
-                # main command variable holding '\n', so a ``c``/``t``-repeated
-                # ``j`` only reads once and then no-ops.
-                c = "\n"
-            elif c == "o":
-                self.io.print_num(self.tape[self.ptr])
-            elif c == "u":
-                self.io.print_char(chr(self.tape[self.ptr] & 0xFF))
-            elif c == "a":
-                if self.tape[self.ptr] != 0:
-                    self.loop.append(self.ind - 1)
-                else:
-                    val = 1
-                    while val != 0 and self.ind < self.n:
-                        ch = self.prog[self.ind]
-                        self.ind += 1
-                        if ch == "a":
-                            val += 1
-                        elif ch == "b":
-                            val -= 1
-            elif c == "b":
-                if not self.loop:
-                    raise HaltError("unmatched 'b': the loop stack is empty")
-                self.ind = self.loop.pop()
-            elif c == "k":
-                self.tape[self.ptr] = self.tape[self.ptr] * self.tape[self.ptr]
-            elif c == "z":
-                self.tape[self.ptr] = 0
-            elif c == "h":
-                self.tape[self.ptr] = _trunc2(self.tape[self.ptr])
-            elif c == "w":
-                self.tape[self.ptr] = (
-                    self.tape[self.ptr + 1] if self.ptr + 1 < len(self.tape) else 0
-                )
-            elif c == "q":
-                if self.ptr:
-                    self.tape[self.ptr] = self.tape[self.ptr - 1]
-            elif c == "c":
-                self.rep = 1
-                while c == "c":
-                    c = self.prog[self.ind] if self.ind < self.n else _NUL
-                    self.ind += 1
-                    self.rep *= 7
-            elif c == "y":
-                # The wiki specifies a random skip; match the cross-check's
-                # coin flip (the generator and differential avoid `y`).
-                if draw(self._rng, 2) and self.ind < self.n:
-                    c = self.prog[self.ind]
-                    self.ind += 1
-            elif c == "e":
-                self.ind = self.n
-                self.rep = 0
-                return
-            elif c == "v" and self.tape[self.ptr] != 0 and self.ind < self.n:
-                c = self.prog[self.ind]
-                self.ind += 1
-            elif c == "d":
-                self.ptr = 0
-            elif c == "t":
-                val = self.ind
-                self.rep = 1
-                found = False
-                while self.ind > 0:
-                    self.ind -= 1
-                    if self.prog[self.ind] != "t":
-                        found = True
-                        break
-                    self.rep *= 3
-                c = self.prog[self.ind] if found else _NUL
-                self.ind = val
+                    value = self.io.input_str() if want.line else self.io.input_char()
+                except EOFError:
+                    # The port raises in the shell, before the core has run
+                    # a thing -- but the original had already advanced the
+                    # cursor and spent a repeat, so write that much back.
+                    tape, loop, ptr, ind, rep = start
+                    self._restore((tape, loop, ptr, ind + 1, max(rep - 1, 0)))
+                    raise
+                reads = (*reads, value)
+                continue
+            except _NeedCoin:
+                coins = (*coins, draw(self._rng, 2))
+                continue
+            except _Halted as halt:
+                # A fault partway through a step still moved the cursor,
+                # spent repeats, and may already have printed -- the
+                # original wrote all of that before it raised.
+                for effect in halt.effects:
+                    self._write(effect)
+                self._restore(halt.state)
+                raise halt.error from None
+            break
+        for effect in effects:
+            self._write(effect)
+        self._restore(state)
 
-        self.rep += 1
+    def _write(self, effect: _Effect) -> None:
+        """Perform one collected write."""
+        if effect.as_char:
+            self.io.print_char(chr(effect.value))
+        else:
+            self.io.print_num(effect.value)
 
 
 def run(code: str, io: IO) -> None:
