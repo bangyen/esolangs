@@ -657,12 +657,21 @@ class TestParameterizedNoComment:
             assert got == str(int("1010101010101010"[combo])), f"inputs {bits}"
 
     # The decode is exponential in the arity, so all three widest cases cost
-    # seconds: measured 4.1s at n=9, 13.0s at n=10 and 43.5s at n=11.  n=9
+    # seconds: measured 9.3s at n=9, 29.0s at n=10 and 99.4s at n=11.  n=9
     # used to stay in the fast run as the case exercising the composed skip
     # past a byte-sized index, but it is four times the one-second budget
     # every other case is held to, and CI runs `-m slow` and errors if any
     # of them skips -- so the mechanism is still proved on every push, just
     # not at push time.
+    #
+    # These are ~2x the figures first recorded here (4.1/13.0/43.5s), which
+    # were measured before NoComment's tape became immutable.  The write
+    # buffer that made that change affordable collapses *runs* of writes,
+    # and this decode has none -- it writes a cell and moves -- so it pays a
+    # tape rebuild on ~66% of steps.  Storing the tape as `bytes` rather
+    # than a tuple of ints took the rebuild back to a memcpy and these cases
+    # from 45.7/139.7/561.6s to what they are now; the residue over the
+    # original is the immutable state the purity refactor bought.
     @pytest.mark.parametrize(
         "n",
         [
