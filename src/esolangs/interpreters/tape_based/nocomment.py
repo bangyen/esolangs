@@ -63,12 +63,22 @@ _TAPE = 4096
 #: The buffer is not decoration here, it is what makes the immutable tape
 #: affordable.  NoComment's tape is *static* -- 4096 cells by specification,
 #: because the wiki defines pointer overflow as wrapping to the opposite end
-#: -- so rebuilding it costs the whole 4096 on every write, measured ~470x a
-#: list assignment.  The generated corpus writes the same cell 111 times in a
-#: row before moving, so buffering the current cell and committing it on a
-#: move turns that run of 111 rebuilds into one.  (This is exactly
-#: brainfuck's buffer, and unlike RAM0 -- whose writes are all to *different*
-#: addresses, where a buffer would absorb nothing -- the pattern here fits.)
+#: -- so rebuilding it costs the whole 4096 on every write.  The generated
+#: corpus writes the same cell 111 times in a row before moving, so buffering
+#: the current cell and committing it on a move turns that run of 111
+#: rebuilds into one.  (This is exactly brainfuck's buffer, and unlike RAM0
+#: -- whose writes are all to *different* addresses, where a buffer would
+#: absorb nothing -- the pattern here fits.)
+#:
+#: The tape is ``bytes`` rather than a tuple of ints because the buffer only
+#: collapses *runs*, and the boolean corpus has none: its decode writes a
+#: cell and immediately moves, so it commits on ~66% of steps where the text
+#: corpus commits on almost none.  A tuple rebuild copies 4096 pointers, a
+#: ``bytes`` rebuild is one memcpy -- measured 32x apart over the 2637
+#: commits an 11-input decode makes (44.6ms -> 1.4ms), which is what keeps
+#: the widest generated tables affordable.  Cells are mod-256 by
+#: construction, so ``bytes`` is exactly wide enough, and it stays immutable
+#: and hashable, which is what ``snapshot`` needs.
 #:
 #: ``acc`` always holds the true value of the cell under the pointer.  While
 #: ``dirty`` is set, ``tape[ptr]`` is stale and ``acc`` is the truth; the
@@ -77,10 +87,10 @@ _TAPE = 4096
 #: outside: ``snapshot`` and the ``tape`` property both commit first, so one
 #: logical state has exactly one spelling and a real repeat still compares
 #: equal to itself.
-type _State = tuple[int, int, tuple[int, ...], tuple[int, ...], int, bool]
+type _State = tuple[int, int, bytes, tuple[int, ...], int, bool]
 
 
-def _committed(state: _State) -> tuple[int, ...]:
+def _committed(state: _State) -> bytes:
     """Return ``state``'s tape with the buffered cell written back if stale.
 
     The one place the buffer's invariant is discharged.  Every path that
@@ -90,7 +100,7 @@ def _committed(state: _State) -> tuple[int, ...]:
     _ind, ptr, tape, _stack, acc, dirty = state
     if not dirty:
         return tape
-    return (*tape[:ptr], acc, *tape[ptr + 1 :])
+    return tape[:ptr] + bytes((acc,)) + tape[ptr + 1 :]
 
 
 def _advance(state: _State, code: str, size: int) -> _State:
@@ -153,7 +163,7 @@ class _Machine:
         # ``halted`` is read twice per command -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.length = len(code)
-        self.state: _State = (0, 0, (0,) * tape, (), 0, False)
+        self.state: _State = (0, 0, bytes(tape), (), 0, False)
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -163,7 +173,11 @@ class _Machine:
 
     @property
     def tape(self) -> tuple[int, ...]:
-        return _committed(self.state)
+        # The state carries `bytes`; the language's view is a cell tuple, so
+        # the widening happens here at the observer rather than in the hot
+        # path.  Indexing `bytes` already yields ints, so nothing inside the
+        # transition needs the tuple.
+        return tuple(_committed(self.state))
 
     @property
     def stack(self) -> tuple[int, ...]:
@@ -199,6 +213,13 @@ class _Machine:
         # The committed tape, not the raw one: the cycle detector hashes
         # what this returns, and a logical state with two spellings (dirty
         # and committed) would make a real repeat look like a new state.
+        #
+        # It carries the `bytes` directly rather than widening to the cell
+        # tuple `tape` reports.  The detector's contract is only that this
+        # is hashable and complete, and `bytes` hashes and compares by
+        # value, so a repeat is still exactly a repeat -- while widening
+        # 4096 cells on every step would cost more than the commit this
+        # whole buffer exists to avoid.
         ind, ptr, _tape, stack, _acc, _dirty = self.state
         return (_committed(self.state), stack, ptr, ind, self.io.position())
 
