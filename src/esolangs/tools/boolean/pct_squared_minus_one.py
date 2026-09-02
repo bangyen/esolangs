@@ -1708,9 +1708,9 @@ _FOLD_DESCENT_TARGET = 2
 #: complement share one -- which is where the cost's complement-invariance
 #: comes from.
 #:
-#: Measured over **1088 words with zero mismatches**: exhaustive at three
-#: inputs for ``r <= 6`` (all 119 words) plus both ``r == 7`` words with a
-#: single long run; exhaustive
+#: Measured over **1090 words with zero mismatches**: exhaustive at three
+#: inputs for ``r <= 6`` (all 119 words) plus two of the seven ``r == 7``
+#: words, the ones with the defect at either end; exhaustive
 #: over ``>1``-patterns at four and five inputs for ``r <= 5``, each pattern
 #: carried by several words that vary *where* the mass sits (the axis that
 #: killed the earlier candidates), 322 and 468 words; 300 uniformly random
