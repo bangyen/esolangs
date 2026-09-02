@@ -246,7 +246,6 @@ def test_the_fused_column_walk_matches_the_one_at_a_time_derivation() -> None:
         _column_sweep,
         _derived_plans,
         _printed_column,
-        minifuck,
     )
 
     captured: list[tuple[object, int]] = []
@@ -257,12 +256,16 @@ def test_the_fused_column_walk_matches_the_one_at_a_time_derivation() -> None:
             captured.append((joint, cell7))
         return real(joint, cell7)
 
-    # A warm cache answers from `_PRINTED_COLUMNS` without ever deriving, so
-    # the build has to be cold or the spy sees nothing -- which is exactly
-    # what the assertion below caught when this ran after other builds.
+    # Driven through `_derived_plans` rather than `minifuck`, and cleared
+    # first.  A build goes by `_staging_index`, which is itself `@cache`d at
+    # module scope: once any earlier test in the process has warmed it, no
+    # build derives anything and the spy sees nothing.  Clearing is not
+    # enough on its own either, since the clear and the build are separate
+    # statements and only this call is guaranteed to do the derivation --
+    # which is what the assertion below is for.
     _derived_plans.cache_clear()
     with patch("esolangs.tools.boolean.minifuck._column_sweep", spy):
-        minifuck("0110")
+        _derived_plans(2, ("0110",))
 
     assert captured, "the build derived no columns, so nothing was compared"
     compared = 0
