@@ -196,8 +196,18 @@ screen admits but no staging places went from **27.7s to 4.8s**.
 | 2 | 0.1s | 16 |
 | 3 | 0.2s | 252 |
 | 4 | 5.0s | 15994 |
-| 5 (budgeted) | 2.4s | 6340 |
-| 5 (full) | 8.5s | 28096 |
+| 5 | 8.5s | 28096 |
+
+Five inputs used to ship a 30000-staging budget, justified by "the
+enumeration cannot stop early on a miss" — a miss paid the whole 54.7s
+sweep.  The tabulation consumed that rationale: a miss is now a dict lookup.
+The budget was costing **21756 columns** to save six seconds once per
+process, so it is gone.  Lifting it cannot change a template that already
+existed — a budget truncates the enumeration without reordering it, and
+every column both passes reach gets the same staging (measured, 0
+disagreements) — but it *does* change coverage, taking tables that sat late
+in the enumeration from a raise to a build.  Twenty sampled from the newly
+reached all build and print their 32 rows on the shipped interpreter.
 
 **The negative: the printed column has no closed form in `(suffix, acc)`.**
 Three translation hypotheses were tested against the measured grid and all
