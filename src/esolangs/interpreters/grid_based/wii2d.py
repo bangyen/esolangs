@@ -11,13 +11,13 @@ Malformed programs raise :class:`ValueError`.
 
 import copy
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
 
 
-def init(code: list[str]) -> Callable[[int, int, int], tuple[int, int]]:
+def init(code: Sequence[str]) -> Callable[[int, int, int], tuple[int, int]]:
     """Initialize movement function for WII2D grid navigation."""
     n = len(code)
     m = len(code[0])
@@ -34,7 +34,9 @@ def init(code: list[str]) -> Callable[[int, int, int], tuple[int, int]]:
     return move
 
 
-def close(code: list[str]) -> Callable[[int, int], tuple[int, int] | None]:
+def close(
+    code: Sequence[str],
+) -> Callable[[int, int], tuple[int, int] | None]:
     """Create a function to find the closest @ command for jump operations."""
 
     def start(row: int, col: int) -> Callable[[tuple[int, int]], int]:
@@ -177,7 +179,7 @@ class _Machine:
         start_row, start_col = starts[0]
 
         max_width = max(len(row) for row in code)
-        self.code = [row.ljust(max_width) for row in code]
+        self.code = tuple(row.ljust(max_width) for row in code)
 
         self._find_closest_at = close(self.code)
         self._move_pointer = init(self.code)

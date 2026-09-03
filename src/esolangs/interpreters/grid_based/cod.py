@@ -68,7 +68,7 @@ _OPP: dict[_Direction, _Direction] = {"N": "S", "S": "N", "E": "W", "W": "E"}
 _COMMANDS = set("+-)(<_")
 
 
-def _edge_dash_cells(grid: list[str]) -> set[tuple[int, int]]:
+def _edge_dash_cells(grid: Sequence[str]) -> set[tuple[int, int]]:
     """Cells belonging to a ``---`` run that touches the left or right edge."""
     width = len(grid[0]) if grid else 0
     cells: set[tuple[int, int]] = set()
@@ -86,7 +86,7 @@ def _edge_dash_cells(grid: list[str]) -> set[tuple[int, int]]:
     return cells
 
 
-def _edge_dot_cells(grid: list[str]) -> set[tuple[int, int]]:
+def _edge_dot_cells(grid: Sequence[str]) -> set[tuple[int, int]]:
     """Cells belonging to a ``...`` run that touches the top or bottom edge."""
     height = len(grid)
     width = len(grid[0]) if grid else 0
@@ -244,7 +244,7 @@ class _Machine:
         while rows and rows[-1] == "":
             rows.pop()
         width = max((len(row) for row in rows), default=0)
-        self.grid = [row.ljust(width, "~") for row in rows]
+        self.grid = tuple(row.ljust(width, "~") for row in rows)
         _passable = _COMMANDS | set("->.")
         for row in self.grid:
             for ch in row:

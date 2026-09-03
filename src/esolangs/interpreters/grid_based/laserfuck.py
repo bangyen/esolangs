@@ -154,7 +154,7 @@ class _Machine:
         self._rng = rng
         text = [list(ln) for ln in code]
         size = max(len(ln) for ln in text) if text else 0
-        self.text = [ln + [" "] * (size - len(ln)) for ln in text]
+        self.text = tuple((*ln, *[" "] * (size - len(ln))) for ln in text)
         self.rows = len(text)
 
         self.ptr = 0
