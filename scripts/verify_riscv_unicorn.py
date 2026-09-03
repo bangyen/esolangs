@@ -226,8 +226,7 @@ def main() -> int:
         print(f"{name}: {'ok' if ok else 'FAIL'} -> {out!r} (exit {code})")
     for name, module, source, expected, *rest in COMPILER_CASES:
         comp = importlib.import_module(f"esolangs.compilers.{module}").comp
-        args = (source, 1) if module == "suffolk" else (source,)
-        binary = assemble_source(comp(*args))
+        binary = assemble_source(comp(source))
         stdin = rest[0].encode("latin-1") if rest else b""
         out, _ = run_elf(binary, stdin)
         # latin-1: one byte per expected char; UTF-8 would expand 0x80+ to
