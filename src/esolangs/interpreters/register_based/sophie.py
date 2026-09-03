@@ -179,7 +179,7 @@ class _Machine:
         self.code = code
         self.acc = self.ind = 0
         self.skp = False
-        self.stk: list[int] = []
+        self.stk: tuple[int, ...] = ()
         self._halted_by_command = False
 
     @property
@@ -211,14 +211,14 @@ class _Machine:
             self.ind,
             self.acc,
             self.skp,
-            tuple(self.stk),
+            self.stk,
             self._halted_by_command,
         )
 
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
-        return (self.acc, self.ind, self.skp, tuple(self.stk), self._halted_by_command)
+        return (self.acc, self.ind, self.skp, self.stk, self._halted_by_command)
 
     def _restore(self, state: _State) -> None:
         """Write a transition's result back onto the machine's fields.
@@ -228,7 +228,7 @@ class _Machine:
         makes is here rather than scattered through the rules above.
         """
         self.acc, self.ind, self.skp, stk, self._halted_by_command = state
-        self.stk = list(stk)
+        self.stk = stk
 
     def step(self) -> None:
         """Execute one command, advancing (or jumping) the cursor.
