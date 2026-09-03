@@ -328,10 +328,10 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
             # Some state objects cannot take a program positionally -- a
             # dataclass whose parsed field is ``init=False``, or one whose
             # code field sits behind ``io``.  Those offer ``of(code, io)``
-            # instead, which is the same construction under a name.  A
-            # state class may also use ``of`` for one of the language's own
-            # names (AddSubJump's overflow flag is a property), so only a
-            # callable ``of`` counts as the constructor.
+            # instead, which is the same construction under a name.  The
+            # seam is detected by a *callable* ``of``, because a state class
+            # may also use the name ``of`` for one of the language's own
+            # values rather than for construction.
             state = getattr(module, "_Machine")  # noqa: B009
             of = getattr(state, "of", None)
             machine = of if callable(of) else state

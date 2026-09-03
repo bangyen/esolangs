@@ -324,7 +324,7 @@ class TestStepMachine:
             {40: 4, 41: 8, 42: 12},
         )
         machine = _Machine(code, ScriptedIO())
-        assert (machine.cf, machine.zf, machine.nf, machine.of, machine.fum) == (
+        assert (machine.cf, machine.zf, machine.nf, machine.vf, machine.fum) == (
             0,
             0,
             0,
@@ -339,7 +339,7 @@ class TestStepMachine:
         assert (1, 1) in seen  # and the zero result set ZF while it was on
         # The three flags this program never disturbs stay clear, so the
         # accessors are not all reading one field.
-        assert (machine.cf, machine.nf, machine.of) == (0, 0, 0)
+        assert (machine.cf, machine.nf, machine.vf) == (0, 0, 0)
         # AddSubJump has no stack, and the shared VM view says so with an
         # empty one rather than by omitting the name.
         assert machine.stack == []
