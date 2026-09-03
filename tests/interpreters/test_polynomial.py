@@ -10,6 +10,7 @@ from contextlib import redirect_stdout
 
 import pytest
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.polynomial import (
     brackets,
@@ -196,21 +197,36 @@ class TestPolynomialSafety:
     """Test polynomial safety features."""
 
     def test_step_limit_stops_a_program_before_it_finishes(self) -> None:
-        """``limit`` bounds the steps, so a low one truncates the run.
+        """``limit`` bounds the steps, and running out raises.
 
-        This program needs two steps to print: it does the arithmetic, then
-        outputs.  Capped at one it produces nothing, which is the loop in
-        ``run`` running out rather than the machine halting -- the case the
-        limit exists for.  Asserting only that ``run`` is callable, as this
-        test once did, could not tell those apart.
+        This program needs two steps to print -- the arithmetic, then the
+        output -- and a third for ``run`` to observe the halt, because the
+        shared loop tests ``halted`` at the top of each iteration.  So a
+        limit under three runs out, which is the case the limit exists for,
+        and is reported as :class:`HaltError` rather than as a normal
+        return: a truncated run and a finished one are not the same
+        outcome and must not look alike.  Asserting only that ``run`` is
+        callable, as this test once did, could not tell those apart.
+
+        What the program managed to print before the bound is still
+        written -- ``'A'`` at ``limit=2`` -- because the output already
+        left through the io object.  The raise reports the truncation; it
+        does not roll back the effects.
         """
         program = "f(x) = x^4 - 130x^3 + 4238x^2 - 1170x + 38061"
 
-        for limit, expected in ((0, ""), (1, ""), (2, "A")):
+        for limit, printed in ((0, ""), (1, ""), (2, "A")):
             buffer = io.StringIO()
-            with redirect_stdout(buffer):
+            with redirect_stdout(buffer), pytest.raises(HaltError):
                 run(program, io=IO(), limit=limit)
-            assert buffer.getvalue() == expected, limit
+            assert buffer.getvalue() == printed, limit
+
+        # Three steps is the first that reaches the halt rather than the
+        # bound, so it returns normally with the whole output.
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run(program, io=IO(), limit=3)
+        assert buffer.getvalue() == "A"
 
     def test_step_limit_defaults_to_completing_a_program(self) -> None:
         """The default limit is not so small that ordinary programs truncate."""
