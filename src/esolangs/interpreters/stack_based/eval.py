@@ -66,6 +66,11 @@ type _Core = tuple[int, tuple[tuple[_Val, ...], tuple[_Val, ...]]]
 #: the cycle detector can hash.
 type _Frame = tuple[str, int]
 
+#: Every value an Eval command can change: the shared two-stack core and the
+#: immutable call-frame stack.  Program text lives in its frame; ports stay
+#: in the shell.
+type _State = tuple[_Core, tuple[_Frame, ...]]
+
 
 class _Fault(Exception):  # noqa: N818 - an internal signal, not an error type
     """Raised inside the pure layer for an invalid operation.
@@ -168,7 +173,7 @@ class _Machine:
     stk: tuple[tuple[_Val, ...], tuple[_Val, ...]]
     io: IO
     sym: str
-    frames: list[_Frame]
+    frames: tuple[_Frame, ...]
 
     def __init__(self, code: str, io: IO) -> None:
         """Build a state running ``code``."""
@@ -176,7 +181,7 @@ class _Machine:
         self.stk = ((), ())
         self.io = io
         self.sym = code
-        self.frames = [(code, 0)] if code else []
+        self.frames = ((code, 0),) if code else ()
 
     @property
     def ind(self) -> int:
@@ -236,6 +241,15 @@ class _Machine:
             self.io.position(),
         )
 
+    @property
+    def _state(self) -> _State:
+        """The complete changing state at the command boundary."""
+        return ((self.ptr, self.stk), self.frames)
+
+    def _restore(self, state: _State) -> None:
+        """Write a pure command transition back onto the machine shell."""
+        (self.ptr, self.stk), self.frames = state
+
     def frame_entry_key(self, frame: _Frame) -> Hashable:
         """Return what ``frame`` is about to run, for the ancestor check.
 
@@ -271,25 +285,25 @@ class _Machine:
         collect: the fault carries no outputs, since anything printed
         before it was printed by an earlier step and is already out.
         """
-        if not self.frames:
+        core, frames = self._state
+        if not frames:
             return
-        sym, ind = self.frames[-1]
+        sym, ind = frames[-1]
         if ind >= len(sym):
-            self.frames.pop()
+            self._restore((core, frames[:-1]))
             return
-        core: _Core = (self.ptr, self.stk)
         try:
             core, ind, output, call = _iterate(core, sym, ind)
         except _Fault:
             raise HaltError from None
         if output is not None:
             self.io.print_value(output)
-        self.ptr, self.stk = core
-        self.frames[-1] = (sym, ind)
+        frames = (*frames[:-1], (sym, ind))
         if call is not None:
             # The nested program becomes a frame of its own rather than
             # running here, which is what makes its commands steps.
-            self.frames.append((call, 0))
+            frames = (*frames, (call, 0))
+        self._restore((core, frames))
 
 
 def run(code: str, io: IO) -> None:
