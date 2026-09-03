@@ -39,6 +39,7 @@ Decisions for gaps in the wiki spec (documented):
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 
 from esolangs.interpreters.io import IO
 
@@ -63,7 +64,7 @@ DELTA = [(0, 1), (1, 0), (0, -1), (-1, 0)]
 type _State = tuple[int, int, int, tuple[int, ...], bool]
 
 
-def _outside(row: int, col: int, grid: list[str], width: int) -> bool:
+def _outside(row: int, col: int, grid: Sequence[str], width: int) -> bool:
     """Whether ``(row, col)`` is off the padded rectangle.
 
     The bounds are checked twice per step -- once on entry and once after
@@ -73,7 +74,7 @@ def _outside(row: int, col: int, grid: list[str], width: int) -> bool:
     return not (0 <= col < width and 0 <= row < len(grid))
 
 
-def _advance(state: _State, grid: list[str], width: int) -> _State:
+def _advance(state: _State, grid: Sequence[str], width: int) -> _State:
     """Return the state after executing one grid cell.
 
     Pure, and unusually for this repo it is *total* without any help from a
@@ -133,7 +134,7 @@ class _Machine:
         every caller build a machine the same way.
         """
         self.width = max(map(len, code), default=0)
-        self.grid = [line.ljust(self.width) for line in code]
+        self.grid = tuple(line.ljust(self.width) for line in code)
         # An empty program has nowhere to start, so it is stopped already.
         self.state: _State = (0, 0, 0, (), not self.grid)
 

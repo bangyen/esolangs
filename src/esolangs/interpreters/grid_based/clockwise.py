@@ -32,6 +32,7 @@ the pure layer.
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 
 from esolangs.interpreters.io import IO
 
@@ -61,7 +62,7 @@ def move(
     row: int,
     col: int,
     r: int,
-    code: list[str],
+    code: Sequence[str],
     acc: int,
 ) -> tuple[int, int, int, str, int]:
     """Step the pointer one cell, returning position, direction, and the cell."""
@@ -78,7 +79,7 @@ def move(
     return row, col, r, o, b
 
 
-def _advance(state: _State, code: list[str]) -> tuple[_State, int | None]:
+def _advance(state: _State, code: Sequence[str]) -> tuple[_State, int | None]:
     """Return the state after one cell, and any byte that is ready to print.
 
     Pure: it reads ``state`` and returns a new one.  The byte is reported
@@ -143,7 +144,7 @@ class _Machine:
             raise ValueError("Clockwise program cannot be empty")
         self.io = io
         size = max(len(lne) for lne in code)
-        self.code = [c.ljust(size) for c in code]
+        self.code = tuple(c.ljust(size) for c in code)
 
         bits: list[str] = []
         if any("." in line for line in self.code):
