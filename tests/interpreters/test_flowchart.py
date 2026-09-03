@@ -269,7 +269,7 @@ class TestParsing:
         """
         machine = _Machine(["( )  \n"], ScriptedIO(""))
         assert machine.width == 5
-        assert machine.grid == ["( )  "]
+        assert machine.grid == ("( )  ",)
 
     def test_stacked_nodes_do_not_fork(self) -> None:
         """A node drawn directly on top of another is one path, not three.

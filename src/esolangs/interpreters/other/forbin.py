@@ -406,6 +406,26 @@ class _Frame:
         self.for_body: list[_Statement] = []
         self.for_body_pos = 0
 
+    def at(self, **fields: object) -> _Frame:
+        """Return a copy of this frame with ``fields`` replaced.
+
+        A frame's cursors advance by replacement rather than by
+        assignment, so a step returns the frame that follows.  The copy
+        shares ``locals`` -- the same dict object, not a copy of it --
+        which is what keeps a child frame's ``parent`` pointer correct
+        after its parent has been replaced: the stale parent and the live
+        one resolve names through one store, so a write through either is
+        seen by both.  ``fn``, ``body``, ``for_rows``, ``for_names`` and
+        ``for_body`` are shared for the same reason and are never mutated
+        after they are set.
+        """
+        copy = _Frame.__new__(_Frame)
+        for slot in _Frame.__slots__:
+            object.__setattr__(copy, slot, getattr(self, slot))
+        for name, value in fields.items():
+            object.__setattr__(copy, name, value)
+        return copy
+
 
 def _lookup(frame: _Frame | None, name: str, globals_: dict[str, _Function]) -> object:
     """Resolve a variable, builtin, or function name from ``frame`` outward."""
@@ -800,18 +820,16 @@ class _Machine:
         if stmt[0] == "for":
             spec = stmt[1]
             rows, names = _for_rows(spec, frame, self.globals, self.reader, 0)
-            frame.for_rows = rows
-            frame.for_names = names
-            frame.for_ind = 0
+            self.frames[-1] = frame.at(for_rows=rows, for_names=names, for_ind=0)
             return
 
         pushed = _start_statement_call(stmt, frame, self.globals, self.reader)
         if pushed is not None:
-            frame.pos += 1
+            self.frames[-1] = frame.at(pos=frame.pos + 1)
             self.frames.append(pushed)
             return
         got = _exec_stmt(stmt, frame, self.globals, self.reader, 0)
-        frame.pos += 1
+        self.frames[-1] = frame.at(pos=frame.pos + 1)
         if got is not None:
             self._pop()
 
@@ -824,20 +842,20 @@ class _Machine:
             stmt = frame.for_body[frame.for_body_pos]
             pushed = _start_statement_call(stmt, frame, self.globals, self.reader)
             if pushed is not None:
-                frame.for_body_pos += 1
+                self.frames[-1] = frame.at(for_body_pos=frame.for_body_pos + 1)
                 self.frames.append(pushed)
                 return
             got = _exec_stmt(stmt, frame, self.globals, self.reader, 0)
-            frame.for_body_pos += 1
+            self.frames[-1] = frame.at(for_body_pos=frame.for_body_pos + 1)
             if got is not None:
                 self._pop()
             return
         if frame.for_ind >= len(frame.for_rows or []):
-            frame.for_rows = None
-            frame.pos += 1
+            self.frames[-1] = frame.at(for_rows=None, pos=frame.pos + 1)
             return
         row = frame.for_rows[frame.for_ind] if frame.for_rows is not None else []
-        frame.for_ind += 1
+        frame = frame.at(for_ind=frame.for_ind + 1)
+        self.frames[-1] = frame
         for name, value in zip(frame.for_names, row, strict=False):
             if name != "_":
                 frame.locals[name] = value
@@ -855,8 +873,7 @@ class _Machine:
         current = frame.body[frame.pos]
         if current[0] != "for":
             raise AssertionError(f"cursor left the for statement: {current[0]}")
-        frame.for_body = current[2]
-        frame.for_body_pos = 0
+        self.frames[-1] = frame.at(for_body=current[2], for_body_pos=0)
 
     def _pop(self) -> None:
         """Pop the finished top frame.

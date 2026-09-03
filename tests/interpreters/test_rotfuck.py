@@ -214,7 +214,7 @@ class TestStepMachine:
         machine = _Machine(build("+."), ScriptedIO())
         assert (machine.ind, machine.ptr, list(machine.tape)) == (0, 0, [0])
         machine.step()  # + increments the cell and rotates the program
-        assert machine.tape == [1]
+        assert list(machine.tape) == [1]
         assert machine.prog.rotation() == 1
         machine.step()  # . prints the cell and rotates again
         assert machine.io.getvalue() == "\x01"

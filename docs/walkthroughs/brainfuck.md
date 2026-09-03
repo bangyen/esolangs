@@ -4,8 +4,8 @@
 commands are `>`/`<` (move the pointer right/left), `+`/`-` (increment/
 decrement the current cell), `.` (print the current cell as a byte), `,`
 (read a byte into the current cell), and `[`/`]` (loop while the current
-cell is nonzero — `[` jumps past the matching `]` when the cell is zero,
-`]` jumps back when it is nonzero).  Cells start at 0 and wrap at 8 bits.
+cell is nonzero — `[` jumps past the matching `]` when zero, `]` jumps back
+when nonzero).  Cells start at 0 and wrap at 8 bits.
 
 ## The program
 
@@ -13,13 +13,13 @@ cell is nonzero — `[` jumps past the matching `]` when the cell is zero,
 ++++++++[>++++++++<-]>+.
 ```
 
-This sets cell 0 to 8, runs a loop that adds 8 to cell 1 on each of the
-eight passes (so cell 1 ends at `8 × 8 = 64`), then adds one more and
-prints cell 1 — the byte 65, which is `'A'`.
+Sets cell 0 to 8, runs a loop that adds 8 to cell 1 on each of the eight
+passes (so cell 1 ends at `8 × 8 = 64`), then adds one more and prints
+cell 1 — the byte 65, which is `'A'`.
 
 ## Step by step
 
-The pointer starts at cell 0 and every cell holds 0.
+Pointer starts at cell 0, every cell holds 0.
 
 | Command | State after | Why |
 | --- | --- | --- |
@@ -37,13 +37,12 @@ The pointer starts at cell 0 and every cell holds 0.
 | `+` | cell 1 = 65 | one more increment: `8 × 8 + 1 = 65`. |
 | `.` | prints `A` | `.` prints the current cell as a byte; 65 is `'A'`. |
 
-Multiplication is the idiom to recognise here: brainfuck has no multiply
-command, so `8 × 8` is built as a loop that runs a counter down to zero
-while adding a constant to another cell each pass.
+The idiom to recognise: brainfuck has no multiply command, so `8 × 8` is
+built as a loop that counts down to zero while adding a constant to
+another cell each pass.
 
 ## Why it terminates
 
-The loop counter is cell 0, which starts at 8 and is decremented by exactly
-one each pass, so the loop runs eight times and then cell 0 hits 0, letting
-`]` fall through.  The program then reaches the end of its source and the
-interpreter halts.
+Cell 0 is the loop counter: it starts at 8 and drops by one each pass, so
+the loop runs eight times, hits 0, and `]` falls through to the end of the
+source.

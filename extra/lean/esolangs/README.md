@@ -27,8 +27,7 @@ Python generator) and its success is verified by computation over the
 full finite state space: 23 pointers × 256 SEED counts × 256 targets.
 Reachability uses the same step range (1..46) as the Python
 `_mammalian_walk`, so the theorem certifies the actual generator's search:
-it never hits the `ValueError` branch.  The Python generator reports
-the same zero failures.
+it never hits the `ValueError` branch.
 
 ## Factor correctness
 
@@ -74,21 +73,20 @@ as `A b₁ ++ B b₂`; a one-character output forces one factor empty.
 
 This is an induction on the execution, **not** a bounded search — the claim
 quantifies over unbounded program length, and non-termination of a `t` loop
-is not decidable by simulation.  `Esolangs/PctWallCheck.lean` audits the
-axioms: only `propext`, `Classical.choice`, and `Quot.sound` — no `sorryAx`
-and no `Lean.ofReduceBool`, so nothing rests on `native_decide`.  The model's
-`stepCmd` was differentially tested against the shipped Python interpreter
-over 44,280 program/input pairs (status, exact output, input consumed) with
-zero mismatches.
+is not decidable by simulation.  `Esolangs/AxiomAudit.lean` audits all three
+proof files: the `%^2^-1` wall and Factor rest on only `propext`,
+`Classical.choice`, and `Quot.sound` (no `sorryAx`, no `native_decide`);
+MAMMALIAN's totality results legitimately carry `native_decide`, being
+exhaustive finite checks.
 
 Note the `n == 1` case is *not* walled: all four one-input functions are
-expressible (identity `ne`; NOT is `nss` + `i`×31 + `pe`, computing
-`x ↦ -x + 97`).  The wall is exactly at `n ≥ 2`.  This file is not in the
+expressible (identity `ne`; NOT is `nss` + `i`×31 + `pe`, verified to map
+`'0'`↔`'1'`). The wall is exactly at `n ≥ 2`.  This file is not in the
 default `lake build` target, so check it explicitly:
 
 ```
 lake env lean Esolangs/PctBooleanWall.lean
-lake env lean Esolangs/PctWallCheck.lean     # axiom audit
+lake env lean Esolangs/AxiomAudit.lean       # axiom audit, all three files
 ```
 
 ## Building

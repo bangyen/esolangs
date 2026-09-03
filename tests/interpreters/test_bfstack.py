@@ -4,7 +4,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.stack_based.bfstack import run
-from tests.interpreters.contract import CycleContract
+from tests.interpreters.contract import CycleContract, StateViewContract
 from tests.interpreters.runner import run_program
 
 
@@ -133,9 +133,11 @@ def _machine(code: object) -> object:
     return _Machine(code, ScriptedIO())
 
 
-class TestContract(CycleContract):
+class TestContract(CycleContract, StateViewContract):
     """The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     halting_program = ">+."
     looping_program = ">+[]"
+    state_views = ("lst", "ip", "memory")
+    viewing_program = ">+."

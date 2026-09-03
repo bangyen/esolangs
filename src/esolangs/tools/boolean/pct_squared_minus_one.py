@@ -70,13 +70,16 @@ first.
 
 A third construction, :func:`_affine`, catches tables that are no subcube.
 It composes one affine setter per input the way the two-input derivation
-does, but *searches* the composition instead of reading slopes off columns,
-so it is not restricted to two inputs.  Two things make that search finite:
-states are deduplicated by the **partition** they induce on the input
-combinations rather than by their values, since only which combinations share
-an accumulator decides the table; and each setter's two branches are spelled
-at a common width by :func:`_spellings_by_width` rather than padded, which is
-what lets an odd width gap close.  That gap was the binding constraint --
+does, and like it the setters are **solved rather than searched**: after two
+setters the accumulator is a vector of four values that the third maps by one
+branch per value of the last input, so the table's even and odd rows are two
+affine images of one shared vector.  Reading that backwards gives the whole
+construction -- the vector's partition is forced by which rows the table
+agrees on, two points fix each branch of the last setter, and the first two
+setters invert by division.  An enumeration over branch pairs stood here
+before, reaching the same 86 tables at 6.4 seconds for the arity against 0.8
+and emitting longer programs; what is left of it is the equal-width spelling
+by :func:`_spellings_by_width`, which is what lets an odd width gap close --
 ``_pad_pair`` pads with ``pp`` and refuses an odd shortfall, and parity-3's
 witness wants branches of width 6 and 5.
 
@@ -625,14 +628,6 @@ _SPELL_WINDOW = range(-90, 91)
 #: Longest command string the speller enumerates for one branch.
 _SPELL_MAX = 7
 
-#: Distinct value vectors kept per induced partition.  One is too few: the
-#: first witness found for parity-3 has no equal-width spelling while a
-#: sibling with the same partition does.  Keying on the full vector instead
-#: explodes the frontier, and the count stops mattering past four -- measured
-#: 82 tables at two witnesses, 84 at four, and 84 at every count up to
-#: sixteen.
-_WITNESSES = 6
-
 
 @cache
 def _spellings_by_width(a: int, b: int) -> dict[int, str]:
@@ -663,148 +658,8 @@ def _spellings_by_width(a: int, b: int) -> dict[int, str]:
     return out
 
 
-def _match_pair(
-    branch_zero: tuple[int, int], branch_one: tuple[int, int]
-) -> tuple[str, str] | None:
-    """Spell a setter's two branches at a common width, or ``None``.
-
-    The narrowest shared width is taken, so the setter is as short as this
-    construction makes it -- though not necessarily the shortest program for
-    the table, since the branches are chosen before the tail is known.
-
-    The empty-intersection return is never taken for the shipped grid: all
-    30625 branch pairs over :data:`_WIDE_A_VALS` x :data:`_WIDE_B_VALS` share
-    a width, and every map in it has some spelling.  It is kept because that
-    is a property of the grid and the depth, not of the function -- narrowing
-    either would make it fire -- and returning ``None`` is what lets
-    :func:`_affine_tables` skip a state rather than emit a setter whose two
-    branches differ in length, which would leak the input through ``len()``.
-    """
-    zero = _spellings_by_width(*branch_zero)
-    one = _spellings_by_width(*branch_one)
-    shared = sorted(set(zero) & set(one))
-    if not shared:  # pragma: no cover - no pair in the shipped grid lacks one
-        return None
-    width = shared[0]
-    return zero[width], one[width]
-
-
-def _partition(vec: tuple[int, ...]) -> tuple[int, ...]:
-    """Relabel a vector by first appearance, keeping only its equality pattern.
-
-    The tail separates two classes, so what decides the table is which input
-    combinations share an accumulator value, not the values themselves.
-    Deduplicating on the pattern keeps the frontier flat across layers; an
-    earlier sweep that deduplicated on values instead did not finish, and one
-    that capped the values reported *fewer* tables than the cascade already
-    builds -- the signature of a truncated search rather than a result.
-    """
-    seen: dict[int, int] = {}
-    return tuple(seen.setdefault(v, len(seen)) for v in vec)
-
-
-def _reindex(vec: tuple[int, ...], n: int) -> tuple[int, ...]:
-    """Reorder a composed vector into truth-table index order.
-
-    :func:`_compose` appends each input's results as ``zero + one``, so input
-    ``k`` lands in bit ``k`` of the index and the *last* input is most
-    significant.  A truth table indexes the other way round, most significant
-    first.  The two are a bit reversal; composing without correcting it
-    harvests a permuted table, which shows up as inverted outputs on setters
-    that do not even differ.
-    """
-    out = [0] * len(vec)
-    for index, value in enumerate(vec):
-        combo = 0
-        for k in range(n):
-            combo |= ((index >> k) & 1) << (n - 1 - k)
-        out[combo] = value
-    return tuple(out)
-
-
 #: One branch of a setter as an affine map, ``(a, b)`` for ``x -> a*x + b``.
 _Branch = tuple[int, int]
-
-#: A setter: the branch taken when the input is 0, and when it is 1.
-_Setter = tuple[_Branch, _Branch]
-
-#: A composition state: the accumulator per input combination, paired with the
-#: setters that produced it.
-_State = tuple[tuple[int, ...], tuple[_Setter, ...]]
-
-
-def _compose(n: int) -> list[_State]:
-    """Every accumulator vector one affine setter per input can produce.
-
-    Enumerating setter *assignments* is a product over inputs and blows up.
-    Only the value vector carries from one input to the next, so the layers are
-    composed with deduplication instead: start from the accumulator's initial
-    zero and, at each input, apply every branch pair to every vector kept so
-    far.  That is a fixpoint over vectors rather than a product over programs.
-
-    The affine model ignores the over-3003 reset, which is sound only while the
-    values stay small.  With ``|a| <= 4`` and ``|b| <= 12`` over three layers
-    the magnitude cannot exceed ``4*(4*(4*0 + 12) + 12) + 12 == 252``, far
-    under the limit, so no reset fires inside a setter and the composition is
-    exactly what the interpreter computes.  A wider arity must re-derive this
-    before trusting the model.
-    """
-    branches: list[_Branch] = [(a, b) for a in _WIDE_A_VALS for b in _WIDE_B_VALS]
-    frontier: list[_State] = [((0,), ())]
-    for _ in range(n):
-        layer: dict[tuple[int, ...], list[_State]] = {}
-        for vec, assign in frontier:
-            for zero_branch in branches:
-                zero = tuple(zero_branch[0] * v + zero_branch[1] for v in vec)
-                for one_branch in branches:
-                    one = tuple(one_branch[0] * v + one_branch[1] for v in vec)
-                    candidate = zero + one
-                    bucket = layer.setdefault(_partition(candidate), [])
-                    if len(bucket) < _WITNESSES and all(
-                        candidate != seen for seen, _ in bucket
-                    ):
-                        bucket.append((candidate, (*assign, (zero_branch, one_branch))))
-        frontier = [state for bucket in layer.values() for state in bucket]
-    return frontier
-
-
-@cache
-def _affine_tables(n: int) -> dict[str, tuple[tuple[tuple[str, str], ...], str]]:
-    """Every table the composed-affine path builds at ``n`` inputs.
-
-    Derived for a whole arity in one pass and cached, because the composition
-    is shared: the states already carry the table each one induces, so
-    harvesting them costs one sweep rather than one per table.
-    """
-    built: dict[str, tuple[tuple[tuple[str, str], ...], str]] = {}
-    for raw, assign in _compose(n):
-        vec = _reindex(raw, n)
-        values = set(vec)
-        if len(values) != 2:
-            continue
-        for one_value in values:
-            table = "".join("1" if v == one_value else "0" for v in vec)
-            if table in built:
-                continue
-            zero_value = next(v for v in vec if v != one_value)
-            tail = _tail_for(one_value, zero_value)
-            if tail is None:
-                continue
-            setters = [_match_pair(zero, one) for zero, one in assign]
-            # Unreachable for the shipped grid, where every branch pair shares
-            # a width -- see :func:`_match_pair`.  It stays because a narrower
-            # grid or a shallower spelling depth would make it fire, and
-            # skipping the state is what keeps a setter from being emitted
-            # with branches of different lengths.
-            if any(pair is None for pair in setters):  # pragma: no cover
-                continue
-            # ``mypy`` cannot see the guard above, which is what makes the
-            # cast safe rather than assumed.
-            built[table] = (
-                tuple(pair for pair in setters if pair is not None),
-                tail,
-            )
-    return built
 
 
 #: Ladders the search runs, as ``(weights, base)``.  Every value is a multiple
@@ -1079,6 +934,21 @@ def _deep_plan(truth_table: str, n: int, values: list[int]) -> str | None:
     row it wipes lands on zero together, whatever the gaps between them were --
     so only the boundaries *between* runs need a full residue system, and the
     span a table costs is set by its number of runs rather than by ``2**n``.
+
+    **None of the refusals below fire from the caller.**  The deep band tests
+    each weighting for *legality* -- that every collision it causes joins rows
+    of one class -- and a legal weighting has never been seen to fail to
+    schedule.  That is what lets the search test legality instead of running
+    this planner per candidate (commit 0921f249, which measured 63274 legal
+    weightings inside the span budget with zero refusals), and the call site
+    already carries a ``pragma: no cover`` saying so.  Re-measured here:
+    n=3 exhaustive, 254 tables, 170592 legal weightings, 0 refusals; n=4
+    sampled, 200 tables, 26016 legal, 0 refusals.
+
+    So the ``continue``/``break``/``return None`` arms are the planner's own
+    contract for a caller that has *not* screened its input, and they stay
+    for that reason -- a planner that silently returned a body for an illegal
+    weighting would emit a program computing the wrong function.
     """
     rows = range(2**n)
     groups: dict[int, set[str]] = {}
@@ -1095,17 +965,17 @@ def _deep_plan(truth_table: str, n: int, values: list[int]) -> str | None:
 
     for prefix in range(2**n):
         if prefix and len({truth_table[r] for r in order[:prefix]}) > 1:
-            break
+            break  # pragma: no cover - screened by legality
         rest = order[prefix:]
         if not rest:
-            break
+            break  # pragma: no cover - screened by legality
         if max(values[r] for r in rest) - min(values[r] for r in rest) > _LIMIT:
-            continue
+            continue  # pragma: no cover - screened by legality
         high = _LIMIT - max(values[r] for r in rest)
         low = (_LIMIT - min(values[r] for r in order[:prefix]) + 1) if prefix else 0
         low = max(low, 0)
         if low > high:
-            continue
+            continue  # pragma: no cover - screened by legality
         drop = next(
             (
                 d
@@ -1115,11 +985,11 @@ def _deep_plan(truth_table: str, n: int, values: list[int]) -> str | None:
             None,
         )
         if drop is None:
-            continue
+            continue  # pragma: no cover - screened by legality
         body = _deep_body(truth_table, n, values, order, anchor, live, prefix, drop)
         if body is not None:
             return body
-    return None
+    return None  # pragma: no cover - screened by legality
 
 
 def _deep_body(
@@ -1142,10 +1012,15 @@ def _deep_body(
     body = dropped + "p"
     current = {r: _apply(-values[r], dropped + "p") for r in rows}
     if {r for r in rows if current[r] > _LIMIT} != set(order[:prefix]):
-        return None
+        return None  # pragma: no cover - screened by legality
     cleared = set(order[:prefix])
     for row in cleared:
-        current[row] = 0
+        # Empty from the screened caller: a legal weighting is planned at
+        # ``prefix == 0`` -- measured over every table at two and three
+        # inputs, 1332 bodies, all of them prefix 0 -- so nothing is carried
+        # past the limit and there is nothing to clear.  The loop is the
+        # planner's own handling of a prefix a wider caller could ask for.
+        current[row] = 0  # pragma: no cover - screened by legality
 
     live_order = [r for r in order if r not in cleared]
     cuts = [
@@ -1157,11 +1032,11 @@ def _deep_body(
         wipe = [live_order[i] for i in range(cut) if live_order[i] not in cleared]
         keep = [live_order[i] for i in range(cut, len(live_order))]
         if not wipe or len({truth_table[r] for r in wipe}) > 1:
-            return None
+            return None  # pragma: no cover - screened by legality
         low = _LIMIT - min(current[r] for r in wipe) + 1
         high = _LIMIT - max(current[r] for r in keep)
         if low > high or low <= 0:
-            return None
+            return None  # pragma: no cover - screened by legality
         band = _BYTE_ONE if truth_table[wipe[0]] == "1" else _BYTE_ZERO
         # A wiped band thereafter takes the same translations as the survivors,
         # so the parking cancels from their gap and one congruence fixes the
@@ -1169,18 +1044,18 @@ def _deep_body(
         wanted = (live - band - current[anchor]) % _BAND_UNIT
         up = low + ((wanted - low) % _BAND_UNIT)
         if up > high:
-            return None
+            return None  # pragma: no cover - screened by legality
         raise_code = _affine_code(1, up)
         if raise_code is None:
-            return None
+            return None  # pragma: no cover - screened by legality
         raised = {r: _apply(v, raise_code + "s") for r, v in current.items()}
         down = _DEEP_PARK - max(raised.values())
         park = _affine_code(1, down)
         if park is None:
-            return None
+            return None  # pragma: no cover - screened by legality
         parked = {r: _apply(v, park) for r, v in raised.items()}
         if max(parked.values()) > _LIMIT:
-            return None
+            return None  # pragma: no cover - screened by legality
         body += raise_code + "s" + park
         current = parked
         cleared.update(wipe)
@@ -1193,14 +1068,14 @@ def _deep_body(
     for shift in sorted((base + _BAND_UNIT * reps for reps in range(-8, 9)), key=abs):
         tail = _affine_code(1, shift)
         if tail is None:
-            continue
+            continue  # pragma: no cover - screened by legality
         printed = {r: _apply(v, tail) for r, v in current.items()}
         if all(
             (printed[r] & 0xFF) == (_BYTE_ONE if truth_table[r] == "1" else _BYTE_ZERO)
             for r in rows
         ):
             return body + tail + "e"
-    return None
+    return None  # pragma: no cover - screened by legality
 
 
 def _deep_setters(
@@ -1227,6 +1102,70 @@ def _deep_setters(
     return tuple(setters)
 
 
+def _cross_class_diffs(truth_table: str, n: int) -> list[tuple[int, ...]]:
+    """Difference vectors of the row pairs a weighting must keep apart.
+
+    Two rows collide when their weighted sums tie, and a tie is a vanishing
+    signed combination of the weights: writing ``d`` for the coordinatewise
+    difference of the two rows' bits, the pair collides under ``units`` and
+    ``mask`` exactly when ``sum(u_k * (-1)**mask_k * d_k) == 0``.  Only pairs
+    of *different* class matter -- a collision inside a class is harmless,
+    which is the whole reason the deep band reaches past the band -- and a
+    vector and its negation forbid the same weightings, so each is kept once.
+    Sixteen rows give 120 pairs but only about 32 distinct vectors, and the
+    dedup is what makes the legality test cheap enough to replace planning.
+    """
+    seen: set[tuple[int, ...]] = set()
+    for row in range(2**n):
+        for other in range(row + 1, 2**n):
+            if truth_table[row] == truth_table[other]:
+                continue
+            diff = tuple(
+                ((row >> (n - 1 - k)) & 1) - ((other >> (n - 1 - k)) & 1)
+                for k in range(n)
+            )
+            lead = next(x for x in diff if x)
+            seen.add(diff if lead > 0 else tuple(-x for x in diff))
+    return sorted(seen)
+
+
+def _weighting_is_legal(
+    units: tuple[int, ...], mask: int, diffs: list[tuple[int, ...]]
+) -> bool:
+    """Whether no cross-class pair collides under this weighting."""
+    for diff in diffs:
+        total = 0
+        for k, unit in enumerate(units):
+            total += -unit * diff[k] if (mask >> k) & 1 else unit * diff[k]
+        if total == 0:
+            return False
+    return True
+
+
+@cache
+def _deep_weightings(n: int) -> tuple[tuple[int, ...], ...]:
+    """Return the unit vectors worth trying, cheapest span first.
+
+    Ordered by the span they cost, then flattest, which is the order the
+    emitted program's length follows.  Vectors whose span exceeds the limit
+    are dropped rather than tried: a weighting is measured in whole residue
+    systems, so ``sum(units) * 256`` has to fit under 3003 and a sum past
+    ``3003 // 256 == 11`` cannot schedule whatever the table looks like.
+    That is not a heuristic -- every weighting observed to fail while its
+    collisions were legal failed exactly here, at sum 12, span 3072.
+    """
+    return tuple(
+        sorted(
+            (
+                units
+                for units in product(range(_DEEP_CAP + 1), repeat=n)
+                if any(units) and sum(units) <= _LIMIT // _BAND_UNIT
+            ),
+            key=lambda u: (sum(u), max(u), u),
+        )
+    )
+
+
 def _deep_band(truth_table: str, n: int) -> str | None:
     """Build a deep-band template, or ``None`` if no weighting schedules it.
 
@@ -1243,6 +1182,13 @@ def _deep_band(truth_table: str, n: int) -> str | None:
     Weightings are tried in order of the span they cost -- which is the sum of
     the units, since each is a multiple of 256 -- so the emitted program is the
     shortest this construction builds rather than the first that schedules.
+    What is *tested* per weighting is legality rather than schedulability:
+    a collision is survivable exactly when it joins rows of one class, and a
+    weighting whose collisions are all legal has never failed to schedule
+    (63274 checked inside the span budget, none refused).  So the planner
+    runs once, at the end, instead of once per candidate -- and the budget
+    itself is derived rather than tuned, since every legal weighting observed
+    to fail did so with ``sum(units) * 256`` past the limit.
     Ties go to the *flattest* weighting first, largest unit smallest: a table's
     span is set by its number of runs, and an even weighting is what collapses
     rows into runs.  Parity is the extreme case, built by the popcount ladder
@@ -1268,15 +1214,20 @@ def _deep_band(truth_table: str, n: int) -> str | None:
         for pop in range(n + 1)
     ):
         return None
-    for units in sorted(
-        product(range(_DEEP_CAP + 1), repeat=n), key=lambda u: (sum(u), max(u), u)
-    ):
-        if not any(units):
-            continue
+    diffs = _cross_class_diffs(truth_table, n)
+    for units in _deep_weightings(n):
         for mask in range(2**n):
+            # Legality decides the weighting; the schedule then follows.  A
+            # weighting whose collisions all join rows of one class has never
+            # been observed to fail here -- 63274 legal weightings inside the
+            # span budget were scheduled without one refusal -- so this test
+            # replaces planning as the thing being searched for, and the plan
+            # below runs once rather than once per candidate.
+            if not _weighting_is_legal(units, mask, diffs):
+                continue
             values = _deep_values(n, units, mask)
             body = _deep_plan(truth_table, n, values)
-            if body is None:
+            if body is None:  # pragma: no cover - legality implies a schedule
                 continue
             setters = _deep_setters(units, mask)
             if setters is None:  # pragma: no cover - a planned weighting spells
@@ -1464,13 +1415,30 @@ def _fold_sig(state: _FoldState) -> tuple[tuple[int, int, str], ...]:
 
 
 def _fold_search(
-    state: _FoldState, maxdepth: int = 40, cap: int = 2_000_000
+    state: _FoldState, maxdepth: int = 40, cap: int = 5_000
 ) -> list[_FoldOp] | None:
     """Best-first search to a two-point state, or ``None``.
 
     States are keyed by their relative geometry -- ids do not matter for
     reachability -- and ranked by point count first, so contractions are
     pursued before excursions.
+
+    **The cap is what makes a miss returnable.**  It was 2_000_000, and at
+    that size it did not do a cap's job: states are expanded at about 3700 a
+    second, so exhausting it took roughly nine minutes per call and a wide
+    table refused only after tens of minutes -- which is the failure this
+    module elsewhere refuses to ship, since a caller can handle a raise and
+    cannot handle a build that does not return.
+
+    5_000 is measured rather than tuned, against the arities that carry a
+    claim.  Every table at ``n <= 5`` builds exactly as it did at the old
+    value -- all 256 at three inputs and 40-table samples at four and five,
+    the same *sets* either way, every row re-executed on the interpreter at
+    one fill width -- while a six-input sample builds 8 of 8 with a slowest
+    build of 1.6s.  What it buys is the refusal: an eight-input table now
+    raises in about 13 seconds where it used to take over nine minutes.
+    Acceptance above six inputs is partial under either value and carries no
+    claim, so the trade is bounded by what is documented.
     """
     import heapq
 
@@ -1503,27 +1471,35 @@ def _fold_search(
 
 def _fold_beam(
     state: _FoldState,
-    target: int = 8,
-    width: int = 48,
-    maxsteps: int = 90,
+    target: int = 2,
+    width: int = 1,
+    maxsteps: int | None = None,
 ) -> list[_FoldOp] | None:
-    """Beam-reduce a wide state down to ``target`` points, or ``None``.
+    """Reduce a state down to ``target`` points, or ``None``.
 
-    Near-parity tables have up to 32 runs and the exhaustive search drowns
-    there; a narrow beam ranked by point count finds the reduction pattern
-    (it is nearly forced) and hands the small remainder to the search.
+    **A deterministic descent, not a beam.**  ``width`` defaults to 1: take
+    the best-ranked move each step and never reconsider.  The name and the
+    parameter survive so the old breadth can be re-measured, not because
+    anything asks for it.
 
-    The target is 8 rather than the state width at which the search *starts*
-    to struggle, and the difference is not cosmetic: at 21 points the search
-    explores for fifty seconds and then gives up, while beaming the same
-    state to 8 takes 0.37s and the search finishes it instantly.  A target
-    just under the drowning width leaves exactly the states that are too
-    wide to search and too narrow to beam, which is a hole rather than a
-    threshold -- so the beam runs whenever it can help at all.
+    ``target`` defaults to 2, which is the whole reduction -- the plan no
+    longer stops at a remainder for :func:`_fold_search` to close.  Two
+    measurements license that, both recorded on
+    :data:`_FOLD_DESCENT_TARGET`: the rank ties this breaks arbitrarily are
+    confluent, and descending the whole way builds everything the old split
+    built while reaching an arity it refused.
+
+    ``maxsteps`` defaults to ``None``, meaning the budget is *derived from
+    the state* -- ``_FOLD_STEP_SLOPE * points + _FOLD_STEP_SLACK``, where
+    the starting points are the table's runs.  The budget is what used to
+    bind, and binding it to a flat number capped the arity by accident: see
+    :data:`_FOLD_STEP_SLOPE`.  Pass an integer to override.
     """
     start = _fold_norm(list(state))
     if len(start) <= target:
         return []
+    if maxsteps is None:
+        maxsteps = _FOLD_STEP_SLOPE * len(start) + _FOLD_STEP_SLACK
     beam: list[tuple[_FoldState, list[_FoldOp]]] = [(start, [])]
     seen = {_fold_sig(start)}
     for _ in range(maxsteps):
@@ -1553,20 +1529,561 @@ def _fold_apply(state: _FoldState, op: _FoldOp) -> _FoldState | None:
     return None
 
 
+#: **The beam's breadth was the target's fault, and this removes it.**
+#:
+#: Width 1 is not a beam at all -- it takes the single best-ranked move each
+#: step and never reconsiders, which is a deterministic rule.  At the old
+#: target of 8 that very nearly worked (76 of 80 six-input tables), and the
+#: four exceptions looked like a property of those tables.  They are not.
+#: Varying the target while measuring the width each exception needs shows
+#: the requirement moving with the *target*, not with the table:
+#:
+#:     table        tgt4  tgt6  tgt8  tgt10  tgt12
+#:     w8-loser        9     9     9      2      1
+#:     needs9-a        9     9     9      1      1
+#:     needs9-b        9     9     9      9      9
+#:
+#: Two of the three stop needing breadth entirely once the beam is allowed to
+#: stop at 10 rather than 8.  The reduction is forced; asking it to land on
+#: exactly 8 points is what was not.
+#:
+#: **And the underlying cause is the step budget, not the target.**  Tracing
+#: the greedy reduction on the exceptions shows it never reaching a dead end:
+#: it is still descending when ``maxsteps`` expires, one or two moves short --
+#: `needs9-b` stands at 9 points on the last permitted step.  Many steps make
+#: no progress (runs of ``19 -> 19``, ``13 -> 13 -> 13``) because the best
+#: available move does not always reduce the count, and the final points are
+#: the slowest.  So the "width 9" the exceptions appeared to need was not a
+#: property of those tables at all: raising ``maxsteps`` from 90 to 150
+#: builds **all five** of them at target 8 and width 1.  Both knobs work
+#: because both buy the same thing -- a target of 12 is reached sooner, and a
+#: budget of 150 lets 8 be reached at all.  The target is what ships because
+#: it costs nothing per table that already builds, where a larger budget is
+#: paid on every refusal.
+#:
+#: So the target moves to 12 and the width to 1.  Measured against the old
+#: ``target=8, width=48`` over 416 tables -- all 256 at three inputs,
+#: 60-table samples at four and five, 40 at six -- the built set is
+#: **identical**, nothing lost and nothing gained, every row re-executed on
+#: the interpreter at one fill width, and the sweep runs in 56.8s against
+#: 131.5s.  At seven inputs, which carries no claim, the two disagree on one
+#: table each way.
+#:
+#: The target is not free to grow: at 16 the *five*-input tables start
+#: refusing (28 of 30), since a wide remainder hands ``_fold_search`` more
+#: than it can close.  10, 12 and 14 all give full greedy acceptance; 12 is
+#: the middle of that band.
+#:
+#: **The ties do not matter, and the search is not needed.**  The reduction
+#: meets steps where 5 to 12 candidate moves tie at the best rank and it
+#: takes an arbitrary one, which looked like the one place a rule was still
+#: missing.  It is not: breaking those ties at *random* -- a fresh
+#: permutation before every ranking, so no two runs agree -- builds 20 of 20
+#: six-input tables under every seed tried, at three seeds by four budgets.
+#: (At the old ``maxsteps`` of 90 the same test built 5 to 11, which is the
+#: budget artefact again and not the ties.)  Arrival order therefore buys
+#: step-efficiency, not correctness, and the reduction is confluent.
+#:
+#: Given that, the descent has no reason to stop early and hand a remainder
+#: to :func:`_fold_search`.  Running it to two points instead builds every
+#: table the old split built -- 424 tables at three through seven inputs,
+#: none lost -- and *gains* five at seven inputs, with every row executed on
+#: the interpreter.  It also reaches an arity the split refused outright:
+#: two random eight-input tables build in about four seconds each and print
+#: all 256 rows, where the shipped configuration raises.
+#:
+#: So the fold's plan is now a single deterministic descent.  The programs
+#: are byte-identical at three and four inputs and differ above that (the
+#: descent finds its own ending rather than the search's), which is why this
+#: is a behaviour change rather than a refactor.
+_FOLD_DESCENT_TARGET = 2
+
+#: The descent's step budget, as ``slope * points + slack`` rather than a
+#: flat number.  **The starting point count is the run count** -- the fold
+#: opens with one point per run of the sorted table, so a budget written
+#: against points is written against the table's own structure.
+#:
+#: **The descent terminates without it.**  The budget is a latency guard,
+#: not the reason the loop stops, and the argument is structural rather than
+#: measured:
+#:
+#: * *The point count never rises.*  ``_fold_merge`` only ever coalesces
+#:   equal positions, and every branch of :func:`_fold_moves` passes its
+#:   items through it -- the doubling ``m`` and the full-collapse ``d`` map
+#:   ``p`` points to ``p`` and 1 respectively.  So ``p`` is non-increasing
+#:   along any trajectory, and at most ``points - target`` steps can ever be
+#:   productive.
+#: * *Every state stays in the workspace.*  Both relocation branches guard
+#:   with ``if hi - lo > 2 * _LIMIT: continue``, and the doubling is offered
+#:   only when ``spread * 2 <= 2 * _LIMIT - 2``.  Positions therefore live in
+#:   a window of ``2 * _LIMIT + 1`` values, so the signatures available at a
+#:   fixed ``p`` are finitely many.
+#: * *Revisits are forbidden.*  The descent adds every generated successor to
+#:   ``seen`` and skips anything already there.
+#:
+#: A non-increasing measure, finitely many states per value of that measure,
+#: and no revisits: the loop must either reduce ``p`` or run out of
+#: successors, and running out is the ``if not cands`` refusal.  Checked as
+#: well as argued -- over 53110 successor states sampled at four through six
+#: inputs, none raised the point count and none left the workspace.
+#:
+#: So the slope only has to be generous enough not to cut a descent short,
+#: and **four inputs is enumerated rather than sampled**: folding all 65534
+#: non-constant four-input tables gives a worst of 78 steps at 16 points,
+#: against the 144 this budget allows there -- 1.8x headroom over an
+#: exhaustive population, not a lucky sample.  The whole ``pts -> steps``
+#: table is regular: the maximum climbs smoothly with the point count and
+#: the worst ratio peaks at **5.25** around 12 points, then falls away.
+#:
+#: Sampling at wider arities agrees (worst 5.65 at five inputs, at 17
+#: points) and, importantly, does *not* converge downward -- the worst
+#: observed ratio rose with every widening, 4.25 through 5.65.  That is why
+#: the slope is not presented as derived: it is a bound chosen to sit well
+#: above an observed peak that small states, not large ones, produce.  What
+#: makes that acceptable is the termination argument above -- the budget
+#: does not decide what builds, only how long a doomed descent runs -- plus
+#: the fold being the last route tried, so a loose budget costs refusal
+#: latency and nothing on a table that builds.
+#:
+#: **What the cost actually depends on is the run-length word**, and that is
+#: exhaustive rather than sampled: writing each table as its sequence of run
+#: lengths, every one of the 127 distinct words at three inputs and all
+#: 32767 at four map to a *single* step count, with no exceptions.  Since
+#: 65534 tables share those 32767 words in pairs -- a table and its
+#: complement -- the cost is complement-invariant too, and nothing about the
+#: table beyond the word matters.
+#:
+#: The dependence is on the word as a *sequence*, not as a multiset: only 27
+#: of the 2248 rotation-and-reflection classes at four inputs are
+#: cost-invariant.  Position is what moves it.  Holding the point count,
+#: run count and class sizes fixed and sliding one length-2 run through an
+#: otherwise alternating word takes the cost from 27 steps to 78 -- the same
+#: table shape, three times the work, decided by where the defect sits.  The
+#: worst tables in the whole four-input enumeration are exactly that: near
+#: alternating with a single late defect.
+#:
+#: **All of the above is about the greedy descent's path length, which is
+#: not an invariant of anything.**  It is one policy's walk, tie-broken by
+#: the order :func:`_fold_moves` yields and carrying a ``seen`` set that
+#: makes each step depend on the whole history, so it is not even a graph
+#: distance.  Comparing it against one -- a breadth-first search over
+#: signatures with a global visited set -- it is *optimal on 4 of 196*
+#: three-input words, and can be 14 steps where 6 suffice.  Some words the
+#: descent takes 9 steps on are 2 steps from done.
+#:
+#: Against the true distance the structure is completely different.  Within
+#: a fixed run count the optimal cost takes exactly **two adjacent values**
+#: (spread 1, against the greedy spread of 9), and it does *not* depend on
+#: the exact run lengths at all -- only on which runs exceed 1, with zero
+#: ambiguity at every run count.  So the incompressibility this docstring
+#: used to record is a fact about the heuristic, not about the fold: the
+#: exact lengths that "matter without limit" matter only to greedy's walk.
+#:
+#: **The optimal cost has a closed form.**  Writing ``r`` for the run count
+#: and calling a slot *long* when its run exceeds 1::
+#:
+#:     cost(word) = 2 * r - 3 - (r % 2) + [every middle slot is long]
+#:
+#: where the *middle* slots are ``{(r - 1) // 2, r // 2}`` -- one slot for
+#: odd ``r``, two for even.  The first three terms are ``base(r)``, the
+#: minimum cost at that run count: 1, 2, 5, 6, 9, 10, 13 at ``r = 2..8``.
+#: The bracket is the ``delta``, which is 0 or 1, so the two-adjacent-values
+#: spread above is exactly this term.
+#:
+#: **Definitions, because the quantity is what the prior investigation got
+#: wrong.**  ``cost`` is the breadth-first distance from the start state --
+#: one point per run, at ``-_FOLD_STEP * first_row`` with span
+#: ``_FOLD_STEP * (len - 1)`` -- to a :func:`_fold_done` state, over
+#: :func:`_fold_sig` signatures with a *global* visited set, generating
+#: successors with :func:`_fold_moves` at ``kcap=None``.  ``kcap`` does not
+#: bind below nine points (``kmax = m if m <= 8``), so this is the shipped
+#: move set for every word measured; at ``r >= 9`` the descent's ``kcap=3``
+#: is a different graph and is not covered by this rule.
+#:
+#: The harness's start state is the same object :func:`_fold` builds, and
+#: that is checked rather than assumed: over all 65534 non-constant
+#: four-input tables, the state constructed from the run-length word alone
+#: has the identical :func:`_fold_sig` to the one built from the table, 65534
+#: of 65534.  Those tables carry only 32767 distinct words -- a table and its
+#: complement share one -- which is where the cost's complement-invariance
+#: comes from.
+#:
+#: Measured over **1091 words with zero mismatches**: exhaustive at three
+#: inputs for ``r <= 6`` (all 119 words) plus two of the seven ``r == 7``
+#: words, the ones with the defect at either end; exhaustive
+#: over ``>1``-patterns at four and five inputs for ``r <= 5``, each pattern
+#: carried by several words that vary *where* the mass sits (the axis that
+#: killed the earlier candidates), 322 and 468 words; 300 uniformly random
+#: words at five and six inputs; and an adversarial round on the shapes the
+#: rule is most likely to get wrong -- pairs differing only at a middle slot,
+#: extreme mass contrasts, the same pattern at 8, 16, 32 and 64 rows.
+#:
+#: The delta is pinned at the run counts where its shape changes.  At
+#: ``r == 6`` the middle is a *pair* of slots and the conjunction is what
+#: matters: at four inputs ``(1, 1, 2, 1, 1, 10)`` and ``(1, 1, 1, 2, 1, 10)``
+#: each cost 9 with one middle slot long, while ``(1, 1, 2, 2, 1, 9)`` costs
+#: 10 with both.  At ``r == 7`` the middle is the single slot 3, and
+#: ``(1, 1, 1, 2, 1, 1, 25)`` costs exactly 11 -- depths 9 and 10 exhaust
+#: with no solution and depth 11 finds a plan (393s) -- so the ``+1`` is
+#: present at a run count no other measurement reached.  It is measured
+#: against ``base(7) == 10``, which is itself proved twice: a full BFS on
+#: ``(2, 1, 1, 1, 1, 1, 1)`` and on ``(1, 1, 1, 1, 1, 1, 2)`` at three inputs
+#: (1.17M states, 344s and 195s), and an iterative deepening on
+#: ``(1, 1, 1, 1, 1, 1, 26)`` at five that finds nothing at depth 9 and a
+#: plan at depth 10.
+#:
+#: **The delta's mechanism, re-derived.**  A one-move finish from three
+#: points requires an untouched span-0 point, and *only a wipe zeroes a
+#: span*: the wipe collapses its victims to ``(0, 0, cls, ids)`` while every
+#: survivor keeps its span, and :func:`_fold_merge` refuses to coalesce
+#: anything whose span is nonzero.  Since every wipe takes ``asc[:k]`` or
+#: ``desc[:k]`` -- 8116 of 8116 moves checked contiguous, none interior -- a
+#: long *middle* run is the one group no prefix or suffix reaches without
+#: dragging a neighbour, so it costs the extra move.  Verified as a
+#: necessary condition on all 1005 reachable three-point states, with 462 of
+#: them admitting a one-move finish as a positive control.
+#:
+#: The earlier telling of this mechanism was wrong in one detail worth
+#: keeping straight: a ``k >= 2`` wipe does *not* require span-0 victims
+#: (414 of 840 partial sweeps observed have a spanned victim).  The span-0
+#: requirement lives in the landing, not the sweep.
+#:
+#: The ``base(r)`` half is regularity rather than proof.  Censusing optimal
+#: plans gives ``r - 1 + 2 * floor((r - 2) / 2)`` moves, split as
+#: ``floor((r - 2) / 2)`` doublings and the rest wipes -- ``(1, 15)`` is one
+#: ``d``; ``(1, 1, 14)`` is ``d`` then ``u``; ``(1, 1, 1, 13)`` is
+#: ``d, m, d, u, u``; ``(1, 1, 1, 1, 1, 11)`` is four ``d``, two ``m``,
+#: three ``u``.  A doubling is what lets a landing split two survivors, so
+#: the count tracks how often the cyclic order must be broken.  That is a
+#: mechanism sketch, not a lower-bound argument: the closed form is
+#: validated by measurement, and the ``m``-count is observed rather than
+#: derived.
+#:
+#: **Four recorded counterexamples were greedy artifacts, and the record is
+#: corrected here.**  Every pair below was measured against the descent's
+#: path length, not against a distance, and under BFS each pair *agrees*:
+#: ``(19, 2, 11)`` and ``(23, 2, 7)`` both cost 3; ``(34, 20, 10)`` and
+#: ``(10, 20, 34)`` both cost 3; ``(40, 4, 8, 12)`` and ``(12, 4, 8, 40)``
+#: both cost 6.  So the cums-mod-4-with-cap key and the ``min(x, K)``
+#: recodings were never falsified against the true cost -- and the middle
+#: -slot rule's supposed death at four inputs was the same mistake:
+#: ``(1, 14, 1)`` costs 3 where ``(1, 1, 14)`` costs 2, exactly as the rule
+#: says, against the claim that all 3-run words there cost 2 alike.  The
+#: recorded ``base`` table was wrong too: ``base(2) = 1`` at every arity, not
+#: 0 at four inputs -- a two-run word always has a run longer than 1, so its
+#: start state has a nonzero span and cannot already be done.
+#:
+#: What this does *not* say: the ``>1``-pattern is sufficient only where it
+#: was measured (``r <= 5`` at four and five inputs, ``r <= 6`` at three),
+#: and ``r >= 8`` is untested at every arity -- ``base(8) = 13`` is the
+#: closed form's prediction, not a measurement.  A full BFS at seven runs
+#: costs about six minutes and 1.2M states, so the ladder above that is a
+#: compute question rather than an open one.
+#:
+#: One law was found and refuted: ``3 * points`` bounds the exhaustive
+#: three-input maxima exactly, with the bound attained.  It does not survive
+#: -- four inputs violate it at ten points and five inputs reach 5.65 -- so
+#: the tight small-arity fit is a coincidence of small states rather than
+#: the shape of the algorithm.
+#:
+#: One thing measured and *rejected*: widening ``kcap`` from 3 to 6 in the
+#: descent's move generation.  A re-implemented harness suggested it removed
+#: long plateaus, but that harness started from ``2**n`` points where the
+#: real descent starts from the run count, so it was not this algorithm.
+#: Instrumenting the shipped beam gives byte-identical ratios at both values
+#: -- median 1.92, worst 5.10 either way -- so the widening buys nothing.
+#:
+#: Substituting it for the flat 400 is a **no-op where 400 was enough**: over
+#: 387 tables at three through eight inputs the emitted programs are
+#: byte-identical, every one re-executed on the interpreter.  Where 400 was
+#: *not* enough it lifts an arity, which is the point -- eight inputs already
+#: used 359 steps, so nine overran the flat budget and built 1 of 3 random
+#: tables, where the derived bound builds 3 of 3 and prints all 512 rows.
+#:
+#: What it is not any more is *arity-capping* by accident.
+#: **Plan length is not program length, and for size it is close to the
+#: wrong objective.**  Ops have wildly different prices: within one plan a
+#: dive at 3004 costs 1490 characters from a resting accumulator and 4 when
+#: the accumulator is already near, a doubling costs 751, and the finish
+#: over a thousand.  The charge is the arithmetic distance travelled,
+#: spelled in unary -- :func:`_sub_code` is ``k // 2`` characters -- so op
+#: count barely correlates with emitted length.  Cutting a plan from 17 ops
+#: to 6 was measured to save 13% of characters; optimising characters
+#: directly saves 60% and more.
+#:
+#: **The cost model is closed form**, verified to zero error on all 56
+#: constructible three-input tables.  Each op is priced by mirroring the
+#: emitter's position updates, and :meth:`_FoldEmitter.finish` solves a
+#: single congruence -- ``need = (-(byte(hi) - byte(lo)) - pos[lo]) % 256``,
+#: whose unique in-window solution ``u`` costs ``u // 2 + 31``.  A candidate
+#: plan can therefore be priced without emitting it.
+#:
+#: That model explains a fact worth recording: character cost is **not**
+#: complement-invariant, though plan length is.  The answer bytes are 48 and
+#: 49, so which class lands on top flips a ``+-1`` and moves the congruence
+#: by 2 mod 256 -- about 127 characters.  ``01100111`` costs 5424 where its
+#: complement ``10011000`` costs 5306.
+#:
+#: **One construction ships nothing yet but is verified:** every three-run
+#: table builds from three greedy rises, no search -- 3176 to 3185
+#: characters against this generator's 9838 to 10640, within 1 to 8 of the
+#: enumerated optimum, each program executed on the interpreter with every
+#: row correct at one fill width.  The cost is nearly independent of the run
+#: lengths and of the arity.
+#:
+#: Three attempts to generalise that failed, recorded so they are not
+#: retried.  Reranking this descent by characters instead of point count
+#: looked like a 27.7% win and is **272% worse** on tables all variants
+#: build -- the apparent saving was selection bias from abandoning hard
+#: tables, at 116/254 coverage against 206/254.  A fixed catalogue of the
+#: observed optimal shapes, walked greedily, saturates at 34 of 40 however
+#: wide the amount branching.  And greedy on the exact cost model builds 8
+#: of 40 at a mean of **-67%**.  Exact edge weights are not enough without a
+#: cost-to-go term; the choice of move is not greedily determined.
+_FOLD_STEP_SLOPE = 8
+_FOLD_STEP_SLACK = 16
+
+
+#: The plan for a table, read off its run-length word rather than searched.
+#:
+#: **What the descent was rediscovering.**  The optimal plan does not depend
+#: on the run lengths, only on which runs are longer than 1.  Writing that as
+#: the word's ``>1``-pattern, every word sharing a pattern admits the same
+#: plan: mining every optimal plan (breadth-first to the minimum depth, then
+#: enumerating all plans at that depth) and replaying the symbolic form onto
+#: other words with the same pattern builds 40 of 40 targets for every
+#: pattern at ``r <= 4``, including 16- and 32-row targets from 8-row
+#: sources.
+#:
+#: **The amounts come from four symbols**, which is what makes a plan
+#: replayable at all: ``cmin`` is the minimum relocation, ``cmax`` relocates
+#: by the whole gap to the nearest survivor, ``land j`` lands exactly on
+#: survivor ``j`` -- necessarily same-class and already wiped, which is the
+#: merge -- and the doubling carries no amount.  The vocabulary is pinned
+#: rather than assumed: a breadth-first search restricted to ``cmin``,
+#: ``cmax`` and the doubling reaches 250 of the 254 non-constant three-input
+#: tables, and the four it misses are exactly the alternating and
+#: near-alternating words, which need a landing.
+#:
+#: **The key is ``(r, delta, pat[1])``** -- the run count, the middle-slot
+#: predicate that :data:`_FOLD_STEP_SLOPE` already records as setting the
+#: *cost*, and the second slot.  Over all 59 patterns mined at ``r <= 5``
+#: that key is unambiguous: 12 groups, no two patterns in a group
+#: disagreeing.  ``pat[1]`` discriminates only at ``r == 4`` -- both its
+#: values give identical plans at ``r == 5``, which is why the table below
+#: carries duplicate rows there -- so it is sufficient rather than
+#: necessary.
+#:
+#: Every entry is the same three-phase program: *peel* the ends inward with
+#: alternating ``d1``/``u2`` wipes at ``cmax``, *park* with one wipe at
+#: ``cmin`` and then double, and *close* with a wipe onto a landing followed
+#: by ``cmax`` wipes ending at ``k == 2``.  ``delta`` adds one peel step,
+#: which is the ``+1`` of the cost form.  The first move's direction follows
+#: which side carries the long run: dive when it sits low, rise when high.
+#:
+#: Coverage is the table's extent and nothing else.  At three inputs the
+#: construction builds 196 of the 254 non-constant tables and the 58 misses
+#: are all ``r >= 6``; at four inputs it builds **3880 of 3880** tables with
+#: ``r <= 5`` and none above.
+#:
+#: **Plan length improves everywhere; characters improve in aggregate but
+#: not per table.**  The plan is 4.89 ops against the descent's 12.21 (max 7
+#: against 19), and that is uniform.  Characters are 34.9% fewer over the
+#: whole three-input arity, but the two are not the same axis -- as
+#: :data:`_FOLD_STEP_SLOPE` records, op count barely correlates with emitted
+#: length -- and of the 196 tables the construction serves, **20 emit longer
+#: than the descent would**, the worst ``10010011`` at 11453 characters
+#: against 8483.  Shortening those is a separate problem from planning them,
+#: and the three attempts recorded on :data:`_FOLD_STEP_SLOPE` say it is not
+#: a greedy one.
+#:
+#: Every claim above is checked by execution rather than replay: all 254
+#: three-input tables and 100 four-input tables on the constructed path emit
+#: through the public generator and print every row correctly on the
+#: interpreter.  ``r >= 6`` is not tabulated, so those tables fall through
+#: to the descent below, which is unchanged.
+_FOLD_SKELETONS: dict[tuple[int, int, int], tuple[tuple[str, int, str], ...]] = {
+    (2, 0, 0): (("u", 1, "cmax"),),
+    (2, 0, 1): (("d", 1, "cmax"),),
+    (2, 1, 1): (("d", 1, "cmax"), ("d", 1, "cmax")),
+    (3, 0, 0): (("d", 1, "cmax"), ("u", 2, "cmax")),
+    (3, 1, 1): (("d", 1, "cmax"), ("d", 1, "cmax"), ("d", 2, "cmax")),
+    (4, 0, 0): (
+        ("d", 1, "cmin"),
+        ("m", 0, "m"),
+        ("d", 1, "cmax"),
+        ("u", 1, "land2"),
+        ("u", 2, "cmax"),
+    ),
+    (4, 0, 1): (
+        ("u", 1, "cmin"),
+        ("m", 0, "m"),
+        ("d", 1, "land1"),
+        ("d", 1, "cmax"),
+        ("u", 2, "cmax"),
+    ),
+    (4, 1, 1): (
+        ("d", 1, "cmax"),
+        ("d", 1, "cmin"),
+        ("m", 0, "m"),
+        ("d", 1, "cmax"),
+        ("d", 1, "land2"),
+        ("d", 2, "cmax"),
+    ),
+    (5, 0, 0): (
+        ("d", 1, "cmax"),
+        ("u", 2, "cmin"),
+        ("m", 0, "m"),
+        ("d", 1, "land1"),
+        ("d", 1, "cmax"),
+        ("u", 2, "cmax"),
+    ),
+    (5, 0, 1): (
+        ("d", 1, "cmax"),
+        ("u", 2, "cmin"),
+        ("m", 0, "m"),
+        ("d", 1, "land1"),
+        ("d", 1, "cmax"),
+        ("u", 2, "cmax"),
+    ),
+    (5, 1, 0): (
+        ("d", 1, "cmax"),
+        ("u", 2, "cmax"),
+        ("u", 1, "cmin"),
+        ("m", 0, "m"),
+        ("u", 1, "cmax"),
+        ("u", 1, "land2"),
+        ("u", 2, "cmax"),
+    ),
+    (5, 1, 1): (
+        ("d", 1, "cmax"),
+        ("u", 2, "cmax"),
+        ("u", 1, "cmin"),
+        ("m", 0, "m"),
+        ("u", 1, "cmax"),
+        ("u", 1, "land2"),
+        ("u", 2, "cmax"),
+    ),
+}
+
+
+def _fold_geometry(
+    state: _FoldState, kind: str, k: int
+) -> tuple[int, int, list[tuple[int, int, str]], str] | None:
+    """Return ``(cmin, cmax, survivor tops, victim class)`` for a wipe.
+
+    Mirrors the window :func:`_fold_moves` computes, so a symbolic amount can
+    be resolved against a state without enumerating that state's moves.
+    """
+    if kind == "d":
+        asc = sorted(state, key=lambda t: t[0])
+        vic, surv = asc[:k], asc[k:]
+        if not surv:
+            return None
+        vt = vic[-1][0]
+        q1 = min(p - s for p, s, _, _ in surv) - vt
+        tops = [(p - vt, s, c) for p, s, c, _ in surv]
+    else:
+        desc = sorted(state, key=lambda t: -t[0])
+        vic, surv = desc[:k], desc[k:]
+        if not surv:
+            return None
+        vb = min(p - s for p, s, _, _ in vic)
+        q1 = vb - max(p for p, _, _, _ in surv)
+        tops = [(vb - p, s, c) for p, s, c, _ in surv]
+    return _LIMIT + 1, _LIMIT + q1, tops, vic[0][2]
+
+
+def _fold_resolve(
+    state: _FoldState, kind: str, k: int, sym: str
+) -> tuple[_FoldOp, _FoldState] | None:
+    """Turn one symbolic step into a concrete move on ``state``.
+
+    A landing is the semantic content of a step -- it is the merge -- so it
+    is matched first, by the survivor index the symbol names; the index is
+    what transfers between words of one pattern.  ``cmax`` and ``cmin`` fall
+    back in that order.
+    """
+    want: int | None = None
+    if sym != "m":
+        geo = _fold_geometry(state, kind, k)
+        if geo is None:
+            return None
+        cmin, cmax, tops, vcls = geo
+        if sym.startswith("land"):
+            j = int(sym[4:])
+            if j >= len(tops):
+                return None
+            qt, qspan, qcls = tops[j]
+            if qspan != 0 or qcls != vcls or not cmin <= qt <= cmax:
+                return None
+            want = qt
+        else:
+            want = cmax if sym == "cmax" else cmin
+    for kk, k2, c, vids, nb in _fold_moves(state, kcap=None):
+        if kk != kind or k2 != k:
+            continue
+        if sym == "m" or c == want:
+            return (kk, k2, c, vids), nb
+    return None
+
+
+def _fold_construct(state: _FoldState) -> list[_FoldOp] | None:
+    """Emit a plan from the state's run-length word, or ``None``.
+
+    No enumeration, no beam and no backtracking: the plan is read from
+    :data:`_FOLD_SKELETONS` and each amount is solved against the live
+    state, so the work is one geometry computation per op.  Returns ``None``
+    when the pattern is not tabulated or a step does not resolve, and the
+    caller falls through to the descent.
+    """
+    st = _fold_norm(list(state))
+    if _fold_done(st):
+        return []
+    word = tuple(len(ids) for _p, _s, _c, ids in sorted(st, key=lambda t: -t[0]))
+    pat = tuple(1 if x > 1 else 0 for x in word)
+    r = len(pat)
+    mids = {(r - 1) // 2, r // 2}
+    delta = 1 if all(pat[i] for i in mids) else 0
+    skel = _FOLD_SKELETONS.get((r, delta, pat[1] if r > 1 else 0))
+    if skel is None:
+        return None
+    ops: list[_FoldOp] = []
+    for kind, k, sym in skel:
+        got = _fold_resolve(st, kind, k, sym)
+        if got is None:
+            return None
+        op, st = got
+        ops.append(op)
+    return ops if _fold_done(st) else None
+
+
 def _fold_plan(state: _FoldState) -> list[_FoldOp] | None:
     """Plan a full reduction, or ``None`` if the search gives up.
 
-    A rotation pre-pass first wipes every unwiped group once (a bottom wipe
-    at the minimum relocation lands above everything and preserves the
-    cyclic order), because a group with extent cannot be a collision target
-    and the search stalls while any remain.
+    The plan is *constructed* where the table's run-length word is one
+    :data:`_FOLD_SKELETONS` tabulates -- every word of at most five runs --
+    and only otherwise searched.  A rotation pre-pass then wipes every
+    unwiped group once (a bottom wipe at the minimum relocation lands above
+    everything and preserves the cyclic order), because a group with extent
+    cannot be a collision target and the search stalls while any remain.
     """
+    built = _fold_construct(state)
+    if built is not None:
+        return built
     st = _fold_norm(list(state))
     pre: list[_FoldOp] = []
     guard = 0
+    # (see _FOLD_BEAM_WIDTHS for why the beam is tried narrow first)
     while any(s > 0 for _, s, _, _ in st) and len(st) > 1:
         guard += 1
-        if guard > 2 * len(state) + 4:
+        # A latency guard, not a bound the pre-pass needs: each pass wipes
+        # one group and a wipe clears that group's extent, so the loop is
+        # already linear in the groups carrying any.  20000 random states
+        # at two through eight groups peaked at 0.69 of this allowance and
+        # none reached it; the same structural argument recorded on
+        # :data:`_FOLD_STEP_SLOPE` for the descent applies here.
+        if guard > 2 * len(state) + 4:  # pragma: no cover - never reached
             break
         hit = None
         for kk, k2, cc, vv, nb in _fold_moves(st, kcap=1):
@@ -1577,16 +2094,21 @@ def _fold_plan(state: _FoldState) -> list[_FoldOp] | None:
             break
         pre.append(hit[0])
         st = hit[1]
-    wide = _fold_beam(st)
+    # Descend all the way, not to a remainder the search then closes: see
+    # :data:`_FOLD_DESCENT_TARGET`.
+    wide = _fold_beam(st, target=_FOLD_DESCENT_TARGET, width=1)
     if wide is None:
         wide = []
     cur: _FoldState | None = st
     for op in wide:
-        assert cur is not None
+        assert cur is not None  # nosec B101
         cur = _fold_apply(cur, op)
         if cur is None:  # pragma: no cover - replays a move the beam made
             return None
-    assert cur is not None
+    assert cur is not None  # nosec B101
+    # Normally a no-op: the descent already reached two points, and
+    # :func:`_fold_search` returns ``[]`` for a finished state.  It stays as
+    # the fallback for a state the descent leaves short.
     rest = _fold_search(cur)
     if rest is None:
         return None
@@ -1611,7 +2133,7 @@ class _FoldEmitter:
 
     def _sub(self, k: int) -> str:
         code = _sub_code(k)
-        assert code is not None, k
+        assert code is not None, k  # nosec B101
         return code
 
     def descend(self, k: int) -> None:
@@ -1621,8 +2143,8 @@ class _FoldEmitter:
             self.descend(3)
             self.plain_rise(2)
             return
-        assert k >= 2
-        assert all(v <= _LIMIT for v in self.pos.values())
+        assert k >= 2  # nosec B101
+        assert all(v <= _LIMIT for v in self.pos.values())  # nosec B101
         self.body.append(self._sub(k))
         for p in self.pos:
             self.pos[p] -= k
@@ -1634,9 +2156,9 @@ class _FoldEmitter:
             self.plain_rise(3)
             self.descend(2)
             return
-        assert k >= 2
-        assert all(-_LIMIT <= v <= _LIMIT for v in self.pos.values())
-        assert all(v + k <= _LIMIT for v in self.pos.values())
+        assert k >= 2  # nosec B101
+        assert all(-_LIMIT <= v <= _LIMIT for v in self.pos.values())  # nosec B101
+        assert all(v + k <= _LIMIT for v in self.pos.values())  # nosec B101
         self.body.append("p" + self._sub(k) + "p")
         for p in self.pos:
             self.pos[p] += k
@@ -1651,15 +2173,15 @@ class _FoldEmitter:
         top = max(self.pos.values())
         bot = min(self.pos.values())
         spread = top - bot
-        assert 2 * spread <= 2 * _LIMIT
+        assert 2 * spread <= 2 * _LIMIT  # nosec B101
         want_top = 1501
         if next_is_rise:
             # The next command sequence opens with ``p``, which wipes
             # anything below -3003, so the doubled state must fit both ways.
             want_top = max(spread - 1501, 0)
-            assert want_top <= 1501, spread
+            assert want_top <= 1501, spread  # nosec B101
         self.preshift(want_top - top)
-        assert all(2 * v <= _LIMIT for v in self.pos.values())
+        assert all(2 * v <= _LIMIT for v in self.pos.values())  # nosec B101
         self.body.append("m")
         for p in self.pos:
             self.pos[p] *= 2
@@ -1671,49 +2193,49 @@ class _FoldEmitter:
         got: set[int] = set()
         for p in vic:
             got |= set(p) if isinstance(p, frozenset) else {p}
-        assert vic, vids
-        assert got == vids, vids
+        assert vic, vids  # nosec B101
+        assert got == vids, vids  # nosec B101
         return vic
 
     def dive(self, c: int, vids: frozenset[int]) -> None:
         vic = self._vic(vids)
-        assert len({self.cls[v] for v in vic}) == 1
+        assert len({self.cls[v] for v in vic}) == 1  # nosec B101
         vt = max(self.pos[v] for v in vic)
         surv = [p for p in self.pos if p not in vic]
         q1 = (min(self.pos[p] for p in surv) - vt) if surv else 40
-        assert _LIMIT + 1 <= c <= _LIMIT + q1, (c, q1)
+        assert _LIMIT + 1 <= c <= _LIMIT + q1, (c, q1)  # nosec B101
         d = c + vt
         if d < 2:
             self.preshift(2 - d)
             d = c + max(self.pos[v] for v in vic)
         self.descend(d)
         below = {p for p, v in self.pos.items() if v < -_LIMIT}
-        assert below == vic, (below, vic)
+        assert below == vic, (below, vic)  # nosec B101
         self.body.append("pp")
         for p in vic:
             self.pos[p] = 0
         for p in self.pos:
-            assert -_LIMIT <= self.pos[p] <= _LIMIT
+            assert -_LIMIT <= self.pos[p] <= _LIMIT  # nosec B101
         self._land(vic)
 
     def rise(self, c: int, vids: frozenset[int]) -> None:
         vic = self._vic(vids)
-        assert len({self.cls[v] for v in vic}) == 1
+        assert len({self.cls[v] for v in vic}) == 1  # nosec B101
         vb = min(self.pos[v] for v in vic)
         surv = [p for p in self.pos if p not in vic]
         q1 = (vb - max(self.pos[p] for p in surv)) if surv else 40
-        assert _LIMIT + 1 <= c <= _LIMIT + q1, (c, q1)
+        assert _LIMIT + 1 <= c <= _LIMIT + q1, (c, q1)  # nosec B101
         u = c - vb
         if u < 2:
             self.preshift(-(2 - u))
             u = c - min(self.pos[v] for v in vic)
-        assert min(self.pos.values()) >= -_LIMIT
-        assert all(self.pos[p] + u <= _LIMIT for p in surv)
+        assert min(self.pos.values()) >= -_LIMIT  # nosec B101
+        assert all(self.pos[p] + u <= _LIMIT for p in surv)  # nosec B101
         self.body.append("p" + self._sub(u) + "p")
         for p in self.pos:
             self.pos[p] += u
         over = {p for p, v in self.pos.items() if v > _LIMIT}
-        assert over == vic, (over, vic)
+        assert over == vic, (over, vic)  # nosec B101
         # Any next command's pre-check resets the victims; one ``s`` makes
         # that flush explicit and costs a uniform -2 everyone absorbs.
         self.body.append("s")
@@ -1731,7 +2253,7 @@ class _FoldEmitter:
         c = self.cls[next(iter(vic))]
         absorbed = [p for p in self.pos if p not in vic and self.pos[p] == val]
         for o in absorbed:
-            assert self.cls[o] == c, "cross-class landing"
+            assert self.cls[o] == c, "cross-class landing"  # nosec B101
             new = new | (o if isinstance(o, frozenset) else frozenset([o]))
         for v in set(vic) | set(absorbed):
             del self.pos[v], self.cls[v]
@@ -1764,19 +2286,19 @@ class _FoldEmitter:
             if self.pos[hi] - self.pos[lo] < 258:
                 self.preshift(-(self.pos[lo] + 2600))
                 u1 = max(_LIMIT + 1 - self.pos[hi], 2)
-                assert self.pos[lo] + u1 <= _LIMIT
+                assert self.pos[lo] + u1 <= _LIMIT  # nosec B101
                 self.body.append("p" + self._sub(u1) + "ps")
                 for p in self.pos:
                     self.pos[p] += u1
-                assert self.pos[hi] > _LIMIT
-                assert self.pos[lo] <= _LIMIT
+                assert self.pos[hi] > _LIMIT  # nosec B101
+                assert self.pos[lo] <= _LIMIT  # nosec B101
                 self.pos[hi] = 0
                 for p in self.pos:
                     self.pos[p] -= 2
                 pts = sorted(self.pos, key=lambda q: self.pos[q])
                 lo, hi = pts
             gap = self.pos[hi] - self.pos[lo]
-            assert gap >= 258, gap
+            assert gap >= 258, gap  # nosec B101
             need = (-(self.byte(hi) - self.byte(lo)) - self.pos[lo]) % 256
             umin = max(_LIMIT + 1 - self.pos[hi], 2)
             umax = _LIMIT - self.pos[lo]
@@ -1784,12 +2306,12 @@ class _FoldEmitter:
                 (c0 for c0 in range(umin, umax + 1) if c0 % 256 == need),
                 None,
             )
-            assert u is not None, (umin, umax, need)
+            assert u is not None, (umin, umax, need)  # nosec B101
             self.body.append("p" + self._sub(u) + "ps")
             for p in self.pos:
                 self.pos[p] += u
-            assert self.pos[hi] > _LIMIT
-            assert self.pos[lo] <= _LIMIT
+            assert self.pos[hi] > _LIMIT  # nosec B101
+            assert self.pos[lo] <= _LIMIT  # nosec B101
             self.pos[hi] = 0
             for p in self.pos:
                 self.pos[p] -= 2
@@ -1797,15 +2319,21 @@ class _FoldEmitter:
             lo, hi = pts
             t = (self.byte(hi) - self.pos[hi]) % 256
             room = _LIMIT - self.pos[hi]
-            while t > room:
+            # Unreachable here, unlike in the one-point branch above: the
+            # block just put ``hi`` at 0 and then shifted everything down
+            # by 2, so ``room`` is exactly ``_LIMIT + 2`` while ``t`` is a
+            # residue mod 256.  255 < 3005, so the lift never fires.  The
+            # loop stays because the one-point branch's does, and the two
+            # read as one rule.
+            while t > room:  # pragma: no cover - room is _LIMIT + 2 > 255
                 t -= 256
             self.preshift(t)
         for p in self.pos:
-            assert self.pos[p] % 256 == self.byte(p) % 256, (
+            assert self.pos[p] % 256 == self.byte(p) % 256, (  # nosec B101
                 self.pos[p],
                 self.cls[p],
             )
-            assert self.pos[p] <= _LIMIT
+            assert self.pos[p] <= _LIMIT  # nosec B101
         self.body.append("e")
 
 
@@ -1883,88 +2411,245 @@ def _fold(truth_table: str, n: int) -> str | None:
     return header + _HEADER_END + placeholders + "".join(emitter.body)
 
 
-def _affine_admits(truth_table: str, n: int) -> bool:
-    """Whether :func:`_affine` could build this table, without enumerating.
+#: How many candidate pre-vectors the construction weighs before taking the
+#: shortest program among them, and how many spellings of each it prices.
+#: Both are budgets on *output length*, not on reachability: the first
+#: candidate that solves already computes the table, and every table the
+#: model admits is built at ``(1, 1)``.  Measured over the whole three-input
+#: arity, ``(12, 6)`` is where no table's program comes out longer than the
+#: enumeration this replaced; ``(6, 3)`` leaves four longer, the worst
+#: 36 -> 41.
+_CANDIDATES = 12
+_SPELLINGS = 6
 
-    Exact at three inputs, and the reason to have it is latency rather than
-    throughput.  :func:`_affine_tables` derives a whole arity in one pass and
-    caches it, so the first three-input table to reach that step pays about
-    4.7 seconds -- and 170 of the 208 tables that get there cannot be built
-    by the path at all, so the enumeration is filled, refused, and then never
-    reused.  A one-shot build of such a table costs 6.3s against 1.6s with
-    this check.  A whole-arity sweep in one process sees no difference: the
-    cache amortises the fill over 256 tables either way.
+#: Steps between the classes of a pre-vector.  The step decides how far apart
+#: the rows sit before the last setter maps them onto the answer values, and
+#: a smaller spread spells shorter, so these are tried in the order that
+#: tends to produce the shortest program rather than by magnitude alone.
+_STEPS = (1, 2, 3, 4, -1, -2, 6, -3, 8, 12, -4)
 
-    The rule is the **shared-cofactor law on the last input** -- the setters
-    compose into a shared value, so fixing the last input leaves each
-    cofactor a constant or an affine image of one shared function, hence the
-    two cofactors must be equal, complementary, or constant.  Two families
-    satisfy it and are still not built: the constants (which the cascade
-    serves first, so the path never needs them) and ``x0 ^ x2`` with its
-    complement, whose dependence *skips the middle input* -- setters compose
-    in slot order, so a slot cannot be passed over.  ``x1 ^ x2`` and
-    ``x0 ^ x1 ^ x2`` both build, which is what makes the exclusion specific
-    rather than a statement about parity.
 
-    Returns ``True`` at other arities: the containment is known to hold at
-    four inputs too (486 reached, every one admissible), but sufficiency is
-    not, and the dispatch only calls the path at three inputs anyway.
-    ``test_affine_reach_is_exactly_characterized`` pins the equality, so a
-    change to either side that breaks it fails rather than silently costing
-    a table.
+def _solve_affine(values: tuple[int, ...], wanted: tuple[int, ...]) -> _Branch | None:
+    """Solve ``a * v + b == p`` over the grid, or ``None`` if unsolvable.
+
+    Two points determine a line, so this divides rather than searches: the
+    first pair of entries with distinct ``values`` fixes the multiplier, the
+    offset follows, and the rest are checked.  Constant ``values`` leave the
+    multiplier free, and then the first that spells an in-grid offset wins.
     """
-    if n != 3:
-        return True
-    if len(set(truth_table)) == 1:
-        return False
-    skip_middle = "".join(str(((row >> 2) & 1) ^ (row & 1)) for row in range(2**n))
-    if truth_table in (skip_middle, _complement_bits(skip_middle)):
-        return False
-    low = "".join(truth_table[r] for r in range(2**n) if not r & 1)
-    high = "".join(truth_table[r] for r in range(2**n) if r & 1)
-    return (
-        low == high
-        or _complement_bits(low) == high
-        or len(set(low)) == 1
-        or len(set(high)) == 1
-    )
+    anchor: tuple[int, int] | None = None
+    for value, want in zip(values, wanted, strict=True):
+        if anchor is None:
+            anchor = (value, want)
+        elif value != anchor[0]:
+            num, den = want - anchor[1], value - anchor[0]
+            if num % den:
+                return None
+            a = num // den
+            b = anchor[1] - a * anchor[0]
+            if a not in _WIDE_A_VALS or b not in _WIDE_B_VALS:
+                return None
+            fits = all(a * x + b == p for x, p in zip(values, wanted, strict=True))
+            return (a, b) if fits else None
+    if anchor is None or len(set(wanted)) != 1:
+        return None
+    for a in _WIDE_A_VALS:
+        b = wanted[0] - a * anchor[0]
+        if b in _WIDE_B_VALS:
+            return (a, b)
+    return None
 
 
-def _complement_bits(bits: str) -> str:
-    """Flip every bit of a binary string."""
-    return "".join("1" if c == "0" else "0" for c in bits)
+def _realisations(
+    values: tuple[int, ...],
+) -> list[tuple[_Branch, _Branch, _Branch]]:
+    """Every way the first two setters produce ``values``.
+
+    The first setter runs on a zero accumulator, so its two branches
+    contribute only their offsets ``(p, q)``.  The second maps those by
+    ``(a, c)`` and ``(b, d)``, giving
+    ``values = (a*p + c, b*p + d, a*q + c, b*q + d)``.  Differencing the
+    entries that share a branch leaves ``values[0] - values[2] = a*(p - q)``
+    and ``values[1] - values[3] = b*(p - q)``, so once the first setter's
+    offsets are chosen the multipliers are divisions and the second setter's
+    offsets follow.  Nothing here enumerates programs.
+    """
+    out: list[tuple[_Branch, _Branch, _Branch]] = []
+    first, second = values[0] - values[2], values[1] - values[3]
+    for p in _WIDE_B_VALS:
+        for q in _WIDE_B_VALS:
+            gap = p - q
+            if gap == 0:
+                if first or second:
+                    continue
+                for a in _WIDE_A_VALS:
+                    c = values[0] - a * p
+                    if c not in _WIDE_B_VALS:
+                        continue
+                    for b in _WIDE_A_VALS:
+                        d = values[1] - b * p
+                        if d in _WIDE_B_VALS:
+                            out.append(((p, q), (a, c), (b, d)))
+                continue
+            if first % gap or second % gap:
+                continue
+            a, b = first // gap, second // gap
+            if a not in _WIDE_A_VALS or b not in _WIDE_A_VALS:
+                continue
+            c, d = values[0] - a * p, values[1] - b * p
+            if c in _WIDE_B_VALS and d in _WIDE_B_VALS:
+                out.append(((p, q), (a, c), (b, d)))
+    return out
+
+
+def _merge_classes(truth_table: str) -> list[int]:
+    """Which pre-vector entries may share a value.
+
+    Entry ``j`` carries the rows whose leading bits are ``j``, and the last
+    setter maps it by one branch per value of the last input.  Two entries
+    holding the same value are therefore mapped alike by *both* branches, so
+    they may share only where the table agrees on both of their rows.  That
+    makes the pre-vector's partition a reading of the table rather than a
+    choice, which is what removes the search.
+    """
+    even = tuple(int(truth_table[2 * j]) for j in range(4))
+    odd = tuple(int(truth_table[2 * j + 1]) for j in range(4))
+    groups: list[list[int]] = []
+    for j in range(4):
+        for group in groups:
+            if even[j] == even[group[0]] and odd[j] == odd[group[0]]:
+                group.append(j)
+                break
+        else:
+            groups.append([j])
+    classes = [0] * 4
+    for index, group in enumerate(groups):
+        for j in group:
+            classes[j] = index
+    return classes
 
 
 def _affine(truth_table: str, n: int) -> str | None:
     """Build a composed-affine template, or ``None`` if the table is not one.
 
-    This is the wide construction above two inputs.  The two-input derivation
-    reads one slope per column and does not generalise; the cascade builds only
-    subcubes.  Composing one affine setter per input reaches neither's limit:
-    it builds 84 of the 256 three-input tables, XOR and XNOR among them, which
-    no subcube is.
+    This is the wide construction above two inputs, and it is **derived**
+    rather than searched.  Composing one affine setter per input makes the
+    accumulator, after the first two setters, a vector of four values that
+    the last setter maps by one branch for each value of the last input --
+    so the table's even and odd rows are two affine images of one shared
+    vector.  That is exactly the shared-cofactor law, and reading it
+    backwards is a construction:
 
-    The 84 is measured and stable -- widening the multipliers, the offsets, the
-    spelling depth and the witness count each reach no further table -- but it
-    is *not* known to be a maximum.  The shared-cofactor law admits 88, and it
-    is tempting to read that as the ceiling; it is not one, because the law
-    constrains the last input alone.  Measured against it, this path reaches 32
-    tables the law does not admit and misses 36 that it does, so the two sets
-    cross rather than nest.  What the path does not reach is an OR of several
-    disjoint subcubes, majority-3 being the smallest.  That was recorded here
-    as a limit of the *model* -- chaining indicator gadgets was said to need a
-    running total to survive a gadget that erases, and there is one register --
-    but the argument does not bind: :func:`_ladder` keeps the running total in
-    the accumulator itself and lets the over-3003 reset read it as a threshold,
-    which builds majority-3.  What is true is narrower, that no composition of
-    *affine* setters reaches it.  See ``docs/limitations.md``.
+    * :func:`_merge_classes` reads the pre-vector's partition off the table,
+      since two entries may share a value only where both of their rows
+      agree;
+    * choosing values for those classes and calling :func:`_solve_affine`
+      twice *solves* the last setter's two branches, two points fixing a
+      line;
+    * :func:`_realisations` inverts the first two setters by division.
+
+    An enumeration used to stand here instead, composing every branch pair
+    layer by layer and deduplicating by induced partition.  It reached the
+    same 86 tables -- exhaustively verified, since the dispatch only calls
+    this at three inputs -- but cost 6.4 seconds against 0.4 for the whole
+    arity and emitted longer programs, because it kept whichever witness
+    arrived first rather than the one that spells short.  Its subtlety is
+    worth recording even though the code is gone: witnesses sharing a
+    partition are *not* interchangeable, since a later setter translates by
+    a bounded offset and cannot move a distant vector onto the values a tail
+    needs, and selecting them by arrival silently cost two tables.
+
+    Only at three inputs.  The dispatch does not call this above that -- the
+    deep band covers every table it would reach there -- so the budgets in
+    :data:`_CANDIDATES` and :data:`_SPELLINGS`, which are tuned for program
+    length rather than coverage, are measured over the arity this serves.
     """
-    found = _affine_tables(n).get(truth_table)
-    if found is None:
+    if n != 3 or len(set(truth_table)) == 1:
         return None
-    setters, tail = found
-    header = ";".join(f"{k}={zero}|{one}" for k, (zero, one) in enumerate(setters))
-    body = "".join("{X" + str(k) + "}" for k in range(n)) + tail
+    classes = _merge_classes(truth_table)
+    even = tuple(int(truth_table[2 * j]) for j in range(4))
+    odd = tuple(int(truth_table[2 * j + 1]) for j in range(4))
+    candidates = sorted(
+        (
+            max(abs(base + step * classes[j]) for j in range(4)),
+            tuple(base + step * classes[j] for j in range(4)),
+        )
+        for step in _STEPS
+        for base in _WIDE_B_VALS
+    )
+    best: str | None = None
+    weighed = 0
+    for _, values in candidates:
+        if _solve_affine(values, even) is None:
+            continue
+        if _solve_affine(values, odd) is None:
+            continue
+        spellings = _realisations(values)
+        if not spellings:
+            continue
+        # Cheapest first: a setter's length follows the magnitude of what it
+        # subtracts, so the smallest offsets spell the shortest program.
+        spellings.sort(
+            key=lambda r: max(abs(r[0][0]), abs(r[0][1]), abs(r[1][1]), abs(r[2][1]))
+        )
+        for offsets, low, high in spellings[:_SPELLINGS]:
+            for one, other in ((1, 0), (0, 1)):
+                last_low = _solve_affine(
+                    values, tuple(one if bit else other for bit in even)
+                )
+                last_high = _solve_affine(
+                    values, tuple(one if bit else other for bit in odd)
+                )
+                if last_low is None or last_high is None:
+                    continue
+                template = _spell_affine(
+                    ((0, offsets[0]), (0, offsets[1])),
+                    (low, high),
+                    (last_low, last_high),
+                    one,
+                    other,
+                )
+                if template is not None and (best is None or len(template) < len(best)):
+                    best = template
+        weighed += 1
+        if weighed >= _CANDIDATES:
+            break
+    return best
+
+
+def _spell_affine(
+    first: tuple[_Branch, _Branch],
+    second: tuple[_Branch, _Branch],
+    third: tuple[_Branch, _Branch],
+    one: int,
+    other: int,
+) -> str | None:
+    """Spell three solved setters as a template, or ``None``.
+
+    Both branches of a setter come out at a width they share, so every
+    instantiation has the same length and no program leaks its inputs
+    through ``len()``.
+    """
+    setters = []
+    for zero_branch, one_branch in (first, second, third):
+        zero_widths = _spellings_by_width(*zero_branch)
+        one_widths = _spellings_by_width(*one_branch)
+        shared = set(zero_widths) & set(one_widths)
+        if not shared:  # pragma: no cover - every grid branch spells at 6 and 7
+            # Measured over all 7 * 25 ``(a, b)`` the grid admits: every one
+            # of them has a spelling at width 6 and at width 7, so any two
+            # branches share at least those.  The guard stays because the
+            # grid is a constant that could widen.
+            return None
+        width = min(shared)
+        setters.append((zero_widths[width], one_widths[width]))
+    tail = _tail_for(one, other)
+    if tail is None:
+        return None
+    header = ";".join(
+        f"{k}={zero}|{one_code}" for k, (zero, one_code) in enumerate(setters)
+    )
+    body = "".join("{X" + str(k) + "}" for k in range(3)) + tail
     return header + _HEADER_END + body
 
 
@@ -2023,13 +2708,7 @@ def pct_squared_minus_one(truth_table: str) -> str:
         # this path reaches above three inputs, so the enumeration is skipped
         # rather than paid for; at three inputs it stays, where it is instant
         # and its programs are much the shorter.
-        # The admissibility check is exact at three inputs and costs O(2**n),
-        # against the 4.7s whole-arity enumeration the path fills on its first
-        # call.  It spares that fill for the 170 of 208 tables reaching this
-        # step that the path cannot build -- a one-shot build of one of them
-        # goes 6.3s -> 1.6s.  A sweep in one process is unaffected, since the
-        # cache amortises the fill either way.
-        if n == 3 and _affine_admits(truth_table, n):
+        if n == 3:
             affine = _affine(truth_table, n)
             if affine is not None:
                 return affine

@@ -46,7 +46,7 @@ def _empty_machine(module: str, io: IO) -> object:
     if module == "esolangs.interpreters.tape_based.sbleq":
         from esolangs.interpreters.tape_based.sbleq import _Machine
 
-        return _Machine(io=io, mem=[])
+        return _Machine(io=io, mem=())
     if module == "esolangs.interpreters.tape_based.dimensional":
         from esolangs.interpreters.tape_based.dimensional import _Machine
 
@@ -56,19 +56,19 @@ def _empty_machine(module: str, io: IO) -> object:
 
         return _Machine("", io)
     if module == "esolangs.interpreters.stack_based.eval":
-        from esolangs.interpreters.stack_based.eval import State
+        from esolangs.interpreters.stack_based.eval import _Machine
 
-        return State(io=io, sym="")
+        return _Machine(io=io, sym="")
     if module == "esolangs.interpreters.stack_based.modulous":
-        from esolangs.interpreters.stack_based.modulous import State
+        from esolangs.interpreters.stack_based.modulous import _Machine
 
-        state = State(var={f"VAR{k}": 0 for k in range(1, 5)}, io=io)
+        state = _Machine(var={f"VAR{k}": 0 for k in range(1, 5)}, io=io)
         state.tokens = []
         return state
     if module == "esolangs.interpreters.register_based.qoibl":
-        from esolangs.interpreters.register_based.qoibl import State
+        from esolangs.interpreters.register_based.qoibl import _Machine
 
-        state = State(io=io)
+        state = _Machine(io=io)
         state.code = []
         return state
     if module == "esolangs.interpreters.register_based.point_break":
@@ -156,10 +156,10 @@ def _empty_machine(module: str, io: IO) -> object:
 
         return _Machine("", io)
     if module == "esolangs.interpreters.stack_based.grapheme":
-        from esolangs.interpreters.stack_based.grapheme import _Frame, _Machine
+        from esolangs.interpreters.stack_based.grapheme import _frame, _Machine
 
         machine = _Machine(io, 1_000_000)
-        machine.frames.append(_Frame("", 0))
+        machine.frames = (_frame("", 0),)
         return machine
     if module == "esolangs.interpreters.register_based.ram0":
         from esolangs.interpreters.register_based.ram0 import _Machine

@@ -31,13 +31,14 @@ snapshot grows forever and never repeats -- the unbounded-growth class
 :func:`esolangs.vm.run_until_halt_or_cycle` cannot decide.
 :func:`esolangs.vm.run_until_halt_or_ancestor` decides it instead, by
 comparing each pushed frame against the ones beneath it, and
-:meth:`State.frame_entry_key` is what it compares.
+:meth:`_Machine.frame_entry_key` is what it compares.
 
 Because a step is one command again, it prints at most once, so the effects
 stay in the shell the way every other interpreter here does it.
 
-:class:`State` keeps its name and its ``of`` constructor: the VM builds
-this one through ``.of()`` rather than the usual ``_Machine(code, io)``.
+:class:`_Machine` keeps its ``of`` constructor: the parsed code is not a
+constructor field, so the VM builds this one through ``.of(code, io)``
+rather than the usual ``_Machine(code, io)``.
 """
 
 from __future__ import annotations
@@ -160,17 +161,17 @@ def _iterate(
 
 
 @dataclass
-class State:
+class _Machine:
     """Two stacks with an index choosing the active one, and a frame stack."""
 
     ptr: int = 0
-    stk: list[list[int | str]] = field(default_factory=lambda: [[], []])
+    stk: tuple[tuple[_Val, ...], tuple[_Val, ...]] = ((), ())
     io: IO = field(default_factory=IO)
     sym: str = ""
     frames: list[_Frame] = field(default_factory=list)
 
     @classmethod
-    def of(cls, code: str, io: IO) -> State:
+    def of(cls, code: str, io: IO) -> _Machine:
         """Build a state running ``code``.
 
         The program is the ``sym`` field, so positionally it sits behind
@@ -226,7 +227,7 @@ class State:
         Eval's stacks hold strings as well as ints, which the VM's
         ``Sequence[object]`` accepts as it stands.
         """
-        return self.stk[self.ptr]
+        return list(self.stk[self.ptr])
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
@@ -238,7 +239,7 @@ class State:
         """
         return (
             self.ptr,
-            tuple(tuple(s) for s in self.stk),
+            self.stk,
             tuple(self.frames),
             self.io.position(),
         )
@@ -262,7 +263,7 @@ class State:
             sym,
             ind,
             self.ptr,
-            tuple(tuple(s) for s in self.stk),
+            self.stk,
             self.io.position(),
         )
 
@@ -284,15 +285,14 @@ class State:
         if ind >= len(sym):
             self.frames.pop()
             return
-        core: _Core = (self.ptr, (tuple(self.stk[0]), tuple(self.stk[1])))
+        core: _Core = (self.ptr, self.stk)
         try:
             core, ind, output, call = _iterate(core, sym, ind)
         except _Fault:
             raise HaltError from None
         if output is not None:
             self.io.print_value(output)
-        self.ptr, stacks = core
-        self.stk = [list(stacks[0]), list(stacks[1])]
+        self.ptr, self.stk = core
         self.frames[-1] = (sym, ind)
         if call is not None:
             # The nested program becomes a frame of its own rather than
@@ -302,7 +302,7 @@ class State:
 
 def run(code: str, io: IO) -> None:
     """Run an Eval program."""
-    state = State.of(code, io)
+    state = _Machine.of(code, io)
     while not state.halted:
         state.step()
 

@@ -15,7 +15,11 @@ import pytest
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.ram0 import run
-from tests.interpreters.contract import CycleContract, SnapshotContract
+from tests.interpreters.contract import (
+    CycleContract,
+    SnapshotContract,
+    StateViewContract,
+)
 
 
 class _TestTimeoutError(Exception):
@@ -506,13 +510,17 @@ def _machine(code: object) -> object:
     return _Machine(code, IO())
 
 
-class TestContract(SnapshotContract, CycleContract):
+class TestContract(SnapshotContract, CycleContract, StateViewContract):
     """The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     stepping_program = "A"
     halting_program = "ZA"
     looping_program = "Z1"
+    # `Z` zeroes the accumulator and `A` increments it, so the cursor and
+    # `z` move while `n` stays put -- three slots, not one read thrice.
+    state_views = ("ind", "z", "n", "ip", "memory")
+    viewing_program = "ZA"
 
 
 if __name__ == "__main__":

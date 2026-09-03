@@ -44,6 +44,7 @@ result is which one the ant is resting in).
 """
 
 import sys
+from collections.abc import Mapping
 from typing import Literal
 
 from esolangs.interpreters.io import IO
@@ -70,6 +71,74 @@ _INSTRUCTIONS = "".join(h + h.upper() for h in _MOVE) + "pP"
 # The same headings keyed by their own spelling, so the move branch
 # can turn a parsed character into a _Heading without asserting it.
 _HEADING: dict[str, _Heading] = {h: h for h in _MOVE}
+
+
+#: One instant of a run: ``(grid, x, y, ip, visited)`` -- the painted
+#: cells, the ant's position, the instruction cursor, and every cell the
+#: ant has stood on.  A value :func:`_advance` maps forward rather than
+#: editing in place.
+#:
+#: The grid has to be in the state, unlike WII2D's: ``p`` and ``P`` write
+#: to it, so what a move finds ahead of the ant is something an earlier
+#: step decided.
+#:
+#: ``visited`` is *not* here.  It is append-only bookkeeping that no rule
+#: ever reads -- only :meth:`_Machine.render` does, to size the bounding
+#: box -- so the shell records it from the position each step returns, and
+#: the transition stays a function of what actually decides a move.
+#:
+#: The grid is a read-only ``Mapping`` rather than a frozen copy: a paint
+#: returns a new dict, so the value handed in is left as it was, while a
+#: lookup stays O(1).  That is not a nicety.  Freezing it into a
+#: ``frozenset`` of items reads well and costs a full rebuild on every
+#: access; on the boolean generator's programs, whose grids run to
+#: thousands of cells over a cycle, it turned a 0.1s test into a 134s one.
+type _Grid = Mapping[tuple[int, int], int]
+type _State = tuple[_Grid, int, int, int]
+
+
+def _colour(grid: _Grid, cell: tuple[int, int]) -> int:
+    """Return a cell's colour; an unpainted cell is black (``0``)."""
+    return grid.get(cell, 0)
+
+
+def _paint(grid: _Grid, cell: tuple[int, int], colour: int) -> _Grid:
+    """Return ``grid`` with ``cell`` set to ``colour``, replacing any entry.
+
+    A copy, so the grid handed in is left as it was; this is the only
+    place a step grows the plane, so it is the only copy a step makes.
+    """
+    return {**grid, cell: colour}
+
+
+def _advance(state: _State, command: str) -> _State:
+    """Return the state after executing one instruction.
+
+    Pure: it reads ``state`` and returns a new one.  The language has no
+    I/O at all, so unlike the other steps in this series there is no effect
+    for a shell to keep -- the whole instruction lives here, and the cursor
+    advance is the caller's, since only it knows the program's length.
+
+    A move is conditional on the colour ahead: lowercase goes only onto a
+    black cell and uppercase only onto a white one, which is the same test
+    written once against ``command.isupper()``.  A refused move is not an
+    error -- the ant simply stays, and the cursor still advances.
+    """
+    grid, x, y, ip = state
+    if command == "p":
+        return (_paint(grid, (x, y), 0), x, y, ip)
+    if command == "P":
+        return (_paint(grid, (x, y), 1), x, y, ip)
+
+    # Not a move command at all unless the lowercased character is one of
+    # the four headings, which is what the lookup requires.
+    heading = _HEADING.get(command.lower())
+    if heading is None:  # pragma: no cover - _INSTRUCTIONS admits no other
+        raise ValueError(f"unknown command {command!r}")
+    dx, dy = _MOVE[heading]
+    if (_colour(grid, (x + dx, y + dy)) == 1) == command.isupper():
+        return (grid, x + dx, y + dy, ip)
+    return state
 
 
 class _Machine:
@@ -126,30 +195,38 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         return (frozenset(self.grid.items()), self.x, self.y, self.ip)
 
+    @property
+    def _state(self) -> _State:
+        """The machine's fields as the value the transition works on."""
+        return (self.grid, self.x, self.y, self.ip)
+
+    def _restore(self, state: _State) -> None:
+        """Write a transition's result back onto the machine's fields.
+
+        The fields are this class's published shape -- ``render`` walks the
+        grid and the tests read the position -- so they stay; the one
+        assignment a step makes is here rather than in the rule above.
+        """
+        grid, self.x, self.y, self.ip = state
+        # dict() only when the transition actually replaced it; a step that
+        # did not paint hands back the very object it was given.
+        self.grid = grid if isinstance(grid, dict) else dict(grid)
+        # Standing on a cell is what marks it visited, so recording the
+        # position the transition returned covers every move.
+        self.visited.add((self.x, self.y))
+
     def step(self) -> None:
-        """Execute one instruction, advancing the pointer cyclically."""
+        """Execute one instruction, advancing the pointer cyclically.
+
+        The cursor advance is here rather than in the transition: it wraps
+        modulo the program's length, which is the shell's to know.
+        """
         # ``run`` steps ``cycles * len(prog)`` times, so an empty program is
         # never stepped at all; this keeps a direct caller from indexing it.
         if not self.prog:  # pragma: no cover - run() never steps an empty program
             return
-        command = self.prog[self.ip]
-        if command == "p":
-            self.grid[(self.x, self.y)] = 0
-        elif command == "P":
-            self.grid[(self.x, self.y)] = 1
-        else:
-            # Not a move command at all unless the lowercased character is
-            # one of the four headings, which is what the lookup requires.
-            heading = _HEADING.get(command.lower())
-            if heading is None:  # pragma: no cover - _INSTRUCTIONS admits no other
-                raise ValueError(f"unknown command {command!r}")
-            dx, dy = _MOVE[heading]
-            target = self.grid.get((self.x + dx, self.y + dy), 0)
-            if (target == 1) == command.isupper():
-                self.x += dx
-                self.y += dy
-                self.visited.add((self.x, self.y))
-        self.ip = (self.ip + 1) % len(self.prog)
+        grid, x, y, _ip = _advance(self._state, self.prog[self.ip])
+        self._restore((grid, x, y, (self.ip + 1) % len(self.prog)))
 
     def render(self) -> str:
         """Render the visited bounding box, marking the ant's cell.

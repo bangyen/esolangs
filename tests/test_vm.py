@@ -1064,7 +1064,7 @@ class TestRunUntilHaltOrCycle:
         from esolangs.vm import run_until_halt_or_cycle
 
         # a=0 b=0 c=3: diff (0-0=0) jumps to mem[3], which is negative -> halts
-        machine = _Machine(io=ScriptedIO(), mem=[0, 0, 3, -1], store="a")
+        machine = _Machine(io=ScriptedIO(), mem=(0, 0, 3, -1), store="a")
         assert run_until_halt_or_cycle(machine) is True
 
     def test_sbleq_looping_run_is_detected_as_a_cycle(self) -> None:
@@ -1073,7 +1073,7 @@ class TestRunUntilHaltOrCycle:
         from esolangs.vm import run_until_halt_or_cycle
 
         # a=0 b=0 c=2: diff is always 0, so it jumps to mem[2] (address 0) forever
-        machine = _Machine(io=ScriptedIO(), mem=[0, 0, 0], store="a")
+        machine = _Machine(io=ScriptedIO(), mem=(0, 0, 0), store="a")
         assert run_until_halt_or_cycle(machine) is False
 
     def test_dimensional_halting_run_returns_true(self) -> None:
@@ -1095,20 +1095,20 @@ class TestRunUntilHaltOrCycle:
 
     def test_modulous_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.stack_based.modulous import State
+        from esolangs.interpreters.stack_based.modulous import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
-        state = State(var={f"VAR{k}": 0 for k in range(1, 5)}, io=ScriptedIO())
+        state = _Machine(var={f"VAR{k}": 0 for k in range(1, 5)}, io=ScriptedIO())
         state.tokens = ["END"]
         assert run_until_halt_or_cycle(state) is True
 
     def test_modulous_looping_run_is_detected_as_a_cycle(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.stack_based.modulous import State
+        from esolangs.interpreters.stack_based.modulous import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
         # RST resets the pointer to the start of the program on every pass
-        state = State(var={f"VAR{k}": 0 for k in range(1, 5)}, io=ScriptedIO())
+        state = _Machine(var={f"VAR{k}": 0 for k in range(1, 5)}, io=ScriptedIO())
         state.tokens = ["RST"]
         assert run_until_halt_or_cycle(state) is False
 
@@ -1353,8 +1353,8 @@ class TestEveryLanguageIsSteppable:
         without: list[str] = []
         for language, (module_path, _split, _kwargs) in sorted(RUNNERS.items()):
             module = importlib.import_module(f"esolangs.interpreters.{module_path}")
-            state = getattr(module, "_Machine", None) or getattr(module, "State", None)
-            if state is None or not hasattr(state, "step"):
+            state = getattr(module, "_Machine")  # noqa: B009
+            if not hasattr(state, "step"):
                 without.append(language)
         assert without == []
 
@@ -1381,9 +1381,8 @@ class TestEveryLanguageIsSteppable:
             module = importlib.import_module(
                 f"esolangs.interpreters.{RUNNERS[name][0]}"
             )
-            # A couple of modules call their state object ``State``.
-            state = getattr(module, "_Machine", None) or getattr(module, "State", None)
-            if state is None or not hasattr(state, "snapshot"):
+            state = getattr(module, "_Machine")  # noqa: B009
+            if not hasattr(state, "snapshot"):
                 without.append(name)
         assert without == []
 
@@ -1470,3 +1469,21 @@ class TestEveryLanguageIsSteppable:
                 randomness.Seeded.randbelow = original
             assert drawn, f"{language}: the random instruction never ran"
             assert trace(language, program) == first, f"{language} is not reproducible"
+
+    def test_the_seeded_source_rejects_an_empty_range(self) -> None:
+        """``randbelow`` checks its bound instead of ignoring it.
+
+        A stub that never read its argument would answer an impossible
+        request -- choosing among no options -- as readily as a real one,
+        and the mistake would surface somewhere far from its cause.
+        ``secrets.randbelow``, the default source, raises here too, so the
+        seeded stand-in agrees with what it replaces.
+        """
+        from esolangs.interpreters.randomness import Seeded
+
+        source = Seeded(0)
+        for bad in (0, -1):
+            with pytest.raises(ValueError, match=f"must be positive, got {bad}"):
+                source.randbelow(bad)
+
+        assert source.randbelow(1) == 0

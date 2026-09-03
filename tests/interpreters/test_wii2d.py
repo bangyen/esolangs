@@ -13,7 +13,7 @@ from typing import Any, ClassVar
 import pytest
 
 from esolangs.interpreters.grid_based.wii2d import run
-from esolangs.interpreters.io import IO
+from esolangs.interpreters.io import IO, ScriptedIO
 from tests.interpreters.contract import CycleContract, SnapshotContract
 
 
@@ -393,6 +393,33 @@ class TestWII2DMathematicalOperations:
         )  # The program outputs 16 as a character, but 16 is processed as 1 then 6
 
 
+class TestUpdate:
+    """``update`` is the module's published per-cell arithmetic.
+
+    The interpreter itself calls ``_accumulate`` and prints in the shell, so
+    this effectful wrapper runs in no program -- but it is the exported
+    spelling (no leading underscore) and its whole reason to exist is that
+    ``~`` prints where every other op computes.  Untested, a wrapper that
+    stopped printing, or printed on the wrong op, would look identical.
+    """
+
+    def test_the_print_op_emits_and_leaves_the_accumulator(self) -> None:
+        from esolangs.interpreters.grid_based.wii2d import update
+
+        io = ScriptedIO()
+        assert update("~", 65, io) == 65  # unchanged: ~ computes nothing
+        assert io.getvalue() == "A"
+
+    def test_every_other_op_computes_without_printing(self) -> None:
+        from esolangs.interpreters.grid_based.wii2d import update
+
+        io = ScriptedIO()
+        assert update("+", 5, io) == 6
+        assert update("s", 5, io) == 25
+        assert update(" ", 5, io) == 5  # a blank cell is traversable, not an op
+        assert io.getvalue() == ""
+
+
 class TestStepMachine:
     def test_step_tracks_position_velocity_and_accumulator(self) -> None:
         from esolangs.interpreters.grid_based.wii2d import _Machine
@@ -406,6 +433,25 @@ class TestStepMachine:
         machine.step()  # . halts
         assert machine.halted
         assert machine.acc == 0
+
+    def test_the_vm_view_reports_the_grid_position(self) -> None:
+        """``ip``/``memory``/``stack`` are the shared names over WII2D's state.
+
+        WII2D's cursor is a grid position and a heading rather than an
+        index, so ``ip`` is the triple and ``memory`` is the single
+        accumulator -- the debugger reads both through those names, and
+        nothing else here does.
+        """
+        from esolangs.interpreters.grid_based.wii2d import _Machine
+
+        machine = _Machine([">+~.", "!"], IO())
+        assert machine.ip == (0, 0, 0)
+        assert machine.memory == [0]
+        machine.step()  # > heads east and moves
+        assert machine.ip == (0, 1, 3)
+        machine.step()  # + raises the accumulator, which `memory` reports
+        assert machine.memory == [1]
+        assert machine.stack == []  # WII2D has no stack, and says so
 
     def test_step_after_halt_is_a_noop(self) -> None:
         from esolangs.interpreters.grid_based.wii2d import _Machine

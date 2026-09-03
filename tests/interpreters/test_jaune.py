@@ -262,6 +262,38 @@ class TestMachine:
         assert machine.halted
         machine.step()  # must not raise
 
+    def test_the_vm_view_tracks_the_run(self) -> None:
+        """``ip``/``memory``/``stack`` are what the debugger reads, so they run.
+
+        These are the shared VM-shaped names rather than jaune's own, and
+        nothing else here touches them: the protocol sweep drives ``step``
+        and ``halted``, and the snapshot contract reads ``snapshot``.  A
+        property wired to the wrong field -- ``memory`` handing back the
+        call stack, say -- would still pass every other test in this file.
+
+        Asserted as movement rather than as pinned constants: the point is
+        that each name follows the field it claims, and the subroutine
+        program is the one that makes ``stack`` non-empty at all.
+        """
+        from esolangs.interpreters.tape_based.jaune import _Machine
+
+        machine = _Machine("6+5+^.", ScriptedIO())
+        assert machine.ip == 0
+        assert machine.memory == [0]
+        while not machine.halted:
+            machine.step()
+        assert machine.ip == 4  # the cursor advanced with the run
+        assert machine.memory == [11]  # 6 + 5, in the cell the program built
+
+        # `stack` is the call stack, and only a call puts anything on it.
+        called = _Machine("1@2@^.1$5+;2$3+;", ScriptedIO())
+        depths = []
+        while not called.halted:
+            called.step()
+            depths.append(len(called.stack))
+        assert max(depths) == 1  # the two calls nest one deep, not zero
+        assert called.stack == []  # and both returned
+
 
 def _machine(code: object) -> object:
     from esolangs.interpreters.io import ScriptedIO
