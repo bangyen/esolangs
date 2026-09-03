@@ -205,15 +205,16 @@ _POOL = (0, 0, 1, 1, 0, 0, 0)
 # guard can never fire.  Written as ``8`` and ``9`` the two look independent
 # and the identity looks like a coincidence.
 #
-# Not every ``8`` in this file is this constant.  ``_MUX_GUARD``'s is a
-# scratch width and ``_MAX_ACC - 8`` is a staging-search bound; neither is a
-# pool width, and collapsing them into this would assert a relationship that
-# does not hold.
+# The staging path takes the same two: its accumulator loops start at
+# :data:`_PROBE_WALK_OUT`, and the counts spelled ``_MAX_ACC - _POOL_WIDTH``
+# are the length of that loop.  Only ``_MAX_ACC`` itself is a search bound.
 #
-# The scratch is not *independent* either, though, which is a separate point:
+# What is *not* this constant is ``_MUX_GUARD``'s ``8``, which is a scratch
+# width: collapsing it into this would assert a relationship that does not
+# hold.  It is not independent either, though, which is a separate point --
 # :func:`_mux_start`'s offset is derived from it, because the embed starts at
 # the shortest position whose leftmost write still clears the guard.  So the
-# two are coupled -- just not through this constant.
+# two are coupled, just not through this constant.
 _POOL_WIDTH = len(_POOL) + 1
 
 # The two reads.  ``[<`` leaves the pointer at ``(acc-1) + v``; ``[x<[<``
@@ -978,7 +979,7 @@ def _column_sweep(j: _Joint, cell7: int) -> dict[int, tuple[int, ...]]:
         return {}  # pragma: no cover - the pool converges the rows
     cur = ptrs.pop()
     columns: dict[int, tuple[int, ...]] = {}
-    for acc in range(9, _MAX_ACC + 1):
+    for acc in range(_PROBE_WALK_OUT, _MAX_ACC + 1):
         if acc - 1 < cur:
             # The walk only ever runs forward into the accumulator range:
             # the pool leaves `cur` at 4 or 5 (measured over the same 27620
@@ -1467,6 +1468,14 @@ _STAGED_ARITIES = (2, 3, 4, 5)
 _MAX_BRACKETS = 28
 _MAX_ACC = 34
 
+# Only the *upper* ends are measured.  Every accumulator loop in this module
+# starts at :data:`_PROBE_WALK_OUT` rather than at a literal, because the
+# lower end is not a search bound at all: an accumulator has to sit past the
+# pool, which :func:`_endgame` enforces by refusing anything under
+# :data:`_POOL_WIDTH`, so the first one worth asking about is one further
+# right.  The counts spelled ``_MAX_ACC - _POOL_WIDTH`` are the same fact
+# said the other way round -- they are the length of that loop.
+
 # How much of the enumeration a caller is willing to spend, counted in
 # **stagings visited** rather than in seconds.
 #
@@ -1631,14 +1640,14 @@ def _stagings(n: int) -> Iterator[_Staging]:
     for sep_index in range(len(_SEPS)):
         for settle in (0, 1):
             for brackets in range(_MAX_BRACKETS + 1):
-                for acc in range(9, _MAX_ACC + 1):
+                for acc in range(_PROBE_WALK_OUT, _MAX_ACC + 1):
                     yield sep_index, settle, brackets, acc
     if n not in _INSERT_ARITIES:
         return
     for sep_index in range(len(_SEPS)):
         for settle in (0, 1):
             for suffix in _insert_suffixes():
-                for acc in range(9, _MAX_ACC + 1):
+                for acc in range(_PROBE_WALK_OUT, _MAX_ACC + 1):
                     yield sep_index, settle, suffix, acc
 
 
@@ -1737,7 +1746,7 @@ def _derived_plans(n: int, targets: tuple[str, ...]) -> dict[str, _Staging]:
         """
         nonlocal remaining
         sweeps = {cell7: _column_sweep(staged, cell7) for cell7 in (0, 1)}
-        for acc in range(9, _MAX_ACC + 1):
+        for acc in range(_PROBE_WALK_OUT, _MAX_ACC + 1):
             for cell7 in (0, 1):
                 derived = sweeps[cell7].get(acc)
                 if derived is None:
@@ -1761,7 +1770,7 @@ def _derived_plans(n: int, targets: tuple[str, ...]) -> dict[str, _Staging]:
     # walks the accumulators for one suffix in a single call.
     spent = 0
     budget = _budget(n)
-    accs = _MAX_ACC - 8
+    accs = _MAX_ACC - _POOL_WIDTH
 
     def exhausted() -> bool:
         return budget is not None and spent >= budget
@@ -1986,14 +1995,14 @@ def _staging_index(n: int) -> dict[tuple[int, ...], _Staging]:
     index: dict[tuple[int, ...], _Staging] = {}
     spent = 0
     budget = _budget(n)
-    accs = _MAX_ACC - 8
+    accs = _MAX_ACC - _POOL_WIDTH
 
     def exhausted() -> bool:
         return budget is not None and spent >= budget
 
     def claim(staged: _Joint, suffix: int | str, head: tuple[int, int]) -> None:
         sweeps = {cell7: _column_sweep(staged, cell7) for cell7 in (0, 1)}
-        for acc in range(9, _MAX_ACC + 1):
+        for acc in range(_PROBE_WALK_OUT, _MAX_ACC + 1):
             for cell7 in (0, 1):
                 derived = sweeps[cell7].get(acc)
                 if derived is None:
