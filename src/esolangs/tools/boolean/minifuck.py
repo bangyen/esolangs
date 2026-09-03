@@ -142,10 +142,48 @@ instantiations in lockstep as the template is emitted, every choice is made
 against the simulated truth, and :func:`minifuck` raises rather than
 returning a program it has not seen print the table.
 
-``docs/walls.md`` carries the history this docstring used to: which
-mechanisms were disproved outright, which were merely unfound, what the
-runtime-read model reaches, and how the constructed routes came to cover
-tables the searches failed on.
+**Mechanisms ruled out for real, not to be revisited.**  Chaining ``[<``
+reads across planted indicators: ``[<`` sets the cell to its *right* and
+the pad walk carries that residue forward, so the second read reads the
+first read's debris; guard cells cannot fix it, since the pads write over
+the guards.  Fixed width-2 stage chains reach only 88 of 256 tables at
+``n == 3`` and 520 of 65536 at ``n == 4``, so no quality of gadget makes
+them total.  Harvesting (sweeping embed variants for a table that lands in
+a cell) finds all 16 at ``n == 2`` but 105 of 256 at ``n == 3`` -- a
+shortcut, not a totality argument.  Relocating an ignored placeholder
+fails because a fill writes the live tape; the working route emits the
+ignored setters first and reconverges to a common *non-blank* state, blank
+being unreachable since the all-ones row ends a cell right of the others
+and ``<`` clamps without writing.
+
+**Five apparent walls here were artifacts of how the question was asked**,
+each costing a round to re-derive -- worth recognizing before believing any
+future negative:
+
+1. Searching on blank scratch pins pointer spread at 1 (exhaustive to
+   length 10), making a width-doubling stage look impossible; with the
+   scratch pattern free, stages are found readily.
+2. Launching a joint search from a clamped origin: a depth-``d`` search
+   from pointer 0 touches only cells ``<= d`` while the first
+   input-dependent cell is at 16, so every reachable state is
+   input-*independent*.  Four searches failed on this alone.
+3. Reading a fixed cell index while the rows are diverged -- divergence is
+   the branch mechanism *and* desynchronizes the machines.
+4. Demanding too much of one gadget: a converging deposit with clean
+   residue does not exist across ~2400 states, and neither condition is
+   needed since ``<`` reconverges for free afterwards.
+5. Length-bounded suffix enumeration -- a length-8 sweep returned zero,
+   but the pair it misses closes with a stored suffix interleaving two
+   ``<`` into the bracket run, so no ``'[' * k`` ever spells it.
+
+Input *negation* is not a legitimate shortcut across the four orbits of the
+sixteen two-input tables: it means the harness fills ``{Xi}`` with the
+complement of its bit, so the program computes a table the caller
+pre-transformed.  Input *permutation* is fine -- it is entirely inside the
+template.
+
+``docs/walls.md`` records the wider searches and the measurements behind
+these.
 """
 
 import re
