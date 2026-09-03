@@ -558,6 +558,51 @@ def _boost_row(
     return None
 
 
+def _group_boost(
+    b: _Builder, victim: tuple[int, ...], table: str
+) -> _Builder | None:
+    """Lift the victim's blockers in bulk until it is the minimum.
+
+    A boost's TRUE set need not be a single row: any test whose TRUE set
+    excludes the victim moves floor out from under it wholesale, which
+    turns a mid-pack victim into the bottom row in a handful of moves
+    instead of one campaign per blocker.
+    """
+    nb = b.clone()
+    for _ in range(64):
+        v = next(r for r in nb.live() if r.bits == victim)
+        if all(r.pos > v.pos for r in nb.live() if r.bits != victim):
+            return nb
+        moved = False
+        for w in range(1, max(r.pos for r in nb.live()) + 48):
+            below = [r for r in nb.live()
+                     if r.pos <= v.pos and r.bits != victim]
+            # the victim must skip, and at least one blocker must jump
+            if (v.pos + w) in v.tape:
+                continue
+            if not any((r.pos + w) in r.tape for r in below):
+                continue
+            tb = _predict(nb, "2" * w)
+            if not tb or victim in tb:
+                continue
+            cand = nb.clone()
+            cand.run("2" * w)
+            cand.test()
+            try:
+                _normalize(cand)
+            except ConstructError:
+                continue
+            if not _distinct_ok(cand, table) or _one_row_collided(
+                    cand, table):
+                continue
+            nb = cand
+            moved = True
+            break
+        if not moved:
+            return None
+    return None
+
+
 def _ring_round(
     b: _Builder, table: str, x: int, depth: int
 ) -> _Builder | None:
@@ -599,6 +644,9 @@ def _moves(
             if nb is not None:
                 yield nb
     victim = min(ones, key=lambda r: r.pos)
+    nb = _group_boost(b, victim.bits, table)
+    if nb is not None:
+        yield nb
     blockers = sorted(
         (r for r in b.live()
          if r.bits != victim.bits and r.pos <= victim.pos + 24),
