@@ -187,13 +187,25 @@ rather than an arity check.  Rows start at ``-step * r``, so the ladder spans
 means it has to fit inside ``[-3003, 0]``.  At the shipped spacing of 4 that
 is 4092 at ten inputs, over the workspace, and no plan on such a ladder could
 ever be emitted.  Halving the spacing halves the footprint to 2046, which is
-what :data:`_FOLD_NARROW_STEP` is for: ten inputs then build and print every
-row on the interpreter.  Eleven needs 4094 and there is no finer ladder --
-a step of 1 would need an input to subtract exactly 1, and ``2a + 3b`` has no
-such term -- so **ten inputs is where this construction ends**, structurally
-rather than for want of search.  That bounds the construction, not the
-language: as everywhere else here, what it misses is *unreached*, and the
-Lean wall in ``Esolangs.PctBooleanWall`` covers the reading model only.
+what :data:`_FOLD_NARROW_STEP` is for.
+
+But *uniform* spacing is itself the waste.  What the plan needs is only that
+the rows sit at ``2**n`` **distinct** positions, and distinctness costs about
+``2**n`` rather than the ``2 * (2**n - 1)`` a step-2 ladder spends.  The
+packed ladder :data:`_FOLD_SUBSET_LADDER` meets the exact floor, ``2**n + 1``,
+which is what carries **eleven inputs** at 2049 where the uniform one wanted
+4094.
+
+Twelve is where it ends, and there the wall is the move algebra rather than
+the spelling.  The doubling ``m`` -- which this module proves is the only way
+to reorder groups at all -- is offered only when the state's spread is at most
+3002, and ``2**12`` distinct positions span at least 4095 wherever they sit.
+So no twelve-input ladder ever doubles: the search from such a state
+**exhausts after fifteen states**, an empty frontier rather than a budget.
+Thirteen is impossible by counting alone, ``2**13`` positions against the 6007
+values a ``p`` can address.  That bounds this construction, not the language:
+as everywhere else here, what it misses is *unreached*, and the Lean wall in
+``Esolangs.PctBooleanWall`` covers the reading model only.
 
 Cost, since it decides where the fold sits in the chain: a fold build is
 0.8ms at three inputs, 2.7ms at four, 89ms at five and 0.53s at six
@@ -1283,10 +1295,10 @@ _FOLD_STEP = 4
 #: Two is the floor.  ``s`` subtracts 2 and ``i`` subtracts 3, so
 #: :func:`_sub_code` spells every amount except 1 -- a step of 1 would need
 #: the last input to subtract exactly 1 and has no spelling at any width.
-#: With 2 the floor, ``2 * (2**n - 1) <= 3003`` is what caps the fold at
-#: **ten inputs**: eleven needs 4094 and there is no finer ladder to fall
-#: back on.  That is a property of this construction rather than of the
-#: language -- nothing here bounds embedded-input programs in general.
+#: With 2 the floor, ``2 * (2**n - 1) <= 3003`` caps *this* ladder at ten
+#: inputs.  That is not where the fold ends, though: uniform spacing is
+#: itself the waste, and :data:`_FOLD_SUBSET_LADDER` reaches eleven by
+#: spending only what distinctness costs.
 #:
 #: It is a *fallback* rather than the default because the wider ladder is
 #: what every shipped program is built on: at four inputs and below the
@@ -2525,18 +2537,21 @@ def _fold(truth_table: str, n: int) -> str | None:
     of its own below the workspace bound: the ladder must fit inside the
     6006 values a ``p`` can traverse.
 
-    **Two ladder spacings are tried**, and which one serves is what sets the
-    reach -- see :data:`_FOLD_NARROW_STEP`.  The wide ladder is tried first
-    because every template that builds today is built on it; the narrow one
-    is what carries ten inputs, where the wide ladder's 4092-value footprint
-    leaves the descent too little room to relocate and it dead-ends.
+    **Three ladders are tried**, and which one serves is what sets the reach
+    -- see :func:`_fold_ladders`.  The two uniform spacings come first
+    because every template that builds today is built on them; the packed
+    ladder (:data:`_FOLD_SUBSET_LADDER`) is the fallback, and it is what
+    carries eleven inputs, spending only the ``2**n + 1`` that distinctness
+    costs against the uniform ladder's ``2 * (2**n - 1)``.
 
     Reach, measured rather than argued: every table at ``n <= 4``
-    exhaustively, and samples at five through **ten** that build and print
-    every row correctly on the shipped interpreter.  Eleven is where the
-    construction stops, and that end is *structural* rather than a search
-    giving up -- the narrow ladder would span 4094 against a 3003-value
-    workspace, and no finer ladder exists to fall back on.
+    exhaustively, and samples at five through **eleven** that build and print
+    correctly on the shipped interpreter.  Twelve is where the construction
+    stops, and the end is *structural*: no ladder laying ``2**12`` distinct
+    positions spans less than 4095, the doubling is offered only under a
+    spread of 3002, and without the doubling the groups' cyclic order is
+    provably invariant -- the search from such a state exhausts after fifteen
+    states rather than running out of budget.
     """
     for weights in _fold_ladders(n):
         built = _fold_at(truth_table, n, weights)
