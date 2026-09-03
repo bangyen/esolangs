@@ -164,6 +164,12 @@ Malformed programs -- an unknown character, a gate with the wrong number of
 inputs, a wiring that both feeds and is fed by one gate, or a multi-wire
 label inconsistent with the width its wiring carries -- raise
 :class:`ValueError`.
+
+At EOF a read yields a **zero bit** rather than raising: a drawing has no
+halt instruction and every gate is live at once, so exhausted input has to
+leave the automaton with a value to settle on.  A program that reads more
+bits than it is given therefore runs to completion on zeros.  No
+:class:`HaltError` is raised; execution ends when the grid settles.
 """
 
 import sys
