@@ -2307,10 +2307,11 @@ class TestParameterizedOneTwoThree:
         from esolangs.tools.boolean.one_two_three_construct import (
             _Builder,
             _distinct_ok,
+            _mask,
             _Row,
         )
 
-        def two_rows_at(pos: int, tape: set[int]) -> _Builder:
+        def two_rows_at(pos: int, tape: int) -> _Builder:
             zero = _Row((0, 0))
             one = _Row((0, 1))
             zero.pos = one.pos = pos
@@ -2323,14 +2324,15 @@ class TestParameterizedOneTwoThree:
             return b
 
         # table index 0 -> '0', index 1 -> '1': the two rows disagree
-        assert _distinct_ok(two_rows_at(5, {1, 2, 3}), "0100") is False
+        assert _distinct_ok(two_rows_at(5, _mask({1, 2, 3})), "0100") is False
         # table index 0 -> '0', index 1 -> '0': both 0-rows, tolerated
-        assert _distinct_ok(two_rows_at(5, {1, 2, 3}), "0000") is True
+        assert _distinct_ok(two_rows_at(5, _mask({1, 2, 3})), "0000") is True
 
     def test_one_row_collided_flags_a_live_one_row(self) -> None:
         """A 1-row sharing a position with any other live row is a trap."""
         from esolangs.tools.boolean.one_two_three_construct import (
             _Builder,
+            _mask,
             _one_row_collided,
             _Row,
         )
@@ -2338,7 +2340,7 @@ class TestParameterizedOneTwoThree:
         zero = _Row((0, 0))
         one = _Row((1, 0))
         zero.pos = one.pos = 5
-        zero.tape = one.tape = {1, 2, 3}
+        zero.tape = one.tape = _mask({1, 2, 3})
         b = _Builder.__new__(_Builder)
         b.n = 2
         b.chunks = []
@@ -2392,13 +2394,14 @@ class TestParameterizedOneTwoThree:
             ConstructError,
             _Builder,
             _close,
+            _mask,
             _Row,
             _work,
         )
 
         row = _Row((0,))
         row.pos = 0
-        row.tape = set(range(100002))
+        row.tape = _mask(range(100002))
         b = _Builder.__new__(_Builder)
         b.n = 1
         b.chunks = []
@@ -2419,13 +2422,14 @@ class TestParameterizedOneTwoThree:
         from esolangs.tools.boolean.one_two_three_construct import (
             ConstructError,
             _Builder,
+            _mask,
             _Row,
             _work,
         )
 
         row = _Row((0,))
         row.pos = 0
-        row.tape = set(range(200))
+        row.tape = _mask(range(200))
         b = _Builder.__new__(_Builder)
         b.n = 1
         b.chunks = []
@@ -2440,13 +2444,14 @@ class TestParameterizedOneTwoThree:
         from esolangs.tools.boolean.one_two_three_construct import (
             ConstructError,
             _Builder,
+            _mask,
             _Row,
             _work,
         )
 
         row = _Row((0,))
         row.pos = 0
-        row.tape = {0}
+        row.tape = _mask({0})
         b = _Builder.__new__(_Builder)
         b.n = 1
         b.chunks = []
@@ -2461,13 +2466,14 @@ class TestParameterizedOneTwoThree:
         from esolangs.tools.boolean.one_two_three_construct import (
             ConstructError,
             _Builder,
+            _mask,
             _Row,
             _work,
         )
 
         row = _Row((0,))
         row.pos = 0
-        row.tape = {0}
+        row.tape = _mask({0})
         # eight '1's flip cells 0,-1,-2,-3 twice each: pos and tape both
         # return to the start, a proven revisit where a plain test wants
         # an escape instead
