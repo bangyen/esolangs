@@ -111,27 +111,6 @@ def _partial(op: int, curr: tuple[int, ...], acc: int) -> tuple[tuple[int, ...],
     return (curr, acc ^ sum(curr))
 
 
-def total(op: int, lst: list[list[int]]) -> None:
-    """Apply SEED (``op == 0``) or CONFLAGRATE to all 23 arrays.
-
-    A mutating shell over :func:`_total`, kept because it is this module's
-    published shape for the whole-memory ops.
-    """
-    lst[:] = [list(arr) for arr in _total(op, tuple(tuple(a) for a in lst))]
-
-
-def partial(op: int, curr: list[int], acc: int) -> int:
-    """Apply an EXCRETE/CONSUME/FISSION/DIGEST op to the current array.
-
-    A mutating shell over :func:`_partial`, which returns the new array
-    rather than editing one; this writes it back and hands the caller the
-    accumulator, as before.
-    """
-    after, acc = _partial(op, tuple(curr), acc)
-    curr[:] = list(after)
-    return acc
-
-
 _INS = (
     "SEED",
     "CONFLAGRATE",
@@ -198,7 +177,7 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
         self.tokens = re.findall(f"({'|'.join(_INS)})", code)
-        self.lst: list[list[int]] = [[0] for _ in range(23)]
+        self.lst: _Arrays = tuple((0,) for _ in range(23))
         self.ind = self.ptr = self.acc = 0
         self._halted_by_command = False
 
@@ -229,7 +208,7 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         return (
             self.ind,
-            tuple(tuple(row) for row in self.lst),
+            self.lst,
             self.ptr,
             self.acc,
             self.io.position(),
@@ -240,7 +219,7 @@ class _Machine:
     def _state(self) -> _State:
         """The machine's fields as the value the transitions work on."""
         return (
-            tuple(tuple(row) for row in self.lst),
+            self.lst,
             self.ptr,
             self.acc,
             self.ind,
@@ -252,10 +231,11 @@ class _Machine:
 
         The fields are this class's published shape -- tests seed ``lst``
         and read ``ind`` -- so they stay; the one assignment a step makes
-        is here rather than scattered through the rules above.
+        is here rather than scattered through the rules above.  ``lst``
+        needs no conversion: the field holds the same nested tuple the
+        transition returns.
         """
-        arrays, self.ptr, self.acc, self.ind, self._halted_by_command = state
-        self.lst = [list(arr) for arr in arrays]
+        self.lst, self.ptr, self.acc, self.ind, self._halted_by_command = state
 
     def step(self) -> None:
         """Execute one token, advancing (or jumping) the cursor.
