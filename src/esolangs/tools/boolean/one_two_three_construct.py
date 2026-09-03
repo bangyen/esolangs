@@ -428,13 +428,24 @@ def _normalize(b: _Builder) -> None:
     would read from), ``2`` otherwise.  All four ring cells occupied is an
     absorbing dead state, so the loop raises rather than spinning.
     """
+    # The decision is per character, but emitting it through ``run`` one
+    # character at a time was the single hottest path in the whole build
+    # (4.96M calls, 92% of the separation stage at n == 4): every call
+    # rebuilt the live list, re-split the string into runs and appended a
+    # chunk.  Deciding on a scratch clone and emitting the whole string
+    # once is the same string, hence the same template.
+    probe = b.clone()
+    out: list[str] = []
     for _ in range(10000):
-        if all(r.pos >= 0 for r in b.live()):
+        live = probe.live()
+        if all(r.pos >= 0 for r in live):
+            if out:
+                b.run("".join(out))
             return
-        if any(r.pos == -3 for r in b.live()):
-            b.run("1")
-        else:
-            b.run("2")
+        ch = _ONE if any(r.pos == -3 for r in live) else _ZERO
+        out.append(ch)
+        for row in live:
+            _exec_char(row, ch)
     raise ConstructError("normalize live-locked")
 
 
@@ -1026,10 +1037,16 @@ def _replay(template: str, n: int, table: str) -> None:
 
 #: Simulated commands a :func:`construct` call may spend before raising.
 #: Counted work, not wall clock, so the same table either builds or
-#: raises identically on every machine.  Every n <= 3 table and the
-#: verified four-input builds finish far below it; dense four-input
-#: tables whose search cannot converge hit it in bounded time instead
-#: of grinding for hours.
+#: raises identically on every machine.
+#:
+#: The counter is charged for what is actually simulated, so sharing a
+#: candidate sweep's prefix buys real search depth rather than only wall
+#: time.  It is never read by a search decision -- only tested against
+#: zero to abort -- so a table that built before still emits the same
+#: template, and what a cheaper sweep changes is which tables get far
+#: enough to finish at all.  Four-input tables build within it, sparse
+#: and dense alike (measured 40-80s each); the budget is what keeps a
+#: table whose search cannot converge bounded instead of endless.
 _WORK_BUDGET = 2_000_000_000
 
 
