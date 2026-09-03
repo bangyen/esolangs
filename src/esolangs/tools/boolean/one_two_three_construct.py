@@ -35,9 +35,10 @@ The pipeline
    three move kinds — a *kill* (the segment ``"1"*a + "2"`` or its
    mark-anchored variant ``"1"*a + "2" + "2"*X + "12"``, which loops the
    one row that dips into the -1..-3 ring and tests TRUE, by a proven
-   periodic revisit), a *boost* (a plain test whose TRUE set is one row,
-   moving it out of a blocking spot), and a *ring round* (descend, pop,
-   reshuffle relative residues).  Backtracking keeps every previously
+   periodic revisit), a *boost* (a plain test whose TRUE set excludes
+   the victim, moving blockers out of the way singly or in bulk), and a
+   *ring round* (descend, pop, reshuffle relative residues, depositing
+   the above-position marks boosts need).  Backtracking keeps every previously
    working trajectory reachable, so the move set cannot regress a table
    that once built.
 4. **Endgame** (`_endgame`): survivors need ``pos < 0`` at end of code.
@@ -73,6 +74,15 @@ class ConstructError(Exception):
     """
 
 
+class _WorkExhaustedError(Exception):
+    """The deterministic work budget ran out mid-search.
+
+    Deliberately not a :class:`ConstructError`: candidate validators
+    swallow those to try the next candidate, and a drained budget must
+    abort the whole build instead of being retried away.
+    """
+
+
 class _Row:
     """Tracked state of one instantiation while the template is built."""
 
@@ -85,12 +95,22 @@ class _Row:
         self.dead = False
 
 
+#: Remaining work budget for the current :func:`construct` call, counted
+#: in simulated commands — machine-independent, so the same table either
+#: builds or raises identically everywhere.  A list so the counter can be
+#: decremented in place from :func:`_exec_char`.
+_work = [0]
+
+
 def _exec_char(row: _Row, ch: str) -> None:
     """Apply one ``1``/``2`` command to a row, mirroring the interpreter.
 
     ``2`` at -3 would read stdin — fatal under the harness's empty script —
     so it raises here, which rejects whatever candidate move reached it.
     """
+    _work[0] -= 1
+    if _work[0] < 0:
+        raise _WorkExhaustedError
     if ch == "1":
         row.tape.symmetric_difference_update({row.pos})
         row.pos -= 1
@@ -627,6 +647,32 @@ def _ring_round(
     return nb
 
 
+def _align_residues(b: _Builder, table: str) -> None:
+    """Best-effort: leave at most three residue classes mod 4 occupied.
+
+    A deep descend-and-pop is only valid when the dipped rows leave one
+    ring cell free for the pop's ``2``; bottom ring rounds give the
+    lowest entity +1 mod 4 per round, which usually frees a class in a
+    few tries.  Failure is acceptable — the verdict search still has its
+    shallow moves.
+    """
+    for _ in range(16):
+        if len({r.pos % 4 for r in b.live()}) < 4:
+            return
+        nb = b.clone()
+        try:
+            lo = min(r.pos for r in nb.live())
+            nb.run("1" * (lo + 2))
+            nb.run("2")
+            _normalize(nb)
+            _close(nb)
+        except ConstructError:
+            return
+        if _one_row_collided(nb, table) or not _distinct_ok(nb, table):
+            return
+        b.chunks, b.seg, b.rows = nb.chunks, nb.seg, nb.rows
+
+
 def _moves(
     b: _Builder, table: str, ones: list[_Row]
 ) -> Iterator[_Builder]:
@@ -634,7 +680,7 @@ def _moves(
 
     A few cheap kill pads, then boosts of the rows blocking the lowest
     victim (a mid-pack victim rarely dies before its floor is cleared),
-    then the deeper kill pads, then ring-round shuffles.  Ordering here
+    then ring-round shuffles, then the deeper kill pads.  Ordering here
     is purely a cost heuristic: the search backtracks, so it changes
     which trajectory is found first, never what is reachable.
     """
@@ -659,8 +705,14 @@ def _moves(
             yield nb
     # ring rounds before the deep kill pads: a row that has only ever
     # walked right has no TRUE cell above its position, so on a fresh
-    # state no boost can fire until a descend-and-pop deposits one.
-    for depth in range(8):
+    # state no boost can fire until a descend-and-pop deposits one.  The
+    # depths are taken from the blockers' own positions — a bottom-only
+    # dip leaves every mid-pack blocker dirtless and unboostable — and
+    # dipped 0-rows may collide freely, since only the victim's position
+    # must stay unique.
+    lo = min(r.pos for r in b.live())
+    depths = sorted({0, 4} | {r.pos - lo for r in blockers})
+    for depth in depths:
         for x in range(4):
             nb = _ring_round(b, table, x, depth)
             if nb is not None:
@@ -773,15 +825,25 @@ def _replay(template: str, n: int, table: str) -> None:
                 f"replay disagrees at row {bits}: {verdict!r}")
 
 
+#: Simulated commands a :func:`construct` call may spend before raising.
+#: Counted work, not wall clock, so the same table either builds or
+#: raises identically on every machine.  Every n <= 3 table and the
+#: verified four-input builds finish far below it; dense four-input
+#: tables whose search cannot converge hit it in bounded time instead
+#: of grinding for hours.
+_WORK_BUDGET = 2_000_000_000
+
+
 def construct(truth_table: str, spacing: int = 6) -> str:
     """Build a 123 template for ``truth_table`` at any arity.
 
     Deterministic; every emitted template is replayed row by row on the
     real interpreter before it is returned.  Raises :class:`ValueError`
-    when a search stage exhausts its budget — no unproven template is
-    ever produced.
+    when a search stage exhausts its move budget or the whole build
+    exhausts its work budget — no unproven template is ever produced.
     """
     n = max(1, (len(truth_table) - 1).bit_length())
+    _work[0] = _WORK_BUDGET
     try:
         b = _Builder(n)
         marks = [spacing * 3**i + 1 for i in range(n)]
@@ -789,6 +851,7 @@ def construct(truth_table: str, spacing: int = 6) -> str:
         _close(b)
         _separate(b, truth_table)
         _gap_fix(b, truth_table)
+        _align_residues(b, truth_table)
         result = _verdict_search(b, truth_table)
         if result is None:
             raise ConstructError("verdict search exhausted its budget")
@@ -796,6 +859,11 @@ def construct(truth_table: str, spacing: int = 6) -> str:
         _endgame(b)
         template = b.template()
         _replay(template, n, truth_table)
+    except _WorkExhaustedError:
+        raise ValueError(
+            f"123 construction failed for {truth_table!r}: the work "
+            "budget ran out before the searches converged"
+        ) from None
     except ConstructError as exc:
         raise ValueError(
             f"123 construction failed for {truth_table!r}: {exc}"
