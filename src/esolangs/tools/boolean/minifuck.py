@@ -1642,11 +1642,10 @@ def _insert_suffixes() -> Iterator[str]:
     the pure run that that suffix proves necessary: it interleaves ``<`` into
     its bracket run, so a family no wider than "the same run with a ``<`` in
     it" was already known to reach columns no ``'[' * k`` reaches.  A second
-    A second ``<`` reaches further still; that family was removed once the
-    sculpted route covered the one pair it served.
-    What was not known, and what
-    the measurement settled, is how *many*: at four inputs the pure runs
-    reach 1650 fully-essential columns and this family reaches 15404.
+    ``<`` reaches further still; that family was removed once the sculpted
+    route covered the one pair it served.  What was not known, and what the
+    measurement settled, is how *many*: at four inputs the pure runs reach
+    1650 fully-essential columns and this family reaches 15404.
 
     The order is by length and then by the ``<``'s position from the left, so
     it is as deterministic as the bracket count it generalises.
