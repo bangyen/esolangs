@@ -212,25 +212,21 @@ class _Machine:
 
         The tick is computed first, because all three of the things that
         can happen -- PRINT's output, the read, and EXIT -- compare the old
-        values against the new ones.  The two effects are done here, and
-        the read's byte is handed to the transition, which builds the state
-        the tick lands on.
+        values against the new ones.  :func:`_ports` decides the first two
+        from that comparison and :func:`_advance` the third; this performs
+        what they report and hands the read's byte on.
         """
         if self.halted:
             return
         variables, queue, _exit, _count = self.state
         new = _tick(self.obj, variables)
+        output, reads = _ports(variables, new)
 
-        if (
-            _has(variables, "PRINT")
-            and _get(variables, "PRINT") == 0
-            and bool(_get(new, "PRINT"))
-            and _has(variables, "OUT")
-        ):
-            self.io.print_char(chr(_get(new, "OUT") % (1 << 7)))
+        if output is not None:
+            self.io.print_char(chr(output))
 
         byte = None
-        if _has(variables, "") and _get(variables, "") == 0 and bool(_get(new, "")):
+        if reads:
             # The read blocks until there is a character to take, which is
             # an effect and so belongs here rather than in the transition.
             while not queue:
@@ -239,6 +235,33 @@ class _Machine:
             queue = queue[1:]
 
         self.state = _advance(self.state, new, queue, byte)
+
+
+def _rises(variables: _Vars, new: _Vars, name: str) -> bool:
+    """Whether ``name`` goes from zero to nonzero across a tick.
+
+    A container fires on the rising edge, which is why both its old and
+    its new value matter.  EXIT is the exception and is decided in
+    :func:`_advance`: it fires on any *change*, so that a program can exit
+    with zero.
+    """
+    return (
+        _has(variables, name) and _get(variables, name) == 0 and bool(_get(new, name))
+    )
+
+
+def _ports(variables: _Vars, new: _Vars) -> tuple[int | None, bool]:
+    """Return what the tick wants done: a byte to print, and whether to read.
+
+    Pure: it compares the two ticks and reports.  The shell performs both,
+    which keeps the rules for *when* a container fires here with the rest
+    of the language rather than beside the ``io`` calls that carry them
+    out.  ``PRINT`` prints OUT modulo 128, and only when OUT exists.
+    """
+    output = None
+    if _rises(variables, new, "PRINT") and _has(variables, "OUT"):
+        output = _get(new, "OUT") % (1 << 7)
+    return output, _rises(variables, new, "")
 
 
 def _advance(
