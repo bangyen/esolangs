@@ -276,6 +276,19 @@ class _Pointer:
         )
 
 
+@dataclass
+class _State:
+    """Every mutable value in a Flowchart run.
+
+    The grid and parsed nodes are fixed for a run.  Pointers and deques are
+    the state a tick changes, so they travel together rather than being two
+    independent machine fields callers have to reconstruct.
+    """
+
+    pointers: list[_Pointer]
+    deques: dict[int, list[int]]
+
+
 class _Machine:
     """Per-run Flowchart state: the grid, its pointers, and the deques.
 
@@ -300,11 +313,27 @@ class _Machine:
         self.nodes: dict[tuple[int, int], tuple[_Spelling, int]] = {}
         self._parse()
 
-        self.deques: dict[int, list[int]] = {}
-
         start = self._start()
-        self.pointers = [_Pointer(start[0], start[1], _RIGHT)]
+        self.state = _State([_Pointer(start[0], start[1], _RIGHT)], {})
         self._fork_at_start()
+
+    @property
+    def pointers(self) -> list[_Pointer]:
+        """The live pointers, retained as a convenience for step helpers."""
+        return self.state.pointers
+
+    @pointers.setter
+    def pointers(self, pointers: list[_Pointer]) -> None:
+        self.state.pointers = pointers
+
+    @property
+    def deques(self) -> dict[int, list[int]]:
+        """The shared deques, retained as a convenience for step helpers."""
+        return self.state.deques
+
+    @deques.setter
+    def deques(self, deques: dict[int, list[int]]) -> None:
+        self.state.deques = deques
 
     def _parse(self) -> None:
         """Record every node on the grid, longest spelling first."""
