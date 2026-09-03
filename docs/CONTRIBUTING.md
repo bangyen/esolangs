@@ -76,17 +76,42 @@ still on the table.
 - `src/esolangs/tools/text/` — text generators, one module per state model
   (`register.py`, `tape.py`, `stack.py`, `other.py`).  Each `def <name>(text)`
   returns a program whose output is exactly `text`, or raises `ValueError`
-  for text the language cannot emit.
+  for text the language cannot emit.  The only extra parameter a text
+  generator may take is `width`, and it must have a default.
 - `src/esolangs/tools/boolean/` — truth-table generators for languages with
-  input and value branching.
+  input and value branching.  **Two shapes are legal**, and the second is
+  deliberate rather than drift:
+  - *table-in, program-out*: `def <name>(truth_table)` returns a program
+    that reads n inputs and prints the table's answer.  The input count is
+    implied by the table length, so `n` is never a parameter.
+  - *template-in, instantiated-per-row*: for a language with no input
+    command, the generator emits a template the harness instantiates per
+    input combination (see `parameterized.py`).
+  Three generators take something other than a truth-table string, each for
+  a reason in its docstring — `circlefuck_byte` is byte-valued rather than
+  boolean, and `jaune_multiply` multiplies operands of any length, so
+  neither has a fixed table.  They are named in `scripts/check_generators.py`
+  so the exemption is visible rather than implied.
+- `src/esolangs/compilers/` — RISC-V backends, one module per language, each
+  exposing `comp(code)` returning assembly.  Any further parameter needs a
+  default, so a driver iterating the compilers needs no special case.  The
+  `__main__` block delegates to `_riscv_common.main`, printing to stdout.
+  Register the module on its `Language` entry (`compiler="<module>"`) —
+  `scripts/check_compilers.py` fails on a backend that is not registered.
 - `src/esolangs/registry.py` — the single source of truth: which languages
-  have a generator, an interpreter, how programs are handed to the
-  interpreter, and the canonical id each language resolves to.  The public
-  API and the test tables derive from it.
+  have a generator, a compiler, an interpreter, how programs are handed to
+  the interpreter, and the canonical id each language resolves to.  The
+  public API and the test tables derive from it.  Registering something
+  here is the whole of adding it; there is no second list to keep in step,
+  and that is enforced rather than assumed — the checks above walk the
+  source directories and fail on anything missing from the registry.
 - `src/esolangs/__init__.py` — the public API (`generate`, `run`,
   `list_languages`); `src/esolangs/cli.py` — the `esolangs` command.
-- `scripts/` — verification tooling (`check_docstrings.py`, the
-  differential/emulation checks, `verify.py`).
+- `scripts/` — verification tooling (`check_docstrings.py`,
+  `check_compilers.py`, `check_generators.py`, the differential/emulation
+  checks, `verify.py`).  The three `check_*` scripts each walk a source
+  directory and fail on anything missing from the registry or departing
+  from a signature convention; they run as steps in `verify.py`.
 
 ## Adding a language
 
