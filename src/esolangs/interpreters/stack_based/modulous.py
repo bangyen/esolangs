@@ -39,7 +39,7 @@ _TOKEN = re.compile(r'\[([^\[\]\"]*("[^"]*")?)]')
 #: The tokens stay out: Modulous parses its program once and never
 #: rewrites it, so a handler is handed the token it is running rather than
 #: carrying the list.
-type _Core = tuple[tuple[int, ...], Mapping[str, int], int]
+type _Core = tuple[tuple[int, ...], dict[str, int], int]
 
 
 @dataclass
@@ -111,7 +111,7 @@ class _Machine:
         """Write a handler's result back onto the state's fields."""
         stk, var, self.ind = core
         self.stk = stk
-        self.var = dict(var)
+        self.var = var
 
     def step(self) -> None:
         """Execute one ``[OP arg]`` token, advancing the pointer.

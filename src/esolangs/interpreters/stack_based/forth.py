@@ -39,7 +39,6 @@ the original status-returning ``_execute``.
 """
 
 import sys
-from collections.abc import Mapping
 from dataclasses import dataclass
 
 from esolangs.exceptions import HaltError
@@ -87,7 +86,7 @@ class _Frame:
 #: scope the way completing it would, and only at the top level does it
 #: mean the run failed.  ``run`` reads it after the loop.
 type _Frames = tuple[_Frame, ...]
-type _State = tuple[tuple[int, ...], Mapping[int, str], _Frames, bool]
+type _State = tuple[tuple[int, ...], dict[int, str], _Frames, bool]
 
 
 def _top(stack: tuple[int, ...]) -> int:
@@ -329,7 +328,7 @@ class _Machine:
         """
         stack, table, frames, self.error = state
         self.stack = stack
-        self.table = dict(table)
+        self.table = table
         self.frames = frames
 
     def step(self) -> None:
