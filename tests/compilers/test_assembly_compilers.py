@@ -6,63 +6,63 @@ import pytest
 
 from esolangs.registry import COMPILERS as _REGISTERED
 
-# The generic sweep compiles the literal text ``"Hello"``, which is a valid
-# program only in the languages whose surface accepts arbitrary letters.
-# The rest reject it at parse time, so they are excluded here and carry a
-# hand-written class of their own further down instead.
+# One source program per registered compiler, so the sweep covers every
+# backend instead of only the ones whose surface happens to accept letters.
 #
-# Pinned as a set, in both directions, so it cannot quietly grow and cannot
-# go stale -- the same shape as ``_MAY_REACH_IO`` in
-# ``tests/test_interpreter_conventions.py``.  The membership list itself is
-# *derived* from the registry rather than hand-appended: a hand-maintained
-# roster is how ``verify_riscv_unicorn.py`` once let a backend go unverified
-# because nobody remembered to add it, and how ``check_docstrings.py``
-# exempted twelve interpreters behind a hard-coded category tuple.
+# There is no single input that is a valid program in sixteen different
+# surface syntaxes: ``"Hello"`` compiles under nine of them and is a parse
+# error under the other seven (AddSubJump reads it as a memory token, CV(N)(C)
+# as a syllable, Forbin as a function header).  An earlier version of this
+# sweep took ``"Hello"`` as its one input and simply excluded those seven,
+# which meant a hand-maintained exemption list standing between seven
+# backends and the only test that swept them.  Naming each language's own
+# minimal program instead costs one dict entry and excludes nobody.
 #
-# Each entry carries the message its parser refuses ``"Hello"`` with, so the
-# check below pins *why* the compiler is excluded rather than merely that it
-# raises.  A backend that started raising for some unrelated reason would
-# otherwise keep its exemption on a coincidence.
-_REJECTS_PLAIN_TEXT = {
-    "addsubjump": "malformed memory token",
-    "collatz_multiverse": "malformed line",
-    "container": "rule line before any container declaration",
-    "cvnc": "not a CV\\(N\\)\\(C\\) symbol",
-    "decleq": "malformed memory token",
-    "forbin": "expected '{' after function name",
-    "sbleq": "malformed memory token",
+# The programs are the ones the per-language classes below already compile,
+# so they stay in step with what each backend is known to accept.
+_PROGRAMS = {
+    "addsubjump": "-1 4 -8 -7 65",
+    "bf_pda": "Hello",
+    "bfstack": "Hello",
+    "collatz_multiverse": "x = y x + z, DO PRINT.",
+    "container": "A=1:\n+1 A>=0\nEXIT=1:\n-1 A>=3",
+    "cvnc": "cici",
+    "decleq": "10 10 99",
+    "forbin": "main { out 0,1,0,0,1,0,0,0; }",
+    "forth": "Hello",
+    "home_row": "Hello",
+    "jaune": "Hello",
+    "myscript": "Hello",
+    "ram0": "Hello",
+    "sbleq": "0 0 2 -1",
+    "suffolk": "Hello",
+    "unsquare": "Hello",
 }
 
-COMPILERS = sorted(set(_REGISTERED.values()) - _REJECTS_PLAIN_TEXT.keys())
+COMPILERS = sorted(_PROGRAMS)
 
 
-@pytest.mark.parametrize("module", COMPILERS)
-def test_compiler_produces_assembly(module: str) -> None:
-    """Each compiler turns a program into RISC-V assembly."""
-    mod = importlib.import_module(f"esolangs.compilers.{module}")
-    output = str(mod.comp("Hello"))
-    assert ".global _start" in output
-    assert "Hello" not in output  # source text is compiled, not embedded
+def test_every_registered_compiler_has_a_program() -> None:
+    """The sweep's table is exactly the registry, pinned in both directions.
 
-
-@pytest.mark.parametrize(("module", "message"), sorted(_REJECTS_PLAIN_TEXT.items()))
-def test_each_excluded_compiler_still_rejects_plain_text(
-    module: str, message: str
-) -> None:
-    """The exclusion list is exact, so it cannot become a stale roster.
-
-    An entry whose compiler grew a surface that *does* accept plain text
-    stops needing the exemption, and should rejoin the sweep above.  Left
-    unchecked the list would slowly fill with names nobody had
-    reconfirmed, which is how an exception set turns into a place a
-    genuinely broken backend hides.
+    Total rather than exemption-based: a newly registered backend fails
+    here until somebody names a program for it, and an entry left behind
+    for a module that is no longer registered fails the other way.  A
+    hand-appended roster is how ``verify_riscv_unicorn.py`` once let a
+    backend go unverified because nobody remembered to add it, and how
+    ``check_docstrings.py`` exempted twelve interpreters behind a
+    hard-coded category tuple.
     """
-    assert module in set(_REGISTERED.values()), (
-        f"{module} is excluded from the sweep but is not a registered compiler"
-    )
+    assert set(_PROGRAMS) == set(_REGISTERED.values())
+
+
+@pytest.mark.parametrize(("module", "program"), sorted(_PROGRAMS.items()))
+def test_compiler_produces_assembly(module: str, program: str) -> None:
+    """Each compiler turns a program in its own language into RISC-V assembly."""
     mod = importlib.import_module(f"esolangs.compilers.{module}")
-    with pytest.raises(ValueError, match=message):
-        mod.comp("Hello")
+    output = str(mod.comp(program))
+    assert ".global _start" in output
+    assert program not in output  # source text is compiled, not embedded
 
 
 def test_suffolk_compiler() -> None:
@@ -880,9 +880,10 @@ class TestCompilerFuzz:
 class TestForbinCompiler:
     """Forbin lowers to a call graph over a runtime frame chain.
 
-    Forbin is excluded from the ``COMPILERS`` sweep above because that
-    sweep compiles the literal text ``"Hello"``, which is not a Forbin
-    program (every program is a set of brace-delimited functions).
+    The ``COMPILERS`` sweep above compiles Forbin's own minimal program
+    (every program is a set of brace-delimited functions, so plain text is
+    not one).  This class covers the call graph and frame chain that the
+    single-function program there does not reach.
     """
 
     @staticmethod
@@ -1032,9 +1033,10 @@ class TestForbinCompiler:
 class TestContainerCompiler:
     """Container lowers a synchronous rule system to a dataflow round.
 
-    Container is excluded from the ``COMPILERS`` sweep above because that
-    sweep compiles the literal text ``"Hello"``, whose first line is a rule
-    with no container to attach it to -- which the shared parser rejects.
+    The ``COMPILERS`` sweep above compiles Container's own minimal program
+    (a bare rule line has no container to attach to, so plain text is not
+    one).  This class covers the dataflow round that program does not
+    reach.
     """
 
     @staticmethod
@@ -1212,9 +1214,10 @@ class TestForbinDiscardTarget:
 class TestCVNCCompiler:
     """CV(N)(C) lowers a runtime-built function and two computed gotos.
 
-    Excluded from the ``COMPILERS`` sweep above because that sweep compiles
-    the literal text ``"Hello"``, which is not a syllable string -- the
-    shared tokenizer rejects it on ``H``.
+    The ``COMPILERS`` sweep above compiles CV(N)(C)'s own minimal syllable
+    string (plain text is not one -- the tokenizer rejects it on ``H``).
+    This class covers the runtime-built function and computed gotos that
+    string does not reach.
     """
 
     @staticmethod
