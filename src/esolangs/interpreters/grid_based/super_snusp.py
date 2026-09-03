@@ -1,19 +1,13 @@
 r"""Interpreter for Super SNUSP.
 
-Super SNUSP is a SNUSP grid with an unbounded signed tape and stack.  The
-wiki's opcode table is the specification of record.  Its ``\"`` marker starts
-the instruction pointer moving right; without one the table names the bottom
-right cell but not a direction, so this interpreter enters that cell moving
-left (the inward-facing choice).  Programs halt when they leave the padded
-rectangular grid or reach ``'``.
+Super SNUSP is a grid language with a signed sparse tape and value stack.
+``\"`` starts rightward; absent a marker, this interpreter enters the bottom
+right moving left. EOF propagates. Invalid stack/arithmetic operations raise
+:class:`~esolangs.exceptions.HaltError`; an empty program raises
+:class:`ValueError`.
 
-The table distinguishes operations "by stack top" from ``$`` DROP and says
-``=`` uses a "stack pop".  Accordingly, every ordinary stack operation reads
-without removing the top, while DROP and RAND are the two consuming cases.
-An empty stack, division by zero, an invalid root, or a negative shift is an
-invalid runtime operation and raises :class:`~esolangs.exceptions.HaltError`.
-Both input opcodes propagate :class:`EOFError` when their input is exhausted;
-``@`` also propagates :class:`ValueError` for a non-integer line.
+The execution model is a pure transition over immutable ``_State``. The shell
+alone handles I/O and random draws, then rebinds the returned state.
 """
 
 from __future__ import annotations
@@ -25,35 +19,19 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
 
-# East, south, west, north: the ordering makes the two SNUSP mirror maps
-# compact tables indexed by a heading, while still keeping the grid in the
-# package-wide (row, column) coordinate convention.
 _DIRECTIONS = ((0, 1), (1, 0), (0, -1), (-1, 0))
-_RULD = (3, 0, 1, 2)  # /: E->N, S->W, W->S, N->E
-_LURD = (1, 2, 3, 0)  # \\: E->S, S->E, W->N, N->W
-
-
-# Position, heading, tape pointer, sparse signed tape, stack, digit-literal
-# continuation flag, and halt flag.  The grid and IO stay outside: source is
-# immutable, while effects belong to _Machine.step.
+_RULD = (3, 0, 1, 2)
+_LURD = (1, 2, 3, 0)
 type _State = tuple[
-    int,
-    int,
-    int,
-    int,
-    tuple[tuple[int, int], ...],
-    tuple[int, ...],
-    bool,
-    bool,
+    int, int, int, int, tuple[tuple[int, int], ...], tuple[int, ...], bool, bool
 ]
+type _Effect = tuple[str, int] | None
 
 
 def _floor_root(value: int, degree: int) -> int:
-    """Return the real ``degree``th root rounded toward negative infinity."""
     if degree <= 0 or (value < 0 and degree % 2 == 0):
         raise HaltError
     if value < 0:
-        # floor(-root(abs(value))) is -ceil(root(abs(value))).
         positive = _floor_root(-value, degree)
         return -positive if positive**degree == -value else -positive - 1
     low, high = 0, 1
@@ -68,212 +46,204 @@ def _floor_root(value: int, degree: int) -> int:
     return low
 
 
-class _Machine:
-    """A step-capable Super SNUSP run.
+def _read(cells: tuple[tuple[int, int], ...], pointer: int) -> int:
+    return next((value for index, value in cells if index == pointer), 0)
 
-    Source is padded once, then every step executes the cell under the IP and
-    advances once (or twice for a SKIP).  The sparse tape admits both pointer
-    directions without an artificial left edge; zero cells are omitted so a
-    snapshot records logical state rather than allocation history.
-    """
+
+def _write(
+    cells: tuple[tuple[int, int], ...], pointer: int, value: int
+) -> tuple[tuple[int, int], ...]:
+    updated = dict(cells)
+    if value:
+        updated[pointer] = value
+    else:
+        updated.pop(pointer, None)
+    return tuple(sorted(updated.items()))
+
+
+def _top(values: tuple[int, ...]) -> int:
+    if not values:
+        raise HaltError
+    return values[-1]
+
+
+def _advance(
+    state: _State,
+    code: Sequence[str],
+    char_input: int | None = None,
+    number_input: int | None = None,
+    random_offset: int | None = None,
+) -> tuple[_State, _Effect]:
+    """Return the pure next state and an output effect, if this cell emits."""
+    row, col, heading, pointer, cells, values, last_digit, done = state
+    if done:
+        return state, None
+    command, value, effect, steps = code[row][col], _read(cells, pointer), None, 1
+    if command.isdigit():
+        cells = _write(cells, pointer, (10 * value if last_digit else 0) + int(command))
+        last_digit = True
+    else:
+        last_digit = False
+        if command == "!":
+            steps = 2
+        elif command == "'":
+            return (row, col, heading, pointer, cells, values, False, True), None
+        elif command == "#":
+            effect = ("num", value)
+        elif command == "$":
+            _top(values)
+            values = values[:-1]
+        elif command == "%":
+            divisor = _top(values)
+            if not divisor:
+                raise HaltError
+            rem = abs(value) % abs(divisor)
+            cells = _write(cells, pointer, -rem if value < 0 else rem)
+        elif command in "&*+-:;[]^|":
+            operand = _top(values)
+            if command == "&":
+                value &= operand
+            elif command == "*":
+                value *= operand
+            elif command == "+":
+                value += operand
+            elif command == "-":
+                value -= operand
+            elif command == ":":
+                if not operand:
+                    raise HaltError
+                value //= operand
+            elif command == ";":
+                value = _floor_root(value, operand)
+            elif command == "[":
+                if operand < 0:
+                    raise HaltError
+                value <<= operand
+            elif command == "]":
+                if operand < 0:
+                    raise HaltError
+                value >>= operand
+            elif command == "^":
+                value ^= operand
+            else:
+                value |= operand
+            cells = _write(cells, pointer, value)
+        elif command == ",":
+            if char_input is None:
+                raise HaltError
+            cells = _write(cells, pointer, char_input)
+        elif command == ".":
+            try:
+                chr(value)
+            except ValueError:
+                raise HaltError from None
+            effect = ("char", value)
+        elif command == "/":
+            heading = _RULD[heading]
+        elif command == "\\":
+            heading = _LURD[heading]
+        elif command == "=":
+            other = _top(values)
+            if random_offset is None:
+                raise HaltError
+            low, high = sorted((value, other))
+            if not 0 <= random_offset <= high - low:
+                raise HaltError
+            cells = _write(cells, pointer, low + random_offset)
+            values = values[:-1]
+        elif command == "(":
+            cells = _write(cells, pointer, value - 1)
+        elif command == ")":
+            cells = _write(cells, pointer, value + 1)
+        elif command == "<":
+            pointer -= 1
+        elif command == ">":
+            pointer += 1
+        elif command == "?":
+            steps = 2 if value == 0 else 1
+        elif command == "@":
+            if number_input is None:
+                raise HaltError
+            cells = _write(cells, pointer, number_input)
+        elif command == "_":
+            cells = _write(cells, pointer, -value)
+        elif command == "`":
+            steps = 2 if value < 0 else 1
+        elif command == "{":
+            values = (*values, value)
+        elif command == "}":
+            cells = _write(cells, pointer, _top(values))
+        elif command == "~":
+            cells = _write(cells, pointer, ~value)
+        elif command.isalpha():
+            cells = _write(cells, pointer, ord(command))
+    d_row, d_col = _DIRECTIONS[heading]
+    row += d_row * steps
+    col += d_col * steps
+    done = not (0 <= row < len(code) and 0 <= col < len(code[0]))
+    return (row, col, heading, pointer, cells, values, last_digit, done), effect
+
+
+class _Machine:
+    """Protocol shell holding one immutable Super SNUSP state value."""
 
     def __init__(
         self, code: Sequence[str], io: IO, rng: Randomness | None = None
     ) -> None:
-        if not code:
-            raise ValueError("Super SNUSP program cannot be empty")
-        width = max(map(len, code), default=0)
-        if not width:
+        if not code or not (width := max(map(len, code), default=0)):
             raise ValueError("Super SNUSP program cannot be empty")
         self.code = tuple(row.ljust(width) for row in code)
-        self.height = len(self.code)
-        self.width = width
-        self.io = io
-        self._rng = rng
-
+        self.io, self._rng = io, rng
         starts = [
-            (row, col)
-            for row, line in enumerate(self.code)
-            for col, char in enumerate(line)
+            (r, c)
+            for r, line in enumerate(self.code)
+            for c, char in enumerate(line)
             if char == '"'
         ]
-        if starts:
-            self.row, self.col = starts[0]
-            self.heading = 0  # the examples enter from the start marker's right.
-        else:
-            self.row, self.col = self.height - 1, self.width - 1
-            self.heading = 2  # unspecified by the table; enter the grid inward.
-        self.pointer = 0
-        self.cells: dict[int, int] = {}
-        self.values: list[int] = []
-        self.last_was_digit = False
-        self._done = False
+        row, col, heading = (
+            (*starts[0], 0) if starts else (len(self.code) - 1, width - 1, 2)
+        )
+        self.state: _State = (row, col, heading, 0, (), (), False, False)
 
     @property
     def halted(self) -> bool:
-        """Whether the pointer reached END or left the grid."""
-        return self._done
+        return self.state[7]
 
     @property
     def ip(self) -> tuple[int, ...] | None:
-        """The current grid position and heading, or None after halting."""
-        return None if self._done else (self.row, self.col, self.heading)
+        return None if self.halted else self.state[:3]
 
     @property
     def memory(self) -> list[int]:
-        """Non-zero tape values in pointer order (the pointer is exposed in ip)."""
-        return [value for _, value in sorted(self.cells.items())]
+        return [value for _, value in self.state[4]]
 
     @property
     def stack(self) -> list[object]:
-        """The live value stack, bottom first."""
-        return list(self.values)
+        return list(self.state[5])
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return every mutable deterministic state, including input progress."""
-        return (
-            self.row,
-            self.col,
-            self.heading,
-            self.pointer,
-            tuple(sorted(self.cells.items())),
-            tuple(self.values),
-            self.last_was_digit,
-            self._done,
-            self.io.position(),
-        )
-
-    def _cell(self) -> int:
-        return self.cells.get(self.pointer, 0)
-
-    def _set_cell(self, value: int) -> None:
-        if value:
-            self.cells[self.pointer] = value
-        else:
-            self.cells.pop(self.pointer, None)
-
-    def _top(self) -> int:
-        if not self.values:
-            raise HaltError
-        return self.values[-1]
-
-    def _pop(self) -> int:
-        if not self.values:
-            raise HaltError
-        return self.values.pop()
-
-    def _advance(self, steps: int = 1) -> None:
-        """Move ``steps`` cells in the current heading, stopping off-grid."""
-        d_row, d_col = _DIRECTIONS[self.heading]
-        self.row += d_row * steps
-        self.col += d_col * steps
-        if not (0 <= self.row < self.height and 0 <= self.col < self.width):
-            self._done = True
+        return (*self.state, self.io.position())
 
     def step(self) -> None:
-        """Execute one opcode and move the instruction pointer.
-
-        I/O and RAND live here, at the machine shell.  Everything else only
-        updates the machine state, which keeps the port boundary explicit for
-        the interpreter-conventions sweep.
-        """
-        if self._done:
+        if self.halted:
             return
-        command = self.code[self.row][self.col]
-        value = self._cell()
-        if command.isdigit():
-            self._set_cell((10 * value if self.last_was_digit else 0) + int(command))
-            self.last_was_digit = True
-            self._advance()
-            return
-
-        self.last_was_digit = False
-        steps = 1
-        if command == "!":
-            steps = 2
-        elif command == '"' or command == " ":
-            pass
-        elif command == "'":
-            self._done = True
-            return
-        elif command == "#":
-            self.io.print_num(value)
-        elif command == "$":
-            self._pop()
-        elif command == "%":
-            divisor = self._top()
-            if not divisor:
-                raise HaltError
-            remainder = abs(value) % abs(divisor)
-            self._set_cell(-remainder if value < 0 else remainder)
-        elif command in "&*+-:;[]^|":
-            operand = self._top()
-            if command == "&":
-                self._set_cell(value & operand)
-            elif command == "*":
-                self._set_cell(value * operand)
-            elif command == "+":
-                self._set_cell(value + operand)
-            elif command == "-":
-                self._set_cell(value - operand)
-            elif command == ":":
-                if not operand:
-                    raise HaltError
-                self._set_cell(value // operand)
-            elif command == ";":
-                self._set_cell(_floor_root(value, operand))
-            elif command == "[":
-                if operand < 0:
-                    raise HaltError
-                self._set_cell(value << operand)
-            elif command == "]":
-                if operand < 0:
-                    raise HaltError
-                self._set_cell(value >> operand)
-            elif command == "^":
-                self._set_cell(value ^ operand)
-            elif command == "|":
-                self._set_cell(value | operand)
-        elif command == ",":
-            self._set_cell(self.io.input_char())
-        elif command == ".":
-            try:
+        row, col, _heading, pointer, cells, values, _digit, _done = self.state
+        command = self.code[row][col]
+        char_input = self.io.input_char() if command == "," else None
+        number_input = self.io.input_num() if command == "@" else None
+        random_offset = None
+        if command == "=" and values:
+            low, high = sorted((_read(cells, pointer), values[-1]))
+            random_offset = draw(self._rng, high - low + 1)
+        self.state, effect = _advance(
+            self.state, self.code, char_input, number_input, random_offset
+        )
+        if effect:
+            kind, value = effect
+            if kind == "char":
                 self.io.print_char(chr(value))
-            except ValueError:
-                raise HaltError from None
-        elif command == "/":
-            self.heading = _RULD[self.heading]
-        elif command == "\\":
-            self.heading = _LURD[self.heading]
-        elif command == "=":
-            other = self._pop()
-            low, high = sorted((value, other))
-            self._set_cell(low + draw(self._rng, high - low + 1))
-        elif command == "(":
-            self._set_cell(value - 1)
-        elif command == ")":
-            self._set_cell(value + 1)
-        elif command == "<":
-            self.pointer -= 1
-        elif command == ">":
-            self.pointer += 1
-        elif command == "?":
-            steps = 2 if value == 0 else 1
-        elif command == "@":
-            self._set_cell(self.io.input_num())
-        elif command == "_":
-            self._set_cell(-value)
-        elif command == "`":
-            steps = 2 if value < 0 else 1
-        elif command == "{":
-            self.values.append(value)
-        elif command == "}":
-            self._set_cell(self._top())
-        elif command == "~":
-            self._set_cell(~value)
-        elif command.isalpha():
-            self._set_cell(ord(command))
-        self._advance(steps)
+            else:
+                self.io.print_num(value)
 
 
 def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:
