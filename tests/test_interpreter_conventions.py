@@ -1,0 +1,192 @@
+"""Source-shape conventions the interpreters share, swept over the tree.
+
+``_template.py`` asks every interpreter to be written as a *pure
+transition* over an immutable state: the module-level helpers take a state
+and return the next one, reaching no ``IO``, and ``_Machine.step`` is the
+thin shell that performs the reads and writes.  That split is what lets a
+test call a transition on a hand-built state, and it keeps the effects in
+one place instead of scattered through the dispatch.
+
+Nothing enforced it.  The convention is prose in a template, and the two
+sweeps that look like they would catch a violation do not: the VM protocol
+tests drive machines and never read the source, and
+:meth:`~tests.test_vm_protocol.TestEveryLanguageIsPure.
+test_a_run_writes_nothing_to_the_real_streams` catches output escaping to
+the *real* stdout, which a helper writing properly through the ``io`` it
+was handed does not do.  A language that moved its dispatch into a
+module-level function and let it print would pass every existing test.
+
+So this file asks the source-shape question the runtime cannot: which
+module-level functions call an IO effect at all.  The answer today is five,
+in four modules, and every one is deliberate -- there is no drift to fix,
+which is the point.  The sweep is a net that fails when a sixth appears.
+"""
+
+import ast
+import inspect
+import pathlib
+
+import pytest
+
+from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.registry import RUNNERS
+
+# The interpreter tree, anchored to this file rather than the working
+# directory: the suite is run from the repo root and from ``extra/``, and a
+# relative path resolves differently in the two.
+_INTERPRETERS = pathlib.Path(__file__).resolve().parents[1] / (
+    "src/esolangs/interpreters"
+)
+
+# ``run`` is the entry point the template puts the IO on -- it builds the
+# machine, drives it, and is handed the ``IO`` to do it with.  It is the
+# one module-level function that is *supposed* to reach the ports.
+_IO_OWNER = "run"
+
+# Module-level functions that call an IO effect and are not ``run``.  Each
+# is a documented decision rather than a lapse, and the reason differs:
+#
+# * ``wii2d.update`` and ``ram0.output`` are effectful *shells* that happen
+#   to sit at module level instead of inside ``step``.  Both are the
+#   module's published shape -- ``update``'s own docstring says so, and it
+#   wraps the pure ``_accumulate`` -- so the transition/shell split is
+#   intact; only its spelling differs.
+# * ``forbin._call`` and MyScript's ``_parse_expr``/``_apply_builtin`` are
+#   the recursive-evaluation exception the template names.  Neither
+#   language executes a command at a time: a read happens part-way down a
+#   recursive descent, so there is no shell the port could be hoisted to
+#   without threading it back up through every frame.
+#
+# Pinned as a set, in both directions, so it cannot quietly grow and cannot
+# go stale -- the same shape as ``RAISES_ON_THE_POST_HALT_STEP``.
+_MAY_REACH_IO = frozenset(
+    {
+        ("grid_based/wii2d.py", "update"),
+        ("other/forbin.py", "_call"),
+        ("register_based/myscript.py", "_parse_expr"),
+        ("register_based/myscript.py", "_apply_builtin"),
+        ("register_based/ram0.py", "output"),
+    }
+)
+
+
+def _io_surface() -> frozenset[str]:
+    """Return the IO effect method names, read off the ``IO`` classes.
+
+    Derived rather than listed.  A hand-written list is a second thing to
+    keep in step with ``io.py``, and the first draft of this sweep proved
+    the cost: it omitted ``print_value``, so MyScript's ``_apply_builtin``
+    -- which prints through exactly that -- looked pure.  A detector with a
+    hole in it reports a clean tree because it is not looking, which is the
+    failure this whole file exists to prevent.
+    """
+    return frozenset(
+        name
+        for cls in (IO, ScriptedIO)
+        for name, _ in inspect.getmembers(cls, callable)
+        if not name.startswith("__")
+    )
+
+
+def _module_files() -> list[pathlib.Path]:
+    """Return every interpreter module, read off the tree.
+
+    Globbed rather than listed by category.  ``scripts/check_docstrings.py``
+    walked a hard-coded four-name category tuple that predated
+    ``grid_based`` and ``queue_based``, so twelve of the sixty-three
+    interpreters were exempt from it and three real violations sat behind
+    the omission.  A walk that discovers the tree cannot acquire that hole.
+    """
+    return sorted(
+        path
+        for path in _INTERPRETERS.glob("*/*.py")
+        if not path.name.startswith("_")
+    )
+
+
+def _io_calls(function: ast.FunctionDef, surface: frozenset[str]) -> list[str]:
+    """Return the IO effect methods ``function`` calls, by name."""
+    return sorted(
+        {
+            node.attr
+            for node in ast.walk(function)
+            if isinstance(node, ast.Attribute) and node.attr in surface
+        }
+    )
+
+
+def _reaching_functions() -> dict[tuple[str, str], list[str]]:
+    """Return every module-level non-``run`` function that calls into ``IO``."""
+    surface = _io_surface()
+    found: dict[tuple[str, str], list[str]] = {}
+    for path in _module_files():
+        relative = path.relative_to(_INTERPRETERS).as_posix()
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in tree.body:
+            if not isinstance(node, ast.FunctionDef) or node.name == _IO_OWNER:
+                continue
+            calls = _io_calls(node, surface)
+            if calls:
+                found[(relative, node.name)] = calls
+    return found
+
+
+class TestTheSweepCanSee:
+    """The detector's own coverage, which the checks below take on trust."""
+
+    def test_every_registered_interpreter_is_walked(self) -> None:
+        """The glob reaches every module the registry names.
+
+        Without this the sweep could pass by walking the wrong directory,
+        or by missing a category the way the docstring checker missed two.
+        """
+        walked = {
+            path.relative_to(_INTERPRETERS).as_posix().removesuffix(".py")
+            for path in _module_files()
+        }
+        registered = {module.replace(".", "/") for module, _ in RUNNERS.values()}
+        assert sorted(registered - walked) == []
+
+    def test_the_io_surface_is_not_empty(self) -> None:
+        """``IO`` still has effect methods under the names this reads.
+
+        A rename in ``io.py`` that emptied the derived surface would make
+        every check below vacuous -- passing because it detects nothing.
+        """
+        surface = _io_surface()
+        assert {"print_str", "print_char", "print_value", "input_str"} <= surface
+
+
+class TestTransitionsDoNotReachIO:
+    """The convention itself, pinned in both directions."""
+
+    def test_no_unlisted_module_function_calls_io(self) -> None:
+        """Only ``run`` and the pinned exceptions reach the ports.
+
+        A language that moved its dispatch to a module-level helper and
+        printed from it -- abandoning the transition/shell split without
+        anybody noticing -- fails here and nowhere else.
+        """
+        unexpected = {
+            where: calls
+            for where, calls in _reaching_functions().items()
+            if where not in _MAY_REACH_IO
+        }
+        assert unexpected == {}
+
+    @pytest.mark.parametrize(
+        ("module", "function"),
+        sorted(_MAY_REACH_IO),
+        ids=lambda value: value.replace("/", ".") if isinstance(value, str) else value,
+    )
+    def test_each_listed_exception_still_reaches_io(
+        self, module: str, function: str
+    ) -> None:
+        """The exception list is exact, so it cannot become a stale roster.
+
+        An entry whose function was renamed, deleted, or refactored back
+        into a shell stops excusing anything.  Left unchecked the list
+        would slowly fill with names nobody had reconfirmed, which is how
+        an exception set turns into a place violations hide.
+        """
+        assert (module, function) in _reaching_functions()
