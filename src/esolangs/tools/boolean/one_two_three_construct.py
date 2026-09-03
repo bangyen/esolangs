@@ -1112,13 +1112,23 @@ def _replay(template: str, n: int, table: str) -> None:
 _WORK_BUDGET = 2_000_000_000
 
 
-def construct(truth_table: str, spacing: int = 6) -> str:
+def construct(truth_table: str, spacing: int = 6, *, verify: bool = True) -> str:
     """Build a 123 template for ``truth_table`` at any arity.
 
     Deterministic; every emitted template is replayed row by row on the
     real interpreter before it is returned.  Raises :class:`ValueError`
     when a search stage exhausts its move budget or the whole build
     exhausts its work budget — no unproven template is ever produced.
+
+    ``verify=False`` skips that closing replay, which is 40-65% of a
+    four-input build (the program is long, and running it sixteen times
+    is most of the work).  It exists for callers that replay the result
+    themselves anyway — the wider tests here do, and paying for both is
+    the same execution twice.  The default stays ``True``: this is the
+    only execution gate the constructed route has, since the exhaustive
+    sweeps in the suite cover ``n <= 3``, which the stored plans serve
+    without ever calling this.  A caller that skips it and does not
+    check the template itself is shipping an unproven program.
     """
     n = max(1, (len(truth_table) - 1).bit_length())
     _work[0] = _WORK_BUDGET
@@ -1136,7 +1146,8 @@ def construct(truth_table: str, spacing: int = 6) -> str:
         b = result
         _endgame(b)
         template = b.template()
-        _replay(template, n, truth_table)
+        if verify:
+            _replay(template, n, truth_table)
     except _WorkExhaustedError:
         raise ValueError(
             f"123 construction failed for {truth_table!r}: the work "
