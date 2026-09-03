@@ -543,8 +543,8 @@ class _Machine:
         return (
             self.pointer,
             self.accumulator,
-            tuple(self.deque),
-            tuple(self.function),
+            self.deque,
+            self.function,
             self.io.position(),
         )
 
