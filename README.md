@@ -235,14 +235,9 @@ Implementations written in languages other than Python, used as cross-check refe
 
 </details>
 
-Two further bodies of work live under `extra/` without being cross-check
-interpreters, so they are not listed above:
+One further body of work lives under `extra/` without being a cross-check
+interpreter, so it is not listed above:
 
-- **Lean 4 proofs** (`extra/lean/esolangs`) verify generators rather than
-  run programs: that the MAMMALIAN text generator is total over the byte
-  range, that the Factor encoder round-trips (`decode (encode code) = code`),
-  and that the brainfuck minterm boolean generator computes its truth table.
-  `lake build` checks them, and CI runs them on Linux.
 - **Line** (`extra/line`) implements
   [Line](https://esolangs.org/wiki/Line), whose spec is a set of hand-drawn
   curve images with no text format.  Its programs are PNGs rather than text,

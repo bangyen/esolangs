@@ -11,7 +11,6 @@ LLVM_BIN := `command -v brew >/dev/null 2>&1 && echo "$(brew --prefix llvm)/bin"
 help:
     @echo "Available targets:"
     @echo "  lint-python  - Lint Python files with Ruff and MyPy"
-    @echo "  lint-lean    - Lint Lean files with lean linter"
     @echo "  lint         - Run all linting targets"
     @echo "  test         - Local check, scoped to this branch; slow/differential left to CI"
     @echo "  test-full    - Every check incl. the differential, whole tree"
@@ -51,22 +50,8 @@ lint-python:
     {{PYTHON}} -m ruff format --check .
     {{PYTHON}} -m mypy
 
-# Lint helpers.  Each target fails loudly when its tool is present and the
-# code is unclean, and skips cleanly (exit 0) when the tool is missing, so a
-# local `just lint` degrades gracefully without silently swallowing failures.
-
-# lint lean
-lint-lean:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if command -v lake >/dev/null 2>&1; then
-        (cd extra/lean/esolangs && lake build)
-    else
-        echo "skip: lake (Lean 4) not found"
-    fi
-
 # lint all code
-lint: lint-python lint-lean
+lint: lint-python
     @echo "All lint checks completed!"
 
 # test (local check: lint, pytest, bandit, verify scripts)

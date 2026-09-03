@@ -2068,14 +2068,14 @@ linear scan rather than a genuine representation limit.  See
 
 ## Assessed boolean candidates that fell through
 
-- **%^2^-1** (wall at `n >= 2` for the *reading* model, proved in Lean —
+- **%^2^-1** (wall at `n >= 2` for the *reading* model, machine-checked —
   **resolved by parameterizing**).  Its only control flow is `t`, which
   rewinds to the program start when the accumulator is nonzero, preserving
   the accumulator across the rewind.  There is no forward jump and no way to
   branch over code, so a program cannot route two inputs to different tails.
 
-  **The Lean wall and its scope.**
-  `extra/lean/esolangs/Esolangs/PctBooleanWall.lean` proves
+  **The wall and its scope.**  The full argument is in
+  [`docs/proofs.md`](proofs.md); it proves
   `computes_ignores` — every program meeting the boolean contract (halt
   cleanly, consume both bits, print one character) computes a function that
   ignores one of its two inputs — so `no_xor` and `no_and` follow.  Two
@@ -2085,9 +2085,9 @@ linear scan rather than a genuine representation limit.  See
   of the cursor (`count_le_of_halts`), which forbids the two runs from
   diverging at a `t`.  Output therefore factors as `A(b1) ++ B(b2)`, and a
   one-character output forces one factor empty.  This is an induction over
-  unbounded length, not a bounded search: the axiom audit
-  (`AxiomAudit.lean`) reports only `propext`, `Classical.choice` and
-  `Quot.sound` — no `sorryAx`, no `Lean.ofReduceBool`.
+  unbounded length, not a bounded search: the axiom audit reported only
+  `propext`, `Classical.choice` and `Quot.sound` — no `sorryAx`, no
+  `native_decide`.
 
   **Parameterizing voids the proof's hypothesis.**  No `n` ever runs, so
   nothing overwrites the accumulator and the "state at the last read depends

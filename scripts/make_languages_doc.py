@@ -82,7 +82,7 @@ _EXTRA_DIRS = [
 ]
 
 # Display names of the languages with a cross-check implementation in extra/
-# (Lean or RISC-V assembly).  These interpreters run as
+# (RISC-V assembly).  These interpreters run as
 # standalone programs rather than through the Python package.
 NATIVE = {name for _, _, names, _ in _EXTRA_DIRS for name in names.values()}
 
@@ -182,7 +182,7 @@ def render() -> str:
         "",
         "Python means an in-repo interpreter under `esolangs.interpreters`;",
         "Cross-check means an implementation in `extra/` that runs as a",
-        "standalone program (Lean or RISC-V assembly), used to",
+        "standalone program (RISC-V assembly), used to",
         "differentially verify the Python interpreter.  The Boolean",
         "column marks the boolean-function generators; the no-input "
         "languages (Back, BIO, NoComment, BF-PDA, Lamfunc, Bitdeque, RAM0, "
@@ -191,7 +191,8 @@ def render() -> str:
         "a template).  Minifuck and %^2^-1 use parameterized generators too, "
         "for a different reason: both *have* an input command, but neither "
         "can branch on what it reads, so their reading models are walled "
-        "(the %^2^-1 wall is proved in Lean) and embedding is what reaches "
+        "(the %^2^-1 wall is proved in `docs/proofs.md`) and embedding is "
+        "what reaches "
         "the two-input tables.  %^2^-1 goes further: a subcube cascade "
         "builds every conjunction or disjunction of literals at any arity, "
         "a composed-affine derivation adds the tables that are no subcube, a "
