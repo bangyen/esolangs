@@ -570,41 +570,24 @@ by name and each input still reaches its own slot. Both shipped forms clear
 it: `eval` interleaves stack ops *between* the slots, and `back` permutes
 which name fills each slot while building its tree on the permuted table.
 
-**Shipped:** `six_five`, `jaune`, `eval`, `circlefuck`, `unsquare`, `sbleq`,
-`three_x`, `forth`, `sophie`, `polynomial`, `addsubjump`, `streetcode`,
-`laserfuck`, `back`, `cvnc`, `basicfuck`, `myscript`, `nevermind`, `between`,
-`forbin_boolean`, `lamfunc`, `bitdeque`, `ram0`,
-`algebraic_programming_language` (`six_five`, `forth`,
-`streetcode` and `laserfuck` roll their own — the two grid ones because their
-`width` has to choose among *every* candidate, and `best_input_order` returns
-only the shortest; `back` has no width, so it uses the wrapper), and
-`brainfuck`, `bf_tree`, `factor`, `three_d_brainfuck`, `painfuck`,
-`dimensional` and `dimensional_tree`, which **inherit** one rather than
-calling for it.  The chain is three links deep and only the first names
-anything: `bf_tree` and `dimensional_tree` call the shared
-`decision_tree_program`, which wraps `best_input_order` itself; `brainfuck`
-and `dimensional` are one-line delegations to those two; and `factor`,
-`three_d_brainfuck` and `painfuck` reuse `brainfuck`'s *output* outright —
-encoding it into an integer, transliterating its commands, or both.
-Measured on the shape test's own tables they fold 49.6%
-(the brainfuck family), 54.9% (`painfuck`), 56.5% (`factor`) and 46.9%
-(`dimensional`, `dimensional_tree`) — so a reorder can arrive through a
-*transliteration*, with nothing in the generator naming it.
-
-The authority for that list is
+**Who ships one is a grep, not a list here.**  The authority is
 `grep -rn 'best_input_order' src/`, **then the callers of
 `decision_tree_program`, then — repeatedly — whoever delegates to or reuses
-the output of anything already found**, not this paragraph.  That last step
-has to run to a fixed point rather than once: `painfuck` is three hops out
+the output of anything already found.**  That last step has to run to a
+fixed point rather than once: `painfuck` is three hops out
 (`decision_tree_program` → `bf_tree` → `brainfuck` → `painfuck`), so a
-single pass finds five of the seven and stops.  A
-generator that grows a reorder is not required to touch this file, so the
-names here lag.  **Do not narrow that pattern to `best_input_order(truth_table`**
-— it was written that way and silently missed all seven inheritors above,
-for exactly one reason: the shared call in `helpers.py` breaks its arguments
-across lines, so the table is not on the same line as the callee.  A grep
-that names the authority is only as good as the spellings it matches, and a
-one-line pattern cannot see a wrapped call or an inherited one.
+single pass finds five of the seven inheritors and stops.  A reorder can
+arrive through a *transliteration*, with nothing in the generator naming
+it — `factor`, `three_d_brainfuck` and `painfuck` reuse brainfuck's output
+outright and inherit the saving unchanged.
+
+**Do not narrow that pattern to `best_input_order(truth_table`.**  It was
+written that way and silently missed every inheritor, for one reason: the
+shared call in `helpers.py` breaks its arguments across lines, so the table
+is not on the same line as the callee.  A grep that names the authority is
+only as good as the spellings it matches, and a one-line pattern cannot see
+a wrapped call or an inherited one.
+
 `bitdeque`'s is the one worth reading, because it is *not*
 the free reorder the roadmap still lists as open — its rotations happen
 inside the tree (`EJECT PUSH`, `POP INJECT`, two commands per position),
@@ -723,233 +706,15 @@ deleting it, and why 5.2% was the whole of the return. Rule 2 would have
 closed it before the first line was written; the commit history has the
 build if the trade is ever worth revisiting.
 
-**The grid tier is not all layout surgery — streetcode is a placement, not a
-walk.** It screens 16.8% and **delivers 16.76%** at n=3, none grown. It
-comes in a shade *under* its screen — 16.8% → 16.76%, the same 0.04pp shave
-circlefuck took at 10.47% → 10.42% — which is what the rule predicts for a
-node testing a **position** rather than naming an input: the walk that puts
-each bit in its cell is the difference. Its halls test cells positionally: every
-hall spends one `=`, so level *k* tests cell *k+1* whatever is in it. That
-makes the reorder a **placement** rather than a walk. Only the shared
-shape's prefix changes, from stepping one cell per read to walking to each
-input's target: at two inputs a swap reads `==I_I` where the identity reads
-`=I=I`. The tree, the fold, the leaf's `skipped` advances and the lap are
-untouched, and the reads stay in stream order.
-
-Three things that decided the build, worth carrying to the rest of the tier:
-
-- **The cell map is the inverse of the permutation.** Level *k* tests cell
-  *k+1* and must test input `perm[k]`, so input *i* is stored at
-  `perm.index(i) + 1`. Reading it forward stores the right bits in the wrong
-  cells and every non-identity order computes a different function.
-- **Only one shape needed touching.** The shared shape wins *every* table at
-  n=1..4, so the ring and hallway survive only as `width` fallbacks and are
-  built at the identity order alone. Their labels thread the `+1` hand-off
-  between neighbouring loops, which a permuted placement would have to
-  re-derive for no measured gain — measured, not assumed.
-- **The walks are junction-free.** The prefix runs down the shaft, not along
-  the street, so no mouth is crossed while CP names an arbitrary cell — which
-  is what makes a permuted prefix as safe as the identity one under the
-  gap-junction law. The fixed seeding suffix is relative to cell *n*, so the
-  prefix walks CP back there after the last read rather than assuming it
-  landed there.
-
-**LaserFuck confirms the rule.** It screens 16.3% and **delivers 16.08%** at
-n=3, none grown. Its node is `>#v)`: step the pointer, then `)` tests the
-cell under it, so level
-*k* tests cell *k+1* exactly as streetcode's halls do. Only the reader's read
-section changes, from `,>,>,<<<` to a walk between each `,`.
-
-It was *easier* than streetcode, and the reason is worth stating: the read
-section sits between the two rings, past `multiply`'s `)` and before
-`retire`'s `}`, so it holds no conditional characters at all. A walk there
-cannot steer the beam, so there is no analogue of the gap-junction law to
-design around — the whole hazard budget streetcode spent was language-
-specific. Check where a candidate's reads sit relative to its conditionals
-before assuming the same cost.
-
-The one shared trap is the frame: **the cell map is the inverse of the
-permutation** in both, and both start their walk from wherever the preceding
-block left the pointer (streetcode cell 0, LaserFuck cell 1 — `multiply` ends
-on a `>`). Deriving the identity spelling first and checking it reproduces
-what the generator already emitted catches an off-by-one before any table is
-run.
-
-**Back is where a cheaper build was measured and then declined.** It screens
-12.0% and **delivers 16.55%** at n=3 against its own identity order (25167
-characters, none grown) and **17.33% at n=4**.
-
-Node `+\>` tests the current cell and *then* advances, so level *k* tests
-cell **k**, one lower than streetcode's halls and LaserFuck's `>#v)`, which
-both step before they test. Input *i* therefore belongs at cell
-`perm.index(i)` — the inverse of the permutation — and the load walks the
-pointer there with `>`/`<`, exactly as the other two placements do.
-
-**A free build exists and is not used.** Filling in *cell* order instead —
-putting `{X perm[c]}` in cell *c* — emits no walk at all, because the pointer
-only ever steps one cell forward, and it measured **11.99% against the 12.0%
-screen**: the store-target regime (`three_x`, `decleq`), where the screen is
-exact. It is declined because it leaves the template's placeholders out of
-name order, and every other generator in this module emits `{X0}`..`{Xn-1}`
-in sequence. Both forms are correct — `instantiate` substitutes by *name*, so
-a placeholder is filled wherever it sits — so the choice is consistency, not
-correctness, and it is worth recording that it costs about 2.85 points.
-
-Mind the two baselines when comparing those numbers. **11.99% and 12.0% are
-against the pre-reorder generator**, which loaded in name order and stepped
-one cell at a time. **16.55% is against this generator's own identity order**,
-which now spends a walk of its own, so its identity build is larger (25167
-against the old 23119) and the same emitted programs measure as a bigger
-saving. The 21003 characters the walk build actually emits is the figure to
-compare across builds: the free build emits 20347.
-
-The load's units are emitted in **reverse** name order, because the load is
-drawn bottom-to-top up column 0 (the beam runs up it), so the template's text
-reads them backwards: loading input *n−1* first is what puts `{X0}` first on
-the page. One consequence is worth knowing — with the units reversed, parity
-now *shrinks* under reordering (126 → 118 at n=3) without folding anything,
-because some orders simply spend a shorter walk. "The identity order wins on
-a table that folds nothing" was true of the walk-free build and is not a
-general invariant; what survives is the one-sided one, that no table comes
-out larger than its identity build.
-
-The walk itself is cheap in absolute terms — two characters a move, the
-character plus the newline its own load row carries — and reads as a couple
-of points only because Back's programs are small: 82 characters on average at
-n=3, against LaserFuck's 326 and Streetcode's 842. **Price a walk against the
-program's own size**; compact programs are where a fixed cost shows up as a
-large fraction.
-
-**One layout idea is screened and unbuilt.** The load runs up column 0 at one
-command per row, so it is `2n+2` rows tall while the tree needs only ~7.5;
-snaking it into two columns would halve that. Counted at n=3 it nets about
-**+1.9%** — 13 characters of rows saved against 7.5 for shifting the tree one
-column right and ~4 for the turn mirrors — which is under the 5% bar for a
-cheap change, and the mirror estimate is the soft part: a turn cell cannot
-also carry a load command, and `+`'s conditional step interacts with the
-beam's direction at a mirror. Recorded rather than built.
-
-**The rest of the tier, and why each closes.** What is left splits by *where
-the node reads*, which is the same question the token-sequence tier answers,
-not by being 2D:
-
-- **`clockwise` (1.3%, a lone accumulator) and `wii2d` (3.4%)** have nothing
-  to place into and sit below the threshold anyway.
-
-**`dig` (19.8%) and `flowchart` (17.1%) both read at the node, and both
-close.** Each was costed against rule 2 before any code was written, and
-neither clears the 10% bar — the screen figures are the largest left in the
-tier and are still not worth reaching.
-
-**`dig` closes on the language, not the arithmetic.** `_DIG_BRANCH` is
-`>2$~;#@`: read, store and turn in one fixed block. The store looks like
-somewhere to park a bit, and it is not — `_value()` reads only the cells
-*adjacent to the mole*, taking the first digit in a fixed direction order,
-and the mole has a single accumulator. So a hoisted bit is readable only
-while the mole stands beside it, and a tree has many nodes testing the same
-input from different squares. That leaves re-embedding per node (the
-`wii2d_tree` wall) or walking the mole back past each stored digit
-(relocation, which is what made `brainif` deliver only its screen). Neither
-is a hoist that deletes work.
-
-**`flowchart` closes on a count, and it is negative before the hard part is
-counted.** The setup is the promising one: today every skipped level still
-pays a `/ /` box on a folded leaf's rail, because the reads are the
-interface, so a hoist that reads all `n` inputs once in staging should
-delete those — the pattern that made `addsubjump` beat its screen. Counted
-over all 256 tables at n=3, it does not: 1724 `/ /` boxes against 1214
-`< >` switches, so folding saves only ~2 rail boxes per table. Removing
-every read box recovers 6896 characters; staging `n` inputs costs 6144
-(`/ /` plus `\[ ]/` per input) and popping instead of reading at each node
-costs 2428 more. That is **−1676 characters, −1.43%, before a single
-`< ]`/`[ >` deque select is counted** — and the selects are the dominant
-term left, since each node must walk the cursor to its own input at three
-characters a step.
-
-The deques are real and the pops would work (only one root-to-leaf path
-runs per execution, so each input is popped at most once). The construction
-is simply not cheaper than the reads it replaces. Worth keeping as the case
-where the *language* has the richest storage in the tier and the hoist still
-loses — read the generator to classify, then count before building.
-
-**What the fill-slot bar rules out, precisely.** It is a test on the emitted
-**drawing**, not on where the names sit. "Permuting a parameterized
-template's fill slots is not a reorder" excludes a template whose program is
-*byte-identical* under the permutation — there the saving is booked against
-the harness's fill order and nothing was made smaller. It does not exclude a
-template whose drawing changes, and both shipped parameterized reorders
-change one by emitting different code, not by moving names: `eval`
-**interleaves runtime ops between the slots** (`_eval_stack_programs` records
-that the `{Xi}` blocks keep their slots and the harness fills them exactly as
-before, while the emitted ops rearrange the stack the nodes pop from), and
-`back` **walks its pointer between the load units**. Both keep their
-placeholders in `{X0}`..`{Xn-1}` sequence, and both pay real characters for
-the rearrangement.
-
-**Permuting the names is legal and is still not done.** `instantiate`
-substitutes by *name*, so a named input reaches its own slot wherever that
-slot sits; a build that permutes Back's slots and keeps the tree on the
-permuted table changes the drawing and clears the bar, and it is free —
-measured at 11.99% against a 12.0% screen, against 16.55% (identity-relative)
-for the walk build. It is declined so that every template in the module reads
-in name order, which `test_slots_run_in_name_order` now enforces. Worth
-knowing the option exists and what it costs, rather than believing the bar
-forbids it.
-
-**The free-reorder trick turned out to be the outlier, not the pattern**, and
-that is part of why Back does not use it either. The obvious follow-up was to
-apply it to every generator that pays for its reorder, so each was measured
-against a *free-reorder ceiling*: the same fold, built with the identity
-emission on a permuted table. The headroom is what such a build would take
-off the shipped size, and there is none worth having (n=3, all 256 tables):
-
-| generator | shipped | ceiling | headroom |
-|---|---|---|---|
-| `lamfunc` | 11.71% | 11.71% | **0.00%** — already free |
-| `bitdeque` | 14.90% | 15.67% | 0.90% |
-| `ram0` | 14.75% | 13.31% | **−1.69%** |
-
-`lamfunc` was already in Back's regime: each input is stored once and read
-back by name, so its reorder is a pure rename with nothing to pay. `bitdeque`
-pays rotations (`EJECT PUSH` / `POP INJECT`) but they are cheap against its
-programs, and removing them is blocked in the *harness* rather than the
-language — `_fill_bitdeque` derives each setter's `INVERT PUSH` / `PUSH
-INVERT` parity from the input's **name**, assuming input *i* sits at load
-position `n−1−i`, so permuting names between slots would desync every fill
-site. Fixing that is fill-harness surgery for 0.9%.
-
-`ram0` is the interesting one: its shipped reorder **beats** the free
-ceiling, so permuting is doing something folding alone cannot. That is the
-per-language cost `best_input_order`'s docstring predicts — RAM0 spells an
-address as a run of `A`, so a good order also wants the deep levels on low
-addresses. A "free" reorder there would be a *worse* one.
-
-`arrowqueue` (12.4%) is separate: it is
-a *queue*-fed grid template, so a real reorder needs re-enqueue gadgets to
-bring a bit to the front. Permuting which `{Xi}` name sits in each header
-slot is not an alternative: `_header_rows` fills the header positionally
-from the bits, so the names are inert, and even if they were not, an
-identical emitted program booking a saving against the harness's fill order
-is a redefined benchmark rather than a smaller program. **The bar is that
-the emitted program changes and still consumes its inputs in the same
-order.**
-
-**The sequential queue is closed.** Every remaining candidate was screened at
-n=3 over all 256 tables and then checked against the rule above; none is worth
-building, and three close for reasons the screen figure alone does not show —
-re-screening them would only reproduce the numbers below.
-
-| generator | screen | why it closes |
-|---|---|---|
-| `brainif` | 4.9% | built, delivered 5.2%/8.0%, **reverted** — reads at the nodes, so reaching it cost ~146 lines on the guarded-pair law for a hoist that relocates cost rather than deleting it (see the rule above; construction in `d04932c`) |
-| `taglate` | 3.1% | below the rename threshold |
-| `minsky_swap` | 2.8% | **no decision tree** — `{Xi}` setters assemble the input's numeric index into `reg[0]` and a `~` cascade routes value *v* to leaf *v*, so there is no split order to permute |
-| `bio` | 1.5% | **no decision tree** — each `{Xi}` packs `2**w` into `x`, so the program computes an index rather than branching on bits in an order |
-| `decleq` | 1.4% | a real rename (reads land in `n` cells up front; a node's `cell cell c` can name any of them) and it was built and verified — 1.42%/2.25%, nothing grown — but below the threshold, so it was **not kept** |
-| `nocomment` | 0.7% | minterm-shaped; reordering is not applicable |
-| `painfuck` | 0.5% | **already reordered** — it translates `brainfuck`'s output, so it inherits `decision_tree_program`'s reorder the way `factor` and `three_d_brainfuck` do; the residue is translation effects, not upside |
-| `rotfuck` | 0.4% | minterm-shaped |
-| `bfstack` | 0.2% | minterm-shaped |
+**The grid tier: three placements shipped, two closed on cost.**
+`streetcode`, `laserfuck` and `back` hoist their reads into a tape and test
+a *position*, which makes reordering a placement — change which cell each
+input lands in and every node tests something different, with the tree, the
+fold and the leaves untouched.  `dig` and `flowchart` read at the node and
+would need a restructuring hoist, which neither earns.  `back` is where a
+cheaper build was measured and then declined: filling in *cell* order
+instead of name order is free, but templates must emit their slots in name
+order, and that invariant is not tradeable for a gain of that size.
 
 **The queue is now closed in both tiers.** The grid tier's three placements
 (`streetcode`, `laserfuck`, `back`) are shipped, and its two read-at-node
