@@ -92,8 +92,17 @@ class Language:
     ``interpreter`` is the dotted module under
     ``esolangs.interpreters`` that runs programs (None if the executable
     lives elsewhere, e.g. in extra/).  ``split`` passes the program split
-    into lines to the interpreter, and ``kwargs`` holds any extra run()
-    keyword arguments as (name, value) pairs.
+    into lines to the interpreter.
+
+    There is deliberately no field for extra ``run()`` arguments.  One
+    existed -- ``kwargs``, carried through :data:`RUNNERS` and unpacked by
+    ``esolangs.run`` -- and no language ever set it, so every call was
+    ``run_fn(program, io)`` with an empty dict threaded through three
+    functions to get there.  The eleven interpreters that take a further
+    argument all default it, and the callers that pass one are the tests
+    and the ``__main__`` blocks, which call the interpreter's ``run``
+    directly and never come through here.  ``esolangs.tools.boolean.
+    examples`` keeps its own ``kwargs`` because that one is used.
 
     ``compiler`` is the module name under ``esolangs.compilers`` holding
     this language's RISC-V backend, if it has one.  It is registered here
@@ -109,7 +118,6 @@ class Language:
     text: Generator | None = None
     interpreter: str | None = None
     split: bool = False
-    kwargs: tuple[tuple[str, int], ...] = ()
     id: str = ""
     boolean: Callable[[str], str] | None = None
     compiler: str | None = None
@@ -609,9 +617,9 @@ BY_BOOLEAN: dict[str, Language] = {
     if lang.boolean is not None
 }
 
-# Display name -> (interpreter module, split lines, run() keyword arguments).
-RUNNERS: dict[str, tuple[str, bool, dict[str, int]]] = {
-    name: (lang.interpreter, lang.split, dict(lang.kwargs))
+# Display name -> (interpreter module, split lines).
+RUNNERS: dict[str, tuple[str, bool]] = {
+    name: (lang.interpreter, lang.split)
     for name, lang in LANGUAGES.items()
     if lang.interpreter
 }

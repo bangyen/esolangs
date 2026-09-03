@@ -31,7 +31,7 @@ _UNICODE = "\u00e9\u0100\u01c4"  # é, Ā, Ǆ
 # generator function name -> Language metadata, restricted to the generators
 # whose interpreter lives in-repo (so their programs round-trip).
 ROUND_TRIP = {
-    name: (lang.interpreter, lang.split, dict(lang.kwargs), _TRAILING.get(name, ""))
+    name: (lang.interpreter, lang.split, _TRAILING.get(name, ""))
     for name, lang in BY_FUNCTION.items()
     if lang.interpreter
 }
@@ -54,7 +54,7 @@ def test_text_generators_round_trip() -> None:
     random.seed(0)
     for _ in range(25):
         text = _random_text()
-        for name, (module, split, kwargs, suffix) in ROUND_TRIP.items():
+        for name, (module, split, suffix) in ROUND_TRIP.items():
             try:
                 generator = BY_FUNCTION[name].text
                 assert generator is not None
@@ -71,7 +71,7 @@ def test_text_generators_round_trip() -> None:
             buffer = io.StringIO()
             try:
                 with redirect_stdout(buffer):
-                    run(argument, io=IO(), **kwargs)
+                    run(argument, io=IO())
             except SystemExit:
                 assert name == "container"
             assert buffer.getvalue() == text + suffix

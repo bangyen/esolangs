@@ -41,14 +41,15 @@ def _load_bundle(tmp_path: Path) -> object:
     return module
 
 
-def _run_and_read(
-    bundle_mod: object,
-    arg: str | list[str],
-    kwargs: dict[str, int],
-) -> str:
-    """Run ``bundle_mod.run`` on ``arg`` and return its captured output."""
+def _run_and_read(bundle_mod: object, arg: str | list[str]) -> str:
+    """Run ``bundle_mod.run`` on ``arg`` and return its captured output.
+
+    Two arguments, like ``esolangs.run`` itself: the comparison below is
+    against that function, which passes the program and the io object and
+    nothing else.
+    """
     io = ScriptedIO()
-    bundle_mod.run(arg, io=io, **kwargs)
+    bundle_mod.run(arg, io=io)
     return io.getvalue()
 
 
@@ -104,15 +105,13 @@ class TestBundleMatchesPackage:
             bundle_one.bundle(name, bundle_one.Source(None), out)
             bundle_mod = _load_bundle(out)
 
-            _module, split, kwargs = RUNNERS[name]
+            _module, split = RUNNERS[name]
             arg = program.splitlines() if split else program
             expected = _outcome(
                 lambda name=name, program=program: esolangs.run(name, program)
             )
             actual = _outcome(
-                lambda bundle_mod=bundle_mod, arg=arg, kwargs=kwargs: _run_and_read(
-                    bundle_mod, arg, kwargs
-                )
+                lambda bundle_mod=bundle_mod, arg=arg: _run_and_read(bundle_mod, arg)
             )
             assert actual == expected, name
             tested += 1
@@ -121,7 +120,7 @@ class TestBundleMatchesPackage:
     def test_no_generator_languages_import(self, tmp_path: Path) -> None:
         """Languages without a generator still bundle to importable files."""
         bundle_one = load_script()
-        for name, (module, _split, _kwargs) in RUNNERS.items():
+        for name, (module, _split) in RUNNERS.items():
             if LANGUAGES[name].text is not None:
                 continue
             out = tmp_path / f"{name}.py"
