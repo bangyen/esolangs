@@ -149,7 +149,7 @@ class TestMachineState:
         """Code with no lines halts at once on a zero-width, empty grid."""
         machine = _Machine([])
         assert machine.halted
-        assert (machine.width, machine.grid) == (0, [])
+        assert (machine.width, machine.grid) == (0, ())
 
 
 class TestStepMachine:

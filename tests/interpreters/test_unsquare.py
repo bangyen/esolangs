@@ -5,7 +5,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.unsquare import run
-from tests.interpreters.contract import CycleContract
+from tests.interpreters.contract import CycleContract, StateViewContract
 
 
 def run_program(code: str, stdin: str = "") -> str:
@@ -165,9 +165,14 @@ def _machine(code: object) -> object:
     return _Machine(code, ScriptedIO())
 
 
-class TestContract(CycleContract):
+class TestContract(CycleContract, StateViewContract):
     """The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     halting_program = "Io"
     looping_program = "IIAx><"
+    # `I` pushes and `o` prints, so the cursor and the data stack both move
+    # while the jump stack stays empty -- which is the point: they are
+    # separate slots, not one field read under four names.
+    state_views = ("ind", "acc", "stack", "jumps", "ip", "memory")
+    viewing_program = "Io"

@@ -159,7 +159,7 @@ class TestStepMachine:
         machine = _Machine("9:*:*:*:*", ScriptedIO())
         while not machine.halted:
             machine.step()
-        assert machine.stack == [-501334399]
+        assert list(machine.stack) == [-501334399]
 
     def test_the_wrap_folds_at_exactly_two_to_the_thirty_first(self) -> None:
         """2**31 is the first value that wraps, and it lands on the floor.
@@ -173,7 +173,7 @@ class TestStepMachine:
         machine = _Machine("2:*:*:*:*88*8*8*8**", ScriptedIO())
         while not machine.halted:
             machine.step()
-        assert machine.stack == [-2147483648]
+        assert list(machine.stack) == [-2147483648]
 
     def test_an_unstored_key_calls_an_empty_scope(self) -> None:
         """``;`` falls back to the empty string, so the pushed frame has code.
@@ -201,23 +201,23 @@ class TestStepMachine:
         machine = _Machine("3[:1-]", ScriptedIO())
         while not machine.halted:
             machine.step()
-        assert machine.stack == [3, 2, 1, 0]
+        assert list(machine.stack) == [3, 2, 1, 0]
 
     def test_step_tracks_stack_and_active_frame_cursor(self) -> None:
         from esolangs.interpreters.stack_based.forth import _Machine
 
         machine = _Machine("65.", ScriptedIO())
-        assert (machine.stack, machine.frames[0].pc) == ([], 0)
+        assert (list(machine.stack), machine.frames[0].pc) == ([], 0)
         machine.step()  # 6 pushes
-        assert (machine.stack, machine.frames[0].pc) == ([6], 1)
+        assert (list(machine.stack), machine.frames[0].pc) == ([6], 1)
         machine.step()  # 5 pushes
-        assert machine.stack == [6, 5]
+        assert list(machine.stack) == [6, 5]
         machine.step()  # . pops and prints the low byte
         assert machine.io.getvalue() == "\x05"
         machine.step()  # finalizing the finished frame halts the machine
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
-        assert machine.frames == []
+        assert list(machine.frames) == []
 
     def test_nested_scope_pushes_a_frame_and_aborts_discard_the_error(self) -> None:
         from esolangs.interpreters.stack_based.forth import _Machine
@@ -238,7 +238,7 @@ class TestStepMachine:
         machine.step()  # , reads the line, pushing each byte
         assert machine.snapshot() != before
         assert machine.io.position() == 1
-        assert machine.stack == [104, 105]
+        assert list(machine.stack) == [104, 105]
 
 
 def _machine(code: object) -> object:

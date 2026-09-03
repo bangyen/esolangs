@@ -1,9 +1,11 @@
 # What each text / boolean generator optimizes
 
 Catalog of the size-and-shape optimizations each text and boolean generator
-applies to the *emitted program*.  (47 text and 65 boolean as of
-2026-08-30; `esolangs.tools.text.__all__` and `.boolean.__all__` are the
-live counts, and a stated total here goes stale every time one is added.)
+applies to the *emitted program*.  `esolangs.tools.text.__all__` and
+`.boolean.__all__` are the live counts; a stated total here goes stale every
+time one is added — as of this pass `algebraic_programming_language` (APL)
+and `inject` are missing from the catalogue entirely (see the shape section
+below).
 
 "Optimization" here means what the generator does to make its output smaller
 or better-shaped — not the runtime of the generator itself.
@@ -18,8 +20,8 @@ respect over what a past change did — the latter is in the commits.
 
 ## The recurring techniques
 
-Ten patterns account for nearly everything. Most generators combine two or
-three.
+Eleven patterns account for nearly everything. Most generators combine two
+or three.
 
 | # | Technique | What it buys | Lives in |
 |---|---|---|---|
@@ -28,10 +30,10 @@ three.
 | 3 | **Binary doubling** | a byte costs `O(log v)` by walking its bit expansion | addsubjump, unsquare |
 | 4 | **Shortest-of-N dispatch** | build two constructions, measure, return the smaller | `wrap.py:114` `shortest` (laserfuck, streetcode, %^2^-1, unsquare, brainfuck, bfstack) |
 | 5 | **Constant-subtree folding** | a subtree whose rows agree emits a leaf, not a branch | `boolean/helpers.py` (both walkers) |
-| 6 | **Complement / polarity** | a dense table is evaluated from its zero rows and inverted | `boolean/helpers.py:44` `_maybe_complement` |
+| 6 | **Complement / polarity** | a dense table is evaluated from its zero rows and inverted | `boolean/helpers.py:81` `_maybe_complement` |
 | 7 | **Shape-aware width** | honour a width by building a *different* shape, not by reflowing | `laserfuck_layout.py`, `wrap.py` |
 | 8 | **Literal batching** | print a whole string in one statement rather than per character | `text/helpers.py` `_literal_chunks` |
-| 9 | **Equal-width embedding** | *anti*-optimization: pad both bits to equal width so length can't leak inputs | `boolean/helpers.py:97` `instantiate` |
+| 9 | **Equal-width embedding** | *anti*-optimization: pad both bits to equal width so length can't leak inputs | `boolean/helpers.py:134` `instantiate` |
 | 10 | **Dependency reduction** | a table that ignores an input is emitted as the *smaller* table, still reading (or embedding) the rest | `boolean/helpers.py` `essential_inputs` + `read_at`; `taglate`, `minifuck`, `home_row` |
 | 11 | **Input reordering** | the tree splits on its inputs in whichever order emits the shortest program, so more subtrees fold — the bar is that the **emitted program changes** and still **consumes its inputs in the same order**, which rules out only a template whose emitted program is *identical* under the permutation | `boolean/helpers.py` `best_input_order` (`six_five`, `forth`, `streetcode` and `laserfuck` roll their own) |
 
@@ -53,7 +55,10 @@ input is far cheaper than parity. Measured 2026-08-28 over all 59 exported
 generators, comparing the best of the six one-dependency tables against
 `01101001` (both ones-count 4):
 
-**Tree-shaped (44 now, `fargo` being the addition below).** cvnc, taglate, polynomial, dig, myscript, six_five,
+**Tree-shaped (44 at the last sweep, plus `fargo` and `inject` added since —
+`inject` measures 66.0% folding and is uncatalogued below the shape test's
+`_MINTERM_SHAPED`/`_REDUCING`/`_UNSHAPED` sets, so it defaults tree-side).**
+cvnc, taglate, polynomial, dig, myscript, six_five,
 addsubjump, sophie, modulous, laserfuck, nevermind, jaune, bitdeque,
 unsquare, flowchart, streetcode, forth, basicfuck, bfpda, ram0,
 forbin_boolean, arrowqueue, back, lamfunc, between, eval, factor, circlefuck,
@@ -68,9 +73,10 @@ It measured 74.1% when first added and 74.5% once its reorder shipped the
 same day — the one-dependency table it is scored on is exactly the case the
 reorder improves, so this figure moves when that build changes.
 
-**Minterm-shaped (3).** a_painter_ant, bfstack, container — all within 4%
-of parity on a one-dependency table, because there is no subtree to
-collapse.
+**Minterm-shaped (4).** a_painter_ant, bfstack, container,
+algebraic_programming_language (added since the last sweep; measures 2.2%) —
+all within 4% of parity on a one-dependency table, because there is no
+subtree to collapse.
 
 **Reducing (10).** `home_row`, `cod`, `nocomment`, `bit_tilde`, `rotfuck`,
 `suptiftam`, `suffolk`, `qoibl`, `collatz_multiverse` and `point_break` were
@@ -79,25 +85,21 @@ on that list until 2026-08-30/31 and are still minterm sums; they now gain
 **53.2%**, **66.1%** and **50.7%** respectively on a one-dependency table by
 *dependency reduction* (10) rather than by folding.
 
-**That is the whole minterm side bar three**, and the three are measured
-rather than skipped: `container` and `bfstack` are setup-dominated (see the
-split table below) and `a_painter_ant`'s setters *are* its routing geometry,
-so reducing it is a restructure rather than a projection.
+The three remaining minterm sums are measured, not skipped: `container` and
+`bfstack` are setup-dominated — a constant table is 93% and ~100% of a
+one-dependency program's length respectively, so nearly all of their arity
+cost is per-input setup that reduction cannot reach (see the setup/body note
+below) — and `a_painter_ant`'s setters *are* its routing geometry, so
+reducing it would be a restructure rather than a projection.
 
-`container` and `bfstack` stay minterm-shaped deliberately: measured, a
-constant table is 93% and ~100% of a one-dependency program's length
-respectively, so nearly all of their arity cost is per-input setup that the
-reads pin and reduction cannot reach. See the setup/body note below.
-
-That is most of the minterm side, and the pattern is worth stating: a sum of
-minterms is the *ideal* shape for technique 10, because it pays per selected
+A sum of minterms is the *ideal* shape for technique 10: it pays per selected
 row **and** per input within each row, so dropping an input removes rows and
-shortens every row that survives. Folding-based generators gain less from it
-precisely because they already collapse what a degenerate table repeats. That is a distinction the shape test would
-otherwise lose, so they are carried in their own `_REDUCING` category
-rather than relabelled tree-shaped: the gain tracks dropped *arity*, and
-reordering does not become applicable to them the way it would if they had
-grown a tree.
+shortens every surviving row. Folding-based generators gain less because they
+already collapse what a degenerate table repeats — the distinction the shape
+test would otherwise lose, so they are carried in their own `_REDUCING`
+category rather than relabelled tree-shaped: the gain tracks dropped
+*arity*, and reordering does not become applicable the way it would if they
+had grown a tree.
 
 **Neither.** Eight generators are exempted from the shape test altogether
 (`_UNSHAPED` in `test_boolean_contract.py`, which is the list of record):
@@ -292,15 +294,9 @@ table complements to the same empty sum an all-zeros table has, which is
 wrong for `circuit_diagram`, which special-cases constants to a single
 self-fed gate.
 
-**A note on `a_painter_ant`'s classification, since it reads oddly.** It
-*builds a tree* — `_head` paints one leaf per input combination and the ant
-is routed to the leaf its inputs select — but it is listed as minterm-shaped
-above, and that is right, because the classification is about **what the size
-depends on**. Each one-leaf emits a paint-and-return walk and each zero-leaf
-emits a single space, so the cost tracks the ones-count and is blind to which
-inputs the table depends on: measured, every ones-count-4 table at n=3 costs
-exactly 268 characters, one-dependency and parity alike. Structure and cost
-model can disagree, and the catalogue tracks the latter.
+Structure and cost model can disagree here — `_head` literally paints a
+tree, one leaf per input combination — and the catalogue tracks the cost
+model, per the 268-characters-either-way measurement above.
 
 An unshipped alternative for deep folds — a single reusable drain cell rather
 than one gadget per skipped bit — is verified correct but not shipped: the two
@@ -323,7 +319,7 @@ zero rows and inverting — one term saved per row, paid for once.
 | `qoibl`, `bit_tilde`, `grapheme` | fewer minterms; grapheme picks whichever row-set is shorter |
 | `container` | `OUT` spends one `+1 S{row}>=Gout` line per one-row, so a dense table sums its zero rows from a 49 start and subtracts — 12.7% on the densest n=4 table. The per-row survivor blocks are fixed and unaffected |
 
-### Dependency reduction (10) — fifteen generators, both shapes
+### Dependency reduction (10) — sixteen generators, both shapes
 
 A table ignoring an input is emitted as the *smaller* table, still
 consuming the rest. `essential_inputs` (in `boolean/helpers.py`, promoted
@@ -592,13 +588,16 @@ which name fills each slot while building its tree on the permuted table.
 **Shipped:** `six_five`, `jaune`, `eval`, `circlefuck`, `unsquare`, `sbleq`,
 `three_x`, `forth`, `sophie`, `polynomial`, `addsubjump`, `streetcode`,
 `laserfuck`, `back`, `cvnc`, `basicfuck`, `myscript`, `nevermind`, `between`,
-`forbin_boolean`, `lamfunc`, `bitdeque`, `ram0` (`six_five`, `forth`,
+`forbin_boolean`, `lamfunc`, `bitdeque`, `ram0`,
+`algebraic_programming_language` (`six_five`, `forth`,
 `streetcode` and `laserfuck` roll their own — the two grid ones because their
 `width` has to choose among *every* candidate, and `best_input_order` returns
 only the shortest; `back` has no width, so it uses the wrapper), and
 `brainfuck`, `bf_tree`, `factor`, `three_d_brainfuck`, `painfuck`,
 `dimensional` and `dimensional_tree`, which **inherit** one rather than
-calling for it.  The chain is three links deep and only the first names
+calling for it.  `algebraic_programming_language` was added since the last
+full pass and calls `best_input_order` directly, undocumented here until
+now.  The chain is three links deep and only the first names
 anything: `bf_tree` and `dimensional_tree` call the shared
 `decision_tree_program`, which wraps `best_input_order` itself; `brainfuck`
 and `dimensional` are one-line delegations to those two; and `factor`,

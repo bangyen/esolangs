@@ -45,6 +45,7 @@ Malformed programs raise :class:`ValueError`.
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 
 from esolangs.interpreters.io import IO
 
@@ -69,7 +70,7 @@ from esolangs.interpreters.io import IO
 type _State = tuple[int, int, int, int, tuple[int, ...], int, bool]
 
 
-def _advance(state: _State, code: list[str], size: int) -> _State:
+def _advance(state: _State, code: Sequence[str], size: int) -> _State:
     """Return the state after executing one grid cell.
 
     Pure: it reads ``state`` and returns a new one.  It takes no ``io``
@@ -125,7 +126,7 @@ class _Machine:
             raise ValueError("Back program cannot be empty")
         self.io = io
         self.size = max(len(line) for line in code)
-        self.code = [line.ljust(self.size) for line in code]
+        self.code = tuple(line.ljust(self.size) for line in code)
         # The beam starts top-left heading right: (a, b) is (d_row, d_col).
         self.state: _State = (0, 0, 0, 1, (0,), 0, False)
 

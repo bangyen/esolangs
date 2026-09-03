@@ -3,8 +3,8 @@
 `Forþ` keeps a stack of signed 32-bit integers.  A digit `0`-`9` or hex
 letter `A`-`F` pushes its value; `+`/`-`/`*`/`/`/`%` replace the top two
 values with their arithmetic result (the top goes on the right); `:` copies
-the top; `.` prints the top's low byte; `( ` opens a while-loop that runs
-while the top is nonzero; and any other character is ignored.
+the top; `.` prints the top's low byte; `[` loops while the top is nonzero;
+and any other character is ignored.
 
 ## The program
 
@@ -15,8 +15,6 @@ while the top is nonzero; and any other character is ignored.
 This computes `8 × 8 + 1 = 65` and prints it, which is the byte for `A`.
 
 ## Step by step
-
-The stack starts empty.
 
 | Command | Stack (top on the right) | Why |
 | --- | --- | --- |
@@ -29,6 +27,5 @@ The stack starts empty.
 
 ## Why it terminates
 
-The program is straight-line: every command consumes or produces a bounded
-number of stack values, and the program reaches its end with the stack empty
-and the interpreter halts.
+The program is straight-line: it has no loop, so it reaches its end and
+the interpreter halts.

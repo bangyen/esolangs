@@ -11,13 +11,13 @@ Malformed programs raise :class:`ValueError`.
 
 import copy
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
 
 
-def init(code: list[str]) -> Callable[[int, int, int], tuple[int, int]]:
+def init(code: Sequence[str]) -> Callable[[int, int, int], tuple[int, int]]:
     """Initialize movement function for WII2D grid navigation."""
     n = len(code)
     m = len(code[0])
@@ -34,7 +34,9 @@ def init(code: list[str]) -> Callable[[int, int, int], tuple[int, int]]:
     return move
 
 
-def close(code: list[str]) -> Callable[[int, int], tuple[int, int] | None]:
+def close(
+    code: Sequence[str],
+) -> Callable[[int, int], tuple[int, int] | None]:
     """Create a function to find the closest @ command for jump operations."""
 
     def start(row: int, col: int) -> Callable[[tuple[int, int]], int]:
@@ -64,8 +66,24 @@ def close(code: list[str]) -> Callable[[int, int], tuple[int, int] | None]:
     return find
 
 
-def update(op: str, acc: int, io: IO) -> int:
-    """Update the accumulator based on the current operation."""
+#: One instant of a run: ``(row, col, vel, acc, done)`` -- where the
+#: pointer is, which way it is heading, the accumulator, and whether a
+#: ``.`` stopped it.  A value :func:`_advance` maps forward rather than
+#: editing in place.
+#:
+#: The grid is not here, and neither are the two functions derived from it:
+#: WII2D never writes to its own source, so all three are fixed for the
+#: whole run and are passed to a step instead of carried by it.
+type _State = tuple[int, int, int, int, bool]
+
+
+def _accumulate(op: str, acc: int) -> int:
+    """Return the accumulator after ``op``, which may not change it.
+
+    ``~`` prints rather than computing, so it lands here as a no-op and the
+    caller does the printing; every other non-arithmetic cell is a no-op
+    too, which is what makes blank cells traversable.
+    """
     if op.isdigit():
         return int(op)
     if op == "+":
@@ -78,9 +96,63 @@ def update(op: str, acc: int, io: IO) -> int:
         return acc // 2
     if op == "s":
         return acc**2
+    return acc
+
+
+def update(op: str, acc: int, io: IO) -> int:
+    """Update the accumulator based on the current operation.
+
+    The effectful shell over :func:`_accumulate`, kept because it is this
+    module's published shape for the per-cell arithmetic.
+    """
     if op == "~":
         io.print_char(chr(acc))
-    return acc
+    return _accumulate(op, acc)
+
+
+def _advance(
+    state: _State,
+    op: str,
+    move: Callable[[int, int, int], tuple[int, int]],
+    find: Callable[[int, int], tuple[int, int] | None],
+    turn: int | None = None,
+) -> _State:
+    """Return the state after executing the cell ``op``.
+
+    Pure: it reads ``state`` and returns a new one.  ``~``'s printing is
+    the caller's business, so this only carries the accumulator forward,
+    and ``?``'s random heading arrives as ``turn`` rather than being drawn
+    here.
+
+    Three cells break the "compute, then move" shape and are preserved as
+    they were:
+
+    * ``@`` jumps to the row *above* the closest other ``@`` and returns
+      without moving or touching the accumulator, so the next step reads
+      that cell rather than stepping over it.
+    * ``.`` stops the run, likewise without moving.
+    * ``|`` flips between the two axes by nudging the heading one place,
+      which works because the headings are ordered N, S, W, E.
+    """
+    row, col, vel, acc, done = state
+
+    if op in "^v<>":
+        vel = "^v<>".index(op)
+    elif op == "?":
+        vel = turn if turn is not None else vel
+    elif op == "|":
+        # Headings run N, S, W, E, so +-1 swaps within a pair and the
+        # parity of the current heading says which way to step.
+        vel = vel - 1 if vel % 2 else vel + 1
+    elif op == "@":
+        if target := find(row, col):
+            # Land above the target so the step after this one reads it.
+            return (target[0] - 1, target[1], vel, acc, done)
+    elif op == ".":
+        return (row, col, vel, acc, True)
+
+    row, col = move(row, col, vel)
+    return (row, col, vel, _accumulate(op, acc), done)
 
 
 class _Machine:
@@ -107,7 +179,7 @@ class _Machine:
         start_row, start_col = starts[0]
 
         max_width = max(len(row) for row in code)
-        self.code = [row.ljust(max_width) for row in code]
+        self.code = tuple(row.ljust(max_width) for row in code)
 
         self._find_closest_at = close(self.code)
         self._move_pointer = init(self.code)
@@ -146,31 +218,28 @@ class _Machine:
         return (self.row, self.col, self.vel, self.acc, self.io.position())
 
     def step(self) -> None:
-        """Execute the cell under the pointer, then move one cell."""
+        """Execute the cell under the pointer, then move one cell.
+
+        The two effects live here rather than in the transition: this is
+        the shell.  ``~`` prints the accumulator the transition is about to
+        carry forward unchanged, and ``?``'s heading is drawn here and
+        handed over, which is what lets a seeded source make a run repeat.
+        """
         if self._done:
             return
         op = self.code[self.row][self.col]
 
-        if op in "^v<>":
-            self.vel = "^v<>".index(op)
-        elif op == "?":
-            self.vel = draw(self._rng, 4)
-        elif op == "|":
-            if self.vel % 2:  # If moving vertically
-                self.vel -= 1
-            else:  # If moving horizontally
-                self.vel += 1
-        elif op == "@":
-            if target := self._find_closest_at(self.row, self.col):
-                self.row, self.col = target
-                self.row -= 1  # Move to position above the @
-                return
-        elif op == ".":
-            self._done = True
-            return
+        if op == "~":
+            self.io.print_char(chr(self.acc))
+        turn = draw(self._rng, 4) if op == "?" else None
 
-        self.acc = update(op, self.acc, self.io)
-        self.row, self.col = self._move_pointer(self.row, self.col, self.vel)
+        (self.row, self.col, self.vel, self.acc, self._done) = _advance(
+            (self.row, self.col, self.vel, self.acc, self._done),
+            op,
+            self._move_pointer,
+            self._find_closest_at,
+            turn,
+        )
 
 
 def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:

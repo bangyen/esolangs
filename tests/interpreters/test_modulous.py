@@ -60,6 +60,16 @@ class TestModulous:
     def test_input_string(self) -> None:
         assert run_and_capture("[INP][PRT][PRT][END]", inputs=["AB"]) == "AB"
 
+    def test_empty_int_read_pushes_nothing(self) -> None:
+        """``INP INT`` on a blank line leaves the stack alone.
+
+        The bare form would push the line's characters, and an empty line
+        has none; ``INT`` has no number to parse either, so it pushes
+        nothing rather than a zero.  Printing afterwards therefore gives
+        the value pushed *before* the read.
+        """
+        assert run_and_capture("[PSH INT 7][INP INT][PRT INT][END]", inputs=[""]) == "7"
+
     def test_swap(self) -> None:
         assert (
             run_and_capture("[PSH INT 1][PSH INT 2][SWP][PRT INT][PRT INT][END]")
@@ -129,10 +139,10 @@ class TestModulous:
         """
         import re
 
-        from esolangs.interpreters.stack_based.modulous import State
+        from esolangs.interpreters.stack_based.modulous import _Machine
 
         io = ScriptedIO()
-        machine = State(var={f"VAR{k}": 0 for k in range(1, 5)}, io=io)
+        machine = _Machine(var={f"VAR{k}": 0 for k in range(1, 5)}, io=io)
         reg = re.compile(r'\[([^\[\]"]*("[^"]*")?)]')
         machine.tokens = [
             k[0] for k in reg.findall("[PSH INT 9][PRT INT][JMP B 2][END]")
@@ -323,16 +333,16 @@ class TestModulous:
 
 class TestStepMachine:
     def test_a_token_less_state_starts_halted(self) -> None:
-        from esolangs.interpreters.stack_based.modulous import State
+        from esolangs.interpreters.stack_based.modulous import _Machine
 
         # `step` has no halted guard of its own -- the caller checks first,
         # which is what the VM's run loop does.
-        assert State(io=IO()).halted
+        assert _Machine(io=IO()).halted
 
     def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
-        from esolangs.interpreters.stack_based.modulous import State
+        from esolangs.interpreters.stack_based.modulous import _Machine
 
-        state = State(io=IO())
+        state = _Machine(io=IO())
         state.tokens = ["PSH INT 5", "PRT INT", "END"]
         before = state.snapshot()
         hash(before)  # must not raise

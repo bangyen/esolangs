@@ -338,11 +338,9 @@ def cvnc(truth_table: str) -> str:
     always win.  Keeping both is the six-five precedent: the hoist has a
     price, so it is one more candidate rather than a replacement.
     """
-    n = _validate_truth_table(truth_table)
-    if n == 0:
-        # No inputs to read and nothing to branch on: the answer is the
-        # whole program, printed from a fresh accumulator.
-        return _leaf(truth_table, 0)
+    # Called for the refusal: a one-entry table has no input to read or
+    # branch on, and the arity itself is not needed below.
+    _validate_truth_table(truth_table)
     program = _tree(truth_table, 0)
     hoisted = best_input_order(truth_table, _hoisted_candidate)
     if len(hoisted) < len(program):

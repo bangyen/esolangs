@@ -80,7 +80,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Hashable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, replace
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -154,7 +154,7 @@ class _Def:
     code: tuple[str, ...]
 
 
-@dataclass
+@dataclass(frozen=True)
 class _Frame:
     """One expression evaluation in progress.
 
@@ -163,14 +163,30 @@ class _Frame:
     a function together with the arguments gathered for it so far, so a
     nested call's result is appended to whichever call is waiting for it.
     ``binds`` maps a user function's parameter names to their values.
+
+    Frozen, and its two collections are tuples: a step returns the frames
+    that follow rather than editing the ones it was handed, so a frame is a
+    value.  ``replace`` builds the changed copy.
     """
 
     tokens: tuple[str, ...]
     pos: int = 0
-    pending: list[tuple[_Func, list[_Value]]] = field(default_factory=list)
-    binds: dict[str, _Value] = field(default_factory=dict)
+    pending: tuple[tuple[_Func, tuple[_Value, ...]], ...] = ()
+    binds: tuple[tuple[str, _Value], ...] = ()
     fn_name: str = ""
     result: _Value = 0
+
+    def bound(self, name: str) -> _Value | None:
+        """Return ``name``'s bound value, or ``None`` when it is unbound.
+
+        The binds are a tuple of pairs rather than a mapping so the frame
+        stays hashable; a function's parameter list is short, so the scan
+        costs less than rebuilding a dict per call would.
+        """
+        for key, value in self.binds:
+            if key == name:
+                return value
+        return None
 
 
 def _strip_comment(line: str) -> str:
@@ -327,7 +343,7 @@ class _Machine:
                         (fn.name, tuple(repr(a) for a in args))
                         for fn, args in frame.pending
                     ),
-                    tuple(sorted((k, repr(v)) for k, v in frame.binds.items())),
+                    tuple(sorted((k, repr(v)) for k, v in frame.binds)),
                 )
                 for frame in self.frames
             ),
@@ -347,14 +363,14 @@ class _Machine:
         """
         return (
             frame.fn_name,
-            tuple(sorted((k, repr(v)) for k, v in frame.binds.items())),
+            tuple(sorted((k, repr(v)) for k, v in frame.binds)),
             self.io.position(),
         )
 
     def _lookup(self, name: str, frame: _Frame | None) -> _Func:
         """Resolve ``name`` to a callable in ``frame``'s scope."""
-        if frame is not None and name in frame.binds:
-            value = frame.binds[name]
+        if frame is not None and (bound := frame.bound(name)) is not None:
+            value = bound
             if isinstance(value, _Func):
                 return value
             raise HaltError(f"calling non-function argument {name!r}")
@@ -412,8 +428,19 @@ class _Machine:
             self._finish(frame)
             return
         token = frame.tokens[frame.pos]
-        frame.pos += 1
+        frame = replace(frame, pos=frame.pos + 1)
+        self._retop(frame)
         self._consume(frame, token)
+
+    def _retop(self, frame: _Frame) -> None:
+        """Replace the top of the frame stack with ``frame``.
+
+        A frame is frozen, so every change to the one being executed is a
+        replacement.  The stack itself stays a list: Fargo pushes a frame
+        per user-function call and its depth is unbounded, so rebuilding
+        the stack per step would be quadratic in the call depth.
+        """
+        self.frames[-1] = frame
 
     def _consume(self, frame: _Frame, token: str) -> None:
         """Handle one token: a literal, a raw function, or a call."""
@@ -429,8 +456,8 @@ class _Machine:
             # name is passed along as a function instead of being run.
             self._supply(frame, self._lookup(token, frame))
             return
-        if frame.binds and token in frame.binds:
-            value = frame.binds[token]
+        if frame.binds and (bound := frame.bound(token)) is not None:
+            value = bound
             if isinstance(value, _Func) and value.arity == 0:
                 self._invoke(frame, value, [])
                 return
@@ -440,7 +467,7 @@ class _Machine:
         if fn.arity == 0:
             self._invoke(frame, fn, [])
             return
-        frame.pending.append((fn, []))
+        self._retop(replace(frame, pending=(*frame.pending, (fn, ()))))
 
     def _wants_raw(self, frame: _Frame) -> bool:
         """Whether the innermost waiting call takes its next argument raw."""
@@ -450,17 +477,31 @@ class _Machine:
         return len(args) in fn.raw
 
     def _supply(self, frame: _Frame, value: _Value) -> None:
-        """Deliver ``value`` to whichever call is waiting for it."""
+        """Deliver ``value`` to whichever call is waiting for it.
+
+        The frame is frozen, so the delivery *replaces* the top of the
+        stack rather than editing it in place, and the caller's own
+        ``frame`` reference goes stale at that point -- every path below
+        therefore re-reads the top rather than reusing it.
+        """
+        frame = self.frames[-1]
         if not frame.pending:
-            frame.result = value
+            self._retop(replace(frame, result=value))
             return
         fn, args = frame.pending[-1]
         # A raw slot takes whatever arrives unchanged: a function to invoke
         # later, or a plain value ``:`` will simply yield.
-        args.append(value)
+        args = (*args, value)
+        # ``==`` rather than ``>=``, and the two cannot be told apart: an
+        # argument arrives one at a time and the call is popped the moment
+        # it is full, so the count never passes the arity without landing
+        # on it.  Instrumenting this comparison over the corpus sees 16
+        # deliveries and no overshoot.
         if len(args) == fn.arity:
-            frame.pending.pop()
-            self._invoke(frame, fn, args)
+            self._retop(replace(frame, pending=frame.pending[:-1]))
+            self._invoke(self.frames[-1], fn, list(args))
+            return
+        self._retop(replace(frame, pending=(*frame.pending[:-1], (fn, args))))
 
     def _invoke(self, frame: _Frame, fn: _Func, args: list[_Value]) -> None:
         """Apply ``fn`` to ``args``, pushing a frame for a user function."""
@@ -470,9 +511,8 @@ class _Machine:
                 self._supply(frame, result)
             return
         definition = self.defs[fn.name]
-        pushed = _Frame(definition.code, fn_name=fn.name)
-        pushed.binds = dict(zip(definition.params, args, strict=False))
-        self.frames.append(pushed)
+        binds = tuple(zip(definition.params, args, strict=False))
+        self.frames.append(_Frame(definition.code, fn_name=fn.name, binds=binds))
 
     def _finish(self, frame: _Frame) -> None:
         """Pop a finished frame, delivering its value to its caller.

@@ -105,10 +105,6 @@ class Language:
     boolean: Callable[[str], str] | None = None
 
 
-def _kw(**kwargs: int) -> tuple[tuple[str, int], ...]:
-    return tuple(kwargs.items())
-
-
 LANGUAGES: dict[str, Language] = {
     "AddSubJump": Language(
         "AddSubJump",
@@ -122,6 +118,12 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.a_painter_ant,
         id="a_painter_ant",
         interpreter="grid_based.a_painter_ant",
+    ),
+    "Algebraic Programming Language": Language(
+        "Algebraic Programming Language",
+        boolean=_boolean.algebraic_programming_language,
+        id="algebraic_programming_language",
+        interpreter="other.algebraic_programming_language",
     ),
     "123": Language(
         "123",

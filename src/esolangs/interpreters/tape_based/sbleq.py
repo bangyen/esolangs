@@ -123,7 +123,7 @@ def _advance(state: _State, store: str, byte: int | None = None) -> _State:
 @dataclass
 class _Machine:
     io: IO
-    mem: list[int] = field(default_factory=list)
+    mem: tuple[int, ...] = ()
     ip: int = 0
     store: str = "a"
     _halted: bool = field(default=False, init=False)
@@ -137,16 +137,22 @@ class _Machine:
         ``run`` and was copied into the VM adapter, which is the shape
         that lets two spellings of the same thing drift apart.
         """
-        return cls(io=io, mem=_parse(code), store=store)
+        return cls(io=io, mem=tuple(_parse(code)), store=store)
 
     def __post_init__(self) -> None:
-        """Reject a store target outside the three documented variants.
+        """Reject an undocumented store target.
 
         ``step`` tests ``store in ("ab", "b")``, so any other spelling --
         ``"A"``, ``""``, a typo -- silently ran the *base* language instead
         of raising.  A caller's mistake became a wrong answer rather than an
         error, so the set is checked once here, where it applies however the
         machine is constructed rather than only through :func:`run`.
+
+        ``mem`` needs no coercion to go with it: the annotation is the
+        contract, and every caller keeps it.  ``snapshot`` hands the field
+        out for the cycle detector to hash, so a list would make the
+        snapshot unhashable -- which is why the declared tuple is what
+        callers pass rather than something converted on the way in.
         """
         if self.store not in _STORES:
             raise ValueError(f"unknown store target: {self.store!r}")
@@ -171,12 +177,12 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (tuple(self.mem), self.ip, self.io.position(), self._halted)
+        return (self.mem, self.ip, self.io.position(), self._halted)
 
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transitions work on."""
-        return (tuple(self.mem), self.ip, self._halted)
+        return (self.mem, self.ip, self._halted)
 
     def _restore(self, state: _State) -> None:
         """Write a transition's result back onto the machine's fields.
@@ -186,15 +192,7 @@ class _Machine:
         rules above.
         """
         mem, self.ip, self._halted = state
-        self.mem = list(mem)
-
-    def read(self, addr: int) -> int:
-        """Read a value: a special address or a memory cell."""
-        return _read(self._state, addr, self.input_byte() if addr == -2 else None)
-
-    def write(self, addr: int, value: int) -> None:
-        """Set ``addr`` to ``value``; ``-1`` moves the pointer."""
-        self._restore(_write(self._state, addr, value))
+        self.mem = mem
 
     def input_byte(self) -> int:
         # -2 returns the next byte of input; EOF reads as zero

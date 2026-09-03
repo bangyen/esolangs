@@ -7,7 +7,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO, ScriptedIO
-from esolangs.interpreters.stack_based.eval import State, run
+from esolangs.interpreters.stack_based.eval import _Machine, run
 
 
 def run_and_capture(code: str) -> str:
@@ -52,14 +52,14 @@ class TestEval:
         rewinds it -- the prefix then runs again forever, so the assertion
         is on the index rather than on output that never arrives.
         """
-        state = State(io=ScriptedIO(), sym='0+."a".')
+        state = _Machine(io=ScriptedIO(), sym='0+."a".')
         for _ in range(3):
             state.step()
         assert state.ind == 3
 
         state.step()  # the literal at index 3: past the closing quote
         assert state.ind == 6
-        assert state.stk[state.ptr] == ["a"]
+        assert state.stk[state.ptr] == ("a",)
 
     def test_only_the_two_quotes_start_a_literal(self) -> None:
         """No other character opens stringmode -- the rest are commands or no-ops.
@@ -74,9 +74,9 @@ class TestEval:
         for char in map(chr, range(0x20, 0x7F)):
             if char in commands:
                 continue
-            state = State(io=ScriptedIO(), sym=char)
+            state = _Machine(io=ScriptedIO(), sym=char)
             state.step()
-            assert state.stk == [[], []], f"{char!r} was not a no-op"
+            assert state.stk == ((), ()), f"{char!r} was not a no-op"
             assert state.ind == 1
 
     def test_output_goes_to_the_supplied_io(self) -> None:
@@ -197,7 +197,7 @@ class TestFrames:
         made a program of any length cost one step, which hid it from the
         VM's step budget entirely.
         """
-        state = State.of('"0."!', ScriptedIO(""))
+        state = _Machine.of('"0."!', ScriptedIO(""))
         steps = 0
         while not state.halted:
             state.step()
@@ -208,7 +208,7 @@ class TestFrames:
 
     def test_the_frame_stack_deepens_inside_a_nested_program(self) -> None:
         """``ip`` reports the depth, which a bare cursor could not."""
-        state = State.of('"0."!', ScriptedIO(""))
+        state = _Machine.of('"0."!', ScriptedIO(""))
         state.step()  # the literal
         assert state.ip[0] == 1
         state.step()  # `!` pushes the nested program
@@ -223,11 +223,11 @@ class TestFrames:
         """
         from esolangs.vm import run_until_halt_or_ancestor
 
-        looping = State.of('"0+.^!"^0+?!0.', ScriptedIO(""))
+        looping = _Machine.of('"0+.^!"^0+?!0.', ScriptedIO(""))
         assert run_until_halt_or_ancestor(looping) is False
 
         # A nested program that does terminate still reports as halting.
-        finite = State.of('"0."!', ScriptedIO(""))
+        finite = _Machine.of('"0."!', ScriptedIO(""))
         assert run_until_halt_or_ancestor(finite) is True
 
     def test_the_entry_key_separates_frames_by_their_stacks(self) -> None:
@@ -237,10 +237,11 @@ class TestFrames:
         different things when the values beneath them differ, so a key of
         text and cursor alone would call an advancing recursion a repeat.
         """
-        state = State.of('"0."!', ScriptedIO(""))
+        state = _Machine.of('"0."!', ScriptedIO(""))
         frame = ("0.", 0)
         before = state.frame_entry_key(frame)
-        state.stk[state.ptr].append(7)
+        pushed = (*state.stk[state.ptr], 7)
+        state.stk = (pushed, state.stk[1]) if state.ptr == 0 else (state.stk[0], pushed)
         assert state.frame_entry_key(frame) != before
 
 
@@ -248,10 +249,10 @@ class TestStepMachine:
     def test_the_empty_program_starts_halted(self) -> None:
         # `step` has no halted guard of its own -- the caller checks first,
         # which is what the VM's run loop does.
-        assert State(io=IO(), sym="").halted
+        assert _Machine(io=IO(), sym="").halted
 
     def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
-        state = State(io=IO(), sym="0+.")
+        state = _Machine(io=IO(), sym="0+.")
         before = state.snapshot()
         hash(before)  # must not raise
         state.step()

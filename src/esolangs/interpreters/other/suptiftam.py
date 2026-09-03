@@ -56,7 +56,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
 from esolangs.exceptions import HaltError
@@ -564,7 +564,7 @@ def _assign(
         _put(name, _Var(kind, wrapped), state, frame)
 
 
-@dataclass
+@dataclass(frozen=True)
 class _CallFrame:
     """One function call in progress.
 
@@ -573,6 +573,11 @@ class _CallFrame:
     ``(param, body)`` blocks (an "extension"); each runs in sequence with a
     fresh local scope binding its own parameter name to the call's
     (shared) argument value.
+
+    Frozen: the two cursors are advanced by replacing the frame, so a
+    frame is a value.  ``local`` is the exception the type cannot express
+    -- it is a mutable scope whose ``_Var`` and ``_Tape`` values are shared
+    with the caller, which is how a call writes its argument back.
     """
 
     name: str
@@ -582,10 +587,13 @@ class _CallFrame:
     value: _Var | _Tape
     block_ind: int = 0
     stmt_ind: int = 0
-    local: dict[str, object] = field(init=False)
+    local: dict[str, object] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        self.local = {self.blocks[0][0]: self.value}
+        if not self.local:
+            # A frame built without one binds its first block's parameter;
+            # ``replace`` passes the scope it already has.
+            object.__setattr__(self, "local", {self.blocks[0][0]: self.value})
 
 
 def _dispatch(
@@ -748,20 +756,30 @@ class _Machine:
                 self.state.io.print_str(rendered)
 
     def _step_frame(self) -> None:
-        """Advance the call frame at the top of the stack by one statement."""
+        """Advance the call frame at the top of the stack by one statement.
+
+        The frame's two cursors are advanced by *replacing* the frame: it
+        is a frozen value, so a step returns the frame that follows rather
+        than editing the one it was handed.  Its ``local`` scope is not a
+        value and cannot be: ``_assign`` reaches through it to mutate the
+        ``_Var`` and ``_Tape`` objects it names, and those are shared with
+        the enclosing scopes -- that sharing is how a call's argument is
+        written back to its caller.
+        """
         top = self.frames[-1]
         if top.block_ind >= len(top.blocks):
             self.frames.pop()
             return
         _, body = top.blocks[top.block_ind]
         if top.stmt_ind >= len(body):
-            top.block_ind += 1
-            top.stmt_ind = 0
-            if top.block_ind < len(top.blocks):
-                top.local = {top.blocks[top.block_ind][0]: top.value}
+            block_ind = top.block_ind + 1
+            local = top.local
+            if block_ind < len(top.blocks):
+                local = {top.blocks[block_ind][0]: top.value}
+            self.frames[-1] = replace(top, block_ind=block_ind, stmt_ind=0, local=local)
             return
         statement = body[top.stmt_ind]
-        top.stmt_ind += 1
+        self.frames[-1] = replace(top, stmt_ind=top.stmt_ind + 1)
         pushed = _dispatch(statement, self.state, top.local)
         if pushed is not None:
             self.frames.append(pushed)
