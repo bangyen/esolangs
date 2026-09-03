@@ -139,10 +139,11 @@ digit values (`num(":") == 3`); and it is unbounded below
 contract than the spec — "0-9 literal, A-F hexadecimal" — so the documented
 contract, the spec, and the behaviour are three different things.
 
-**Nothing shipped emits into that region.**  The BF-to-6-5 transpiler is
-capped at 17 loops (34 markers) by `_SIX_FIVE_MAX_LABEL`, derived from the
-operand alphabet, and `_six_five_label` raises for any value outside
-`0..35` — any future emitter into this language must respect the same cap.
+**Nothing shipped emits into that region.**  `_SIX_FIVE_MAX_LABEL` (now in
+`esolangs/tools/boolean/six_five.py`, having moved there when the BF-to-6-5
+transpiler was removed) is derived from the operand alphabet, and
+`_six_five_label` raises for any value outside `0..35` — any future emitter
+into this language must respect the same cap.
 
 The interpreter's `num` itself stays permissive: it still accepts the
 undefined operands rather than rejecting them.  Whether a 6-5 program using
