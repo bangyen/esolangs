@@ -13,10 +13,28 @@ from unittest.mock import patch
 
 import pytest
 
+from esolangs.interpreters.grid_based.a_painter_ant import _Machine as _APAMachine
 from esolangs.interpreters.grid_based.a_painter_ant import run as run_a_painter_ant
 from esolangs.interpreters.io import IO
 from esolangs.tools import boolean
 from esolangs.tools.boolean.a_painter_ant import _instantiate_apa, a_painter_ant
+
+
+def _render_after_passes(program: str, passes: int) -> str:
+    """Render after exactly ``passes`` whole cycles, stepped by hand.
+
+    ``run()`` no longer takes a pass count -- it steps until the state
+    repeats at a boundary and renders there -- so this is what ``cycles=``
+    used to give directly: a render pinned to a specific pass count, for
+    comparing against ``run()``'s own auto-detected one.  Shared by both
+    test classes below, so it lives at module scope rather than as a
+    private method one borrows from the other.
+    """
+    machine = _APAMachine(program)
+    span = len(machine.prog)
+    for _ in range(passes * span):
+        machine.step()
+    return machine.render()
 
 
 class TestAPainterAnt:
@@ -65,15 +83,19 @@ class TestAPainterAnt:
 
     @staticmethod
     def _cycle_stable(program: str) -> bool:
-        """The interpreter's box is identical for every whole number of cycles."""
+        """``run()``'s auto-detected render agrees with a render pinned to ten cycles.
+
+        ``run()`` renders at the first pass boundary whose state repeats;
+        pinning a second render to ten cycles by hand and comparing is a
+        stronger check than trusting the auto-detection alone, since it is
+        an independent computation of the same claim -- that whichever pass
+        the repeat is found at, every later pass renders identically.
+        """
         from esolangs.interpreters.io import ScriptedIO
 
         io = ScriptedIO()
         run_a_painter_ant(program, io)
-        ref = io.getvalue()
-        io = ScriptedIO()
-        run_a_painter_ant(program, io, cycles=10)
-        return io.getvalue() == ref
+        return io.getvalue() == _render_after_passes(program, 10)
 
     @classmethod
     def _check(cls, table: str, bits: list[int]) -> int:
@@ -309,9 +331,10 @@ class TestAPainterAntTrace:
                 io = ScriptedIO()
                 run_a_painter_ant(program, io)
                 reference = io.getvalue()
-                io = ScriptedIO()
-                run_a_painter_ant(program, io, cycles=10)
-                assert io.getvalue() == reference, (table, bits)
+                assert _render_after_passes(program, 10) == reference, (
+                    table,
+                    bits,
+                )
 
     def test_cycle_stable_detects_a_divergence(self) -> None:
         from tests.tools.a_painter_ant_trace import cycle_stable

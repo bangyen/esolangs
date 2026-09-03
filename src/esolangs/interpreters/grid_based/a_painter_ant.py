@@ -10,12 +10,13 @@ returns to the first.
 
 The wiki defines no I/O, so following the repo convention for
 interpreter-only languages (Minsky Swap prints its registers), :func:`run`
-executes ``cycles`` whole passes of the program and then prints the
-bounding box of the cells the ant has visited: a rectangle of ``#`` (white)
-and ``.`` (black) cells, one row per line, with the ant's own cell drawn as
-``@`` on white or ``o`` on black.  White space is ignored, any other
-instruction is a malformed program (:class:`ValueError`, exit 2), and the
-origin cell counts as visited.
+steps the program, one whole pass at a time, until its state repeats at the
+start of a pass -- proof that every pass from there on renders the same
+picture -- and then prints the bounding box of the cells the ant has
+visited: a rectangle of ``#`` (white) and ``.`` (black) cells, one row per
+line, with the ant's own cell drawn as ``@`` on white or ``o`` on black.
+White space is ignored, any other instruction is a malformed program
+(:class:`ValueError`, exit 2), and the origin cell counts as visited.
 
 The glyphs are ink, not colour names: every cell starts black, and ``P`` is
 what paints one white, so white is the mark the ant has *made* and gets the
@@ -25,16 +26,20 @@ than as scattered gaps in a field of ``#``.
 
 Two details of that output are deliberate.
 
-The unit is a *whole cycle*, not a step count.  The program is an implicit
+The unit is a *whole pass*, not a step count.  The program is an implicit
 infinite loop, so there is no halt to run to, and a raw instruction budget
-stops wherever it happens to land: the previous default of 10,000
-instructions cut the boolean generator's AND2 program at 95.24 cycles,
-mid-pass, with the ant somewhere in the middle of its walk.  A whole cycle
-is the language's own natural unit, and the programs that have an answer to
-report are cycle-stable fixed points -- their grid and the ant's resting
-cell are the same after one pass as after ten -- so one cycle is enough and
-more changes nothing.  This is a unit, not a safety limit: a program that
-diverges runs as long as it is asked to, the way a real interpreter should.
+stops wherever it happens to land: an earlier default of 10,000 instructions
+cut the boolean generator's AND2 program at 95.24 passes, mid-pass, with the
+ant somewhere in the middle of its walk.  A whole pass is the language's own
+natural unit, and every program the boolean generator emits is a
+pass-stable fixed point -- its grid and the ant's resting cell are the same
+after one pass as after ten, verified by running each generated program to
+ten passes and comparing -- so detecting the first repeat renders the same
+picture running further would.  A program that never settles into a fixed
+routine is stepped for as long as it takes to prove that with certainty
+(:func:`run`'s own Brent's-algorithm loop), the way a real interpreter
+should; there is no artificial step cap left to cut a divergent program off
+early or a stable one off before its repeat is found.
 
 The ant is drawn because otherwise it is invisible.  The raster used to
 show painted cells only, which is enough to see *what* the ant drew but not
@@ -148,9 +153,11 @@ class _Machine:
     pointer.  ``step()`` executes one instruction (paint or conditional
     move) and advances the instruction pointer cyclically; ``halted`` is
     always ``False`` because the program runs in an implicit loop forever,
-    so the VM and the state-cycle hang detector treat a repeated
-    :meth:`snapshot` as the proof of a loop.  Every program the boolean
-    generator emits is exactly such a cycle.
+    so the VM's generic per-step hang detector
+    (:func:`esolangs.vm.run_until_halt_or_cycle`) treats a repeated
+    :meth:`snapshot` as the proof of a loop.  :func:`run` below does the
+    same proof its own way, snapshotting once per whole pass
+    rather than once per step -- see its docstring for why.
     """
 
     def __init__(
@@ -221,8 +228,9 @@ class _Machine:
         The cursor advance is here rather than in the transition: it wraps
         modulo the program's length, which is the shell's to know.
         """
-        # ``run`` steps ``cycles * len(prog)`` times, so an empty program is
-        # never stepped at all; this keeps a direct caller from indexing it.
+        # ``run`` steps in whole passes of ``len(prog)``, so an empty
+        # program's pass is zero steps and it is never stepped at all;
+        # this keeps a direct caller from indexing it.
         if not self.prog:  # pragma: no cover - run() never steps an empty program
             return
         grid, x, y, _ip = _advance(self._state, self.prog[self.ip])
@@ -254,19 +262,57 @@ class _Machine:
         return "#" if white else "."
 
 
-def run(code: str, io: IO, cycles: int = 1) -> None:
-    """Run an A Painter Ant program for ``cycles`` whole passes."""
+def run(code: str, io: IO) -> None:
+    """Run an A Painter Ant program until its state repeats at a pass boundary.
+
+    The language is an unconditional infinite loop -- ``halted`` is always
+    ``False`` -- so there is no halt to run to and no fixed step count that
+    is right for every program.  What every program *does* have is Brent's
+    guarantee: a deterministic machine with finitely many reachable states
+    must eventually revisit one, and once ``snapshot()`` (position, ip and
+    every painted cell) repeats at the start of a pass, every pass from then
+    on is identical to the one before it -- the ant is dancing a fixed
+    routine on a grid that no longer changes.  That repeat is the render:
+    stepping past it would only draw the same picture again.
+
+    Snapshots are taken only at pass boundaries (``ip == 0``), not every
+    step, for two reasons.  Perf: a snapshot copies every painted cell, and
+    the boolean generator's programs run to thousands of them -- comparing
+    on each of a pass's individual steps rather than once per pass turned a
+    0.1s test into 134s during development.  Correctness: the boolean
+    answer is the cell the ant *rests* on at the end of a whole pass, so a
+    cycle proven mid-pass would still leave the render showing the ant
+    mid-dance rather than on its resting cell.  Boundary-only detection
+    loses no cycles either: the pointer advances by exactly one modulo the
+    program's length every step, so any repeated state has a period that is
+    a multiple of the program's length, and a state that repeats at all
+    therefore repeats at a boundary.
+
+    By the time a repeat is found, the ant has traversed the loop at least
+    once since the checkpoint, so ``visited`` -- deliberately excluded from
+    ``snapshot()``, since it is append-only bookkeeping no rule reads -- has
+    already grown to cover the full eternal picture; the boundary at which
+    the repeat is detected renders identically to every boundary after it.
+    """
     machine = _Machine(code)
-    for _ in range(cycles * len(machine.prog)):
-        machine.step()
+    span = len(machine.prog)
+    tortoise = machine.snapshot()
+    power = 1
+    passes = 0
+    while True:
+        for _ in range(span):
+            machine.step()
+        passes += 1
+        if machine.snapshot() == tortoise:
+            break
+        if passes == power:
+            tortoise = machine.snapshot()
+            power *= 2
+            passes = 0
     io.print_str(machine.render())
 
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
-            data = file.read()
-            if len(sys.argv) > 2:
-                run(data, IO(), cycles=int(sys.argv[2]))
-            else:
-                run(data, IO())
+            run(file.read(), IO())
