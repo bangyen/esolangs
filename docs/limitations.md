@@ -1,10 +1,10 @@
 # Limitations and ruled-out ideas
 
 What the generators cannot do, and the assessments that concluded an
-approach is not viable (or only partially viable).  Completed work lives in
-the commit history; this file records the walls, the negative results, and
-the reasoning behind them.  Genuine future work is in `docs/roadmap.md`, and
-the criteria for assessing a candidate language are in `docs/CONTRIBUTING.md`.
+approach is not viable (or only partially).  Completed work lives in the
+commit history; this file records the walls, the negative results, and the
+reasoning behind them.  Genuine future work is in `docs/roadmap.md`; the
+admission criteria for a candidate language are in `docs/CONTRIBUTING.md`.
 
 The tables below name every blocker at a glance; the full structural
 argument for each is in [`docs/walls.md`](walls.md).
@@ -29,10 +29,12 @@ predictable across languages:
   so a byte-oriented program needs one line per byte: `,.,.` on ``"A\nB"``
   echoes ``"AB"``, while ``"AB"`` on one line supplies only ``A`` and the
   second `,` raises `EOFError`.
-- **Execution is unbounded through the public API.**  `esolangs.run` has no
-  step limit: interpreters run until the program halts naturally or loops
-  forever.  Suffolk is the sole interpreter that ships with a fixed
-  instruction limit, and callers cannot set one through the public API.
+- **No step limit is settable through the public API.**  `esolangs.run`
+  forwards no kwargs to an interpreter's `run()`, and its only bound is a
+  wall-clock `timeout`.  AddSubJump, Decleq and Polynomial each default
+  their own `run(..., limit=10_000)`, and Grapheme defaults
+  `limit=1_000_000`; every one of those defaults still fires (raising
+  `HaltError`) since a caller has no way to raise it through the public API.
 - **Recursion is uncapped except in Forbin's expression position.**
   Suptiftam, Forbin's statement-position calls, and all of Lamfunc's calls
   run on an explicit frame stack (`_Machine.frames`), so a terminating
@@ -87,8 +89,8 @@ per-character encoding can be meaningfully shortened:
 
 | Language | Why it cannot compute a truth table |
 | --- | --- |
-| 123 | **A generator ships; the cap is arity, not expressiveness.** It is parameterized (`2` at location -3 reads real stdin, so a decision tree cannot read its inputs) and answers with the termination convention — halt for 0, a proven loop for 1 — the same one ArrowQueue and Point Break use. All four one-input, all sixteen two-input and all 256 three-input tables are built. The fill is `1` for a one and `2` for a zero, which move the pointer in opposite directions, so displacement after the embeds is `(#zeros - #ones)` and the `-4 -> 0` wrap reduces it modulo four: a tail of `1`s decodes that counter, and `3`'s TRUE-backward re-run supplies the tables the counter cannot reach on its own. At three inputs the bare counter carries only popcount *parity*, which is why `01111110` — TRUE unless all three inputs agree — was the last table to build and needed the `3` gadget. Four-input and wider tables are **rejected**, including those depending on fewer of their inputs: an ignored input still has to be embedded, every fill moves the pointer, and the pointer phase *is* the computed value, so a trailing inert embed shifts the very quantity the plan decodes. Whether a wider construction exists is open; see [`docs/walls.md`](walls.md). |
-| %^2^-1 | Only control flow is `t` (rewind on a nonzero accumulator); a whole-program while loop that cannot count passes. No program that *reads* its inputs computes any two-input function (proved in Lean), but the shipped generator is parameterized and builds all sixteen: it embeds the bits, composes one affine setter per input into a product-weighted accumulator, and prints with `l`, which spells the accumulator in decimal so `0`/`1` need no branch. The setters are derived from the table, not searched. Above two inputs a second construction takes over, the **subcube cascade**: the accumulator is loaded with 1 (`ips`) and passed through one setter per input — the identity (`pp`) where the bit matches the pinned literal, an erase (`'p`) where it does not — so it survives as 1 exactly when every pinned bit matches. Appending `ips` maps the result to `1 - r`, so complements cost three characters more. Both branches are two characters, so nothing leaks through `len()`, and a program is `2n + 4` characters (`2n + 7` complemented) at any arity. That covers every conjunction or disjunction of literals — AND-`n`, OR-`n`, NAND-`n`, NOR-`n` and every subcube — with no search: 48 of the 256 three-input tables and 154 of the 65536 four-input ones. A third construction, the **composed-affine derivation**, catches tables that are no subcube: it composes one affine setter per input as the two-input derivation does, and solves them the same way. After two setters the accumulator holds four values that the third maps by one branch per value of the last input, so the even and odd rows are two affine images of one vector — the shared-cofactor law, read backwards. The vector's partition is forced by which rows the table agrees on, two points fix each branch of the last setter, and the first two invert by division. An enumeration over branch pairs stood here until it was replaced by the derivation: it reached the same 86 tables but cost 6.4 seconds for the arity against 0.8, and its programs were longer (median 46 against 39, and no table's is longer now).  What survives of it is the equal-width spelling, since a setter's two branches must share a width or the program leaks its inputs through `len()`. That second point was the binding constraint: `_pad_pair` pads with `pp` and so refuses an odd width gap, and parity-3's witness wants branches of width 6 and 5. A fourth construction, the **threshold ladder**, is the only one that computes *with* the over-3003 reset rather than keeping clear of it: it weights the inputs into a negative accumulator and lets the reset read the weighted sum as a threshold, which is what builds majority-3.  A fifth, the **deep band**, makes three *and* four inputs total by changing the printing command: `l` spells the accumulator in decimal and so needs it to *be* 0 or 1, while `e` prints `chr(acc & 0xFF)`, so a row need only be congruent to 48 or 49 mod 256.  With residues as the target the reset serves once per run of the table rather than once in total — weights are multiples of 256 so every row starts congruent, sorting by the weighted sum turns the table into runs, and each stage wipes a run and parks the survivors back under the limit.  It drops two assumptions a *positive*-ladder band makes.  Its weighting is **chosen rather than searched**: a collision is survivable exactly when it joins rows of one class, and a weighting whose collisions are all legal has never failed to schedule (63274 checked inside the span budget, none refused), so legality is tested per candidate and the planner runs once at the end instead of once per candidate — 4.4s to 0.7s at four inputs and 138ms to 12ms for parity-5, with byte-identical programs.  The span budget is derived too rather than tuned: every legal weighting observed to fail did so with `sum(units) * 256` past the 3003 limit, at sum 12. Its ladder is built by *subtraction*, so the whole order sits below zero where the reset cannot fire and the unit budget that stopped the band at three inputs does not exist. And a cut *erases* — every row it wipes lands on zero together, whatever the gaps between them — so only the boundaries *between* runs need a full residue system, which lets rows of one class collide and prices a table by its run count rather than by `2**n`. Collisions admit the popcount ladder, every weight one, on which parity spans `n` units instead of `2**n - 1`. (A positive-ladder band shipped alongside the deep band for a while and was removed once measured: it served no table the deep band does not — 0 of 256 at three inputs, the only arity it reached — and its programs were about four times longer, median 11492 characters against 3144, so it was dominated on both axes.) A sixth, the **fold**, closes five inputs by dropping the weighting altogether: rows start on a rigid ladder, each use of the reset relocates a group by exactly 3004 plus a slack bounded by the gap to its nearest survivor, the doubling `m` regrows gaps past 3004 (without it every wipe caps the spread at 3003 and the groups' cyclic order is provably invariant, so any table whose runs alternate four or more times would be out of reach), and rows of one class merge by landing on a shared value. Only the final two-point gap carries a residue requirement, and its window spans a full residue system. The plan is searched over the relative geometry; the emitted program is mirrored on every row and asserted rather than trusted. Together they build **all 256** three-input tables, **all 65536** four-input ones, and every five-input table tried -- large random samples, parity, every threshold, and the fully alternating 32-run worst case -- each executed on the interpreter on all its inputs at equal fill length; parity is verified through six inputs. Tables no construction covers are rejected rather than risking a wrong program. |
+| 123 | **A generator ships; the cap is arity, not expressiveness.** Parameterized (`2` at location -3 reads real stdin, so a decision tree cannot read its inputs); answers with the termination convention — halt for 0, a proven loop for 1 — that ArrowQueue and Point Break also use. All one-, two- and three-input tables (4, 16, 256) are built. Fill `1`/`2` moves the pointer in opposite directions, so displacement after the embeds is `(#zeros - #ones)`, reduced mod four by the `-4 -> 0` wrap: a tail of `1`s decodes the counter, and `3`'s TRUE-backward re-run reaches what the counter alone cannot (needed for `01111110`, the last table closed). Four-input and wider tables are **rejected** even when they ignore an input: every embed moves the pointer, and the pointer phase *is* the computed value, so a trailing inert embed still shifts it. Whether a wider construction exists is open; see [`docs/walls.md`](walls.md). |
+| %^2^-1 | Only control flow is `t` (rewind on a nonzero accumulator); a whole-program while loop that cannot count passes. No program that *reads* its inputs computes any two-input function (proved in Lean), but the shipped generator is parameterized and embeds instead: six constructions — affine setter, subcube cascade, composed-affine derivation, threshold ladder, deep band, fold — build **every table at `n <= 4`** (all 256, all 65536) and every five-input table tried, each interpreter-verified; a table no construction covers is rejected rather than risking a wrong program. Full construction-by-construction history, including what each one cannot reach and why, is in the `%^2^-1` row of the Generator caps table below. |
 
 ## Generator caps (shipped)
 
@@ -518,13 +520,13 @@ removed rather than annotated.
 ## Lean proofs (kept set)
 
 The Lean project keeps only the proofs of facts the tests cannot establish:
-SLOW ACV MAMMALIAN's generator search totality, Factor's Dirichlet-based
-prime-search totality plus the encode/decode round-trip
-(`extra/lean/esolangs/Esolangs.lean`, `FactorCorrect.lean`), and the
-`%^2^-1` two-input boolean wall (`PctBooleanWall.lean`, audited by
-`PctWallCheck.lean`).  Every other proof (the ported interpreters, their
-equivalence proofs, and the generator correctness proofs) was dropped as
-redundant with the round-trip test suite.
+SLOW ACV MAMMALIAN's generator search totality (`MammalianTotality.lean`),
+Factor's Dirichlet-based prime-search totality plus the encode/decode
+round-trip (`FactorCorrect.lean`), and the `%^2^-1` two-input boolean wall
+(`PctBooleanWall.lean`), audited by `AxiomAudit.lean` (run by hand, not
+imported by the default build).  Every other proof (the ported
+interpreters, their equivalence proofs, and the generator correctness
+proofs) was dropped as redundant with the round-trip test suite.
 
 Note the scope of the `%^2^-1` wall: `Computes` binds one program across all
 four bit combinations and feeds the bits in through `start`'s input list, so
@@ -532,11 +534,14 @@ the theorem is about programs that *read* their inputs.  The shipped
 generator is parameterized and builds every two-input table, so the theorem
 bounds the reading model, not the language.
 
-The default `lake build` target covers only the root `Esolangs.lean`, so a
-proof outside it is checked by no automation — the gap that let
-`BfMintermCorrect.lean` rot into 35 elaboration errors unnoticed before it
-was removed (its subject, the branch-free `_bf_minterm` construction, had
-itself been deleted when folding made it unreachable).
+`Esolangs.lean` now imports all three kept proofs, so the default
+`lake build` target checks every one of them; a proof outside that import
+list is still checked by no automation, which is how `BfMintermCorrect.lean`
+was able to rot into 35 elaboration errors unnoticed before it was removed
+(its subject, the branch-free `_bf_minterm` construction, had itself been
+deleted when folding made it unreachable) — a gap `Esolangs.lean`'s own
+docstring now narrates.  `AxiomAudit.lean` is the one file still excluded
+from the default build, deliberately: it exists to be run by hand.
 
 No comparable Minifuck theorem is open.  The candidate used to be a
 characterization of its *reading* model — exactly the four one-input
