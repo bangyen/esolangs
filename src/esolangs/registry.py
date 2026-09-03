@@ -529,6 +529,7 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Super SNUSP": Language(
         "Super SNUSP",
+        _generate.super_snusp,
         boolean=_boolean.super_snusp,
         id="super_snusp",
         interpreter="grid_based.super_snusp",

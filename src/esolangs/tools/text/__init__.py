@@ -47,6 +47,7 @@ from esolangs.tools.text.register import (
     wii2d,
 )
 from esolangs.tools.text.stack import modulous
+from esolangs.tools.text.super_snusp import super_snusp
 from esolangs.tools.text.tape import (
     bfstack,
     brainfuck,
@@ -102,6 +103,7 @@ __all__ = [
     "sophie",
     "streetcode",
     "suffolk",
+    "super_snusp",
     "suptiftam",
     "taglate",
     "three_d_brainfuck",
