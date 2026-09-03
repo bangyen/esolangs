@@ -52,10 +52,11 @@ _IO_OWNER = "run"
 #   wraps the pure ``_accumulate`` -- so the transition/shell split is
 #   intact; only its spelling differs.
 # * ``forbin._call`` and MyScript's ``_parse_expr``/``_apply_builtin`` are
-#   the recursive-evaluation exception the template names.  Neither
-#   language executes a command at a time: a read happens part-way down a
-#   recursive descent, so there is no shell the port could be hoisted to
-#   without threading it back up through every frame.
+#   documented, nonconforming recursive evaluators.  The template does not
+#   exempt them: a read or write happens part-way down a recursive descent,
+#   so making either pure would require an explicit continuation stack and
+#   ordered I/O effects.  The exceptions stay narrow and visible here until
+#   that architecture earns its risk.
 #
 # Pinned as a set, in both directions, so it cannot quietly grow and cannot
 # go stale -- the same shape as ``RAISES_ON_THE_POST_HALT_STEP``.
@@ -129,6 +130,48 @@ def _reaching_functions() -> dict[tuple[str, str], list[str]]:
     return found
 
 
+def _machine_declarations(path: pathlib.Path) -> tuple[ast.ClassDef, ast.FunctionDef]:
+    """Return a module's one steppable machine and its constructor.
+
+    This deliberately reads the source instead of importing it.  Importing
+    proves only that today's module happens to build a VM; this pins the
+    convention a new interpreter must follow before its runner is ever
+    registered.  The runtime protocol suite separately proves that the
+    declared members work.
+    """
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    assert any(
+        (isinstance(node, ast.ClassDef) and node.name == "_State")
+        or (
+            isinstance(node, ast.TypeAlias)
+            and isinstance(node.name, ast.Name)
+            and node.name.id == "_State"
+        )
+        for node in tree.body
+    ), f"{path.relative_to(_INTERPRETERS)} must declare its complete _State"
+    machine = next(
+        (
+            node
+            for node in tree.body
+            if isinstance(node, ast.ClassDef) and node.name == "_Machine"
+        ),
+        None,
+    )
+    assert machine is not None, f"{path.relative_to(_INTERPRETERS)} has no _Machine"
+    init = next(
+        (
+            node
+            for node in machine.body
+            if isinstance(node, ast.FunctionDef) and node.name == "__init__"
+        ),
+        None,
+    )
+    assert init is not None, (
+        f"{path.relative_to(_INTERPRETERS)} has no _Machine.__init__"
+    )
+    return machine, init
+
+
 class TestTheSweepCanSee:
     """The detector's own coverage, which the checks below take on trust."""
 
@@ -153,6 +196,51 @@ class TestTheSweepCanSee:
         """
         surface = _io_surface()
         assert {"print_str", "print_char", "print_value", "input_str"} <= surface
+
+
+class TestMachineConventions:
+    """The common construction and state boundary stay explicit.
+
+    The VM protocol checks a constructed machine's behaviour, but cannot
+    tell whether a module has drifted back to an ``of`` factory or stopped
+    naming its complete state.  Every registered module therefore names its
+    state and takes the source plus I/O at the machine boundary.  Extra
+    constructor arguments remain free for genuine language dependencies
+    such as deterministic randomness.
+    """
+
+    @pytest.mark.parametrize(
+        "path",
+        _module_files(),
+        ids=lambda path: path.relative_to(_INTERPRETERS).as_posix(),
+    )
+    def test_machine_declares_state_and_accepts_io(self, path: pathlib.Path) -> None:
+        """A machine has one named state boundary and a source/I/O constructor."""
+        machine, init = _machine_declarations(path)
+        members = {
+            node.name
+            for node in machine.body
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        }
+        assert {"step", "snapshot"} <= members
+        assert "of" not in members
+        has_halted_assignment = any(
+            isinstance(node, ast.Assign)
+            and any(
+                isinstance(target, ast.Attribute)
+                and isinstance(target.value, ast.Name)
+                and target.value.id == "self"
+                and target.attr == "halted"
+                for target in node.targets
+            )
+            for node in ast.walk(init)
+        )
+        assert "halted" in members or has_halted_assignment
+
+        positional = init.args.posonlyargs + init.args.args
+        assert len(positional) >= 3
+        assert positional[0].arg == "self"
+        assert positional[2].arg == "io"
 
 
 class TestTransitionsDoNotReachIO:
