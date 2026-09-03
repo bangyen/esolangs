@@ -291,7 +291,7 @@ def _eval(expr: list[Token], variables: _Vars, read: _Read) -> int:
 
 def _advance(
     state: _State,
-    stmts: Sequence[Statement],
+    stmts: tuple[Statement, ...],
     ends: Mapping[int, tuple[int, bool]],
     read: _Read,
 ) -> _State:
