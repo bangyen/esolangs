@@ -1488,10 +1488,17 @@ def _fold_search(
     value -- all 256 at three inputs and 40-table samples at four and five,
     the same *sets* either way, every row re-executed on the interpreter at
     one fill width -- while a six-input sample builds 8 of 8 with a slowest
-    build of 1.6s.  What it buys is the refusal: an eight-input table now
-    raises in about 13 seconds where it used to take over nine minutes.
-    Acceptance above six inputs is partial under either value and carries no
-    claim, so the trade is bounded by what is documented.
+    build of 1.6s.
+
+    **The refusal that used to motivate the cap is now a gate.**  This
+    docstring recorded the cap as buying an eight-input refusal in about 13
+    seconds where the old value took over nine minutes.  Both numbers are
+    stale: eight inputs *build*, in about 0.3s, and what refuses is an arity
+    past ten, which :func:`_fold_at` rejects on the ladder's footprint before
+    any search runs.  The cap is therefore doing far less than it was
+    credited with -- no measured table reaches it -- and it stays as a
+    latency guard on a state the descent leaves short rather than as the
+    thing that bounds acceptance.
     """
     import heapq
 
