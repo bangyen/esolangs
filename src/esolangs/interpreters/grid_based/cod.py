@@ -47,13 +47,25 @@ than one of them, or a start that is fully enclosed -- raise
 :class:`ValueError`.  A read also raises :class:`ValueError` when the line
 it is given is not an integer, since a read parses its line as a number.
 
-At EOF a read raises :class:`EOFError` out of :meth:`IO.input_num`, which
-propagates: the cod has already swum onto the reading dot by then, so the
-move is committed before the read and the exception unwinds from a
-consistent state.  No :class:`HaltError` is raised.  A COD program need not
-terminate at all -- ``run`` takes a ``limit`` of steps and simply returns
-once it elapses, rather than raising, because a swimming cod that never
-leaves the grid is normal behavior and not an error.
+``run()`` stops at its ``limit`` and returns what the program printed,
+rather than raising the way the bounded OISCs (AddSubJump, Decleq) and
+Grapheme do.  That is deliberate, and it is a fact about COD rather than
+an oversight: a cod with nowhere to die simply keeps swimming, so a
+program that never terminates is *normal* here -- the wiki's own truth
+machine loops forever by design, printing as it goes.  Raising would make
+the language's headline example an error, so the bound is the run's
+duration and the partial output is the answer.  A caller wanting to tell
+"stopped at the bound" from "the last cod swam off" steps the machine
+itself and reads ``halted``.
+
+The wiki does not say what a read does once stdin is exhausted.  ``EOF``
+propagates here rather than being taken as a value: a cod's value is an
+unbounded signed integer, so there is no in-band number that could stand
+for "no input" the way a zero byte does in a byte-celled language, and
+inventing one would make an exhausted read indistinguishable from reading
+a real 0.  The move onto the dot is committed before the read is taken, so
+the machine's state stays consistent when the port raises -- a cod that
+died reading sits on the dot it swam to, not the cell behind it.
 """
 
 import sys
