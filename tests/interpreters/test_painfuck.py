@@ -33,9 +33,28 @@ def _encode(targets: str) -> str:
     return "".join(out)
 
 
-def run_program(targets: str, stdin: str = "") -> str:
+class _Coin:
+    """A source that answers every draw with one value.
+
+    ``y`` flips a coin to decide whether to skip, and pinning it used to
+    mean patching ``secrets.randbelow`` for the whole process.  ``run``
+    now forwards a source, so the pin is an argument to the run under
+    test rather than a global.
+    """
+
+    def __init__(self, value: int) -> None:
+        self._value = value
+
+    def randbelow(self, upper: int) -> int:
+        """Return the fixed value, checking the bound admits it."""
+        if upper <= 0:
+            raise ValueError(f"upper bound must be positive, got {upper}")
+        return self._value % upper
+
+
+def run_program(targets: str, stdin: str = "", coin: int | None = None) -> str:
     io = ScriptedIO(stdin)
-    run(_encode(targets), io)
+    run(_encode(targets), io, rng=None if coin is None else _Coin(coin))
     return io.getvalue()
 
 
@@ -151,13 +170,14 @@ class TestPainfuck:
         assert run_program("pvpu") == "\x02"
 
     def test_random_skip(self) -> None:
-        from unittest.mock import patch
+        """``y`` skips the next command on a coin flip; pin both outcomes.
 
-        # y skips the next command on a coin flip; pin both outcomes
-        with patch("secrets.randbelow", return_value=1):
-            assert run_program("pyu") == ""
-        with patch("secrets.randbelow", return_value=0):
-            assert run_program("pyu") == "\x02"
+        The source is handed to ``run`` rather than patched into
+        ``secrets``: the coin belongs to this run, and a global patch would
+        also silence any other draw the process made.
+        """
+        assert run_program("pyu", coin=1) == ""
+        assert run_program("pyu", coin=0) == "\x02"
 
     def test_error(self) -> None:
         with pytest.raises(HaltError):

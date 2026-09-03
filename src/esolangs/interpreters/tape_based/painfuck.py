@@ -477,9 +477,17 @@ class _Machine:
             self.io.print_num(effect.value)
 
 
-def run(code: str, io: IO) -> None:
-    """Run a Painfuck program."""
-    machine = _Machine(code, io)
+def run(code: str, io: IO, rng: Randomness | None = None) -> None:
+    """Run a Painfuck program, flipping ``y``'s coin with ``rng``.
+
+    ``rng`` is the source ``y`` draws from; ``None`` draws for real, which
+    is the spec's behaviour and what a plain run gets.  The machine has
+    always taken one -- it is how the VM makes a stepped run reproducible
+    -- but ``run`` did not forward it, so a caller holding only ``run``
+    could not pin the coin without patching ``secrets`` globally.  This is
+    the signature COD, WII2D and LaserFuck take.
+    """
+    machine = _Machine(code, io, rng)
     while not machine.halted:
         machine.step()
 
