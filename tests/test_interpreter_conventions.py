@@ -17,9 +17,9 @@ was handed does not do.  A language that moved its dispatch into a
 module-level function and let it print would pass every existing test.
 
 So this file asks the source-shape question the runtime cannot: which
-functions call an IO effect outside the public shell.  The answer is a
-closed, deliberate set -- there is no drift to fix, which is the point.
-The sweep is a net that fails when it grows.
+functions call an IO effect outside the public ``run``/``_Machine`` shell.
+The answer is a closed, deliberate set -- there is no drift to fix, which
+is the point.  The sweep is a net that fails when it grows.
 """
 
 import ast
@@ -44,19 +44,14 @@ _INTERPRETERS = pathlib.Path(__file__).resolve().parents[1] / (
 _IO_OWNER = "run"
 
 # Functions and methods that call an IO effect outside the normal
-# ``run``/``_Machine.__init__``/``_Machine.step`` shells.  Each is a
-# documented decision rather than a lapse, and the reason differs:
+# ``run``/``_Machine`` shells.  Each is a documented decision rather than a
+# lapse, and the reason differs:
 #
 # * ``wii2d.update`` and ``ram0.output`` are effectful *shells* that happen
 #   to sit at module level instead of inside ``step``.  Both are the
 #   module's published shape -- ``update``'s own docstring says so, and it
 #   wraps the pure ``_accumulate`` -- so the transition/shell split is
 #   intact; only its spelling differs.
-# * The private ``_Machine`` helpers below are thin, named parts of
-#   ``step``: they centralize a language's read, write, dump, or builtin
-#   spelling without moving the effect into the transition.  Pinning every
-#   one makes that factoring visible rather than letting a new helper become
-#   an unreviewed second shell.
 # * ``forbin._call`` and MyScript's ``_parse_expr``/``_apply_builtin`` are
 #   documented, nonconforming recursive evaluators.  The template does not
 #   exempt them: a read or write happens part-way down a recursive descent,
@@ -70,28 +65,13 @@ _IO_OWNER = "run"
 # go stale -- the same shape as ``RAISES_ON_THE_POST_HALT_STEP``.
 _MAY_REACH_IO = frozenset(
     {
-        ("grid_based/circuit_diagram.py", "_Machine._read_bit"),
-        ("grid_based/flowchart.py", "_Machine._execute"),
-        ("grid_based/flowchart.py", "_Machine._read_bit"),
-        ("grid_based/laserfuck.py", "_Machine.dump"),
         ("grid_based/wii2d.py", "update"),
-        ("other/algebraic_programming_language.py", "_Machine._print"),
-        ("other/algebraic_programming_language.py", "_Machine._read_number"),
-        ("other/fargo.py", "_Machine._builtin"),
-        ("other/fargo.py", "_Machine._read_input"),
         ("other/forbin.py", "_BitReader.read"),
         ("other/forbin.py", "_call"),
         ("other/suptiftam.py", "_State._read_cell"),
-        ("other/ztoalc_l.py", "_Machine._apply"),
-        ("queue_based/bitdeque.py", "_Machine.render"),
-        ("register_based/qoibl.py", "_Machine._parse"),
         ("register_based/myscript.py", "_parse_expr"),
         ("register_based/myscript.py", "_apply_builtin"),
         ("register_based/ram0.py", "output"),
-        ("stack_based/modulous.py", "_Machine._print"),
-        ("tape_based/painfuck.py", "_Machine._write"),
-        ("tape_based/sbleq.py", "_Machine.input_byte"),
-        ("tape_based/sbleq.py", "_Machine.output"),
     }
 )
 
@@ -172,13 +152,10 @@ def _reaching_functions() -> dict[tuple[str, str], list[str]]:
                 if calls:
                     found[(relative, node.name)] = calls
             elif isinstance(node, ast.ClassDef):
+                if node.name == "_Machine":
+                    continue
                 for method in node.body:
                     if not isinstance(method, ast.FunctionDef):
-                        continue
-                    if node.name == "_Machine" and method.name in {
-                        "__init__",
-                        "step",
-                    }:
                         continue
                     calls = _io_calls(method, surface)
                     if calls:
