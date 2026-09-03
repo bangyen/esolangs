@@ -107,7 +107,7 @@ just test
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 63 languages</summary>
+<summary>Show all 64 languages</summary>
 
 The full capability matrix (generators, cross-check and boolean support, examples) is in [`docs/languages.md`](docs/languages.md).
 
@@ -124,6 +124,7 @@ Languages that move a pointer or beam across a 2D grid.
 - [Flowchart](https://esolangs.org/wiki/Flowchart) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/flowchart.py))
 - [LaserFuck](https://esolangs.org/wiki/LaserFuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/laserfuck.py))
 - [Streetcode](https://esolangs.org/wiki/Streetcode) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/streetcode.py))
+- [Super SNUSP](https://esolangs.org/wiki/Super_SNUSP) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/super_snusp.py))
 - [WII2D](https://esolangs.org/wiki/WII2D) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/wii2d.py))
 
 ### Stack-based Languages

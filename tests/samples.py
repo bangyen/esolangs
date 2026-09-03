@@ -220,6 +220,7 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "SLOW ACV MAMMALIAN": ("SEED SEED SEED CONSUME PRONOUNCE", ""),
     "Sophie": ("#$5.", ""),
     "Streetcode": (STREETCODE, ""),
+    "Super SNUSP": ('"65.', ""),
     "Suffolk": ("!" * 66 + "<.", ""),
     "Suptiftam": ("x=7", ""),
     "Taglate": ("abc\ni", ""),

@@ -527,6 +527,13 @@ LANGUAGES: dict[str, Language] = {
         id="streetcode",
         split=True,
     ),
+    "Super SNUSP": Language(
+        "Super SNUSP",
+        boolean=_boolean.super_snusp,
+        id="super_snusp",
+        interpreter="grid_based.super_snusp",
+        split=True,
+    ),
     "Suffolk": Language(
         "Suffolk",
         _generate.suffolk,
