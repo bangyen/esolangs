@@ -22,6 +22,7 @@ from contextlib import redirect_stdout
 from unittest.mock import patch
 
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.randomness import FirstDraw
 from tests.interpreters.runner import run_program
 
 
@@ -373,7 +374,7 @@ def run_laserfuck(program: str, inputs: list[str], heading: int) -> str:
             buffer.write(str(num))
 
     with redirect_stdout(buffer):
-        run(program.splitlines(), FakeIO(inputs), heading=heading)
+        run(program.splitlines(), FakeIO(inputs), rng=FirstDraw(heading))
     # The generator runs in decimal output mode and drives the input cells
     # negative, which dump() skips, so the tape prints as exactly the answer
     # -- no filtering needed, and asserting on the raw output is stricter.

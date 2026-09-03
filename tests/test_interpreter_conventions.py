@@ -98,9 +98,7 @@ def _module_files() -> list[pathlib.Path]:
     the omission.  A walk that discovers the tree cannot acquire that hole.
     """
     return sorted(
-        path
-        for path in _INTERPRETERS.glob("*/*.py")
-        if not path.name.startswith("_")
+        path for path in _INTERPRETERS.glob("*/*.py") if not path.name.startswith("_")
     )
 
 
