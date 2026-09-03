@@ -94,6 +94,15 @@ class Language:
     lives elsewhere, e.g. in extra/).  ``split`` passes the program split
     into lines to the interpreter, and ``kwargs`` holds any extra run()
     keyword arguments as (name, value) pairs.
+
+    ``compiler`` is the module name under ``esolangs.compilers`` holding
+    this language's RISC-V backend, if it has one.  It is registered here
+    for the same reason the generators are: the verification driver used
+    to discover compilers from a hand-appended list of module strings, so
+    a backend nobody remembered to add to that list was never verified and
+    nothing reported its absence.  :data:`COMPILERS` is derived from this
+    field, and ``scripts/check_compilers.py`` fails if a module in
+    ``src/esolangs/compilers/`` is missing from it.
     """
 
     name: str
@@ -103,6 +112,7 @@ class Language:
     kwargs: tuple[tuple[str, int], ...] = ()
     id: str = ""
     boolean: Callable[[str], str] | None = None
+    compiler: str | None = None
 
 
 LANGUAGES: dict[str, Language] = {
@@ -112,6 +122,7 @@ LANGUAGES: dict[str, Language] = {
         "register_based.addsubjump",
         boolean=_boolean.addsubjump,
         id="addsubjump",
+        compiler="addsubjump",
     ),
     "A Painter Ant": Language(
         "A Painter Ant",
@@ -164,6 +175,7 @@ LANGUAGES: dict[str, Language] = {
         "BF-PDA",
         boolean=_boolean.bfpda,
         id="bf_pda",
+        compiler="bf_pda",
         interpreter="stack_based.bf_pda",
     ),
     "Basicfuck": Language(
@@ -194,6 +206,7 @@ LANGUAGES: dict[str, Language] = {
         "stack_based.bfstack",
         boolean=_boolean.bfstack,
         id="bfstack",
+        compiler="bfstack",
     ),
     "BIO": Language(
         "BIO",
@@ -257,6 +270,7 @@ LANGUAGES: dict[str, Language] = {
         "register_based.collatz_multiverse",
         boolean=_boolean.collatz_multiverse,
         id="collatz_multiverse",
+        compiler="collatz_multiverse",
     ),
     "CV(N)(C)": Language(
         "CV(N)(C)",
@@ -264,6 +278,7 @@ LANGUAGES: dict[str, Language] = {
         "other.cvnc",
         boolean=_boolean.cvnc,
         id="cvnc",
+        compiler="cvnc",
     ),
     "Decleq": Language(
         "Decleq",
@@ -271,6 +286,7 @@ LANGUAGES: dict[str, Language] = {
         "register_based.decleq",
         boolean=_boolean.decleq,
         id="decleq",
+        compiler="decleq",
     ),
     "Container": Language(
         "Container",
@@ -278,6 +294,7 @@ LANGUAGES: dict[str, Language] = {
         "other.container",
         boolean=_boolean.container,
         id="container",
+        compiler="container",
         split=True,
     ),
     "Dig": Language(
@@ -328,6 +345,7 @@ LANGUAGES: dict[str, Language] = {
         "stack_based.forth",
         boolean=_boolean.forth,
         id="forth",
+        compiler="forth",
     ),
     "Forbin": Language(
         "Forbin",
@@ -335,6 +353,7 @@ LANGUAGES: dict[str, Language] = {
         "other.forbin",
         boolean=_boolean.forbin_boolean,
         id="forbin",
+        compiler="forbin",
     ),
     "Grapheme": Language(
         "Grapheme",
@@ -348,6 +367,7 @@ LANGUAGES: dict[str, Language] = {
         "tape_based.home_row",
         boolean=_boolean.home_row,
         id="home_row",
+        compiler="home_row",
     ),
     "Inject": Language(
         "Inject",
@@ -359,6 +379,7 @@ LANGUAGES: dict[str, Language] = {
         "Jaune",
         boolean=_boolean.jaune,
         id="jaune",
+        compiler="jaune",
         interpreter="tape_based.jaune",
     ),
     "Lamfunc": Language(
@@ -408,6 +429,7 @@ LANGUAGES: dict[str, Language] = {
         "register_based.myscript",
         boolean=_boolean.myscript,
         id="myscript",
+        compiler="myscript",
     ),
     "Nevermind": Language(
         "Nevermind",
@@ -457,6 +479,7 @@ LANGUAGES: dict[str, Language] = {
         "RAM0",
         boolean=_boolean.ram0,
         id="ram0",
+        compiler="ram0",
         interpreter="register_based.ram0",
     ),
     "ROTfuck": Language(
@@ -472,6 +495,7 @@ LANGUAGES: dict[str, Language] = {
         "tape_based.sbleq",
         boolean=_boolean.sbleq,
         id="sbleq",
+        compiler="sbleq",
     ),
     "3D Brainfuck": Language(
         "3D Brainfuck",
@@ -501,6 +525,7 @@ LANGUAGES: dict[str, Language] = {
         "tape_based.suffolk",
         boolean=_boolean.suffolk,
         id="suffolk",
+        compiler="suffolk",
     ),
     "Suptiftam": Language(
         "Suptiftam",
@@ -530,6 +555,7 @@ LANGUAGES: dict[str, Language] = {
         "stack_based.unsquare",
         boolean=_boolean.unsquare,
         id="unsquare",
+        compiler="unsquare",
     ),
     "WII2D": Language(
         "WII2D",
@@ -553,6 +579,14 @@ LANGUAGES: dict[str, Language] = {
 # Display name -> generator function, for languages that have one.
 GENERATORS: dict[str, Generator] = {
     name: lang.text for name, lang in LANGUAGES.items() if lang.text
+}
+
+# Display name -> the module under ``esolangs.compilers`` holding that
+# language's RISC-V backend.  Derived rather than listed for the reason
+# given on ``Language.compiler``: the verification driver's own list of
+# module strings could omit a backend without anything noticing.
+COMPILERS: dict[str, str] = {
+    name: lang.compiler for name, lang in LANGUAGES.items() if lang.compiler
 }
 
 # Generator function name -> Language, so tests can look a generator up by
