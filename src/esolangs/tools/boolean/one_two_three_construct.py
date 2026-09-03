@@ -68,6 +68,31 @@ _ONE, _ZERO = "1", "2"
 _RING = 3
 
 
+def _pos_after_ones(p: int, a: int) -> int:
+    """Where ``"1"*a`` leaves a row that starts at ``p >= 0``.
+
+    The walk falls straight to -1 in ``p + 1`` steps and then rides the
+    ring's 4-cycle ``-1, -2, -3, 0``, so the landing cell is arithmetic
+    rather than a simulation.  Verified against the interpreter model
+    over every ``p < 60`` and ``a < 200``.
+    """
+    if a <= p:
+        return p - a
+    return (-1, -2, -3, 0)[(a - (p + 1)) % 4]
+
+
+def _ones_then_pop_reads(positions: list[int], a: int) -> bool:
+    """Report whether ``"1"*a + "2"`` would read stdin for a row.
+
+    The ``2`` is fatal exactly when some row sits at -3 after the
+    descent, and where the descent lands depends only on the starting
+    position -- so a kill prefix can be rejected by arithmetic over the
+    live positions instead of by descending every row hundreds of cells
+    and catching the raise.  Most candidate prefixes die here.
+    """
+    return any(_pos_after_ones(p, a) == -3 for p in positions)
+
+
 def _on_mark(row: _Row) -> bool:
     """Report whether ``row`` is parked on one of its own marked cells."""
     return row.pos >= 0 and bool(row.tape >> (row.pos + _RING) & 1)
@@ -709,6 +734,7 @@ def _try_kill(
         return None
     xs: list[int | None] = [None]
     xs += [c for c in _cells(v0.tape) if 0 <= c < v0.pos]
+    prefix_positions = [r.pos for r in nb0.live()]
     for a in range(v0.pos + 1, max(r.pos for r in nb0.live()) + 13):
         # the victim must pop out of the ring at -1/-2, or the '2' reads
         if (a - v0.pos) % 4 not in (1, 2):
@@ -717,6 +743,13 @@ def _try_kill(
         # and then walks right, so the whole x-sweep rides one advancing
         # state instead of re-simulating the prefix (hundreds of
         # commands over every live row) once per x.
+        #
+        # A prefix whose pop would read stdin kills the whole ``a``, and
+        # that is decidable from the live positions alone -- which is
+        # most of them, and used to be paid for with a full descent per
+        # row before the raise surfaced.
+        if _ones_then_pop_reads(prefix_positions, a):
+            continue
         try:
             head = nb0.clone()
             head_live = head.live()
