@@ -36,10 +36,10 @@ def _file_name(display_name: str) -> str:
     return display_name.lower().replace(" ", "-")
 
 
-# example file stem -> (interpreter module, split lines, kwargs), derived
+# example file stem -> (interpreter module, split lines), derived
 # from the language registry.
 EXAMPLES = {
-    _file_name(lang.name): (lang.interpreter, lang.split, dict(lang.kwargs))
+    _file_name(lang.name): (lang.interpreter, lang.split)
     for lang in LANGUAGES.values()
     if lang.text and lang.interpreter
 }
@@ -49,7 +49,7 @@ EXITS = {"container"}
 
 
 def run_example(name: str) -> str:
-    module, splitlines, kwargs = EXAMPLES[name]
+    module, splitlines = EXAMPLES[name]
     run = importlib.import_module("esolangs.interpreters." + module).run
     program = (EXAMPLES_DIR / f"{name}.txt").read_text(encoding="utf-8").rstrip("\n")
     argument = program.splitlines() if splitlines else program
@@ -57,7 +57,7 @@ def run_example(name: str) -> str:
     buffer = io.StringIO()
     try:
         with redirect_stdout(buffer):
-            run(argument, io=IO(), **kwargs)
+            run(argument, io=IO())
     except SystemExit:
         assert name in EXITS, f"{name} exited unexpectedly"
     return buffer.getvalue()
