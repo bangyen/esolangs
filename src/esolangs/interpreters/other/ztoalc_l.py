@@ -85,6 +85,14 @@ class _Store:
 type _Effect = _Print | _Store
 
 
+@dataclass
+class _State:
+    """The changing Collatz pointer and alias-preserving variable heap."""
+
+    ptr: int
+    var: dict[str, Value]
+
+
 #: The input port, injected by the shell.  ``input`` is an atom, so a line
 #: may read several times partway through an expression, and the bytes are
 #: taken *as the evaluation reaches them* -- a line that faults after one
@@ -278,8 +286,25 @@ class _Machine:
             raise ValueError("ZTOALC L program cannot be empty")
         self.io = io
         self.code = code
-        self.ptr = int(code[0])
-        self.var: dict[str, Value] = {}
+        self.state = _State(int(code[0]), {})
+
+    @property
+    def ptr(self) -> int:
+        """The current Collatz pointer."""
+        return self.state.ptr
+
+    @ptr.setter
+    def ptr(self, ptr: int) -> None:
+        self.state.ptr = ptr
+
+    @property
+    def var(self) -> dict[str, Value]:
+        """The variable heap, including its live list aliases."""
+        return self.state.var
+
+    @var.setter
+    def var(self, var: dict[str, Value]) -> None:
+        self.state.var = var
 
     @property
     def halted(self) -> bool:
