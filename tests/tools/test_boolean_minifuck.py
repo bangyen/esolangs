@@ -185,7 +185,7 @@ def test_minifuck_single_essential_falls_past_the_degenerate_lookup() -> None:
 def test_minifuck_builds_five_input_xor() -> None:
     """Five-input XOR builds from a staging and prints all 32 rows.
 
-    This is the table the arity turns on.  ``docs/walls.md`` records XOR as
+    This is the table the arity turns on.  ``docs/minifuck_generator.md`` records XOR as
     the four-input table the searches could not build, and at five inputs a
     fully-essential table has no search that reaches it at all -- so a
     result here is a staging result or it is nothing.
@@ -522,7 +522,7 @@ class TestParameterizedMinifuck:
 
         A wall once recorded NAND, NOR and XNOR as unreachable.  It does not
         hold either way round: embedding lifts it, which is what this checks,
-        and ``docs/walls.md`` now also records a *reading* construction
+        and ``docs/minifuck_generator.md`` now also records a *reading* construction
         verifying all sixteen -- the searches behind the original claim were
         length-bounded well below what it needs.
 
@@ -699,7 +699,7 @@ class TestParameterizedMinifuck:
         """XOR4 builds without searching, and computes its function.
 
         Four inputs is the arity the insert family was added for, and XOR is
-        the pointed case: ``docs/walls.md`` records it as the four-input
+        the pointed case: ``docs/minifuck_generator.md`` records it as the four-input
         table the searches fail on.  The searches are stubbed to raise, so a
         table that builds here built from a staging.
 
@@ -786,8 +786,9 @@ class TestParameterizedMinifuck:
 
         Six is the first arity the old ``_MUX_ARITIES = (2, 3, 4, 5)``
         declined, and it declined in **0.000s** -- a configuration gate, not
-        a construction that failed.  ``docs/walls.md`` ("Is ``_mux`` total?")
-        closes all six of the route's refusal sites with arguments carrying no
+        a construction that failed.  ``docs/minifuck_generator.md``
+        ("Is ``_mux`` total?") closes all six of the route's refusal sites
+        with arguments carrying no
         residual ``n``, and the gate is now the floor
         :data:`_MUX_MIN_ARITY`, which only keeps constants and one-input
         projections on the :func:`_degenerate` path.
@@ -1034,10 +1035,10 @@ class TestParameterizedMinifuck:
     def test_five_input_tables_build_and_print_every_row(self) -> None:
         """A five-input table builds through the sculpted route and runs.
 
-        Five-input XOR is the pointed one: ``docs/walls.md`` records it as a
-        table no search here builds at all.  Every row is run on the shipped
-        interpreter, because a template that emits without computing would
-        otherwise pass silently.
+        Five-input XOR is the pointed one: ``docs/minifuck_generator.md``
+        records it as a table no search here builds at all.  Every row is
+        run on the shipped interpreter, because a template that emits
+        without computing would otherwise pass silently.
         """
         import importlib
 
