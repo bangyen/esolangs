@@ -215,6 +215,11 @@ def _split(tokens: list[str], out: list[list[str]]) -> bool:
 #: assigns half-way through and then raises leaves the caller's copy intact.
 type _Vars = Mapping[int, int]
 
+#: Every value a Qoibl statement can change: the variable mapping that
+#: expression evaluation returns and the top-level statement cursor.  The
+#: tokenized program is fixed for a run, while ports stay in the shell.
+type _State = tuple[_Vars, int]
+
 #: What ``et`` and ``tt`` reach.  The ports stay callbacks because a
 #: statement is the unit of execution: an ``rr`` body can read and print any
 #: number of times inside one step, at points that depend on values computed
@@ -370,6 +375,16 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         return (self.ind, tuple(sorted(self.var.items())), self.io.position())
 
+    @property
+    def _state(self) -> _State:
+        """The complete changing state as the evaluator's value boundary."""
+        return (self.var, self.ind)
+
+    def _restore(self, state: _State) -> None:
+        """Write a statement transition's result back onto the shell."""
+        var, self.ind = state
+        self.var = dict(var)
+
     def _parse(self, expr: str | list[str]) -> int:
         """Evaluate one expression, committing what it assigns.
 
@@ -379,16 +394,20 @@ class _Machine:
         are written back in one place.
         """
         tokens = list(expr) if isinstance(expr, list) else [expr]
-        value, var = _eval(tokens, self.var, self.io.input_char, self.io.print_char)
-        self.var = dict(var)
+        value, var = _eval(
+            tokens, self._state[0], self.io.input_char, self.io.print_char
+        )
+        _, ind = self._state
+        self._restore((var, ind))
         return value
 
     def step(self) -> None:
         """Execute one statement, advancing the cursor."""
         if self.halted:
             return
-        tokens = self.code[self.ind]
-        self.ind += 1
+        var, ind = self._state
+        tokens = self.code[ind]
+        self._restore((var, ind + 1))
         if tokens:
             self._parse(tokens)
 

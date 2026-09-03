@@ -41,6 +41,11 @@ _TOKEN = re.compile(r'\[([^\[\]\"]*("[^"]*")?)]')
 #: carrying the list.
 type _Core = tuple[tuple[int, ...], dict[str, int], int]
 
+#: Every value a Modulous step can change: the handler's stack, variables,
+#: and cursor, plus whether ``END`` has stopped the run.  Tokens are parsed
+#: once and never rewritten, while ports and randomness stay in the shell.
+type _State = tuple[_Core, bool]
+
 
 @dataclass(init=False)
 class _Machine:
@@ -100,13 +105,13 @@ class _Machine:
         )
 
     @property
-    def _state(self) -> _Core:
-        """The state's fields as the value the handlers work on."""
-        return (self.stk, self.var, self.ind)
+    def _state(self) -> _State:
+        """The complete changing state, with the handler core inside it."""
+        return ((self.stk, self.var, self.ind), self._halted)
 
-    def _restore(self, core: _Core) -> None:
-        """Write a handler's result back onto the state's fields."""
-        stk, var, self.ind = core
+    def _restore(self, state: _State) -> None:
+        """Write a transition result back onto the machine shell."""
+        (stk, var, self.ind), self._halted = state
         self.stk = stk
         self.var = var
 
@@ -120,16 +125,18 @@ class _Machine:
         """
         if self.halted:
             return
-        mod = self.tokens[self.ind]
+        (stk, var, ind), halted = self._state
+        mod = self.tokens[ind]
         arg = mod.split()
-        self.ind += 1
+        self._restore(((stk, var, ind + 1), halted))
         if not arg:
             return
 
         handler = _DISPATCH.get(arg[0])
         if handler is None:
             if "+" in mod or "-" in mod:
-                self._restore(_var_arith(self._state, mod))
+                core, halted = self._state
+                self._restore((_var_arith(core, mod), halted))
             return
 
         value: str | int | None = None
@@ -141,10 +148,8 @@ class _Machine:
             n = int(_operand(arg, 1))
             if n >= 1:
                 value = draw(self.rng, n)
-        elif arg[0] == "END":
-            self._halted = True
-
-        self._restore(handler(self._state, mod, arg, value))
+        core, halted = self._state
+        self._restore((handler(core, mod, arg, value), halted or arg[0] == "END"))
 
     def _print(self, mod: str, arg: list[str]) -> None:
         """Write what ``PRT`` names: a variable, or the top of the stack."""

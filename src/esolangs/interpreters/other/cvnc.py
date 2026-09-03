@@ -341,7 +341,7 @@ class _InvalidFunctionError(Exception):
 
 #: One instant of a run: ``(accumulator, deque, function, pointer)``.
 #:
-#: A value, not a record: every handler below returns a new core rather
+#: A value, not a record: every handler below returns a new state rather
 #: than editing the one it was handed.  The deque and the function are
 #: tuples for the same reason -- and both are bounded by what the program
 #: has pushed, which no loop grows without also growing the accumulator.
@@ -349,7 +349,7 @@ class _InvalidFunctionError(Exception):
 #: The tokens, the syllable starts, the loop pairs and the offset table
 #: stay out: CV(N)(C) never rewrites its own source, so they are computed
 #: once and handed to the transition.
-type _Core = tuple[int, tuple[int, ...], tuple[str, ...], int]
+type _State = tuple[int, tuple[int, ...], tuple[str, ...], int]
 
 
 def _popped(deque: tuple[int, ...], *, front: bool) -> tuple[tuple[int, ...], int]:
@@ -368,14 +368,14 @@ def _applied(accumulator: int, function: tuple[str, ...]) -> int:
 
 
 def _fricative(
-    core: _Core, token: str, line: str | None, byte: int | None
-) -> tuple[_Core, str | int | None]:
+    state: _State, token: str, line: str | None, byte: int | None
+) -> tuple[_State, str | int | None]:
     """Run one I/O command, reporting anything it prints."""
-    accumulator, deque, function, pointer = core
+    accumulator, deque, function, pointer = state
     if token == _PRINT_NUM:
-        return core, accumulator
+        return state, accumulator
     if token == _PRINT_CHAR:
-        return core, chr(accumulator % 256)
+        return state, chr(accumulator % 256)
     if token == _READ_NUM:
         # The accumulator is unsigned, so a negative line floors at zero,
         # and an empty line (a bare Enter) reads as 0 rather than raising.
@@ -384,9 +384,9 @@ def _fricative(
     return ((byte or 0) % 256, deque, function, pointer), None
 
 
-def _plosive(core: _Core, token: str) -> _Core:
+def _plosive(state: _State, token: str) -> _State:
     """Append to the function, or reset it."""
-    accumulator, deque, function, pointer = core
+    accumulator, deque, function, pointer = state
     if token == _CLEAR_FUNCTION:
         return (accumulator, deque, (), pointer)
     if token in _FUNCTION_SYMBOLS:
@@ -395,9 +395,9 @@ def _plosive(core: _Core, token: str) -> _Core:
     return (accumulator, deque, (*function, str(value)), pointer)
 
 
-def _vowel(core: _Core, token: str) -> _Core:
+def _vowel(state: _State, token: str) -> _State:
     """Modify the accumulator."""
-    accumulator, deque, function, pointer = core
+    accumulator, deque, function, pointer = state
     if token == _INCREMENT:
         accumulator += 1
     elif token == _DECREMENT:
@@ -411,9 +411,9 @@ def _vowel(core: _Core, token: str) -> _Core:
     return (accumulator, deque, function, pointer)
 
 
-def _nasal(core: _Core, token: str) -> _Core:
+def _nasal(state: _State, token: str) -> _State:
     """Push to or pop from the deque."""
-    accumulator, deque, function, pointer = core
+    accumulator, deque, function, pointer = state
     if token == _PUSH_FRONT:
         return (accumulator, (accumulator, *deque), function, pointer)
     if token == _PUSH_BACK:
@@ -423,15 +423,15 @@ def _nasal(core: _Core, token: str) -> _Core:
 
 
 def _approximant(
-    core: _Core,
+    state: _State,
     token: str,
     starts: list[int],
     pairs: dict[int, int],
     offsets: dict[int, int],
     end: int,
-) -> _Core:
+) -> _State:
     """Jump: a goto, a loop test, or a loop end."""
-    accumulator, deque, function, pointer = core
+    accumulator, deque, function, pointer = state
     if token == _GOTO:
         # Past the end is a halt, which running off the end already is.
         pointer = offsets.get(accumulator, end)
@@ -452,7 +452,7 @@ def _approximant(
 
 
 def _advance(
-    core: _Core,
+    state: _State,
     token: str,
     starts: list[int],
     pairs: dict[int, int],
@@ -460,10 +460,10 @@ def _advance(
     end: int,
     line: str | None = None,
     byte: int | None = None,
-) -> tuple[_Core, str | int | None]:
-    """Execute one command, returning the new core and anything it prints.
+) -> tuple[_State, str | int | None]:
+    """Execute one command, returning the new state and anything it prints.
 
-    Pure: it reads ``core`` and returns a new one, and reaches no ``IO``.
+    Pure: it reads ``state`` and returns a new one, and reaches no ``IO``.
     The two reading commands take their input as ``line`` and ``byte``, and
     the two printing ones report what they would write -- an integer for
     ``θ`` and a character for ``f``, which the shell tells apart by type
@@ -474,14 +474,14 @@ def _advance(
     the command's own position in the pair table.
     """
     if token in _FRICATIVES:
-        return _fricative(core, token, line, byte)
+        return _fricative(state, token, line, byte)
     if token in _PLOSIVES:
-        return _plosive(core, token), None
+        return _plosive(state, token), None
     if token in _VOWELS:
-        return _vowel(core, token), None
+        return _vowel(state, token), None
     if token in _NASALS:
-        return _nasal(core, token), None
-    return _approximant(core, token, starts, pairs, offsets, end), None
+        return _nasal(state, token), None
+    return _approximant(state, token, starts, pairs, offsets, end), None
 
 
 class _Machine:
@@ -570,7 +570,7 @@ class _Machine:
         elif token == _READ_CHAR:
             byte = self.io.input_char()
 
-        core, output = _advance(
+        state, output = _advance(
             (self.accumulator, self.deque, self.function, self.pointer),
             token,
             self.starts,
@@ -580,7 +580,7 @@ class _Machine:
             line,
             byte,
         )
-        self.accumulator, self.deque, self.function, self.pointer = core
+        self.accumulator, self.deque, self.function, self.pointer = state
 
         if isinstance(output, int):
             self.io.print_num(output)
