@@ -17,9 +17,9 @@ was handed does not do.  A language that moved its dispatch into a
 module-level function and let it print would pass every existing test.
 
 So this file asks the source-shape question the runtime cannot: which
-module-level functions call an IO effect at all.  The answer today is five,
-in four modules, and every one is deliberate -- there is no drift to fix,
-which is the point.  The sweep is a net that fails when a sixth appears.
+functions call an IO effect outside the public shell.  The answer is a
+closed, deliberate set -- there is no drift to fix, which is the point.
+The sweep is a net that fails when it grows.
 """
 
 import ast
@@ -43,30 +43,55 @@ _INTERPRETERS = pathlib.Path(__file__).resolve().parents[1] / (
 # one module-level function that is *supposed* to reach the ports.
 _IO_OWNER = "run"
 
-# Module-level functions that call an IO effect and are not ``run``.  Each
-# is a documented decision rather than a lapse, and the reason differs:
+# Functions and methods that call an IO effect outside the normal
+# ``run``/``_Machine.__init__``/``_Machine.step`` shells.  Each is a
+# documented decision rather than a lapse, and the reason differs:
 #
 # * ``wii2d.update`` and ``ram0.output`` are effectful *shells* that happen
 #   to sit at module level instead of inside ``step``.  Both are the
 #   module's published shape -- ``update``'s own docstring says so, and it
 #   wraps the pure ``_accumulate`` -- so the transition/shell split is
 #   intact; only its spelling differs.
+# * The private ``_Machine`` helpers below are thin, named parts of
+#   ``step``: they centralize a language's read, write, dump, or builtin
+#   spelling without moving the effect into the transition.  Pinning every
+#   one makes that factoring visible rather than letting a new helper become
+#   an unreviewed second shell.
 # * ``forbin._call`` and MyScript's ``_parse_expr``/``_apply_builtin`` are
 #   documented, nonconforming recursive evaluators.  The template does not
 #   exempt them: a read or write happens part-way down a recursive descent,
 #   so making either pure would require an explicit continuation stack and
 #   ordered I/O effects.  The exceptions stay narrow and visible here until
 #   that architecture earns its risk.
+# * ``_BitReader.read`` and Suptiftam's ``_State._read_cell`` are the same
+#   recursive-evaluation boundary under their owning helper types.
 #
 # Pinned as a set, in both directions, so it cannot quietly grow and cannot
 # go stale -- the same shape as ``RAISES_ON_THE_POST_HALT_STEP``.
 _MAY_REACH_IO = frozenset(
     {
+        ("grid_based/circuit_diagram.py", "_Machine._read_bit"),
+        ("grid_based/flowchart.py", "_Machine._execute"),
+        ("grid_based/flowchart.py", "_Machine._read_bit"),
+        ("grid_based/laserfuck.py", "_Machine.dump"),
         ("grid_based/wii2d.py", "update"),
+        ("other/algebraic_programming_language.py", "_Machine._print"),
+        ("other/algebraic_programming_language.py", "_Machine._read_number"),
+        ("other/fargo.py", "_Machine._builtin"),
+        ("other/fargo.py", "_Machine._read_input"),
+        ("other/forbin.py", "_BitReader.read"),
         ("other/forbin.py", "_call"),
+        ("other/suptiftam.py", "_State._read_cell"),
+        ("other/ztoalc_l.py", "_Machine._apply"),
+        ("queue_based/bitdeque.py", "_Machine.render"),
+        ("register_based/qoibl.py", "_Machine._parse"),
         ("register_based/myscript.py", "_parse_expr"),
         ("register_based/myscript.py", "_apply_builtin"),
         ("register_based/ram0.py", "output"),
+        ("stack_based/modulous.py", "_Machine._print"),
+        ("tape_based/painfuck.py", "_Machine._write"),
+        ("tape_based/sbleq.py", "_Machine.input_byte"),
+        ("tape_based/sbleq.py", "_Machine.output"),
     }
 )
 
@@ -85,7 +110,7 @@ def _io_surface() -> frozenset[str]:
         name
         for cls in (IO, ScriptedIO)
         for name, _ in inspect.getmembers(cls, callable)
-        if not name.startswith("__")
+        if not name.startswith("__") and name != "position"
     )
 
 
@@ -103,30 +128,61 @@ def _module_files() -> list[pathlib.Path]:
     )
 
 
+def _is_io_receiver(node: ast.expr) -> bool:
+    """Whether ``node`` is the ``io`` object an effect is called through.
+
+    A method named ``position`` is not necessarily :meth:`IO.position`:
+    code cursors use the same ordinary word.  The original module-level
+    sweep happened not to see that collision; walking methods makes the
+    receiver part of the question.  Ports are either a local ``io`` or an
+    attribute such as ``self.io``/``reader.io``.
+    """
+    return (isinstance(node, ast.Name) and node.id == "io") or (
+        isinstance(node, ast.Attribute) and node.attr == "io"
+    )
+
+
 def _io_calls(function: ast.FunctionDef, surface: frozenset[str]) -> list[str]:
-    """Return the IO effect methods ``function`` calls, by name."""
+    """Return the IO effect methods ``function`` calls through an IO receiver."""
     return sorted(
         {
             node.attr
             for node in ast.walk(function)
-            if isinstance(node, ast.Attribute) and node.attr in surface
+            if (
+                isinstance(node, ast.Attribute)
+                and node.attr in surface
+                and _is_io_receiver(node.value)
+            )
         }
     )
 
 
 def _reaching_functions() -> dict[tuple[str, str], list[str]]:
-    """Return every module-level non-``run`` function that calls into ``IO``."""
+    """Return every non-shell function or method that calls into ``IO``."""
     surface = _io_surface()
     found: dict[tuple[str, str], list[str]] = {}
     for path in _module_files():
         relative = path.relative_to(_INTERPRETERS).as_posix()
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in tree.body:
-            if not isinstance(node, ast.FunctionDef) or node.name == _IO_OWNER:
-                continue
-            calls = _io_calls(node, surface)
-            if calls:
-                found[(relative, node.name)] = calls
+            if isinstance(node, ast.FunctionDef):
+                if node.name == _IO_OWNER:
+                    continue
+                calls = _io_calls(node, surface)
+                if calls:
+                    found[(relative, node.name)] = calls
+            elif isinstance(node, ast.ClassDef):
+                for method in node.body:
+                    if not isinstance(method, ast.FunctionDef):
+                        continue
+                    if node.name == "_Machine" and method.name in {
+                        "__init__",
+                        "step",
+                    }:
+                        continue
+                    calls = _io_calls(method, surface)
+                    if calls:
+                        found[(relative, f"{node.name}.{method.name}")] = calls
     return found
 
 
