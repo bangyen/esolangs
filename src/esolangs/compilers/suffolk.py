@@ -19,8 +19,13 @@ def count(code: str, ind: int) -> int:
     return num
 
 
-def comp(code: str, num: int) -> str:
-    """Compile a Suffolk program to RISC-V assembly, looping ``num`` times."""
+def comp(code: str, num: int = 1) -> str:
+    """Compile a Suffolk program to RISC-V assembly, looping ``num`` times.
+
+    ``num`` defaults to one so that ``comp(code)`` is callable exactly as
+    every other compiler in this package is; a driver iterating the
+    compilers then needs no special case for this one.
+    """
     code = sub("[^><.,!]", "", code)
     res = (
         "    .text\n"
