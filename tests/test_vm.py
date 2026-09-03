@@ -1103,9 +1103,8 @@ class TestRunUntilHaltOrCycle:
         from esolangs.interpreters.stack_based.modulous import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
-        state = _Machine(var={f"VAR{k}": 0 for k in range(1, 5)}, io=ScriptedIO())
-        state.tokens = ["END"]
-        assert run_until_halt_or_cycle(state) is True
+        machine = _Machine("[END]", ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is True
 
     def test_modulous_looping_run_is_detected_as_a_cycle(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -1113,9 +1112,8 @@ class TestRunUntilHaltOrCycle:
         from esolangs.vm import run_until_halt_or_cycle
 
         # RST resets the pointer to the start of the program on every pass
-        state = _Machine(var={f"VAR{k}": 0 for k in range(1, 5)}, io=ScriptedIO())
-        state.tokens = ["RST"]
-        assert run_until_halt_or_cycle(state) is False
+        machine = _Machine("[RST]", ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is False
 
     def test_laserfuck_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.grid_based.laserfuck import _Machine
