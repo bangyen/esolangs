@@ -38,6 +38,7 @@ the one the frame stack unrolls.
 
 import re
 import sys
+from dataclasses import dataclass
 from typing import Literal, get_args
 
 from esolangs.exceptions import HaltError
@@ -450,13 +451,33 @@ def _advance(frames: _Frames, io: IO) -> _Frames:
     return advanced
 
 
+@dataclass
+class _State:
+    """The root scope and complete call-frame stack of a MyScript run."""
+
+    scope: Scope
+    frames: _Frames
+
+
 class _Machine:
     """One MyScript run: the frame stack, I/O, and the root scope."""
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
-        self.scope = Scope()
-        self.frames: _Frames = (_frame(_block_tree(code), self.scope),)
+        scope = Scope()
+        self.state = _State(scope, (_frame(_block_tree(code), scope),))
+
+    @property
+    def scope(self) -> Scope:
+        return self.state.scope
+
+    @property
+    def frames(self) -> _Frames:
+        return self.state.frames
+
+    @frames.setter
+    def frames(self, frames: _Frames) -> None:
+        self.state.frames = frames
 
     @property
     def halted(self) -> bool:
