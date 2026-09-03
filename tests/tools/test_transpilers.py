@@ -195,17 +195,28 @@ def test_three_d_bf_fuzz_agrees() -> None:
 
 
 def test_painfuck_fuzz_agrees() -> None:
-    """Random terminating brainfuck programs agree through Painfuck."""
+    """Random terminating brainfuck programs agree through Painfuck.
+
+    The skip arm catches only :class:`EOFError` -- a ``,`` drawn against
+    the empty stdin, which the *source* interpreter refuses -- so it can
+    never swallow a rejection by the transpiler itself.  Two thirds of the
+    draws contain such a ``,``, so the run count is asserted rather than
+    assumed: an unasserted skip arm is what lets a fuzz quietly stop
+    exercising the thing it names.
+    """
     rng = random.Random(11)
+    checked = 0
     for _ in range(60):
         # straight-line programs always terminate (loops can run forever)
         program = "".join(rng.choice("+-<>.,") for _ in range(rng.randint(1, 16)))
         try:
             expected = esolangs.run("brainfuck", program)
-        except Exception:
-            continue
+        except EOFError:
+            continue  # ``,`` with no stdin; the source interpreter refuses
         target = esolangs.transpile("brainfuck", "Painfuck", program)
         assert esolangs.run("Painfuck", target) == expected
+        checked += 1
+    assert checked > 15, f"only {checked} programs ran; fuzz is not exercising"
 
 
 @pytest.mark.parametrize(
