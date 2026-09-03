@@ -4,24 +4,65 @@ import importlib
 
 import pytest
 
-COMPILERS = [
-    "esolangs.compilers.bfstack",
-    "esolangs.compilers.home_row",
-    "esolangs.compilers.jaune",
-    "esolangs.compilers.unsquare",
-    "esolangs.compilers.bf_pda",
-    "esolangs.compilers.ram0",
-    "esolangs.compilers.forth",
-]
+from esolangs.registry import COMPILERS as _REGISTERED
+
+# The generic sweep compiles the literal text ``"Hello"``, which is a valid
+# program only in the languages whose surface accepts arbitrary letters.
+# The rest reject it at parse time, so they are excluded here and carry a
+# hand-written class of their own further down instead.
+#
+# Pinned as a set, in both directions, so it cannot quietly grow and cannot
+# go stale -- the same shape as ``_MAY_REACH_IO`` in
+# ``tests/test_interpreter_conventions.py``.  The membership list itself is
+# *derived* from the registry rather than hand-appended: a hand-maintained
+# roster is how ``verify_riscv_unicorn.py`` once let a backend go unverified
+# because nobody remembered to add it, and how ``check_docstrings.py``
+# exempted twelve interpreters behind a hard-coded category tuple.
+#
+# Each entry carries the message its parser refuses ``"Hello"`` with, so the
+# check below pins *why* the compiler is excluded rather than merely that it
+# raises.  A backend that started raising for some unrelated reason would
+# otherwise keep its exemption on a coincidence.
+_REJECTS_PLAIN_TEXT = {
+    "addsubjump": "malformed memory token",
+    "collatz_multiverse": "malformed line",
+    "container": "rule line before any container declaration",
+    "cvnc": "not a CV\\(N\\)\\(C\\) symbol",
+    "decleq": "malformed memory token",
+    "forbin": "expected '{' after function name",
+    "sbleq": "malformed memory token",
+}
+
+COMPILERS = sorted(set(_REGISTERED.values()) - _REJECTS_PLAIN_TEXT.keys())
 
 
 @pytest.mark.parametrize("module", COMPILERS)
 def test_compiler_produces_assembly(module: str) -> None:
     """Each compiler turns a program into RISC-V assembly."""
-    mod = importlib.import_module(module)
-    output = mod.comp("Hello")
+    mod = importlib.import_module(f"esolangs.compilers.{module}")
+    output = str(mod.comp("Hello"))
     assert ".global _start" in output
     assert "Hello" not in output  # source text is compiled, not embedded
+
+
+@pytest.mark.parametrize(("module", "message"), sorted(_REJECTS_PLAIN_TEXT.items()))
+def test_each_excluded_compiler_still_rejects_plain_text(
+    module: str, message: str
+) -> None:
+    """The exclusion list is exact, so it cannot become a stale roster.
+
+    An entry whose compiler grew a surface that *does* accept plain text
+    stops needing the exemption, and should rejoin the sweep above.  Left
+    unchecked the list would slowly fill with names nobody had
+    reconfirmed, which is how an exception set turns into a place a
+    genuinely broken backend hides.
+    """
+    assert module in set(_REGISTERED.values()), (
+        f"{module} is excluded from the sweep but is not a registered compiler"
+    )
+    mod = importlib.import_module(f"esolangs.compilers.{module}")
+    with pytest.raises(ValueError, match=message):
+        mod.comp("Hello")
 
 
 def test_suffolk_compiler() -> None:
@@ -1358,9 +1399,10 @@ class TestCVNCCompiler:
 class TestMyScriptCompiler:
     """MyScript lowers closures, a lexical frame chain, and tagged values.
 
-    Excluded from the ``COMPILERS`` sweep above because that sweep compiles
-    the literal text ``"Hello"``, which MyScript parses as a bare variable
-    read of an undeclared name rather than as a program with output.
+    MyScript is *in* the ``COMPILERS`` sweep above: it parses the sweep's
+    literal ``"Hello"`` as a bare variable read of an undeclared name, which
+    is a legal program that compiles rather than an error.  This class
+    covers the language features that bare read does not reach.
     """
 
     @staticmethod
