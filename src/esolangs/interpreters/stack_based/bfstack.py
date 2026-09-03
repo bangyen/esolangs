@@ -135,8 +135,6 @@ class _Machine:
     above.
     """
 
-    __slots__ = ("code", "io", "size", "state")
-
     def __init__(self, code: str, io: IO) -> None:
         """Start with an empty data stack and loop stack."""
         self.io = io

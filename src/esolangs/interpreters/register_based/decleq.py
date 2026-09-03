@@ -160,8 +160,6 @@ class _Machine:
     current state; the rules themselves are the pure functions above.
     """
 
-    __slots__ = ("io", "state")
-
     def __init__(self, code: str, io: IO) -> None:
         """Parse ``code`` into memory and reset the pointer."""
         self.io = io

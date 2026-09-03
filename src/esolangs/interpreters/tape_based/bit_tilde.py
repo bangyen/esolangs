@@ -155,8 +155,6 @@ class _Machine:
     expose this object.
     """
 
-    __slots__ = ("code", "io", "size", "state")
-
     def __init__(self, code: str, io: IO) -> None:
         """Start with an eight-cell pool at the origin."""
         self.io = io

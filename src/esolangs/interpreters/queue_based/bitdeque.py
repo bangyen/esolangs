@@ -96,8 +96,6 @@ class _Machine:
     object.
     """
 
-    __slots__ = ("io", "size", "state", "tokens")
-
     def __init__(self, code: str, io: IO) -> None:
         """Tokenize ``code`` and reset the register, deque, and cursor."""
         self.io = io

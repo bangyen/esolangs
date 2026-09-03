@@ -218,8 +218,6 @@ class _Machine:
     ``ind`` off it, which the properties below forward to the state.
     """
 
-    __slots__ = ("io", "state")
-
     def __init__(self, code: str, io: IO) -> None:
         """Start with an eight-cell tape at the origin."""
         self.io = io
