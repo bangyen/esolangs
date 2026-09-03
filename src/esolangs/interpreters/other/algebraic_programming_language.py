@@ -73,6 +73,7 @@ needs to prove ``x? = x & x?`` hangs.
 from __future__ import annotations
 
 import sys
+from dataclasses import dataclass
 from typing import Literal
 
 from esolangs.exceptions import HaltError
@@ -602,6 +603,18 @@ class _Frame:
         return f"<frame {self.fn.name} @{self.stmt}>"
 
 
+@dataclass
+class _State:
+    """Every changing value in an Algebraic Programming Language run."""
+
+    defs: dict[str, _Definition]
+    globals: dict[str, object]
+    frames: list[_Frame]
+    line: int
+    pending: _Node | None
+    steps: int
+
+
 class _Machine:
     """The run state: the definitions, the globals, and the call stack.
 
@@ -618,13 +631,44 @@ class _Machine:
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
-        self.defs: dict[str, _Definition] = {}
-        self.globals: dict[str, object] = {}
-        self.frames: list[_Frame] = []
         self.lines = _blocks(code)
-        self.line = 0
-        self._pending: _Node | None = None
-        self._steps = 0
+        self.state = _State({}, {}, [], 0, None, 0)
+
+    @property
+    def defs(self) -> dict[str, _Definition]:
+        return self.state.defs
+
+    @property
+    def globals(self) -> dict[str, object]:
+        return self.state.globals
+
+    @property
+    def frames(self) -> list[_Frame]:
+        return self.state.frames
+
+    @property
+    def line(self) -> int:
+        return self.state.line
+
+    @line.setter
+    def line(self, value: int) -> None:
+        self.state.line = value
+
+    @property
+    def _pending(self) -> _Node | None:
+        return self.state.pending
+
+    @_pending.setter
+    def _pending(self, value: _Node | None) -> None:
+        self.state.pending = value
+
+    @property
+    def _steps(self) -> int:
+        return self.state.steps
+
+    @_steps.setter
+    def _steps(self, value: int) -> None:
+        self.state.steps = value
 
     # -- the VM's language-shaped view --------------------------------
 
