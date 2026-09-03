@@ -194,6 +194,30 @@ A 43% reduction, and at five inputs the same change takes five-input XOR from
 2511 characters to 1174 (53%).  Across the whole 336-table baseline the 61
 mux-route templates shrink 42.1% in total.
 
+**Against the staged route, the sculpted one is the longer build.**  Calling
+both routes directly — `_derive_staging` plus `_replay` for the staging, so
+`_staged`'s fall-through to `_mux` cannot mask a miss — and comparing only
+tables *both* build:
+
+| inputs | overlap | staging mean | mux mean | ratio |
+|---|---|---|---|---|
+| 2 | 16 of 16 | 178 | 234 | 1.33x |
+| 3 | 252 of 256 | 235 | 324 | 1.40x |
+| 4 | 16 of 60 sampled | 296 | 596 | 2.04x |
+| 5 | XOR only | 259 | 1174 | 4.53x |
+
+**The staging is shorter on every table both routes build — 284 of 284** —
+and the gap widens with arity.  These are template lengths, `{Xi}`
+placeholders included; both routes embed each input once at equal width, so
+the comparison is like for like.  The two routes are complementary rather than
+competing: at four inputs the staging placed only 16 of the 60 sampled tables
+where `_mux` placed all 60, which is why `_staged` falls through to it.  `_mux`
+earns its place on coverage, and the shortest-of-all-combinations selection
+above is already inside these numbers.  The four three-input tables the
+staging misses here are artefacts of bypassing dispatch: two of them ignore
+their first input and are taken by the degenerate and projection routes before
+the staging is consulted.
+
 **There is no cheap rule to substitute for measuring.**  The length curve is
 not monotone in the accumulator — sampled tables put their minimum at the
 top, the bottom and the middle — and although the winner clusters high (15 of
@@ -215,8 +239,8 @@ the only one that does:
 
 | lever | result |
 |---|---|
-| shorten the separation prefix | already minimal — 210 characters, and its floor pad is already zero |
-| start the embed further left (smaller row positions ⇒ smaller rewinds) | start 32 is the floor: 30 and below scribble the guarded region, which strands every pool probe |
+| shorten the separation prefix | already minimal — 210 characters, and the right-pad that used to guard the sculpting clearance is gone: it provably could not fire, see below |
+| start the embed further left (smaller row positions ⇒ smaller rewinds) | start 32 is the floor: 30 and below scribble the guarded region, which strands every pool probe.  `_mux_start` now *derives* that floor as `_MUX_BASE - _MUX_GUARD + 1` rather than subtracting a literal |
 | reorder the separation weights so cheap rows sit where the sculpt hits | any order but descending fails to separate at all — the heaviest gadget needs the most headroom |
 | drop the round's trailing `x` | works and is verified 20/20 on the interpreter, but saves 1 character per round (594 → 589, 0.8%) and spends the `_FLIP` guard that keeps a cascade from eating the next instruction; not taken |
 
@@ -592,6 +616,15 @@ compounds them exactly:
 measured linear for `k` of 1 to 8 with no row dying.  So arbitrary integer
 weight is constructible, and positional weighting is expressible.
 
+**The displacement law is right; the reading of it below is superseded.**  The
+gadget does not re-read one restored bit `k` times — the bit gates entry to a
+leftward walk that consumes one cell of wake per read, so linearity lasts only
+as long as the wake and the law is an inequality in disguise.  The totality
+section later in this file derives the correct mechanism and shows why no
+gadget at any arity runs out.  Kept as written because "measured linear over
+the range every shipped arity uses" is exactly the kind of true statement that
+hides a false explanation.
+
 **What was wrong.**  The old sweep swept *gaps 1 to 3*, and a weight-`k`
 gadget writes up to `k − 3` cells left of its setter — so at `k >= 4` every
 gadget in that sweep reached back into the previous one's cells **by
@@ -652,7 +685,274 @@ through `_mux` and print all 32 rows correctly on the shipped interpreter —
 five-input XOR among them, the table this file records as one no search here
 builds at all — at about 0.14s each.  The arity is **not closed**: 200 is a
 sample of 4294642034, and what is claimed is that no sampled table failed,
-not that none can.
+not that none can.  **That last sentence is superseded by the section below**,
+which closes the arity by argument rather than by sample; it is kept because
+the sampling result is still what the claim rested on when the route shipped.
+
+#### Is `_mux` total?  Every refusal site closes by argument
+
+The arity tuple is a **verification gate, not a structural cap**.  Nothing in
+the construction reads `n` except `_mux_weights`, `_mux_pad` and `_mux_start`,
+all closed forms defined for every `n`; with the gate bypassed, XOR builds at
+every arity tried through seven — 243, 429, 622, 2511, 9565 and 39915
+characters at `n` of 2 to 7, six combinations tried each.  Six builds at
+`n` of 5, 6 and 7 (XOR and random tables) were instantiated per row and run on
+the shipped interpreter: **448 of 448 rows correct**.
+
+`_mux` never raises, so *total* means exactly "no `None`-site fires".  There
+are six such sites, and the failure surface is therefore finite.  A table also
+needs only **one** `(acc, cell7, direct)` combination to succeed, so a witness
+argument suffices.
+
+The whole chain rests on one atom.  From a skip-free state `'[x'` advances the
+pointer, flips the cell, conditionally flips the neighbour, and **never leaves
+a skip pending** — exhaustive over all four `(cell, neighbour)` states.  From
+it: no round begins with a pending skip (walks and pads are `[x` runs, setter
+fills are `[<`/`xx`, `_mux_weight` ends in `<`, rounds end in `x`); a round's
+`'<'*R + '[x'*R + 'x'` moves `−R` then exactly `+R`, so **every pointer is
+restored**; and a row at `q` writes only within `[q−R+1, q+1]`, whose low end
+is at least 9 because the guard gives `R <= min(ptrs) − 8`.  **Cells 0..8 —
+the pool `tape[:8]` and cell 7 — are therefore frozen after the initial
+walk.**  Instrumented over 670 rounds: no pending skips, no pointer movement,
+and the lowest cell ever written is exactly 9.
+
+**Separation (site 2) is injective, uniformly in `n`.**  The final pointer is
+`c0 − sum_i 2**(n−1−i) * x_i`, verified in the real emission context for `n`
+of 2 to 8: all `2**n` rows distinct, no row dead.  **The mechanism the source
+states for this is wrong**, and finding out why is what turned the arity
+residue into a proof; see the subsection below.
+
+**The weight gadget gates a walk; it does not re-read the bit.**  The
+docstring says `[x<[<` "moves the pointer by the bit's value and puts the cell
+back, so the bit can be read again", and that `k` such reads displace by `k`
+times the bit.  The contract is right and the mechanism is not.  Exhaustively
+over every local configuration, one read followed by the rewinding `<` moves
+**−1 if the cell at `ptr+1` reads 1 and 0 otherwise**, restoring that cell and
+leaving no skip.  So the setter's bit only *gates entry*: a `bit = 1` row
+starts walking left and each further read consumes **one cell of the walk's
+wake**, while a `bit = 0` row never starts.  Probed on a blank tape the gadget
+therefore stalls after a single read — displacement −1 whatever `k` is — which
+is not staleness but simply that there is no wake to consume.
+
+This matters because it converts the gadget's linearity from a measurement
+into an inequality.  The gadget is linear exactly while the wake lasts, so it
+saturates at `k > start + 1`: at four inputs, where `start = 31`, the spread
+climbs with `k` to 32 and is pinned at 32 for every larger `k`.  The 32 is not
+a constant of the language — it is that arity's own starting cell.
+
+**So the first gadget never saturates, for any `n`.**  It needs
+`k = 2**(n-1)` and has `start + 1` cells of wake, and
+`_mux_start(n) = 32 + max(0, 2**(n-1) - 9)` gives
+
+* `n <= 4`: `start + 1 = 33` against `k <= 8`;
+* `n >= 5`: `start + 1 = 24 + 2**(n-1)` against `k = 2**(n-1)`.
+
+The margin is **exactly 24 cells at every arity from five up** — independent of
+`n`, which is what `_mux_start`'s `- 9` term is buying.
+
+**And no later gadget can saturate either**, because each one's territory lies
+strictly right of its predecessor's.  Writing `E_i` for the pointer entering
+gadget `i` and `L_i = E_i - k_i` for its leftmost reach: a `bit = 1` row loses
+`k_i` and the following pad walk restores `k_i + pad`, so `E_{i+1} >= E_i +
+pad`, while `k_{i+1} = k_i / 2`.  Hence
+
+    L_{i+1} - L_i  >=  pad + k_i / 2  >  0
+
+for every `i` and every `n` — **the halving weights are what guarantee it**.
+Each gadget therefore consumes wake laid down by a pad walk over cells that
+row has never touched, and a `[x` run over pristine zeros leaves solid ones.
+(A `[x` run over *junk* does not: it leaves ones only from a zero tape, which
+is why the non-overlap is load-bearing rather than decorative.)  Verified per
+row and per gadget: no path cell reads anything but 1, at every arity from two
+to ten, and the separation stays affine and injective at eleven and twelve
+inputs — 2048 of 2048 and 4096 of 4096 distinct pointers, no dead row.
+
+**The reusable lesson.**  A contract can be measured true for years while the
+mechanism named beside it is false, and the two only come apart when someone
+needs the mechanism.  "Measured linear for `k` of 1 to 8" was true, and every
+shipped arity was inside the region where it holds; the explanation attached
+to it would have predicted linearity on a blank tape, where the gadget in fact
+stalls at one cell.  What made the difference was asking *why* the number was
+what it was, rather than extending the range it had been checked over.
+
+**The rewind guard (site 4) can never fire.**  The accumulator loop starts at
+`hi − lo + 9`, and there the worst rewind is
+
+    hi − (hi − lo + 9) + 1  =  lo − 8
+
+which *is* the guard `min(ptrs) − 8`; larger accumulators only shrink the
+rewind, and pointers never move, so `min(ptrs)` stays `lo`.  An algebraic
+identity, independent of `n` and of the weights, checked at `n` of 2 to 9
+(25/25, 27/27, 35/35, 62/62, 126/126, 270/270, 590/590, 1294/1294).  The
+"margin reaches 0" comment in the source is this identity seen from the
+inside: it is tight by construction rather than by luck.
+
+**The round cap (site 5) suffices.**  The probe clamps every row to `ptr = 0`
+and walks to a converged pointer, so a "column" is one fixed cell index read
+across the rows — measured, exactly one index (cell 24) over a whole build —
+and not each row's own `q+1`.  Given that, monotonicity is geometric.  A round
+uses `R = f − acc + 1`, so a row at `q` has window low end `q − f + acc`; for
+`q > f` that exceeds `acc`, and cascades write `cell+1`, so **both write
+mechanisms miss the read cell**.  Since `acc < lo <= q`, the window contains
+`acc` **iff `q <= f`**: rows above the frontier cannot change (0 violations
+over 4128 row-round pairs).  And the frontier's own read cell always flips,
+because the walk lands on `q − R + 1` first while every cascade writes
+`cell+1` and the walk never *lands* on `q − R` — so nothing reaches that cell
+twice.  Exhaustive for `R` of 1 to 8 over every window configuration, and 0
+failures over random and hostile all-ones tapes to `R = 128`.  Each round
+therefore fixes its frontier permanently and the frontier strictly decreases,
+so at most `2**n` rounds are needed under a cap of `2**n + 4` (measured: 0
+non-monotone events, 232 of 232 frontier flips, at most 40 rounds used against
+a cap of 68 at six inputs).
+
+The tempting shortcut here is *false* and is worth recording as such: cell
+`acc−1` is 1 in 104 of 207 rounds, so its cascade does fire.  It simply lands
+after the walk has already flipped `acc`, and cannot undo it.
+
+**Pool coverage (site 3) closes too, and uniformly in `n`.**  `_pool_reaches`
+reads cells 0..7 after walking out, plus the pointer, skip and dead gates.
+Three facts collapse it to a single execution:
+
+* *The probe state is canonical.*  Cells 0..8 are frozen, `_mux_probe` emits
+  `x` (absorbing any pending skip) and then clamps, and `<` never writes — so
+  every probe state is `ptr = 0`, `skip` clear, `dead` clear, with the same
+  frozen prefix.  That prefix is `(0,1,1,1,1,1,1,1,1)`: **one value, identical
+  across every row and every arity from two to nine inputs**, because it is
+  the wake of the initial `[x` walk over a blank tape and `_mux_start(n)` is
+  at least 32 for all `n`.
+* *The code never looks past the frozen region.*  The shipped winner
+  `[<[<[<<[[[<[[<<<` walks the trajectory
+  `1 1 2 1 2 2 1 2 3 4 4 5 6 6 5 4` — **maximum cell 6**, comfortably inside
+  cells 0..8.  It therefore cannot see a round's debris at all, and the rows
+  cannot diverge, so `len({m.ptr}) != 1` cannot fire either.
+* *Neither remaining gate can fire.*  No pool code contains `.`, and `.` is
+  the only instruction that sets `dead`; every code ends in a `<` run, and `<`
+  never sets `skip`.
+
+So the verdict is a function of the frozen prefix and `cell7` alone, which
+makes one execution per orientation an **exhaustive** check rather than a
+sample: `True` at `cell7 == 0`, verified identically at four, five, six and
+seven inputs.  Measured the long way round first, and agreeing: over every
+reachable probe state (93 at four inputs, 168 at five) the verdict never
+varied, and over 1426 probe calls at four, five and six inputs there were no
+`None` returns, with exactly one of the five codes ever selected.
+
+The witness is that one orientation.  A code answers `cell7 == 0` or
+`cell7 == 1` and never both, so the `cell7 == 1` arm of the sweep contributes
+nothing to existence — the claim is precisely that **at `cell7 == 0` a code
+always reaches**, which is all a totality witness needs.  The `_walk_to`
+sub-case cannot raise: `_pool_reaches` accepts a code only after checking its
+pointer is converged, and that check precedes the emit.
+
+One step is needed to carry this to the real emission, which walks to the
+caller's accumulator rather than to nine: `_endgame` asks `_find_pool` for
+`acc − 1`, while the probe above settles the verdict at `_PROBE_WALK_OUT`.
+The source records the two agreeing as a measurement over walk-outs 9 to 41.
+It is a **corollary of the `[x` atom**: the pair's pointer step is
+value-independent and its cascade writes `cell + 1`, strictly rightward, so
+once a walk has crossed cell 8 no later step of it can reach back into cells
+0..7 — and those are the only cells the verdict reads.  The verdict is
+therefore identical for every walk-out of nine or more, whatever debris the
+walk crosses.  Site 6 closes given
+site 3, because the sculpt's exit test and `_try_print` go through the same
+pool-walk-read path, so column agreement implies a correct print.
+
+**So all six sites close, and `_mux` is total at every arity.**  The `[x`
+atom, skip cleanliness, pointer restoration and write confinement are finite
+case analyses; the rewind identity is algebra; the round cap is window
+geometry plus the single-flip lemma; site 3 is the canonicity argument; and
+the separation is affine injectivity resting on the two saturation bounds
+derived above.  None of them carries a residual `n`.
+
+**The three quantities that were per-arity measurements now have `n`-uniform
+arguments**, which is what closes the arity question rather than deferring it:
+
+* *The separation leaves `2**n` distinct pointers.*  Affine injectivity gives
+  this once every gadget is linear, and both saturation cases are ruled out
+  above — the first gadget by the constant 24-cell margin, the rest by the
+  strict non-overlap `L_{i+1} - L_i >= pad + k_i / 2`.
+* *The frozen prefix is `(0,1,1,1,1,1,1,1,1)`.*  It is the wake of `_walk_to`
+  over a blank tape, which lays a one at each cell it crosses and never
+  returns, so cells 0..8 reach that value after **eight** `[x` pairs and never
+  change again.  Every arity's walk is at least 31 pairs — `_mux_start(n) - 1`
+  is 31 at its smallest and grows — so every arity gets the same prefix.
+* *The pool code's trajectory peaks at cell 6.*  Its execution reads only cells
+  0..8, which the previous point fixes to a single value, so the trajectory is
+  the same computation at every arity, not a coincidence repeated per arity.
+
+None of the three depends on the truth table, so one argument settles all
+`2**(2**n)` tables at every arity at once.  `_mux_separate` still runs the
+distinctness check at emission time, which now serves as a guard rather than
+as the thing the claim rests on: were a future change to break linearity, the
+construction refuses instead of emitting a wrong program.
+
+Everything measured agrees: all 16 tables at two inputs and all 256 at three,
+92 of 92 random tables at four, five and six, no refusal anywhere, and 448 of
+448 rows correct on the shipped interpreter at five, six and seven.  The
+binding constraint is cost rather than expressiveness, template length growing
+about fourfold per arity (a rewind costs `3K+1` characters with `K` on the
+order of the `2**n` span, across up to `2**n` rounds).
+
+**`_MUX_ARITIES` is therefore a verification boundary and nothing more.**
+Widening it needs no new construction and no new check: the three arguments
+above hold at every `n`.  What a wider tuple would still owe is *execution* —
+the arguments say the construction cannot refuse, and this repository's
+standing rule is that a claim about a generated program is worth what its run
+on the shipped interpreter is worth.
+
+#### What the proof did to the constants
+
+Working out *why* each number was what it was collapsed several of them, and
+the module now derives what it used to spell.
+
+**One root explains a family of six.**  ``.`` reads ``tape[:8]`` as a byte, so
+the pool is eight cells wide, and from that follow the accumulator floor
+(``_endgame`` refuses ``acc < _POOL_WIDTH``), the sculpting rewind guard, the
+lowest cell a round may write, ``_PROBE_WALK_OUT``, the sculpting accumulator
+loop's start, and the staging route's five accumulator loops, which were
+reaching for the same quantity with a literal ``9`` beside a named upper
+bound.  The load-bearing pair is the guard and the loop start: the loop
+beginning *one past* the guard is exactly what makes the rewind bound tight,
+and written as bare ``8`` and ``9`` that identity reads as coincidence.
+
+**The embed's offset is pinned, not chosen.**  ``_mux_start`` subtracted a
+literal 9, which looked like a tuning; every offset builds and larger ones are
+*shorter* -- 1443, 1431, 1419, 1407, 1395, 1383 characters at five inputs for
+offsets 3 through 13 -- so length is not what stops the count rising.  The
+guard is.  The separation's leftmost write tracks the offset cell for cell and
+lands one clear of ``_MUX_GUARD`` at exactly 9; one more puts it on cell 22
+and ``_mux_intact`` fails, at five and six inputs alike.  So the shipped value
+is the *shortest legal* start, now spelled ``_MUX_BASE - _MUX_GUARD + 1``.
+The arithmetic behind it is worth stating because it explains a number that
+otherwise looks arity-dependent and is not: the setter lays its bit at the
+start cell and a weight-``k`` gadget reaches ``k - 2`` cells left of it, so
+the leftmost write is ``_MUX_BASE - offset + 2`` -- the ``2**(n-1)`` cancels,
+which is why that write sits at cell 25 for every arity rather than drifting.
+
+**One branch was provably dead and is gone.**  ``_mux_separate`` used to pad
+right when the lowest pointer sat too close to the span.  The lowest pointer
+is ``start + (n-1) * (pad + 1) - 1`` against a span of ``2**n - 1``, and with
+``pad + 1 = 2**(n-2)`` the clearance is ``2**(n-2) * (n-5)`` past a constant
+-- 30, 28, 28, 39, 71 and 151 cells at two through seven inputs, growing
+without bound.  It could not fire at any arity.
+
+Removing it was safe for a *second* reason, and the distinction is the
+reusable part: **the two consumers of ``min(q)`` fail closed.**  A lowest
+pointer too near the span empties the accumulator range or trips the rewind
+guard, so ``_mux`` returns None and ``_solve`` raises.  A future weighting
+that closed the gap would be refused, never silently mis-emitted.  That is
+what separates this branch from the module's other unfired guards, which stay:
+those exist so a broken construction refuses instead of emitting a wrong
+program, and this one had nothing left to protect.
+
+**What is left is genuinely free.**  ``_BASE``, the ``+16`` in ``_MUX_BASE``,
+``_SPAN`` and ``_MUX_GUARD``'s scratch width are choices rather than
+consequences -- and ``_MUX_GUARD`` in particular has to stay a literal, since
+``_mux_start`` is derived *from* it.  ``_MAX_BRACKETS`` and ``_MAX_ACC`` are
+measured maxima where a trim costs coverage.  The rest are strings and
+enumeration catalogues.  Deriving those from a root would encode a measured
+choice as a theorem, which is the failure the ``_mux_weight`` docstring
+already demonstrates.
 
 **The reusable lesson.**  A sweep whose parameter range makes its units
 overlap measures the overlap, not the units.  Both the "shift-invariance"
