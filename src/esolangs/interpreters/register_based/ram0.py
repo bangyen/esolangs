@@ -65,17 +65,6 @@ type _Ram = tuple[tuple[int, int], ...]
 type _State = tuple[int, int, int, _Ram, bool]
 
 
-def output(z: int, n: int, ram: dict[int, int], io: IO) -> None:
-    """Print the current state of all registers and RAM memory."""
-    res = f"z: {z}\nn: {n}\nram: {{"
-
-    for x, y in ram.items():
-        res += f"\n    {x}: {y},"
-    if ram:
-        res = res[:-1] + "\n"
-    io.print_str(res + "}")
-
-
 def _stored(ram: _Ram, addr: int, value: int) -> _Ram:
     """Return ``ram`` with ``addr`` set to ``value``, in insertion order.
 
@@ -232,6 +221,15 @@ class _Machine:
         ind, z, n, ram, _dumped = self.state
         return (ind, z, n, frozenset(ram))
 
+    def _dump(self, z: int, n: int, ram: _Ram) -> None:
+        """Print the final registers and RAM in their insertion order."""
+        rendered = f"z: {z}\nn: {n}\nram: {{"
+        for addr, value in ram:
+            rendered += f"\n    {addr}: {value},"
+        if ram:
+            rendered = rendered[:-1] + "\n"
+        self.io.print_str(rendered + "}")
+
     def step(self) -> None:
         """Execute one token, dumping the state once the cursor runs off.
 
@@ -243,7 +241,7 @@ class _Machine:
         ind, z, n, ram, dumped = self.state
         if ind >= self.size:
             if not dumped:
-                output(z, n, dict(ram), self.io)
+                self._dump(z, n, ram)
                 self.state = (ind, z, n, ram, True)
             return
         self.state = _advance(self.state, self.tokens[ind])
