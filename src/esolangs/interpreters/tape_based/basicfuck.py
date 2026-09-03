@@ -482,15 +482,6 @@ class _Machine:
         # in as it stands rather than being unpacked field by field.
         return (self.cells, self.frames, self.io.position())
 
-    @property
-    def _state(self) -> _State:
-        """The machine's fields as the value the transition works on.
-
-        No copying: both are already the immutable values the transition
-        returns, so this is a read rather than a conversion.
-        """
-        return (self.cells, self.frames)
-
     def step(self) -> None:
         """Execute one instruction of the active frame.
 
@@ -507,7 +498,7 @@ class _Machine:
         if self.halted:
             return
 
-        cells, frames = _finalize(self._state)
+        cells, frames = _finalize((self.cells, self.frames))
         byte = None
         if frames:
             prog, ptr, _, _, _, _ = frames[-1]

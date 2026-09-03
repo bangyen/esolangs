@@ -258,8 +258,7 @@ class _Machine:
         the tests read them -- so they stay; the one assignment a step
         makes is here rather than scattered through the rules above.
         """
-        queue, self.ind = state
-        self.queue = queue
+        self.queue, self.ind = state
 
     def step(self) -> None:
         """Execute one token, advancing the cursor.

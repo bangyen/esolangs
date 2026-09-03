@@ -404,9 +404,7 @@ class _Machine:
         all five -- so they stay; the one assignment a step makes is here
         rather than in the rules above.
         """
-        tape, loop, self.ptr, self.ind, self.rep = state
-        self.tape = tape
-        self.loop = loop
+        self.tape, self.loop, self.ptr, self.ind, self.rep = state
 
     def step(self) -> None:
         """Execute one command, advancing the cursor.
