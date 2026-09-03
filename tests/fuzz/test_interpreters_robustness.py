@@ -46,7 +46,7 @@ def _empty_machine(module: str, io: IO) -> object:
     if module == "esolangs.interpreters.tape_based.sbleq":
         from esolangs.interpreters.tape_based.sbleq import _Machine
 
-        return _Machine(io=io, mem=[])
+        return _Machine(io=io, mem=())
     if module == "esolangs.interpreters.tape_based.dimensional":
         from esolangs.interpreters.tape_based.dimensional import _Machine
 

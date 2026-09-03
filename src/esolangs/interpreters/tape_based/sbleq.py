@@ -140,7 +140,7 @@ class _Machine:
         return cls(io=io, mem=tuple(_parse(code)), store=store)
 
     def __post_init__(self) -> None:
-        """Freeze the memory, and reject an undocumented store target.
+        """Reject an undocumented store target.
 
         ``step`` tests ``store in ("ab", "b")``, so any other spelling --
         ``"A"``, ``""``, a typo -- silently ran the *base* language instead
@@ -148,17 +148,14 @@ class _Machine:
         error, so the set is checked once here, where it applies however the
         machine is constructed rather than only through :func:`run`.
 
-        ``mem`` is coerced for the same reason.  It is a tuple because
-        ``snapshot`` hands it out and the cycle detector hashes it, and a
-        caller building the machine directly -- as the tests do -- would
-        otherwise pass a list and make the snapshot unhashable.  The one
-        conversion here replaces the ``tuple(self.mem)`` that used to run
-        on every snapshot.
+        ``mem`` needs no coercion to go with it: the annotation is the
+        contract, and every caller keeps it.  ``snapshot`` hands the field
+        out for the cycle detector to hash, so a list would make the
+        snapshot unhashable -- which is why the declared tuple is what
+        callers pass rather than something converted on the way in.
         """
         if self.store not in _STORES:
             raise ValueError(f"unknown store target: {self.store!r}")
-        if not isinstance(self.mem, tuple):
-            self.mem = tuple(self.mem)
 
     @property
     def halted(self) -> bool:
