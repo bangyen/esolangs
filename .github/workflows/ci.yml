@@ -42,6 +42,21 @@ jobs:
     - name: Run pre-commit
       run: uv run pre-commit run --all-files
 
+    # These three each walk a source directory and fail on anything missing
+    # from the registry or departing from a signature convention, rather
+    # than trusting a hand-written list to be complete -- see verify.py's
+    # own docstring check step for why that distinction matters: a category
+    # tuple once omitted two of six interpreter directories, and the gate
+    # reported "all conventions followed" while silently skipping them.
+    - name: Check interpreter docstrings
+      run: uv run python scripts/check_docstrings.py
+
+    - name: Check compiler conventions
+      run: uv run python scripts/check_compilers.py
+
+    - name: Check generator conventions
+      run: uv run python scripts/check_generators.py
+
     # pre-commit's mypy hook is scoped to src/ because its isolated env
     # lacks the scripts' imports; this run covers src/ and scripts/ both,
     # using the project env where those imports resolve.
