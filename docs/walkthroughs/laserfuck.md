@@ -1,14 +1,13 @@
 # Annotated walkthrough: LaserFuck (a 2D language)
 
 `LaserFuck` is a grid: a laser starts at `o` and travels in its current
-heading.  Cells along the way act as commands — `+`/`-` adjust the current
-tape cell, `.` would print it (in this interpreter the whole tape prints
-when the laser dies), `\`/`/` are mirrors that reflect the laser, `v`
-points it down, and any non-command character is a no-op.  The first grid
-cell `\xff` selects byte output mode.  The laser's *initial* heading is
-chosen randomly, so a funnel of `|`/`^`/`}` around `o` routes 3 of the 4
-possible headings onto the top row moving right (the fourth, down, runs
-off the bottom edge before touching the tape).
+heading (full semantics in the interpreter docstring). This example uses
+just `+` (increment the current tape cell), `v`/`\` (turn the laser down /
+reflect it), and `.`, which in this interpreter is a no-op — the whole tape
+prints only when the laser dies. The laser's *initial* heading is chosen
+randomly, so a funnel of `|`/`^`/`}` around `o` routes 3 of the 4 possible
+headings onto the top row moving right (the fourth, down, runs off the
+bottom edge before touching the tape).
 
 ## The program
 
@@ -24,10 +23,6 @@ runs off the bottom edge, which kills it. The `\` at row 2, column 69 is
 never reached — the beam is one column to its left the whole way down.
 Killing the last laser triggers the tape dump, which prints byte 65 as
 `A`.
-
-The laser's initial heading is chosen at random, so this program has no
-single reproducible trace; the funnel above exists to absorb that, and the
-trace below assumes the heading it routes to the top row.
 
 ## Step by step
 

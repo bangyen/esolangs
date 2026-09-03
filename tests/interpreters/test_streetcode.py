@@ -760,12 +760,13 @@ class TestStreetcodeLaneMerge:
 class TestStreetcodeCountingLoop:
     """A counting loop: a ring the car laps under the control of a cell.
 
-    ``docs/streetcode.md`` recorded that no such geometry had been found --
-    every attempt leaked, because a junction on the ring offered the wrong
-    roads and steered the car off it.  This one works, and the rules that
-    make it work (a road must be two cells deep, a turn may not enter the
-    oncoming lane, a junction reads the cell as the car arrives) are pinned
-    individually above; this is the end-to-end program.
+    Such a geometry is easy to get wrong: a junction on the ring can offer
+    the wrong roads and steer the car off it, leaking out of the lap.  This
+    one works, and the rules that make it work (a road must be two cells
+    deep, a turn may not enter the oncoming lane, a junction reads the cell
+    as the car arrives) are pinned individually above; this is the
+    end-to-end program.  See "The counting loop" in ``docs/streetcode.md``
+    for the two ring invariants a future change must not violate.
     """
 
     def _code(self) -> list[str]:

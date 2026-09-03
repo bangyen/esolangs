@@ -1,13 +1,9 @@
 # Annotated walkthrough: AddSubJump (an OISC)
 
-`AddSubJump` is a one-instruction-set computer: its only instruction is
-`ASJ a b c d`, meaning "if the cell `*d` is positive then `*a -= *b`, else
-`*a += *b`; then go to `*c`".  The source is a flat list of integers that
-serves as both the program and its own memory: the instruction at address
-`ip` is the four cells `memory[ip]..memory[ip+3]`.  A few addresses are
-special: `-1` is I/O (writing to it prints a byte), `-6`/`-7`/`-8` are the
-constants `1`/`0`/`-1`, and jumping to any special address halts the
-program.
+`AddSubJump`'s only instruction is `ASJ a b c d` (full semantics in the
+interpreter docstring). This example uses just three special addresses:
+`-1` is I/O (writing to it prints a byte), `-7`/`-8` are the constants
+`0`/`-1`, and jumping to any special address halts the program.
 
 ## The program
 
