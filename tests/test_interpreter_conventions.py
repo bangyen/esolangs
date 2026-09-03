@@ -47,11 +47,6 @@ _IO_OWNER = "run"
 # ``run``/``_Machine`` shells.  Each is a documented decision rather than a
 # lapse, and the reason differs:
 #
-# * ``wii2d.update`` and ``ram0.output`` are effectful *shells* that happen
-#   to sit at module level instead of inside ``step``.  Both are the
-#   module's published shape -- ``update``'s own docstring says so, and it
-#   wraps the pure ``_accumulate`` -- so the transition/shell split is
-#   intact; only its spelling differs.
 # * ``forbin._call`` and MyScript's ``_parse_expr``/``_apply_builtin`` are
 #   documented, nonconforming recursive evaluators.  The template does not
 #   exempt them: a read or write happens part-way down a recursive descent,
@@ -65,13 +60,11 @@ _IO_OWNER = "run"
 # go stale -- the same shape as ``RAISES_ON_THE_POST_HALT_STEP``.
 _MAY_REACH_IO = frozenset(
     {
-        ("grid_based/wii2d.py", "update"),
         ("other/forbin.py", "_BitReader.read"),
         ("other/forbin.py", "_call"),
         ("other/suptiftam.py", "_State._read_cell"),
         ("register_based/myscript.py", "_parse_expr"),
         ("register_based/myscript.py", "_apply_builtin"),
-        ("register_based/ram0.py", "output"),
     }
 )
 
