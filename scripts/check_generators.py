@@ -1,7 +1,8 @@
 """Check that the generators keep to their two documented signatures.
 
-The text and boolean generators are already uniform -- 48 text generators
-take ``(text)`` and 66 of 68 boolean ones take ``(truth_table)``.  This
+The text and boolean generators are already uniform -- of the names the
+two packages export, 46 text generators take ``(text)`` and 67 boolean
+ones take ``(truth_table)`` or are allowlisted below.  This
 check exists to keep them that way, because a convention nothing enforces
 is not a convention: this repo has been bitten before by a documented
 class that turned out not to hold.

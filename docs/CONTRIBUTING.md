@@ -95,7 +95,9 @@ still on the table.
 - `src/esolangs/compilers/` — RISC-V backends, one module per language, each
   exposing `comp(code)` returning assembly.  Any further parameter needs a
   default, so a driver iterating the compilers needs no special case.  The
-  `__main__` block delegates to `_riscv_common.main`, printing to stdout.
+  `__main__` block delegates to `_riscv_common.main`, printing to stdout
+  (Suffolk keeps its own block, since its CLI takes an optional loop count,
+  but prints the same way).
   Register the module on its `Language` entry (`compiler="<module>"`) —
   `scripts/check_compilers.py` fails on a backend that is not registered.
 - `src/esolangs/registry.py` — the single source of truth: which languages
