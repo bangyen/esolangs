@@ -310,7 +310,7 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
     a construction disagreeing with the runner's -- were absorbed by the
     ``of``/``rng`` handling below, so no per-language code is left.
     """
-    module_path, split, _ = RUNNERS[language]
+    module_path, split = RUNNERS[language]
 
     class _Derived(_DelegatingVM):
         def __init__(self, program: str, stdin: str = "") -> None:

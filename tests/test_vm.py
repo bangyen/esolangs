@@ -1351,7 +1351,7 @@ class TestEveryLanguageIsSteppable:
         from esolangs.registry import RUNNERS
 
         without: list[str] = []
-        for language, (module_path, _split, _kwargs) in sorted(RUNNERS.items()):
+        for language, (module_path, _split) in sorted(RUNNERS.items()):
             module = importlib.import_module(f"esolangs.interpreters.{module_path}")
             state = getattr(module, "_Machine")  # noqa: B009
             if not hasattr(state, "step"):

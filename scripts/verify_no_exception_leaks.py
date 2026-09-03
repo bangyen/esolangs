@@ -157,7 +157,7 @@ from _scope import changed_files as _changed_files
 
 
 def _select(
-    langs: list[str], runners: dict[str, tuple[str, bool, dict[str, int]]]
+    langs: list[str], runners: dict[str, tuple[str, bool]]
 ) -> tuple[list[str], str]:
     """Return the languages worth sweeping, and why that set was chosen."""
     changed = _changed_files()

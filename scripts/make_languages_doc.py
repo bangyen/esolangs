@@ -243,7 +243,7 @@ def render_languages_section() -> str:
         "",
     ]
     groups: dict[str, list[str]] = {prefix: [] for prefix, _, _ in _README_HEADINGS}
-    for name, (module, _, _) in RUNNERS.items():
+    for name, (module, _) in RUNNERS.items():
         groups[module.split(".")[0]].append(name)
 
     for prefix, heading, description in _README_HEADINGS:

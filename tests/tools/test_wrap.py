@@ -125,7 +125,7 @@ def _run(name: str, program: str) -> str:
     argument = program.splitlines() if lang.split else program
     buffer = io.StringIO()
     with redirect_stdout(buffer), suppress(SystemExit):
-        run(argument, io=IO(), **dict(lang.kwargs))
+        run(argument, io=IO())
     return buffer.getvalue()
 
 

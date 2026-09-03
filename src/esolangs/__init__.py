@@ -92,13 +92,13 @@ def run(
     if timeout is not None and timeout <= 0:
         raise ValueError(f"timeout must be positive, got {timeout}")
     try:
-        module, split, kwargs = RUNNERS[language]
+        module, split = RUNNERS[language]
     except KeyError:
         raise UnknownLanguageError(language) from None
     run_fn = importlib.import_module("esolangs.interpreters." + module).run
     io_obj = ScriptedIO(stdin)
     program_args: str | list[str] = program.splitlines() if split else program
-    _run(run_fn, program_args, io_obj, timeout, dict(kwargs))
+    _run(run_fn, program_args, io_obj, timeout)
     return io_obj.getvalue()
 
 
@@ -107,15 +107,14 @@ def _run(
     program: str | list[str],
     io_obj: ScriptedIO,
     timeout: float | None,
-    kwargs: dict[str, int],
 ) -> None:
     """Run ``run_fn``, applying the wall-clock ``timeout`` guard when set."""
     if timeout is None:
-        run_fn(program, io_obj, **kwargs)
+        run_fn(program, io_obj)
     elif threading.current_thread() is threading.main_thread() and hasattr(
         signal, "SIGALRM"
     ):
-        _run_timed_signal(run_fn, program, io_obj, timeout, kwargs)
+        _run_timed_signal(run_fn, program, io_obj, timeout)
     else:
         raise ValueError("the timeout guard uses SIGALRM and needs a Unix main thread")
 
@@ -125,7 +124,6 @@ def _run_timed_signal(
     program: str | list[str],
     io_obj: ScriptedIO,
     timeout: float,
-    kwargs: dict[str, int],
 ) -> None:
     """Run ``run_fn`` under a ``SIGALRM`` wall-clock guard (main thread only)."""
 
@@ -138,7 +136,7 @@ def _run_timed_signal(
     old = signal.signal(signal.SIGALRM, _timeout_handler)
     signal.setitimer(signal.ITIMER_REAL, timeout)
     try:
-        run_fn(program, io_obj, **kwargs)
+        run_fn(program, io_obj)
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, old)
