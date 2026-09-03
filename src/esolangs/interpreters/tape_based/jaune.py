@@ -299,9 +299,7 @@ class _Machine:
         all five -- so they stay; the one assignment a step makes is here
         rather than in the rules above.
         """
-        cells, self.ptr, self.hold, self.pos, calls = state
-        self.cells = cells
-        self.call_stack = calls
+        self.cells, self.ptr, self.hold, self.pos, self.call_stack = state
 
     def step(self) -> None:
         """Execute one command, advancing (or jumping) the position.

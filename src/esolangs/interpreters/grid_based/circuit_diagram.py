@@ -913,27 +913,19 @@ class _Machine:
         prints, so a step makes any number of writes and the transition
         reports them in gate order.
         """
-        for text in _emitted(self._state, self.wirings, self.gates):
+        for text in _emitted((self.values, self.latches), self.wirings, self.gates):
             self.io.print_str(text)
-        state, halted = _generation(self._state, self.wirings, self.gates)
-        self._restore(state)
+        (self.values, self.latches), halted = _generation(
+            (self.values, self.latches), self.wirings, self.gates
+        )
         if halted:
             self.halted = True
-
-    @property
-    def _state(self) -> _State:
-        """The machine's fields as the value the transition works on."""
-        return (self.values, self.latches)
-
-    def _restore(self, state: _State) -> None:
-        """Write a transition's result back onto the machine's fields."""
-        self.values, self.latches = state
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the machine's state, hashable for cycle detection."""
         # The two halves of the state are already the tuples this wants,
         # which is what freezing them bought: no per-call rebuild.
-        return (*self._state, self.halted)
+        return (self.values, self.latches, self.halted)
 
 
 def run(code: list[str], io: IO) -> None:
