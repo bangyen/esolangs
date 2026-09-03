@@ -140,6 +140,7 @@ import re
 from collections.abc import Callable, Iterator
 from functools import cache
 
+from esolangs.interpreters.tape_based.minifuck import _step as _minifuck_step
 from esolangs.tools.boolean.helpers import (
     _validate_shape,
     _validate_truth_table,
@@ -228,27 +229,52 @@ _READS = ("[<", "[x<[<")
 class _Sim:
     """A Minifuck machine fed one instruction at a time.
 
-    The shipped interpreter takes its whole program up front, which an
-    emitter cannot do -- it must advance a machine and branch on the result.
-    This mirrors ``_Machine.step`` exactly while accepting instructions
-    singly.  ``dead`` marks the one transition a parameterized program must
-    never take: a ``.`` on a zero pool reads a byte of input.
+    An emitter cannot hand a whole program over and read the answer: it must
+    advance a machine and branch on where that left it.  So this accepts
+    instructions singly, and holds the state an emitter branches on -- the
+    tape as cells, the pointer, what has printed, and the two flags below.
+
+    The *semantics* are not re-implemented here.  :meth:`exec` calls the
+    interpreter's own ``_advance``, so there is one definition of what a
+    Minifuck instruction does and an emitter cannot drift from a real run.
+    That became possible when the interpreter's transition was made pure;
+    before that this class carried its own copy of the dispatch.
+
+    ``dead`` marks the one transition a parameterized program must never
+    take: a ``.`` on a zero pool reads a byte of input.
     """
 
-    __slots__ = ("dead", "out", "ptr", "skip", "tape")
+    __slots__ = ("dead", "length", "out", "ptr", "skip", "tape")
 
     def __init__(self, size: int) -> None:
-        """Start with a zeroed tape of ``size`` cells at the origin."""
-        self.tape = [0] * size
+        """Start with a zeroed tape of ``size`` cells at the origin.
+
+        The tape is an ``int`` bitvector, cell *i* at bit *i* -- the same
+        spelling the interpreter's ``_State`` uses, so :meth:`exec` can hand
+        it straight over.  Holding it as a list of cells instead would mean
+        converting both ways on every step, which measured 68-78% of a step
+        and made an O(1) flip cost O(tape).
+        """
+        self.tape = 0
+        self.length = size
         self.ptr = 0
         self.out: list[str] = []
         self.dead = False
         self.skip = False
 
+    def cell(self, index: int) -> int:
+        """Return the bit in cell ``index``."""
+        return (self.tape >> index) & 1
+
+    def cells(self, stop: int) -> tuple[int, ...]:
+        """Return cells ``0..stop-1``, the shape a column comparison wants."""
+        return tuple((self.tape >> i) & 1 for i in range(stop))
+
     def copy(self) -> "_Sim":
         """Return an independent copy, for branching a search or a probe."""
         clone = _Sim.__new__(_Sim)
-        clone.tape = list(self.tape)
+        clone.tape = self.tape
+        clone.length = self.length
         clone.ptr = self.ptr
         clone.out = list(self.out)
         clone.dead = self.dead
@@ -257,7 +283,7 @@ class _Sim:
 
     def key(self) -> tuple[object, ...]:
         """Return the whole state, hashable, so a search can dedup on it."""
-        return (tuple(self.tape), self.ptr, tuple(self.out), self.dead, self.skip)
+        return (self.tape, self.length, self.ptr, tuple(self.out), self.dead, self.skip)
 
     @staticmethod
     def restore(key: tuple[object, ...]) -> "_Sim":
@@ -266,9 +292,10 @@ class _Sim:
         The inverse of :meth:`key`, so a memo can hold states rather than
         machines and hand back something the probes can step.
         """
-        tape, ptr, out, dead, skip = key
+        tape, length, ptr, out, dead, skip = key
         clone = _Sim.__new__(_Sim)
-        clone.tape = list(tape)  # type: ignore[call-overload]
+        clone.tape = tape  # type: ignore[assignment]
+        clone.length = length  # type: ignore[assignment]
         clone.ptr = ptr  # type: ignore[assignment]
         clone.out = list(out)  # type: ignore[call-overload]
         clone.dead = dead  # type: ignore[assignment]
@@ -276,29 +303,49 @@ class _Sim:
         return clone
 
     def exec(self, ins: str) -> None:
-        """Execute one instruction, mirroring ``_Machine.step``."""
+        """Execute one instruction, delegating the semantics to the interpreter.
+
+        The language itself is not spelled here: :func:`_advance` is the
+        shipped interpreter's pure transition, so an emitter and a real run
+        cannot disagree about what an instruction does.  This used to carry
+        its own copy of the dispatch, which was a second definition of
+        Minifuck that had to be kept in step by hand.
+
+        What stays is the *shape* the emitter needs, which the interpreter
+        has no reason to provide.  Two translations are involved:
+
+        * The interpreter holds the tape as an ``int`` bitvector and the
+          emitter as a list of cells, so a step converts across the two.
+        * A ``[`` that flips its cell to zero skips the *next* instruction.
+          The interpreter spells that by advancing ``ind`` past it inside one
+          program; an emitter is handed instructions singly and has no next
+          instruction yet, so the skip is held on ``self.skip`` and consumed
+          when that instruction arrives.
+
+        ``dead`` marks the transition a parameterized program must never
+        take -- a ``.`` on a zero pool, which the interpreter reports as
+        ``_Effect.reads`` because a real run would fetch a byte of input.
+        """
         if self.dead:
             return
         if self.skip:
             self.skip = False
             return
-        if ins == "<":
-            if self.ptr:
-                self.ptr -= 1
-        elif ins in ".[":
-            self.ptr += 1
-            if self.ptr + 1 >= len(self.tape):
-                self.tape.append(0)
-            self.tape[self.ptr] ^= 1
-            if ins == ".":
-                value = int("".join(map(str, self.tape[:8])), 2)
-                if value:
-                    self.out.append(chr(value))
-                else:
-                    self.dead = True
-            elif not self.tape[self.ptr]:
-                self.tape[self.ptr + 1] ^= 1
-                self.skip = True
+
+        tape, length, ptr, skipped, char, reads = _minifuck_step(
+            ins, self.tape, self.length, self.ptr
+        )
+
+        if reads:
+            self.dead = True
+            return
+        if char is not None:
+            self.out.append(char)
+
+        self.tape = tape
+        self.length = length
+        self.ptr = ptr
+        self.skip = skipped
 
 
 def _set_bit(bit: int) -> str:
@@ -346,7 +393,7 @@ class _Joint:
 
     def col(self, cell: int) -> tuple[int, ...]:
         """Return ``cell``'s value across the rows -- the function it holds."""
-        return tuple(m.tape[cell] for m in self.ms)
+        return tuple(m.cell(cell) for m in self.ms)
 
     def ptrs(self) -> tuple[int, ...]:
         """Return each row's pointer, so callers can see divergence."""
@@ -747,8 +794,8 @@ def _pool_reaches(j: _Joint, code: str, cell7: int, walk_out: int) -> bool:
             for m in probe:
                 m.exec(char)
     for cell in range(_POOL_WIDTH):
-        col = {m.tape[cell] for m in probe}
-        if len(col) != 1 or probe[0].tape[cell] != target[cell]:
+        col = {m.cell(cell) for m in probe}
+        if len(col) != 1 or probe[0].cell(cell) != target[cell]:
             return False
     return True
 
@@ -2283,7 +2330,7 @@ def _mux_reference(n: int) -> _Joint:
 def _mux_intact(before: _Joint, after: _Joint) -> bool:
     """Whether every cell left of the guard survived, on every row."""
     return all(
-        m.tape[:_MUX_GUARD] == m0.tape[:_MUX_GUARD]
+        m.cells(_MUX_GUARD) == m0.cells(_MUX_GUARD)
         for m, m0 in zip(after.ms, before.ms, strict=True)
     )
 
