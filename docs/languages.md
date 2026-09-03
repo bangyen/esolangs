@@ -68,6 +68,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | Sophie | yes | yes |  | yes |  |
 | Streetcode | yes | yes |  | yes |  |
 | Suffolk | yes | yes |  | yes | yes |
+| Super SNUSP |  | yes |  | yes |  |
 | Suptiftam | yes | yes |  | yes |  |
 | Taglate | yes | yes |  | yes |  |
 | Unsquare | yes | yes |  | yes | yes |
