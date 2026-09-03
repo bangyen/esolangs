@@ -1069,7 +1069,7 @@ class TestRunUntilHaltOrCycle:
         from esolangs.vm import run_until_halt_or_cycle
 
         # a=0 b=0 c=3: diff (0-0=0) jumps to mem[3], which is negative -> halts
-        machine = _Machine(io=ScriptedIO(), mem=(0, 0, 3, -1), store="a")
+        machine = _Machine("0 0 3 -1", ScriptedIO(), store="a")
         assert run_until_halt_or_cycle(machine) is True
 
     def test_sbleq_looping_run_is_detected_as_a_cycle(self) -> None:
@@ -1078,7 +1078,7 @@ class TestRunUntilHaltOrCycle:
         from esolangs.vm import run_until_halt_or_cycle
 
         # a=0 b=0 c=2: diff is always 0, so it jumps to mem[2] (address 0) forever
-        machine = _Machine(io=ScriptedIO(), mem=(0, 0, 0), store="a")
+        machine = _Machine("0 0 0", ScriptedIO(), store="a")
         assert run_until_halt_or_cycle(machine) is False
 
     def test_dimensional_halting_run_returns_true(self) -> None:
