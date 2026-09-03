@@ -266,6 +266,16 @@ def _parse_definition(
     return _Def(name, tuple(params), tuple(rest[index:]))
 
 
+@dataclass
+class _State:
+    """Every changing value in a Fargo run."""
+
+    number: int
+    output: int
+    ind: int
+    frames: list[_Frame]
+
+
 class _Machine:
     """One Fargo run: the definitions, the two numbers, and the call stack."""
 
@@ -274,10 +284,35 @@ class _Machine:
         self.defs, self.calls = _parse_program(code)
         for definition in self.defs.values():
             self._check_outer_call(definition)
-        self.number = self._read_input()
-        self.output = 0
-        self.ind = 0
-        self.frames: list[_Frame] = []
+        self.state = _State(self._read_input(), 0, 0, [])
+
+    @property
+    def number(self) -> int:
+        return self.state.number
+
+    @number.setter
+    def number(self, value: int) -> None:
+        self.state.number = value
+
+    @property
+    def output(self) -> int:
+        return self.state.output
+
+    @output.setter
+    def output(self, value: int) -> None:
+        self.state.output = value
+
+    @property
+    def ind(self) -> int:
+        return self.state.ind
+
+    @ind.setter
+    def ind(self, value: int) -> None:
+        self.state.ind = value
+
+    @property
+    def frames(self) -> list[_Frame]:
+        return self.state.frames
 
     def _read_input(self) -> int:
         """Read the input number, treating empty or invalid input as 0.
