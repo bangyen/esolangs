@@ -9,6 +9,7 @@ from esolangs.interpreters.grid_based.super_snusp import run
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.randomness import FirstDraw
 from esolangs.tools.boolean.super_snusp import super_snusp
+from esolangs.tools.text.super_snusp import super_snusp as super_snusp_text
 from tests.interpreters.runner import run_program
 
 
@@ -45,6 +46,19 @@ def test_core_linear_opcodes(program: str, expected: str) -> None:
 
 def test_decimal_io_and_output() -> None:
     assert run_super('"@#', "-42\n") == "-42"
+
+
+def test_text_generator_round_trips_bytes_and_uses_letter_opcodes() -> None:
+    text = "Hello, World!\n\x00\xff"
+    program = super_snusp_text(text)
+    assert run_super(program) == text
+    assert "H." in program
+
+
+def test_text_generator_accepts_empty_text_and_rejects_non_bytes() -> None:
+    assert run_super(super_snusp_text("")) == ""
+    with pytest.raises(ValueError, match="bytes"):
+        super_snusp_text("\u0100")
 
 
 @pytest.mark.parametrize("program", ['"+', '"0{1:', '"1_{1['])
