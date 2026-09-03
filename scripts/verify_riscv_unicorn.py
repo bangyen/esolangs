@@ -23,6 +23,7 @@ import sys
 
 from riscv_elf_runner import assemble_source, run_elf
 
+from esolangs.registry import COMPILERS
 from esolangs.tools import boolean as gen_bool
 from esolangs.tools import text as gen
 
@@ -209,6 +210,17 @@ COMPILER_CASES.append(
 def main() -> int:
     """Verify the RISC-V compilers under Unicorn, reporting failures."""
     failures = 0
+
+    # Every registered backend must have at least one case here.  The cases
+    # themselves are hand-written -- a compiler needs a program and an
+    # expected output that someone chose -- but *which* backends are covered
+    # is derived, so a new one cannot be silently left unverified by nobody
+    # remembering to append it.  check_compilers.py closes the other half:
+    # a module missing from the registry.
+    covered = {module for _, module, *_ in COMPILER_CASES}
+    for uncovered in sorted(set(COMPILERS.values()) - covered):
+        failures += 1
+        print(f"{uncovered}: registered compiler has no case in COMPILER_CASES")
     for name, path, generator in GENERATOR_CASES:
         with open(path) as f:
             binary = assemble_source(f.read())
