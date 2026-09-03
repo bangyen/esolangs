@@ -99,17 +99,6 @@ def _accumulate(op: str, acc: int) -> int:
     return acc
 
 
-def update(op: str, acc: int, io: IO) -> int:
-    """Update the accumulator based on the current operation.
-
-    The effectful shell over :func:`_accumulate`, kept because it is this
-    module's published shape for the per-cell arithmetic.
-    """
-    if op == "~":
-        io.print_char(chr(acc))
-    return _accumulate(op, acc)
-
-
 def _advance(
     state: _State,
     op: str,

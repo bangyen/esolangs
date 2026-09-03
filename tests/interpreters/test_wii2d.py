@@ -13,7 +13,7 @@ from typing import Any, ClassVar
 import pytest
 
 from esolangs.interpreters.grid_based.wii2d import run
-from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.interpreters.io import IO
 from tests.interpreters.contract import CycleContract, SnapshotContract
 
 
@@ -393,31 +393,22 @@ class TestWII2DMathematicalOperations:
         )  # The program outputs 16 as a character, but 16 is processed as 1 then 6
 
 
-class TestUpdate:
-    """``update`` is the module's published per-cell arithmetic.
+class TestShellEffects:
+    """Output and arithmetic are covered through WII2D programs."""
 
-    The interpreter itself calls ``_accumulate`` and prints in the shell, so
-    this effectful wrapper runs in no program -- but it is the exported
-    spelling (no leading underscore) and its whole reason to exist is that
-    ``~`` prints where every other op computes.  Untested, a wrapper that
-    stopped printing, or printed on the wrong op, would look identical.
-    """
+    @staticmethod
+    def _run_cells(cells: str) -> str:
+        with redirect_stdout(io.StringIO()) as captured:
+            run([f">{cells}~.", "!"], IO())
+        return captured.getvalue()
 
-    def test_the_print_op_emits_and_leaves_the_accumulator(self) -> None:
-        from esolangs.interpreters.grid_based.wii2d import update
+    def test_prints_the_accumulator_without_changing_it(self) -> None:
+        assert self._run_cells("+" * 65) == "A"
 
-        io = ScriptedIO()
-        assert update("~", 65, io) == 65  # unchanged: ~ computes nothing
-        assert io.getvalue() == "A"
-
-    def test_every_other_op_computes_without_printing(self) -> None:
-        from esolangs.interpreters.grid_based.wii2d import update
-
-        io = ScriptedIO()
-        assert update("+", 5, io) == 6
-        assert update("s", 5, io) == 25
-        assert update(" ", 5, io) == 5  # a blank cell is traversable, not an op
-        assert io.getvalue() == ""
+    def test_arithmetic_and_blank_cells_reach_the_print_instruction(self) -> None:
+        assert self._run_cells("+" * 6) == "\x06"
+        assert self._run_cells("+" * 5 + "s") == "\x19"
+        assert self._run_cells("   ") == "\x00"
 
 
 class TestStepMachine:
