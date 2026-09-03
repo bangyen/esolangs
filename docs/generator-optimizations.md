@@ -107,9 +107,9 @@ array, so there are no subtrees to collapse and no per-row terms to count.
 Its size tracks the trajectory peak its command count selects from the
 anchor table.
 
-**A third shape: algebraic (1).** `fargo` is neither a
+**A third shape: algebraic (2).** `fargo` and `super_snusp` are neither a
 tree nor a minterm sum but an *algebraic normal form* — the XOR of the
-AND-products the Möbius transform selects. Its size tracks the function's
+AND-products the Möbius transform selects. Fargo's size tracks the function's
 algebraic degree, which makes it the only generator whose worst case is
 **linear** rather than exponential: parity, the table that folds nothing
 anywhere else, is its *cheapest* dense case at one term per input (10
@@ -125,6 +125,12 @@ generator pays nothing to read, normalize, or store bits before testing
 them. Input reordering is therefore vacuous here — there is no read order
 to permute. Worth checking for on any future candidate whose input is
 bit-addressable rather than streamed.
+
+Super SNUSP has a streamed interface, so it retains only the essential
+inputs while consuming every input line, then builds its ANF over that
+projection. This is dependency reduction (10), not a subtree fold or an
+input reorder: the resulting program is shorter because it has fewer input
+products to form.
 
 One entry sits near the boundary and is worth reading as a measurement
 rather than a label: `minsky_swap` comes out at 10% only because a
@@ -169,6 +175,7 @@ Each character costs only its distance from the previous one.
 | `bfstack` | same hybrid; both pick with `shortest`, but `bfstack` breaks a tie toward the rebuild where `brainfuck` keeps the walk |
 | `unsquare` | delta chain off the retained accumulator (~21% on "Hello, World!"), **bounded by parity** — `x` can't restore oddness, so odd targets off an even accumulator reseed |
 | `cvnc` | `ci`/`cə` runs via shared `delta_program`, at **2 characters per unit**: every command needs a partner of the other class to form a CV syllable, and `c` (function reset) is the only consonant that touches neither accumulator nor deque while an invalid `u` is the only such vowel, so the pairing is forced rather than chosen — no other pairing undercuts the factor of two |
+| `super_snusp` | shortest of direct letter/decimal loads and signed `(`/`)` deltas from the retained output cell |
 
 ### Arithmetic-construction
 

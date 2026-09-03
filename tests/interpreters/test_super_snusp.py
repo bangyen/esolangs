@@ -48,11 +48,14 @@ def test_decimal_io_and_output() -> None:
     assert run_super('"@#', "-42\n") == "-42"
 
 
-def test_text_generator_round_trips_bytes_and_uses_letter_opcodes() -> None:
+def test_text_generator_round_trips_bytes_and_uses_shortest_load() -> None:
     text = "Hello, World!\n\x00\xff"
     program = super_snusp_text(text)
     assert run_super(program) == text
     assert "H." in program
+    # A nearby non-letter byte is shorter as a signed delta than its decimal
+    # literal: after a double quote (34), ! is one decrement and output.
+    assert "34.(." in super_snusp_text('"!')
 
 
 def test_text_generator_accepts_empty_text_and_rejects_non_bytes() -> None:
@@ -102,6 +105,16 @@ def test_four_input_generator_executes(table: str) -> None:
     for bits in product((0, 1), repeat=4):
         row = sum(bit << (3 - index) for index, bit in enumerate(bits))
         assert _run_boolean(program, bits) == table[row], (table, bits, program)
+
+
+def test_generator_reduces_unused_inputs_but_reads_them() -> None:
+    """Projection saves ANF work without leaving stream input behind."""
+    reduced = super_snusp("00001111")  # depends only on the first input
+    parity = super_snusp("01101001")
+    assert reduced.count(",") == 3
+    assert len(reduced) < len(parity)
+    for bits in product((0, 1), repeat=3):
+        assert _run_boolean(reduced, bits) == str(bits[0])
 
 
 def test_generator_rejects_invalid_table() -> None:
