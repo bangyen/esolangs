@@ -87,7 +87,7 @@ def _moved(point: _Point, delta: _Point) -> _Point:
 #:
 #: The grid and its bracket table stay out -- 3D Brainfuck never rewrites
 #: its own source -- so a step is handed them.
-type _Cells = Mapping[_Point, int]
+type _Cells = dict[_Point, int]
 type _State = tuple[_Cells, _Point, _Point, _Point]
 
 
@@ -197,7 +197,7 @@ class _Machine:
     def _restore(self, state: _State) -> None:
         """Write a transition's result back onto the machine's fields."""
         cells, self.ap, self.pos, self.heading = state
-        self.cells = dict(cells)
+        self.cells = cells
 
     def step(self) -> None:
         """Execute one block, moving the instruction pointer.
