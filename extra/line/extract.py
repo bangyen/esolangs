@@ -437,8 +437,8 @@ def find_cursor(mask: Mask) -> Cursor:
 # already-drawn stroke's ink with no separating background pixel, which a
 # pixel-adjacency walk cannot tell apart from an ordinary continuation.
 # Three attempts at a local pixel-geometry fix on that walker were tried and
-# reverted (see lattice.py's module docstring and WIP.md for the full
-# history); lattice.py resolves it from scratch with an 8-direction
+# reverted (see lattice.py's module docstring for the surviving lesson);
+# lattice.py resolves it from scratch with an 8-direction
 # vertex-star probe instead, verified against both wiki fixtures with a
 # cleaner coverage-gap result than the region-adjacency walker ever achieved
 # (see coverage_gap's docstring below).

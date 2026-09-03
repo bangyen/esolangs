@@ -10,22 +10,19 @@ meets all of these:
 - **Complete, stable specification.**  The wiki page must fully define the
   commands and behavior.  A stub, a work-in-progress, an "in-development"
   definition, or a spec whose own author warns is unfinished does not give
-  enough to verify an interpreter against (Chainlang, Fourfuck, Aaargh++,
-  Binary ///, Welcome To...).
+  enough to verify an interpreter against.
 - **Deterministic, computable behavior.**  A program must have a definite
-  result the tests can check.  Uncomputable languages (Gravity, something
-  positive, Varigen) and languages whose commands are irreducibly random
-  (LogicF---) cannot be verified.  *Seeded* randomness is fine — LaserFuck's
-  initial heading and DSDLAI's are drawn from a seed the tests fix, so
-  behavior stays checkable.
+  result the tests can check.  Uncomputable languages and languages whose
+  commands are irreducibly random cannot be verified.  *Seeded* randomness
+  is fine — LaserFuck's initial heading and DSDLAI's are drawn from a seed
+  the tests fix, so behavior stays checkable.
 - **A usable file-based I/O protocol.**  The language must read input and
   write output as characters/lines through the repo's `IO` seam (see the
   interpreter conventions in `docs/limitations.md`).  Languages with no
-  output (State and Main, Vandevelo), stderr-only output
-  (Conveyor), or file/OS-based I/O (Unary Filesystem, Streetcode) do not
-  fit.  A no-output language is admitted only as a self-contained
-  interpreter with no generator — with one exception: Point Break was
-  admitted with the first *termination-convention* boolean generator
+  output, stderr-only output, or file/OS-based I/O do not fit.  A
+  no-output language is admitted only as a self-contained interpreter
+  with no generator — with one exception: Point Break was admitted with
+  the first *termination-convention* boolean generator
   (halt for 0, loop for 1; see `docs/walls.md`), which the wiki's own
   truth-machine example defines and its Turing-complete arithmetic makes
   fully general.

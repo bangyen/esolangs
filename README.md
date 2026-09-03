@@ -58,17 +58,11 @@ esolangs transpile BFStack brainfuck program.txt  # rewrite between languages
 Most generators emit one long line.  `--width N` (default 80) bounds a
 program to that many columns, as in the [committed examples](examples/):
 wrapping breaks only between whole commands, so the program still does the
-same thing.  A generator that builds a *shape* takes the width itself
-instead: Clockwise lays its code around a rectangle's perimeter (squarest
-ring by default), Streetcode and WII2D fold their instruction line into a
-boustrophedon the pointer walks in order, and LaserFuck steers its beam
-down and back so a long tape-command run costs rows instead of columns.
-
-Languages whose newlines carry meaning ignore the flag instead of breaking:
-the remaining 2D grid languages, and NoComment, which rejects any character
-that isn't a command.  A token longer than the width (a Polynomial
-coefficient) or a shape with an irreducible size (a Clockwise ring, a
-LaserFuck decision tree) comes out as wide as it has to be.
+same thing.  Shape-based generators (Clockwise, Streetcode, WII2D,
+LaserFuck) use the width to lay out their shape instead of wrapping text.
+Languages whose newlines carry meaning (the 2D grid languages, NoComment)
+ignore the flag; a token or shape that can't shrink below the width comes
+out as wide as it has to be.
 
 Assembly compilers run the same way and write `output.asm`:
 
@@ -283,8 +277,7 @@ Transpilers rewrite a program in one esolang into an equivalent program in anoth
 
 Every transpiler here is **total** over its source language: it accepts
 every program that language's own interpreter accepts. Partial ones are
-not carried — the admission criteria, and why six earlier transpilers were
-removed rather than documented as subsets, are in
+not carried; the admission criteria are documented in
 `esolangs/tools/transpilers.py`.
 
 | Source | Direction | Target |

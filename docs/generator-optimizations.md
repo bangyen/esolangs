@@ -1,20 +1,19 @@
 # What each text / boolean generator optimizes
 
 Catalog of the size-and-shape optimizations each text and boolean generator
-applies to the *emitted program*.  `esolangs.tools.text.__all__` and
+applies to the *emitted program*. `esolangs.tools.text.__all__` and
 `.boolean.__all__` are the live counts; a stated total here goes stale every
-time one is added — as of this pass `algebraic_programming_language` (APL)
-and `inject` are missing from the catalogue entirely (see the shape section
-below).
+time one is added, so none is stated.
 
 "Optimization" here means what the generator does to make its output smaller
 or better-shaped — not the runtime of the generator itself.
 
 Figures here are measurements and go stale when a generator changes; the
-script that re-derives the shape classification is
-`tests/tools/test_boolean_contract.py::test_generator_shape_is_what_the_catalogue_says`,
-which fails rather than drifts. Prefer stating what a future change must
-respect over what a past change did — the latter is in the commits.
+shape classification is enforced independently by
+`tests/tools/test_boolean_contract.py::test_generator_shape_is_what_the_catalogue_says`
+(source of truth: that test's `_MINTERM_SHAPED`/`_REDUCING`/`_UNSHAPED`
+sets), which fails rather than drifts. Prefer stating what a future change
+must respect over what a past change did — the latter is in the commits.
 
 ---
 
@@ -51,39 +50,28 @@ The two are told apart by **what the size depends on**. A minterm sum costs
 one term per selected row, so its size tracks the ones-count and is blind to
 *which* inputs those rows involve. A decision tree costs one leaf per
 surviving subtree, so at the same ones-count a table depending on a single
-input is far cheaper than parity. Measured 2026-08-28 over all 59 exported
-generators, comparing the best of the six one-dependency tables against
-`01101001` (both ones-count 4):
+input is far cheaper than parity. Comparison method: best of the six
+one-dependency tables against `01101001` (both ones-count 4).
 
-**Tree-shaped (44 at the last sweep, plus `fargo` and `inject` added since —
-`inject` measures 66.0% folding and is uncatalogued below the shape test's
-`_MINTERM_SHAPED`/`_REDUCING`/`_UNSHAPED` sets, so it defaults tree-side).**
-cvnc, taglate, polynomial, dig, myscript, six_five,
+**Tree-shaped.** cvnc, taglate, polynomial, dig, myscript, six_five,
 addsubjump, sophie, modulous, laserfuck, nevermind, jaune, bitdeque,
 unsquare, flowchart, streetcode, forth, basicfuck, bfpda, ram0,
 forbin_boolean, arrowqueue, back, lamfunc, between, eval, factor, circlefuck,
 painfuck, bf_tree, brainfuck, three_d_brainfuck, sbleq, dimensional,
 dimensional_tree, clockwise, brainif, three_x, circuit_diagram, minsky_swap,
-decleq, grapheme, bio — folding 95% (taglate) down to 5% (bio).
+decleq, grapheme, bio, fargo, inject — folding 95% (taglate) down to 5% (bio).
 
-`cvnc` was added after that sweep (2026-08-30) and measures 74.5% on the
-same comparison, which is why the count above reads 44 against a sweep of
-59; the dated figures are left as they were measured rather than restated.
-It measured 74.1% when first added and 74.5% once its reorder shipped the
-same day — the one-dependency table it is scored on is exactly the case the
-reorder improves, so this figure moves when that build changes.
+**Minterm-shaped (4, `_MINTERM_SHAPED`).** a_painter_ant, bfstack, container,
+algebraic_programming_language — all within 4% of parity on a
+one-dependency table, because there is no subtree to collapse.
 
-**Minterm-shaped (4).** a_painter_ant, bfstack, container,
-algebraic_programming_language (added since the last sweep; measures 2.2%) —
-all within 4% of parity on a one-dependency table, because there is no
-subtree to collapse.
-
-**Reducing (10).** `home_row`, `cod`, `nocomment`, `bit_tilde`, `rotfuck`,
-`suptiftam`, `suffolk`, `qoibl`, `collatz_multiverse` and `point_break` were
-on that list until 2026-08-30/31 and are still minterm sums; they now gain
-**60.6%**, **92.5%**, **27.3%**, **81.5%**, **76.3%**, **69.4%**, **14.7%**,
-**53.2%**, **66.1%** and **50.7%** respectively on a one-dependency table by
-*dependency reduction* (10) rather than by folding.
+**Reducing (10, `_REDUCING`).** `home_row`, `cod`, `nocomment`, `bit_tilde`,
+`rotfuck`, `suptiftam`, `suffolk`, `qoibl`, `collatz_multiverse` and
+`point_break` are minterm sums that gain **60.6%**, **92.5%**, **27.3%**,
+**81.5%**, **76.3%**, **69.4%**, **14.7%**, **53.2%**, **66.1%** and
+**50.7%** respectively on a one-dependency table by *dependency reduction*
+(10) rather than by folding — the reason they are not filed as
+minterm-shaped despite being sums.
 
 The three remaining minterm sums are measured, not skipped: `container` and
 `bfstack` are setup-dominated — a constant table is 93% and ~100% of a
@@ -119,7 +107,7 @@ array, so there are no subtrees to collapse and no per-row terms to count.
 Its size tracks the trajectory peak its command count selects from the
 anchor table.
 
-**A third shape: algebraic (1).** `fargo` (added 2026-08-30) is neither a
+**A third shape: algebraic (1).** `fargo` is neither a
 tree nor a minterm sum but an *algebraic normal form* — the XOR of the
 AND-products the Möbius transform selects. Its size tracks the function's
 algebraic degree, which makes it the only generator whose worst case is
@@ -143,12 +131,13 @@ rather than a label: `minsky_swap` comes out at 10% only because a
 one-dependency table is *smaller* than parity there by a few characters of
 embedding, not because anything folds.
 
-`circuit_diagram` used to be the other, at 12.6% — a minterm sum whose
-*constants* were special-cased, so the split-order metric filed it tree-side
-for the wrong reason. It now measures **99.3%** and is tree-side for a real
-one: dependency reduction (10) builds its chains over the essential inputs
-only, so a one-dependency table drops from 2756 characters to **40**. It
-needs no `_REDUCING` exemption, since it clears the folding bar on its own.
+`circuit_diagram` measures **99.3%** and is tree-side: dependency reduction
+(10) builds its chains over the essential inputs only, so a one-dependency
+table drops from 2756 characters to **40**. It needs no `_REDUCING`
+exemption, since it clears the folding bar on its own. (A minterm sum whose
+*constants* are special-cased can file tree-side for the wrong reason on the
+split-order metric alone — worth checking that the win is a real fold before
+trusting the number.)
 
 Technique 9 is the one deliberate refusal to shorten. A zero embedded as
 nothing makes `len(program)` a function of the inputs, leaking the very bits
@@ -186,7 +175,7 @@ Each character costs only its distance from the previous one.
 | Generator | Optimization |
 |---|---|
 | `home_row` | `a*b+r` counter loop, `a` searched near `sqrt` → `O(sqrt)` |
-| `suffolk` | factors minimizing `a + b + 2r` — *not* `sqrt`, because `r` is spelled `>!` at two characters a unit. It minimized `a + 2b + 2r` until 2026-08-30, counting the one `><` separator as a per-`b` price; the emitted line measures `12 + a + b + 2r`, and the correction is shorter on 37 of the 256 byte values and longer on none |
+| `suffolk` | factors minimizing `a + b + 2r`, not `sqrt`, because `r` is spelled `>!` at two characters a unit; the emitted line measures `12 + a + b + 2r` |
 | `addsubjump` | binary doubling → `O(log byte)` |
 | `collatz_multiverse` | two-line multiply-add per constant; **only the bytes actually referenced** are built (`_PLAN` / `_extend_plans`), reaching large values in `O(log)` constants |
 | `wii2d` | per character picks cheapest of literal digit / square / double / combination |
@@ -273,10 +262,6 @@ on all-ones, and neither calls `_maybe_complement`. Taking the cheaper
 polarity of every n=3 table would be 17.96% for `a_painter_ant` and 2.81%
 for `rotfuck`.
 
-`rotfuck`'s two figures were 1404 and 1740, and its headroom 2.99%, before
-dependency reduction (10) shipped on 2026-08-31; the lever is unchanged and
-still unbuilt, but it is now measured against a much smaller program.
-
 **`a_painter_ant`'s share of that is not reachable, and the reason is the
 output convention rather than the construction.** Its answer is *the colour
 of the cell the ant lands on* — white is one, black is zero — read directly
@@ -322,9 +307,9 @@ zero rows and inverting — one term saved per row, paid for once.
 ### Dependency reduction (10) — sixteen generators, both shapes
 
 A table ignoring an input is emitted as the *smaller* table, still
-consuming the rest. `essential_inputs` (in `boolean/helpers.py`, promoted
-there 2026-08-30 from three independent spellings) names the inputs whose
-flip changes some row, and `read_at` projects the table onto them.
+consuming the rest. `essential_inputs` (in `boolean/helpers.py`) names the
+inputs whose flip changes some row, and `read_at` projects the table onto
+them.
 
 What differs per generator is **how the ignored inputs are still honoured**,
 and that is set by the interface rather than by the construction:
@@ -595,9 +580,7 @@ which name fills each slot while building its tree on the permuted table.
 only the shortest; `back` has no width, so it uses the wrapper), and
 `brainfuck`, `bf_tree`, `factor`, `three_d_brainfuck`, `painfuck`,
 `dimensional` and `dimensional_tree`, which **inherit** one rather than
-calling for it.  `algebraic_programming_language` was added since the last
-full pass and calls `best_input_order` directly, undocumented here until
-now.  The chain is three links deep and only the first names
+calling for it.  The chain is three links deep and only the first names
 anything: `bf_tree` and `dimensional_tree` call the shared
 `decision_tree_program`, which wraps `best_input_order` itself; `brainfuck`
 and `dimensional` are one-line delegations to those two; and `factor`,
@@ -643,12 +626,10 @@ split order is chosen, so it needs nowhere to hold a read bit. That is the
 escape the reorder could not take. Residual merging
 collects what the screen was measuring for polynomial and sophie.
 
-**Built 2026-08-30 — `cvnc`, and the walk cost turned out to be zero.** It
-screened **15.2% mean** at `n = 2..4` and *delivered* **13.8% at `n = 3`**
-(every table) and **17.9% at `n = 4`** (300 sampled), with **no table
-growing**. The screen was gross and the walk was supposed to be subtracted
-from it; the walk is instead free, which is why the delivered figure rises
-above the screen at `n = 4` rather than falling below it.
+**`cvnc`'s walk cost turned out to be zero.** It delivers **13.8% at `n =
+3`** (every table) and **17.9% at `n = 4`** (300 sampled), with **no table
+growing** — the delivered figure rises with `n` rather than falling, because
+the walk it screened for is free (below).
 
 What makes it free is that a deque has *two* ends. The obvious way to
 reconcile a permuted test order with a fixed read order is to rotate the
@@ -727,9 +708,9 @@ case, and both are answerable before writing any code:
    **10%**.
 
 `brainif` is the worked counter-example, and it was reverted rather than
-kept. It screened 4.9% and delivered 5.2% at n=3 / 8.0% at n=4, verified by
-11000 interpreter runs — the win was real. But its reads sit at its nodes,
-so reaching it took ~146 lines resting on a language invariant subtle enough
+kept. It screened 4.9% and delivered 5.2% at n=3 / 8.0% at n=4 — the win was
+real. But its reads sit at its nodes, so reaching it took ~146 lines resting
+on a language invariant subtle enough
 to be worth stating: BrainIf gates every line on an exact cell value, and the
 two lines of a guarded move test *different* cells, so a guarded pair over
 written cells fires **twice** whenever the neighbouring digits differ. The
@@ -742,11 +723,9 @@ deleting it, and why 5.2% was the whole of the return. Rule 2 would have
 closed it before the first line was written; the commit history has the
 build if the trade is ever worth revisiting.
 
-**The grid tier is not all layout surgery — streetcode was the first one
-opened.** It screened 16.8% and **delivered 16.76%** at n=3 (258872 → 215478
-characters over all 256 tables, 112 of them improved, none grown; every one
-verified against the interpreter, plus 57 tables at n=4 over 912 runs). It
-came in a shade *under* its screen — 16.8% → 16.76%, the same 0.04pp shave
+**The grid tier is not all layout surgery — streetcode is a placement, not a
+walk.** It screens 16.8% and **delivers 16.76%** at n=3, none grown. It
+comes in a shade *under* its screen — 16.8% → 16.76%, the same 0.04pp shave
 circlefuck took at 10.47% → 10.42% — which is what the rule predicts for a
 node testing a **position** rather than naming an input: the walk that puts
 each bit in its cell is the difference. Its halls test cells positionally: every
@@ -775,11 +754,9 @@ Three things that decided the build, worth carrying to the rest of the tier:
   prefix walks CP back there after the last read rather than assuming it
   landed there.
 
-**LaserFuck is the second, and it confirms the rule.** It screened 16.3% and
-**delivered 16.08%** at n=3 (99527 → 83527 characters, 112 of 256 tables
-improved, none grown; verified over 8192 interpreter runs — every table, every
-row, all four initial headings — plus 47 tables at n=4 over 3008 runs). Its
-node is `>#v)`: step the pointer, then `)` tests the cell under it, so level
+**LaserFuck confirms the rule.** It screens 16.3% and **delivers 16.08%** at
+n=3, none grown. Its node is `>#v)`: step the pointer, then `)` tests the
+cell under it, so level
 *k* tests cell *k+1* exactly as streetcode's halls do. Only the reader's read
 section changes, from `,>,>,<<<` to a walk between each `,`.
 
@@ -798,12 +775,9 @@ on a `>`). Deriving the identity spelling first and checking it reproduces
 what the generator already emitted catches an off-by-one before any table is
 run.
 
-**Back is the third, and it is where a cheaper build was measured and then
-declined.** It screened 12.0% and **delivers 16.55%** at n=3 against its own
-identity order (25167 → 21003 characters, none grown) and **17.33% at n=4**
-over the complete 65536-table space. Verified by 2048 fill-and-run cycles at
-n≤3 and **1048576 at n=4** — every table, every input combination — with the
-equal-width embedding checked on each one.
+**Back is where a cheaper build was measured and then declined.** It screens
+12.0% and **delivers 16.55%** at n=3 against its own identity order (25167
+characters, none grown) and **17.33% at n=4**.
 
 Node `+\>` tests the current cell and *then* advances, so level *k* tests
 cell **k**, one lower than streetcode's halls and LaserFuck's `>#v)`, which
@@ -971,7 +945,7 @@ re-screening them would only reproduce the numbers below.
 | `taglate` | 3.1% | below the rename threshold |
 | `minsky_swap` | 2.8% | **no decision tree** — `{Xi}` setters assemble the input's numeric index into `reg[0]` and a `~` cascade routes value *v* to leaf *v*, so there is no split order to permute |
 | `bio` | 1.5% | **no decision tree** — each `{Xi}` packs `2**w` into `x`, so the program computes an index rather than branching on bits in an order |
-| `decleq` | 1.4% | a real rename (reads land in `n` cells up front; a node's `cell cell c` can name any of them) and it was built and verified — 1.42%/2.25%, 14536 interpreter runs, nothing grown — but below the threshold, so it was **not kept** |
+| `decleq` | 1.4% | a real rename (reads land in `n` cells up front; a node's `cell cell c` can name any of them) and it was built and verified — 1.42%/2.25%, nothing grown — but below the threshold, so it was **not kept** |
 | `nocomment` | 0.7% | minterm-shaped; reordering is not applicable |
 | `painfuck` | 0.5% | **already reordered** — it translates `brainfuck`'s output, so it inherits `decision_tree_program`'s reorder the way `factor` and `three_d_brainfuck` do; the residue is translation effects, not upside |
 | `rotfuck` | 0.4% | minterm-shaped |
@@ -1026,7 +1000,7 @@ that gates its own candidates.)
 | `nocomment` | computes the numeric index and uses it as a byte-sized skip into a staircase — straight-line, no leaf chains. `s` doubles as a NOT gate, so the complement is computed at runtime from one embed. Past `n == 8` the index no longer fits a byte, so it is split into byte-sized summands and one staircase is walked per summand: `s` peeks rather than pops, so displacements add across stages and a chain of legal skips reaches any index |
 | `home_row` | packs bits into one accumulator + linear chain; the removed routing generator walled at n=2 |
 | `bfstack` | avoids branching entirely — encodes inputs as a number, decodes with nested loops |
-| `suffolk` | branch-free minterms at `limit=1`; a constant table needs no minterm *blocks*, though it still reads every input (measured 2026-08-28: 8 reads on every table, constant or not — an earlier note here claimed it read none); dense tables evaluated from their zero rows and inverted |
+| `suffolk` | branch-free minterms at `limit=1`; a constant table needs no minterm *blocks*, though it still reads every input (8 reads on every table, constant or not); dense tables evaluated from their zero rows and inverted |
 | `three_x` | result defaults to the **majority** table value, so only differing rows emit an override |
 | `bitdeque` / `ram0` | fixed-length setters keep absolute `GOTO` targets stable — this is what unblocked the earlier "variable-length setter" wall |
 | `lamfunc` / `ram0` | each input stored once and read back, rather than re-embedded at every node |
@@ -1047,16 +1021,13 @@ making the program's *height* reveal the input.
 
 - Shared machinery: `text/helpers.py`, `boolean/helpers.py`, `wrap.py`,
   `laserfuck_layout.py`, `ztoalc_starts.py`, `_polynomial.py`
-- Folding classification: measured, not inherited. The method is a
-  ones-count-controlled length test — equal ones-counts keep
-  `_maybe_complement` and minterm-count-driven generators from shrinking for
-  the wrong reason, so a strictly shorter program on the folding table means
-  the generator folds. **Compare against every one-dependency table, not
-  just `11110000`:** a generator that branches last-input-first (modulous,
-  forth) folds `10101010` instead, and testing only the MSB-aligned table
-  reports those as non-folding when they save 56–77%. A generator that picks
-  its own split order — circlefuck and unsquare since they started reordering
-  — folds every one-dependency table, so it is the reorder rather than the
-  fold that the MSB-aligned table now measures there.
+- Folding classification: measured, not inherited (see "measure against
+  every one-dependency table" above). The method is a ones-count-controlled
+  length test — equal ones-counts keep `_maybe_complement` and
+  minterm-count-driven generators from shrinking for the wrong reason, so a
+  strictly shorter program on the folding table means the generator folds. A
+  generator that picks its own split order (circlefuck, unsquare) folds
+  every one-dependency table, so it is the reorder rather than the fold that
+  the MSB-aligned table measures there.
 - Everything else: generator docstrings and bodies under
   `src/esolangs/tools/{text,boolean}/`

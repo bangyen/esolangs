@@ -48,7 +48,8 @@ a candidate must satisfy before it is added.
 The four that meet this are ``brainfuck -> 3D Brainfuck``,
 ``brainfuck -> Painfuck``, ``BFStack -> brainfuck`` and
 ``Decleq -> S*bleq``.  The six removed, and why each failed, are recorded
-under "Dropped transpilers" in ``docs/limitations.md``.
+under "Transpilers: the admission bar, and what it removed" in
+``docs/limitations.md``.
 """
 
 from collections.abc import Callable

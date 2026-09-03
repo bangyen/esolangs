@@ -4,8 +4,8 @@ The [wiki page](https://esolangs.org/wiki/Streetcode) never spells out the
 concrete geometry behind "drive on the right-hand side" or its
 leftmost/second-leftmost "ambiguous turn" rule.  This file records what
 `src/esolangs/interpreters/grid_based/streetcode.py` implements and why:
-settled rules first, then the hand-derived trace the lane-merge rule was
-built from, then the questions that trace does not answer.
+settled rules first, then the questions those rules do not answer, then
+the invariants the generators' size optimizations rest on.
 
 ## Language summary
 
@@ -87,8 +87,8 @@ an intersection rather than a plain corner:
   suppressing the ordinary right-hand-hug re-turn, until the new road's
   own right-hand wall picks up.  This two-phase suppression (`_merge`
   then `_merging_heading` in `_choose_heading`) is derived from a single
-  hand-drawn, user-confirmed ground-truth trace (see "How the lane-merge
-  rule was derived" below), not from anything the wiki spells out, but it
+  hand-drawn, user-confirmed ground-truth trace (see "Lane-merge naming"
+  below), not from anything the wiki spells out, but it
   is corroborated by both examples above: under this rule the
   infinite-loop example visits its 17 distinct cells before repeating
   rather than the small 4-cell loop a turn-immediately rule falls into
@@ -284,58 +284,35 @@ shapes and the accepted ones, including the two shipped examples, and the
 checks are verified against all 276 generated truth tables and the wiki's
 own worked examples.
 
-## How the lane-merge rule was derived
+## The lane-merge rule and its ground-truth trace
 
-The "Lane merging" bullet above states the rule; this section preserves the
-single hand-drawn, user-confirmed trace it was built from, and the
-independent corroboration, since neither is recoverable from the wiki.
-
-### The hand-drawn example (now the regression test)
-
-A vertical 2-wide corridor, columns 0=wall/1-2=lanes, with two branches
-peeling off to the right at different rows:
-
-```
-|  |
-|  +--
-|
-|
-|  +--
-|  |
-```
-
-(columns 0-5; branches' `+` at (row1,col3) and (row4,col3); rows 2-3 are
-blank between the two branches.)
-
-The user's confirmed ground-truth trace, car starting at (row0, col1)
-heading South:
-
-```
-(0,1) -> (1,1) -> (2,1) -> (3,1) -> (3,2) -> (3,3) -> (3,4)
-```
-
-This is now encoded as
+The two phases behind the "Lane merging" bullet above are `_merge`
+(approach: keep driving straight until the car reaches the new road's
+right-hand lane, derived from the mouth's own `+` pair via `_road_mouth`,
+then turn) and `_merging_heading` (merge-out: after turning, keep driving
+straight until the new road's right-hand wall materializes).  Both are
+gated on `_lane_bounded`; a bare `+` floating in an open room still turns
+immediately.  The ground-truth trace the rule was checked against is
 `TestStreetcodeLaneMerge.test_merge_lands_in_the_right_hand_lane` in
-`tests/interpreters/test_streetcode.py`.
+`tests/interpreters/test_streetcode.py`; the wiki's infinite-loop and
+infinite-cat examples each contain an independent lane-bounded junction
+that also exercises it (`test_infinite_loop_example_traces_its_17_cell_lap`).
 
-### Naming, and independent corroboration
+The hand-drawn trace referenced in "Still open" below is a vertical 2-wide
+corridor (columns 0=wall/1-2=lanes) with two branches peeling off East at
+rows 1 and 4:
 
-The two phases are `_merge` (approach: keep driving straight until
-the car reaches the new road's right-hand lane, derived from the mouth's own
-`+` pair via `_road_mouth`, then turn) and `_merging_heading` (merge-out:
-after turning, keep driving straight until the new road's right-hand wall
-materializes -- in the trace above, turning East at (3,1) lands on (3,2),
-where South is still open).  Both are gated on `_lane_bounded`; a bare `+`
-floating in an open room still turns immediately.
+```
+|  |
+|  +--
+|
+|
+|  +--
+|  |
+```
 
-Both phases were corroborated independently of the hand-drawn trace: the
-wiki's infinite-loop example turns out to contain a genuine lane-bounded
-junction at (1,5) heading West, and applying this rule there makes the car
-lap 17 distinct cells before repeating, instead of the small 4-cell loop a
-turn-immediately rule falls into right next to the junction (pinned by
-`test_infinite_loop_example_traces_its_17_cell_lap`).  The larger
-infinite-cat example has an analogous junction at (1,6) heading West and
-still echoes every character correctly under the rule.
+with the car starting at (row0, col1) heading South landing on
+`(0,1) -> (1,1) -> (2,1) -> (3,1) -> (3,2) -> (3,3) -> (3,4)`.
 
 ## Still open
 
@@ -371,232 +348,64 @@ still echoes every character correctly under the rule.
   one exercising a right-hand turn at a genuine junction, is worth
   checking against the same rule before trusting it there too.
 
-## The counting loop (found 2026-08-23)
+## The counting loop
 
-A counting loop exists.  `TestStreetcodeCountingLoop` runs it: the car
-counts cell 0 up to nine on the way in, U-turns onto a `++` island, and
-laps it nine times, each lap adding eight to cell 1 and taking one off
-cell 0, then leaves through a gap in the outer wall and prints `H`.
+`TestStreetcodeCountingLoop` (`tests/interpreters/test_streetcode.py`) is
+an enterable ring: the car counts a cell up on the way in, laps an
+island under that count's control, and leaves once it hits zero.  Building
+one correctly depends on exactly the three rules already stated above
+(a road is two cells deep, a turn may not enter the oncoming lane, a
+junction reads the cell as the car arrives) -- no rule beyond those three
+is needed, but getting any one of them wrong breaks this specific shape,
+so the test is the standing check that they still hold together.
 
-```
-+------------+
-|            |
-|C^        O;|
-+--+  ++  +--+
-   |      |
-   | ^_~ =|
-   | ^++= |
-   |^^++^U|
-   |^^^^^=|
-   |^^^^^^|
-   +------+
-```
+A ring must also respect two invariants a future change must not violate:
 
-The ring is an ordinary wall-hug around the island; the decision is at
-the island's top-right corner, where the roads are north (out through
-the gap) and south (on around the island), so the countdown steers the
-loop -- nonzero laps again, zero leaves.  Three rules have to be right for
-it to run, and each is one only a program of this shape exposes:
+- **A lap must pass any entry/exit gap travelling the entry's own
+  direction.**  A mouth behind the car is `back`, and `_junction_choices`
+  never offers `back`, so a gap joined tangentially to the lap is invisible
+  while lapping -- cutting a wall for an entry or exit changes the lap
+  itself, so this has to hold on the *cut* grid, not the uncut one.
+- **A cell that reaches exactly 0 inside a hallway or ring body (not at a
+  junction) sends the car into an unterminated lap** -- no halt, no error.
+  A parameterized hallway lands a cell on exactly `2 * rows + 2`, and
+  hallways in series compose additively; that is unary rotated 90 degrees,
+  so it compresses nothing on its own, but its conditional half works:
+  zero at the mouth skips the hallway, nonzero enters it.
 
-* **A road is two cells deep.**  The corner offered *east* -- one open
-  cell before the outer wall, which is the width of the road rather than
-  a road -- and did not offer *south*, which has no `+ ... +` mouth to
-  detect because the island's wall simply ends.  Both are fixed by
-  requiring two drivable cells (`_road_deep`).
+## Invariants the ring and lift optimizations rely on
 
-* **A turn may not enter the oncoming lane.**  From the corner cell the
-  south turn lands with the outer wall on the car's *left*, which is the
-  lane oncoming traffic uses; "the car always drives on the right-hand
-  side" rules it out however open it looks (`_lawful_turn`).
+Both Streetcode generators are **total**: `esolangs.tools.text.streetcode`
+prints any text and `esolangs.tools.boolean.streetcode` builds any table.
+Nothing below is a capability limit.  The ring and lift shapes are *size*
+optimizations that emit a shorter program when their geometry fits; when
+it does not, the plain straight or serpentine walk is emitted instead,
+which prints the same thing.  In `tools/text/streetcode.py` that is
+`_streetcode_ring` and `_streetcode_ring_serpentine`, both returning
+`None` to decline; in `tools/boolean/streetcode.py` it is
+`_streetcode_ring`, `_streetcode_lift` and `_streetcode_shared_lap`.
 
-* **A junction reads the cell as the car arrives**, before the square's
-  own instruction runs (`arrival_cell`).  The turning square carries an
-  `=` that moves CP onto the accumulator so the `O` prints it; reading
-  after that instruction, the junction branched on the accumulator (72,
-  nonzero) instead of the counter (0), and the loop never exited.
+These are the conditions under which the shorter shape is safe, and any
+change to those optimizations must keep satisfying them.  They are
+consequences of the movement rules above, not restatements of them.
 
-The section below records the earlier probing, which concluded no such
-ring existed.  Its two halves hold -- the conditional does re-decide every
-lap, and a counter on the lap does count down -- but its conclusion was an
-artifact of the interpreter's road detection, not of the language.
-
-## What the earlier probing got wrong
-
-Before the counting loop was found, six hand-drawn ring geometries all
-leaked, and this file concluded no enterable ring existed.  That was an
-artifact of the interpreter's road detection -- the plumbing works -- but
-the traces are kept, since the leak mechanism is real and a re-derivation
-would cost the same rounds.
-
-**Cutting a wall for an entry or exit road changes the lap**, so any travel
-direction measured on the uncut ring is void afterwards.  The right-hand hug
-then treats the cut as an open road on the car's right and drives out through
-it.  Concretely: an entry joined to a run the lap travels in the *opposite*
-direction is seen as open-to-the-right on the return leg, so the car escapes
-onto the entry corridor and re-crosses the seed, re-raising the counter
-(3 -> 6 -> 9) instead of letting it fall; cutting the outer wall to admit that
-entry re-routed the lap so the gap was traversed *outward*, into a dead end;
-and seeding anywhere on the lap itself never terminates, since every cell is
-re-crossed, so a `+1` seed against a `-1` body oscillates 0/1 forever.
-
-The invariant these imply: the lap must pass the entry gap **travelling the
-entry's own direction** — a mouth behind the car is `back`, and
-`_junction_choices` never offers `back`, so a tangential join is invisible
-while lapping.  That has to be checked on the *cut* grid, not the uncut one.
-
-Two facts from that probing survive unchanged and are worth keeping:
-
-- **The conditional re-decides every lap.**  On the wiki infinite-loop
-  example, the junction at `(2, 2)` approached heading East offers
-  `roads=['E', 'S']`; with the cell at 0 the car takes `E`, with it nonzero
-  `S`, re-decided on every lap.  A genuine per-lap, cell-keyed, two-way
-  branch, with the countdown polarity: nonzero continues, zero leaves.
-- **A counter on the lap counts down.**  With the seed on an entry corridor
-  rather than the lap, the counter decrements once per lap as the car crosses
-  a `~` (observed 3 -> 2, then 6 -> 5).  `_junction_kind` fires on each
-  arrival and the cell is re-read each time, so neither latching nor
-  non-detection is an obstacle.
-
-### Two pitfalls worth keeping
-
-- A cell that reaches exactly 0 *inside* one of these hallways sends the car
-  into an unterminated lap (no halt, no error).
-- A parameterized drive-through hallway (the boolean generator's
-  `_streetcode_hallway`, with the row count varied) lands a cell on exactly
-  `2 * rows + 2`, confirmed to 100 rows, and hallways in series compose
-  additively.  That is unary rotated 90 degrees — grid *height* proportional
-  to the value — so it compresses nothing on its own.  Its conditional half
-  does work: zero at the mouth skips the hallway, nonzero enters it.
-
-## What the ring buys
-
-The generator uses the ring for its first character (`_streetcode_ring`).
-The hand-written nine-by-eight is not a minimum: blanking cells shortens a
-factor and widening the island lengthens one, so the ring makes any
-`counter * per_lap`, with a remainder walked on the street.  Later characters
-keep the straight corridor of increments — their deltas are the gaps between
-adjacent code points, and a gap that small is cheaper walked than ringed.
-Chaining rings on one street also works (a second ring's descent gap placed
-after the first ring's `O`, with `_` resetting CP and a fresh `^` seeding the
-next counter), so the plumbing composes; the generator does not use it yet,
-since only the first character has a delta worth a ring.
-
-**The ring survives a width.**  It applies on the folded path too, not only
-the unfolded one — a caller passing a `width`, which `scripts/write_examples.py`
-does for every example, would otherwise get the plain serpentine and no loop
-at all.  Folding does not make the first character's walk cheaper; it packs
-the same unary run into more rows.  The two layouts compose
-(`_streetcode_ring_serpentine`): the fold fills its lane pairs bottom-up and
-starts the car in the lowest eastbound lane, exactly where the ring prefix
-belongs, and the block hangs below the grid's southern wall where the fold has
-built nothing.  `Hello, World!` at width 80 goes 809 -> 650 bytes.  A ring
-whose prefix will not fit one lane leaves the plain fold standing rather than
-being re-planned to suit the width: what a ring costs is what it costs, and
-the two finished programs are compared as they are.
-
-### The ring in the boolean generator
-
-The counting loop carries over to the boolean generator, where every input
-loop and the loader loop walk a cell by exactly 48. The hallway spends that
-as 48 unary cells over 29 rows; the ring makes it eight laps of six in 8
-rows, at the cost of being 8 columns wide rather than 4. Which is cheaper
-depends on the tree beside it -- the ring wins while the loops set the
-program's height (`n <= 2`, where NOT goes 869 -> 450 bytes and a two-input
-table 1229 -> 943), and the hallway wins once the tree is taller than either
-loop and only the width still counts -- so both programs are built and the
-shorter one is kept, as the text generator does with its own two layouts.
-
-The ring is *mirrored* for this use: the hand-written one holds its
-accumulator above its counter, and the generator needs the opposite, because
-the tree forks on the value and the loop has to leave CP on it. Mirroring
-swaps every `_` for `=`, and moves the CP hop from above the descent gap to
-below it. That move is the whole difficulty. **Every gap crossing is a
-junction and reads the CPth cell**, the ring's two gaps included, so CP must
-name a cell whose zero/nonzero state is known at each one:
-
-- At the descent gap, mid-lap, CP must be on the *counter*. The value passes
-  through 0 for a `'0'` bit, and a zero there steers the car out of the ring
-  and back onto the street, where it re-runs the loop's `I`.
-- At the exit gap, CP is necessarily on the value, and a zero steers the car
-  West back down the street instead of East onto the next loop. This is why
-  the labels leave the value at `bit + 1` rather than a bare bit: the +1 is
-  not slack, it is what keeps that crossing nonzero, and the next label's
-  leading `~` takes it off again.
-
-### Starting the car in the oncoming lane
-
-The northern lane is blank across the whole program -- the car only drives it
-coming back from the hairpin at the western wall. Starting the car *there*
-instead is free, and it takes the leading run's columns off every row: a `C`
-with the northern wall on its right heads **West**, so the run is written
-East-to-West and read in reverse, and the car hairpins at the west wall and
-arrives back along the driving lane at the first loop's mouth exactly as it
-did before. That is `_streetcode_lift`, and it saves nine columns for the
-ring's labels and seven for the hallway's, on every row.
-
-The same gap-junction law governs the westbound leg, and it is the reason the
-lift is safe rather than the reason it is hard: the leg passes over *every*
-loop mouth in the program, and a zero CPth cell captures the car into the
-first mouth it meets. The `^` the start already carried leaves cell 0 nonzero
-for the whole leg, so every crossing passes straight over. Verified both ways
--- without that `^` the car U-turns into the first mouth's exit gap.
-
-### One counter for every cell
-
-The per-loop shapes spend a whole 48-cell loop on each input and another on
-the loader, but 48 only has to be built *once*. With a counter holding it, a
-single lap that walks every cell -- each input down one, the loader up one,
-the counter down one -- does all that work at once, and the loop's cost stops
-scaling with `n`. The body is `_`×(n+1) to rewind, then `~=` per input, then
-`^`: 3n+2 cells, and the island is widened by `k = max(0, 3n-4)` to hold it,
-the same `k` trick the text generator uses.
-
-What keeps the run safe is the lap's CP *schedule*, not the cells' values. A
-`'0'` input walks 48 down to 0, so inputs do reach zero mid-run -- but CP is
-only ever on an input along the lap's junction-free legs. The two junctions
-read cells chosen for the job: the descent gap and the exit corner both read
-the counter, and the drop on the way out lands CP on the loader, which is
-seeded to 1 and only climbs. That seed is load-bearing for exactly this
-reason.
-
-The prefix runs down a **shaft** rather than along the street:
-
-    +--
-    |
-    |
-    |C^+
-    |==|
-    |I=|
-    |=^|
-    +--+
-
-The car drives the western lane downward and the eastern one back up, so
-the prefix's 2n+6 instructions cost four columns instead of 2n+6 -- and
-since every row of the program is that much shorter, the saving grows with
-the tree: 55 bytes at n=1, 704 at n=4. The eastern lane is drawn bottom-up,
-because that is the order the climb reads it.
-
-The reads carry no `^`, either. `I` stores the code point of an ASCII digit,
-48 or 49, so a cell it just filled is nonzero on its own -- the bump the
-strip shapes carry is redundant here. The ring then subtracts exactly 48 and
-the inputs land on bare bits, so the tail only walks CP back with no
-correction to make. The strip shapes keep their `^` because *their* exit gap
-is crossed with CP on the value itself, which is the whole reason their
-contract is `bit + 1`.
-
-Two things this shape taught, both non-obvious:
-
-- **Continue and entry must hand the body the same CP.** The single-cell ring
-  drops CP one cell on the path that carries on around the island, because
-  its next lap's decrements needed it there. The shared body's rewind is
-  sized for arriving with CP on the counter, so that drop has to be blanked
-  -- otherwise lap 2 starts one cell low, walks CP off the end of the tape,
-  and halts. A divergent-path drop is part of the body's calling convention.
-- **The shared shape cannot be lifted.** Its prefix reads every input and
-  seeds three more cells, which makes it about as long as the street it
-  heads, so a westbound run of it crosses the loops' *and* the tree's mouths
-  -- and at each one CP names a cell nothing has seeded yet, because the
-  prefix is the only code that has run. No ordering of the seeds avoids it:
-  the cells CP walks over are exactly the ones the prefix has not reached.
-  So the lift applies to the strip shapes only, and the three programs are
-  compared as they are.
+* **Every gap crossing is a junction and reads the CPth cell.**  Wherever a
+  ring or hallway's mouth is crossed, CP must name a cell whose zero/nonzero
+  state at that exact point is known and intended -- an unplanned crossing
+  can steer the car off the shape entirely.  A mirrored ring (accumulator
+  below the counter rather than above) still has to satisfy this at both of
+  its gaps independently.
+* **A lap must pass any entry/exit gap travelling the entry's own
+  direction**, and only ever on the *cut* grid (see "The counting loop"
+  above) -- this applies equally to generator-built rings.
+* **A shared-body loop's divergent paths must hand the body the same CP.**
+  If one path around a lap drops CP by a cell relative to another, the
+  body's own rewind (sized for one arrival CP) breaks on whichever path
+  disagrees with it.
+* **A prefix that reads every cell it seeds cannot be lifted onto a
+  westbound leg that crosses other mouths.**  Lifting (driving a leg in
+  reverse to save columns) is only safe where CP is known nonzero at every
+  mouth the leg passes over -- in `_streetcode_lift` that guarantee is the
+  leading `^`, which leaves cell 0 nonzero for the whole leg so every
+  crossing passes straight over.  A prefix still filling those same cells
+  does not yet have it, so it cannot be lifted.

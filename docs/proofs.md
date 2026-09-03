@@ -1,23 +1,18 @@
 # Proofs
 
-Three results about the generators that were once machine-checked in Lean 4
-+ mathlib, kept here as prose.  The Lean development lived at
-`extra/lean/esolangs` and was removed in favour of this file; the sources
-are recoverable from git history at commit `528fe2c2`, the last commit
-before the deletion.
+Three results, machine-checked in Lean 4 + mathlib and kept here as prose
+after the Lean sources (`extra/lean/esolangs`) were removed; recoverable
+from git history at commit `528fe2c2`. Each statement is transcribed from
+its proof file's docstring, so it says exactly what the theorem said. The
+axiom audit under each result names what the theorem ultimately rested
+on — `sorryAx` would mark a gap in the proof (never appeared), and
+`Lean.ofReduceBool` marks a `native_decide` step (trusts the Lean compiler,
+not just the kernel).
 
-What that means for the claims below: each was checked by the Lean kernel at
-the time it was written, and this file records *what* was proved and *how*
-the argument runs, not a re-derivation.  The statements are transcribed from
-the proof files' own docstrings, so they say exactly what the theorems said.
-The axiom audit noted under each result reports what that theorem ultimately
-rested on — two names mattered, `sorryAx` (a gap in the proof, which never
-appeared) and `Lean.ofReduceBool` (a `native_decide` step, which trusts the
-Lean compiler in addition to the kernel).
-
-Two of the three are positive correctness results about shipped generators;
-the third is a negative result, and the wall entry in
-[`docs/walls.md`](walls.md) points here for its argument.
+Two results are positive correctness properties of shipped generators;
+the third is a negative result binding future boolean-generator work on
+`%^2^-1`, and the wall entry in [`docs/walls.md`](walls.md) points here for
+its argument.
 
 ## MAMMALIAN generator totality
 
@@ -125,10 +120,9 @@ computation.
 program meeting the boolean contract computes a function that ignores one of
 its two inputs, so XOR and AND — which depend on both — are unreachable.
 
-This is the negative result, and its scope is what makes it worth stating
-carefully: the claim quantifies over programs of unbounded length, and
-non-termination of a `t` loop is not decidable by simulation, so this is an
-induction on the execution and **not** a bounded search.  No amount of
+The scope matters: the claim quantifies over programs of unbounded length,
+and non-termination of a `t` loop is not decidable by simulation, so this is
+an induction on the execution and **not** a bounded search.  No amount of
 enumeration would have established it.
 
 ### The machine

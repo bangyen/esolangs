@@ -37,14 +37,11 @@ alternating table, which folds nothing and spends `2**n - 1`, so the tree is
 total through `n == 5` (31) and begins refusing at `n == 6` (63).  Tables
 that fold hard still render at any width — AND-`n` needs only `n` labels.
 
-An arithmetic kernel used to catch the `n > 5` region by embedding the table
-as a single integer (6-5's pointer cannot net-advance, so there is no
-computed array indexing), at O(`2**(2**n)`) characters for dense tables
-behind a ~2 MB setup guard.  It was **retired**: a buildable `T` confines
-the ones to low indices, which leaves the rest of the table constant, which
-folds well inside the label budget — so it never covered a table the tree
-could not.  A search over contiguous families at n=6,7,8 and ~18000 random
-tables found no counterexample.
+An arithmetic-kernel alternative (embedding the table as a single integer,
+at O(`2**(2**n)`) characters behind a ~2 MB setup guard) never covered a
+table the tree could not: a buildable `T` confines the ones to low indices,
+which leaves the rest of the table constant, which folds well inside the
+label budget.  Not worth building for that reason.
 
 ### The attack that does not work: operands past `Z`
 
@@ -117,19 +114,14 @@ fatal to trees — a trajectory visits distinct values until it reaches 1,
 since a repeat would be a cycle it never escapes.  Peaks grow far slower than
 `2**L`: XOR4, quoted here at 524,288 lines, is now **484**.
 
-**The re-verification that "confirmed" the wall was soundly run and searched
-the wrong space.**  Sweeping `b1` to ~500,000 values per table really does
-find no collision-free placement — but every candidate it tested was a
-*decision tree*, and the tree is what the convergent tail defeats; the
-branch-free lookup was never in the pool.  A completed search over a
-parameterized family bounds that family, not the language.
+**A completed search over a parameterized family bounds that family, not the
+language.**  A re-verification that swept `b1` to ~500,000 values per table
+and found no collision-free placement was testing only *decision trees* —
+the branch-free lookup was never in that pool.
 
-**Status:** the generator constructs one program per table, with no search,
-reorder or cache.  The only remaining limits are size: a table needing more
-commands than the longest committed anchor covers (`ztoalc_starts.py`,
-reaching 1132 steps), or whose trajectory peaks past the `2**22` line gate.
-Verified against the interpreter for every table at `n <= 3` exhaustively,
-and for random and structured tables at `n == 4` through `n == 7`.
+**Standing limits:** a table needing more commands than the longest
+committed anchor covers (`ztoalc_starts.py`, reaching 1132 steps), or whose
+trajectory peaks past the `2**22` line gate, is out of reach.
 
 ## 3x (constant-bit guard skip is unsafe)
 
@@ -175,116 +167,49 @@ what was disproved along the way.
 
 ### The sculpted route's program length is set by the accumulator
 
-`_mux` used to return the first `(C, orientation, read)` combination that
-printed.  That is a poor choice for *length*, and the reason is structural: a
-sculpting round emits `'<' * K + '[x' * K + 'x'`, so it costs **`3K + 1`
+A sculpting round emits `'<' * K + '[x' * K + 'x'`, so it costs **`3K + 1`
 characters** for a rewind of `K = frontier - C + 1`.  The accumulator `C`
-therefore sets the price of every round the table needs, and the first
-accumulator tried is not the cheapest.
+therefore sets the price of every round the table needs, the cheapest is not
+the first one tried, and the length curve is not monotone in the accumulator
+— sampled tables put their minimum at the top, the bottom and the middle, so
+pruning the search to a favoured region loses the optimum on a quarter of
+tables.  **There is no cheap rule to substitute for measuring**: the route
+must sculpt every combination and keep the shortest.
 
-Measured over sampled four-input tables:
+Against the staged route, the sculpted one is always the longer build — on
+every table both routes build (284 of 284, across arities 2-5), the staging
+template is shorter, and the gap widens with arity (1.33x at two inputs to
+4.53x at five).  The two routes are complementary rather than competing: at
+four inputs the staging placed only 16 of 60 sampled tables where `_mux`
+placed all 60, which is why `_staged` falls through to `_mux` rather than
+replacing it.
 
-| accumulator order | mean template |
-|---|---|
-| first ascending (what shipped) | 1046 |
-| first descending | 700 |
-| **minimum over all** | **594** |
-
-A 43% reduction, and at five inputs the same change takes five-input XOR from
-2511 characters to 1174 (53%).  Across the whole 336-table baseline the 61
-mux-route templates shrink 42.1% in total.
-
-**Against the staged route, the sculpted one is the longer build.**  Calling
-both routes directly — `_derive_staging` plus `_replay` for the staging, so
-`_staged`'s fall-through to `_mux` cannot mask a miss — and comparing only
-tables *both* build:
-
-| inputs | overlap | staging mean | mux mean | ratio |
-|---|---|---|---|---|
-| 2 | 16 of 16 | 178 | 234 | 1.33x |
-| 3 | 252 of 256 | 235 | 324 | 1.40x |
-| 4 | 16 of 60 sampled | 296 | 596 | 2.04x |
-| 5 | XOR only | 259 | 1174 | 4.53x |
-
-**The staging is shorter on every table both routes build — 284 of 284** —
-and the gap widens with arity.  These are template lengths, `{Xi}`
-placeholders included; both routes embed each input once at equal width, so
-the comparison is like for like.  The two routes are complementary rather than
-competing: at four inputs the staging placed only 16 of the 60 sampled tables
-where `_mux` placed all 60, which is why `_staged` falls through to it.  `_mux`
-earns its place on coverage, and the shortest-of-all-combinations selection
-above is already inside these numbers.  The four three-input tables the
-staging misses here are artefacts of bypassing dispatch: two of them ignore
-their first input and are taken by the degenerate and projection routes before
-the staging is consulted.
-
-**There is no cheap rule to substitute for measuring.**  The length curve is
-not monotone in the accumulator — sampled tables put their minimum at the
-top, the bottom and the middle — and although the winner clusters high (15 of
-20 in the top six accumulators), pruning to those loses the optimum on a
-quarter of tables.  So the route sculpts every combination and keeps the
-shortest; a build costs about 220ms where it cost 7ms.
-
-Two savings pay part of that back, both verified to leave the emitted
-template byte for byte identical: the pool code is carried between rounds as
-a hint (it never changes within one sculpt — measured, zero switches), and
-the code scan probes at the fixed `_PROBE_WALK_OUT` rather than at the
-caller's accumulator.  The second rests on the walk-out invariance this file
-already records, re-measured on the states a sculpt actually reaches: 50
-`(state, code, cell7)` triples over walk-outs 9 to 41, no triple changing
-answer.
-
-**Four other length levers were tried and do not pay.**  The accumulator is
-the only one that does:
-
-| lever | result |
-|---|---|
-| shorten the separation prefix | already minimal — 210 characters, and the right-pad that used to guard the sculpting clearance is gone: it provably could not fire, see below |
-| start the embed further left (smaller row positions ⇒ smaller rewinds) | start 32 is the floor: 30 and below scribble the guarded region, which strands every pool probe.  `_mux_start` now *derives* that floor as `_MUX_BASE - _MUX_GUARD + 1` rather than subtracting a literal |
-| reorder the separation weights so cheap rows sit where the sculpt hits | any order but descending fails to separate at all — the heaviest gadget needs the most headroom |
-| drop the round's trailing `x` | works and is verified 20/20 on the interpreter, but saves 1 character per round (594 → 589, 0.8%) and spends the `_FLIP` guard that keeps a cascade from eating the next instruction; not taken |
-
-The round order is also fixed by the termination argument — fixing the
-highest disagreeing row is what makes a round provably unable to disturb the
-rows above it — and the cost is not concentrated in the first round anyway
-(measured: the first rewind is 29% of total round cost), so there is no
-cheap reordering to find.
+Two things are load-bearing for cost and are worth re-deriving if this
+route is touched: the pool code never changes within one sculpt, so it can
+be carried between rounds as a hint instead of re-scanned; and the code scan
+probes at the fixed `_PROBE_WALK_OUT` rather than the caller's accumulator,
+which rests on the walk-out invariance recorded below.  Four other length
+levers were tried and do not pay: shortening the separation prefix (already
+minimal), starting the embed further left (cell 32 is the floor — below it
+the embed scribbles the guarded region and strands every pool probe),
+reordering the separation weights (only descending order separates at all —
+the heaviest gadget needs the most headroom), and dropping the round's
+trailing `x` (saves under 1% and spends the `_FLIP` guard that stops a
+cascade eating the next instruction).  The round order is fixed by the
+termination argument below — fixing the highest disagreeing row is what
+makes a round provably unable to disturb the rows above it.
 
 ### The staging enumeration is invertible, but there is no closed form
 
-The staged route used to run its enumeration **per table**, testing
-`(separator, settle, suffix, accumulator)` candidates until one printed.  It
-now walks the enumeration once per arity, tabulating *column -> first
-staging*, and a table is a dict lookup.  Two findings made that possible and
-one is a negative worth keeping.
-
-**The pool code does not depend on the accumulator.**  `_find_pool` is asked
-for a `walk_out`, so it *could* answer differently per accumulator — measured
-over every `(separator, settle, suffix, orientation)` at two, three and four
-inputs, it never does (160/160 constant at each arity).  So one walk answers
-the whole accumulator range instead of one walk per accumulator, which is
-what made the enumeration cheap enough to invert: a four-input table the span
-screen admits but no staging places went from **27.7s to 4.8s**.
-
-**The reachable column set is small**, which is why a table beats a formula:
-
-| n | tabulation pass | distinct reachable columns |
-|---|---|---|
-| 2 | 0.1s | 16 |
-| 3 | 0.2s | 252 |
-| 4 | 5.0s | 15994 |
-| 5 | 8.5s | 28096 |
-
-Five inputs used to ship a 30000-staging budget, justified by "the
-enumeration cannot stop early on a miss" — a miss paid the whole 54.7s
-sweep.  The tabulation consumed that rationale: a miss is now a dict lookup.
-The budget was costing **21756 columns** to save six seconds once per
-process, so it is gone.  Lifting it cannot change a template that already
-existed — a budget truncates the enumeration without reordering it, and
-every column both passes reach gets the same staging (measured, 0
-disagreements) — but it *does* change coverage, taking tables that sat late
-in the enumeration from a raise to a build.  Twenty sampled from the newly
-reached all build and print their 32 rows on the shipped interpreter.
+The staged route tabulates *column -> first staging* once per arity, so a
+table lookup is a dict lookup rather than a per-table search.  Two facts
+make that possible: **the pool code does not depend on the accumulator**
+(`_find_pool`'s answer is constant across the accumulator range at a given
+`(separator, settle, suffix, orientation)`, measured 160/160), so one walk
+answers the whole accumulator range instead of one per accumulator; and
+**the reachable column set is small** relative to the table space (16, 252,
+15994 and 28096 distinct columns at two through five inputs), which is why a
+table beats a formula.
 
 **The negative: the printed column has no closed form in `(suffix, acc)`.**
 Three translation hypotheses were tested against the measured grid and all
@@ -330,44 +255,21 @@ state.  Confirmed over 4000 random programs: none failed to halt, and the
 step count never exceeded the program length.  This is also why the language
 needs no hang detector.
 
-### The n = 4 wall was a wall around the *suffix*, and it has partly fallen
+### The n = 4 suffix count depends on the suffix family, not just the arity
 
-This section used to say the staging method does not scale to `n == 4`, on a
-counting argument: a staging offers only ~52 slots, and sweeping every
-separator and settle reached 1200 distinct 16-bit columns, 1012 fully
-essential — **1.6%** of the arity even if every one were usable.  It closed
-by saying that closing `n == 4` needs "a mechanism producing columns in
-bulk, which is a different design, not more sweeping."
-
-That was right about the sweeping and wrong about the design being distant.
-**The count was over pure bracket runs**, because `'[' * k` is the only
-suffix `_stagings` spelled.  Admitting a single `<` *inside* the run — one
-string per length becomes `k + 1` — multiplies the yield by nine:
+**The count is over pure bracket runs**, because `'[' * k` is the only
+suffix shape that gives one figure; admitting a single `<` *inside* the run
+(one string per length becomes `k + 1`) multiplies the yield by nine:
 
 | suffix family, all 5 separators × 2 settles, shipped caps | essential 16-bit columns | share of 64594 |
 |---|---|---|
-| pure runs `'[' * k` (what the old count measured) | 1650 | 2.6% |
+| pure runs `'[' * k` | 1650 | 2.6% |
 | one `<` inside the run (**shipped**) | **15404** | **23.9%** |
 
-The pure-run row reads 1650 where the old text said 1012; re-measuring at the
-shipped caps is the difference, the earlier sweep having been narrower.  The
-figures above were checked by replaying sampled columns through `_replay`
-before any of them were counted, so they are what the generator reaches and
-not what a harness reported.
-
-This is measured through the shipped caps, and 12 sampled tables from it —
-four-input XOR among them — build through `minifuck()` and print all 16 rows
-correctly on the real interpreter.  XOR is the pointed one: this file
-records it as the four-input table the searches fail on, and it is now
-search-free.
-
-The generalisation was not a guess.  The one three-input suffix that was
-stored at the time interleaves `<` into its bracket run, so a family no wider
-than "the same run with a `<` in it" was already known to reach columns no
-`'[' * k` reaches; what the measurement settled is *how many*.  That stored
-suffix is now derived rather than stored — see `_insert_suffixes`, which
-generates exactly this family (one `<` inserted into a bracket run) for every
-length.
+Four-input XOR — this file's pointed case, the table the searches fail on
+— is among the tables this family reaches, search-free.  `_insert_suffixes`
+generates exactly this family (one `<` inserted into a bracket run) for
+every length.
 
 **Why 23.9% and not 100%.**  The remaining 76% is not shown unreachable —
 only unreached by this family.  Two axes were measured and are real headroom,
@@ -401,10 +303,7 @@ coverage.
 The enumeration varies the separator, the settle, the suffix and the
 accumulator.  It never varied **whether a bit lands inverted**, and that is
 worth 15404 → 60942 of 64594 fully-essential four-input tables, **23.9% →
-94.35%**.  (That figure read 60546/93.7% for a while; re-measuring gives
-60942, and the surplus was checked rather than counted — 40 sampled
-flip-placed tables were replayed and every one printed all 16 rows on the
-shipped interpreter.)
+94.35%**.
 
 The gadget is `<[x`.  `<` steps back over the cell the setter used and `[`
 flips it, which cascades into the setter's own cell — so the bit standing
@@ -455,60 +354,34 @@ multiply the pool, not make it more nonlinear.
 ### Slot permutation is *not* blocked by the name-order invariant
 
 **This section used to read "the last 4048 fall to slot permutation, which is
-refused".  Both halves were wrong** -- the count and the reason -- and each
-error is worth recording, because the section was the standing argument for
-not trying the axis at all.
+refused".  Both halves were wrong** -- the count and the reason.
 
-**The count was stale.**  Re-measured, `_derived_plans` places 15404
-fully-essential four-input tables and the flipped-embed pass 45538 more:
-**60942 of 64594 (94.35%)**, leaving **3652**, not 60546/4048 (see the flip
-coordinate above for the sampled verification behind this figure).  That pass
-has since been deleted — `_mux` builds all 49190 tables it placed, swept
-exhaustively — so the measurement is historical, not a live code path; see the
-note above `_MUX_BASE` in `minifuck.py`.
+The count: 15404 fully-essential four-input tables from `_derived_plans` plus
+45538 from the flipped-embed pass gives **60942 of 64594 (94.35%)**, leaving
+**3652**, not 60546/4048.
 
-**The refusal rested on a coupling that is not in the language.**  It was
-right that a permuted embed *as `_embed` spells it* emits the `{Xi}` out of
-ascending order, and right to refuse a carve-out.  What it missed is that
-**emission order and tape geometry are separable.**  The invariant constrains
-the order the placeholders appear in the template *text*; it says nothing
-about which cell a bit lands in.  `<` never writes and clamps at 0, so the
-pointer can be rewound between setters for free -- and then `{X0}` can be
-emitted *first* and still be placed *anywhere*: rewind, walk right to the
-chosen cell, emit the setter, repeat.
+The reason: it is true that a permuted embed *as `_embed` spells it* emits
+`{Xi}` out of ascending order.  What it missed is that **emission order and
+tape geometry are separable**.  The invariant constrains the order
+placeholders appear in the template *text*; it says nothing about which cell
+a bit lands in.  `<` never writes and clamps at 0, so the pointer can be
+rewound between setters for free -- `{X0}` can be emitted *first* and still
+be placed *anywhere*: rewind, walk right to the chosen cell, emit the
+setter, repeat.  `_embed` couples the two only because it marches rightward
+and never rewinds -- a property of one spelling, not of Minifuck.  So the
+axis is open, and a name-order template can permute slots.
 
-`_embed` couples the two only because it marches rightward and never rewinds.
-That is a property of one spelling, not of Minifuck.  **So the axis is open,
-and a name-order template can permute slots.**
+A prototype exploiting this (`_embed_permuted`) reached only 3240 of the
+3652 residue at four inputs, and every geometry tried (flip masks, swept
+gaps, descending sites that guarantee a setter lands on blank tape) returned
+diminishing yield per unit of search cost -- closing the rest would need an
+order of magnitude more yield than the best axis tried gave.  **Not
+reachable by widening this family**; the residue needed a different
+construction -- see "Four inputs is closed" below, which closes it.  Not
+shipped.
 
-**Prototyped and verified, not shipped.**  A `_embed_permuted` doing exactly
-the above was built, integrated, and measured: n=4 coverage
-**94.35% -> 94.98%** (residue 3652 -> 3240), with sampled templates rebuilt,
-checked ascending, and run on the shipped interpreter -- correct rows and one
-width per table.  At n=3 the family alone reaches 218/218, which is a
-mechanism check rather than coverage, that arity already being total.
-
-It was reverted because the yield does not justify the machinery, and the
-*shape* of the yield is the useful part:
-
-| geometry | n=4 residue reached | feasible geometries |
-|---|---|---|
-| sites inherited from the separators, flips=0 | 12 | 10 of 120 |
-| + all 16 flip masks | 62 | 160 of 1920 |
-| gaps swept 2..5 directly | **412** | 1792 of 24576 |
-| descending sites, gaps 2..11 | 126 | 3200 of 16000 |
-
-Descending sites were the *structural* bet -- they guarantee each setter lands
-on blank tape, so feasibility stops binding and the `n!` factor collapses --
-and they returned about a tenth the yield per second of plain permutation.
-Each further coordinate buys less against a residue that barely moves.
-Closing 3240 this way would need roughly 28x the yield of the best axis tried.
-**On that evidence n=4 is not reachable by widening this family**; the residue
-is the hard core, and closing it took a different construction, not another
-coordinate on this one -- see "Four inputs is closed" below.
-
-**Two facts decide the geometry**, both measured, and both would have to be
-rediscovered by any reimplementation:
+**Two facts decide the geometry**, and both would have to be rediscovered by
+any reimplementation:
 
 - **The rewind must stop above the pool.**  Clamping to the origin walks back
   through cells 0..7 and the *return* walk's `[x` rewrites them, leaving a
@@ -590,24 +463,20 @@ resisted them longest was always the first input, whose distinguishing cells
 are furthest left under everything later walks smear over them.  The
 construction does not care, because it never has to find those cells.
 
-**Five inputs is no longer gated.**  This paragraph used to say the searches
-run ~191s and fail, stalling on pairs that differ in the first input, and
-that lifting `n == 5` was "exactly one successful separation away".  The
-constructed separation below does it in 0.004s, which lifted five at the time
-— and the arity gate has since been removed outright.  Pre-splitting the first input at embed time — walking over
-`X0`'s landing cell so the setter itself splits — remains a recorded dead
-end: it stalls at the same 20 of 32, which is why the fix had to be a
-different construction rather than a better search.
+**Five inputs is not gated.**  The constructed separation below does it in
+0.004s, and the arity gate has since been removed outright.
+Pre-splitting the first input at embed time — walking over `X0`'s landing
+cell so the setter itself splits — remains a recorded dead end: it stalls
+at the same 20 of 32, so the fix had to be a different construction rather
+than a better search.
 
 ### Separation is constructed, not searched — the saturation was a sandbox bug
 
-This section used to read "separation has an algorithmic primitive, and it
-saturates at three inputs", recording a weighting scheme that reached 13 of
-16 at four inputs and no further.  **The saturation was an artefact of how
-the weights were spaced, not a property of the primitive**, and the
-construction that fixes it removed every search from `_mux_separate` and
-lifted `n == 5` at the same time.  The superseded reasoning is kept below,
-because the shape of the error is the reusable part.
+**A weighting scheme that reached only 13 of 16 at four inputs was measuring
+a spacing bug, not a property of the primitive.**  The construction that
+fixes it removed every search from `_mux_separate` and lifted `n == 5` at
+the same time.  The superseded reasoning is kept below, because the shape of
+the error is the reusable part.
 
 **What was right.**  A restoring read `'[x<[<'` displaces the pointer by the
 bit and puts the cell back, and rewinding one cell between such reads
@@ -682,25 +551,18 @@ colliding pair.
 
 **`n == 5` is no longer gated.**  The heading above this one said lifting it
 was "exactly one successful separation away"; this is that separation.
-Sampled end to end, 200 of 200 fully-essential five-input tables build
-through `_mux` and print all 32 rows correctly on the shipped interpreter —
-five-input XOR among them, the table this file records as one no search here
-builds at all — at about 0.14s each.  The arity is **not closed**: 200 is a
-sample of 4294642034, and what is claimed is that no sampled table failed,
-not that none can.  **That last sentence is superseded by the section below**,
-which closes the arity by argument rather than by sample; it is kept because
-the sampling result is still what the claim rested on when the route shipped.
+Five-input XOR — the table this file records as one no search builds at all
+— is among the tables `_mux` builds and prints correctly.
 
 #### `_mux` is total — every refusal site closes by argument, and the gate is gone
 
 The arity tuple was a **verification gate, not a structural cap**, and it has
-been removed on the strength of what follows.  Nothing in
-the construction reads `n` except `_mux_weights`, `_mux_pad` and `_mux_start`,
-all closed forms defined for every `n`; with the gate bypassed, XOR builds at
-every arity tried through seven — 243, 429, 622, 2511, 9565 and 39915
-characters at `n` of 2 to 7, six combinations tried each.  Six builds at
-`n` of 5, 6 and 7 (XOR and random tables) were instantiated per row and run on
-the shipped interpreter: **448 of 448 rows correct**.
+been removed on the strength of what follows.  Nothing in the construction
+reads `n` except `_mux_weights`, `_mux_pad` and `_mux_start`, all closed
+forms defined for every `n`.  XOR builds at every arity tried through seven
+— 243, 429, 622, 2511, 9565 and 39915 characters at `n` of 2 to 7.  **448 of
+448 rows correct** on the shipped interpreter, sampled across `n` of 5, 6
+and 7 (XOR and random tables).
 
 `_mux` never raises, so *total* means exactly "no `None`-site fires".  There
 are six such sites, and the failure surface is therefore finite.  A table also
@@ -906,23 +768,15 @@ now been paid, so the tuple has been replaced by the floor `_MUX_MIN_ARITY =
 2`, which exists only because `_solve` routes constants and one-input
 projections to `_degenerate` before the route is reached.
 
-The before-state was a configuration gate declining in **0.000s**: four random
-fully-essential six-input tables raised `ValueError` at once, while a six-input
-table with a *narrow essential core* built fine — it projects down to an arity
-inside the tuple, which is why "does `n = 6` build?" has to be asked with a
-fully-essential table to mean anything.  After the lift those same tables
-build and print every row.  There is now no arity, and no table at any arity,
-that the Minifuck boolean generator declines.
-
-Re-measured independently, and agreeing with the 448/448 above:
-**256 of 256 rows correct** over two fully-essential
-six-input tables and one seven-input table, each row instantiated and run on
-the shipped interpreter, every one at a single fill width.  What that run adds
-is the *cost* curve, which is now the only thing bounding a caller — about
-0.14s a table at five inputs, 40s at six, and 820s at seven, where the
-template reaches 13685 characters.  The `2**n` growth is in the sculpting: a
-rewind costs `3K+1` characters with `K` on the order of the `2**n` span,
-across up to `2**n` rounds.
+A six-input table with a *narrow essential core* builds fine even under the
+old gate — it projects down to an arity inside the tuple — which is why
+"does `n = 6` build?" has to be asked with a fully-essential table to mean
+anything.  There is now no arity, and no table at any arity, that the
+Minifuck boolean generator declines.  The *cost* curve is what now bounds a
+caller — about 0.14s a table at five inputs, 40s at six, and 820s at seven,
+where the template reaches 13685 characters.  The `2**n` growth is in the
+sculpting: a rewind costs `3K+1` characters with `K` on the order of the
+`2**n` span, across up to `2**n` rounds.
 
 #### What the proof did to the constants
 
@@ -1021,12 +875,9 @@ the design everywhere.
 
 ### `n == 5` ships partially; full coverage is out of reach of any flat family
 
-**The heading here used to read "`n >= 5` is out of reach of *any* staging
-family".  That was wrong in scope and is corrected below.**  The counting
-argument it rested on is sound and is kept — a flat pool of columns cannot
-cover a real *fraction* of five inputs — but "cannot cover a fraction" was
-silently read as "cannot cover anything", and the shipped family in fact
-carries a measured sliver that is now derived rather than searched for.
+A flat pool of columns cannot cover a real *fraction* of five inputs — that
+counting argument is sound — but it does carry a measured sliver, now
+derived rather than searched for.
 
 **Measured, not estimated.**  `_derived_plans` cannot run at this arity: it
 pre-builds a `wanted` dict over all `2 ** (2 ** n)` tables, which is `2**32`
@@ -1075,10 +926,11 @@ five**; they are constant-factor headroom and do not change the story above.
 
 ### Composition through the pointer: refuted, with the mechanism
 
-`docs/walls.md` used to say a higher arity needs a construction that
-*composes*, and named two failures in one line each. That line has now been
-worked out in full, and the answer is that the combine step **creates no
-information**.
+A construction composing sub-results through the pointer position fails
+because the combine step **creates no information** — this is superseded as
+a route to closing an arity (see "Four inputs is closed" above), but the
+mechanism is worth keeping since it rules out the whole *position-decode*
+shape rather than one attempt at it.
 
 **"No decode from an accumulated position" — the exact content.**  A mux
 needs a selector read then a cofactor read.  With the cofactors planted as
@@ -1121,65 +973,32 @@ could produce — the mux vanishes under every plant rule tried.
 So a selecting walk yields **one product**, never both and never the mux,
 because the read consumes the selector into the pointer.
 
-**"Why no chain can escape the counting argument" — REFUTED BY
-CONSTRUCTION** (2026-08-31).  This section used to argue that a chain is
-"just a suffix string over the same alphabet", hence a *subset* of the
-enumerated suffix space, hence governed by the same flat-pool count.  That
-step is wrong, and 78 interpreter-verified programs say so.
+**A chain is not a suffix the enumeration can emit**, so "a chain is just a
+suffix string over the same alphabet, hence governed by the same flat-pool
+count" is wrong.  `_stagings` emits one uninterrupted run from `_BASE - 1`;
+a chain walks to a *chosen* cell, reads, walks a chosen gap, and reads
+again.  Its coordinates are `(separator, settle, k, cell, read1, gap, read2,
+accumulator, orientation)` — a strictly larger pool that no `'[' * k` and no
+single-insert suffix spells.
 
-A chain is **not** a suffix the enumeration can emit.  `_stagings` emits one
-uninterrupted run from `_BASE - 1`; a chain walks to a *chosen* cell, reads,
-walks a chosen gap, and reads again.  Its coordinates are
-`(separator, settle, k, cell, read1, gap, read2, accumulator, orientation)` —
-a strictly larger pool that no `'[' * k` and no single-insert suffix spells.
-Being "over the same alphabet" was never the same as being in the same
-enumeration.
+**The question that matters is the printable set, not the standing set.**
+"Which chain leaves the answer sitting in a cell?" has answers, and every
+one dies on the walk out.  "Which chain leaves a tape the ordinary endgame
+prints correctly?" is different and does not require decoding position at
+all — it reshapes the tape so the existing print route lands.  A sweep of
+125440 chains against 400 unreached four-input tables printed 78 (19.5%,
+78/78 interpreter-verified), extrapolating to roughly 39% coverage — not a
+measurement of the whole space.
 
-**What was actually measured.**  Sweeping 125440 chains and scoring them
-against what they would *print*:
-
-| sample of unreached four-input tables | chains print | verified |
-|---|---|---|
-| 400 (strided over the unreached 49542) | **78 (19.5%)** | **78/78 on the interpreter** |
-
-All 78 are fully essential, 296-329 characters, four slots.  Projected over
-the whole unreached set that is roughly 9660 tables, taking four-input
-coverage from 24.4% to about **39%** — an extrapolation from a strided
-sample, not a measurement of the space.
-
-**Why it was missed before, and it is not subtle.**  The earlier attempt
-searched the *standing* set: "which chain leaves the answer sitting in a
-cell?"  That question has answers (23 of 200 sampled) and every one of them
-dies on the walk out — which is what "produced easily, destroyed almost every
-time" below records, correctly.  The right question is the **printable** set:
-which chain leaves a tape the ordinary endgame prints correctly.  The chain
-never has to decode position at all; it reshapes the tape so the existing
-print route lands.  Standing and printable are different sets, and the whole
-negative came from searching the wrong one.
-
-That question only became exhaustively askable once `_printed_column` gave a
-closed form for what an endgame prints (see the module docstring): scoring a
-chain costs a walk and a lookup instead of an emitted endgame, which is what
-makes 125440 chains a ten-minute sweep instead of an overnight one.
-
-**What survives.**  The mux analysis below is still correct about what it
-actually examined — `ptr = entry + v + ans` does sum the selector with the
-answer, and the standing answer really is destroyed by the walk's per-row
-prefix-XOR.  It is a true statement about position-decoding, and a false
-statement about chains in general.  The counting argument also still governs
-the *staging family*: nothing here raises what `_stagings` reaches.
-
-**What this does not establish.**  Four inputs is not total — this is a large
-slice of the unreached space, not closure.  And the chain pool is itself
-finite and fixed-size, so it faces the same demand-squares-per-arity problem
-at five inputs; nothing here suggests it closes another arity.
-
-**Reproducing it.**  The prototype is not shipped and nothing in `src/` calls
-it.  `notes/minifuck_chain_sweep.py` runs the sweep (about ten minutes, and it
-carries a positive control so a zero cannot be a forced artifact);
-`notes/minifuck_chain_verify.py` re-derives the hits and runs every one of
-them through the real interpreter, which is the 78/78 above.  `notes/` is
-gitignored, so these are working files rather than a shipped harness.
+**What survives.**  The mux analysis above is still correct about what it
+examined — `ptr = entry + v + ans` does sum the selector with the answer —
+as a statement about position-decoding, and false as a statement about
+chains in general.  The counting argument still governs the *staging
+family*: nothing here raises what `_stagings` reaches, and four inputs was
+not total from this alone — it needed the sculpted route.  The chain pool
+is itself finite and fixed-size, so it does not obviously close another
+arity.  Not shipped; the sweep and verification scripts are gitignored
+working files (`notes/minifuck_chain_sweep.py`, `notes/minifuck_chain_verify.py`).
 
 ### A sound decline exists after all, and it is linear algebra
 
@@ -1207,8 +1026,7 @@ Measured, not argued:
 The check that matters most is against the *generator* rather than against
 the harvest the rule was built from: sampled declined tables were handed to
 the real `_derive_staging`, which agreed on all of them after about 143
-seconds of finding nothing.  Two independent implementations, written from
-the description rather than from each other's code, agree on every figure.
+seconds of finding nothing.
 
 **Why five inputs and not four.**  The identical condition is *vacuous* at
 `n == 4` — ambient dimension 16 against bases whose rank reaches 16, so it
@@ -1239,11 +1057,9 @@ whole call.
 
 ### The layout is a free parameter, and the tape state predicts yield
 
-Everything above asks whether the *fixed* button layout can be predicted.
-This asks whether the layout is the limiting choice, and whether the state a
-button leaves says anything about what follows.  **Every result here is a
-multiplier on the 23.9% at `n == 4`; none of it moves the counting argument,
-and a tenfold layout win would still leave `n == 5` near 0.006%.**
+**Every result here is a multiplier on the 23.9% at `n == 4`; none of it
+moves the counting argument, and a tenfold layout win would still leave
+`n == 5` near 0.006%.**
 
 **Separator length was never re-swept, and it is live.**  The shipped five
 came from enumerating *short* strings to close an `n == 3` gap.  Sampling 178
@@ -1468,12 +1284,8 @@ the shipped family stages 23.8%.  Adding those up, the search-free share of
 essential and need columns of their own: **1.7e+05 times more** than the
 24582 essential columns this family produces *at five inputs*.
 
-(That ratio used to read 2.8e+05 against 15404, which is the family's yield at
-**four** inputs — the arity it was measured at.  Harvesting the family at five
-gives 24582, so the gap is a little narrower than recorded and the conclusion
-is unchanged: no constant factor closes 1.7e+05.)
-
-That gap is immune to the axes above, because they multiply by constants.
+No constant factor closes a gap of 1.7e+05: that gap is immune to the axes
+above, because they multiply by constants.
 Per-gap separators took the union to 36.1% — about 1.5x — and a second `<`
 roughly doubled the yield at matched `k`.  A hypothetical axis worth a
 hundredfold would move `n == 5` from 1e-05 to 1e-03.  So `n == 4` was not the
@@ -1591,9 +1403,8 @@ do without.
 ## 123 (parameterized — resolved at `n <= 3`; wider arities constructed, gated on cost)
 
 **Resolved.  All four one-input and all sixteen two-input tables build, and
-the generator ships** (`esolangs.tools.boolean.one_two_three`).  What was
-wrong in the ceiling this section used to record was its *scope*: the bound
-belonged to a setter choice, not to the language.
+the generator ships** (`esolangs.tools.boolean.one_two_three`).  The bound
+that looked like a language ceiling belonged to a setter choice instead.
 
 **The setter is a free parameter, and that is the reusable lesson.**  The
 displacement-neutral `12`/`21` pair keeps every instantiation in position
@@ -1729,11 +1540,10 @@ found it in about 2000 candidates on one core.
 
 ### Four or more inputs: the phase objection fell to a merge choreography
 
-This section used to say no construction was known, because "the pointer
-phase *is* the computed value, so a trailing inert embed shifts the
-quantity the plan decodes."  That bound the *phase-decode shape*, not the
-language.  The constructed route (`one_two_three_construct`, 2026-09-03)
-removes the phase from the picture entirely:
+"The pointer phase *is* the computed value, so a trailing inert embed shifts
+the quantity the plan decodes" bounds the *phase-decode shape*, not the
+language.  The constructed route (`one_two_three_construct`) removes the
+phase from the picture entirely:
 
 - **Embeds stop computing.**  After a fill at position `P`, the common
   string `"1"*(P+1) + "212112"` merges both branches back to position 0
@@ -2160,9 +1970,9 @@ linear scan rather than a genuine representation limit.  See
 
   **The three-input cap was the padding, not the language.**  Coverage at
   `n == 3` went 48/256 -> 86/256 (and 154 -> 496 at `n == 4`) — later to
-  106/256 with the ladder, and finally to 256/256 with the band
-  construction, both below — by adding a
-  third construction that composes one affine setter per input and *searches*
+  106/256 with the ladder, and finally to 256/256 with the band construction,
+  both below — by adding a third construction that composes one affine
+  setter per input and *searches*
   the composition, rather than reading one slope per column as the two-input
   derivation does.  XOR3 builds, which is no subcube.  What had actually been
   refusing it was a width rule: both branches of a setter must be equal width
@@ -2215,12 +2025,10 @@ linear scan rather than a genuine representation limit.  See
   majority-3 among the twenty added, at 598 characters and executed on all
   eight rows.
 
-  This does **not** contradict the paragraph above, and neither does the
-  band construction below: the reset still cannot *separate* rows that
-  agree — it merges, and the ladder supplies an order for it to merge
-  along.  The separation is done by the weights before the reset ever
-  fires, and the printing tail is the ordinary gap-1 one; the
-  amplify-then-clamp tail still never fires.
+  This does not contradict "the reset cannot separate" above: the reset
+  still cannot separate rows that agree — it merges, and the ladder
+  supplies an order for it to merge along.  The separation is done by the
+  weights before the reset ever fires.
 
   Two things the construction turns on, both of which cost a wrong answer
   first.  Stage one must stay **nonpositive**, since the reset never fires on
@@ -2263,10 +2071,10 @@ linear scan rather than a genuine representation limit.  See
   all 256 are interpreter-verified on every row at equal fill length.
 
 - **Is the `%^2^-1` fold total?**  **No, and where it stops is the ladder's
-  footprint rather than the plan search.**  Asked directly (2026-09-02), the
-  generator was refusing generic tables from ten inputs on, and the refusal
-  read like the search giving up: the descent dead-ends 354 moves in with 420
-  of 514 points still unmerged, nowhere near its 4128-step budget.  It was not
+  footprint rather than the plan search.**  The
+  generator refuses generic tables from ten inputs on, and the refusal reads
+  like the search giving up: the descent dead-ends 354 moves in with 420 of
+  514 points still unmerged, nowhere near its 4128-step budget.  It is not
   the search.  Rows start at `-step * r`, so the ladder spans
   `step * (2**n - 1)`, and the emitter lays it from a **zero accumulator** —
   so the ladder has to fit inside `[-3003, 0]`.  `_fold_at` was gating on
@@ -2295,10 +2103,9 @@ linear scan rather than a genuine representation limit.  See
   match a hold; the narrow ladder's last setter is respelled wider instead
   (`iipssp` against `pppppp`).
 
-  **This entry said ten was a structural end.  That was wrong, and the hole
-  was the word *uniform*.**  Asked (2026-09-03) for a new construction, the
-  assumption that fell was that rows must be *evenly* spaced.  They need only
-  be **distinct** — two rows sharing a value are merged by the first cut
+  **Ten is not a structural end; the false assumption was the word
+  *uniform*.**  Rows must be *evenly* spaced is false — they need only be
+  **distinct** — two rows sharing a value are merged by the first cut
   reaching them and can never be separated — and distinctness is far cheaper
   than uniformity.  The floor is exact: the `2**n` subset sums are distinct
   non-negative integers, so the largest is at least `2**n - 1`; the minimum
@@ -2369,8 +2176,8 @@ linear scan rather than a genuine representation limit.  See
   2044 mergeable pairs (1008 of 1024 with two inputs unlaid, 292 of 512 with
   three).  Equal cofactors are abundant, not rare.
 
-  **Investigated 2026-09-03; every component works, and the open question is
-  now narrow.**  The invariants permit it: `docs/limitations.md` states the
+  **Every component works, and the open question is narrow.**  The
+  invariants permit it: `docs/limitations.md` states the
   rule as embedding each input **exactly once** — a count, not a placement —
   the enforced slot test only requires ascending names, and Minifuck's
   sculpted route is the precedent for machinery between embeds.  A hand-built
@@ -2560,17 +2367,9 @@ linear scan rather than a genuine representation limit.  See
   so the `_WII2D_MAX_STATE_BITS` threshold and the second ranked pass it
   guarded no longer exist.
 
-  Measured over the same random tables, old (beam ladder plus retry) against
-  new (single candidate), median/worst emitted characters and build time:
-
-  | `n` | old size | new size | old time | new time |
-  |----|----------|----------|----------|----------|
-  | 4 | 175 / 213 | 170 / 230 | 0.77 / 1.51 ms | 0.35 / 0.51 ms |
-  | 5 | 300 / 546 | 308 / 482 | 8.68 / 35.22 ms | 1.39 / 4.39 ms |
-  | 6 | 913 / 13411 | **736 / 1242** | 113.65 / 393.27 ms | **7.00 / 12.32 ms** |
-
-  The `n == 6` worst case is where the trap lived: 13411 characters and 393ms
-  becomes 1242 and 12ms.
+  The `n == 6` worst case is where the trap lived: the old beam-plus-retry
+  ranking's worst emitted program was 13411 characters at 393ms; the single-
+  candidate ranking's worst is 1242 characters at 12ms.
 
   **Most of the remaining build time was speculative compression, not the
   fold.**  A candidate is cheap to enumerate and expensive to *compress* -- a

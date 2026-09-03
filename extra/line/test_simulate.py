@@ -174,14 +174,14 @@ class TestWikiFixtures:
 def _build_decrement_loop() -> Stroke:
     """Build a synthetic ``+++`` seed forking into a decrementing loop or a halt.
 
-    Built directly from lattice.py primitives (bypassing render.py, which
-    cannot produce a real cyclic Node graph -- see WIP.md) so the loop-back
-    mechanism itself is testable independent of any real fixture's
-    geometry.  The loop arm's own final vertex is placed exactly on the
-    fork's own final vertex -- the "landing exactly on another stroke's
-    final vertex" case, which addition.png's own merge does *not* exercise
-    (that one lands strictly inside a segment instead) -- so together the
-    two give both of find_merge's match branches their own coverage.
+    Built directly from lattice.py primitives, bypassing render.py's own
+    loop drawing, so the loop-back mechanism itself is testable independent
+    of any real fixture's geometry.  The loop arm's own final vertex is
+    placed exactly on the fork's own final vertex -- the "landing exactly
+    on another stroke's final vertex" case, which addition.png's own merge
+    does *not* exercise (that one lands strictly inside a segment instead)
+    -- so together the two give both of find_merge's match branches their
+    own coverage.
     """
     unit = 20
     heading = 0
