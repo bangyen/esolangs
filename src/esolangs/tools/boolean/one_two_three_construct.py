@@ -54,13 +54,45 @@ program is never handed out; an exhausted search raises instead.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from itertools import pairwise
 
 __all__ = ["ConstructError", "construct"]
 
 #: Fill characters, shared with the stored-plan module's contract.
 _ONE, _ZERO = "1", "2"
+
+#: Bit offset of cell 0 in a row's tape mask.  The ring occupies cells
+#: -1..-3, so shifting by three keeps every reachable cell's bit index
+#: non-negative and lets one ``1 << (pos + _RING)`` cover both regions.
+_RING = 3
+
+
+def _on_mark(row: _Row) -> bool:
+    """Report whether ``row`` is parked on one of its own marked cells."""
+    return row.pos >= 0 and bool(row.tape >> (row.pos + _RING) & 1)
+
+
+def _cells(mask: int) -> list[int]:
+    """Ascending cell numbers set in ``mask``."""
+    return [i - _RING for i in range(mask.bit_length()) if mask >> i & 1]
+
+
+def _mask(cells: Iterable[int]) -> int:
+    """Build a tape mask from cell numbers -- the inverse of :func:`_cells`."""
+    m = 0
+    for c in cells:
+        m |= 1 << (c + _RING)
+    return m
+
+
+def _union_tape(rows: list[_Row]) -> int:
+    """Every cell any row in ``rows`` has marked."""
+    u = 0
+    for r in rows:
+        u |= r.tape
+    return u
+
 
 #: One emitted token: a literal command, or ``("X", i)`` for a fill slot.
 type _Token = str | tuple[str, int]
@@ -88,10 +120,15 @@ class _Row:
 
     __slots__ = ("bits", "dead", "pos", "tape")
 
+    #: ``tape`` is a bitmask, not a set: bit ``pos + _RING`` is cell
+    #: ``pos``.  The builder toggles and tests one cell at a time in the
+    #: innermost loop, where an int shift is several times cheaper than a
+    #: set operation, and it doubles as its own hashable snapshot -- the
+    #: ``frozenset(tape)`` these state keys used to build was pure cost.
     def __init__(self, bits: tuple[int, ...]) -> None:
         self.bits = bits
         self.pos = 0
-        self.tape: set[int] = set()
+        self.tape = 0
         self.dead = False
 
 
@@ -112,7 +149,7 @@ def _exec_char(row: _Row, ch: str) -> None:
     if _work[0] < 0:
         raise _WorkExhaustedError
     if ch == "1":
-        row.tape.symmetric_difference_update({row.pos})
+        row.tape ^= 1 << (row.pos + _RING)
         row.pos -= 1
         if row.pos == -4:
             row.pos = 0
@@ -125,6 +162,120 @@ def _exec_char(row: _Row, ch: str) -> None:
             row.pos += 1
     else:  # pragma: no cover - the builder only emits 1/2 runs
         raise AssertionError(ch)
+
+
+def _exec_run(row: _Row, ch: str, w: int) -> None:
+    """Apply ``ch`` repeated ``w`` times to one row.
+
+    Straight runs are nearly everything the searches simulate, and each
+    case below collapses one into O(1) work instead of ``w`` trips
+    through :func:`_exec_char`:
+
+    * ``2`` from ``pos >= 0`` never touches the tape and cannot reach
+      the ring, so it is ``pos += w``.
+    * ``1`` from ``pos >= 0`` toggles exactly the contiguous cells it
+      steps off, so a descent stopping at -1 or above is one XOR.
+    * a deeper descent splits at the ring boundary and then *laps*: the
+      ring cycle ``0 -> -1 -> -2 -> -3`` has period 4 and touches each
+      of its four cells once per lap, so whole laps reduce to a parity.
+    * ``2`` from inside the ring is decided by its first step (-1 and
+      -2 land on 0; -3 reads stdin and raises), after which the rest is
+      a plain right-walk.
+
+    Only a short remainder is ever walked per character.  The work
+    counter is decremented by the full ``w`` on every path, since the
+    budget counts *simulated commands* and must not depend on which
+    path ran them -- a batched path that counted less would silently
+    change which borderline tables build.
+    """
+    if w and row.pos >= 0:
+        if ch == _ZERO:
+            _work[0] -= w
+            if _work[0] < 0:
+                raise _WorkExhaustedError
+            row.pos += w
+            return
+        if row.pos - w >= -1:
+            # A descent that stops at -1 or above never wraps, so it is
+            # exactly "toggle the w cells it steps off, then move down":
+            # the cells pos-w+1..pos are contiguous, hence one XOR with a
+            # w-bit mask.  Below -1 the ring's -4 -> 0 wrap and the read
+            # at -3 both matter, so that case stays per-character.
+            _work[0] -= w
+            if _work[0] < 0:
+                raise _WorkExhaustedError
+            row.tape ^= ((1 << w) - 1) << (row.pos - w + 1 + _RING)
+            row.pos -= w
+            return
+    if ch == _ONE and row.pos >= 0 and w > row.pos + 1:
+        # A descent that runs past -1 splits at the ring boundary: the
+        # part above it is the contiguous-XOR case, and the rest laps.
+        head = row.pos + 1
+        _work[0] -= head
+        if _work[0] < 0:
+            raise _WorkExhaustedError
+        row.tape ^= ((1 << head) - 1) << _RING
+        row.pos = -1
+        w -= head
+    if ch == _ONE and w >= 4 and row.pos < 0:
+        # Inside the ring ``1`` cycles 0 -> -1 -> -2 -> -3 -> 0 with
+        # period 4, toggling each of those four cells once per lap.  A
+        # whole number of laps therefore cancels on every cell when the
+        # lap count is even and flips all four when it is odd, so only
+        # ``w % 4`` steps have to be walked.  This is the kill segment's
+        # inner loop, where the descents run hundreds of cells deep.
+        laps, rest = divmod(w, 4)
+        _work[0] -= w - rest
+        if _work[0] < 0:
+            raise _WorkExhaustedError
+        if laps & 1:
+            row.tape ^= 0b1111  # cells -3..0, i.e. bits 0..3
+        for _ in range(rest):
+            _exec_char(row, ch)
+        return
+    if ch == _ZERO and w and row.pos < 0:
+        # ``2`` at -1 or -2 lands on 0 (the -2 route prints a junk byte),
+        # and -3 reads stdin, which is fatal -- so the first step decides
+        # everything and the remaining w-1 are a plain right-walk.
+        _exec_char(row, ch)
+        w -= 1
+        if w:
+            _work[0] -= w
+            if _work[0] < 0:
+                raise _WorkExhaustedError
+            row.pos += w
+        return
+    for _ in range(w):
+        _exec_char(row, ch)
+
+
+def _row_runs(row: _Row, toks: list[_Token]) -> list[tuple[str, int]]:
+    """Resolve ``toks`` for one row and coalesce it into runs.
+
+    A fill's character is fixed once the row is known, so a segment that
+    a fixpoint re-runs up to 64 times can be resolved and coalesced
+    *once* -- which also lets the long right-walks inside it take the
+    batched path in :func:`_exec_run`.
+    """
+    out: list[tuple[str, int]] = []
+    for tok in toks:
+        ch = (_ONE if row.bits[tok[1]] else _ZERO) if isinstance(tok, tuple) else tok
+        if out and out[-1][0] == ch:
+            out[-1] = (ch, out[-1][1] + 1)
+        else:
+            out.append((ch, 1))
+    return out
+
+
+def _runs(s: str) -> list[tuple[str, int]]:
+    """``"2211"`` -> ``[("2", 2), ("1", 2)]``."""
+    out: list[tuple[str, int]] = []
+    for ch in s:
+        if out and out[-1][0] == ch:
+            out[-1] = (ch, out[-1][1] + 1)
+        else:
+            out.append((ch, 1))
+    return out
 
 
 class _Builder:
@@ -155,10 +306,11 @@ class _Builder:
 
     def run(self, s: str) -> None:
         """Emit straight-line commands; every live row executes them."""
-        for ch in s:
-            for row in self.live():
-                _exec_char(row, ch)
-            self.seg.append(ch)
+        live = self.live()
+        for ch, w in _runs(s):
+            for row in live:
+                _exec_run(row, ch, w)
+        self.seg.extend(s)
         self.chunks.append(s)
 
     def fill(self, i: int) -> None:
@@ -176,14 +328,14 @@ class _Builder:
         TRUE re-runs its whole segment, so this is the machine's actual
         behaviour, not an approximation.
         """
-        toks = list(self.seg) + list(extra)
-        seen = {(row.pos, frozenset(row.tape))}
+        runs = _row_runs(row, list(self.seg) + list(extra))
+        seen = {(row.pos, row.tape)}
         for _ in range(64):
-            for tok in toks:
-                self.apply_token(row, tok)
-            if row.pos < 0 or row.pos not in row.tape:
+            for ch, w in runs:
+                _exec_run(row, ch, w)
+            if row.pos < 0 or not row.tape >> (row.pos + _RING) & 1:
                 return "skip"
-            s = (row.pos, frozenset(row.tape))
+            s = (row.pos, row.tape)
             if s in seen:
                 return "loop"
             seen.add(s)
@@ -197,7 +349,7 @@ class _Builder:
         must provably loop (they are marked dead); without it they must
         escape, or the emission is invalid and raises.
         """
-        true_rows = [r for r in self.live() if r.pos >= 0 and r.pos in r.tape]
+        true_rows = [r for r in self.live() if _on_mark(r)]
         for row in true_rows:
             fate = self.fixpoint(row)
             if kill:
@@ -220,7 +372,7 @@ class _Builder:
         nb.rows = []
         for r in self.rows:
             nr = _Row(r.bits)
-            nr.pos, nr.tape, nr.dead = r.pos, set(r.tape), r.dead
+            nr.pos, nr.tape, nr.dead = r.pos, r.tape, r.dead
             nb.rows.append(nr)
         return nb
 
@@ -239,10 +391,11 @@ def _predict(
     """
     nb = b.clone()
     try:
-        for ch in seg:
-            for row in nb.live():
-                _exec_char(row, ch)
-        true_rows = [r for r in nb.live() if r.pos >= 0 and r.pos in r.tape]
+        live = nb.live()
+        for ch, w in _runs(seg):
+            for row in live:
+                _exec_run(row, ch, w)
+        true_rows = [r for r in nb.live() if _on_mark(r)]
         for row in true_rows:
             fate = nb.fixpoint(row, seg)
             if (fate != "loop") if kill else (fate != "skip"):
@@ -250,6 +403,22 @@ def _predict(
         return {r.bits for r in true_rows}
     except ConstructError:
         return None
+
+
+def _true_set_after_walk(b: _Builder, w: int) -> set[tuple[int, ...]] | None:
+    """Return the TRUE set a ``"2"*w`` candidate lands on, or ``None``.
+
+    From a normalized state ``"2"*w`` is a pure ``pos += w`` for every
+    row, so which rows end up on a marked cell is a bit test per row --
+    no simulation.  This is only a *screen*: it says nothing about the
+    fixpoints the closing ``"33"`` then runs, so a match still goes to
+    :func:`_predict` for the real verdict.  ``None`` means the state is
+    not normalized and the shortcut does not apply.
+    """
+    live = b.live()
+    if any(r.pos < 0 for r in live):
+        return None
+    return {r.bits for r in live if r.tape >> (r.pos + w + _RING) & 1}
 
 
 def _normalize(b: _Builder) -> None:
@@ -278,7 +447,7 @@ def _close(b: _Builder) -> None:
     _normalize(b)
     probe = b.clone()
     for w in range(100001):
-        if all(r.pos >= 0 and r.pos not in r.tape for r in probe.live()):
+        if all(r.pos >= 0 and not r.tape >> (r.pos + _RING) & 1 for r in probe.live()):
             if w:
                 b.run("2" * w)
             b.test()
@@ -290,9 +459,9 @@ def _close(b: _Builder) -> None:
 
 def _distinct_ok(b: _Builder, table: str) -> bool:
     """No two rows with different verdicts may share an exact state."""
-    seen: dict[tuple[int, frozenset[int]], tuple[int, ...]] = {}
+    seen: dict[tuple[int, int], tuple[int, ...]] = {}
     for r in b.live():
-        key = (r.pos, frozenset(r.tape))
+        key = (r.pos, r.tape)
         if key in seen and seen[key] != r.bits:
             if _table_val(table, seen[key]) == "0" == _table_val(table, r.bits):
                 continue
@@ -353,7 +522,7 @@ def _separate(b: _Builder, table: str) -> None:
             for g in grp.values()
             if len(g) > 1
             and (
-                len({frozenset(r.tape) for r in g}) > 1
+                len({r.tape for r in g}) > 1
                 or len({_table_val(table, r.bits) for r in g}) > 1
             )
         )
@@ -368,7 +537,7 @@ def _separate(b: _Builder, table: str) -> None:
             for p, g in grp.items()
             if len(g) > 1
             and (
-                len({frozenset(r.tape) for r in g}) > 1
+                len({r.tape for r in g}) > 1
                 or len({_table_val(table, r.bits) for r in g}) > 1
             )
         ]
@@ -377,8 +546,8 @@ def _separate(b: _Builder, table: str) -> None:
         p, g = max(multis)
         cells = sorted(
             c
-            for c in set().union(*(r.tape for r in g))
-            if len({c in r.tape for r in g}) > 1
+            for c in _cells(_union_tape(g))
+            if len({r.tape >> (c + _RING) & 1 for r in g}) > 1
         )
         if not cells:
             raise ConstructError(f"group at {p} is state-identical")
@@ -450,6 +619,9 @@ def _gap_fix(b: _Builder, table: str, gap_min: int = 12) -> None:
             return
         uppers = {r.bits for r in b.live() if r.pos > boundary}
         for w in range(1, max(r.pos for r in b.live()) + 64):
+            screen = _true_set_after_walk(b, w)
+            if screen is not None and screen != uppers:
+                continue
             if _predict(b, "2" * w) != uppers:
                 continue
             nb = b.clone()
@@ -471,23 +643,23 @@ def _victim_loops(b: _Builder, victim: tuple[int, ...], seg: str) -> bool:
     """Screen one row cheaply: the victim must test TRUE, then loop."""
     src = next(r for r in b.rows if r.bits == victim)
     row = _Row(src.bits)
-    row.pos, row.tape = src.pos, set(src.tape)
-    toks: list[_Token] = list(b.seg) + list(seg)
+    row.pos, row.tape = src.pos, src.tape
+    runs = _row_runs(row, list(b.seg) + list(seg))
 
     def one_pass() -> None:
-        for tok in toks:
-            b.apply_token(row, tok)
+        for ch, w in runs:
+            _exec_run(row, ch, w)
 
     try:
         one_pass()
-        if row.pos < 0 or row.pos not in row.tape:
+        if row.pos < 0 or not row.tape >> (row.pos + _RING) & 1:
             return False
-        seen = {(row.pos, frozenset(row.tape))}
+        seen = {(row.pos, row.tape)}
         for _ in range(64):
             one_pass()
-            if row.pos < 0 or row.pos not in row.tape:
+            if row.pos < 0 or not row.tape >> (row.pos + _RING) & 1:
                 return False
-            s = (row.pos, frozenset(row.tape))
+            s = (row.pos, row.tape)
             if s in seen:
                 return True
             seen.add(s)
@@ -517,7 +689,7 @@ def _try_kill(
     if v0.pos < 0:
         return None
     xs: list[int | None] = [None]
-    xs += sorted(c for c in v0.tape if 0 <= c < v0.pos)
+    xs += [c for c in _cells(v0.tape) if 0 <= c < v0.pos]
     for a in range(v0.pos + 1, max(r.pos for r in nb0.live()) + 13):
         # the victim must pop out of the ring at -1/-2, or the '2' reads
         if (a - v0.pos) % 4 not in (1, 2):
@@ -552,7 +724,10 @@ def _boost_row(
             return nb
         for w in range(1, max(r.pos for r in nb.live()) + 48):
             # cheap screen: the boosted row itself must test TRUE at +w
-            if (row.pos + w) not in row.tape:
+            if not row.tape >> (row.pos + w + _RING) & 1:
+                continue
+            screen = _true_set_after_walk(nb, w)
+            if screen is not None and screen != {u}:
                 continue
             if _predict(nb, "2" * w) != {u}:
                 continue
@@ -589,9 +764,12 @@ def _group_boost(b: _Builder, victim: tuple[int, ...], table: str) -> _Builder |
         for w in range(1, max(r.pos for r in nb.live()) + 48):
             below = [r for r in nb.live() if r.pos <= v.pos and r.bits != victim]
             # the victim must skip, and at least one blocker must jump
-            if (v.pos + w) in v.tape:
+            if v.tape >> (v.pos + w + _RING) & 1:
                 continue
-            if not any((r.pos + w) in r.tape for r in below):
+            if not any(r.tape >> (r.pos + w + _RING) & 1 for r in below):
+                continue
+            screen = _true_set_after_walk(nb, w)
+            if screen is not None and (not screen or victim in screen):
                 continue
             tb = _predict(nb, "2" * w)
             if not tb or victim in tb:
@@ -717,11 +895,14 @@ def _verdict_search(b: _Builder, table: str, budget: int = 300) -> _Builder | No
     the whole search, and exhausting it raises upstream rather than
     emitting anything.
     """
-    seen: set[tuple[tuple[int, tuple[int, ...], frozenset[int]], ...]] = set()
+    seen: set[tuple[tuple[int, tuple[int, ...], int], ...]] = set()
     spent = [0]
 
-    def sig(bb: _Builder) -> tuple[tuple[int, tuple[int, ...], frozenset[int]], ...]:
-        return tuple(sorted((r.pos, r.bits, frozenset(r.tape)) for r in bb.live()))
+    def sig(bb: _Builder) -> tuple[tuple[int, tuple[int, ...], int], ...]:
+        # ``r.bits`` is unique per row, so the tape never decides the
+        # sort order -- this is the same signature the set-tape build
+        # produced, with the mask standing in for the frozenset.
+        return tuple(sorted((r.pos, r.bits, r.tape) for r in bb.live()))
 
     def dfs(bb: _Builder) -> _Builder | None:
         ones = [r for r in bb.live() if _table_val(table, r.bits) == "1"]
