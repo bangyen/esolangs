@@ -189,7 +189,9 @@ class TestMemoryState:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.sbleq import _Machine
 
-        machine = _Machine(io=ScriptedIO(stdin), mem=[int(t) for t in program.split()])
+        machine = _Machine(
+            io=ScriptedIO(stdin), mem=tuple(int(t) for t in program.split())
+        )
         for _ in range(steps):
             if machine.halted:
                 break
@@ -298,7 +300,7 @@ class TestVariants:
         from esolangs.interpreters.tape_based.sbleq import _Machine
 
         with pytest.raises(ValueError, match="unknown store target"):
-            _Machine(io=ScriptedIO(""), mem=[0, 0, 0], store=store)
+            _Machine(io=ScriptedIO(""), mem=(0, 0, 0), store=store)
 
     def test_the_variant_reaches_run_and_shows_in_the_output(self) -> None:
         """``run`` forwards ``store``, and the choice is visible in print.
@@ -357,7 +359,7 @@ class TestVariants:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.sbleq import _Machine
 
-        assert _Machine(io=ScriptedIO(""), mem=[0, 0, 0], store=store).store == store
+        assert _Machine(io=ScriptedIO(""), mem=(0, 0, 0), store=store).store == store
 
     def mem(self, program: str, store: str = "a", steps: int = 200) -> list[int]:
         """Return the memory ``program`` leaves under the ``store`` variant."""
@@ -366,7 +368,7 @@ class TestVariants:
 
         machine = _Machine(
             io=ScriptedIO(""),
-            mem=[int(t) for t in program.split()],
+            mem=tuple(int(t) for t in program.split()),
             store=store,
         )
         for _ in range(steps):
@@ -381,7 +383,7 @@ class TestSnapshot:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.sbleq import _Machine
 
-        machine = _Machine(io=ScriptedIO(""), mem=[3, 4, 6, 1, 1, 0, 0, 0, 0])
+        machine = _Machine(io=ScriptedIO(""), mem=(3, 4, 6, 1, 1, 0, 0, 0, 0))
         before = machine.snapshot()
         hash(before)  # must not raise
         machine.step()
