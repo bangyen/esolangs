@@ -273,9 +273,9 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         """Start with the top-level ``code`` as the only frame."""
         self.io = io
-        self.stack: list[int] = []
+        self.stack: tuple[int, ...] = ()
         self.table: dict[int, str] = {}
-        self.frames: list[_Frame] = [_Frame(code)]
+        self.frames: tuple[_Frame, ...] = (_Frame(code),)
         self.error = False  # the top-level scope aborted (status 3)
         # Where the top-level frame ends, kept because ``ip`` still has to
         # report a position after that frame has been popped.
@@ -309,7 +309,7 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (
-            tuple(self.stack),
+            self.stack,
             frozenset(self.table.items()),
             tuple((f.code, f.pc, f.loop) for f in self.frames),
             self.io.position(),
@@ -318,7 +318,7 @@ class _Machine:
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
-        return (tuple(self.stack), self.table, tuple(self.frames), self.error)
+        return (self.stack, self.table, self.frames, self.error)
 
     def _restore(self, state: _State) -> None:
         """Write a transition's result back onto the machine's fields.
@@ -328,9 +328,9 @@ class _Machine:
         step makes is here rather than in the rules above.
         """
         stack, table, frames, self.error = state
-        self.stack = list(stack)
+        self.stack = stack
         self.table = dict(table)
-        self.frames = list(frames)
+        self.frames = frames
 
     def step(self) -> None:
         """Execute one command of the active frame.
