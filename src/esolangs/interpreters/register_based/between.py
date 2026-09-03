@@ -187,6 +187,11 @@ type _Vars = Mapping[str, ValueT]
 #: rather than written into a dictionary handed down the recursion.
 type _Control = tuple[int | None, bool]
 
+#: Every value a Between instruction can change: variable bindings, program
+#: counter, and whether ``x`` has exited.  A nested instruction returns its
+#: temporary :data:`_Control`; the shell folds that into this complete state.
+type _State = tuple[_Vars, int, bool]
+
 #: The two ports.  Callbacks, because arguments nest: one line can read and
 #: print several times, at points that depend on values computed part-way
 #: through evaluating it.
@@ -364,6 +369,16 @@ class _Machine:
             self._exited,
         )
 
+    @property
+    def _state(self) -> _State:
+        """The complete changing state at the instruction boundary."""
+        return (self.state, self.pc, self._exited)
+
+    def _restore(self, state: _State) -> None:
+        """Write a completed instruction transition back onto the shell."""
+        variables, self.pc, self._exited = state
+        self.state = dict(variables)
+
     def step(self) -> None:
         """Execute one instruction, advancing (or jumping) the counter.
 
@@ -374,19 +389,22 @@ class _Machine:
         """
         if self.halted:
             return
-        _, state, control = _exec(
-            self.program[self.pc],
-            self.state,
+        variables, pc, exited = self._state
+        _, variables, control = _exec(
+            self.program[pc],
+            variables,
             _FALL,
             self.io.input_str,
             self.io.print_value,
         )
-        self.state = dict(state)
-        jump, exited = control
-        if exited:
-            self._exited = True
-            return
-        self.pc = jump if jump is not None else self.pc + 1
+        jump, stopped = control
+        self._restore(
+            (
+                variables,
+                pc if stopped else jump if jump is not None else pc + 1,
+                exited or stopped,
+            )
+        )
 
 
 def run(code: list[str], io: IO) -> None:
