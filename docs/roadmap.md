@@ -19,13 +19,15 @@ assessed-and-rejected ledger in `docs/limitations.md`.
   (skip if negative).  Native `^` XOR, `&` AND, `|` OR and shifts make boolean
   tables unusually cheap: a two-input XOR is **15 characters**
   (`48{,-> ,-<^{>^.`) against a suite median of 218, and four more of the
-  sixteen two-input tables price at 12-15 (figures from an interpreter
-  written from the wiki table, not this repo's — see
-  `notes/twod-unimplemented-audit.md`).  Super SNUSP has no external
-  interpreter, so it is a real gap.  Two open items before building: the
-  remaining eleven two-input tables need complementation via a `?` branch
-  (expected to stay in the same size class, unmeasured), and `=` RAND must
-  be avoided by the generator.
+  sixteen two-input tables price at 12-15.  Those five were executed under an
+  interpreter written from the wiki table, not modelled — see
+  `notes/twod-unimplemented-audit.md`.  Base SNUSP is wiki-Implemented with
+  external interpreters, but Super SNUSP has none, so it is a real gap.
+  The all-16 two-input sweep is now executed: the five native forms remain
+  12-15 characters, and the other eleven have one-row algebraic-normal-form
+  witnesses at 20-38 (median 26.5).  They consume both inputs and avoid `=`
+  RAND, so the generator has a deterministic base case for every two-input
+  table.  The next work is the interpreter and the higher-arity construction.
 - **function x(y)** — Turing-complete: functions with defaults, `[~]`/`` `~ ``
   input, `[a]`/`` `a `` output, comparison operators, a ternary, recursion; a
   boolean generator branches on a comparison and prints 0/1.
