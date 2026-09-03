@@ -1331,6 +1331,42 @@ class TestPctFoldPlan:
             code = "".join(setters[i][bits[i]] for i in range(n))
             assert module._apply(0, code) == -2 * row  # noqa: SLF001
 
+    @pytest.mark.slow  # ~5s: ten inputs, 1024 rows filled and run
+    def test_a_low_run_ten_input_table_builds_and_runs(self) -> None:
+        """A low-run ten-input table takes the skeleton path, and lays.
+
+        This is the regression the ladder gate closed.  ``x0 ^ x1`` widened
+        to ten inputs has three runs, so it is no subcube (the cascade
+        misses) and reaches the fold, where ``_fold_construct``'s ``r <= 5``
+        skeletons plan it in three ops.  Those skeletons were mined on the
+        wide ladder, whose ten-input span is 4092 against a 3003-value
+        workspace -- so the emitter could not lay the plan, and the build
+        died on a bare ``AssertionError`` rather than building or refusing.
+
+        On the narrow ladder the same plan lays.  Every row is executed,
+        because a plan that the emitter accepts is still not evidence that
+        the program computes the table.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.pct_squared_minus_one import run
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.examples import _fill_pct_squared_minus_one
+
+        n = 10
+        table = "".join(
+            str(((r >> (n - 1)) & 1) ^ ((r >> (n - 2)) & 1)) for r in range(2**n)
+        )
+        template = parameterized.pct_squared_minus_one(table)
+        widths = set()
+        for row in range(2**n):
+            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            program = _fill_pct_squared_minus_one(template, bits)
+            widths.add(len(program))
+            io = ScriptedIO()
+            run(program, io)
+            assert io.getvalue() == table[row], f"row {row}"
+        assert len(widths) == 1, widths
+
     def test_past_the_workspace_the_generator_raises(self) -> None:
         """Eleven inputs refuse for real, not by a patched planner.
 
