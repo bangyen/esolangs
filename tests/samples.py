@@ -114,15 +114,15 @@ DUMPS_ON_THE_POST_HALT_STEP = frozenset(
 # protocol is wrong here -- there is simply no halt for a sweep to drive
 # to, so these are carried for the checks that do not need one.
 #
-# Not by a bound the registry passes, which is what this said until the
-# claim was checked: no language sets ``Language.kwargs``, so ``run``
-# always calls the interpreter with the program and the io object alone.
 # The two stop by their own means, and differently.  A Painter Ant's
-# ``run`` takes ``cycles`` (default 1) and paints for exactly that many
-# generations, so the bound is the run's *duration* rather than a guard
-# against a runaway.  Suffolk takes no extra argument at all: it stops on
-# the ``EOFError`` from reading past its input, or by detecting a repeated
-# state when it reads nothing.
+# ``run`` steps one whole pass at a time until its state repeats at a pass
+# boundary (a local Brent's cycle detector, snapshotting once per pass
+# rather than once per step), then renders -- so a program that never
+# settles into a fixed routine is stepped for as long as proving that takes,
+# same as any other growth-class program here, and ``esolangs.run(timeout=)``
+# is the backstop.  Suffolk takes no extra argument at all: it stops on the
+# ``EOFError`` from reading past its input, or by detecting a repeated state
+# when it reads nothing.
 NEVER_SELF_HALTS = frozenset({"A Painter Ant", "Suffolk"})
 
 # Languages whose ``step()`` raises when called on an already-halted

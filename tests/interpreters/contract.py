@@ -27,11 +27,10 @@ The ``run`` hook stays per file, but it is worth being exact about why,
 because the obvious reason is no longer the true one.  Most of those
 runners now differ only in which ``run`` they close over, and share their
 body with :func:`tests.interpreters.runner.run_program`.  What still has
-to be named per file is the language's *interface*: A Painter Ant's
-``cycles``, Wumpus's ``heading``, the files whose first argument is a
-target string or a number rather than a program, and the ones carrying a
-limit of their own.  A shared hook is what lets those coexist with the
-dozen that are now one line.
+to be named per file is the language's *interface*: Wumpus's ``heading``,
+the files whose first argument is a target string or a number rather than
+a program, and the ones carrying a limit of their own.  A shared hook is
+what lets those coexist with the dozen that are now one line.
 """
 
 import re
