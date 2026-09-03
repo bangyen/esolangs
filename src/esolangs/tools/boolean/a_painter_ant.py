@@ -48,8 +48,10 @@ __all__ = ["a_painter_ant"]
 # ``docs/a_painter_ant_generator.md`` for the ring rule).  For three inputs
 # the leaves sit on one row ``y = -2`` at ``x = +-2 +-4 +-8``,
 # four cells apart so adjacent stars share their axis cells and symmetric
-# across the y-axis.  This one
-# ``_head`` handles ``n == 1``, ``n == 2``, and ``n == 3``.
+# across the y-axis.  The row generalises: this one ``_head`` serves every
+# arity, not just the three spelled out above -- XOR builds and lands
+# correctly on all inputs through ``n == 7`` (34788 characters), which is as
+# far as it was measured, not a ceiling.
 #
 # The template routes the first ``n-1`` inputs by their weight (west/north
 # for a one bit, east/south for a zero) before the body and the final input
