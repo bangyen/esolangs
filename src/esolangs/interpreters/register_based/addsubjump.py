@@ -54,13 +54,13 @@ from esolangs.interpreters.memory import parse_int_memory as _parse
 _MAX_MEMORY = 1 << 24
 
 _IO = -1
-_CF, _ZF, _NF, _OF = -2, -3, -4, -5
+_CF, _ZF, _NF, _VF = -2, -3, -4, -5
 _ONE, _ZERO, _NEG = -6, -7, -8
 _FUM = -9
 _SPECIAL = set(range(_FUM, _IO + 1))
 
 
-#: One instant of a run: ``(memory, ip, cf, zf, nf, of, fum)`` -- the
+#: One instant of a run: ``(memory, ip, cf, zf, nf, vf, fum)`` -- the
 #: self-modifying store, the instruction pointer, the four flags, and the
 #: flag-update mode.  A value, not a record: every transition below returns
 #: a new one rather than editing one in place, and the memory is a ``tuple``
@@ -95,7 +95,7 @@ def _load(state: _State, addr: int, byte: int | None = None) -> int:
     port is the one address whose read consumes something.  Everything
     else is a pure lookup, and an address outside the store reads as zero.
     """
-    memory, _ip, cf, zf, nf, of, fum = state
+    memory, _ip, cf, zf, nf, vf, fum = state
     if addr == _IO:
         return byte if byte is not None else 0
     if addr == _CF:
@@ -104,8 +104,8 @@ def _load(state: _State, addr: int, byte: int | None = None) -> int:
         return zf
     if addr == _NF:
         return nf
-    if addr == _OF:
-        return of
+    if addr == _VF:
+        return vf
     if addr == _ONE:
         return 1
     if addr == _ZERO:
@@ -141,15 +141,15 @@ def _store(state: _State, addr: int, value: int) -> _State:
     is the shell's; writing a special register other than ``fum`` is
     discarded, as it always was.
     """
-    memory, ip, cf, zf, nf, of, fum = state
+    memory, ip, cf, zf, nf, vf, fum = state
     if addr == _IO:
         return state
     if addr in _SPECIAL:
-        return (memory, ip, cf, zf, nf, of, value) if addr == _FUM else state
+        return (memory, ip, cf, zf, nf, vf, value) if addr == _FUM else state
     if addr >= len(memory):
         memory = (*memory, *([0] * (addr + 1 - len(memory))))
     memory = (*memory[:addr], value, *memory[addr + 1 :])
-    return (memory, ip, cf, zf, nf, of, fum)
+    return (memory, ip, cf, zf, nf, vf, fum)
 
 
 def _advance(state: _State, reads: tuple[int, ...]) -> tuple[int, _State]:
@@ -181,13 +181,13 @@ def _advance(state: _State, reads: tuple[int, ...]) -> tuple[int, _State]:
         value = va - vb if vd > 0 else va + vb
 
     after = _store(state, a, value)
-    memory, _ip, cf, zf, nf, of, fum = after
+    memory, _ip, cf, zf, nf, vf, fum = after
     if fum:
         zf = 1 if value == 0 else 0
         nf = 1 if value < 0 else 0
-        cf = of = 0
-    after = (memory, _ip, cf, zf, nf, of, fum)
-    return value, (memory, _load(after, c), cf, zf, nf, of, fum)
+        cf = vf = 0
+    after = (memory, _ip, cf, zf, nf, vf, fum)
+    return value, (memory, _load(after, c), cf, zf, nf, vf, fum)
 
 
 class _Machine:
@@ -229,7 +229,8 @@ class _Machine:
         return self.state[4]
 
     @property
-    def of(self) -> int:
+    def vf(self) -> int:
+        """The Overflow flag (``VF``, address -5)."""
         return self.state[5]
 
     @property
