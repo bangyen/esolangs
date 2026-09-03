@@ -2278,12 +2278,19 @@ linear scan rather than a genuine representation limit.  See
   3002.  Any ladder laying `2**12` distinct positions spans at least 4095
   wherever it sits, so **no twelve-input ladder ever gets a doubling**.
   Measured against the standing rule that a cap is not a convergence
-  argument: the search from a twelve-input start **exhausts after fifteen
-  states** — an empty heap, not a budget — while the same instrumentation
-  finds a plan at four inputs (120 states) and hits its cap at eight (17394),
-  so the zero is a real negative and not a broken probe.  Thirteen needs no
-  algebra at all: `2**13` distinct positions exceed the 6007 values a `p` can
-  address.
+  argument: the search from a twelve-input start **exhausts** — an empty
+  heap, not a budget — after 15 states on a random table and after 121, 24
+  and 1 on the low-run witnesses, while the same instrumentation finds a plan
+  at four inputs (120 states) and hits its cap at eight (17394), so the zeros
+  are real negatives and not a broken probe.  Thirteen needs no algebra at
+  all: `2**13` distinct positions exceed the 6007 values a `p` can address.
+
+  Low-run tables are worth checking separately at every other arity, but on a
+  packed ladder they stop being low-run: **position order is not row order**,
+  so a table with three runs in row order has **2049 points** in the geometry
+  the plan actually sees (r=4 gives 2304, r=5 gives 2401).  That is also why
+  `_fold_construct`'s `r <= 5` skeletons essentially never fire on a packed
+  ladder, where on a uniform one they are the common path.
 
   A **two-sided ladder** was built to test whether the workspace, rather than
   the span, was binding, and removed once measured — the same fate as the
@@ -2313,10 +2320,11 @@ linear scan rather than a genuine representation limit.  See
   merging two rows before the remaining inputs are laid merges them for
   *every* completion, so a prefix-merge needs the two rows' cofactors on the
   unlaid inputs to be **identical** — and generic tables were assumed to have
-  no equal cofactors.  **Measured, that is false**: with one input unlaid
-  there are only two possible cofactors, so 2044 of 2048 prefix blocks are
-  mergeable in a random twelve-input table (1008 of 1024 with two unlaid, 292
-  of 512 with three).  Equal cofactors are abundant, not rare.  So the
+  no equal cofactors.  **Measured, that is false**: with one input unlaid a
+  cofactor is a two-bit string, so there are only four of them and the 2048
+  prefix blocks of a random twelve-input table collapse into four buckets —
+  2044 mergeable pairs (1008 of 1024 with two inputs unlaid, 292 of 512 with
+  three).  Equal cofactors are abundant, not rare.  So the
   interleaved construction is not blocked by the table's structure; what it
   needs is a laying order the `{Xi}` invariants permit — the embeds must stay
   exactly-once and in ascending name order — and that has not been attempted.
