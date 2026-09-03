@@ -593,8 +593,8 @@ construction does not care, because it never has to find those cells.
 **Five inputs is no longer gated.**  This paragraph used to say the searches
 run ~191s and fail, stalling on pairs that differ in the first input, and
 that lifting `n == 5` was "exactly one successful separation away".  The
-constructed separation below does it in 0.004s, and `_MUX_ARITIES` now
-carries five.  Pre-splitting the first input at embed time — walking over
+constructed separation below does it in 0.004s, which lifted five at the time
+— and the arity gate has since been removed outright.  Pre-splitting the first input at embed time — walking over
 `X0`'s landing cell so the setter itself splits — remains a recorded dead
 end: it stalls at the same 20 of 32, which is why the fix had to be a
 different construction rather than a better search.
@@ -691,9 +691,10 @@ not that none can.  **That last sentence is superseded by the section below**,
 which closes the arity by argument rather than by sample; it is kept because
 the sampling result is still what the claim rested on when the route shipped.
 
-#### Is `_mux` total?  Every refusal site closes by argument
+#### `_mux` is total — every refusal site closes by argument, and the gate is gone
 
-The arity tuple is a **verification gate, not a structural cap**.  Nothing in
+The arity tuple was a **verification gate, not a structural cap**, and it has
+been removed on the strength of what follows.  Nothing in
 the construction reads `n` except `_mux_weights`, `_mux_pad` and `_mux_start`,
 all closed forms defined for every `n`; with the gate bypassed, XOR builds at
 every arity tried through seven — 243, 429, 622, 2511, 9565 and 39915
@@ -895,12 +896,33 @@ binding constraint is cost rather than expressiveness, template length growing
 about fourfold per arity (a rewind costs `3K+1` characters with `K` on the
 order of the `2**n` span, across up to `2**n` rounds).
 
-**`_MUX_ARITIES` is therefore a verification boundary and nothing more.**
-Widening it needs no new construction and no new check: the three arguments
-above hold at every `n`.  What a wider tuple would still owe is *execution* —
-the arguments say the construction cannot refuse, and this repository's
-standing rule is that a claim about a generated program is worth what its run
-on the shipped interpreter is worth.
+**The arity gate is gone, and the generator is total.**  `_MUX_ARITIES` was a
+verification boundary and nothing more; widening it needed no new construction
+and no new check, because the three arguments above hold at every `n`.  What
+it still owed was *execution* — the arguments say the construction cannot
+refuse, and this repository's standing rule is that a claim about a generated
+program is worth what its run on the shipped interpreter is worth.  That has
+now been paid, so the tuple has been replaced by the floor `_MUX_MIN_ARITY =
+2`, which exists only because `_solve` routes constants and one-input
+projections to `_degenerate` before the route is reached.
+
+The before-state was a configuration gate declining in **0.000s**: four random
+fully-essential six-input tables raised `ValueError` at once, while a six-input
+table with a *narrow essential core* built fine — it projects down to an arity
+inside the tuple, which is why "does `n = 6` build?" has to be asked with a
+fully-essential table to mean anything.  After the lift those same tables
+build and print every row.  There is now no arity, and no table at any arity,
+that the Minifuck boolean generator declines.
+
+Re-measured independently, and agreeing with the 448/448 above:
+**256 of 256 rows correct** over two fully-essential
+six-input tables and one seven-input table, each row instantiated and run on
+the shipped interpreter, every one at a single fill width.  What that run adds
+is the *cost* curve, which is now the only thing bounding a caller — about
+0.14s a table at five inputs, 40s at six, and 820s at seven, where the
+template reaches 13685 characters.  The `2**n` growth is in the sculpting: a
+rewind costs `3K+1` characters with `K` on the order of the `2**n` span,
+across up to `2**n` rounds.
 
 #### What the proof did to the constants
 
