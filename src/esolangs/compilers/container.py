@@ -91,8 +91,7 @@ past the 12-bit load/store offset.  ``t0``--``t2`` are the per-rule
 scratch, which is why the far-cell path can use ``t6`` freely.
 """
 
-import sys
-
+from esolangs.compilers import _riscv_common as _common
 from esolangs.compilers._riscv_common import GETBYTE, PUTBYTE
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.container import _Machine
@@ -350,5 +349,4 @@ def comp(code: str) -> str:
 
 
 if __name__ == "__main__":  # pragma: no cover
-    with open(sys.argv[1]) as _source:
-        print(comp(_source.read()), end="")
+    _common.main(comp)

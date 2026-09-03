@@ -107,8 +107,7 @@ restored by every prologue/epilogue so a ``return`` from inside any
 number of open ``while`` loops unwinds to the right stack depth.
 """
 
-import sys
-
+from esolangs.compilers import _riscv_common as _common
 from esolangs.interpreters.register_based.myscript import (
     _ARITY,
     Node,
@@ -1401,5 +1400,4 @@ def comp(code: str) -> str:
 
 
 if __name__ == "__main__":  # pragma: no cover
-    with open(sys.argv[1]) as _source:
-        print(comp(_source.read()), end="")
+    _common.main(comp)

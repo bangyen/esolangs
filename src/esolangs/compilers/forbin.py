@@ -61,8 +61,7 @@ discards that loop's own stack save, which would otherwise hand a
 mid-loop *caller* a clobbered counter.
 """
 
-import sys
-
+from esolangs.compilers import _riscv_common as _common
 from esolangs.interpreters.other.forbin import (
     _Assign,
     _CallNode,
@@ -748,5 +747,4 @@ def comp(code: str) -> str:
 
 
 if __name__ == "__main__":  # pragma: no cover
-    with open(sys.argv[1]) as _source:
-        print(comp(_source.read()), end="")
+    _common.main(comp)

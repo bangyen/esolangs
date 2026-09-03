@@ -4,10 +4,10 @@ Compiled Jaune programs read one character per input operation, so a
 program can only input a single character at a time.
 """
 
-import sys
 from re import findall, sub
 from typing import Literal
 
+from esolangs.compilers import _riscv_common as _common
 from esolangs.compilers._riscv_common import MUL32, Routine
 
 # The four commands that compile to a called subroutine rather than to
@@ -324,10 +324,5 @@ def comp(code: str) -> str:
     return res.replace("\n\n\n", "\n\n")
 
 
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as f:
-            data = f.read()
-
-        with open("output.asm", "w") as f:
-            f.write(comp(data))
+if __name__ == "__main__":  # pragma: no cover
+    _common.main(comp)

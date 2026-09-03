@@ -43,7 +43,7 @@ Two abort behaviors, matching ``_Machine._abort``/``_pop``:
   everything after it in the enclosing scope is simply not emitted).
 """
 
-import sys
+from esolangs.compilers import _riscv_common as _common
 
 # Fixed-size data-stack and association-table capacity.  The interpreter's
 # stack and table grow without bound; a compiled program gets generous
@@ -559,10 +559,5 @@ def comp(code: str) -> str:
     return res
 
 
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as f:
-            data = f.read()
-
-        with open("output.asm", "w") as f:
-            f.write(comp(data))
+if __name__ == "__main__":  # pragma: no cover
+    _common.main(comp)
