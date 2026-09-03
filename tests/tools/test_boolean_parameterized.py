@@ -40,7 +40,7 @@ def _parameterized_generators():
     ]
 
 
-@pytest.mark.slow  # ~35s: builds every generator, up to n=4 — the bulk
+@pytest.mark.slow  # ~4s: builds every generator, up to n=4 — the bulk
 # is 123's constructed four-input template, which is derived, not stored
 def test_parameterized_generators_embed_each_input_once() -> None:
     """Every no-input generator embeds each input exactly once.
@@ -2164,7 +2164,7 @@ class TestParameterizedOneTwoThree:
             }
             assert len(sizes) == 1, (table, sizes)
 
-    @pytest.mark.slow  # ~30s: one four-input construction, replayed
+    @pytest.mark.slow  # ~2s: one four-input construction, replayed
     def test_a_wider_table_is_constructed(self) -> None:
         """A four-input table builds through the constructed route.
 
@@ -2193,7 +2193,8 @@ class TestParameterizedOneTwoThree:
             assert self.run(program) == table[combo], (table, bits)
         assert len(sizes) == 1, (table, sizes)
 
-    @pytest.mark.slow  # ~10s: one table exercising every construction move
+    # Was ~10s and marked slow; the construction speedups took it to well
+    # under a tenth of a second, so it belongs in the default suite.
     def test_construction_moves_all_fire_on_one_table(self) -> None:
         """A single table forces every move kind the search offers.
 
@@ -2230,7 +2231,9 @@ class TestParameterizedOneTwoThree:
         for name, fn in originals.items():
             setattr(construct_mod, name, watch(name, fn))
         try:
-            template = construct_mod.construct("10101010")
+            # verify=False: every row is replayed below, and the
+            # generator's own closing replay is the same execution twice.
+            template = construct_mod.construct("10101010", verify=False)
         finally:
             for name, fn in originals.items():
                 setattr(construct_mod, name, fn)
