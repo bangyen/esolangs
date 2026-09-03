@@ -14,7 +14,7 @@ import pytest
 class TestParameterizedPctSquaredMinusOne:
     """Input-by-substitution boolean generator for %^2^-1.
 
-    The Lean proof in ``Esolangs.PctBooleanWall`` shows no %^2^-1 program
+    The wall proved for %^2^-1 (``docs/proofs.md``) shows no program
     that *reads* its inputs computes XOR or AND at any length.  That bounds
     the reading model, not the language: these programs embed their bits
     instead, so the read that erases the accumulator never happens, and
@@ -49,7 +49,7 @@ class TestParameterizedPctSquaredMinusOne:
             pytest.param("00", 1, marks=pytest.mark.slow),  # constant zero
             pytest.param("11", 1, marks=pytest.mark.slow),  # constant one
             ("0001", 2),  # AND
-            ("0110", 2),  # XOR -- the function the Lean wall forbids a reader
+            ("0110", 2),  # XOR -- the function the wall forbids a reader
             ("1001", 2),  # XNOR
             ("0111", 2),  # OR
             ("1110", 2),  # NAND
@@ -104,7 +104,7 @@ class TestParameterizedPctSquaredMinusOne:
     def test_programs_never_read_input(self) -> None:
         """No emitted program contains ``n``, the input command.
 
-        This is what separates the generator from the model the Lean wall
+        This is what separates the generator from the model the wall
         bounds: the bits arrive by substitution, so the read that overwrites
         the accumulator never runs.
         """

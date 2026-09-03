@@ -3,7 +3,7 @@ r"""Parameterized boolean generator for %^2^-1.
 ``%^2^-1`` has one accumulator and one control-flow command, ``t``, which
 rewinds to the start of the program while the accumulator is nonzero.  There
 is no forward jump and no skip, so a program that *reads* its inputs cannot
-branch on them: ``Esolangs.PctBooleanWall`` proves in Lean that no such
+branch on them: ``docs/proofs.md`` records the proof that no such
 program computes XOR or AND at any length, because ``n`` overwrites the
 accumulator and nothing an earlier bit computed can survive the next read.
 
@@ -199,7 +199,7 @@ its weightings force.  Screening moved a generic five-input build from
 have found for the asymmetric tables it happened to serve.
 
 As before whatever it misses is *unreached*, not proved unreachable -- the
-Lean wall in ``Esolangs.PctBooleanWall`` covers the reading model only, and
+wall in ``docs/proofs.md`` covers the reading model only, and
 nothing here bounds embedded-input programs in general.
 ``docs/limitations.md`` records what bounds are actually known.
 
