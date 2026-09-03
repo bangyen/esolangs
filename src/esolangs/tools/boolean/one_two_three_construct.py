@@ -537,6 +537,9 @@ def _boost_row(
         if row.pos > above:
             return nb
         for w in range(1, max(r.pos for r in nb.live()) + 48):
+            # cheap screen: the boosted row itself must test TRUE at +w
+            if (row.pos + w) not in row.tape:
+                continue
             if _predict(nb, "2" * w) != {u}:
                 continue
             cand = nb.clone()
@@ -584,11 +587,14 @@ def _moves(
 ) -> Iterator[_Builder]:
     """Yield successor states, best first.
 
-    Kills, then boosts of the rows blocking the lowest victim, then
-    ring-round shuffles.
+    A few cheap kill pads, then boosts of the rows blocking the lowest
+    victim (a mid-pack victim rarely dies before its floor is cleared),
+    then the deeper kill pads, then ring-round shuffles.  Ordering here
+    is purely a cost heuristic: the search backtracks, so it changes
+    which trajectory is found first, never what is reachable.
     """
     for victim in sorted(ones, key=lambda r: r.pos):
-        for pad in range(12):
+        for pad in range(3):
             nb = _try_kill(b, victim.bits, pad, table)
             if nb is not None:
                 yield nb
@@ -603,6 +609,11 @@ def _moves(
         nb = _boost_row(b, u.bits, top + 8, table)
         if nb is not None:
             yield nb
+    for victim in sorted(ones, key=lambda r: r.pos):
+        for pad in range(3, 12):
+            nb = _try_kill(b, victim.bits, pad, table)
+            if nb is not None:
+                yield nb
     for depth in range(8):
         for x in range(4):
             nb = _ring_round(b, table, x, depth)
