@@ -2242,30 +2242,91 @@ linear scan rather than a genuine representation limit.  See
   row on the interpreter**, three random tables at 1024 rows each plus
   nine-input samples, one instantiation width per template.
 
-  **Two is the finest ladder that spells**, which is what makes ten a
-  structural end rather than a budget.  `s` subtracts 2 and `i` subtracts 3,
-  so `2a + 3b` spells every amount except 1 — and a step of 1 would need the
-  last input to subtract exactly 1.  Eleven inputs would span 4094 against
-  3003 with nothing finer to fall back on.  A related spelling fact fell out
-  of the same work and is worth recording, since `_pad_pair`'s odd-gap
-  refusal keeps reappearing in this module: **the identity has no odd-width
-  spelling at all**, searched exhaustively over `s`/`i`/`p`/`m` through width
-  6.  An odd number of the only sign-flipping command cannot compose to `+0`,
-  so a one-character `"s"` branch can never be padded to match a hold; the
-  narrow ladder's last setter is respelled wider instead (`iipssp` against
-  `pppppp`).
+  `2a + 3b` spells every amount except 1, so a *uniform* step of 1 is
+  unspellable and two is the finest uniform ladder.  A related spelling fact
+  fell out of the same work and is worth recording, since `_pad_pair`'s
+  odd-gap refusal keeps reappearing in this module: **the identity has no
+  odd-width spelling at all**, searched exhaustively over `s`/`i`/`p`/`m`
+  through width 6.  An odd number of the only sign-flipping command cannot
+  compose to `+0`, so a one-character `"s"` branch can never be padded to
+  match a hold; the narrow ladder's last setter is respelled wider instead
+  (`iipssp` against `pppppp`).
+
+  **This entry said ten was a structural end.  That was wrong, and the hole
+  was the word *uniform*.**  Asked (2026-09-03) for a new construction, the
+  assumption that fell was that rows must be *evenly* spaced.  They need only
+  be **distinct** — two rows sharing a value are merged by the first cut
+  reaching them and can never be separated — and distinctness is far cheaper
+  than uniformity.  The floor is exact: the `2**n` subset sums are distinct
+  non-negative integers, so the largest is at least `2**n - 1`; the minimum
+  weight is 2, so nothing sums to 1, and by symmetry nothing sums to `S - 1`;
+  two values inside `[0, S]` are unattainable, giving **`S >= 2**n + 1`**.
+  The ladder `(2, 3, 4, 8, 16, …, 2**(n-2))` meets it exactly — 2 and 3 cover
+  the small residues a doubling ladder cannot reach without a weight of 1,
+  and the powers above behave like a binary code.  Eleven inputs cost 2049
+  where the uniform ladder wanted 4094, and **eleven inputs build and print
+  every row on the interpreter**.  One assumption travelled with it: on a
+  uniform ladder row order *is* position order, so runs are contiguous in
+  `range(2**n)`; with these weights row 1 sits below row 8, and `_fold_at`
+  groups runs over rows sorted by position instead.
+
+  **Twelve is walled for the whole ladder family, and the argument is the
+  move algebra rather than the spelling.**  The doubling `m` — which this
+  entry already records as the *only* way to reorder groups, since wipes
+  alone cap the live spread at 3003 and leave the cyclic order invariant — is
+  offered only when `spread * 2 <= 2 * _LIMIT - 2`, i.e. a spread of at most
+  3002.  Any ladder laying `2**12` distinct positions spans at least 4095
+  wherever it sits, so **no twelve-input ladder ever gets a doubling**.
+  Measured against the standing rule that a cap is not a convergence
+  argument: the search from a twelve-input start **exhausts after fifteen
+  states** — an empty heap, not a budget — while the same instrumentation
+  finds a plan at four inputs (120 states) and hits its cap at eight (17394),
+  so the zero is a real negative and not a broken probe.  Thirteen needs no
+  algebra at all: `2**13` distinct positions exceed the 6007 values a `p` can
+  address.
+
+  A **two-sided ladder** was built to test whether the workspace, rather than
+  the span, was binding, and removed once measured — the same fate as the
+  positive-ladder band.  Making one weight negative (an adding setter,
+  `p sub(k) p`, whose inner subtraction must come out even so the `p`-repeated
+  hold is an identity and not a negation) doubles the *positions* available
+  to `[-3003, 3003]`, and at twelve inputs it lays 4096 distinct rows peaking
+  at 2050.  It serves nothing, because positions are not the binding
+  resource — the span is, and 4096 distinct integers span 4095 wherever they
+  sit.  0 of 18 tables across five arities were served by it and not by the
+  packed ladder.
 
   So the answer to "total or not" is: **total at no arity it does not
-  enumerate, reaching ten**, with `n <= 4` exhaustive and five through ten
-  executed samples.  The residual `None` is still a real one — the plan search
-  could in principle give up inside the workspace, though no table at ten or
-  below makes it — so this is reach, not a totality proof.
+  enumerate, reaching eleven**, with `n <= 4` exhaustive and five through
+  eleven executed samples.  The residual `None` is still a real one — the plan
+  search could in principle give up inside the workspace, though no table at
+  eleven or below makes it — so this is reach, not a totality proof.  What is
+  *walled* is the ladder family at twelve, and only that family: a
+  construction that does not lay all `2**n` rows before planning would not
+  inherit the span bound.
+
+  **Interleaving the laying is the open door, and it is genuinely open.**
+  All `{Xi}` embeds currently precede the body, so the fold must hold all
+  `2**n` rows apart at once — which is exactly the span the twelve-input wall
+  is about.  Laying some inputs, folding, then laying the rest would never
+  need that.  A first guess recorded here was that this cannot help, because
+  merging two rows before the remaining inputs are laid merges them for
+  *every* completion, so a prefix-merge needs the two rows' cofactors on the
+  unlaid inputs to be **identical** — and generic tables were assumed to have
+  no equal cofactors.  **Measured, that is false**: with one input unlaid
+  there are only two possible cofactors, so 2044 of 2048 prefix blocks are
+  mergeable in a random twelve-input table (1008 of 1024 with two unlaid, 292
+  of 512 with three).  Equal cofactors are abundant, not rare.  So the
+  interleaved construction is not blocked by the table's structure; what it
+  needs is a laying order the `{Xi}` invariants permit — the embeds must stay
+  exactly-once and in ascending name order — and that has not been attempted.
+  It is the natural next thing to try past eleven inputs.
 
   Note what the bound is *not*: it is the **fold's**, not the generator's.
   Arity alone refuses nothing, because the cascade builds every conjunction
   or disjunction of literals at any width — the alternating and
-  single-minterm eleven-input tables build, in 138 characters, and only a
-  *generic* eleven-input table reaches the raise.  A refusal test that picks
+  single-minterm tables build at any arity, in 138 characters, and only a
+  *generic* table past eleven inputs reaches the raise.  A refusal test that picks
   a structured table at a high arity therefore does not exercise the path it
   means to.  As everywhere in
   this file, eleven and up are **unreached by this construction**, not walled:
