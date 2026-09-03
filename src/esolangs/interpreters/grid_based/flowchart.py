@@ -282,9 +282,9 @@ class _Machine:
     def __init__(self, code: list[str], io: IO) -> None:
         """Parse ``code``'s nodes and start on the first ``( )``."""
         self.io = io
-        self.grid = [line.rstrip("\n") for line in code]
-        self.width = max((len(r) for r in self.grid), default=0)
-        self.grid = [r.ljust(self.width) for r in self.grid]
+        rows = [line.rstrip("\n") for line in code]
+        self.width = max((len(r) for r in rows), default=0)
+        self.grid = tuple(r.ljust(self.width) for r in rows)
 
         # (row, col) -> (node spelling, col of the node's first character); every
         # cell a node covers maps to that node, so a pointer arriving at any
