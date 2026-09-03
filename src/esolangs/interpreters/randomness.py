@@ -77,3 +77,41 @@ class Seeded:
         if upper <= 0:
             raise ValueError(f"upper bound must be positive, got {upper}")
         return self._random.randrange(upper)
+
+
+class FirstDraw:
+    """A :class:`Randomness` whose *first* answer is chosen, the rest seeded.
+
+    Some of what these languages draw is a one-off that decides the whole
+    run: LaserFuck's laser takes its initial heading from a single
+    ``randbelow(4)`` before executing anything.  A caller that wants a
+    particular one of those outcomes -- a test asserting what a laser
+    pointing east does, an example committing one expected output --
+    supplies it here rather than through a per-language argument.  That is
+    what let LaserFuck drop its ``heading`` parameter: pinning the draw and
+    pinning the heading are the same act, and the draw is the one every
+    random language already has.
+
+    Later draws come from a seeded generator rather than repeating the
+    chosen value, for the reason :class:`Seeded` exists: a source that
+    always answered the same way would send every ``*`` split one way and
+    leave the other branch unexercised.  ``rest`` overrides that for a
+    caller that needs the later draws pinned too.
+    """
+
+    def __init__(self, first: int, seed: int = 0, rest: int | None = None) -> None:
+        """Answer the first draw with ``first``; seed or pin what follows."""
+        self._first: int | None = first
+        self._rest = Seeded(seed)
+        self._fixed = rest
+
+    def randbelow(self, upper: int) -> int:
+        """Return the chosen value once, then the seeded or pinned draws."""
+        if upper <= 0:
+            raise ValueError(f"upper bound must be positive, got {upper}")
+        if self._first is not None:
+            first, self._first = self._first, None
+            return first % upper
+        if self._fixed is not None:
+            return self._fixed % upper
+        return self._rest.randbelow(upper)

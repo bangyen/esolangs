@@ -22,6 +22,7 @@ import pytest
 
 from esolangs import generate
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.randomness import Seeded
 from esolangs.registry import LANGUAGES
 from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.tools.boolean.examples import HAND_WRITTEN
@@ -167,6 +168,13 @@ BOOLEAN_EXAMPLES = {
 def test_boolean_example(name: str) -> None:
     module, inputs, expected, splitlines, kwargs = BOOLEAN_EXAMPLES[name]
     run = importlib.import_module("esolangs.interpreters." + module).run
+    # ``kwargs`` carries ints, so a language whose chance has to be pinned
+    # names a seed and the source is built here.  LaserFuck draws its
+    # initial heading, so without this the example would start in a random
+    # direction and its committed output would only sometimes be right.
+    if "seed" in kwargs:
+        kwargs = {k: v for k, v in kwargs.items() if k != "seed"}
+        kwargs["rng"] = Seeded(BOOLEAN_EXAMPLES[name][4]["seed"])
     program = (
         (BASE_DIR / "examples" / "boolean" / f"{name}.txt")
         .read_text(encoding="utf-8")

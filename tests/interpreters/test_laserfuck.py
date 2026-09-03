@@ -7,13 +7,19 @@ from unittest.mock import patch
 
 from esolangs.interpreters.grid_based.laserfuck import run
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.randomness import FirstDraw
 from tests.interpreters.contract import SnapshotContract
 
 
 def run_and_capture(code: list[str], heading: int | None = 3) -> str:
+    """Run ``code`` with its laser started in ``heading``.
+
+    ``heading=None`` leaves the draw to the interpreter's own source, which
+    is the spec's random start.
+    """
     buffer = io.StringIO()
     with redirect_stdout(buffer):
-        run(code, IO(), heading=heading)
+        run(code, IO(), rng=None if heading is None else FirstDraw(heading))
     return buffer.getvalue()
 
 
@@ -59,7 +65,7 @@ class TestLaserFuck:
             io_obj = TestIO()
             buffer = io.StringIO()
             with redirect_stdout(buffer):
-                run(prog, io_obj, heading=heading)
+                run(prog, io_obj, rng=FirstDraw(heading))
             assert io_obj.buf.getvalue() == "1", f"heading {heading}"
 
     def test_unconditional_vertical_mirror(self) -> None:
@@ -101,7 +107,7 @@ class TestLaserFuck:
         io_obj = TestIO()
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            run(prog, io_obj, heading=3)
+            run(prog, io_obj, rng=FirstDraw(3))
         assert io_obj.buf.getvalue() == "4"  # ord('4') = 52 = '4'
 
     def test_steps_off_the_top(self) -> None:
@@ -128,7 +134,7 @@ class TestLaserFuck:
         # a second start halts the machine before any step; stepping is a no-op
         from esolangs.interpreters.grid_based.laserfuck import _Machine
 
-        machine = _Machine(["oo"], IO(), heading=3)
+        machine = _Machine(["oo"], IO(), rng=FirstDraw(3))
         assert machine.halted
         machine.step()  # must not raise
 
@@ -377,7 +383,7 @@ class TestSurvivorGaps:
         io_obj = TestIO()
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            run(["o,v", "  (", "  x"], io_obj, heading=3)
+            run(["o,v", "  (", "  x"], io_obj, rng=FirstDraw(3))
         assert io_obj.buf.getvalue() == "0"
 
     def test_byte_mode_prints_every_value(self) -> None:
@@ -410,7 +416,7 @@ class TestSurvivorGaps:
         from esolangs.interpreters.io import ScriptedIO
 
         io_obj = ScriptedIO()
-        machine = _Machine(["o+x"], io_obj, heading=3)
+        machine = _Machine(["o+x"], io_obj, rng=FirstDraw(3))
         while not machine.halted:
             machine.step()
         assert io_obj.getvalue() == ""  # nothing until the step past the halt
@@ -468,7 +474,7 @@ class TestSurvivorGaps:
         io_obj = TestIO()
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            run(["}o,)x", "    x"], io_obj, heading=3)
+            run(["}o,)x", "    x"], io_obj, rng=FirstDraw(3))
         assert io_obj.buf.getvalue() == "0"
 
     def test_two_lasers_run_in_turn(self) -> None:
@@ -519,9 +525,11 @@ class TestSurvivorGaps:
         which must be left, and the ``+`` on the left arm reports it.
         """
         cage = ["  x", "  +", "x+*x", "/ ^\\", "\\ o/", "  _"]
-        with patch("secrets.randbelow", return_value=0):
-            for heading in range(4):
-                assert run_and_capture(cage, heading=heading) == "2", heading
+        for heading in range(4):
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                run(cage, IO(), rng=FirstDraw(heading, rest=0))
+            assert buffer.getvalue() == "2", heading
 
     def test_the_jump_flag_starts_false(self) -> None:
         """``jmp`` begins ``False``, and the snapshot carries that value.
@@ -533,7 +541,7 @@ class TestSurvivorGaps:
         from esolangs.interpreters.grid_based.laserfuck import _Machine
         from esolangs.interpreters.io import ScriptedIO
 
-        machine = _Machine(["+"], ScriptedIO(), heading=3)
+        machine = _Machine(["+"], ScriptedIO(), rng=FirstDraw(3))
         assert machine.jmp is False
         assert machine.snapshot()[2] is False
 
@@ -542,7 +550,7 @@ def _machine(code: object) -> object:
     from esolangs.interpreters.grid_based.laserfuck import _Machine
     from esolangs.interpreters.io import IO
 
-    return _Machine(code, IO(), heading=3)
+    return _Machine(code, IO(), rng=FirstDraw(3))
 
 
 class TestContract(SnapshotContract):
