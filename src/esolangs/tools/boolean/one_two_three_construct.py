@@ -771,20 +771,30 @@ def _try_kill(
                 for row in head_live:
                     _exec_run(row, _ZERO, x - walked)
                 walked = x
-            tail = head.clone()
-            tail_live = tail.live()
-            try:
-                if x is not None:
-                    for ch in "12":
-                        for row in tail_live:
-                            _exec_char(row, ch)
-            except ConstructError:
-                continue
+            # The closing "12" is two commands, so where it leaves a row
+            # and whether that row lands on a mark is arithmetic: the
+            # ``1`` toggles cell ``p`` and steps to ``p - 1``, the ``2``
+            # steps back (or out of the ring to 0).  From ``pos >= 0`` --
+            # which every row satisfies here, since the prefix's pop is
+            # screened above -- it can never read stdin, so there is no
+            # failure to catch and no clone to make: this replaced a full
+            # builder clone per (a, x) pair, 895896 of them in one
+            # four-input verdict search.
+            if x is None:
+                true_set = {r.bits for r in head_live if _on_mark(r)}
+            else:
+                true_set = set()
+                for row in head_live:
+                    q = row.pos - 1
+                    tape = row.tape ^ (1 << (row.pos + _RING))
+                    q = 0 if q in (-1, -2) else q + 1
+                    if tape >> (q + _RING) & 1:
+                        true_set.add(row.bits)
             # 100% of the kill sweep's candidates were rejected on this
             # set alone, so it is checked before the fixpoint screens
             # that used to run first.  Rejections are unobservable, so
             # reordering them cannot change which candidate is adopted.
-            if {r.bits for r in tail.live() if _on_mark(r)} != {victim}:
+            if true_set != {victim}:
                 continue
             if not _victim_loops(nb0, victim, seg):
                 continue
