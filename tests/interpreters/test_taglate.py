@@ -198,7 +198,7 @@ class TestStepMachine:
         from esolangs.interpreters.queue_based.taglate import _Machine
 
         machine = _Machine(["abc", "i"], ScriptedIO())
-        assert (machine.ind, machine.queue) == (0, [97, 98, 99])
+        assert (machine.ind, list(machine.queue)) == (0, [97, 98, 99])
         machine.step()  # i pops the front and prints it
         assert machine.io.getvalue() == "a"
         assert machine.halted

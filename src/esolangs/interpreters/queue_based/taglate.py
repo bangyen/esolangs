@@ -214,7 +214,7 @@ class _Machine:
     def __init__(self, code: list[str], io: IO) -> None:
         """Seed the queue from the first line and tokenize the rest."""
         self.io = io
-        self.queue: list[int] = [ord(c) for c in code[0]] if code else []
+        self.queue: tuple[int, ...] = tuple(ord(c) for c in code[0]) if code else ()
         self.tokens = _tokens("".join(code[1:]))
         self.match = _match(self.tokens)
         self.ind = 0
@@ -244,12 +244,12 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (tuple(self.queue), self.ind, self.io.position())
+        return (self.queue, self.ind, self.io.position())
 
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transitions work on."""
-        return (tuple(self.queue), self.ind)
+        return (self.queue, self.ind)
 
     def _restore(self, state: _State) -> None:
         """Write a transition's result back onto the machine's fields.
@@ -259,7 +259,7 @@ class _Machine:
         makes is here rather than scattered through the rules above.
         """
         queue, self.ind = state
-        self.queue = list(queue)
+        self.queue = queue
 
     def step(self) -> None:
         """Execute one token, advancing the cursor.

@@ -356,7 +356,7 @@ class _Machine:
         self.stmts = stmts
         self.ends = _structure(stmts)
         self.variables: dict[str, int] = {}
-        self.frames: list[tuple[str, int]] = []
+        self.frames: tuple[tuple[str, int], ...] = ()
         self.pc = 0
 
     @property
@@ -387,7 +387,7 @@ class _Machine:
         return (
             self.pc,
             tuple(sorted(self.variables.items())),
-            tuple(self.frames),
+            self.frames,
             self.io.position(),
         )
 
@@ -400,7 +400,11 @@ class _Machine:
         """Write a transition's result back onto the machine's fields."""
         variables, frames, self.pc = state
         self.variables = dict(variables)
-        self.frames = list(frames)
+        # ``_Frames`` is a Sequence, so the transition is free to hand back
+        # any sequence; the field is a tuple, and this is where that is made
+        # true.  It replaces a ``list(frames)`` that did the same job into a
+        # mutable type nothing ever mutated.
+        self.frames = tuple(frames)
 
     def step(self) -> None:
         """Execute one statement, advancing the machine.

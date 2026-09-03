@@ -352,8 +352,8 @@ class _Machine:
         self._rng = rng
         self.prog = _translate(code)
         self.n = len(self.prog)
-        self.tape: list[int] = [0]
-        self.loop: list[int] = []
+        self.tape: tuple[int, ...] = (0,)
+        self.loop: tuple[int, ...] = ()
         self.ptr = 0
         self.ind = 0
         self.rep = 1
@@ -384,8 +384,8 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (
-            tuple(self.tape),
-            tuple(self.loop),
+            self.tape,
+            self.loop,
             self.ptr,
             self.ind,
             self.rep,
@@ -395,7 +395,7 @@ class _Machine:
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
-        return (tuple(self.tape), tuple(self.loop), self.ptr, self.ind, self.rep)
+        return (self.tape, self.loop, self.ptr, self.ind, self.rep)
 
     def _restore(self, state: _State) -> None:
         """Write a transition's result back onto the machine's fields.
@@ -405,8 +405,8 @@ class _Machine:
         rather than in the rules above.
         """
         tape, loop, self.ptr, self.ind, self.rep = state
-        self.tape = list(tape)
-        self.loop = list(loop)
+        self.tape = tape
+        self.loop = loop
 
     def step(self) -> None:
         """Execute one command, advancing the cursor.

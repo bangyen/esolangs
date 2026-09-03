@@ -243,11 +243,11 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
         self.commands = _parse(code)
-        self.cells: list[int] = [0]
+        self.cells: tuple[int, ...] = (0,)
         self.ptr = 0
         self.hold = 0
         self.pos = 0
-        self.call_stack: list[int] = []
+        self.call_stack: tuple[int, ...] = ()
 
     @property
     def halted(self) -> bool:
@@ -274,10 +274,10 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         return (
             self.pos,
-            tuple(self.cells),
+            self.cells,
             self.ptr,
             self.hold,
-            tuple(self.call_stack),
+            self.call_stack,
             self.io.position(),
         )
 
@@ -285,11 +285,11 @@ class _Machine:
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
         return (
-            tuple(self.cells),
+            self.cells,
             self.ptr,
             self.hold,
             self.pos,
-            tuple(self.call_stack),
+            self.call_stack,
         )
 
     def _restore(self, state: _State) -> None:
@@ -300,8 +300,8 @@ class _Machine:
         rather than in the rules above.
         """
         cells, self.ptr, self.hold, self.pos, calls = state
-        self.cells = list(cells)
-        self.call_stack = list(calls)
+        self.cells = cells
+        self.call_stack = calls
 
     def step(self) -> None:
         """Execute one command, advancing (or jumping) the position.

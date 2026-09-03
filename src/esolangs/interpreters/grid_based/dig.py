@@ -173,7 +173,7 @@ class _Machine:
         self.io = io
         self.func = func
         self.size = max(len(lne) for lne in code)
-        self.code = [c.ljust(self.size) for c in code]
+        self.code = tuple(c.ljust(self.size) for c in code)
         self.mole = self.num = self.row = self.col = 0
         self.move = 1
         self._done = False
@@ -214,7 +214,7 @@ class _Machine:
             self.move,
             self.mole,
             self.num,
-            tuple(self.code),
+            self.code,
             self.io.position(),
         )
 
@@ -222,7 +222,7 @@ class _Machine:
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
         return (
-            tuple(self.code),
+            self.code,
             self.row,
             self.col,
             self.move,
@@ -239,7 +239,7 @@ class _Machine:
         makes is here rather than scattered through the rules above.
         """
         code, self.row, self.col, self.move, self.mole, self.num, self._done = state
-        self.code = list(code)
+        self.code = code
 
     def step(self) -> None:
         """Execute the cell under the mole, then move it one cell.
