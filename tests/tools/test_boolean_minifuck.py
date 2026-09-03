@@ -1306,7 +1306,7 @@ class TestParameterizedMinifuck:
         for start in (2, 3, 4, 5):
             for brackets in range(1, 9):
                 machine = run("[<" * start + "[" * brackets)
-                marks = [i for i in range(32) if machine.tape[i]]  # type: ignore[attr-defined]
+                marks = [i for i in range(32) if machine.cell(i)]  # type: ignore[attr-defined]
                 assert marks == [start + (brackets + 1) // 2], (start, brackets, marks)
                 assert machine.skip is bool(brackets % 2), (start, brackets)  # type: ignore[attr-defined]
 
@@ -1318,13 +1318,13 @@ class TestParameterizedMinifuck:
 
             # The prefix plants at most one mark and writes nothing else.
             before = run(prefix)
-            marks = [i for i in range(32) if before.tape[i]]  # type: ignore[attr-defined]
+            marks = [i for i in range(32) if before.cell(i)]  # type: ignore[attr-defined]
             assert len(marks) <= 1, (code, marks)
 
             # Where the prefix leaves the pointer on its mark, the core moves
             # that mark three cells right and takes the pointer with it.
             after = run(prefix + core)
-            moved = [i for i in range(32) if after.tape[i]]  # type: ignore[attr-defined]
+            moved = [i for i in range(32) if after.cell(i)]  # type: ignore[attr-defined]
             if marks and before.ptr == marks[0] - 1:  # type: ignore[attr-defined]
                 assert moved == [marks[0] + 3], (code, marks, moved)
                 assert after.ptr == marks[0] + 2, (code, after.ptr)  # type: ignore[attr-defined]
@@ -1334,7 +1334,7 @@ class TestParameterizedMinifuck:
         # And ``'[<' * n`` is what plants a mark at cell n -- the parameter.
         for n in range(1, 6):
             machine = run("[<" * n)
-            marks = [i for i in range(32) if machine.tape[i]]  # type: ignore[attr-defined]
+            marks = [i for i in range(32) if machine.cell(i)]  # type: ignore[attr-defined]
             assert marks == [n], (n, marks)
 
     @pytest.mark.slow  # one full three-input ablation per code
@@ -2002,7 +2002,7 @@ class TestParameterizedMinifuck:
         growing = _Sim(3)
         for _ in range(5):
             growing.exec("[")
-        assert len(growing.tape) > 3, "the tape grows to meet the pointer"
+        assert growing.length > 3, "the tape grows to meet the pointer"
 
         # The print flips the cell it steps onto first, so a print inside
         # the byte writes its own 1: cell 1 makes 0b01000000 == 64.
@@ -2017,6 +2017,58 @@ class TestParameterizedMinifuck:
         zero.exec(".")
         assert zero.dead, "printing a zero byte ends the row"
         assert zero.out == []
+
+    def test_the_simulator_agrees_with_a_real_run_on_random_streams(self) -> None:
+        """``_Sim`` and a whole-program run agree, instruction for instruction.
+
+        The edges above are hand-picked; this is the same claim made over
+        random programs, which is what would catch a divergence nobody
+        thought to write a case for.  ``_Sim.exec`` calls the interpreter's
+        ``_step`` so the two *cannot* disagree today -- this is the test that
+        fails if some later change gives the emitter its own copy of the
+        dispatch again.
+
+        Only live rows are compared cell by cell: once a row is ``dead`` the
+        emitter stops tracking it by contract, while a real run keeps going,
+        so past that point only the output and the death itself are shared.
+        """
+        import random
+
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.minifuck import run
+        from esolangs.tools.boolean.minifuck import _Sim
+
+        rng = random.Random(20260902)
+        printed = deaths = skips = 0
+
+        for _ in range(300):
+            stream = "".join(rng.choice("<[.x") for _ in range(rng.randrange(1, 40)))
+
+            sim = _Sim(64)
+            for ins in stream:
+                sim.exec(ins)
+
+            io_ = ScriptedIO("")
+            try:
+                run(stream, io_)
+            except EOFError:
+                # The whole-program run fetches input where the emitter
+                # instead marks the row dead; that is the one divergence
+                # the emitter's contract creates on purpose.
+                assert sim.dead, (stream, "the emitter missed a read")
+                deaths += 1
+                continue
+
+            assert not sim.dead, (stream, "the emitter killed a live row")
+            assert "".join(sim.out) == io_.getvalue(), stream
+            printed += len(sim.out)
+            skips += sim.skip
+
+        # The comparison is worthless if the interesting transitions never
+        # fire, so assert the sample reached all three.
+        assert printed, "no stream printed"
+        assert deaths, "no stream hit the zero-pool read"
+        assert skips, "no stream ended on a pending skip"
 
     def test_the_walk_needs_a_converged_pointer_going_right(self) -> None:
         """``[x`` walks are only safe rightward from one shared position.
