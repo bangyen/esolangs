@@ -428,24 +428,32 @@ def _normalize(b: _Builder) -> None:
     would read from), ``2`` otherwise.  All four ring cells occupied is an
     absorbing dead state, so the loop raises rather than spinning.
     """
-    # The decision is per character, but emitting it through ``run`` one
-    # character at a time was the single hottest path in the whole build
-    # (4.96M calls, 92% of the separation stage at n == 4): every call
-    # rebuilt the live list, re-split the string into runs and appended a
-    # chunk.  Deciding on a scratch clone and emitting the whole string
-    # once is the same string, hence the same template.
-    probe = b.clone()
+    # Which character comes next depends only on where the rows *are* --
+    # ``1`` when some row sits at -3, ``2`` otherwise -- and never on
+    # what they have marked.  So the whole string is planned on a plain
+    # list of positions, with no tape and no builder clone, and only the
+    # finished string is executed (once, through the batched ``run``).
+    # This is the difference between planning and simulating: the probe
+    # used to run every row's tape through ``_exec_char`` per character,
+    # which was 92% of every command the separation stage simulated.
+    positions = [r.pos for r in b.live()]
+    if all(p >= 0 for p in positions):
+        return
     out: list[str] = []
     for _ in range(10000):
-        live = probe.live()
-        if all(r.pos >= 0 for r in live):
-            if out:
-                b.run("".join(out))
+        if any(p == -3 for p in positions):
+            out.append(_ONE)
+            # ``1`` steps left and wraps -4 -> 0; no cell read can fail.
+            positions = [0 if p == -4 else p for p in (q - 1 for q in positions)]
+        else:
+            out.append(_ZERO)
+            # ``2`` at -3 would read stdin, but the branch above already
+            # cleared -3, so every row here either sits at -1/-2 (landing
+            # on 0) or walks right.
+            positions = [0 if p in (-1, -2) else p + 1 for p in positions]
+        if all(p >= 0 for p in positions):
+            b.run("".join(out))
             return
-        ch = _ONE if any(r.pos == -3 for r in live) else _ZERO
-        out.append(ch)
-        for row in live:
-            _exec_char(row, ch)
     raise ConstructError("normalize live-locked")
 
 
