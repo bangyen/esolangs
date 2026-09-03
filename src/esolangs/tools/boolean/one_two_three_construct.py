@@ -694,8 +694,46 @@ def _try_kill(
         # the victim must pop out of the ring at -1/-2, or the '2' reads
         if (a - v0.pos) % 4 not in (1, 2):
             continue
+        # Every candidate for this ``a`` shares the prefix "1"*a + "2"
+        # and then walks right, so the whole x-sweep rides one advancing
+        # state instead of re-simulating the prefix (hundreds of
+        # commands over every live row) once per x.
+        try:
+            head = nb0.clone()
+            head_live = head.live()
+            for ch, w in _runs("1" * a + "2"):
+                for row in head_live:
+                    _exec_run(row, ch, w)
+        except ConstructError:
+            continue
+        # The right-walk that carries the shared state from one x to the
+        # next cannot raise: every row sits at pos >= 0 after the pop
+        # (a row still in the ring would have raised in the prefix, which
+        # every candidate executes, so the whole ``a`` is skipped above),
+        # and ``2`` from pos >= 0 only ever increments.  Only the "12"
+        # tail can raise, and it runs on a throwaway clone.
+        walked = 0
         for x in xs:
             seg = ("1" * a + "2") if x is None else ("1" * a + "2" + "2" * x + "12")
+            if x is not None:
+                for row in head_live:
+                    _exec_run(row, _ZERO, x - walked)
+                walked = x
+            tail = head.clone()
+            tail_live = tail.live()
+            try:
+                if x is not None:
+                    for ch in "12":
+                        for row in tail_live:
+                            _exec_char(row, ch)
+            except ConstructError:
+                continue
+            # 100% of the kill sweep's candidates were rejected on this
+            # set alone, so it is checked before the fixpoint screens
+            # that used to run first.  Rejections are unobservable, so
+            # reordering them cannot change which candidate is adopted.
+            if {r.bits for r in tail.live() if _on_mark(r)} != {victim}:
+                continue
             if not _victim_loops(nb0, victim, seg):
                 continue
             if _predict(nb0, seg, kill=True) != {victim}:
