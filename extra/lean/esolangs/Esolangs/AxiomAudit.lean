@@ -21,7 +21,7 @@ This file is not imported by `Esolangs.lean`: `#print axioms` writes to the
 message log, so it has to be elaborated directly to be read:
 
 ```
-lake env lean Esolangs/PctWallCheck.lean
+lake env lean Esolangs/AxiomAudit.lean
 ```
 -/
 

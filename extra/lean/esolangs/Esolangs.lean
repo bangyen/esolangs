@@ -28,7 +28,7 @@ by no automation.
   and `decode (encode code) = code`.
 * `Esolangs.PctBooleanWall` -- `%^2^-1` has no two-input boolean generator
   at any program length (`computes_ignores`).  Its axiom audit lives in
-  `Esolangs/PctWallCheck.lean`, which is deliberately *not* imported: it
+  `Esolangs/AxiomAudit.lean`, which is deliberately *not* imported: it
   exists to be run by hand, and its `#print axioms` output is only visible
   when the file is elaborated directly.
 -/
