@@ -59,7 +59,7 @@ class TestEval:
 
         state.step()  # the literal at index 3: past the closing quote
         assert state.ind == 6
-        assert state.stk[state.ptr] == ["a"]
+        assert state.stk[state.ptr] == ("a",)
 
     def test_only_the_two_quotes_start_a_literal(self) -> None:
         """No other character opens stringmode -- the rest are commands or no-ops.
@@ -76,7 +76,7 @@ class TestEval:
                 continue
             state = _Machine(io=ScriptedIO(), sym=char)
             state.step()
-            assert state.stk == [[], []], f"{char!r} was not a no-op"
+            assert state.stk == ((), ()), f"{char!r} was not a no-op"
             assert state.ind == 1
 
     def test_output_goes_to_the_supplied_io(self) -> None:
@@ -240,7 +240,8 @@ class TestFrames:
         state = _Machine.of('"0."!', ScriptedIO(""))
         frame = ("0.", 0)
         before = state.frame_entry_key(frame)
-        state.stk[state.ptr].append(7)
+        pushed = (*state.stk[state.ptr], 7)
+        state.stk = (pushed, state.stk[1]) if state.ptr == 0 else (state.stk[0], pushed)
         assert state.frame_entry_key(frame) != before
 
 

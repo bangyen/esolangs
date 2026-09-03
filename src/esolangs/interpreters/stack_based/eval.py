@@ -165,7 +165,7 @@ class _Machine:
     """Two stacks with an index choosing the active one, and a frame stack."""
 
     ptr: int = 0
-    stk: list[list[int | str]] = field(default_factory=lambda: [[], []])
+    stk: tuple[tuple[_Val, ...], tuple[_Val, ...]] = ((), ())
     io: IO = field(default_factory=IO)
     sym: str = ""
     frames: list[_Frame] = field(default_factory=list)
@@ -227,7 +227,7 @@ class _Machine:
         Eval's stacks hold strings as well as ints, which the VM's
         ``Sequence[object]`` accepts as it stands.
         """
-        return self.stk[self.ptr]
+        return list(self.stk[self.ptr])
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
@@ -239,7 +239,7 @@ class _Machine:
         """
         return (
             self.ptr,
-            tuple(tuple(s) for s in self.stk),
+            self.stk,
             tuple(self.frames),
             self.io.position(),
         )
@@ -263,7 +263,7 @@ class _Machine:
             sym,
             ind,
             self.ptr,
-            tuple(tuple(s) for s in self.stk),
+            self.stk,
             self.io.position(),
         )
 
@@ -285,15 +285,14 @@ class _Machine:
         if ind >= len(sym):
             self.frames.pop()
             return
-        core: _Core = (self.ptr, (tuple(self.stk[0]), tuple(self.stk[1])))
+        core: _Core = (self.ptr, self.stk)
         try:
             core, ind, output, call = _iterate(core, sym, ind)
         except _Fault:
             raise HaltError from None
         if output is not None:
             self.io.print_value(output)
-        self.ptr, stacks = core
-        self.stk = [list(stacks[0]), list(stacks[1])]
+        self.ptr, self.stk = core
         self.frames[-1] = (sym, ind)
         if call is not None:
             # The nested program becomes a frame of its own rather than
