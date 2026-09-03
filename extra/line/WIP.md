@@ -336,15 +336,8 @@ round-trip check for `extract()` alone.
   other stroke's own *final* vertex (a real fork or dead end) is also
   accepted, matching the original fork-only mechanism -- but landing on any
   *other* vertex is deliberately rejected even when the coordinates match
-  exactly: every fork's two children start at exactly the fork's own end
-  coordinate by construction, so a plain "does this point equal some
-  stroke's own starting vertex" test matches *every* sibling arm sharing
-  that corner, not just a real continuation -- confirmed to misfire this
-  way on a synthetic loop test (a decrementing loop matched an unrelated,
-  never-taken sibling branch instead of the real ancestor fork, because
-  both happened to start at the same pixel).  Requiring strict interior
-  containment for anything short of a stroke's own final vertex is what
-  actually distinguishes a genuine merge from that coincidence.
+  exactly, for the same sibling-arm-sharing-a-start-coordinate reason
+  described above.
 
   At the time this was written, `render.py`'s own `Node`/`_layout` could not
   produce a loop to test the mechanism against directly, since `Node` was a
@@ -357,10 +350,8 @@ round-trip check for `extract()` alone.
   produce a wrong answer).  `render.py` has since gained real loop/cycle
   support (`Node.goto`, see "Real loop/cycle support in render.py, and a
   bf-to-Line compiler" below) -- but the real fixtures were, and remain,
-  the stronger check regardless: `addition.png` computes the correct sum
-  for every input pair tried (`(3,2)->5`, `(0,0)->0`, `(7,3)->10`,
-  `(10,10)->20`), and `multiplication.png` the correct product (`(3,2)->6`,
-  `(4,4)->16`, `(0,5)->0`).
+  the stronger check regardless: both wiki fixtures still compute correct
+  results on every input pair tried (same pairs as above).
 
   `run` deliberately has no step limit or cycle-hang detection: checked
   against how every other interpreter in this repo handles it, a plain
@@ -406,9 +397,10 @@ round-trip check for `extract()` alone.
   than the projection that called it impractical, and n=7 -- three levels
   past the old ceiling -- extracts in four seconds.
 
-  Above n=6 the canvas exceeds Pillow's default decompression-bomb threshold,
-  so reading one back needs `Image.MAX_IMAGE_PIXELS` raised; that is a Pillow
-  default, not a limit of this generator.  n=8 upward is untested rather than
+  Above n=6 the canvas used to exceed Pillow's default decompression-bomb
+  threshold, needing `Image.MAX_IMAGE_PIXELS` raised to read one back; `png.py`
+  has since replaced Pillow here and imposes no such ceiling (see
+  `line_boolean.py`'s own module docstring).  n=8 upward is untested rather than
   known-bad (roughly 2x area per input), so the real limit is now whatever
   canvas and extraction time a caller tolerates.  Covered by
   `test_line_boolean.py`.
@@ -977,13 +969,5 @@ in detail so a future attempt does not re-derive or re-break them.
   and check it against the image), the actual fix built and verified was
   simpler than either -- an 8-directions-per-vertex probe, with no per-
   opcode template shapes involved at all.  See "Settled and tested" above
-  (`lattice.py`) for the full writeup: at every vertex, count how many of
-  the 8 compass directions have a real segment leaving it (2 = ordinary
-  bend, 3 = fork or merge, 4 = crossing), using a 3-pixel-wide band probe
-  rather than a single exact-length ray to absorb both hand-drawn length
-  slop and vertex-position imprecision in one check.  Verified clean
-  against every vertex in both wiki fixtures, and against the
-  previously-broken "`?` followed by more opcodes" synthetic case.  Now
-  wired into `extract()`'s actual pipeline as its only walker (see
-  "Settled and tested" above for the wiring details and the one additional
-  bug -- `_resnap_dead_end` -- found and fixed in the process).
+  (`lattice.py`, "Merge detection") for the full writeup, the verification,
+  and the wiring/`_resnap_dead_end` details -- not restated here.
