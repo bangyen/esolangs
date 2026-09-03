@@ -21,7 +21,6 @@ Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import sys
-from collections.abc import Callable
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -71,8 +70,6 @@ def _advance(
     state: _State,
     size: int,
     value: int | None = None,
-    *,
-    armed: bool = False,
 ) -> _State:
     """Return the state after executing the cell under the mole.
 
@@ -80,9 +77,6 @@ def _advance(
     the caller.  ``:`` prints the mole -- this only clears it -- and the
     reads ``=``/``~`` arrive as ``value``, already taken from the port,
     with ``None`` standing for the empty read that zeroes the mole.
-
-    ``armed`` is the ``$`` hook's answer, consulted only when the cell is
-    ``$``: a true answer halts before the counter is set.
 
     A work command fires only while ``num`` is positive, and every one that
     fires spends one.  Outside that, a cell is scenery the mole walks over
@@ -137,8 +131,6 @@ def _advance(
         # turning drives the heading past the ends of _DIRECT.
         move %= 4
     elif char == "$":
-        if armed:
-            return (code, row, col, move, mole, num, True)
         num = _value(code, row, col, size)
     elif char == "@":
         return (code, row, col, move, mole, num, True)
@@ -156,22 +148,20 @@ class _Machine:
     """Per-run Dig state: the mole, its heading, and the underground counter.
 
     ``step()`` executes the cell under the mole and advances it one cell in
-    the current heading; ``halted`` is true once the mole hits ``@``, walks
-    off the grid, or the ``$`` callback returns true.  The VM and the
-    state-cycle hang detector expose this object.
+    the current heading; ``halted`` is true once the mole hits ``@`` or
+    walks off the grid.  The VM and the state-cycle hang detector expose
+    this object.
     """
 
     def __init__(
         self,
         code: list[str],
         io: IO,
-        func: Callable[[], bool] = lambda: False,
     ) -> None:
         """Pad ``code`` to a square grid, like :func:`run`."""
         if not code or not any(line.strip() for line in code):
             raise ValueError("Dig program cannot be empty")
         self.io = io
-        self.func = func
         self.size = max(len(lne) for lne in code)
         self.code = tuple(c.ljust(self.size) for c in code)
         self.mole = self.num = self.row = self.col = 0
@@ -251,19 +241,18 @@ class _Machine:
     def step(self) -> None:
         """Execute the cell under the mole, then move it one cell.
 
-        The three effects live here rather than in the transition: this is
-        the shell.  ``:`` prints the mole the transition then clears, the
-        reads ``=`` and ``~`` take a byte here -- ``=`` as a character and
-        ``~`` as a digit -- and ``$`` asks the caller's hook whether to
-        stop.  All three are consulted only when they would actually fire,
-        which for a work command means the underground counter is armed.
+        The two effects live here rather than in the transition: this is
+        the shell.  ``:`` prints the mole the transition then clears, and
+        the reads ``=`` and ``~`` take a byte here -- ``=`` as a character
+        and ``~`` as a digit.  Both are consulted only when they would
+        actually fire, which for a work command means the underground
+        counter is armed.
         """
         if self._done:
             return
         char = self.code[self.row][self.col]
 
         value: int | None = None
-        armed = False
         if self.num and char in "=~":
             temp = self.io.input_str()
             if temp:
@@ -273,19 +262,16 @@ class _Machine:
                 self.io.print_num(self.mole)
             else:
                 self.io.print_char(chr(self.mole))
-        elif not self.num and char == "$":
-            armed = self.func()
 
-        self._restore(_advance(self._state, self.size, value, armed=armed))
+        self._restore(_advance(self._state, self.size, value))
 
 
 def run(
     code: list[str],
     io: IO,
-    func: Callable[[], bool] = lambda: False,
 ) -> None:
     """Execute a Dig program with mole movement and underground work commands."""
-    machine = _Machine(code, io, func)
+    machine = _Machine(code, io)
     while not machine.halted:
         machine.step()
 
