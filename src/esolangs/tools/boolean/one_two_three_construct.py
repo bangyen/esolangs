@@ -141,8 +141,7 @@ class _Builder:
         self.chunks: list[str] = []
         self.seg: list[_Token] = []
         self.rows = [
-            _Row(tuple((r >> (n - 1 - i)) & 1 for i in range(n)))
-            for r in range(2**n)
+            _Row(tuple((r >> (n - 1 - i)) & 1 for i in range(n))) for r in range(2**n)
         ]
 
     def live(self) -> list[_Row]:
@@ -198,9 +197,7 @@ class _Builder:
         must provably loop (they are marked dead); without it they must
         escape, or the emission is invalid and raises.
         """
-        true_rows = [
-            r for r in self.live() if r.pos >= 0 and r.pos in r.tape
-        ]
+        true_rows = [r for r in self.live() if r.pos >= 0 and r.pos in r.tape]
         for row in true_rows:
             fate = self.fixpoint(row)
             if kill:
@@ -232,8 +229,9 @@ def _table_val(table: str, bits: tuple[int, ...]) -> str:
     return table[int("".join(map(str, bits)), 2)]
 
 
-def _predict(b: _Builder, seg: str, *, kill: bool = False) -> set[
-        tuple[int, ...]] | None:
+def _predict(
+    b: _Builder, seg: str, *, kill: bool = False
+) -> set[tuple[int, ...]] | None:
     """Try closing (pending segment + ``seg``) on a clone.
 
     Returns the TRUE set's row bits on success, ``None`` if any row's
@@ -244,9 +242,7 @@ def _predict(b: _Builder, seg: str, *, kill: bool = False) -> set[
         for ch in seg:
             for row in nb.live():
                 _exec_char(row, ch)
-        true_rows = [
-            r for r in nb.live() if r.pos >= 0 and r.pos in r.tape
-        ]
+        true_rows = [r for r in nb.live() if r.pos >= 0 and r.pos in r.tape]
         for row in true_rows:
             fate = nb.fixpoint(row, seg)
             if (fate != "loop") if kill else (fate != "skip"):
@@ -298,8 +294,7 @@ def _distinct_ok(b: _Builder, table: str) -> bool:
     for r in b.live():
         key = (r.pos, frozenset(r.tape))
         if key in seen and seen[key] != r.bits:
-            if (_table_val(table, seen[key]) == "0"
-                    == _table_val(table, r.bits)):
+            if _table_val(table, seen[key]) == "0" == _table_val(table, r.bits):
                 continue
             return False
         seen[key] = r.bits
@@ -316,8 +311,7 @@ def _one_row_collided(b: _Builder, table: str) -> bool:
     for r in b.live():
         grp.setdefault(r.pos, []).append(r)
     return any(
-        len(g) > 1
-        and any(_table_val(table, r.bits) == "1" for r in g)
+        len(g) > 1 and any(_table_val(table, r.bits) == "1" for r in g)
         for g in grp.values()
     )
 
@@ -358,8 +352,10 @@ def _separate(b: _Builder, table: str) -> None:
             len(g) - 1
             for g in grp.values()
             if len(g) > 1
-            and (len({frozenset(r.tape) for r in g}) > 1
-                 or len({_table_val(table, r.bits) for r in g}) > 1)
+            and (
+                len({frozenset(r.tape) for r in g}) > 1
+                or len({_table_val(table, r.bits) for r in g}) > 1
+            )
         )
 
     for _ in range(16 * 4**b.n):
@@ -371,8 +367,10 @@ def _separate(b: _Builder, table: str) -> None:
             (p, g)
             for p, g in grp.items()
             if len(g) > 1
-            and (len({frozenset(r.tape) for r in g}) > 1
-                 or len({_table_val(table, r.bits) for r in g}) > 1)
+            and (
+                len({frozenset(r.tape) for r in g}) > 1
+                or len({_table_val(table, r.bits) for r in g}) > 1
+            )
         ]
         if not multis:
             return
@@ -416,8 +414,7 @@ def _separate(b: _Builder, table: str) -> None:
                 break
         if not adopted:
             if fallback is not None:
-                b.chunks, b.seg, b.rows = (
-                    fallback.chunks, fallback.seg, fallback.rows)
+                b.chunks, b.seg, b.rows = (fallback.chunks, fallback.seg, fallback.rows)
                 continue
             if retries >= 20:
                 raise ConstructError(f"no split for the group at {p}")
@@ -429,8 +426,7 @@ def _separate(b: _Builder, table: str) -> None:
                 _normalize(nb)
                 _close(nb)
             except ConstructError:
-                raise ConstructError(
-                    f"no split for the group at {p}") from None
+                raise ConstructError(f"no split for the group at {p}") from None
             if not _distinct_ok(nb, table):
                 raise ConstructError(f"no split for the group at {p}")
             retries += 1
@@ -447,8 +443,7 @@ def _gap_fix(b: _Builder, table: str, gap_min: int = 12) -> None:
     for _ in range(8 * len(b.live()) + 8):
         order = sorted(b.live(), key=lambda r: r.pos)
         boundary = next(
-            (lo.pos for lo, hi in pairwise(order)
-             if 0 < hi.pos - lo.pos < gap_min),
+            (lo.pos for lo, hi in pairwise(order) if 0 < hi.pos - lo.pos < gap_min),
             None,
         )
         if boundary is None:
@@ -528,8 +523,7 @@ def _try_kill(
         if (a - v0.pos) % 4 not in (1, 2):
             continue
         for x in xs:
-            seg = ("1" * a + "2") if x is None else (
-                "1" * a + "2" + "2" * x + "12")
+            seg = ("1" * a + "2") if x is None else ("1" * a + "2" + "2" * x + "12")
             if not _victim_loops(nb0, victim, seg):
                 continue
             if _predict(nb0, seg, kill=True) != {victim}:
@@ -578,9 +572,7 @@ def _boost_row(
     return None
 
 
-def _group_boost(
-    b: _Builder, victim: tuple[int, ...], table: str
-) -> _Builder | None:
+def _group_boost(b: _Builder, victim: tuple[int, ...], table: str) -> _Builder | None:
     """Lift the victim's blockers in bulk until it is the minimum.
 
     A boost's TRUE set need not be a single row: any test whose TRUE set
@@ -595,8 +587,7 @@ def _group_boost(
             return nb
         moved = False
         for w in range(1, max(r.pos for r in nb.live()) + 48):
-            below = [r for r in nb.live()
-                     if r.pos <= v.pos and r.bits != victim]
+            below = [r for r in nb.live() if r.pos <= v.pos and r.bits != victim]
             # the victim must skip, and at least one blocker must jump
             if (v.pos + w) in v.tape:
                 continue
@@ -612,8 +603,7 @@ def _group_boost(
                 _normalize(cand)
             except ConstructError:
                 continue
-            if not _distinct_ok(cand, table) or _one_row_collided(
-                    cand, table):
+            if not _distinct_ok(cand, table) or _one_row_collided(cand, table):
                 continue
             nb = cand
             moved = True
@@ -623,9 +613,7 @@ def _group_boost(
     return None
 
 
-def _ring_round(
-    b: _Builder, table: str, x: int, depth: int
-) -> _Builder | None:
+def _ring_round(b: _Builder, table: str, x: int, depth: int) -> _Builder | None:
     """Pad, descend past the bottom row, pop.
 
     Reshuffles relative residues mod 4 — the one thing plain walks
@@ -673,9 +661,7 @@ def _align_residues(b: _Builder, table: str) -> None:
         b.chunks, b.seg, b.rows = nb.chunks, nb.seg, nb.rows
 
 
-def _moves(
-    b: _Builder, table: str, ones: list[_Row]
-) -> Iterator[_Builder]:
+def _moves(b: _Builder, table: str, ones: list[_Row]) -> Iterator[_Builder]:
     """Yield successor states, best first.
 
     A few cheap kill pads, then boosts of the rows blocking the lowest
@@ -694,8 +680,7 @@ def _moves(
     if nb is not None:
         yield nb
     blockers = sorted(
-        (r for r in b.live()
-         if r.bits != victim.bits and r.pos <= victim.pos + 24),
+        (r for r in b.live() if r.bits != victim.bits and r.pos <= victim.pos + 24),
         key=lambda r: r.pos,
     )
     for u in blockers:
@@ -724,9 +709,7 @@ def _moves(
                 yield nb
 
 
-def _verdict_search(
-    b: _Builder, table: str, budget: int = 300
-) -> _Builder | None:
+def _verdict_search(b: _Builder, table: str, budget: int = 300) -> _Builder | None:
     """Bounded depth-first search until every 1-row is provably looping.
 
     Backtracking keeps any previously working trajectory reachable, so a
@@ -737,10 +720,8 @@ def _verdict_search(
     seen: set[tuple[tuple[int, tuple[int, ...], frozenset[int]], ...]] = set()
     spent = [0]
 
-    def sig(bb: _Builder) -> tuple[
-            tuple[int, tuple[int, ...], frozenset[int]], ...]:
-        return tuple(sorted(
-            (r.pos, r.bits, frozenset(r.tape)) for r in bb.live()))
+    def sig(bb: _Builder) -> tuple[tuple[int, tuple[int, ...], frozenset[int]], ...]:
+        return tuple(sorted((r.pos, r.bits, frozenset(r.tape)) for r in bb.live()))
 
     def dfs(bb: _Builder) -> _Builder | None:
         ones = [r for r in bb.live() if _table_val(table, r.bits) == "1"]
@@ -821,8 +802,7 @@ def _replay(template: str, n: int, table: str) -> None:
             seen.add(s)
             machine.step()
         if verdict != table[combo]:  # pragma: no cover - the gate
-            raise ConstructError(
-                f"replay disagrees at row {bits}: {verdict!r}")
+            raise ConstructError(f"replay disagrees at row {bits}: {verdict!r}")
 
 
 #: Simulated commands a :func:`construct` call may spend before raising.
@@ -865,7 +845,5 @@ def construct(truth_table: str, spacing: int = 6) -> str:
             "budget ran out before the searches converged"
         ) from None
     except ConstructError as exc:
-        raise ValueError(
-            f"123 construction failed for {truth_table!r}: {exc}"
-        ) from exc
+        raise ValueError(f"123 construction failed for {truth_table!r}: {exc}") from exc
     return template
