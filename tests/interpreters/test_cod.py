@@ -4,11 +4,33 @@ import pytest
 
 from esolangs.interpreters.grid_based.cod import _Machine, run
 from esolangs.interpreters.io import IO, ScriptedIO
+from esolangs.interpreters.randomness import Randomness
 
 
-def run_and_capture(code: str, stdin: str = "", limit: int = 1000) -> str:
+def run_and_capture(code: str, stdin: str = "") -> str:
     io = ScriptedIO(stdin)
-    run(code, io, limit=limit)
+    run(code, io)
+    return io.getvalue()
+
+
+def step_and_capture(
+    code: str, steps: int, stdin: str = "", rng: Randomness | None = None
+) -> str:
+    """Step a COD program a fixed number of times and return what it printed.
+
+    For a program that never halts by design (the truth machine's nonzero
+    case, or a junction with no forced turn), ``run()`` cannot be called
+    directly -- it has no local cap, so it would step forever.  This drives
+    the machine itself and reads the same ``io`` the machine writes to,
+    which is why partial output from a program that is still running is
+    always available, raise or no raise.
+    """
+    io = ScriptedIO(stdin)
+    machine = _Machine(code, io, rng=rng)
+    for _ in range(steps):
+        if machine.halted:
+            break
+        machine.step()
     return io.getvalue()
 
 
@@ -85,10 +107,14 @@ class TestCOD:
         """Only a run of exactly three touching an edge reads; others are water.
 
         A column with two dots is the wrong length, so the scan rejects it
-        and moves on rather than treating either cell as an input command --
-        the cod crosses them and the program ends with nothing read.
+        and moves on rather than treating either cell as an input command.
+        The cod never reaches a dash either, so this program does not halt
+        -- it settles into an East/West bounce between three cells -- which
+        rules out asserting on the halted output.  A real read would raise
+        ``EOFError`` on empty stdin; stepping with no raise and nothing
+        printed shows no read ever fired.
         """
-        assert run_and_capture("~~~~~\n~>).\n~~.~~") == ""
+        assert step_and_capture("~~~~~\n~>).\n~~.~~", steps=50) == ""
 
     def test_a_three_dot_run_off_both_edges_is_not_a_read(self) -> None:
         """Three dots are only a read where the run reaches the top or bottom."""
@@ -116,7 +142,7 @@ class TestCOD:
         }
         # and the run is live: the cod turns up the column, reads, and prints
         code = "\n".join(["~~~~~~", "~~.~~~", "~~.~~~", "~>.---"])
-        assert run_and_capture(code, stdin="7", limit=60) == "7"
+        assert run_and_capture(code, stdin="7") == "7"
 
     def test_a_dash_run_against_the_left_edge_prints(self) -> None:
         """``---`` starting at column 0 is an output, as one ending at the
@@ -131,7 +157,7 @@ class TestCOD:
         assert _edge_dash_cells(["---~~~"]) == {(0, 0), (0, 1), (0, 2)}
         # the cod's only exit is west, so it passes ')' and enters the run
         code = "\n".join(["~~~~~~", "---)>~", "~~~~~~"])
-        assert run_and_capture(code, limit=40) == "1"
+        assert run_and_capture(code) == "1"
 
     def test_triple_dash_not_on_edge_is_three_removals(self) -> None:
         # '---' with water on both sides is three plain '-' removals, not
@@ -197,7 +223,7 @@ class TestCOD:
                 "  ~~~",
             ]
         )
-        assert run_and_capture(code, stdin="0", limit=200) == "0"
+        assert run_and_capture(code, stdin="0") == "0"
 
     def test_truth_machine_nonzero_loops_forever(self) -> None:
         code = "\n".join(
@@ -212,7 +238,7 @@ class TestCOD:
                 "  ~~~",
             ]
         )
-        out = run_and_capture(code, stdin="1", limit=100)
+        out = step_and_capture(code, steps=100, stdin="1")
         assert out.count("1") > 5
 
     def test_a_grid_with_no_wave_border_is_still_bounded(self) -> None:
@@ -224,10 +250,10 @@ class TestCOD:
         cod swims along row 0 from column 0, and each side of the grid is
         the only thing that turns it.
         """
-        assert run_and_capture(">))---", limit=40) == "2"
+        assert run_and_capture(">))---") == "2"
         # ')' in the last column: the probe past it must read as wall, not
         # walk off the end of the row
-        assert run_and_capture(">(<)", limit=60) == ""
+        assert run_and_capture(">(<)") == ""
 
     def test_column_zero_is_a_cell_a_cod_can_be_sent_to(self) -> None:
         """The leftmost column is inside the grid, not one past its edge.
@@ -252,7 +278,7 @@ class TestCOD:
         apart -- water there would give the cod somewhere to go.
         """
         with pytest.raises(ValueError, match="fully enclosed"):
-            run("~~~~\n~>\n~~~~", IO(), limit=5)
+            run("~~~~\n~>\n~~~~", IO())
 
     def test_no_start_marker_is_malformed(self) -> None:
         with pytest.raises(ValueError, match="no cod start"):
@@ -265,7 +291,7 @@ class TestCOD:
         not itself fail, or the program is rejected for the wrong reason.
         """
         with pytest.raises(ValueError, match="no cod start"):
-            run("", IO(), limit=5)
+            run("", IO())
 
     def test_two_start_markers_is_malformed(self) -> None:
         code = "\n".join(["~~~~~~~", "~> > ~~", "~~~~~~~"])
@@ -287,7 +313,7 @@ class TestCOD:
         exact.
         """
         with pytest.raises(ValueError, match="unknown instruction"):
-            run("~>X~", IO(), limit=5)
+            run("~>X~", IO())
 
     def test_fully_enclosed_start_is_malformed(self) -> None:
         with pytest.raises(ValueError, match="fully enclosed"):
@@ -308,7 +334,7 @@ class TestCOD:
             ("~>q~", "unknown instruction 'q'"),
         ):
             with pytest.raises(ValueError, match=re.escape(message)) as caught:
-                run(code, IO(), limit=5)
+                run(code, IO())
             assert str(caught.value) == message
 
     def test_deterministic_rng_picks_first_option(self) -> None:
@@ -338,12 +364,13 @@ class TestCOD:
     def test_run_hands_its_chooser_to_the_machine(self) -> None:
         """``rng`` reaches the draw, rather than being dropped on the way.
 
-        Nothing else observes the relay: with the argument lost, the run
-        falls back to ``secrets`` and still halts, still prints the same
-        thing -- the only difference is that the chooser is never asked.
+        The junction it draws at has no forced turn, so the cod bounces
+        between it and its neighbour forever -- this program does not
+        halt, with or without a chooser -- which is why the assertion is
+        on the draw, not on a halted run.
         """
         rng = _CountingRNG()
-        run("~~~~~\n~ > ~\n~~~~~", ScriptedIO(), limit=10, rng=rng)
+        step_and_capture("~~~~~\n~ > ~\n~~~~~", steps=10, rng=rng)
         assert rng.calls == [2]  # one draw, between two open directions
 
     def test_step_on_halted_machine_is_noop(self) -> None:
@@ -376,7 +403,7 @@ class TestCOD:
         touches the bottom and the input is never read.
         """
         code = "\n".join(["~~~~~~", "~~.~~~", "~~.~~~", "~>.---"])
-        assert run_and_capture(code + "\n\n", stdin="7", limit=60) == "7"
+        assert run_and_capture(code + "\n\n", stdin="7") == "7"
 
     def test_genuine_random_junction_without_rng_uses_secrets(self) -> None:
         # a real >=2-way fork (not via '+'): forward blocked, both East and

@@ -1613,7 +1613,7 @@ class TestParameterizedCOD:
         from esolangs.interpreters.io import ScriptedIO
 
         io_ = ScriptedIO("")
-        run(prog, io_, limit=500)
+        run(prog, io_)
         return io_.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
