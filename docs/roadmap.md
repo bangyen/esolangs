@@ -314,16 +314,9 @@ reach.  What is open:
   restructured anyway, or a validator lands whose ordering is non-obvious.
 - **Severely constrained boolean generators** — caps are tracked so removal
   or lifting is deliberate.  No language is currently a *removal* candidate:
-  every shipped generator covers `n <= 2` at minimum.
-- **Minifuck beyond five inputs.**  The current construction (nothing in it
-  reads `n`) is sampled 200/200 fully-essential at five inputs including
-  XOR5 (`src/esolangs/tools/boolean/minifuck.py`, `_MUX_ARITIES = (2, 3, 4,
-  5)`) — a sample, not a closed proof.  Six inputs is untried; extending
-  the sample there is the open step.  The other six refusing generators
-  stay off this list: 6-5 is the one documented wall left
-  (`docs/limitations.md`), %^2^-1 is partly lifted with the rest open, and
-  NoComment, Polynomial, Factor and WII2D are resource knobs liftable by
-  host config (`docs/walls.md` has all arguments).
+  every shipped generator covers `n <= 2` at minimum.  6-5 is the one
+  documented wall left (`docs/limitations.md`); %^2^-1 is partly lifted with
+  the rest open.
 - **NoComment's tape size** — `run`/`nocomment` take a `tape` argument
   (`_TAPE = 4096` default, matching the RISC-V cross-check's buffer), so
   `n == 12` (cell 4650) builds at a larger size without moving the default

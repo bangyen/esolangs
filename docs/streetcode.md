@@ -85,10 +85,11 @@ an intersection rather than a plain corner:
   but keeps driving straight until it reaches the right-hand lane of the
   new road, *then* turns; after turning it keeps driving straight,
   suppressing the ordinary right-hand-hug re-turn, until the new road's
-  own right-hand wall picks up.  This two-phase suppression (`_merge`
-  then `_merging_heading` in `_choose_heading`) is derived from a single
-  hand-drawn, user-confirmed ground-truth trace (see "Lane-merge naming"
-  below), not from anything the wiki spells out, but it
+  own right-hand wall picks up.  This two-phase suppression
+  (`_heading_leaving_merge` then `_heading_from_merge_target`, both reached
+  from `_choose_heading`) is derived from a single hand-drawn,
+  user-confirmed ground-truth trace (see "The lane-merge rule and its
+  ground-truth trace" below), not from anything the wiki spells out, but it
   is corroborated by both examples above: under this rule the
   infinite-loop example visits its 17 distinct cells before repeating
   rather than the small 4-cell loop a turn-immediately rule falls into
@@ -286,11 +287,12 @@ own worked examples.
 
 ## The lane-merge rule and its ground-truth trace
 
-The two phases behind the "Lane merging" bullet above are `_merge`
-(approach: keep driving straight until the car reaches the new road's
-right-hand lane, derived from the mouth's own `+` pair via `_road_mouth`,
-then turn) and `_merging_heading` (merge-out: after turning, keep driving
-straight until the new road's right-hand wall materializes).  Both are
+The two phases behind the "Lane merging" bullet above are
+`_heading_leaving_merge` (approach: keep driving straight until the car
+reaches the new road's right-hand lane, derived from the mouth's own `+`
+pair via `_road_mouth`, then turn) and `_heading_from_merge_target`
+(merge-out: after turning, keep driving straight until the new road's
+right-hand wall materializes).  Both are
 gated on `_lane_bounded`; a bare `+` floating in an open room still turns
 immediately.  The ground-truth trace the rule was checked against is
 `TestStreetcodeLaneMerge.test_merge_lands_in_the_right_hand_lane` in
