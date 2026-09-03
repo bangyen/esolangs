@@ -47,16 +47,19 @@ than one of them, or a start that is fully enclosed -- raise
 :class:`ValueError`.  A read also raises :class:`ValueError` when the line
 it is given is not an integer, since a read parses its line as a number.
 
-``run()`` stops at its ``limit`` and returns what the program printed,
-rather than raising the way the bounded OISCs (AddSubJump, Decleq) and
-Grapheme do.  That is deliberate, and it is a fact about COD rather than
-an oversight: a cod with nowhere to die simply keeps swimming, so a
-program that never terminates is *normal* here -- the wiki's own truth
-machine loops forever by design, printing as it goes.  Raising would make
-the language's headline example an error, so the bound is the run's
-duration and the partial output is the answer.  A caller wanting to tell
-"stopped at the bound" from "the last cod swam off" steps the machine
-itself and reads ``halted``.
+``run()`` has no local step cap: a cod with nowhere to die simply keeps
+swimming, the same growth class ``+[>+]`` hits in brainfuck, and
+``esolangs.run(timeout=)`` is the uniform backstop for that class across
+every language here, not a per-interpreter bound.  An earlier version of
+this docstring argued COD's own ``limit`` was different in kind --
+"duration, not guard" -- because raising past it would turn the wiki's
+truth machine, which loops forever by design, into an error.  That
+argument does not survive execution: the truth machine's partial output
+lives in ``io`` as it is printed, so a caller stopping the loop after
+``timeout`` still has every character printed so far, exactly as
+Polynomial and Decleq's callers do.  A caller wanting to tell "still
+running" from "every cod died" steps the machine itself and reads
+``halted``.
 
 The wiki does not say what a read does once stdin is exhausted.  ``EOF``
 propagates here rather than being taken as a value: a cod's value is an
@@ -386,14 +389,10 @@ class _Machine:
         self.cods = next_cods
 
 
-def run(
-    code: str, io: IO, limit: int = 1_000_000, rng: Randomness | None = None
-) -> None:
-    """Run a COD program until no cod remains, or ``limit`` steps elapse."""
+def run(code: str, io: IO, rng: Randomness | None = None) -> None:
+    """Run a COD program until no cod remains."""
     machine = _Machine(code, io, rng=rng)
-    for _ in range(limit):
-        if machine.halted:
-            break
+    while not machine.halted:
         machine.step()
 
 
