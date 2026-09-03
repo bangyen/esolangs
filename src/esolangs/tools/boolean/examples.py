@@ -665,7 +665,7 @@ _register()
 # has a generator again, but that one is *parameterized* and embeds its
 # inputs, while this program reads them at runtime -- the construction the
 # old, removed generator used.  It is the only committed record of that
-# reading model, which `docs/walls.md` still characterizes.
+# reading model, which `docs/minifuck_generator.md` still characterizes.
 HAND_WRITTEN: dict[str, tuple[str, tuple[str, ...], str, bool]] = {
     # stem -> (interpreter, inputs, expected, split)
     "minifuck": ("tape_based.minifuck", ("0", "1"), "0", False),

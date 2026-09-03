@@ -105,7 +105,9 @@ chain) with no `n` cap at all.  Minifuck's old cap was a property of
 now **total** — no arity and no table it declines, pinned by
 `test_no_arity_is_gated` on a fully-essential six-input table.  What bounds
 a caller is cost, not expressiveness: the template grows about fourfold per
-arity.  See [`docs/walls.md`](walls.md) for both.
+arity.  See [`docs/walls.md`](walls.md) for Home Row, and
+[`docs/minifuck_generator.md`](minifuck_generator.md) for the arguments
+behind Minifuck's totality and the mechanisms refuted along the way.
 
 The parameterized no-input generators embed every input exactly once rather
 than re-embedding a bit at multiple decision nodes, mirroring how an
