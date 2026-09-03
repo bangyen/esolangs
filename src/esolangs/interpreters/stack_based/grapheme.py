@@ -485,7 +485,7 @@ class _Machine:
         return (
             tuple(self.stack),
             frozenset(self.vars.items()),
-            tuple(self.frames),
+            self.frames,
             self.io.position(),
         )
 
