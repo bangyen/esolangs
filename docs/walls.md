@@ -2259,7 +2259,15 @@ linear scan rather than a genuine representation limit.  See
   enumerate, reaching ten**, with `n <= 4` exhaustive and five through ten
   executed samples.  The residual `None` is still a real one — the plan search
   could in principle give up inside the workspace, though no table at ten or
-  below makes it — so this is reach, not a totality proof.  As everywhere in
+  below makes it — so this is reach, not a totality proof.
+
+  Note what the bound is *not*: it is the **fold's**, not the generator's.
+  Arity alone refuses nothing, because the cascade builds every conjunction
+  or disjunction of literals at any width — the alternating and
+  single-minterm eleven-input tables build, in 138 characters, and only a
+  *generic* eleven-input table reaches the raise.  A refusal test that picks
+  a structured table at a high arity therefore does not exercise the path it
+  means to.  As everywhere in
   this file, eleven and up are **unreached by this construction**, not walled:
   the Lean theorem covers the reading model only, and nothing here bounds
   embedded-input programs in general.  A construction that does not lay a

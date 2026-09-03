@@ -1292,7 +1292,7 @@ class TestPctFoldPlan:
         assert narrow * (2**11 - 1) > limit
         # The wide ladder gives out earlier, which is why the narrow one is
         # tried at all: ten inputs are past it.
-        assert module._FOLD_STEP * (2**10 - 1) > limit  # noqa: SLF001
+        assert limit < module._FOLD_STEP * (2**10 - 1)  # noqa: SLF001
 
         assert module._fold("01" * (2**10), 11) is None  # noqa: SLF001
         # A table inside the bound still builds, so the ``None`` above is
@@ -1330,6 +1330,35 @@ class TestPctFoldPlan:
             bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
             code = "".join(setters[i][bits[i]] for i in range(n))
             assert module._apply(0, code) == -2 * row  # noqa: SLF001
+
+    def test_past_the_workspace_the_generator_raises(self) -> None:
+        """Eleven inputs refuse for real, not by a patched planner.
+
+        The narrow ladder is the finest that spells and would span 4094
+        against a 3003-value workspace, so the fold serves nothing at eleven
+        inputs and a table no *earlier* construction covers raises rather
+        than getting a program for the wrong function.  The refusal is
+        immediate -- the ladder is gated before any planning -- which is what
+        keeps a doomed arity from costing a search.
+
+        **The table has to be generic.**  Arity alone does not refuse: the
+        cascade builds every conjunction or disjunction of literals at any
+        width, so the alternating and single-minterm eleven-input tables
+        build (in 138 characters), and only a table that reaches the fold
+        exercises this path.
+        """
+        import random
+
+        from esolangs.tools.boolean import parameterized
+
+        rng = random.Random(1)
+        table = "".join(rng.choice("01") for _ in range(2**11))
+        with pytest.raises(ValueError, match="caps it at ten inputs"):
+            parameterized.pct_squared_minus_one(table)
+
+        # A subcube at the same arity still builds, so the refusal above is
+        # the fold's workspace and not the arity itself.
+        assert parameterized.pct_squared_minus_one("1" + "0" * (2**11 - 1))
 
     def test_a_table_whose_plan_fails_builds_nothing(
         self, monkeypatch: pytest.MonkeyPatch
