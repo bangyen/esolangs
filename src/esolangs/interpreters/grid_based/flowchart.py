@@ -49,8 +49,10 @@ rather than invented, and every one of the three examples on the page
   eight-bit output buffer would never flush and the program would print
   nothing at all.  ``/ /`` therefore reads one line and takes ``1`` as a
   one bit and anything else as a zero, and ``\ \`` prints a literal
-  ``'0'`` or ``'1'``.  Exhausted input leaves the register empty, which is
-  exactly the "empty if there are no more bits to read" the spec asks for.
+  ``'0'`` or ``'1'``.  EOF leaves the register empty rather than raising,
+  which is exactly the "empty if there are no more bits to read" the spec
+  asks for; a pointer reading past the end simply carries an empty
+  register onward, and ``\ \`` then prints nothing.
 
 * **Re-entry memory disambiguates paths; it never suppresses a node.**
   The spec says a pointer re-entering a node or path it has already
