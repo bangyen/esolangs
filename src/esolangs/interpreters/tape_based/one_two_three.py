@@ -163,8 +163,6 @@ class _Machine:
     left to the caller's timeout backstop).
     """
 
-    __slots__ = ("code", "io", "n", "state")
-
     def __init__(self, code: str, io: IO) -> None:
         """Store ``code`` and reset the tape; a command-less program halts."""
         self.code = code

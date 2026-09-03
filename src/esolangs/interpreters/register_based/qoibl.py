@@ -40,7 +40,6 @@ explicit stack; here the language defines the statement as the step.
 import re
 import sys
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -331,7 +330,6 @@ def _arithmetic(
     raise ValueError("unrecognized arithmetic operator")
 
 
-@dataclass(init=False)
 class _Machine:
     """Per-run state for a Qoibl interpreter: variables and the code cursor."""
 

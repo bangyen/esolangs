@@ -166,8 +166,6 @@ class _Machine:
     needs; the rules themselves are the pure functions above.
     """
 
-    __slots__ = ("brackets", "code", "io", "size", "state")
-
     def __init__(self, code: str, io: IO) -> None:
         self.code = code
         self.io = io

@@ -118,8 +118,6 @@ class _Machine:
     expose this object.
     """
 
-    __slots__ = ("code", "io", "size", "state")
-
     def __init__(self, code: list[str], io: IO) -> None:
         """Pad ``code`` to a rectangle and start the beam at the top-left."""
         if not code or not any(line.strip() for line in code):

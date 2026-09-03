@@ -123,8 +123,6 @@ class _Machine:
     themselves are the pure function above.
     """
 
-    __slots__ = ("code", "io", "size", "state")
-
     def __init__(self, code: str, io: IO) -> None:
         """Store ``code`` and start the accumulator at zero."""
         self.io = io

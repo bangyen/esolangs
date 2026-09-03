@@ -153,8 +153,6 @@ class _Machine:
     detector and the VM expose this object.
     """
 
-    __slots__ = ("code", "io", "match", "open_l", "size", "state")
-
     def __init__(self, code: str, io: IO) -> None:
         """Match ``code``'s loop pairs and start the grid at all zeros."""
         self.io = io
