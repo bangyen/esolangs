@@ -70,7 +70,7 @@ derivation, which at this arity cannot stop early; see
 A second pass once took the arity to **60942 of 64594 (94.35%)** by
 complementing inputs as they land.  It has been removed: every table it
 placed is one the sculpted route below also builds, and it cost a
-300-second whole-arity sweep to place them.  ``docs/walls.md`` keeps the
+300-second whole-arity sweep to place them.  ``docs/minifuck_generator.md`` keeps the
 mechanism and the measurement.
 
 **The remaining 3652 fall to the sculpted route**, :func:`_mux`, which is a
@@ -92,11 +92,12 @@ mechanism and the measurements.
 
 **The generator is total.**  The route carried an arity gate until every one
 of its six refusal sites was closed by an argument with no residual ``n``
-(``docs/walls.md``, "Is ``_mux`` total?"); with the gate replaced by the floor
-:data:`_MUX_MIN_ARITY`, there is no arity and no table it declines.  Six
+(``docs/minifuck_generator.md``, "Is ``_mux`` total?"); with the gate
+replaced by the floor :data:`_MUX_MIN_ARITY`, there is no arity and no
+table it declines.  Six
 inputs is covered here by :meth:`test_no_arity_is_gated`, which builds a
 fully-essential table and runs all 64 rows on the shipped interpreter;
-``docs/walls.md`` records 448 of 448 rows correct at five, six and seven.
+``docs/minifuck_generator.md`` records 448 of 448 rows correct at five, six and seven.
 Cost grows with ``2**n`` and is the only thing that bounds a caller now:
 about 0.14s a table at five inputs, 40s at six, and 820s at seven, where the
 template reaches 13685 characters.  A caller wanting eight should budget for
@@ -182,7 +183,7 @@ complement of its bit, so the program computes a table the caller
 pre-transformed.  Input *permutation* is fine -- it is entirely inside the
 template.
 
-``docs/walls.md`` records the wider searches and the measurements behind
+``docs/minifuck_generator.md`` records the wider searches and the measurements behind
 these.
 """
 
@@ -240,7 +241,7 @@ _POOL = (0, 0, 1, 1, 0, 0, 0)
 #
 # **Several numbers in this module are this one wearing different hats**, and
 # spelling them as literals hid a relationship the totality argument in
-# ``docs/walls.md`` turns on.  What derives from it:
+# ``docs/minifuck_generator.md`` turns on.  What derives from it:
 #
 # * the accumulator floor -- ``_endgame`` refuses ``acc < _POOL_WIDTH``,
 #   because the accumulator has to sit past the pool;
@@ -1480,7 +1481,7 @@ _Staging = tuple[int, int, int | str, int]
 #   and 72% of tables are served by exactly one slice.  Hamming weight does
 #   predict a *rate* -- 78.4% reachable at weight 2 and 14 against 18.8% at
 #   weight 8 -- but no weight class is empty, so nothing licenses declining
-#   early.  See ``docs/walls.md``.
+#   early.  See ``docs/minifuck_generator.md``.
 # * **Two separators: 99 of 109**, and *not* for want of room -- re-running
 #   with bracket counts to 70 and accumulators to 60 reaches the same 99.
 #   The ten stragglers need a different separator, not a longer program.
@@ -2206,8 +2207,9 @@ def _derive_staging(truth_table: str, n: int) -> _Staging | None:
 # ones.  Taken deliberately -- a shorter program is not worth minutes to
 # compute -- and paid only by tables the plain enumeration already missed.
 #
-# ``docs/walls.md`` keeps the mechanism and the 94.35% measurement, which are
-# still true and still the reason the residue was worth attacking.
+# ``docs/minifuck_generator.md`` keeps the mechanism and the 94.35%
+# measurement, which are still true and still the reason the residue was
+# worth attacking.
 
 
 def _staged(truth_table: str, n: int) -> str | None:
@@ -2280,7 +2282,7 @@ def _staged(truth_table: str, n: int) -> str | None:
 # lands does not help and cannot" was measured over a *stale* bit -- the
 # setter-read unit is shift-invariant over the uniform wake only once a walk
 # has crossed the bit.  Read while fresh and sandboxed, it is the whole
-# construction.  ``docs/walls.md`` keeps the superseded reasoning.
+# construction.  ``docs/minifuck_generator.md`` keeps the superseded reasoning.
 #
 # **Sculpting** then edits the separated rows individually.  Fix a target
 # cell ``C`` below every row.  One round ``'<' * K + '[x' * K`` with
@@ -2332,14 +2334,14 @@ def _staged(truth_table: str, n: int) -> str | None:
 # replaced the tuple with :data:`_MUX_MIN_ARITY` is that "nothing in the
 # construction is aware of ``n``" stopped being an observation and became an
 # argument: every one of the route's six refusal sites closes uniformly in
-# ``n`` (``docs/walls.md``, "Is ``_mux`` total?").  Sampled end to end: 200
+# ``n`` (``docs/minifuck_generator.md``, "Is ``_mux`` total?").  Sampled end to end: 200
 # of 200 fully-essential five-input tables build and print all 32 rows
 # correctly on the shipped interpreter, five-input XOR among them, at about
 # 0.14s each.  Six inputs is the arity the gate used to refuse and it builds
 # the same way: the two tables that raised in 0.000s before the lift emit 4040
 # and 3993 characters in 41.6s and 53.8s, and a fixed fully-essential table
 # prints all 64 rows on the shipped interpreter in
-# :meth:`test_no_arity_is_gated`.  ``docs/walls.md`` carries the wider run,
+# :meth:`test_no_arity_is_gated`.  ``docs/minifuck_generator.md`` carries the wider run,
 # 448 of 448 rows correct at five, six and seven inputs.
 #
 # The route sits *after* the staged families in :func:`_solve`, so every
@@ -2362,7 +2364,7 @@ _MUX_GUARD = _MUX_BASE - 8
 # The lowest arity the route is offered.  There is no upper bound: this used
 # to be a tuple ``(2, 3, 4, 5)`` recording the arities that had been
 # *verified*, and the route declined outside it in 0.0s -- a configuration
-# gate, not a construction that failed.  ``docs/walls.md`` ("Is ``_mux``
+# gate, not a construction that failed.  ``docs/minifuck_generator.md`` ("Is ``_mux``
 # total?") now closes all six of the route's ``None``-sites with arguments
 # that carry no residual ``n``: the separation is affine and injective by the
 # constant 24-cell saturation margin plus the strict non-overlap the halving
@@ -2530,7 +2532,7 @@ def _mux_separate(n: int) -> _Joint | None:
     #
     # Neither check fires at any arity -- which is the point of deriving the
     # separation rather than searching for one, and is argued uniformly in
-    # `n` in ``docs/walls.md`` under "Is ``_mux`` total?" -- so
+    # `n` in ``docs/minifuck_generator.md`` under "Is ``_mux`` total?" -- so
     # both refusals are the guard against a future weighting that breaks the
     # construction, not a live path.
     if any(m.dead for m in j.ms) or len(set(j.ptrs())) != 2**n:
@@ -2861,7 +2863,7 @@ def _solve(truth_table: str) -> str:
     # There are no such tables left.  :func:`_mux` carried an arity gate at
     # the time, so everything above five landed here; that gate is gone (see
     # :data:`_MUX_MIN_ARITY`), and every one of the route's six ``None``-sites
-    # closes by an argument uniform in ``n`` -- ``docs/walls.md``, "Is
+    # closes by an argument uniform in ``n`` -- ``docs/minifuck_generator.md``, "Is
     # ``_mux`` total?".  So the generator is total: this raise says the
     # totality argument has been broken by a change, and the message names the
     # table that broke it.
