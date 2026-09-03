@@ -2324,11 +2324,71 @@ linear scan rather than a genuine representation limit.  See
   cofactor is a two-bit string, so there are only four of them and the 2048
   prefix blocks of a random twelve-input table collapse into four buckets —
   2044 mergeable pairs (1008 of 1024 with two inputs unlaid, 292 of 512 with
-  three).  Equal cofactors are abundant, not rare.  So the
-  interleaved construction is not blocked by the table's structure; what it
-  needs is a laying order the `{Xi}` invariants permit — the embeds must stay
-  exactly-once and in ascending name order — and that has not been attempted.
-  It is the natural next thing to try past eleven inputs.
+  three).  Equal cofactors are abundant, not rare.
+
+  **Investigated 2026-09-03; every component works, and the open question is
+  now narrow.**  The invariants permit it: `docs/limitations.md` states the
+  rule as embedding each input **exactly once** — a count, not a placement —
+  the enforced slot test only requires ascending names, and Minifuck's
+  sculpted route is the precedent for machinery between embeds.  A hand-built
+  interleaved template (`{X0}` `ss` `{X1}` `ss` `{X2}`) fills and runs
+  correctly on all eight rows at one instantiation width, so the mechanics
+  are interpreter-verified rather than assumed.
+
+  Four components were measured, each independently:
+
+  * **Schedule arithmetic admits `n <= 13`.**  After laying `k` inputs there
+    are at most `min(2**k, 2**(2**(n-k)))` live points — prefixes rising,
+    cofactor strings collapsing — so the peak is far below `2**n`: 510 at
+    twelve inputs, 1022 at thirteen, 2040 at fourteen.  The binding number is
+    the **span** (a wipe needs `<= 3002`, as does the doubling), and at the
+    gap-2 floor those are 1018, 2042 and 4078 — so fourteen is out.
+  * **Merges work.**  An early probe read an "eight-merge ceiling" off end
+    spans; that was the search's route.  Long sequences merge (256 points
+    over 16 classes descend to 16), and single interior merges plan in six
+    ops at every size, by exhaustive search.  The per-stage `None`s that
+    looked like obstructions were **beam give-ups**.
+  * **Program size is fine**: ~745 merges at twelve inputs × ~3 ops at the
+    shipped 72 chars/op is ~0.1-0.3 MB, beside the shipped eleven-input
+    build's 187 KB.
+  * **Re-tightening is solved.**  This was the real difficulty: a compaction
+    leaves survivors spread over ~2200, and the next lay needs a weight
+    exceeding that, so an untightened chain dies in one stage.  Gaps are
+    rigid — a wipe preserves 14 of 15 gaps, choosing only its own victim's —
+    and a greedy span-minimiser therefore *grows* the span on its first move
+    at every size.  The trick is the opposite: **widen to exactly 3003, then
+    contract at `cmin`**, a rule read straight off the working small plans.
+    Derived that way it converges geometrically at ratio `(k-2)/(k-1)` and
+    reaches a tight lattice in `O(k)` ops — verified at `k` = 16, 32, 64 and
+    128 (251, 498, 916, 1182 ops).  An earlier controller aimed at a fixed
+    absolute width, stalled from `k = 6`, and was written up as "bounded at
+    five points"; that was the controller, not the algebra.
+
+  **Chained end to end, it completes at eight inputs.**  Running the whole
+  thing with the shipped move set — lay, compact, re-tighten, repeat — on
+  real positions and real cofactors, asserting at each stage that every row
+  still sits where its bits put it and with no idealised repacking anywhere,
+  an eight-input table finishes all eight stages in about a second.  It does
+  real work on the way (32 points compact to 29, 58 to 16, 32 to 4) and ends
+  at **two points spanning 1**, which is exactly the state the existing
+  residue endgame closes.  Ten inputs reach stage 6 of 10 and twelve reach
+  stage 7 of 12.
+
+  Both remaining stalls are the **compaction giving up a few merges short**
+  — 102 points against a target of 96, and 255 against 254 — which is the
+  same beam-give-up signature that the exhaustive search already overturned
+  for single merges.  One caution for anyone retrying: the compaction is
+  delicately tuned, and the obvious widening makes it *worse*.  Offering the
+  full `k` range instead of `kcap=3` and ranking by span as a tie-break took
+  the eight-input chain from complete back to a stage-4 stall.  Treat the
+  shipped `kcap=3`, count-first ranking as the baseline to beat, measured
+  against the eight-input chain.
+
+  So the position is: interleaving is legal, its arithmetic admits thirteen
+  inputs, and it **builds today at eight** — short of the packed ladder's
+  eleven, so it ships nothing yet, and the gap to thirteen is planner
+  engineering rather than a discovered obstruction.  Nothing here is walled:
+  no search in this investigation emptied its heap.
 
   Note what the bound is *not*: it is the **fold's**, not the generator's.
   Arity alone refuses nothing, because the cascade builds every conjunction
