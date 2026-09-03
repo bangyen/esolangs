@@ -45,16 +45,14 @@ assessed-and-rejected ledger in `docs/limitations.md`.
   The randomness is **not** an objection: `[a b]` and `~` are seedable, as
   LaserFuck's heading already is.
 
-The 2D/grid pass has been redone.  The earlier claim here cited
-`Category:Two-dimensional`, which does not exist on the wiki; the real
-category is `Category:Two-dimensional languages`, and intersecting it with
-`Category:Unimplemented` gives **111 pages**, not the four previously
-recorded.  Of those, one is implemented here (COD, whose wiki tag is stale),
-five already carry a ledger verdict, and 36 survived a triage screen and were
-read against the criteria above: Super SNUSP is promoted (see the list),
-Alight and Pinyin are plausible but **unpriced**, seven more have a single
-named blocker, and seventeen are rejected on named grounds.  Full per-language
-table in `notes/twod-unimplemented-audit.md`.
+The 2D/grid pass: `Category:Two-dimensional languages` ∩
+`Category:Unimplemented` gives **111 pages**.  Of those, one is implemented
+here (COD, whose wiki tag is stale), five already carry a ledger verdict, and
+36 survived a triage screen and were read against the criteria above: Super
+SNUSP is promoted (see the list), Alight and Pinyin are plausible but
+**unpriced**, seven more have a single named blocker, and seventeen are
+rejected on named grounds.  Full per-language table in
+`notes/twod-unimplemented-audit.md`.
 
 ## Transpilers
 
@@ -135,40 +133,18 @@ precedent and floats are not); and a differential is only worth the name
 when the generator *reads input*, since an `_embedded` generator substitutes
 its bits into a fixed template and replays the same program.
 
-MyScript shipped (`src/esolangs/compilers/myscript.py`), the richest call
-graph the set covers: first-class functions, `return`, `while`/`check`
-blocks, and a `_reader` generator whose whole input space runs through the
-compiled code.  Two things this entry used to assert were **wrong, and the
-probes that corrected them are the reusable part**:
+MyScript shipped (`src/esolangs/compilers/myscript.py`): first-class
+functions, `return`, `while`/`check` blocks, a `_reader` generator whose
+whole input space runs through the compiled code.  Scoping turned out to be
+**lexical over live frames** (a function value carries its defining frame,
+so closures genuinely escape) rather than dynamic, and **every variable read
+auto-calls a nullary function** — both load-bearing facts for anyone
+extending the compiler, detailed with their probes in the module docstring.
+Value-domain exclusions (no float literals, no array mutation, `say`/`concat`
+of an array leaks Python's `str(list)` spelling) are also documented there.
 
-- Scoping is **lexical, over live frames**, not dynamic.  The old probe
-  (a caller's local visible inside a callee) does not discriminate: it
-  declared the callee *inside* the caller, which lexical scoping explains
-  just as well.  The discriminating case is a *top-level* `f` reading `x`
-  called from a `g` that declares a local `x` — the interpreter halts with
-  `undefined variable`.  So a function value carries its defining frame
-  and closures genuinely escape, which is the one real departure from
-  Forbin's call-chain design.
-- Arrays are not growable; there is no mutation builtin at all.
-
-The value domain was scoped rather than paid in full, and the compiler's
-docstring carries each exclusion with the probe behind it: float literals
-are rejected at compile time and `divide` is exact integer division
-(matching `_as_str`, which prints an integral float as an integer), and
-`say`/`concat` of an *array* aborts, because the interpreter renders those
-through Python's `str(list)` — `say [ "a" ]` writes `['a']` and
-`say [ yes ]` writes `[True]`, leaking Python's spelling of a value
-MyScript otherwise calls `yes`.  What is left is the third fact the probes
-turned up: **every variable read auto-calls a nullary function**, since
-`_parse_expr` consumes as many arguments as the value in the variable has
-parameters, so each read of a name with no `func` binding emits a runtime
-tag test.
-
-CV(N)(C) shipped (`src/esolangs/compilers/cvnc.py`); its syllable grammar
-cost nothing, since the interpreter's tokenizer and syllabifier are
-imported the way `container` imports its parser, and the bill was instead
-the runtime-built function and the two computed gotos that the entry named
-as its value.  The compiler's own docstring carries the design.
+CV(N)(C) shipped (`src/esolangs/compilers/cvnc.py`); its own docstring
+carries the design.
 
 Standing negatives, unchanged.  Plain brainfuck is the trap answer —
 uncovered, but `home_row`/`suffolk` already cover that shape, so it is
@@ -182,20 +158,13 @@ it cannot pay the verification bar the way MyScript can.  The
 2D/grid family stays out under the toolchain rule, and the drawn-control-flow
 item under **Transpilers** already covers that direction.
 
-**Input-reading compilers are now supported.**  `COMPILER_CASES` entries
-take an optional fifth element carrying stdin (pre-existing cases keep
-running on empty input), so a new input-reading compiler needs no harness
-work.  What a compiled reader must match is *its own language's* refill,
-and the two shipped readers differ: Forbin's `in` goes through
-`IO.input_char`, which reads a whole *line* and returns its first
-character, so that reader is line-faithful and byte-consecutive reads
-would diverge.  Container's is not line-faithful — it refills a queue with
-`input_str`'s line *contents* and consumes one character per pulse, and
-since `input_str` strips terminators that queue is exactly the raw byte
-stream minus its newlines.  So `_riscv_common.GETBYTE` plus a newline skip
-is the correct lowering there, and Container is the standing precedent that
-GETBYTE is fine for an exercised reader whose language reads that way.
-Derive the convention from the interpreter's refill, not from a default.
+**Input-reading compilers are supported**, no harness work needed
+(`COMPILER_CASES` takes an optional fifth element carrying stdin).  The rule
+for a new one: match *its own language's* refill, not a default.  Forbin's
+`in` reads a whole line and returns its first character (line-faithful,
+so byte-consecutive reads would diverge); Container's refills a queue with
+line contents minus the stripped terminator and consumes one char per pulse,
+so `_riscv_common.GETBYTE` plus a newline skip is the correct lowering there.
 
 ## Forbin's expression-position recursion
 
@@ -215,9 +184,11 @@ wall-clock timeouts for step-capable deterministic machines; see
   non-deterministic and stay on the wall-clock backstop.
 - **Recursion follow-up.**  `run_until_halt_or_ancestor` compares each
   newly-pushed frame's entry state (function, bindings, input position)
-  against the frames beneath it.  Built for Forbin; **Suptiftam and Lamfunc
-  also recurse and are the obvious follow-up**, each needing a
-  `frame_entry_key` matching its own frame shape.
+  against the frames beneath it.  Adopted by Forbin, Fargo, APL, and Eval —
+  it already generalizes past native recursion, since Eval and Fargo push an
+  explicit frame stack rather than recursing in Python.  **Suptiftam and
+  Lamfunc also push explicit frame stacks and are the obvious follow-up**,
+  each needing a `frame_entry_key` matching its own frame shape.
 - **Branching cycle detection for `y`/`?` — considered, not started.**
   Forking at every random decision would prove "hangs no matter how the coin
   lands", but each decision doubles the live branches, a branch can still
@@ -260,132 +231,82 @@ and are cheap to re-derive — 55 of the 61 finish in under half a minute, and
 only Streetcode passes a minute.  Re-run the language you touched; re-run
 everything after a change to the shared machinery.
 
-What is worth keeping is what a triage pass has to get right, each learned by
-getting it wrong first.
+What is worth keeping is the rules a triage pass has to get right — each
+learned by getting it wrong first; see git history for the worked examples.
 
 **Trusting the measurement:**
 
-- **Measure on an idle machine.**  The per-test alarm fails a slow-but-
-  passing test and scores it as a kill, so a contended run *under*-reports
-  survivors — one reported 17 where a solo run reports 22.
-- **`uv run` can measure the wrong tree, silently.**  It reinstalls the
-  package from the project root, so a worktree's edits never reach the
-  bundle; `PYTHONPATH=$PWD/src` fixes it.  The tell is a survivor on a line
-  you already deleted, or a pool size that did not move after deleting code.
-- **A probe whose own baseline moves witnesses everything.**  An error
-  message interpolating an object with no `__repr__` carries its address, and
-  one such program was recorded as the sole witness for 114 mutants that were
-  not killable at all.
-- **Naming `esolangs.vm` in a docstring drops the test** from the bundle
-  exactly as an import would, silently.  A survivor is not a gap until the
-  harness is trusted: tests reaching the VM or registry are dropped
-  *correctly*.
+- Measure on an idle machine — a contended run's per-test alarm scores
+  slow-but-passing tests as kills, under-reporting survivors.
+- `uv run` can silently measure the wrong tree (reinstalls from the project
+  root, so a worktree's edits never reach the bundle) — use
+  `PYTHONPATH=$PWD/src`.  Tell: a survivor on a line already deleted.
+- A probe whose own baseline is unstable (e.g. an interpolated object with
+  no `__repr__`) can witness a large batch of otherwise-unkillable mutants.
+- Naming `esolangs.vm` in a docstring drops the test from the bundle exactly
+  as an import would; a survivor is not a gap until the harness is trusted.
 
-**The last survivor is often the source's fault, not the suite's.**  A
-construct that cannot be observed is usually one that need not exist, so
-reach for the interpreter first when the mutated construct carries no
-information:
+**The last survivor is often the source's fault, not the suite's** — a
+construct that cannot be observed is usually one that need not exist:
 
-- **A redundant argument is unkillable by construction.**  Five interpreters
-  passed `input_str("Input: ")` when that string is already the parameter's
-  default, and `ScriptedIO._read` discards the prompt, so no test could ever
-  see it.  Each call site carried three permanently surviving mutants;
-  deleting the argument removed 24 mutants, **18 of them survivors**, and
-  closed Unsquare outright.  Prefer the default over restating it.
-- **A default is dead when something upstream already ran it.**  Collatz
-  Multiverse's `arrays.setdefault(var1, {})` could never fire, since every
-  line reads its target before writing and an indexed read already defaults
-  the array — a probe ran 20,000 random programs without the key ever being
-  absent.
-- **A `*` quantifier never fails, so its fallback is dead.**  Eval's
-  `re.match('[^"]*', ...)` fell back to `""` on `None`, which cannot happen;
-  `partition('"')[0]` says the same thing with no unmatched case.
-- **Dead guards.**  Clockwise's `if ins in "R?!"` early return was
-  unreachable, so both of its set-widening survivors sat on code that did
-  nothing; deleting it took the suite to 100%.  BrainIf seeded a retry loop
-  with `s = ""` when every falsy seed behaves alike.  ArrowQueue guarded grid
-  setup with `if code:`, making `_Machine(None)` take the empty-grid path —
-  indistinguishable from outside in a language with no output.
-- **Two copies of a check can each be half dead.**  NoComment's `s` and `b`
-  bounds-checked their jump target separately, and each copy had an
-  unreachable half: a forward target is always at least 1, so `s` could never
-  fail the floor, while `b` almost never reaches the ceiling.  Merging them
-  into one check over a signed delta leaves every fragment live.
+- A redundant argument restating an already-default value is unkillable by
+  construction; delete it rather than testing it.
+- A default guarded by something upstream that already ran is dead code.
+- A `*` regex quantifier never fails, so its fallback branch is dead;
+  `partition` often says the same thing with no unmatched case.
+- Dead guards (unreachable early returns, seed values every path treats
+  alike) produce survivors that teach nothing — delete the guard.
+- Two copies of one bounds check can each be half-dead in a different half;
+  merging into one check over a signed delta leaves every fragment live.
 
 **Writing the test that kills it:**
 
-- **A survivor is only as tested as the observables you compare.**  Output
-  and step count miss frame bookkeeping entirely; comparing `snapshot()`
-  killed seven Forbin mutants and four Basicfuck ones that looked equivalent.
-- **"Symmetric table" is not an equivalence argument on its own.**  3D
-  Brainfuck's direction tables are closed under negation, long cited as
-  making its axis mutants unkillable.  They are not — `snapshot()` carries
-  `ap`, `ip` and `heading`, so a relabelled axis is visible even when output
-  and step count match.  All 23 non-identity permutations are
-  distinguishable.  Assert the *coordinate*, not just the output: five of its
-  six survivors were tests asserting output only, where every move walked out
-  and back and direction cancels.  The sixth was real — `ip[1]` read as
-  `ip[2]` is undetectable because the instruction pointer never leaves the
-  `y = z = 0` line alive, so unpacking the triple removes the index that
-  could be wrong.
-- **`pytest.raises(match=...)` is a substring search.**  Passing the whole
-  message still matches a mutant that widened it; only
-  `assert str(caught.value) == message` catches that.
-- **A default argument every test overrides is untested.**  Decleq's
-  `limit=10_000` survived widening to 10001 because every test passed
-  `limit=` explicitly.  `run_with_limit` checks `halted` at the top of each
-  pass, so a program halting in `limit` steps still exhausts the loop — which
-  puts the discriminating count at 10,000, not 10,001.
+- A survivor is only as tested as the observables compared — output and step
+  count miss bookkeeping fields; compare full `snapshot()`.
+- "Symmetric table" is not an equivalence argument by itself — check what
+  the snapshot actually carries (coordinates, heading) before calling a
+  relabelling invisible.  Assert the coordinate, not just the output.
+- `pytest.raises(match=...)` is a substring search; use
+  `assert str(caught.value) == message` to catch a widened message.
+- A default argument every test overrides explicitly is untested at its
+  default value.
 
-**A rewrite can install a gap where it removed slack**, so re-measure after
-every one rather than assuming the score only improves.  The `partition` swap
-above introduced a survivor the regex version never had: `partition` and
-`rpartition` agree on every program holding a *single* literal, and every
-test had exactly one.  That went 6 survivors → 1, and the 1 was newly
-created.  3D Brainfuck showed the sharper version: factoring a pointer move
-into a `zip`-based helper traded one equivalent mutant for **three**, because
-ruff's B905 requires an explicit `strict=` and both operands are always
-3-tuples, so that argument can never fire.  A lint rule can mandate slack.
+**A rewrite can install a gap where it removed slack** — re-measure after
+every refactor rather than assuming the score only improves.  Two observed
+mechanisms: swapping a regex for `partition`/`rpartition` can introduce an
+agreement neither version's differences previously required; and factoring
+matched-length iteration into `zip` can make ruff's `strict=` argument
+unfireable when both operands are always fixed-length. A lint rule can
+mandate slack that then can't be tested.
 
-Triage from the test file, not the diffs — six mechanical shapes recur
-(substring-matched `pytest.raises`, comment tests outside the command set,
-truth-only `bool` flags, one-sided boundaries, write-only attributes,
-assertions on a constant).  A score is a means: stop where the survivors stop
+Triage from the test file, not the diffs — recurring shapes are
+substring-matched `pytest.raises`, comment tests outside the command set,
+truth-only `bool` flags, one-sided boundaries, write-only attributes, and
+assertions on a constant.  A score is a means: stop where survivors stop
 teaching anything.
 
-**Sweeping survivors against a corpus.**  Triaging one mutant at a time is
-the slow way.  `mutate_one.py --keep` leaves the mutated bundle on disk, and
-every survivor can be run against a list of programs at once: import
+**Sweeping survivors against a corpus** beats triaging one mutant at a time.
+`mutate_one.py --keep` leaves the mutated bundle on disk; import
 `mutants/bundled.py`, set `MUTANT_UNDER_TEST=bundled.<name>` in the
-environment, run each program, and report the first whose output differs.
-Test-writing then aims at a witness instead of a guess.  Three mechanics
-matter, and each cost a debugging cycle:
+environment, run each program in a corpus, and report the first whose output
+differs.  Test-writing then aims at a witness instead of a guess.  Three
+mechanics to get right:
 
-- **The environment variable is the only switch.**  mutmut selects a mutant
-  through `MUTANT_UNDER_TEST`, read by the trampoline; rebinding the module
-  attribute does nothing.  The signature of getting this wrong is *every*
-  mutant reading equivalent.  (A module that builds a dispatch table at
-  import — `_DISPATCH = {...: _fn}` — needs the table entry patched for the
-  same reason, which is how Modulous's jump mutants first read as
-  unkillable.)
-- **Drive the machine, not `run`.**  A goto loop or an unbounded tape walk is
-  legal in most of these languages, so an uncapped sweep hangs on its own
-  corpus.  Step with a limit.
-- **Match the entry convention.**  Between's `run` takes a list of lines; a
-  corpus of strings is parsed character by character, every program is
-  malformed, and the sweep measures nothing while looking like it worked.
+- `MUTANT_UNDER_TEST` is the only switch — rebinding the module attribute
+  does nothing.  A module with an import-time dispatch table needs that
+  table entry patched too, for the same reason.
+- Drive the machine with a step limit, not `run` — goto loops and unbounded
+  tape walks are legal in most of these languages and will hang an
+  uncapped sweep.
+- Match the language's own entry convention (e.g. a list of lines vs. a
+  string) or every program in the corpus silently misparses.
 
-**The yield is a function of corpus breadth, so a no-witness result is not an
-equivalence proof.**  It means *not reached by this corpus*.  Dimensional's
-56 survivors gave 2 witnesses against 35 ordinary programs and **11** once the
-corpus grew negative dimensions, bare parameterless commands, multi-digit
-numbers and multi-pass loops — and the wider run overturned an equivalence
-verdict already recorded for `_Tape.__init__`.  Read the diffs of the
-no-witness set and ask what input shape each one *needs*: they cluster, and
-one missing feature usually explains several.  Between's remaining `_exec`
-survivors hand `_eval` a null `state`, which only a variable node reads, so
-they are invisible until a name sits in that exact operand slot — a corpus
-with variables in both slots of every operation found five more.
+**The yield is a function of corpus breadth — a no-witness result means "not
+reached by this corpus," not equivalence.**  Read the diffs of the
+no-witness set and ask what input shape each one needs; missing shapes
+cluster, and widening the corpus (unusual operands, multi-pass loops, both
+operand slots of every operation) has repeatedly turned "equivalent" verdicts
+into witnessed kills.
 
 A corpus worth writing covers each command with a non-default argument, both
 directions of every movement, a zero and a maximum operand, an empty
@@ -396,7 +317,12 @@ path, and every optional token both present and absent.
 
 A table ignoring some inputs is a smaller table, and where a generator's cost
 scales with *input count* rather than row count that beats any per-row
-saving.  Taglate reduces (451 characters → 21).  What is open:
+saving.  Shipped for taglate (451 characters → 21), collatz_multiverse,
+qoibl, suffolk, suptiftam, bit_tilde, three_x, point_break and polynomial.
+Clockwise and Decleq remain the obvious candidates and neither reduces:
+`clockwise` (`other.py:676-883`) makes no `essential_inputs` call, and
+Decleq's own docstring (`register.py:61`) prices its 47-step normalize chains
+as a fixed `47*n` the fold cannot reach.  What is open:
 
 - **Taglate's gapped sets** (inputs 0 and 2 but not 1) need a discard between
   the reduced program's own reads, where the queue is not what the following
@@ -405,9 +331,10 @@ saving.  Taglate reduces (451 characters → 21).  What is open:
   `n == 3`.  **Odd-sized sets** are sidestepped by widening the window, which
   costs a tier back; narrowing properly needs the reduced program's own ghost
   handling suppressed.
-- **Worth checking elsewhere.**  Any generator whose fixed cost scales with
-  `n` admits the same reduction — decleq's `47n` normalize chains and
-  clockwise's per-level rows are the obvious candidates, neither measured.
+- **Decleq's `47n` normalize chains are not reduced** — its own docstring
+  notes the fold folds constant subtrees but leaves the fixed `47 * n`
+  normalize cost untouched (`src/esolangs/tools/boolean/register.py:61`),
+  so an ignored input still pays its full decrement chain.  Unmeasured.
 
 ## Smaller open items
 
@@ -425,54 +352,19 @@ saving.  Taglate reduces (451 characters → 21).  What is open:
 - **Severely constrained boolean generators** — caps are tracked so removal
   or lifting is deliberate.  No language is currently a *removal* candidate:
   every shipped generator covers `n <= 2` at minimum.
-- **Minifuck's four-input coverage** — three inputs is **done**: all 256
-  tables build with no search at all, from a derived staging plus `_rescue`
-  for the four the enumeration misses.  What is open is four inputs, where
-  the name-order enumeration reaches 23.9% of the fully-essential tables and
-  a second pass over embeds that **complement inputs as they land** takes it
-  to **93.7%** (60546 of 64594).  The 4048 still open are not unbuildable:
-  permuting which input occupies which slot reaches every one of them, and
-  such programs were verified row by row on the interpreter — but a permuted
-  embed emits the `{Xi}` out of ascending order, which
-  `test_slots_run_in_name_order` enforces on every generator, so that route
-  is refused rather than shipped.  What is open is therefore whether a
-  *name-order* template reaches them.  Untried order-preserving axes:
-  per-gap separators (recorded in `walls.md` as headroom not contained in
-  the shipped set), the other spellings of the complement gadget, and the
-  two-read chain prototype — reads interleaved with chosen walks, a richer
-  pool than the enumerated suffix — which prints 19.5% of a sample of the
-  tables the family misses, 78 of 78 interpreter-verified, and is not
-  shipped.  Wiring it in as a fallback after the staged route is a concrete
-  next step; see
-  `docs/walls.md`, "Why no chain can escape the counting argument", which
-  that prototype refutes.  The other six
-  refusing generators stay off this list: 6-5 is the one documented wall
-  left (`docs/limitations.md`), %^2^-1 is partly lifted with the rest open,
-  and NoComment, Polynomial, Factor and WII2D are resource knobs.  NoComment
-  used to be listed as a wall here on the strength of "the `s` skip is
-  byte-indexed, capping every jump at 255" -- which bounds one jump and not a
-  composition of them; chaining byte-sized skips lifted it from `n <= 8` to
-  the interpreter's tape bound.  WII2D's `n == 7` refusal is likewise a cost
-  guard that fires before the chain is walked, and raising it builds
-  interpreter-verified `n == 7` programs.  The heavy build-time tail this
-  line used to cite is gone: the decode no longer searches, and 25 sampled
-  `D == 64` patterns all decode in under 0.21s.
-  NoComment's and Factor's remaining caps are liftable by host config, and
-  `docs/walls.md` has both arguments.  ZTOALC L was on
-  this list and its refusals are now *size gates only* -- the anchor table's
-  1132 commands and the `2**22` line limit -- rather than capability walls:
-  its wall was a property of the decision tree it built, not of the
-  language, and a branch-free array lookup placed on a Collatz trajectory
-  renders every table small enough to materialize (`docs/walls.md`).
-- **NoComment's tape size** — *resolved by parameter, not by moving the
-  constant.*  The boolean generator reaches `n <= 11` at the default size,
-  and what stopped it there was `_TAPE = 4096`, not the language: the wiki
-  requires the memory space to be static but never gives a size, so 4096 is a
-  host choice matching the RISC-V cross-check's buffer.  Both `run` and
-  `nocomment` now take a `tape` argument defaulting to it, so a caller who
-  wants `n == 12` (cell 4650) builds and runs at a larger size while every
-  existing program keeps the 4096 the cross-check agrees with.  Raising the
-  *default* is still declined for the reason first noted here — the buffers
-  would disagree about where the tape ends, which is what the cross-check
-  exists to catch.  The open question is unchanged and is about width, not
+- **Minifuck beyond five inputs.**  A sculpted separation route (replacing
+  the old name-order enumeration and its flipped-embed patch, both deleted)
+  closes four inputs completely and reaches five with no arity-specific
+  step — sampled 200/200 fully-essential five-input tables including XOR5
+  (`src/esolangs/tools/boolean/minifuck.py`, `_MUX_ARITIES = (2, 3, 4, 5)`).
+  A sample, not a closed proof, but nothing in the construction reads `n`.
+  Six inputs is untried; extending the sample there is the open step.  The
+  other six refusing generators stay off this list: 6-5 is the one
+  documented wall left (`docs/limitations.md`), %^2^-1 is partly lifted with
+  the rest open, and NoComment, Polynomial, Factor and WII2D are resource
+  knobs liftable by host config (`docs/walls.md` has all arguments).
+- **NoComment's tape size** — `run`/`nocomment` take a `tape` argument
+  (`_TAPE = 4096` default, matching the RISC-V cross-check's buffer), so
+  `n == 12` (cell 4650) builds at a larger size without moving the default
+  every existing program agrees with.  The open question is width, not
   memory: an `n == 11` build is already ~27k characters.
