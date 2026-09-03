@@ -123,6 +123,12 @@ One further rule the spec does state, and this interpreter enforces:
 
 Malformed programs (an unknown node, a vertical path meeting a node off its
 middle, or no ``( )`` to start from) raise :class:`ValueError`.
+
+At EOF a ``/ /`` read leaves the register **empty** rather than raising,
+which is the same state ``{ }`` clears it to.  The nodes that consume the
+register -- printing it, or pushing it onto a deque -- skip a turn while it
+is empty, so a program that reads past the end of its input keeps running
+and simply stops emitting.  No :class:`HaltError` is raised at EOF.
 """
 
 import sys

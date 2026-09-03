@@ -41,6 +41,19 @@ one will continue and one will go back; if there are three, they will each
 go different forward branches" (the fourth "otherwise random" case cannot
 occur on a rectangular grid, where at most three cells besides the entry
 exist).  The program terminates once no cod remains.
+
+Malformed programs -- an unknown instruction, no ``>`` start marker, more
+than one of them, or a start that is fully enclosed -- raise
+:class:`ValueError`.  A read also raises :class:`ValueError` when the line
+it is given is not an integer, since a read parses its line as a number.
+
+At EOF a read raises :class:`EOFError` out of :meth:`IO.input_num`, which
+propagates: the cod has already swum onto the reading dot by then, so the
+move is committed before the read and the exception unwinds from a
+consistent state.  No :class:`HaltError` is raised.  A COD program need not
+terminate at all -- ``run`` takes a ``limit`` of steps and simply returns
+once it elapses, rather than raising, because a swimming cod that never
+leaves the grid is normal behavior and not an error.
 """
 
 import sys
