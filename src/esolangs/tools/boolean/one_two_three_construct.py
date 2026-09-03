@@ -657,14 +657,17 @@ def _moves(
         nb = _boost_row(b, u.bits, top + 8, table)
         if nb is not None:
             yield nb
-    for victim in sorted(ones, key=lambda r: r.pos):
-        for pad in range(3, 12):
-            nb = _try_kill(b, victim.bits, pad, table)
-            if nb is not None:
-                yield nb
+    # ring rounds before the deep kill pads: a row that has only ever
+    # walked right has no TRUE cell above its position, so on a fresh
+    # state no boost can fire until a descend-and-pop deposits one.
     for depth in range(8):
         for x in range(4):
             nb = _ring_round(b, table, x, depth)
+            if nb is not None:
+                yield nb
+    for victim in sorted(ones, key=lambda r: r.pos):
+        for pad in range(3, 12):
+            nb = _try_kill(b, victim.bits, pad, table)
             if nb is not None:
                 yield nb
 
