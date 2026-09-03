@@ -70,17 +70,31 @@ def main() -> int:
         lang.interpreter: name for name, lang in LANGUAGES.items() if lang.interpreter
     }
     failures = 0
+    checked: set[str] = set()
     for category in _categories():
         directory = os.path.join(ROOT, "interpreters", category)
         for filename in sorted(os.listdir(directory)):
             if not filename.endswith(".py") or filename.startswith("_"):
                 continue
             module = f"{category}.{filename[:-3]}"
+            checked.add(module)
             path = os.path.join(directory, filename)
             issues = _check(path, module_to_name.get(module))
             if issues:
                 failures += 1
                 print(f"{module}: " + "; ".join(issues))
+
+    # The walk above is only as good as its coverage, and the bug this
+    # replaced was a coverage hole rather than a bad check.  Every module
+    # the registry names must have been one of the files walked; a
+    # language whose interpreter moves out from under this script fails
+    # here instead of quietly going unchecked.
+    missed = sorted(set(module_to_name) - checked)
+    if missed:
+        failures += len(missed)
+        for module in missed:
+            print(f"{module}: registered but not found by the docstring walk")
+
     if failures:
         print(
             f"\n{failures} interpreter docstrings violate the conventions "
