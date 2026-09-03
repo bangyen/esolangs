@@ -34,7 +34,6 @@ at EOF (per the wiki); malformed programs raise :class:`ValueError`.
 """
 
 import sys
-from dataclasses import dataclass, field
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.memory import parse_int_memory as _parse
@@ -120,42 +119,20 @@ def _advance(state: _State, store: str, byte: int | None = None) -> _State:
     return (after[0], target, False)
 
 
-@dataclass
 class _Machine:
-    io: IO
-    mem: tuple[int, ...] = ()
-    ip: int = 0
-    store: str = "a"
-    _halted: bool = field(default=False, init=False)
-
-    @classmethod
-    def of(cls, code: str, io: IO, store: str = "a") -> "_Machine":
+    def __init__(self, code: str, io: IO, store: str = "a") -> None:
         """Build a machine over the cells ``code`` parses to.
 
-        The program is a list of integers, not text, so a caller cannot
-        hand the source straight to the constructor.  Parsing lived in
-        ``run`` and was copied into the VM adapter, which is the shape
-        that lets two spellings of the same thing drift apart.
+        The program is a list of integers, not text, so the source is
+        parsed here into the ``mem`` tuple the machine steps over.
         """
-        return cls(io=io, mem=tuple(_parse(code)), store=store)
-
-    def __post_init__(self) -> None:
-        """Reject an undocumented store target.
-
-        ``step`` tests ``store in ("ab", "b")``, so any other spelling --
-        ``"A"``, ``""``, a typo -- silently ran the *base* language instead
-        of raising.  A caller's mistake became a wrong answer rather than an
-        error, so the set is checked once here, where it applies however the
-        machine is constructed rather than only through :func:`run`.
-
-        ``mem`` needs no coercion to go with it: the annotation is the
-        contract, and every caller keeps it.  ``snapshot`` hands the field
-        out for the cycle detector to hash, so a list would make the
-        snapshot unhashable -- which is why the declared tuple is what
-        callers pass rather than something converted on the way in.
-        """
-        if self.store not in _STORES:
-            raise ValueError(f"unknown store target: {self.store!r}")
+        self.io = io
+        self.mem = tuple(_parse(code))
+        self.ip = 0
+        self.store = store
+        self._halted = False
+        if store not in _STORES:
+            raise ValueError(f"unknown store target: {store!r}")
 
     @property
     def halted(self) -> bool:
@@ -233,7 +210,7 @@ def run(code: str, io: IO, store: str = "a") -> None:
     ``store`` selects the storage variant: ``"a"`` (base S*bleq), ``"ab"``
     (S*bl*q, stores in both a and b), or ``"b"`` (Subl*q, stores in b).
     """
-    mach = _Machine.of(code, io, store=store)
+    mach = _Machine(code, io, store=store)
 
     while not mach.halted:
         mach.step()
