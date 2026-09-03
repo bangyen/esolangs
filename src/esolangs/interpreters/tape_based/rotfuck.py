@@ -204,7 +204,7 @@ class _Machine:
         """Start with an empty tape at the origin and a fresh program."""
         self.io = io
         self.prog = _Program(code)
-        self.tape: list[int] = [0]
+        self.tape: tuple[int, ...] = (0,)
         self.ptr = 0
         self.ind = 0
         self._size = len(code)
@@ -236,7 +236,7 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         return (
             self.prog.rotation(),
-            tuple(self.tape),
+            self.tape,
             self.ptr,
             self.ind,
             self.io.position(),
@@ -245,7 +245,7 @@ class _Machine:
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
-        return (tuple(self.tape), self.ptr, self.ind, self.prog.rotation())
+        return (self.tape, self.ptr, self.ind, self.prog.rotation())
 
     def _restore(self, state: _State) -> None:
         """Write a transition's result back onto the machine's fields.
@@ -253,9 +253,13 @@ class _Machine:
         The fields are this class's published shape -- the VM's views and
         the tests read them -- so they stay, and the rotation goes back
         through _Program, which is what ``at`` consults.
+
+        ``tape`` needs no conversion: the field holds the same immutable
+        tuple the transition returns.  Nothing writes ``self.tape[i]``, so
+        the list it used to be was a value in a mutable type, converted
+        out and back on every step for no one.
         """
-        tape, self.ptr, self.ind, rot = state
-        self.tape = list(tape)
+        self.tape, self.ptr, self.ind, rot = state
         self.prog.set_rotation(rot)
 
     def step(self) -> None:
