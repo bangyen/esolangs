@@ -18,8 +18,8 @@ Exits nonzero on any violation, so the pre-push hook and CI catch it.
 """
 
 import ast
-import inspect
 import importlib
+import inspect
 import os
 import sys
 
@@ -63,9 +63,7 @@ def _check(module: str, registered: set[str]) -> list[str]:
     if not params:
         issues.append("comp() takes no arguments; expected comp(code)")
     else:
-        extra = [
-            p.name for p in params[1:] if p.default is inspect.Parameter.empty
-        ]
+        extra = [p.name for p in params[1:] if p.default is inspect.Parameter.empty]
         if extra:
             issues.append(
                 f"comp() requires {', '.join(extra)} beyond code; "
@@ -74,10 +72,9 @@ def _check(module: str, registered: set[str]) -> list[str]:
 
     # A __main__ block must not write a fixed filename into the caller's
     # working directory; print to stdout so the output composes.
-    source = open(
-        os.path.join(COMPILER_DIR, f"{module}.py"), encoding="utf-8"
-    ).read()
-    tree = ast.parse(source)
+    path = os.path.join(COMPILER_DIR, f"{module}.py")
+    with open(path, encoding="utf-8") as handle:
+        tree = ast.parse(handle.read())
     for node in ast.walk(tree):
         if isinstance(node, ast.Constant) and node.value == "output.asm":
             issues.append("writes a fixed output.asm; print to stdout instead")

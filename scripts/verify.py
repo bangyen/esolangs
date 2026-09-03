@@ -242,6 +242,14 @@ STEPS = [
         [*PY, "scripts/check_docstrings.py"],
     ),
     (
+        "compiler conventions check",
+        [*PY, "scripts/check_compilers.py"],
+    ),
+    (
+        "generator conventions check",
+        [*PY, "scripts/check_generators.py"],
+    ),
+    (
         # pylint's R0801 reports similar blocks across files, catching
         # copy-pasted helpers like the bracket matcher or the OISC memory
         # tokenizer.  --ignore-imports keeps shared import blocks from
