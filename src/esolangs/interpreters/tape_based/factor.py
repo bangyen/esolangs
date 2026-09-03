@@ -37,6 +37,9 @@ from esolangs.interpreters.tape_based.brainfuck import _Machine as _BFMachine
 
 _RESIDUE = {1: ">", 2: "<", 3: "+", 4: "-", 5: ".", 6: ",", 7: "[", 8: "]"}
 
+#: Factor has no execution state beyond the Brainfuck machine it decodes to.
+type _State = _BFMachine
+
 
 def decode(number: int) -> str:
     """Decode a Factor integer into its brainfuck instruction string."""
@@ -58,7 +61,12 @@ class _Machine:
         self.io = io
         digits = re.sub(r"[^0-9]", "", code)
         number = int(digits) if digits else 1
-        self.bf = _BFMachine(decode(number), io)
+        self.state: _State = _BFMachine(decode(number), io)
+
+    @property
+    def bf(self) -> _State:
+        """The delegated Brainfuck state."""
+        return self.state
 
     @property
     def halted(self) -> bool:
