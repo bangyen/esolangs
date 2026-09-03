@@ -78,7 +78,7 @@ whose pointer marches right forever, so a plan with such a row would hang
 the harness instead of reporting a 1.  The suite checks this directly.
 """
 
-from esolangs.tools.boolean.helpers import _validate_truth_table, essential_inputs
+from esolangs.tools.boolean.helpers import _validate_truth_table
 
 __all__ = ["one_two_three"]
 
@@ -408,19 +408,21 @@ def one_two_three(truth_table: str) -> str:
     it halts for a 0 and loops for a 1 -- so the harness decides it with
     :func:`esolangs.vm.run_until_halt_or_cycle` rather than reading output.
 
-    One-, two- and three-input tables are covered completely.  A wider
-    table raises :class:`ValueError`: an ignored input still has to be
-    embedded, every fill moves the pointer, and the pointer phase *is* the
-    computed value here, so a trailing inert embed shifts the very quantity
-    the plan decodes.  See ``docs/limitations.md``.
+    One-, two- and three-input tables come from the stored plans below,
+    which are byte-stable and short.  Wider tables are *constructed* by
+    :mod:`esolangs.tools.boolean.one_two_three_construct`: the old
+    objection — an inert embed shifts the pointer phase the plan decodes —
+    binds only the phase-decode shape, because a merge choreography
+    re-synchronizes every instantiation's pointer after each embed and
+    leaves the bit as a tape mark instead.  The constructed route replays
+    every row on the real interpreter before returning, and raises
+    :class:`ValueError` if any of its bounded searches exhausts instead
+    of emitting an unproven template.
     """
     n = _validate_truth_table(truth_table)
     if n > 3:
-        essential = len(essential_inputs(truth_table, n))
-        raise ValueError(
-            "123's boolean generator derives one-, two- and three-input "
-            f"tables; {truth_table!r} has {n} inputs ({essential} essential). "
-            "See docs/limitations.md",
-        )
+        from esolangs.tools.boolean.one_two_three_construct import construct
+
+        return _in_name_order(construct(truth_table), n)
     plans = (_ONE_INPUT_PLAN, _TWO_INPUT_PLAN, _THREE_INPUT_PLAN)[n - 1]
     return _in_name_order(plans[truth_table], n)
