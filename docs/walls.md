@@ -2371,18 +2371,28 @@ linear scan rather than a genuine representation limit.  See
   an eight-input table finishes all eight stages in about a second.  It does
   real work on the way (32 points compact to 29, 58 to 16, 32 to 4) and ends
   at **two points spanning 1**, which is exactly the state the existing
-  residue endgame closes.  Ten inputs reach stage 6 of 10 and twelve reach
-  stage 7 of 12.
+  residue endgame closes.  **Nine inputs complete too**; ten reaches stage 6
+  of 10, eleven stalls at stage 6 of 11, and twelve at stage 7 of 12.
 
-  Both remaining stalls are the **compaction giving up a few merges short**
-  — 102 points against a target of 96, and 255 against 254 — which is the
-  same beam-give-up signature that the exhaustive search already overturned
-  for single merges.  One caution for anyone retrying: the compaction is
-  delicately tuned, and the obvious widening makes it *worse*.  Offering the
-  full `k` range instead of `kcap=3` and ranking by span as a tie-break took
-  the eight-input chain from complete back to a stage-4 stall.  Treat the
-  shipped `kcap=3`, count-first ranking as the baseline to beat, measured
-  against the eight-input chain.
+  **What separates them is one number: the point count at the arity's first
+  merge-requiring stage** — 32 at eight and nine inputs, then 64, 128 and 256
+  at ten, eleven and twelve.  A wipe takes the bottom or top `k` points, so
+  it reaches a duplicate sitting at an *end* trivially and an **interior**
+  one only by a long detour.  Isolated and exhausted, an interior duplicate
+  among `k` otherwise-distinct points does merge — depth 2 at `k = 4`, depth
+  6 at 6, depth 9 at 7 through 9 — but the search cost explodes: 990 states
+  at `k = 6`, 86591 at 7, 113034 at 9, and a 2M-state cap at 10.  So the
+  merges the schedule needs are reachable in principle and unaffordable in
+  practice from about ten surrounding points, which is exactly where the
+  chain starts failing.
+
+  Two cautions for anyone retrying.  The compaction is delicately tuned:
+  offering the full `k` range *and* ranking by span as a tie-break took the
+  eight-input chain from complete back to a stage-4 stall, so the shipped
+  `kcap=3`, count-first ranking is the baseline to beat.  But `kcap=3` is
+  also **structurally unable to do interior merges at all** — it only ever
+  wipes the outermost three points — so lifting it is necessary, just not
+  sufficient, and it must be lifted without disturbing the ranking.
 
   So the position is: interleaving is legal, its arithmetic admits thirteen
   inputs, and it **builds today at eight** — short of the packed ladder's
