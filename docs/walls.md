@@ -2219,6 +2219,52 @@ linear scan rather than a genuine representation limit.  See
   characters against the ladder's hundreds, so the path is tried last, and
   all 256 are interpreter-verified on every row at equal fill length.
 
+- **Is the `%^2^-1` fold total?**  **No, and where it stops is the ladder's
+  footprint rather than the plan search.**  Asked directly (2026-09-02), the
+  generator was refusing generic tables from ten inputs on, and the refusal
+  read like the search giving up: the descent dead-ends 354 moves in with 420
+  of 514 points still unmerged, nowhere near its 4128-step budget.  It was not
+  the search.  Rows start at `-step * r`, so the ladder spans
+  `step * (2**n - 1)`, and the emitter lays it from a **zero accumulator** —
+  so the ladder has to fit inside `[-3003, 0]`.  `_fold_at` was gating on
+  `2 * _LIMIT`, which is the span a *relative* plan state may occupy
+  (`_fold_moves` allows 6006 because a state may sit anywhere in the
+  workspace), and that let the planner spend thousands of moves on geometry
+  the emitter refuses on its first op.  The alternating eleven-input table
+  planned 2833 ops and then asserted, which is how the mismatch surfaced.
+
+  Gated correctly, the boundary is exact and arithmetic.  At the shipped
+  spacing of 4 the footprint is 4092 at ten inputs, over the workspace, so no
+  such table could ever be emitted however long the planner ran.  Halving it
+  (`_FOLD_NARROW_STEP`, tried only when the wide ladder finds no plan, so
+  every template that already builds stays byte-identical — verified over a
+  312-table corpus) gives 2046, which fits: **ten inputs build and print every
+  row on the interpreter**, three random tables at 1024 rows each plus
+  nine-input samples, one instantiation width per template.
+
+  **Two is the finest ladder that spells**, which is what makes ten a
+  structural end rather than a budget.  `s` subtracts 2 and `i` subtracts 3,
+  so `2a + 3b` spells every amount except 1 — and a step of 1 would need the
+  last input to subtract exactly 1.  Eleven inputs would span 4094 against
+  3003 with nothing finer to fall back on.  A related spelling fact fell out
+  of the same work and is worth recording, since `_pad_pair`'s odd-gap
+  refusal keeps reappearing in this module: **the identity has no odd-width
+  spelling at all**, searched exhaustively over `s`/`i`/`p`/`m` through width
+  6.  An odd number of the only sign-flipping command cannot compose to `+0`,
+  so a one-character `"s"` branch can never be padded to match a hold; the
+  narrow ladder's last setter is respelled wider instead (`iipssp` against
+  `pppppp`).
+
+  So the answer to "total or not" is: **total at no arity it does not
+  enumerate, reaching ten**, with `n <= 4` exhaustive and five through ten
+  executed samples.  The residual `None` is still a real one — the plan search
+  could in principle give up inside the workspace, though no table at ten or
+  below makes it — so this is reach, not a totality proof.  As everywhere in
+  this file, eleven and up are **unreached by this construction**, not walled:
+  the Lean theorem covers the reading model only, and nothing here bounds
+  embedded-input programs in general.  A construction that does not lay a
+  rigid ladder would not inherit the bound.
+
 - **The Temporary Stack** — **this entry's argument is refuted; the removal
   rested on a bad negative.**  The entry claimed the auto-drain's `front - 1`
   output cannot be `'0'`/`'1'` and that there is no input-dependent branch.
