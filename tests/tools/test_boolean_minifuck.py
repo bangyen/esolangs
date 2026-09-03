@@ -640,35 +640,48 @@ class TestParameterizedMinifuck:
                 assert got == table[combo], f"{table} inputs {bits}"
         assert checked == 38, checked
 
-    # 2.4s: the three-input derivation is the cost.  The gate probe at the
-    # ungated arity is free -- declining is the whole point of it -- so this
+    # 2.4s: the three-input derivation is the cost.  The staging probe at the
+    # unstaged arity is free -- declining is the whole point of it -- so this
     # does not pay for the staged arities above three.
     @pytest.mark.slow
     def test_a_table_with_no_staging_falls_through(self) -> None:
-        """An unplanned table returns None from ``_staged`` rather than raising.
+        """An unplanned table declines the staging and reaches the next route.
 
         Both three-input plans are now complete, so the fall-through is
         exercised at an arity that has no plan at all -- which is the case
-        that matters, since it is what lets a wider table reach the searches
-        instead of failing outright.
+        that matters, since it is what lets a wider table reach the sculpted
+        route instead of failing outright.
 
         That arity is now six: four and five are both staged (partially), so
         probing the fall-through at either would miss the point and pay that
         arity's derivation to do it.
 
-        The ungated arity is read off :data:`_STAGED_ARITIES` rather than
+        The unstaged arity is read off :data:`_STAGED_ARITIES` rather than
         written down, so raising the staged arity again moves this test with
         it instead of breaking it.  What is asserted is the *gate* -- that an
         unstaged arity declines immediately -- which is what keeps the miss
         cheap: without it the table would grind through the whole enumeration
         before giving up.
+
+        **What is probed is ``_derive_staging``, not ``_staged``.**  This used
+        to assert that ``_staged`` itself returned None at the unstaged arity,
+        which was only true while :func:`_mux` carried an arity gate of its
+        own; with that gate gone the fall-through *succeeds*, and asserting
+        None would be asserting the generator is partial.  Six inputs does
+        build here -- 1822 characters in about 35 seconds for the all-ones
+        table -- so the cheap half of the claim is kept by probing the
+        staging derivation directly, which still declines in 0.000s.
         """
         from esolangs.tools.boolean import parameterized
-        from esolangs.tools.boolean.minifuck import _STAGED_ARITIES, _staged
+        from esolangs.tools.boolean.minifuck import (
+            _STAGED_ARITIES,
+            _derive_staging,
+            _staged,
+        )
 
-        ungated = max(_STAGED_ARITIES) + 1
-        assert ungated not in _STAGED_ARITIES
-        assert _staged("1" * 2**ungated, ungated) is None
+        unstaged = max(_STAGED_ARITIES) + 1
+        assert unstaged not in _STAGED_ARITIES
+        assert _derive_staging("1" * 2**unstaged, unstaged) is None
         # A table the derivation does reach is built from it, not searched.
         for table_int in range(4):
             key = format(table_int, "08b")
@@ -762,6 +775,53 @@ class TestParameterizedMinifuck:
         widths = set()
         for combo in range(16):
             bits = [(combo >> (3 - i)) & 1 for i in range(4)]
+            program = self.instantiate(template, bits)
+            widths.add(len(program))
+            assert self.run_minifuck(program) == table[combo], (table, bits)
+        assert len(widths) == 1, widths
+
+    @pytest.mark.slow  # the six-input build, tens of seconds
+    def test_no_arity_is_gated(self) -> None:
+        """A fully-essential six-input table builds and prints all 64 rows.
+
+        Six is the first arity the old ``_MUX_ARITIES = (2, 3, 4, 5)``
+        declined, and it declined in **0.000s** -- a configuration gate, not
+        a construction that failed.  ``docs/walls.md`` ("Is ``_mux`` total?")
+        closes all six of the route's refusal sites with arguments carrying no
+        residual ``n``, and the gate is now the floor
+        :data:`_MUX_MIN_ARITY`, which only keeps constants and one-input
+        projections on the :func:`_degenerate` path.
+
+        This is the execution half of that claim, which is the half the repo's
+        standing rule says a generated program is worth.  The table must be
+        **fully essential**: a six-input table with a narrow core projects to
+        an arity the old tuple already carried, so it built even while the
+        gate stood, and asserting on one would test nothing.
+
+        Every row is run and the widths compared, the same as at four inputs
+        -- a template that computes the table but whose fills differ in length
+        leaks its inputs through ``len(program)``.
+        """
+        import importlib
+
+        from esolangs.tools.boolean.helpers import essential_inputs
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        assert module._MUX_MIN_ARITY == 2  # noqa: SLF001
+
+        n = 6
+        # Fixed table rather than a sampled one: a test that picks its own
+        # table cannot fail reproducibly.
+        table = "0110100110010110100101100110100101101001011010011100101101001010"
+        assert len(table) == 2**n
+        assert len(essential_inputs(table, n)) == n, "the table must be fully essential"
+
+        template = module._solve(table)  # noqa: SLF001
+        names = [int(m) for m in re.findall(r"\{X(\d+)\}", template)]
+        assert names == sorted(names), names
+        widths = set()
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             program = self.instantiate(template, bits)
             widths.add(len(program))
             assert self.run_minifuck(program) == table[combo], (table, bits)
