@@ -14,12 +14,16 @@ The language features:
 
 The wiki's cat program notes that output ignores negative register values;
 this interpreter clamps them to zero (printing a NUL) instead, and it raises
-:class:`EOFError` on exhausted input rather than halting with -1.  A
-10000-step cap guards non-terminating programs and raises
-:class:`~esolangs.exceptions.HaltError` when it is reached, so a truncated
-run is distinguishable from one that finished (the machine is step-capable,
-so the state-cycle hang detector proves the cycle class immediately and the
-cap stays as the ``run()`` backstop for the rest).
+:class:`EOFError` on exhausted input rather than halting with -1.
+
+There is no per-run instruction cap here.  The machine is step-capable, so
+``run_until_halt_or_cycle`` proves a hang immediately for the ordinary case
+-- a fixed instruction list and a register cycling through a bounded set of
+values revisits a state -- but a loop that keeps growing the register
+without bound never does, and the state-cycle detector cannot terminate on
+that class by construction.  ``esolangs.run``'s wall-clock ``timeout`` is
+the uniform guard for it, rather than a step count local to this
+interpreter.
 
 Root recovery: every instruction contributes a factor of a known shape to the
 program's monic integer polynomial -- a complex instruction ``[a, b]`` is the
@@ -59,7 +63,6 @@ from collections.abc import Callable
 import sympy as sp
 
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.oisc_cli import run_with_limit
 
 
 def prime(number: int) -> bool:
@@ -386,16 +389,11 @@ class _Machine:
             self.io.print_char(output)
 
 
-def run(code: str, io: IO, limit: int = 10_000) -> None:
-    """Execute a Polynomial program, or raise past ``limit`` instructions.
-
-    Exceeding the bound raises :class:`~esolangs.exceptions.HaltError`
-    rather than returning what the program had printed so far.  It once
-    returned, which made a truncated run indistinguishable from a program
-    that finished -- a run cut off mid-way handed back a partial string
-    and a normal return, with nothing to tell the two apart.
-    """
-    run_with_limit(_Machine(code, io), limit)
+def run(code: str, io: IO) -> None:
+    """Execute a Polynomial program to completion."""
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

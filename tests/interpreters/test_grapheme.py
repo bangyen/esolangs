@@ -245,15 +245,14 @@ class TestErrors:
 
         ``run`` and the VM adapter both go through it, having each carried
         their own copy of the validation and the frame push before.  The
-        tests reach it only via ``run``, which hides three things: the
-        default step limit, and the recorded end of the top-level frame that
-        ``ip`` reports once every frame has popped.
+        tests reach it only via ``run``, which hides the recorded end of
+        the top-level frame that ``ip`` reports once every frame has
+        popped.
         """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.stack_based.grapheme import _Machine
 
         machine = _Machine.of("FAFY", ScriptedIO())
-        assert machine.limit == 1_000_000  # the default, not passed here
         assert machine.ip == (0,)  # one frame, at its start
         while not machine.halted:
             machine.step()
@@ -294,13 +293,6 @@ class TestEdgeCases:
     def test_recursion_limit_exceeded(self) -> None:
         with pytest.raises(HaltError, match="recursion"):
             run_program("HKGHKG")
-
-    def test_command_limit_exceeded(self) -> None:
-        from esolangs.interpreters.stack_based.grapheme import run
-
-        io = ScriptedIO("")
-        with pytest.raises(HaltError, match="command limit"):
-            run("FF", io, limit=1)
 
     def test_function_cannot_name_a_variable(self) -> None:
         with pytest.raises(HaltError, match="cannot name"):
@@ -371,27 +363,12 @@ class TestEdgeCases:
         """
         from esolangs.interpreters.stack_based.grapheme import _frame, _Machine
 
-        machine = _Machine(ScriptedIO(), 1_000_000)
+        machine = _Machine(ScriptedIO())
         machine.frames = (_frame("FAFY", 0),)
         for _ in range(4):
             assert not machine.halted
             machine.step()
         assert machine.halted
-
-    def test_the_command_limit_counts_from_the_first_command(self) -> None:
-        """A program of exactly ``limit`` commands runs; one more does not.
-
-        The suite pins the limit only where it is plainly exceeded, which
-        every off-by-one spelling of the counter and its test also
-        rejects.  ``FAFY`` is four commands, so it sits on the boundary.
-        """
-        from esolangs.interpreters.stack_based.grapheme import run
-
-        io = ScriptedIO()
-        run("FAFY", io, limit=4)
-        assert io.getvalue() == "10"
-        with pytest.raises(HaltError, match="command limit"):
-            run("FAFY", ScriptedIO(), limit=3)
 
     def test_the_recursion_limit_admits_five_hundred_frames(self) -> None:
         """500 nested calls run; 501 is the one that is refused.
@@ -446,7 +423,7 @@ class TestStepMachine:
     def test_snapshot_includes_the_input_cursor(self) -> None:
         from esolangs.interpreters.stack_based.grapheme import _frame, _Machine
 
-        machine = _Machine(ScriptedIO("hi"), 1_000_000)
+        machine = _Machine(ScriptedIO("hi"))
         machine.frames = (_frame("W", 0),)
         before = machine.snapshot()
         machine.step()  # W reads a line, pushing it
@@ -466,7 +443,7 @@ class TestStepMachine:
         from esolangs.interpreters.stack_based.grapheme import _frame, _Machine
 
         for code, value in (("EAEK", "A"), ("FAFK", 10), ("HAHK", ("func", "A"))):
-            machine = _Machine(ScriptedIO(), 1_000_000)
+            machine = _Machine(ScriptedIO())
             machine.frames = (_frame(code, 0),)
             for _ in range(3):
                 machine.step()
@@ -547,7 +524,7 @@ def _machine(code: object) -> object:
     """
     from esolangs.interpreters.stack_based.grapheme import _frame, _Machine
 
-    machine = _Machine(ScriptedIO(), 1_000_000)
+    machine = _Machine(ScriptedIO())
     machine.frames = (_frame(str(code), 0),)
     return machine
 
