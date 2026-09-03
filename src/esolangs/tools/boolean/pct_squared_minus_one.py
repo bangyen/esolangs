@@ -1341,6 +1341,11 @@ _FOLD_NARROW_STEP = 2
 #: position rather than over ``range(2**n)``.  Everything downstream -- the
 #: plan search, the moves, the emitter -- already worked in positions and
 #: needed no change.
+#: The value is the ladder's irregular *head*, the two weights that are not
+#: powers; :func:`_fold_subset_weights` appends the doubling tail to it.
+#: They are what meets the floor -- a pure doubling ladder from 2 spans
+#: ``2 * (2**n - 1)``, and it is 2 and 3 together that cover the small sums a
+#: weight of 1 would otherwise be needed for.
 _FOLD_SUBSET_LADDER = (2, 3)
 
 #: One point of a fold plan: ``(top, span, cls, rows)`` -- the group's highest
@@ -2582,7 +2587,12 @@ def _fold_subset_weights(n: int) -> tuple[int, ...] | None:
     is the floor any such ladder pays.  ``n >= 2`` throughout: the fold is
     only ever reached above two inputs.
     """
-    weights = (2, 3, *(4 * 2**i for i in range(n - 2)))
+    # The tail starts one past the head's total, which is what keeps every
+    # subset sum distinct: a power exceeding the sum of everything below it
+    # can never be matched by them.
+    head = _FOLD_SUBSET_LADDER
+    start = sum(head) - 1
+    weights = (*head, *(start * 2**i for i in range(n - len(head))))
     return weights if sum(weights) <= _LIMIT else None
 
 
