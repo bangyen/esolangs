@@ -52,7 +52,7 @@ class TestEval:
         rewinds it -- the prefix then runs again forever, so the assertion
         is on the index rather than on output that never arrives.
         """
-        state = _Machine(io=ScriptedIO(), sym='0+."a".')
+        state = _Machine('0+."a".', ScriptedIO())
         for _ in range(3):
             state.step()
         assert state.ind == 3
@@ -74,7 +74,7 @@ class TestEval:
         for char in map(chr, range(0x20, 0x7F)):
             if char in commands:
                 continue
-            state = _Machine(io=ScriptedIO(), sym=char)
+            state = _Machine(char, ScriptedIO())
             state.step()
             assert state.stk == ((), ()), f"{char!r} was not a no-op"
             assert state.ind == 1
@@ -197,7 +197,7 @@ class TestFrames:
         made a program of any length cost one step, which hid it from the
         VM's step budget entirely.
         """
-        state = _Machine.of('"0."!', ScriptedIO(""))
+        state = _Machine('"0."!', ScriptedIO(""))
         steps = 0
         while not state.halted:
             state.step()
@@ -208,7 +208,7 @@ class TestFrames:
 
     def test_the_frame_stack_deepens_inside_a_nested_program(self) -> None:
         """``ip`` reports the depth, which a bare cursor could not."""
-        state = _Machine.of('"0."!', ScriptedIO(""))
+        state = _Machine('"0."!', ScriptedIO(""))
         state.step()  # the literal
         assert state.ip[0] == 1
         state.step()  # `!` pushes the nested program
@@ -223,11 +223,11 @@ class TestFrames:
         """
         from esolangs.vm import run_until_halt_or_ancestor
 
-        looping = _Machine.of('"0+.^!"^0+?!0.', ScriptedIO(""))
+        looping = _Machine('"0+.^!"^0+?!0.', ScriptedIO(""))
         assert run_until_halt_or_ancestor(looping) is False
 
         # A nested program that does terminate still reports as halting.
-        finite = _Machine.of('"0."!', ScriptedIO(""))
+        finite = _Machine('"0."!', ScriptedIO(""))
         assert run_until_halt_or_ancestor(finite) is True
 
     def test_the_entry_key_separates_frames_by_their_stacks(self) -> None:
@@ -237,7 +237,7 @@ class TestFrames:
         different things when the values beneath them differ, so a key of
         text and cursor alone would call an advancing recursion a repeat.
         """
-        state = _Machine.of('"0."!', ScriptedIO(""))
+        state = _Machine('"0."!', ScriptedIO(""))
         frame = ("0.", 0)
         before = state.frame_entry_key(frame)
         pushed = (*state.stk[state.ptr], 7)
@@ -249,10 +249,10 @@ class TestStepMachine:
     def test_the_empty_program_starts_halted(self) -> None:
         # `step` has no halted guard of its own -- the caller checks first,
         # which is what the VM's run loop does.
-        assert _Machine(io=IO(), sym="").halted
+        assert _Machine("", IO()).halted
 
     def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
-        state = _Machine(io=IO(), sym="0+.")
+        state = _Machine("0+.", IO())
         before = state.snapshot()
         hash(before)  # must not raise
         state.step()

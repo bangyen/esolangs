@@ -36,16 +36,16 @@ comparing each pushed frame against the ones beneath it, and
 Because a step is one command again, it prints at most once, so the effects
 stay in the shell the way every other interpreter here does it.
 
-:class:`_Machine` keeps its ``of`` constructor: the parsed code is not a
-constructor field, so the VM builds this one through ``.of(code, io)``
-rather than the usual ``_Machine(code, io)``.
+:class:`_Machine` accepts the program in its constructor, as the other
+interpreters do.  It stores the text in the first frame rather than parsing
+it, because Eval's commands are one character wide.
 """
 
 from __future__ import annotations
 
 import sys
 from collections.abc import Hashable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -160,31 +160,23 @@ def _iterate(
     return core, ind + 1, output, call
 
 
-@dataclass
+@dataclass(init=False)
 class _Machine:
     """Two stacks with an index choosing the active one, and a frame stack."""
 
-    ptr: int = 0
-    stk: tuple[tuple[_Val, ...], tuple[_Val, ...]] = ((), ())
-    io: IO = field(default_factory=IO)
-    sym: str = ""
-    frames: list[_Frame] = field(default_factory=list)
+    ptr: int
+    stk: tuple[tuple[_Val, ...], tuple[_Val, ...]]
+    io: IO
+    sym: str
+    frames: list[_Frame]
 
-    @classmethod
-    def of(cls, code: str, io: IO) -> _Machine:
-        """Build a state running ``code``.
-
-        The program is the ``sym`` field, so positionally it sits behind
-        ``io`` and a caller could not simply pass ``(code, io)`` the way
-        every other interpreter here is built.  Naming the two makes the
-        construction the same shape as everyone else's.
-        """
-        return cls(io=io, sym=code)
-
-    def __post_init__(self) -> None:
-        """Seed the frame stack with the program, unless it is empty."""
-        if not self.frames and self.sym:
-            self.frames = [(self.sym, 0)]
+    def __init__(self, code: str, io: IO) -> None:
+        """Build a state running ``code``."""
+        self.ptr = 0
+        self.stk = ((), ())
+        self.io = io
+        self.sym = code
+        self.frames = [(code, 0)] if code else []
 
     @property
     def ind(self) -> int:
@@ -302,7 +294,7 @@ class _Machine:
 
 def run(code: str, io: IO) -> None:
     """Run an Eval program."""
-    state = _Machine.of(code, io)
+    state = _Machine(code, io)
     while not state.halted:
         state.step()
 

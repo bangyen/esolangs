@@ -240,19 +240,17 @@ class TestErrors:
         with pytest.raises(ValueError, match="uppercase"):
             run_program("hello")
 
-    def test_of_builds_a_runnable_machine_and_validates(self) -> None:
-        """``_Machine.of`` is the one way a program becomes a machine.
+    def test_constructor_builds_a_runnable_machine_and_validates(self) -> None:
+        """The constructor is the one way a program becomes a machine.
 
-        ``run`` and the VM adapter both go through it, having each carried
-        their own copy of the validation and the frame push before.  The
-        tests reach it only via ``run``, which hides the recorded end of
-        the top-level frame that ``ip`` reports once every frame has
-        popped.
+        ``run`` and the VM adapter both use it.  The tests reach it only
+        via ``run``, which hides the recorded end of the top-level frame
+        that ``ip`` reports once every frame has popped.
         """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.stack_based.grapheme import _Machine
 
-        machine = _Machine.of("FAFY", ScriptedIO())
+        machine = _Machine("FAFY", ScriptedIO())
         assert machine.ip == (0,)  # one frame, at its start
         while not machine.halted:
             machine.step()
@@ -261,7 +259,7 @@ class TestErrors:
         assert machine.ip == (len("FAFY"),)
 
         with pytest.raises(ValueError, match="uppercase"):
-            _Machine.of("hello", ScriptedIO())
+            _Machine("hello", ScriptedIO())
 
 
 class TestEdgeCases:
@@ -361,10 +359,9 @@ class TestEdgeCases:
         the cursor is found past the code -- so a caller stepping exactly
         as many times as there are commands is what tells the two apart.
         """
-        from esolangs.interpreters.stack_based.grapheme import _frame, _Machine
+        from esolangs.interpreters.stack_based.grapheme import _Machine
 
-        machine = _Machine(ScriptedIO())
-        machine.frames = (_frame("FAFY", 0),)
+        machine = _Machine("FAFY", ScriptedIO())
         for _ in range(4):
             assert not machine.halted
             machine.step()
@@ -421,10 +418,9 @@ class TestEdgeCases:
 
 class TestStepMachine:
     def test_snapshot_includes_the_input_cursor(self) -> None:
-        from esolangs.interpreters.stack_based.grapheme import _frame, _Machine
+        from esolangs.interpreters.stack_based.grapheme import _Machine
 
-        machine = _Machine(ScriptedIO("hi"))
-        machine.frames = (_frame("W", 0),)
+        machine = _Machine("W", ScriptedIO("hi"))
         before = machine.snapshot()
         machine.step()  # W reads a line, pushing it
         assert machine.snapshot() != before
@@ -440,11 +436,10 @@ class TestStepMachine:
         break the snapshot outright.  Nothing else reads those fields once
         the mode is over, so only the snapshot can say what is in them.
         """
-        from esolangs.interpreters.stack_based.grapheme import _frame, _Machine
+        from esolangs.interpreters.stack_based.grapheme import _Machine
 
         for code, value in (("EAEK", "A"), ("FAFK", 10), ("HAHK", ("func", "A"))):
-            machine = _Machine(ScriptedIO())
-            machine.frames = (_frame(code, 0),)
+            machine = _Machine(code, ScriptedIO())
             for _ in range(3):
                 machine.step()
             assert machine.snapshot() == (
@@ -517,16 +512,10 @@ class TestNumberEncoding:
 
 
 def _machine(code: object) -> object:
-    """A machine with ``code`` pushed as its first frame.
+    """A machine with ``code`` in its first frame."""
+    from esolangs.interpreters.stack_based.grapheme import _Machine
 
-    Grapheme's machine takes no program: it is built empty and a frame is
-    appended, which is why the shared constructor shape does not fit it.
-    """
-    from esolangs.interpreters.stack_based.grapheme import _frame, _Machine
-
-    machine = _Machine(ScriptedIO())
-    machine.frames = (_frame(str(code), 0),)
-    return machine
+    return _Machine(str(code), ScriptedIO())
 
 
 class TestContract(EmptyProgramContract, CycleContract):

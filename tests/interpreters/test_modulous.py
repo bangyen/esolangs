@@ -137,16 +137,10 @@ class TestModulous:
         The loop never ends, so this steps a fixed count rather than
         running it.
         """
-        import re
-
         from esolangs.interpreters.stack_based.modulous import _Machine
 
         io = ScriptedIO()
-        machine = _Machine(var={f"VAR{k}": 0 for k in range(1, 5)}, io=io)
-        reg = re.compile(r'\[([^\[\]"]*("[^"]*")?)]')
-        machine.tokens = [
-            k[0] for k in reg.findall("[PSH INT 9][PRT INT][JMP B 2][END]")
-        ]
+        machine = _Machine("[PSH INT 9][PRT INT][JMP B 2][END]", io)
         for _ in range(12):
             if machine.halted:
                 break
@@ -337,13 +331,12 @@ class TestStepMachine:
 
         # `step` has no halted guard of its own -- the caller checks first,
         # which is what the VM's run loop does.
-        assert _Machine(io=IO()).halted
+        assert _Machine("", IO()).halted
 
     def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
         from esolangs.interpreters.stack_based.modulous import _Machine
 
-        state = _Machine(io=IO())
-        state.tokens = ["PSH INT 5", "PRT INT", "END"]
+        state = _Machine("[PSH INT 5][PRT INT][END]", IO())
         before = state.snapshot()
         hash(before)  # must not raise
         state.step()
