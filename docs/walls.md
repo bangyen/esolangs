@@ -2065,9 +2065,7 @@ linear scan rather than a genuine representation limit.  See
   one-character output forces one factor empty.  This is an induction over
   unbounded length, not a bounded search: the axiom audit
   (`AxiomAudit.lean`) reports only `propext`, `Classical.choice` and
-  `Quot.sound` — no `sorryAx`, no `Lean.ofReduceBool`.  The Lean `stepCmd`
-  was differentially tested against the shipped interpreter over 44,280
-  program/input pairs with zero mismatches.
+  `Quot.sound` — no `sorryAx`, no `Lean.ofReduceBool`.
 
   **Parameterizing voids the proof's hypothesis.**  No `n` ever runs, so
   nothing overwrites the accumulator and the "state at the last read depends
