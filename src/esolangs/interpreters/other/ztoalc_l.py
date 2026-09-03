@@ -25,7 +25,7 @@ and ``halted`` is true once the pointer reaches 1.
 """
 
 import sys
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
 from esolangs.exceptions import HaltError
@@ -85,35 +85,21 @@ class _Store:
 type _Effect = _Print | _Store
 
 
-class _NeedInput(Exception):  # noqa: N818 - a control signal, not an error
-    """Raised by the core when evaluation wants a byte it was not given.
-
-    The shell answers by reading one and running the step again from the
-    start.  That re-run is why the core must stay pure: it happens once per
-    ``input`` in the line, and anything it did the first time would happen
-    twice.
-    """
+#: The input port, injected by the shell.  ``input`` is an atom, so a line
+#: may read several times partway through an expression, and the bytes are
+#: taken *as the evaluation reaches them* -- a line that faults after one
+#: read has consumed that byte, exactly as the original did.  Point Break
+#: and Qoibl carry the same callback for the same reason.
+type _Read = Callable[[], int]
 
 
-class _Reader:
-    """Hands out the bytes already read, then asks for one more."""
-
-    def __init__(self, reads: tuple[int, ...]) -> None:
-        """Start at the beginning of ``reads``."""
-        self._reads = reads
-        self._pos = 0
-
-    def take(self) -> int:
-        """Return the next byte read, or signal that another is needed."""
-        if self._pos >= len(self._reads):
-            raise _NeedInput
-        value = self._reads[self._pos]
-        self._pos += 1
-        return value
+def _no_read() -> int:
+    """Refuse a read from a context that cannot hold an ``input`` atom."""
+    raise AssertionError("a store target cannot read input")
 
 
 def _atom(
-    exp: str, pos: int, var: Mapping[str, Value], reader: _Reader
+    exp: str, pos: int, var: Mapping[str, Value], read: _Read
 ) -> tuple[Value, int]:
     """Parse the leading atom of ``exp`` from ``pos``.
 
@@ -123,7 +109,7 @@ def _atom(
     if not exp:
         raise ValueError("missing expression")
     if exp[pos] == "[":
-        size, pos = _eval(exp, pos + 1, var, reader)
+        size, pos = _eval(exp, pos + 1, var, read)
         pos += 1  # the closing ']'
         return [0] * _as_int(size), pos
     j = pos
@@ -131,7 +117,7 @@ def _atom(
         j += 1
     tok = exp[pos:j]
     if tok == "input":
-        return reader.take(), j
+        return read(), j
     if _is_int(tok):
         return int(tok), j
     if tok in var:
@@ -140,7 +126,7 @@ def _atom(
 
 
 def _eval(
-    exp: str, pos: int, var: Mapping[str, Value], reader: _Reader
+    exp: str, pos: int, var: Mapping[str, Value], read: _Read
 ) -> tuple[Value, int]:
     """Evaluate the expression ``exp`` from ``pos``, returning (value, pos).
 
@@ -148,9 +134,9 @@ def _eval(
     indexings, so ``array[index]`` with a general ``array`` expression
     (including further indexings) works.
     """
-    value, pos = _atom(exp, pos, var, reader)
+    value, pos = _atom(exp, pos, var, read)
     while pos < len(exp) and exp[pos] == "[":
-        index, pos = _eval(exp, pos + 1, var, reader)
+        index, pos = _eval(exp, pos + 1, var, read)
         pos += 1  # the closing ']'
         if not isinstance(value, list):
             raise HaltError
@@ -161,9 +147,9 @@ def _eval(
     return value, pos
 
 
-def _val(exp: str, var: Mapping[str, Value], reader: _Reader) -> Value:
+def _val(exp: str, var: Mapping[str, Value], read: _Read) -> Value:
     """Evaluate the expression ``exp``."""
-    value, _ = _eval(exp, 0, var, reader)
+    value, _ = _eval(exp, 0, var, read)
     return value
 
 
@@ -201,7 +187,7 @@ def _next_ptr(ptr: int) -> int:
 
 
 def _advance_line(
-    ptr: int, code: list[str], var: Mapping[str, Value], reads: tuple[int, ...]
+    ptr: int, code: list[str], var: Mapping[str, Value], read: _Read
 ) -> tuple[int, list[_Effect]]:
     """Return the next pointer and what the line under ``ptr`` wants done.
 
@@ -210,8 +196,9 @@ def _advance_line(
     lets a store reach the live arrays and keeps the aliasing the language
     has.
 
-    ``reads`` is the input consumed so far.  Wanting one more raises
-    :class:`_NeedInput`, and the caller reads a byte and calls again.
+    ``read`` is the input port.  It is called as the evaluation reaches
+    each ``input`` atom, so a line that faults part-way has consumed
+    exactly the bytes to the left of the fault.
 
     A taken ``jump`` returns ``ptr + 1`` rather than the Collatz successor:
     it is the one line that chooses where to go.
@@ -221,44 +208,43 @@ def _advance_line(
         raise HaltError
     ins = code[p] if p < len(code) else ""
     lst = ins.split()
-    reader = _Reader(reads)
     effects: list[_Effect] = []
 
     if not lst:
         pass
     elif lst[0] == "print":
-        value = _as_int(_val(_operand(lst, 1), var, reader))
+        value = _as_int(_val(_operand(lst, 1), var, read))
         if not 0 <= value <= 0x10FFFF:
             raise HaltError
         effects.append(_Print(value))
     elif lst[0] == "jump":
-        if _as_int(_val(_operand(lst, 2), var, reader)):
+        if _as_int(_val(_operand(lst, 2), var, read)):
             return (ptr + 1, effects)
     else:
         op = lst[1] if len(lst) > 1 else ""
         target = _operand(lst, 0)
         if op == "=":
             effects.append(
-                _store_effect(target, _val(_operand(lst, 2), var, reader), var, reader)
+                _store_effect(target, _val(_operand(lst, 2), var, read), var, read)
             )
         elif op in ("+=", "+"):
             effects.append(
                 _store_effect(
                     target,
-                    _as_int(_val(target, var, reader))
-                    + _as_int(_val(_operand(lst, 2), var, reader)),
+                    _as_int(_val(target, var, read))
+                    + _as_int(_val(_operand(lst, 2), var, read)),
                     var,
-                    reader,
+                    read,
                 )
             )
         elif op in ("-=", "-"):
             effects.append(
                 _store_effect(
                     target,
-                    _as_int(_val(target, var, reader))
-                    - _as_int(_val(_operand(lst, 2), var, reader)),
+                    _as_int(_val(target, var, read))
+                    - _as_int(_val(_operand(lst, 2), var, read)),
                     var,
-                    reader,
+                    read,
                 )
             )
 
@@ -266,7 +252,7 @@ def _advance_line(
 
 
 def _store_effect(
-    lhs: str, value: Value, var: Mapping[str, Value], reader: _Reader
+    lhs: str, value: Value, var: Mapping[str, Value], read: _Read
 ) -> _Store:
     """Describe an assignment to ``lhs``, evaluating its index path.
 
@@ -279,7 +265,7 @@ def _store_effect(
     atom, indexes = _split(lhs)
     return _Store(
         atom,
-        tuple(_as_int(_eval(idx, 0, var, reader)[0]) for idx in indexes),
+        tuple(_as_int(_eval(idx, 0, var, read)[0]) for idx in indexes),
         value,
     )
 
@@ -338,7 +324,9 @@ class _Machine:
         if not effect.indexes:
             self.var[effect.name] = effect.value
             return
-        target, _ = _atom(effect.name, 0, self.var, _Reader(()))
+        # A store target names a variable, never ``input``, so the port
+        # here can only be reached by a program shape that does not exist.
+        target, _ = _atom(effect.name, 0, self.var, _no_read)
         for i in effect.indexes[:-1]:
             if not isinstance(target, list):
                 raise HaltError
@@ -355,23 +343,14 @@ class _Machine:
     def step(self) -> None:
         """Execute the line at ``ptr`` and advance to the next in trajectory.
 
-        The input port lives here.  ``input`` is an atom, so a line can
-        read several times partway through an expression: the core is run
-        with the bytes taken so far and asks for another when it needs one,
-        which is read here before running it again.  The reads stay
-        consumed even if a later part of the same line faults, as they did
-        when the original read them inline.
+        The input port is passed in rather than reached for: the core
+        calls ``read`` as it meets each ``input`` atom, so the line runs
+        once and a fault part-way leaves the bytes to its left consumed,
+        as the original did.
         """
         if self.halted:
             return
-        reads: tuple[int, ...] = ()
-        while True:
-            try:
-                ptr, effects = _advance_line(self.ptr, self.code, self.var, reads)
-            except _NeedInput:
-                reads = (*reads, self.io.input_char())
-                continue
-            break
+        ptr, effects = _advance_line(self.ptr, self.code, self.var, self.io.input_char)
         for effect in effects:
             self._apply(effect)
         self.ptr = ptr
