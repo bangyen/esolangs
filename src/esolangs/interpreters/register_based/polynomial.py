@@ -15,7 +15,9 @@ The language features:
 The wiki's cat program notes that output ignores negative register values;
 this interpreter clamps them to zero (printing a NUL) instead, and it raises
 :class:`EOFError` on exhausted input rather than halting with -1.  A
-10000-step cap guards non-terminating programs (the machine is step-capable,
+10000-step cap guards non-terminating programs and raises
+:class:`~esolangs.exceptions.HaltError` when it is reached, so a truncated
+run is distinguishable from one that finished (the machine is step-capable,
 so the state-cycle hang detector proves the cycle class immediately and the
 cap stays as the ``run()`` backstop for the rest).
 
@@ -57,6 +59,7 @@ from collections.abc import Callable
 import sympy as sp
 
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.oisc_cli import run_with_limit
 
 
 def prime(number: int) -> bool:
@@ -384,12 +387,15 @@ class _Machine:
 
 
 def run(code: str, io: IO, limit: int = 10_000) -> None:
-    """Execute a Polynomial program, halting after ``limit`` instructions."""
-    machine = _Machine(code, io)
-    for _ in range(limit):
-        if machine.halted:
-            return
-        machine.step()
+    """Execute a Polynomial program, or raise past ``limit`` instructions.
+
+    Exceeding the bound raises :class:`~esolangs.exceptions.HaltError`
+    rather than returning what the program had printed so far.  It once
+    returned, which made a truncated run indistinguishable from a program
+    that finished -- a run cut off mid-way handed back a partial string
+    and a normal return, with nothing to tell the two apart.
+    """
+    run_with_limit(_Machine(code, io), limit)
 
 
 if __name__ == "__main__":
