@@ -291,7 +291,7 @@ def _eval(expr: list[Token], variables: _Vars, read: _Read) -> int:
 
 def _advance(
     state: _State,
-    stmts: list[Statement],
+    stmts: Sequence[Statement],
     ends: Mapping[int, tuple[int, bool]],
     read: _Read,
 ) -> _State:
@@ -353,7 +353,7 @@ class _Machine:
             tokens = _tokenize(line)
             if tokens:
                 stmts.append(_parse_statement(tokens))
-        self.stmts = stmts
+        self.stmts = tuple(stmts)
         self.ends = _structure(stmts)
         self.variables: dict[str, int] = {}
         self.frames: tuple[tuple[str, int], ...] = ()
