@@ -1,8 +1,9 @@
 """Compiler that turns Collatz Multiverse programs into RISC-V Linux assembly."""
 
 import re
-import sys
 from typing import cast
+
+from esolangs.compilers import _riscv_common as _common
 
 _NAME = r"[A-Za-z_][A-Za-z0-9_]*"
 _LINE = re.compile(
@@ -332,10 +333,5 @@ def comp(code: str) -> str:
     return res
 
 
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as f:
-            data = f.read()
-
-        with open("output.asm", "w") as f:
-            f.write(comp(data))
+if __name__ == "__main__":  # pragma: no cover
+    _common.main(comp)

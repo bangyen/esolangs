@@ -151,12 +151,7 @@ def comp(code: str, num: int = 1) -> str:
     return res
 
 
-if __name__ == "__main__":
-    loop = int(sys.argv[2]) if len(sys.argv) > 2 else 1
-
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as f:
-            data = f.read()
-
-        with open("output.asm", "w") as f:
-            f.write(comp(data, loop))
+if __name__ == "__main__":  # pragma: no cover
+    with open(sys.argv[1]) as _source:
+        _loop = int(sys.argv[2]) if len(sys.argv) > 2 else 1
+        print(comp(_source.read(), _loop), end="")

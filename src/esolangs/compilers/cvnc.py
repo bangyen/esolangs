@@ -102,8 +102,7 @@ deque's front index, ``s4`` = its length, ``s5`` = the function base, ``s6``
 entry.  ``s7`` is the evaluator's cursor into the function.
 """
 
-import sys
-
+from esolangs.compilers import _riscv_common as _common
 from esolangs.compilers._riscv_common import PUTBYTE
 from esolangs.interpreters.other.cvnc import (
     _FUNCTION_SYMBOLS,
@@ -920,5 +919,4 @@ def comp(code: str) -> str:
 
 
 if __name__ == "__main__":  # pragma: no cover
-    with open(sys.argv[1], encoding="utf-8") as _source:
-        print(comp(_source.read()), end="")
+    _common.main(comp)

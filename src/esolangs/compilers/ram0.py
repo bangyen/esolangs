@@ -1,7 +1,8 @@
 """Compiler that turns RAM0 programs into RISC-V Linux assembly."""
 
 import re
-import sys
+
+from esolangs.compilers import _riscv_common as _common
 
 
 def parse(code: str) -> list[str]:
@@ -222,10 +223,5 @@ def comp(code: str) -> str:
     return res
 
 
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as f:
-            data = f.read()
-
-        with open("output.asm", "w") as f:
-            f.write(comp(data))
+if __name__ == "__main__":  # pragma: no cover
+    _common.main(comp)
