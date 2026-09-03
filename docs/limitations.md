@@ -82,7 +82,7 @@ per-character encoding can be meaningfully shortened:
 
 | Language | Why it cannot compute a truth table |
 | --- | --- |
-| 123 | Parameterized (only reads real stdin at one fixed location, so a decision tree cannot read its inputs); answers with the termination convention. All tables build through `n == 3`; wider arities are **constructed** and gated on a work-budget cost, not on expressiveness — kill-heavy four-input tables exhaust the budget and raise. Full argument in [`docs/walls.md`](walls.md). |
+| 123 | Parameterized (only reads real stdin at one fixed location, so a decision tree cannot read its inputs); answers with the termination convention. All tables build through `n == 3`; wider arities are **constructed** and gated on a work-budget cost, not on expressiveness. Four-input tables build: a random sample of twelve built 12/12 with no budget exhaustion, each replayed row by row on the interpreter, and the sparse, dense and balanced extremes build too (40-80s, templates of 7k-124k characters). Where the budget still binds past four inputs is unmeasured. Full argument in [`docs/walls.md`](walls.md). |
 | %^2^-1 | Only control flow is `t` (rewind on a nonzero accumulator), a whole-program loop that cannot count passes; no program that *reads* its inputs computes any two-input function (proved; [`docs/proofs.md`](proofs.md)). The shipped generator is parameterized and embeds instead — six constructions build every table at `n <= 4` and every table tried from five through eleven inputs. Construction-by-construction detail is in the `%^2^-1` row of the Generator caps table below. |
 
 ## Generator caps (shipped)
