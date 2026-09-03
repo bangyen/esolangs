@@ -1,44 +1,34 @@
 # A Painter Ant boolean generator: design history
 
-Why the A Painter Ant boolean generator is built the way it is, and what
-was tried and rejected along the way — including why the construction is
-cycle-stable for **every input count**, which is the constraint that drove
-every design decision here.  The shipped generator is
+Why the construction is cycle-stable for **every input count**, the
+constraint that drove every design decision here.  Shipped generator:
 `esolangs.tools.boolean.a_painter_ant.a_painter_ant`.
 
-For the language's mechanics (the conditional moves, the paints, and the
-implicit loop), read the interpreter module's docstring; it is
-authoritative and this document does not restate it.  Two consequences of
-those mechanics matter throughout:
+Language mechanics (conditional moves, paints, implicit loop) are in the
+interpreter module's docstring, authoritative and not restated here.  Two
+consequences matter throughout:
 
-- The wiki defines no I/O, and the interpreter's output is the **bounding
-  box of visited cells** (a `#` white / `.` black raster, with the ant's own
-  cell as `@` or `o`), which carries no coordinates.
-  The generator therefore reads its answer from a *semantic grid model*
-  (the ant's actual position and cell colours) rather than the box.
-- The interpreter ignores whitespace, so a **space** is a no-op that still
-  occupies a position in the source — which is what lets a zero leaf be
-  represented by leaving it unpainted.
+- The interpreter's output is the **bounding box of visited cells** (`#`
+  white / `.` black, ant's cell as `@` or `o`), which carries no
+  coordinates, so the generator reads its answer from a *semantic grid
+  model* (the ant's actual position and cell colours) instead.
+- Whitespace is a no-op that still occupies a position in the source —
+  which is what lets a zero leaf be represented by leaving it unpainted.
 
-## The answer convention
-
-For the shipped generator, the answer is the **colour of the cell the ant
-lands on** at the end of a cycle (white is one, black is zero).  This
-differs from the older (removed) generator, which used the origin's colour.
+The answer is the **colour of the cell the ant lands on** at the end of a
+cycle (white is one, black is zero).
 
 ## Why cycle-stability matters
 
-Because the program runs in a loop, a valid generator must produce programs
-whose behaviour is independent of how many whole cycles you run: the
-interpreter's bounding-box output must be identical for `limit = len(prog)`
-and `limit = 10 * len(prog)`.  Every instantiated program must be a
-**cycle-stable fixed point**.
+A valid generator must produce programs whose behaviour is independent of
+how many whole cycles run: the interpreter's bounding-box output must be
+identical for `limit = len(prog)` and `limit = 10 * len(prog)`.  Every
+instantiated program must be a **cycle-stable fixed point**.
 
-The hard part of A Painter Ant generator design is that a program is
-origin-relative: its moves and paints are tuned to run from the origin on a
-black grid.  But the ant *ends* a cycle at its output leaf, not the origin.
-On cycle 2 the ant starts at the output, and the origin-relative setup
-commands misfire — unless the program is designed so the cycle-2 run is a
+The hard part: a program is origin-relative — its moves and paints are
+tuned to run from the origin on a black grid — but the ant *ends* a cycle
+at its output leaf.  On cycle 2 the ant starts at the output, and the
+origin-relative setup commands misfire, unless the cycle-2 run is a
 closed, zero-paint dance back to the output.
 
 ## The star
@@ -57,31 +47,21 @@ WW?WW      ? = the center (the leaf, black or white per the table)
 
 The star's white cells are what make the cycle-2 dance possible: every
 lowercase move from a ring cell is **blocked** (its target is white), and
-every uppercase move fires onto the ring.  The four "safe" moves from a
-ring cell are exactly the directions the star covers with white:
-
-- from the **top-middle** cell (north of the center), north/west/east are
-  blocked (the N-axis cell and the ring's top row) — only **south** points
-  back at the output;
-- from the **middle-left** cell (west of the center), north/south/west are
-  blocked (the ring's left column and the W-axis cell) — only **east**
-  points back at the output.
-
-A move that points back at the output **splits the ants**: the black-output
-ant moves onto the leaf while the white-output ant stays on the ring.  So
-the dance never moves leafward from the top-middle or the middle-left —
-except for the one `Ssn` synchronizer, which is designed for exactly that
-case (see below).
+every uppercase move fires onto the ring.  A move that points back at the
+output **splits the ants**: the black-output ant moves onto the leaf while
+the white-output ant stays on the ring — so the dance never moves leafward
+except through the one `Ssn` synchronizer (see below).  The ring rule
+(principle 4) gives the safe directions from each cell.
 
 ## The n = 2 construction (shipped)
 
 The generator builds a template for any arity; for n == 2 (XOR):
 
 ```
-N WSssssNEwwPeeWSnnnnNE WSnnnnNEeePwwWSssssNE Ssn
-                                                  {X0}
+N WSssssNEwwPeeWSnnnnNEWSnnnnNEeePwwWSssssNE Ssn
+                                                 {X0}
 NwPnPwnPEsPwPswPWWePsPesPSSnPePeePNNsePSSnPePnePEEwPnPwnPNNsPwPsPwPS
-                                                  {X1}
+                                                 {X1}
 ```
 
 where:
@@ -116,11 +96,8 @@ minus 2, because each ring reaches one cell toward the other.
 On cycle 2 the ant starts at the output leaf, inside its star.  The head's
 `WS`/`NE` uppercase anchors fire it onto the ring and the weighted legs are
 no-ops (every target is a white star cell), so the whole head+body+routing
-re-run is a closed walk that returns to the leaf painting nothing new.  The
-rule that makes the anchors safe is the **ring rule**: from the top-middle
-cell only north/west/east follow safely (south points back at the leaf and
-would split the ants), and from the middle-left only north/south/west
-(east points back at the leaf).  The anchors and the `Ssn` ending are
+re-run is a closed walk that returns to the leaf painting nothing new — safe
+by the ring rule (principle 4 below).  The anchors and the `Ssn` ending are
 chosen so a leafward move only ever comes from the `S/s` dual.
 
 The **`Ssn` synchronizer** is the one leafward move, and it works because
@@ -129,22 +106,10 @@ output blocks it and then `s` moves onto the leaf.  Either way the ant
 returns to the output, and the `n` is a no-op.  The same dual appears in
 the `{Xn-1}` routing's final move.
 
-### Monotone painting
-
-The generator uses only `P` (paint white) — it never uses `p` (paint
-black).  Zero leaves are left unpainted (a space).  This makes the white
-cells monotone increasing: cycle 1 establishes them and every later cycle
-only re-confirms a subset, which is what makes the program stable.  Painting
-zero leaves with `p` instead *reverts* cells to black non-monotonically and
-breaks that stability, so a space is required.
-
-### Return paths must avoid painted cells
-
 A head that merely visits each leaf and returns to origin does not work:
 after painting a leaf white, a later lowercase move onto that white cell is
-blocked, so the ant's actual path diverges from the intended one.  The
-working head returns through the origin (the black centre) and never
-re-crosses a painted leaf.
+blocked (principle 6).  The working head returns through the origin and
+never re-crosses a painted leaf.
 
 ## The general construction (any n)
 
@@ -184,13 +149,13 @@ zero-paint dance.
 
 ### Verification
 
-The construction is verified cycle-stable and exact: every ``n <= 3``
-table exhaustively (all 256 three-input tables x 8 inputs), and ``n == 4``
-through ``n == 7`` sampled plus structured and constant edge tables.  The
-semantic-grid model (the test suite's ``a_painter_ant_trace`` helper)
-reports no divergence anywhere: every cycle-2 move stays in the cycle-1
-box, no paint changes a cell's colour, the landing colour is stable, and
-cycles 2 and 3 are identical.
+Exhaustive for ``n <= 3`` (256 tables x 8 inputs = 2048 cases, cycle-stable
+and exact on the real interpreter); ``n == 4`` and ``n == 5`` spot-checked
+against a handful of tables, every input, via `tests/tools/a_painter_ant_trace.py`;
+``n == 6`` and ``n == 7`` build and check out on ad hoc tables but have no
+checked-in test.  The semantic-grid model reports no divergence anywhere:
+every cycle-2 move stays in the cycle-1 box, no paint changes a cell's
+colour, the landing colour is stable, and cycles 2 and 3 are identical.
 
 ## Design principles (reusable summary)
 
