@@ -45,6 +45,7 @@ stack.
 from __future__ import annotations
 
 import sys
+from dataclasses import dataclass
 from typing import Literal, NoReturn
 
 from esolangs.exceptions import HaltError
@@ -704,6 +705,14 @@ def _start_statement_call(
     return new_frame
 
 
+@dataclass
+class _State:
+    """The live call frames and buffered bit reader of a Forbin run."""
+
+    frames: list[_Frame]
+    reader: _BitReader
+
+
 class _Machine:
     """One Forbin run: an explicit stack of resumable call frames.
 
@@ -721,14 +730,22 @@ class _Machine:
         self.globals = _Parser(code).parse()
         if "main" not in self.globals:
             raise ValueError("Forbin program has no main function")
-        self.reader = _BitReader(io)
+        reader = _BitReader(io)
         main_fn = self.globals["main"]
         main_frame = _Frame(main_fn, None)
         # unpassed parameters are set to 0 (per the wiki); main is called
         # with a single dummy argument 0, so every parameter ends up 0
         for name in main_fn.args:
             main_frame.locals[name] = 0
-        self.frames: list[_Frame] = [main_frame]
+        self.state = _State([main_frame], reader)
+
+    @property
+    def reader(self) -> _BitReader:
+        return self.state.reader
+
+    @property
+    def frames(self) -> list[_Frame]:
+        return self.state.frames
 
     @property
     def halted(self) -> bool:
