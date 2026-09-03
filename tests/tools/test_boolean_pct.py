@@ -1272,21 +1272,64 @@ class TestPctFoldPlan:
         assert self.module()._fold_plan(state) is None  # noqa: SLF001
 
     def test_a_table_too_wide_for_the_workspace_is_refused(self) -> None:
-        """The ladder must fit in the 6006 values a ``p`` can traverse.
+        """The ladder must fit the workspace *absolutely*, not just in span.
 
-        Rows start ``_FOLD_STEP`` apart, so the initial spread is
-        ``4 * (2**n - 1)``; that passes 6006 at eleven inputs, which is
-        why the fold's own bound is documented as holding through ten.
-        The refusal is immediate, before any planning.
+        Rows start ``step`` apart, so the ladder spans ``step * (2**n - 1)``
+        -- and the emitter lays it from a zero accumulator, so it has to fit
+        inside ``[-_LIMIT, 0]``.  The gate is therefore ``_LIMIT``, not the
+        ``2 * _LIMIT`` a *relative* plan state may occupy: gating on the
+        latter lets the planner spend thousands of moves on a geometry the
+        emitter refuses on its first op.
+
+        The narrow ladder is what sets the reach.  ``2 * (2**10 - 1)`` is
+        2046 and fits; eleven inputs need 4094 and no finer ladder spells,
+        so ten is where the construction ends.
         """
         module = self.module()
-        assert module._FOLD_STEP * (2**11 - 1) > 2 * module._LIMIT  # noqa: SLF001
-        assert module._FOLD_STEP * (2**10 - 1) <= 2 * module._LIMIT  # noqa: SLF001
+        limit = module._LIMIT  # noqa: SLF001
+        narrow = module._FOLD_NARROW_STEP  # noqa: SLF001
+        assert narrow * (2**10 - 1) <= limit
+        assert narrow * (2**11 - 1) > limit
+        # The wide ladder gives out earlier, which is why the narrow one is
+        # tried at all: ten inputs are past it.
+        assert module._FOLD_STEP * (2**10 - 1) > limit  # noqa: SLF001
 
         assert module._fold("01" * (2**10), 11) is None  # noqa: SLF001
         # A table inside the bound still builds, so the ``None`` above is
         # the workspace and not the arity itself.
         assert module._fold("0011", 2) is not None  # noqa: SLF001
+
+    def test_the_narrow_ladder_is_the_finest_that_spells(self) -> None:
+        """A step of 1 would need an input to subtract exactly 1.
+
+        ``s`` subtracts 2 and ``i`` subtracts 3, so ``2a + 3b`` spells every
+        amount except 1 -- which is what makes ten inputs a structural end
+        rather than a search budget.
+        """
+        module = self.module()
+        assert module._sub_code(1) is None  # noqa: SLF001
+        assert module._FOLD_NARROW_STEP == 2  # noqa: SLF001
+
+    def test_narrow_ladder_setters_are_equal_width(self) -> None:
+        """Both branches must match, and the last input's amount is odd-width.
+
+        At the narrow spacing the last input subtracts 2, whose cheapest
+        spelling ``"s"`` is one character -- and the identity has no
+        odd-width spelling, so that branch is respelled wider rather than
+        padded.  Checked by execution, not by reading the spelling.
+        """
+        module = self.module()
+        n = 6
+        setters = module._fold_setters(n, module._FOLD_NARROW_STEP)  # noqa: SLF001
+        assert len(setters) == n
+        for zero, one in setters:
+            assert len(zero) == len(one)
+            assert module._apply(0, zero) == 0  # noqa: SLF001
+        # The whole chain lays the ladder acc = -2 * row.
+        for row in (0, 1, 2, 2**n - 1):
+            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            code = "".join(setters[i][bits[i]] for i in range(n))
+            assert module._apply(0, code) == -2 * row  # noqa: SLF001
 
     def test_a_table_whose_plan_fails_builds_nothing(
         self, monkeypatch: pytest.MonkeyPatch

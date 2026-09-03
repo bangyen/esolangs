@@ -179,9 +179,21 @@ Five inputs close on that path: every table tried plans and executes -- all
 256 at three inputs, 120 random at four, 300 random at five plus parity,
 every threshold, near-parity and the fully alternating 32-run worst case,
 and 40 at six inputs -- against the 496 the weighted constructions reach at
-five.  The fold is not *proved* total, and its own workspace bound (the row
-ladder must fit the 6006 values a ``p`` can traverse) gives out above ten
-inputs.
+five.  The fold is not *proved* total at any arity it does not enumerate.
+
+What bounds it is the **workspace**, and the bound is the ladder's footprint
+rather than an arity check.  Rows start at ``-step * r``, so the ladder spans
+``step * (2**n - 1)``, and the emitter lays it from a zero accumulator, which
+means it has to fit inside ``[-3003, 0]``.  At the shipped spacing of 4 that
+is 4092 at ten inputs, over the workspace, and no plan on such a ladder could
+ever be emitted.  Halving the spacing halves the footprint to 2046, which is
+what :data:`_FOLD_NARROW_STEP` is for: ten inputs then build and print every
+row on the interpreter.  Eleven needs 4094 and there is no finer ladder --
+a step of 1 would need an input to subtract exactly 1, and ``2a + 3b`` has no
+such term -- so **ten inputs is where this construction ends**, structurally
+rather than for want of search.  That bounds the construction, not the
+language: as everywhere else here, what it misses is *unreached*, and the
+Lean wall in ``Esolangs.PctBooleanWall`` covers the reading model only.
 
 Cost, since it decides where the fold sits in the chain: a fold build is
 0.8ms at three inputs, 2.7ms at four, 89ms at five and 0.53s at six
@@ -268,6 +280,19 @@ def _sub_code(k: int) -> str | None:
     if k % 2 == 0:
         return "s" * (k // 2)
     return "i" + "s" * ((k - 3) // 2)
+
+
+def _sub_with(k: int, threes: int) -> str | None:
+    """Subtract ``k`` spending exactly ``threes`` ``i`` commands, or ``None``.
+
+    :func:`_sub_code` always spells the shortest way, which fixes the width's
+    parity; trading ``s`` for ``i`` is what lets a caller reach the other
+    parity, since ``i`` moves 3 in one character where ``s`` needs two.
+    """
+    rest = k - 3 * threes
+    if rest < 0 or rest % 2:
+        return None
+    return "i" * threes + "s" * (rest // 2)
 
 
 def _affine_code(a: int, b: int) -> str | None:
@@ -1242,6 +1267,34 @@ def _deep_band(truth_table: str, n: int) -> str | None:
 
 _FOLD_STEP = 4
 
+#: The ladder spacing tried when :data:`_FOLD_STEP` finds no plan.
+#:
+#: **What bounded the fold was the ladder's footprint, not the search.**  The
+#: rows start at ``-step * r``, so the ladder spans ``step * (2**n - 1)``, and
+#: the emitter has to lay it inside ``[-_LIMIT, 0]`` from a zero accumulator.
+#: At the wide spacing that is 4092 against 3003 at ten inputs -- over the
+#: workspace, so no such table could ever be emitted, however long the
+#: planner searched.  (Before :func:`_fold_at` gated on the right bound, that
+#: is exactly what happened: the descent wandered a relative-geometry space
+#: the emitter would refuse, dead-ending 354 moves in with 420 of 514 points
+#: unmerged.)  Halving the spacing halves the footprint to 2046, which fits,
+#: and ten inputs then build and print every row on the interpreter.
+#:
+#: Two is the floor.  ``s`` subtracts 2 and ``i`` subtracts 3, so
+#: :func:`_sub_code` spells every amount except 1 -- a step of 1 would need
+#: the last input to subtract exactly 1 and has no spelling at any width.
+#: With 2 the floor, ``2 * (2**n - 1) <= 3003`` is what caps the fold at
+#: **ten inputs**: eleven needs 4094 and there is no finer ladder to fall
+#: back on.  That is a property of this construction rather than of the
+#: language -- nothing here bounds embedded-input programs in general.
+#:
+#: It is a *fallback* rather than the default because the wider ladder is
+#: what every shipped program is built on: at four inputs and below the
+#: narrow ladder plans the same tables but emits different characters, so
+#: trying it only on a miss keeps every template that builds today
+#: byte-identical and confines the change to the arities that refused.
+_FOLD_NARROW_STEP = 2
+
 #: One point of a fold plan: ``(top, span, cls, rows)`` -- the group's highest
 #: row value relative to the state's top, how far its rows extend below it
 #: (0 once it has been wiped and its rows merged), its class, and the rows.
@@ -2124,10 +2177,10 @@ class _FoldEmitter:
     that every row's value is congruent to its answer byte.
     """
 
-    def __init__(self, truth_table: str, n: int) -> None:
+    def __init__(self, truth_table: str, n: int, step: int = _FOLD_STEP) -> None:
         self.table = truth_table
         self.rows = 2**n
-        self.pos: dict[_FoldKey, int] = {r: -_FOLD_STEP * r for r in range(self.rows)}
+        self.pos: dict[_FoldKey, int] = {r: -step * r for r in range(self.rows)}
         self.cls: dict[_FoldKey, str] = {r: truth_table[r] for r in range(self.rows)}
         self.body: list[str] = []
 
@@ -2337,12 +2390,60 @@ class _FoldEmitter:
         self.body.append("e")
 
 
-def _fold_setters(n: int) -> list[tuple[str, str]]:
-    """One subtracting branch per input; ``pp`` holds at equal width."""
+def _fold_setters(n: int, step: int = _FOLD_STEP) -> list[tuple[str, str]]:
+    """One subtracting branch per input; the hold matches it in width.
+
+    Input ``i`` subtracts ``step * 2 ** (n - 1 - i)`` when its bit is 1 and
+    holds when it is 0, which lays the rows on the ladder ``acc = -step * r``.
+    Both branches must come out the same width or the program leaks its
+    inputs through ``len()``.
+
+    ``s`` subtracts 2, so an amount that is a multiple of 4 spells at an even
+    width and the hold is that many ``p``.  The narrow ladder
+    (:data:`_FOLD_NARROW_STEP`) gives its last input an amount of 2, whose
+    cheapest spelling ``"s"`` is one character wide -- and **the identity has
+    no odd-width spelling at all**, searched exhaustively over ``s``/``i``/
+    ``p``/``m`` through width 6: an odd number of the only sign-flipping
+    command cannot compose to ``+0``.  So a lone ``s`` can never be padded to
+    match a hold, and the subtraction is *respelled* wider instead --
+    ``iipssp`` subtracts 2 in six characters, against ``pppppp`` holding --
+    which is the same respelling move :func:`_pad_pair`'s odd-gap refusal
+    forces elsewhere in this module.
+    """
     out = []
     for i in range(n):
-        width = _FOLD_STEP * 2 ** (n - 1 - i) // 2
-        out.append(("pp" * (width // 2), "s" * width))
+        amount = step * 2 ** (n - 1 - i)
+        code = _sub_code(amount)
+        if code is not None and len(code) % 2 == 0:
+            out.append(("p" * len(code), code))
+            continue
+        # Odd (or unspellable) width: no hold exists there, so subtract the
+        # same amount at the next even width.  Overshoot by ``k`` and add it
+        # back through a ``p``-wrapped subtraction,
+        # ``sub(amount + k) + "p" + sub(k) + "p"``.
+        #
+        # ``_sub_code`` alone never gets there: it spells with as many ``s``
+        # as it can, so both halves shrink together and the total width stays
+        # odd for every ``k``.  Spending ``i`` -- which subtracts 3, so two of
+        # them move 6 in two characters where three ``s`` would take three --
+        # is what changes the parity.  ``iipssp`` is the case that matters:
+        # ``ii`` subtracts 6, ``pssp`` adds 4 back, six characters for a net
+        # of 2, against ``pppppp`` holding.
+        spellings = [
+            over + "p" + back + "p"
+            for over_i in range(5)
+            for back_i in range(5)
+            for k in range(2, 14)
+            if (over := _sub_with(amount + k, over_i)) is not None
+            and (back := _sub_with(k, back_i)) is not None
+            and len(over + back) % 2 == 0
+        ]
+        widened = min(
+            (c for c in spellings if _apply(0, c) == -amount), key=len, default=None
+        )
+        assert widened is not None, amount  # nosec B101
+        assert _apply(0, widened) == -amount, (amount, widened)  # nosec B101
+        out.append(("p" * len(widened), widened))
     return out
 
 
@@ -2369,13 +2470,43 @@ def _fold(truth_table: str, n: int) -> str | None:
     last relocation's window spans a full residue system, so the residue
     work needs no weighting at all.  That is why the fold has no arity wall
     of its own below the workspace bound: the ladder must fit inside the
-    6006 values a ``p`` can traverse, which holds through ``n == 10``.
-    The search is exhaustive only below ~20 groups; wider states go
-    through a beam first, so a plan is found in practice for every table
-    tried (all of ``n <= 3``, large samples at 4 and 5, and the worst
-    case, a fully alternating 32-run table) but is not proved total.
+    6006 values a ``p`` can traverse.
+
+    **Two ladder spacings are tried**, and which one serves is what sets the
+    reach -- see :data:`_FOLD_NARROW_STEP`.  The wide ladder is tried first
+    because every template that builds today is built on it; the narrow one
+    is what carries ten inputs, where the wide ladder's 4092-value footprint
+    leaves the descent too little room to relocate and it dead-ends.
+
+    Reach, measured rather than argued: every table at ``n <= 4``
+    exhaustively, and samples at five through **ten** that build and print
+    every row correctly on the shipped interpreter.  Eleven is where the
+    construction stops, and that end is *structural* rather than a search
+    giving up -- the narrow ladder would span 4094 against a 3003-value
+    workspace, and no finer ladder exists to fall back on.
     """
-    if _FOLD_STEP * (2**n - 1) > 2 * _LIMIT:
+    for step in (_FOLD_STEP, _FOLD_NARROW_STEP):
+        built = _fold_at(truth_table, n, step)
+        if built is not None:
+            return built
+    return None
+
+
+def _fold_at(truth_table: str, n: int, step: int) -> str | None:
+    """Build a fold template on a ladder of spacing ``step``, or ``None``.
+
+    **The ladder is gated against ``_LIMIT``, not ``2 * _LIMIT``.**  The plan
+    state is relative -- :func:`_fold_moves` allows a *span* of ``2 * _LIMIT``
+    because a state may sit anywhere in ``[-_LIMIT, _LIMIT]`` -- but the
+    emitter lays the rows at absolute positions starting from a zero
+    accumulator, so the ladder itself has to fit in ``[-_LIMIT, 0]``.  Gating
+    on the relative bound lets the planner spend thousands of moves on a
+    geometry the emitter then refuses on its first op: the alternating table
+    at eleven inputs plans 2833 ops on a 4094-wide ladder and asserts
+    immediately, because the very first dive needs the rows inside
+    ``[-3003, 3003]`` and the ladder's bottom row starts below that.
+    """
+    if step * (2**n - 1) > _LIMIT:
         return None
     runs: list[list[int]] = []
     for r in range(2**n):
@@ -2385,8 +2516,8 @@ def _fold(truth_table: str, n: int) -> str | None:
             runs.append([r])
     state = [
         (
-            -_FOLD_STEP * rn[0],
-            _FOLD_STEP * (len(rn) - 1),
+            -step * rn[0],
+            step * (len(rn) - 1),
             truth_table[rn[0]],
             frozenset(rn),
         )
@@ -2395,7 +2526,7 @@ def _fold(truth_table: str, n: int) -> str | None:
     ops = _fold_plan(_fold_norm(state))
     if ops is None:
         return None
-    emitter = _FoldEmitter(truth_table, n)
+    emitter = _FoldEmitter(truth_table, n, step)
     for idx, (kind, _, c, vids) in enumerate(ops):
         if kind == "m":
             emitter.double(next_is_rise=(idx + 1 < len(ops) and ops[idx + 1][0] == "u"))
@@ -2405,7 +2536,7 @@ def _fold(truth_table: str, n: int) -> str | None:
             emitter.rise(c, vids)
     emitter.finish()
     header = ";".join(
-        f"{k}={zero}|{one}" for k, (zero, one) in enumerate(_fold_setters(n))
+        f"{k}={zero}|{one}" for k, (zero, one) in enumerate(_fold_setters(n, step))
     )
     placeholders = "".join("{X" + str(k) + "}" for k in range(n))
     return header + _HEADER_END + placeholders + "".join(emitter.body)
@@ -2739,20 +2870,23 @@ def pct_squared_minus_one(truth_table: str) -> str:
         # only the final two-point gap carries a residue requirement -- with
         # a full residue system as its window.  It closes five inputs whole.
         fold = _fold(truth_table, n)
-        # Reaching this raise means the fold's plan search gave up, which no
-        # tested table does -- all of n <= 3, large executed samples at four
-        # and five inputs, and the fully alternating worst case all plan.
-        # The guard stays because emitting nothing is better than emitting a
-        # program that computes the wrong function.
-        if fold is None:  # pragma: no cover - no known table reaches this
+        # Reaching this raise means neither ladder spacing served: either the
+        # plan search gave up, which no table at ten inputs or below does
+        # (all of n <= 4 exhaustively, executed samples at five through ten),
+        # or the arity is past ten, where even the narrow ladder overruns the
+        # workspace and nothing finer spells.  The guard stays because
+        # emitting nothing is better than emitting a program for the wrong
+        # function.
+        if fold is None:
             raise ValueError(
                 f"%^2^-1 builds every table at one, two, three and four "
-                f"inputs, and every five-input table tried; beyond those a "
-                f"conjunction or disjunction of literals at any arity, the "
-                f"thresholds a weighted ladder crosses, the tables a deep "
-                f"band schedules, and the tables the fold can plan -- which "
-                f"needs the row ladder to fit the workspace (n <= 10) and "
-                f"the plan search to close; "
+                f"inputs, and every table tried from five through ten; "
+                f"beyond those a conjunction or disjunction of literals at "
+                f"any arity, the thresholds a weighted ladder crosses, the "
+                f"tables a deep band schedules, and the tables the fold can "
+                f"plan -- whose row ladder must fit the workspace, which "
+                f"caps it at ten inputs (eleven needs 4094 of 3003 even at "
+                f"the narrowest spellable spacing); "
                 f"got {n} inputs ({truth_table!r})"
             )
         return fold
