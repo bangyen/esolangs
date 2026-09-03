@@ -23,7 +23,6 @@ Exhausted input raises :class:`EOFError` (the repo-wide convention).
 import re
 import sys
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -47,7 +46,6 @@ type _Core = tuple[tuple[int, ...], dict[str, int], int]
 type _State = tuple[_Core, bool]
 
 
-@dataclass(init=False)
 class _Machine:
     """Stack, variables, and instruction pointer for a Modulous run."""
 

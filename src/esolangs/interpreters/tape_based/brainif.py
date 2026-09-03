@@ -150,8 +150,6 @@ class _Machine:
     hang detector can prove.
     """
 
-    __slots__ = ("code", "io", "size", "state")
-
     def __init__(self, code: list[str], io: IO) -> None:
         """Start with a single zero cell at the origin."""
         self.io = io

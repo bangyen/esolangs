@@ -45,7 +45,6 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Hashable
-from dataclasses import dataclass
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -165,7 +164,6 @@ def _iterate(
     return core, ind + 1, output, call
 
 
-@dataclass(init=False)
 class _Machine:
     """Two stacks with an index choosing the active one, and a frame stack."""
 

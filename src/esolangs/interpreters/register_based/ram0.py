@@ -158,8 +158,6 @@ class _Machine:
     functions above.
     """
 
-    __slots__ = ("io", "size", "state", "tokens")
-
     def __init__(self, code: str, io: IO) -> None:
         """Tokenize ``code`` and start both registers and RAM at zero."""
         self.io = io
