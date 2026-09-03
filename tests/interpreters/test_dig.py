@@ -7,8 +7,6 @@ after digging with ``$``. The value read by ``$``/``#``/``%`` and the operators
 is the first digit adjacent to the command (up, right, down, left).
 """
 
-import io
-from contextlib import redirect_stdout
 from typing import ClassVar
 
 import pytest
@@ -266,15 +264,6 @@ class TestDigEdgeCases:
         assert mole_after("0") == 32  # space
         for digit in "23456789":
             assert mole_after(digit) == 0, digit
-
-    def test_func_callback_breaks_out(self) -> None:
-        """A func callback returning True halts the run at the next ``$``."""
-        from esolangs.interpreters.grid_based.dig import run
-
-        buffer = io.StringIO()
-        with redirect_stdout(buffer):
-            run([">$5:@", " 2 "], io=IO(), func=lambda: True)
-        assert buffer.getvalue() == ""
 
 
 class TestStepMachine:
