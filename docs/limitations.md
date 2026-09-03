@@ -29,12 +29,6 @@ predictable across languages:
   so a byte-oriented program needs one line per byte: `,.,.` on ``"A\nB"``
   echoes ``"AB"``, while ``"AB"`` on one line supplies only ``A`` and the
   second `,` raises `EOFError`.
-- **No step limit is settable through the public API.**  `esolangs.run`
-  forwards no kwargs to an interpreter's `run()`, and its only bound is a
-  wall-clock `timeout`.  AddSubJump, Decleq and Polynomial each default
-  their own `run(..., limit=10_000)`, and Grapheme defaults
-  `limit=1_000_000`; every one of those defaults still fires (raising
-  `HaltError`) since a caller has no way to raise it through the public API.
 - **Recursion is uncapped except in Forbin's expression position.**
   Suptiftam, Forbin's statement-position calls, and all of Lamfunc's calls
   run on an explicit frame stack (`_Machine.frames`), so a terminating

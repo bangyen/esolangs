@@ -362,9 +362,10 @@ round-trip check for `extract()` alone.
   language's main run path uses.  `simulate.py` matches that: a
   non-halting Line program hangs, the same as an infinite Brainfuck `[]`
   loop would.  (An earlier draft of this module added an arbitrary
-  1,000,000-step cap by reaching for `oisc_cli.py`'s pattern instead --
-  wrong fit, since that exists specifically because Decleq/AddSubJump
-  self-modify their memory and provably cannot use cycle detection; Line's
+  1,000,000-step cap by reaching for the pattern Decleq/AddSubJump/
+  Polynomial once used (an interpreter-local instruction cap, since removed
+  in favour of `esolangs.run(timeout=)` as the one wall-clock guard) --
+  wrong fit regardless, since Line's
   state is ordinary and revisitable, so if a limit is ever wanted here, real
   cycle detection matching `vm.py`'s convention would be the right upgrade,
   not a step cap.)  Arbitrary-precision tape cells (vs. some wrapped/bounded

@@ -41,11 +41,12 @@ call stack is then a value, which is what lets :meth:`snapshot` hash it and
 the cycle detector prove a loop.
 
 The value stack is the one thing *not* threaded, and the reason is cost.  A
-Grapheme program can push without bound -- ``HKHKZ`` does, and the
-million-command limit is the backstop for exactly that class -- so rebuilding
-a stack tuple per command is quadratic in the stack's depth.  Measured, it
-is not a constant factor: 200,000 commands of ``HKHKZ`` take 0.21s against a
-mutable list and 445s against a rebuilt tuple.  So the stack stays a list in
+Grapheme program can push without bound -- ``HKHKZ`` does, which is exactly
+the class a snapshot repeat cannot catch and ``esolangs.run``'s wall-clock
+``timeout`` is the backstop for -- so rebuilding a stack tuple per command
+is quadratic in the stack's depth.  Measured, it is not a constant factor:
+200,000 commands of ``HKHKZ`` take 0.21s against a mutable list and 445s
+against a rebuilt tuple.  So the stack stays a list in
 the shell, and a step reports its intent as ``(pops, pushes, reverse)``
 instead: a count to remove, the values to add, and whether ``P`` reversed
 what was left.  COD's per-cod transition reports what it wants done for the
@@ -65,9 +66,15 @@ step later.  The emptiness tests there read the stack's *virtual* depth --
 its length less the pending pops, plus the pending pushes -- since the
 effects have not been applied yet.
 
-``steps`` and ``limit`` stay in the shell.  They are a budget rather than
-language state, and ``steps`` is excluded from ``snapshot`` for the same
-reason: it rises every step, so a state carrying it could never repeat.
+There was once a ``steps``/``limit`` budget here, checked at the top of
+every step and excluded from ``snapshot`` because it rises every step and
+could never repeat.  It is gone: the class it guarded -- an unbounded
+push, which never revisits a state -- is exactly what ``esolangs.run``'s
+wall-clock ``timeout`` exists to catch, and a step count local to this
+interpreter only duplicated it.  Recursion depth is a separate guard
+(``_advance`` raises past 500 call frames) and stays, because a runaway
+call stack is a different failure than an unbounded value stack and this
+one *is* part of the state ``snapshot`` hashes.
 """
 
 from __future__ import annotations
@@ -410,12 +417,10 @@ def _advance(
 class _Machine:
     """Shared stack, variables, step counter, and call stack for a run."""
 
-    def __init__(self, io: IO, limit: int) -> None:
+    def __init__(self, io: IO) -> None:
         self.stack: list[_Value] = []
         self.vars: _Vars = {}
         self.io = io
-        self.limit = limit
-        self.steps = 0
         self.frames: tuple[_Frame, ...] = ()
         # Where the top-level frame ends, so ``ip`` can still report a
         # position once every frame has been popped.  ``of()`` sets it with
@@ -423,7 +428,7 @@ class _Machine:
         self._top_length = 0
 
     @classmethod
-    def of(cls, code: str, io: IO, limit: int = 1_000_000) -> _Machine:
+    def of(cls, code: str, io: IO) -> _Machine:
         """Build a machine running ``code`` as its top-level frame.
 
         The constructor takes no program -- a machine is a shared stack that
@@ -436,7 +441,7 @@ class _Machine:
             raise ValueError(
                 "Grapheme programs may only contain uppercase Latin letters"
             )
-        machine = cls(io, limit)
+        machine = cls(io)
         machine.frames = (_frame(code, 0),)
         machine._top_length = len(code)
         return machine
@@ -473,12 +478,7 @@ class _Machine:
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection.
-
-        ``steps`` is excluded: it only counts toward the execution-limit
-        guard and increases every step, so including it would mean no state
-        ever repeats and defeat cycle detection entirely.
-        """
+        """Return the complete internal state, hashable for cycle detection."""
         # A frame is already a tuple of its seven fields, so the call stack
         # goes in as it stands rather than being unpacked field by field --
         # which is what a frame being a value rather than a record buys.
@@ -526,10 +526,6 @@ class _Machine:
             self._apply(fx)
             return
 
-        self.steps += 1
-        if self.steps > self.limit:
-            raise HaltError(f"execution exceeded the {self.limit}-command limit")
-
         # ``W`` reads only when it is a *command*.  Inside a mode every
         # character is data, so a ``W`` accumulating into a string must not
         # touch the port -- reading there turns a program that prints into
@@ -550,9 +546,9 @@ class _Machine:
                 self.io.print_value(output)
 
 
-def run(code: str, io: IO, limit: int = 1_000_000) -> None:
-    """Run a Grapheme program, halting after ``limit`` commands."""
-    machine = _Machine.of(code, io, limit)
+def run(code: str, io: IO) -> None:
+    """Run a Grapheme program to completion."""
+    machine = _Machine.of(code, io)
     while not machine.halted:
         machine.step()
 

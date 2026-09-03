@@ -2,7 +2,12 @@
 
 Tests cover the self-modifying memory model, the add/sub OISC instruction,
 the special addresses (I/O, flags, constants, flag update mode), the jump,
-and the documented halt/limit conventions.
+and the documented halt conventions.
+
+There is no per-run instruction cap to test: a program that loops without
+halting is esolangs.run's timeout to catch (test_api.py's
+test_run_timeout_halts_runaway_program proves the guard works, generically,
+through brainfuck), not something this interpreter enforces on its own.
 """
 
 import pytest
@@ -17,8 +22,8 @@ from tests.interpreters.contract import (
 from tests.interpreters.oisc import memory, run_program
 
 
-def _run(code, stdin="", limit=100_000):
-    return run_program(run, code, stdin=stdin, limit=limit)
+def _run(code, stdin=""):
+    return run_program(run, code, stdin=stdin)
 
 
 class TestInstruction:
@@ -202,13 +207,6 @@ class TestHaltAndErrors:
         # The jump target (a data cell) is huge, past the memory.
         code = memory([[12, -6, 13, -7]], {13: 1000})
         assert _run(code) == ""
-
-    def test_looping_program_hits_the_limit(self) -> None:
-        # The increment's jump target is itself (data cell 13 = 0 -> ip 0).
-        code = memory([[12, -6, 13, -7]], {13: 0})
-        io = ScriptedIO("")
-        with pytest.raises(HaltError):
-            run(code, io, limit=100)
 
     def test_malformed_token(self) -> None:
         with pytest.raises(ValueError, match="malformed memory token"):

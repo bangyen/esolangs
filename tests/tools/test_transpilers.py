@@ -415,7 +415,15 @@ def test_decleq_empty_input_line_is_a_target_language_collision() -> None:
 
 
 def test_decleq_fuzz_unrestricted_programs() -> None:
-    """Random programs of any shape agree with the Decleq interpreter."""
+    """Random programs of any shape agree with the Decleq interpreter.
+
+    Decleq has no per-run instruction cap of its own (removed in favour of
+    esolangs.run's uniform timeout), and an arbitrary cell draw can easily
+    build a self-decrementing loop that never halts -- exactly the growth
+    class the cycle detector cannot prove either.  ``timeout`` is what
+    turns that into a fast HaltError the except clause below already
+    catches, instead of a hang.
+    """
     rng = random.Random(19)
     vals = [0, 1, 2, 3, 5, 9, -1, -2, -3, -7, 42, 127, 255, -255, 6, 12, 15, 4, 10]
     checked = 0
@@ -423,7 +431,7 @@ def test_decleq_fuzz_unrestricted_programs() -> None:
         cells = [rng.choice(vals) for _ in range(rng.randint(0, 12))]
         program = " ".join(map(str, cells))
         try:
-            expected = esolangs.run("Decleq", program)
+            expected = esolangs.run("Decleq", program, timeout=1.0)
         except (EsolangError, EOFError, IndexError):
             continue  # the reference interpreter errors; no behaviour to match
         sb_program = esolangs.transpile("Decleq", "S*bleq", program)
@@ -433,14 +441,19 @@ def test_decleq_fuzz_unrestricted_programs() -> None:
 
 
 def test_decleq_fuzz_countdowns() -> None:
-    """Random countdowns (the canonical ``x x next`` idiom) agree."""
+    """Random countdowns (the canonical ``x x next`` idiom) agree.
+
+    The shape always halts by construction, but ``timeout`` is cheap
+    insurance against the same class the unrestricted-programs test
+    guards against, and keeps the two calling conventions matched.
+    """
     rng = random.Random(23)
     checked = 0
     for _ in range(40):
         x = rng.randint(0, 25)
         program = f"{x} {x} 3 -2 {x} 0"
         try:
-            expected = esolangs.run("Decleq", program)
+            expected = esolangs.run("Decleq", program, timeout=1.0)
         except (EsolangError, EOFError, IndexError):
             continue
         sb_program = esolangs.transpile("Decleq", "S*bleq", program)
