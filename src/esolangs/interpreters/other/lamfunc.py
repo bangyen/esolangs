@@ -550,17 +550,56 @@ def _advance(
     return _step_body(frame, view, vars_, ind, main)
 
 
+@dataclass
+class _State:
+    """Every changing value in a Lamfunc run.
+
+    Frames remain a mutable effect-owned stack so deep recursion does not
+    copy it on every step; grouping it here still makes that ownership part
+    of the machine's one authoritative state boundary.
+    """
+
+    vars: _Vars
+    ind: int
+    frames: list[_Frame]
+
+
 class _Machine:
     """One Lamfunc run: the definitions, variables, cursor, and call stack."""
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
         self.defs, self.main = _parse_program(code)
-        self.vars: _Vars = {}
-        self.ind = 0
-        self.frames: list[_Frame] = []
+        self.state = _State({}, 0, [])
         if self.main:
             self.frames.append(_Frame(self.main, 0, start=0))
+
+    @property
+    def variables(self) -> _Vars:
+        """The variable mapping, retained for the transition helpers."""
+        return self.state.vars
+
+    @variables.setter
+    def variables(self, vars_: _Vars) -> None:
+        self.state.vars = vars_
+
+    @property
+    def ind(self) -> int:
+        """The top-level call cursor."""
+        return self.state.ind
+
+    @ind.setter
+    def ind(self, ind: int) -> None:
+        self.state.ind = ind
+
+    @property
+    def frames(self) -> list[_Frame]:
+        """The effect-owned frame stack."""
+        return self.state.frames
+
+    @frames.setter
+    def frames(self, frames: list[_Frame]) -> None:
+        self.state.frames = frames
 
     @property
     def halted(self) -> bool:
@@ -578,7 +617,7 @@ class _Machine:
     @property
     def memory(self) -> list[int]:
         """The addressable cells."""
-        return [v for v in self.vars.values() if type(v) is int]
+        return [v for v in self.variables.values() if type(v) is int]
 
     @property
     def stack(self) -> list[object]:
@@ -599,7 +638,7 @@ class _Machine:
         """
         return (
             self.ind,
-            tuple(sorted((k, repr(v)) for k, v in self.vars.items())),
+            tuple(sorted((k, repr(v)) for k, v in self.variables.items())),
             tuple(
                 (
                     id(f.tokens),
@@ -640,7 +679,7 @@ class _Machine:
             return
 
         (pops, pushes), variables, ind, output = _advance(
-            self.frames, self.vars, self.ind, self.defs, self.main
+            self.frames, self.variables, self.ind, self.defs, self.main
         )
         if pops:
             del self.frames[len(self.frames) - pops :]
@@ -648,7 +687,7 @@ class _Machine:
         # Held as returned, not copied: the transition already built a
         # fresh mapping for any step that changed one, so copying it
         # again would be a per-step cost in the size of the store.
-        self.vars = variables
+        self.variables = variables
         self.ind = ind
         if output is not None:
             self.io.print_str(output)
