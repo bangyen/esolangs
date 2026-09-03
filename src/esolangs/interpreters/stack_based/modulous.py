@@ -328,9 +328,17 @@ _DISPATCH: dict[str, Callable[[_Core, str, list[str], str | int | None], _Core]]
 }
 
 
-def run(code: str, io: IO) -> None:
-    """Run a Modulous program."""
-    state = _Machine.of(code, io)
+def run(code: str, io: IO, rng: Randomness | None = None) -> None:
+    """Run a Modulous program, drawing ``RND`` from ``rng``.
+
+    ``rng`` is the source ``RND`` draws from; ``None`` draws for real,
+    which is the spec's behaviour and what a plain run gets.  The machine
+    has always taken one -- it is how the VM makes a stepped run
+    reproducible -- but ``run`` did not forward it, so a caller holding
+    only ``run`` could not pin the draw without patching ``secrets``
+    globally.  This is the signature COD, WII2D and LaserFuck take.
+    """
+    state = _Machine.of(code, io, rng)
 
     while not state.halted:
         state.step()
