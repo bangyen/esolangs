@@ -166,7 +166,7 @@ def _parse_statement(tokens: list[Token]) -> Statement:
     raise ValueError("malformed statement")
 
 
-def _frame_index(frames: list[tuple[str, int]], label: str) -> int:
+def _frame_index(frames: Sequence[tuple[str, int]], label: str) -> int:
     """Return the index of the open loop frame for ``label``.
 
     A plain loop rather than a ``next()`` generator expression, so a
@@ -225,7 +225,7 @@ def _structure(stmts: list[Statement]) -> dict[int, tuple[int, bool]]:
 type _Vars = Mapping[str, int]
 
 #: The open loop frames, innermost last: ``(label, the POINT's index)``.
-type _Frames = Sequence[tuple[str, int]]
+type _Frames = tuple[tuple[str, int], ...]
 
 #: The ``?`` port.  A callback rather than a pre-read list, because an
 #: expression holding several of them reads each as the evaluation reaches
@@ -314,9 +314,9 @@ def _advance(
         value = _eval(stmt[2], variables, read)
         return ({**variables, stmt[1]: value}, frames, pc + 1)
     if stmt[0] == "point":
-        return (variables, [*frames, (stmt[1], pc)], pc + 1)
+        return (variables, (*frames, (stmt[1], pc)), pc + 1)
     if stmt[0] == "end":
-        pos = _frame_index(list(frames), stmt[1])
+        pos = _frame_index(frames, stmt[1])
         return (variables, frames[:pos], frames[pos][1])
 
     # if_break
@@ -325,7 +325,7 @@ def _advance(
         raise HaltError(f"undefined variable {var!r}")
     if not variables[var]:
         return (variables, frames, pc + 1)
-    pos = _frame_index(list(frames), label)
+    pos = _frame_index(frames, label)
     end, implicit = ends[frames[pos][1]]
     return (variables, frames[:pos], end if implicit else end + 1)
 
@@ -398,13 +398,8 @@ class _Machine:
 
     def _restore(self, state: _State) -> None:
         """Write a transition's result back onto the machine's fields."""
-        variables, frames, self.pc = state
+        variables, self.frames, self.pc = state
         self.variables = dict(variables)
-        # ``_Frames`` is a Sequence, so the transition is free to hand back
-        # any sequence; the field is a tuple, and this is where that is made
-        # true.  It replaces a ``list(frames)`` that did the same job into a
-        # mutable type nothing ever mutated.
-        self.frames = tuple(frames)
 
     def step(self) -> None:
         """Execute one statement, advancing the machine.
