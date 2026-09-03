@@ -50,7 +50,7 @@ class _Machine:
     var: dict[str, int] = field(default_factory=dict)
     ind: int = 0
     io: IO = field(default_factory=IO)
-    tokens: list[str] = field(default_factory=list, init=False)
+    tokens: tuple[str, ...] = field(default_factory=tuple, init=False)
     _halted: bool = field(default=False, init=False)
     # Overrides ``RND``'s draw, which is what makes a stepped run
     # reproducible; ``None`` draws for real.
@@ -66,7 +66,7 @@ class _Machine:
         carried their own copy, which is the shape that lets the two drift.
         """
         state = cls(var={f"VAR{k}": 0 for k in range(1, 5)}, io=io, rng=rng)
-        state.tokens = [k[0] for k in _TOKEN.findall(code)]
+        state.tokens = tuple(k[0] for k in _TOKEN.findall(code))
         return state
 
     @property

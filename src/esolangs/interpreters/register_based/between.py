@@ -327,7 +327,7 @@ class _Machine:
             if not stripped or stripped.startswith("#"):
                 continue
             program.append(_parse_line(stripped))
-        self.program = program
+        self.program = tuple(program)
         self.state: dict[str, ValueT] = {}
         self.pc = 0
         self._exited = False
