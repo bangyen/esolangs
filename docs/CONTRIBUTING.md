@@ -62,8 +62,7 @@ If a candidate fails the criteria, record the assessment in the
 assessed-and-rejected ledger in `docs/limitations.md` — the negative result
 is as valuable as the interpreter, because it stops the assessment from
 being redone.  The roadmap (`docs/roadmap.md`) tracks which candidates are
-still
-on the table.
+still on the table.
 
 ## Layout
 
@@ -71,13 +70,14 @@ on the table.
   language, each exposing `run(code, io)` (the program as a string, or a
   list of lines for grid/line-based languages, plus the `IO` object that
   owns input/output).  Categories are `tape_based`, `stack_based`,
-  `register_based`, and `other`.  Copy `_template.py` to start; it encodes
-  the I/O, error, and docstring conventions.
-- `src/esolangs/tools/generators/` — text generators, one module per state
-  model (`register.py`, `tape.py`, `stack.py`, `other.py`).  Each
-  `def <name>(text)` returns a program whose output is exactly `text`, or
-  raises `ValueError` for text the language cannot emit.
-- `src/esolangs/tools/booleans/` — truth-table generators for languages with
+  `register_based`, `grid_based`, `queue_based`, and `other`.  Copy
+  `_template.py` to start; it encodes the I/O, error, and docstring
+  conventions.
+- `src/esolangs/tools/text/` — text generators, one module per state model
+  (`register.py`, `tape.py`, `stack.py`, `other.py`).  Each `def <name>(text)`
+  returns a program whose output is exactly `text`, or raises `ValueError`
+  for text the language cannot emit.
+- `src/esolangs/tools/boolean/` — truth-table generators for languages with
   input and value branching.
 - `src/esolangs/registry.py` — the single source of truth: which languages
   have a generator, an interpreter, how programs are handed to the
@@ -96,8 +96,8 @@ on the table.
    `ValueError` behavior it actually exhibits (see `_template.py`;
    `scripts/check_docstrings.py` enforces the mechanical parts).
 2. **Generator** (optional) — add `def <name>(text)` to the right module in
-   `tools/generators/` and register it in `registry.py`.  If the language
-   reads input and branches, add a truth-table generator to `tools/booleans/`.
+   `tools/text/` and register it in `registry.py`.  If the language
+   reads input and branches, add a truth-table generator to `tools/boolean/`.
 3. **Registry** — add a `Language` entry in `registry.py` (display name,
    canonical id, generator, interpreter module, whether the program is split
    into lines, extra `run()` kwargs).  This single entry wires up the API
@@ -112,22 +112,16 @@ on the table.
 
 ## Verifying changes
 
-```sh
-just test            # or: python scripts/verify.py
-```
-
-runs the full local check: pre-commit (lint, format, types), pytest, bandit,
-the `extra/line` suites (via uv, skipped when uv is missing), and the Python
-verify scripts (including `check_docstrings.py`).
-To run it automatically on every push:
+See `AGENTS.md` for the verification gate (`just test`, `scripts/verify.py`)
+and its traps.  To run it automatically on every push:
 
 ```sh
 git config core.hooksPath .githooks
 ```
 
-`python scripts/verify.py` additionally runs the RISC-V emulation stack
-(compilers and cross-check generators under unicorn), which needs the native
-toolchain; the qemu steps are CI-only.
+`scripts/verify.py` additionally runs `check_docstrings.py` and the RISC-V
+emulation stack (compilers and cross-check generators under unicorn), which
+needs the native toolchain; the qemu steps are CI-only.
 
 ## Conventions
 
