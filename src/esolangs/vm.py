@@ -308,7 +308,8 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
     Every registered language now goes through here.  The exceptions that
     once kept a hand-written class -- extra setup, an overridden ``step()``,
     a construction disagreeing with the runner's -- were absorbed by the
-    ``of``/``rng`` handling below, so no per-language code is left.
+    common constructor and ``rng`` handling below, so no per-language code
+    is left.
     """
     module_path, split = RUNNERS[language]
 
@@ -325,16 +326,7 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
             # ``_Machine`` is private to its module but is the state object
             # this whole file is built around; the explicit adapters below
             # import it by name for the same reason.
-            # Some state objects cannot take a program positionally -- a
-            # dataclass whose parsed field is ``init=False``, or one whose
-            # code field sits behind ``io``.  Those offer ``of(code, io)``
-            # instead, which is the same construction under a name.  The
-            # seam is detected by a *callable* ``of``, because a state class
-            # may also use the name ``of`` for one of the language's own
-            # values rather than for construction.
             state = getattr(module, "_Machine")  # noqa: B009
-            of = getattr(state, "of", None)
-            machine = of if callable(of) else state
             # A language with a random instruction takes a source for it,
             # and a stepped VM has to be reproducible, so one is passed
             # wherever it is accepted.  It is optional exactly like ``io``
@@ -345,11 +337,11 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
             # own junction example goes East, LaserFuck's grids are
             # written for a laser heading up -- so the interpreter says
             # so, rather than every caller having to know.
-            if "rng" in inspect.signature(machine).parameters:
+            if "rng" in inspect.signature(state).parameters:
                 seed = getattr(state, "reproducible_seed", 0)
-                self._machine = machine(code, self._io, rng=Seeded(seed))
+                self._machine = state(code, self._io, rng=Seeded(seed))
             else:
-                self._machine = machine(code, self._io)
+                self._machine = state(code, self._io)
 
     _Derived.__name__ = _Derived.__qualname__ = f"_{language}VM"
     _Derived.__doc__ = f"Adapter for {language}; the interpreter describes its shape."
