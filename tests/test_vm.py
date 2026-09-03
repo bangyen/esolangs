@@ -167,12 +167,17 @@ class TestLaserFuck:
         assert vm.output == "\x01"
 
     def test_dump_output_matches_interpreter(self) -> None:
+        from esolangs.interpreters.grid_based.laserfuck import _Machine as _LFMachine
         from esolangs.interpreters.grid_based.laserfuck import run as lf_run
         from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.randomness import Seeded
 
         program = "\u00ff   x\n    +\n    o"
         io_obj = ScriptedIO()
-        lf_run(program.splitlines(), io_obj, heading=0)
+        # The VM builds its machine with ``Seeded(reproducible_seed)``, so
+        # handing ``run`` the same source is what makes the two sides
+        # comparable -- the heading is drawn, not passed, on both.
+        lf_run(program.splitlines(), io_obj, rng=Seeded(_LFMachine.reproducible_seed))
         vm = esolangs.make_vm("LaserFuck", program)
         _run_all(vm)
         vm.step()  # the dump, which run performs as its own last step
@@ -1115,19 +1120,21 @@ class TestRunUntilHaltOrCycle:
     def test_laserfuck_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.grid_based.laserfuck import _Machine
         from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.randomness import FirstDraw
         from esolangs.vm import run_until_halt_or_cycle
 
-        machine = _Machine(["o"], ScriptedIO(), heading=0)
+        machine = _Machine(["o"], ScriptedIO(), rng=FirstDraw(0))
         assert run_until_halt_or_cycle(machine) is True
 
     def test_laserfuck_looping_run_is_detected_as_a_cycle(self) -> None:
         from esolangs.interpreters.grid_based.laserfuck import _Machine
         from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.randomness import FirstDraw
         from esolangs.vm import run_until_halt_or_cycle
 
         # a closed ring of mirrors the laser circles forever
         grid = ["/ \\", "\\o/", "//\\"]
-        machine = _Machine(grid, ScriptedIO(), heading=2)
+        machine = _Machine(grid, ScriptedIO(), rng=FirstDraw(2))
         assert run_until_halt_or_cycle(machine) is False
 
     def test_slow_acv_mammalian_halting_run_returns_true(self) -> None:

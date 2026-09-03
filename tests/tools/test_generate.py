@@ -18,6 +18,7 @@ from esolangs.interpreters.other.container import run as container_run
 from esolangs.interpreters.other.cvnc import run as cvnc_run
 from esolangs.interpreters.other.forbin import run as forbin_run
 from esolangs.interpreters.other.ztoalc_l import run as ztoalc_run
+from esolangs.interpreters.randomness import FirstDraw
 from esolangs.interpreters.register_based.between import run as between_run
 from esolangs.interpreters.register_based.bio import run as bio_run
 from esolangs.interpreters.register_based.myscript import run as myscript_run
@@ -65,7 +66,7 @@ def laserfuck_roundtrip(program: str, heading: int) -> str:
 
     buffer = io.StringIO()
     with redirect_stdout(buffer):
-        laserfuck_run(program.splitlines(), IO(), heading=heading)
+        laserfuck_run(program.splitlines(), IO(), rng=FirstDraw(heading))
     return buffer.getvalue()
 
 

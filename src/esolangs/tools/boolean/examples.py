@@ -64,8 +64,13 @@ class BooleanExample:
     ``fill`` is set, the template that ``fill`` instantiates with ``bits``).
     ``interpreter`` is the dotted module under ``esolangs.interpreters``,
     ``split`` passes the program as lines rather than one string, and
-    ``kwargs`` holds extra ``run()`` arguments.  ``inputs`` are the stdin
-    lines (empty for the parameterized languages, whose bits are embedded).
+    ``kwargs`` holds extra ``run()`` arguments.  Those are ints, so a
+    language needing a *source of chance* pinned -- LaserFuck, whose
+    initial heading is drawn -- names ``seed`` and the runner turns it into
+    a ``Seeded``; there is no way to spell an object in this field, and a
+    seed is the reproducible thing worth committing anyway.  ``inputs`` are
+    the stdin lines (empty for the parameterized languages, whose bits are
+    embedded).
     ``expected`` is the program's whole stdout.
     """
 
@@ -521,8 +526,11 @@ def _register() -> None:
             "grid_based.laserfuck",
             split=True,
             expected="0",
-            kwargs=_kw(heading=3),
-            note="the initial heading is random by spec, so the example pins it",
+            kwargs=_kw(seed=0),
+            note=(
+                "the initial heading is random by spec, so the example pins "
+                "the source it is drawn from: seed 0 draws heading 3"
+            ),
         ),
         "modulous": _reader(b.modulous, "stack_based.modulous"),
         "myscript": _reader(b.myscript, "register_based.myscript"),
