@@ -194,7 +194,7 @@ def render() -> str:
         "walled one -- no program that reads its inputs computes any "
         "two-input function, proved in `docs/proofs.md`.  Minifuck reads "
         "fine (a reading construction builds all sixteen two-input tables) "
-        "but stops at two inputs, where embedding is total through `n == 4`. "
+        "but stops at two inputs, where embedding is total at every arity. "
         " Cod's input command is `...` on an edge, which this interpreter "
         "treats as three separate reads, so a reading generator would have "
         "to route every crossing horizontally.  %^2^-1 goes further: a "
