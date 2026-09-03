@@ -603,7 +603,6 @@ def _register() -> None:
             _fill_cod,
             table=XOR2,
             bits=(1, 1),
-            kwargs=_kw(limit=500),
             note="COD has no runtime input and no I/O but a printed number",
         ),
         "eval": _embedded(b.eval, "stack_based.eval", _fill_eval),
