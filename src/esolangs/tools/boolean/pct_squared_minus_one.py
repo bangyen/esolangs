@@ -1844,14 +1844,233 @@ _FOLD_STEP_SLOPE = 8
 _FOLD_STEP_SLACK = 16
 
 
+#: The plan for a table, read off its run-length word rather than searched.
+#:
+#: **What the descent was rediscovering.**  The optimal plan does not depend
+#: on the run lengths, only on which runs are longer than 1.  Writing that as
+#: the word's ``>1``-pattern, every word sharing a pattern admits the same
+#: plan: mining every optimal plan (breadth-first to the minimum depth, then
+#: enumerating all plans at that depth) and replaying the symbolic form onto
+#: other words with the same pattern builds 40 of 40 targets for every
+#: pattern at ``r <= 4``, including 16- and 32-row targets from 8-row
+#: sources.
+#:
+#: **The amounts come from four symbols**, which is what makes a plan
+#: replayable at all: ``cmin`` is the minimum relocation, ``cmax`` relocates
+#: by the whole gap to the nearest survivor, ``land j`` lands exactly on
+#: survivor ``j`` -- necessarily same-class and already wiped, which is the
+#: merge -- and the doubling carries no amount.  The vocabulary is pinned
+#: rather than assumed: a breadth-first search restricted to ``cmin``,
+#: ``cmax`` and the doubling reaches 250 of the 254 non-constant three-input
+#: tables, and the four it misses are exactly the alternating and
+#: near-alternating words, which need a landing.
+#:
+#: **The key is ``(r, delta, pat[1])``** -- the run count, the middle-slot
+#: predicate that :data:`_FOLD_STEP_SLOPE` already records as setting the
+#: *cost*, and the second slot.  Over all 59 patterns mined at ``r <= 5``
+#: that key is unambiguous: 12 groups, no two patterns in a group
+#: disagreeing.  ``pat[1]`` discriminates only at ``r == 4`` -- both its
+#: values give identical plans at ``r == 5``, which is why the table below
+#: carries duplicate rows there -- so it is sufficient rather than
+#: necessary.
+#:
+#: Every entry is the same three-phase program: *peel* the ends inward with
+#: alternating ``d1``/``u2`` wipes at ``cmax``, *park* with one wipe at
+#: ``cmin`` and then double, and *close* with a wipe onto a landing followed
+#: by ``cmax`` wipes ending at ``k == 2``.  ``delta`` adds one peel step,
+#: which is the ``+1`` of the cost form.  The first move's direction follows
+#: which side carries the long run: dive when it sits low, rise when high.
+#:
+#: Coverage is the table's extent and nothing else.  At three inputs the
+#: construction builds 196 of the 254 non-constant tables and the 58 misses
+#: are all ``r >= 6``; at four inputs it builds **3880 of 3880** tables with
+#: ``r <= 5`` and none above.
+#:
+#: **Plan length improves everywhere; characters improve in aggregate but
+#: not per table.**  The plan is 4.89 ops against the descent's 12.21 (max 7
+#: against 19), and that is uniform.  Characters are 34.9% fewer over the
+#: whole three-input arity, but the two are not the same axis -- as
+#: :data:`_FOLD_STEP_SLOPE` records, op count barely correlates with emitted
+#: length -- and of the 196 tables the construction serves, **20 emit longer
+#: than the descent would**, the worst ``10010011`` at 11453 characters
+#: against 8483.  Shortening those is a separate problem from planning them,
+#: and the three attempts recorded on :data:`_FOLD_STEP_SLOPE` say it is not
+#: a greedy one.
+#:
+#: Every claim above is checked by execution rather than replay: all 254
+#: three-input tables and 100 four-input tables on the constructed path emit
+#: through the public generator and print every row correctly on the
+#: interpreter.  ``r >= 6`` is not tabulated, so those tables fall through
+#: to the descent below, which is unchanged.
+_FOLD_SKELETONS: dict[tuple[int, int, int], tuple[tuple[str, int, str], ...]] = {
+    (2, 0, 0): (("u", 1, "cmax"),),
+    (2, 0, 1): (("d", 1, "cmax"),),
+    (2, 1, 1): (("d", 1, "cmax"), ("d", 1, "cmax")),
+    (3, 0, 0): (("d", 1, "cmax"), ("u", 2, "cmax")),
+    (3, 1, 1): (("d", 1, "cmax"), ("d", 1, "cmax"), ("d", 2, "cmax")),
+    (4, 0, 0): (
+        ("d", 1, "cmin"),
+        ("m", 0, "m"),
+        ("d", 1, "cmax"),
+        ("u", 1, "land2"),
+        ("u", 2, "cmax"),
+    ),
+    (4, 0, 1): (
+        ("u", 1, "cmin"),
+        ("m", 0, "m"),
+        ("d", 1, "land1"),
+        ("d", 1, "cmax"),
+        ("u", 2, "cmax"),
+    ),
+    (4, 1, 1): (
+        ("d", 1, "cmax"),
+        ("d", 1, "cmin"),
+        ("m", 0, "m"),
+        ("d", 1, "cmax"),
+        ("d", 1, "land2"),
+        ("d", 2, "cmax"),
+    ),
+    (5, 0, 0): (
+        ("d", 1, "cmax"),
+        ("u", 2, "cmin"),
+        ("m", 0, "m"),
+        ("d", 1, "land1"),
+        ("d", 1, "cmax"),
+        ("u", 2, "cmax"),
+    ),
+    (5, 0, 1): (
+        ("d", 1, "cmax"),
+        ("u", 2, "cmin"),
+        ("m", 0, "m"),
+        ("d", 1, "land1"),
+        ("d", 1, "cmax"),
+        ("u", 2, "cmax"),
+    ),
+    (5, 1, 0): (
+        ("d", 1, "cmax"),
+        ("u", 2, "cmax"),
+        ("u", 1, "cmin"),
+        ("m", 0, "m"),
+        ("u", 1, "cmax"),
+        ("u", 1, "land2"),
+        ("u", 2, "cmax"),
+    ),
+    (5, 1, 1): (
+        ("d", 1, "cmax"),
+        ("u", 2, "cmax"),
+        ("u", 1, "cmin"),
+        ("m", 0, "m"),
+        ("u", 1, "cmax"),
+        ("u", 1, "land2"),
+        ("u", 2, "cmax"),
+    ),
+}
+
+
+def _fold_geometry(
+    state: _FoldState, kind: str, k: int
+) -> tuple[int, int, list[tuple[int, int, str]], str] | None:
+    """Return ``(cmin, cmax, survivor tops, victim class)`` for a wipe.
+
+    Mirrors the window :func:`_fold_moves` computes, so a symbolic amount can
+    be resolved against a state without enumerating that state's moves.
+    """
+    if kind == "d":
+        asc = sorted(state, key=lambda t: t[0])
+        vic, surv = asc[:k], asc[k:]
+        if not surv:
+            return None
+        vt = vic[-1][0]
+        q1 = min(p - s for p, s, _, _ in surv) - vt
+        tops = [(p - vt, s, c) for p, s, c, _ in surv]
+    else:
+        desc = sorted(state, key=lambda t: -t[0])
+        vic, surv = desc[:k], desc[k:]
+        if not surv:
+            return None
+        vb = min(p - s for p, s, _, _ in vic)
+        q1 = vb - max(p for p, _, _, _ in surv)
+        tops = [(vb - p, s, c) for p, s, c, _ in surv]
+    return _LIMIT + 1, _LIMIT + q1, tops, vic[0][2]
+
+
+def _fold_resolve(
+    state: _FoldState, kind: str, k: int, sym: str
+) -> tuple[_FoldOp, _FoldState] | None:
+    """Turn one symbolic step into a concrete move on ``state``.
+
+    A landing is the semantic content of a step -- it is the merge -- so it
+    is matched first, by the survivor index the symbol names; the index is
+    what transfers between words of one pattern.  ``cmax`` and ``cmin`` fall
+    back in that order.
+    """
+    want: int | None = None
+    if sym != "m":
+        geo = _fold_geometry(state, kind, k)
+        if geo is None:
+            return None
+        cmin, cmax, tops, vcls = geo
+        if sym.startswith("land"):
+            j = int(sym[4:])
+            if j >= len(tops):
+                return None
+            qt, qspan, qcls = tops[j]
+            if qspan != 0 or qcls != vcls or not cmin <= qt <= cmax:
+                return None
+            want = qt
+        else:
+            want = cmax if sym == "cmax" else cmin
+    for kk, k2, c, vids, nb in _fold_moves(state, kcap=None):
+        if kk != kind or k2 != k:
+            continue
+        if sym == "m" or c == want:
+            return (kk, k2, c, vids), nb
+    return None
+
+
+def _fold_construct(state: _FoldState) -> list[_FoldOp] | None:
+    """Emit a plan from the state's run-length word, or ``None``.
+
+    No enumeration, no beam and no backtracking: the plan is read from
+    :data:`_FOLD_SKELETONS` and each amount is solved against the live
+    state, so the work is one geometry computation per op.  Returns ``None``
+    when the pattern is not tabulated or a step does not resolve, and the
+    caller falls through to the descent.
+    """
+    st = _fold_norm(list(state))
+    if _fold_done(st):
+        return []
+    word = tuple(len(ids) for _p, _s, _c, ids in sorted(st, key=lambda t: -t[0]))
+    pat = tuple(1 if x > 1 else 0 for x in word)
+    r = len(pat)
+    mids = {(r - 1) // 2, r // 2}
+    delta = 1 if all(pat[i] for i in mids) else 0
+    skel = _FOLD_SKELETONS.get((r, delta, pat[1] if r > 1 else 0))
+    if skel is None:
+        return None
+    ops: list[_FoldOp] = []
+    for kind, k, sym in skel:
+        got = _fold_resolve(st, kind, k, sym)
+        if got is None:
+            return None
+        op, st = got
+        ops.append(op)
+    return ops if _fold_done(st) else None
+
+
 def _fold_plan(state: _FoldState) -> list[_FoldOp] | None:
     """Plan a full reduction, or ``None`` if the search gives up.
 
-    A rotation pre-pass first wipes every unwiped group once (a bottom wipe
-    at the minimum relocation lands above everything and preserves the
-    cyclic order), because a group with extent cannot be a collision target
-    and the search stalls while any remain.
+    The plan is *constructed* where the table's run-length word is one
+    :data:`_FOLD_SKELETONS` tabulates -- every word of at most five runs --
+    and only otherwise searched.  A rotation pre-pass then wipes every
+    unwiped group once (a bottom wipe at the minimum relocation lands above
+    everything and preserves the cyclic order), because a group with extent
+    cannot be a collision target and the search stalls while any remain.
     """
+    built = _fold_construct(state)
+    if built is not None:
+        return built
     st = _fold_norm(list(state))
     pre: list[_FoldOp] = []
     guard = 0
