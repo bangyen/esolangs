@@ -46,7 +46,7 @@ type _Core = tuple[tuple[int, ...], Mapping[str, int], int]
 class _Machine:
     """Stack, variables, and instruction pointer for a Modulous run."""
 
-    stk: list[int] = field(default_factory=list)
+    stk: tuple[int, ...] = ()
     var: dict[str, int] = field(default_factory=dict)
     ind: int = 0
     io: IO = field(default_factory=IO)
@@ -96,7 +96,7 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         return (
             self.ind,
-            tuple(self.stk),
+            self.stk,
             tuple(sorted(self.var.items())),
             self.io.position(),
             self._halted,
@@ -105,12 +105,12 @@ class _Machine:
     @property
     def _state(self) -> _Core:
         """The state's fields as the value the handlers work on."""
-        return (tuple(self.stk), self.var, self.ind)
+        return (self.stk, self.var, self.ind)
 
     def _restore(self, core: _Core) -> None:
         """Write a handler's result back onto the state's fields."""
         stk, var, self.ind = core
-        self.stk = list(stk)
+        self.stk = stk
         self.var = dict(var)
 
     def step(self) -> None:
@@ -151,10 +151,7 @@ class _Machine:
 
     def _print(self, mod: str, arg: list[str]) -> None:
         """Write what ``PRT`` names: a variable, or the top of the stack."""
-        if "VAR" in mod:
-            n = _named(self.var, _operand(arg, 1))
-        else:
-            n = _top(tuple(self.stk))
+        n = _named(self.var, _operand(arg, 1)) if "VAR" in mod else _top(self.stk)
         if "INT" in mod:
             self.io.print_num(n)
         else:

@@ -194,7 +194,7 @@ class TestMemoryState:
             if machine.halted:
                 break
             machine.step()
-        return machine.mem, machine.ip
+        return list(machine.mem), machine.ip
 
     def test_writing_past_the_end_pads_with_zeros(self) -> None:
         """Memory grows to reach the address, and the new cells hold 0."""
@@ -373,7 +373,7 @@ class TestVariants:
             if machine.halted:
                 break
             machine.step()
-        return machine.mem
+        return list(machine.mem)
 
 
 class TestSnapshot:
