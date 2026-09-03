@@ -464,8 +464,16 @@ def _normalize(b: _Builder) -> None:
     positions = [r.pos for r in b.live()]
     if all(p >= 0 for p in positions):
         return
+    # A live-lock is a repeated position vector, and it is reached almost
+    # at once: the step is deterministic and only the four ring cells can
+    # hold a negative row, so a cycling state repeats within a handful of
+    # steps (measured worst case: nine).  Detecting the repeat ends those
+    # calls immediately instead of spinning to a 10000-iteration cap --
+    # which is where this loop spent 4.96M of its 4.96M iterations, since
+    # the calls that *do* normalize emit only a few characters each.
     out: list[str] = []
-    for _ in range(10000):
+    seen: set[tuple[int, ...]] = {tuple(positions)}
+    while True:
         if any(p == -3 for p in positions):
             out.append(_ONE)
             # ``1`` steps left and wraps -4 -> 0; no cell read can fail.
@@ -479,7 +487,10 @@ def _normalize(b: _Builder) -> None:
         if all(p >= 0 for p in positions):
             b.run("".join(out))
             return
-    raise ConstructError("normalize live-locked")
+        key = tuple(positions)
+        if key in seen:
+            raise ConstructError("normalize live-locked")
+        seen.add(key)
 
 
 def _close(b: _Builder) -> None:
