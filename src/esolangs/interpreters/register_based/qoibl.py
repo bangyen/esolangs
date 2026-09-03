@@ -332,7 +332,7 @@ class _Machine:
 
     var: dict[int, int] = field(default_factory=dict)
     io: IO = field(default_factory=IO)
-    code: list[list[str]] = field(default_factory=list, init=False)
+    code: tuple[list[str], ...] = field(default_factory=tuple, init=False)
     ind: int = 0
 
     @classmethod
@@ -345,7 +345,7 @@ class _Machine:
         the same two lines, which is the shape that lets the two drift.
         """
         state = cls(io=io)
-        state.code = tokenize(code if isinstance(code, str) else "\n".join(code))
+        state.code = tuple(tokenize(code if isinstance(code, str) else "\n".join(code)))
         return state
 
     @property
