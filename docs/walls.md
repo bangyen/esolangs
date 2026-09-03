@@ -1588,7 +1588,7 @@ one the caller pre-transformed for it.  That is the same objection the removed
 runtime from its own `{Xi}`, as `nocomment` does with its `s`-as-NOT gate, or
 do without.
 
-## 123 (parameterized — resolved at `n <= 3`; wider arities open)
+## 123 (parameterized — resolved at `n <= 3`; wider arities constructed, gated on cost)
 
 **Resolved.  All four one-input and all sixteen two-input tables build, and
 the generator ships** (`esolangs.tools.boolean.one_two_three`).  What was
@@ -1727,15 +1727,58 @@ rather than a longer decode tail.  Random sampling never produced it;
 applying single literal edits to the plans for the *neighbouring* tables
 found it in about 2000 candidates on one core.
 
-### Still open: four or more inputs
+### Four or more inputs: the phase objection fell to a merge choreography
 
-The projection that lifts other generators' caps still does not apply, for
-the reason that always applied here: an ignored input must still be
-embedded, every fill moves the pointer, and the pointer phase *is* the
-computed value, so a trailing inert embed shifts the quantity the plan
-decodes.  65536 tables at `n == 4` also makes a stored plan per table a
-different kind of artifact than the 256 stored here.  No construction is
-known.
+This section used to say no construction was known, because "the pointer
+phase *is* the computed value, so a trailing inert embed shifts the
+quantity the plan decodes."  That bound the *phase-decode shape*, not the
+language.  The constructed route (`one_two_three_construct`, 2026-09-03)
+removes the phase from the picture entirely:
+
+- **Embeds stop computing.**  After a fill at position `P`, the common
+  string `"1"*(P+1) + "212112"` merges both branches back to position 0
+  (found by BFS; works at every `P`; the branch difference survives as a
+  tape mark at cells `{P, P+1}`).  The merge exists because `2` maps both
+  -1 and -2 to 0 — the -2 route prints a junk byte, and
+  `ScriptedIO.position()` counts reads, so the print is invisible to the
+  state-cycle detector.  With every instantiation re-synchronized after
+  every embed, an inert embed shifts nothing.
+- **The verdict is a searched composition of three proven gadgets.**  A
+  *kill* (`"1"*a + "2"`, or mark-anchored `"1"*a + "2" + "2"*X + "12"`)
+  drops one row through the -1..-3 ring onto a TRUE cell whose re-run is
+  position-periodic — a proven state revisit, exactly what the harness's
+  cycle detector needs.  *Boosts* (a plain `33`-test whose TRUE set
+  excludes the victim) move blockers; *ring rounds* (descend, pop)
+  reshuffle relative residues mod 4, the one thing straight walks cannot
+  change.  A bounded depth-first search composes them; greedy adoption
+  was tried first and whack-a-moled — each accepted move irreversibly
+  reshapes all rows, so fixing one table regressed another — and the
+  backtracking is what made the per-table results monotone.
+- **Nothing ships on the model's word.**  Every candidate move is
+  validated on an exact tracked model of all `2**n` rows; every finished
+  template is replayed row by row on the real interpreter before it is
+  returned; and the whole build spends a deterministic work budget
+  (simulated commands, not wall clock), raising `ValueError` when it
+  drains.
+
+**Verified**: the construction rebuilds all 256 three-input tables,
+replayed exhaustively on the interpreter (the shipped generator still
+serves `n <= 3` from the stored plans, which are far shorter — 13-23
+characters against 582-5818).  At four inputs `0`*16 builds and verifies
+(10659 characters, ~4% of the work budget).
+
+**What remains is cost, not expressiveness.**  Kill-heavy four-input
+tables exhaust the budget: with sixteen live rows the boost and deep-dip
+moves are blocked until one mod-4 residue class is free (a pigeonhole —
+a descend-and-pop's `2` reads stdin if any dipped row sits at -3), and
+the current alignment pass often cannot free a class without colliding
+rows it must keep distinct.  A row that has only ever walked right has
+no TRUE cell above its position, so on a fresh state no boost can fire
+at all until a ring round deposits one — that interaction, found by
+staged profiling, is where AND-4's search stalls.  Residue-disciplined
+separation offsets (choosing split offsets to keep at most three classes
+occupied from the start) are the obvious next lever; nothing structural
+stands behind the refusal.
 
 A *runtime* (reading) two-input table remains unproduced, and the sweeps run
 here do not bear on it: the shortest program satisfying the contract at all

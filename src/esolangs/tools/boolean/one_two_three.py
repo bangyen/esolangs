@@ -51,9 +51,10 @@ Coverage
 
 All four one-input, all sixteen two-input and all 256 three-input tables
 are covered by the plans below, over templates carrying each placeholder
-once in name order.  A wider table raises :class:`ValueError`, the shape
-``%^2^-1`` already uses for the arities it does not derive; see
-``docs/limitations.md``.
+once in name order.  Wider tables are handed to the constructed route in
+:mod:`esolangs.tools.boolean.one_two_three_construct`, which builds what
+its bounded searches converge on and raises :class:`ValueError` for the
+rest; see ``docs/limitations.md``.
 
 Three inputs did not fall to the lockstep search that settled the first
 two.  Shortest-first enumeration reaches only 148 of the 256 tables by ten
