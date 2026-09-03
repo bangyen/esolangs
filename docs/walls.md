@@ -365,8 +365,9 @@ The generalisation was not a guess.  The one three-input suffix that was
 stored at the time interleaves `<` into its bracket run, so a family no wider
 than "the same run with a `<` in it" was already known to reach columns no
 `'[' * k` reaches; what the measurement settled is *how many*.  That stored
-suffix is now derived rather than stored — see `_rescue`, which is the same
-family one `<` deeper.
+suffix is now derived rather than stored — see `_insert_suffixes`, which
+generates exactly this family (one `<` inserted into a bracket run) for every
+length.
 
 **Why 23.9% and not 100%.**  The remaining 76% is not shown unreachable —
 only unreached by this family.  Two axes were measured and are real headroom,
@@ -459,11 +460,12 @@ error is worth recording, because the section was the standing argument for
 not trying the axis at all.
 
 **The count was stale.**  Re-measured, `_derived_plans` places 15404
-fully-essential four-input tables and `_flipped_plans` 45538 more:
-**60942 of 64594 (94.35%)**, leaving **3652**, not 60546/4048.  Checked rather
-than counted -- 40 sampled flip-placed tables were replayed through
-`_flipped_staging` and every one printed all 16 rows correctly on the shipped
-interpreter.
+fully-essential four-input tables and the flipped-embed pass 45538 more:
+**60942 of 64594 (94.35%)**, leaving **3652**, not 60546/4048 (see the flip
+coordinate above for the sampled verification behind this figure).  That pass
+has since been deleted — `_mux` builds all 49190 tables it placed, swept
+exhaustively — so the measurement is historical, not a live code path; see the
+note above `_MUX_BASE` in `minifuck.py`.
 
 **The refusal rested on a coupling that is not in the language.**  It was
 right that a permuted embed *as `_embed` spells it* emits the `{Xi}` out of
@@ -1029,7 +1031,7 @@ reason it was at four inputs — a miss falls through to the searches, so
 admitting the arity cannot cost coverage.  The only obstacle was mechanical:
 the whole-arity spelling will not build a `2**32`-entry dict.  So five inputs
 derives **table-major** — the same loops in the same order, with `wanted`
-narrowed to the one table and its complement (`_TABLE_MAJOR_ARITIES`).
+narrowed to the one table and its complement (`_STAGED_ARITIES`).
 
 The flagship is five-input XOR, and it is the pointed case for the same
 reason four-input XOR was: this file records XOR as the table the searches
@@ -1540,9 +1542,8 @@ costing a round to re-derive:
   reconverges for free afterwards.
 - **Length-bounded suffix enumeration.**  A length-8 sweep of mixed suffixes
   returned zero in 9 seconds; the pair the enumeration misses
-  (`01101101` / `10010010`, once stored and now derived by `_rescue`) closes
-  with a suffix interleaving two `<` into the bracket run, so no `'[' * k`
-  ever spells it.  Its column is
+  (`01101101` / `10010010`) closes with a stored suffix interleaving two `<`
+  into the bracket run, so no `'[' * k` ever spells it.  Its column is
   *abundant* — 14375 of 804600 sparse suffixes leave it standing — but the
   walk's prefix-XOR rewrites the very cell, so the answer is produced easily
   and destroyed almost every time.
@@ -2063,7 +2064,7 @@ linear scan rather than a genuine representation limit.  See
   diverging at a `t`.  Output therefore factors as `A(b1) ++ B(b2)`, and a
   one-character output forces one factor empty.  This is an induction over
   unbounded length, not a bounded search: the axiom audit
-  (`PctWallCheck.lean`) reports only `propext`, `Classical.choice` and
+  (`AxiomAudit.lean`) reports only `propext`, `Classical.choice` and
   `Quot.sound` — no `sorryAx`, no `Lean.ofReduceBool`.  The Lean `stepCmd`
   was differentially tested against the shipped interpreter over 44,280
   program/input pairs with zero mismatches.
@@ -2153,11 +2154,10 @@ linear scan rather than a genuine representation limit.  See
 
   This does **not** contradict the paragraph above, and neither does the
   band construction below: the reset still cannot *separate* rows that
-  agree, and the `l` tail bound stands as stated.  It merges, and the ladder is what supplies an
-  order for it to merge along — the separation is done by the weights before
-  the reset ever fires, and the printing tail is the ordinary gap-1 one.  The
-  amplify-then-clamp tail still never fires, and the tail bound stands as
-  stated.
+  agree — it merges, and the ladder supplies an order for it to merge
+  along.  The separation is done by the weights before the reset ever
+  fires, and the printing tail is the ordinary gap-1 one; the
+  amplify-then-clamp tail still never fires.
 
   Two things the construction turns on, both of which cost a wrong answer
   first.  Stage one must stay **nonpositive**, since the reset never fires on
