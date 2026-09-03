@@ -13,21 +13,6 @@ and a boolean-generator capability (input, a value conditional, output).
 Per-language verdicts on everything ruled out are in the
 assessed-and-rejected ledger in `docs/limitations.md`.
 
-- **Super SNUSP** — a SNUSP derivative with a charcode-indexed opcode table:
-  `,` KEY (char in) and `@` IN (decimal in), `.` EMIT and `#` OUT, and two
-  value conditionals, `?` SKIPZ (skip if the cell is zero) and `` ` `` SKIPN
-  (skip if negative).  Native `^` XOR, `&` AND, `|` OR and shifts make boolean
-  tables unusually cheap: a two-input XOR is **15 characters**
-  (`48{,-> ,-<^{>^.`) against a suite median of 218, and four more of the
-  sixteen two-input tables price at 12-15.  Those five were executed under an
-  interpreter written from the wiki table, not modelled — see
-  `notes/twod-unimplemented-audit.md`.  Base SNUSP is wiki-Implemented with
-  external interpreters, but Super SNUSP has none, so it is a real gap.
-  The all-16 two-input sweep is now executed: the five native forms remain
-  12-15 characters, and the other eleven have one-row algebraic-normal-form
-  witnesses at 20-38 (median 26.5).  They consume both inputs and avoid `=`
-  RAND, so the generator has a deterministic base case for every two-input
-  table.  The next work is the interpreter and the higher-arity construction.
 - **function x(y)** — Turing-complete: functions with defaults, `[~]`/`` `~ ``
   input, `[a]`/`` `a `` output, comparison operators, a ternary, recursion; a
   boolean generator branches on a comparison and prints 0/1.
