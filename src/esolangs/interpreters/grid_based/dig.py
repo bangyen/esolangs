@@ -238,8 +238,15 @@ class _Machine:
         the tests read them -- so they stay; the one assignment a step
         makes is here rather than scattered through the rules above.
         """
-        code, self.row, self.col, self.move, self.mole, self.num, self._done = state
-        self.code = code
+        (
+            self.code,
+            self.row,
+            self.col,
+            self.move,
+            self.mole,
+            self.num,
+            self._done,
+        ) = state
 
     def step(self) -> None:
         """Execute the cell under the mole, then move it one cell.

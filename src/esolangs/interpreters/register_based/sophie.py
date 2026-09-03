@@ -227,8 +227,7 @@ class _Machine:
         the tests read them -- so they stay; the one assignment a step
         makes is here rather than scattered through the rules above.
         """
-        self.acc, self.ind, self.skp, stk, self._halted_by_command = state
-        self.stk = stk
+        self.acc, self.ind, self.skp, self.stk, self._halted_by_command = state
 
     def step(self) -> None:
         """Execute one command, advancing (or jumping) the cursor.

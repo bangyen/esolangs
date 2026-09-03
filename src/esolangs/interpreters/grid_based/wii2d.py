@@ -215,20 +215,6 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         return (self.row, self.col, self.vel, self.acc, self.io.position())
 
-    @property
-    def _state(self) -> _State:
-        """The machine's fields as the value the transition works on."""
-        return (self.row, self.col, self.vel, self.acc, self._done)
-
-    def _restore(self, state: _State) -> None:
-        """Write a transition's result back onto the machine's fields.
-
-        The fields are this class's published shape -- the VM's views and
-        the tests read them -- so they stay; the one assignment a step
-        makes is here rather than scattered through the rules above.
-        """
-        self.row, self.col, self.vel, self.acc, self._done = state
-
     def step(self) -> None:
         """Execute the cell under the pointer, then move one cell.
 
@@ -245,8 +231,12 @@ class _Machine:
             self.io.print_char(chr(self.acc))
         turn = draw(self._rng, 4) if op == "?" else None
 
-        self._restore(
-            _advance(self._state, op, self._move_pointer, self._find_closest_at, turn)
+        (self.row, self.col, self.vel, self.acc, self._done) = _advance(
+            (self.row, self.col, self.vel, self.acc, self._done),
+            op,
+            self._move_pointer,
+            self._find_closest_at,
+            turn,
         )
 
 

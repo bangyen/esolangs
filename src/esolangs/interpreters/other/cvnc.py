@@ -548,11 +548,6 @@ class _Machine:
             self.io.position(),
         )
 
-    @property
-    def _state(self) -> _Core:
-        """The machine's fields as the value the handlers work on."""
-        return (self.accumulator, self.deque, self.function, self.pointer)
-
     def step(self) -> None:
         """Execute one command, advancing the pointer.
 
@@ -576,7 +571,7 @@ class _Machine:
             byte = self.io.input_char()
 
         core, output = _advance(
-            self._state,
+            (self.accumulator, self.deque, self.function, self.pointer),
             token,
             self.starts,
             self.pairs,

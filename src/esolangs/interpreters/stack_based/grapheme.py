@@ -489,19 +489,6 @@ class _Machine:
             self.io.position(),
         )
 
-    @property
-    def _state(self) -> _State:
-        """The machine's fields as the value the transition works on.
-
-        No copying: both are already the immutable values the transition
-        returns, so this is a read rather than a conversion.
-        """
-        return (self.vars, self.frames)
-
-    def _restore(self, state: _State) -> None:
-        """Write a transition's result back onto the machine's fields."""
-        self.vars, self.frames = state
-
     def _apply(self, fx: _StackFx) -> None:
         """Apply a step's stack effects, in order: pops, reverse, pushes.
 
@@ -533,8 +520,9 @@ class _Machine:
         # A frame whose code has run out does no work and costs no step: it
         # only flushes and pops, which the transition does.
         if pc >= len(code):
-            state, fx = _finished(self._state, self.stack, (0, (), False))
-            self._restore(state)
+            (self.vars, self.frames), fx = _finished(
+                (self.vars, self.frames), self.stack, (0, (), False)
+            )
             self._apply(fx)
             return
 
@@ -550,8 +538,9 @@ class _Machine:
         if mode == "" and code[pc] == "W":
             line_in = self.io.input_str()
 
-        state, fx, output = _advance(self._state, self.stack, line_in)
-        self._restore(state)
+        (self.vars, self.frames), fx, output = _advance(
+            (self.vars, self.frames), self.stack, line_in
+        )
         self._apply(fx)
 
         if output is not None:

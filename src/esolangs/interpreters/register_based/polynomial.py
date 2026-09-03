@@ -354,11 +354,6 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         return (self.ind, self.reg, self.io.position())
 
-    @property
-    def _state(self) -> _State:
-        """The machine's fields as the value the transition works on."""
-        return (self.reg, self.ind)
-
     def step(self) -> None:
         """Execute one instruction, advancing the cursor.
 
@@ -381,7 +376,9 @@ class _Machine:
             val = self.io.input_str() + chr(0)
             byte = ord(val[0])
 
-        (self.reg, self.ind), output = _advance(self._state, self.instructions, byte)
+        (self.reg, self.ind), output = _advance(
+            (self.reg, self.ind), self.instructions, byte
+        )
         if output is not None:
             self.io.print_char(output)
 
