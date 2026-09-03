@@ -158,7 +158,7 @@ class _Machine:
         self.rows = len(text)
 
         self.ptr = 0
-        self.tape: list[list[int]] = [[0, 0]]  # value, touched
+        self.tape: _Tape = ((0, 0),)  # value, touched
         self.jmp = False
         self.ind = 0
         self.pos = (0, 0, 0)
@@ -205,7 +205,7 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         return (
             self.ptr,
-            tuple(tuple(cell) for cell in self.tape),
+            self.tape,
             self.jmp,
             self.ind,
             tuple(tuple(laser) for laser in self.lsrs),
@@ -216,7 +216,7 @@ class _Machine:
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
         return (
-            tuple((v, t) for v, t in self.tape),
+            self.tape,
             self.ptr,
             tuple((r, c, d) for r, c, d in self.lsrs),
             self.ind,
@@ -232,7 +232,7 @@ class _Machine:
         a step makes is here rather than in the rules above.
         """
         tape, self.ptr, lsrs, self.ind, self.jmp, self.pos = state
-        self.tape = [list(cell) for cell in tape]
+        self.tape = tape
         self.lsrs = [list(laser) for laser in lsrs]
 
     def step(self) -> None:
