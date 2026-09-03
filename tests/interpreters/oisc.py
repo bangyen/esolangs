@@ -28,9 +28,9 @@ def memory(instructions, cells=None):
     return " ".join(map(str, mem))
 
 
-def run_program(run, code, stdin="", limit=100_000):
+def run_program(run, code, stdin=""):
     """Run ``code`` through ``run`` (the interpreter's ``run``) and return output."""
     io = ScriptedIO(stdin)
     with contextlib.suppress(EOFError):
-        run(code, io, limit=limit)
+        run(code, io)
     return io.getvalue()

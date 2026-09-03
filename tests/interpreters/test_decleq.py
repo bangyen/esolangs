@@ -2,12 +2,16 @@
 
 Tests cover the ``b = a - 1`` countdown OISC, the memory-mapped I/O
 (``-2`` output, ``-1`` input), the jump and fall-through, and the documented
-halt/limit conventions.
+halt conventions.
+
+There is no per-run instruction cap to test: a self-decrementing loop grows
+without bound and never revisits a snapshot (see the module docstring), so
+esolangs.run's wall-clock timeout is the guard, tested generically in
+test_api.py's test_run_timeout_halts_runaway_program.
 """
 
 import pytest
 
-from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.decleq import run
 from tests.interpreters.contract import (
@@ -18,8 +22,8 @@ from tests.interpreters.contract import (
 from tests.interpreters.oisc import memory, run_program
 
 
-def _run(code, stdin="", limit=100_000):
-    return run_program(run, code, stdin=stdin, limit=limit)
+def _run(code, stdin=""):
+    return run_program(run, code, stdin=stdin)
 
 
 class TestCountdown:
@@ -62,37 +66,29 @@ class TestHaltAndErrors:
     def test_jump_off_the_end_halts(self) -> None:
         assert _run(memory([[10, 10, 10_000]], {10: 1})) == ""
 
-    def test_looping_program_hits_the_limit(self) -> None:
-        # decrement cell 10 from a large value, looping back to itself.
-        code = memory([[10, 10, 0]], {10: 10**6})
-        io = ScriptedIO("")
-        with pytest.raises(HaltError):
-            run(code, io, limit=100)
+    def test_a_self_decrementing_loop_never_revisits_a_snapshot(self) -> None:
+        """The growth claim the module docstring makes, executed.
 
-    def test_the_default_limit_is_ten_thousand(self) -> None:
-        """The default cuts a run off at exactly 10,000 instructions.
-
-        Every other test passes ``limit=`` explicitly, so the default was
-        never the bound under test and could take any nearby value unnoticed.
-        ``run_with_limit`` checks ``halted`` at the *top* of each pass, so a
-        program taking exactly ``limit`` steps still exhausts the loop and
-        raises -- which makes 10,000 the count that separates the real
-        default from one a single step larger, and 9,998 the companion that
-        pins it from below.
-
-        The program is a countdown of ``n`` passes behind a one-instruction
-        prologue, so it runs 2n steps: cell 11 counts down and jumps off the
-        end at zero, while the cell-12 source keeps the loop's tail
-        instruction jumping back to it.
+        ``memory[b] = memory[a] - 1`` with ``a == b`` and a jump to self
+        walks the cell down by exactly one every pass, so the state the
+        cycle detector hashes is new every time.  This is what makes
+        ``run_until_halt_or_cycle`` provably unable to terminate on the
+        program, and why the interpreter has no instruction cap of its own
+        to catch it -- that is ``esolangs.run(timeout=)``'s job.
         """
+        from esolangs.interpreters.register_based.decleq import _Machine
 
-        def countdown(n: int) -> str:
-            mem = [9, 10, 0, 11, 11, 99, 12, 13, 3, 5, 0, n, 0, 0]
-            return " ".join(map(str, mem))
-
-        with pytest.raises(HaltError):
-            run(countdown(5000), ScriptedIO(""))
-        run(countdown(4999), ScriptedIO(""))
+        # a == b == 10 -- the operand cells ARE the instruction, so each
+        # pass decrements what it just read and jumps back to itself.
+        code = memory([[10, 10, 0]], {})
+        machine = _Machine(code, ScriptedIO(""))
+        seen = set()
+        for _ in range(500):
+            assert not machine.halted
+            machine.step()
+            snapshot = machine.snapshot()
+            assert snapshot not in seen
+            seen.add(snapshot)
 
     def test_malformed_token(self) -> None:
         with pytest.raises(ValueError, match="malformed memory token"):

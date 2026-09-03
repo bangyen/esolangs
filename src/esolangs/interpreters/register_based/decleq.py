@@ -22,12 +22,12 @@ property of the program.  A snapshot that dropped it would call two
 genuinely different situations the same.
 
 :class:`_Machine` is the mutable shell the interpreter protocol requires
-(``esolangs.vm`` wraps it and ``run_with_limit`` steps it).  It holds one
-``_State`` and rebinds it each step, so the mutation lives in exactly one
-assignment and every rule about what Decleq *does* stays in the pure layer.
-The two memory-mapped I/O opcodes are the one place an effect happens, and
-``step`` does them before calling the pure transition -- effects in the
-shell, rules in the core.
+(``esolangs.vm`` wraps it, and ``run_until_halt_or_cycle`` steps it to
+prove a hang where it can).  It holds one ``_State`` and rebinds it each
+step, so the mutation lives in exactly one assignment and every rule about
+what Decleq *does* stays in the pure layer.  The two memory-mapped I/O
+opcodes are the one place an effect happens, and ``step`` does them before
+calling the pure transition -- effects in the shell, rules in the core.
 
 Documented decisions for gaps in the wiki stub:
 - ``a b c`` stores ``memory[a] - 1`` into ``memory[b]`` (the literal reading
@@ -36,22 +36,26 @@ Documented decisions for gaps in the wiki stub:
 - the optional memory-mapped I/O is implemented: ``a = -2`` outputs
   ``memory[b]`` as a byte, ``a = -1`` reads a byte of input into
   ``memory[b]``, and both fall through rather than jump;
-- cells are unbounded integers, the pointer halts when it moves off the end
-  of memory, exhausted input raises :class:`EOFError` (repo-wide
-  convention), and a program that has not halted after ``limit``
-  instructions is rejected with :class:`HaltError`.
+- cells are unbounded integers, and the pointer halts when it moves off
+  the end of memory; exhausted input raises :class:`EOFError` (repo-wide
+  convention).
 
 Malformed programs raise :class:`ValueError`.
 
-Every instruction decrements a cell, so a loop never revisits a snapshot and
-the ``limit`` stays as the run() backstop for that class.
+There is no per-run instruction cap here.  A self-decrementing cell (``a b
+c`` with ``a == b`` and a positive start value, jumping to itself) never
+revisits a snapshot -- verified by construction: ``memory[b]`` walks down
+by exactly one every pass, so the state the cycle detector hashes is new
+every time, forever, on unbounded integers.  ``run_until_halt_or_cycle``
+provably cannot terminate on that program, which is exactly the class
+``esolangs.run``'s wall-clock ``timeout`` exists for; a step count local to
+this interpreter would only have duplicated it.
 """
 
 from __future__ import annotations
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.memory import parse_int_memory as _parse
-from esolangs.interpreters.oisc_cli import main_with_limit, run_with_limit
 
 _OUT = -2
 _IN = -1
@@ -231,10 +235,16 @@ class _Machine:
         self.state = _advance(self.state, byte)
 
 
-def run(code: str, io: IO, limit: int = 10_000) -> None:
-    """Run a Decleq program, halting after ``limit`` instructions."""
-    run_with_limit(_Machine(code, io), limit)
+def run(code: str, io: IO) -> None:
+    """Run a Decleq program to completion."""
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":
-    main_with_limit(run)
+    import sys
+
+    if len(sys.argv) > 1:
+        with open(sys.argv[1]) as file:
+            run(file.read(), IO())
