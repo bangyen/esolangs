@@ -25,8 +25,8 @@ Exits nonzero on any violation.
 
 import inspect
 import sys
-
-from esolangs import tools
+from collections.abc import Callable
+from typing import Any
 
 # Boolean generators that legitimately take something other than a plain
 # truth-table string, with the reason each one does.
@@ -46,7 +46,7 @@ _ALLOWED = {
 _TEXT_EXTRA = {"width"}
 
 
-def _public(module: object) -> list[tuple[str, object]]:
+def _public(module: object) -> list[tuple[str, Callable[..., Any]]]:
     """Return the generator functions a package re-exports."""
     return [
         (name, getattr(module, name))
@@ -57,12 +57,12 @@ def _public(module: object) -> list[tuple[str, object]]:
     ]
 
 
-def _check_text(name: str, fn: object) -> list[str]:
+def _check_text(fn: Callable[..., Any]) -> list[str]:
     """Return the ways a text generator departs from ``(text[, width])``."""
     params = list(inspect.signature(fn).parameters.values())
     if not params:
         return ["takes no arguments; expected (text)"]
-    issues = []
+    issues: list[str] = []
     if params[0].name != "text":
         issues.append(f"first parameter is {params[0].name!r}, expected 'text'")
     for extra in params[1:]:
@@ -75,18 +75,16 @@ def _check_text(name: str, fn: object) -> list[str]:
     return issues
 
 
-def _check_boolean(name: str, fn: object) -> list[str]:
+def _check_boolean(name: str, fn: Callable[..., Any]) -> list[str]:
     """Return the ways a boolean generator departs from ``(truth_table)``."""
     if name in _ALLOWED:
         return []
     params = list(inspect.signature(fn).parameters.values())
     if not params:
         return ["takes no arguments; expected (truth_table)"]
-    issues = []
+    issues: list[str] = []
     if params[0].name != "truth_table":
-        issues.append(
-            f"first parameter is {params[0].name!r}, expected 'truth_table'"
-        )
+        issues.append(f"first parameter is {params[0].name!r}, expected 'truth_table'")
     for extra in params[1:]:
         if extra.default is inspect.Parameter.empty:
             issues.append(
@@ -102,7 +100,7 @@ def main() -> int:
 
     failures = 0
     for name, fn in _public(text_pkg):
-        issues = _check_text(name, fn)
+        issues = _check_text(fn)
         if issues:
             failures += 1
             print(f"text.{name}: " + "; ".join(issues))
