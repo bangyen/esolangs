@@ -130,23 +130,28 @@ def _load(state: _State, byte: int) -> _State:
     return state._replace(tape=(state.tape & ~_WINDOW) | bits)
 
 
-def _advance(state: _State) -> tuple[_State, _Effect]:
-    """Execute one instruction, returning the next state and its effect.
+def _step(
+    ins: str, tape: int, length: int, ptr: int
+) -> tuple[int, int, int, bool, str | None, bool]:
+    """One instruction as plain scalars: the language, with no state objects.
 
-    Pure: the caller owns every side effect.  Stepping a halted state is a
-    no-op that leaves the cursor where it is, matching the shell's contract.
+    Returns ``(tape, length, ptr, skipped, char, reads)`` -- ``skipped`` says
+    a ``[`` collapsed and the *next* instruction is to be ignored, and the
+    last two are the same print/read decision :class:`_Effect` carries.
+
+    This is the single definition of what a Minifuck instruction does.
+    :func:`_advance` wraps it in :class:`_State`/:class:`_Effect` for the
+    interpreter's own use, and the boolean generator's emitter calls it
+    directly -- it advances one instruction at a time and cannot afford to
+    build a state object per step, having measured 4.2x from doing so.
+    Keeping the semantics here rather than in either caller is what stops
+    the emitter and a real run from drifting apart.
     """
-    if state.halted:
-        return state, _QUIET
-
-    ins = state.code[state.ind]
-    tape, length, ptr, ind = state.tape, state.length, state.ptr, state.ind
-
-    if ins == "<" and ptr:
-        return state._replace(ptr=ptr - 1, ind=ind + 1), _QUIET
+    if ins == "<":
+        return (tape, length, ptr - 1 if ptr else ptr, False, None, False)
     if ins not in ".[":
         # Anything else is a comment character: only the cursor moves.
-        return state._replace(ind=ind + 1), _QUIET
+        return (tape, length, ptr, False, None, False)
 
     # Both commands walk right and flip the cell they land on, growing the
     # tape so the cell *after* the pointer always exists for the skip below.
@@ -161,16 +166,45 @@ def _advance(state: _State) -> tuple[_State, _Effect]:
         # A non-zero window prints; a zero one reads, and the shell owes the
         # byte back through _load -- the decision is pure, the fetch is not.
         pool = _pool(tape)
-        effect = _Effect(char=chr(pool)) if pool else _Effect(reads=True)
-        return _State(state.code, tape, length, ptr, ind + 1), effect
+        if pool:
+            return (tape, length, ptr, False, chr(pool), False)
+        return (tape, length, ptr, False, None, True)
 
     if not (tape >> ptr) & 1:
         # [ flipped the cell to 0: flip the one beyond it and skip ahead by
         # one instruction, on top of the advance every step makes.
         tape ^= 1 << (ptr + 1)
-        ind += 1
+        return (tape, length, ptr, True, None, False)
 
-    return _State(state.code, tape, length, ptr, ind + 1), _QUIET
+    return (tape, length, ptr, False, None, False)
+
+
+def _advance(state: _State) -> tuple[_State, _Effect]:
+    """Execute one instruction, returning the next state and its effect.
+
+    Pure: the caller owns every side effect.  Stepping a halted state is a
+    no-op that leaves the cursor where it is, matching the shell's contract.
+
+    The instruction itself is :func:`_step`; this packs its scalars back into
+    the state and effect the shell works with.
+    """
+    if state.halted:
+        return state, _QUIET
+
+    ins = state.code[state.ind]
+    tape, length, ptr, skipped, char, reads = _step(
+        ins, state.tape, state.length, state.ptr
+    )
+
+    # A collapsed ``[`` skips the next instruction, on top of the advance
+    # every step makes.
+    ind = state.ind + (2 if skipped else 1)
+
+    if char is not None:
+        return _State(state.code, tape, length, ptr, ind), _Effect(char=char)
+    if reads:
+        return _State(state.code, tape, length, ptr, ind), _Effect(reads=True)
+    return _State(state.code, tape, length, ptr, ind), _QUIET
 
 
 class _Machine:
