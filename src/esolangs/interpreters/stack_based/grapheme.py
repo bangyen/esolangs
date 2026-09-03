@@ -417,34 +417,19 @@ def _advance(
 class _Machine:
     """Shared stack, variables, step counter, and call stack for a run."""
 
-    def __init__(self, io: IO) -> None:
-        self.stack: list[_Value] = []
-        self.vars: _Vars = {}
-        self.io = io
-        self.frames: tuple[_Frame, ...] = ()
-        # Where the top-level frame ends, so ``ip`` can still report a
-        # position once every frame has been popped.  ``of()`` sets it with
-        # the frame it pushes; a machine built bare has no program yet.
-        self._top_length = 0
-
-    @classmethod
-    def of(cls, code: str, io: IO) -> _Machine:
-        """Build a machine running ``code`` as its top-level frame.
-
-        The constructor takes no program -- a machine is a shared stack that
-        frames run against -- so validating the alphabet and pushing the
-        first frame had to happen in the caller.  ``run`` and the VM adapter
-        each carried their own copy of both, which is the shape that lets
-        the two drift.
-        """
+    def __init__(self, code: str, io: IO) -> None:
+        """Build a machine running ``code`` as its top-level frame."""
         if any(c not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" for c in code):
             raise ValueError(
                 "Grapheme programs may only contain uppercase Latin letters"
             )
-        machine = cls(io)
-        machine.frames = (_frame(code, 0),)
-        machine._top_length = len(code)
-        return machine
+        self.stack: list[_Value] = []
+        self.vars: _Vars = {}
+        self.io = io
+        self.frames: tuple[_Frame, ...] = (_frame(code, 0),)
+        # Where the top-level frame ends, so ``ip`` can still report a
+        # position once every frame has been popped.
+        self._top_length = len(code)
 
     @property
     def halted(self) -> bool:
@@ -548,7 +533,7 @@ class _Machine:
 
 def run(code: str, io: IO) -> None:
     """Run a Grapheme program to completion."""
-    machine = _Machine.of(code, io)
+    machine = _Machine(code, io)
     while not machine.halted:
         machine.step()
 

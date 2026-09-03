@@ -23,7 +23,7 @@ Exhausted input raises :class:`EOFError` (the repo-wide convention).
 import re
 import sys
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -42,32 +42,29 @@ _TOKEN = re.compile(r'\[([^\[\]\"]*("[^"]*")?)]')
 type _Core = tuple[tuple[int, ...], dict[str, int], int]
 
 
-@dataclass
+@dataclass(init=False)
 class _Machine:
     """Stack, variables, and instruction pointer for a Modulous run."""
 
-    stk: tuple[int, ...] = ()
-    var: dict[str, int] = field(default_factory=dict)
-    ind: int = 0
-    io: IO = field(default_factory=IO)
-    tokens: tuple[str, ...] = field(default_factory=tuple, init=False)
-    _halted: bool = field(default=False, init=False)
+    stk: tuple[int, ...]
+    var: dict[str, int]
+    ind: int
+    io: IO
+    tokens: tuple[str, ...]
+    _halted: bool
     # Overrides ``RND``'s draw, which is what makes a stepped run
     # reproducible; ``None`` draws for real.
-    rng: Randomness | None = None
+    rng: Randomness | None
 
-    @classmethod
-    def of(cls, code: str, io: IO, rng: Randomness | None = None) -> "_Machine":
-        """Build a state for ``code``: its four variables, and its tokens.
-
-        ``tokens`` cannot be a constructor field -- it is stored parsed, not
-        as text -- so without this every caller had to seed the variables
-        and extract the tokens by hand.  ``run`` and the VM adapter each
-        carried their own copy, which is the shape that lets the two drift.
-        """
-        state = cls(var={f"VAR{k}": 0 for k in range(1, 5)}, io=io, rng=rng)
-        state.tokens = tuple(k[0] for k in _TOKEN.findall(code))
-        return state
+    def __init__(self, code: str, io: IO, rng: Randomness | None = None) -> None:
+        """Build a state for ``code`` with its variables and parsed tokens."""
+        self.stk = ()
+        self.var = {f"VAR{k}": 0 for k in range(1, 5)}
+        self.ind = 0
+        self.io = io
+        self.tokens = tuple(k[0] for k in _TOKEN.findall(code))
+        self._halted = False
+        self.rng = rng
 
     @property
     def halted(self) -> bool:
@@ -338,7 +335,7 @@ def run(code: str, io: IO, rng: Randomness | None = None) -> None:
     only ``run`` could not pin the draw without patching ``secrets``
     globally.  This is the signature COD, WII2D and LaserFuck take.
     """
-    state = _Machine.of(code, io, rng)
+    state = _Machine(code, io, rng)
 
     while not state.halted:
         state.step()

@@ -40,7 +40,7 @@ explicit stack; here the language defines the statement as the step.
 import re
 import sys
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -326,27 +326,21 @@ def _arithmetic(
     raise ValueError("unrecognized arithmetic operator")
 
 
-@dataclass
+@dataclass(init=False)
 class _Machine:
     """Per-run state for a Qoibl interpreter: variables and the code cursor."""
 
-    var: dict[int, int] = field(default_factory=dict)
-    io: IO = field(default_factory=IO)
-    code: tuple[list[str], ...] = field(default_factory=tuple, init=False)
-    ind: int = 0
+    var: dict[int, int]
+    io: IO
+    code: tuple[list[str], ...]
+    ind: int
 
-    @classmethod
-    def of(cls, code: str | list[str], io: IO) -> "_Machine":
-        """Build a state for ``code``, tokenized.
-
-        ``code`` cannot be a constructor field: it is stored tokenized, not
-        as text.  Without this, every caller had to tokenize and assign it
-        by hand -- ``run`` and the VM adapter each with their own copy of
-        the same two lines, which is the shape that lets the two drift.
-        """
-        state = cls(io=io)
-        state.code = tuple(tokenize(code if isinstance(code, str) else "\n".join(code)))
-        return state
+    def __init__(self, code: str | list[str], io: IO) -> None:
+        """Build a state for ``code``, tokenized."""
+        self.var = {}
+        self.io = io
+        self.code = tuple(tokenize(code if isinstance(code, str) else "\n".join(code)))
+        self.ind = 0
 
     @property
     def halted(self) -> bool:
@@ -406,7 +400,7 @@ def run(code: list[str] | str, io: IO) -> None:
     program is one character stream, since the language draws no distinction
     between a newline and any other ignored character.
     """
-    state = _Machine.of(code, io)
+    state = _Machine(code, io)
 
     while not state.halted:
         state.step()
