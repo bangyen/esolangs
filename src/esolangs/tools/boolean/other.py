@@ -5,6 +5,8 @@
 # category; they are re-exported here so this module stays the import site
 # the package and tests already use.
 
+from itertools import pairwise
+
 from esolangs.tools.boolean.helpers import (
     _ASCII_ZERO,
     _maybe_complement,
@@ -567,12 +569,14 @@ def taglate(truth_table: str) -> str:
     The rotation count is the queue length at that point, which before any
     command has run is the seed's -- computed, not searched.
 
-    Two shapes are left alone.  A *gapped* dependency set (a table needing
-    inputs 0 and 2 but not 1) would want a discard between the reduced
-    program's own reads, where the queue is not what the following reduce
-    block assumes.  And an odd-sized dependency set would make the reduced
-    program ghost-pad itself and expect an input the stream does not carry,
-    so the window is widened by one adjacent ignored input to keep it even.
+    A discard can also go *between* the reduced program's reads.  After its
+    ``j``-th ``h``, the queue has ``len(seed) + j`` cells; ``h`` then appends
+    the ignored input, so rotating that many times brings the new tail cell
+    to the front for ``f``.  This restores the exact queue the next command
+    expects, allowing a gapped set such as inputs 0 and 2.  An odd-sized
+    dependency set would make the reduced program ghost-pad itself and
+    expect an input the stream does not carry, so the set is widened by one
+    adjacent ignored input to keep it even.
     """
     n = _validate_truth_table(truth_table)
 
@@ -585,36 +589,37 @@ def taglate(truth_table: str) -> str:
     # the front, and ``f`` drops it, leaving the queue exactly as it was so
     # the reduces' positional arithmetic is undisturbed.
     #
-    # Only a *contiguous* run of used inputs is handled.  A gapped set (a
-    # table depending on inputs 0 and 2, say) would need a discard between
-    # the reduced program's own reads, and the queue there is not what the
-    # following reduce block assumes -- the output comes out arithmetically
-    # corrupted rather than merely permuted.
     used = essential_inputs(truth_table, n)
     # A constant table depends on nothing, so it reduces to the smallest
     # valid table there is -- a one-input constant, never the length-1
     # table, which is not a valid shape.
     if not used and n > 1:
         used = [0]
-    if used == list(range(used[0], used[0] + len(used))) if used else False:
-        # An odd-sized dependency set would make the *reduced* program
-        # ghost-pad itself and expect an input the stream does not carry,
-        # so widen the window by one adjacent ignored input to keep it even.
-        if len(used) % 2 == 1 and len(used) > 1:
-            if used[-1] + 1 < n:
-                used = [*used, used[-1] + 1]
-            elif used[0] > 0:
-                used = [used[0] - 1, *used]
-        if 0 < len(used) < n and (len(used) % 2 == 0 or len(used) == 1):
-            reduced = _taglate_reduced_table(truth_table, n, used)
-            seed, commands = taglate(reduced).split("\n", 1)
-            discard = "h" + "e" * len(seed) + "f"
-            # Odd ``n`` above 1 is called with a leading ghost digit, which
-            # is one more input to read and throw away before the real ones.
-            ghost = 1 if n % 2 == 1 and n > 1 else 0
-            leading = used[0] + ghost
-            trailing = n - len(used) - used[0]
-            return seed + "\n" + discard * leading + commands + "h" * trailing
+    # An odd-sized dependency set would make the *reduced* program
+    # ghost-pad itself and expect an input the stream does not carry, so
+    # widen it by one adjacent ignored input to keep it even.
+    if len(used) % 2 == 1 and len(used) > 1:
+        if used[-1] + 1 < n:
+            used = [*used, used[-1] + 1]
+        elif used[0] > 0:
+            used = [used[0] - 1, *used]
+    if 0 < len(used) < n and (len(used) % 2 == 0 or len(used) == 1):
+        reduced = _taglate_reduced_table(truth_table, n, used)
+        seed, commands = taglate(reduced).split("\n", 1)
+        discard = "h" + "e" * len(seed) + "f"
+        # Odd ``n`` above 1 is called with a leading ghost digit, which is
+        # one more input to read and throw away before the real ones.
+        ghost = 1 if n % 2 == 1 and n > 1 else 0
+        leading = used[0] + ghost
+        reads = commands.split("h")
+        parts = [reads[0] + "h"]
+        for read, (before, after) in enumerate(pairwise(used), start=1):
+            between = "h" + "e" * (len(seed) + read) + "f"
+            parts.append(between * (after - before - 1))
+            parts.append(reads[read] + "h")
+        parts.append(reads[-1])
+        trailing = n - used[-1] - 1
+        return seed + "\n" + discard * leading + "".join(parts) + "h" * trailing
 
     if n == 1:
         base = _ASCII_ZERO + int(truth_table[0])
