@@ -140,11 +140,21 @@ so `_riscv_common.GETBYTE` plus a newline skip is the correct lowering there.
 
 ## Forbin's expression-position recursion
 
-Forbin's *expression-position* calls (`x = f(y)`) recurse natively, bounded
-only by Python's default recursion limit.  Closing this needs `_eval` itself
-extended into a resumable continuation stack (the `_EvalTask` design,
-rejected in `docs/walls.md`), and Forbin has no realistic program shape that
-recurses this way.  **Not pursued unless a concrete program needs it.**
+Forbin's *expression-position* calls (`x = f(y)`) recurse natively, so their
+depth is the host's rather than the language's: measured at 248 levels, about
+four Python frames per Forbin call.  Past that `_Machine.step` converts the
+`RecursionError` into a `HaltError` naming the limit, so the ceiling is a
+documented halt rather than a leaked traceback — but it is still a ceiling,
+and statement-position calls remain uncapped past 2000.
+
+Lifting it, rather than reporting it, needs `_eval` itself extended into a
+resumable continuation stack (the `_EvalTask` design, rejected in
+`docs/walls.md`); "expression calls as builtins" does not avoid that work,
+since a builtin is a leaf while a call sits at an interior node of a
+half-evaluated tree.  Forbin has no realistic program shape that recurses
+this way — `return` exits a call immediately, so values thread through
+statements, not nested expressions.  **Not pursued unless a concrete program
+needs it.**
 
 ## Hanging-test optimization via state-cycle detection
 
