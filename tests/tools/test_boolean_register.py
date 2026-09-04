@@ -539,13 +539,13 @@ class TestDecleq:
             got = run_decleq(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_branch_normalizes_bits_to_one_and_two(self) -> None:
-        """Each bit gets a 47-step decrement chain, then one branch."""
+    def test_branch_normalizes_essential_bits_to_one_and_two(self) -> None:
+        """Each essential bit gets a 47-step decrement chain, then one branch."""
         program = boolean.decleq("0110")
         cells = [int(tok) for tok in program.split()]
         instrs = [cells[i : i + 3] for i in range(0, len(cells) - 2, 3)]
-        # count a==b>0 instructions: the 47 normalization steps plus the
-        # decision-tree branches (2**n - 1 of them)
+        # Count a==b>0 instructions: the 47 normalization steps per
+        # essential input plus the decision-tree branches (2**n - 1 here).
         decs = [ins for ins in instrs if ins[0] == ins[1] and ins[0] > 0]
         assert len(decs) == 47 * 2 + 3
         assert sum(1 for ins in instrs if ins[0] == -1) == 2  # one read each
@@ -562,7 +562,10 @@ class TestDecleq:
         cells = [int(tok) for tok in program.split()]
         instrs = [cells[i : i + 3] for i in range(0, len(cells) - 2, 3)]
         decs = [ins for ins in instrs if ins[0] == ins[1] and ins[0] > 0]
-        assert len(decs) == 47 * 3 + 1  # three normalize chains, one branch
+        # The table depends only on its first input.  Both other inputs are
+        # still read, but their folded branches never need normalizing.
+        assert len(decs) == 47 + 1
+        assert sum(1 for ins in instrs if ins[0] == -1) == 3
         assert len(boolean.decleq("11110000")) < len(boolean.decleq("10101010"))
 
     def test_folding_leaves_no_dead_cells(self) -> None:

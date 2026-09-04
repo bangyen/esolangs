@@ -58,9 +58,10 @@ def decleq(truth_table: str) -> str:
     sized as though nothing folded), which is why the test pins the cell
     count rather than the output -- an output-based test cannot see it.
 
-    The 47-step normalize chains are a fixed ``47 * n`` cost the fold
-    cannot touch, so the saving grows with ``n`` as the tree overtakes
-    them: 7% at ``n == 2`` against 44% at ``n == 6``.
+    Every input is still read, so the program consumes exactly ``n`` input
+    bytes.  An ignored input never controls a non-folded branch, however,
+    so it does not need the 47-step normalization chain.  The fixed cost is
+    therefore ``47 * len(essential_inputs)`` rather than ``47 * n``.
     """
     n = _validate_truth_table(truth_table)
 
@@ -92,9 +93,13 @@ def decleq(truth_table: str) -> str:
             )
         )
 
-    # instructions: n reads, n*47 normalizations, and the tree, whose size
-    # depends on how much of it folds away.
-    n_instr = n + 47 * n + tree_instrs(0, 0)
+    # Every input is read to preserve the interface, but only inputs on
+    # which the table depends need normalizing: folding makes both outcomes
+    # of every other branch equivalent.
+    essential = set(essential_inputs(truth_table, n))
+    # instructions: n reads, one normalization chain per essential input,
+    # and the tree, whose size depends on how much of it folds away.
+    n_instr = n + 47 * len(essential) + tree_instrs(0, 0)
     data_base = 3 * n_instr
     read_cells = [data_base + i for i in range(n)]
     out48 = data_base + n
@@ -113,7 +118,9 @@ def decleq(truth_table: str) -> str:
 
     for rc in read_cells:
         emit(-1, rc, pc() + 3)
-    for rc in read_cells:
+    for i, rc in enumerate(read_cells):
+        if i not in essential:
+            continue
         for _ in range(47):
             emit(rc, rc, pc() + 3)
 
