@@ -21,6 +21,7 @@ Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import sys
+from typing import cast
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
@@ -39,6 +40,21 @@ from esolangs.interpreters.randomness import Randomness, draw
 type _Beams = tuple[tuple[int, int, int], ...]
 type _Tape = tuple[tuple[int, int], ...]
 type _State = tuple[_Tape, int, _Beams, int, bool, tuple[int, int, int]]
+
+#: One instant as the all-outcomes search sees it: ``_State`` without the
+#: reported position, and with ``None`` beams standing for a laser whose
+#: heading has not been drawn yet.
+type _BranchState = tuple[_Tape, int, _Beams | None, int, bool]
+
+#: The position handed to a transition during a branching search.  Every
+#: caller strips the result's copy, so the value only has to be constant.
+_NO_POS = (0, 0, 0)
+
+
+def _strip_pos(state: _State) -> _BranchState:
+    """Drop the reported position from a transition's result."""
+    tape, ptr, lsrs, ind, jmp, _pos = state
+    return (tape, ptr, lsrs, ind, jmp)
 
 
 def _write(tape: _Tape, ptr: int, value: int, touched: int) -> _Tape:
@@ -171,6 +187,9 @@ class _Machine:
         self.pos = (0, 0, 0)
         self._second_start = False
         self._dumped = False
+        #: Where the ``o`` marker sits, kept so a branching search can place
+        #: the beam itself under each of the four headings.
+        self.start = (0, 0)
 
         self.lsrs: list[list[int]] = []
         for row, line in enumerate(self.text):
@@ -182,6 +201,7 @@ class _Machine:
                     # The random heading is part of LaserFuck's spec, not a
                     # secret.
                     d = draw(rng, 4)
+                    self.start = (row, col)
                     self.lsrs.append([row, col, d])
                     self.pos = (row, col, d)
 
@@ -217,6 +237,97 @@ class _Machine:
             self.ind,
             tuple(tuple(laser) for laser in self.lsrs),
             self.io.position(),
+        )
+
+    # The all-random-outcomes search.  Its state deliberately drops ``pos``
+    # and the input cursor that ``snapshot`` carries: ``pos`` is what the VM
+    # reports for a step and no transition ever reads it, so keeping it would
+    # split behaviourally identical states, and input is declined below.
+
+    def branching_snapshot(self) -> _BranchState:
+        """Return the pre-heading start state for a branching search.
+
+        The initial heading is a draw like any other, so it belongs to the
+        search rather than to the machine that starts it: a verdict of "every
+        sequence of draws runs forever" has to quantify over all four
+        headings, and a live machine has already committed to one.  ``None``
+        marks the beam as unplaced, and :meth:`branching_successors` opens it
+        into the four headings ``__init__`` chooses between.
+        """
+        return (self.tape, self.ptr, None, self.ind, self.jmp)
+
+    def branching_halted(self, state: object) -> bool:
+        """Report whether ``state`` has no live beam left.
+
+        A second ``o`` halts the machine before it can step at all, and that
+        is fixed at construction, so it is read off the machine rather than
+        carried through every state.
+
+        The unplaced start state is *not* halted when there is a laser to
+        place: ``None`` means the heading has yet to be drawn, which is the
+        one case where an empty-looking beam store still has a whole run
+        ahead of it.  A grid with no ``o`` never gets one, so it *is* halted
+        at the sentinel -- the same verdict :attr:`halted` gives it.
+        """
+        if self._second_start:
+            return True
+        lsrs = cast(_BranchState, state)[2]
+        if lsrs is None:
+            return not self.lsrs
+        return not lsrs
+
+    def branching_successors(
+        self, state: object, _limit: int
+    ) -> tuple[_BranchState, ...] | None:
+        """Return the state for every draw this state could make.
+
+        Mirrors :meth:`step` rather than :func:`_advance` alone, because the
+        move, the off-grid death and the ``#`` skip all live in the step: a
+        successor calling the transition directly would execute the cell the
+        beam is leaving instead of the one it arrives at.
+
+        Fanout is two at a ``*`` and four at the unplaced start, so ``limit``
+        needs no consulting here -- the caller's cap on distinct states is
+        what bounds the search.  ``,`` returns ``None``: forking it would need
+        an independent input cursor per branch, so the caller reports an
+        undecided result rather than sharing one branch's input with another.
+        """
+        tape, ptr, lsrs, ind, jmp = cast(_BranchState, state)
+        if lsrs is None:
+            return tuple(
+                (tape, ptr, ((self.start[0], self.start[1], d),), ind, jmp)
+                for d in range(4)
+            )
+
+        row, col, d = lsrs[ind]
+        row, col = _move(row, col, d, self.rows)
+
+        if jmp:
+            moved = (*lsrs[:ind], (row, col, d), *lsrs[ind + 1 :])
+            return ((tape, ptr, moved, (ind + 1) % len(moved), False),)
+
+        op = (
+            self.text[row][col]
+            if 0 <= row < self.rows and 0 <= col < len(self.text[0])
+            else "x"
+        )
+        if op == ",":
+            return None
+
+        splits = (0, 1) if op == "*" else (0,)
+        return tuple(
+            _strip_pos(
+                _advance(
+                    (tape, ptr, lsrs, ind, jmp, _NO_POS),
+                    op,
+                    row,
+                    col,
+                    d,
+                    None,
+                    split,
+                )
+            )
+            for split in splits
         )
 
     @property

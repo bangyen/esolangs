@@ -811,9 +811,31 @@ deterministic, step-capable machines that revisit an exact internal state,
 instead of waiting out a wall-clock timeout.  It requires a **complete**
 snapshot (the machine's internal fields, including the input-cursor position
 — the VM's language-shaped `ip`/`memory`/`stack` view is not enough);
-determinism (LaserFuck's random heading, WII2D's `?` and Painfuck's `y` are
-excluded); and a `step()`/`halted` state object, since a whole-program
+determinism; and a `step()`/`halted` state object, since a whole-program
 `run()` exposes no internal state to hash.
+
+**The three non-deterministic languages are not excluded.**  LaserFuck's
+random heading, WII2D's `?` and Painfuck's `y` each implement a branching
+protocol (`branching_snapshot`/`branching_halted`/`branching_successors`),
+and `run_until_halt_or_all_branches_cycle` searches the whole reachable
+graph: `True` once *some* sequence of draws halts, `False` only after the
+graph closes with no halted state in it, which proves every draw runs
+forever.  Revisiting a state on one outcome alone would prove nothing, since
+another outcome could still escape — so this keeps every visited state
+rather than Brent's O(1) pair, because branches merge after differing draws.
+
+Two things stay undecided rather than being guessed at, both raising
+`TimeoutError`: a graph that outgrows the caller's state cap, and a
+transition that cannot be forked.  Input is the second case — sibling
+branches would have to share one input cursor — so a reachable `,`/read
+declines instead of letting one branch consume another's bytes.
+
+LaserFuck's initial heading is drawn in the constructor rather than at a
+step, so its search starts from a state whose beam is *unplaced* and opens
+that into the four headings.  Starting from a live machine would silently
+quantify over one heading the constructor already picked, which is the
+wrong verdict: a program that loops under the heading drawn but escapes
+under another is not a universal hang.
 
 Detection uses Brent's two-pointer algorithm rather than a hash set of every
 visited state: one stored "tortoise" snapshot is compared against the live
