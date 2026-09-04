@@ -289,6 +289,9 @@ class VM(Protocol):
     def step(self) -> None:
         """Execute one command, advancing the machine."""
 
+    def snapshot(self) -> Hashable:
+        """Return the complete state used by cycle detection."""
+
     @property
     def halted(self) -> bool:
         """Whether the machine has finished executing."""
@@ -351,6 +354,10 @@ class _DelegatingVM:
 
     def step(self) -> None:
         self._machine.step()
+
+    def snapshot(self) -> Hashable:
+        """Return the underlying machine's complete state."""
+        return self._machine.snapshot()
 
     @property
     def ip(self) -> int | tuple[int, ...] | None:

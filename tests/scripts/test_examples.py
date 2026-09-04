@@ -22,12 +22,11 @@ import pytest
 
 from esolangs import generate
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.randomness import Seeded
 from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.tools.boolean.examples import HAND_WRITTEN
 from esolangs.tools.wrap import DEFAULT_WIDTH
-from tests.interpreters.runner import run_program
+from esolangs.vm import make_vm, run_until_halt_or_cycle
 from tests.tools.boolean_runners import one_two_three_result, point_break_result
 
 BASE_DIR = Path(__file__).parents[2]
@@ -44,6 +43,15 @@ EXAMPLES = {
     _file_name(lang.name): (lang.interpreter, lang.split)
     for lang in LANGUAGES.values()
     if lang.text and lang.interpreter
+}
+
+# The VM registry is keyed by the language's display name, while boolean
+# examples are keyed by their filesystem stem.  The interpreter module is
+# shared metadata and uniquely identifies the registered display name.
+VM_LANGUAGE = {
+    lang.interpreter: lang.name
+    for lang in LANGUAGES.values()
+    if lang.interpreter is not None
 }
 
 # container halts by calling sys.exit(0)
@@ -286,28 +294,34 @@ BOOLEAN_EXAMPLES = {
 
 @pytest.mark.parametrize("name", sorted(BOOLEAN_EXAMPLES))
 def test_boolean_example(name: str) -> None:
-    module, inputs, expected, splitlines, kwargs = BOOLEAN_EXAMPLES[name]
-    run = importlib.import_module("esolangs.interpreters." + module).run
-    # ``kwargs`` carries ints, so a language whose chance has to be pinned
-    # names a seed and the source is built here.  LaserFuck draws its
-    # initial heading, so without this the example would start in a random
-    # direction and its committed output would only sometimes be right.
-    if "seed" in kwargs:
-        kwargs = {k: v for k, v in kwargs.items() if k != "seed"}
-        kwargs["rng"] = Seeded(BOOLEAN_EXAMPLES[name][4]["seed"])
+    _module, inputs, expected, _splitlines, _kwargs = BOOLEAN_EXAMPLES[name]
     program = (
         (BASE_DIR / "examples" / "boolean" / f"{name}.txt")
         .read_text(encoding="utf-8")
         .rstrip("\n")
     )
-    argument = program.splitlines() if splitlines else program
-
-    # Container halts by calling sys.exit(0), like its hello-world example.
-    got = run_program(
-        run,
-        argument,
-        "".join(f"{line}\n" for line in inputs),
-        suppress_exit=True,
-        **kwargs,
-    )
+    vm = make_vm(VM_LANGUAGE[_module], program, "".join(f"{line}\n" for line in inputs))
+    if name == "a-painter-ant":
+        # Its implicit loop has no halting state: a repeated snapshot is its
+        # language-defined stop.  The public interpreter renders only at a
+        # pass boundary, so finish this already-proven periodic pass first.
+        assert not run_until_halt_or_cycle(vm)
+        while vm.ip != 0:
+            vm.step()
+        got = vm._machine.render()  # type: ignore[attr-defined]  # noqa: SLF001
+    elif name == "suffolk":
+        # Suffolk's input-reading programs stop on the next EOF rather than
+        # halting; the detector still drives every preceding step.
+        with pytest.raises(EOFError):
+            run_until_halt_or_cycle(vm)
+        got = vm.output
+    else:
+        assert run_until_halt_or_cycle(vm), (
+            f"examples/boolean/{name}.txt repeats a complete machine state"
+        )
+        # A few state-dumping languages deliberately write on the first step
+        # after their halt.  That step is otherwise a no-op, so taking it for
+        # every VM exactly matches each interpreter's public ``run`` behavior.
+        vm.step()
+        got = vm.output
     assert got == expected
