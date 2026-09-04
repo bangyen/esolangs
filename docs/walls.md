@@ -117,7 +117,7 @@ total — no arity and no table it declines.  The arguments that establish
 that, and the mechanisms refuted along the way, are in
 [`docs/minifuck_generator.md`](minifuck_generator.md).
 
-## 123 (parameterized; wider arities gated on cost, not expressiveness)
+## 123 (parameterized; wider arities gated on the verdict search, not expressiveness)
 
 **Resolved.  All four one-input and all sixteen two-input tables build, and
 the generator ships** (`esolangs.tools.boolean.one_two_three`).  The bound
@@ -149,6 +149,59 @@ state revisit**, never unbounded growth — `run_until_halt_or_cycle` does not
 return on a program whose pointer marches right forever, so such a row would
 hang the harness rather than report a 1.  And every plan emits its slots in
 name order with each `{Xi}` once.
+
+### Wider arities: three stages proven total, one conjecture left
+
+The constructed route (`one_two_three_construct`) builds tables past
+three inputs, and every candidate structural cap examined so far turned
+out to be an artifact of the construction, not the language — each fell
+to a constructed fix:
+
+- **The merge blob**: each embed's merge flips the whole interval below
+  its mark, and those junk marks pushed every closing walk (and so every
+  position) far above the cells that still distinguished the rows — at
+  five inputs separation stalled against it on every table probed.  One
+  synchronized walk-descend-pop after each merge re-flips the interval
+  and cancels it, so phase A now ends with exactly one mark per set bit.
+- **Separation** is no longer a search at all: with clean tapes it is a
+  planned decode tree (walk each group onto its bit's mark; set-bit rows
+  re-run the last segment and escape one walk higher).  The escape
+  length equals the *last* segment only, which decouples it from the
+  walk distance; the minimum inter-group gap at worst halves per level,
+  and a mark base of `2**(n+1)` gives the first gap room to survive all
+  `n` halvings — so this stage is deterministic, table-independent, and
+  total at every arity.
+- **The verdict phase** kills the 1-rows bottom-up.  A kill's descent
+  may dip bystander rows through the ring; they test TRUE once and skip
+  on a later pass, which the fate checks accept per row (the old
+  `TRUE set == {victim}` rule was why a 0-row parked at the bottom —
+  the all-zeros row under a dense table — blocked every kill).  All
+  per-candidate screens are arithmetic (closed forms of the straight
+  runs, differentially verified against simulation), so the work budget
+  buys adopted moves, not rejected candidates.
+- **Mark parity**: an anchored kill's test cell must satisfy a residue
+  constraint mod 4 that the dipped bystanders pin, so when every mark
+  shares one residue class (they all did: `2**(n+1)*3**i + 1 ≡ 1`),
+  victims at half the positions have no legal anchor and the kill sweep
+  starves.  Measured both ways — the uniform layout exhausts on a table
+  the staggered `+1/+3` layout solves in under two seconds, and vice
+  versa — so `construct` tries the two geometries in order, which is
+  deterministic and strictly stronger than either.
+- **The endgame** parks survivors by the same residue-fusion argument as
+  before, and the closing replay uses Brent's cycle detection so the
+  gate scales to the template instead of hashing a sorted tape per step.
+
+What is *not* proven is the verdict search itself: it remains a bounded
+DFS over kills, boosts and ring rounds, and its totality claim is a
+conjecture — *from every state separation produces, under one of the
+two mark geometries tried in order, some finite move sequence makes
+each remaining 1-row's kill valid* — supported by an exhaustive sweep
+(all 276 tables through three inputs build and replay correctly through
+the constructed route) and by random sampling at four and five inputs,
+not by an argument.  Budgets scale with the row count and bound
+divergence, not arity.  A fixed budget can never be total across
+arities anyway: a table takes `2**n` bits to state, so template length
+and build work are exponential in `n` no matter the pipeline.
 
 ### Language facts worth keeping
 
