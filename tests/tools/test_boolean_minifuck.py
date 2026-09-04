@@ -1798,7 +1798,6 @@ class TestParameterizedMinifuck:
                     if other is not None:
                         assert len(other) >= len(built), (acc, cell7, direct)
 
-    @pytest.mark.slow  # 7.4s: the index against a full per-table sweep
     def test_the_staging_index_agrees_with_the_enumeration(self) -> None:
         """The inverted index assigns exactly what the per-table sweep does.
 
@@ -1817,6 +1816,15 @@ class TestParameterizedMinifuck:
         ``None`` where the enumeration assigns ``(2, 0, 0, 33)``.  Every
         program it did emit still printed its table.  So the assertion here
         is on the staging *tuple*, never on whether the build works.
+
+        ``_derived_plans`` takes a *tuple* of targets and answers them in one
+        walk of the order, so every table is asked at once rather than one
+        call per table.  That is the whole cost: 256 separate three-input
+        walks were 7.4s, and the single walk answering all of them is 0.12s.
+        The comparison is unchanged -- still every table at arity 2 and 3,
+        still against the staging tuple -- and the complement is dropped from
+        the targets only because at these arities the complement of every
+        table is already in the set.
         """
         import importlib
 
@@ -1824,16 +1832,14 @@ class TestParameterizedMinifuck:
 
         for arity in (2, 3):
             index = module._staging_index(arity)  # noqa: SLF001
-            for value in range(2 ** (2**arity)):
-                table = format(value, f"0{2**arity}b")
+            width = 2**arity
+            tables = tuple(format(value, f"0{width}b") for value in range(2**width))
+            plans = module._derived_plans(arity, tables)  # noqa: SLF001
+            for table in tables:
                 column = tuple(int(bit) for bit in table)
-                complement = "".join(str(1 - int(bit)) for bit in table)
-                expected = module._derived_plans(  # noqa: SLF001
-                    arity, (table, complement)
-                ).get(table)
-                assert index.get(column) == expected, (arity, table)
+                assert index.get(column) == plans.get(table), (arity, table)
 
-    @pytest.mark.slow  # runs the per-table enumeration, which is the slow half
+    @pytest.mark.slow  # ~22s: the arity 4 and 5 index builds dominate
     def test_the_staging_index_agrees_at_the_wider_arities(self) -> None:
         """The same agreement where the insert family and the budget live.
 
@@ -1842,6 +1848,19 @@ class TestParameterizedMinifuck:
         budget and in slice-yield rather than plain order.  Both are code
         paths the two- and three-input check above never reaches, and both
         are where an index that mis-walks the order would show up.
+
+        Batched for the same reason as the check above: ``_derived_plans``
+        answers a whole tuple of targets in one walk, so the sample costs one
+        four-input enumeration instead of one per table -- 97s of per-table
+        calls against 2.6s for the single walk, to the same answers.  The
+        complements go into the targets explicitly here, because a 40-table
+        sample at arity 4 does not already contain them the way the
+        exhaustive arities above do.
+
+        What is left is the index builds themselves -- ``_staging_index(4)``
+        is 6.3s and ``_staging_index(5)`` 12.5s -- which is the production
+        derivation this test exists to check, not overhead the test can
+        drop.  So it stays marked slow.
         """
         import importlib
         import random
@@ -1855,14 +1874,19 @@ class TestParameterizedMinifuck:
         samples.append((4, "0110100110010110"))  # four-input XOR
         samples.append((5, "01101001100101101001011001101001"))  # five-input
 
+        by_arity: dict[int, list[str]] = {}
         for arity, table in samples:
+            by_arity.setdefault(arity, []).append(table)
+
+        for arity, tables in by_arity.items():
             index = module._staging_index(arity)  # noqa: SLF001
-            complement = "".join(str(1 - int(bit)) for bit in table)
-            expected = module._derived_plans(  # noqa: SLF001
-                arity, (table, complement)
-            ).get(table)
-            column = tuple(int(bit) for bit in table)
-            assert index.get(column) == expected, (arity, table)
+            targets = set(tables)
+            for table in tables:
+                targets.add("".join(str(1 - int(bit)) for bit in table))
+            plans = module._derived_plans(arity, tuple(sorted(targets)))  # noqa: SLF001
+            for table in tables:
+                column = tuple(int(bit) for bit in table)
+                assert index.get(column) == plans.get(table), (arity, table)
 
     def test_the_staging_enumeration_is_offered_only_at_its_arities(self) -> None:
         """Outside ``_STAGED_ARITIES`` the derivation offers nothing.
