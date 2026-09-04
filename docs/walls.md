@@ -1272,10 +1272,17 @@ cycles).  The full construction is recorded in
 Supported for **every arity** and verified cycle-stable and exact: all
 ``n <= 4`` tables exhaustively — the 65536 four-input tables built,
 instantiated over all sixteen input combinations and checked for both
-properties, 0 failures in 64s — with ``n == 5``-``7`` sampled plus
-structured and constant edge tables.  The general method — encode each
-combination as a distinct leaf position reached by the weighted bit-moves,
-and anchor the cycle-2 run back onto that leaf — is recorded in
+properties, 0 failures in 64s.  Past ``n == 4`` the sweep is priced out
+(``2**(2**n)`` tables), and the coverage rests instead on a **uniform
+argument**, recorded in ``docs/a_painter_ant_uniform_proof.md``: the leaf
+geometry is arithmetic (superincreasing weights put leaves exactly 4 apart
+and keep head walks off foreign leaves), a blocked run is a no-op at any
+length so the arity-dependent run magnitudes drop out, and the cycle-2
+dance is a paint-free fixed point over a three-offset state set whose
+30-entry motif table, learned at ``n == 5``, replays with 0 prediction
+errors at ``n`` of 6-9.  The general method — encode each combination as a
+distinct leaf position reached by the weighted bit-moves, and anchor the
+cycle-2 run back onto that leaf — is recorded in
 ``docs/a_painter_ant_generator.md``.
 
 ``n == 4`` was previously sampled at three tables; promoting it cost about
