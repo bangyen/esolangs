@@ -318,6 +318,18 @@ def _advance(
                 # Repeating these is doing them once: each writes a value
                 # fixed by the state this iteration began in.
                 rep = 1
+            elif c in "ab":
+                # The wiki defines these as jumps -- "go to the matching b
+                # if the value is zero", "go back to the matching a if it is
+                # not" -- so each is a *decision*, and nothing between two
+                # iterations changes the cell or the cursor it reads.  A
+                # repeat therefore decides the same way every time.
+                #
+                # The loop stack is this interpreter's way of finding the
+                # matching bracket, not part of the language; without this,
+                # a repeated ``a`` pushed ``rep`` identical entries and left
+                # a loop needing ``rep`` closing ``b``s to unwind.
+                rep = 1
 
         rep -= 1
 
