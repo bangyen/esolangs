@@ -28,6 +28,16 @@ def _run_all(vm: VM) -> str:
     return vm.output
 
 
+def _painfuck_source(targets: str) -> str:
+    """Encode direct Painfuck commands through its source translation."""
+    cycles = ("pevkjzwr", "yuctsobqihald")
+    out: list[str] = []
+    for index, target in enumerate(targets):
+        cycle = next(cycle for cycle in cycles if target in cycle)
+        out.append(cycle[(cycle.index(target) - index) % len(cycle)])
+    return "".join(out)
+
+
 class TestProtocol:
     def test_implements_vm_protocol(self) -> None:
         assert isinstance(esolangs.make_vm("brainfuck", "+"), VM)
@@ -1038,6 +1048,128 @@ class TestRunUntilHaltOrCycle:
             ScriptedIO(),
         )
         assert run_until_halt_or_cycle(machine) is False
+
+    def test_wii2d_all_random_turns_can_be_proved_to_loop(self) -> None:
+        """Every heading from ``?`` returns to this two-cell ring.
+
+        Running one seeded trace would only show that seed loops.  The
+        branching detector must visit all four headings and may return a
+        hang verdict only after they merge back into the same finite graph.
+        The two fixed traces are the execution control: both are actual
+        interpreter runs, not a hand-written successor table.
+        """
+        from esolangs.interpreters.grid_based.wii2d import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.randomness import FirstDraw
+        from esolangs.vm import (
+            run_until_halt_or_all_branches_cycle,
+            run_until_halt_or_cycle,
+        )
+
+        code = [">?", "! "]
+        assert (
+            run_until_halt_or_all_branches_cycle(_Machine(code, ScriptedIO())) is False
+        )
+        for turn in range(4):
+            assert (
+                run_until_halt_or_cycle(
+                    _Machine(code, ScriptedIO(), FirstDraw(turn, rest=turn))
+                )
+                is False
+            )
+
+    def test_wii2d_one_halting_turn_refutes_an_all_branches_hang(self) -> None:
+        from esolangs.interpreters.grid_based.wii2d import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.randomness import FirstDraw
+        from esolangs.vm import (
+            run_until_halt_or_all_branches_cycle,
+            run_until_halt_or_cycle,
+        )
+
+        # East or west lands on '.', while north/south return to '?'.
+        code = ["?.", "! "]
+        assert (
+            run_until_halt_or_all_branches_cycle(_Machine(code, ScriptedIO())) is True
+        )
+        assert (
+            run_until_halt_or_cycle(_Machine(code, ScriptedIO(), FirstDraw(3))) is True
+        )
+        assert (
+            run_until_halt_or_cycle(_Machine(code, ScriptedIO(), FirstDraw(0, rest=0)))
+            is False
+        )
+
+    def test_painfuck_all_coin_outcomes_can_be_proved_to_loop(self) -> None:
+        """Either ``y`` outcome reaches a loop close and returns to ``a``."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.randomness import FirstDraw
+        from esolangs.interpreters.tape_based.painfuck import _Machine
+        from esolangs.vm import (
+            run_until_halt_or_all_branches_cycle,
+            run_until_halt_or_cycle,
+        )
+
+        # p makes the loop live; y either takes the first b or skips to the
+        # second, and both b commands return to a.
+        code = _painfuck_source("paybb")
+        assert (
+            run_until_halt_or_all_branches_cycle(_Machine(code, ScriptedIO())) is False
+        )
+        for coin in (0, 1):
+            assert (
+                run_until_halt_or_cycle(
+                    _Machine(code, ScriptedIO(), FirstDraw(coin, rest=coin))
+                )
+                is False
+            )
+
+    def test_painfuck_one_halting_coin_refutes_an_all_branches_hang(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.randomness import FirstDraw
+        from esolangs.interpreters.tape_based.painfuck import _Machine
+        from esolangs.vm import (
+            run_until_halt_or_all_branches_cycle,
+            run_until_halt_or_cycle,
+        )
+
+        code = _painfuck_source("payb")
+        assert (
+            run_until_halt_or_all_branches_cycle(_Machine(code, ScriptedIO())) is True
+        )
+        assert (
+            run_until_halt_or_cycle(_Machine(code, ScriptedIO(), FirstDraw(1))) is True
+        )
+        assert (
+            run_until_halt_or_cycle(_Machine(code, ScriptedIO(), FirstDraw(0, rest=0)))
+            is False
+        )
+
+    def test_branching_search_leaves_unbounded_or_input_paths_undecided(self) -> None:
+        from esolangs.interpreters.grid_based.wii2d import _Machine as Wii2dMachine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.painfuck import (
+            _Machine as PainfuckMachine,
+        )
+        from esolangs.vm import run_until_halt_or_all_branches_cycle
+
+        with pytest.raises(TimeoutError, match="reachable graph may be unbounded"):
+            run_until_halt_or_all_branches_cycle(
+                Wii2dMachine([">?", "! "], ScriptedIO()), limit=1
+            )
+        # A source program whose translation is the direct target 'j'.
+        # The detector must not let sibling paths share its input cursor.
+        with pytest.raises(TimeoutError, match="needs input"):
+            run_until_halt_or_all_branches_cycle(
+                PainfuckMachine(_painfuck_source("j"), ScriptedIO("A\n"))
+            )
+        # c repeats y 49 times.  Limiting the frontier at the transition,
+        # rather than after materializing its 2**49 outcomes, is what keeps
+        # the detector a bounded attempt rather than an accidental OOM.
+        with pytest.raises(TimeoutError, match="coin outcomes"):
+            run_until_halt_or_all_branches_cycle(
+                PainfuckMachine(_painfuck_source("ccy"), ScriptedIO()), limit=4
+            )
 
     def test_input_cursor_is_part_of_the_snapshot(self) -> None:
         """A loop that reads fresh input each pass is not a false cycle.

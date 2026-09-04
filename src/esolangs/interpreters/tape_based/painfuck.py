@@ -49,12 +49,14 @@ Invalid runtime operations halt with :class:`~esolangs.exceptions.HaltError`.
 The interpreter runs on a :class:`_Machine` (the tape, the loop stack, the
 pointer, and the code cursor), so it is step-capable: ``step()`` executes one
 command and ``halted`` is true once the cursor reaches the end of the code.
-``y`` draws a random skip, so like LaserFuck and WII2D the machine is
-non-deterministic and is excluded from the state-cycle hang check.
+``y`` draws a random skip.  The ordinary cycle detector remains unsound on
+it, but the machine can enumerate every coin outcome for the bounded
+all-branches detector in :mod:`esolangs.vm`.
 """
 
 import sys
 from dataclasses import dataclass
+from typing import cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -391,6 +393,47 @@ class _Machine:
             self.rep,
             self.io.position(),
         )
+
+    def branching_snapshot(self) -> _State:
+        """Return the initial no-future-input state for branch exploration."""
+        return self._state
+
+    def branching_halted(self, state: object) -> bool:
+        """Report whether ``state`` has run past the translated program."""
+        return cast(_State, state)[3] >= self.n
+
+    def branching_successors(
+        self, state: object, limit: int
+    ) -> tuple[_State, ...] | None:
+        """Enumerate all coin outcomes for one command without mutating us.
+
+        A repeated ``c``/``t`` command can execute several ``y`` operations
+        in one public ``step()``, so this forks again every time the pure
+        core asks for a coin, rather than assuming a one-step/one-draw
+        correspondence.  Input would require an independent cursor and
+        future-line store for every sibling branch; declining it is sound,
+        and lets the caller report an undecided result rather than sharing
+        one branch's input with another.
+        """
+        pending: list[tuple[int, ...]] = [()]
+        successors: list[_State] = []
+        while pending:
+            coins = pending.pop()
+            try:
+                next_state, _effects = _advance(
+                    cast(_State, state), self.prog, self.n, (), coins
+                )
+            except _NeedCoin as need_coin:
+                if len(pending) + len(successors) + 2 > limit:
+                    raise TimeoutError(
+                        f"undecided after {limit} coin outcomes in one Painfuck step"
+                    ) from need_coin
+                pending.extend(((*coins, 0), (*coins, 1)))
+            except _NeedRead:
+                return None
+            else:
+                successors.append(next_state)
+        return tuple(successors)
 
     @property
     def _state(self) -> _State:

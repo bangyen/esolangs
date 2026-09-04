@@ -12,6 +12,7 @@ Malformed programs raise :class:`ValueError`.
 import copy
 import sys
 from collections.abc import Callable, Sequence
+from typing import cast
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
@@ -150,8 +151,9 @@ class _Machine:
     ``step()`` executes the cell under the pointer and advances it one cell
     (wrapping around the grid); ``halted`` is true once the pointer hits
     ``.``.  The VM and the state-cycle hang detector expose this object.
-    Note that ``?`` draws a random heading, so a program using it is not a
-    deterministic machine and the hang detector is unsound on it.
+    Note that ``?`` draws a random heading, so the ordinary deterministic
+    hang detector is unsound on it.  The branching detector enumerates the
+    four headings instead.
     """
 
     def __init__(self, code: list[str], io: IO, rng: Randomness | None = None) -> None:
@@ -205,6 +207,37 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (self.row, self.col, self.vel, self.acc, self.io.position())
+
+    def branching_snapshot(self) -> _State:
+        """Return the starting state for an all-random-outcomes search.
+
+        WII2D has no input instruction, so its complete future is already
+        contained in this value.  Output is deliberately absent: buffered
+        output cannot affect a later command, and a repeated machine state
+        keeps repeating whether or not it has printed on the way around.
+        """
+        return (self.row, self.col, self.vel, self.acc, self._done)
+
+    def branching_halted(self, state: object) -> bool:
+        """Report whether a branching-search state reached ``.``."""
+        return cast(_State, state)[4]
+
+    def branching_successors(self, state: object, _limit: int) -> tuple[_State, ...]:
+        """Return the state for every legal ``?`` turn at this cell."""
+        branch_state = cast(_State, state)
+        row, col, _vel, _acc, _done = branch_state
+        op = self.code[row][col]
+        turns = range(4) if op == "?" else (None,)
+        return tuple(
+            _advance(
+                branch_state,
+                op,
+                self._move_pointer,
+                self._find_closest_at,
+                turn,
+            )
+            for turn in turns
+        )
 
     def step(self) -> None:
         """Execute the cell under the pointer, then move one cell.
