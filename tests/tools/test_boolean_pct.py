@@ -1589,3 +1589,58 @@ class TestPctAffineBand:
 
         monkeypatch.setattr(module, "_CANDIDATES", 1000)
         assert module._affine("00000001", 3) is not None  # noqa: SLF001
+
+
+class TestPctFoldSkeletonResolver:
+    """The tabulated planner's refusals, driven on constructed states.
+
+    ``_fold_construct`` reads a plan out of :data:`_FOLD_SKELETONS` and
+    resolves each symbolic amount against the live state, so every refusal
+    is a property of the *geometry* rather than of a table.  Building the
+    states directly is what reaches them: a wipe that leaves no survivor and
+    a landing that does not match are both shapes the fold's own descent
+    steers around, so no generated table drives one.
+    """
+
+    @staticmethod
+    def module():
+        return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+
+    #: One point: whichever way it is wiped, nothing survives.
+    LONE = ((0, 0, "a", frozenset({0})),)
+
+    #: Two points of one class, four apart and both already wiped.
+    PAIR = (
+        (0, 0, "a", frozenset({0})),
+        (-4, 0, "a", frozenset({1})),
+    )
+
+    @pytest.mark.parametrize("kind", ["d", "u"])
+    def test_geometry_refuses_a_wipe_that_leaves_no_survivor(self, kind: str) -> None:
+        """Both branches measure the window against the survivors."""
+        module = self.module()
+        assert module._fold_geometry(self.LONE, kind, 1) is None  # noqa: SLF001
+
+    def test_resolve_passes_on_a_wipe_with_no_geometry(self) -> None:
+        """A symbolic amount cannot be resolved where the window does not exist."""
+        module = self.module()
+        assert module._fold_resolve(self.LONE, "d", 1, "cmax") is None  # noqa: SLF001
+
+    def test_resolve_refuses_a_landing_index_past_the_survivors(self) -> None:
+        """``landN`` names a survivor by index, and one wipe leaves only one."""
+        module = self.module()
+        assert module._fold_resolve(self.PAIR, "d", 1, "land9") is None  # noqa: SLF001
+
+    def test_resolve_refuses_a_landing_that_does_not_match(self) -> None:
+        """A landing is a merge, so span, class and window all have to agree."""
+        module = self.module()
+        assert module._fold_resolve(self.PAIR, "d", 1, "land0") is None  # noqa: SLF001
+
+    def test_construct_emits_an_empty_plan_for_a_finished_state(self) -> None:
+        """Two wiped points of different classes is what ``_fold_done`` accepts."""
+        module = self.module()
+        finished = (
+            (0, 0, "a", frozenset({0})),
+            (-5, 0, "b", frozenset({1})),
+        )
+        assert module._fold_construct(finished) == []  # noqa: SLF001

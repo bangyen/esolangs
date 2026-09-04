@@ -331,10 +331,6 @@ class _Machine:
         """The shared deques, retained as a convenience for step helpers."""
         return self.state.deques
 
-    @deques.setter
-    def deques(self, deques: dict[int, list[int]]) -> None:
-        self.state.deques = deques
-
     def _parse(self) -> None:
         """Record every node on the grid, longest spelling first."""
         for row, line in enumerate(self.grid):

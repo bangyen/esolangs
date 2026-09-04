@@ -655,14 +655,6 @@ class _Machine:
         self.state.line = value
 
     @property
-    def _pending(self) -> _Node | None:
-        return self.state.pending
-
-    @_pending.setter
-    def _pending(self, value: _Node | None) -> None:
-        self.state.pending = value
-
-    @property
     def _steps(self) -> int:
         return self.state.steps
 
