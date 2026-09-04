@@ -590,7 +590,8 @@ def _wii2d_cost(n: int, states: list[tuple[str, int]]) -> int:
     ``2 ** (n - 1)`` admitted is still admitted) and adds the narrow-domain
     tables on top, so the change is additive.
     """
-    return min(2 ** (n - 1), _wii2d_real_domain(states))
+    worst_case: int = 2 ** (n - 1)
+    return min(worst_case, _wii2d_real_domain(states))
 
 
 def _wii2d_routes(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | None:
