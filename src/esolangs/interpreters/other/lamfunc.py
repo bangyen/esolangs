@@ -53,7 +53,7 @@ runs) is left as native recursion, a narrower and much less likely limit.
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Hashable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import Literal, cast
 
@@ -651,6 +651,28 @@ class _Machine:
                     f.awaiting_result,
                 )
                 for f in self.frames
+            ),
+            self.io.position(),
+        )
+
+    def frame_entry_key(self, frame: _Frame) -> Hashable:
+        """Return a call body's entry state for the ancestor check.
+
+        ``frames`` also holds short-lived evaluator continuations while a
+        call gathers arguments.  Repeating one of those is not itself a
+        recursive call, so each gets a private marker.  A ``body`` frame is
+        the call boundary: its immutable token list identifies the function
+        body, and the flat variable map carries its parameter bindings and
+        all state a recursive body can read.  See
+        :func:`esolangs.vm.run_until_halt_or_ancestor`.
+        """
+        if frame.phase != "body":
+            return ("continuation", object())
+        return (
+            "body",
+            id(frame.tokens),
+            tuple(
+                sorted((name, repr(value)) for name, value in self.variables.items())
             ),
             self.io.position(),
         )
