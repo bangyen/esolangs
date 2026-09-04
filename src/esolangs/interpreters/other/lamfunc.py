@@ -699,7 +699,7 @@ class _Machine:
         (pops, pushes), variables, ind, output = _advance(
             self.frames, self.variables, self.ind, self.defs, self.main
         )
-        if pops:  # pragma: no branch - completed frames always pop
+        if pops:
             del self.frames[len(self.frames) - pops :]
         self.frames.extend(pushes)
         # Held as returned, not copied: the transition already built a
