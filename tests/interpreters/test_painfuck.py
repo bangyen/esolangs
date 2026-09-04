@@ -383,20 +383,27 @@ class TestRepeatCollapsing:
         [
             ("cp", 7),
             ("ccp", 49),
-            ("ctp", 21),
-            ("cctp", 147),
-            ("ctttp", 189),
-            ("ccttp", 441),
+            ("cccp", 343),
+            # A t run after a c run repeats the *c*, which already applied
+            # once, so it adds 3**len more applications of it.
+            ("ctp", 7**4),
+            ("cctp", 49**4),
+            ("ctttp", 7 ** (1 + 27)),
+            ("ccttp", 49 ** (1 + 9)),
         ],
     )
     def test_a_c_run_absorbs_the_t_run_after_it(self, prog: str, runs: int) -> None:
-        """``c...t...`` is one count, ``7**c * 3**t``, on the command after.
+        """A ``t`` run after a ``c`` run repeats *the ``c``*.
 
-        ``t`` normally repeats the *preceding* command by walking backward,
-        but the command preceding a ``t`` that follows a ``c`` run is that
-        ``c`` -- which would be executed a second time, multiplying its
-        seven in twice.  Reading the ``t`` run forward as part of the same
-        count is what makes ``ct`` mean 21 rather than 7 or 147.
+        ``t`` repeats the command before it, and before a ``t`` that follows
+        a ``c`` run is that ``c``.  The ``c`` has already applied once, so
+        the run adds ``3 ** len`` more applications of it rather than
+        replacing them -- ``ct`` is four ``c``s, ``7 ** 4``, not the three
+        that counting the one already spent would give.
+
+        Both runs are read at dispatch.  Letting the ``t`` execute on its
+        own instead meant handing a count backward to a command already
+        gone, and no such handoff makes ``pt`` and ``ct`` both right.
         """
         from esolangs.interpreters.tape_based.painfuck import _advance
 
