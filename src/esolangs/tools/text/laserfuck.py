@@ -33,8 +33,13 @@ def _laserfuck_linear(run: str, width: int | None) -> str:
     than columns.  The funnel stays where it is, on the two rows below the
     first, and the fold returns to a margin clear of it.
     """
-    if width is None or width < laserfuck_layout.MIN_WIDTH + 1:
+    if width is None:
         return f"\xff}}}}{run}\n|o^\n _ "
+
+    # The unfolded run above is the widest form there is -- far wider than
+    # the default -- so a width too narrow to fold is raised to the
+    # narrowest that folds, rather than ignored into that widest form.
+    width = max(width, laserfuck_layout.MIN_WIDTH + 1)
 
     grid = [[" "] * (width + 1) for _ in range(3)]
     grid[0][0] = "\xff"
@@ -490,8 +495,12 @@ def laserfuck(text: str, width: int | None = None) -> str:
     Rather than predict, both are built and the smaller grid is returned --
     smaller by :func:`_laserfuck_area`, the bounding box, not by ``len``.  A
     ``width`` disqualifies a form that cannot meet it; if neither can, the
-    multiplying form's own fallback still applies.
+    multiplying form's own fallback still applies.  A width narrower than
+    any form can fold in is raised to the narrowest that can, so every
+    width is answered with a program rather than refused.
     """
+    if width is not None:
+        width = max(width, laserfuck_layout.MIN_WIDTH + 1)
     forms = [_laserfuck_multiply(text, width)]
     for factored in (False, True):
         for grouped in (False, True):
