@@ -81,10 +81,11 @@ class TestCollatzRule:
             _reg_get,
         )
 
-        arrays = _arr_set((("a", ((1, 9),)),), "a", 3, 7)
+        arrays = _arr_set((("before", ((0, 1),)), ("a", ((1, 9),))), "a", 3, 7)
         assert _reg_get((("x", 4),), "missing") == 0
         assert _arr_get(arrays, "a", 2) == 0
         assert _arr_get(arrays, "missing", 0) == 0
+        assert _arr_get(arrays, "before", 0) == 1
 
 
 class TestPrinting:
