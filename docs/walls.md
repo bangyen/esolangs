@@ -1248,8 +1248,10 @@ remaining gap: `_Machine` tracks one cursor for the single resumable frame,
 and a nested call from inside an expression runs to completion inside one
 `step()`, its frames never part of `snapshot()`.  That path is deliberately
 native-recursive — `return` exits a call immediately, so there is no
-return-value-threading idiom to convert — and it remains bounded by Python's
-own recursion limit rather than a documented cap.
+return-value-threading idiom to convert.  Its depth is still the host's
+rather than the language's (measured at 248 levels, about four Python frames
+per call), but `step` now converts the `RecursionError` into a `HaltError`
+naming the limit, so the ceiling is reported rather than leaked.
 
 **Suptiftam's call machinery, Forbin's statement-position calls and all of
 Lamfunc's calls run on an explicit frame stack** (`_Machine.frames`), so a
