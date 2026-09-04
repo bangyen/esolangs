@@ -29,9 +29,10 @@ predictable across languages:
   echoes ``"AB"``, while ``"AB"`` on one line supplies only ``A`` and the
   second `,` raises `EOFError`.
 - **Recursion is uncapped except in Forbin's expression position.**
-  Suptiftam, Forbin's statement-position calls, and all of Lamfunc's calls
-  run on an explicit frame stack (`_Machine.frames`), so a terminating
-  recursion of any depth completes.  Forbin's *expression-position* calls
+  Suptiftam, Forbin's statement-position calls, all of Lamfunc's calls,
+  Forþ's stored scopes, and Jaune subroutines run on an explicit frame stack
+  (`_Machine.frames`), so a terminating recursion of any depth completes.
+  Forbin's *expression-position* calls
   (`x = f(y)`, needing the result back synchronously) still recurse
   natively and hit Python's own limit; the language has no realistic
   program shape that recurses this way.  `run_until_halt_or_ancestor` can

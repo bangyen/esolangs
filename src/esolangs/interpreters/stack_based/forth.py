@@ -314,6 +314,23 @@ class _Machine:
             self.io.position(),
         )
 
+    def frame_entry_key(self, frame: _Frame) -> tuple[object, ...]:
+        """Return the state a called scope needs to replay an ancestor.
+
+        Scope text is the callee identity, while the shared operand stack
+        and scope table are its bindings: either can make a later call take
+        a different route.  The ``loop`` flag distinguishes a stored scope
+        from a bracket body with the same text.  See
+        :func:`esolangs.vm.run_until_halt_or_ancestor`.
+        """
+        return (
+            frame.code,
+            frame.loop,
+            self.stack,
+            frozenset(self.table.items()),
+            self.io.position(),
+        )
+
     @property
     def _state(self) -> _State:
         """The machine's fields as the value the transition works on."""
