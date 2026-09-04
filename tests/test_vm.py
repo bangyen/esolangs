@@ -28,6 +28,12 @@ def _run_all(vm: VM) -> str:
     return vm.output
 
 
+def _read_cell(state: object) -> int:
+    """Return the cell under the pointer of a Super SNUSP branching state."""
+    _row, _col, _heading, pointer, cells, *_rest = state  # type: ignore[misc]
+    return next((value for index, value in cells if index == pointer), 0)
+
+
 def _painfuck_source(targets: str) -> str:
     """Encode direct Painfuck commands through its source translation."""
     cycles = ("pevkjzwr", "yuctsobqihald")
@@ -1310,6 +1316,115 @@ class TestRunUntilHaltOrCycle:
         with pytest.raises(TimeoutError, match="needs input"):
             run_until_halt_or_all_branches_cycle(_Machine(["o,"], ScriptedIO("A\n")))
 
+    def test_super_snusp_mirror_ring_loops_under_every_draw(self) -> None:
+        """A ``/`` ring circulates forever, and no draw escapes it."""
+        from esolangs.interpreters.grid_based.super_snusp import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.vm import (
+            run_until_halt_or_all_branches_cycle,
+            run_until_halt_or_cycle,
+        )
+
+        code = ["///", '/"/', "///"]
+        assert (
+            run_until_halt_or_all_branches_cycle(
+                _Machine(code, ScriptedIO()), limit=3000
+            )
+            is False
+        )
+        assert run_until_halt_or_cycle(_Machine(code, ScriptedIO())) is False
+
+    def test_super_snusp_forks_every_value_equals_could_store(self) -> None:
+        """``=`` picks from the span between the cell and the stack top.
+
+        ``3`` writes 3, ``{`` pushes it, ``(`` drops the cell to 2, so the
+        span is ``[2..3]`` -- two outcomes, against the one a command
+        without a draw would produce.
+        """
+        from esolangs.interpreters.grid_based.super_snusp import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        machine = _Machine(['"3{(='], ScriptedIO())
+        state = machine.branching_snapshot()
+        for _ in range(4):  # '"', '3', '{', '(' -- all deterministic
+            successors = machine.branching_successors(state, 100)
+            assert successors is not None
+            assert len(successors) == 1, "only '=' draws"
+            (state,) = successors
+
+        at_equals = machine.branching_successors(state, 100)
+        assert at_equals is not None
+        stored = sorted(_read_cell(nxt) for nxt in at_equals)
+        assert stored == [2, 3], "both ends of the span are reachable"
+
+    def test_super_snusp_declines_input_and_caps_a_wide_span(self) -> None:
+        """The two undecided cases, both raising rather than guessing."""
+        from esolangs.interpreters.grid_based.super_snusp import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.vm import run_until_halt_or_all_branches_cycle
+
+        with pytest.raises(TimeoutError, match="needs input"):
+            run_until_halt_or_all_branches_cycle(_Machine(['",'], ScriptedIO("A\n")))
+        with pytest.raises(TimeoutError, match="needs input"):
+            run_until_halt_or_all_branches_cycle(_Machine(['"@'], ScriptedIO("1\n")))
+
+        # Digits accumulate into 999, '{' pushes it, and '>' moves to a
+        # fresh zero cell, so '=' spans 1000 values -- past the cap a single
+        # transition may open, whatever budget the caller allows.
+        wide = _Machine(['"999{>='], ScriptedIO())
+        with pytest.raises(TimeoutError, match=r"exceeds the .* cap"):
+            run_until_halt_or_all_branches_cycle(wide, limit=100000)
+
+    def test_modulous_reset_loops_and_end_halts(self) -> None:
+        """``RST`` rewinds the cursor forever; ``END`` stops."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.modulous import _Machine
+        from esolangs.vm import (
+            run_until_halt_or_all_branches_cycle,
+            run_until_halt_or_cycle,
+        )
+
+        assert (
+            run_until_halt_or_all_branches_cycle(_Machine("[RST]", ScriptedIO()))
+            is False
+        )
+        assert run_until_halt_or_cycle(_Machine("[RST]", ScriptedIO())) is False
+        assert (
+            run_until_halt_or_all_branches_cycle(_Machine("[END]", ScriptedIO()))
+            is True
+        )
+
+    def test_modulous_forks_every_value_rnd_could_draw(self) -> None:
+        """``RND n`` opens exactly ``n`` outcomes, one per drawable value."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.modulous import _Machine
+
+        machine = _Machine("[RND 4]", ScriptedIO())
+        successors = machine.branching_successors(machine.branching_snapshot(), 100)
+        assert successors is not None
+        assert sorted(state[0][0][-1] for state in successors) == [0, 1, 2, 3]
+
+        # A bound below one is not a quiet no-op: the handler rejects it,
+        # so the search raises exactly where a step would.
+        from esolangs.exceptions import HaltError
+
+        quiet = _Machine("[RND 0]", ScriptedIO())
+        with pytest.raises(HaltError):
+            quiet.branching_successors(quiet.branching_snapshot(), 100)
+
+    def test_modulous_declines_input_and_caps_a_wide_draw(self) -> None:
+        """``INP`` cannot be forked, and one ``RND`` cannot be unbounded."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.modulous import _Machine
+        from esolangs.vm import run_until_halt_or_all_branches_cycle
+
+        with pytest.raises(TimeoutError, match="needs input"):
+            run_until_halt_or_all_branches_cycle(_Machine("[INP]", ScriptedIO("A\n")))
+        with pytest.raises(TimeoutError, match=r"exceeds the .* cap"):
+            run_until_halt_or_all_branches_cycle(
+                _Machine("[RND 100000]", ScriptedIO()), limit=100000
+            )
+
     def test_branching_search_leaves_unbounded_or_input_paths_undecided(self) -> None:
         from esolangs.interpreters.grid_based.wii2d import _Machine as Wii2dMachine
         from esolangs.interpreters.io import ScriptedIO
@@ -1813,7 +1928,7 @@ class TestEveryLanguageIsSteppable:
         # Random, but no branching search yet: a program that reaches their
         # random command stays on the wall-clock backstop.  Each is the same
         # size of job LaserFuck's was -- open work, not a decision.
-        not_yet_branching = frozenset({"COD", "Modulous", "Super SNUSP"})
+        not_yet_branching = frozenset({"COD"})
         methods = (
             "branching_snapshot",
             "branching_halted",

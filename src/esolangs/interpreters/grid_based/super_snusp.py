@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Sequence
+from typing import cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -26,6 +27,15 @@ type _State = tuple[
     int, int, int, int, tuple[tuple[int, int], ...], tuple[int, ...], bool, bool
 ]
 type _Effect = tuple[str, int] | None
+
+
+#: The most outcomes one ``=`` may open in a branching search.  Its range is
+#: the span between two runtime values rather than a fixed coin, so a single
+#: command can ask for more states than any search wants to hold.  This is
+#: deliberately a property of the transition rather than the caller's
+#: remaining budget: that budget shrinks as the search proceeds, which would
+#: make the same program decidable or not depending on when it was reached.
+_EQUAL_FANOUT = 256
 
 
 def _floor_root(value: int, degree: int) -> int:
@@ -223,6 +233,61 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         return (*self.state, self.io.position())
+
+    # The all-random-outcomes search.  ``_State`` is already the whole
+    # machine -- ``done`` included -- so the branching state is that value
+    # unchanged, minus the input cursor ``snapshot`` adds: input is declined
+    # below rather than forked, and output cannot affect a later command.
+
+    def branching_snapshot(self) -> _State:
+        """Return the current state as the search's starting point."""
+        return self.state
+
+    def branching_halted(self, state: object) -> bool:
+        """Report whether ``state`` has left the grid."""
+        return cast(_State, state)[7]
+
+    def branching_successors(
+        self, state: object, _limit: int
+    ) -> tuple[_State, ...] | None:
+        """Return the state for every value ``=`` could store.
+
+        Mirrors :meth:`step`'s draw *condition*, not just its command: an
+        ``=`` with nothing on the stack draws nothing and raises inside the
+        transition, so it is left to the single deterministic call rather
+        than forked over an empty range.
+
+        The range is the inclusive span between the current cell and the
+        stack top, so unlike a coin or a heading it is unbounded in
+        principle -- a program can make one command fan out as wide as it
+        likes.  That is charged against ``limit`` here rather than
+        materialized first.
+
+        A :class:`~esolangs.exceptions.HaltError` from the transition is
+        left to propagate, exactly as it does out of :meth:`step`.  It says
+        the program halted on an invalid operation, so catching it here
+        would hide a *terminating* branch and let the search report a
+        universal hang for a program that stops.
+        """
+        current = cast(_State, state)
+        row, col, _heading, pointer, cells, values, _digit, _done = current
+        command = self.code[row][col]
+        if command in ",@":
+            return None
+
+        offsets: tuple[int | None, ...] = (None,)
+        if command == "=" and values:
+            low, high = sorted((_read(cells, pointer), values[-1]))
+            if high - low + 1 > _EQUAL_FANOUT:
+                raise TimeoutError(
+                    f"undecided: one '=' spanning {high - low + 1} values exceeds "
+                    f"the {_EQUAL_FANOUT}-outcome cap on a single transition"
+                )
+            offsets = tuple(range(high - low + 1))
+
+        return tuple(
+            _advance(current, self.code, None, None, offset)[0] for offset in offsets
+        )
 
     def step(self) -> None:
         if self.halted:
