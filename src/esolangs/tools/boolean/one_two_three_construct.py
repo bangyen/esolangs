@@ -169,6 +169,18 @@ class _Row:
 #: decremented in place from :func:`_exec_char`.
 _work = [0]
 
+#: Fraction of the work budget the first mark geometry may spend before
+#: :func:`construct` parks it and probes the other one.  The geometries
+#: are wildly asymmetric per table -- one solves in milliseconds what
+#: the other grinds on for twenty minutes before failing -- and which
+#: way round is table-specific, so a fixed order always loses badly on
+#: some table.  Probing caps that loss at this fraction instead: a
+#: first geometry that has not converged by then is *paused*, not
+#: abandoned, and is resumed with the full remaining budget if the
+#: other one also fails to converge.  Measured in simulated commands,
+#: so the switch point is deterministic and machine-independent.
+_PROBE_FRACTION = 16
+
 
 def _exec_char(row: _Row, ch: str) -> None:
     """Apply one ``1``/``2`` command to a row, mirroring the interpreter.
@@ -1321,13 +1333,36 @@ def construct(truth_table: str, *, verify: bool = True) -> str:
     # sweep -- measured both ways: the uniform +1 exhausts on a table
     # the staggered +1/+3 solves in seconds, and vice versa.  Trying
     # both is deterministic and strictly stronger than either.
-    for stagger in (0, 1):
-        # The budget still bounds a diverging search, but everything
-        # about a wider table is exponentially bigger -- rows, template
-        # length, kill sweeps -- so the cap scales with the row count
-        # (per attempt) to stay a divergence guard, not an arity
-        # ceiling.  Deterministic either way.
-        _work[0] = _WORK_BUDGET * max(1, 2 ** (n - 4))
+    #
+    # Which to try *first* is a pure cost choice -- both are always
+    # attempted, so it can never change the set of tables that build --
+    # but the cost at stake is enormous and table-specific.  Over a
+    # random four-input sample of 60, running each geometry to
+    # completion: uniform-first totals 1612s against 59s for
+    # staggered-first, and the gap is one table (``1000110011010101``)
+    # that uniform grinds on for 1176s before failing and staggered
+    # solves in 0.4s.  At five inputs the sample points the other way.
+    # So no fixed order is safe: whichever is first, some table pays
+    # the full budget before the other is even tried.
+    #
+    # Instead the first geometry gets a *probe*: a
+    # ``1 / _PROBE_FRACTION`` slice of the budget.  If it converges,
+    # nothing is lost; if it stalls, the other geometry is tried with
+    # the full budget, and only if that also stalls does the first
+    # resume with everything left.  A wrong first guess therefore
+    # costs a bounded slice rather than the whole budget, and no table
+    # that used to build stops building -- the fallback still runs
+    # both to exhaustion before giving up.
+    budget = _WORK_BUDGET * max(1, 2 ** (n - 4))
+
+    def attempt(stagger: int, allowance: int) -> str | None:
+        """One geometry under ``allowance`` work; ``None`` if it stalls.
+
+        Raises only on a genuine construction failure; a drained
+        allowance is a stall, which the caller retries elsewhere.
+        """
+        nonlocal failure
+        _work[0] = allowance
         try:
             b = _Builder(n)
             marks = [2 ** (n + 1) * 3**i + 1 + 2 * (i & 1) * stagger for i in range(n)]
@@ -1349,4 +1384,16 @@ def construct(truth_table: str, *, verify: bool = True) -> str:
             failure = "the work budget ran out before the searches converged"
         except ConstructError as exc:
             failure = str(exc)
+        return None
+
+    # The budget still bounds a diverging search, but everything about a
+    # wider table is exponentially bigger -- rows, template length, kill
+    # sweeps -- so the cap scales with the row count (per attempt) to
+    # stay a divergence guard, not an arity ceiling.  Deterministic
+    # either way, and the probe slice scales with it.
+    probe = max(1, budget // _PROBE_FRACTION)
+    for stagger, allowance in ((0, probe), (1, budget), (0, budget)):
+        template = attempt(stagger, allowance)
+        if template is not None:
+            return template
     raise ValueError(f"123 construction failed for {truth_table!r}: {failure}")

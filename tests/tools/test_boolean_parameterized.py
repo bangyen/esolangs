@@ -2251,6 +2251,63 @@ class TestParameterizedOneTwoThree:
             program = self.instantiate(template, bits)
             assert self.run(program) == "00111000"[combo], bits
 
+    def test_a_probed_geometry_resumes_when_the_other_stalls(self) -> None:
+        """A table only the probed geometry builds still builds.
+
+        ``construct`` gives the uniform layout a slice of the budget,
+        falls back to the staggered one, and only then resumes uniform
+        with the rest.  ``0100000011001001`` is the witness for that
+        last leg at four inputs: the staggered layout exhausts on it,
+        so the build can only come from uniform -- either inside its
+        probe or on the resume.  If the resume were ever dropped, or
+        the probe slice were treated as a hard cap, this would raise.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import construct
+
+        table = "0100000011001001"
+        # verify=False: construct()'s own replay is re-run row by row here.
+        template = construct(table, verify=False)
+        for combo in range(16):
+            bits = [(combo >> (3 - i)) & 1 for i in range(4)]
+            program = self.instantiate(template, bits)
+            assert self.run(program) == table[combo], bits
+
+    def test_the_probe_slice_bounds_a_stalling_first_geometry(self) -> None:
+        """A stalling first geometry is parked, not run to exhaustion.
+
+        ``1000110011010101`` is the measured worst case: the uniform
+        layout grinds a whole four-input budget on it and still fails,
+        while the staggered one solves it at once.  The probe is what
+        bounds that, and the bound is on *work* -- so shrink the budget
+        rather than build the real table, and watch the allowances the
+        attempts actually receive.  The sequence pins the whole policy:
+        a slice for the first geometry, then a full budget for the
+        second, then the first resuming with a full budget.  Running
+        this against the true budget would burn the 125M simulated
+        commands the probe exists to avoid paying.
+        """
+        from esolangs.tools.boolean import one_two_three_construct as mod
+
+        allowances: list[int] = []
+        original = mod._phase_a
+
+        def record(b: object, marks: list[int]) -> object:
+            allowances.append(mod._work[0])
+            return original(b, marks)  # type: ignore[arg-type]
+
+        small = 10_000  # far too little to build anything: every attempt stalls
+        mod._phase_a = record  # type: ignore[assignment]
+        budget, mod._WORK_BUDGET = mod._WORK_BUDGET, small
+        try:
+            with pytest.raises(ValueError, match="123 construction failed"):
+                mod.construct("1000110011010101", verify=False)
+        finally:
+            mod._phase_a = original  # type: ignore[assignment]
+            mod._WORK_BUDGET = budget
+
+        probe = small // mod._PROBE_FRACTION
+        assert allowances == [probe, small, small], allowances
+
     def test_an_exhausted_work_budget_is_declined(self) -> None:
         """A table that would build still raises once the work runs out.
 
