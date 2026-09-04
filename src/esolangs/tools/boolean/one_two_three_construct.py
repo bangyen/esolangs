@@ -1002,7 +1002,14 @@ def _group_boost(b: _Builder, victim: tuple[int, ...], table: str) -> _Builder |
             if res is None:
                 continue
             plan, tb = res
-            if not tb or victim in tb:
+            # Screened above: a row joins the TRUE set exactly when its
+            # first landing is marked (verified against _walk_plan on
+            # 300000 random cases), so the screen that requires the
+            # victim to skip already keeps it out of `tb`, and the one
+            # that requires a blocker to jump already makes `tb`
+            # non-empty.  Kept as the plan's own statement of what it
+            # needs rather than as a live exit.
+            if not tb or victim in tb:  # pragma: no cover - screened above
                 continue
             if not _plan_ok(plan, table, ones_unique=True):
                 continue

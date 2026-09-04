@@ -2833,6 +2833,103 @@ class TestParameterizedOneTwoThree:
         low, high = (row.pos for row in narrow.live())
         assert high - low > 5
 
+    def test_the_endgame_parks_survivors_and_reports_a_state_it_cannot(
+        self,
+    ) -> None:
+        """Parking is what makes a template halt, so failing it must raise.
+
+        A state with no survivors is already parked.  Four occupied residues
+        mod 4 take the ring round -- rows of equal residue land on the same
+        cell and fuse, so a class has to be freed before the descent can
+        collapse them.  The convergence allowance is ``64 * 2**n + 64``
+        passes, and a builder carrying a small ``n`` beside rows spread far
+        wider than that ``n`` implies is what outlasts it: the guard is a
+        real exit, not decoration.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import (
+            _WORK_BUDGET,
+            ConstructError,
+            _Builder,
+            _endgame,
+            _Row,
+            _work,
+        )
+
+        _work[0] = _WORK_BUDGET
+
+        no_survivors = _Builder(1)
+        for row in no_survivors.rows:
+            row.dead = True
+        _endgame(no_survivors)  # returns rather than dividing by no rows
+
+        crowded = _Builder(2)
+        for i, row in enumerate(crowded.rows):
+            row.pos, row.tape = i, 0
+        assert len({row.pos % 4 for row in crowded.live()}) == 4
+        _endgame(crowded)
+        assert {row.pos for row in crowded.live()} == {-1}
+
+        stranded = _Builder.__new__(_Builder)
+        stranded.n = 1  # an allowance of 192 passes
+        stranded.chunks, stranded.seg = [], []
+        stranded.rows = []
+        for i in range(12):
+            row = _Row((i,))
+            row.pos, row.tape = i * 977, 0
+            stranded.rows.append(row)
+        with pytest.raises(ConstructError, match="endgame did not converge"):
+            _endgame(stranded)
+
+    def test_a_build_that_cannot_settle_raises_rather_than_emitting(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """An exhausted verdict search is reported, never worked around.
+
+        ``construct`` tries two mark geometries and keeps the last failure,
+        so a search that answers ``None`` under both has to surface as a
+        ``ValueError`` naming what ran out -- the alternative is emitting a
+        template no stage proved.
+        """
+        from esolangs.tools.boolean import one_two_three_construct as module
+
+        monkeypatch.setattr(module, "_verdict_search", lambda *_, **__: None)
+        with pytest.raises(ValueError, match="verdict search exhausted"):
+            module.construct("0110")
+
+    def test_the_replay_gate_reads_a_looping_row_as_a_one(self) -> None:
+        """The closing replay decides each row on the real interpreter.
+
+        A 1-row does not halt -- it is the loop the kill built -- so the
+        verdict comes from Brent's cycle detection rather than from the
+        machine stopping.  The wider tests here replay the template
+        themselves and so build with ``verify=False``; this is the default
+        path, where the gate runs.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import construct
+
+        template = construct("01", verify=True)
+        assert "{X0}" in template
+
+    def test_the_second_kill_family_settles_what_the_first_leaves(self) -> None:
+        """``_moves`` offers deeper pads and later victims after the cheap ones.
+
+        The first family covers the three lowest victims at pads under 3; a
+        table those do not settle falls through to the rest, and the yield
+        there is what carries the search on.  A spread sample of three-input
+        tables reaches it -- no sweep needed, since the second family is
+        ordinary rather than exceptional.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import construct
+
+        built = 0
+        for value in range(0, 256, 17):
+            try:
+                construct(format(value, "08b"), verify=False)
+            except ValueError:
+                continue
+            built += 1
+        assert built == 16
+
 
 def test_nocomment_wide_declines_when_the_plan_outgrows_the_skip() -> None:
     """Past fifteen inputs the summand plan leaves no room to widen.
