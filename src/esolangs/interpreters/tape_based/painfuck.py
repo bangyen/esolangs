@@ -110,10 +110,16 @@ type _State = tuple[tuple[int, ...], tuple[int, ...], int, int, int]
 
 @dataclass(frozen=True)
 class _Print:
-    """Write a value, as a number (``o``) or a character (``u``)."""
+    """Write a value, as a number (``o``) or a character (``u``).
+
+    ``count`` is how many times in a row -- a repeated ``o``/``u`` prints
+    the *same* cell every iteration, since nothing between them changes it,
+    so one effect carries the repeat instead of ``rep`` copies of itself.
+    """
 
     value: int
     as_char: bool
+    count: int = 1
 
 
 type _Effect = _Print
@@ -299,6 +305,14 @@ def _advance(
                 # no rewrite makes it affordable (measured at 1.0x); the loop
                 # is not the cost there.  At the fixed points it collapses.
                 tape, rep = _set(tape, ptr, tape[ptr] * tape[ptr]), 0
+                continue
+            if c in "ou":
+                # A repeated print emits the same cell every time -- nothing
+                # in the loop writes the tape -- so one effect carries the
+                # count rather than appending ``rep`` identical ones.
+                value = tape[ptr] if c == "o" else tape[ptr] & 0xFF
+                effects.append(_Print(value, as_char=c == "u", count=rep))
+                rep = 0
                 continue
             if c in _IDEMPOTENT:
                 # Repeating these is doing them once: each writes a value
@@ -574,11 +588,21 @@ class _Machine:
         self._restore(state)
 
     def _write(self, effect: _Effect) -> None:
-        """Perform one collected write."""
-        if effect.as_char:
-            self.io.print_char(chr(effect.value))
-        else:
-            self.io.print_num(effect.value)
+        """Perform one collected write, ``count`` times over.
+
+        A repeat is written as one string rather than a loop of calls: the
+        value is the same every time, and ``print_str`` derives its
+        end-of-line state from the text, so the repeated form and the
+        looped one leave the port identical.
+        """
+        if effect.count == 1:
+            if effect.as_char:
+                self.io.print_char(chr(effect.value))
+            else:
+                self.io.print_num(effect.value)
+            return
+        piece = chr(effect.value) if effect.as_char else str(effect.value)
+        self.io.print_str(piece * effect.count)
 
 
 def run(code: str, io: IO, rng: Randomness | None = None) -> None:
