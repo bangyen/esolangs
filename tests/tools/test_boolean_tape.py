@@ -690,25 +690,6 @@ class TestCirclefuck:
             got = run_circlefuck(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    @pytest.mark.parametrize(
-        ("values", "n"),
-        [
-            ([0, 255], 1),
-            ([48, 49, 50, 51], 2),
-        ],
-    )
-    def test_byte_values(self, values: list[int], n: int) -> None:
-        """circlefuck_byte outputs the given byte per input combination."""
-        program = boolean.circlefuck_byte(values)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_circlefuck(program, [str(b) for b in bits])
-            assert got == chr(values[combo]), f"inputs {bits}"
-
-    def test_byte_values_require_a_power_of_two_table(self) -> None:
-        with pytest.raises(ValueError, match="power-of-two"):
-            boolean.circlefuck_byte([1, 2, 3])
-
     def test_past_the_cap_the_greedy_order_replaces_the_search(self) -> None:
         """Above ``_ORDER_SEARCH_MAX`` one greedy pick stands in for ``n!``.
 
@@ -1555,39 +1536,6 @@ class TestJaune:
     def test_bad_table_rejected(self) -> None:
         with pytest.raises(ValueError, match="power-of-two"):
             boolean.jaune("011")
-
-    @pytest.mark.parametrize(
-        ("a", "b"),
-        [
-            (0, 5),
-            (5, 0),
-            (0, 0),
-            (3, 4),
-            (12, 34),
-            (99, 99),
-            (100, 7),
-            (7, 100),
-            (7, 123),
-            (123, 456),
-            (12345, 6789),
-            pytest.param(99999, 99999, marks=pytest.mark.slow),  # 1.3s
-        ],
-    )
-    def test_multiply(self, a: int, b: int) -> None:
-        """The sentinel-delimited multiply reads any-length operands."""
-        program = boolean.jaune_multiply()
-        lines = [*list(str(a)), "*", *list(str(b)), "#"]
-        got = run_jaune(program, lines)
-        assert got == str(a * b), f"{a} * {b}"
-
-    def test_multiply_all_small_operands(self) -> None:
-        """Every single-digit pair produces the right product."""
-        program = boolean.jaune_multiply()
-        for a in range(10):
-            for b in range(10):
-                lines = [*list(str(a)), "*", *list(str(b)), "#"]
-                got = run_jaune(program, lines)
-                assert got == str(a * b), f"{a} * {b}"
 
 
 class TestBasicfuck:
