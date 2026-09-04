@@ -18,25 +18,23 @@ from tests.tools.boolean_runners import one_two_three_result
 
 
 def _parameterized_generators():
+    """Return every parameterized generator the module exports.
+
+    Read off ``__all__`` rather than hand-listed.  The roster used to name
+    thirteen of the seventeen exports, so ``a_painter_ant``, ``cod`` and
+    ``wii2d`` were silently exempt from the exactly-once and slot-order
+    invariants below -- including ``cod``, which this module's own docstring
+    claims to cover.  The exemption bought nothing (all three satisfy both
+    invariants), which is what makes a silent roster worse than an explicit
+    one: nobody chose it.  ``instantiate`` is the module's shared helper, not
+    a generator, so it is the one name excluded, by name and for a reason.
+    """
     from esolangs.tools.boolean import parameterized
 
     return [
         (name, parameterized.__dict__[name])
-        for name in (
-            "arrowqueue",
-            "bio",
-            "back",
-            "nocomment",
-            "bfpda",
-            "lamfunc",
-            "bitdeque",
-            "ram0",
-            "minsky_swap",
-            "eval",
-            "minifuck",
-            "one_two_three",
-            "pct_squared_minus_one",
-        )
+        for name in parameterized.__all__
+        if name != "instantiate"
     ]
 
 
