@@ -1664,6 +1664,7 @@ class TestParameterizedCOD:
                 got = self.run_cod(self.instantiate(template, bits))
                 assert got == f"{table[combo]}", f"table {table} inputs {bits}"
 
+    @pytest.mark.slow  # 1.1s: all 256 three-input tables through COD
     def test_all_three_input_tables(self) -> None:
         """Every one of the 256 three-input tables produces the right result.
 
@@ -2007,6 +2008,7 @@ class TestEvalBoolean:
             parameterized.eval("02")
 
 
+@pytest.mark.slow  # 2.6s: every fill of every parameterized generator
 def test_fills_embed_a_zero_and_a_one_at_equal_width() -> None:
     """No fill may spell a 0 shorter than a 1, or the length leaks the input.
 

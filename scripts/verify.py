@@ -598,13 +598,17 @@ def main() -> int:
                 print(f"[skip] {name}: branch touched none of its files")
                 continue
             cmd = narrowed
-        # The `slow` marker is on the fuzzers' divergence-detection tests,
-        # which drive the native toolchains: ~19s of the suite's ~25s for 10
-        # of its 3758 tests.  CI runs exactly those ten (ci.yml:323, `-m
-        # slow`) and errors if any is skipped, so deselecting them locally
-        # trades no coverage.  This is keyed on --full rather than on scoping
-        # because a run that widens back to everything -- a tooling change, an
-        # unreadable diff -- should still not pay for them.
+        # The `slow` marker is on 83 of the suite's 6502 tests: the fuzzers'
+        # divergence-detection tests, which drive the native toolchains, plus
+        # the generator derivations and fuzz loops whose cost is seconds each.
+        # Deselecting them locally trades no coverage, because CI's `test`
+        # matrix job runs pytest *unfiltered* -- every marked test still runs
+        # on every push.  (The separate divergence job additionally re-runs
+        # `tests/fuzz/test_differential_fuzz.py -m slow` and errors if any is
+        # skipped, guarding that file's toolchain skipifs specifically.)  This
+        # is keyed on --full rather than on scoping because a run that widens
+        # back to everything -- a tooling change, an unreadable diff -- should
+        # still not pay for them.
         #
         # The extra/line suites carry the same marker on their two 5.2s tests
         # (the eight-level nesting round trip and the n=5 parity table), which

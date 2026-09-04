@@ -285,6 +285,7 @@ class TestGeneratorRoundTrips:
         )
         assert gen.clockwise("") == ""
 
+    @pytest.mark.slow  # 1.3s
     def test_clockwise_weave_fills_the_interior(self) -> None:
         """The woven grid is nearly all code, unlike the hollow ring.
 
