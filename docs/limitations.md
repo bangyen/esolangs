@@ -34,8 +34,10 @@ predictable across languages:
   recursion of any depth completes.  Forbin's *expression-position* calls
   (`x = f(y)`, needing the result back synchronously) still recurse
   natively and hit Python's own limit; the language has no realistic
-  program shape that recurses this way.  Infinite recursion is an uncaught
-  hang — `run_until_halt_or_cycle` compares whole-machine snapshots, which
+  program shape that recurses this way.  `run_until_halt_or_ancestor` can
+  prove an infinite recursion when a call re-enters an ancestor with the
+  same entry state; calls whose bindings keep changing still need the
+  wall-clock backstop.  `run_until_halt_or_cycle` compares whole-machine snapshots, which
   a growing frame stack never repeats.  See [`docs/walls.md`](walls.md).
 
 ## Text generator blockers

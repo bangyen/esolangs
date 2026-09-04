@@ -1226,6 +1226,24 @@ class TestRunUntilHaltOrCycle:
         machine = _Machine(code, ScriptedIO())
         assert run_until_halt_or_cycle(machine) is True
 
+    def test_lamfunc_replayed_call_is_detected_as_an_ancestor(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.lamfunc import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        machine = _Machine("F loop - loop\nloop", ScriptedIO())
+        assert run_until_halt_or_ancestor(machine) is False
+
+    def test_lamfunc_changing_call_binding_halts(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.lamfunc import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        # The lazy branch re-enters loop with a smaller x, so identical
+        # evaluator continuations must not be mistaken for recursive calls.
+        code = "F loop x - i x loop fb x 0\nloop 0b1000"
+        assert run_until_halt_or_ancestor(_Machine(code, ScriptedIO())) is True
+
     def test_forbin_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.other.forbin import _Machine
@@ -1252,6 +1270,33 @@ class TestRunUntilHaltOrCycle:
 
         machine = _Machine("x=7", ScriptedIO())
         assert run_until_halt_or_cycle(machine) is True
+
+    def test_suptiftam_replayed_call_is_detected_as_an_ancestor(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.suptiftam import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        code = "\n".join(["fd loop :x", "loop(:x:)", "fi", "loop(:1:)"])
+        assert run_until_halt_or_ancestor(_Machine(code, ScriptedIO())) is False
+
+    def test_suptiftam_changing_global_halts(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.suptiftam import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        # The argument is unchanged, but the global countdown makes each
+        # call distinct and reaches the condition's base case.
+        code = "\n".join(
+            [
+                "n=3",
+                "fd loop :x",
+                "n=%-[n]1%",
+                "loop(:x:)if(n)",
+                "fi",
+                "loop(:0:)",
+            ]
+        )
+        assert run_until_halt_or_ancestor(_Machine(code, ScriptedIO())) is True
 
 
 class TestFactory:

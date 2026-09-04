@@ -55,7 +55,7 @@ bounded only by memory, not by Python's C stack.
 from __future__ import annotations
 
 import sys
-from collections.abc import Sequence
+from collections.abc import Hashable, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
@@ -169,6 +169,10 @@ class _State:
         if row is None or x < 0 or x >= len(row):
             return None
         return row[x]
+
+    def rows_key(self) -> tuple[tuple[int, ...] | None, ...]:
+        """Return the already-loaded input rows in a hashable form."""
+        return tuple(tuple(row) if row is not None else None for row in self._rows)
 
 
 # -- parsing ---------------------------------------------------------------
@@ -664,6 +668,25 @@ def _render_term(term: _Tape) -> str:
     return "\n".join(rows)
 
 
+def _value_key(value: object) -> tuple[object, ...]:
+    """Capture a scalar or tape by content for an ancestor-entry key."""
+    if isinstance(value, _Var):
+        return ("var", value.kind, value.value)
+    assert isinstance(value, _Tape)  # nosec B101
+    return (
+        "tape",
+        value.fixed,
+        tuple(sorted(value.cells.items())),
+        value.x,
+        value.y,
+    )
+
+
+def _scope_key(scope: dict[str, object]) -> tuple[tuple[str, tuple[object, ...]], ...]:
+    """Return a stable, structural view of one Suptiftam scope."""
+    return tuple(sorted((name, _value_key(value)) for name, value in scope.items()))
+
+
 class _Machine:
     """One Suptiftam run: the parsed program, state, cursor, and call stack."""
 
@@ -723,6 +746,25 @@ class _Machine:
                 )
                 for f in self.frames
             ),
+            self.state.io.position(),
+        )
+
+    def frame_entry_key(self, frame: _CallFrame) -> Hashable:
+        """Return the state a call needs to replay an ancestor.
+
+        A Suptiftam argument is a live ``_Var`` or ``_Tape``, not a copied
+        value, and a callee may also read or change globals.  Capturing both
+        scopes structurally therefore matters: a countdown held in a global
+        or a tape head moving toward an input byte can make two calls to the
+        same function terminate rather than replay.  The lazily read rows
+        are state too; the I/O cursor alone does not say which already-read
+        cells are available.  See :func:`esolangs.vm.run_until_halt_or_ancestor`.
+        """
+        return (
+            frame.name,
+            _scope_key(frame.local),
+            _scope_key(self.state.globals),
+            self.state.rows_key(),
             self.state.io.position(),
         )
 
