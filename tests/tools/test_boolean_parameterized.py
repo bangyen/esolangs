@@ -1385,6 +1385,57 @@ class TestParameterizedArrowQueue:
             }
             assert len(sizes) == 1, f"{table}: {sizes}"
 
+    def test_bare_ring_is_entry_sensitive(self) -> None:
+        """A bare ring sustains on right-entry and *halts* on down-entry.
+
+        The two ways a subtree is entered are not interchangeable, which is
+        the sharpest edge in the construction: the tree's top level is
+        entered heading down at column 1, while every recursive subtree is
+        entered heading right at its own ``(0, 0)``.  A bare
+        :data:`_TREE_1` only loops under the second.  Pinned because a
+        refactor that "simplified" the top-level entry to hand a bare ring
+        the down-entry would silently turn every constant-``1`` table into
+        a halt -- reporting ``0`` for every entry.
+
+        See ``docs/arrowqueue_generator.md`` (lemmas L2/L2'/L4).
+        """
+        from esolangs.interpreters.grid_based.arrowqueue import _Machine
+        from esolangs.tools.boolean.parameterized import _TREE_1
+        from esolangs.vm import run_until_halt_or_cycle
+
+        rdlu = (0, 1, 2, 3)
+
+        def verdict(state: tuple[int, int, int, tuple[int, ...]]) -> str:
+            machine = _Machine(list(_TREE_1))
+            machine.state = (*state, not machine.grid)
+            return "0" if run_until_halt_or_cycle(machine) else "1"
+
+        assert verdict((0, 0, 0, rdlu)) == "1"  # right-entry: the ring closes
+        assert verdict((0, 1, 1, rdlu)) == "0"  # down-entry: it does not
+
+    def test_constant_one_never_tops_out_as_a_bare_ring(self) -> None:
+        """The top-level tree always carries a drain, so down-entry is safe.
+
+        What makes the entry-sensitivity above harmless: a constant table
+        folds to ``_drained_leaf(v, n)`` with ``n >= 1`` (a one-entry table
+        is refused), so the top-level leaf's first ``+`` sits at ``(0, 1)``
+        -- exactly where the header's descent lands -- and the bare ring
+        appears only nested at column offset 3, where entry is rightward.
+        """
+        from esolangs.tools.boolean.parameterized import (
+            _TREE_1,
+            _drained_leaf,
+            _tree,
+        )
+
+        for n in range(1, 6):
+            assert _tree(list("1" * (2**n))) == _drained_leaf("1", n)
+
+        for n in (1, 2, 3):
+            for value in range(2 ** (2**n)):
+                table = format(value, f"0{2**n}b")
+                assert _tree(list(table)) != list(_TREE_1), table
+
 
 class TestParameterizedBfpda:
     """Input-by-substitution boolean generator for the no-input language BF-PDA."""
