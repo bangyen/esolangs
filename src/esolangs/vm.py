@@ -79,6 +79,31 @@ class _StepMachineWithShape(_StepMachine, Protocol):
         """The stack, or empty where the language has none."""
 
 
+@runtime_checkable
+class _BranchingStepMachine(Protocol):
+    """A machine whose next random choice can be enumerated exactly.
+
+    The state is deliberately an immutable value rather than the live
+    machine.  Exploring one outcome must not consume a random draw, input,
+    or output that belongs only to a sibling outcome.
+    """
+
+    def branching_snapshot(self) -> Hashable:
+        """Return the initial complete state for a branching search."""
+
+    def branching_halted(self, state: Hashable) -> bool:
+        """Whether ``state`` has halted."""
+
+    def branching_successors(
+        self, state: Hashable, limit: int
+    ) -> Sequence[Hashable] | None:
+        """Return every next state, or ``None`` when it cannot be forked.
+
+        ``limit`` bounds the outcomes this one transition may materialize.
+        A public machine step can itself repeat a random instruction.
+        """
+
+
 def run_until_halt_or_cycle(machine: _StepMachine) -> bool:
     """Step ``machine`` until it halts or revisits an exact state.
 
@@ -115,6 +140,51 @@ def run_until_halt_or_cycle(machine: _StepMachine) -> bool:
             power *= 2
             length = 0
     return True
+
+
+def run_until_halt_or_all_branches_cycle(
+    machine: _BranchingStepMachine, limit: int = 10_000
+) -> bool:
+    """Explore random outcomes until one halts or every path is cyclic.
+
+    Returns ``True`` when *some* sequence of random draws halts.  Returns
+    ``False`` only after the complete reachable state graph is finite and
+    contains no halted state, proving that every sequence of draws runs
+    forever.  The latter is the useful extension of
+    :func:`run_until_halt_or_cycle` for a random branch: revisiting a state
+    on one outcome alone says nothing when another outcome could escape.
+
+    ``limit`` bounds distinct states and the outcomes one public step may
+    materialize.  A machine that grows a tape, stack, or other state without
+    repeating remains undecided, as does a transition that cannot be forked
+    (for example, one that would read future interactive input).  Both raise
+    :class:`TimeoutError` rather than being mistaken for a universal hang.
+    The search keeps every exact state it has seen, unlike Brent's O(1)
+    deterministic detector, because branches can merge after taking
+    different random choices.
+    """
+    pending = [machine.branching_snapshot()]
+    seen: set[Hashable] = set()
+    while pending:
+        state = pending.pop()
+        if state in seen:
+            continue
+        if len(seen) == limit:
+            raise TimeoutError(
+                f"undecided after {limit} branching states: the reachable "
+                "graph may be unbounded"
+            )
+        seen.add(state)
+        if machine.branching_halted(state):
+            return True
+        successors = machine.branching_successors(state, limit - len(seen))
+        if successors is None:
+            raise TimeoutError(
+                "undecided: a branching transition needs input that cannot "
+                "be safely forked"
+            )
+        pending.extend(successors)
+    return False
 
 
 @runtime_checkable

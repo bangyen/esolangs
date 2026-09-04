@@ -143,11 +143,16 @@ already covers.  What remains:
   frame stack rather than recursing in Python.  **The audit is closed:**
   every other frame stack is structurally bounded or hides calls in native
   recursion.
-- **Branching cycle detection for `y`/`?` — considered, not started.**
-  Forking at every random decision would prove "hangs no matter how the coin
-  lands", but each decision doubles the live branches, a branch can still
-  hang via unbounded growth, and the common case (hangs under *some* flips)
-  is proved neither way.  Only worth building if that guarantee is needed.
+- **Branching cycle detection for `y`/`?` — shipped.**
+  `run_until_halt_or_all_branches_cycle` explores every exact successor of
+  Painfuck's `y` and WII2D's `?`, merging equal states.  It returns `False`
+  only when the finite reachable graph has no halted state (a proof that all
+  random outcomes hang); a single halted outcome returns `True`.  It raises
+  `TimeoutError` at 10,000 distinct states or outcomes in one repeated step,
+  and also when Painfuck would read future input: an unbounded-growth branch
+  and a branch-specific input cursor are undecided, not evidence of a hang.
+  This intentionally does not prove the common case where only some random
+  outcomes hang.
 
 ## Input reordering (remainder)
 
