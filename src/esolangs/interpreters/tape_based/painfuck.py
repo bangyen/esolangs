@@ -610,6 +610,13 @@ class _Machine:
                 pending.extend(((*coins, 0), (*coins, 1)))
             except _NeedRead:
                 return None
+            except _Halted as halt:
+                # A malformed loop is a terminal (error) outcome, just as it
+                # is to ``run``.  The branch graph has no error flag, so move
+                # its cursor past the program; ``branching_halted`` then
+                # recognizes it without pretending the failed command ran.
+                tape, loop, ptr, _ind, rep = halt.state
+                successors.append((tape, loop, ptr, self.n, rep))
             else:
                 successors.append(next_state)
         return tuple(successors)
