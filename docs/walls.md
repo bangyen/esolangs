@@ -1154,11 +1154,27 @@ cycles).  The full construction is recorded in
 ``docs/a_painter_ant_generator.md``.
 
 Supported for **every arity** and verified cycle-stable and exact: all
-``n <= 3`` tables exhaustively (including n == 1 and n == 2), with
-``n == 4``-``7`` sampled plus structured and constant edge tables.  The
-general method — encode each combination as a distinct leaf position
-reached by the weighted bit-moves, and anchor the cycle-2 run back onto
-that leaf — is recorded in ``docs/a_painter_ant_generator.md``.
+``n <= 4`` tables exhaustively — the 65536 four-input tables built,
+instantiated over all sixteen input combinations and checked for both
+properties, 0 failures in 64s — with ``n == 5``-``7`` sampled plus
+structured and constant edge tables.  The general method — encode each
+combination as a distinct leaf position reached by the weighted bit-moves,
+and anchor the cycle-2 run back onto that leaf — is recorded in
+``docs/a_painter_ant_generator.md``.
+
+``n == 4`` was previously sampled at three tables; promoting it cost about
+a minute because the stability verdict is a **state fixed point** rather
+than a cycle budget.  The generator only ever paints white, so the grid is
+monotone and the per-cycle transition depends only on (grid, position):
+when the whole state after cycle 2 equals the state after cycle 1, every
+later cycle repeats it exactly.  That is the same "a repeated snapshot
+proves the loop" move ArrowQueue's promotion used, and it is *stronger*
+than the ``box(1) == box(10)`` comparison the checked-in tests use — a
+proof rather than ten sampled cycles — while costing two cycles instead of
+ten (about 50x faster per table, which is what made 65536 tables cheap).
+The sweep carries a positive control: blanking the template's painted
+leaves must break exactly the table's one-entries (8 of 16 for XOR4), so
+the zero-failure result is not a probe that never fired.
 
 ## Multiply capability (Jaune realizes it)
 
