@@ -721,6 +721,36 @@ class TestWII2D:
         assert _wii2d_decode([0, 0, 0, 0]) == "0"
         assert _wii2d_decode([1, 1, 1, 1]) == "1"
 
+    def test_decode_centre_cap_has_a_constructed_miss(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A fixed fold-centre cap cannot make the greedy decoder total.
+
+        For every even cap ``K``, ``0 1**K 0 1`` defeats both first-pass
+        compressions and every fold at a centre at most ``K``.  A doubled
+        fold centred at ``c`` sees the opposite-bit pair ``(0, c)``; an
+        undoubled one sees ``(0, 2c)`` up to ``K / 2`` and
+        ``(K + 1, 2c - K - 1)`` above it.  So every candidate merges unlike
+        bits.  Raising the cap by one exposes the all-zero pair ``(0, K+1)``,
+        which is the positive control that the miss is the cap rather than a
+        defect in the fold algebra.
+        """
+        import importlib
+
+        from esolangs.tools.boolean.wii2d import _wii2d_apply, _wii2d_decode
+
+        module = importlib.import_module("esolangs.tools.boolean.wii2d")
+        cap = 4
+        pattern = [0, *([1] * cap), 0, 1]
+
+        monkeypatch.setattr(module, "_WII2D_MAX_CENTRE", cap)
+        assert _wii2d_decode(pattern) is None
+
+        monkeypatch.setattr(module, "_WII2D_MAX_CENTRE", cap + 1)
+        ops = _wii2d_decode(pattern)
+        assert ops is not None
+        assert [_wii2d_apply(ops, value) for value in range(len(pattern))] == pattern
+
     def test_threshold_reads_out_two_live_values(self) -> None:
         """The tail turns the last two values into their bits, either way round."""
         from esolangs.tools.boolean.wii2d import _wii2d_apply, _wii2d_threshold
