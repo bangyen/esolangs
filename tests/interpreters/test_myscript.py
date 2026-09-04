@@ -59,6 +59,28 @@ class TestExamples:
 
 
 class TestBuiltins:
+    def test_ask_reaches_every_expression_context(self) -> None:
+        """Nested expressions retain their IO and lexical scope.
+
+        ``ask`` is not just a top-level argument: assignments, arrays,
+        function arguments, loop conditions, and check arms all parse through
+        separate helpers.  The values make each path observable.
+        """
+        code = (
+            "var saved is ask\n"
+            "var array is [ask]\n"
+            "var echo is func value\n"
+            "  say value\n"
+            "echo ask\n"
+            "while ask,\n"
+            '  say "loop"\n'
+            "check ask,\n"
+            "  if ask,\n"
+            '    say "match"\n'
+            "say concat saved itemat array 0"
+        )
+        assert run_and_capture(code, inputs=["s", "a", "e", "", "x", "x"]) == "ematchsa"
+
     def test_arithmetic(self) -> None:
         assert run_and_capture("say divide 7 2") == "3.5"
         assert run_and_capture("say subtract 9 4") == "5"
