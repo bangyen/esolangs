@@ -661,9 +661,11 @@ class TestParameterizedNoComment:
     # seconds: measured 9.3s at n=9, 29.0s at n=10 and 99.4s at n=11.  n=9
     # used to stay in the fast run as the case exercising the composed skip
     # past a byte-sized index, but it is four times the one-second budget
-    # every other case is held to, and CI runs `-m slow` and errors if any
-    # of them skips -- so the mechanism is still proved on every push, just
-    # not at push time.
+    # every other case is held to.  The mechanism is still proved on every
+    # push, just not at push time: CI's `test` matrix job runs pytest
+    # unfiltered, so a slow-marked case runs there like any other.  (The
+    # separate `-m slow` job is scoped to the differential fuzzer's file
+    # and never selects these.)
     #
     # These are ~2x the figures first recorded here (4.1/13.0/43.5s), which
     # were measured before NoComment's tape became immutable.  The write

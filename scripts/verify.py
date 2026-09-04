@@ -598,7 +598,7 @@ def main() -> int:
                 print(f"[skip] {name}: branch touched none of its files")
                 continue
             cmd = narrowed
-        # The `slow` marker is on 83 of the suite's 6502 tests: the fuzzers'
+        # The `slow` marker is on 81 of the suite's 6502 tests: the fuzzers'
         # divergence-detection tests, which drive the native toolchains, plus
         # the generator derivations and fuzz loops whose cost is seconds each.
         # Deselecting them locally trades no coverage, because CI's `test`

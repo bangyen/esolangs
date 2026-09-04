@@ -425,7 +425,6 @@ def test_decleq_empty_input_line_is_a_target_language_collision() -> None:
     assert esolangs.run("S*bleq", sb_program, "\x00") == "\x00"
 
 
-@pytest.mark.slow  # 12.2s: 120 fuzzed programs, most spending the 1.0s timeout
 def test_decleq_fuzz_unrestricted_programs() -> None:
     """Random programs of any shape agree with the Decleq interpreter.
 
@@ -435,6 +434,15 @@ def test_decleq_fuzz_unrestricted_programs() -> None:
     class the cycle detector cannot prove either.  ``timeout`` is what
     turns that into a fast HaltError the except clause below already
     catches, instead of a hang.
+
+    **The timeout is the whole cost of this test.**  Twelve of the 120
+    draws never halt, and each one waits out the full timeout; the other
+    108 either halt or error immediately.  So the wall time is essentially
+    twelve timeouts, and lowering it scales the test linearly -- 1.0s cost
+    12.2s, 0.05s costs 0.8s -- while ``checked`` stays at 69 throughout,
+    because a non-halting program is not recovered by *any* timeout.  The
+    margin is not tight: the slowest program that does halt takes 0.343ms,
+    so 0.05s still leaves ~145x headroom for a slower machine.
     """
     rng = random.Random(19)
     vals = [0, 1, 2, 3, 5, 9, -1, -2, -3, -7, 42, 127, 255, -255, 6, 12, 15, 4, 10]
@@ -443,7 +451,7 @@ def test_decleq_fuzz_unrestricted_programs() -> None:
         cells = [rng.choice(vals) for _ in range(rng.randint(0, 12))]
         program = " ".join(map(str, cells))
         try:
-            expected = esolangs.run("Decleq", program, timeout=1.0)
+            expected = esolangs.run("Decleq", program, timeout=0.05)
         except (EsolangError, EOFError, IndexError):
             continue  # the reference interpreter errors; no behaviour to match
         sb_program = esolangs.transpile("Decleq", "S*bleq", program)
@@ -457,7 +465,9 @@ def test_decleq_fuzz_countdowns() -> None:
 
     The shape always halts by construction, but ``timeout`` is cheap
     insurance against the same class the unrestricted-programs test
-    guards against, and keeps the two calling conventions matched.
+    guards against, and keeps the two calling conventions matched -- at
+    the same 0.05s, which these programs clear by three orders of
+    magnitude.
     """
     rng = random.Random(23)
     checked = 0
@@ -465,7 +475,7 @@ def test_decleq_fuzz_countdowns() -> None:
         x = rng.randint(0, 25)
         program = f"{x} {x} 3 -2 {x} 0"
         try:
-            expected = esolangs.run("Decleq", program, timeout=1.0)
+            expected = esolangs.run("Decleq", program, timeout=0.05)
         except (EsolangError, EOFError, IndexError):
             continue
         sb_program = esolangs.transpile("Decleq", "S*bleq", program)
