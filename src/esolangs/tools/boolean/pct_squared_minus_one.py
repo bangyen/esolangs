@@ -1358,6 +1358,15 @@ _FoldState = tuple[_FoldPoint, ...]
 #: wipe the bottom/top ``k`` groups with relocation amount ``c``.
 _FoldOp = tuple[str, int, int, frozenset[int]]
 
+#: The largest bridge state :func:`_fold_to_cofactors` will search.  Measured,
+#: not chosen: exhaustively over ``n <= 4`` the 33628 tables that build never
+#: hand the bridge more than eight points, and the adversaries built to grow
+#: the state (a function of the first ``k`` inputs embedded at ``n = 8, 10,
+#: 12``) top out at four.  Above this the search is what makes a doomed arity
+#: expensive -- a 512-point state burns the 50000-state cap for 192s -- while
+#: contributing no build, so it is declined instead of paid for.
+_COFACTOR_BRIDGE_POINTS = 8
+
 #: A point in the emitter's mirror: a raw row or a merged set of rows.
 _FoldKey = int | frozenset[int]
 
@@ -2624,12 +2633,32 @@ def _fold_to_cofactors(state: _FoldState, cap: int = 50_000) -> list[_FoldOp] | 
     reduced the live state.  The final two-answer reduction still goes through
     :func:`_fold_plan`.  Keeping this bounded makes an interleaved candidate a
     fallback rather than a new source of unbounded generator latency.
+
+    ``cap`` bounds the number of states explored, not their *size*, and the
+    cost of one state grows with it: a 512-point state exhausts the cap in
+    192s, against milliseconds for the handful of points a bridge actually
+    uses.  That is the whole of the generator's latency past nine inputs --
+    a twelve-input table that no ladder serves spent 133s here before
+    refusing, and a *successful* build never pays it.
+
+    So the size is bounded too, which costs no reach.  Exhaustively over
+    ``n <= 4`` -- 33628 tables build -- no successful build ever hands this
+    a state above eight points, and the constructed adversaries that grow
+    the state on purpose (a function of only the first ``k`` inputs embedded
+    at ``n = 8, 10, 12``, and a middle window whose growth starts late) top
+    out at four.  A larger state does occasionally still solve, but only
+    inside builds that go on to fail for other reasons, and a miss here
+    aborts the candidate outright, so refusing them changes no output --
+    only how fast a doomed arity gives up.  This is the "compactable
+    intermediate states" the bridge is documented to accept, made explicit.
     """
     import heapq
 
     start = _fold_norm(list(state))
     if _cofactor_done(start):
         return []
+    if len(start) > _COFACTOR_BRIDGE_POINTS:
+        return None
     seen = {_fold_sig(start)}
     counter = 0
     heap: list[tuple[int, int, int, _FoldState, list[_FoldOp]]] = [
