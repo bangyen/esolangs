@@ -50,6 +50,11 @@ class TestSixFive:
         """1 moves the pointer right two cells."""
         assert run_and_capture("15555555555A0") == "2"
 
+    def test_right_move_reuses_an_already_allocated_tape(self) -> None:
+        """Moving right need not grow a tape that a prior state already grew."""
+        state = sixfive._advance((0, 0, (0, 0, 0)), ["1"])  # noqa: SLF001
+        assert state == (1, 2, (0, 0, 0))
+
     def test_move_left(self) -> None:
         """3 moves the pointer left."""
         assert run_and_capture("313A0") == "\x00"
