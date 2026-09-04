@@ -31,15 +31,7 @@ from typing import Any
 
 # Boolean generators that legitimately take something other than a plain
 # truth-table string, with the reason each one does.
-_ALLOWED = {
-    # A byte-valued generalization: leaves print chr(value), not chr(48+bit),
-    # so its table is a sequence of byte values rather than a bit string.
-    "circlefuck_byte",
-    # One construction multiplies any two decimal operands, so operand length
-    # is a property of the input rather than of the function; there is no
-    # truth table to take.
-    "jaune_multiply",
-}
+_ALLOWED: set[str] = set()
 
 # The one extra parameter a text generator may take.  `width` is the
 # de-facto rule already (8 modules use it and nothing else does); naming it

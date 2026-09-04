@@ -66,28 +66,6 @@ class TestInput:
         assert run_program("5+v+^.", "\n") == "5"
 
 
-class TestMultiply:
-    """The multiply program from :func:`esolangs.tools.boolean.jaune_multiply`.
-
-    It reads two sentinel-delimited decimal operands -- the digits of the
-    first, a ``*`` line, the digits of the second, a ``#`` line -- and prints
-    their product.  The construction handles any operand length, so the
-    generator takes no digit-count parameter (see docs/walls.md).
-    """
-
-    def test_multiplies_two_operands(self) -> None:
-        from esolangs.tools.boolean import jaune_multiply
-
-        stdin = "".join(line + "\n" for line in ["1", "2", "*", "3", "4", "#"])
-        assert run_program(jaune_multiply(), stdin) == "408"
-
-    def test_multiplies_operands_of_different_lengths(self) -> None:
-        from esolangs.tools.boolean import jaune_multiply
-
-        stdin = "".join(line + "\n" for line in ["7", "*", "1", "0", "9", "#"])
-        assert run_program(jaune_multiply(), stdin) == "763"
-
-
 class TestMemory:
     def test_hold_cell(self) -> None:
         # the spec's second adder: read a, read b, hold b, add to a

@@ -32,12 +32,10 @@ __all__ = [
     "brainfuck",
     "brainif",
     "circlefuck",
-    "circlefuck_byte",
     "dimensional",
     "dimensional_tree",
     "factor",
     "jaune",
-    "jaune_multiply",
     "painfuck",
     "rotfuck",
     "sbleq",
@@ -239,47 +237,11 @@ def circlefuck(truth_table: str) -> str:
     ``-``s, then a decision tree branches on the cells from the last input
     down. Each leaf starts from a cleared cell, so it sets the result with
     ``+``s, prints it, and halts with ``@`` -- halting at the leaf means the
-    tree never needs to skip the sibling branch.  A boolean table is just
-    the byte-valued generator with ``48 + bit`` outputs.
-
-    A subtree whose rows all agree folds to a leaf; see
-    :func:`circlefuck_byte`, which both share.
+    tree never needs to skip the sibling branch.  A subtree whose rows all
+    agree folds to a leaf.
     """
-    # Validated here rather than left to ``circlefuck_byte``: that one takes
-    # a *byte* table, where a single entry is a legal constant, so it cannot
-    # carry the boolean generators' "at least one input" rule.
-    _validate_truth_table(truth_table)
-    return circlefuck_byte([_ASCII_ZERO + int(bit) for bit in truth_table])
-
-
-def circlefuck_byte(truth_table: Sequence[int]) -> str:
-    """Build a Circlefuck program computing a byte-valued function.
-
-    ``truth_table`` is a sequence of ``2**n`` byte values (0-255) indexed by
-    the inputs (most significant first); the input count ``n`` is implied
-    by the table length.  This is the boolean generator generalized to
-    arbitrary byte outputs: each leaf prints ``chr(value)`` instead of
-    ``chr(48 + bit)``.
-
-    A subtree whose rows all agree becomes a leaf rather than branching on
-    bits that cannot change the answer.  The reads sit above the tree and
-    are unconditional, so a folded program consumes its input exactly as an
-    unfolded one does.
-
-    **The tree splits on its inputs in whichever order emits the shortest
-    program**, over all ``n!`` of them.  Unlike the generators whose nodes
-    *name* the input they test, a Circlefuck node tests whatever cell the
-    pointer is over, so an order is not a renaming: the tree has to walk
-    the pointer to the cell it wants, and the walk is a real cost the fold
-    has to beat.  See :func:`_circlefuck_ordered`.
-    """
-    n = len(truth_table).bit_length() - 1
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            "truth table must have a power-of-two number of entries "
-            f"(2**n), got {len(truth_table)}",
-        )
-    return _best_byte_order(truth_table, n)
+    n = _validate_truth_table(truth_table)
+    return _best_byte_order([_ASCII_ZERO + int(bit) for bit in truth_table], n)
 
 
 def _permute_byte_table(truth_table: Sequence[int], perm: tuple[int, ...]) -> list[int]:
@@ -368,7 +330,7 @@ def _constant_subtree_count(
 
 
 def _circlefuck_ordered(truth_table: list[int], perm: tuple[int, ...]) -> str:
-    """Emit one input order's Circlefuck program; see :func:`circlefuck_byte`.
+    """Emit one input order's Circlefuck program.
 
     ``truth_table`` is in the permuted frame -- bit ``k`` of a row index is
     the input tested at level ``k`` -- so the fold test below reads rows
@@ -1021,108 +983,6 @@ def _jaune_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
     end = fresh()
     return reads + node(0, 0, 2**n, scratch, None, end) + f"{end}:."
-
-
-def jaune_multiply() -> str:
-    """Build a Jaune program reading two decimal numbers and printing their product.
-
-    The program reads decimal digits (most-significant first, one per input
-    line) into the first operand until a ``*`` line, then digits into the
-    second operand until a ``#`` line, and prints the product as a decimal
-    number with no leading zeros.  The single construction handles *any*
-    number of digits, so the generator takes no ``n`` parameter: multiplying
-    is one function ``a * b``, and the operand lengths are a property of the
-    input, not of the function (unlike a boolean truth table, where ``n``
-    selects a different function space).
-
-    Jaune is the language the multiply capability needs: its cells do not
-    wrap (the author's JauneJS stores each cell as a JavaScript number with
-    plain ``+=``/``-=``, and this interpreter uses Python ``int``), so each
-    operand fits in a single cell with no digit-per-cell carry, and ``^``
-    prints the current cell as a decimal number directly.  Each read loop
-    runs on a dedicated always-one
-    cell: the ``?``/``!`` jumps are conditional, so a cell permanently set to
-    1 gives the loop-back jump an unconditional trigger (the sentinel check
-    is the only exit).  A digit is folded into the operand with ``v+`` (read
-    a digit and add it), ``#`` (copy the current cell to hold) and a run of
-    nine ``&`` (add the hold cell), which multiplies the accumulated value by
-    10; a sentinel is detected by adding its offset from a digit (``*`` is
-    42, so ``6+`` zeroes it) and jumping on zero.  The product is then a
-    repeated-addition loop over the second operand.  Cells 0/1/2/3/4 hold
-    the first operand, the digit scratch, the second operand, the result,
-    and the always-one trigger.
-    """
-    out: list[str] = []
-    pos = 0
-
-    def move(target: int) -> None:
-        nonlocal pos
-        while pos < target:
-            out.append(">")
-            pos += 1
-        while pos > target:
-            out.append("<")
-            pos -= 1
-
-    def cmd(s: str) -> None:
-        out.append(s)
-
-    move(4)
-    cmd("1+")  # cell 4 = 1: the unconditional loop-back trigger
-    # read the first operand until '*': label 1 at cell 4
-    cmd("1:")
-    move(1)
-    cmd("v")
-    cmd("6+")  # '*' is 42, so ord-48 == -6; +6 zeroes it
-    cmd("2!")  # a zero (the sentinel) exits to label 2
-    cmd("6-")
-    move(0)
-    cmd("#")
-    cmd("&" * 9)
-    move(1)
-    cmd("#")
-    move(0)
-    cmd("&")
-    move(4)
-    cmd("1?")  # always jump back to label 1
-    cmd("2:")  # first operand done; the '*' was read at cell 1
-    pos = 1
-    move(4)
-    # read the second operand until '#': label 4 at cell 4
-    cmd("4:")
-    move(1)
-    cmd("v")
-    cmd("13+")  # '#' is 35, so ord-48 == -13; +13 zeroes it
-    cmd("3!")  # a zero (the sentinel) exits to label 3
-    cmd("13-")
-    move(2)
-    cmd("#")
-    cmd("&" * 9)
-    move(1)
-    cmd("#")
-    move(2)
-    cmd("&")
-    move(4)
-    cmd("4?")  # always jump back to label 4
-    cmd("3:")  # second operand done; the '#' was read at cell 1
-    pos = 1
-    move(2)
-    # multiply: while cell 2 != 0: cell 3 += cell 0; cell 2 -= 1
-    cmd("5:")
-    cmd("6!")
-    move(0)
-    cmd("#")
-    move(3)
-    cmd("&")
-    move(2)
-    cmd("1-")
-    cmd("5?")
-    cmd("6:")
-    pos = 2
-    move(3)
-    cmd("^")
-    cmd(".")
-    return "".join(out)
 
 
 def suffolk(truth_table: str) -> str:
