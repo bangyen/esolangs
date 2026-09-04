@@ -988,7 +988,16 @@ class TestPctInterleavedFold:
             assert io.getvalue() == want
 
     def test_interleaved_fallback_builds_past_the_all_row_ladder(self) -> None:
-        """A late-ignored suffix stays compact instead of spending 4096 rungs."""
+        """A late-ignored suffix stays compact instead of spending 4096 rungs.
+
+        Rows are *sampled* on a stride, as at eleven inputs above: the build
+        itself is instant, and all 4096 rows through the interpreter were
+        seven seconds of this module's budget for one table.  The stride is
+        coprime to the arity's runs and covers all four values of the two
+        bits the table actually reads, so every branch of the answer is
+        still executed -- the suffix is ignored by construction, which is
+        the property under test.
+        """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.pct_squared_minus_one import run
 
@@ -999,11 +1008,14 @@ class TestPctInterleavedFold:
         table = "".join("0110"[row >> (n - 2)] for row in range(2**n))
         assert module._fold(table, n) is None  # noqa: SLF001
         template = module.pct_squared_minus_one(table)
-        for row in range(2**n):
+        seen = set()
+        for row in range(0, 2**n, 97):
             bits = [(row >> shift) & 1 for shift in range(n - 1, -1, -1)]
             io = ScriptedIO()
             run(module.fill(template, bits), io)
-            assert io.getvalue() == table[row]
+            assert io.getvalue() == table[row], f"row {row}"
+            seen.add(row >> (n - 2))
+        assert seen == {0, 1, 2, 3}, seen
 
 
 class TestPctFoldEmitter:
