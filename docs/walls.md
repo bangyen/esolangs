@@ -21,6 +21,21 @@ about the enumeration, not about the language.  Where a cap simply no
 longer exists, `docs/limitations.md` records the current status and the
 history is in git.
 
+**Re-running a wider search is mostly not how an entry here falls.**  A
+sweep of this file looking for walls to re-sweep under better tooling found
+almost nothing to run: the searched claims nearly all carry a *structural*
+argument alongside the search, and a proof does not fall to a wider sweep.
+The identity's odd-width spelling is settled by a parity argument (an odd
+number of the only sign-flipping command cannot compose to `+0`), ROTfuck's
+by a congruence (`q ≡ p+1` against `q ≡ p`), the `%^2^-1` ladder's span by a
+subset-sum floor, 3x's by prefix-sharing.  The width-6 and `n <= 4`
+enumerations in those entries are confirmations of the argument, not the
+grounds for it.  What *is* cheap and worth doing is the other class:
+**promoting a sampled coverage claim to exhaustive**, which needs no new
+idea and either strengthens the entry or produces the counterexample the
+sampling missed (ArrowQueue's `n == 4` went this way — 65536 tables, 167s).
+Look for the word "sampled", not the word "wall".
+
 ## 6-5 (35 branch labels bound the tree)
 
 **The 35 comes from the language, not from the generator's encoder.**  The
@@ -1036,8 +1051,13 @@ languages reach multi-input threshold functions:
   The tree is deliberately full — constant slices are not collapsed —
   because the ring's corner pops must consume exactly the four loop
   components, so every path pops all ``n`` bits first.  Every table is
-  supported: all ``n <= 3`` tables exhaustively, with ``n == 4``-``5``
-  sampled; program size doubles per input level.
+  supported: all ``n <= 4`` tables exhaustively — the 65536 four-input
+  tables built, instantiated over all sixteen input combinations and run to
+  a halt-or-cycle verdict, 0 failures in 167s — with ``n == 5`` sampled;
+  program size doubles per input level.  ``n == 4`` was previously sampled
+  only; promoting it cost under three minutes because the verdict comes
+  from state-cycle detection rather than a step budget, so a ``1`` leaf's
+  sustaining ring is proved looping the moment it repeats a snapshot.
 
 - **Point Break** is the first language where the convention is a *general*
   boolean generator

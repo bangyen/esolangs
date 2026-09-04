@@ -26,12 +26,20 @@ from esolangs.vm import run_until_halt_or_cycle
 
 INTERPRETER_DIR = Path(__file__).parents[2] / "src" / "esolangs" / "interpreters"
 
-MODULES = []
-for category in ("tape_based", "stack_based", "register_based", "queue_based", "other"):
-    for path in sorted((INTERPRETER_DIR / category).glob("*.py")):
-        if path.name.startswith("_"):
-            continue
-        MODULES.append(f"esolangs.interpreters.{category}.{path.stem}")
+# Globbed rather than listed by category.  This sweep used to name its five
+# categories in a tuple that omitted ``grid_based``, so eleven interpreters
+# -- every grid language -- were silently exempt from a file whose docstring
+# claims to cover "every interpreter".  It is the same hole
+# ``scripts/check_docstrings.py`` had, where a stale category tuple exempted
+# twelve of sixty-three interpreters and three real violations sat behind
+# it.  A walk that discovers the tree cannot acquire that hole again, which
+# is why ``tests/test_interpreter_conventions.py`` already reads the tree
+# this way.
+MODULES = [
+    f"esolangs.interpreters.{path.parent.name}.{path.stem}"
+    for path in sorted(INTERPRETER_DIR.glob("*/*.py"))
+    if not path.name.startswith("_")
+]
 
 
 def _empty_machine(module: str, io: IO) -> object:
