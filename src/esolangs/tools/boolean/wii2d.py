@@ -124,33 +124,67 @@ _WII2D_MAX_CENTRE = 4096
 _WII2D_SHORTLIST = 4
 
 # The widest decode domain the general (non-symmetric) path will attempt, so
-# that path is used up to ``n == 6`` by default.
+# that path is used up to ``n == 7`` by default.
 #
-# **This is a cost policy, not a capability bound.**  The check below fires
-# before the chain is ever walked, so nothing here has ever
-# established that a wider decode fails -- and measurement says it does not.
-# Sampled 64-point (``n == 7``) patterns do fold, and a dense non-symmetric
-# ``n == 7`` table built with this constant raised to 64 was verified against
-# the interpreter on all 128 input combinations.  See ``docs/walls.md``.
+# **This is a cost policy, not a capability bound**, and it is charged
+# against :func:`_wii2d_cost` -- the smaller of ``2 ** (n - 1)`` and the
+# domain the chain actually leaves -- rather than against the worst case
+# alone.  That distinction is what makes structured tables reachable at any
+# arity: an ``n == 8`` xor-of-a-subset collapses to a 4-point decode and
+# builds in 217 characters, which the old worst-case-only check refused
+# without ever looking at it.
 #
 # What the constant buys is bounded *width*, which still grows as the domain
 # doubles.  Measured through :func:`_wii2d_decode`, 25 random patterns each:
 #
 #     D == 16 (n == 5):  median     60 cells, worst    155, under 0.01s
 #     D == 32 (n == 6):  median    204 cells, worst    389, under 0.01s
-#     D == 64 (n == 7):  median   1187 cells, worst   2078, under 0.06s
+#     D == 64 (n == 7):  median   1213 cells, worst   1878, under 0.06s
 #
-# The time this used to buy is gone: the old beam-and-retry search put the
-# same ``D == 64`` sample at a 19448-cell worst case and seconds per build,
-# against 2078 cells and under a tenth of a second now.  What remains is emitted
-# size -- an ``n == 7`` decode is still over a thousand cells -- plus the
-# accumulator width noted below, so the default stays at 32 and the trade
-# remains a caller's decision, which is why the bound is a module constant
-# rather than an inlined literal.
+# 64 is where it now sits, which admits dense ``n == 7``.  Whole programs at
+# that width, 25 random non-symmetric tables each, measured end to end:
+#
+#     n == 5:  median   312 chars, worst   412,   1.3 ms
+#     n == 6:  median   758 chars, worst  1054,   7.8 ms
+#     n == 7:  median  2776 chars, worst  4270,  65.1 ms
+#
+# So the price of ``n == 7`` is size, not time, and the emitted programs were
+# run through the interpreter on all 128 input combinations.  The old note
+# that this "never established that anything fails" was right: nothing did.
+#
+# Ranking the folds by what they *emit* instead of by magnitude was tried and
+# is much worse -- see :func:`_wii2d_folds` -- so this width is the honest
+# price rather than an artifact of the ranking.
 #
 # Symmetric tables never reach this check: they decode over ``n`` points via
 # the popcount chain, so majority-of-12 is 397 characters and instant.
-_WII2D_MAX_INDEX_DOMAIN = 32
+_WII2D_MAX_INDEX_DOMAIN = 64
+
+# The widest *real* chain domain any table may decode over, whatever the
+# arity-scale guard above allows.
+#
+# These two bound different things.  ``_WII2D_MAX_INDEX_DOMAIN`` is charged
+# the *minimum* of the worst case and the real domain, so that a table whose
+# chain collapses is judged on what it actually costs.  But the minimum also
+# means a table can be admitted on its worst case while its real domain runs
+# away: with no merge available the walk falls through to Horner, and a
+# non-merging pair can leave a domain far *above* ``2 ** (n - 1)``.
+#
+# Measured, that overshoot is rare but unbounded.  Random tables overshoot in
+# 0.5% of cases at ``n == 5`` (domain 37 against a worst case of 16) and 0.2%
+# at ``n == 6`` (domain 197 against 32); those still decode, but the 197-point
+# one emits 8808 characters in 694 ms, twelve times the ``n == 6`` median.
+# Structured tables reach further: ``(b0|b1)&(b2|b3)&(b4|b5)`` leaves 17 at
+# ``n == 5`` and 34 at ``n == 6``, but **1025** at ``n == 7``, and that decode
+# did not return within minutes.
+#
+# So this is the same policy as :data:`_WII2D_MAX_CENTRE` one level up:
+# correct, but too wide to be worth emitting.  256 sits above every overshoot
+# measured to decode (197) and below the one that does not (1025).  Refusing
+# the latter is not a regression -- at the old constant of 32 it was refused
+# anyway, since its worst case of 64 exceeded it -- the cap only trims what
+# raising the constant to 64 would newly have let in.
+_WII2D_MAX_REAL_DOMAIN = 256
 
 
 def _wii2d_apply(ops: str, value: int) -> int:
@@ -515,6 +549,50 @@ def _wii2d_columns(states: list[tuple[str, int]]) -> tuple[list[int], list[int]]
     return low, high
 
 
+def _wii2d_real_domain(states: list[tuple[str, int]]) -> int:
+    """Return the decode domain the chain walk actually left.
+
+    The columns are indexed by accumulator value, so the domain is one past
+    the largest surviving value -- not the number of live states, which may
+    be far smaller when the values are sparse.
+    """
+    return max(value for _cofactor, value in states) + 1
+
+
+def _wii2d_cost(n: int, states: list[tuple[str, int]]) -> int:
+    """Return the decode width :data:`_WII2D_MAX_INDEX_DOMAIN` is charged.
+
+    The guard used to compare against ``2 ** (n - 1)`` alone, computed
+    *before* the chain was walked.  That is the wrong number in both
+    directions, so this charges the smaller of the worst case and the domain
+    the walk actually left.
+
+    *The real domain can be far narrower.*  The chain's merging junctions
+    collapse structured tables well below the worst case, and the old check
+    refused them without ever looking.  Measured at ``n == 7``, where the
+    worst case is 64 and every table was refused outright: a function of
+    three of the inputs leaves a domain of 3 or 4, an xor-of-a-subset 4 or 5,
+    a weighted threshold 7 to 12, a mux 24 to 32.  Those build in 186 to 339
+    characters -- smaller than a typical ``n == 6`` program -- and each was
+    run through the interpreter on all 128 input combinations.  ``n == 8``
+    reaches the same way.
+
+    *The real domain can also be wider.*  With no merge available the walk
+    falls through to Horner, and a non-merging pair can leave a domain
+    *above* ``2 ** (n - 1)``: sampled random tables overshoot in 0.5% of
+    cases at ``n == 5`` (domain 37 against a worst case of 16) and 0.2% at
+    ``n == 6`` (domain 197 against 32).
+
+    Charging the real domain alone would therefore *refuse* those overshoot
+    tables, which the worst-case check had always accepted -- and they are
+    not failures: the decode succeeded on both branches in every overshoot
+    sampled.  Taking the minimum keeps the old contract exactly (anything
+    ``2 ** (n - 1)`` admitted is still admitted) and adds the narrow-domain
+    tables on top, so the change is additive.
+    """
+    return min(2 ** (n - 1), _wii2d_real_domain(states))
+
+
 def _wii2d_routes(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | None:
     """Construct the per-junction branch op strings realizing ``table``.
 
@@ -568,11 +646,17 @@ def _wii2d_routes(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | Non
         high = _wii2d_decode(popcount_map[1:])
         if low is not None and high is not None:
             return 0, [("", "+")] * (n - 1) + [(low, high)]
-    if 2 ** (n - 1) > _WII2D_MAX_INDEX_DOMAIN:
-        # Refused on cost, not on capability: the chain is never walked at
-        # this width.  Sampled decodes here do succeed -- see the constant.
-        return None
+    # Walk the chain *before* the cost guard: the walk is microseconds (a
+    # fixed catalogue scan per level, no search), so charging the domain it
+    # actually leaves costs nothing.  See :func:`_wii2d_cost`.
     chain, states = _wii2d_chain(n, table)
+    # Refused on cost, not on capability: the decode is never attempted at
+    # either width.  Sampled decodes past the first bound do succeed -- see
+    # the constants for what each one charges and why.
+    if _wii2d_cost(n, states) > _WII2D_MAX_INDEX_DOMAIN:
+        return None
+    if _wii2d_real_domain(states) > _WII2D_MAX_REAL_DOMAIN:
+        return None
     zero_column, one_column = _wii2d_columns(states)
     branch0 = _wii2d_decode(zero_column)
     branch1 = _wii2d_decode(one_column)
@@ -744,25 +828,47 @@ def wii2d(truth_table: str) -> str:
     Symmetric tables (those depending only on how many inputs are set) take a
     popcount chain instead, decoding over ``n`` points rather than
     ``2 ** (n - 1)``; that keeps majority-of-n and friends cheap at arities
-    well past where the general path stops.  The general path raises
-    :class:`ValueError` past ``n == 6``, on the
-    :data:`_WII2D_MAX_INDEX_DOMAIN` **cost guard** rather than on any
-    demonstrated limit of the construction: the check fires before the fold
-    is attempted, and sampled ``n == 7`` tables do build and
-    interpreter-verify when the guard is raised.  See that constant for the
-    measured cost curve and ``docs/walls.md`` for the argument.
+    well past where the general path stops.
+
+    The general path is bounded by two **cost guards**, neither of which is a
+    claim about what the construction can represent.
+    :data:`_WII2D_MAX_INDEX_DOMAIN` charges :func:`_wii2d_cost`, the smaller
+    of ``2 ** (n - 1)`` and the domain the chain actually leaves, so dense
+    tables run out at ``n == 7`` while *structured* ones keep going at any
+    arity: an ``n == 8`` xor-of-a-subset collapses to a 4-point decode and
+    builds in 217 characters.  :data:`_WII2D_MAX_REAL_DOMAIN` then refuses
+    the rare table that is admitted on its arity but whose chain found no
+    merge at all, leaving a decode too wide to be worth emitting.  A refusal
+    raises :class:`ValueError` naming which bound it hit; see the two
+    constants for the measured curves and ``docs/walls.md`` for the argument.
     """
     n = _validate_truth_table(truth_table)
     result = _wii2d_routes(n, truth_table)
     if result is None:
-        if 2 ** (n - 1) > _WII2D_MAX_INDEX_DOMAIN:
+        # Report the width the guard actually charged, not ``2 ** (n - 1)``:
+        # for a table whose chain collapsed, that would name a width this
+        # table never reached.  The two bounds refuse for different reasons
+        # and say so separately, so a refusal never has to be guessed at.
+        _chain, states = _wii2d_chain(n, truth_table)
+        charged = _wii2d_cost(n, states)
+        if charged > _WII2D_MAX_INDEX_DOMAIN:
             raise ValueError(
-                f"the WII2D decode for a dense non-symmetric n == {n} table "
-                f"spans {2 ** (n - 1)} points, past the "
-                f"_WII2D_MAX_INDEX_DOMAIN = {_WII2D_MAX_INDEX_DOMAIN} cost "
-                "guard; this is a size/time policy, not an unreachable "
-                "table -- raising the constant does build these (see "
-                "docs/walls.md for the measured cost curve)"
+                f"the WII2D decode for this n == {n} table spans {charged} "
+                f"points, past the _WII2D_MAX_INDEX_DOMAIN = "
+                f"{_WII2D_MAX_INDEX_DOMAIN} cost guard; this is a size/time "
+                "policy, not an unreachable table -- raising the constant "
+                "does build these (see docs/walls.md for the measured cost "
+                "curve)"
+            )
+        real = _wii2d_real_domain(states)
+        if real > _WII2D_MAX_REAL_DOMAIN:
+            raise ValueError(
+                f"the WII2D chain for this n == {n} table leaves a decode "
+                f"domain of {real} points, past the _WII2D_MAX_REAL_DOMAIN = "
+                f"{_WII2D_MAX_REAL_DOMAIN} width guard; the table is inside "
+                "the arity-scale cost guard but its chain found no merge, so "
+                "the decode would be too wide to be worth emitting (see "
+                "docs/walls.md)"
             )
         raise ValueError("the WII2D n-embedding construction found no route")
     start, routes = result
