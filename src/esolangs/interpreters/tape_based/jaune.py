@@ -270,6 +270,11 @@ class _Machine:
         """The stack."""
         return list(self.call_stack)
 
+    @property
+    def frames(self) -> tuple[int, ...]:
+        """The live subroutine calls, outermost first."""
+        return self.call_stack
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (
@@ -278,6 +283,23 @@ class _Machine:
             self.ptr,
             self.hold,
             self.call_stack,
+            self.io.position(),
+        )
+
+    def frame_entry_key(self, _frame: object) -> tuple[object, ...]:
+        """Return the state a subroutine needs to replay an ancestor.
+
+        ``call_stack`` holds return addresses, but the target position is
+        the live ``pos`` after ``@`` jumps to its ``$`` marker.  That target,
+        the tape and hold register, and the input position determine every
+        action before this call could return.  See
+        :func:`esolangs.vm.run_until_halt_or_ancestor`.
+        """
+        return (
+            self.pos,
+            self.cells,
+            self.ptr,
+            self.hold,
             self.io.position(),
         )
 

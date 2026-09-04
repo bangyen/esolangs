@@ -138,14 +138,11 @@ already covers.  What remains:
 - **Recursion follow-up.**  `run_until_halt_or_ancestor` compares each
   newly-pushed frame's entry state (function, bindings, input position)
   against the frames beneath it.  Adopted by Forbin, Fargo, APL, Eval,
-  Suptiftam, and Lamfunc — it already generalizes past native recursion,
-  since Eval and Fargo push an explicit frame stack rather than recursing in
-  Python.  **Forþ and Jaune are the remaining candidates:** their stored
-  scopes and subroutines, respectively, can call themselves with an
-  unbounded explicit stack.  Each needs a key covering its shared machine
-  state as well as the callee; Grapheme already has a 500-frame guard, and
-  every other frame stack is structurally bounded or hides calls in native
-  recursion.
+  Suptiftam, Lamfunc, Forþ, and Jaune — it already generalizes past native
+  recursion, since Eval and Fargo push an explicit frame stack rather than
+  recursing in Python.  **The audit is closed:** Grapheme already has a
+  500-frame guard, and every other frame stack is structurally bounded or
+  hides calls in native recursion.
 - **Branching cycle detection for `y`/`?` — considered, not started.**
   Forking at every random decision would prove "hangs no matter how the coin
   lands", but each decision doubles the live branches, a branch can still
