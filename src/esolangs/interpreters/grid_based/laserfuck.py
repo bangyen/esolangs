@@ -253,28 +253,26 @@ class _Machine:
         headings, and a live machine has already committed to one.  ``None``
         marks the beam as unplaced, and :meth:`branching_successors` opens it
         into the four headings ``__init__`` chooses between.
+
+        A grid that never placed a laser -- no ``o``, or the second ``o``
+        that stops a run at construction -- has no heading to quantify over,
+        so it reports its own empty beams instead and the ordinary
+        emptiness test halts it.  Handing those the sentinel would invent a
+        beam at the grid's origin and search a run the language never has.
         """
-        return (self.tape, self.ptr, None, self.ind, self.jmp)
+        unplaced = None if self.lsrs else ()
+        return (self.tape, self.ptr, unplaced, self.ind, self.jmp)
 
     def branching_halted(self, state: object) -> bool:
         """Report whether ``state`` has no live beam left.
 
-        A second ``o`` halts the machine before it can step at all, and that
-        is fixed at construction, so it is read off the machine rather than
-        carried through every state.
-
-        The unplaced start state is *not* halted when there is a laser to
-        place: ``None`` means the heading has yet to be drawn, which is the
-        one case where an empty-looking beam store still has a whole run
-        ahead of it.  A grid with no ``o`` never gets one, so it *is* halted
-        at the sentinel -- the same verdict :attr:`halted` gives it.
+        The unplaced start state is never halted: :meth:`branching_snapshot`
+        only spells a beam ``None`` when there is one to place, so an
+        unplaced state always has a whole run ahead of it.  A grid with no
+        laser reports empty beams instead, which this halts on directly.
         """
-        if self._second_start:
-            return True
         lsrs = cast(_BranchState, state)[2]
-        if lsrs is None:
-            return not self.lsrs
-        return not lsrs
+        return lsrs is not None and not lsrs
 
     def branching_successors(
         self, state: object, _limit: int

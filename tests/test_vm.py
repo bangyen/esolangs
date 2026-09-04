@@ -1193,13 +1193,106 @@ class TestRunUntilHaltOrCycle:
             is False
         )
 
-    def test_laserfuck_grid_without_a_start_marker_is_halted(self) -> None:
-        """No ``o`` means no beam to place, so the sentinel halts at once."""
+    def test_laserfuck_grid_without_a_start_marker_places_no_beam(self) -> None:
+        """A laserless grid reports empty beams, never the unplaced sentinel.
+
+        The verdict alone cannot see the difference: a sentinel here would
+        invent a beam at the grid's origin, and the origin is a corner, so
+        two of its four headings leave the grid at once and report a halt --
+        the right answer for the wrong run.  So the state is asserted
+        directly, and a grid whose corner would *loop* is what the assertion
+        protects against.
+        """
         from esolangs.interpreters.grid_based.laserfuck import _Machine
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.vm import run_until_halt_or_all_branches_cycle
 
         machine = _Machine(["+-", "<>"], ScriptedIO())
+        assert machine.halted is True
+        assert machine.branching_snapshot()[2] == ()
+        assert machine.branching_halted(machine.branching_snapshot()) is True
+        assert run_until_halt_or_all_branches_cycle(machine) is True
+
+    def test_laserfuck_search_skips_the_command_after_a_hash(self) -> None:
+        """``#`` skips in the search exactly as it does in a step.
+
+        A successor that called the transition on the skipped cell would
+        turn the beam here, since ``{`` sets the heading to left.  The
+        skip is asserted on the states rather than through a verdict:
+        every grid tried reaches the same answer either way, so the
+        difference is visible only in where the beam ends up.
+        """
+        from esolangs.interpreters.grid_based.laserfuck import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        machine = _Machine(["o#{"], ScriptedIO())
+        start = machine.branching_snapshot()
+        rightward = next(
+            state
+            for state in machine.branching_successors(start, 100) or ()
+            if state[2] is not None and state[2][0][2] == 3
+        )
+
+        (at_hash,) = machine.branching_successors(rightward, 100) or ()
+        assert at_hash[2] == ((0, 1, 3),)
+        assert at_hash[4] is True, "'#' arms the skip"
+
+        (skipped,) = machine.branching_successors(at_hash, 100) or ()
+        assert skipped[2] == ((0, 2, 3),), "'{' was passed over, not executed"
+        assert skipped[4] is False, "the skip disarms itself"
+
+    def test_laserfuck_a_placed_beam_starts_the_search_unplaced(self) -> None:
+        """The complement: a grid *with* an ``o`` does use the sentinel."""
+        from esolangs.interpreters.grid_based.laserfuck import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        machine = _Machine(["o"], ScriptedIO())
+        assert machine.branching_snapshot()[2] is None
+        assert machine.branching_halted(machine.branching_snapshot()) is False
+
+    def test_laserfuck_explores_both_beam_splitter_outcomes(self) -> None:
+        """``*``'s coin is searched, not sampled.
+
+        The whole verdict rests on the second outcome here: a splitter that
+        always chose ``0`` would loop under every one of the four headings,
+        and only a ``1`` at the right moment reaches a halt.  So a search
+        that tried one outcome per split would answer ``False`` -- claiming
+        a program that can terminate never does.
+        """
+        from esolangs.interpreters.grid_based.laserfuck import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.randomness import FirstDraw
+        from esolangs.vm import (
+            run_until_halt_or_all_branches_cycle,
+            run_until_halt_or_cycle,
+        )
+
+        code = ["/{v", "^o^", "*/*"]
+        for heading in range(4):
+            assert (
+                run_until_halt_or_cycle(
+                    _Machine(code, ScriptedIO(), FirstDraw(heading, rest=0))
+                )
+                is False
+            )
+        assert (
+            run_until_halt_or_cycle(_Machine(code, ScriptedIO(), FirstDraw(1, rest=1)))
+            is True
+        )
+        assert (
+            run_until_halt_or_all_branches_cycle(
+                _Machine(code, ScriptedIO()), limit=5000
+            )
+            is True
+        )
+
+    def test_laserfuck_a_second_start_marker_halts_every_branch(self) -> None:
+        """Two ``o``s stop the machine before it can draw a heading."""
+        from esolangs.interpreters.grid_based.laserfuck import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.vm import run_until_halt_or_all_branches_cycle
+
+        machine = _Machine(["oo"], ScriptedIO())
         assert machine.halted is True
         assert run_until_halt_or_all_branches_cycle(machine) is True
 
