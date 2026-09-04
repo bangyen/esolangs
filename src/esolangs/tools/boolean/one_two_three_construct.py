@@ -1309,56 +1309,187 @@ def _endgame(b: _Builder) -> None:
         raise ConstructError("a survivor would restart instead of halting")
 
 
+def _jump_tables(code: str) -> tuple[list[int], list[int]]:
+    """Per ``3`` position, where a backward and a forward jump land.
+
+    The interpreter rescans for the partner ``3`` on every jump, which on
+    a template whose segments are hundreds of commands long is a linear
+    scan per executed jump.  The landing sites depend only on the code,
+    so they are computed once for the whole replay.
+    """
+    threes = [i for i, c in enumerate(code) if c == "3"]
+    back = [0] * len(code)
+    fwd = [0] * len(code)
+    prev = -1
+    for i in threes:
+        back[i] = prev + 1  # just after the previous 3, or the start
+        prev = i
+    nxt = len(code)
+    for i in reversed(threes):
+        fwd[i] = nxt + 1 if nxt < len(code) else len(code)
+        nxt = i
+    return back, fwd
+
+
+def _code_runs(code: str) -> tuple[list[int], list[str], list[int]]:
+    """Index ``code`` into maximal ``1``/``2`` runs.
+
+    Returns ``(run_id_at, char_of_run, end_of_run)``, so the executor can
+    take the whole rest of a run in one step from any cursor inside it.
+    """
+    run_at = [-1] * len(code)
+    chars: list[str] = []
+    ends: list[int] = []
+    i = 0
+    while i < len(code):
+        c = code[i]
+        if c not in "12":
+            i += 1
+            continue
+        j = i
+        while j < len(code) and code[j] == c:
+            j += 1
+        for k in range(i, j):
+            run_at[k] = len(chars)
+        chars.append(c)
+        ends.append(j)
+        i = j
+    return run_at, chars, ends
+
+
+def _replay_ones(pos: int, tape: int, w: int) -> tuple[int, int]:
+    """Apply ``"1"*w``, per the interpreter's rule for ``1``.
+
+    Derived from the language, not from the builder's model: ``1`` flips
+    the current cell and steps left, wrapping -4 back to 0.  Above the
+    ring a walk flips exactly the contiguous cells it steps off, which is
+    one XOR; inside it the pointer cycles ``0, -1, -2, -3`` with period
+    4, touching each of the four cells once per lap, so whole laps are a
+    parity and only ``w % 4`` steps remain.
+    """
+    while w > 0:
+        if pos >= 0:
+            head = min(w, pos + 1)
+            tape ^= ((1 << head) - 1) << (pos - head + 1 + _RING)
+            pos -= head
+            w -= head
+            if pos == -4:  # stepping off cell 0 exactly wraps to 0
+                pos = 0
+            continue
+        laps, rest = divmod(w, 4)
+        if laps:
+            if laps & 1:
+                tape ^= 0b1111  # a lap flips cells -3..0 once each
+            w = rest
+            continue
+        for _ in range(w):
+            tape ^= 1 << (pos + _RING)
+            pos -= 1
+            if pos == -4:
+                pos = 0
+        w = 0
+    return pos, tape
+
+
+def _replay_twos(pos: int, tape: int, w: int) -> tuple[int, int]:
+    """Apply ``"2"*w``; the first step decides whether the ring is left.
+
+    ``2`` at -3 reads stdin, which the harness cannot serve, so it raises
+    exactly where the real interpreter would raise :class:`EOFError`.
+    At -1 or -2 it lands on 0 (the -2 route prints a junk byte, which no
+    snapshot can observe), and from ``pos >= 0`` it is a plain walk.
+    """
+    if w <= 0:
+        return pos, tape
+    if pos == -3:
+        raise ConstructError("replay: '2' at -3 reads stdin")
+    if pos in (-1, -2):
+        pos = 0
+        w -= 1
+    return pos + w, tape
+
+
+def _replay_verdict(code: str) -> str | None:
+    """Execute one instantiated program: ``"0"`` halts, ``"1"`` loops.
+
+    This is the closing execution gate, so it is written against the
+    interpreter's own rules rather than against anything the builder
+    believes -- a shared closed form would let one bug pass both.  What
+    it does share is the *shape* of the cost: a template is a few
+    hundred maximal ``1``/``2`` runs, each hundreds of commands long, and
+    each run's effect on ``(pos, tape)`` is closed-form.  Stepping them
+    one command at a time cost 95s per five-input table and hours at six,
+    which made the gate, not the construction, the arity wall.
+
+    Cycle detection stays exact under that batching.  ``ip`` strictly
+    increases within a run and across a forward jump, so an infinite run
+    must pass a *backward* jump or the end-of-code loopback infinitely
+    often.  Sampling ``(ip, pos, tape)`` at only those two events
+    therefore witnesses every loop a per-command detector witnesses, and
+    Brent's method finds the revisit without storing a state per step.
+    The input cursor is not part of the key: a program that reads has
+    already raised above.
+    """
+    if not any(c in "123" for c in code):
+        return "0"  # a command-less program halts with no output
+    back, fwd = _jump_tables(code)
+    run_at, run_ch, run_end = _code_runs(code)
+    size = len(code)
+    ip = pos = tape = 0
+    power = lam = 1
+    saved: tuple[int, int, int] | None = None
+    # Events, not commands: only jumps and loopbacks are counted, and a
+    # run of any length is one step.  The cap guards against a build bug
+    # that diverges without ever revisiting a state.
+    for _ in range(64 * size + 500000):
+        if ip >= size:
+            # End of the program: halt below location 0, else loop.
+            if pos < 0:
+                return "0"
+            ip = 0
+        elif code[ip] == "3":
+            if pos < 0:
+                ip += 1  # below location 0 a 3 is a NOP
+                continue
+            if not tape >> (pos + _RING) & 1:
+                ip = fwd[ip]  # FALSE skips forward; ip still increases
+                continue
+            ip = back[ip]
+        else:
+            r = run_at[ip]
+            if r < 0:  # unrecognized characters are NOPs
+                ip += 1
+                continue
+            fn = _replay_ones if run_ch[r] == _ONE else _replay_twos
+            pos, tape = fn(pos, tape, run_end[r] - ip)
+            ip = run_end[r]
+            continue
+        state = (ip, pos, tape)
+        if saved == state:
+            return "1"
+        if power == lam:
+            saved, power, lam = state, power * 2, 0
+        lam += 1
+    return None
+
+
 def _replay(template: str, n: int, table: str) -> None:
-    """Run every instantiation on the real interpreter.
+    """Run every instantiation and check its verdict against ``table``.
 
     Raises on any wrong verdict: the builder's model is exact, but
     nothing ships on the model's word alone.
     """
-    from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.tape_based.one_two_three import _Machine
-
     for combo in range(2**n):
-        bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
         program = template
-        for i, bit in enumerate(bits):
+        for i in range(n):
+            bit = (combo >> (n - 1 - i)) & 1
             program = program.replace(f"{{X{i}}}", _ONE if bit else _ZERO)
-        machine = _Machine(program, ScriptedIO(""))
-        verdict = None
-        # Brent's cycle detection, with the cheap fields compared first:
-        # a snapshot()-per-step set works at four inputs, but a wider
-        # template is hundreds of thousands of commands and its tape
-        # holds thousands of set cells, so hashing a sorted tuple of
-        # them every step made the closing gate cost more than the whole
-        # build.  Here a step costs an (ip, pos) compare, the tape is
-        # only compared on those rare matches, and states are saved just
-        # at power-of-two step counts.  The cap scales with the template
-        # (a flat 500000 ran out mid-execution at six inputs and called
-        # a halting row None); it only guards against a build bug making
-        # a row diverge without ever revisiting a state.
-        power = lam = 1
-        saved: tuple[int, int, frozenset[int], int] | None = None
-        for _ in range(64 * len(program) + 500000):
-            if machine.halted:
-                verdict = "0"
-                break
-            ip, pos, cells, _done = machine.state
-            if (
-                saved is not None
-                and lam
-                and saved[:2] == (ip, pos)
-                and saved[2] == frozenset(cells)
-                and saved[3] == machine.io.position()
-            ):
-                verdict = "1"
-                break
-            if power == lam:
-                saved = (ip, pos, frozenset(cells), machine.io.position())
-                power *= 2
-                lam = 0
-            lam += 1
-            machine.step()
+        try:
+            verdict = _replay_verdict(program)
+        except ConstructError:  # pragma: no cover - the gate
+            verdict = None
         if verdict != table[combo]:  # pragma: no cover - the gate
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             raise ConstructError(f"replay disagrees at row {bits}: {verdict!r}")
 
 
