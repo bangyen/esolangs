@@ -2289,23 +2289,23 @@ class TestParameterizedOneTwoThree:
         from esolangs.tools.boolean import one_two_three_construct as mod
 
         allowances: list[int] = []
-        original = mod._phase_a
+        original = mod._phase_a  # noqa: SLF001
 
         def record(b: object, marks: list[int]) -> object:
-            allowances.append(mod._work[0])
+            allowances.append(mod._work[0])  # noqa: SLF001
             return original(b, marks)  # type: ignore[arg-type]
 
         small = 10_000  # far too little to build anything: every attempt stalls
-        mod._phase_a = record  # type: ignore[assignment]
-        budget, mod._WORK_BUDGET = mod._WORK_BUDGET, small
+        mod._phase_a = record  # type: ignore[assignment]  # noqa: SLF001
+        budget, mod._WORK_BUDGET = mod._WORK_BUDGET, small  # noqa: SLF001
         try:
             with pytest.raises(ValueError, match="123 construction failed"):
                 mod.construct("1000110011010101", verify=False)
         finally:
-            mod._phase_a = original  # type: ignore[assignment]
-            mod._WORK_BUDGET = budget
+            mod._phase_a = original  # type: ignore[assignment]  # noqa: SLF001
+            mod._WORK_BUDGET = budget  # noqa: SLF001
 
-        probe = small // mod._PROBE_FRACTION
+        probe = small // mod._PROBE_FRACTION  # noqa: SLF001
         assert allowances == [probe, small, small], allowances
 
     def test_an_exhausted_work_budget_is_declined(self) -> None:
