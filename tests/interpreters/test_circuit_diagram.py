@@ -280,6 +280,19 @@ class TestMultiWire:
         ]
         assert output_for(circuit, "1\n0\n1\n") == "101"
 
+    def test_a_splitter_keeps_unequal_outputs_separate(self) -> None:
+        """The two output wires are independently 1 and 2 bits wide."""
+        circuit = [
+            "    .-:",
+            "-3-<",
+            "    .-:",
+        ]
+        machine = _Machine(circuit, ScriptedIO("1\n0\n1\n"))
+        machine.step()
+        split = next(g for g in machine.gates if g.kind == "<")
+        upper, lower = (machine.values[machine.index[id(w)]] for w in split.outputs)
+        assert (upper, lower) == ((1,), (0, 1))
+
 
 class TestWiring:
     """The connection rules that turn ASCII into a graph."""
