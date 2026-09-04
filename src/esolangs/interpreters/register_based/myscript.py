@@ -468,10 +468,6 @@ class _Machine:
         self.state = _State(scope, (_frame(_block_tree(code), scope),))
 
     @property
-    def scope(self) -> Scope:
-        return self.state.scope
-
-    @property
     def frames(self) -> _Frames:
         return self.state.frames
 

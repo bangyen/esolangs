@@ -302,10 +302,6 @@ class _Machine:
         """The variable heap, including its live list aliases."""
         return self.state.var
 
-    @var.setter
-    def var(self, var: dict[str, Value]) -> None:
-        self.state.var = var
-
     @property
     def halted(self) -> bool:
         """Whether the Collatz trajectory has reached 1."""

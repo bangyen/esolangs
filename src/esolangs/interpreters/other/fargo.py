@@ -290,10 +290,6 @@ class _Machine:
     def number(self) -> int:
         return self.state.number
 
-    @number.setter
-    def number(self, value: int) -> None:
-        self.state.number = value
-
     @property
     def output(self) -> int:
         return self.state.output

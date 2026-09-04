@@ -597,10 +597,6 @@ class _Machine:
         """The effect-owned frame stack."""
         return self.state.frames
 
-    @frames.setter
-    def frames(self, frames: list[_Frame]) -> None:
-        self.state.frames = frames
-
     @property
     def halted(self) -> bool:
         """Whether the top-level cursor has run off the call sequence."""
