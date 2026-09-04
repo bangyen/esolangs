@@ -129,7 +129,17 @@ GENERIC = [
 # it, so it cannot time out a slow-but-valid program and call it a leak.
 _STEP_CAP = 20000
 
-# What the cap costs, measured on COD, the most expensive language here.
+# The cap is not what makes `--all` expensive.  **Factor is**, and no value
+# of the cap helps: its programs are integers whose *factorization* is the
+# program, so `make_vm` calls `sympy.factorint` before a single step runs.
+# A mutation that alters a digit can turn a factorable number into a ~120
+# digit one that is infeasible, and that work is uninterruptible C -- a
+# SIGALRM cannot land on it, since the timer needs a bytecode boundary.
+# `Factor prog[69]` (of the seeded corpus) is the specific run; it wedges a
+# sweep before COD is ever reached.  Bounding it needs a subprocess with a
+# hard kill, or a digit-length guard on Factor's mutants.
+#
+# What the cap costs, measured on COD, the most expensive language to *run*.
 # Five mutants of its example (a dropped or inserted character in the `~`
 # border) shift the entrance corridor to the tree, so the cod never reaches
 # open water and loops forever -- crossing `+` increments as it goes.  Its
