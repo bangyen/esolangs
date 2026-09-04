@@ -145,6 +145,21 @@ def test_boolean_generators_random_tables() -> None:
                     assert buffer.getvalue() == str(int(table[combo])) + suffix
 
 
+def test_byte_function_generator_random_tables() -> None:
+    random.seed(4)
+    run = importlib.import_module("esolangs.interpreters.tape_based.circlefuck").run
+    for n in (1, 2, 3):
+        for _ in range(3):
+            table = [random.randint(0, 255) for _ in range(2**n)]
+            program = boolean.circlefuck_byte(table)
+            for combo in range(2**n):
+                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                buffer = io.StringIO()
+                with patch("builtins.input", side_effect=bits), redirect_stdout(buffer):
+                    run(program, io=IO())
+                assert buffer.getvalue() == chr(table[combo])
+
+
 def test_binary_generator_random_tables() -> None:
     random.seed(3)
     run = importlib.import_module("esolangs.interpreters.grid_based.dig").run

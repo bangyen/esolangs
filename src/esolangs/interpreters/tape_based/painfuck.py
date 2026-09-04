@@ -199,6 +199,16 @@ def _grow(tape: tuple[int, ...], ptr: int) -> tuple[int, ...]:
     return (*tape, *([0] * (ptr + 1 - len(tape))))
 
 
+#: Commands whose second application changes nothing, so a repeat of any
+#: length is one application.  Each writes a value taken from somewhere it
+#: does not itself write (a constant, or a neighbouring cell), or moves the
+#: pointer to a fixed place.
+#:
+#: ``h`` is absent because it is not idempotent -- it halves *the cell it
+#: writes* -- but it is still collapsible, by the shift in :func:`_advance`.
+_IDEMPOTENT = frozenset("zwqd")
+
+
 def _set(tape: tuple[int, ...], ptr: int, value: int) -> tuple[int, ...]:
     """Return ``tape`` with the cell at ``ptr`` set to ``value``."""
     return (*tape[:ptr], value, *tape[ptr + 1 :])
@@ -242,6 +252,46 @@ def _advance(
     effects: list[_Effect] = []
     c = prog[ind]
     ind += 1
+
+    # ``c`` and ``t`` make ``rep`` exponential -- 7 per ``c`` in a run, 3 per
+    # ``t`` -- so a single step can ask for 3**15 iterations of one command.
+    # The commands below are *affine* in the repeat count: running them
+    # ``rep`` times has a closed form that does not depend on anything the
+    # loop mutates, so the loop is skipped and the answer computed directly.
+    # This is an optimization, not a semantic change; the slower path
+    # produces the same state, one iteration at a time.
+    #
+    # Only these four qualify.  A print or read produces ``rep`` separate
+    # effects, ``a``/``b`` move the cursor mid-repeat, and ``y``/``v``/``c``/
+    # ``t``/``j`` re-fetch the command partway through -- all of which need
+    # the iteration they describe.
+    if rep > 1:
+        if c == "p":
+            tape, rep = _set(tape, ptr, tape[ptr] + 2 * rep), 0
+        elif c == "s":
+            tape, rep = _set(tape, ptr, tape[ptr] - rep), 0
+        elif c == "r":
+            ptr += 2 * rep
+            tape, rep = _grow(tape, ptr), 0
+        elif c == "l":
+            ptr, rep = max(0, ptr - rep), 0
+        elif c == "h":
+            # Halving ``rep`` times is one shift, but ``_trunc2`` truncates
+            # toward zero rather than flooring, so a bare ``//`` is wrong for
+            # every negative that does not divide exactly.
+            cell = tape[ptr]
+            shifted = cell // (1 << rep) if cell >= 0 else -((-cell) // (1 << rep))
+            tape, rep = _set(tape, ptr, shifted), 0
+        elif c == "k" and -1 <= tape[ptr] <= 1:
+            # Squaring has a closed form -- ``x ** (2 ** rep)`` -- but for
+            # ``|x| > 1`` the *result* has 2**rep times the bits, so no
+            # rewrite makes it affordable; the loop is not what costs there.
+            # At the fixed points it collapses to a single squaring.
+            tape, rep = _set(tape, ptr, tape[ptr] * tape[ptr]), 0
+        elif c in _IDEMPOTENT:
+            # Repeating these is the same as doing them once: each writes a
+            # value fixed by the state the *step* began in.
+            rep = 1
 
     while rep > 0:
         rep -= 1

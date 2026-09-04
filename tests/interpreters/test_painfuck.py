@@ -291,6 +291,80 @@ class TestStepMachine:
         assert run_program("aabbue") == "\x00"
 
 
+class TestRepeatCollapsing:
+    """The closed forms `_advance` uses instead of looping `rep` times.
+
+    ``c`` multiplies the repeat count by 7 and ``t`` by 3, so a step can ask
+    for millions of iterations of one command; the affine ones are computed
+    directly instead.  Each has to agree with the loop it replaces, which is
+    what these assert -- against explicit iteration rather than against a
+    second interpreter, since ``y`` makes a two-machine differential
+    nondeterministic and unable to prove anything.
+    """
+
+    @staticmethod
+    def _iterate(op: str, tape: tuple[int, ...], ptr: int, rep: int) -> tuple:
+        """Apply ``op`` ``rep`` times, one step at a time."""
+        from esolangs.interpreters.tape_based.painfuck import _set, _trunc2
+
+        for _ in range(rep):
+            if op == "p":
+                tape = _set(tape, ptr, tape[ptr] + 2)
+            elif op == "s":
+                tape = _set(tape, ptr, tape[ptr] - 1)
+            elif op == "r":
+                ptr += 2
+                if ptr >= len(tape):
+                    tape = (*tape, *([0] * (ptr + 1 - len(tape))))
+            elif op == "l":
+                ptr = ptr - 1 if ptr else ptr
+            elif op == "z":
+                tape = _set(tape, ptr, 0)
+            elif op == "w":
+                tape = _set(tape, ptr, tape[ptr + 1] if ptr + 1 < len(tape) else 0)
+            elif op == "q":
+                tape = _set(tape, ptr, tape[ptr - 1]) if ptr else tape
+            elif op == "d":
+                ptr = 0
+            elif op == "h":
+                tape = _set(tape, ptr, _trunc2(tape[ptr]))
+            elif op == "k":
+                tape = _set(tape, ptr, tape[ptr] * tape[ptr])
+        return tape, ptr
+
+    @pytest.mark.parametrize("op", "psrlzwqdhk")
+    @pytest.mark.parametrize("rep", [1, 2, 3, 5, 13, 40])
+    @pytest.mark.parametrize("cells", [[0], [5], [-7], [1], [-1], [3, 9], [-2, 6]])
+    def test_a_collapsed_op_equals_repeating_it(
+        self, op: str, rep: int, cells: list[int]
+    ) -> None:
+        from esolangs.interpreters.tape_based.painfuck import _advance
+
+        for ptr in range(len(cells)):
+            tape = tuple(cells)
+            if op == "k" and abs(tape[ptr]) > 1 and rep > 5:
+                continue  # squaring explodes by design; nothing to collapse
+            state = (tape, (), ptr, 0, rep)
+            (got_tape, _loop, got_ptr, _ind, _r), _fx = _advance(state, op, 1, (), ())
+            assert (got_tape, got_ptr) == self._iterate(op, tape, ptr, rep), (
+                f"{op!r} at ptr={ptr} rep={rep}"
+            )
+
+    def test_halving_truncates_toward_zero_not_down(self) -> None:
+        """The one collapse a plain ``//`` would get wrong.
+
+        ``_trunc2`` truncates toward zero, so ``-7`` halved twice is ``-1``;
+        flooring would give ``-2``.  The shift has to match the loop for
+        every negative that does not divide exactly.
+        """
+        from esolangs.interpreters.tape_based.painfuck import _advance
+
+        state = ((-7,), (), 0, 0, 2)
+        (tape, _loop, _ptr, _ind, _r), _fx = _advance(state, "h", 1, (), ())
+        assert tape == (-1,), "halving a negative must truncate toward zero"
+        assert -7 // 4 == -2, "the flooring answer this must not produce"
+
+
 def _machine(code: object) -> object:
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.painfuck import _Machine
