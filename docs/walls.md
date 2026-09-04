@@ -34,7 +34,12 @@ grounds for it.  What *is* cheap and worth doing is the other class:
 **promoting a sampled coverage claim to exhaustive**, which needs no new
 idea and either strengthens the entry or produces the counterexample the
 sampling missed (ArrowQueue's `n == 4` went this way — 65536 tables, 167s).
-Look for the word "sampled", not the word "wall".
+Look for the word "sampled", not the word "wall".  **Price the promotion by
+its table count before starting**, though: a boolean-generator sweep runs
+`2**(2**n)` tables, so the same move that costs three minutes at `n == 4`
+costs about 407 CPU-days at `n == 5` (measured for ArrowQueue below) and 38
+years for `%^2^-1`.  Cheap sampled→exhaustive promotions live at `n <= 4`;
+past that the entry needs an argument, not a bigger sweep.
 
 ## 6-5 (35 branch labels bound the tree)
 
@@ -1066,6 +1071,29 @@ languages reach multi-input threshold functions:
   only; promoting it cost under three minutes because the verdict comes
   from state-cycle detection rather than a step budget, so a ``1`` leaf's
   sustaining ring is proved looping the moment it repeats a snapshot.
+
+  **``n == 5`` does not promote, and the reason is the table count rather
+  than the runner.**  Priced by timing the same build-instantiate-verdict
+  loop on random tables: 1.0 ms/table at ``n == 3``, 2.5 ms at ``n == 4``,
+  8.2 ms at ``n == 5`` (programs 183, 447 and 1081 bytes — the per-table
+  cost tracks the doubling program size at about 3.3x per level).  The
+  ``n == 4`` figure reproduces the 167s above (2.5 ms x 65536 = 166s),
+  which is what makes the next step's extrapolation trustworthy: ``n == 5``
+  has ``2**32`` tables, not 65536, so the sweep is **about 407 CPU-days**.
+  That is a table-count wall, not a speed one — a runner 100x faster still
+  leaves four CPU-days, and no amount of per-table optimization divides
+  ``2**32`` down to the three-minute job ``n == 4`` was.  This is the same
+  shape as ``%^2^-1``'s ``n == 5``: the cheap-promotion pattern reaches
+  exactly as far as ``2**(2**n)`` stays small, which is ``n <= 4``.
+
+  The pricing run checked its tables rather than only timing them (500
+  random tables across ``n == 3``-``5`` plus the constant, half and
+  alternating ``n == 5`` edge tables, 0 failures) and carries a positive
+  control, since a timing sweep that silently stopped verifying would report
+  the same seconds: inverting the expected table fails all 32 combinations,
+  and blanking the sustaining rings' centre ``~`` fails **exactly** the
+  table's one-entries (10 of 10 on the sampled table), which is the hang
+  gadget's own signature.
 
 - **Point Break** is the first language where the convention is a *general*
   boolean generator
