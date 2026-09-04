@@ -31,10 +31,28 @@ assessed-and-rejected ledger in `docs/limitations.md`.
   documented judgment call in Taglate's `t` mould rather than a blocker.
   The randomness is **not** an objection: `[a b]` and `~` are seedable, as
   LaserFuck's heading already is.
+- **Alight** — its boolean generator is an indexed lookup, not a routed
+  tree.  It reads each input character, subtracts `'0`, and uses
+  ``index = index * 2 + bit`` to build the row number; a string literal holds
+  the truth table and ``at{table, index + 0.5}`` supplies the character for
+  `out`.  That is one table character plus a constant-size unrolled update
+  per input: **O(2**n + n)** source, before the interpreter work.  The
+  two-dimensional `skip`/`turn` control flow is therefore exercised by tests
+  rather than made responsible for the generator's cost.
+- **Pinyin** — the stack can retain one nonzero input character as a source
+  of `1` (duplicate it and divide it by itself), but has no table/list
+  storage.  A full planar decision tree is the direct construction.  At each
+  node, a character input is normalized with ``x % ((x / x) + (x / x))``;
+  copies then make zero and `q` compares it with the bit, sending the two
+  outcomes in opposite directions.  The retained character lets either leaf
+  print integer `0` or `1`.  It spends 12 executable character commands per
+  internal node and 3/5 per one/zero leaf, plus routing and grid padding:
+  **O(n * 2**n)** rendered source.  This is a usable, if deliberately large,
+  generator price; the page's `e`/`a`, stack operations, comparison, and
+  truth-machine establish the needed I/O and branch primitives.
 
-The 2D/grid pass (`Category:Two-dimensional languages` ∩
-`Category:Unimplemented`) also leaves **Alight** and **Pinyin** as plausible
-candidates, but **unpriced** — no boolean-generator cost estimate yet. Full
+These complete the priced survivors of the 2D/grid pass
+(`Category:Two-dimensional languages` ∩ `Category:Unimplemented`). Full
 per-language table, including the named blockers and rejections for the
 rest of the pass, is in `notes/twod-unimplemented-audit.md`.
 
