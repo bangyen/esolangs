@@ -338,10 +338,11 @@ per-cross-check list is in
 Wall-clock timeouts (SIGALRM, instruction-count caps) bound hanging
 programs by default; deterministic, step-capable machines instead get an
 immediate cycle-detection proof (`esolangs.vm.run_until_halt_or_cycle`),
-and the three non-deterministic ones get
+and three of the six random-drawing ones (WII2D, Painfuck, LaserFuck) get
 `run_until_halt_or_all_branches_cycle`, which decides them by searching
 every draw rather than sampling one run.  Which interpreters are covered,
-why a few stay on the timeout (unbounded growth, no `snapshot()` yet), and
+why a few stay on the timeout (unbounded growth, the three random
+interpreters without a branching search, no `snapshot()` yet), and
 the `pytest --cov` deadlock this also sidesteps are in
 [`docs/walls.md`](walls.md#state-cycle-detection-coverage-hang-detection-without-a-wall-clock-timeout).
 
