@@ -2032,25 +2032,23 @@ class TestParameterizedMinifuck:
                         break
                 assert arrived is not None, (n, key, sep_index, settle, suffix, acc)
 
-    @pytest.mark.slow  # 7.8s: builds the searching two-input template
-    def test_instantiations_have_equal_length(self) -> None:
-        """No instantiation leaks its inputs through the program's length."""
-        from esolangs.tools.boolean import parameterized
+    def test_template_is_input_independent_and_equal_length(self) -> None:
+        """The template has placeholders and every fill has the same length.
 
-        template = parameterized.minifuck("0110")
-        lengths = {
-            len(self.instantiate(template, [a, b])) for a in (0, 1) for b in (0, 1)
-        }
-        assert len(lengths) == 1, f"unequal instantiation lengths: {lengths}"
-
-    @pytest.mark.slow  # 9.0s: builds the searching two-input template
-    def test_template_is_input_independent(self) -> None:
-        """The template has {Xi} placeholders, not hardcoded bits."""
+        Both properties concern the same expensive ``0110`` construction.
+        Building it separately only to inspect its placeholders duplicated
+        construction without exercising a distinct path.  The current
+        combined check takes 0.12s serially, so it belongs in the fast suite.
+        """
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.minifuck("0110")
         assert "{X0}" in template
         assert "{X1}" in template
+        lengths = {
+            len(self.instantiate(template, [a, b])) for a in (0, 1) for b in (0, 1)
+        }
+        assert len(lengths) == 1, f"unequal instantiation lengths: {lengths}"
 
     def test_bad_table_rejected(self) -> None:
         """A table whose length is not a power of two is rejected."""
