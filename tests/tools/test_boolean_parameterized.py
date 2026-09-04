@@ -2712,6 +2712,127 @@ class TestParameterizedOneTwoThree:
         assert _kill_fate(0, 0, 1, 3) == "invalid"  # the pass cap.
         assert _kill_fate(0, 0, 1, None) == "skip"
 
+    def test_the_kill_search_declines_before_it_sweeps(self) -> None:
+        """Two refusals precede the ``a`` sweep, and both are cheap.
+
+        A pad whose own close raises leaves nothing to search -- a ``2``
+        from -3 reads stdin, which is fatal under the harness's empty
+        script -- and a victim the pad left below zero cannot descend at
+        all, since the sweep's ``a`` range starts at its position.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import (
+            _WORK_BUDGET,
+            _Builder,
+            _try_kill,
+            _work,
+        )
+
+        _work[0] = _WORK_BUDGET
+
+        below = _Builder(1)
+        for row in below.rows:
+            row.pos, row.tape = 0, 0
+        below.rows[0].pos = -1
+        assert _try_kill(below, (0,), 0, "01") is None
+
+        reads_stdin = _Builder(1)
+        for row in reads_stdin.rows:
+            row.pos, row.tape = -3, 0
+        assert _try_kill(reads_stdin, (0,), 2, "01") is None
+
+    def test_the_planned_boosts_decline_what_they_cannot_lift(self) -> None:
+        """Both boosts plan on triples, and both give up rather than guess.
+
+        ``_boost_row`` rejects a chain whose post-state collides -- two rows
+        at one exact state with different verdicts -- and gives up when 64
+        planned tests have not lifted the row past its target.
+        ``_group_boost`` declines a candidate whose escape chain runs past
+        the fixpoint's cap, and gives up on the same 64-pass allowance.
+
+        The tapes are built rather than found: a state a real build reaches
+        is one the pipeline's own screens already steered toward, so these
+        shapes have to be constructed to be seen at all.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import (
+            _RING,
+            _WORK_BUDGET,
+            _boost_row,
+            _Builder,
+            _group_boost,
+            _work,
+        )
+
+        _work[0] = _WORK_BUDGET
+
+        def two_rows(low: tuple[int, int], high: tuple[int, int]) -> _Builder:
+            b = _Builder(1)
+            b.rows[0].pos, b.rows[0].tape = low
+            b.rows[1].pos, b.rows[1].tape = high
+            return b
+
+        #: Alternating marks: each planned test lands on a mark, escapes one
+        #: hop to the unmarked neighbour, and so lifts the row by exactly 2.
+        alternating = sum(1 << (c + _RING) for c in range(1, 6000, 2))
+
+        # Cells 1 and 2 marked puts the boosted row's escape exactly where
+        # the other row lands, and the table gives the two different
+        # verdicts -- a collision the plan check has to refuse.
+        collide = (1 << (1 + _RING)) | (1 << (2 + _RING))
+        assert _boost_row(two_rows((0, collide), (2, collide)), (0,), 50, "01") is None
+
+        # 64 tests at +2 apiece cannot clear a target 100000 cells up.
+        lifts_too_slowly = two_rows((0, alternating), (0, 0))
+        assert _boost_row(lifts_too_slowly, (0,), 100_000, "00") is None
+
+        # A fully marked blocker never escapes: its chain runs past the cap,
+        # which invalidates the candidate rather than reporting a set the
+        # close would have rejected.
+        endless = sum(1 << (c + _RING) for c in range(3000))
+        assert _group_boost(two_rows((5, 0), (0, endless)), (0,), "01") is not None
+
+        # The blocker gains on the victim two cells per pass, so a 200-cell
+        # head start outlasts the 64-pass allowance.
+        too_far = two_rows((200, 0), (0, alternating))
+        assert _group_boost(too_far, (0,), "00") is None
+
+    def test_the_best_effort_stages_run_their_bodies(self) -> None:
+        """``_gap_fix`` and ``_align_residues`` both improve a built state.
+
+        Neither is required to succeed -- a gap the boost cannot widen is
+        left to the verdict search, and a residue class it cannot free is
+        left to the shallow moves -- so their bodies only run on a state
+        that actually needs them, which is what these construct.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import (
+            _RING,
+            _WORK_BUDGET,
+            _align_residues,
+            _Builder,
+            _gap_fix,
+            _work,
+        )
+
+        _work[0] = _WORK_BUDGET
+
+        # All four residues mod 4 occupied is the state the alignment exists
+        # to break up: a deep descend-and-pop needs one ring cell free.
+        crowded = _Builder(2)
+        for i, row in enumerate(crowded.rows):
+            row.pos, row.tape = i, 0
+        assert len({row.pos % 4 for row in crowded.live()}) == 4
+        _align_residues(crowded, "0000")
+        assert len({row.pos % 4 for row in crowded.live()}) < 4
+
+        # A five-cell gap is under the twelve-cell minimum, and marking the
+        # upper row alone gives the boost a test whose TRUE set is the
+        # uppers -- which is the move the widening is made of.
+        narrow = _Builder(1)
+        narrow.rows[0].pos, narrow.rows[0].tape = 0, 0
+        narrow.rows[1].pos, narrow.rows[1].tape = 5, 1 << (9 + _RING)
+        _gap_fix(narrow, "00")
+        low, high = (row.pos for row in narrow.live())
+        assert high - low > 5
+
 
 def test_nocomment_wide_declines_when_the_plan_outgrows_the_skip() -> None:
     """Past fifteen inputs the summand plan leaves no room to widen.
