@@ -2145,6 +2145,50 @@ class TestParameterizedOneTwoThree:
                     else:  # pragma: no cover - a diverging row would reach here
                         pytest.fail(f"{code!r} neither halts nor revisits a state")
 
+    def test_batched_gate_agrees_with_the_interpreter(self) -> None:
+        """The construction's replay gate matches a per-command run.
+
+        ``_replay_verdict`` executes a maximal ``1``/``2`` run at a time in
+        closed form instead of one command at a time, which is what makes
+        the gate affordable on a six-input template (95s to 0.28s at five
+        inputs).  That batching is only safe if it decides exactly what the
+        real interpreter decides, so every row of every stored plan through
+        three inputs is checked both ways here -- against a per-command run
+        of :class:`_Machine`, not against the builder's own model, which
+        shares no code with either.
+
+        Divergence is the case worth pinning: a batched cycle detector that
+        sampled the wrong events could miss a loop and call it a halt.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.one_two_three import _Machine
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.one_two_three_construct import _replay_verdict
+
+        for n in (1, 2, 3):
+            for table_int in range(2 ** (2**n)):
+                table = format(table_int, f"0{2**n}b")
+                template = parameterized.one_two_three(table)
+                for combo in range(2**n):
+                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    code = self.instantiate(template, bits)
+                    machine = _Machine(code, ScriptedIO(""))
+                    seen = set()
+                    stepwise = "1"
+                    for _ in range(10_000):
+                        if machine.halted:
+                            stepwise = "0"
+                            break
+                        state = machine.snapshot()
+                        if state in seen:
+                            break
+                        seen.add(state)
+                        machine.step()
+                    assert _replay_verdict(code) == stepwise == table[combo], (
+                        table,
+                        bits,
+                    )
+
     def test_slots_run_in_name_order(self) -> None:
         """Every emitted template embeds {X0} before {X1}."""
         from esolangs.tools.boolean import parameterized
