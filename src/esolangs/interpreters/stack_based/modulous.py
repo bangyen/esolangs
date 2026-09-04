@@ -23,6 +23,7 @@ Exhausted input raises :class:`EOFError` (the repo-wide convention).
 import re
 import sys
 from collections.abc import Callable, Mapping
+from typing import cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -44,6 +45,33 @@ type _Core = tuple[tuple[int, ...], dict[str, int], int]
 #: and cursor, plus whether ``END`` has stopped the run.  Tokens are parsed
 #: once and never rewritten, while ports and randomness stay in the shell.
 type _State = tuple[_Core, bool]
+
+#: One instant as the all-outcomes search sees it.  Identical to
+#: :data:`_State` except that ``var`` is the sorted tuple of its items --
+#: a dict cannot be a member of the search's visited set.
+type _FrozenCore = tuple[tuple[int, ...], tuple[tuple[str, int], ...], int]
+type _BranchState = tuple[_FrozenCore, bool]
+
+
+#: The most outcomes one ``RND`` may open in a branching search.  Its range
+#: is a program operand rather than a fixed coin, so a single token can ask
+#: for more states than any search wants to hold.  This is deliberately a
+#: property of the transition rather than the caller's remaining budget:
+#: that budget shrinks as the search proceeds, which would make the same
+#: program decidable or not depending on when the token was reached.
+_RND_FANOUT = 256
+
+
+def _freeze(state: _State) -> _BranchState:
+    """Return ``state`` with its variable map made hashable."""
+    (stk, var, ind), halted = state
+    return ((stk, tuple(sorted(var.items())), ind), halted)
+
+
+def _thaw(state: _BranchState) -> _State:
+    """Invert :func:`_freeze` so a handler sees the map it expects."""
+    (stk, var, ind), halted = state
+    return ((stk, dict(var), ind), halted)
 
 
 class _Machine:
@@ -100,6 +128,74 @@ class _Machine:
             tuple(sorted(self.var.items())),
             self.io.position(),
             self._halted,
+        )
+
+    # The all-random-outcomes search.  ``_Core`` holds ``var`` as a dict,
+    # which a search cannot key on, so the branching state carries it as
+    # the sorted tuple ``snapshot`` already uses and rebuilds the dict on
+    # the way back in.  The input cursor is left out: ``INP`` declines
+    # rather than forking, and output cannot affect a later token.
+
+    def branching_snapshot(self) -> _BranchState:
+        """Return the current state as the search's starting point."""
+        return _freeze(self._state)
+
+    def branching_halted(self, state: object) -> bool:
+        """Report whether ``state`` has ended or run off the program.
+
+        Unlike a machine-shaped halt this reads the value alone: ``END``
+        sets the flag inside the state, and running off the token list is a
+        property of the cursor, so both live in the tuple.
+        """
+        (_stk, _var, ind), halted = cast(_BranchState, state)
+        return halted or ind >= len(self.tokens)
+
+    def branching_successors(
+        self, state: object, _limit: int
+    ) -> tuple[_BranchState, ...] | None:
+        """Return the state for every value ``RND`` could draw.
+
+        Mirrors :meth:`step`, whose cursor advances *before* the handler
+        runs, so a successor that dispatched on the un-advanced core would
+        re-run the same token forever.
+
+        ``RND n`` takes its range from the program text rather than from a
+        fixed coin, so one token can ask for arbitrarily many outcomes;
+        that is charged against ``limit`` instead of being materialized.
+        ``n < 1`` draws nothing and is left to the single deterministic
+        call, exactly as the step leaves it.
+        """
+        core, halted = _thaw(cast(_BranchState, state))
+        stk, var, ind = core
+        mod = self.tokens[ind]
+        arg = mod.split()
+        advanced: _Core = (stk, var, ind + 1)
+        if not arg:
+            return (_freeze((advanced, halted)),)
+
+        handler = _DISPATCH.get(arg[0])
+        if handler is None:
+            if "+" in mod or "-" in mod:
+                return (_freeze((_var_arith(advanced, mod), halted)),)
+            return (_freeze((advanced, halted)),)
+
+        if arg[0] == "INP":
+            return None
+
+        values: tuple[str | int | None, ...] = (None,)
+        if arg[0] == "RND":
+            n = int(_operand(arg, 1))
+            if n >= 1:
+                if n > _RND_FANOUT:
+                    raise TimeoutError(
+                        f"undecided: one 'RND {n}' exceeds the {_RND_FANOUT}-outcome "
+                        "cap on a single transition"
+                    )
+                values = tuple(range(n))
+
+        done = halted or arg[0] == "END"
+        return tuple(
+            _freeze((handler(advanced, mod, arg, value), done)) for value in values
         )
 
     @property
