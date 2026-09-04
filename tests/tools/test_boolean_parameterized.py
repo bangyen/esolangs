@@ -2573,6 +2573,145 @@ class TestParameterizedOneTwoThree:
                 assert sorted(xs) == [str(i) for i in range(n)], (table, xs)
                 assert not re.findall(r"\{C(\d+)\}", template), table
 
+    def test_every_batched_run_charges_the_work_budget(self) -> None:
+        """Each closed form in ``_exec_run`` has to stop on a drained budget.
+
+        The batched paths exist so a long run costs O(1) instead of ``w``
+        trips through ``_exec_char``, but the budget counts *simulated
+        commands* and must not depend on which path ran them.  Each case
+        below is the shape that selects one path, with the budget set just
+        under what that path is about to charge.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import (
+            _exec_char,
+            _exec_run,
+            _Row,
+            _work,
+            _WorkExhaustedError,
+        )
+
+        def drained(budget: int, ch: str, pos: int, w: int) -> None:
+            row = _Row((0,))
+            row.pos = pos
+            _work[0] = budget
+            _exec_run(row, ch, w)
+
+        # The per-character fallback, reached directly.
+        _work[0] = 0
+        with pytest.raises(_WorkExhaustedError):
+            _exec_char(_Row((0,)), "1")
+        # `2` from pos >= 0: a plain right-walk.
+        with pytest.raises(_WorkExhaustedError):
+            drained(3, "2", 0, 10)
+        # `1` from pos >= 0 stopping at -1 or above: one contiguous XOR.
+        with pytest.raises(_WorkExhaustedError):
+            drained(3, "1", 8, 5)
+        # `1` descending past -1: the head above the ring boundary.
+        with pytest.raises(_WorkExhaustedError):
+            drained(2, "1", 5, 20)
+        # `1` inside the ring: whole laps reduced to a parity.
+        with pytest.raises(_WorkExhaustedError):
+            drained(3, "1", -1, 12)
+
+    def test_the_walk_shortcut_declines_what_it_cannot_decide(self) -> None:
+        """``_true_set_after_walk`` is exact only from a clean, non-negative state.
+
+        It reads the verdict off the tape instead of simulating, which is
+        sound only where the walk provably cannot loop or read: no pending
+        segment, and every row at ``pos >= 0``.  Outside that it declines,
+        and it also declines a landing chain longer than the fixpoint's
+        64-re-run cap rather than reporting a set the fixpoint would reject.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import (
+            _RING,
+            _WORK_BUDGET,
+            _Builder,
+            _true_set_after_walk,
+            _work,
+        )
+
+        _work[0] = _WORK_BUDGET
+
+        def flat(n: int = 1) -> _Builder:
+            b = _Builder(n)
+            for row in b.rows:
+                row.pos, row.tape = 0, 0
+            return b
+
+        below = flat()
+        below.rows[0].pos = -1
+        assert _true_set_after_walk(below, 4) is None
+
+        pending = flat()
+        pending.seg.append("1")
+        assert _true_set_after_walk(pending, 4) is None
+
+        # One marked landing at cell 4, and nothing beyond it: a finite chain.
+        landed = flat()
+        landed.rows[0].tape = 1 << (4 + _RING)
+        assert _true_set_after_walk(landed, 4) == {(0,)}
+
+        # Every multiple of the stride marked: the chain never escapes.
+        endless = flat()
+        endless.rows[0].tape = sum(1 << (4 * k + _RING) for k in range(1, 200))
+        assert _true_set_after_walk(endless, 4) is None
+
+    def test_predict_rejects_a_true_row_that_will_not_escape(self) -> None:
+        """A candidate whose TRUE row loops is declined, not emitted.
+
+        Eight ``1``s inside the ring is two whole laps: every ring cell
+        toggles twice, so position and tape both return to exactly where
+        they started.  That is a proven state revisit, which is a ``loop``
+        where no kill was named -- and a kill is what a loop has to be.
+        A stdin read reaches the same answer through ``ConstructError``.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import (
+            _RING,
+            _WORK_BUDGET,
+            _Builder,
+            _predict,
+            _work,
+        )
+
+        _work[0] = _WORK_BUDGET
+
+        def sitting_on_a_mark(pos: int) -> _Builder:
+            b = _Builder(1)
+            for row in b.rows:
+                row.pos, row.tape = pos, 1 << (pos + _RING)
+            return b
+
+        assert _predict(sitting_on_a_mark(0), "1" * 8) is None
+
+        reads_stdin = _Builder(1)
+        for row in reads_stdin.rows:
+            row.pos, row.tape = -3, 0
+        assert _predict(reads_stdin, "2") is None
+
+    def test_the_arithmetic_kill_screens_agree_on_their_refusals(self) -> None:
+        """``_after_ones_pop`` and ``_kill_fate`` decide fates without simulating.
+
+        Both are closed forms over ``(pos, tape)``, which is what lets the
+        kill sweep price every descent for free.  Their two refusals are a
+        ``2`` landing at -3 -- a stdin read, fatal under the harness's empty
+        script -- and a fixpoint that reaches neither verdict inside the pass
+        cap.  The latter needs a row that stays marked without ever repeating
+        a state: with a trailing flip on an empty tape every pass turns a
+        *fresh* cell on and the position advances, so no state recurs.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import (
+            _after_ones_pop,
+            _kill_fate,
+        )
+
+        # rem == 2 lands on -3, where the following `2` would read stdin.
+        assert _after_ones_pop(0, 0, 3) is None
+        assert _after_ones_pop(0, 0, 1) is not None
+
+        assert _kill_fate(0, 0, 3, None) == "invalid"  # the read.
+        assert _kill_fate(0, 0, 1, 3) == "invalid"  # the pass cap.
+        assert _kill_fate(0, 0, 1, None) == "skip"
+
 
 def test_nocomment_wide_declines_when_the_plan_outgrows_the_skip() -> None:
     """Past fifteen inputs the summand plan leaves no room to widen.
