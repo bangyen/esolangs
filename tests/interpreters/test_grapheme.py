@@ -288,10 +288,6 @@ class TestEdgeCases:
         assert run_program("HABHTY") == "0"  # nonempty function truthy
         assert run_program("HHTY") == "1"  # empty function falsy
 
-    def test_recursion_limit_exceeded(self) -> None:
-        with pytest.raises(HaltError, match="recursion"):
-            run_program("HKGHKG")
-
     def test_function_cannot_name_a_variable(self) -> None:
         with pytest.raises(HaltError, match="cannot name"):
             run_program("FAFHHC")
@@ -367,20 +363,13 @@ class TestEdgeCases:
             machine.step()
         assert machine.halted
 
-    def test_the_recursion_limit_admits_five_hundred_frames(self) -> None:
-        """500 nested calls run; 501 is the one that is refused.
-
-        Every other recursion here runs away without bound, so the depth
-        the guard compares -- where counting starts, how fast it climbs,
-        and which side of 500 is allowed -- was pinned only from very far
-        above.  This counts down from an exact depth instead.
-        """
+    def test_recursion_is_not_artificially_capped(self) -> None:
+        """A 501-deep finite call chain follows the language's unbounded stack."""
         # the body decrements the count, keeps a copy, and calls itself
         # again through Q while the copy is nonzero
         program = "H" + "FFTBKFAFDQ" + "H" + "FAFC" + "FAFD" + "G"
         assert run_program("FEZF" + program) == ""
-        with pytest.raises(HaltError, match="recursion limit"):
-            run_program("FEZF" + "FFT" + "A" + program)
+        assert run_program("FEZF" + "FFT" + "A" + program) == ""
 
     def test_the_error_messages_read_in_full(self) -> None:
         """Each message entire, not the fragment the tests match on.
@@ -400,7 +389,6 @@ class TestEdgeCases:
             ("FAFG", "G needs a string or a function"),
             ("HABHFFA", "math on a function is undefined"),
             ("HABHY", "Y cannot output a function"),
-            ("HKGHKG", "recursion limit exceeded"),
         ):
             with pytest.raises(HaltError, match=re.escape(message)) as caught:
                 run_program(code)
@@ -445,7 +433,7 @@ class TestStepMachine:
             assert machine.snapshot() == (
                 (value,),
                 frozenset(),
-                ((code, 0, 3, "", (), -1, ""),),
+                ((code, 3, "", (), -1, ""),),
                 0,
             )
 
