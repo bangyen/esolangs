@@ -25,6 +25,13 @@ re-fetches the command it repeats: ``c`` consumes the whole ``c`` run and
 repeats the following command, ``t`` consumes the whole ``t`` run and
 repeats the preceding command.
 
+Each run is *one* count, not one per character: ``ccc`` is ``7**3`` and
+``ttt`` is ``3**3``.  The two differ in what they can consume.  ``c`` sits
+before its command and runs it outright, so ``cp`` runs ``p`` seven times;
+``t`` sits after one that has already executed and can only add, so ``pt``
+runs ``p`` four times -- once itself, three more from the ``t``.  A ``t``
+cannot retroactively cancel the application that already happened.
+
 A ``t`` run *immediately after* a ``c`` run is read forward as part of that
 same count, so ``c...t...`` repeats the command it lands on
 ``7**c * 3**t`` times -- ``ct`` is 21.  The wiki specifies neither the
@@ -423,6 +430,13 @@ def _advance(
         elif c == "d":
             ptr = 0
         elif c == "t":
+            # The whole run is one count of ``3 ** len``, so the cursor has
+            # to clear all of it: stopping just past the first ``t`` made
+            # each later one a step of its own that walked back over its
+            # predecessors, so ``ptt`` repeated its ``p`` three *then* nine
+            # times instead of nine.
+            while ind < n and prog[ind] == "t":
+                ind += 1
             val = ind
             rep = 1
             found = False

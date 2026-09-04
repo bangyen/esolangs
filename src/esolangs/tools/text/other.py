@@ -472,12 +472,21 @@ def painfuck(text: str) -> str:
             s += pwr * "c" + op
             val -= 7**pwr
         if val:
-            pwr = 1
-            while 2 * val >= (3**pwr - 1):
+            # A ``t`` run repeats the command before it ``3 ** len`` times,
+            # the same shape as the ``c`` branch above.  This used to solve
+            # for the geometric sum 1 + 3 + 9 + ... instead, which is what a
+            # ``t`` run cost while the interpreter ran each ``t`` in the run
+            # as a step of its own -- so the emitted programs only came out
+            # right against that bug.
+            # ``op`` applies once itself, and a ``t`` run after it repeats
+            # that ``3 ** len`` more times, so ``op`` plus ``k`` ``t``s is
+            # ``1 + 3 ** k`` applications for ``k >= 1`` and 1 for ``k == 0``.
+            pwr = 0
+            while pwr + 1 <= val and 1 + 3 ** (pwr + 1) <= val:
                 pwr += 1
 
-            s += op + (pwr - 2) * "t"
-            val -= (3 ** (pwr - 1) - 1) // 2
+            s += op + pwr * "t"
+            val -= 1 + 3**pwr if pwr else 1
 
         return val, s
 
