@@ -322,6 +322,7 @@ def test_a_flipped_embed_complements_in_place_and_keeps_slot_order() -> None:
             assert order == slots, (mask, order)
 
 
+@pytest.mark.slow  # 7.1s: enumerates the stagings the screen claims to skip
 def test_span_screen_declines_no_reachable_table() -> None:
     """The span screen never declines a table some staging prints.
 
@@ -1032,6 +1033,7 @@ class TestParameterizedMinifuck:
             assert len(set(joint.ptrs())) == 2**arity, arity
             assert time.monotonic() - start < 1.0, arity
 
+    @pytest.mark.slow  # 3.1s: a five-input sculpted build plus all 32 rows
     def test_five_input_tables_build_and_print_every_row(self) -> None:
         """A five-input table builds through the sculpted route and runs.
 
@@ -1796,6 +1798,7 @@ class TestParameterizedMinifuck:
                     if other is not None:
                         assert len(other) >= len(built), (acc, cell7, direct)
 
+    @pytest.mark.slow  # 7.4s: the index against a full per-table sweep
     def test_the_staging_index_agrees_with_the_enumeration(self) -> None:
         """The inverted index assigns exactly what the per-table sweep does.
 

@@ -425,6 +425,7 @@ def test_decleq_empty_input_line_is_a_target_language_collision() -> None:
     assert esolangs.run("S*bleq", sb_program, "\x00") == "\x00"
 
 
+@pytest.mark.slow  # 12.2s: 120 fuzzed programs, most spending the 1.0s timeout
 def test_decleq_fuzz_unrestricted_programs() -> None:
     """Random programs of any shape agree with the Decleq interpreter.
 
