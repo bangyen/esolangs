@@ -1335,6 +1335,25 @@ class TestRunUntilHaltOrCycle:
         code = "3+1@.1$1-2!1@;2:;"
         assert run_until_halt_or_ancestor(_Machine(code, ScriptedIO())) is True
 
+    def test_grapheme_replayed_function_is_detected_as_an_ancestor(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.grapheme import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        # The function invokes itself without changing the shared state.
+        assert run_until_halt_or_ancestor(_Machine("HKGHKG", ScriptedIO())) is False
+
+    def test_grapheme_changing_stack_halts(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.grapheme import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        # The function decrements the count before Q recurs, so each entry
+        # has a different shared stack and reaches the zero base case.
+        program = "H" + "FFTBKFAFDQ" + "H" + "FAFC" + "FAFD" + "G"
+        code = "FAF" + program
+        assert run_until_halt_or_ancestor(_Machine(code, ScriptedIO())) is True
+
 
 class TestFactory:
     def test_unknown_language_raises(self) -> None:

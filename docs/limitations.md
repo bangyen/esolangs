@@ -30,8 +30,9 @@ predictable across languages:
   second `,` raises `EOFError`.
 - **Recursion is uncapped except in Forbin's expression position.**
   Suptiftam, Forbin's statement-position calls, all of Lamfunc's calls,
-  Forþ's stored scopes, and Jaune subroutines run on an explicit frame stack
-  (`_Machine.frames`), so a terminating recursion of any depth completes.
+  Forþ's stored scopes, Jaune subroutines, and Grapheme functions run on an
+  explicit frame stack (`_Machine.frames`), so a terminating recursion of
+  any depth completes.
   Forbin's *expression-position* calls
   (`x = f(y)`, needing the result back synchronously) still recurse
   natively and hit Python's own limit; the language has no realistic
