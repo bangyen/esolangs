@@ -2241,3 +2241,33 @@ class TestMinifuckArityGates:
         m = self.module()
         assert 2 not in m._INSERT_ARITIES  # noqa: SLF001
         assert m._staging_spans(2)  # noqa: SLF001
+
+
+def test_insert_pass_stops_as_soon_as_its_last_target_is_placed() -> None:
+    """The second pass has its own early exit, and only it can reach this one.
+
+    The bracket-run pass returns when it places the last table, so a target it
+    reaches never gets as far as the insert family.  This table does not build
+    from a pure run -- its staging carries an insert string rather than a
+    bracket count -- so asking for it alone is what drives ``remaining`` to
+    zero inside the second loop.
+    """
+    import importlib
+
+    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+    table = "0100110110100101"
+    plans = module._derived_plans(4, (table,))  # noqa: SLF001
+    assert set(plans) == {table}
+    # A str suffix is the insert family; the run pass records an int.
+    assert isinstance(plans[table][2], str)
+
+
+def test_mux_refuses_below_its_minimum_arity() -> None:
+    """``_mux`` separates rows, which needs at least two of them to separate."""
+    import importlib
+
+    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+    assert module._MUX_MIN_ARITY == 2  # noqa: SLF001
+    assert module._mux("01", 1) is None  # noqa: SLF001
