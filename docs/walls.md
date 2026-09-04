@@ -1103,21 +1103,13 @@ is tied to the printer's cell layout, not reusable as a standalone carry.
 So n = 1 is proven; n > 1 needs a wrapping-safe carry, which is a genuine
 brainfuck-algorithms construction rather than a quick extension.
 
-**Jaune realizes the capability:** its cells do not wrap (the language's
+**The removed Jaune experiment realized the capability:** its cells do not wrap (the language's
 reference implementation stores each cell as a JavaScript number with plain
 ``+=``/``-=``, no modulo or bitmask, and this interpreter uses Python
 ``int``) and ``^`` prints the current cell as a decimal number, so each
 operand fits in a single cell and the product accumulates without a
-digit-per-cell carry.  The
-program (:func:`esolangs.tools.boolean.jaune_multiply`) runs each read on a
-dedicated always-one cell (the ``?``/``!`` jumps are conditional, so a cell
-permanently set to 1 gives the loop-back jump an unconditional trigger),
-folds each digit with ``v+`` plus a run of nine ``&`` after a ``#``
-(multiply by 10), detects a sentinel by adding its offset from a digit
-(``*`` is 42, ``6+`` zeroes it; ``#`` is 35, ``13+`` zeroes it) and jumping
-on zero, then loops the repeated addition of the first operand over the
-second.  Verified exhaustively for single-digit operands (all 100 pairs)
-and spot-checked through ten-digit operands.
+digit-per-cell carry.  Its implementation was deliberately removed with the
+non-boolean generator APIs.
 
 ## Cross-check removals (why seven were dropped)
 
