@@ -179,6 +179,29 @@ class TestPainfuck:
         assert run_program("pyu", coin=1) == ""
         assert run_program("pyu", coin=0) == "\x02"
 
+    def test_repeated_skip_decides_each_repeat_separately(self) -> None:
+        """A repeated ``y`` flips once per repeat, not once for the run.
+
+        ``y`` binds forward to the next command like ``c`` and ``v``, so
+        ``cyp`` repeats ``p`` seven times with each application gated by
+        its own coin: all tails runs every one (14, the same as the ``cp``
+        that has no ``y`` at all), all heads drops every one (0), and a
+        real coin spreads over ``{0, 2, ..., 14}``.
+
+        The pinned ends are what separate this from the two readings the
+        docstring rejects.  Deciding once for the whole run would cap all
+        tails at 2, since a single non-skip runs ``p`` once; rebinding
+        without gating -- the retired cross-check's shape -- ran the bound
+        command for the repeats left after the first heads, so all heads
+        gave 12 rather than 0.
+        """
+        assert run_program("cypoe", coin=0) == "14"  # every repeat survives
+        assert run_program("cypoe", coin=1) == "0"  # every repeat dropped
+        assert run_program("cpoe", coin=0) == "14"  # a y-free run matches
+        # Unrepeated, every reading agrees: this is the case the wiki states.
+        assert run_program("ypoe", coin=0) == "2"
+        assert run_program("ypoe", coin=1) == "0"
+
     def test_error(self) -> None:
         with pytest.raises(HaltError):
             run_program("b")  # loop close with an empty stack
