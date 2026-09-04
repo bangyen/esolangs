@@ -21,40 +21,36 @@ how many whole cycles run: the interpreter's bounding-box output must be
 identical for `limit = len(prog)` and `limit = 10 * len(prog)`.  Every
 instantiated program must be a **cycle-stable fixed point**.
 
-The reason this is hard, and must stay true of any future construction: a
-program is origin-relative — its moves and paints are tuned to run from
-the origin on a black grid — but the ant *ends* a cycle at its output
-leaf.  On cycle 2 the ant starts at the output, so the origin-relative
-setup commands misfire unless the cycle-2 run is a closed, zero-paint
-dance back to the output.  Any modification to the head, body, or routing
-must preserve that closed zero-paint dance on cycle 2 and every cycle
-after — verify on the interpreter (1 vs. many cycles), not by inspection.
+A program is origin-relative — moves and paints are tuned to run from the
+origin on a black grid — but the ant *ends* a cycle at its output leaf.  On
+cycle 2 the ant starts at the output, so the origin-relative setup
+commands misfire unless the cycle-2 run is a closed, zero-paint dance back
+to the output.  Any change to the head, body, or routing must preserve
+that dance on cycle 2 and every cycle after — verify on the interpreter (1
+vs. many cycles), not by inspection.
 
 ### Verification coverage (know what's untested before extending arity)
 
-Exhaustive for `n <= 4`: `n <= 3` is 256 tables x 8 inputs = 2048 cases,
-cycle-stable and exact on the real interpreter, and `n == 4` is all 65536
-tables over all sixteen inputs, 0 failures in 64s (recorded in
-`docs/walls.md`; the checked-in test still spot-checks three tables, since
-the full sweep is a minute of CPU).  That sweep decides stability by a
-state fixed point — the grid is monotone, so cycle 2 leaving the state
-untouched proves every later cycle does — which is both stronger and ~50x
-cheaper than the `box(1) == box(10)` comparison
-`tests/tools/a_painter_ant_trace.py` uses.
+Exhaustive for `n <= 4`: `n <= 3` is 256 tables x 8 inputs = 2048 cases;
+`n == 4` is all 65536 tables over sixteen inputs, 0 failures in 64s
+(recorded in `docs/walls.md`; the checked-in test spot-checks three
+tables, since the full sweep is a minute of CPU).  The sweep decides
+stability by a state fixed point — the grid is monotone, so cycle 2
+leaving the state untouched proves every later cycle does — ~50x cheaper
+than the `box(1) == box(10)` comparison `tests/tools/a_painter_ant_trace.py`
+uses.
 
-Above `n == 4` the sweep is priced out (`2**(2**n)` tables), so the
-coverage rests on the uniform argument in
-[`a_painter_ant_uniform_proof.md`](a_painter_ant_uniform_proof.md) rather
-than on sampling: the leaf geometry is arithmetic, a blocked run is a no-op
-at any length (so the arity-dependent magnitudes drop out), and the cycle-2
-dance is a paint-free fixed point whose per-unit motif table — 30 entries
-learned at `n == 5` — replays with 0 prediction errors at `n` of 6-9.
-`n == 5` is also spot-checked against a handful of tables via that module;
-`n == 6` and `n == 7` build and check out on ad hoc tables but have no
-checked-in test.  A change to the head, body, or routing invalidates the
-motif table, so re-run
-`uv run python tests/tools/apa_uniform_proof_check.py` after one rather
-than assuming the pattern holds.
+Above `n == 4` the sweep is priced out (`2**(2**n)` tables), so coverage
+rests on the uniform argument in
+[`a_painter_ant_uniform_proof.md`](a_painter_ant_uniform_proof.md): leaf
+geometry is arithmetic, a blocked run is a no-op at any length (arity-
+dependent magnitudes drop out), and the cycle-2 dance is a paint-free
+fixed point whose per-unit motif table — 30 entries learned at `n == 5` —
+replays with 0 prediction errors at `n` of 6-9. `n == 6` and `n == 7`
+build and check out on ad hoc tables but have no checked-in test.  A
+change to the head, body, or routing invalidates the motif table, so
+re-run `uv run python tests/tools/apa_uniform_proof_check.py` after one
+rather than assuming the pattern holds.
 
 ## Design principles (must hold for any future change here)
 
