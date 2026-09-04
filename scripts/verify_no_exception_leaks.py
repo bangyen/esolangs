@@ -129,6 +129,26 @@ GENERIC = [
 # it, so it cannot time out a slow-but-valid program and call it a leak.
 _STEP_CAP = 20000
 
+# What the cap costs, measured on COD, the most expensive language here.
+# Five mutants of its example (a dropped or inserted character in the `~`
+# border) shift the entrance corridor to the tree, so the cod never reaches
+# open water and loops forever -- crossing `+` increments as it goes.  Its
+# value therefore grows without bound, no state ever repeats, and the cycle
+# detector cannot decide it: this is the unbounded-growth class, and the
+# programs are genuinely non-terminating rather than slow.
+#
+# Those 5 programs x 4 stdins are 20 runs that always reach the cap, and
+# the growing integer makes each step dearer than the last.  The whole COD
+# corpus costs 0.1s at cap 100, 0.8s at 150, 15.8s at 200, and minutes at
+# 20000 -- while finding the same 20 runs at every one of them.
+#
+# The cap stays 20000 anyway.  It is global, and a step cap's whole virtue
+# (see above) is that it is reproducible where a clock is not; lowering it
+# for one language's divergent mutants would cut how deep the sweep probes
+# the other 63 for the leaks it exists to find.  If `--all` runtime ever
+# obstructs something, the fix is a per-language override here, not a
+# smaller number for everyone.
+
 # Four inputs, not a dozen: the distinctions that actually change a read
 # are no input at all, a blank line, a digit, and a non-digit.  Extra
 # spellings of "a digit" multiply the sweep without reaching new code --
