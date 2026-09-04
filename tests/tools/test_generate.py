@@ -1,6 +1,7 @@
 """Unit tests for the program generator tool."""
 
 import importlib
+import inspect
 from collections.abc import Callable
 from typing import Any
 from unittest.mock import patch
@@ -42,6 +43,28 @@ from esolangs.interpreters.tape_based.slow_acv_mammalian import run as mammalian
 from esolangs.interpreters.tape_based.suffolk import run as suffolk_run
 from esolangs.interpreters.tape_based.three_d_brainfuck import run as three_d_bf_run
 from esolangs.tools.text import other
+
+WIDTH_CONTRACT_TEXT = "Hello, World!"
+
+
+def roundtrip_language(language: Any, program: str) -> str:
+    """Run ``program`` through the interpreter its language registers.
+
+    The width contract is swept from the registry rather than from a list of
+    imports, so it needs a runner keyed the same way.  Container exits rather
+    than returning, which is deliberate, so ``SystemExit`` is caught here.
+    """
+    import io
+    from contextlib import redirect_stdout
+
+    module = importlib.import_module("esolangs.interpreters." + language.interpreter)
+    buffer = io.StringIO()
+    try:
+        with redirect_stdout(buffer):
+            module.run(program.splitlines() if language.split else program, io=IO())
+    except SystemExit:
+        pass
+    return buffer.getvalue()
 
 
 def roundtrip(interpreter: Callable[..., Any], program: str | list[str]) -> str:
@@ -1288,6 +1311,51 @@ class TestGeneratorRoundTrips:
         with pytest.raises(SystemExit), contextlib.redirect_stdout(buffer):
             container_run(gen.container("Hi").splitlines(), io=IO())
         assert buffer.getvalue() == "Hi"
+
+
+class TestWidthContract:
+    """Every width-taking generator answers every width with a program.
+
+    A width below what a generator's layout can fold in is raised to the
+    narrowest that folds, never refused and never ignored.  Ignoring it used
+    to mean falling back to the unfolded form, which for LaserFuck is the
+    widest thing it emits -- so asking for the narrowest program returned one
+    twelve times wider than passing no width at all.
+    """
+
+    @staticmethod
+    def _width_takers() -> list[str]:
+        from esolangs.registry import GENERATORS
+
+        return sorted(
+            name
+            for name, generator in GENERATORS.items()
+            if "width" in inspect.signature(generator).parameters
+        )
+
+    def test_the_registry_still_has_width_takers(self) -> None:
+        """The sweep below is registry-driven, so it must not be empty."""
+        assert self._width_takers()
+
+    @pytest.mark.parametrize("width", [1, 2, 3, 4, 5])
+    def test_a_width_below_the_floor_is_clamped_not_widened(self, width: int) -> None:
+        """A below-floor width never returns more columns than no width does.
+
+        This is the property that failed: the fallback was wider than the
+        default, so the narrowest request produced the widest program.
+        """
+        from esolangs.registry import GENERATORS, LANGUAGES
+
+        for name in self._width_takers():
+            generator = GENERATORS[name]
+            unbounded = generator(WIDTH_CONTRACT_TEXT)
+            bounded = generator(WIDTH_CONTRACT_TEXT, width)
+            widest = max(len(line) for line in bounded.split("\n"))
+            default = max(len(line) for line in unbounded.split("\n"))
+            assert widest <= default, f"{name} at width={width} widened"
+            assert roundtrip_language(LANGUAGES[name], bounded) == (
+                WIDTH_CONTRACT_TEXT
+            ), f"{name} at width={width} stopped printing its text"
 
 
 class TestGeneratorProducesOutput:
