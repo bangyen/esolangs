@@ -49,18 +49,20 @@ predictable across languages:
 | A Painter Ant | No I/O; prints the visited-grid bounding box (a `#` white / `.` black raster, with the ant's cell as `@` or `o`). Has a general (any-arity) boolean generator; no text generator. |
 | Algebraic Programming Language | The only datatype is a number and an executed line prints its *result*, so the output alphabet is digits (plus `.` and `-`) — the same wall as Jaune and COD. The wiki's own hello-world prints the ASCII values `72 101 108 …` rather than the characters, which is the spec conceding the point. Has an uncapped boolean generator; no text generator. |
 | ArrowQueue | No output at all; the IP walks the grid and halts, printing nothing. |
-| Back | Prints the tape as a number list. |
+| Back | The spec defines no output at all; `*` halts and this interpreter dumps the bit tape space-separated (`back.py:201`), following the interpreter-only convention Minsky Swap sets. Output is one whole-tape dump on the halting step, over the alphabet `[01 ]`. |
 | BF-PDA | `.` prints the top bit as the `'0'`/`'1'` character, so the output alphabet is just the two digits. |
-| Bitdeque | No I/O in the spec; this interpreter prints the deque contents as numbers when the program ends. |
+| Bitdeque | The wiki says "there is (currently) no I/O", so the deque dump at the end of the run (`bitdeque.py:185`) is this interpreter's convention rather than a language feature. One dump of space-separated numbers, on the halting step only. |
 | COD | The ``---`` sink prints the cod's value as a decimal integer with no separator, so only digits are spellable — the same output-alphabet wall as Jaune. Has a parameterized boolean generator; no text generator. |
 | Circuit Diagram | The ``:`` output emits its gate's value as a bit string, so the output alphabet is just `'0'`/`'1'`, and nothing in the spec turns those bits into a byte. Has a boolean generator; no text generator. |
+| Fargo | The `$` builtin prints the output register with `print_num` (`fargo.py:595`), so the output alphabet is digits — the same wall as Jaune, COD and APL. Has a boolean generator; no text generator. |
 | Flowchart | The only output node emits one bit, and byte-packing cannot apply: the wiki's truth machine reads one bit, writes one bit, and halts, so under any packing it would never flush and the example would print nothing. Character-per-bit is forced by the spec's own example. Has an uncapped boolean generator; no text generator. |
 | Grapheme | Strings cannot contain `E` (terminates stringmode) and there is no concatenation, so even "HELLO" is unspellable. |
+| Inject | Not an alphabet wall — `send` writes a label's block verbatim, so arbitrary ASCII is emittable as literal program text. What blocks it is the line terminator: `send` appends `\n` to *every* line it writes (`inject.py:86`), so a text not ending in a newline is unreachable, and the harness asks for `"Hello, World!"` exactly (executed: the program yields `"Hello, World!\n"`). A payload line matching `\w+;` would also be re-parsed as a label delimiter. Has a boolean generator; no text generator. |
 | Jaune | `^` prints the current cell as a decimal integer, so only digits are spellable. |
-| Lamfunc | `p` prints a number as binary, so the output alphabet is just `'0'`/`'1'`. |
-| Minsky Swap | Prints the registers as numbers. |
+| Lamfunc | Not an alphabet wall — `_print_value` falls through to `str(value)`, and a trailing bare token becomes a string, so `p Hello` really does print `Hello` (executed). What blocks it is tokenization: a token is whitespace-split, so `p Hello, World!` raises `HaltError: calling undefined function 'Hello,'`, and an all-digit token parses as an int and prints in *binary* (`p 42` gives `101010`). The harness text contains a comma and a space, so it is unspellable in one token and there is no concatenation to build it from several. |
+| Minsky Swap | No output command; the two registers are dumped space-separated on the halting step (`minsky_swap.py:216`). This is the interpreter-only dump convention the Back and Bitdeque rows cite; two decimal integers is the whole emittable set. |
 | Point Break | No output at all; a program only halts or loops. Has a termination-convention boolean generator (halt for 0, loop for 1); no text generator. |
-| RAM0 | Prints a state dump. |
+| RAM0 | No output command; `_dump` (`ram0.py:231`) renders a fixed `z: N` / `n: N` / `ram: {…}` template once at the end. The scaffolding is literal and unavoidable and only the integers vary, so no text is addressable. |
 
 The straight-line generators are also at their length floor — no
 per-character encoding can be meaningfully shortened:
