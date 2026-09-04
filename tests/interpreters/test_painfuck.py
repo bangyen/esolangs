@@ -179,6 +179,26 @@ class TestPainfuck:
         assert run_program("pyu", coin=1) == ""
         assert run_program("pyu", coin=0) == "\x02"
 
+    def test_repeated_skip_drops_rather_than_runs(self) -> None:
+        """A repeated ``y`` skips its draws; it does not run what it drew.
+
+        ``cy`` makes the repeated command ``y`` with a count of seven, so
+        seven independent flips each drop one following command -- heads
+        all the way skips seven, tails all the way skips none.  The earlier
+        reading rebound the repeated command to the one the first heads
+        drew, which then *executed* for every remaining repeat: the command
+        the skip existed to drop ran six more times, so ``cyp`` left 12 on
+        the cell instead of 0.
+
+        Eight ``p``s outlast the skips: heads drops seven and the eighth
+        survives, tails keeps all eight.  With a single ``p`` the run eats
+        the ``u`` as well, which is why that case prints nothing at all.
+        """
+        assert run_program("cyppppppppu", coin=1) == "\x02"  # 7 of 8 dropped
+        assert run_program("cyppppppppu", coin=0) == "\x10"  # none dropped
+        assert run_program("cypu", coin=1) == ""  # p and u both skipped
+        assert run_program("cypu", coin=0) == "\x02"  # the p survives
+
     def test_error(self) -> None:
         with pytest.raises(HaltError):
             run_program("b")  # loop close with an empty stack
