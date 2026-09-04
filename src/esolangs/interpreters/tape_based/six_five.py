@@ -128,7 +128,7 @@ def _advance(state: _State, toks: list[str], byte: int | None = None) -> _State:
     tok = toks[ind]
     if tok == "1":
         cell += 2
-        if len(tape) < cell + 1:  # pragma: no branch - right moves always grow
+        if len(tape) < cell + 1:
             tape = (*tape, *([0] * (cell + 1 - len(tape))))
     elif tok == "3" and cell:
         cell -= 1
