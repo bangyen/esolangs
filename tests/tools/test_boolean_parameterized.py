@@ -2202,12 +2202,15 @@ class TestParameterizedOneTwoThree:
     def test_construction_moves_all_fire_on_one_table(self) -> None:
         """A single table forces every move kind the search offers.
 
-        ``10101010`` needs kills, single- and group-boosts, and a ring
+        ``00111000`` needs kills, single- and group-boosts, and a ring
         round to converge — separation and the pre-verdict residue
         alignment run on every table — so this one build is a witness
         that each gadget the module-level docstring describes is not
         just reachable in principle but taken on a real trajectory, not
-        only inferred from ``construct()``'s success.
+        only inferred from ``construct()``'s success.  (Found by an
+        exhaustive three-input sweep: most tables now chain bottom-up
+        kills without ever needing a boost, so a witness for the rarer
+        moves has to be picked deliberately.)
         """
         from esolangs.tools.boolean import one_two_three_construct as construct_mod
 
@@ -2237,7 +2240,7 @@ class TestParameterizedOneTwoThree:
         try:
             # verify=False: every row is replayed below, and the
             # generator's own closing replay is the same execution twice.
-            template = construct_mod.construct("10101010", verify=False)
+            template = construct_mod.construct("00111000", verify=False)
         finally:
             for name, fn in originals.items():
                 setattr(construct_mod, name, fn)
@@ -2246,7 +2249,7 @@ class TestParameterizedOneTwoThree:
         for combo in range(8):
             bits = [(combo >> (2 - i)) & 1 for i in range(3)]
             program = self.instantiate(template, bits)
-            assert self.run(program) == "10101010"[combo], bits
+            assert self.run(program) == "00111000"[combo], bits
 
     def test_an_exhausted_work_budget_is_declined(self) -> None:
         """A table that would build still raises once the work runs out.
@@ -2291,13 +2294,12 @@ class TestParameterizedOneTwoThree:
 
         n = 3
         table = "10000000"
-        spacing = 6
         _work[0] = _WORK_BUDGET
         b = _Builder(n)
-        marks = [spacing * 3**i + 1 for i in range(n)]
+        marks = [2 ** (n + 1) * 3**i + 1 for i in range(n)]
         _phase_a(b, marks)
         _close(b)
-        _separate(b, table)
+        _separate(b, marks)
         _gap_fix(b, table)
         _align_residues(b, table)
         assert _verdict_search(b, table, budget=1) is None
@@ -2447,7 +2449,7 @@ class TestParameterizedOneTwoThree:
             b.fixpoint(row)
 
     def test_test_reports_a_kill_that_escapes(self) -> None:
-        """``test(kill=True)`` requires every TRUE row to provably loop."""
+        """``test(kill=...)`` requires the named victim to provably loop."""
         from esolangs.tools.boolean.one_two_three_construct import (
             ConstructError,
             _Builder,
@@ -2466,7 +2468,34 @@ class TestParameterizedOneTwoThree:
         b.rows = [row]
         _work[0] = 10_000  # test() is called outside construct() here
         with pytest.raises(ConstructError, match="kill escaped"):
-            b.test(kill=True)
+            b.test(kill=(0,))
+
+    def test_test_reports_a_kill_that_never_fires(self) -> None:
+        """``test(kill=...)`` refuses a close where the victim tested FALSE.
+
+        A kill whose victim never lands on a TRUE cell would silently
+        leave the row alive; the close must report it instead, because
+        every adopted kill claims one specific row is now provably
+        looping.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import (
+            ConstructError,
+            _Builder,
+            _Row,
+            _work,
+        )
+
+        row = _Row((0,))
+        row.pos = 0
+        row.tape = 0  # nothing marked: the victim tests FALSE everywhere
+        b = _Builder.__new__(_Builder)
+        b.n = 1
+        b.chunks = []
+        b.seg = ["2"]
+        b.rows = [row]
+        _work[0] = 10_000  # test() is called outside construct() here
+        with pytest.raises(ConstructError, match="kill missed"):
+            b.test(kill=(0,))
 
     def test_test_reports_an_unintended_loop(self) -> None:
         """A plain ``test()`` requires every TRUE row to escape, not loop."""
