@@ -28,13 +28,18 @@ Run::
     python scripts/verify_no_exception_leaks.py --all out.json
 """
 
+import concurrent.futures as cf
 import json
+import os
 import pathlib
 import random
+import subprocess
 import sys
 import time
+import typing
 
 _ROOT = pathlib.Path(__file__).resolve().parent.parent
+_HERE = pathlib.Path(__file__).resolve()
 sys.path.insert(0, str(_ROOT / "src"))
 
 from esolangs.exceptions import EsolangError
@@ -127,7 +132,18 @@ GENERIC = [
 # a 2-second timeout is ten minutes.  A step cap ends them at once, and is
 # reproducible -- it does not shift with the speed of the machine running
 # it, so it cannot time out a slow-but-valid program and call it a leak.
-_STEP_CAP = 20000
+_STEP_CAP = int(os.environ.get("LEAKSWEEP_STEP_CAP", 0)) or 20000
+
+#: Caps the sweep walks, cheapest first, retrying only what is still running.
+#:
+#: Halting is monotone in the cap, so a program that finishes at 10 steps
+#: finishes at 20000 and never needs rerunning -- which is what makes this
+#: exact rather than a heuristic.  Almost everything halts immediately: the
+#: expensive languages are expensive because a handful of *their* mutants
+#: run to the ceiling, and paying that ceiling for all 336 runs was most of
+#: a sweep's cost.  The last rung is ``_STEP_CAP``, so the depth reached is
+#: unchanged; only the number of runs that pay for it is.
+_CAP_LADDER = (10, 100, 1000, _STEP_CAP)
 
 # The cap is not what makes `--all` expensive.  **Factor is**, and no value
 # of the cap helps: its programs are integers whose *factorization* is the
@@ -148,16 +164,15 @@ _STEP_CAP = 20000
 # programs are genuinely non-terminating rather than slow.
 #
 # Those 5 programs x 4 stdins are 20 runs that always reach the cap, and
-# the growing integer makes each step dearer than the last.  The whole COD
-# corpus costs 0.1s at cap 100, 0.8s at 150, 15.8s at 200, and minutes at
-# 20000 -- while finding the same 20 runs at every one of them.
+# the growing integer makes each step dearer than the last.
 #
-# The cap stays 20000 anyway.  It is global, and a step cap's whole virtue
-# (see above) is that it is reproducible where a clock is not; lowering it
-# for one language's divergent mutants would cut how deep the sweep probes
-# the other 63 for the leaks it exists to find.  If `--all` runtime ever
-# obstructs something, the fix is a per-language override here, not a
-# smaller number for everyone.
+# The cap stays 20000, but the ladder below means few runs pay it.  What is
+# *not* true -- measured, after assuming otherwise -- is that a smaller cap
+# would fix the slow languages.  Their cost is per-step, not step count:
+# 87 of Painfuck's 376 runs survive cap 10, and cost ~7ms a step after it,
+# so halving the ceiling only halves the bill.  Four languages (COD, Factor,
+# Painfuck, Suptiftam) exceed any cap worth setting, and the subprocess
+# timeout is what actually bounds them.
 
 # Four inputs, not a dozen: the distinctions that actually change a read
 # are no input at all, a blank line, a digit, and a non-digit.  Extra
@@ -209,25 +224,173 @@ def _select(
     return picked, f"{len(picked)} interpreter(s) changed"
 
 
-def _drive(lang: str, program: str, stdin: str) -> None:
+def _drive(lang: str, program: str, stdin: str, cap: int) -> bool:
     """Run one program, stepping it rather than running it to completion.
 
     Every registry language is step-capable (``esolangs.vm._VM_ADAPTERS``
-    covers all of them), so the sweep steps the machine and stops at
-    ``_STEP_CAP`` instead of waiting out a clock.  A program that is still
-    going at the cap is not a finding -- looping forever is legal for most
-    of these languages -- so it simply returns.
+    covers all of them), so the sweep steps the machine and stops at ``cap``
+    instead of waiting out a clock.  A program still going at the cap is not
+    a finding -- looping forever is legal for most of these languages.
+
+    Returns whether it halted, which is what lets :func:`_sweep_one`
+    escalate: halting is monotone in the cap, so a program that finishes
+    here finishes at every larger one and never needs rerunning.
     """
     vm = make_vm(lang, program, stdin)
-    for _ in range(_STEP_CAP):
+    for _ in range(cap):
         if vm.halted:
-            return
+            return True
         vm.step()
+    return False
+
+
+#: Wall-clock a language's worker gets before the parent kills it.
+#:
+#: Sized from measurement, not from caution: 60 of the 64 languages finish
+#: in 102.9s *combined*, and the slowest that finishes at all is AddSubJump
+#: at 4.7s.  30s is therefore ~6x the real maximum -- room for a slower
+#: machine without letting a wedged language cost minutes.  The four that
+#: exceed it (COD, Factor, Painfuck, Suptiftam) are not slow-but-valid: they
+#: are unbounded work, and no larger number collects them.
+_LANG_TIMEOUT = 30.0
+
+#: How many language workers run at once.  Deliberately **2**, not the core
+#: count: each worker is a separate process doing pure CPU work, so scaling
+#: this to the machine saturates it -- and this script runs on a developer's
+#: laptop beside everything else they are doing.  Two is enough to stop one
+#: slow language (Factor burns its whole timeout) from stalling the queue,
+#: which is most of the win.  Raise it deliberately with ``LEAKSWEEP_JOBS``
+#: on a machine with cores to spare; ``LEAKSWEEP_JOBS=1`` is sequential,
+#: which is what to use when reading a live transcript.
+_JOBS = max(1, int(os.environ.get("LEAKSWEEP_JOBS", 0)) or 2)
+
+
+def _corpus(lang: str, examples: dict[str, list[str]], rng: random.Random) -> list[str]:
+    """Return the programs swept for ``lang``, advancing ``rng`` as it goes.
+
+    One generator feeds every language in order, so the parent and a worker
+    only agree on a corpus if both consume it in the same sequence -- which
+    is why a worker replays the languages before its own rather than seeding
+    afresh.
+    """
+    progs = list(GENERIC)
+    for src in examples[lang]:
+        progs.append(src)
+        progs.extend(mutate(src, rng))
+    return progs
+
+
+def _sweep_one(lang: str, progs: list[str]) -> tuple[int, list[dict[str, str]]]:
+    """Run every (program, stdin) for one language, collecting leaks.
+
+    Escalating, because halting is monotone in the cap: run everything at a
+    tiny cap first, and only the programs still going are retried at the
+    next.  Almost every program halts in a handful of steps, so the full
+    ``_STEP_CAP`` is paid by the few that need it rather than by all 336.
+
+    The leaks found are the same either way -- an exception raised at step 7
+    is raised at step 7 whatever the cap -- so this is purely a saving.
+    """
+    found: list[dict[str, str]] = []
+    pending = [(prog, stdin) for prog in progs for stdin in STDINS]
+    n = len(pending)
+    for cap in _CAP_LADDER:
+        still: list[tuple[str, str]] = []
+        for prog, stdin in pending:
+            try:
+                if not _drive(lang, prog, stdin, cap):
+                    still.append((prog, stdin))
+            except ALLOWED:
+                pass
+            except BaseException as e:
+                if len(found) < 6:
+                    found.append(
+                        {
+                            "exc": type(e).__name__,
+                            "msg": str(e)[:120],
+                            "program": prog[:120],
+                            "stdin": stdin,
+                        }
+                    )
+        # Only what is still running escalates; a raised exception is
+        # resolved too, and drops out with the ones that halted.
+        pending = still
+        if not pending:
+            break
+    return n, found
+
+
+class _Report(typing.NamedTuple):
+    """What one language's worker reported back."""
+
+    runs: int
+    findings: list[dict[str, str]]
+
+
+def _run_worker(lang: str) -> tuple[float, str, _Report | None]:
+    """Sweep one language in a child process, killing it if it wedges.
+
+    Returns ``(elapsed, status, result)``; ``result`` is ``None`` when the
+    child never reported, which is a failed sweep for that language rather
+    than a clean one -- see the callers' ``timeouts`` list.
+    """
+    t0 = time.time()
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(_HERE), "--worker", lang],
+            capture_output=True,
+            text=True,
+            timeout=None if _LANG_TIMEOUT <= 0 else _LANG_TIMEOUT,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        # SIGKILL lands without needing a bytecode boundary, which is the
+        # whole reason this runs out of process.
+        return time.time() - t0, "TIMEOUT", None
+    elapsed = time.time() - t0
+    if proc.returncode != 0 or not proc.stdout.strip():
+        return elapsed, "DIED", None
+    got = json.loads(proc.stdout.strip().splitlines()[-1])
+    return elapsed, "ok", _Report(got["runs"], got["findings"])
+
+
+def _worker(target: str) -> None:
+    """Sweep one language and print its result as JSON on stdout.
+
+    Runs in a child process so the parent can kill it: an interpreter can
+    spend unbounded time inside a single uninterruptible C call (Factor
+    factors its program with sympy before a step runs), which no step cap
+    or in-process alarm can bound.
+    """
+    from esolangs.registry import RUNNERS, canonical_id
+
+    langs = sorted(RUNNERS)
+    slug_of = {name: canonical_id(name) for name in langs}
+    by_slug: dict[str, list[str]] = {}
+    for d in ("hello-world", "boolean"):
+        for p in (_ROOT / "examples" / d).glob("*.txt"):
+            by_slug.setdefault(p.stem, []).append(p.read_text())
+    examples = {name: by_slug.get(slug, []) for name, slug in slug_of.items()}
+
+    rng = random.Random(1234)
+    progs: list[str] = []
+    for lang in langs:  # replay in order so the corpus matches the parent's
+        got = _corpus(lang, examples, rng)
+        if lang == target:
+            progs = got
+            break
+
+    n, found = _sweep_one(target, progs)
+    print(json.dumps({"runs": n, "findings": found}), flush=True)
 
 
 def main() -> None:
     """Sweep every registered language and report any that leaks."""
     from esolangs.registry import RUNNERS, canonical_id
+
+    if "--worker" in sys.argv[1:]:
+        _worker(sys.argv[sys.argv.index("--worker") + 1])
+        return
 
     args = [a for a in sys.argv[1:] if a != "--all"]
     langs = sorted(RUNNERS)
@@ -252,38 +415,47 @@ def main() -> None:
 
     findings: dict[str, list[dict[str, str]]] = {}
     counts: dict[str, int] = {}
-    rng = random.Random(1234)
 
+    # Drawn here, in order, purely to keep this generator in step with each
+    # worker's own replay: one generator feeds every language in sequence,
+    # so the corpus is only reproducible if the draws happen in that order.
+    # Doing it before the pool keeps the parallel section free of shared
+    # mutable state.
+    rng = random.Random(1234)
     for lang in langs:
-        progs = list(GENERIC)
-        for src in examples[lang]:
-            progs.append(src)
-            progs.extend(mutate(src, rng))
-        n = 0
-        t0 = time.time()
-        for prog in progs:
-            for stdin in STDINS:
-                n += 1
-                try:
-                    _drive(lang, prog, stdin)
-                except ALLOWED:
-                    pass
-                except BaseException as e:
-                    key = type(e).__name__
-                    findings.setdefault(lang, [])
-                    if len(findings[lang]) < 6:
-                        findings[lang].append(
-                            {
-                                "exc": key,
-                                "msg": str(e)[:120],
-                                "program": prog[:120],
-                                "stdin": stdin,
-                            }
-                        )
-                    counts[f"{lang}:{key}"] = counts.get(f"{lang}:{key}", 0) + 1
+        _corpus(lang, examples, rng)
+
+    timeouts: list[str] = []
+    # Workers are independent processes, so they overlap freely; the pool is
+    # threads only because each task does nothing but wait on one.  This also
+    # keeps a language that burns its whole timeout from delaying the rest.
+    with cf.ThreadPoolExecutor(max_workers=_JOBS) as pool:
+        futures = {pool.submit(_run_worker, lang): lang for lang in langs}
+        done = {}
+        for fut in cf.as_completed(futures):
+            lang = futures[fut]
+            done[lang] = fut.result()
+            # Progress as it lands.  The ordered report below is the record;
+            # this is so a long sweep shows it is alive, and names the
+            # language that is still out when it is not.
+            done_msg = f"  .. {lang} ({len(done)}/{len(langs)})"
+            print(done_msg, file=sys.stderr, flush=True)
+    # Reported in registry order rather than completion order, so two runs
+    # of the sweep produce the same transcript.
+    for lang in langs:
+        elapsed, status, result = done[lang]
+        if result is None:
+            timeouts.append(lang)
+            print(f"{lang:26} {'':6}      {elapsed:6.1f}s  {status}", flush=True)
+            continue
+        n = result.runs
+        for hit in result.findings:
+            findings.setdefault(lang, []).append(hit)
+            key = f"{lang}:{hit['exc']}"
+            counts[key] = counts.get(key, 0) + 1
         hits = findings.get(lang)
         status = f"LEAK {len(hits)}" if hits else "ok"
-        print(f"{lang:26} {n:6} runs {time.time() - t0:6.1f}s  {status}", flush=True)
+        print(f"{lang:26} {n:6} runs {elapsed:6.1f}s  {status}", flush=True)
 
     if args:
         with open(args[0], "w") as fh:
