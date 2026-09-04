@@ -826,6 +826,25 @@ def _try_kill(
         if not head_rows:
             continue  # pragma: no cover - screened above
         v_land = next(p for bits, p, _ in head_rows if bits == victim)
+        # Anchored candidates are rejected by one bit test instead of a
+        # row scan.  For a row at ``p`` the anchored variant tests cell
+        # ``p + x`` of a fixed tape and TRUE means that bit is *clear*
+        # (see the scan below), so ``tape >> p`` has bit ``x`` set
+        # exactly when the row tests FALSE at that ``x``.  ANDing those
+        # over the rows that must all test FALSE -- the undipped
+        # non-victim ones -- gives a mask whose bit ``x`` clears every
+        # such row at once.  Rows landing at or below cell 0 are the one
+        # case the identity misses, so they stay a per-candidate scan;
+        # there are usually none.
+        reject_mask = -1
+        stragglers: list[_PlanRow] = []
+        for bits, p, tape in head_rows:
+            if bits == victim or bits in dipped:
+                continue
+            if p >= 1:
+                reject_mask &= tape >> (p + _RING)
+            else:
+                stragglers.append((bits, p, tape))
         for x in xs:
             seg = ("1" * a + "2") if x is None else ("1" * a + "2" + "2" * x + "12")
             # The victim's re-run can only revisit a state if each pass
@@ -866,6 +885,25 @@ def _try_kill(
             # helper: at that call count the Python call overhead costs
             # more than the duplication saves (measured, 47s -> 60s,
             # when this was one nested function).
+            # Most anchored candidates die here, on the precomputed
+            # mask, without touching a row: bit ``x`` says every undipped
+            # non-victim row with a landing above cell 0 tests FALSE.
+            # Only survivors pay for the scan that builds ``true_set``.
+            if x is not None and x >= 1:
+                if not reject_mask >> x & 1:
+                    continue
+                straggler_true = False
+                for _bits, p, tape in stragglers:
+                    c = p + x
+                    if (
+                        (not tape >> (c + _RING) & 1)
+                        if c >= 1
+                        else bool((tape ^ 1 << (c + _RING)) >> _RING & 1)
+                    ):
+                        straggler_true = True
+                        break
+                if straggler_true:
+                    continue
             true_set = set()
             ok = True
             if x is None:
