@@ -405,8 +405,33 @@ class TestRepeatCollapsing:
         assert tape[0] == 2 * runs, f"{prog!r} ran p {tape[0] // 2}x, wanted {runs}"
 
     @pytest.mark.parametrize(
+        ("prog", "runs"),
+        [("pt", 1 + 3), ("ptt", 1 + 9), ("pttt", 1 + 27)],
+    )
+    def test_a_t_run_repeats_three_to_its_length_times(
+        self, prog: str, runs: int
+    ) -> None:
+        """``t...`` is one count of ``3 ** len``, as ``c...`` is of ``7 **``.
+
+        The cursor has to clear the whole run: leaving it inside made each
+        later ``t`` a step of its own that walked back over the ones before
+        it, so ``ptt`` ran its ``p`` three *then* nine times -- the
+        geometric sum 1+3+9 rather than 1+9.  The text generator solved for
+        that sum, and so only produced correct programs against it.
+        """
+        from esolangs.interpreters.tape_based.painfuck import _advance
+
+        tape: tuple[int, ...] = (0,)
+        loop: tuple[int, ...] = ()
+        ptr = ind = 0
+        while ind < len(prog):
+            state = (tape, loop, ptr, ind, 1)
+            (tape, loop, ptr, ind, _r), _fx = _advance(state, prog, len(prog), (), ())
+        assert tape[0] == 2 * runs, f"{prog!r} ran p {tape[0] // 2}x, wanted {runs}"
+
+    @pytest.mark.parametrize(
         ("prog", "trace"),
-        [("pt", [2, 8]), ("ptt", [2, 8, 26]), ("pst", [2, 1, -2])],
+        [("pt", [2, 8]), ("ptt", [2, 20]), ("pst", [2, 1, -2])],
     )
     def test_a_bare_t_still_repeats_the_previous_command(
         self, prog: str, trace: list[int]
