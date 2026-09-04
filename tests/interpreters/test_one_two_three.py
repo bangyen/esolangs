@@ -144,6 +144,12 @@ class Test123:
 
 
 class TestStepMachine:
+    def test_reading_a_byte_keeps_bits_beyond_the_byte_window(self) -> None:
+        """Input replaces locations 0-7 only; the tape remains unbounded."""
+        from esolangs.interpreters.tape_based.one_two_three import _with_byte
+
+        assert _with_byte(frozenset((8,)), 0) == frozenset((8,))
+
     def test_step_after_halt_is_a_noop(self) -> None:
         from esolangs.interpreters.tape_based.one_two_three import _Machine
 
