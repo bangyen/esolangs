@@ -45,9 +45,16 @@ every ``t`` run one emits follows a ``p`` or an ``s``.
 
 Documented divergences from the cross-check:
 
-- ``y`` is nondeterministic in the cross-check (a random skip) and the wiki
-  specifies it that way, so it skips the next command with probability 1/2
-  here too; the generator and the differential corpus never use it.
+- ``y`` is nondeterministic (a random skip) in the wiki and in the retired
+  cross-check alike, so it skips the next command with probability 1/2 here
+  too; the generator and the differential corpus never use it.  A *repeated*
+  ``y`` diverges: the cross-check rebound the repeated command to the one it
+  drew, which executed the very command the skip was meant to drop -- ``cyp``
+  left 12 rather than 0.  Here each of the ``rep`` flips is an independent
+  trial that drops one following command, so the number skipped is binomial
+  in ``rep``.  The cross-check was written alongside this interpreter rather
+  than from an independent source, so its agreement was never evidence about
+  the composition; the wiki, which says only that ``y`` skips, is.
 - Reads at exhausted input raise :class:`EOFError` (the repo-wide
   convention), where the cross-check exits with status 3.
 - ``i`` parses the whole input line as an integer with ``int()``; a line
@@ -430,10 +437,17 @@ def _advance(
                 c = prog[ind] if ind < n else _NUL
                 ind += 1
         elif c == "y":
-            # The wiki specifies a random skip; match the cross-check's
-            # coin flip (the generator and differential avoid `y`).
+            # The wiki specifies a random skip, so a heads *drops* the next
+            # command: step the cursor past it and leave the repeated
+            # command as `y`.  Rebinding it here instead -- the shape `c`,
+            # `v` and `t` use, and the one the retired cross-check had --
+            # would make a repeated `y` execute the command it was meant to
+            # skip: the first heads of a `cy` run bound the command to the
+            # one after it and then ran it for every remaining repeat, so
+            # `cyp` left 12 rather than 0.  Skipping instead makes a run of
+            # `rep` flips `rep` independent trials, each dropping one
+            # following command -- the count skipped is binomial in `rep`.
             if coin.take() and ind < n:
-                c = prog[ind]
                 ind += 1
         elif c == "e":
             return ((tape, loop, ptr, n, 0), effects)
