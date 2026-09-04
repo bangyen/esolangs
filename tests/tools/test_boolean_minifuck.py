@@ -863,6 +863,27 @@ class TestParameterizedMinifuck:
         # reorders what is spent first, it never drops a slice outright.
         assert sorted(module._SLICE_YIELD_ORDER) == sorted(plain)  # noqa: SLF001
 
+    def test_five_input_budget_uses_its_separate_default(self) -> None:
+        """The five-input override is selected only while budgets are off.
+
+        Five inputs were measured separately from the smaller staging passes,
+        so its disabled-budget value must not accidentally inherit a future
+        finite general budget.  Patch both values to make the dispatch, not
+        their current equal ``None`` spelling, observable.
+        """
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_STAGING_BUDGET", None)
+            patch.setattr(module, "_STAGING_BUDGET_N5", 17)
+            assert module._budget(5) == 17  # noqa: SLF001
+            assert module._budget(6) == 17  # noqa: SLF001
+            assert module._budget(4) is None  # noqa: SLF001
+
+            # A finite general budget applies uniformly, including at five.
+            patch.setattr(module, "_STAGING_BUDGET", 23)
+            assert module._budget(5) == 23  # noqa: SLF001
+
     def test_a_budget_gives_up_length_not_coverage(self) -> None:
         """A table the budget skips still builds, through the sculpted route.
 
