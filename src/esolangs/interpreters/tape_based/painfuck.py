@@ -43,11 +43,43 @@ arithmetic above is this implementation's reading of "do the last command
 3 times" rather than a quoted rule.  No generated program pairs the two:
 every ``t`` run one emits follows a ``p`` or an ``s``.
 
+A repeated ``y`` is the same kind of gap, and the choice made here is worth
+recording because the alternatives are all defensible.  ``y`` binds forward
+to the next command exactly as ``c`` and ``v`` do; the open question is
+whether repeating it makes *one* decision or *n*.  This implementation makes
+n: a run of ``rep`` repeats draws ``rep`` flips, each dropping one
+application of the bound command, so ``rep - heads`` of them run and the
+survivor count is binomial in ``rep``.  ``cyp`` therefore spans
+``{0, 2, ..., 14}``, weighted by ``Binomial(7, 1/2)``.
+
+The two readings rejected, and why:
+
+- *One decision for the whole run* -- any heads skips the command outright,
+  giving ``cyp`` in ``{0, 2}`` with the skip probability rising to 127/128.
+  Coherent, and it keeps ``y`` meaning "this either happens or it does not";
+  it loses because it discards the repeat count, which ``c`` exists to
+  supply.  Under it ``cyp`` can never exceed ``p`` applied once, so the
+  seven is spent on tuning a probability rather than on the command.
+- *Rebinding without gating* -- the shape ``c``/``v``/``t`` use literally,
+  which the retired cross-check also had: the first heads rebinds the
+  repeated command and the remaining repeats *execute* it.  That inverts the
+  instruction, since the command ``y`` names is then the one that runs most
+  (``cyp`` left 12), and it makes the skip count geometric rather than
+  binomial, because the draw stops at the first heads.
+
+All three agree when ``rep`` is 1, which is the only case the wiki
+describes, so nothing here contradicts it.
+
 Documented divergences from the cross-check:
 
-- ``y`` is nondeterministic in the cross-check (a random skip) and the wiki
-  specifies it that way, so it skips the next command with probability 1/2
-  here too; the generator and the differential corpus never use it.
+- ``y`` is nondeterministic (a random skip) in the wiki and in the retired
+  cross-check alike, so it skips the next command with probability 1/2 here
+  too; the generator and the differential corpus never use it.  A *repeated*
+  ``y`` diverges, per the reading argued above: the cross-check rebound the
+  repeated command and executed it, where each repeat here is its own flip.
+  The cross-check was written alongside this interpreter rather than from an
+  independent source, so its agreement was never evidence about the
+  composition -- it shared this implementation's reading of the same gap.
 - Reads at exhausted input raise :class:`EOFError` (the repo-wide
   convention), where the cross-check exits with status 3.
 - ``i`` parses the whole input line as an integer with ``int()``; a line
@@ -430,11 +462,28 @@ def _advance(
                 c = prog[ind] if ind < n else _NUL
                 ind += 1
         elif c == "y":
-            # The wiki specifies a random skip; match the cross-check's
-            # coin flip (the generator and differential avoid `y`).
-            if coin.take() and ind < n:
+            # ``y`` binds forward to the next command, as ``c`` and ``v``
+            # do, and then each repeat decides that command separately: one
+            # flip per repeat, heads dropping that one application.  The
+            # flips are drawn here rather than left to the loop because the
+            # affine collapses above run the whole remaining count in a
+            # closed form, which cannot consult a coin per iteration; the
+            # surviving count is what they are handed.
+            #
+            # ``rep`` flips leave ``rep - heads`` applications, so the
+            # number that run is binomial in the repeat count -- ``cyp``
+            # spans 0 to 14 in steps of two rather than the ``{0, 2}`` a
+            # single decision for the whole run would give.  Both readings
+            # agree at ``rep`` 1, which is the only case the wiki states.
+            # ``rep`` was decremented at the top of the loop, so the
+            # applications still owed are this one plus ``rep`` more.
+            owed = rep + 1
+            rep = owed - sum(coin.take() for _ in range(owed))
+            if ind < n:
                 c = prog[ind]
                 ind += 1
+            if rep <= 0:
+                break
         elif c == "e":
             return ((tape, loop, ptr, n, 0), effects)
         elif c == "v" and tape[ptr] != 0 and ind < n:
