@@ -2487,6 +2487,14 @@ def _fold_setters(n: int, weights: tuple[int, ...]) -> list[tuple[str, str]]:
     ``iipssp`` subtracts 2 in six characters, against ``pppppp`` holding --
     which is the same respelling move :func:`_pad_pair`'s odd-gap refusal
     forces elsewhere in this module.
+
+    **Two respellings, on disjoint ranges.**  The overshoot above negates,
+    so it dies once ``amount`` reaches the reset line; a pure descent that
+    trades ``s`` for ``i`` never rises and so has no such ceiling, but it
+    has no even-width form for 1, 2, 3 or 7.  Between them every amount up
+    to ``2 * _LIMIT + 2`` spells, which is the whole range a setter can be
+    asked for -- positions span ``+-_LIMIT``, so the widest gap is 6006 and
+    :func:`_interleaved_fold` asks for ``span + 2``.
     """
     out = []
     for i in range(n):
@@ -2499,7 +2507,9 @@ def _fold_setters(n: int, weights: tuple[int, ...]) -> list[tuple[str, str]]:
         # Odd (or unspellable) width: no hold exists there, so subtract the
         # same amount at the next even width.  Overshoot by ``k`` and add it
         # back through a ``p``-wrapped subtraction,
-        # ``sub(amount + k) + "p" + sub(k) + "p"``.
+        # ``sub(amount + k) + "p" + sub(k) + "p"``.  This is the shorter of
+        # the two respellings, but it only works while ``amount + k`` stays
+        # inside the reset line; the descent below covers the rest.
         #
         # ``_sub_code`` alone never gets there: it spells with as many ``s``
         # as it can, so both halves shrink together and the total width stays
@@ -2520,6 +2530,34 @@ def _fold_setters(n: int, weights: tuple[int, ...]) -> list[tuple[str, str]]:
         widened = min(
             (c for c in spellings if _apply(0, c) == -amount), key=len, default=None
         )
+        if widened is None:
+            # The overshoot negates, and from 3002 up that is fatal: ``p``
+            # leaves the accumulator at ``+(amount + k)``, above the 3003
+            # reset line, so the next command zeroes it and the add-back
+            # nets ``+k`` instead of ``-amount``.  Every one of the 1504
+            # amounts in 3002..6008 fails that way, and ``span + 2`` in
+            # :func:`_interleaved_fold` reaches them once the spread hits
+            # 3000 -- where this used to raise rather than decline.
+            #
+            # Trading ``s`` for ``i`` at the amount itself needs no ``p``:
+            # it only ever descends, so the reset cannot fire at any
+            # magnitude.  Two ``i`` for three ``s`` moves the same 6 in one
+            # character less, which is what reaches the other parity.  It
+            # is tried second because the overshoot is the shorter spelling
+            # where both apply, and every template that builds today is
+            # built on it -- 1, 2, 3 and 7 have no even-width descent at
+            # all and are exactly the amounts that still need it.
+            widened = min(
+                (
+                    code
+                    for threes in range(8)
+                    if (code := _sub_with(amount, threes)) is not None
+                    and len(code) % 2 == 0
+                    and _apply(0, code) == -amount
+                ),
+                key=len,
+                default=None,
+            )
         assert widened is not None, amount  # nosec B101
         assert _apply(0, widened) == -amount, (amount, widened)  # nosec B101
         out.append(("p" * len(widened), widened))

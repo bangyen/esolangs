@@ -1406,6 +1406,29 @@ class TestPctFoldPlan:
             code = "".join(setters[i][bits[i]] for i in range(n))
             assert module._apply(0, code) == positions[row]  # noqa: SLF001
 
+    def test_every_setter_amount_past_the_reset_line_spells(self) -> None:
+        """Amounts at and above the reset line respell by descending.
+
+        The overshoot respelling negates, so from 3002 up it leaves the
+        accumulator above the 3003 reset: the reset zeroes it and the
+        add-back nets ``+k`` rather than ``-amount``.  All 1504 amounts in
+        3002..6008 failed that way and *raised* instead of declining, which
+        ``_interleaved_fold`` reaches through ``span + 2`` once the spread
+        hits 3000.  A pure ``s``/``i`` descent never rises, so it has no
+        such ceiling.
+
+        The whole range a setter can be asked for is checked, since
+        positions span ``+-_LIMIT``: the widest gap is 6006 and the caller
+        adds 2.  Boundaries are checked by execution.
+        """
+        module = self.module()
+        limit = module._LIMIT  # noqa: SLF001
+        for amount in (3002, 3003, 3006, 6006, 2 * limit + 2):
+            zero, one = module._fold_setters(1, (amount,))[0]  # noqa: SLF001
+            assert len(zero) == len(one), amount
+            assert module._apply(0, zero) == 0, amount  # noqa: SLF001
+            assert module._apply(0, one) == -amount, amount  # noqa: SLF001
+
     @pytest.mark.slow  # ~5s: ten inputs, 1024 rows filled and run
     def test_a_low_run_ten_input_table_builds_and_runs(self) -> None:
         """A low-run ten-input table takes the skeleton path, and lays.
