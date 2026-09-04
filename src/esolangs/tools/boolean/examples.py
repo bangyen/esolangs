@@ -40,8 +40,8 @@ whose halt is silent.
 
 Fargo takes its inputs differently from every other reader here.  It reads
 a single *number* before the program starts and ``@ k`` indexes that
-number's bits, so the committed input is the row index -- one line, ``3``
-for the ``1,1`` row of a two-input table -- rather than a line per bit.
+number's bits, so the committed input is the row index -- one line, ``1``
+for the ``0,1`` row of a two-input table -- rather than a line per bit.
 
 Two languages used to fail that test and no longer do.  Back's answer was
 the cell *under the head*, which the tape dump does not locate; the
@@ -64,9 +64,10 @@ from esolangs.tools.boolean.helpers import instantiate
 from esolangs.tools.boolean.parameterized import _instantiate_arrowqueue
 from esolangs.tools.wrap import DEFAULT_WIDTH, takes_width, wrap_program
 
-# Truth tables used below, named for readability.
+# The committed programs all witness the same two-input function and row:
+# AND2 evaluated on 0,1.  The generator suites cover the other tables and
+# rows; keeping this corpus uniform makes the files directly comparable.
 AND2 = "0001"
-XOR2 = "0110"
 
 
 @dataclass(frozen=True)
@@ -494,9 +495,7 @@ def _register() -> None:
     from esolangs.tools import boolean as b
 
     reading = {
-        "addsubjump": _reader(
-            b.addsubjump, "register_based.addsubjump", table=XOR2, expected="1"
-        ),
+        "addsubjump": _reader(b.addsubjump, "register_based.addsubjump"),
         # An executed line prints its result and nothing else, so the
         # answer arrives with the newline that ends that line.
         "algebraic-programming-language": _reader(
@@ -507,7 +506,7 @@ def _register() -> None:
         ),
         "basicfuck": _reader(b.basicfuck, "tape_based.basicfuck"),
         "between": _reader(b.between, "register_based.between", split=True),
-        "bfstack": _reader(b.bfstack, "stack_based.bfstack", table=XOR2, expected="1"),
+        "bfstack": _reader(b.bfstack, "stack_based.bfstack"),
         "bit~": _reader(b.bit_tilde, "tape_based.bit_tilde"),
         "brainfuck": _reader(b.brainfuck, "tape_based.brainfuck"),
         "brainif": _reader(b.brainif, "tape_based.brainif", split=True),
@@ -541,19 +540,18 @@ def _register() -> None:
         ),
         "cvnc": _reader(b.cvnc, "other.cvnc"),
         "decleq": _reader(b.decleq, "register_based.decleq"),
-        "dig": _reader(b.dig, "grid_based.dig", table=XOR2, expected="1", split=True),
+        "dig": _reader(b.dig, "grid_based.dig", split=True),
         "dimensional": _reader(b.dimensional, "tape_based.dimensional"),
         "factor": _reader(b.factor, "tape_based.factor"),
         # Fargo reads one *number* before the program starts, not a bit per
         # line, and ``@ k`` indexes that number's bits.  The boolean
         # convention is therefore to feed the row index: the inputs
-        # most-significant-first are its binary digits, so the 1,1 row of a
-        # two-input table is the single line "3".
+        # most-significant-first are its binary digits, so the 0,1 row of a
+        # two-input table is the single line "1".
         "fargo": _reader(
             b.fargo,
             "other.fargo",
-            inputs=("3",),
-            expected="1",
+            inputs=("1",),
             note="Fargo reads one number whose bits are the inputs, so the "
             "committed input is the row index rather than a bit per line",
         ),
@@ -646,8 +644,6 @@ def _register() -> None:
             b.cod,
             "grid_based.cod",
             _fill_cod,
-            table=XOR2,
-            bits=(1, 1),
             note="COD has no runtime input and no I/O but a printed number",
         ),
         "eval": _embedded(b.eval, "stack_based.eval", _fill_eval),
@@ -679,8 +675,6 @@ def _register() -> None:
             b.wii2d,
             "grid_based.wii2d",
             _fill_wii2d,
-            bits=(1, 1),
-            expected="1",
             split=True,
         ),
         "pct-squared-minus-one": _embedded(
@@ -739,4 +733,4 @@ _register()
 # what a future committed-but-ungenerated program would use.
 HAND_WRITTEN: dict[str, tuple[str, tuple[str, ...], str, bool]] = {}
 
-__all__ = ["AND2", "BOOLEAN_EXAMPLES", "HAND_WRITTEN", "XOR2", "BooleanExample"]
+__all__ = ["AND2", "BOOLEAN_EXAMPLES", "HAND_WRITTEN", "BooleanExample"]
