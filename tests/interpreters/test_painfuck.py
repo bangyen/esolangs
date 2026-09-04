@@ -378,6 +378,57 @@ class TestRepeatCollapsing:
             popped = (loop, ind) if popped is None else popped
             assert (loop, ind) == popped, f"b at rep={rep} differed from rep=1"
 
+    @pytest.mark.parametrize(
+        ("prog", "runs"),
+        [
+            ("cp", 7),
+            ("ccp", 49),
+            ("ctp", 21),
+            ("cctp", 147),
+            ("ctttp", 189),
+            ("ccttp", 441),
+        ],
+    )
+    def test_a_c_run_absorbs_the_t_run_after_it(self, prog: str, runs: int) -> None:
+        """``c...t...`` is one count, ``7**c * 3**t``, on the command after.
+
+        ``t`` normally repeats the *preceding* command by walking backward,
+        but the command preceding a ``t`` that follows a ``c`` run is that
+        ``c`` -- which would be executed a second time, multiplying its
+        seven in twice.  Reading the ``t`` run forward as part of the same
+        count is what makes ``ct`` mean 21 rather than 7 or 147.
+        """
+        from esolangs.interpreters.tape_based.painfuck import _advance
+
+        state = ((0,), (), 0, 0, 1)
+        (tape, _loop, _ptr, _ind, _r), _fx = _advance(state, prog, len(prog), (), ())
+        assert tape[0] == 2 * runs, f"{prog!r} ran p {tape[0] // 2}x, wanted {runs}"
+
+    @pytest.mark.parametrize(
+        ("prog", "trace"),
+        [("pt", [2, 8]), ("ptt", [2, 8, 26]), ("pst", [2, 1, -2])],
+    )
+    def test_a_bare_t_still_repeats_the_previous_command(
+        self, prog: str, trace: list[int]
+    ) -> None:
+        """The forward read is only for a ``t`` reached from a ``c`` run.
+
+        A ``t`` with an ordinary command behind it keeps walking backward,
+        which is the operator's whole meaning; ``pt`` is ``p`` then three
+        more ``p``.
+        """
+        from esolangs.interpreters.tape_based.painfuck import _advance
+
+        tape: tuple[int, ...] = (0,)
+        loop: tuple[int, ...] = ()
+        ptr = ind = 0
+        seen = []
+        while ind < len(prog):
+            state = (tape, loop, ptr, ind, 1)
+            (tape, loop, ptr, ind, _r), _fx = _advance(state, prog, len(prog), (), ())
+            seen.append(tape[0])
+        assert seen == trace
+
     def test_halving_truncates_toward_zero_not_down(self) -> None:
         """The one collapse a plain ``//`` would get wrong.
 
