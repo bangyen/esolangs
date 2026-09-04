@@ -9,11 +9,11 @@ time one is added, so none is stated.
 or better-shaped — not the runtime of the generator itself.
 
 Figures here are measurements and go stale when a generator changes; the
-shape classification is enforced independently by
+shape classification is enforced by
 `tests/tools/test_boolean_contract.py::test_generator_shape_is_what_the_catalogue_says`
 (source of truth: that test's `_MINTERM_SHAPED`/`_REDUCING`/`_UNSHAPED`
-sets), which fails rather than drifts. Prefer stating what a future change
-must respect over what a past change did — the latter is in the commits.
+sets), which fails rather than drifts. State what a future change must
+respect, not what a past change did — the latter is in the commits.
 
 ---
 
@@ -439,8 +439,8 @@ and that is set by the interface rather than by the construction:
   as a factor. 700 → **214** at `n == 3` (69.4%) and 1555 → **247** at
   `n == 4` (84.1%).
 
-- **`suffolk` reduces the least, and the reason is the more useful finding.**
-  It reads an input it never uses as a literal — the same move its constant
+- **`suffolk` reduces the least — the useful finding is why.** It reads an
+  input it never uses as a literal — the same move its constant
   branch already made for *every* input — but its win is only 875 → **746**
   at `n == 3` (14.7%), against a 69% screen. Measured, **96.5% of the
   reduced program is the per-input read-and-complement setup**: `const`
@@ -483,9 +483,9 @@ and that is set by the interface rather than by the construction:
   rule this relies on — *the reads are the interface, and only the body may
   shrink*.
 
-- **`three_x` is the first *tree* generator reduced deliberately, and it
-  retires the idea that trees have nothing to gain.** Its tree prunes only
-  the rows that *differ from the default*, which for a one-dependency table
+- **`three_x` is the first *tree* generator reduced deliberately.** Its tree
+  prunes only the rows that *differ from the default*, which for a
+  one-dependency table
   is still half of them, each carrying a full-depth guard chain; folding
   never sees the degeneracy. Reducing collapses those to one guard: 603 →
   **185** at `n == 3` (69.3%).
@@ -698,44 +698,31 @@ case, and both are answerable before writing any code:
    **10%**.
 
 `brainif` is the worked counter-example, and it was reverted rather than
-kept. It screened 4.9% and delivered 5.2% at n=3 / 8.0% at n=4 — the win was
-real. But its reads sit at its nodes, so reaching it took ~146 lines resting
-on a language invariant subtle enough
-to be worth stating: BrainIf gates every line on an exact cell value, and the
-two lines of a guarded move test *different* cells, so a guarded pair over
-written cells fires **twice** whenever the neighbouring digits differ. The
-sound spellings are a destination that is still zero, a cell whose digit is
-known (one line), or normalizing a dead cell first (`if 48 increment` then
-`if 49 move left`, never on cell 0, which holds the answer byte). The
-existing node-read construction is built entirely inside that law — its leaf
-drain *is* the walk home — which is why the hoist relocated cost instead of
-deleting it, and why 5.2% was the whole of the return. Rule 2 would have
-closed it before the first line was written; the commit history has the
-build if the trade is ever worth revisiting.
+kept. It screened 4.9% and delivered 5.2% at n=3 / 8.0% at n=4 — real but
+small, because its reads sit at its nodes: reaching it took ~146 lines
+resting on a language invariant — BrainIf gates every line on an exact cell
+value, and the two lines of a guarded move test *different* cells, so a
+guarded pair over written cells fires **twice** whenever the neighbouring
+digits differ. Sound spellings: a destination still at zero, a cell whose
+digit is known (one line), or normalizing a dead cell first (`if 48
+increment` then `if 49 move left`, never on cell 0, which holds the answer
+byte). The existing node-read construction's leaf drain *is* the walk
+home, so the hoist relocated cost instead of deleting it — 5.2% was the
+whole of the return. Rule 2 would have closed it before the first line was
+written; the commit history has the build if the trade is worth revisiting.
 
 **The grid tier: three placements shipped, two closed on cost.**
 `streetcode`, `laserfuck` and `back` hoist their reads into a tape and test
 a *position*, which makes reordering a placement — change which cell each
 input lands in and every node tests something different, with the tree, the
-fold and the leaves untouched.  `dig` and `flowchart` read at the node and
-would need a restructuring hoist, which neither earns.  `back` is where a
+fold and the leaves untouched. `dig` and `flowchart` read at the node and
+would need a restructuring hoist, which neither earns. `back` is where a
 cheaper build was measured and then declined: filling in *cell* order
 instead of name order is free, but templates must emit their slots in name
 order, and that invariant is not tradeable for a gain of that size.
 
-**The queue is now closed in both tiers.** The grid tier's three placements
-(`streetcode`, `laserfuck`, `back`) are shipped, and its two read-at-node
-candidates (`dig`, `flowchart`) were costed and closed above. Nothing with a
-measured screen is left unbuilt and unexplained.
-
-The tier's lesson is that "2D" was never the dividing line. What decides the
-cost is **where the node reads** — the same question the sequential tier
-answers — and the grid generators split on it exactly as the token-sequence
-ones do. Three of them hoist their reads into a tape and test a *position*,
-which makes reordering a placement: change which cell each input lands in and
-every node tests something different, with the tree, the fold and the leaves
-untouched. Two read at the node and would need a restructuring hoist, which
-neither earns.
+"2D" was never the dividing line — what decides the cost is **where the
+node reads**, the same question the sequential tier answers.
 
 `factor` and `three_d_brainfuck` reuse brainfuck's output and inherit the
 saving unchanged; a shorter program also shrinks factor's set of tables
@@ -747,10 +734,9 @@ simulator whether the program computed `truth_table[c]`, but a reordered tree
 walks to the row whose bits are gathered in `perm` order, so the unmapped
 check demands a different function and rejects every correct placement. The
 symptom is a clean 0.00% across every table — indistinguishable from
-"reordering does not help here". (ZTOALC L no longer searches or reorders at
-all: it constructs a branch-free array lookup placed on a Collatz trajectory,
-so there is nothing left to validate. The trap still applies to any generator
-that gates its own candidates.)
+"reordering does not help here". (ZTOALC L now constructs a branch-free
+array lookup with nothing left to validate, but the trap still applies to
+any generator that gates its own candidates.)
 
 ### Layout and geometry
 
@@ -774,7 +760,7 @@ that gates its own candidates.)
 | `bfstack` | avoids branching entirely — encodes inputs as a number, decodes with nested loops |
 | `suffolk` | branch-free minterms at `limit=1`; a constant table needs no minterm *blocks*, though it still reads every input (8 reads on every table, constant or not); dense tables evaluated from their zero rows and inverted |
 | `three_x` | result defaults to the **majority** table value, so only differing rows emit an override |
-| `bitdeque` / `ram0` | fixed-length setters keep absolute `GOTO` targets stable — this is what unblocked the earlier "variable-length setter" wall |
+| `bitdeque` / `ram0` | fixed-length setters keep absolute `GOTO` targets stable |
 | `lamfunc` / `ram0` | each input stored once and read back, rather than re-embedded at every node |
 | `point_break` / `arrowqueue` | no output command — use the halt/loop termination convention |
 
