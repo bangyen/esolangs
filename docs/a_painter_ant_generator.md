@@ -32,13 +32,19 @@ after — verify on the interpreter (1 vs. many cycles), not by inspection.
 
 ### Verification coverage (know what's untested before extending arity)
 
-Exhaustive for `n <= 3` (256 tables x 8 inputs = 2048 cases, cycle-stable
-and exact on the real interpreter); `n == 4` and `n == 5` spot-checked
-against a handful of tables via `tests/tools/a_painter_ant_trace.py`;
-`n == 6` and `n == 7` build and check out on ad hoc tables but have no
-checked-in test.  Extending or refactoring arities above 3 should add
-exhaustive or expanded spot-check coverage rather than assume the pattern
-holds.
+Exhaustive for `n <= 4`: `n <= 3` is 256 tables x 8 inputs = 2048 cases,
+cycle-stable and exact on the real interpreter, and `n == 4` is all 65536
+tables over all sixteen inputs, 0 failures in 64s (recorded in
+`docs/walls.md`; the checked-in test still spot-checks three tables, since
+the full sweep is a minute of CPU).  That sweep decides stability by a
+state fixed point — the grid is monotone, so cycle 2 leaving the state
+untouched proves every later cycle does — which is both stronger and ~50x
+cheaper than the `box(1) == box(10)` comparison
+`tests/tools/a_painter_ant_trace.py` uses.  `n == 5` is spot-checked
+against a handful of tables via that module; `n == 6` and `n == 7` build
+and check out on ad hoc tables but have no checked-in test.  Extending or
+refactoring arities above 4 should add exhaustive or expanded spot-check
+coverage rather than assume the pattern holds.
 
 ## Design principles (must hold for any future change here)
 
