@@ -75,7 +75,7 @@ import sys
 from collections.abc import Sequence
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, cast
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
@@ -195,6 +195,19 @@ type _Effect = _Print | _Read
 #: the shell.
 type _State = tuple[_Cod, ...]
 
+#: One instant as the all-outcomes search sees it: the live cods, or
+#: ``None`` for a start marker whose heading has not been drawn yet.
+type _BranchState = tuple[_Cod, ...] | None
+
+#: The most outcomes one tick may open in a branching search.  A tick draws
+#: once per blocked cod, so its fanout is the *product* of those choices and
+#: grows with the school rather than with any one junction.  Like the other
+#: random languages' caps this is a property of the transition, not of the
+#: caller's remaining budget: that budget shrinks as the search proceeds,
+#: which would make the same program decidable or not depending on when the
+#: tick was reached.
+_TICK_FANOUT = 256
+
 
 def _step_cod(
     cod: _Cod,
@@ -290,6 +303,11 @@ class _Machine:
 
         cods: list[_Cod] = []
         started = False
+        #: The start cell and the headings it could have taken, kept only
+        #: when there was a real choice.  A branching search re-makes that
+        #: draw itself; one open direction is no choice, so it stays
+        #: ``None`` and the search starts from the launched cod.
+        self._launch: tuple[int, int, tuple[_Direction, ...]] | None = None
         for r, row in enumerate(self.grid):
             for c, ch in enumerate(row):
                 if ch == ">":
@@ -299,6 +317,8 @@ class _Machine:
                     opens = self._open_dirs(r, c)
                     if not opens:
                         raise ValueError("cod start is fully enclosed")
+                    if len(opens) > 1:
+                        self._launch = (r, c, tuple(opens))
                     d = opens[0] if len(opens) == 1 else self._choose(opens)
                     cods.append(_Cod(r, c, d, 0))
         if not started:
@@ -353,6 +373,83 @@ class _Machine:
             tuple(sorted((cod.r, cod.c, cod.d, cod.value) for cod in self.cods)),
             self.io.position(),
         )
+
+    # The all-random-outcomes search.  ``_State`` is the live cods and
+    # nothing else -- the grid and its edge sets never change -- so the
+    # branching state is that tuple, minus the input cursor ``snapshot``
+    # carries: a read declines below rather than being forked.
+
+    def branching_snapshot(self) -> _BranchState:
+        """Return the pre-launch start state for a branching search.
+
+        A start marker with more than one way out draws its heading in the
+        constructor, so that draw belongs to the search rather than to the
+        machine that already made it.  ``None`` marks the cod as unlaunched
+        and :meth:`branching_successors` opens it into every open direction;
+        a marker with exactly one exit has no choice to quantify over, and a
+        grid with no cod at all is simply halted.
+        """
+        return None if self._launch else self.cods
+
+    def branching_halted(self, state: object) -> bool:
+        """Report whether ``state`` has no cod left.
+
+        The unlaunched state is never halted: it stands for a cod waiting
+        for its heading, which is a whole run ahead rather than an empty
+        pond.
+        """
+        cods = cast(_BranchState, state)
+        return cods is not None and not cods
+
+    def branching_successors(
+        self, state: object, _limit: int
+    ) -> tuple[_BranchState, ...] | None:
+        """Return the state for every draw this tick could make.
+
+        Mirrors :meth:`step`, which advances *every* live cod in one public
+        step and draws separately for each one that is blocked.  So a tick's
+        outcomes are the product of the per-cod choices, not one choice --
+        the successors are built by extending a frontier of partial ticks,
+        one cod at a time, exactly as the step walks them in order.
+
+        A read returns ``None`` rather than being forked: the sibling ticks
+        would have to share one input cursor.  Prints are dropped, since
+        output cannot change what a later cod does.
+        """
+        cods = cast(_BranchState, state)
+        if cods is None:
+            launch = self._launch
+            assert launch is not None
+            row, col, opens = launch
+            return tuple((_Cod(row, col, d, 0),) for d in opens)
+
+        frontier: list[tuple[_Cod, ...]] = [()]
+        for cod in cods:
+            turns: tuple[int | None, ...] = (None,)
+            ahead = (cod.r + _DIRS[cod.d][0], cod.c + _DIRS[cod.d][1])
+            if not _open(self.grid, *ahead):
+                alts = _open_dirs(self.grid, cod.r, cod.c, exclude=_OPP[cod.d])
+                if len(alts) > 1:
+                    turns = tuple(range(len(alts)))
+
+            grown_by_turn: list[tuple[_Cod, ...]] = []
+            for turn in turns:
+                grown, effects = _step_cod(
+                    cod, self.grid, self._edge_dashes, self._edge_dots, turn
+                )
+                if any(not isinstance(effect, _Print) for effect in effects):
+                    return None
+                grown_by_turn.append(tuple(grown))
+
+            if len(frontier) * len(grown_by_turn) > _TICK_FANOUT:
+                raise TimeoutError(
+                    f"undecided: one COD tick exceeds the {_TICK_FANOUT}-outcome "
+                    "cap on a single transition"
+                )
+            frontier = [
+                (*partial, *grown) for partial in frontier for grown in grown_by_turn
+            ]
+        return tuple(frontier)
 
     @property
     def _state(self) -> _State:

@@ -1425,6 +1425,90 @@ class TestRunUntilHaltOrCycle:
                 _Machine("[RND 100000]", ScriptedIO()), limit=100000
             )
 
+    def test_cod_searches_every_launch_heading(self) -> None:
+        """A start with two ways out is quantified over, not sampled.
+
+        ``__init__`` draws the launch heading, so a search starting from the
+        live machine would answer for the one it happened to pick.  The
+        unlaunched state opens into both instead.
+        """
+        from esolangs.interpreters.grid_based.cod import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        machine = _Machine(">  \n   ", ScriptedIO())
+        start = machine.branching_snapshot()
+        assert start is None, "two exits, so the search starts before the launch"
+
+        launched = machine.branching_successors(start, 100)
+        assert launched is not None
+        assert sorted(cods[0].d for cods in launched) == ["E", "S"]
+
+        # One exit is no choice at all, so that machine starts launched: the
+        # search has nothing to quantify over and begins from the live cod.
+        single = _Machine("> \n~~", ScriptedIO())
+        assert single.branching_snapshot() == single.cods
+
+    def test_cod_corridor_loops_and_a_dash_halts(self) -> None:
+        """The two verdicts, against the deterministic detector."""
+        from esolangs.interpreters.grid_based.cod import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.vm import (
+            run_until_halt_or_all_branches_cycle,
+            run_until_halt_or_cycle,
+        )
+
+        # A blind corridor: the cod swims to the end, reverses, and repeats.
+        assert (
+            run_until_halt_or_all_branches_cycle(_Machine(">  ", ScriptedIO())) is False
+        )
+        assert run_until_halt_or_cycle(_Machine(">  ", ScriptedIO())) is False
+        # '-' removes the only cod, so the pond empties.
+        assert (
+            run_until_halt_or_all_branches_cycle(_Machine("> -", ScriptedIO())) is True
+        )
+
+    def test_cod_forks_a_blocked_junction_both_ways(self) -> None:
+        """A junction draws only when forward is blocked.
+
+        The cod swims east into a wall with north and south both open, and
+        the way it came from excluded -- so the tick opens two successors
+        where an unblocked cell opens one.
+        """
+        from esolangs.interpreters.grid_based.cod import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        machine = _Machine("~ ~\n> ~\n~ ~", ScriptedIO())
+        state = machine.branching_snapshot()
+
+        straight = machine.branching_successors(state, 100)
+        assert straight is not None
+        assert len(straight) == 1, "an open cell ahead is no junction"
+        (state,) = straight
+
+        junction = machine.branching_successors(state, 100)
+        assert junction is not None
+        assert sorted(cods[0].d for cods in junction) == ["N", "S"]
+
+    def test_cod_declines_a_read_and_caps_a_wide_tick(self) -> None:
+        """A tick draws once per blocked cod, so its fanout is a product.
+
+        ``+`` breeds cods faster than the pond kills them, and each one at a
+        junction multiplies the tick's outcomes, so the cap is reached in a
+        few dozen states rather than at some distant horizon.
+        """
+        from esolangs.interpreters.grid_based.cod import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.vm import run_until_halt_or_all_branches_cycle
+
+        with pytest.raises(TimeoutError, match="needs input"):
+            run_until_halt_or_all_branches_cycle(
+                _Machine(">..\n ..\n ..", ScriptedIO("7\n"))
+            )
+        with pytest.raises(TimeoutError, match=r"exceeds the .* cap"):
+            run_until_halt_or_all_branches_cycle(
+                _Machine("> +  \n     \n     ", ScriptedIO()), limit=200000
+            )
+
     def test_branching_search_leaves_unbounded_or_input_paths_undecided(self) -> None:
         from esolangs.interpreters.grid_based.wii2d import _Machine as Wii2dMachine
         from esolangs.interpreters.io import ScriptedIO
@@ -1904,31 +1988,27 @@ class TestEveryLanguageIsSteppable:
                 without.append(name)
         assert without == []
 
-    def test_random_machines_either_branch_or_are_listed_as_open(self) -> None:
-        """Which interpreters can have a hang *proven* despite randomness.
+    def test_every_random_machine_implements_the_branching_protocol(self) -> None:
+        """Randomness no longer costs a language its hang proof.
 
         The random set is derived, not listed: an interpreter takes its
         chance through an ``rng`` parameter by repo convention, so the
         signature of ``_Machine.__init__`` is what classifies it.  A new
         random language therefore lands in this test's scope by
-        construction, and fails it until it either implements the
-        branching protocol or is added to the exemption below.
+        construction, and fails here until it can be searched over every
+        draw rather than sampled at one.
 
-        Both directions are asserted, because a hand-written list drifts in
-        both: a conforming language must not sit in the exemption, and an
-        exempt one must still be random and still lack the methods.  That is
-        what makes implementing branching for one of the three *force* its
-        removal from the list rather than leaving a stale entry behind.
+        This was an exemption ratchet while three of the six were unbuilt.
+        The list is gone because it is empty; a language that needs one
+        again should bring the ratchet back rather than loosen the rule,
+        since the point of the derived set is that nothing is exempt by
+        accident.
         """
         import importlib
         import inspect
 
         from esolangs.registry import RUNNERS
 
-        # Random, but no branching search yet: a program that reaches their
-        # random command stays on the wall-clock backstop.  Each is the same
-        # size of job LaserFuck's was -- open work, not a decision.
-        not_yet_branching = frozenset({"COD"})
         methods = (
             "branching_snapshot",
             "branching_halted",
@@ -1936,25 +2016,26 @@ class TestEveryLanguageIsSteppable:
         )
 
         random_languages: set[str] = set()
-        conforming: set[str] = set()
-        partial: list[str] = []
+        missing: dict[str, list[str]] = {}
         for language, (module_path, _split) in sorted(RUNNERS.items()):
             module = importlib.import_module(f"esolangs.interpreters.{module_path}")
             state = getattr(module, "_Machine")  # noqa: B009
             if "rng" not in inspect.signature(state.__init__).parameters:
                 continue
             random_languages.add(language)
-            present = [name for name in methods if hasattr(state, name)]
-            if len(present) == len(methods):
-                conforming.add(language)
-            elif present:
-                partial.append(language)
+            absent = [name for name in methods if not hasattr(state, name)]
+            if absent:
+                missing[language] = absent
 
-        assert partial == [], "a half-implemented protocol is not implemented"
-        assert conforming == random_languages - not_yet_branching
-        assert not_yet_branching <= random_languages, (
-            "an exempt language stopped being random -- drop it from the list"
-        )
+        assert missing == {}
+        assert random_languages == {
+            "COD",
+            "LaserFuck",
+            "Modulous",
+            "Painfuck",
+            "Super SNUSP",
+            "WII2D",
+        }, "the random set changed -- a new language needs a branching search"
 
     def test_memory_and_stack_are_copies_not_the_live_store(self) -> None:
         """A caller must not be able to write into a running machine.
