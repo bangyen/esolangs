@@ -939,9 +939,18 @@ def _try_kill(
             # paid every live row's simulation -- then per-row *charged*
             # simulation still drained the budget at 15k commands per
             # fate, so the fates are arithmetic now (_kill_fate).
+            # The victim is skipped inline rather than by building the
+            # difference set.  This is a wash on time -- the cost here
+            # is _kill_fate itself, not the allocation -- but it drops
+            # a set construction per candidate for the same behaviour.
+            # Reordering these two screens is *not* worth trying: the
+            # bystander loop already rejects almost everything on its
+            # first row (1.91M of 1.95M fates come back "loop" against
+            # 208 candidates that reach _predict), so hoisting the
+            # victim's own fate ahead of it only adds a call.
             if any(
-                _kill_fate(*state_of[bits], a, x) != "skip"
-                for bits in true_set - {victim}
+                bits != victim and _kill_fate(*state_of[bits], a, x) != "skip"
+                for bits in true_set
             ):
                 continue
             if _kill_fate(*state_of[victim], a, x) != "loop":
