@@ -159,28 +159,8 @@ needs it.**
 ## Hanging-test optimization via state-cycle detection
 
 See `docs/limitations.md` for what `esolangs.vm.run_until_halt_or_cycle`
-already covers.  What remains:
-
-- Painfuck's `y`, WII2D's `?`, and LaserFuck's random heading are
-  non-deterministic and stay on the wall-clock backstop.
-- **Recursion follow-up.**  `run_until_halt_or_ancestor` compares each
-  newly-pushed frame's entry state (function, bindings, input position)
-  against the frames beneath it.  Adopted by Forbin, Fargo, APL, Eval,
-  Suptiftam, Lamfunc, Forþ, Jaune, and Grapheme — it already generalizes
-  past native recursion, since Eval, Fargo, and Grapheme push an explicit
-  frame stack rather than recursing in Python.  **The audit is closed:**
-  every other frame stack is structurally bounded or hides calls in native
-  recursion.
-- **Branching cycle detection for `y`/`?` — shipped.**
-  `run_until_halt_or_all_branches_cycle` explores every exact successor of
-  Painfuck's `y` and WII2D's `?`, merging equal states.  It returns `False`
-  only when the finite reachable graph has no halted state (a proof that all
-  random outcomes hang); a single halted outcome returns `True`.  It raises
-  `TimeoutError` at 10,000 distinct states or outcomes in one repeated step,
-  and also when Painfuck would read future input: an unbounded-growth branch
-  and a branch-specific input cursor are undecided, not evidence of a hang.
-  This intentionally does not prove the common case where only some random
-  outcomes hang.
+already covers.  What remains: Painfuck's `y`, WII2D's `?`, and LaserFuck's
+random heading are non-deterministic and stay on the wall-clock backstop.
 
 ## Input reordering (remainder)
 
@@ -308,9 +288,7 @@ open:
 
 - **Taglate's odd-sized sets** are sidestepped by widening the window by one
   adjacent ignored input, which costs a tier back; narrowing properly needs
-  the reduced program's own ghost handling suppressed.  Gapped sets no longer
-  belong here — a discard placed *between* the reduced program's reads
-  restores the queue the next command expects, so inputs 0 and 2 reduce.
+  the reduced program's own ghost handling suppressed.
 
 ## Smaller open items
 
