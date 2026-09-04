@@ -19,10 +19,9 @@ The machine checks live in `tests/tools/apa_uniform_proof_check.py`; run
 them with `uv run python tests/tools/apa_uniform_proof_check.py`.  They are
 a *standing* check rather than a one-time recorded run: a change to the
 head, body, or routing invalidates the motif table below, and re-running
-this is how that is caught.  (The file is deliberately not named `test_*`,
-so pytest does not collect it — it takes minutes, and the checked-in tests
-already cover the shipped behaviour.)  As in [`docs/proofs.md`](proofs.md),
-each lemma that can be executed is executed, and the output is quoted here.
+this is how that is caught.  It is deliberately not named `test_*`, so
+pytest does not collect it — it takes minutes.  Each lemma that can be
+executed is executed, and the output is quoted here.
 
 ## What the construction does
 
