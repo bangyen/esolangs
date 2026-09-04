@@ -6,34 +6,29 @@ whose instantiation at input bits `b` halts iff `t[b] == "0"` and loops
 forever iff `t[b] == "1"`.
 
 The generator is therefore **total at every arity**, not merely at the
-arities that have been swept.  This document is the argument; the
-executed checks that ground its finite lemmas are in
-`scripts/arrowqueue_lemmas.py`, and each lemma below names the check that
-backs it.
+swept ones.  Executed checks grounding the finite lemmas live in
+`scripts/arrowqueue_lemmas.py`; each lemma names the check that backs it.
 
-Genre note: this is the `docs/walls.md` genre — prose argument plus named
-executed checks — not the Lean genre of `docs/proofs.md`.  Nothing here is
-machine-checked.  Each lemma is marked **[code]** (follows from reading
-the constructor), **[exec]** (verified by running the interpreter), or
-**[induction]** (an argument over the recursion, with an executed base
-and step).
+Genre: `docs/walls.md`'s genre — prose argument plus named executed
+checks, nothing machine-checked (not the Lean genre of `docs/proofs.md`).
+Each lemma is marked **[code]** (read off the constructor), **[exec]**
+(verified by running the interpreter), or **[induction]** (argument over
+the recursion, with an executed base and step).
 
 Language mechanics live in the interpreter module's docstring
-(`esolangs.interpreters.grid_based.arrowqueue`) and are not restated.  The
-three facts used throughout: `*` turns the IP clockwise, `~` pushes the
-current heading, and `+` pops the queue and *replaces* the heading —
-halting the run if the queue is empty.  Headings are `0=right`, `1=down`,
-`2=left`, `3=up`.
+(`esolangs.interpreters.grid_based.arrowqueue`) and aren't restated here.
+Three facts used throughout: `*` turns the IP clockwise, `~` pushes the
+current heading, `+` pops the queue and *replaces* the heading — halting
+if the queue is empty.  Headings: `0=right`, `1=down`, `2=left`, `3=up`.
 
 ## Why a proof rather than a sweep
 
 `n <= 4` is swept exhaustively (65536 tables, 167s).  `n == 5` cannot be:
-it has `2**32` tables, and at the per-table cost `docs/walls.md` prices
-(8.2 ms; independently reproduced here at 7.9 ms) that is **roughly 400
-CPU-days**.  No per-table optimization divides `2**32` down — a runner
-100x faster still leaves four CPU-days.  The table count is the wall, so
-coverage past four inputs has to come from an argument that never
-enumerates a table.
+`2**32` tables at the per-table cost `docs/walls.md` prices (8.2 ms,
+reproduced here at 7.9 ms) is **roughly 400 CPU-days**.  No per-table
+optimization divides `2**32` down — a runner 100x faster still leaves
+four CPU-days.  The table count is the wall, so coverage past four inputs
+needs an argument that never enumerates a table.
 
 The construction makes that possible because **the table's contents only
 ever choose which leaf blocks appear**, never how the program is routed.
@@ -52,20 +47,19 @@ An instantiated program is three sections stacked vertically:
 ```
 
 The IP starts at `(0, 0)` heading right and never returns to a section it
-has left, so the sections compose by hand-off: each lemma below states
-the state one section leaves and the next expects.
+has left, so the sections compose by hand-off: each lemma states the
+state one section leaves and the next expects.
 
 ## H — the header embeds the inputs
 
-**H1 (pitch) [code, exec].** `_FIRST_ONE` and `_FIRST_ZERO` are 5 rows;
-`_NEXT_ONE` and `_NEXT_ZERO` are 4 rows.  `_header_rows` emits one first
-block and `n - 1` next blocks, so it is exactly `5 + 4(n-1) = 4n + 1` rows
-for every `n` and **every bit pattern** — the two blocks of each kind have
-equal height, so the height cannot depend on the inputs.  This is the
-constant `_instantiate_arrowqueue` slices the body by (`rows[4*n + 1:]`),
-which is why template and instantiation stay aligned at every arity.
-Checked over all `2**n` patterns for `n <= 10` and 200 sampled patterns at
-`n = 11, 12`: 0 violations.
+**H1 (pitch) [code, exec].** `_FIRST_ONE`/`_FIRST_ZERO` are 5 rows;
+`_NEXT_ONE`/`_NEXT_ZERO` are 4 rows.  `_header_rows` emits one first block
+and `n - 1` next blocks: exactly `5 + 4(n-1) = 4n + 1` rows for every `n`
+and **every bit pattern**, since same-kind blocks share a height.  This is
+the constant `_instantiate_arrowqueue` slices the body by
+(`rows[4*n + 1:]`), keeping template and instantiation aligned at every
+arity.  Checked over all `2**n` patterns for `n <= 10` and 200 sampled
+patterns at `n = 11, 12`: 0 violations.
 
 **H2 (chain) [exec].** Running the header alone from `(0, 0, right)`
 leaves the IP heading **down at column 3**, at row `4n + 1` — one row past
@@ -81,8 +75,8 @@ each.  Per-block traces:
 | `_NEXT_ZERO` | `(0,3)` down | `(4,3)` down | `(0,)` |
 
 Each next block's entry is exactly the previous block's exit, so the
-chain composes by induction on the block count.  Verified end to end over
-all patterns for `n <= 9` and sampled at `n = 10, 11, 12`: 0 violations.
+chain composes by induction on the block count.  Verified over all
+patterns for `n <= 9` and sampled at `n = 10, 11, 12`: 0 violations.
 
 **H3 (hand-off) [exec].** Appending `_MIDDLE` (7 rows), the queue becomes
 `bits + (R, D, L, U)` and the IP enters the tree **heading down at column
@@ -103,15 +97,15 @@ columns 0–2; the 1-branch at rows `yb`–`yb+2`, columns 0–2, where
 are disjoint, so no row holds cells of both subtrees.
 
 **G2 (right corridor) [code, induction].** Within `t0`'s rows nothing is
-written right of `t0`, and within `t1`'s rows nothing is written right of
-`t1` — the only writes are the two branch blocks at columns 0–2, which
-sit *left* of the subtrees, and the subtrees themselves.  Since the grid
-starts as spaces, everything right of a subtree within its own rows is
-blank.  Inducting over the recursion, in the **fully composed** grid each
-subtree's rows are blank to the right of that subtree, so an IP heading
-right anywhere inside a subtree's rows crosses only blanks and leaves the
-grid.  This is what makes a `0` leaf's escape route sound at any nesting
-depth — its rightward run cannot be blocked by a sibling or an ancestor.
+written right of `t0`, and likewise for `t1` — the only writes are the two
+branch blocks at columns 0–2, left of the subtrees, and the subtrees
+themselves.  The grid starts as spaces, so everything right of a subtree
+within its own rows is blank.  Inducting over the recursion, in the
+**fully composed** grid each subtree's rows stay blank to its right, so an
+IP heading right anywhere inside a subtree's rows crosses only blanks and
+leaves the grid.  This makes a `0` leaf's escape route sound at any
+nesting depth — its rightward run cannot be blocked by a sibling or an
+ancestor.
 
 **G3 (entry cell and drop column) [code, exec].** The 0-branch's `+` is at
 `(0, 1)`, which is the cell an IP descending column 1 lands on — matching
@@ -119,17 +113,17 @@ H3.  Column 1 in rows 3..`yb-1` is blank, so the 0-branch's downward exit
 falls to the 1-branch rather than hitting anything on the way.
 
 G1/G2/G3 are read off `_connect`'s three writes rather than sampled; the
-runner confirms them on composed trees as a check on the reading, by
-comparing the subtrees' actual glyph rows and scanning the corridors —
-not by restating `_connect`'s own arithmetic back at it.
+runner confirms them on composed trees by comparing the subtrees' actual
+glyph rows and scanning the corridors — not by restating `_connect`'s own
+arithmetic back at it.
 
 ## B — the branch blocks
 
 **B1 (`+` pops on arrival regardless of heading) [code].** `_advance`
-handles `+` before it moves, and a pop *replaces* the heading outright.
-So a `+` behaves identically whether the IP arrived heading down, right,
-or any other way.  This is the fact that lets the same subtree be entered
-two different ways, which the induction needs.
+handles `+` before it moves, and a pop *replaces* the heading outright, so
+`+` behaves identically whichever way the IP arrived.  This is what lets
+the same subtree be entered two different ways, which the induction
+needs.
 
 **B2 (0-branch routes on the popped bit) [exec].** Entered at its `+`
 with the bit at the queue's head, `_TREE_BRANCH_0` pops it and exits
@@ -156,8 +150,8 @@ the IP.  Recorded because it shows the geometry lemmas are not decorative.
 
 **L1 (`0` leaf halts) [code, exec].** `_TREE_0` is 3x3 of spaces.  By G2
 the IP heading right through it crosses only blanks and leaves the grid,
-which halts.  No queue content can prevent this — that is why a `0` leaf
-needs no drain.  Confirmed under both entry styles.
+which halts.  No queue content can prevent this, so a `0` leaf needs no
+drain.  Confirmed under both entry styles.
 
 **L2 (`1` leaf sustains) [exec].** `_TREE_1` is a ring that pushes on
 every edge and pops at every corner.  Entered heading **right at (0,0)**
@@ -244,13 +238,12 @@ right-strips.  A blank row or column carries only straight travel: a
 vertical run through a blank row stays in its column and pushes nothing,
 a horizontal run through a blank column likewise, and a run that would
 leave the grid still leaves it.  Deleting rows and columns *together*
-preserves every glyph's relative row and column ordering, which is all the
-routing depends on — B2/B3's exits are "the next glyph rightward/downward",
-not absolute coordinates.  So halting runs still halt and cycling runs
-still cycle.  Verified by running both the uncompacted and compacted
-program for every instantiation of all tables at `n <= 3` plus 40 random
-tables at `n = 4`: **2760 pairs, 0 verdict mismatches**, and every
-compacted verdict matched its table entry.
+preserves every glyph's relative row and column ordering, which is all
+the routing depends on — B2/B3's exits are "the next glyph
+rightward/downward", not absolute coordinates.  So halting runs still
+halt and cycling runs still cycle.  Verified on both uncompacted and
+compacted programs for every instantiation of all tables at `n <= 3` plus
+40 random tables at `n = 4`: **2760 pairs, 0 verdict mismatches**.
 
 ## Result
 
