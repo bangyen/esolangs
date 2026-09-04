@@ -606,6 +606,49 @@ class TestParserErrors:
             lines.append(f"f{i} x {{ {body} }}")
         assert run_program("\n".join(lines)) == "\x01"
 
+    def test_deep_expression_recursion_halts_instead_of_leaking(self) -> None:
+        """Expression-position recursion halts rather than leaking a crash.
+
+        ``x = (f y);`` needs the result back synchronously, so it recurses
+        natively through ``_eval`` rather than pushing a frame, and deep
+        enough it exhausts Python's stack.  The depth that survives is the
+        host's, not the language's, so this asserts the *conversion* rather
+        than a threshold: past it the caller sees the package's own
+        ``HaltError``, not a ``RecursionError`` from the interpreter's
+        internals.
+        """
+        depth = 400
+        lines = ["main { r = (f0 0); }"]
+        for i in range(depth):
+            body = (
+                f"r = (f{i + 1} 0); return r;"
+                if i + 1 < depth
+                else "out 0,0,0,0,0,0,0,1;"
+            )
+            lines.append(f"f{i} x {{ {body} }}")
+        with raises_message(
+            HaltError, "expression-position recursion exceeded the host's depth limit"
+        ):
+            run_program("\n".join(lines))
+
+    def test_shallow_expression_recursion_still_completes(self) -> None:
+        """The conversion does not swallow a recursion that fits.
+
+        Paired with the deep case: a catch that fired unconditionally, or a
+        depth limit lowered by accident, would pass that test and fail this
+        one.
+        """
+        depth = 100
+        lines = ["main { r = (f0 0); }"]
+        for i in range(depth):
+            body = (
+                f"r = (f{i + 1} 0); return r;"
+                if i + 1 < depth
+                else "out 0,0,0,0,0,0,0,1;"
+            )
+            lines.append(f"f{i} x {{ {body} }}")
+        assert run_program("\n".join(lines)) == "\x01"
+
     def test_multi_assignment(self) -> None:
         code = "main { a, b = 1, 0; out 0,0,0,0,0,0,0,a; out 0,0,0,0,0,0,0,b; }"
         assert run_program(code) == "\x01\x00"
