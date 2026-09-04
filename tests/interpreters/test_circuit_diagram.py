@@ -117,6 +117,10 @@ class TestPrimeTester:
         """An exhausted stdin fills the remaining wires with zero bits."""
         assert output_for(PRIME_TESTER, "") == "0"
 
+    def test_an_exhausted_one_bit_input_is_zero(self) -> None:
+        """A direct wire distinguishes the zero fallback from a one bit."""
+        assert output_for(["-:"], "") == "0"
+
     def test_as_drawn_the_page_prints_nothing(self) -> None:
         """The unrepaired diagram is silent, for every input.
 
