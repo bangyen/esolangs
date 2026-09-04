@@ -23,8 +23,15 @@ nonzero, ``d`` resets the pointer to cell 0, ``t`` repeats the previous
 command ``3``^run-length times, and ``e`` halts.  A ``c``/``t`` run also
 re-fetches the command it repeats: ``c`` consumes the whole ``c`` run and
 repeats the following command, ``t`` consumes the whole ``t`` run and
-repeats the preceding command.  Both interact with the repetition count in
-the same way as the cross-check.
+repeats the preceding command.
+
+A ``t`` run *immediately after* a ``c`` run is read forward as part of that
+same count, so ``c...t...`` repeats the command it lands on
+``7**c * 3**t`` times -- ``ct`` is 21.  The wiki specifies neither the
+composition nor the run lengths, and the alternative is worse: walking the
+``t`` backward finds the ``c`` just consumed and executes it again,
+multiplying its seven in twice (``ctp`` would be 147, not 21).  A ``t``
+with an ordinary command behind it is unaffected and still walks back.
 
 Documented divergences from the cross-check:
 
@@ -393,6 +400,15 @@ def _advance(
                 c = prog[ind] if ind < n else _NUL
                 ind += 1
                 rep *= 7
+            # A ``t`` run reached this way is part of *this* count, not a
+            # separate repeat of the command behind it: ``ct`` is 7 * 3 on
+            # the command the pair lands on.  Read forward instead of
+            # letting ``t`` walk backward, which would find the ``c`` just
+            # consumed and run it a second time -- compounding it twice.
+            while c == "t":
+                c = prog[ind] if ind < n else _NUL
+                ind += 1
+                rep *= 3
         elif c == "y":
             # The wiki specifies a random skip; match the cross-check's
             # coin flip (the generator and differential avoid `y`).
