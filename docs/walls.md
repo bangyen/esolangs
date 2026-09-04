@@ -814,9 +814,9 @@ snapshot (the machine's internal fields, including the input-cursor position
 determinism; and a `step()`/`halted` state object, since a whole-program
 `run()` exposes no internal state to hash.
 
-**The three non-deterministic languages are not excluded.**  LaserFuck's
-random heading, WII2D's `?` and Painfuck's `y` each implement a branching
-protocol (`branching_snapshot`/`branching_halted`/`branching_successors`),
+**Randomness is not an automatic exclusion.**  LaserFuck's random heading,
+WII2D's `?` and Painfuck's `y` each implement a branching protocol
+(`branching_snapshot`/`branching_halted`/`branching_successors`),
 and `run_until_halt_or_all_branches_cycle` searches the whole reachable
 graph: `True` once *some* sequence of draws halts, `False` only after the
 graph closes with no halted state in it, which proves every draw runs
@@ -836,6 +836,15 @@ that into the four headings.  Starting from a live machine would silently
 quantify over one heading the constructor already picked, which is the
 wrong verdict: a program that loops under the heading drawn but escapes
 under another is not a universal hang.
+
+**Three of the six random interpreters have no branching search yet.**  COD,
+Modulous and Super SNUSP take their chance through the same `rng` parameter
+and stay on the wall-clock backstop when a program reaches it.  Nothing
+about them is known to resist the construction — none has been attempted.
+`tests/test_vm.py` derives the random set from `_Machine.__init__`'s
+signature and names these three explicitly, asserting in both directions, so
+a language that gains the protocol must leave the list and a new random
+language fails the test until it is decided either way.
 
 Detection uses Brent's two-pointer algorithm rather than a hash set of every
 visited state: one stored "tortoise" snapshot is compared against the live
