@@ -3112,6 +3112,53 @@ class TestParameterizedOneTwoThree:
             row.pos, row.tape = pos, tape << _RING
         assert _try_kill(collided, (0, 0), 0, "0100") is None
 
+    def test_a_kill_whose_close_refuses_is_skipped_not_adopted(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A candidate the closing step rejects moves the sweep on.
+
+        ``_close`` refuses only when no cell in 100001 right steps is FALSE
+        for every live row, and the screens ahead of it -- the two fate
+        checks, ``_predict``, and ``test`` -- reject a candidate that
+        ill-behaved first, so nothing measured reaches the handler: 1246
+        kills across the 256 three-input builds never fired it.  Nothing
+        *proves* the closing cell exists, though, so the guard stays live
+        and is pinned here on its contract instead -- a refusal has to skip
+        the candidate and let the sweep keep searching, never escape as a
+        ``ConstructError`` out of ``_try_kill``.  The state is one that
+        really does reach the call; the patch only decides what it answers.
+        """
+        from esolangs.tools.boolean import one_two_three_construct as module
+        from esolangs.tools.boolean.one_two_three_construct import (
+            _RING,
+            _WORK_BUDGET,
+            ConstructError,
+            _Builder,
+            _try_kill,
+            _work,
+        )
+
+        _work[0] = _WORK_BUDGET
+        reaches_close = _Builder(1)
+        for row, (pos, tape) in zip(
+            reaches_close.rows,
+            ((13, 213345565110206), (3, 72877178957620)),
+            strict=True,
+        ):
+            row.pos, row.tape = pos, tape << _RING
+        reaches_close.seg = ["2"]
+
+        calls = 0
+
+        def refusing_close(_b: _Builder) -> None:
+            nonlocal calls
+            calls += 1
+            raise ConstructError("no closing cell")
+
+        monkeypatch.setattr(module, "_close", refusing_close)
+        assert _try_kill(reaches_close, (0,), 0, "11") is None
+        assert calls, "the constructed state never reached _close"
+
 
 def test_nocomment_wide_declines_when_the_plan_outgrows_the_skip() -> None:
     """Past fifteen inputs the summand plan leaves no room to widen.

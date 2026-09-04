@@ -833,18 +833,19 @@ def _try_kill(
         # exactly when the row tests FALSE at that ``x``.  ANDing those
         # over the rows that must all test FALSE -- the undipped
         # non-victim ones -- gives a mask whose bit ``x`` clears every
-        # such row at once.  Rows landing at or below cell 0 are the one
-        # case the identity misses, so they stay a per-candidate scan;
-        # there are usually none.
+        # such row at once.  The identity needs ``p >= 1``, and every row
+        # that reaches here has it: an undipped row is one with
+        # ``r.pos >= a``, which is exactly `_after_ones_pop`'s shallow
+        # branch, landing at ``r.pos - a + 1 >= 1``.  A landing of 0 or 1
+        # comes only from the deep branch, i.e. from ``r.pos < a`` -- a
+        # dipped row, skipped just above.  So the mask needs no
+        # per-candidate fallback (checked exhaustively over ``pos, a <
+        # 400``: no undipped row lands below cell 1).
         reject_mask = -1
-        stragglers: list[_PlanRow] = []
         for bits, p, tape in head_rows:
             if bits == victim or bits in dipped:
                 continue
-            if p >= 1:
-                reject_mask &= tape >> (p + _RING)
-            else:
-                stragglers.append((bits, p, tape))
+            reject_mask &= tape >> (p + _RING)
         for x in xs:
             seg = ("1" * a + "2") if x is None else ("1" * a + "2" + "2" * x + "12")
             # The victim's re-run can only revisit a state if each pass
@@ -887,23 +888,11 @@ def _try_kill(
             # when this was one nested function).
             # Most anchored candidates die here, on the precomputed
             # mask, without touching a row: bit ``x`` says every undipped
-            # non-victim row with a landing above cell 0 tests FALSE.
-            # Only survivors pay for the scan that builds ``true_set``.
-            if x is not None and x >= 1:
-                if not reject_mask >> x & 1:
-                    continue
-                straggler_true = False
-                for _bits, p, tape in stragglers:
-                    c = p + x
-                    if (
-                        (not tape >> (c + _RING) & 1)
-                        if c >= 1
-                        else bool((tape ^ 1 << (c + _RING)) >> _RING & 1)
-                    ):
-                        straggler_true = True
-                        break
-                if straggler_true:
-                    continue
+            # non-victim row tests FALSE.  The mask covers all of them
+            # (see its build above), so this is the whole rejection --
+            # only survivors pay for the scan that builds ``true_set``.
+            if x is not None and x >= 1 and not reject_mask >> x & 1:
+                continue
             true_set = set()
             ok = True
             if x is None:
