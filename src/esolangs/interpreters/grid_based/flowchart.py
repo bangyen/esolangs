@@ -49,8 +49,10 @@ rather than invented, and every one of the three examples on the page
   eight-bit output buffer would never flush and the program would print
   nothing at all.  ``/ /`` therefore reads one line and takes ``1`` as a
   one bit and anything else as a zero, and ``\ \`` prints a literal
-  ``'0'`` or ``'1'``.  Exhausted input leaves the register empty, which is
-  exactly the "empty if there are no more bits to read" the spec asks for.
+  ``'0'`` or ``'1'``.  EOF leaves the register empty rather than raising,
+  which is exactly the "empty if there are no more bits to read" the spec
+  asks for; a pointer reading past the end simply carries an empty
+  register onward, and ``\ \`` then prints nothing.
 
 * **Re-entry memory disambiguates paths; it never suppresses a node.**
   The spec says a pointer re-entering a node or path it has already
@@ -123,6 +125,12 @@ One further rule the spec does state, and this interpreter enforces:
 
 Malformed programs (an unknown node, a vertical path meeting a node off its
 middle, or no ``( )`` to start from) raise :class:`ValueError`.
+
+At EOF a ``/ /`` read leaves the register **empty** rather than raising,
+which is the same state ``{ }`` clears it to.  The nodes that consume the
+register -- printing it, or pushing it onto a deque -- skip a turn while it
+is empty, so a program that reads past the end of its input keeps running
+and simply stops emitting.  No :class:`HaltError` is raised at EOF.
 """
 
 import sys
@@ -268,6 +276,19 @@ class _Pointer:
         )
 
 
+@dataclass
+class _State:
+    """Every mutable value in a Flowchart run.
+
+    The grid and parsed nodes are fixed for a run.  Pointers and deques are
+    the state a tick changes, so they travel together rather than being two
+    independent machine fields callers have to reconstruct.
+    """
+
+    pointers: list[_Pointer]
+    deques: dict[int, list[int]]
+
+
 class _Machine:
     """Per-run Flowchart state: the grid, its pointers, and the deques.
 
@@ -292,11 +313,23 @@ class _Machine:
         self.nodes: dict[tuple[int, int], tuple[_Spelling, int]] = {}
         self._parse()
 
-        self.deques: dict[int, list[int]] = {}
-
         start = self._start()
-        self.pointers = [_Pointer(start[0], start[1], _RIGHT)]
+        self.state = _State([_Pointer(start[0], start[1], _RIGHT)], {})
         self._fork_at_start()
+
+    @property
+    def pointers(self) -> list[_Pointer]:
+        """The live pointers, retained as a convenience for step helpers."""
+        return self.state.pointers
+
+    @pointers.setter
+    def pointers(self, pointers: list[_Pointer]) -> None:
+        self.state.pointers = pointers
+
+    @property
+    def deques(self) -> dict[int, list[int]]:
+        """The shared deques, retained as a convenience for step helpers."""
+        return self.state.deques
 
     def _parse(self) -> None:
         """Record every node on the grid, longest spelling first."""

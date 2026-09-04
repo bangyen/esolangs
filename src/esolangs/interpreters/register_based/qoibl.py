@@ -40,7 +40,6 @@ explicit stack; here the language defines the statement as the step.
 import re
 import sys
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -215,6 +214,11 @@ def _split(tokens: list[str], out: list[list[str]]) -> bool:
 #: assigns half-way through and then raises leaves the caller's copy intact.
 type _Vars = Mapping[int, int]
 
+#: Every value a Qoibl statement can change: the variable mapping that
+#: expression evaluation returns and the top-level statement cursor.  The
+#: tokenized program is fixed for a run, while ports stay in the shell.
+type _State = tuple[_Vars, int]
+
 #: What ``et`` and ``tt`` reach.  The ports stay callbacks because a
 #: statement is the unit of execution: an ``rr`` body can read and print any
 #: number of times inside one step, at points that depend on values computed
@@ -326,27 +330,20 @@ def _arithmetic(
     raise ValueError("unrecognized arithmetic operator")
 
 
-@dataclass
 class _Machine:
     """Per-run state for a Qoibl interpreter: variables and the code cursor."""
 
-    var: dict[int, int] = field(default_factory=dict)
-    io: IO = field(default_factory=IO)
-    code: tuple[list[str], ...] = field(default_factory=tuple, init=False)
-    ind: int = 0
+    var: dict[int, int]
+    io: IO
+    code: tuple[list[str], ...]
+    ind: int
 
-    @classmethod
-    def of(cls, code: str | list[str], io: IO) -> "_Machine":
-        """Build a state for ``code``, tokenized.
-
-        ``code`` cannot be a constructor field: it is stored tokenized, not
-        as text.  Without this, every caller had to tokenize and assign it
-        by hand -- ``run`` and the VM adapter each with their own copy of
-        the same two lines, which is the shape that lets the two drift.
-        """
-        state = cls(io=io)
-        state.code = tuple(tokenize(code if isinstance(code, str) else "\n".join(code)))
-        return state
+    def __init__(self, code: str | list[str], io: IO) -> None:
+        """Build a state for ``code``, tokenized."""
+        self.var = {}
+        self.io = io
+        self.code = tuple(tokenize(code if isinstance(code, str) else "\n".join(code)))
+        self.ind = 0
 
     @property
     def halted(self) -> bool:
@@ -376,6 +373,16 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         return (self.ind, tuple(sorted(self.var.items())), self.io.position())
 
+    @property
+    def _state(self) -> _State:
+        """The complete changing state as the evaluator's value boundary."""
+        return (self.var, self.ind)
+
+    def _restore(self, state: _State) -> None:
+        """Write a statement transition's result back onto the shell."""
+        var, self.ind = state
+        self.var = dict(var)
+
     def _parse(self, expr: str | list[str]) -> int:
         """Evaluate one expression, committing what it assigns.
 
@@ -385,16 +392,20 @@ class _Machine:
         are written back in one place.
         """
         tokens = list(expr) if isinstance(expr, list) else [expr]
-        value, var = _eval(tokens, self.var, self.io.input_char, self.io.print_char)
-        self.var = dict(var)
+        value, var = _eval(
+            tokens, self._state[0], self.io.input_char, self.io.print_char
+        )
+        _, ind = self._state
+        self._restore((var, ind))
         return value
 
     def step(self) -> None:
         """Execute one statement, advancing the cursor."""
         if self.halted:
             return
-        tokens = self.code[self.ind]
-        self.ind += 1
+        var, ind = self._state
+        tokens = self.code[ind]
+        self._restore((var, ind + 1))
         if tokens:
             self._parse(tokens)
 
@@ -406,7 +417,7 @@ def run(code: list[str] | str, io: IO) -> None:
     program is one character stream, since the language draws no distinction
     between a newline and any other ignored character.
     """
-    state = _Machine.of(code, io)
+    state = _Machine(code, io)
 
     while not state.halted:
         state.step()

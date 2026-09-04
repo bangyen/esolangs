@@ -1,9 +1,9 @@
 """Compiler that turns Unsquare programs into RISC-V Linux assembly."""
 
-import sys
 from re import sub
 from typing import Literal, get_args
 
+from esolangs.compilers import _riscv_common as _common
 from esolangs.compilers._riscv_common import Routine
 
 # The seven commands that compile to a called subroutine rather than to
@@ -192,10 +192,5 @@ def comp(code: str) -> str:
     return res.replace(":\n\n", ":\n").strip() + "\n"
 
 
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as f:
-            data = f.read()
-
-        with open("output.asm", "w") as f:
-            f.write(comp(data))
+if __name__ == "__main__":  # pragma: no cover
+    _common.main(comp)

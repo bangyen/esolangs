@@ -110,10 +110,19 @@ DUMPS_ON_THE_POST_HALT_STEP = frozenset(
 )
 
 # Languages with no self-halt at all: ``esolangs.run`` stops them from
-# outside, by the ``limit``/``cycles`` bound the registry passes it, and a
-# VM stepped on its own runs forever.  Nothing about the VM protocol is
-# wrong here -- there is simply no halt for a sweep to drive to, so these
-# are carried for the checks that do not need one.
+# outside and a VM stepped on its own runs forever.  Nothing about the VM
+# protocol is wrong here -- there is simply no halt for a sweep to drive
+# to, so these are carried for the checks that do not need one.
+#
+# The two stop by their own means, and differently.  A Painter Ant's
+# ``run`` steps one whole pass at a time until its state repeats at a pass
+# boundary (a local Brent's cycle detector, snapshotting once per pass
+# rather than once per step), then renders -- so a program that never
+# settles into a fixed routine is stepped for as long as proving that takes,
+# same as any other growth-class program here, and ``esolangs.run(timeout=)``
+# is the backstop.  Suffolk takes no extra argument at all: it stops on the
+# ``EOFError`` from reading past its input, or by detecting a repeated state
+# when it reads nothing.
 NEVER_SELF_HALTS = frozenset({"A Painter Ant", "Suffolk"})
 
 # Languages whose ``step()`` raises when called on an already-halted
@@ -211,6 +220,7 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "SLOW ACV MAMMALIAN": ("SEED SEED SEED CONSUME PRONOUNCE", ""),
     "Sophie": ("#$5.", ""),
     "Streetcode": (STREETCODE, ""),
+    "Super SNUSP": ('"65.', ""),
     "Suffolk": ("!" * 66 + "<.", ""),
     "Suptiftam": ("x=7", ""),
     "Taglate": ("abc\ni", ""),

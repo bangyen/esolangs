@@ -13,6 +13,8 @@ the OISC side's: BFStack, Unsquare, and Jaune each had a byte-identical
 copy of it.
 """
 
+import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 
 
@@ -167,3 +169,16 @@ def dump_cells(cells: list[int], num_cells: int) -> str:
         row = cells[i : i + 8]
         res += "    .dword " + ", ".join(str(v) for v in row) + "\n"
     return res
+
+
+def main(comp: Callable[[str], str]) -> None:  # pragma: no cover
+    """Compile the file named on the command line and print the assembly.
+
+    Every backend's ``__main__`` block delegates here so the CLI is the same
+    across the package.  Output goes to stdout rather than a fixed
+    ``output.asm`` in the caller's working directory: stdout composes with
+    a pipe into the assembler, and does not silently overwrite a file the
+    caller did not name.
+    """
+    with open(sys.argv[1]) as source:
+        print(comp(source.read()), end="")

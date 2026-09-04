@@ -193,27 +193,15 @@ class TestPolynomialEdgeCases:
 
 
 class TestPolynomialSafety:
-    """Test polynomial safety features."""
+    """Test polynomial safety features.
 
-    def test_step_limit_stops_a_program_before_it_finishes(self) -> None:
-        """``limit`` bounds the steps, so a low one truncates the run.
+    There is no per-run step cap to test here any more: ``run`` has no
+    instruction limit of its own, so a non-terminating program is
+    ``esolangs.run(timeout=)``'s concern, tested generically (through
+    brainfuck) in test_api.py's test_run_timeout_halts_runaway_program.
+    """
 
-        This program needs two steps to print: it does the arithmetic, then
-        outputs.  Capped at one it produces nothing, which is the loop in
-        ``run`` running out rather than the machine halting -- the case the
-        limit exists for.  Asserting only that ``run`` is callable, as this
-        test once did, could not tell those apart.
-        """
-        program = "f(x) = x^4 - 130x^3 + 4238x^2 - 1170x + 38061"
-
-        for limit, expected in ((0, ""), (1, ""), (2, "A")):
-            buffer = io.StringIO()
-            with redirect_stdout(buffer):
-                run(program, io=IO(), limit=limit)
-            assert buffer.getvalue() == expected, limit
-
-    def test_step_limit_defaults_to_completing_a_program(self) -> None:
-        """The default limit is not so small that ordinary programs truncate."""
+    def test_a_program_runs_to_completion(self) -> None:
         buffer = io.StringIO()
         with redirect_stdout(buffer):
             run("f(x) = x^4 - 130x^3 + 4238x^2 - 1170x + 38061", io=IO())

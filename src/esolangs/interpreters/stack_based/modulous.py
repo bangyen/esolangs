@@ -23,7 +23,6 @@ Exhausted input raises :class:`EOFError` (the repo-wide convention).
 import re
 import sys
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -41,33 +40,34 @@ _TOKEN = re.compile(r'\[([^\[\]\"]*("[^"]*")?)]')
 #: carrying the list.
 type _Core = tuple[tuple[int, ...], dict[str, int], int]
 
+#: Every value a Modulous step can change: the handler's stack, variables,
+#: and cursor, plus whether ``END`` has stopped the run.  Tokens are parsed
+#: once and never rewritten, while ports and randomness stay in the shell.
+type _State = tuple[_Core, bool]
 
-@dataclass
+
 class _Machine:
     """Stack, variables, and instruction pointer for a Modulous run."""
 
-    stk: tuple[int, ...] = ()
-    var: dict[str, int] = field(default_factory=dict)
-    ind: int = 0
-    io: IO = field(default_factory=IO)
-    tokens: tuple[str, ...] = field(default_factory=tuple, init=False)
-    _halted: bool = field(default=False, init=False)
+    stk: tuple[int, ...]
+    var: dict[str, int]
+    ind: int
+    io: IO
+    tokens: tuple[str, ...]
+    _halted: bool
     # Overrides ``RND``'s draw, which is what makes a stepped run
     # reproducible; ``None`` draws for real.
-    rng: Randomness | None = None
+    rng: Randomness | None
 
-    @classmethod
-    def of(cls, code: str, io: IO, rng: Randomness | None = None) -> "_Machine":
-        """Build a state for ``code``: its four variables, and its tokens.
-
-        ``tokens`` cannot be a constructor field -- it is stored parsed, not
-        as text -- so without this every caller had to seed the variables
-        and extract the tokens by hand.  ``run`` and the VM adapter each
-        carried their own copy, which is the shape that lets the two drift.
-        """
-        state = cls(var={f"VAR{k}": 0 for k in range(1, 5)}, io=io, rng=rng)
-        state.tokens = tuple(k[0] for k in _TOKEN.findall(code))
-        return state
+    def __init__(self, code: str, io: IO, rng: Randomness | None = None) -> None:
+        """Build a state for ``code`` with its variables and parsed tokens."""
+        self.stk = ()
+        self.var = {f"VAR{k}": 0 for k in range(1, 5)}
+        self.ind = 0
+        self.io = io
+        self.tokens = tuple(k[0] for k in _TOKEN.findall(code))
+        self._halted = False
+        self.rng = rng
 
     @property
     def halted(self) -> bool:
@@ -103,13 +103,13 @@ class _Machine:
         )
 
     @property
-    def _state(self) -> _Core:
-        """The state's fields as the value the handlers work on."""
-        return (self.stk, self.var, self.ind)
+    def _state(self) -> _State:
+        """The complete changing state, with the handler core inside it."""
+        return ((self.stk, self.var, self.ind), self._halted)
 
-    def _restore(self, core: _Core) -> None:
-        """Write a handler's result back onto the state's fields."""
-        stk, var, self.ind = core
+    def _restore(self, state: _State) -> None:
+        """Write a transition result back onto the machine shell."""
+        (stk, var, self.ind), self._halted = state
         self.stk = stk
         self.var = var
 
@@ -123,16 +123,18 @@ class _Machine:
         """
         if self.halted:
             return
-        mod = self.tokens[self.ind]
+        (stk, var, ind), halted = self._state
+        mod = self.tokens[ind]
         arg = mod.split()
-        self.ind += 1
+        self._restore(((stk, var, ind + 1), halted))
         if not arg:
             return
 
         handler = _DISPATCH.get(arg[0])
         if handler is None:
             if "+" in mod or "-" in mod:
-                self._restore(_var_arith(self._state, mod))
+                core, halted = self._state
+                self._restore((_var_arith(core, mod), halted))
             return
 
         value: str | int | None = None
@@ -144,10 +146,8 @@ class _Machine:
             n = int(_operand(arg, 1))
             if n >= 1:
                 value = draw(self.rng, n)
-        elif arg[0] == "END":
-            self._halted = True
-
-        self._restore(handler(self._state, mod, arg, value))
+        core, halted = self._state
+        self._restore((handler(core, mod, arg, value), halted or arg[0] == "END"))
 
     def _print(self, mod: str, arg: list[str]) -> None:
         """Write what ``PRT`` names: a variable, or the top of the stack."""
@@ -328,9 +328,17 @@ _DISPATCH: dict[str, Callable[[_Core, str, list[str], str | int | None], _Core]]
 }
 
 
-def run(code: str, io: IO) -> None:
-    """Run a Modulous program."""
-    state = _Machine.of(code, io)
+def run(code: str, io: IO, rng: Randomness | None = None) -> None:
+    """Run a Modulous program, drawing ``RND`` from ``rng``.
+
+    ``rng`` is the source ``RND`` draws from; ``None`` draws for real,
+    which is the spec's behaviour and what a plain run gets.  The machine
+    has always taken one -- it is how the VM makes a stepped run
+    reproducible -- but ``run`` did not forward it, so a caller holding
+    only ``run`` could not pin the draw without patching ``secrets``
+    globally.  This is the signature COD, WII2D and LaserFuck take.
+    """
+    state = _Machine(code, io, rng)
 
     while not state.halted:
         state.step()

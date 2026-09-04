@@ -16,7 +16,25 @@ import sys
 from esolangs.registry import LANGUAGES
 
 ROOT = os.path.join(os.path.dirname(__file__), os.pardir, "src", "esolangs")
-CATEGORIES = ("tape_based", "stack_based", "register_based", "other")
+
+
+def _categories() -> list[str]:
+    """Return every interpreter category directory, newest included.
+
+    Derived from the tree rather than listed, because a hand-written tuple
+    fails *silently*: a category missing from it is skipped, so its modules
+    pass the gate by never being checked at all.  This listing once omitted
+    ``grid_based`` and ``queue_based``, exempting 12 interpreters and hiding
+    three real violations.  ``tools/boolean/__init__.py`` derives its
+    ``BOOLEAN`` set from the registry for the same reason.
+    """
+    interpreters = os.path.join(ROOT, "interpreters")
+    return sorted(
+        entry
+        for entry in os.listdir(interpreters)
+        if not entry.startswith(("_", "."))
+        and os.path.isdir(os.path.join(interpreters, entry))
+    )
 
 
 def _norm(text: str) -> str:
@@ -52,17 +70,31 @@ def main() -> int:
         lang.interpreter: name for name, lang in LANGUAGES.items() if lang.interpreter
     }
     failures = 0
-    for category in CATEGORIES:
+    checked: set[str] = set()
+    for category in _categories():
         directory = os.path.join(ROOT, "interpreters", category)
         for filename in sorted(os.listdir(directory)):
             if not filename.endswith(".py") or filename.startswith("_"):
                 continue
             module = f"{category}.{filename[:-3]}"
+            checked.add(module)
             path = os.path.join(directory, filename)
             issues = _check(path, module_to_name.get(module))
             if issues:
                 failures += 1
                 print(f"{module}: " + "; ".join(issues))
+
+    # The walk above is only as good as its coverage, and the bug this
+    # replaced was a coverage hole rather than a bad check.  Every module
+    # the registry names must have been one of the files walked; a
+    # language whose interpreter moves out from under this script fails
+    # here instead of quietly going unchecked.
+    missed = sorted(set(module_to_name) - checked)
+    if missed:
+        failures += len(missed)
+        for module in missed:
+            print(f"{module}: registered but not found by the docstring walk")
+
     if failures:
         print(
             f"\n{failures} interpreter docstrings violate the conventions "

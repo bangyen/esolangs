@@ -11,8 +11,10 @@ selecting byte mode (no separators) over the default decimal mode, and
 negative cells excluded from the output.
 
 The initial heading is chosen uniformly at random, matching the cross-check;
-a run may therefore produce one of several outputs, so tests set a fixed
-heading through :func:`run`.
+a run may therefore produce one of several outputs, so a caller that needs a
+particular one passes an ``rng`` whose first draw is the heading it wants.
+That source also decides each ``*`` split, so one argument makes the whole
+run reproducible.
 
 
 Exhausted input raises :class:`EOFError` (the repo-wide convention).
@@ -141,14 +143,19 @@ class _Machine:
         self,
         code: list[str],
         io: IO,
-        heading: int | None = None,
         rng: Randomness | None = None,
     ) -> None:
-        """Start a laser at ``o``, heading ``heading`` if one is given.
+        """Start a laser at ``o``, drawing its heading from ``rng``.
 
-        ``heading`` pins only the *initial* direction.  ``*`` splits a beam
-        with a fresh draw every time it runs, so reproducible stepping
-        needs ``rng`` as well; ``None`` draws for real.
+        ``rng`` is the language's whole source of chance: the initial
+        heading here, and the coin ``*`` flips every time it splits a beam.
+        ``None`` draws for real, which is the spec's behaviour.
+
+        There is deliberately no ``heading`` argument.  One existed, pinning
+        the initial direction so a test could choose it -- but a source that
+        answers the first draw does the same thing, and does it for the
+        splits too, so the two mechanisms were one job.  A caller wanting a
+        particular direction hands in a stub that returns it.
         """
         self.io = io
         self._rng = rng
@@ -174,7 +181,7 @@ class _Machine:
                         return
                     # The random heading is part of LaserFuck's spec, not a
                     # secret.
-                    d = heading if heading is not None else draw(rng, 4)
+                    d = draw(rng, 4)
                     self.lsrs.append([row, col, d])
                     self.pos = (row, col, d)
 
@@ -307,14 +314,19 @@ class _Machine:
             self.io.print_num(val)
 
 
-def run(code: list[str], io: IO, heading: int | None = None) -> None:
+def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:
     """Run a LaserFuck program, printing the tape when it halts.
 
-    ``heading`` forces the laser's initial direction (0=up, 1=down, 2=left,
-    3=right); when None it is drawn uniformly at random, matching the
-    cross-check.
+    ``rng`` supplies every choice the language makes: the laser's initial
+    direction (drawn as ``randbelow(4)`` -- 0=up, 1=down, 2=left, 3=right)
+    and each ``*`` split.  ``None`` draws for real, matching the
+    cross-check, so the public behaviour is the spec's.
+
+    This is the same signature COD and WII2D take, for the same reason: a
+    language with a random instruction accepts the source of it, and a
+    caller that needs a particular outcome supplies one that decides.
     """
-    machine = _Machine(code, io, heading)
+    machine = _Machine(code, io, rng)
     while not machine.halted:
         machine.step()
     machine.step()  # the post-halt step dumps the tape

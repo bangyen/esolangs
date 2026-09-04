@@ -185,7 +185,7 @@ def test_minifuck_single_essential_falls_past_the_degenerate_lookup() -> None:
 def test_minifuck_builds_five_input_xor() -> None:
     """Five-input XOR builds from a staging and prints all 32 rows.
 
-    This is the table the arity turns on.  ``docs/walls.md`` records XOR as
+    This is the table the arity turns on.  ``docs/minifuck_generator.md`` records XOR as
     the four-input table the searches could not build, and at five inputs a
     fully-essential table has no search that reaches it at all -- so a
     result here is a staging result or it is nothing.
@@ -322,6 +322,7 @@ def test_a_flipped_embed_complements_in_place_and_keeps_slot_order() -> None:
             assert order == slots, (mask, order)
 
 
+@pytest.mark.slow  # 7.1s: enumerates the stagings the screen claims to skip
 def test_span_screen_declines_no_reachable_table() -> None:
     """The span screen never declines a table some staging prints.
 
@@ -522,7 +523,7 @@ class TestParameterizedMinifuck:
 
         A wall once recorded NAND, NOR and XNOR as unreachable.  It does not
         hold either way round: embedding lifts it, which is what this checks,
-        and ``docs/walls.md`` now also records a *reading* construction
+        and ``docs/minifuck_generator.md`` now also records a *reading* construction
         verifying all sixteen -- the searches behind the original claim were
         length-bounded well below what it needs.
 
@@ -640,35 +641,48 @@ class TestParameterizedMinifuck:
                 assert got == table[combo], f"{table} inputs {bits}"
         assert checked == 38, checked
 
-    # 2.4s: the three-input derivation is the cost.  The gate probe at the
-    # ungated arity is free -- declining is the whole point of it -- so this
+    # 2.4s: the three-input derivation is the cost.  The staging probe at the
+    # unstaged arity is free -- declining is the whole point of it -- so this
     # does not pay for the staged arities above three.
     @pytest.mark.slow
     def test_a_table_with_no_staging_falls_through(self) -> None:
-        """An unplanned table returns None from ``_staged`` rather than raising.
+        """An unplanned table declines the staging and reaches the next route.
 
         Both three-input plans are now complete, so the fall-through is
         exercised at an arity that has no plan at all -- which is the case
-        that matters, since it is what lets a wider table reach the searches
-        instead of failing outright.
+        that matters, since it is what lets a wider table reach the sculpted
+        route instead of failing outright.
 
         That arity is now six: four and five are both staged (partially), so
         probing the fall-through at either would miss the point and pay that
         arity's derivation to do it.
 
-        The ungated arity is read off :data:`_STAGED_ARITIES` rather than
+        The unstaged arity is read off :data:`_STAGED_ARITIES` rather than
         written down, so raising the staged arity again moves this test with
         it instead of breaking it.  What is asserted is the *gate* -- that an
         unstaged arity declines immediately -- which is what keeps the miss
         cheap: without it the table would grind through the whole enumeration
         before giving up.
+
+        **What is probed is ``_derive_staging``, not ``_staged``.**  This used
+        to assert that ``_staged`` itself returned None at the unstaged arity,
+        which was only true while :func:`_mux` carried an arity gate of its
+        own; with that gate gone the fall-through *succeeds*, and asserting
+        None would be asserting the generator is partial.  Six inputs does
+        build here -- 1822 characters in about 35 seconds for the all-ones
+        table -- so the cheap half of the claim is kept by probing the
+        staging derivation directly, which still declines in 0.000s.
         """
         from esolangs.tools.boolean import parameterized
-        from esolangs.tools.boolean.minifuck import _STAGED_ARITIES, _staged
+        from esolangs.tools.boolean.minifuck import (
+            _STAGED_ARITIES,
+            _derive_staging,
+            _staged,
+        )
 
-        ungated = max(_STAGED_ARITIES) + 1
-        assert ungated not in _STAGED_ARITIES
-        assert _staged("1" * 2**ungated, ungated) is None
+        unstaged = max(_STAGED_ARITIES) + 1
+        assert unstaged not in _STAGED_ARITIES
+        assert _derive_staging("1" * 2**unstaged, unstaged) is None
         # A table the derivation does reach is built from it, not searched.
         for table_int in range(4):
             key = format(table_int, "08b")
@@ -686,7 +700,7 @@ class TestParameterizedMinifuck:
         """XOR4 builds without searching, and computes its function.
 
         Four inputs is the arity the insert family was added for, and XOR is
-        the pointed case: ``docs/walls.md`` records it as the four-input
+        the pointed case: ``docs/minifuck_generator.md`` records it as the four-input
         table the searches fail on.  The searches are stubbed to raise, so a
         table that builds here built from a staging.
 
@@ -762,6 +776,54 @@ class TestParameterizedMinifuck:
         widths = set()
         for combo in range(16):
             bits = [(combo >> (3 - i)) & 1 for i in range(4)]
+            program = self.instantiate(template, bits)
+            widths.add(len(program))
+            assert self.run_minifuck(program) == table[combo], (table, bits)
+        assert len(widths) == 1, widths
+
+    @pytest.mark.slow  # the six-input build, tens of seconds
+    def test_no_arity_is_gated(self) -> None:
+        """A fully-essential six-input table builds and prints all 64 rows.
+
+        Six is the first arity the old ``_MUX_ARITIES = (2, 3, 4, 5)``
+        declined, and it declined in **0.000s** -- a configuration gate, not
+        a construction that failed.  ``docs/minifuck_generator.md``
+        ("Is ``_mux`` total?") closes all six of the route's refusal sites
+        with arguments carrying no
+        residual ``n``, and the gate is now the floor
+        :data:`_MUX_MIN_ARITY`, which only keeps constants and one-input
+        projections on the :func:`_degenerate` path.
+
+        This is the execution half of that claim, which is the half the repo's
+        standing rule says a generated program is worth.  The table must be
+        **fully essential**: a six-input table with a narrow core projects to
+        an arity the old tuple already carried, so it built even while the
+        gate stood, and asserting on one would test nothing.
+
+        Every row is run and the widths compared, the same as at four inputs
+        -- a template that computes the table but whose fills differ in length
+        leaks its inputs through ``len(program)``.
+        """
+        import importlib
+
+        from esolangs.tools.boolean.helpers import essential_inputs
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        assert module._MUX_MIN_ARITY == 2  # noqa: SLF001
+
+        n = 6
+        # Fixed table rather than a sampled one: a test that picks its own
+        # table cannot fail reproducibly.
+        table = "0110100110010110100101100110100101101001011010011100101101001010"
+        assert len(table) == 2**n
+        assert len(essential_inputs(table, n)) == n, "the table must be fully essential"
+
+        template = module._solve(table)  # noqa: SLF001
+        names = [int(m) for m in re.findall(r"\{X(\d+)\}", template)]
+        assert names == sorted(names), names
+        widths = set()
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             program = self.instantiate(template, bits)
             widths.add(len(program))
             assert self.run_minifuck(program) == table[combo], (table, bits)
@@ -971,13 +1033,14 @@ class TestParameterizedMinifuck:
             assert len(set(joint.ptrs())) == 2**arity, arity
             assert time.monotonic() - start < 1.0, arity
 
+    @pytest.mark.slow  # 3.1s: a five-input sculpted build plus all 32 rows
     def test_five_input_tables_build_and_print_every_row(self) -> None:
         """A five-input table builds through the sculpted route and runs.
 
-        Five-input XOR is the pointed one: ``docs/walls.md`` records it as a
-        table no search here builds at all.  Every row is run on the shipped
-        interpreter, because a template that emits without computing would
-        otherwise pass silently.
+        Five-input XOR is the pointed one: ``docs/minifuck_generator.md``
+        records it as a table no search here builds at all.  Every row is
+        run on the shipped interpreter, because a template that emits
+        without computing would otherwise pass silently.
         """
         import importlib
 
@@ -1753,6 +1816,15 @@ class TestParameterizedMinifuck:
         ``None`` where the enumeration assigns ``(2, 0, 0, 33)``.  Every
         program it did emit still printed its table.  So the assertion here
         is on the staging *tuple*, never on whether the build works.
+
+        ``_derived_plans`` takes a *tuple* of targets and answers them in one
+        walk of the order, so every table is asked at once rather than one
+        call per table.  That is the whole cost: 256 separate three-input
+        walks were 7.4s, and the single walk answering all of them is 0.12s.
+        The comparison is unchanged -- still every table at arity 2 and 3,
+        still against the staging tuple -- and the complement is dropped from
+        the targets only because at these arities the complement of every
+        table is already in the set.
         """
         import importlib
 
@@ -1760,16 +1832,14 @@ class TestParameterizedMinifuck:
 
         for arity in (2, 3):
             index = module._staging_index(arity)  # noqa: SLF001
-            for value in range(2 ** (2**arity)):
-                table = format(value, f"0{2**arity}b")
+            width = 2**arity
+            tables = tuple(format(value, f"0{width}b") for value in range(2**width))
+            plans = module._derived_plans(arity, tables)  # noqa: SLF001
+            for table in tables:
                 column = tuple(int(bit) for bit in table)
-                complement = "".join(str(1 - int(bit)) for bit in table)
-                expected = module._derived_plans(  # noqa: SLF001
-                    arity, (table, complement)
-                ).get(table)
-                assert index.get(column) == expected, (arity, table)
+                assert index.get(column) == plans.get(table), (arity, table)
 
-    @pytest.mark.slow  # runs the per-table enumeration, which is the slow half
+    @pytest.mark.slow  # ~22s: the arity 4 and 5 index builds dominate
     def test_the_staging_index_agrees_at_the_wider_arities(self) -> None:
         """The same agreement where the insert family and the budget live.
 
@@ -1778,6 +1848,19 @@ class TestParameterizedMinifuck:
         budget and in slice-yield rather than plain order.  Both are code
         paths the two- and three-input check above never reaches, and both
         are where an index that mis-walks the order would show up.
+
+        Batched for the same reason as the check above: ``_derived_plans``
+        answers a whole tuple of targets in one walk, so the sample costs one
+        four-input enumeration instead of one per table -- 97s of per-table
+        calls against 2.6s for the single walk, to the same answers.  The
+        complements go into the targets explicitly here, because a 40-table
+        sample at arity 4 does not already contain them the way the
+        exhaustive arities above do.
+
+        What is left is the index builds themselves -- ``_staging_index(4)``
+        is 6.3s and ``_staging_index(5)`` 12.5s -- which is the production
+        derivation this test exists to check, not overhead the test can
+        drop.  So it stays marked slow.
         """
         import importlib
         import random
@@ -1791,14 +1874,19 @@ class TestParameterizedMinifuck:
         samples.append((4, "0110100110010110"))  # four-input XOR
         samples.append((5, "01101001100101101001011001101001"))  # five-input
 
+        by_arity: dict[int, list[str]] = {}
         for arity, table in samples:
+            by_arity.setdefault(arity, []).append(table)
+
+        for arity, tables in by_arity.items():
             index = module._staging_index(arity)  # noqa: SLF001
-            complement = "".join(str(1 - int(bit)) for bit in table)
-            expected = module._derived_plans(  # noqa: SLF001
-                arity, (table, complement)
-            ).get(table)
-            column = tuple(int(bit) for bit in table)
-            assert index.get(column) == expected, (arity, table)
+            targets = set(tables)
+            for table in tables:
+                targets.add("".join(str(1 - int(bit)) for bit in table))
+            plans = module._derived_plans(arity, tuple(sorted(targets)))  # noqa: SLF001
+            for table in tables:
+                column = tuple(int(bit) for bit in table)
+                assert index.get(column) == plans.get(table), (arity, table)
 
     def test_the_staging_enumeration_is_offered_only_at_its_arities(self) -> None:
         """Outside ``_STAGED_ARITIES`` the derivation offers nothing.
@@ -2153,3 +2241,34 @@ class TestMinifuckArityGates:
         m = self.module()
         assert 2 not in m._INSERT_ARITIES  # noqa: SLF001
         assert m._staging_spans(2)  # noqa: SLF001
+
+
+@pytest.mark.slow  # one four-input staging enumeration, ~1.2s
+def test_insert_pass_stops_as_soon_as_its_last_target_is_placed() -> None:
+    """The second pass has its own early exit, and only it can reach this one.
+
+    The bracket-run pass returns when it places the last table, so a target it
+    reaches never gets as far as the insert family.  This table does not build
+    from a pure run -- its staging carries an insert string rather than a
+    bracket count -- so asking for it alone is what drives ``remaining`` to
+    zero inside the second loop.
+    """
+    import importlib
+
+    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+    table = "0100110110100101"
+    plans = module._derived_plans(4, (table,))  # noqa: SLF001
+    assert set(plans) == {table}
+    # A str suffix is the insert family; the run pass records an int.
+    assert isinstance(plans[table][2], str)
+
+
+def test_mux_refuses_below_its_minimum_arity() -> None:
+    """``_mux`` separates rows, which needs at least two of them to separate."""
+    import importlib
+
+    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+    assert module._MUX_MIN_ARITY == 2  # noqa: SLF001
+    assert module._mux("01", 1) is None  # noqa: SLF001

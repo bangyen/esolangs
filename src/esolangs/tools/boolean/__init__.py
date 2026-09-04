@@ -66,6 +66,7 @@ from esolangs.tools.boolean.register import (
     sophie,
 )
 from esolangs.tools.boolean.stack import bfstack, forth, grapheme, modulous, unsquare
+from esolangs.tools.boolean.super_snusp import super_snusp
 from esolangs.tools.boolean.tape import (
     basicfuck,
     bf_tree,
@@ -150,6 +151,7 @@ __all__ = [
     "sophie",
     "streetcode",
     "suffolk",
+    "super_snusp",
     "suptiftam",
     "taglate",
     "three_d_brainfuck",
