@@ -578,16 +578,24 @@ class TestWII2D:
             assert got == pattern, (pattern, ops, got)
 
     def test_index_domain_guard_is_cost_not_capability(self) -> None:
-        """The ``n == 7`` refusal is a size guard, checked before the fold.
+        """The refusal is a size guard, and it charges the *real* domain.
 
         The generator rejects a dense non-symmetric table whose decode domain
         exceeds :data:`_WII2D_MAX_INDEX_DOMAIN` *without ever calling the
         decode*, so the refusal carries no evidence that the pattern is
-        unreachable -- and the two tests below show it is not.  The arity the
-        refusal starts at is derived from the constant, not pinned.
+        unreachable.  The arity the refusal starts at is derived from the
+        constant, not pinned.
+
+        What is charged is :func:`_wii2d_cost` -- the smaller of the
+        ``2 ** (n - 1)`` worst case and the domain the chain actually leaves
+        -- so the table has to be dense *and* unmerging to be refused.
         """
+        import random
+
         from esolangs.tools.boolean.wii2d import (
             _WII2D_MAX_INDEX_DOMAIN,
+            _wii2d_chain,
+            _wii2d_cost,
             _wii2d_routes,
             _wii2d_symmetric_popcount_map,
         )
@@ -597,14 +605,87 @@ class TestWII2D:
         assert 2 ** (n - 1) > _WII2D_MAX_INDEX_DOMAIN
         assert 2 ** (n - 2) <= _WII2D_MAX_INDEX_DOMAIN
 
-        # a dense non-symmetric table at that arity: alternate on the low bit
-        # except at one combo, which breaks symmetry without being sparse
-        table = "".join("01"[(combo ^ (combo >> 2)) & 1] for combo in range(2**n))
-        table = table[:-1] + str(1 - int(table[-1]))
-        assert _wii2d_symmetric_popcount_map(n, table) is None
+        # A dense non-symmetric table at that arity.  Pseudo-random rather
+        # than patterned: a table with structure in it lets the chain merge,
+        # which collapses the real domain below the guard and (correctly)
+        # builds instead of being refused.
+        rng = random.Random(20260904)
+        while True:
+            table = "".join(rng.choice("01") for _ in range(2**n))
+            if _wii2d_symmetric_popcount_map(n, table) is None:
+                break
+
+        # the chain finds no merge, so the real domain is the worst case
+        _chain, states = _wii2d_chain(n, table)
+        assert _wii2d_cost(n, states) == 2 ** (n - 1)
         assert _wii2d_routes(n, table) is None
 
         with pytest.raises(ValueError, match="cost guard"):
+            boolean.wii2d(table)
+
+    def test_a_collapsing_chain_builds_past_the_dense_arity(self) -> None:
+        """A structured table builds where a dense one of the same arity cannot.
+
+        This is what charging the real domain buys.  The guard used to be
+        compared against ``2 ** (n - 1)`` alone, which refused every table at
+        an arity as soon as the *worst case* was too wide -- including tables
+        whose chain merges down to a handful of points.  Both tables here sit
+        at the arity the test above shows is refused.
+        """
+        from esolangs.tools.boolean.wii2d import (
+            _WII2D_MAX_INDEX_DOMAIN,
+            _wii2d_chain,
+            _wii2d_real_domain,
+            _wii2d_symmetric_popcount_map,
+        )
+
+        n = (_WII2D_MAX_INDEX_DOMAIN).bit_length() + 1
+
+        # depends on three of the n inputs, so the chain merges the rest away
+        table = "".join(
+            str(((combo >> (n - 1)) ^ (combo >> (n - 3)) ^ (combo >> (n - 5))) & 1)
+            for combo in range(2**n)
+        )
+        assert _wii2d_symmetric_popcount_map(n, table) is None
+
+        _chain, states = _wii2d_chain(n, table)
+        assert _wii2d_real_domain(states) <= _WII2D_MAX_INDEX_DOMAIN
+
+        template = boolean.wii2d(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            assert self.run_chain(template, bits) == table[combo], f"inputs {bits}"
+
+    def test_real_domain_guard_refuses_an_unmerging_chain(self) -> None:
+        """A chain that finds no merge is refused on width, naming that bound.
+
+        ``(b0|b1) & (b2|b3) & (b4|b5)`` at ``n == 7`` leaves a decode domain
+        of 1025 -- far *above* the ``2 ** (n - 1)`` worst case, since Horner
+        keeps doubling when no pair merges -- and that decode does not return
+        in reasonable time.  :data:`_WII2D_MAX_REAL_DOMAIN` refuses it before
+        the fold is attempted, so this test must never reach the decode.
+        """
+        from esolangs.tools.boolean.wii2d import (
+            _WII2D_MAX_REAL_DOMAIN,
+            _wii2d_chain,
+            _wii2d_real_domain,
+        )
+
+        n = 7
+        table = "".join(
+            str(
+                ((combo >> 6) | (combo >> 5))
+                & ((combo >> 4) | (combo >> 3))
+                & ((combo >> 2) | (combo >> 1))
+                & 1
+            )
+            for combo in range(2**n)
+        )
+
+        _chain, states = _wii2d_chain(n, table)
+        assert _wii2d_real_domain(states) > _WII2D_MAX_REAL_DOMAIN
+
+        with pytest.raises(ValueError, match="width guard"):
             boolean.wii2d(table)
 
     @pytest.mark.slow
@@ -1016,18 +1097,18 @@ class TestWII2D:
         table = "0001011001101001"
         assert _wii2d_routes(4, table) == _wii2d_routes(4, table)
 
-    def test_a_dense_wide_table_is_refused_on_decode_width(self) -> None:
-        """Past six inputs the index chain's decode domain trips the cost guard.
+    def test_a_dense_seven_input_table_builds_and_runs(self) -> None:
+        """A dense ``n == 7`` table builds, and every one of its 128 fills runs.
 
-        The chain decodes over ``2 ** (n - 1)`` points, so n == 7 is 64 --
-        past :data:`_WII2D_MAX_INDEX_DOMAIN`.  A symmetric table escapes
-        through the popcount chain, which decodes over ``n`` points instead.
-        This one is not symmetric, so the width check stops it.
+        This table used to be the generator's refusal case: the guard was 32
+        and fired on the ``2 ** (n - 1) == 64`` worst case *before* the chain
+        was walked, so it never carried evidence that anything failed.  It
+        does not fail.  The guard is now 64, and the price is width -- 25
+        random tables at this arity measured a median 2776 characters and 65
+        ms, against 758 and 7.8 ms at ``n == 6``.
 
-        The refusal is a *cost* policy: the guard fires before the fold is
-        attempted, so this says nothing about whether the pattern folds --
-        and ``test_decode_folds_past_the_guard`` shows a 64-point pattern
-        that does.  The message must therefore not claim unreachability.
+        The execution gate is the point of the test: a size measurement alone
+        would not show that the emitted program still computes the table.
         """
         table = (
             "0011001100111000100001011111101000101111111010101001100110101001"
@@ -1035,14 +1116,16 @@ class TestWII2D:
         )
         assert len(table) == 128  # n == 7
 
-        from esolangs.tools.boolean.wii2d import _wii2d_routes
+        from esolangs.tools.boolean.wii2d import _wii2d_symmetric_popcount_map
 
-        assert _wii2d_routes(7, table) is None
+        # not symmetric, so this is the general path rather than the popcount
+        # chain that lets symmetric tables off cheaply
+        assert _wii2d_symmetric_popcount_map(7, table) is None
 
-        with pytest.raises(ValueError, match="cost guard") as caught:
-            boolean.wii2d(table)
-        # the old message claimed unreachability, which the fold disproves
-        assert "out of reach" not in str(caught.value)
+        template = boolean.wii2d(table)
+        for combo in range(128):
+            bits = [(combo >> (6 - i)) & 1 for i in range(7)]
+            assert self.run_chain(template, bits) == table[combo], f"inputs {bits}"
 
     def test_a_branch_that_will_not_decode_refuses_the_chain(self) -> None:
         """Both halves of the index chain have to decode, or there is no route.

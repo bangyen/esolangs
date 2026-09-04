@@ -879,10 +879,66 @@ long (O(`n·2**n`) blocks, ~1.4s/execution at `n == 4`).
   contain the answer: every one of the 65536 patterns on the 16-point
   `n == 5` domain folds, the case the old note put at 0.04%.
 
-  **`n == 7` stops on a cost guard, not a capability limit.**  The refusal is
-  `_WII2D_MAX_INDEX_DOMAIN = 32` compared against `2 ** (n - 1)`, firing
-  *before* the chain is walked, so it has never established that anything
-  fails.
+  **`n == 7` no longer stops, and the guard that stopped it was charging the
+  wrong number.**  The refusal used to be `_WII2D_MAX_INDEX_DOMAIN = 32`
+  compared against `2 ** (n - 1)`, fired *before* the chain was walked — so
+  it never established that anything failed.  Nothing did.  Two changes:
+
+  *The guard is charged the real domain.*  The chain walk costs microseconds,
+  so it now runs first and the guard charges `min(2 ** (n - 1), real)`, the
+  smaller of the worst case and the domain the walk actually left.  The
+  worst-case clause keeps the old contract exactly; the real-domain clause is
+  additive, and it is what makes *structured* tables reachable at any arity
+  rather than being refused by their arity alone.  At `n == 7`, where every
+  table was refused before: a function of three of the inputs leaves a domain
+  of 3–4, an xor-of-a-subset 4–5, a weighted threshold 7–12, a mux 24–32.
+  Those build in 186–339 characters — smaller than a typical `n == 6` program
+  — and `n == 8` and `n == 9` reach the same way (a 9-input xor-of-3 builds in
+  236 characters).  Every one was run through the interpreter on all `2 ** n`
+  input combinations.
+
+  *The constant is 64*, which admits dense `n == 7`.  Whole programs, 25
+  random non-symmetric tables per arity, measured end to end:
+
+  | n | median chars | worst | median build |
+  |---|---|---|---|
+  | 5 | 312 | 412 | 1.3 ms |
+  | 6 | 758 | 1054 | 7.8 ms |
+  | 7 | 2776 | 4270 | 65.1 ms |
+
+  So the price of `n == 7` is size, not time.  Dense `n == 8` is still
+  refused (real domain 128, 20 of 20 sampled).
+
+  **A second bound, `_WII2D_MAX_REAL_DOMAIN = 256`, catches the other
+  direction.**  Because the guard takes a *minimum*, a table can be admitted
+  on its worst case while its real domain runs away: with no merge available
+  the walk falls through to Horner, and a non-merging pair can leave a domain
+  far *above* `2 ** (n - 1)`.  Random tables overshoot in 0.5% of cases at
+  `n == 5` (domain 37 against a worst case of 16) and 0.2% at `n == 6` (197
+  against 32); those still decode, but the 197-point one emits 8808
+  characters in 694 ms, twelve times the `n == 6` median.  Structured tables
+  reach further: `(b0|b1)&(b2|b3)&(b4|b5)` leaves 17 at `n == 5` and 34 at
+  `n == 6`, but **1025** at `n == 7`, and that decode did not return within
+  minutes.  256 sits above every overshoot measured to decode and below the
+  one that does not.  This is the same policy as `_WII2D_MAX_CENTRE` one
+  level up — correct, but too wide to be worth emitting — and refusing it is
+  not a regression, since at the old constant of 32 its worst case of 64 was
+  refused anyway.
+
+  **Ranking the folds by emitted width was tried and is much worse.**  90% of
+  an `n == 7` decode's characters are the `'-' * centre` runs, and at every
+  step there is a legal centre costing a *median of 2* characters where
+  magnitude-first takes one costing 44 — an apparent 96% of the width sitting
+  on the table.  It is an illusion.  End to end, cheapest-centre-first emits
+  940 / 5168 / 4497 characters at `D == 32` where magnitude-first emits 260 /
+  259 / 235, and at `D == 64` it walks straight into the doubling trap below:
+  bit length climbs from 10 to 428972 over 20 steps, single fragments reach
+  64044 characters, and one step costs 52 seconds.  A cheap centre is the
+  midpoint of two *nearby* points, so it merges one pair and the squaring
+  doubles every value's bit length with nothing to show for it.
+  Magnitude-first is not ignoring width — it is buying small centres later by
+  keeping the values small now.  The emitted width above is therefore the
+  honest price, not an artifact of the ranking.
 
   **The doubling trap and its retry are gone, by construction.**  The old
   note recorded a "sizeable minority" of tables sending the fold somewhere it
