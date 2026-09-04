@@ -364,6 +364,11 @@ class TestParseErrors:
         with pytest.raises(ValueError, match="out of scope"):
             run([f"{prefix}%"], ScriptedIO(""))
 
+    def test_a_bad_character_after_a_gate_is_still_rejected(self) -> None:
+        """Character validation cannot stop after seeing a gate."""
+        with pytest.raises(ValueError, match="out of scope"):
+            run(["~%"], ScriptedIO(""))
+
     @pytest.mark.parametrize(
         ("code", "name"),
         [
