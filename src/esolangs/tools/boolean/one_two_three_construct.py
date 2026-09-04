@@ -830,10 +830,34 @@ def _try_kill(
             # ``1`` toggles cell ``p`` and steps to ``p - 1``, the ``2``
             # steps back (or out of the ring to 0).  From ``pos >= 0``
             # it can never read stdin, so there is no failure to catch.
+            # Nearly all of the kill sweep's candidates are rejected on
+            # the TRUE set alone, so it decides them before the fixpoint
+            # screens.  The victim must test TRUE; a bystander the
+            # descent *dipped* below zero may also test TRUE -- it skips
+            # on a later pass, and _predict validates exactly that fate
+            # -- but a TRUE row the descent left standing drifts left on
+            # every re-run instead of settling, so those candidates are
+            # rejected before any fixpoint is paid for.
+            #
+            # The undipped-TRUE rejection is decidable row by row, so it
+            # is applied *while* the set is built rather than after: such
+            # a row kills the candidate outright, and the scan stops
+            # there instead of classifying the rows behind it.  This is
+            # the innermost loop of the whole search -- tens of millions
+            # of row classifications on a single four-input build.
+            #
+            # The two variants stay written out rather than sharing a
+            # helper: at that call count the Python call overhead costs
+            # more than the duplication saves (measured, 47s -> 60s,
+            # when this was one nested function).
             true_set = set()
+            ok = True
             if x is None:
                 for bits, p, tape in head_rows:
                     if tape >> (p + _RING) & 1:
+                        if bits != victim and bits not in dipped:
+                            ok = False
+                            break
                         true_set.add(bits)
             else:
                 for bits, p, tape in head_rows:
@@ -841,18 +865,11 @@ def _try_kill(
                     tape ^= 1 << (p + x + _RING)
                     q = 0 if q in (-1, -2) else q + 1
                     if tape >> (q + _RING) & 1:
+                        if bits != victim and bits not in dipped:
+                            ok = False
+                            break
                         true_set.add(bits)
-            # Nearly all of the kill sweep's candidates are rejected on
-            # this set alone, so it is checked before the fixpoint
-            # screens.  The victim must test TRUE; a bystander the
-            # descent *dipped* below zero may also test TRUE -- it skips
-            # on a later pass, and _predict validates exactly that fate
-            # -- but a TRUE row the descent left standing drifts left on
-            # every re-run instead of settling, so those candidates are
-            # rejected before any fixpoint is paid for.
-            if victim not in true_set:
-                continue
-            if any(bits not in dipped for bits in true_set - {victim}):
+            if not ok or victim not in true_set:
                 continue
             # Per-row fate screens before the all-rows validation: at
             # five inputs eighteen thousand candidates per kill reached
