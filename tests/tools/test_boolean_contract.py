@@ -445,7 +445,9 @@ _MINTERM_SHAPED = {
 }
 
 # Neither model describes these.  ``wii2d`` is a route search over a grid,
-# not a sum and not a tree.
+# not a sum and not a tree.  The other two do not take a boolean truth table
+# at all: ``jaune_multiply`` takes no argument (it multiplies two decimal
+# numbers, a fixed program), and ``circlefuck_byte`` takes a *byte* table.
 #
 # ``slow_acv_mammalian_boolean`` is a tree, but a deliberately *unfolded*
 # one, so the folding discriminator does not apply to it.  Its nodes are
@@ -515,6 +517,8 @@ _UNSHAPED = {
     "ztoalc_l_boolean",
     "pct_squared_minus_one",
     "one_two_three",
+    "jaune_multiply",
+    "circlefuck_byte",
     "slow_acv_mammalian_boolean",
 }
 
