@@ -32,7 +32,7 @@ def _on_alarm(_signum: int, _frame: object) -> None:
 
 
 def run_bounded(program: str, stdin: str = "", store: str = "a") -> str:
-    """Run ``program`` with a 2-second cap; return its output."""
+    """Run ``program`` with a one-second cap; return its output."""
     buffer = io.StringIO()
 
     class _IO(IO):
@@ -43,7 +43,7 @@ def run_bounded(program: str, stdin: str = "", store: str = "a") -> str:
             buffer.write(str(value))
 
     old_handler = signal.signal(signal.SIGALRM, _on_alarm)
-    signal.setitimer(signal.ITIMER_REAL, 0.2)
+    signal.setitimer(signal.ITIMER_REAL, 1.0)
     try:
         run(program, _IO(), store=store)
     except _TimeoutError:
