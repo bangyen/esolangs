@@ -103,6 +103,11 @@ class TestBuiltins:
 
 
 class TestFunctions:
+    def test_call_parameters_shadow_and_restore_variables(self) -> None:
+        """A call temporarily binds its parameter without losing the caller's value."""
+        code = "F f a - p a\nvs a 3\nf 7\np vg a"
+        assert run_program(code) == "11111"
+
     def test_identity(self) -> None:
         # F id f - .f returns the argument without calling it
         assert run_program("F id f - .f\np id 7") == "111"
@@ -154,6 +159,12 @@ class TestRecursion:
 
 
 class TestPartialApplication:
+    def test_a_returned_one_argument_partial_absorbs_the_next_top_level_token(
+        self,
+    ) -> None:
+        """A returned ``p`` partial consumes the remaining main-program token."""
+        assert run_program("F f x - p\nf 1 8") == "1000"
+
     def test_prints_a_partial_application_by_name(self) -> None:
         # p i 5 is a partial of i with only its condition bound; p prints "i.."
         assert run_program("p i 5") == "i.."
