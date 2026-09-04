@@ -14,7 +14,7 @@ import pytest
 class TestParameterizedPctSquaredMinusOne:
     """Input-by-substitution boolean generator for %^2^-1.
 
-    The Lean proof in ``Esolangs.PctBooleanWall`` shows no %^2^-1 program
+    The wall proved for %^2^-1 (``docs/proofs.md``) shows no program
     that *reads* its inputs computes XOR or AND at any length.  That bounds
     the reading model, not the language: these programs embed their bits
     instead, so the read that erases the accumulator never happens, and
@@ -49,7 +49,7 @@ class TestParameterizedPctSquaredMinusOne:
             pytest.param("00", 1, marks=pytest.mark.slow),  # constant zero
             pytest.param("11", 1, marks=pytest.mark.slow),  # constant one
             ("0001", 2),  # AND
-            ("0110", 2),  # XOR -- the function the Lean wall forbids a reader
+            ("0110", 2),  # XOR -- the function the wall forbids a reader
             ("1001", 2),  # XNOR
             ("0111", 2),  # OR
             ("1110", 2),  # NAND
@@ -104,7 +104,7 @@ class TestParameterizedPctSquaredMinusOne:
     def test_programs_never_read_input(self) -> None:
         """No emitted program contains ``n``, the input command.
 
-        This is what separates the generator from the model the Lean wall
+        This is what separates the generator from the model the wall
         bounds: the bits arrive by substitution, so the read that overwrites
         the accumulator never runs.
         """
@@ -1272,21 +1272,181 @@ class TestPctFoldPlan:
         assert self.module()._fold_plan(state) is None  # noqa: SLF001
 
     def test_a_table_too_wide_for_the_workspace_is_refused(self) -> None:
-        """The ladder must fit in the 6006 values a ``p`` can traverse.
+        """The ladder must fit the workspace, and the packed one fits longest.
 
-        Rows start ``_FOLD_STEP`` apart, so the initial spread is
-        ``4 * (2**n - 1)``; that passes 6006 at eleven inputs, which is
-        why the fold's own bound is documented as holding through ten.
-        The refusal is immediate, before any planning.
+        The emitter lays the rows from a zero accumulator, so a ladder has to
+        fit ``[-_LIMIT, _LIMIT]`` -- not the ``2 * _LIMIT`` span a *relative*
+        plan state may occupy.  Gating on the latter lets the planner spend
+        thousands of moves on a geometry the emitter refuses on its first op.
+
+        Which ladder is offered sets the reach.  The uniform ones spend
+        ``step * (2**n - 1)`` and give out at nine and ten inputs; the packed
+        ladder spends only ``2**n + 1`` and carries eleven.  Twelve exceeds
+        even that, so no ladder is offered and the fold refuses.
         """
         module = self.module()
-        assert module._FOLD_STEP * (2**11 - 1) > 2 * module._LIMIT  # noqa: SLF001
-        assert module._FOLD_STEP * (2**10 - 1) <= 2 * module._LIMIT  # noqa: SLF001
+        limit = module._LIMIT  # noqa: SLF001
 
-        assert module._fold("01" * (2**10), 11) is None  # noqa: SLF001
+        # Each ladder in turn gives out one or two arities later than the last.
+        assert limit < module._FOLD_STEP * (2**10 - 1)  # noqa: SLF001
+        assert limit < module._FOLD_NARROW_STEP * (2**11 - 1)  # noqa: SLF001
+        assert sum(module._fold_subset_weights(11)) <= limit  # noqa: SLF001
+        assert module._fold_subset_weights(12) is None  # noqa: SLF001
+
+        # Nothing serves twelve inputs, so the fold declines.  The table has
+        # to be one the fold would otherwise plan: ``"01" * 2048`` alternates
+        # every row, which is 4096 runs and a subcube the *cascade* builds,
+        # so it never reaches the fold at all.  A low-run table does.
+        wide = "".join(str(((r >> 11) & 1) ^ ((r >> 10) & 1)) for r in range(2**12))
+        assert module._cascade(wide, 12) is None  # noqa: SLF001
+        assert module._fold(wide, 12) is None  # noqa: SLF001
         # A table inside the bound still builds, so the ``None`` above is
         # the workspace and not the arity itself.
         assert module._fold("0011", 2) is not None  # noqa: SLF001
+
+    def test_the_packed_ladder_meets_the_distinctness_floor(self) -> None:
+        """``2**n + 1`` is the least a distinct-position ladder can span.
+
+        The ``2**n`` subset sums are distinct non-negative integers, so the
+        largest is at least ``2**n - 1``.  The minimum weight is 2 -- ``2a +
+        3b`` cannot spell 1 -- so no subset sums to 1, and by symmetry none
+        sums to ``S - 1``; two values inside ``[0, S]`` are unattainable and
+        ``S >= 2**n + 1``.  The shipped ladder meets that exactly, which is
+        what buys the arity over a uniform one.
+        """
+        module = self.module()
+        assert module._sub_code(1) is None  # noqa: SLF001
+        for n in range(2, 12):
+            weights = module._fold_subset_weights(n)  # noqa: SLF001
+            assert weights is not None
+            assert sum(weights) == 2**n + 1, n
+            assert min(weights) >= 2, n
+            positions = module._fold_positions(n, weights)  # noqa: SLF001
+            assert len(set(positions)) == 2**n, n
+
+    @pytest.mark.parametrize("ladder", ["narrow", "packed"])
+    def test_ladder_setters_are_equal_width(self, ladder: str) -> None:
+        """Both branches match in width, and odd-width amounts are respelled.
+
+        The identity has no odd-width spelling, so an amount whose cheapest
+        subtraction is one character (2, spelled ``"s"``) can never be padded
+        to match a hold and is respelled wider instead.  Both ladders contain
+        such an amount.  Checked by execution, not by reading the spelling.
+        """
+        module = self.module()
+        n = 6
+        weights = (
+            module._fold_uniform(n, module._FOLD_NARROW_STEP)  # noqa: SLF001
+            if ladder == "narrow"
+            else module._fold_subset_weights(n)  # noqa: SLF001
+        )
+        assert weights is not None
+        setters = module._fold_setters(n, weights)  # noqa: SLF001
+        assert len(setters) == n
+        for zero, one in setters:
+            assert len(zero) == len(one)
+            assert module._apply(0, zero) == 0  # noqa: SLF001
+        # The whole chain lays every row exactly where the ladder says.
+        positions = module._fold_positions(n, weights)  # noqa: SLF001
+        for row in (0, 1, 2, 2**n - 1):
+            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            code = "".join(setters[i][bits[i]] for i in range(n))
+            assert module._apply(0, code) == positions[row]  # noqa: SLF001
+
+    @pytest.mark.slow  # ~5s: ten inputs, 1024 rows filled and run
+    def test_a_low_run_ten_input_table_builds_and_runs(self) -> None:
+        """A low-run ten-input table takes the skeleton path, and lays.
+
+        This is the regression the ladder gate closed.  ``x0 ^ x1`` widened
+        to ten inputs has three runs, so it is no subcube (the cascade
+        misses) and reaches the fold, where ``_fold_construct``'s ``r <= 5``
+        skeletons plan it in three ops.  Those skeletons were mined on the
+        wide ladder, whose ten-input span is 4092 against a 3003-value
+        workspace -- so the emitter could not lay the plan, and the build
+        died on a bare ``AssertionError`` rather than building or refusing.
+
+        On the narrow ladder the same plan lays.  Every row is executed,
+        because a plan that the emitter accepts is still not evidence that
+        the program computes the table.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.pct_squared_minus_one import run
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.examples import _fill_pct_squared_minus_one
+
+        n = 10
+        table = "".join(
+            str(((r >> (n - 1)) & 1) ^ ((r >> (n - 2)) & 1)) for r in range(2**n)
+        )
+        template = parameterized.pct_squared_minus_one(table)
+        widths = set()
+        for row in range(2**n):
+            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            program = _fill_pct_squared_minus_one(template, bits)
+            widths.add(len(program))
+            io = ScriptedIO()
+            run(program, io)
+            assert io.getvalue() == table[row], f"row {row}"
+        assert len(widths) == 1, widths
+
+    @pytest.mark.slow  # ~14s: eleven inputs, a sampled row sweep
+    def test_the_packed_ladder_reaches_eleven_inputs(self) -> None:
+        """Eleven inputs build on the packed ladder and print correctly.
+
+        The uniform ladders both overrun the workspace here -- 8188 and 4094
+        against 3003 -- so this arity exists only because the packed ladder
+        spends ``2**n + 1``.  Rows are *sampled* rather than swept: all 2048
+        take about two minutes on the interpreter, well past this module's
+        budget, and the full sweep is a notes probe instead.
+        """
+        import random
+
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.pct_squared_minus_one import run
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.examples import _fill_pct_squared_minus_one
+
+        n = 11
+        rng = random.Random(11011)
+        table = "".join(rng.choice("01") for _ in range(2**n))
+        template = parameterized.pct_squared_minus_one(table)
+        widths = set()
+        for row in range(0, 2**n, 97):  # a stride coprime to the arity's runs
+            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            program = _fill_pct_squared_minus_one(template, bits)
+            widths.add(len(program))
+            io = ScriptedIO()
+            run(program, io)
+            assert io.getvalue() == table[row], f"row {row}"
+        assert len(widths) == 1, widths
+
+    def test_past_the_workspace_the_generator_raises(self) -> None:
+        """Eleven inputs refuse for real, not by a patched planner.
+
+        The narrow ladder is the finest that spells and would span 4094
+        against a 3003-value workspace, so the fold serves nothing at eleven
+        inputs and a table no *earlier* construction covers raises rather
+        than getting a program for the wrong function.  The refusal is
+        immediate -- the ladder is gated before any planning -- which is what
+        keeps a doomed arity from costing a search.
+
+        **The table has to be generic.**  Arity alone does not refuse: the
+        cascade builds every conjunction or disjunction of literals at any
+        width, so the alternating and single-minterm tables build at any
+        arity, and only a table that reaches the fold exercises this path.
+        """
+        import random
+
+        from esolangs.tools.boolean import parameterized
+
+        rng = random.Random(1)
+        table = "".join(rng.choice("01") for _ in range(2**12))
+        with pytest.raises(ValueError, match="caps it at eleven inputs"):
+            parameterized.pct_squared_minus_one(table)
+
+        # A subcube at the same arity still builds, so the refusal above is
+        # the fold's workspace and not the arity itself.
+        assert parameterized.pct_squared_minus_one("1" + "0" * (2**12 - 1))
 
     def test_a_table_whose_plan_fails_builds_nothing(
         self, monkeypatch: pytest.MonkeyPatch
@@ -1429,3 +1589,58 @@ class TestPctAffineBand:
 
         monkeypatch.setattr(module, "_CANDIDATES", 1000)
         assert module._affine("00000001", 3) is not None  # noqa: SLF001
+
+
+class TestPctFoldSkeletonResolver:
+    """The tabulated planner's refusals, driven on constructed states.
+
+    ``_fold_construct`` reads a plan out of :data:`_FOLD_SKELETONS` and
+    resolves each symbolic amount against the live state, so every refusal
+    is a property of the *geometry* rather than of a table.  Building the
+    states directly is what reaches them: a wipe that leaves no survivor and
+    a landing that does not match are both shapes the fold's own descent
+    steers around, so no generated table drives one.
+    """
+
+    @staticmethod
+    def module():
+        return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+
+    #: One point: whichever way it is wiped, nothing survives.
+    LONE = ((0, 0, "a", frozenset({0})),)
+
+    #: Two points of one class, four apart and both already wiped.
+    PAIR = (
+        (0, 0, "a", frozenset({0})),
+        (-4, 0, "a", frozenset({1})),
+    )
+
+    @pytest.mark.parametrize("kind", ["d", "u"])
+    def test_geometry_refuses_a_wipe_that_leaves_no_survivor(self, kind: str) -> None:
+        """Both branches measure the window against the survivors."""
+        module = self.module()
+        assert module._fold_geometry(self.LONE, kind, 1) is None  # noqa: SLF001
+
+    def test_resolve_passes_on_a_wipe_with_no_geometry(self) -> None:
+        """A symbolic amount cannot be resolved where the window does not exist."""
+        module = self.module()
+        assert module._fold_resolve(self.LONE, "d", 1, "cmax") is None  # noqa: SLF001
+
+    def test_resolve_refuses_a_landing_index_past_the_survivors(self) -> None:
+        """``landN`` names a survivor by index, and one wipe leaves only one."""
+        module = self.module()
+        assert module._fold_resolve(self.PAIR, "d", 1, "land9") is None  # noqa: SLF001
+
+    def test_resolve_refuses_a_landing_that_does_not_match(self) -> None:
+        """A landing is a merge, so span, class and window all have to agree."""
+        module = self.module()
+        assert module._fold_resolve(self.PAIR, "d", 1, "land0") is None  # noqa: SLF001
+
+    def test_construct_emits_an_empty_plan_for_a_finished_state(self) -> None:
+        """Two wiped points of different classes is what ``_fold_done`` accepts."""
+        module = self.module()
+        finished = (
+            (0, 0, "a", frozenset({0})),
+            (-5, 0, "b", frozenset({1})),
+        )
+        assert module._fold_construct(finished) == []  # noqa: SLF001

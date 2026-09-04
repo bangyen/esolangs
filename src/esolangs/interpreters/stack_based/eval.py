@@ -36,16 +36,15 @@ comparing each pushed frame against the ones beneath it, and
 Because a step is one command again, it prints at most once, so the effects
 stay in the shell the way every other interpreter here does it.
 
-:class:`_Machine` keeps its ``of`` constructor: the parsed code is not a
-constructor field, so the VM builds this one through ``.of(code, io)``
-rather than the usual ``_Machine(code, io)``.
+:class:`_Machine` accepts the program in its constructor, as the other
+interpreters do.  It stores the text in the first frame rather than parsing
+it, because Eval's commands are one character wide.
 """
 
 from __future__ import annotations
 
 import sys
 from collections.abc import Hashable
-from dataclasses import dataclass, field
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -65,6 +64,11 @@ type _Core = tuple[int, tuple[tuple[_Val, ...], tuple[_Val, ...]]]
 #: A plain tuple, rebuilt rather than edited, so the whole stack is a value
 #: the cycle detector can hash.
 type _Frame = tuple[str, int]
+
+#: Every value an Eval command can change: the shared two-stack core and the
+#: immutable call-frame stack.  Program text lives in its frame; ports stay
+#: in the shell.
+type _State = tuple[_Core, tuple[_Frame, ...]]
 
 
 class _Fault(Exception):  # noqa: N818 - an internal signal, not an error type
@@ -160,31 +164,22 @@ def _iterate(
     return core, ind + 1, output, call
 
 
-@dataclass
 class _Machine:
     """Two stacks with an index choosing the active one, and a frame stack."""
 
-    ptr: int = 0
-    stk: tuple[tuple[_Val, ...], tuple[_Val, ...]] = ((), ())
-    io: IO = field(default_factory=IO)
-    sym: str = ""
-    frames: list[_Frame] = field(default_factory=list)
+    ptr: int
+    stk: tuple[tuple[_Val, ...], tuple[_Val, ...]]
+    io: IO
+    sym: str
+    frames: tuple[_Frame, ...]
 
-    @classmethod
-    def of(cls, code: str, io: IO) -> _Machine:
-        """Build a state running ``code``.
-
-        The program is the ``sym`` field, so positionally it sits behind
-        ``io`` and a caller could not simply pass ``(code, io)`` the way
-        every other interpreter here is built.  Naming the two makes the
-        construction the same shape as everyone else's.
-        """
-        return cls(io=io, sym=code)
-
-    def __post_init__(self) -> None:
-        """Seed the frame stack with the program, unless it is empty."""
-        if not self.frames and self.sym:
-            self.frames = [(self.sym, 0)]
+    def __init__(self, code: str, io: IO) -> None:
+        """Build a state running ``code``."""
+        self.ptr = 0
+        self.stk = ((), ())
+        self.io = io
+        self.sym = code
+        self.frames = ((code, 0),) if code else ()
 
     @property
     def ind(self) -> int:
@@ -244,6 +239,15 @@ class _Machine:
             self.io.position(),
         )
 
+    @property
+    def _state(self) -> _State:
+        """The complete changing state at the command boundary."""
+        return ((self.ptr, self.stk), self.frames)
+
+    def _restore(self, state: _State) -> None:
+        """Write a pure command transition back onto the machine shell."""
+        (self.ptr, self.stk), self.frames = state
+
     def frame_entry_key(self, frame: _Frame) -> Hashable:
         """Return what ``frame`` is about to run, for the ancestor check.
 
@@ -279,30 +283,30 @@ class _Machine:
         collect: the fault carries no outputs, since anything printed
         before it was printed by an earlier step and is already out.
         """
-        if not self.frames:
+        core, frames = self._state
+        if not frames:
             return
-        sym, ind = self.frames[-1]
+        sym, ind = frames[-1]
         if ind >= len(sym):
-            self.frames.pop()
+            self._restore((core, frames[:-1]))
             return
-        core: _Core = (self.ptr, self.stk)
         try:
             core, ind, output, call = _iterate(core, sym, ind)
         except _Fault:
             raise HaltError from None
         if output is not None:
             self.io.print_value(output)
-        self.ptr, self.stk = core
-        self.frames[-1] = (sym, ind)
+        frames = (*frames[:-1], (sym, ind))
         if call is not None:
             # The nested program becomes a frame of its own rather than
             # running here, which is what makes its commands steps.
-            self.frames.append((call, 0))
+            frames = (*frames, (call, 0))
+        self._restore((core, frames))
 
 
 def run(code: str, io: IO) -> None:
     """Run an Eval program."""
-    state = _Machine.of(code, io)
+    state = _Machine(code, io)
     while not state.halted:
         state.step()
 

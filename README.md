@@ -58,17 +58,11 @@ esolangs transpile BFStack brainfuck program.txt  # rewrite between languages
 Most generators emit one long line.  `--width N` (default 80) bounds a
 program to that many columns, as in the [committed examples](examples/):
 wrapping breaks only between whole commands, so the program still does the
-same thing.  A generator that builds a *shape* takes the width itself
-instead: Clockwise lays its code around a rectangle's perimeter (squarest
-ring by default), Streetcode and WII2D fold their instruction line into a
-boustrophedon the pointer walks in order, and LaserFuck steers its beam
-down and back so a long tape-command run costs rows instead of columns.
-
-Languages whose newlines carry meaning ignore the flag instead of breaking:
-the remaining 2D grid languages, and NoComment, which rejects any character
-that isn't a command.  A token longer than the width (a Polynomial
-coefficient) or a shape with an irreducible size (a Clockwise ring, a
-LaserFuck decision tree) comes out as wide as it has to be.
+same thing.  Shape-based generators (Clockwise, Streetcode, WII2D,
+LaserFuck) use the width to lay out their shape instead of wrapping text.
+Languages whose newlines carry meaning (the 2D grid languages, NoComment)
+ignore the flag; a token or shape that can't shrink below the width comes
+out as wide as it has to be.
 
 Assembly compilers run the same way and write `output.asm`:
 
@@ -113,7 +107,7 @@ just test
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 63 languages</summary>
+<summary>Show all 64 languages</summary>
 
 The full capability matrix (generators, cross-check and boolean support, examples) is in [`docs/languages.md`](docs/languages.md).
 
@@ -130,6 +124,7 @@ Languages that move a pointer or beam across a 2D grid.
 - [Flowchart](https://esolangs.org/wiki/Flowchart) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/flowchart.py))
 - [LaserFuck](https://esolangs.org/wiki/LaserFuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/laserfuck.py))
 - [Streetcode](https://esolangs.org/wiki/Streetcode) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/streetcode.py))
+- [Super SNUSP](https://esolangs.org/wiki/Super_SNUSP) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/super_snusp.py))
 - [WII2D](https://esolangs.org/wiki/WII2D) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/wii2d.py))
 
 ### Stack-based Languages
@@ -235,14 +230,9 @@ Implementations written in languages other than Python, used as cross-check refe
 
 </details>
 
-Two further bodies of work live under `extra/` without being cross-check
-interpreters, so they are not listed above:
+One further body of work lives under `extra/` without being a cross-check
+interpreter, so it is not listed above:
 
-- **Lean 4 proofs** (`extra/lean/esolangs`) verify generators rather than
-  run programs: that the MAMMALIAN text generator is total over the byte
-  range, that the Factor encoder round-trips (`decode (encode code) = code`),
-  and that the brainfuck minterm boolean generator computes its truth table.
-  `lake build` checks them, and CI runs them on Linux.
 - **Line** (`extra/line`) implements
   [Line](https://esolangs.org/wiki/Line), whose spec is a set of hand-drawn
   curve images with no text format.  Its programs are PNGs rather than text,
@@ -288,8 +278,7 @@ Transpilers rewrite a program in one esolang into an equivalent program in anoth
 
 Every transpiler here is **total** over its source language: it accepts
 every program that language's own interpreter accepts. Partial ones are
-not carried — the admission criteria, and why six earlier transpilers were
-removed rather than documented as subsets, are in
+not carried; the admission criteria are documented in
 `esolangs/tools/transpilers.py`.
 
 | Source | Direction | Target |

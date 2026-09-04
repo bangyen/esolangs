@@ -1,8 +1,8 @@
 """Compiler that turns Home Row programs into RISC-V Linux assembly."""
 
-import sys
 from re import sub
 
+from esolangs.compilers import _riscv_common as _common
 from esolangs.compilers._riscv_common import Routine
 
 
@@ -173,10 +173,5 @@ def comp(code: str) -> str:
     return (f"{s}\n" + res).replace("\n\n\n", "\n\n")
 
 
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as f:
-            data = f.read()
-
-        with open("output.asm", "w") as f:
-            f.write(comp(data))
+if __name__ == "__main__":  # pragma: no cover
+    _common.main(comp)

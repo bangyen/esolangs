@@ -240,20 +240,17 @@ class TestErrors:
         with pytest.raises(ValueError, match="uppercase"):
             run_program("hello")
 
-    def test_of_builds_a_runnable_machine_and_validates(self) -> None:
-        """``_Machine.of`` is the one way a program becomes a machine.
+    def test_constructor_builds_a_runnable_machine_and_validates(self) -> None:
+        """The constructor is the one way a program becomes a machine.
 
-        ``run`` and the VM adapter both go through it, having each carried
-        their own copy of the validation and the frame push before.  The
-        tests reach it only via ``run``, which hides three things: the
-        default step limit, and the recorded end of the top-level frame that
-        ``ip`` reports once every frame has popped.
+        ``run`` and the VM adapter both use it.  The tests reach it only
+        via ``run``, which hides the recorded end of the top-level frame
+        that ``ip`` reports once every frame has popped.
         """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.stack_based.grapheme import _Machine
 
-        machine = _Machine.of("FAFY", ScriptedIO())
-        assert machine.limit == 1_000_000  # the default, not passed here
+        machine = _Machine("FAFY", ScriptedIO())
         assert machine.ip == (0,)  # one frame, at its start
         while not machine.halted:
             machine.step()
@@ -262,7 +259,7 @@ class TestErrors:
         assert machine.ip == (len("FAFY"),)
 
         with pytest.raises(ValueError, match="uppercase"):
-            _Machine.of("hello", ScriptedIO())
+            _Machine("hello", ScriptedIO())
 
 
 class TestEdgeCases:
@@ -290,17 +287,6 @@ class TestEdgeCases:
         assert run_program("EETY") == "1"  # "" falsy -> push 1
         assert run_program("HABHTY") == "0"  # nonempty function truthy
         assert run_program("HHTY") == "1"  # empty function falsy
-
-    def test_recursion_limit_exceeded(self) -> None:
-        with pytest.raises(HaltError, match="recursion"):
-            run_program("HKGHKG")
-
-    def test_command_limit_exceeded(self) -> None:
-        from esolangs.interpreters.stack_based.grapheme import run
-
-        io = ScriptedIO("")
-        with pytest.raises(HaltError, match="command limit"):
-            run("FF", io, limit=1)
 
     def test_function_cannot_name_a_variable(self) -> None:
         with pytest.raises(HaltError, match="cannot name"):
@@ -369,44 +355,21 @@ class TestEdgeCases:
         the cursor is found past the code -- so a caller stepping exactly
         as many times as there are commands is what tells the two apart.
         """
-        from esolangs.interpreters.stack_based.grapheme import _frame, _Machine
+        from esolangs.interpreters.stack_based.grapheme import _Machine
 
-        machine = _Machine(ScriptedIO(), 1_000_000)
-        machine.frames = (_frame("FAFY", 0),)
+        machine = _Machine("FAFY", ScriptedIO())
         for _ in range(4):
             assert not machine.halted
             machine.step()
         assert machine.halted
 
-    def test_the_command_limit_counts_from_the_first_command(self) -> None:
-        """A program of exactly ``limit`` commands runs; one more does not.
-
-        The suite pins the limit only where it is plainly exceeded, which
-        every off-by-one spelling of the counter and its test also
-        rejects.  ``FAFY`` is four commands, so it sits on the boundary.
-        """
-        from esolangs.interpreters.stack_based.grapheme import run
-
-        io = ScriptedIO()
-        run("FAFY", io, limit=4)
-        assert io.getvalue() == "10"
-        with pytest.raises(HaltError, match="command limit"):
-            run("FAFY", ScriptedIO(), limit=3)
-
-    def test_the_recursion_limit_admits_five_hundred_frames(self) -> None:
-        """500 nested calls run; 501 is the one that is refused.
-
-        Every other recursion here runs away without bound, so the depth
-        the guard compares -- where counting starts, how fast it climbs,
-        and which side of 500 is allowed -- was pinned only from very far
-        above.  This counts down from an exact depth instead.
-        """
+    def test_recursion_is_not_artificially_capped(self) -> None:
+        """A 501-deep finite call chain follows the language's unbounded stack."""
         # the body decrements the count, keeps a copy, and calls itself
         # again through Q while the copy is nonzero
         program = "H" + "FFTBKFAFDQ" + "H" + "FAFC" + "FAFD" + "G"
         assert run_program("FEZF" + program) == ""
-        with pytest.raises(HaltError, match="recursion limit"):
-            run_program("FEZF" + "FFT" + "A" + program)
+        assert run_program("FEZF" + "FFT" + "A" + program) == ""
 
     def test_the_error_messages_read_in_full(self) -> None:
         """Each message entire, not the fragment the tests match on.
@@ -426,7 +389,6 @@ class TestEdgeCases:
             ("FAFG", "G needs a string or a function"),
             ("HABHFFA", "math on a function is undefined"),
             ("HABHY", "Y cannot output a function"),
-            ("HKGHKG", "recursion limit exceeded"),
         ):
             with pytest.raises(HaltError, match=re.escape(message)) as caught:
                 run_program(code)
@@ -444,10 +406,9 @@ class TestEdgeCases:
 
 class TestStepMachine:
     def test_snapshot_includes_the_input_cursor(self) -> None:
-        from esolangs.interpreters.stack_based.grapheme import _frame, _Machine
+        from esolangs.interpreters.stack_based.grapheme import _Machine
 
-        machine = _Machine(ScriptedIO("hi"), 1_000_000)
-        machine.frames = (_frame("W", 0),)
+        machine = _Machine("W", ScriptedIO("hi"))
         before = machine.snapshot()
         machine.step()  # W reads a line, pushing it
         assert machine.snapshot() != before
@@ -463,17 +424,16 @@ class TestStepMachine:
         break the snapshot outright.  Nothing else reads those fields once
         the mode is over, so only the snapshot can say what is in them.
         """
-        from esolangs.interpreters.stack_based.grapheme import _frame, _Machine
+        from esolangs.interpreters.stack_based.grapheme import _Machine
 
         for code, value in (("EAEK", "A"), ("FAFK", 10), ("HAHK", ("func", "A"))):
-            machine = _Machine(ScriptedIO(), 1_000_000)
-            machine.frames = (_frame(code, 0),)
+            machine = _Machine(code, ScriptedIO())
             for _ in range(3):
                 machine.step()
             assert machine.snapshot() == (
                 (value,),
                 frozenset(),
-                ((code, 0, 3, "", (), -1, ""),),
+                ((code, 3, "", (), -1, ""),),
                 0,
             )
 
@@ -540,16 +500,10 @@ class TestNumberEncoding:
 
 
 def _machine(code: object) -> object:
-    """A machine with ``code`` pushed as its first frame.
+    """A machine with ``code`` in its first frame."""
+    from esolangs.interpreters.stack_based.grapheme import _Machine
 
-    Grapheme's machine takes no program: it is built empty and a frame is
-    appended, which is why the shared constructor shape does not fit it.
-    """
-    from esolangs.interpreters.stack_based.grapheme import _frame, _Machine
-
-    machine = _Machine(ScriptedIO(), 1_000_000)
-    machine.frames = (_frame(str(code), 0),)
-    return machine
+    return _Machine(str(code), ScriptedIO())
 
 
 class TestContract(EmptyProgramContract, CycleContract):

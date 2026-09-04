@@ -13,19 +13,6 @@ and a boolean-generator capability (input, a value conditional, output).
 Per-language verdicts on everything ruled out are in the
 assessed-and-rejected ledger in `docs/limitations.md`.
 
-- **Super SNUSP** — a SNUSP derivative with a charcode-indexed opcode table:
-  `,` KEY (char in) and `@` IN (decimal in), `.` EMIT and `#` OUT, and two
-  value conditionals, `?` SKIPZ (skip if the cell is zero) and `` ` `` SKIPN
-  (skip if negative).  Native `^` XOR, `&` AND, `|` OR and shifts make boolean
-  tables unusually cheap: a two-input XOR is **15 characters**
-  (`48{,-> ,-<^{>^.`) against a suite median of 218, and four more of the
-  sixteen two-input tables price at 12-15.  Those five were executed under an
-  interpreter written from the wiki table, not modelled — see
-  `notes/twod-unimplemented-audit.md`.  Base SNUSP is wiki-Implemented with
-  external interpreters, but Super SNUSP has none, so it is a real gap.
-  Two open items before building: the remaining eleven two-input tables need
-  complementation via a `?` branch (expected to stay in the same size class,
-  unmeasured), and `=` RAND must be avoided by the generator.
 - **function x(y)** — Turing-complete: functions with defaults, `[~]`/`` `~ ``
   input, `[a]`/`` `a `` output, comparison operators, a ternary, recursion; a
   boolean generator branches on a comparison and prints 0/1.
@@ -44,22 +31,32 @@ assessed-and-rejected ledger in `docs/limitations.md`.
   documented judgment call in Taglate's `t` mould rather than a blocker.
   The randomness is **not** an objection: `[a b]` and `~` are seedable, as
   LaserFuck's heading already is.
+- **Alight** — its boolean generator is an indexed lookup, not a routed
+  tree.  It reads each input character, subtracts `'0`, and uses
+  ``index = index * 2 + bit`` to build the row number; a string literal holds
+  the truth table and ``at{table, index + 0.5}`` supplies the character for
+  `out`.  That is one table character plus a constant-size unrolled update
+  per input: **O(2**n + n)** source, before the interpreter work.  The
+  two-dimensional `skip`/`turn` control flow is therefore exercised by tests
+  rather than made responsible for the generator's cost.
+- **Pinyin** — the stack can retain one nonzero input character as a source
+  of `1` (duplicate it and divide it by itself), but has no table/list
+  storage.  A full planar decision tree is the direct construction.  At each
+  node, a character input is normalized with ``x % ((x / x) + (x / x))``;
+  copies then make zero and `q` compares it with the bit, sending the two
+  outcomes in opposite directions.  The retained character lets either leaf
+  print integer `0` or `1`.  It spends 12 executable character commands per
+  internal node and 3/5 per one/zero leaf, plus routing and grid padding:
+  **O(n * 2**n)** rendered source.  This is a usable, if deliberately large,
+  generator price; the page's `e`/`a`, stack operations, comparison, and
+  truth-machine establish the needed I/O and branch primitives.
 
-The 2D/grid pass: `Category:Two-dimensional languages` ∩
-`Category:Unimplemented` gives **111 pages**.  Of those, one is implemented
-here (COD, whose wiki tag is stale), five already carry a ledger verdict, and
-36 survived a triage screen and were read against the criteria above: Super
-SNUSP is promoted (see the list), Alight and Pinyin are plausible but
-**unpriced**, seven more have a single named blocker, and seventeen are
-rejected on named grounds.  Full per-language table in
-`notes/twod-unimplemented-audit.md`.
+These complete the priced survivors of the 2D/grid pass
+(`Category:Two-dimensional languages` ∩ `Category:Unimplemented`). Full
+per-language table, including the named blockers and rejections for the
+rest of the pass, is in `notes/twod-unimplemented-audit.md`.
 
 ## Transpilers
-
-`Streetcode → LaserFuck` ships: the two share a tape of unbounded signed
-cells under a pointer, and Streetcode's instructions are brainfuck's eight
-under other glyphs, so no new interpreter was needed.  Its supported class
-is the programs the tape never steers.
 
 **Open research item: lowering drawn control flow.**  A Streetcode ring has
 no brainfuck loop image -- the car never returns to the junction that steers
@@ -71,10 +68,7 @@ worked examples.  This is the same class of future work as the OISC pair.
 
 The remaining candidates (a second Forth dialect ↔ Forþ,
 Boolfuck ↔ Minifuck) each need a *new* interpreter first, so they belong
-under "New interpreters" if that language is ever added.  ABCDirection used
-to be named here as a third; it was implemented and then removed in
-`c7d19dac` (its generator emitted 15,729 characters for a two-input XOR, ~72x
-the current suite median), so it is not a candidate for anything.
+under "New interpreters" if that language is ever added.
 
 ## Deferred-removal candidates
 
@@ -133,30 +127,8 @@ precedent and floats are not); and a differential is only worth the name
 when the generator *reads input*, since an `_embedded` generator substitutes
 its bits into a fixed template and replays the same program.
 
-MyScript shipped (`src/esolangs/compilers/myscript.py`): first-class
-functions, `return`, `while`/`check` blocks, a `_reader` generator whose
-whole input space runs through the compiled code.  Scoping turned out to be
-**lexical over live frames** (a function value carries its defining frame,
-so closures genuinely escape) rather than dynamic, and **every variable read
-auto-calls a nullary function** — both load-bearing facts for anyone
-extending the compiler, detailed with their probes in the module docstring.
-Value-domain exclusions (no float literals, no array mutation, `say`/`concat`
-of an array leaks Python's `str(list)` spelling) are also documented there.
-
-CV(N)(C) shipped (`src/esolangs/compilers/cvnc.py`); its own docstring
-carries the design.
-
-Standing negatives, unchanged.  Plain brainfuck is the trap answer —
-uncovered, but `home_row`/`suffolk` already cover that shape, so it is
-transliteration; the same disposes of the rest of the bf-shaped tape family.
-Taglate is blocked outright: its `t` command rewrites the queue into a
-Google Translate URL of its text.  Bitdeque is too thin, and Point Break has
-no output command, so its differential could only observe halting.
-Polynomial needs complex-root finding, which is not RISC-V work.  Lamfunc's
-partial application is real lowering, but its generator is `_embedded`, so
-it cannot pay the verification bar the way MyScript can.  The
-2D/grid family stays out under the toolchain rule, and the drawn-control-flow
-item under **Transpilers** already covers that direction.
+The 2D/grid family stays out under the toolchain rule, and the
+drawn-control-flow item under **Transpilers** already covers that direction.
 
 **Input-reading compilers are supported**, no harness work needed
 (`COMPILER_CASES` takes an optional fifth element carrying stdin).  The rule
@@ -176,24 +148,29 @@ recurses this way.  **Not pursued unless a concrete program needs it.**
 
 ## Hanging-test optimization via state-cycle detection
 
-State-cycle detection (`esolangs.vm.run_until_halt_or_cycle`) has replaced
-wall-clock timeouts for step-capable deterministic machines; see
-`docs/limitations.md` for coverage.  What remains:
+See `docs/limitations.md` for what `esolangs.vm.run_until_halt_or_cycle`
+already covers.  What remains:
 
 - Painfuck's `y`, WII2D's `?`, and LaserFuck's random heading are
   non-deterministic and stay on the wall-clock backstop.
 - **Recursion follow-up.**  `run_until_halt_or_ancestor` compares each
   newly-pushed frame's entry state (function, bindings, input position)
-  against the frames beneath it.  Adopted by Forbin, Fargo, APL, and Eval —
-  it already generalizes past native recursion, since Eval and Fargo push an
-  explicit frame stack rather than recursing in Python.  **Suptiftam and
-  Lamfunc also push explicit frame stacks and are the obvious follow-up**,
-  each needing a `frame_entry_key` matching its own frame shape.
-- **Branching cycle detection for `y`/`?` — considered, not started.**
-  Forking at every random decision would prove "hangs no matter how the coin
-  lands", but each decision doubles the live branches, a branch can still
-  hang via unbounded growth, and the common case (hangs under *some* flips)
-  is proved neither way.  Only worth building if that guarantee is needed.
+  against the frames beneath it.  Adopted by Forbin, Fargo, APL, Eval,
+  Suptiftam, Lamfunc, Forþ, Jaune, and Grapheme — it already generalizes
+  past native recursion, since Eval, Fargo, and Grapheme push an explicit
+  frame stack rather than recursing in Python.  **The audit is closed:**
+  every other frame stack is structurally bounded or hides calls in native
+  recursion.
+- **Branching cycle detection for `y`/`?` — shipped.**
+  `run_until_halt_or_all_branches_cycle` explores every exact successor of
+  Painfuck's `y` and WII2D's `?`, merging equal states.  It returns `False`
+  only when the finite reachable graph has no halted state (a proof that all
+  random outcomes hang); a single halted outcome returns `True`.  It raises
+  `TimeoutError` at 10,000 distinct states or outcomes in one repeated step,
+  and also when Painfuck would read future input: an unbounded-growth branch
+  and a branch-specific input cursor are undecided, not evidence of a hang.
+  This intentionally does not prove the common case where only some random
+  outcomes hang.
 
 ## Input reordering (remainder)
 
@@ -225,14 +202,12 @@ generator that validates its own output needs that check frame-mapped too.
 
 ## Mutation-testing sweep
 
-All 61 suites are measured, and twenty-four are at 100%.  Per-language scores
-and survivor counts are *not* recorded here: they go stale on any test change
-and are cheap to re-derive — 55 of the 61 finish in under half a minute, and
-only Streetcode passes a minute.  Re-run the language you touched; re-run
-everything after a change to the shared machinery.
-
-What is worth keeping is the rules a triage pass has to get right — each
-learned by getting it wrong first; see git history for the worked examples.
+Per-language scores and survivor counts are not recorded here: they go
+stale on any test change and are cheap to re-derive (`just mutate
+<language>`, wrapping `scripts/mutate_one.py`) — re-run the language you
+touched, and re-run everything after a change to the shared machinery.
+Rules a future triage pass has to get right, each cheap to violate
+silently; see git history for the worked examples behind them.
 
 **Trusting the measurement:**
 
@@ -317,12 +292,11 @@ path, and every optional token both present and absent.
 
 A table ignoring some inputs is a smaller table, and where a generator's cost
 scales with *input count* rather than row count that beats any per-row
-saving.  Shipped for taglate (451 characters → 21), collatz_multiverse,
-qoibl, suffolk, suptiftam, bit_tilde, three_x, point_break and polynomial.
-Clockwise and Decleq remain the obvious candidates and neither reduces:
-`clockwise` (`other.py:676-883`) makes no `essential_inputs` call, and
-Decleq's own docstring (`register.py:61`) prices its 47-step normalize chains
-as a fixed `47*n` the fold cannot reach.  What is open:
+saving.  Clockwise and Decleq are the obvious remaining candidates and
+neither reduces: `clockwise` (`other.py:676-883`) makes no
+`essential_inputs` call, and Decleq's own docstring (`register.py:61`)
+prices its 47-step normalize chains as a fixed `47*n` the fold cannot
+reach.  What is open:
 
 - **Taglate's gapped sets** (inputs 0 and 2 but not 1) need a discard between
   the reduced program's own reads, where the queue is not what the following
@@ -351,18 +325,9 @@ as a fixed `47*n` the fold cannot reach.  What is open:
   restructured anyway, or a validator lands whose ordering is non-obvious.
 - **Severely constrained boolean generators** — caps are tracked so removal
   or lifting is deliberate.  No language is currently a *removal* candidate:
-  every shipped generator covers `n <= 2` at minimum.
-- **Minifuck beyond five inputs.**  A sculpted separation route (replacing
-  the old name-order enumeration and its flipped-embed patch, both deleted)
-  closes four inputs completely and reaches five with no arity-specific
-  step — sampled 200/200 fully-essential five-input tables including XOR5
-  (`src/esolangs/tools/boolean/minifuck.py`, `_MUX_ARITIES = (2, 3, 4, 5)`).
-  A sample, not a closed proof, but nothing in the construction reads `n`.
-  Six inputs is untried; extending the sample there is the open step.  The
-  other six refusing generators stay off this list: 6-5 is the one
-  documented wall left (`docs/limitations.md`), %^2^-1 is partly lifted with
-  the rest open, and NoComment, Polynomial, Factor and WII2D are resource
-  knobs liftable by host config (`docs/walls.md` has all arguments).
+  every shipped generator covers `n <= 2` at minimum.  6-5 is the one
+  documented wall left (`docs/limitations.md`); %^2^-1 is partly lifted with
+  the rest open.
 - **NoComment's tape size** — `run`/`nocomment` take a `tape` argument
   (`_TAPE = 4096` default, matching the RISC-V cross-check's buffer), so
   `n == 12` (cell 4650) builds at a larger size without moving the default

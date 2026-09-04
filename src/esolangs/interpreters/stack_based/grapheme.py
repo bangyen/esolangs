@@ -41,11 +41,12 @@ call stack is then a value, which is what lets :meth:`snapshot` hash it and
 the cycle detector prove a loop.
 
 The value stack is the one thing *not* threaded, and the reason is cost.  A
-Grapheme program can push without bound -- ``HKHKZ`` does, and the
-million-command limit is the backstop for exactly that class -- so rebuilding
-a stack tuple per command is quadratic in the stack's depth.  Measured, it
-is not a constant factor: 200,000 commands of ``HKHKZ`` take 0.21s against a
-mutable list and 445s against a rebuilt tuple.  So the stack stays a list in
+Grapheme program can push without bound -- ``HKHKZ`` does, which is exactly
+the class a snapshot repeat cannot catch and ``esolangs.run``'s wall-clock
+``timeout`` is the backstop for -- so rebuilding a stack tuple per command
+is quadratic in the stack's depth.  Measured, it is not a constant factor:
+200,000 commands of ``HKHKZ`` take 0.21s against a mutable list and 445s
+against a rebuilt tuple.  So the stack stays a list in
 the shell, and a step reports its intent as ``(pops, pushes, reverse)``
 instead: a count to remove, the values to add, and whether ``P`` reversed
 what was left.  COD's per-cod transition reports what it wants done for the
@@ -65,9 +66,14 @@ step later.  The emptiness tests there read the stack's *virtual* depth --
 its length less the pending pops, plus the pending pushes -- since the
 effects have not been applied yet.
 
-``steps`` and ``limit`` stay in the shell.  They are a budget rather than
-language state, and ``steps`` is excluded from ``snapshot`` for the same
-reason: it rises every step, so a state carrying it could never repeat.
+There was once a ``steps``/``limit`` budget here, checked at the top of
+every step and excluded from ``snapshot`` because it rises every step and
+could never repeat.  It is gone: the class it guarded -- an unbounded
+push, which never revisits a state -- is exactly what ``esolangs.run``'s
+wall-clock ``timeout`` exists to catch, and a step count local to this
+interpreter only duplicated it.  Calls use the same backstop for an
+unbounded sequence of distinct entries; an exact replay of an ancestor is
+instead decided by :func:`esolangs.vm.run_until_halt_or_ancestor`.
 """
 
 from __future__ import annotations
@@ -147,18 +153,16 @@ def _truthy(value: _Value) -> bool:
     return value[1] != ""
 
 
-#: One call context: ``(code, depth, pc, mode, buf, pending_at, repeat)``.
+#: One call context: ``(code, pc, mode, buf, pending_at, repeat)``.
 #:
 #: A tuple rather than a record, so the whole call stack is a value that
 #: :meth:`_Machine.snapshot` can hash -- Eval's frames are tuples for the
 #: same reason.  ``repeat`` carries ``Z``'s body: a frame holding one is
 #: rewound instead of popped while the stack is non-empty.
-type _Frame = tuple[str, int, int, str, tuple[str, ...], int, str]
+type _Frame = tuple[str, int, str, tuple[str, ...], int, str]
 
 #: The part of a run the pure layer owns: the variables and the call stack.
-#: Both are small -- recursion is capped at 500 frames and a frame is seven
-#: fields -- so rebuilding them per step costs nothing.  The value stack is
-#: deliberately absent; see the module docstring.
+#: The value stack is deliberately absent; see the module docstring.
 type _Vars = Mapping[_Value, _Value]
 type _State = tuple[_Vars, tuple[_Frame, ...]]
 
@@ -179,9 +183,9 @@ _OPENS: Final = {"E": "string", "F": "int", "H": "func"}
 _CLOSES: Final = {mode: char for char, mode in _OPENS.items()}
 
 
-def _frame(code: str, depth: int, repeat: str = "") -> _Frame:
+def _frame(code: str, repeat: str = "") -> _Frame:
     """Build a fresh frame for ``code``, at the start and in no mode."""
-    return (code, depth, 0, "", (), -1, repeat)
+    return (code, 0, "", (), -1, repeat)
 
 
 def _pop(view: _StackView, pops: int) -> tuple[int, _Value]:
@@ -199,7 +203,7 @@ def _pop(view: _StackView, pops: int) -> tuple[int, _Value]:
 
 def _flush_of(frame: _Frame) -> tuple[_Value, ...]:
     """Return what an unterminated mode leaves behind, as at end of program."""
-    _, _, _, mode, buf, _, _ = frame
+    _, _, mode, buf, _, _ = frame
     if mode == "string":
         return ("".join(buf),)
     if mode == "int":
@@ -225,9 +229,9 @@ def _finished(state: _State, view: _StackView, fx: _StackFx) -> tuple[_State, _S
     pushes = (*pushes, *_flush_of(frame))
     fx = (pops, pushes, reverse)
 
-    code, depth, _, _, _, _, repeat = frame
+    code, _, _, _, _, repeat = frame
     if repeat and len(view) - pops + len(pushes) > 0:
-        rewound = (code, depth, 0, "", (), -1, repeat)
+        rewound = (code, 0, "", (), -1, repeat)
         return (variables, (*frames[:-1], rewound)), fx
     return (variables, frames[:-1]), fx
 
@@ -247,7 +251,7 @@ def _advance(
     """
     variables, frames = state
     frame = frames[-1]
-    code, depth, pc, mode, buf, pending_at, repeat = frame
+    code, pc, mode, buf, pending_at, repeat = frame
 
     pops = 0
     pushes: tuple[_Value, ...] = ()
@@ -262,16 +266,14 @@ def _advance(
         grown: _Frame
         if c == _CLOSES[mode]:
             pushes = _flush_of(frame)
-            grown = (code, depth, pc + 1, "", (), pending_at, repeat)
+            grown = (code, pc + 1, "", (), pending_at, repeat)
         else:
-            grown = (code, depth, pc + 1, mode, (*buf, c), pending_at, repeat)
+            grown = (code, pc + 1, mode, (*buf, c), pending_at, repeat)
         return (variables, (*frames[:-1], grown)), (pops, pushes, reverse), None
 
     body: str | None = None
     call_repeat = ""
     output: _Value | None = None
-    new_depth = depth + 1
-
     if c == "A":
         pops, b = _pop(view, pops)
         pops, a = _pop(view, pops)
@@ -388,19 +390,17 @@ def _advance(
         pc += 1
         pending_at = -1
 
-    frames = (*frames[:-1], (code, depth, pc, mode, buf, pending_at, repeat))
+    frames = (*frames[:-1], (code, pc, mode, buf, pending_at, repeat))
 
     if body is not None:
-        if new_depth > 500:
-            raise HaltError("recursion limit exceeded")
-        frames = (*frames, _frame(body, new_depth, call_repeat))
+        frames = (*frames, _frame(body, call_repeat))
 
     # a command that left the current frame finished (the program ended or
     # a call returned) is completed now, so a caller sees ``halted`` as
     # soon as the last command runs instead of one step later.
     state = (variables, frames)
     fx = (pops, pushes, reverse)
-    while frames and frames[-1][2] >= len(frames[-1][0]):
+    while frames and frames[-1][1] >= len(frames[-1][0]):
         state, fx = _finished(state, view, fx)
         frames = state[1]
 
@@ -410,36 +410,19 @@ def _advance(
 class _Machine:
     """Shared stack, variables, step counter, and call stack for a run."""
 
-    def __init__(self, io: IO, limit: int) -> None:
-        self.stack: list[_Value] = []
-        self.vars: _Vars = {}
-        self.io = io
-        self.limit = limit
-        self.steps = 0
-        self.frames: tuple[_Frame, ...] = ()
-        # Where the top-level frame ends, so ``ip`` can still report a
-        # position once every frame has been popped.  ``of()`` sets it with
-        # the frame it pushes; a machine built bare has no program yet.
-        self._top_length = 0
-
-    @classmethod
-    def of(cls, code: str, io: IO, limit: int = 1_000_000) -> _Machine:
-        """Build a machine running ``code`` as its top-level frame.
-
-        The constructor takes no program -- a machine is a shared stack that
-        frames run against -- so validating the alphabet and pushing the
-        first frame had to happen in the caller.  ``run`` and the VM adapter
-        each carried their own copy of both, which is the shape that lets
-        the two drift.
-        """
+    def __init__(self, code: str, io: IO) -> None:
+        """Build a machine running ``code`` as its top-level frame."""
         if any(c not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" for c in code):
             raise ValueError(
                 "Grapheme programs may only contain uppercase Latin letters"
             )
-        machine = cls(io, limit)
-        machine.frames = (_frame(code, 0),)
-        machine._top_length = len(code)
-        return machine
+        self.stack: list[_Value] = []
+        self.vars: _Vars = {}
+        self.io = io
+        self.frames: tuple[_Frame, ...] = (_frame(code),)
+        # Where the top-level frame ends, so ``ip`` can still report a
+        # position once every frame has been popped.
+        self._top_length = len(code)
 
     @property
     def halted(self) -> bool:
@@ -464,7 +447,7 @@ class _Machine:
         end of the program -- which is what is reported then.
         """
         if self.frames:
-            return tuple(f[2] for f in self.frames)
+            return tuple(f[1] for f in self.frames)
         return (self._top_length,)
 
     @property
@@ -473,19 +456,31 @@ class _Machine:
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection.
-
-        ``steps`` is excluded: it only counts toward the execution-limit
-        guard and increases every step, so including it would mean no state
-        ever repeats and defeat cycle detection entirely.
-        """
-        # A frame is already a tuple of its seven fields, so the call stack
+        """Return the complete internal state, hashable for cycle detection."""
+        # A frame is already a tuple of its six fields, so the call stack
         # goes in as it stands rather than being unpacked field by field --
         # which is what a frame being a value rather than a record buys.
         return (
             tuple(self.stack),
             frozenset(self.vars.items()),
             self.frames,
+            self.io.position(),
+        )
+
+    def frame_entry_key(self, frame: _Frame) -> tuple[object, ...]:
+        """Return the state a called function needs to replay an ancestor.
+
+        Function text and ``Z``'s repeat mode identify the fresh frame; the
+        shared value stack and variables carry every binding it can read.
+        Their immutable copies keep a later mutation from changing an
+        ancestor key.  See :func:`esolangs.vm.run_until_halt_or_ancestor`.
+        """
+        code, _, _, _, _, repeat = frame
+        return (
+            code,
+            repeat,
+            tuple(self.stack),
+            frozenset(self.vars.items()),
             self.io.position(),
         )
 
@@ -515,7 +510,7 @@ class _Machine:
         if self.halted:
             return
 
-        code, _, pc, mode, _, _, _ = self.frames[-1]
+        code, pc, mode, _, _, _ = self.frames[-1]
 
         # A frame whose code has run out does no work and costs no step: it
         # only flushes and pops, which the transition does.
@@ -525,10 +520,6 @@ class _Machine:
             )
             self._apply(fx)
             return
-
-        self.steps += 1
-        if self.steps > self.limit:
-            raise HaltError(f"execution exceeded the {self.limit}-command limit")
 
         # ``W`` reads only when it is a *command*.  Inside a mode every
         # character is data, so a ``W`` accumulating into a string must not
@@ -550,9 +541,9 @@ class _Machine:
                 self.io.print_value(output)
 
 
-def run(code: str, io: IO, limit: int = 1_000_000) -> None:
-    """Run a Grapheme program, halting after ``limit`` commands."""
-    machine = _Machine.of(code, io, limit)
+def run(code: str, io: IO) -> None:
+    """Run a Grapheme program to completion."""
+    machine = _Machine(code, io)
     while not machine.halted:
         machine.step()
 

@@ -120,8 +120,6 @@ class _Machine:
     rings that sustain).
     """
 
-    __slots__ = ("grid", "state", "width")
-
     def __init__(
         self,
         code: list[str],

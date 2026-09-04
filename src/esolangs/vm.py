@@ -79,6 +79,31 @@ class _StepMachineWithShape(_StepMachine, Protocol):
         """The stack, or empty where the language has none."""
 
 
+@runtime_checkable
+class _BranchingStepMachine(Protocol):
+    """A machine whose next random choice can be enumerated exactly.
+
+    The state is deliberately an immutable value rather than the live
+    machine.  Exploring one outcome must not consume a random draw, input,
+    or output that belongs only to a sibling outcome.
+    """
+
+    def branching_snapshot(self) -> Hashable:
+        """Return the initial complete state for a branching search."""
+
+    def branching_halted(self, state: Hashable) -> bool:
+        """Whether ``state`` has halted."""
+
+    def branching_successors(
+        self, state: Hashable, limit: int
+    ) -> Sequence[Hashable] | None:
+        """Return every next state, or ``None`` when it cannot be forked.
+
+        ``limit`` bounds the outcomes this one transition may materialize.
+        A public machine step can itself repeat a random instruction.
+        """
+
+
 def run_until_halt_or_cycle(machine: _StepMachine) -> bool:
     """Step ``machine`` until it halts or revisits an exact state.
 
@@ -115,6 +140,51 @@ def run_until_halt_or_cycle(machine: _StepMachine) -> bool:
             power *= 2
             length = 0
     return True
+
+
+def run_until_halt_or_all_branches_cycle(
+    machine: _BranchingStepMachine, limit: int = 10_000
+) -> bool:
+    """Explore random outcomes until one halts or every path is cyclic.
+
+    Returns ``True`` when *some* sequence of random draws halts.  Returns
+    ``False`` only after the complete reachable state graph is finite and
+    contains no halted state, proving that every sequence of draws runs
+    forever.  The latter is the useful extension of
+    :func:`run_until_halt_or_cycle` for a random branch: revisiting a state
+    on one outcome alone says nothing when another outcome could escape.
+
+    ``limit`` bounds distinct states and the outcomes one public step may
+    materialize.  A machine that grows a tape, stack, or other state without
+    repeating remains undecided, as does a transition that cannot be forked
+    (for example, one that would read future interactive input).  Both raise
+    :class:`TimeoutError` rather than being mistaken for a universal hang.
+    The search keeps every exact state it has seen, unlike Brent's O(1)
+    deterministic detector, because branches can merge after taking
+    different random choices.
+    """
+    pending = [machine.branching_snapshot()]
+    seen: set[Hashable] = set()
+    while pending:
+        state = pending.pop()
+        if state in seen:
+            continue
+        if len(seen) == limit:
+            raise TimeoutError(
+                f"undecided after {limit} branching states: the reachable "
+                "graph may be unbounded"
+            )
+        seen.add(state)
+        if machine.branching_halted(state):
+            return True
+        successors = machine.branching_successors(state, limit - len(seen))
+        if successors is None:
+            raise TimeoutError(
+                "undecided: a branching transition needs input that cannot "
+                "be safely forked"
+            )
+        pending.extend(successors)
+    return False
 
 
 @runtime_checkable
@@ -219,6 +289,9 @@ class VM(Protocol):
     def step(self) -> None:
         """Execute one command, advancing the machine."""
 
+    def snapshot(self) -> Hashable:
+        """Return the complete state used by cycle detection."""
+
     @property
     def halted(self) -> bool:
         """Whether the machine has finished executing."""
@@ -282,6 +355,10 @@ class _DelegatingVM:
     def step(self) -> None:
         self._machine.step()
 
+    def snapshot(self) -> Hashable:
+        """Return the underlying machine's complete state."""
+        return self._machine.snapshot()
+
     @property
     def ip(self) -> int | tuple[int, ...] | None:
         return self._machine.ip
@@ -308,9 +385,10 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
     Every registered language now goes through here.  The exceptions that
     once kept a hand-written class -- extra setup, an overridden ``step()``,
     a construction disagreeing with the runner's -- were absorbed by the
-    ``of``/``rng`` handling below, so no per-language code is left.
+    common constructor and ``rng`` handling below, so no per-language code
+    is left.
     """
-    module_path, split, _ = RUNNERS[language]
+    module_path, split = RUNNERS[language]
 
     class _Derived(_DelegatingVM):
         def __init__(self, program: str, stdin: str = "") -> None:
@@ -325,16 +403,7 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
             # ``_Machine`` is private to its module but is the state object
             # this whole file is built around; the explicit adapters below
             # import it by name for the same reason.
-            # Some state objects cannot take a program positionally -- a
-            # dataclass whose parsed field is ``init=False``, or one whose
-            # code field sits behind ``io``.  Those offer ``of(code, io)``
-            # instead, which is the same construction under a name.  A
-            # state class may also use ``of`` for one of the language's own
-            # names (AddSubJump's overflow flag is a property), so only a
-            # callable ``of`` counts as the constructor.
             state = getattr(module, "_Machine")  # noqa: B009
-            of = getattr(state, "of", None)
-            machine = of if callable(of) else state
             # A language with a random instruction takes a source for it,
             # and a stepped VM has to be reproducible, so one is passed
             # wherever it is accepted.  It is optional exactly like ``io``
@@ -345,11 +414,11 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
             # own junction example goes East, LaserFuck's grids are
             # written for a laser heading up -- so the interpreter says
             # so, rather than every caller having to know.
-            if "rng" in inspect.signature(machine).parameters:
+            if "rng" in inspect.signature(state).parameters:
                 seed = getattr(state, "reproducible_seed", 0)
-                self._machine = machine(code, self._io, rng=Seeded(seed))
+                self._machine = state(code, self._io, rng=Seeded(seed))
             else:
-                self._machine = machine(code, self._io)
+                self._machine = state(code, self._io)
 
     _Derived.__name__ = _Derived.__qualname__ = f"_{language}VM"
     _Derived.__doc__ = f"Adapter for {language}; the interpreter describes its shape."

@@ -4,24 +4,65 @@ import importlib
 
 import pytest
 
-COMPILERS = [
-    "esolangs.compilers.bfstack",
-    "esolangs.compilers.home_row",
-    "esolangs.compilers.jaune",
-    "esolangs.compilers.unsquare",
-    "esolangs.compilers.bf_pda",
-    "esolangs.compilers.ram0",
-    "esolangs.compilers.forth",
-]
+from esolangs.registry import COMPILERS as _REGISTERED
+
+# One source program per registered compiler, so the sweep covers every
+# backend instead of only the ones whose surface happens to accept letters.
+#
+# There is no single input that is a valid program in sixteen different
+# surface syntaxes: ``"Hello"`` compiles under nine of them and is a parse
+# error under the other seven (AddSubJump reads it as a memory token, CV(N)(C)
+# as a syllable, Forbin as a function header).  An earlier version of this
+# sweep took ``"Hello"`` as its one input and simply excluded those seven,
+# which meant a hand-maintained exemption list standing between seven
+# backends and the only test that swept them.  Naming each language's own
+# minimal program instead costs one dict entry and excludes nobody.
+#
+# The programs are the ones the per-language classes below already compile,
+# so they stay in step with what each backend is known to accept.
+_PROGRAMS = {
+    "addsubjump": "-1 4 -8 -7 65",
+    "bf_pda": "Hello",
+    "bfstack": "Hello",
+    "collatz_multiverse": "x = y x + z, DO PRINT.",
+    "container": "A=1:\n+1 A>=0\nEXIT=1:\n-1 A>=3",
+    "cvnc": "cici",
+    "decleq": "10 10 99",
+    "forbin": "main { out 0,1,0,0,1,0,0,0; }",
+    "forth": "Hello",
+    "home_row": "Hello",
+    "jaune": "Hello",
+    "myscript": "Hello",
+    "ram0": "Hello",
+    "sbleq": "0 0 2 -1",
+    "suffolk": "Hello",
+    "unsquare": "Hello",
+}
+
+COMPILERS = sorted(_PROGRAMS)
 
 
-@pytest.mark.parametrize("module", COMPILERS)
-def test_compiler_produces_assembly(module: str) -> None:
-    """Each compiler turns a program into RISC-V assembly."""
-    mod = importlib.import_module(module)
-    output = mod.comp("Hello")
+def test_every_registered_compiler_has_a_program() -> None:
+    """The sweep's table is exactly the registry, pinned in both directions.
+
+    Total rather than exemption-based: a newly registered backend fails
+    here until somebody names a program for it, and an entry left behind
+    for a module that is no longer registered fails the other way.  A
+    hand-appended roster is how ``verify_riscv_unicorn.py`` once let a
+    backend go unverified because nobody remembered to add it, and how
+    ``check_docstrings.py`` exempted twelve interpreters behind a
+    hard-coded category tuple.
+    """
+    assert set(_PROGRAMS) == set(_REGISTERED.values())
+
+
+@pytest.mark.parametrize(("module", "program"), sorted(_PROGRAMS.items()))
+def test_compiler_produces_assembly(module: str, program: str) -> None:
+    """Each compiler turns a program in its own language into RISC-V assembly."""
+    mod = importlib.import_module(f"esolangs.compilers.{module}")
+    output = str(mod.comp(program))
     assert ".global _start" in output
-    assert "Hello" not in output  # source text is compiled, not embedded
+    assert program not in output  # source text is compiled, not embedded
 
 
 def test_suffolk_compiler() -> None:
@@ -839,9 +880,10 @@ class TestCompilerFuzz:
 class TestForbinCompiler:
     """Forbin lowers to a call graph over a runtime frame chain.
 
-    Forbin is excluded from the ``COMPILERS`` sweep above because that
-    sweep compiles the literal text ``"Hello"``, which is not a Forbin
-    program (every program is a set of brace-delimited functions).
+    The ``COMPILERS`` sweep above compiles Forbin's own minimal program
+    (every program is a set of brace-delimited functions, so plain text is
+    not one).  This class covers the call graph and frame chain that the
+    single-function program there does not reach.
     """
 
     @staticmethod
@@ -991,9 +1033,10 @@ class TestForbinCompiler:
 class TestContainerCompiler:
     """Container lowers a synchronous rule system to a dataflow round.
 
-    Container is excluded from the ``COMPILERS`` sweep above because that
-    sweep compiles the literal text ``"Hello"``, whose first line is a rule
-    with no container to attach it to -- which the shared parser rejects.
+    The ``COMPILERS`` sweep above compiles Container's own minimal program
+    (a bare rule line has no container to attach to, so plain text is not
+    one).  This class covers the dataflow round that program does not
+    reach.
     """
 
     @staticmethod
@@ -1171,9 +1214,10 @@ class TestForbinDiscardTarget:
 class TestCVNCCompiler:
     """CV(N)(C) lowers a runtime-built function and two computed gotos.
 
-    Excluded from the ``COMPILERS`` sweep above because that sweep compiles
-    the literal text ``"Hello"``, which is not a syllable string -- the
-    shared tokenizer rejects it on ``H``.
+    The ``COMPILERS`` sweep above compiles CV(N)(C)'s own minimal syllable
+    string (plain text is not one -- the tokenizer rejects it on ``H``).
+    This class covers the runtime-built function and computed gotos that
+    string does not reach.
     """
 
     @staticmethod
@@ -1358,9 +1402,10 @@ class TestCVNCCompiler:
 class TestMyScriptCompiler:
     """MyScript lowers closures, a lexical frame chain, and tagged values.
 
-    Excluded from the ``COMPILERS`` sweep above because that sweep compiles
-    the literal text ``"Hello"``, which MyScript parses as a bare variable
-    read of an undeclared name rather than as a program with output.
+    MyScript is *in* the ``COMPILERS`` sweep above: it parses the sweep's
+    literal ``"Hello"`` as a bare variable read of an undeclared name, which
+    is a legal program that compiles rather than an error.  This class
+    covers the language features that bare read does not reach.
     """
 
     @staticmethod

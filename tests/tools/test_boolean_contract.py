@@ -508,6 +508,7 @@ _REDUCING = {
     "rotfuck",
     "suffolk",
     "suptiftam",
+    "super_snusp",
 }
 
 _UNSHAPED = {

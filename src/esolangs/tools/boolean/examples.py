@@ -30,6 +30,19 @@ the answer is ``z``; LaserFuck prints every touched tape cell, so the input
 cells precede the result.  Each is a fixed position in a stable dump, which
 is a contract a committed file can hold, so each has an example.
 
+Three languages answer with their *termination* instead of their output.
+ArrowQueue, Point Break and 123 have no output instruction at all: each
+halts for a 0 and loops forever for a 1, so the committed program is the
+halting branch and its expected output is empty.  The looping branch is not
+executed, and the convention is the whole answer -- 123's ``1,0`` row halts
+too but prints a stray ``0x80`` on the way out, so the committed row is one
+whose halt is silent.
+
+Fargo takes its inputs differently from every other reader here.  It reads
+a single *number* before the program starts and ``@ k`` indexes that
+number's bits, so the committed input is the row index -- one line, ``1``
+for the ``0,1`` row of a two-input table -- rather than a line per bit.
+
 Two languages used to fail that test and no longer do.  Back's answer was
 the cell *under the head*, which the tape dump does not locate; the
 generator now writes the result into a single answer cell, so the dump
@@ -51,9 +64,10 @@ from esolangs.tools.boolean.helpers import instantiate
 from esolangs.tools.boolean.parameterized import _instantiate_arrowqueue
 from esolangs.tools.wrap import DEFAULT_WIDTH, takes_width, wrap_program
 
-# Truth tables used below, named for readability.
+# The committed programs all witness the same two-input function and row:
+# AND2 evaluated on 0,1.  The generator suites cover the other tables and
+# rows; keeping this corpus uniform makes the files directly comparable.
 AND2 = "0001"
-XOR2 = "0110"
 
 
 @dataclass(frozen=True)
@@ -64,8 +78,13 @@ class BooleanExample:
     ``fill`` is set, the template that ``fill`` instantiates with ``bits``).
     ``interpreter`` is the dotted module under ``esolangs.interpreters``,
     ``split`` passes the program as lines rather than one string, and
-    ``kwargs`` holds extra ``run()`` arguments.  ``inputs`` are the stdin
-    lines (empty for the parameterized languages, whose bits are embedded).
+    ``kwargs`` holds extra ``run()`` arguments.  Those are ints, so a
+    language needing a *source of chance* pinned -- LaserFuck, whose
+    initial heading is drawn -- names ``seed`` and the runner turns it into
+    a ``Seeded``; there is no way to spell an object in this field, and a
+    seed is the reproducible thing worth committing anyway.  ``inputs`` are
+    the stdin lines (empty for the parameterized languages, whose bits are
+    embedded).
     ``expected`` is the program's whole stdout.
     """
 
@@ -432,6 +451,20 @@ def _fill_minifuck(template: str, bits: list[int]) -> str:
     )
 
 
+def _fill_one_two_three(template: str, bits: list[int]) -> str:
+    """Embed each bit as the generator's own ``ONE``/``ZERO`` command.
+
+    123 names the two spellings itself rather than leaving them to a
+    convention here, so this reads them from the generator instead of
+    repeating the characters -- the pair is one edit away from changing and
+    a copy would not follow it.  Both are a single command, so the
+    instantiations share a length.
+    """
+    from esolangs.tools.boolean.one_two_three import ONE, ZERO
+
+    return instantiate(template, bits, lambda _i, b: ONE if b else ZERO)
+
+
 def _fill_pct_squared_minus_one(template: str, bits: list[int]) -> str:
     """Substitute each bit's setter, named by the template's own header.
 
@@ -462,9 +495,7 @@ def _register() -> None:
     from esolangs.tools import boolean as b
 
     reading = {
-        "addsubjump": _reader(
-            b.addsubjump, "register_based.addsubjump", table=XOR2, expected="1"
-        ),
+        "addsubjump": _reader(b.addsubjump, "register_based.addsubjump"),
         # An executed line prints its result and nothing else, so the
         # answer arrives with the newline that ends that line.
         "algebraic-programming-language": _reader(
@@ -475,7 +506,7 @@ def _register() -> None:
         ),
         "basicfuck": _reader(b.basicfuck, "tape_based.basicfuck"),
         "between": _reader(b.between, "register_based.between", split=True),
-        "bfstack": _reader(b.bfstack, "stack_based.bfstack", table=XOR2, expected="1"),
+        "bfstack": _reader(b.bfstack, "stack_based.bfstack"),
         "bit~": _reader(b.bit_tilde, "tape_based.bit_tilde"),
         "brainfuck": _reader(b.brainfuck, "tape_based.brainfuck"),
         "brainif": _reader(b.brainif, "tape_based.brainif", split=True),
@@ -507,10 +538,23 @@ def _register() -> None:
             "grid_based.clockwise",
             split=True,
         ),
+        "cvnc": _reader(b.cvnc, "other.cvnc"),
         "decleq": _reader(b.decleq, "register_based.decleq"),
-        "dig": _reader(b.dig, "grid_based.dig", table=XOR2, expected="1", split=True),
+        "dig": _reader(b.dig, "grid_based.dig", split=True),
         "dimensional": _reader(b.dimensional, "tape_based.dimensional"),
         "factor": _reader(b.factor, "tape_based.factor"),
+        # Fargo reads one *number* before the program starts, not a bit per
+        # line, and ``@ k`` indexes that number's bits.  The boolean
+        # convention is therefore to feed the row index: the inputs
+        # most-significant-first are its binary digits, so the 0,1 row of a
+        # two-input table is the single line "1".
+        "fargo": _reader(
+            b.fargo,
+            "other.fargo",
+            inputs=("1",),
+            note="Fargo reads one number whose bits are the inputs, so the "
+            "committed input is the row index rather than a bit per line",
+        ),
         "flowchart": _reader(b.flowchart, "grid_based.flowchart", split=True),
         "forbin": _reader(b.forbin_boolean, "other.forbin"),
         "forþ": _reader(b.forth, "stack_based.forth"),
@@ -521,8 +565,11 @@ def _register() -> None:
             "grid_based.laserfuck",
             split=True,
             expected="0",
-            kwargs=_kw(heading=3),
-            note="the initial heading is random by spec, so the example pins it",
+            kwargs=_kw(seed=0),
+            note=(
+                "the initial heading is random by spec, so the example pins "
+                "the source it is drawn from: seed 0 draws heading 3"
+            ),
         ),
         "modulous": _reader(b.modulous, "stack_based.modulous"),
         "myscript": _reader(b.myscript, "register_based.myscript"),
@@ -546,8 +593,12 @@ def _register() -> None:
         "qoibl": _reader(b.qoibl, "register_based.qoibl", split=True),
         "rotfuck": _reader(b.rotfuck, "tape_based.rotfuck"),
         "s*bleq": _reader(b.sbleq, "tape_based.sbleq"),
+        "slow-acv-mammalian": _reader(
+            b.slow_acv_mammalian_boolean, "tape_based.slow_acv_mammalian"
+        ),
         "sophie": _reader(b.sophie, "register_based.sophie"),
         "streetcode": _reader(b.streetcode, "grid_based.streetcode", split=True),
+        "super-snusp": _reader(b.super_snusp, "grid_based.super_snusp", split=True),
         "suffolk": _reader(b.suffolk, "tape_based.suffolk"),
         "suptiftam": _reader(b.suptiftam, "other.suptiftam"),
         "taglate": _reader(b.taglate, "queue_based.taglate", split=True),
@@ -593,14 +644,12 @@ def _register() -> None:
             b.cod,
             "grid_based.cod",
             _fill_cod,
-            table=XOR2,
-            bits=(1, 1),
-            kwargs=_kw(limit=500),
             note="COD has no runtime input and no I/O but a printed number",
         ),
         "eval": _embedded(b.eval, "stack_based.eval", _fill_eval),
         "home-row": _embedded(b.home_row, "tape_based.home_row", _fill_home_row),
         "lamfunc": _embedded(b.lamfunc, "other.lamfunc", _fill_lamfunc),
+        "minifuck": _embedded(b.minifuck, "tape_based.minifuck", _fill_minifuck),
         "minsky-swap": _embedded(
             b.minsky_swap,
             "register_based.minsky_swap",
@@ -626,9 +675,26 @@ def _register() -> None:
             b.wii2d,
             "grid_based.wii2d",
             _fill_wii2d,
-            bits=(1, 1),
-            expected="1",
             split=True,
+        ),
+        "pct-squared-minus-one": _embedded(
+            b.pct_squared_minus_one,
+            "register_based.pct_squared_minus_one",
+            _fill_pct_squared_minus_one,
+        ),
+        # 123 answers with the termination convention, as ArrowQueue does, so
+        # only the halting (0) branch is committed.  The 1,0 row halts too but
+        # prints a stray 0x80 on its way out; 0,1 halts silently, so it is the
+        # row whose committed output is the clean empty string.
+        "123": _embedded(
+            b.one_two_three,
+            "tape_based.one_two_three",
+            _fill_one_two_three,
+            expected="",
+            note=(
+                "123 has no output: the program halts for a 0 result and loops "
+                "forever for a 1, so only the halting branch is committed"
+            ),
         ),
         "arrowqueue": _embedded(
             b.arrowqueue,
@@ -653,15 +719,18 @@ def _register() -> None:
 _register()
 
 # Committed programs that no current generator produces, so they are run as
-# behaviour tests but exempt from the generator-match check.  Minifuck's
-# entry is kept for a different reason than it was written: the language now
-# has a generator again, but that one is *parameterized* and embeds its
-# inputs, while this program reads them at runtime -- the construction the
-# old, removed generator used.  It is the only committed record of that
-# reading model, which `docs/walls.md` still characterizes.
-HAND_WRITTEN: dict[str, tuple[str, tuple[str, ...], str, bool]] = {
-    # stem -> (interpreter, inputs, expected, split)
-    "minifuck": ("tape_based.minifuck", ("0", "1"), "0", False),
-}
+# behaviour tests but exempt from the generator-match check.
+#
+# Empty since Minifuck's entry was retired.  That program was the last
+# hand-written one: it read its inputs at runtime, the construction the old,
+# removed generator used, and was kept as the only committed record of that
+# reading model.  Minifuck's shipped generator is parameterized and embeds
+# its inputs, so ``examples/boolean/minifuck.txt`` is now generated like
+# every other file and the reading model survives as prose in
+# ``docs/minifuck_generator.md`` rather than as a program nothing produces.
+#
+# The mechanism is kept rather than deleted: it costs one empty dict and is
+# what a future committed-but-ungenerated program would use.
+HAND_WRITTEN: dict[str, tuple[str, tuple[str, ...], str, bool]] = {}
 
-__all__ = ["AND2", "BOOLEAN_EXAMPLES", "HAND_WRITTEN", "XOR2", "BooleanExample"]
+__all__ = ["AND2", "BOOLEAN_EXAMPLES", "HAND_WRITTEN", "BooleanExample"]

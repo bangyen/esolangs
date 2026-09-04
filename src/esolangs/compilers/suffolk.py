@@ -19,8 +19,13 @@ def count(code: str, ind: int) -> int:
     return num
 
 
-def comp(code: str, num: int) -> str:
-    """Compile a Suffolk program to RISC-V assembly, looping ``num`` times."""
+def comp(code: str, num: int = 1) -> str:
+    """Compile a Suffolk program to RISC-V assembly, looping ``num`` times.
+
+    ``num`` defaults to one so that ``comp(code)`` is callable exactly as
+    every other compiler in this package is; a driver iterating the
+    compilers then needs no special case for this one.
+    """
     code = sub("[^><.,!]", "", code)
     res = (
         "    .text\n"
@@ -146,12 +151,7 @@ def comp(code: str, num: int) -> str:
     return res
 
 
-if __name__ == "__main__":
-    loop = int(sys.argv[2]) if len(sys.argv) > 2 else 1
-
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as f:
-            data = f.read()
-
-        with open("output.asm", "w") as f:
-            f.write(comp(data, loop))
+if __name__ == "__main__":  # pragma: no cover
+    with open(sys.argv[1]) as _source:
+        _loop = int(sys.argv[2]) if len(sys.argv) > 2 else 1
+        print(comp(_source.read(), _loop), end="")

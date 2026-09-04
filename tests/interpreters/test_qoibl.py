@@ -438,8 +438,7 @@ class TestQoiblCycleDetection:
         from esolangs.interpreters.register_based.qoibl import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
-        state = _Machine(io=ScriptedIO(""))
-        state.code = tokenize("we y we yyeeee we\ntt qe y qe tt")
+        state = _Machine("we y we yyeeee we\ntt qe y qe tt", ScriptedIO(""))
         assert run_until_halt_or_cycle(state) is True
 
     def test_the_snapshot_moves_when_a_statement_runs(self) -> None:
@@ -447,8 +446,7 @@ class TestQoiblCycleDetection:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.qoibl import _Machine
 
-        state = _Machine(io=ScriptedIO(""))
-        state.code = tokenize("we y we yyeeee we\ntt qe y qe tt")
+        state = _Machine("we y we yyeeee we\ntt qe y qe tt", ScriptedIO(""))
         before = state.snapshot()
         state.step()
         assert state.snapshot() != before
@@ -470,9 +468,8 @@ class TestQoiblIncompleteTokens:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.qoibl import _Machine
 
-        state = _Machine(io=ScriptedIO(""))
-        state.code = tokenize("w")
-        assert state.code == [[]]
+        state = _Machine("w", ScriptedIO(""))
+        assert state.code == ([],)
         state.step()
         assert state.halted
 

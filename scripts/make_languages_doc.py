@@ -82,7 +82,7 @@ _EXTRA_DIRS = [
 ]
 
 # Display names of the languages with a cross-check implementation in extra/
-# (Lean or RISC-V assembly).  These interpreters run as
+# (RISC-V assembly).  These interpreters run as
 # standalone programs rather than through the Python package.
 NATIVE = {name for _, _, names, _ in _EXTRA_DIRS for name in names.values()}
 
@@ -182,17 +182,23 @@ def render() -> str:
         "",
         "Python means an in-repo interpreter under `esolangs.interpreters`;",
         "Cross-check means an implementation in `extra/` that runs as a",
-        "standalone program (Lean or RISC-V assembly), used to",
+        "standalone program (RISC-V assembly), used to",
         "differentially verify the Python interpreter.  The Boolean",
         "column marks the boolean-function generators; the no-input "
         "languages (Back, BIO, NoComment, BF-PDA, Lamfunc, Bitdeque, RAM0, "
         "Minsky Swap, Eval, ArrowQueue, A Painter Ant, WII2D) use "
         "parameterized generators (the harness substitutes input bits into "
-        "a template).  Minifuck and %^2^-1 use parameterized generators too, "
-        "for a different reason: both *have* an input command, but neither "
-        "can branch on what it reads, so their reading models are walled "
-        "(the %^2^-1 wall is proved in Lean) and embedding is what reaches "
-        "the two-input tables.  %^2^-1 goes further: a subcube cascade "
+        "a template).  Cod, Minifuck and %^2^-1 use parameterized "
+        "generators too, for three different reasons: each *has* an input "
+        "command, but reading is walled, weaker, or awkward.  %^2^-1 is the "
+        "walled one -- no program that reads its inputs computes any "
+        "two-input function, proved in `docs/proofs.md`.  Minifuck reads "
+        "fine (a reading construction builds all sixteen two-input tables) "
+        "but stops at two inputs, where embedding is total at every arity. "
+        " Cod's input command is `...` on an edge, which this interpreter "
+        "treats as three separate reads, so a reading generator would have "
+        "to route every crossing horizontally.  %^2^-1 goes further: a "
+        "subcube cascade "
         "builds every conjunction or disjunction of literals at any arity, "
         "a composed-affine derivation adds the tables that are no subcube, a "
         "threshold ladder adds the ones neither reaches by letting the "
@@ -237,7 +243,7 @@ def render_languages_section() -> str:
         "",
     ]
     groups: dict[str, list[str]] = {prefix: [] for prefix, _, _ in _README_HEADINGS}
-    for name, (module, _, _) in RUNNERS.items():
+    for name, (module, _) in RUNNERS.items():
         groups[module.split(".")[0]].append(name)
 
     for prefix, heading, description in _README_HEADINGS:

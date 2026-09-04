@@ -23,6 +23,7 @@ import sys
 
 from riscv_elf_runner import assemble_source, run_elf
 
+from esolangs.registry import COMPILERS
 from esolangs.tools import boolean as gen_bool
 from esolangs.tools import text as gen
 
@@ -209,6 +210,17 @@ COMPILER_CASES.append(
 def main() -> int:
     """Verify the RISC-V compilers under Unicorn, reporting failures."""
     failures = 0
+
+    # Every registered backend must have at least one case here.  The cases
+    # themselves are hand-written -- a compiler needs a program and an
+    # expected output that someone chose -- but *which* backends are covered
+    # is derived, so a new one cannot be silently left unverified by nobody
+    # remembering to append it.  check_compilers.py closes the other half:
+    # a module missing from the registry.
+    covered = {module for _, module, *_ in COMPILER_CASES}
+    for uncovered in sorted(set(COMPILERS.values()) - covered):
+        failures += 1
+        print(f"{uncovered}: registered compiler has no case in COMPILER_CASES")
     for name, path, generator in GENERATOR_CASES:
         with open(path) as f:
             binary = assemble_source(f.read())
@@ -226,8 +238,7 @@ def main() -> int:
         print(f"{name}: {'ok' if ok else 'FAIL'} -> {out!r} (exit {code})")
     for name, module, source, expected, *rest in COMPILER_CASES:
         comp = importlib.import_module(f"esolangs.compilers.{module}").comp
-        args = (source, 1) if module == "suffolk" else (source,)
-        binary = assemble_source(comp(*args))
+        binary = assemble_source(comp(source))
         stdin = rest[0].encode("latin-1") if rest else b""
         out, _ = run_elf(binary, stdin)
         # latin-1: one byte per expected char; UTF-8 would expand 0x80+ to

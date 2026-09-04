@@ -41,6 +41,34 @@ one will continue and one will go back; if there are three, they will each
 go different forward branches" (the fourth "otherwise random" case cannot
 occur on a rectangular grid, where at most three cells besides the entry
 exist).  The program terminates once no cod remains.
+
+Malformed programs -- an unknown instruction, no ``>`` start marker, more
+than one of them, or a start that is fully enclosed -- raise
+:class:`ValueError`.  A read also raises :class:`ValueError` when the line
+it is given is not an integer, since a read parses its line as a number.
+
+``run()`` has no local step cap: a cod with nowhere to die simply keeps
+swimming, the same growth class ``+[>+]`` hits in brainfuck, and
+``esolangs.run(timeout=)`` is the uniform backstop for that class across
+every language here, not a per-interpreter bound.  An earlier version of
+this docstring argued COD's own ``limit`` was different in kind --
+"duration, not guard" -- because raising past it would turn the wiki's
+truth machine, which loops forever by design, into an error.  That
+argument does not survive execution: the truth machine's partial output
+lives in ``io`` as it is printed, so a caller stopping the loop after
+``timeout`` still has every character printed so far, exactly as
+Polynomial and Decleq's callers do.  A caller wanting to tell "still
+running" from "every cod died" steps the machine itself and reads
+``halted``.
+
+The wiki does not say what a read does once stdin is exhausted.  ``EOF``
+propagates here rather than being taken as a value: a cod's value is an
+unbounded signed integer, so there is no in-band number that could stand
+for "no input" the way a zero byte does in a byte-celled language, and
+inventing one would make an exhausted read indistinguishable from reading
+a real 0.  The move onto the dot is committed before the read is taken, so
+the machine's state stays consistent when the port raises -- a cod that
+died reading sits on the dot it swam to, not the cell behind it.
 """
 
 import sys
@@ -161,6 +189,12 @@ class _Read:
 
 type _Effect = _Print | _Read
 
+#: Every value a COD tick can change: the ordered collection of live cods.
+#: Each cod is frozen and a tick already builds its successors, so the
+#: collection is a value too.  The grid is fixed for a run and ports stay in
+#: the shell.
+type _State = tuple[_Cod, ...]
+
 
 def _step_cod(
     cod: _Cod,
@@ -254,7 +288,7 @@ class _Machine:
         self._edge_dashes = _edge_dash_cells(self.grid)
         self._edge_dots = _edge_dot_cells(self.grid)
 
-        self.cods: list[_Cod] = []
+        cods: list[_Cod] = []
         started = False
         for r, row in enumerate(self.grid):
             for c, ch in enumerate(row):
@@ -266,9 +300,10 @@ class _Machine:
                     if not opens:
                         raise ValueError("cod start is fully enclosed")
                     d = opens[0] if len(opens) == 1 else self._choose(opens)
-                    self.cods.append(_Cod(r, c, d, 0))
+                    cods.append(_Cod(r, c, d, 0))
         if not started:
             raise ValueError("no cod start marker '>'")
+        self.cods: _State = tuple(cods)
 
     # -- geometry -----------------------------------------------------
 
@@ -319,6 +354,15 @@ class _Machine:
             self.io.position(),
         )
 
+    @property
+    def _state(self) -> _State:
+        """The complete changing state at a cod-tick boundary."""
+        return self.cods
+
+    def _restore(self, state: _State) -> None:
+        """Write a tick transition back onto the machine shell."""
+        self.cods = state
+
     # -- stepping ---------------------------------------------------------
 
     def step(self) -> None:
@@ -331,10 +375,11 @@ class _Machine:
         carried.  A junction's draw is made here too, and only when more
         than one way out is open.
         """
-        if not self.cods:
+        state = self._state
+        if not state:
             return
         next_cods: list[_Cod] = []
-        remaining = list(self.cods)
+        remaining = state
         for index, cod in enumerate(remaining):
             turn = None
             if not _open(self.grid, cod.r + _DIRS[cod.d][0], cod.c + _DIRS[cod.d][1]):
@@ -351,24 +396,20 @@ class _Machine:
                     # The cod has already swum onto the dot by the time it
                     # reads, and the original left it there when the port
                     # raised at EOF -- so commit the move first.
-                    self.cods = [*next_cods, *grown, *remaining[index + 1 :]]
+                    self._restore((*next_cods, *grown, *remaining[index + 1 :]))
                     read = self.io.input_num()
                     grown = [
                         _Cod(k.r, k.c, k.d, read) if i == effect.index else k
                         for i, k in enumerate(grown)
                     ]
             next_cods.extend(grown)
-        self.cods = next_cods
+        self._restore(tuple(next_cods))
 
 
-def run(
-    code: str, io: IO, limit: int = 1_000_000, rng: Randomness | None = None
-) -> None:
-    """Run a COD program until no cod remains, or ``limit`` steps elapse."""
+def run(code: str, io: IO, rng: Randomness | None = None) -> None:
+    """Run a COD program until no cod remains."""
     machine = _Machine(code, io, rng=rng)
-    for _ in range(limit):
-        if machine.halted:
-            break
+    while not machine.halted:
         machine.step()
 
 

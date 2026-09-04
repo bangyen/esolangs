@@ -1570,7 +1570,7 @@ class TestJaune:
             (7, 123),
             (123, 456),
             (12345, 6789),
-            (99999, 99999),
+            pytest.param(99999, 99999, marks=pytest.mark.slow),  # 1.3s
         ],
     )
     def test_multiply(self, a: int, b: int) -> None:

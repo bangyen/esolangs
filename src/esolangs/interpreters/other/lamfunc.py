@@ -53,7 +53,7 @@ runs) is left as native recursion, a narrower and much less likely limit.
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Hashable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import Literal, cast
 
@@ -550,17 +550,52 @@ def _advance(
     return _step_body(frame, view, vars_, ind, main)
 
 
+@dataclass
+class _State:
+    """Every changing value in a Lamfunc run.
+
+    Frames remain a mutable effect-owned stack so deep recursion does not
+    copy it on every step; grouping it here still makes that ownership part
+    of the machine's one authoritative state boundary.
+    """
+
+    vars: _Vars
+    ind: int
+    frames: list[_Frame]
+
+
 class _Machine:
     """One Lamfunc run: the definitions, variables, cursor, and call stack."""
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
         self.defs, self.main = _parse_program(code)
-        self.vars: _Vars = {}
-        self.ind = 0
-        self.frames: list[_Frame] = []
+        self.state = _State({}, 0, [])
         if self.main:
             self.frames.append(_Frame(self.main, 0, start=0))
+
+    @property
+    def variables(self) -> _Vars:
+        """The variable mapping, retained for the transition helpers."""
+        return self.state.vars
+
+    @variables.setter
+    def variables(self, vars_: _Vars) -> None:
+        self.state.vars = vars_
+
+    @property
+    def ind(self) -> int:
+        """The top-level call cursor."""
+        return self.state.ind
+
+    @ind.setter
+    def ind(self, ind: int) -> None:
+        self.state.ind = ind
+
+    @property
+    def frames(self) -> list[_Frame]:
+        """The effect-owned frame stack."""
+        return self.state.frames
 
     @property
     def halted(self) -> bool:
@@ -578,7 +613,7 @@ class _Machine:
     @property
     def memory(self) -> list[int]:
         """The addressable cells."""
-        return [v for v in self.vars.values() if type(v) is int]
+        return [v for v in self.variables.values() if type(v) is int]
 
     @property
     def stack(self) -> list[object]:
@@ -599,7 +634,7 @@ class _Machine:
         """
         return (
             self.ind,
-            tuple(sorted((k, repr(v)) for k, v in self.vars.items())),
+            tuple(sorted((k, repr(v)) for k, v in self.variables.items())),
             tuple(
                 (
                     id(f.tokens),
@@ -612,6 +647,28 @@ class _Machine:
                     f.awaiting_result,
                 )
                 for f in self.frames
+            ),
+            self.io.position(),
+        )
+
+    def frame_entry_key(self, frame: _Frame) -> Hashable:
+        """Return a call body's entry state for the ancestor check.
+
+        ``frames`` also holds short-lived evaluator continuations while a
+        call gathers arguments.  Repeating one of those is not itself a
+        recursive call, so each gets a private marker.  A ``body`` frame is
+        the call boundary: its immutable token list identifies the function
+        body, and the flat variable map carries its parameter bindings and
+        all state a recursive body can read.  See
+        :func:`esolangs.vm.run_until_halt_or_ancestor`.
+        """
+        if frame.phase != "body":
+            return ("continuation", object())
+        return (
+            "body",
+            id(frame.tokens),
+            tuple(
+                sorted((name, repr(value)) for name, value in self.variables.items())
             ),
             self.io.position(),
         )
@@ -640,7 +697,7 @@ class _Machine:
             return
 
         (pops, pushes), variables, ind, output = _advance(
-            self.frames, self.vars, self.ind, self.defs, self.main
+            self.frames, self.variables, self.ind, self.defs, self.main
         )
         if pops:
             del self.frames[len(self.frames) - pops :]
@@ -648,7 +705,7 @@ class _Machine:
         # Held as returned, not copied: the transition already built a
         # fresh mapping for any step that changed one, so copying it
         # again would be a per-step cost in the size of the store.
-        self.vars = variables
+        self.variables = variables
         self.ind = ind
         if output is not None:
             self.io.print_str(output)

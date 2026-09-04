@@ -28,6 +28,16 @@ def _run_all(vm: VM) -> str:
     return vm.output
 
 
+def _painfuck_source(targets: str) -> str:
+    """Encode direct Painfuck commands through its source translation."""
+    cycles = ("pevkjzwr", "yuctsobqihald")
+    out: list[str] = []
+    for index, target in enumerate(targets):
+        cycle = next(cycle for cycle in cycles if target in cycle)
+        out.append(cycle[(cycle.index(target) - index) % len(cycle)])
+    return "".join(out)
+
+
 class TestProtocol:
     def test_implements_vm_protocol(self) -> None:
         assert isinstance(esolangs.make_vm("brainfuck", "+"), VM)
@@ -167,12 +177,17 @@ class TestLaserFuck:
         assert vm.output == "\x01"
 
     def test_dump_output_matches_interpreter(self) -> None:
+        from esolangs.interpreters.grid_based.laserfuck import _Machine as _LFMachine
         from esolangs.interpreters.grid_based.laserfuck import run as lf_run
         from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.randomness import Seeded
 
         program = "\u00ff   x\n    +\n    o"
         io_obj = ScriptedIO()
-        lf_run(program.splitlines(), io_obj, heading=0)
+        # The VM builds its machine with ``Seeded(reproducible_seed)``, so
+        # handing ``run`` the same source is what makes the two sides
+        # comparable -- the heading is drawn, not passed, on both.
+        lf_run(program.splitlines(), io_obj, rng=Seeded(_LFMachine.reproducible_seed))
         vm = esolangs.make_vm("LaserFuck", program)
         _run_all(vm)
         vm.step()  # the dump, which run performs as its own last step
@@ -1034,6 +1049,128 @@ class TestRunUntilHaltOrCycle:
         )
         assert run_until_halt_or_cycle(machine) is False
 
+    def test_wii2d_all_random_turns_can_be_proved_to_loop(self) -> None:
+        """Every heading from ``?`` returns to this two-cell ring.
+
+        Running one seeded trace would only show that seed loops.  The
+        branching detector must visit all four headings and may return a
+        hang verdict only after they merge back into the same finite graph.
+        The two fixed traces are the execution control: both are actual
+        interpreter runs, not a hand-written successor table.
+        """
+        from esolangs.interpreters.grid_based.wii2d import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.randomness import FirstDraw
+        from esolangs.vm import (
+            run_until_halt_or_all_branches_cycle,
+            run_until_halt_or_cycle,
+        )
+
+        code = [">?", "! "]
+        assert (
+            run_until_halt_or_all_branches_cycle(_Machine(code, ScriptedIO())) is False
+        )
+        for turn in range(4):
+            assert (
+                run_until_halt_or_cycle(
+                    _Machine(code, ScriptedIO(), FirstDraw(turn, rest=turn))
+                )
+                is False
+            )
+
+    def test_wii2d_one_halting_turn_refutes_an_all_branches_hang(self) -> None:
+        from esolangs.interpreters.grid_based.wii2d import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.randomness import FirstDraw
+        from esolangs.vm import (
+            run_until_halt_or_all_branches_cycle,
+            run_until_halt_or_cycle,
+        )
+
+        # East or west lands on '.', while north/south return to '?'.
+        code = ["?.", "! "]
+        assert (
+            run_until_halt_or_all_branches_cycle(_Machine(code, ScriptedIO())) is True
+        )
+        assert (
+            run_until_halt_or_cycle(_Machine(code, ScriptedIO(), FirstDraw(3))) is True
+        )
+        assert (
+            run_until_halt_or_cycle(_Machine(code, ScriptedIO(), FirstDraw(0, rest=0)))
+            is False
+        )
+
+    def test_painfuck_all_coin_outcomes_can_be_proved_to_loop(self) -> None:
+        """Either ``y`` outcome reaches a loop close and returns to ``a``."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.randomness import FirstDraw
+        from esolangs.interpreters.tape_based.painfuck import _Machine
+        from esolangs.vm import (
+            run_until_halt_or_all_branches_cycle,
+            run_until_halt_or_cycle,
+        )
+
+        # p makes the loop live; y either takes the first b or skips to the
+        # second, and both b commands return to a.
+        code = _painfuck_source("paybb")
+        assert (
+            run_until_halt_or_all_branches_cycle(_Machine(code, ScriptedIO())) is False
+        )
+        for coin in (0, 1):
+            assert (
+                run_until_halt_or_cycle(
+                    _Machine(code, ScriptedIO(), FirstDraw(coin, rest=coin))
+                )
+                is False
+            )
+
+    def test_painfuck_one_halting_coin_refutes_an_all_branches_hang(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.randomness import FirstDraw
+        from esolangs.interpreters.tape_based.painfuck import _Machine
+        from esolangs.vm import (
+            run_until_halt_or_all_branches_cycle,
+            run_until_halt_or_cycle,
+        )
+
+        code = _painfuck_source("payb")
+        assert (
+            run_until_halt_or_all_branches_cycle(_Machine(code, ScriptedIO())) is True
+        )
+        assert (
+            run_until_halt_or_cycle(_Machine(code, ScriptedIO(), FirstDraw(1))) is True
+        )
+        assert (
+            run_until_halt_or_cycle(_Machine(code, ScriptedIO(), FirstDraw(0, rest=0)))
+            is False
+        )
+
+    def test_branching_search_leaves_unbounded_or_input_paths_undecided(self) -> None:
+        from esolangs.interpreters.grid_based.wii2d import _Machine as Wii2dMachine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.painfuck import (
+            _Machine as PainfuckMachine,
+        )
+        from esolangs.vm import run_until_halt_or_all_branches_cycle
+
+        with pytest.raises(TimeoutError, match="reachable graph may be unbounded"):
+            run_until_halt_or_all_branches_cycle(
+                Wii2dMachine([">?", "! "], ScriptedIO()), limit=1
+            )
+        # A source program whose translation is the direct target 'j'.
+        # The detector must not let sibling paths share its input cursor.
+        with pytest.raises(TimeoutError, match="needs input"):
+            run_until_halt_or_all_branches_cycle(
+                PainfuckMachine(_painfuck_source("j"), ScriptedIO("A\n"))
+            )
+        # c repeats y 49 times.  Limiting the frontier at the transition,
+        # rather than after materializing its 2**49 outcomes, is what keeps
+        # the detector a bounded attempt rather than an accidental OOM.
+        with pytest.raises(TimeoutError, match="coin outcomes"):
+            run_until_halt_or_all_branches_cycle(
+                PainfuckMachine(_painfuck_source("ccy"), ScriptedIO()), limit=4
+            )
+
     def test_input_cursor_is_part_of_the_snapshot(self) -> None:
         """A loop that reads fresh input each pass is not a false cycle.
 
@@ -1064,7 +1201,7 @@ class TestRunUntilHaltOrCycle:
         from esolangs.vm import run_until_halt_or_cycle
 
         # a=0 b=0 c=3: diff (0-0=0) jumps to mem[3], which is negative -> halts
-        machine = _Machine(io=ScriptedIO(), mem=(0, 0, 3, -1), store="a")
+        machine = _Machine("0 0 3 -1", ScriptedIO(), store="a")
         assert run_until_halt_or_cycle(machine) is True
 
     def test_sbleq_looping_run_is_detected_as_a_cycle(self) -> None:
@@ -1073,7 +1210,7 @@ class TestRunUntilHaltOrCycle:
         from esolangs.vm import run_until_halt_or_cycle
 
         # a=0 b=0 c=2: diff is always 0, so it jumps to mem[2] (address 0) forever
-        machine = _Machine(io=ScriptedIO(), mem=(0, 0, 0), store="a")
+        machine = _Machine("0 0 0", ScriptedIO(), store="a")
         assert run_until_halt_or_cycle(machine) is False
 
     def test_dimensional_halting_run_returns_true(self) -> None:
@@ -1098,9 +1235,8 @@ class TestRunUntilHaltOrCycle:
         from esolangs.interpreters.stack_based.modulous import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
-        state = _Machine(var={f"VAR{k}": 0 for k in range(1, 5)}, io=ScriptedIO())
-        state.tokens = ["END"]
-        assert run_until_halt_or_cycle(state) is True
+        machine = _Machine("[END]", ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is True
 
     def test_modulous_looping_run_is_detected_as_a_cycle(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -1108,26 +1244,27 @@ class TestRunUntilHaltOrCycle:
         from esolangs.vm import run_until_halt_or_cycle
 
         # RST resets the pointer to the start of the program on every pass
-        state = _Machine(var={f"VAR{k}": 0 for k in range(1, 5)}, io=ScriptedIO())
-        state.tokens = ["RST"]
-        assert run_until_halt_or_cycle(state) is False
+        machine = _Machine("[RST]", ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is False
 
     def test_laserfuck_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.grid_based.laserfuck import _Machine
         from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.randomness import FirstDraw
         from esolangs.vm import run_until_halt_or_cycle
 
-        machine = _Machine(["o"], ScriptedIO(), heading=0)
+        machine = _Machine(["o"], ScriptedIO(), rng=FirstDraw(0))
         assert run_until_halt_or_cycle(machine) is True
 
     def test_laserfuck_looping_run_is_detected_as_a_cycle(self) -> None:
         from esolangs.interpreters.grid_based.laserfuck import _Machine
         from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.randomness import FirstDraw
         from esolangs.vm import run_until_halt_or_cycle
 
         # a closed ring of mirrors the laser circles forever
         grid = ["/ \\", "\\o/", "//\\"]
-        machine = _Machine(grid, ScriptedIO(), heading=2)
+        machine = _Machine(grid, ScriptedIO(), rng=FirstDraw(2))
         assert run_until_halt_or_cycle(machine) is False
 
     def test_slow_acv_mammalian_halting_run_returns_true(self) -> None:
@@ -1221,6 +1358,24 @@ class TestRunUntilHaltOrCycle:
         machine = _Machine(code, ScriptedIO())
         assert run_until_halt_or_cycle(machine) is True
 
+    def test_lamfunc_replayed_call_is_detected_as_an_ancestor(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.lamfunc import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        machine = _Machine("F loop - loop\nloop", ScriptedIO())
+        assert run_until_halt_or_ancestor(machine) is False
+
+    def test_lamfunc_changing_call_binding_halts(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.lamfunc import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        # The lazy branch re-enters loop with a smaller x, so identical
+        # evaluator continuations must not be mistaken for recursive calls.
+        code = "F loop x - i x loop fb x 0\nloop 0b1000"
+        assert run_until_halt_or_ancestor(_Machine(code, ScriptedIO())) is True
+
     def test_forbin_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.other.forbin import _Machine
@@ -1247,6 +1402,89 @@ class TestRunUntilHaltOrCycle:
 
         machine = _Machine("x=7", ScriptedIO())
         assert run_until_halt_or_cycle(machine) is True
+
+    def test_suptiftam_replayed_call_is_detected_as_an_ancestor(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.suptiftam import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        code = "\n".join(["fd loop :x", "loop(:x:)", "fi", "loop(:1:)"])
+        assert run_until_halt_or_ancestor(_Machine(code, ScriptedIO())) is False
+
+    def test_suptiftam_changing_global_halts(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.suptiftam import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        # The argument is unchanged, but the global countdown makes each
+        # call distinct and reaches the condition's base case.
+        code = "\n".join(
+            [
+                "n=3",
+                "fd loop :x",
+                "n=%-[n]1%",
+                "loop(:x:)if(n)",
+                "fi",
+                "loop(:0:)",
+            ]
+        )
+        assert run_until_halt_or_ancestor(_Machine(code, ScriptedIO())) is True
+
+    def test_forth_replayed_scope_is_detected_as_an_ancestor(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.forth import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        # Store 1; under key 1, then have that scope call itself forever.
+        assert run_until_halt_or_ancestor(_Machine("1{1;}1;", ScriptedIO())) is False
+
+    def test_forth_changing_stack_halts(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.forth import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        # The scope decrements its shared counter before conditionally
+        # calling itself, so every entered scope has a different binding.
+        assert (
+            run_until_halt_or_ancestor(_Machine("1{1-(1;)}3v;", ScriptedIO())) is True
+        )
+
+    def test_jaune_replayed_subroutine_is_detected_as_an_ancestor(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.jaune import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        # Main calls subroutine 1, whose body immediately calls itself.
+        assert run_until_halt_or_ancestor(_Machine("1@.1$1@;", ScriptedIO())) is False
+
+    def test_jaune_changing_tape_halts(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.jaune import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        # Subroutine 1 decrements the tape then recurs until the zero case
+        # jumps to its return, so the tape belongs in the entry key.
+        code = "3+1@.1$1-2!1@;2:;"
+        assert run_until_halt_or_ancestor(_Machine(code, ScriptedIO())) is True
+
+    def test_grapheme_replayed_function_is_detected_as_an_ancestor(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.grapheme import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        # The function invokes itself without changing the shared state.
+        assert run_until_halt_or_ancestor(_Machine("HKGHKG", ScriptedIO())) is False
+
+    def test_grapheme_changing_stack_halts(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.grapheme import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        # The function decrements the count before Q recurs, so each entry
+        # has a different shared stack and reaches the zero base case.
+        program = "H" + "FFTBKFAFDQ" + "H" + "FAFC" + "FAFD" + "G"
+        code = "FAF" + program
+        assert run_until_halt_or_ancestor(_Machine(code, ScriptedIO())) is True
 
 
 class TestFactory:
@@ -1351,7 +1589,7 @@ class TestEveryLanguageIsSteppable:
         from esolangs.registry import RUNNERS
 
         without: list[str] = []
-        for language, (module_path, _split, _kwargs) in sorted(RUNNERS.items()):
+        for language, (module_path, _split) in sorted(RUNNERS.items()):
             module = importlib.import_module(f"esolangs.interpreters.{module_path}")
             state = getattr(module, "_Machine")  # noqa: B009
             if not hasattr(state, "step"):
@@ -1470,20 +1708,23 @@ class TestEveryLanguageIsSteppable:
             assert drawn, f"{language}: the random instruction never ran"
             assert trace(language, program) == first, f"{language} is not reproducible"
 
-    def test_the_seeded_source_rejects_an_empty_range(self) -> None:
+    def test_the_stub_sources_reject_an_empty_range(self) -> None:
         """``randbelow`` checks its bound instead of ignoring it.
 
         A stub that never read its argument would answer an impossible
         request -- choosing among no options -- as readily as a real one,
         and the mistake would surface somewhere far from its cause.
-        ``secrets.randbelow``, the default source, raises here too, so the
-        seeded stand-in agrees with what it replaces.
+        ``secrets.randbelow``, the default source, raises here too, so both
+        stand-ins agree with what they replace.  ``FirstDraw`` carries its
+        own copy of the guard, ahead of the pinned first answer, so it is
+        checked alongside rather than assumed to inherit it.
         """
-        from esolangs.interpreters.randomness import Seeded
+        from esolangs.interpreters.randomness import FirstDraw, Seeded
 
-        source = Seeded(0)
-        for bad in (0, -1):
-            with pytest.raises(ValueError, match=f"must be positive, got {bad}"):
-                source.randbelow(bad)
+        for source in (Seeded(0), FirstDraw(1)):
+            for bad in (0, -1):
+                with pytest.raises(ValueError, match=f"must be positive, got {bad}"):
+                    source.randbelow(bad)
 
-        assert source.randbelow(1) == 0
+        assert Seeded(0).randbelow(1) == 0
+        assert FirstDraw(1).randbelow(1) == 0
