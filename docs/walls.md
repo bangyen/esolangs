@@ -1117,16 +1117,39 @@ languages reach multi-input threshold functions:
   route works from any approach).  A ``0`` leaf is an empty 3x3 block (the
   pointer runs off the grid, which halts) and a ``1`` leaf is a
   self-sustaining ring that pushes on every edge and pops on every corner.
-  The tree is deliberately full — constant slices are not collapsed —
-  because the ring's corner pops must consume exactly the four loop
-  components, so every path pops all ``n`` bits first.  Every table is
-  supported: all ``n <= 4`` tables exhaustively — the 65536 four-input
+  A constant slice **folds** to a single leaf rather than the branches
+  that would all reach it.  The ring's corner pops must still consume
+  exactly the four loop components, so a folded ``1`` leaf carries a
+  *drain* per skipped bit — a ``+`` whose two exits reconverge, popping
+  the bit the skipped branch never did and pushing nothing.  A folded
+  ``0`` leaf needs none: it halts by leaving the grid, which no queue
+  content prevents.
+
+  **Every table at every arity is supported, and this is now proved
+  rather than swept** — see
+  [`docs/arrowqueue_generator.md`](arrowqueue_generator.md).  The
+  construction factorises: the header is exactly ``4n + 1`` rows and hands
+  the tree a queue of ``bits + R,D,L,U`` heading down column 1; the
+  routing step is an induction over ``_connect``; and the leaves are
+  finitely many shapes.  The table's contents only choose *which* leaves
+  appear, never how the program is routed, so no lemma quantifies over
+  tables.  ``n <= 4`` is also swept exhaustively — the 65536 four-input
   tables built, instantiated over all sixteen input combinations and run to
-  a halt-or-cycle verdict, 0 failures in 167s — with ``n == 5`` sampled;
-  program size doubles per input level.  ``n == 4`` was previously sampled
-  only; promoting it cost under three minutes because the verdict comes
-  from state-cycle detection rather than a step budget, so a ``1`` leaf's
-  sustaining ring is proved looping the moment it repeats a snapshot.
+  a halt-or-cycle verdict, 0 failures in 167s — and whole programs at
+  ``n = 6, 8, 10, 12`` run correctly over all ``2**n`` inputs (the
+  ``n == 12`` case is 4096 inputs against a 227,937-byte program).
+  Program size doubles per input level.  ``n == 4``'s sweep cost under
+  three minutes because the verdict comes from state-cycle detection
+  rather than a step budget, so a ``1`` leaf's sustaining ring is proved
+  looping the moment it repeats a snapshot.
+
+  One subtlety the proof had to close: a **bare** ring sustains when
+  entered heading right at its ``(0, 0)`` but *halts* when entered heading
+  down at ``(0, 1)``.  The two entry styles are not interchangeable.  What
+  makes the construction correct is that a bare ring is never the
+  top-level tree — a constant-``1`` table folds to a leaf with ``k = n``
+  drains, and ``n >= 1`` is enforced — so the bare ring only ever appears
+  nested at column offset 3, where entry is rightward.
 
   **``n == 5`` does not promote, and the reason is the table count rather
   than the runner.**  Priced by timing the same build-instantiate-verdict
@@ -1141,6 +1164,15 @@ languages reach multi-input threshold functions:
   ``2**32`` down to the three-minute job ``n == 4`` was.  This is the same
   shape as ``%^2^-1``'s ``n == 5``: the cheap-promotion pattern reaches
   exactly as far as ``2**(2**n)`` stays small, which is ``n <= 4``.
+
+  **The coverage question is settled anyway, by proof rather than by
+  sweep** ([`docs/arrowqueue_generator.md`](arrowqueue_generator.md)).
+  Since the routing never depends on the table's contents, ``n == 5`` and
+  every arity above it are covered without enumerating a single one of the
+  ``2**32`` tables.  The 407-CPU-day figure remains the price of an
+  *exhaustive sweep*, which is now a redundant way to learn what the
+  induction already gives — a worked instance of the general rule that
+  these walls fall to proofs rather than to wider sweeps.
 
   The pricing run checked its tables rather than only timing them (500
   random tables across ``n == 3``-``5`` plus the constant, half and
