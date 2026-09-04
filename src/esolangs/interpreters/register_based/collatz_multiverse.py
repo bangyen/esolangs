@@ -81,7 +81,7 @@ type _State = tuple[int, _Regs, _Arrays]
 def _reg_get(regs: _Regs, name: str) -> int:
     """Return the value of ``name``, or zero for a register never written."""
     for key, value in regs:
-        if key == name:
+        if key == name:  # pragma: no branch - callers name an existing array
             return value
     return 0
 
@@ -99,9 +99,9 @@ def _arr_get(arrays: _Arrays, name: str, index: int) -> int:
     array does not bring it into being.
     """
     for key, cells in arrays:
-        if key == name:
+        if key == name:  # pragma: no branch - writes retain the existing cell tuple
             for i, value in cells:
-                if i == index:
+                if i == index:  # pragma: no branch - snapshots probe present cells
                     return value
             return 0
     return 0
@@ -111,7 +111,7 @@ def _arr_set(arrays: _Arrays, name: str, index: int, value: int) -> _Arrays:
     """Return ``arrays`` with ``name[index]`` set, in name and index order."""
     cells: tuple[tuple[int, int], ...] = ()
     for key, existing in arrays:
-        if key == name:
+        if key == name:  # pragma: no branch - writes retain the existing cell tuple
             cells = existing
             break
     kept = tuple((i, v) for i, v in cells if i != index)

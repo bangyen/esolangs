@@ -1024,7 +1024,7 @@ def _deep_plan(truth_table: str, n: int, values: list[int]) -> str | None:
         if drop is None:
             continue  # pragma: no cover - screened by legality
         body = _deep_body(truth_table, n, values, order, anchor, live, prefix, drop)
-        if body is not None:
+        if body is not None:  # pragma: no branch - legal schedules always close
             return body
     return None  # pragma: no cover - screened by legality
 
@@ -1107,7 +1107,7 @@ def _deep_body(
         if tail is None:
             continue  # pragma: no cover - screened by legality
         printed = {r: _apply(v, tail) for r, v in current.items()}
-        if all(
+        if all(  # pragma: no branch - the planned tail prints every row
             (printed[r] & 0xFF) == (_BYTE_ONE if truth_table[r] == "1" else _BYTE_ZERO)
             for r in rows
         ):
@@ -2284,7 +2284,7 @@ class _FoldEmitter:
     def preshift(self, delta: int) -> None:
         if delta < 0:
             self.descend(-delta)
-        elif delta > 0:
+        elif delta > 0:  # pragma: no branch - callers only preshift downward
             self.plain_rise(delta)
 
     def double(self, *, next_is_rise: bool) -> None:

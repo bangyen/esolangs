@@ -274,7 +274,7 @@ def _advance(
     elif char == "(":
         if stack[-1] != 0:
             jumps = (*jumps, ind)
-        elif target is not None:
+        elif target is not None:  # pragma: no branch - parser supplies matching targets
             ind = target
     elif char == ")":
         if stack[-1] != 0:

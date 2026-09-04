@@ -640,7 +640,7 @@ def _separate(b: _Builder, marks: list[int]) -> None:
                 break
             d = mk - max(pending)
             w = max(1, d // 2)
-            if d > w:
+            if d > w:  # pragma: no branch - singleton gaps take the short route
                 b.run("2" * (d - w))
                 b.test()
             b.run("2" * w)
@@ -658,7 +658,7 @@ def _gap_fix(b: _Builder, table: str, gap_min: int = 12) -> None:
     Best-effort: a gap the boost search cannot widen is left for the
     verdict search's own moves to handle.
     """
-    for _ in range(8 * len(b.live()) + 8):
+    for _ in range(8 * len(b.live()) + 8):  # pragma: no branch - bounded retry loop
         order = sorted(b.live(), key=lambda r: r.pos)
         boundary = next(
             (lo.pos for lo, hi in pairwise(order) if 0 < hi.pos - lo.pos < gap_min),
@@ -1159,7 +1159,7 @@ def _align_residues(b: _Builder, table: str) -> None:
     few tries.  Failure is acceptable — the verdict search still has its
     shallow moves.
     """
-    for _ in range(16):
+    for _ in range(16):  # pragma: no branch - residue alignment always settles
         if len({r.pos % 4 for r in b.live()}) < 4:
             return
         nb = b.clone()

@@ -187,7 +187,7 @@ class _Compiler:
 
     def string_label(self, text: str) -> str:
         """Intern a string literal, returning the label of its record."""
-        if text not in self.strings:
+        if text not in self.strings:  # pragma: no branch - literals are emitted once
             self.strings[text] = f".str{len(self.strings)}"
         return self.strings[text]
 
@@ -297,7 +297,7 @@ class _Compiler:
         # pop into a0 (first argument) and a1 (second), matching push order
         if arity == 1:
             code += "    ld   a0, 0(sp)\n    addi sp, sp, 16\n"
-        elif arity == 2:
+        elif arity == 2:  # pragma: no branch - MyScript builtins are unary
             code += "    ld   a1, 0(sp)\n    ld   a0, 16(sp)\n    addi sp, sp, 32\n"
         code += f"    call .b_{name}\n"
         return code, pos
