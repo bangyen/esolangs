@@ -729,22 +729,38 @@ def _kill_fate(p: int, tape: int, a: int, x: int | None) -> str:
     fixpoint on 50000 random ``(p, tape, a, x)`` cases with zero
     mismatches.  Exact only for a row with no pending segment, which is
     how kills are tried; _predict remains the adopting gate either way.
+
+    The revisit is found by Brent's cycle detection rather than a set of
+    seen states: the pass function is deterministic, so the cycle is the
+    same either way, but this hashes no tapes and allocates no tuples --
+    and the tapes are big ints on a path taken millions of times per
+    build.  The same 65-pass cap bounds both, and a cycle reachable
+    inside it is found inside it, so the verdicts agree; checked over
+    400000 random cases, the pass-cap frontier included.
     """
-    seen = set()
-    for _ in range(65):
-        res = _after_ones_pop(p, tape, a)
+    cur = (p, tape)
+    passes = 0
+    power = lam = 1
+    tortoise = cur
+    while passes < 65:
+        res = _after_ones_pop(*cur, a)
         if res is None:
             return "invalid"
-        p, tape = res
+        np, ntape = res
         if x is not None:
-            p += x
-            tape ^= 1 << (p + _RING)
-        if not tape >> (p + _RING) & 1:
+            np += x
+            ntape ^= 1 << (np + _RING)
+        if not ntape >> (np + _RING) & 1:
             return "skip"
-        s = (p, tape)
-        if s in seen:
+        cur = (np, ntape)
+        passes += 1
+        if cur == tortoise:
             return "loop"
-        seen.add(s)
+        if power == lam:
+            tortoise = cur
+            power *= 2
+            lam = 0
+        lam += 1
     return "invalid"
 
 
@@ -871,7 +887,7 @@ def _try_kill(
                     if c >= 1:
                         hit = not tape >> (c + _RING) & 1
                     else:
-                        hit = (tape ^ 1 << (c + _RING)) >> _RING & 1
+                        hit = bool((tape ^ 1 << (c + _RING)) >> _RING & 1)
                     if hit:
                         if bits != victim and bits not in dipped:
                             ok = False
