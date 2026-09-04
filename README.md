@@ -309,6 +309,7 @@ The `boolean` package builds a program that computes a truth table
 ```python
 from esolangs.tools.boolean import (
     between,
+    circlefuck_byte,
     dig,
     polynomial,
     sophie,
@@ -322,6 +323,7 @@ suffolk("0110")  # and in Suffolk
 sophie("0110")  # and in Sophie
 polynomial("0110")  # in Polynomial (up to n = 4)
 taglate("0110")  # 2-input XOR in Taglate (up to n = 2)
+circlefuck_byte(table)  # arbitrary byte-valued functions
 ```
 
 The truth table is a binary string of length `2**n`, indexed by the inputs

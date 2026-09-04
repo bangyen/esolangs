@@ -2596,179 +2596,6 @@ def _fold_subset_weights(n: int) -> tuple[int, ...] | None:
     return weights if sum(weights) <= _LIMIT else None
 
 
-def _cofactor_class(truth_table: str, n: int, row: int, laid: int) -> str:
-    """Return ``row``'s suffix cofactor after the first ``laid`` inputs.
-
-    An interleaved build may merge two accumulator values only when every
-    completion of their unlaid inputs has the same answer.  The substring is
-    that exact future function; using the final output bit here would merge
-    rows that a later placeholder still has to separate.
-    """
-    width = 2 ** (n - laid)
-    prefix = row >> (n - laid)
-    return truth_table[prefix * width : (prefix + 1) * width]
-
-
-def _cofactor_done(state: _FoldState) -> bool:
-    """Whether one wiped point remains for every live suffix cofactor."""
-    return all(span == 0 for _, span, _, _ in state) and len(
-        {cls for _, _, cls, _ in state}
-    ) == len(state)
-
-
-def _fold_to_cofactors(state: _FoldState, cap: int = 50_000) -> list[_FoldOp] | None:
-    """Merge equal suffix cofactors, leaving distinct ones separate.
-
-    This is deliberately a small-state bridge, not the old full-fold search:
-    it is used between placeholders, where equal cofactors have already
-    reduced the live state.  The final two-answer reduction still goes through
-    :func:`_fold_plan`.  Keeping this bounded makes an interleaved candidate a
-    fallback rather than a new source of unbounded generator latency.
-    """
-    import heapq
-
-    start = _fold_norm(list(state))
-    if _cofactor_done(start):
-        return []
-    seen = {_fold_sig(start)}
-    counter = 0
-    heap: list[tuple[int, int, int, _FoldState, list[_FoldOp]]] = [
-        (len(start), 0, 0, start, [])
-    ]
-    while heap and len(seen) <= cap:
-        _, depth, _, current, ops = heapq.heappop(heap)
-        for kind, k, amount, rows, nxt in _fold_moves(current, kcap=None):
-            signature = _fold_sig(nxt)
-            if signature in seen:
-                continue
-            next_ops = [*ops, (kind, k, amount, rows)]
-            if _cofactor_done(nxt):
-                return next_ops
-            seen.add(signature)
-            counter += 1
-            heapq.heappush(heap, (len(nxt), depth + 1, counter, nxt, next_ops))
-    return None
-
-
-def _interleaved_fold(truth_table: str, n: int) -> str | None:
-    """Try a placeholder/fold/placeholder build before the all-row fallback.
-
-    Every ``{Xi}`` appears once and in name order, but unlike :func:`_fold_at`
-    its setter is emitted immediately before the cofactor fold it enables.
-    The emitter mirrors every raw row, so a returned candidate is checked at
-    every reset and landing just like the shipped ladder path.
-
-    The current bridge deliberately accepts only compactable intermediate
-    states; it is an executable replacement skeleton, not yet the large-state
-    gap controller.  A miss simply lets the established fold try its ladders.
-    """
-    setters: list[tuple[str, str]] = []
-    rows = frozenset(range(2**n))
-    emitter = _FoldEmitter.__new__(_FoldEmitter)
-    emitter.table = truth_table
-    emitter.rows = 2**n
-    emitter.pos = {rows: 0}
-    emitter.cls = {rows: truth_table}
-    emitter.body = []
-
-    for index in range(n):
-        # A live cofactor that takes the same suffix on both branches does not
-        # need a new rung at all.  More importantly, identity branches keep a
-        # late ignored input from re-expanding a compacted state merely to
-        # collapse it again.  Where a split remains, one current span plus a
-        # gap of two keeps the 0 and 1 bands disjoint without paying a global
-        # binary weight for inputs already folded away.
-        splits = False
-        for group_key in emitter.pos:
-            raw = set(group_key) if isinstance(group_key, frozenset) else {group_key}
-            children = {_cofactor_class(truth_table, n, row, index + 1) for row in raw}
-            if len(children) > 1:
-                splits = True
-                break
-        if splits:
-            span = max(emitter.pos.values()) - min(emitter.pos.values())
-            zero, one = _fold_setters(1, (span + 2,))[0]
-        else:
-            zero = one = "pp"
-        setters.append((zero, one))
-        next_pos: dict[_FoldKey, int] = {}
-        next_cls: dict[_FoldKey, str] = {}
-        # A previously merged cofactor splits only on this input.  Rows taking
-        # the same branch retain one identical suffix cofactor, which is the
-        # inductive fact the merge below asserts rather than assumes.
-        by_value: dict[tuple[int, str], set[int]] = {}
-        for group_key, value in emitter.pos.items():
-            raw = set(group_key) if isinstance(group_key, frozenset) else {group_key}
-            for bit in (0, 1):
-                picked = {row for row in raw if (row >> (n - 1 - index)) & 1 == bit}
-                if not picked:
-                    continue
-                code = one if bit else zero
-                new_value = _apply(value, code)
-                if not -_LIMIT <= new_value <= _LIMIT:
-                    return None
-                suffixes = {
-                    _cofactor_class(truth_table, n, row, index + 1) for row in picked
-                }
-                if len(suffixes) != 1:
-                    return None
-                cls = next(iter(suffixes))
-                by_value.setdefault((new_value, cls), set()).update(picked)
-        # A position collision across unequal cofactors would erase a future
-        # distinction before the planner can see it.
-        occupied: dict[int, str] = {}
-        for (value, cls), raw in by_value.items():
-            if value in occupied and occupied[value] != cls:
-                return None
-            occupied[value] = cls
-            coalesced_key: _FoldKey = (
-                next(iter(raw)) if len(raw) == 1 else frozenset(raw)
-            )
-            next_pos[coalesced_key] = value
-            next_cls[coalesced_key] = cls
-        emitter.pos, emitter.cls = next_pos, next_cls
-        emitter.body.append("{X" + str(index) + "}")
-
-        items = [
-            (value, 0, cls, key if isinstance(key, frozenset) else frozenset({key}))
-            for key, value in emitter.pos.items()
-            for cls in [emitter.cls[key]]
-        ]
-        partial = _fold_to_cofactors(_fold_norm(items))
-        if partial is None:
-            return None
-        for kind, _, amount, row_ids in partial:
-            if kind == "m":
-                emitter.double(next_is_rise=False)
-            elif kind == "d":
-                emitter.dive(amount, row_ids)
-            else:
-                emitter.rise(amount, row_ids)
-
-    final_items = [
-        (value, 0, cls, key if isinstance(key, frozenset) else frozenset({key}))
-        for key, value in emitter.pos.items()
-        for cls in [emitter.cls[key]]
-    ]
-    # After the last placeholder a suffix is one answer bit, so the existing
-    # two-class plan and residue endgame apply unchanged.
-    final = _fold_plan(_fold_norm(final_items))
-    if final is None:
-        return None
-    for kind, _, amount, row_ids in final:
-        if kind == "m":
-            emitter.double(next_is_rise=False)
-        elif kind == "d":
-            emitter.dive(amount, row_ids)
-        else:
-            emitter.rise(amount, row_ids)
-    emitter.finish()
-    header = ";".join(
-        f"{index}={zero}|{one}" for index, (zero, one) in enumerate(setters)
-    )
-    return header + _HEADER_END + "".join(emitter.body)
-
-
 #: A two-sided ladder was built and **removed once measured**, the same way
 #: the positive-ladder band was.  One weight is made negative -- an *adding*
 #: setter, spelled ``p sub(k) p``, whose inner subtraction must come out even
@@ -3200,26 +3027,22 @@ def pct_squared_minus_one(truth_table: str) -> str:
         # only the final two-point gap carries a residue requirement -- with
         # a full residue system as its window.  It closes five inputs whole.
         fold = _fold(truth_table, n)
-        if fold is None:
-            # The staged route is intentionally after the established ladders:
-            # at the arities they already serve it is a much longer program,
-            # while beyond them it is the only construction that can release
-            # equal suffix cofactors before every row has been laid.
-            fold = _interleaved_fold(truth_table, n)
         # Reaching this raise means no ladder served: either the plan search
-        # and the staged cofactor route both gave up.  The guard stays because
-        # emitting nothing is better than emitting a program for the wrong
-        # function.
+        # gave up, which no table at eleven inputs or below does (all of
+        # n <= 4 exhaustively, executed samples at five through eleven), or
+        # the arity is past eleven, where even the packed ladder overruns the
+        # workspace.  The guard stays because emitting nothing is better than
+        # emitting a program for the wrong function.
         if fold is None:
             raise ValueError(
                 f"%^2^-1 builds every table at one, two, three and four "
                 f"inputs, and every table tried from five through eleven; "
                 f"beyond those a conjunction or disjunction of literals at "
                 f"any arity, the thresholds a weighted ladder crosses, the "
-                f"tables a deep band schedules, the tables the all-row fold "
-                f"can plan, and the compactable suffix-cofactor stages the "
-                f"interleaved fold can plan (the all-row ladder caps it at "
-                f"eleven inputs); "
+                f"tables a deep band schedules, and the tables the fold can "
+                f"plan -- whose row ladder must fit the workspace, which "
+                f"caps it at eleven inputs (twelve needs 4097 of 3003 even "
+                f"on the packed ladder, which meets the distinctness floor); "
                 f"got {n} inputs ({truth_table!r})"
             )
         return fold

@@ -663,26 +663,93 @@ long (O(`n·2**n`) blocks, ~1.4s/execution at `n == 4`).
   construction that does not lay all `2**n` rows before planning would not
   inherit the span bound.
 
-  **Interleaving now ships.**  `_interleaved_fold` emits one `{Xi}` setter,
-  then merges equal suffix cofactors before placing the next setter.  A merge
-  is permitted only when every unlaid completion has the same result, so the
-  construction preserves the once-only, ascending placeholder contract while
-  avoiding the all-row fold's need to hold all `2**n` positions apart at once.
-  It is attempted only after the established ladders and uses a bounded
-  cofactor-fold search, making it a fallback rather than a new source of
-  unbounded generator latency.
+  **Interleaving the laying is the open door, and it is genuinely open.**
+  All `{Xi}` embeds currently precede the body, so the fold must hold all
+  `2**n` rows apart at once — which is exactly the span the twelve-input wall
+  is about.  Laying some inputs, folding, then laying the rest would never
+  need that.  A first guess recorded here was that this cannot help, because
+  merging two rows before the remaining inputs are laid merges them for
+  *every* completion, so a prefix-merge needs the two rows' cofactors on the
+  unlaid inputs to be **identical** — and generic tables were assumed to have
+  no equal cofactors.  **Measured, that is false**: with one input unlaid a
+  cofactor is a two-bit string, so there are only four of them and the 2048
+  prefix blocks of a random twelve-input table collapse into four buckets —
+  2044 mergeable pairs (1008 of 1024 with two inputs unlaid, 292 of 512 with
+  three).  Equal cofactors are abundant, not rare.
 
-  The path is interpreter-verified on a 12-input XOR of the first two bits,
-  whose late ignored suffixes make the all-row ladder exceed the workspace;
-  exhaustive replays also pass at 13 and 14 inputs (8192 and 16384 rows).
-  This refutes the old claim that the all-row fold's twelve-input geometry
-  bound was the generator's bound.
+  **Every component works, and the open question is narrow.**  The
+  invariants permit it: `docs/limitations.md` states the
+  rule as embedding each input **exactly once** — a count, not a placement —
+  the enforced slot test only requires ascending names, and Minifuck's
+  sculpted route is the precedent for machinery between embeds.  A hand-built
+  interleaved template (`{X0}` `ss` `{X1}` `ss` `{X2}`) fills and runs
+  correctly on all eight rows at one instantiation width, so the mechanics
+  are interpreter-verified rather than assumed.
 
-  It does **not** establish generic totality beyond eleven inputs.  The
-  staged search intentionally accepts only compactable intermediate states,
-  and a table it cannot stage is still allowed to fall through to refusal.
-  The remaining work is wider generic coverage, not discovering whether
-  embeds can be interleaved with folds.
+  Four components were measured, each independently:
+
+  * **Schedule arithmetic admits `n <= 13`.**  After laying `k` inputs there
+    are at most `min(2**k, 2**(2**(n-k)))` live points — prefixes rising,
+    cofactor strings collapsing — so the peak is far below `2**n`: 510 at
+    twelve inputs, 1022 at thirteen, 2040 at fourteen.  The binding number is
+    the **span** (a wipe needs `<= 3002`, as does the doubling), and at the
+    gap-2 floor those are 1018, 2042 and 4078 — so fourteen is out.
+  * **Merges work.**  An early probe read an "eight-merge ceiling" off end
+    spans; that was the search's route.  Long sequences merge (256 points
+    over 16 classes descend to 16), and single interior merges plan in six
+    ops at every size, by exhaustive search.  The per-stage `None`s that
+    looked like obstructions were **beam give-ups**.
+  * **Program size is fine**: ~745 merges at twelve inputs × ~3 ops at the
+    shipped 72 chars/op is ~0.1-0.3 MB, beside the shipped eleven-input
+    build's 187 KB.
+  * **Re-tightening is solved.**  This was the real difficulty: a compaction
+    leaves survivors spread over ~2200, and the next lay needs a weight
+    exceeding that, so an untightened chain dies in one stage.  Gaps are
+    rigid — a wipe preserves 14 of 15 gaps, choosing only its own victim's —
+    and a greedy span-minimiser therefore *grows* the span on its first move
+    at every size.  The trick is the opposite: **widen to exactly 3003, then
+    contract at `cmin`**, a rule read straight off the working small plans.
+    Derived that way it converges geometrically at ratio `(k-2)/(k-1)` and
+    reaches a tight lattice in `O(k)` ops — verified at `k` = 16, 32, 64 and
+    128 (251, 498, 916, 1182 ops).  An earlier controller aimed at a fixed
+    absolute width, stalled from `k = 6`, and was written up as "bounded at
+    five points"; that was the controller, not the algebra.
+
+  **Chained end to end, it completes at eight inputs.**  Running the whole
+  thing with the shipped move set — lay, compact, re-tighten, repeat — on
+  real positions and real cofactors, asserting at each stage that every row
+  still sits where its bits put it and with no idealised repacking anywhere,
+  an eight-input table finishes all eight stages in about a second.  It does
+  real work on the way (32 points compact to 29, 58 to 16, 32 to 4) and ends
+  at **two points spanning 1**, which is exactly the state the existing
+  residue endgame closes.  **Nine inputs complete too**; ten reaches stage 6
+  of 10, eleven stalls at stage 6 of 11, and twelve at stage 7 of 12.
+
+  **What separates them is one number: the point count at the arity's first
+  merge-requiring stage** — 32 at eight and nine inputs, then 64, 128 and 256
+  at ten, eleven and twelve.  A wipe takes the bottom or top `k` points, so
+  it reaches a duplicate sitting at an *end* trivially and an **interior**
+  one only by a long detour.  Isolated and exhausted, an interior duplicate
+  among `k` otherwise-distinct points does merge — depth 2 at `k = 4`, depth
+  6 at 6, depth 9 at 7 through 9 — but the search cost explodes: 990 states
+  at `k = 6`, 86591 at 7, 113034 at 9, and a 2M-state cap at 10.  So the
+  merges the schedule needs are reachable in principle and unaffordable in
+  practice from about ten surrounding points, which is exactly where the
+  chain starts failing.
+
+  Two cautions for anyone retrying.  The compaction is delicately tuned:
+  offering the full `k` range *and* ranking by span as a tie-break took the
+  eight-input chain from complete back to a stage-4 stall, so the shipped
+  `kcap=3`, count-first ranking is the baseline to beat.  But `kcap=3` is
+  also **structurally unable to do interior merges at all** — it only ever
+  wipes the outermost three points — so lifting it is necessary, just not
+  sufficient, and it must be lifted without disturbing the ranking.
+
+  So the position is: interleaving is legal, its arithmetic admits thirteen
+  inputs, and it **builds today at eight** — short of the packed ladder's
+  eleven, so it ships nothing yet, and the gap to thirteen is planner
+  engineering rather than a discovered obstruction.  Nothing here is walled:
+  no search in this investigation emptied its heap.
 
   Note what the bound is *not*: it is the **fold's**, not the generator's.
   Arity alone refuses nothing, because the cascade builds every conjunction
@@ -1103,13 +1170,21 @@ is tied to the printer's cell layout, not reusable as a standalone carry.
 So n = 1 is proven; n > 1 needs a wrapping-safe carry, which is a genuine
 brainfuck-algorithms construction rather than a quick extension.
 
-**The removed Jaune experiment realized the capability:** its cells do not wrap (the language's
+**Jaune realizes the capability:** its cells do not wrap (the language's
 reference implementation stores each cell as a JavaScript number with plain
 ``+=``/``-=``, no modulo or bitmask, and this interpreter uses Python
 ``int``) and ``^`` prints the current cell as a decimal number, so each
 operand fits in a single cell and the product accumulates without a
-digit-per-cell carry.  Its implementation was deliberately removed with the
-non-boolean generator APIs.
+digit-per-cell carry.  The
+program (:func:`esolangs.tools.boolean.jaune_multiply`) runs each read on a
+dedicated always-one cell (the ``?``/``!`` jumps are conditional, so a cell
+permanently set to 1 gives the loop-back jump an unconditional trigger),
+folds each digit with ``v+`` plus a run of nine ``&`` after a ``#``
+(multiply by 10), detects a sentinel by adding its offset from a digit
+(``*`` is 42, ``6+`` zeroes it; ``#`` is 35, ``13+`` zeroes it) and jumping
+on zero, then loops the repeated addition of the first operand over the
+second.  Verified exhaustively for single-digit operands (all 100 pairs)
+and spot-checked through ten-digit operands.
 
 ## Cross-check removals (why seven were dropped)
 
