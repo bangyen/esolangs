@@ -40,11 +40,21 @@ the full sweep is a minute of CPU).  That sweep decides stability by a
 state fixed point — the grid is monotone, so cycle 2 leaving the state
 untouched proves every later cycle does — which is both stronger and ~50x
 cheaper than the `box(1) == box(10)` comparison
-`tests/tools/a_painter_ant_trace.py` uses.  `n == 5` is spot-checked
-against a handful of tables via that module; `n == 6` and `n == 7` build
-and check out on ad hoc tables but have no checked-in test.  Extending or
-refactoring arities above 4 should add exhaustive or expanded spot-check
-coverage rather than assume the pattern holds.
+`tests/tools/a_painter_ant_trace.py` uses.
+
+Above `n == 4` the sweep is priced out (`2**(2**n)` tables), so the
+coverage rests on the uniform argument in
+[`a_painter_ant_uniform_proof.md`](a_painter_ant_uniform_proof.md) rather
+than on sampling: the leaf geometry is arithmetic, a blocked run is a no-op
+at any length (so the arity-dependent magnitudes drop out), and the cycle-2
+dance is a paint-free fixed point whose per-unit motif table — 30 entries
+learned at `n == 5` — replays with 0 prediction errors at `n` of 6-9.
+`n == 5` is also spot-checked against a handful of tables via that module;
+`n == 6` and `n == 7` build and check out on ad hoc tables but have no
+checked-in test.  A change to the head, body, or routing invalidates the
+motif table, so re-run
+`uv run python tests/tools/apa_uniform_proof_check.py` after one rather
+than assuming the pattern holds.
 
 ## Design principles (must hold for any future change here)
 
