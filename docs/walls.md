@@ -928,7 +928,16 @@ long (O(`n·2**n`) blocks, ~1.4s/execution at `n == 4`).
   and centre cap are size policies, not the total construction above.  The
   *chain* half is total — Horner cannot dead-end — and the shipped greedy
   *decode* remains exhaustively verified through `D == 16`; whether that
-  particular economical rule is itself total beyond there is still open.
+  particular economical rule is itself total beyond there is **refuted** by
+  its centre cap.  For every even cap `K`, the pattern
+  ``0 1**K 0 1`` defeats both initial half-compressions and every permitted
+  fold: a doubled fold at centre `c` sees the unlike pair `(0, c)`, while an
+  undoubled fold sees `(0, 2c)` through `K / 2` and
+  `(K + 1, 2c - K - 1)` above it.  The actual cap is 4096, so this is a
+  4099-point counterexample; it lies far beyond the default index domain,
+  but it settles the mathematical claim.  Raising the cap to `K + 1` admits
+  the same-bit pair `(0, K + 1)`, which is the positive control recorded in
+  `test_decode_centre_cap_has_a_constructed_miss`.
 
 ## 2dFish (the WII2D-style merging chain is affine-only; a decision tree is the universal construction)
 
