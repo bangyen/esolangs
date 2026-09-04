@@ -2823,6 +2823,16 @@ class TestParameterizedOneTwoThree:
         _align_residues(crowded, "0000")
         assert len({row.pos % 4 for row in crowded.live()}) < 4
 
+        # A round that would fuse two rows of different verdicts is declined
+        # instead: eight rows at 0..7 put two of each class on one cell, and
+        # the alignment leaves the state alone rather than losing a verdict.
+        fuses = _Builder(3)
+        for i, row in enumerate(fuses.rows):
+            row.pos, row.tape = i, 0
+        before = [(row.bits, row.pos) for row in fuses.live()]
+        _align_residues(fuses, "10000000")
+        assert [(row.bits, row.pos) for row in fuses.live()] == before
+
         # A five-cell gap is under the twelve-cell minimum, and marking the
         # upper row alone gives the boost a test whose TRUE set is the
         # uppers -- which is the move the widening is made of.
@@ -2929,6 +2939,121 @@ class TestParameterizedOneTwoThree:
                 continue
             built += 1
         assert built == 16
+
+    def test_the_remaining_batched_run_and_token_paths(self) -> None:
+        """``2`` from inside the ring batches too, and a plain token is a char.
+
+        The ring case is decided by its first step -- -1 and -2 land on 0 --
+        after which the rest is a plain right-walk, and it charges the budget
+        like every other closed form.  ``apply_token`` resolves a ``{Xi}``
+        fill against the row's own bits; a plain token is passed straight
+        through.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import (
+            _WORK_BUDGET,
+            _Builder,
+            _exec_run,
+            _Row,
+            _work,
+            _WorkExhaustedError,
+        )
+
+        inside_the_ring = _Row((0,))
+        inside_the_ring.pos = -1
+        _work[0] = 2
+        with pytest.raises(_WorkExhaustedError):
+            _exec_run(inside_the_ring, "2", 10)
+
+        _work[0] = _WORK_BUDGET
+        b = _Builder(1)
+        b.apply_token(b.rows[0], "1")
+        assert b.rows[0].pos == -1
+
+    def test_gap_fix_returns_when_every_gap_is_wide_enough(self) -> None:
+        """Nothing to widen is the ordinary case, and it costs one scan."""
+        from esolangs.tools.boolean.one_two_three_construct import (
+            _WORK_BUDGET,
+            _Builder,
+            _gap_fix,
+            _work,
+        )
+
+        _work[0] = _WORK_BUDGET
+        wide = _Builder(1)
+        wide.rows[0].pos, wide.rows[0].tape = 0, 0
+        wide.rows[1].pos, wide.rows[1].tape = 100, 0
+        _gap_fix(wide, "00")
+        assert [row.pos for row in wide.live()] == [0, 100]
+
+    def test_a_widening_that_would_collide_is_passed_over(self) -> None:
+        """A gap-fix move still has to keep the rows tellable apart.
+
+        Two rows already sharing an exact state stay together under a pure
+        right walk -- it moves every row by the same amount -- so a table
+        giving them different verdicts makes every candidate collide, and
+        the stage leaves the gap for the verdict search rather than adopting
+        one.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import (
+            _RING,
+            _WORK_BUDGET,
+            _Builder,
+            _gap_fix,
+            _work,
+        )
+
+        _work[0] = _WORK_BUDGET
+        shared = 1 << (9 + _RING)
+        colliding = _Builder(2)
+        for row, pos in zip(colliding.rows, (0, 0, 5, 5), strict=True):
+            row.pos, row.tape = pos, shared
+        # (0,0) reads '0' and (0,1) reads '1': the pair cannot be allowed to
+        # share a state, and a walk cannot separate them.
+        _gap_fix(colliding, "0100")
+        assert [row.pos for row in colliding.live()] == [0, 0, 5, 5]
+
+    def test_the_kill_still_validates_what_its_screens_accepted(self) -> None:
+        """``_kill_fate`` is exact only for a row with no pending segment.
+
+        The sweep prices its candidates arithmetically because that is what
+        makes a wide table affordable, but the screens are not the gate:
+        ``_predict`` re-decides every survivor on the real fixpoint, and
+        ``_distinct_ok`` re-checks the adopted state.  A pending segment is
+        what puts the two out of step -- the arithmetic does not know about
+        it -- and a collision the fates never look at is what the distinctness
+        check is there to catch.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import (
+            _RING,
+            _WORK_BUDGET,
+            _Builder,
+            _try_kill,
+            _work,
+        )
+
+        _work[0] = _WORK_BUDGET
+        pending = _Builder(1)
+        pending.rows[0].pos, pending.rows[0].tape = 5, 0x208AA1F7 << _RING
+        pending.rows[1].pos, pending.rows[1].tape = 0, 0x10F4A0FB << _RING
+        pending.seg = ["2"]
+        _try_kill(pending, (0,), 0, "01")
+
+        _work[0] = _WORK_BUDGET
+        # Rows (0,1) and (1,0) share an exact state and read '1' and '0':
+        # their fates are identical, so only the distinctness check sees it.
+        collided = _Builder(2)
+        for row, (pos, tape) in zip(
+            collided.rows,
+            (
+                (0, 0x593087555),
+                (5, 0x6D31CD3165),
+                (5, 0x6D31CD3165),
+                (8, 0xAC613EB19),
+            ),
+            strict=True,
+        ):
+            row.pos, row.tape = pos, tape << _RING
+        assert _try_kill(collided, (0, 0), 0, "0100") is None
 
 
 def test_nocomment_wide_declines_when_the_plan_outgrows_the_skip() -> None:

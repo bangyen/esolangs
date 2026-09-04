@@ -1708,20 +1708,23 @@ class TestEveryLanguageIsSteppable:
             assert drawn, f"{language}: the random instruction never ran"
             assert trace(language, program) == first, f"{language} is not reproducible"
 
-    def test_the_seeded_source_rejects_an_empty_range(self) -> None:
+    def test_the_stub_sources_reject_an_empty_range(self) -> None:
         """``randbelow`` checks its bound instead of ignoring it.
 
         A stub that never read its argument would answer an impossible
         request -- choosing among no options -- as readily as a real one,
         and the mistake would surface somewhere far from its cause.
-        ``secrets.randbelow``, the default source, raises here too, so the
-        seeded stand-in agrees with what it replaces.
+        ``secrets.randbelow``, the default source, raises here too, so both
+        stand-ins agree with what they replace.  ``FirstDraw`` carries its
+        own copy of the guard, ahead of the pinned first answer, so it is
+        checked alongside rather than assumed to inherit it.
         """
-        from esolangs.interpreters.randomness import Seeded
+        from esolangs.interpreters.randomness import FirstDraw, Seeded
 
-        source = Seeded(0)
-        for bad in (0, -1):
-            with pytest.raises(ValueError, match=f"must be positive, got {bad}"):
-                source.randbelow(bad)
+        for source in (Seeded(0), FirstDraw(1)):
+            for bad in (0, -1):
+                with pytest.raises(ValueError, match=f"must be positive, got {bad}"):
+                    source.randbelow(bad)
 
-        assert source.randbelow(1) == 0
+        assert Seeded(0).randbelow(1) == 0
+        assert FirstDraw(1).randbelow(1) == 0
