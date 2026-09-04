@@ -2243,6 +2243,7 @@ class TestMinifuckArityGates:
         assert m._staging_spans(2)  # noqa: SLF001
 
 
+@pytest.mark.slow  # one four-input staging enumeration, ~1.2s
 def test_insert_pass_stops_as_soon_as_its_last_target_is_placed() -> None:
     """The second pass has its own early exit, and only it can reach this one.
 
