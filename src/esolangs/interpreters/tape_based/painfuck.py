@@ -32,13 +32,16 @@ before its command and runs it outright, so ``cp`` runs ``p`` seven times;
 runs ``p`` four times -- once itself, three more from the ``t``.  A ``t``
 cannot retroactively cancel the application that already happened.
 
-A ``t`` run *immediately after* a ``c`` run is read forward as part of that
-same count, so ``c...t...`` repeats the command it lands on
-``7**c * 3**t`` times -- ``ct`` is 21.  The wiki specifies neither the
-composition nor the run lengths, and the alternative is worse: walking the
-``t`` backward finds the ``c`` just consumed and executes it again,
-multiplying its seven in twice (``ctp`` would be 147, not 21).  A ``t``
-with an ordinary command behind it is unaffected and still walks back.
+The command before a ``t`` run may itself be a ``c`` run, and then the
+``t`` adds applications of *that*: ``ct`` is four ``c``s, ``7 ** 4``.  Both
+runs are read at dispatch rather than letting the ``t`` execute on its own,
+which would have to hand a count backward to a command already gone -- and
+no such handoff leaves ``pt`` and ``ct`` both right.
+
+The wiki specifies neither the composition nor the run lengths, so the
+arithmetic above is this implementation's reading of "do the last command
+3 times" rather than a quoted rule.  No generated program pairs the two:
+every ``t`` run one emits follows a ``p`` or an ``s``.
 
 Documented divergences from the cross-check:
 
@@ -407,15 +410,25 @@ def _advance(
                 c = prog[ind] if ind < n else _NUL
                 ind += 1
                 rep *= 7
-            # A ``t`` run reached this way is part of *this* count, not a
-            # separate repeat of the command behind it: ``ct`` is 7 * 3 on
-            # the command the pair lands on.  Read forward instead of
-            # letting ``t`` walk backward, which would find the ``c`` just
-            # consumed and run it a second time -- compounding it twice.
-            while c == "t":
+            # A ``t`` run directly after the ``c`` run repeats *the ``c``*,
+            # which has already applied once, so it adds ``3 ** len`` more
+            # applications of it: ``ct`` is four ``c``s, ``7 ** 4``.  Read
+            # here rather than letting the ``t`` execute on its own, which
+            # would have to hand a count backward to a command already
+            # dispatched -- the shape that made ``pt`` and ``ct`` unable to
+            # be right at the same time.
+            # The run loop above already pulled the character after the
+            # ``c``s into ``c``, so that one counts too if it is a ``t``.
+            adds = 0
+            if c == "t":
+                adds = 1
+                while ind < n and prog[ind] == "t":
+                    ind += 1
+                    adds += 1
+            if adds:
+                rep **= 1 + 3**adds
                 c = prog[ind] if ind < n else _NUL
                 ind += 1
-                rep *= 3
         elif c == "y":
             # The wiki specifies a random skip; match the cross-check's
             # coin flip (the generator and differential avoid `y`).
