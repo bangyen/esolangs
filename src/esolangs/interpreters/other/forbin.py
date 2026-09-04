@@ -820,6 +820,26 @@ class _Machine:
         )
 
     def step(self) -> None:
+        """Execute one statement, one ``for``-loop row, or advance a call.
+
+        An *expression-position* call (``x = (f y);``) still recurses
+        natively through ``_eval``, so a deep enough one exhausts Python's
+        own stack.  That is a valid Forbin operation the host cannot
+        afford rather than the invalid one :class:`HaltError` names, but
+        the alternative is leaking the interpreter's implementation
+        strategy to the caller as a raw traceback, so it halts here and
+        says which limit it hit.  The wrapping lives on ``step`` rather
+        than ``run`` because generators and the hang detectors drive
+        ``step`` directly; ``run`` is a loop over it and is covered too.
+        """
+        try:
+            self._step_once()
+        except RecursionError:
+            raise HaltError(
+                "expression-position recursion exceeded the host's depth limit"
+            ) from None
+
+    def _step_once(self) -> None:
         """Execute one statement, one ``for``-loop row, or advance a call."""
         if self.halted:
             return
