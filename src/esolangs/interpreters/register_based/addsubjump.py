@@ -63,14 +63,32 @@ _SPECIAL = set(range(_FUM, _IO + 1))
 #: One instant of a run: ``(memory, ip, cf, zf, nf, vf, fum)`` -- the
 #: self-modifying store, the instruction pointer, the four flags, and the
 #: flag-update mode.  A value, not a record: every transition below returns
-#: a new one rather than editing one in place, and the memory is a ``tuple``
-#: for the same reason.
+#: a new one rather than editing one in place, and the memory is copied on
+#: write for the same reason.
 #:
 #: The memory is in the state rather than beside it because this language
 #: rewrites it as it runs *and* can extend it: a write past the end grows
 #: the store, and ``halted`` compares the pointer against the current
 #: length.
-type _State = tuple[tuple[int, ...], int, int, int, int, int, int]
+#:
+#: It is *sparse* -- ``(non-zero cells, allocated length)`` -- because the
+#: addresses a program uses are unrelated to how many cells it fills: one
+#: writing cell 999999 allocates a million and leaves all but a handful
+#: zero.  The length is carried explicitly because it stays semantic (it is
+#: what ``halted`` and the allocation cap test) and can no longer be read
+#: off the container.  A ``dict`` is unhashable, so :meth:`_Machine.snapshot`
+#: is what freezes it for the cycle detector.
+type _Cells = tuple[dict[int, int], int]
+type _State = tuple[_Cells, int, int, int, int, int, int]
+
+
+def _pack(values: list[int]) -> _Cells:
+    """Return ``values`` as the sparse store: non-zero cells, and the length.
+
+    Zeros are dropped rather than stored, the same rule :func:`_store`
+    applies to a write, so a parsed zero and a written zero are one state.
+    """
+    return ({i: v for i, v in enumerate(values) if v}, len(values))
 
 
 def _operands(state: _State) -> tuple[int, int, int, int]:
@@ -79,12 +97,12 @@ def _operands(state: _State) -> tuple[int, int, int, int]:
     A trailing instruction that runs off the end reads its missing operands
     as zero.
     """
-    memory, ip = state[0], state[1]
+    (cells, length), ip = state[0], state[1]
     return (
-        memory[ip],
-        memory[ip + 1] if ip + 1 < len(memory) else 0,
-        memory[ip + 2] if ip + 2 < len(memory) else 0,
-        memory[ip + 3] if ip + 3 < len(memory) else 0,
+        cells.get(ip, 0),
+        cells.get(ip + 1, 0) if ip + 1 < length else 0,
+        cells.get(ip + 2, 0) if ip + 2 < length else 0,
+        cells.get(ip + 3, 0) if ip + 3 < length else 0,
     )
 
 
@@ -95,7 +113,7 @@ def _load(state: _State, addr: int, byte: int | None = None) -> int:
     port is the one address whose read consumes something.  Everything
     else is a pure lookup, and an address outside the store reads as zero.
     """
-    memory, _ip, cf, zf, nf, vf, fum = state
+    (cells, length), _ip, cf, zf, nf, vf, fum = state
     if addr == _IO:
         return byte if byte is not None else 0
     if addr == _CF:
@@ -114,7 +132,7 @@ def _load(state: _State, addr: int, byte: int | None = None) -> int:
         return -1
     if addr == _FUM:
         return fum
-    return memory[addr] if 0 <= addr < len(memory) else 0
+    return cells.get(addr, 0) if 0 <= addr < length else 0
 
 
 def _too_large(state: _State, addr: int) -> bool:
@@ -125,11 +143,11 @@ def _too_large(state: _State, addr: int) -> bool:
     not have, so the caller halts rather than raising Python's
     ``OverflowError``.
     """
-    memory = state[0]
+    _cells, length = state[0]
     return (
         addr != _IO
         and addr not in _SPECIAL
-        and addr >= len(memory)
+        and addr >= length
         and addr + 1 > _MAX_MEMORY
     )
 
@@ -140,16 +158,32 @@ def _store(state: _State, addr: int, value: int) -> _State:
     Writing the input/output port is an effect and changes no state, so it
     is the shell's; writing a special register other than ``fum`` is
     discarded, as it always was.
+
+    The store is sparse -- a dict of the non-zero cells plus the allocated
+    length -- because the memory is addressed, not packed: a program that
+    writes cell 999999 allocates a million cells and leaves all but a
+    handful zero, and rebuilding a dense tuple per write cost 4.6ms a step.
+    Copy-on-write over the non-zero cells is O(live cells) instead.
+
+    A zero **deletes** its key rather than storing it, so that a cell
+    written to zero and a cell never written compare and hash alike; two
+    equal memories that disagreed on which keys exist would break the state
+    cycle detector silently.  :func:`_pack` applies the same rule to the
+    initial parse.
     """
-    memory, ip, cf, zf, nf, vf, fum = state
+    (cells, length), ip, cf, zf, nf, vf, fum = state
     if addr == _IO:
         return state
     if addr in _SPECIAL:
-        return (memory, ip, cf, zf, nf, vf, value) if addr == _FUM else state
-    if addr >= len(memory):
-        memory = (*memory, *([0] * (addr + 1 - len(memory))))
-    memory = (*memory[:addr], value, *memory[addr + 1 :])
-    return (memory, ip, cf, zf, nf, vf, fum)
+        return (state[0], ip, cf, zf, nf, vf, value) if addr == _FUM else state
+    if addr >= length:
+        length = addr + 1
+    new = dict(cells)
+    if value:
+        new[addr] = value
+    else:
+        new.pop(addr, None)
+    return ((new, length), ip, cf, zf, nf, vf, fum)
 
 
 def _advance(state: _State, reads: tuple[int, ...]) -> tuple[int, _State]:
@@ -201,15 +235,20 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         """Parse ``code`` into memory and reset the pointer and flags."""
         self.io = io
-        self.state: _State = (tuple(_parse(code)), 0, 0, 0, 0, 0, 0)
+        self.state: _State = (_pack(list(_parse(code))), 0, 0, 0, 0, 0, 0)
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
 
     @property
     def memory(self) -> list[int]:
-        """The self-modifying store."""
-        return list(self.state[0])
+        """The self-modifying store, densified.
+
+        The state holds it sparsely; this materializes every cell, so it
+        is a debugging and test view rather than something a step uses.
+        """
+        cells, length = self.state[0]
+        return [cells.get(i, 0) for i in range(length)]
 
     @property
     def ip(self) -> int:
@@ -241,8 +280,8 @@ class _Machine:
     @property
     def halted(self) -> bool:
         """Whether the pointer is off the end of memory or a special address."""
-        memory, ip = self.state[0], self.state[1]
-        return ip < 0 or ip >= len(memory)
+        (_cells, length), ip = self.state[0], self.state[1]
+        return ip < 0 or ip >= length
 
     # The VM's language-shaped view: self-modifying memory + instruction
     # pointer.  ``ip`` and ``memory`` above already *are* the view, so only
@@ -257,7 +296,20 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         # The state as it stands plus the input cursor: a repeat that
         # ignores consumed input is not a real cycle.
-        return (*self.state, self.io.position())
+        #
+        # The sparse store's dict is unhashable and its iteration order
+        # follows insertion, so equal memories reached by different write
+        # orders would freeze differently.  Sorting the items is what makes
+        # the key depend on the contents alone -- and sorted items rather
+        # than a frozenset because a frozenset's repr is unstable across
+        # processes, which the mutation baselines compare.
+        (cells, length) = self.state[0]
+        return (
+            tuple(sorted(cells.items())),
+            length,
+            *self.state[1:],
+            self.io.position(),
+        )
 
     def step(self) -> None:
         """Execute one instruction, advancing the pointer.
