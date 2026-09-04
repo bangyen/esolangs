@@ -73,6 +73,19 @@ class TestCollatzRule:
         # x starts 0, treated as odd: 0*(-1)+one = 1
         assert run_program(CONSTANTS + "\nx = negativeOne x + one, DO PRINT.") == "\x01"
 
+    def test_sparse_register_and_array_lookups_return_zero(self) -> None:
+        """Absent names and cells are semantic zeroes, not stored entries."""
+        from esolangs.interpreters.register_based.collatz_multiverse import (
+            _arr_get,
+            _arr_set,
+            _reg_get,
+        )
+
+        arrays = _arr_set((("a", ((1, 9),)),), "a", 3, 7)
+        assert _reg_get((("x", 4),), "missing") == 0
+        assert _arr_get(arrays, "a", 2) == 0
+        assert _arr_get(arrays, "missing", 0) == 0
+
 
 class TestPrinting:
     def test_not_suppresses_output(self) -> None:
