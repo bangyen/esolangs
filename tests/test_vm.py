@@ -1789,6 +1789,58 @@ class TestEveryLanguageIsSteppable:
                 without.append(name)
         assert without == []
 
+    def test_random_machines_either_branch_or_are_listed_as_open(self) -> None:
+        """Which interpreters can have a hang *proven* despite randomness.
+
+        The random set is derived, not listed: an interpreter takes its
+        chance through an ``rng`` parameter by repo convention, so the
+        signature of ``_Machine.__init__`` is what classifies it.  A new
+        random language therefore lands in this test's scope by
+        construction, and fails it until it either implements the
+        branching protocol or is added to the exemption below.
+
+        Both directions are asserted, because a hand-written list drifts in
+        both: a conforming language must not sit in the exemption, and an
+        exempt one must still be random and still lack the methods.  That is
+        what makes implementing branching for one of the three *force* its
+        removal from the list rather than leaving a stale entry behind.
+        """
+        import importlib
+        import inspect
+
+        from esolangs.registry import RUNNERS
+
+        # Random, but no branching search yet: a program that reaches their
+        # random command stays on the wall-clock backstop.  Each is the same
+        # size of job LaserFuck's was -- open work, not a decision.
+        not_yet_branching = frozenset({"COD", "Modulous", "Super SNUSP"})
+        methods = (
+            "branching_snapshot",
+            "branching_halted",
+            "branching_successors",
+        )
+
+        random_languages: set[str] = set()
+        conforming: set[str] = set()
+        partial: list[str] = []
+        for language, (module_path, _split) in sorted(RUNNERS.items()):
+            module = importlib.import_module(f"esolangs.interpreters.{module_path}")
+            state = getattr(module, "_Machine")  # noqa: B009
+            if "rng" not in inspect.signature(state.__init__).parameters:
+                continue
+            random_languages.add(language)
+            present = [name for name in methods if hasattr(state, name)]
+            if len(present) == len(methods):
+                conforming.add(language)
+            elif present:
+                partial.append(language)
+
+        assert partial == [], "a half-implemented protocol is not implemented"
+        assert conforming == random_languages - not_yet_branching
+        assert not_yet_branching <= random_languages, (
+            "an exempt language stopped being random -- drop it from the list"
+        )
+
     def test_memory_and_stack_are_copies_not_the_live_store(self) -> None:
         """A caller must not be able to write into a running machine.
 
