@@ -861,10 +861,18 @@ def _try_kill(
                         true_set.add(bits)
             else:
                 for bits, p, tape in head_rows:
-                    q = p + x - 1
-                    tape ^= 1 << (p + x + _RING)
-                    q = 0 if q in (-1, -2) else q + 1
-                    if tape >> (q + _RING) & 1:
+                    # The ``1`` flips cell ``p + x`` and the closing
+                    # ``2`` steps back onto it, so for ``p + x >= 1``
+                    # the row tests the *inverse* of the bit already
+                    # there -- no need to build the flipped tape, which
+                    # is a fresh big-int allocation per row.  Only a
+                    # landing inside the ring still needs the real tape.
+                    c = p + x
+                    if c >= 1:
+                        hit = not tape >> (c + _RING) & 1
+                    else:
+                        hit = (tape ^ 1 << (c + _RING)) >> _RING & 1
+                    if hit:
                         if bits != victim and bits not in dipped:
                             ok = False
                             break
