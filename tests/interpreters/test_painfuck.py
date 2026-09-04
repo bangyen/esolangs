@@ -350,6 +350,34 @@ class TestRepeatCollapsing:
                 f"{op!r} at ptr={ptr} rep={rep}"
             )
 
+    def test_a_repeated_loop_command_decides_once(self) -> None:
+        """``a``/``b`` are jumps, so repeating one changes nothing.
+
+        The wiki defines them as "go to the matching b if the value is zero"
+        and "go back to the matching a if it is not" -- decisions, not
+        accumulations, and nothing between two iterations of a repeat
+        changes the cell they read.  The loop stack is how this interpreter
+        finds the matching bracket, not part of the language, so a repeated
+        ``a`` must not push once per iteration and leave a loop that needs
+        as many ``b``s to close.
+        """
+        from esolangs.interpreters.tape_based.painfuck import _advance
+
+        entered = None
+        for rep in (1, 2, 7, 1000):
+            state = ((5,), (), 0, 0, rep)  # nonzero cell: the loop is entered
+            (_tape, loop, _ptr, ind, _r), _fx = _advance(state, "ab", 2, (), ())
+            assert len(loop) == 1, f"rep={rep} pushed {len(loop)} entries"
+            entered = (loop, ind) if entered is None else entered
+            assert (loop, ind) == entered, f"rep={rep} differed from rep=1"
+
+        popped = None
+        for rep in (1, 2, 7, 1000):
+            state = ((5,), (7, 8, 9), 0, 3, rep)
+            (_tape, loop, _ptr, ind, _r), _fx = _advance(state, "aaab", 4, (), ())
+            popped = (loop, ind) if popped is None else popped
+            assert (loop, ind) == popped, f"b at rep={rep} differed from rep=1"
+
     def test_halving_truncates_toward_zero_not_down(self) -> None:
         """The one collapse a plain ``//`` would get wrong.
 
