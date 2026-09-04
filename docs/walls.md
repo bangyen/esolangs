@@ -899,15 +899,36 @@ long (O(`n·2**n`) blocks, ~1.4s/execution at `n == 4`).
   accumulator bound and this interpreter uses arbitrary-precision integers,
   so nothing here contradicts the spec.
 
-  There is no universal fallback (a tree would need each input re-embedded at
-  every node, which WII2D has no way to store).  The *chain* half is now
-  proved total — Horner is always legal, so the walk cannot dead-end — and
-  the *decode* half is exhaustively verified through `D == 16`, the widest
-  domain the general path asks for.  What remains genuinely open is
-  completeness **beyond** that: the fold could dead-end in principle at
-  `D == 32` or wider, where verification is sampled rather than exhaustive.
-  No sampled pattern has failed, and an unproven completeness claim is not a
-  wall.
+  There is no useful universal fallback (a tree would need each input
+  re-embedded at every node, which WII2D has no way to store).  There is,
+  however, a **total fold construction**.  It proves representability at any
+  finite domain, but its emitted unary runs grow far too quickly to replace
+  the magnitude-first rule.
+
+  Take any two live accumulator values `a`, `b` needing the same bit.  Pick
+  an integer `C` below every live value and avoid the finitely many `C` for
+  which ``(u-C)^2 + (v-C)^2 == (a-C)^2 + (b-C)^2`` for an opposite-bit pair
+  `u`, `v`.  Such a `C` always exists: for a fixed pair the equality is a
+  non-identically-zero linear equation in `C`; it could be an identity only
+  if the two unordered pairs were equal, contradicting their different bits.
+  The prefix ``'+' * -C + 's'`` is injective on the live values (all are to
+  the right of `C`).  Then ``'*' + '-' * M + 's'``, with
+  ``M = (a-C)^2 + (b-C)^2``, merges `a` and `b`.  A square collision after
+  that fold is either an equal preimage or a pair whose squared values sum to
+  `M`; the latter was exactly what the choice of `C` excluded for opposite
+  bits.  Thus each round preserves the answer on every live value and lowers
+  their count by at least one.  Repeating reaches two values, which the
+  existing threshold reads out.  This is an induction proof that the fold
+  *algebra* can decode every finite binary pattern.
+
+  It is a proof of capability, not a practical generator path.  Each round
+  spells `C` and `M` as unary runs and squares the previous magnitudes, so a
+  worst-case construction is doubly exponential in the domain.  The shipped
+  decoder deliberately declines that escape: its fixed ranking, shortlist,
+  and centre cap are size policies, not the total construction above.  The
+  *chain* half is total — Horner cannot dead-end — and the shipped greedy
+  *decode* remains exhaustively verified through `D == 16`; whether that
+  particular economical rule is itself total beyond there is still open.
 
 ## 2dFish (the WII2D-style merging chain is affine-only; a decision tree is the universal construction)
 
