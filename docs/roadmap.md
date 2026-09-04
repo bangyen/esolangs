@@ -302,23 +302,15 @@ path, and every optional token both present and absent.
 
 A table ignoring some inputs is a smaller table, and where a generator's cost
 scales with *input count* rather than row count that beats any per-row
-saving.  Clockwise and Decleq are the obvious remaining candidates and
-neither reduces: `clockwise` (`other.py:676-883`) makes no
-`essential_inputs` call, and Decleq's own docstring (`register.py:61`)
-prices its 47-step normalize chains as a fixed `47*n` the fold cannot
-reach.  What is open:
+saving.  Clockwise is the obvious remaining candidate and does not reduce:
+`clockwise` (`other.py:681-888`) makes no `essential_inputs` call.  What is
+open:
 
-- **Taglate's gapped sets** (inputs 0 and 2 but not 1) need a discard between
-  the reduced program's own reads, where the queue is not what the following
-  reduce block assumes; output comes out arithmetically corrupted rather than
-  permuted, so this is a real obstacle.  10 of the 40 reducible tables at
-  `n == 3`.  **Odd-sized sets** are sidestepped by widening the window, which
-  costs a tier back; narrowing properly needs the reduced program's own ghost
-  handling suppressed.
-- **Decleq's `47n` normalize chains are not reduced** — its own docstring
-  notes the fold folds constant subtrees but leaves the fixed `47 * n`
-  normalize cost untouched (`src/esolangs/tools/boolean/register.py:61`),
-  so an ignored input still pays its full decrement chain.  Unmeasured.
+- **Taglate's odd-sized sets** are sidestepped by widening the window by one
+  adjacent ignored input, which costs a tier back; narrowing properly needs
+  the reduced program's own ghost handling suppressed.  Gapped sets no longer
+  belong here — a discard placed *between* the reduced program's reads
+  restores the queue the next command expects, so inputs 0 and 2 reduce.
 
 ## Smaller open items
 
