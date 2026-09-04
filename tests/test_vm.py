@@ -1145,6 +1145,78 @@ class TestRunUntilHaltOrCycle:
             is False
         )
 
+    def test_laserfuck_all_initial_headings_can_be_proved_to_loop(self) -> None:
+        """The four headings are searched, not the one the machine drew.
+
+        Each orthogonal neighbour of ``o`` sends the beam straight back
+        through it, so every heading oscillates forever and no draw escapes.
+        """
+        from esolangs.interpreters.grid_based.laserfuck import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.randomness import FirstDraw
+        from esolangs.vm import (
+            run_until_halt_or_all_branches_cycle,
+            run_until_halt_or_cycle,
+        )
+
+        code = [" v ", "}o{", " ^ "]
+        assert (
+            run_until_halt_or_all_branches_cycle(_Machine(code, ScriptedIO())) is False
+        )
+        for heading in range(4):
+            assert (
+                run_until_halt_or_cycle(
+                    _Machine(code, ScriptedIO(), FirstDraw(heading, rest=heading))
+                )
+                is False
+            )
+
+    def test_laserfuck_one_halting_heading_refutes_an_all_branches_hang(self) -> None:
+        """Up and down leave the grid; left and right bounce forever."""
+        from esolangs.interpreters.grid_based.laserfuck import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.randomness import FirstDraw
+        from esolangs.vm import (
+            run_until_halt_or_all_branches_cycle,
+            run_until_halt_or_cycle,
+        )
+
+        code = ["}o{"]
+        assert (
+            run_until_halt_or_all_branches_cycle(_Machine(code, ScriptedIO())) is True
+        )
+        assert (
+            run_until_halt_or_cycle(_Machine(code, ScriptedIO(), FirstDraw(0))) is True
+        )
+        assert (
+            run_until_halt_or_cycle(_Machine(code, ScriptedIO(), FirstDraw(2, rest=2)))
+            is False
+        )
+
+    def test_laserfuck_grid_without_a_start_marker_is_halted(self) -> None:
+        """No ``o`` means no beam to place, so the sentinel halts at once."""
+        from esolangs.interpreters.grid_based.laserfuck import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.vm import run_until_halt_or_all_branches_cycle
+
+        machine = _Machine(["+-", "<>"], ScriptedIO())
+        assert machine.halted is True
+        assert run_until_halt_or_all_branches_cycle(machine) is True
+
+    def test_laserfuck_declines_a_reachable_input_command(self) -> None:
+        """``,`` cannot be forked, so the search reports undecided.
+
+        The command has to sit where the beam *arrives*, not under ``o``
+        itself: a step moves before it executes, so the start cell is the
+        one cell a run never runs.
+        """
+        from esolangs.interpreters.grid_based.laserfuck import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.vm import run_until_halt_or_all_branches_cycle
+
+        with pytest.raises(TimeoutError, match="needs input"):
+            run_until_halt_or_all_branches_cycle(_Machine(["o,"], ScriptedIO("A\n")))
+
     def test_branching_search_leaves_unbounded_or_input_paths_undecided(self) -> None:
         from esolangs.interpreters.grid_based.wii2d import _Machine as Wii2dMachine
         from esolangs.interpreters.io import ScriptedIO

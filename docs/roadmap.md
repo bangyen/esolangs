@@ -159,8 +159,14 @@ needs it.**
 ## Hanging-test optimization via state-cycle detection
 
 See `docs/limitations.md` for what `esolangs.vm.run_until_halt_or_cycle`
-already covers.  What remains: Painfuck's `y`, WII2D's `?`, and LaserFuck's
-random heading are non-deterministic and stay on the wall-clock backstop.
+already covers.  The three non-deterministic languages are no longer
+excluded: Painfuck's `y`, WII2D's `?` and LaserFuck's random heading each
+implement the branching protocol, so `run_until_halt_or_all_branches_cycle`
+decides them by searching every draw instead of one sampled run.
+
+What remains is the class no snapshot can catch — an unbounded-growth loop
+never revisits a state, so it stays on the wall-clock backstop.  That is a
+property of cycle detection rather than an open question.
 
 ## Input reordering (remainder)
 
