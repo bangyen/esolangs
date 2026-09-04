@@ -20,6 +20,7 @@ from esolangs.interpreters.grid_based.circuit_diagram import (
     _OUTPUT,
     _Grid,
     _Machine,
+    _merge,
     _Parser,
     run,
 )
@@ -342,6 +343,10 @@ class TestWiring:
         ]
         assert output_for(circuit, "1\n1\n") == "0"
         assert output_for(circuit, "1\n0\n") == "1"
+
+    def test_overlapping_driver_vectors_are_xored_bit_by_bit(self) -> None:
+        """Each position merges independently, not by last driver wins."""
+        assert _merge([(1, 0), (1, 1)]) == (0, 1)
 
 
 class TestParseErrors:
