@@ -1298,6 +1298,43 @@ class TestRunUntilHaltOrCycle:
         )
         assert run_until_halt_or_ancestor(_Machine(code, ScriptedIO())) is True
 
+    def test_forth_replayed_scope_is_detected_as_an_ancestor(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.forth import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        # Store 1; under key 1, then have that scope call itself forever.
+        assert run_until_halt_or_ancestor(_Machine("1{1;}1;", ScriptedIO())) is False
+
+    def test_forth_changing_stack_halts(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.forth import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        # The scope decrements its shared counter before conditionally
+        # calling itself, so every entered scope has a different binding.
+        assert (
+            run_until_halt_or_ancestor(_Machine("1{1-(1;)}3v;", ScriptedIO())) is True
+        )
+
+    def test_jaune_replayed_subroutine_is_detected_as_an_ancestor(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.jaune import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        # Main calls subroutine 1, whose body immediately calls itself.
+        assert run_until_halt_or_ancestor(_Machine("1@.1$1@;", ScriptedIO())) is False
+
+    def test_jaune_changing_tape_halts(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.jaune import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        # Subroutine 1 decrements the tape then recurs until the zero case
+        # jumps to its return, so the tape belongs in the entry key.
+        code = "3+1@.1$1-2!1@;2:;"
+        assert run_until_halt_or_ancestor(_Machine(code, ScriptedIO())) is True
+
 
 class TestFactory:
     def test_unknown_language_raises(self) -> None:
