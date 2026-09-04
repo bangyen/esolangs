@@ -61,9 +61,10 @@ _Builtin = Literal[
     "itemat",
     "say",
 ]
+_BuiltinArity = Literal[1, 2]
 
 # The builtin prefix functions and their fixed arities.
-_ARITY: dict[str, int] = {
+_ARITY: dict[_Builtin, _BuiltinArity] = {
     "add": 2,
     "subtract": 2,
     "multiply": 2,
@@ -75,7 +76,6 @@ _ARITY: dict[str, int] = {
     "arrlen": 1,
     "itemat": 2,
     "say": 1,
-    "ask": 0,
 }
 
 # The arity table minus ``ask``, typed: _parse_expr answers ``ask`` before
