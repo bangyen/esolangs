@@ -965,6 +965,47 @@ class TestPctSquaredHelpers:
         module._ladder_tables.cache_clear()  # noqa: SLF001
 
 
+class TestPctInterleavedFold:
+    """The staged replacement emits real code between its placeholders."""
+
+    def test_interleaved_template_replays_every_three_input_row(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.pct_squared_minus_one import run
+
+        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        table = "00001111"  # X1 creates equal suffix cofactors before X2
+        template = module._interleaved_fold(table, 3)  # noqa: SLF001
+        assert template is not None
+        slots = [template.index("{X" + str(i) + "}") for i in range(3)]
+        assert slots == sorted(slots)
+        # Slots remain in stream order even when a stage coalesces directly
+        # through equal branches instead of needing a relocation.
+        assert template.count("{X") == 3
+        for row, want in enumerate(table):
+            bits = [(row >> 2) & 1, (row >> 1) & 1, row & 1]
+            io = ScriptedIO()
+            run(module.fill(template, bits), io)
+            assert io.getvalue() == want
+
+    def test_interleaved_fallback_builds_past_the_all_row_ladder(self) -> None:
+        """A late-ignored suffix stays compact instead of spending 4096 rungs."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.pct_squared_minus_one import run
+
+        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        n = 12
+        # XOR of the first two bits: it is neither a cascade subcube nor a
+        # threshold, and the all-row fold cannot lay its 4096 positions.
+        table = "".join("0110"[row >> (n - 2)] for row in range(2**n))
+        assert module._fold(table, n) is None  # noqa: SLF001
+        template = module.pct_squared_minus_one(table)
+        for row in range(2**n):
+            bits = [(row >> shift) & 1 for shift in range(n - 1, -1, -1)]
+            io = ScriptedIO()
+            run(module.fill(template, bits), io)
+            assert io.getvalue() == table[row]
+
+
 class TestPctFoldEmitter:
     """The emitter's mirror, driven at the steps the descent rarely asks for.
 
