@@ -41,7 +41,13 @@ from esolangs.exceptions import EsolangError
 from esolangs.vm import make_vm
 
 # Exceptions an interpreter is allowed to raise at the API boundary.
-ALLOWED = (EsolangError, ValueError, EOFError, RecursionError, SystemExit)
+#
+# ``RecursionError`` was here from this script's first commit, undefended by
+# ``exceptions.py`` or any doc -- the one entry with no documented backing.
+# It let a *host* limit escape as an interpreter's answer.  Both languages
+# that needed it have since been fixed: Eval runs nested programs on a frame
+# stack, and Forbin converts the one natively-recursive path it has left.
+ALLOWED = (EsolangError, ValueError, EOFError, SystemExit)
 
 GENERIC = [
     "",
