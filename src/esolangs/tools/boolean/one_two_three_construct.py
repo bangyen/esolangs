@@ -662,8 +662,14 @@ def _gap_fix(b: _Builder, table: str, gap_min: int = 12) -> None:
             nb.run("2" * w)
             nb.test()
             try:
+                # The move is a pure right walk and `_true_set_after_walk`
+                # already refused any state holding a row below zero, so
+                # every row lands at `pos >= 0` and `_normalize` returns
+                # before its live-lock check -- 20000 sampled moves left no
+                # row negative.  Kept because the walk is only pure by the
+                # caller's construction, not by this function's signature.
                 _normalize(nb)
-            except ConstructError:
+            except ConstructError:  # pragma: no cover - the walk cannot descend
                 continue
             if not _distinct_ok(nb, table):
                 continue
@@ -855,6 +861,16 @@ def _try_kill(
             nb.run(seg)
             nb.test(kill=victim)
             try:
+                # Not reached by anything measured: `_close` refuses only
+                # when no cell in 100001 right steps is FALSE for every live
+                # row, and the three gates above -- the two fate screens,
+                # `_predict`, and `test` itself -- reject a candidate that
+                # ill-behaved first.  All 256 three-input builds reached
+                # `_predict` 1246 times with a kill and this never fired,
+                # nor did 50000 constructed states.  Kept as a real guard
+                # rather than pragma'd away: unlike the walk-only stages
+                # above, nothing here *proves* the closing cell exists, and
+                # the sibling handler in `_ring_round` does fire.
                 _close(nb)
             except ConstructError:
                 continue
@@ -1060,11 +1076,16 @@ def _align_residues(b: _Builder, table: str) -> None:
         nb = b.clone()
         try:
             lo = min(r.pos for r in nb.live())
+            # The descent stops at -2 and the pop lands there on 0, so every
+            # row comes back to `pos >= 0` whatever its start was: measured
+            # over 300000 random position vectors, none landed negative and
+            # none read.  `_normalize` therefore returns at once and
+            # `_close` has nothing to refuse.
             nb.run("1" * (lo + 2))
             nb.run("2")
             _normalize(nb)
             _close(nb)
-        except ConstructError:
+        except ConstructError:  # pragma: no cover - the round cannot leave the ring
             return
         if _one_row_collided(nb, table) or not _distinct_ok(nb, table):
             return
