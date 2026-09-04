@@ -297,6 +297,48 @@ class TestStepMachine:
         assert hash(machine.snapshot()) is not None
         assert machine.io.position() == 0
 
+    def test_a_cell_written_to_zero_matches_one_never_written(self) -> None:
+        """The sparse store must not distinguish a stored zero from no key.
+
+        The memory keeps only its non-zero cells, so a write of 0 has to
+        delete the key rather than store it.  If it did not, two runs that
+        agree on every cell value would still snapshot differently and the
+        cycle detector would miss the repeat -- with nothing else failing.
+        """
+        from esolangs.interpreters.register_based.addsubjump import (
+            _pack,
+            _store,
+        )
+
+        state = (_pack([5, 0, 0]), 0, 0, 0, 0, 0, 0)
+        # Write a non-zero and then zero it again: back to the start.
+        written = _store(_store(state, 1, 7), 1, 0)
+        assert written[0] == state[0], "a zeroed cell left a key behind"
+
+        # And a parsed zero is already absent, so the two agree.
+        cells, length = _pack([5, 0, 0])
+        assert cells == {0: 5}
+        assert length == 3
+
+    def test_snapshot_is_independent_of_write_order(self) -> None:
+        """Equal memories must snapshot equal however they were reached.
+
+        A dict iterates in insertion order, so freezing it without sorting
+        would key two identical memories differently purely by the order
+        their cells were written.
+        """
+        from esolangs.interpreters.register_based.addsubjump import (
+            _Machine,
+            _store,
+        )
+
+        one = _Machine("0 0 0 0", ScriptedIO())
+        other = _Machine("0 0 0 0", ScriptedIO())
+        one.state = _store(_store(one.state, 1, 4), 2, 9)
+        other.state = _store(_store(other.state, 2, 9), 1, 4)
+        assert one.snapshot() == other.snapshot()
+        assert hash(one.snapshot()) == hash(other.snapshot())
+
     def test_the_flag_registers_are_readable_off_the_machine(self) -> None:
         """The five flag names report the state fields they are named for.
 
