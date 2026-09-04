@@ -203,8 +203,16 @@ to a constructed fix:
   versa — so `construct` tries the two geometries in order, which is
   deterministic and strictly stronger than either.
 - **The endgame** parks survivors by the same residue-fusion argument as
-  before, and the closing replay uses Brent's cycle detection so the
-  gate scales to the template instead of hashing a sorted tape per step.
+  before, and the closing replay executes a maximal `1`/`2` run at a time
+  in closed form rather than one command at a time, so the gate scales to
+  the template instead of costing more than the build it certifies (95s
+  to 0.28s on a five-input table; six inputs went from hours to seconds).
+  Its Brent's cycle detection is sampled at backward jumps and end-of-code
+  loopbacks only, which is exact: `ip` strictly increases within a run and
+  across a forward jump, so an infinite run passes one of those two events
+  infinitely often.  The gate is written against the interpreter's rules,
+  not the builder's closed forms — sharing them would let a single bug
+  pass both sides of the constructed route's only execution gate.
 
 What is *not* proven is the verdict search itself: it remains a bounded
 DFS over kills, boosts and ring rounds, and its totality claim is a
