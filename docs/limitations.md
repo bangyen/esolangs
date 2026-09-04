@@ -32,15 +32,13 @@ predictable across languages:
   Suptiftam, Forbin's statement-position calls, all of Lamfunc's calls,
   Forþ's stored scopes, Jaune subroutines, and Grapheme functions run on an
   explicit frame stack (`_Machine.frames`), so a terminating recursion of
-  any depth completes.
-  Forbin's *expression-position* calls
-  (`x = f(y)`, needing the result back synchronously) still recurse
-  natively and hit Python's own limit; the language has no realistic
-  program shape that recurses this way.  `run_until_halt_or_ancestor` can
-  prove an infinite recursion when a call re-enters an ancestor with the
-  same entry state; calls whose bindings keep changing still need the
-  wall-clock backstop.  `run_until_halt_or_cycle` compares whole-machine snapshots, which
-  a growing frame stack never repeats.  See [`docs/walls.md`](walls.md).
+  any depth completes.  Forbin's *expression-position* calls (`x = f(y)`,
+  needing the result back synchronously) still recurse natively and hit
+  Python's own limit; the language has no realistic program shape that
+  recurses this way.  `run_until_halt_or_ancestor` proves an infinite
+  recursion when a call re-enters an ancestor with the same entry state;
+  calls whose bindings keep changing still need the wall-clock backstop.
+  See [`docs/walls.md`](walls.md).
 
 ## Text generator blockers
 
@@ -88,42 +86,27 @@ per-character encoding can be meaningfully shortened:
 
 | Language | Why it cannot compute a truth table |
 | --- | --- |
-| 123 | Parameterized (only reads real stdin at one fixed location, so a decision tree cannot read its inputs); answers with the termination convention. All tables build through `n == 3` from stored plans, and the **constructed** route now covers that ground exhaustively too: all 276 tables through three inputs build through it and replay correctly. Its embed scrub, planned separation and endgame are total by argument; the verdict search is not, and `construct` tries two mark geometries in order (see [`docs/walls.md`](walls.md) for the parity law). Four inputs: 12/12 on a random sample, mostly 0.5-30s each, one table needing the second geometry at ~350s (the exhausted first attempt is the cost). **Six inputs build and pass the closing gate**, and the cost that used to bind there was the gate, not the construction. `_replay` stepped every instantiated row through the per-character interpreter, which cost 95s for one five-input table and hours at six; it now executes a maximal `1`/`2` run at a time in closed form (each run's effect on the pointer and tape is arithmetic) and decides each `3` individually, with the jump partners precomputed once. Cycle detection stays exact under that batching: `ip` strictly increases within a run and across a forward jump, so an infinite run must pass a backward jump or the end-of-code loopback infinitely often, and sampling only those two events witnesses every loop a per-command detector does. Measured: the five-input sparse gate fell from 95s to 0.28s, and both six-input extremes now build *and* gate — the sparse one in 3.1s + 2.6s (324k characters) and the single-1-at-the-end one in 6.6s + 4.4s (543k characters). What remains at six inputs is the **verdict search** on dense random tables, which is high-variance rather than walled — the same spread the five-input sample already showed (one random five-input table converges in 39s, another in 125s) — and it stays bounded by the deterministic work budget, so a table that will not converge raises rather than running forever. The gate is deliberately written against the interpreter's own rules rather than reusing the builder's closed forms: a shared helper would let one bug pass both sides of the only execution gate the constructed route has. Budgets scale with the row count and bound divergence, not arity. |
+| 123 | Parameterized (only reads real stdin at one fixed location, so a decision tree cannot read its inputs); answers with the termination convention. All 276 tables through `n == 3` build and replay correctly. Its embed scrub, planned separation and endgame are total by argument; the verdict search is not, and `construct` tries two mark geometries in order (see [`docs/walls.md`](walls.md) for the parity law). Four inputs: 12/12 on a random sample. Six inputs build and pass the closing gate. What remains at six inputs is the **verdict search** on dense random tables, high-variance rather than walled, bounded by a deterministic work budget so a non-converging table raises rather than hanging. Budgets scale with row count and bound divergence, not arity. |
 | %^2^-1 | Only control flow is `t` (rewind on a nonzero accumulator), a whole-program loop that cannot count passes; no program that *reads* its inputs computes any two-input function (proved; [`docs/proofs.md`](proofs.md)). The shipped generator is parameterized and embeds instead — six constructions build every table at `n <= 4` and every table tried from five through eleven inputs. Construction-by-construction detail is in the `%^2^-1` row of the Generator caps table below. |
 
 ## Generator caps (shipped)
 
 | Generator | Cap | Wall or liftable? |
 | --- | --- | --- |
-| NoComment | `n <= 11` | Liftable by host config, not a language wall: 255 bounds a single `s` skip, and skips compose, so past eight inputs the generator splits the index into byte-sized summands and walks one staircase each. What binds instead is the interpreter's tape, which the `2**n` output cells plus a guard apron exhaust at `n == 12` against the default 4096 cells — and the wiki requires the memory space to be static but never specifies a *size*. Both `run` and the generator take a `tape` argument: `n == 12` builds and runs at `tape=16384`, and the default stays 4096 because the size is observable through the wrap. Verified by exhaustive interpreter runs at `n == 9`, `10`, and `11`; instrumented runs show no skip amount and no written cell exceeding 255, so the chain is spec-legal. Full argument in [`docs/walls.md`](walls.md#nocomments-arity-cap-the-255-bounded-one-jump-not-a-composition). |
+| NoComment | `n <= 11` | Liftable by host config, not a language wall: 255 bounds a single `s` skip, and skips compose, so past eight inputs the generator splits the index into byte-sized summands. What binds instead is the interpreter's tape: the `2**n` output cells plus a guard apron exhaust at `n == 12` against the default 4096 cells, and the wiki requires the memory space to be static but never specifies a size. `n == 12` builds and runs at `tape=16384`; the default stays 4096 because the size is observable through the wrap. Verified by exhaustive interpreter runs at `n == 9`, `10`, `11`. Full argument in [`docs/walls.md`](walls.md). |
 | Polynomial | instruction-count cap, not `n`-driven: a table needing more than 138 instructions under *both* constructions is rejected, so well-merging tables render at any width (parity through `n == 8` at 106 instructions) while random dense tables refuse from `n == 6` | Performance cap: the interpreter recovers instructions by factoring the polynomial, and that is what becomes impractical — so the bound is on instructions, not inputs. |
-| %^2^-1 | all tables at `n <= 2`; conjunctions and disjunctions of literals at any `n`; **every table at `n == 3`** (256/256) and **`n == 4`** (65536/65536); **five through eleven inputs, closed by the fold** — every table tried plans and executes; a generic table past eleven inputs is refused | Raised, and the rest is **open, not walled**. Six constructions were built in sequence (affine setter, subcube cascade, composed-affine derivation, threshold ladder, deep band, fold), each lifting a bound the previous one hit; the fold's own bound at twelve inputs is the workspace geometry (`_LIMIT`), not the plan search, and interleaving embeds with folds is an open, unexplored escape from that bound. Full construction-by-construction argument, including every measured number and the two prior "walls" that turned out to be padding/search artifacts, is in the `%^2^-1` entry of [`docs/walls.md`](walls.md) under "Assessed boolean candidates that fell through". |
+| %^2^-1 | all tables at `n <= 2`; conjunctions and disjunctions of literals at any `n`; **every table at `n == 3`** (256/256) and **`n == 4`** (65536/65536); **five through eleven inputs, closed by the fold** — every table tried plans and executes; a generic table past eleven inputs is refused | **Open, not walled.** The fold's bound at twelve inputs is the workspace geometry (`_LIMIT`), not the plan search, and interleaving embeds with folds is an unexplored escape from that bound. Full construction detail is in the `%^2^-1` entry of [`docs/walls.md`](walls.md) under "Assessed boolean candidates that fell through". |
 | 6-5 | `n <= 5` exact; past that, tables whose folded tree needs more than 35 branch labels are rejected (AND-6 and other well-folding tables *do* render) | Genuine wall: 35 is the count of the spec's own operand alphabet (`0-9A-Z`), and labels cannot be reused, so the budget is total standing tree nodes, not depth. **Do not retry operands past `Z`** — that decodes only through an unguarded interpreter fallthrough (undefined behaviour, see the conformance gap below) and was reverted once already. Full argument in [`docs/walls.md`](walls.md). |
 | ZTOALC L | every table, bounded only by size: the anchor table reaches 1132 commands and the emitted program must stay under the `2**22` line gate | Not a capability wall. The generator constructs a branch-free array lookup — the row index is built by double-and-add (`s += s`; `s += x{i}`, no multiply needed), the table is one-hot encoded into a `2**n` array, and `t[s]` selects the answer — placed on a Collatz trajectory, which is collision-free because a trajectory visits distinct values until it reaches 1. Sparse tables reach further than dense ones, since the array init is one command per selected row. |
-| WII2D | `n <= 4` exact (exhaustive through four); symmetric tables of any arity via closed forms; dense non-symmetric built and interpreter-verified through `n == 7`, rejected from `n == 8`; **structured tables reach any arity** (a 9-input xor-of-3 builds in 236 characters) | **Cost guard, not a wall.** The guard is charged `min(2 ** (n - 1), real domain)` *after* the chain walk, so a table whose chain merges is judged on what it actually costs rather than on its arity — which is what lets structured tables past `n == 7`. `_WII2D_MAX_INDEX_DOMAIN = 64` admits dense `n == 7` at a median 2776 characters and 65 ms; `_WII2D_MAX_REAL_DOMAIN = 256` refuses the rare table admitted on its arity whose chain finds no merge at all (one measured at domain 1025 does not return). Ranking the folds by emitted width instead of magnitude was tried and is 4–20x *worse*. The chain (first legal junction pair from a fixed catalogue) is provably total; so is the fold algebra, by an injective-square-and-safe-fold induction. That proof's unary runs are doubly exponential, so it does not replace the shipped size-conscious decoder. The single best-fold rule is exhaustive at `D == 16` but **not total** under its fixed centre cap: `0 1**K 0 1` is a counterexample for every even cap `K`, including the actual 4096. Full argument and measurements in [`docs/walls.md`](walls.md). |
+| WII2D | `n <= 4` exact (exhaustive through four); symmetric tables of any arity via closed forms; dense non-symmetric built and interpreter-verified through `n == 7`, rejected from `n == 8`; **structured tables reach any arity** (a 9-input xor-of-3 builds in 236 characters) | **Cost guard, not a wall.** The guard is charged `min(2 ** (n - 1), real domain)` *after* the chain walk, so a table whose chain merges is judged on what it actually costs rather than on its arity — which is what lets structured tables past `n == 7`. `_WII2D_MAX_INDEX_DOMAIN = 64` admits dense `n == 7` at a median 2776 characters; `_WII2D_MAX_REAL_DOMAIN = 256` refuses the rare table whose chain finds no merge at all. Ranking folds by emitted width instead of magnitude was tried and is 4-20x *worse*. The chain is provably total; so is the fold algebra, by an injective-square-and-safe-fold induction (its proof's unary runs are doubly exponential, so it does not replace the shipped decoder). The single best-fold rule is exhaustive at `D == 16` but **not total** under its fixed centre cap: `0 1**K 0 1` is a counterexample for every even cap `K`, including the actual 4096. Full argument in [`docs/walls.md`](walls.md). |
 | Factor | program-size cap, not `n`-driven: sparse tables stay under the cap well past the dense ones — constant-0/1 at any tested `n`, and AND-`n` (one `1` in the table) through `n == 5` — while dense tables refuse from XOR4 up | Liftable by host config: the encoded integer's decimal length is checked against `sys.get_int_max_str_digits()` (CPython's int-to-string DoS guard, default 4300 digits) before rendering — the Factor *interpreter* parses its program the same way, so a caller who raises the process-wide limit gets both the generator and the interpreter working past it. |
-
-Home Row and Minifuck's boolean generators were once dropped as trivial and
-have both been rebuilt.  Home Row's is a closed-form construction
-(binary-pack the inputs into an accumulator, then walk a linear equality
-chain) with no `n` cap at all.  Minifuck's old cap was a property of
-*reading* the inputs; embedding them instead lifts it, and the generator is
-now **total** — no arity and no table it declines, pinned by
-`test_no_arity_is_gated` on a fully-essential six-input table.  What bounds
-a caller is cost, not expressiveness: the template grows about fourfold per
-arity.  See [`docs/walls.md`](walls.md) for Home Row, and
-[`docs/minifuck_generator.md`](minifuck_generator.md) for the arguments
-behind Minifuck's totality and the mechanisms refuted along the way.
 
 The parameterized no-input generators embed every input exactly once rather
 than re-embedding a bit at multiple decision nodes, mirroring how an
 input-capable language reads each input once per run.  There are no
 exceptions; the per-language reasoning is in [`docs/walls.md`](walls.md).
-The rule has survived a real test: a Minifuck route that re-embedded input
-`i` at `2**i` cells would have closed four inputs with far less machinery
-(and passes the slot-order test, which only requires non-decreasing names),
-and was rebuilt on single embeds instead — the embed already carries the
-whole row identity, so re-reading the tape substitutes for re-embedding it.
+See [`docs/minifuck_generator.md`](minifuck_generator.md) for Minifuck's
+totality argument.
 
 ## Interpreter conformance gaps
 
@@ -164,11 +147,10 @@ it reproduces.
 
 Every compiler in `src/esolangs/compilers/` lowers a value to a
 **fixed-width machine word** — 64-bit signed at the widest, and a byte in
-BFStack, whose cells are byte-sized on both sides.  So where the
-interpreter's value is an unbounded Python integer, the two agree only
-while it stays inside that width: at the 64-bit ones, `-2**63 .. 2**63 - 1`.
-Outside it the compiled word wraps and the answer is silently wrong — no
-compiler diagnoses it, and the assembler accepts the truncation.
+BFStack.  The interpreter's value is an unbounded Python integer, so the two
+agree only while it stays inside that width (`-2**63 .. 2**63 - 1` at the
+64-bit ones).  Outside it the compiled word wraps and the answer is silently
+wrong — no compiler diagnoses it, and the assembler accepts the truncation.
 
 *Which* compilers this applies to is deliberately **not** listed here — the
 list would go stale on any new compiler or interpreter change, and the rule
@@ -186,25 +168,21 @@ itself bounded, and bounded-agreement when it is not:
 
 **CV(N)(C) adds a second axis**, and it is the reason this list is a rule
 rather than a table: an unbounded *structure* bounds a compiler the same
-way an unbounded value does.  Its interpreter's deque and its built
-function are Python lists, so the compiled form fixes both at 4096 entries
-alongside the 64-bit word — but the two axes fail differently.  A value
-that overruns its width wraps silently, as above; a structure that overruns
-its buffer **aborts**, because the push is range-checked and jumps to
-`.halt`. A diagnosed stop is the better failure, and it is available here
-only because a push is a call rather than an arithmetic result. Its word
-is also *unsigned*, the interpreter being explicit that memory is unsigned,
-so its wrap point is `2**64` and its subtractions floor at zero rather than
-going negative.
+way an unbounded value does.  Its interpreter's deque and built function are
+Python lists, so the compiled form fixes both at 4096 entries — but a value
+that overruns its width wraps silently, while a structure that overruns its
+buffer **aborts** (the push is range-checked, jumps to `.halt`), a better
+failure available only because a push is a call rather than an arithmetic
+result.  Its word is also *unsigned* (memory is unsigned per the
+interpreter), so its wrap point is `2**64` and subtractions floor at zero.
 
 CV(N)(C) carries a **third** narrowing, not about width: its `s` parses a
 line with Python's `int()` after `str.strip()`, both Unicode-aware, where
 the assembly is ASCII — `int("4_2")` is 42 (underscores legal between
 digits) and `strip` removes any `str.isspace()` character including NBSP,
-so `4_2` and `\xa042` read as 0 compiled and 42 interpreted. Every ASCII
-form agrees, signs and leading zeros included. General lesson for any new
-compiler: agreement can be narrowed by a *library function's* generality,
-not only by a machine word's width.
+so `4_2` and `\xa042` read as 0 compiled and 42 interpreted.  General lesson
+for any new compiler: agreement can be narrowed by a library function's
+generality, not only by a machine word's width.
 
 Two measured boundary checks, both at the same place, one per shape of
 entry:
@@ -236,9 +214,9 @@ Two's-complement addition is exact mod `2**64`, and Container's clamp reads
 only the *committed* value's sign, so a rule sum may cross `2**63` mid-tick
 and come back down with the right answer — a check firing at each `add`
 would abort a program that is correct today.  A *sound* check needs to
-track carries across the whole rule sum, which costs ~2x (Container's n=5
+track carries across the whole rule sum, costing ~2x (Container's n=5
 boolean program: 1472 → 2816 instructions).  Forbin's arena abort is not a
-precedent: it is one site guarding a resource programs actually exhaust.
+precedent: it guards a resource programs actually exhaust.
 
 **Arbitrary precision would not buy totality either.**  No compiler here has
 a heap — every one uses static `.data`/`.bss` at compile-time-known sizes —
@@ -289,7 +267,7 @@ interpreter, generator, and tests were deleted from the repo.
 - **2 Bits 1 Byte** (removed): joke; single-byte program, no text or boolean generator, externally implemented.
 - **2dFish** (removed): its `(...)*` capture-and-print makes its true generator floor a literal-embed, and its boolean generator was separately walled as affine-only with no total once-embedding construction — the same generator-story criterion The Temporary Stack was removed under.
 - **Aaargh++**: 4D work-in-progress with a partial spec.
-- **ABCDirection** (removed): its boolean generator was the suite's size outlier — 15,729 characters for a two-input XOR, 58x the median (270) and 3.5x the next largest. That was already the floor: four passes over the layout had taken it down from 377 KB with diminishing returns, and the remaining size is inherent to the donut grid and direction-dispatched command set rather than a tuning oversight, so a text generator would have landed in the same class. Do not re-add it expecting layout work to close the gap.
+- **ABCDirection** (removed): its boolean generator was the suite's size outlier — 15,729 characters for a two-input XOR, 58x the median.  Already the floor after four layout passes cut it down from 377 KB; the remaining size is inherent to the donut grid and direction-dispatched command set, not a tuning oversight.  Do not re-add expecting layout work to close the gap.
 - **Albabet** (removed): straight-line two-register accumulator; no conditional at all, so no boolean generator.
 - **ALT-4**: stack-based concurrent language with no input or output commands.  Baking input into the program is not disqualifying — it *is* the parameterized convention, and the wiki supplies both an infinite loop and a truth-machine, so a termination-convention generator is the natural fit.  What is unbuilt is the general construction: a single file's stack holds only zeroes, so it is one unary counter with an emptiness test, and an arbitrary table needs a decision tree over that.  Separately, `2` multithreads by *filename*, which is the file/OS-based I/O the criteria exclude — a generator can avoid `2`, an interpreter cannot.  Reopened as a candidate pending both.
 - **ASCII art** (removed): brainfuck with an art alphabet; a trivial reskin.
@@ -298,15 +276,15 @@ interpreter, generator, and tests were deleted from the repo.
 - **Brainpocalypse** (removed): no input; invented dump and a one-bit halt-vs-loop wall; externally implemented.
 - **Chainlang**: spec its own author describes as unfinished.
 - **Conveyor**: stderr-only output, and no input command.  The output objection is not decisive — `HALT`, a jumper that otherwise loops back, and `IFEZ`/`IFGT` give the halt/loop distinction a termination-convention generator needs.  Rejected on spec stability instead: the page leaves its own ROT13 example unwritten and gates commands behind unexplained privilege tiers (`(Supervisor+)`).
-- **Cortex language 3A**: its 8 real primitives are a clean brainfuck-like tape machine, but the `;`-prefixed commands are not composable — the wiki assigns them by table lookup to whole canned programs (`;&` is specified to *be* Hello World, `;$` a full brainfuck interpreter), so a faithful interpreter means hardcoding ~16 opaque special cases; treating `;` as a no-op contradicts the spec's own worked examples.
-- **Crement**: self-modifying, no I/O.  Having no input to branch on is not the blocker — Crement is Turing complete on-page, branches with `JUMP` on a data field's sign, halts by running past the last address, and loops by jumping backward: Point Break's exact profile.  Unlike Point Break the wiki defines no truth machine, so adopting the convention here would extend that precedent rather than follow it.  Reopened as a candidate; no construction built.
+- **Cortex language 3A**: its 8 real primitives are a clean brainfuck-like tape machine, but the `;`-prefixed commands are not composable — the wiki assigns them by table lookup to whole canned programs (`;&` is specified to *be* Hello World), so a faithful interpreter means hardcoding ~16 opaque special cases; treating `;` as a no-op contradicts the spec's own examples.
+- **Crement**: self-modifying, no I/O. Having no input to branch on is not the blocker — Crement is Turing complete on-page, branches with `JUMP` on a data field's sign, halts by running past the last address, and loops backward: Point Break's exact profile.  Unlike Point Break the wiki defines no truth machine, so adopting the convention here would extend that precedent, not follow it.  Reopened as a candidate; no construction built.
 - **Dotlang** (removed): its boolean generator was the only one that could not embed each input exactly once — Dotlang has no storage, value test, or arithmetic, so a decision tree has to re-embed every bit at every junction (2**i gates), and its text generator is a plain literal-embed.  Too thin to justify being the sole exception to the exactly-once rule; the fork-and-kill construction is recorded in [`docs/walls.md`](walls.md).
 - **DSDLAI** (removed): trivial Dig reskin with a random death chance; non-deterministic.
 - **Earfuck**: trivial brainfuck reskin (notes for instructions).
 - **Eso2D**, **Jumplang**, **brainfunc**, **Minimal operation language**, **Yaren**, **2KWLang**: wiki-categorized Implemented with documented external interpreters; not a gap.
 - **EXCON** (removed): straight-line 8-cell bit pool; no conditional at all, so no boolean generator.
 - **Fourfuck**: incomplete, a stub with a couple of commands.
-- **Gate**: a wire/logic-gate circuit whose spec does not define the two commands a generator needs.  Having no input command is *not* the blocker — it has real output, constants, and a value-testable branch (`+`).  The blocker is that the page never exercises either: `+` appears in none of the nine worked examples, so nothing pins the branch geometry a decision tree would rest on, and no example emits output at all.  The `<` operator is defined only by a self-referential image, and propagation order is unspecified.  Fails the complete-spec criterion; there is no talk page to resolve it.  **Circuit Diagram** is the alternative in the same genre.
+- **Gate**: a wire/logic-gate circuit whose spec does not define the two commands a generator needs.  Having no input command is *not* the blocker — it has real output, constants, and a value-testable branch (`+`).  The blocker is that the page never exercises either: `+` appears in none of the nine worked examples and no example emits output.  The `<` operator is defined only by a self-referential image, and propagation order is unspecified.  Fails the complete-spec criterion; no talk page to resolve it. **Circuit Diagram** is the alternative in the same genre.
 - **Gravity**: non-computable evolution; nothing verifiable.
 - **HaltJS**, **MangularJS**: JavaScript subsets; a faithful interpreter is a whole JS engine, not a file-based char/line interpreter.
 - **Huf** (removed): straight-line two-register accumulator; no conditional, so no boolean generator.
@@ -323,14 +301,14 @@ interpreter, generator, and tests were deleted from the repo.
 - **Objects In Mirror Are Heavier Than They Appear**, **OpenStreetCode**, **Unary Filesystem**, **Phile**: file/OS-based, no portable file I/O.
 - **PASM**: output is a 16x16 pixel screen; no char/line I/O.
 - **PlusOrMinus**, **PlusIntMinus**: output-only accumulator with no input or conditional; no boolean generator.
-- **Procedure**: only `the sum of ...` arithmetic is defined, so a faithful interpreter would have to invent the rest. Revisit if the wiki or Pure defines the operators.
+- **Procedure**: only `the sum of ...` arithmetic is defined, so a faithful interpreter would have to invent the rest.  Revisit if the wiki or Pure defines the operators.
 - **Queuenanimous**: no I/O at all; externally implemented.
 - **Regimin**: no I/O at all.
 - **something positive**: explicitly uncomputable.
 - **Stackint**: output is an optional interpreter dump, and input is a single number per run.
 - **State and Main**: one `main` argument, no output, no conditional; a boolean generator could reach at most one input.
 - **Stun Step** (removed): no input; invented dump and a one-bit halt-vs-loop wall; sole implementation removed anyway.
-- **The Temporary Stack** (removed): its text generator is a literal-embed, and under the tightened generator-story criterion (a literal-embed text generator needs a boolean generator) that made it inadmissible.  **The boolean wall it was also removed under is refuted** — the drain condition `sum(stk[1:]) / 2 > stk[0]` *is* an input-dependent branch, and numeric mode prints `front - 1` as text so a front of 1 or 2 gives `'0'`/`'1'` directly.  What the language actually supports is a *partial* generator (9 of 16 two-input tables, roughly ArrowQueue's threshold class), since the four XOR-like tables need an input-gated silent death that does not exist.  Whether that clears the bar is an open judgement; see [`docs/walls.md`](walls.md).
+- **The Temporary Stack** (removed): its text generator is a literal-embed, inadmissible under the tightened criterion that a literal-embed text generator needs a boolean generator.  It supports only a *partial* boolean generator (9 of 16 two-input tables, roughly ArrowQueue's threshold class) — the four XOR-like tables need an input-gated silent death that does not exist.  Whether that clears the bar is an open judgement; see [`docs/walls.md`](walls.md).
 - **Trash** (removed): advance-to-next-prime gadget; can never print `1`.
 - **Uack**: total; no output.
 - **Vandevelo**: input-only, no output at all — but a termination-convention generator needs no output, so that alone no longer settles it.  It is the strongest of the reopened cases: `Inp` is *real* input (no substitution needed), `::` is JavaScript `&&` and the `-!>`/`~!>` forms negate, so AND-with-NOT is functionally complete; the wiki's own truth-machine already answers by termination.  The open question is hang detection, not expressiveness: the loop is lazy self-reference rather than a revisited machine state, so state-cycle detection may not apply.  Reopened as a candidate; no construction built.
@@ -394,7 +372,7 @@ subset — enforce totality, or don't ship it.**
 - **`brainfuck → 3D Brainfuck`**: total via a runtime guard sentinel placed
   on the axis brainfuck's tape never uses, reproducing brainfuck's
   clamp-at-cell-0 behavior for `<` (3D Brainfuck's own `s` walks negative
-  with no clamp). No residue.
+  with no clamp).  No residue.
 - **`brainfuck → Painfuck`** and **`BFStack → brainfuck`**: total by
   construction — per-command rewrites over a strict superset target, no
   rejection path needed.
@@ -415,7 +393,7 @@ one that was tried.**
   input's tape.
 - **`brainfuck → 6-5`** — capped at 17 loops (6-5's loop markers are
   `0-9A-Z`, two per loop, and past `Z` is undefined interpreter behaviour,
-  not more labels — see the conformance note above). An interpreter-in-6-5
+  not more labels — see the conformance note above).  An interpreter-in-6-5
   would sidestep the cap the way Decleq's emulator did, but the classic
   423-byte `dbfi` self-interpreter needs 58 loops — evidence against, not
   proof.
@@ -426,7 +404,7 @@ one that was tried.**
   Streetcode has no loop command, so brainfuck's `[` needs a revisited
   program state to close on, but a ring re-entering the road past a
   junction returns under a different heading/steering-latch state — the
-  state that would decide the loop is never revisited. Showing a ring
+  state that would decide the loop is never revisited.  Showing a ring
   *can* re-close would need proving a cell stays non-negative across
   arbitrary loops, i.e. value analysis, which this module's unsound static
   analysis attempt has already failed twice.
@@ -453,8 +431,6 @@ generator is parameterized and builds every two-input table, so the theorem
 bounds the reading model, not the language.
 
 No comparable Minifuck theorem is open: a reading construction builds and
-verifies all sixteen two-input tables on the shipped interpreter (the
-searches that once suggested a narrower reading model were length-bounded
-well below the 88-148 characters it needs).  See [`docs/walls.md`](walls.md).
-The shipped generator embeds its inputs instead and builds every table at
-`n <= 3`.
+verifies all sixteen two-input tables on the shipped interpreter.  See
+[`docs/walls.md`](walls.md).  The shipped generator embeds its inputs
+instead and builds every table at `n <= 3`.
