@@ -323,8 +323,12 @@ def wii2d(text: str, width: int | None = None) -> str:
         return best[1]
 
     prog = ">" + "".join(build(ord(c)) + "~" for c in text) + "."
-    if width is not None and width >= _WII2D_MIN_WIDTH:
-        return _wii2d_serpentine(prog, width)
+    if width is not None:
+        # Narrower than a row can hold is answered with the narrowest grid
+        # that can, rather than with the unfolded line: that line is the
+        # widest form there is, so ignoring the width would widen the very
+        # program the caller asked to narrow.
+        return _wii2d_serpentine(prog, max(width, _WII2D_MIN_WIDTH))
     return f"{prog}\n!"
 
 

@@ -64,7 +64,12 @@ def streetcode(text: str, width: int | None = None) -> str:
     :func:`_streetcode_ring_serpentine`.
     """
     instructions = _streetcode_instructions(text)
-    if width is not None and width >= _STREETCODE_MIN_WIDTH:
+    if width is not None:
+        # A width narrower than a fold can turn in is answered with the
+        # narrowest street that can, rather than with the unfolded run:
+        # that run is wider than the default, so ignoring the width would
+        # widen the very program the caller asked to narrow.
+        width = max(width, _STREETCODE_MIN_WIDTH)
         # Folding does not make the first character's walk any cheaper: it
         # packs the same unary run into more rows.  So the ring is built
         # here too, hung under the fold's southern wall where there is
