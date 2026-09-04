@@ -536,7 +536,7 @@ class _Parser:
             if not self.links.reaches(cell[0], cell[1], (-d_row, -side)):
                 continue
             wiring = self._wiring_at(cell)
-            if wiring is not None:
+            if wiring is not None:  # pragma: no branch - validated port is a wiring
                 seen.add(cell)
                 found.append(wiring)
         return found
