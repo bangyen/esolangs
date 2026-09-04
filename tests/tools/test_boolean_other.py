@@ -1064,6 +1064,34 @@ class TestTaglate:
         for table in ("11110000", "11001100", "10101010", "00000000"):
             assert len(boolean.taglate(table)) < full // 10, table
 
+    def test_gapped_dependencies_reduce_without_reordering_inputs(self) -> None:
+        """Every n=3 function of inputs 0 and 2 uses the small program.
+
+        The discarded middle input is read after the reduced program's first
+        read.  Its rotate-and-drop restores that exact intermediate queue,
+        rather than shifting the arithmetic slots a later reduce addresses.
+        """
+        tables = (
+            "00000101",
+            "00001010",
+            "01010000",
+            "01011010",
+            "01011111",
+            "10100000",
+            "10100101",
+            "10101111",
+            "11110101",
+            "11111010",
+        )
+        full = len(boolean.taglate("10010110"))
+        for table in tables:
+            program = boolean.taglate(table)
+            assert len(program) < full, table
+            assert program.count("h") == 4, table  # ghost plus all three inputs
+            for combo in range(8):
+                bits = [str((combo >> shift) & 1) for shift in (2, 1, 0)]
+                assert run_taglate(program, ["0", *bits]) == table[combo], (table, bits)
+
     def test_reduced_programs_still_read_every_input(self) -> None:
         """A reduced program consumes the inputs it no longer uses.
 
