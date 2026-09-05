@@ -34,12 +34,14 @@ The pipeline
 2. **Separate** (`_separate`): a *planned* decode tree, not a search.
    Level ``i`` walks each same-position group exactly onto mark cell
    ``marks[i]``; the closing ``"33"`` splits it by bit ``i`` (set-bit
-   rows re-run the last segment and escape one walk higher).  Escape
-   offsets are chosen so the minimum inter-group gap at worst halves
-   per level, and the mark base ``2**(n+1)`` gives the first gap enough
-   room to survive all ``n`` halvings — which is why this stage cannot
-   fail at any arity.  Pure right-walk segments never flip a cell,
-   never enter the ring, never read stdin.
+   rows re-run the last segment and escape one walk higher).  The mark
+   geometry comes from :func:`_geometry`: a tight linear layout with
+   fixed even escapes where a per-arity reference run proves it out
+   (every probed arity, and 2-3x smaller templates), else the doubling
+   base whose halving escapes provably survive all ``n`` levels at any
+   arity — the fallback that keeps this stage total by argument.  Pure
+   right-walk segments never flip a cell, never enter the ring, never
+   read stdin.
 3. **Verdict** (`_verdict`): a *planned* shield-and-sweep, not a
    search.  Separation leaves every row at a distinct odd position with
    nothing marked above its own cell, and on that state the kill
@@ -68,6 +70,7 @@ instead.
 from __future__ import annotations
 
 from collections.abc import Iterable
+from functools import cache
 
 __all__ = ["ConstructError", "construct"]
 
@@ -477,7 +480,7 @@ def _phase_a(b: _Builder, marks: list[int]) -> None:
             raise ConstructError("merge failed to re-synchronize")
 
 
-def _separate(b: _Builder, marks: list[int]) -> None:
+def _separate(b: _Builder, marks: list[int], ws: tuple[int, ...] | None = None) -> None:
     """Give every row a unique position by a planned decode tree.
 
     Phase A leaves all rows at position 0 with tape ``{marks[i] : bit_i}``
@@ -489,20 +492,26 @@ def _separate(b: _Builder, marks: list[int]) -> None:
     Each visit is a shift ``"2"*s + "33"`` followed by a test
     ``"2"*w + "33"``: the escape re-runs only the *last* segment, so the
     escape offset ``w`` is decoupled from the walk-to-the-mark distance
-    ``d = s + w``.  With ``w = d // 2`` the escaped rows land strictly
-    inside the gap above their group, which
+    ``d = s + w``.  Two escape policies serve the two geometries
+    :func:`_geometry` chooses between:
 
-    * never merges two separated groups (each escape stays inside its
-      own inter-group window, and the windows are disjoint), and
-    * at worst halves the minimum inter-group gap per level, so a base
-      mark spacing of ``2**(n+1)`` (see :func:`construct`) guarantees
-      every gap is still ``>= 2`` after all ``n`` levels — which is what
-      makes this total at every arity.
+    * ``ws is None`` — the doubling base's ``w = d // 2``: the escaped
+      rows land strictly inside the gap above their group, which never
+      merges two separated groups and at worst halves the minimum
+      inter-group gap per level, so a base mark spacing of ``2**(n+1)``
+      guarantees every gap is still ``>= 2`` after all ``n`` levels —
+      what makes that geometry total at *every* arity.  Positions after
+      level ``i`` stay below ``2 * marks[i] < marks[i+1]``, so no
+      landing ever chains onto a later level's mark.
+    * fixed ``ws[i]`` — the tight linear geometry's even offsets: an
+      escape moves ``ws[i]`` per re-run, and the equal mark spacing
+      means it *can* land on the next level's mark and cascade onward.
+      Nothing here argues that converges at an arbitrary arity; the
+      per-arity reference run in :func:`_geometry` is what admits it,
+      and a walk shorter than the escape rejects the geometry outright.
 
     Pure right-walk segments never flip a cell, never enter the ring and
-    never read stdin, and positions after level ``i`` stay below
-    ``2 * marks[i] < marks[i+1]``, so no landing ever chains onto a
-    later level's mark.  Every fate is still validated by ``test()``.
+    never read stdin.  Every fate is still validated by ``test()``.
     """
     for i, mk in enumerate(marks):
         for _visit in range(2**b.n + 1):
@@ -510,7 +519,9 @@ def _separate(b: _Builder, marks: list[int]) -> None:
             if not pending:
                 break
             d = mk - max(pending)
-            w = max(1, d // 2)
+            w = max(1, d // 2) if ws is None else ws[i]
+            if d < w:  # pragma: no cover - the probed arities all pass
+                raise ConstructError(f"level {i}: walk {d} under escape {w}")
             if d > w:
                 b.run("2" * (d - w))
                 b.test()
@@ -521,6 +532,54 @@ def _separate(b: _Builder, marks: list[int]) -> None:
     poss = [r.pos for r in b.live()]
     if len(set(poss)) != len(poss):  # pragma: no cover - invariant
         raise ConstructError("separation left shared positions")
+
+
+@cache
+def _geometry(n: int) -> tuple[tuple[int, ...], tuple[int, ...] | None]:
+    """Pick arity ``n``'s mark geometry: tight when it proves out.
+
+    The tight layout — marks ``(i + 1) * 2**n + 1`` with fixed even
+    escape offsets ``2**(n - i)`` — spaces the marks linearly where the
+    proven base doubles them, which measured 2.1x smaller templates at
+    four inputs and 2.8x at five.  Whether it *works* at an arity is
+    decidable cheaply, because separation never consults the table: one
+    reference run per arity fixes where every row lands, and if it
+    leaves each row at a distinct odd position, parked off its own
+    marks, with nothing marked above its own cell, then the planned
+    verdict's closed forms hold for every table at this arity.  Any
+    failure — a raise anywhere, or a violated invariant — falls back to
+    the doubling base with the halving escapes, whose totality is
+    proven outright, so :func:`construct` stays total by argument
+    either way.  The reference run costs about a millisecond even at
+    seven inputs, and the result is cached per process.
+
+    The tight geometry passes at every probed arity (one through
+    seven); the fallback is totality insurance for the arities nobody
+    has probed, not a path any known arity takes.
+    """
+    marks = tuple((i + 1) * 2**n + 1 for i in range(n))
+    ws = tuple(2 ** (n - i) for i in range(n))
+    _work[0] = _WORK_BUDGET * max(1, 2 ** (n - 4))
+    try:
+        b = _Builder(n)
+        _phase_a(b, list(marks))
+        _close(b)
+        _separate(b, list(marks), ws)
+        rows = b.live()
+        poss = [r.pos for r in rows]
+        ok = (
+            len(set(poss)) == len(poss)
+            and all(p % 2 for p in poss)
+            and not any(_on_mark(r) for r in rows)
+            and all(r.tape >> (r.pos + 1 + _RING) == 0 for r in rows)
+        )
+    except (ConstructError, _WorkExhaustedError):  # pragma: no cover
+        ok = False
+    if ok:
+        return marks, ws
+    # No probed arity reaches this fallback; it is what keeps construct
+    # total by argument at the arities nobody has probed.
+    return tuple(2 ** (n + 1) * 2**i + 1 for i in range(n)), None  # pragma: no cover
 
 
 def _paint(b: _Builder, k: int) -> None:
@@ -851,35 +910,24 @@ def construct(truth_table: str, *, verify: bool = True) -> str:
     unproven program.
     """
     n = max(1, (len(truth_table) - 1).bit_length())
-    # One mark geometry.  The base must be at least 2**(n+1): separation
-    # halves its minimum inter-group gap once per level, and every gap
-    # has to survive all n levels at >= 2 (see _separate); the tripling
-    # keeps each level's escapes below the next level's mark.  The base
-    # 2**(n+1) is a floor, not a choice: separation halves the minimum
-    # inter-group gap once per level and the verdict needs final positions
-    # distinct and odd, so the initial gap must be at least 2 * 2**n.  The
-    # *ratio* is only required to keep each level clear of the last one's
-    # escapes, and doubling suffices -- tripling was generous.  Measured
-    # over 2048 rows at n == 3 and twelve tables each at n == 2, 4 and 5,
-    # all correct, mean template 2055 -> 1008 characters at three inputs
-    # and 105282 -> 22251 at five, where it also cuts the build from 1773
-    # to 56 seconds.  The
-    # staggered second geometry (and the budget probe that arbitrated
-    # between the two) served the verdict *search*, whose anchored kills
-    # pinned mark residues mod 4; the planned verdict tests only cells
-    # in each row's virgin zone, so one layout serves every table.
+    # The mark geometry comes from _geometry: the tight linear layout
+    # when its per-arity reference run proves out (every probed arity),
+    # the doubling base with halving escapes -- proven total at every
+    # arity -- otherwise.  The reference run manages its own budget and
+    # caches, so it is charged once per arity, not per table.
     #
     # The budget still bounds a diverging build, but everything about a
     # wider table is exponentially bigger -- rows, template length,
     # shield paints -- so the cap scales with the row count to stay a
     # divergence guard, not an arity ceiling.
+    marks_t, ws = _geometry(n)
+    marks = list(marks_t)
     _work[0] = _WORK_BUDGET * max(1, 2 ** (n - 4))
     try:
         b = _Builder(n)
-        marks = [2 ** (n + 1) * 2**i + 1 for i in range(n)]
         _phase_a(b, marks)
         _close(b)
-        _separate(b, marks)
+        _separate(b, marks, ws)
         _verdict(b, truth_table)
         _endgame(b)
         template = b.template()

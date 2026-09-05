@@ -178,8 +178,16 @@ re-derivable from the rules plus the frozen constants.
 
 `one_two_three_construct` builds tables past three inputs via a merge phase
 (one synchronized walk-descend-pop per mark, keeping exactly one mark per
-set bit), a separation phase (a planned decode tree, deterministic and
-total at every arity via a `2**(n+1)` mark base), and a planned verdict:
+set bit), a separation phase (a planned decode tree, not a search), and a
+planned verdict.  The mark geometry is chosen per arity: separation never
+consults the table, so one cheap reference run decides whether the *tight*
+layout — marks `(i+1)*2**n + 1`, fixed even escapes, 2.1x smaller
+templates at four inputs and 2.8x at five — leaves every row at a distinct
+odd position with a clean zone above it, and any failure falls back to the
+doubling `2**(n+1)` mark base whose halving escapes are total at every
+arity by argument.  Every probed arity (through seven) takes the tight
+layout; the fallback is what keeps `construct` total at the rest.  The
+verdict:
 separation leaves every row at a distinct **odd** position with nothing
 marked above its own cell, and on that state the kill
 `"1"*a + "2" + "2"*(a-1) + "12"` (`a` odd) is a closed form — rows at or
@@ -202,7 +210,8 @@ them — is gone, and with it the geometry parity law.  The resumable
 `scripts/check_123_four_input.py` sweep constructs all 65536 four-input
 tables and checks all 1048576 instantiated rows: each row must either halt
 or revisit an exact state, with no fuel verdict; the completed sweep had
-zero failures.  Five and six inputs are randomly sampled, and each emission
+zero failures, and was re-run in full under the tight geometry when it
+became the four-input default.  Five and six inputs are randomly sampled, and each emission
 is still validated per stage on the exact model and replayed before it is
 returned.  A fixed budget still bounds the build: a table takes `2**n` bits
 to state, so template length and build work are exponential in `n` no
