@@ -1018,49 +1018,66 @@ def _ladder_vector(
     return tuple(out)
 
 
-#: Every table the ladder path serves, named: table to ``(index into
-#: :data:`_LADDERS`, printing suffix)``.  The setters and lead recompute
-#: from the ladder's parameters through :func:`_ladder_setters`, so the
-#: only searched content was ever the suffix -- found by a breadth-first
-#: composition over the rungs -- and these are its witnesses, frozen the
-#: way :data:`_FOLD_SKELETONS` froze the mined plans.  The index is the
-#: first ladder in :data:`_LADDERS` whose stage-one vector the suffix
-#: splits, matching the order the harvest filled its dict in, so every
-#: emitted template is byte-identical with what always shipped.
-#:
-#: Each entry is validated by arithmetic rather than trust: the test suite
-#: runs :func:`_apply` over the suffix on every rung of the ladder's
-#: stage-one vector (:func:`_ladder_vector`, which *runs* the emitted
-#: characters) and checks the split lands each class on its answer.  The
-#: twenty-four tables here are the twenty the cover was picked for plus
-#: their overlaps; as everywhere else, what is absent is unreached, not
-#: proved unreachable.
-_LADDER_BUILT: dict[str, tuple[int, str]] = {
-    "00010011": (0, "mpspmipspsl"),
-    "11101100": (0, "mpspmipspipl"),
-    "00110111": (0, "smpspmipspsl"),
-    "11001000": (0, "smpspmipspipl"),
-    "00000111": (1, "mpspmipspsl"),
-    "11111000": (1, "mpspmipspipl"),
-    "00011111": (1, "smpspmipspsl"),
-    "11100000": (1, "smpspmipspipl"),
-    "00000001": (2, "mpspmipspsl"),
-    "11111110": (2, "mpspmipspipl"),
-    "00010111": (2, "smpspmipspsl"),
-    "11101000": (2, "smpspmipspipl"),
-    "11111011": (3, "mmpspmipspsl"),
-    "00000100": (3, "mmpspmipspipl"),
-    "01111011": (3, "pspmimmipspsl"),
-    "10000100": (3, "pspmimmipspipl"),
-    "01011011": (4, "pspmimmipspsl"),
-    "10100100": (4, "pspmimmipspipl"),
-    "00001011": (5, "pspmimmipspsl"),
-    "11110100": (5, "pspmimmipspipl"),
-    "00011011": (6, "pspmsmipspsl"),
-    "11100100": (6, "pspmsmipspipl"),
-    "00111011": (7, "pspmimmipspsl"),
-    "11000100": (7, "pspmimmipspipl"),
-}
+#: The five comparator gadgets the ladder path composes after stage one,
+#: shortest first.  Each is a threshold on the accumulator's magnitude --
+#: scale it until the cut clears the over-3003 limit, negate so the reset
+#: can fire, then normalise the two classes onto 0 and 1.  Their measured
+#: cuts are 3004, 1502, 1500, 751 and 3004; the two that share a cut differ
+#: on the rungs stage one already clamped.  Deriving these spellings from
+#: their cuts would mean re-running the rung composition they were found
+#: by, which is out of scope here -- what was tabulated, and is now
+#: computed, is which gadget each table needs.
+_LADDER_GADGETS = (
+    "pspmsmipsp",
+    "mpspmipsp",
+    "smpspmipsp",
+    "mmpspmipsp",
+    "pspmimmipsp",
+)
+
+#: How a gadget finishes: ``sl`` prints the split as it stands, ``ipl``
+#: inverts it first, so the pair covers a table and its complement.
+_LADDER_TAILS = ("sl", "ipl")
+
+
+@cache
+def _ladder_built() -> dict[str, tuple[int, str]]:
+    """Every table the ladder path serves: table to ``(ladder, suffix)``.
+
+    Built rather than stored.  Stage one leaves each input combination on a
+    rung of :data:`_LADDERS`, and a suffix is a comparator that splits those
+    rungs into the two output classes -- so running the suffix over the
+    stage-one vector *computes* the table it serves, and folding every
+    (suffix, ladder) pair the other way round names them all.
+
+    The fold is forward and first-claim-wins, never a search for a target:
+    suffixes shortest first, ladders in :data:`_LADDERS` order, which is
+    what the docstring of that cover means by "the first ladder whose
+    stage-one vector the suffix splits".  The arithmetic is
+    :func:`_apply` over the characters actually emitted, not a model of
+    them -- see :func:`_ladder_vector` for why anything else drifts.
+
+    A pair whose rungs do not all land on 0 or 1 is not a split and is
+    skipped.  Two of the tables reached here are the constants, which every
+    earlier path serves in a tenth the characters, so naming them costs
+    nothing: :func:`_ladder` is tried last.
+    """
+    built: dict[str, tuple[int, str]] = {}
+    vectors = []
+    for weights, base in _LADDERS:
+        spelled = _ladder_setters(weights, base)
+        assert spelled is not None, weights  # nosec B101 - the cover spells
+        setters, lead = spelled
+        vectors.append(_ladder_vector(setters, lead, 3))
+    for gadget in _LADDER_GADGETS:
+        for tail in _LADDER_TAILS:
+            suffix = gadget + tail
+            for index, vector in enumerate(vectors):
+                rungs = [_apply(rung, suffix) for rung in vector]
+                if any(rung not in (0, 1) for rung in rungs):
+                    continue
+                built.setdefault("".join(str(rung) for rung in rungs), (index, suffix))
+    return built
 
 
 def _ladder(truth_table: str, n: int) -> str | None:
@@ -1088,7 +1105,7 @@ def _ladder(truth_table: str, n: int) -> str | None:
         # Every shipped ladder has three weights, so the harvest this
         # tabulation froze was empty at every other arity.
         return None
-    found = _LADDER_BUILT.get(truth_table)
+    found = _ladder_built().get(truth_table)
     if found is None:
         return None
     index, suffix = found
