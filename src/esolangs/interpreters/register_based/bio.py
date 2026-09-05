@@ -97,7 +97,16 @@ def _skip(commands: list[str], ind: int) -> int:
 # says every command is ended by a ``;``, so both belong to the command
 # rather than being free-standing punctuation -- and a triple missing
 # either is not a command at all.
-_COMMAND = re.compile(r"[01][oOiI][xXyYzZ](?:\{|;)|\};")
+#
+# The terminator is bound to the opcode rather than alternated freely: only
+# ``0i`` takes ``{``, and every other opcode takes ``;``.  A blind
+# ``(?:\{|;)`` accepted the two mismatched shapes as commands, and both then
+# walked off the end at run time -- ``0ix;`` reached ``_skip`` looking for a
+# ``};`` that brace matching never required, and ``0ox{`` opened a body
+# nothing had pushed, so its ``};`` popped an empty stack.  The RISC-V
+# cross-check rejects both at load (``.tok_want_brace``), which is the
+# reading this matches.
+_COMMAND = re.compile(r"0[iI][xXyYzZ]\{|(?:0[oO]|1[oOiI])[xXyYzZ];|\};")
 
 # Comments run from ``//`` to the end of the line and carry no meaning, so
 # they are removed before the program is tokenized.
