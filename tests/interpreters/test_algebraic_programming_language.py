@@ -656,3 +656,111 @@ class TestNestedTraversals:
     def test_a_variable_repeated_across_operands_is_read_once(self) -> None:
         """``a + (b - a)`` reads a and b, in that order -- not a, b, a."""
         assert run_and_capture("a + (b - a)", "3\n10\n") == "10\n"
+
+
+class TestGuardsAndBoundaries:
+    """The guards, boundaries, and lexer edges no earlier test pins.
+
+    Each of these was free to change without any test above objecting:
+    the zero-base power guard's two halves, where a fractional literal
+    stops, how far bracket depth counts, and which nodes the ``$`` scan
+    reaches through.  Written in the interpreter's own vocabulary, so
+    they read as behaviour rather than as harness bookkeeping.
+    """
+
+    def test_a_nonzero_base_to_a_negative_power(self) -> None:
+        """Only a *zero* base refuses; 2 ** -1 is an ordinary fraction.
+
+        The halt guard is ``left == 0 and right < 0``.  With no test on a
+        negative exponent over a nonzero base, widening it to ``or``
+        raised on this too and nothing objected.
+        """
+        assert run_and_capture("2 ** -1") == "0.5\n"
+
+    def test_zero_to_the_zeroth_power(self) -> None:
+        """``0 ** 0`` is 1: the guard's ``right < 0`` excludes zero.
+
+        Loosening it to ``right <= 0`` or ``right < 1`` makes this halt,
+        which is what pins the comparison to a strict one.
+        """
+        assert run_and_capture("0 ** 0") == "1\n"
+
+    def test_a_dot_with_no_digit_after_it_is_its_own_token(self) -> None:
+        """A fractional part needs a digit; a bare trailing dot is a symbol.
+
+        ``3.`` tokenizes as ``3`` then ``.``, so the dot reaches the
+        parser as an operator symbol and the line has no operator to
+        match -- which is an error, not the number 3.
+        """
+        with raises_message(ValueError, "trailing input at '.'"):
+            run_and_capture("3.")
+
+    def test_a_dot_before_a_letter_is_not_a_decimal_point(self) -> None:
+        """``3.a`` is 3, a dot, and a name -- not the number 3 times a.
+
+        The dot is left over as its own token, so the parser stops at it
+        rather than reading a fractional literal.
+        """
+        with raises_message(ValueError, "trailing input at '.'"):
+            run_and_capture("3.a")
+
+    def test_a_multi_digit_fractional_part(self) -> None:
+        """The fraction loop runs past its first digit, so .25 is not .2."""
+        assert run_and_capture("3.25 + 0") == "3.25\n"
+
+    def test_an_equals_after_nested_brackets_still_splits(self) -> None:
+        """Bracket depth counts up, not to one.
+
+        ``F(G(x)) = ...`` closes two brackets before the ``=``.  With
+        ``depth = 1`` instead of ``depth += 1`` the second close drives
+        depth to zero early, and the split lands inside the header.
+        """
+        assert run_and_capture("F(x) = x\nG(x) = F(F(x))\nG(4)") == "4\n"
+
+    def test_a_four_statement_body_runs_each_statement_once(self) -> None:
+        """Statement advance is ``+= 1``, not a jump to a fixed index.
+
+        Three statements cannot tell the two apart -- from statement 0
+        both reach 1 -- so the body needs a fourth for ``stmt = 1`` to
+        show as a loop on the second statement.
+        """
+        assert run_and_capture("F(n) = {\n1\n2\n3\n4\n}\nF(0)") == "1\n2\n3\n4\n"
+
+    def test_arithmetic_on_a_function_names_the_value_it_refused(self) -> None:
+        """The halt message carries the offending value, not a bare None."""
+        with raises_message(HaltError, "expected a number, got <F/1>"):
+            run_and_capture("F(x) = x\n1 + F")
+
+    def test_a_negative_right_hand_side_with_no_space(self) -> None:
+        """The split keeps everything after the ``=``, sign included.
+
+        ``a=-3`` has its minus flush against the ``=``; a split that
+        skipped one more character would read it as ``3``.
+        """
+        assert run_and_capture("a=-3\na") == "-3\n"
+
+    def test_a_bracketed_right_hand_side_with_no_space(self) -> None:
+        """The same, for a bracket: eating the ``(`` would unbalance it."""
+        assert run_and_capture("a=(1+2)\na") == "3\n"
+
+    def test_a_short_circuited_return_does_not_print_its_statement(self) -> None:
+        """The control flag is read even when the ``$`` never evaluates.
+
+        ``0 & $7`` short-circuits, so the statement finishes normally --
+        but it *carries* a ``$``, so it must not print.  Contrast the
+        same body without one, which prints its value and falls through.
+        """
+        assert run_and_capture("F(n) = {\n-(0 & $7)\n9\n}\nF(0)") == "9\n"
+        assert run_and_capture("F(n) = {\n-(0 & 7)\n9\n}\nF(0)") == "0\n9\n"
+
+    def test_a_short_circuited_return_inside_an_operation(self) -> None:
+        """The same reach, through a ``bin`` node."""
+        assert run_and_capture("F(n) = {\n1 + (0 & $7)\n9\n}\nF(0)") == "9\n"
+
+    def test_a_short_circuited_return_inside_a_call_argument(self) -> None:
+        """And through a ``call`` node's argument list."""
+        assert run_and_capture("G(x) = x\nF(n) = {\nG(0 & $7)\n9\n}\nF(0)") == "9\n"
+
+    def test_a_three_digit_fractional_part(self) -> None:
+        """The fraction loop steps one digit at a time, so .125 is not .15."""
+        assert run_and_capture("3.125 * 8") == "25\n"
