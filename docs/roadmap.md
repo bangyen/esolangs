@@ -414,17 +414,45 @@ What the two fixes did **not** buy is the interesting part:
   placement takes the first candidate that clears its arm.  If the admissible
   `j1` range has a closed form, the sweep is a constant-factor loop rather
   than the frontier.  Worth it only if deeper ACV tables start mattering.
-- **The reachable-set lesson generalizes, and has not been swept for.**
-  `forth` iterated all `n!` input orders when only `2 * 3**(n-2)` are
-  buildable, filtering *after* paying for each — `unsquare`, its sibling in
-  the same module, had always iterated the reachable set instead.  One
-  generator's optimization was simply absent from the other.  **No pass has
-  checked the remaining reorder-searching generators for the same shape**:
-  the question for each is whether its candidate orders are filtered before
-  or after the per-order build, which is cheap to answer per generator and
-  independent of the reorder-screen thresholds in
-  `docs/generator-optimizations.md` (this is not a reorder *win*, it is the
-  same program found faster).
+  A cheap precedent for that kind of narrowing turned up in the order sweep
+  below and is worth knowing before starting: `CV(N)(C)`'s servable input
+  orders are exactly those readable off the two ends of *some* front/back
+  deque split (checked exhaustively against `_deque_schedule` through
+  `n == 7`), and they are counted exactly by the central binomial
+  coefficient `C(2*(n-1), n-1)` — 2, 6, 20, 70, 252, 924, 3432 through
+  `n == 8`.  **An `O(n)` predicate for that set is not known**; the obvious
+  guesses are wrong in both directions (a two-monotone-subsequence merge
+  over-accepts at 22 against 20 for `n == 4`; a prefix-interval test
+  under-accepts at `2**(n-1)`).  It costs nothing today — `_deque_schedule`
+  is called once per order under a cap — so this is a curiosity rather than
+  a task, and it is recorded only because an exact count with no known cheap
+  test is the same shape as ACV's `j1` question above.
+- **The reachable-set lesson does not generalize — swept, and `forth` was
+  the only case.**  `forth` iterated all `n!` input orders when only
+  `2 * 3**(n-2)` are buildable, filtering *after* paying for each, while
+  `unsquare` in the same module had always iterated the reachable set.  A
+  sweep for that shape covered both routes: the 20 generators reaching
+  `best_input_order`, instrumented at the helper to count per-order builds
+  returning `""`, and the three self-rolled loops (`six_five`, `streetcode`,
+  `laserfuck`) read individually.  **No generator now pays materially for a
+  build it discards.**  Two near-misses, neither worth changing:
+    - `CV(N)(C)` discards the most orders — 17% at `n == 4`, 65% at
+      `n == 6` — but `_hoisted` calls `_deque_schedule` *first* and returns
+      before building, so a rejected order costs the schedule search and the
+      caller's `permute_truth_table`, not a program.  That is the right shape
+      already; it is the opposite of `forth`'s.
+    - `six_five`'s empty candidate is a label-budget overflow, which is only
+      knowable *after* building — so it cannot be pre-filtered.  It never
+      fires below the arity where the table is unbuildable anyway: 0 of 1200
+      order builds discarded at `n <= 5`, and 5760 of 5760 at `n == 6`, where
+      `six_five` raises regardless.
+  **Both negatives are controlled**, which is what makes them worth
+  recording: the first sweep reported zero discards everywhere because
+  patching `esolangs.tools.boolean.cvnc` silently patched the *generator
+  function* the package `__init__` exports under that name, not the module.
+  A positive control — `CV(N)(C)`, documented to return `""` — was what
+  caught it, and `six_five` at `n == 6` is the control for the self-rolled
+  half.  Re-derive with those controls or not at all.
 
 ## Dependency reduction
 
