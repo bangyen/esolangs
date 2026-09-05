@@ -487,11 +487,12 @@ open:
 
 ## Smaller open items
 
-- **Closed forms for the search-based boolean generators** — most
-  generators construct their answer; one still searches for it, and each
-  could in principle name what it finds instead.  A sweep of every module in
-  `tools/boolean/` for a live frontier (rather than for the word "search",
-  which appears mostly in prose describing searches that were *replaced*)
+- **Closed forms for the search-based boolean generators** — **closed;
+  all four shipped.**  Most generators construct their answer; four
+  searched for it, and each now names what it finds instead.  A sweep of
+  every module in `tools/boolean/` for a live frontier (rather than for
+  the word "search", which appears mostly in prose describing searches
+  that were *replaced*)
   leaves exactly these, all confirmed by instrumenting the function and
   building real tables.  **Instrument the function the shipped entry
   actually calls**: an earlier pass of this sweep missed Minifuck below
@@ -547,14 +548,23 @@ open:
       (patterns 011000 and 110000 share it and need different plans), so
       the generalisation past the tabulated `r <= 5` is the rule loop, not
       a wider table.
-    - **123** — `_verdict_search` is the one where a closed form would pay.
-      It is a bounded DFS over builder states, already documented in
-      `docs/limitations.md` as the non-total part of an otherwise
-      total-by-argument construction ("high-variance rather than walled"),
-      and it is what makes a dense table expensive: a sampled `n == 5` table
-      built in 401s, emitting 144093 characters.  It *succeeded* — the cost
-      is the search, not a wall — but that is one seed against a documented
-      high-variance search, so treat it as the shape rather than the figure.
+    - **123** — **closed; shipped.**  `_verdict_search` — a bounded DFS
+      over kills, boosts and ring rounds whose totality was a conjecture,
+      and which made a dense table expensive (a sampled `n == 5` table
+      took 401s) — was replaced by a planned shield-and-sweep: separation
+      leaves every row at a distinct odd position with nothing marked
+      above its own cell, on which one kill segment is a closed form
+      (dipped rows provably loop unless their tested cell was pre-marked,
+      undipped rows return to their exact positions), so the verdict is
+      one `_paint` shield per 0-row plus a single kill above the highest
+      1-row.  The whole move algebra the DFS chose from went with it —
+      `_try_kill`, boosts, ring rounds, `_gap_fix`, `_align_residues`,
+      and the two-geometry budget probe (the parity law that forced it
+      bound the searched kills' mark anchors, which no longer exist).
+      Exhaustive at `n == 4` (65536/65536 built and replayed) and random
+      sampling at 5 and 6: `n == 5` builds in ~0.5s against the 401s
+      sample, and dense tables stopped being the expensive case.  See
+      `docs/walls.md` for the derivation.
     - **Minifuck** — **closed.**  `_staging_index` used to run the
       interpreter over every staging — 4640 `claim` calls driving 63.8M
       steps, 25.6s of a 38.4s `n == 5` build — and now derives every
@@ -573,9 +583,9 @@ open:
       cost is ten embeds and twenty pool probes per arity.  The emit-and-walk
       spelling lives on in `_derived_plans`/`_column_sweep` as the oracle
       the tests compare against.
-  Worth picking up for 123 if `n >= 5` tables start mattering.  Eval,
-  %^2^-1 and Minifuck above are done.  For the shape of what closing one
-  buys, SLOW
+  Nothing is left to pick up; the four entries above stay as the record
+  of what each search was and what named it.  For the shape of what
+  closing one buys, SLOW
   ACV MAMMALIAN is the worked precedent: its own search was replaced by an
   arithmetic construction once the `j1` sweep turned out to be a residue
   solve, taking the contract sweep entry from 3.04s to 0.02s.  The forms to
