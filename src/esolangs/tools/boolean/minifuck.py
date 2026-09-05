@@ -109,7 +109,9 @@ so this is 0.00057% of the arity rather than a quarter of it.  It ships for
 the reason four did -- a miss costs nothing but the fall-through.  The one
 thing that had to change is the spelling: a derivation over all ``2**32``
 tables cannot run, so the enumeration is *inverted* rather than run per
-table -- see :func:`_staging_index`, which every arity now uses that way.
+table -- see :func:`_staging_index`, which every arity now uses that way,
+and which since the closed form landed fills its columns arithmetically
+rather than by running the interpreter over each staging.
 What catches
 the rest is the sculpted route, which since its separation became a
 construction reaches five as readily as four: 200 of 200 sampled
@@ -1723,9 +1725,10 @@ def _stagings(n: int) -> Iterator[_Staging]:
     family existed.  Two and three inputs are unchanged, table for table.
 
     Neither :func:`_derived_plans` nor :func:`_staging_index` calls this:
-    both interleave the same loops with the machines they are advancing, so
-    that a bracket count costs one instruction rather than a rebuild.  This
-    states the order those loops implement.
+    the oracle interleaves the same loops with the machines it is advancing,
+    so that a bracket count costs one instruction rather than a rebuild, and
+    the index walks them over derived columns with no machines at all.  This
+    states the order both implement.
 
     There are therefore *three* spellings of one order -- this one, the
     per-table enumeration, and the inverted index production reads -- and the
@@ -2055,6 +2058,267 @@ def _span_admits(truth_table: str, n: int) -> bool:
     return any(_in_span(packed, list(b)) for b in _staging_spans(n))
 
 
+# How far right the closed-form column derivation tracks the tape.  The
+# deepest read is one cell past an insert's phase-two extent, and an extent
+# is bounded by the instruction budget: a suffix carries at most
+# ``_MAX_BRACKETS`` brackets, plus one instruction's credit when a pending
+# skip hands its job to the ``<``, so nothing settles past
+# ``_BASE - 1 + _MAX_BRACKETS + 1`` and the reads stop two cells later.
+_CHAIN_CAP = _BASE + _MAX_BRACKETS + 4
+
+
+class _Chain:
+    """One row's bracket-run algebra: the prefix-XORs and the staircase.
+
+    A suffix is a run of ``[`` walking right from ``_BASE - 1``, and per row
+    it is a walk that pays for what it crosses.  Crossing cell ``i`` flips
+    it; when the pre-flip value was 1 the flip lands on 0, so the ``[`` also
+    flips cell ``i + 1`` and skips the next instruction.  The carry into
+    each cell is therefore the pre-flip value of the cell before it, which
+    makes the pre-flip values a prefix-XOR of the standing cells --
+
+        v_i = s_i ^ v_{i-1}        (v at ``_BASE - 1`` is 0)
+
+    -- and the cost of crossing cell ``i`` exactly ``1 + v_i`` instructions.
+    Everything the column derivation needs is then three prefix arrays: ``v``
+    itself, its own prefix-XOR ``w`` (what a read over fully-crossed ground
+    reports), and the staircase ``t`` (instructions to settle each cell),
+    whose inverse names the run's extent for any budget.
+
+    Derived from the interpreter's ``_step`` and then checked against it
+    rather than trusted: over every ``(separator, settle, bracket count,
+    row)`` at two, three and four inputs -- 8120 rows -- the predicted tape,
+    pointer and pending skip match the simulated run cell for cell.
+    """
+
+    __slots__ = ("l15", "s", "t", "v", "w")
+
+    def __init__(self, cells: list[int]) -> None:
+        self.s = cells
+        # The one cell below ``_BASE`` a suffix can touch: a ``cut == 0``
+        # insert steps back onto it before its brackets run.
+        self.l15 = cells[_BASE - 1]
+        v = [0] * _CHAIN_CAP
+        w = [0] * _CHAIN_CAP
+        t = [0] * _CHAIN_CAP
+        for i in range(_BASE, _CHAIN_CAP):
+            v[i] = cells[i] ^ v[i - 1]
+            w[i] = w[i - 1] ^ v[i]
+            t[i] = t[i - 1] + 1 + v[i]
+        self.v, self.w, self.t = v, w, t
+
+    def extent(self, budget: int) -> tuple[int, bool]:
+        """Extent and pending skip of a pure run of ``budget`` brackets.
+
+        The extent is the staircase's inverse -- the last cell whose
+        crossing still fits the budget -- and the skip is pending when the
+        budget ran out between a crossing and the skip it owes.
+        """
+        m = _BASE - 1
+        t = self.t
+        while m + 1 < _CHAIN_CAP - 2 and t[m] + 1 <= budget:
+            m += 1
+        return m, m >= _BASE and budget < t[m]
+
+
+# What a row does under one suffix, reduced to five ints so the per-``acc``
+# read below is arithmetic.  ``mode`` 0 is a pure run (extent, saturated
+# read); 1 is a pure run plus a point flip at the re-crossed cell; 2 is the
+# complemented chain, which no pure run reproduces.
+_Plan = tuple[int, int, int, int, int]
+
+# Per orientation: the pool's landing pointer, the low cells' full XOR, and
+# the per-accumulator partial XOR for reads that stop below ``_BASE`` --
+# or None where no pool code fits the orientation.
+_Pools = dict[int, tuple[int, int, dict[int, int]] | None]
+
+
+def _suffix_plan(chain: _Chain, cut: int, rest: int) -> _Plan:
+    """Reduce one row's response to ``'[' * cut + '<' + '[' * rest``.
+
+    ``rest == 0`` is a pure run: the ``<`` moves the pointer without
+    writing.  Otherwise the run splits into two bracket phases around the
+    ``<``, and which of three shapes the row takes turns on the state phase
+    one leaves at the boundary:
+
+    * **A pending skip** hands the ``<`` its job: the skip a pure run would
+      have spent on the next bracket is spent on the ``<`` instead, so the
+      whole suffix is the pure run of ``cut + 1 + rest`` instructions.
+    * **No pending skip and the re-crossed cell reads 0** (it held 1 before
+      phase one flipped it): the second crossing flips it straight back and
+      carries nothing, so the suffix is the pure run of ``cut + rest - 1``
+      instructions plus a point flip at that cell.
+    * **The re-crossed cell reads 1**: the second crossing carries, and the
+      carry cancels phase one's -- every later cell reads ``v_i ^ 1``.  The
+      complemented chain has its own staircase, ``t2(m) = 2 + 3 * (m - c)
+      - t(m) + t(c)``, and no pure-run equivalent, so it is walked here.
+
+    Which case fires is measured, not assumed: filling the four indexes,
+    the pending case fires 63559 times, the flip-back case 68456, the
+    complemented chain 67197 and ``rest == 0`` 9588, so every branch is
+    exercised by the equality checks in :func:`_staging_index`.
+    """
+    if rest > 0:
+        m1, pending1 = chain.extent(cut)
+        if pending1:
+            m, _ = chain.extent(cut + 1 + rest)
+            return (0, m, ((m - _BASE + 1) & 1) ^ chain.w[m], 0, 0)
+        c = m1
+        u_c = (1 - chain.v[c]) if c >= _BASE else chain.l15
+        if u_c == 0:
+            m, _ = chain.extent(cut + rest - 1)
+            flip_at = c if c >= _BASE else 0
+            return (1, m, ((m - _BASE + 1) & 1) ^ chain.w[m], flip_at, 0)
+        t, v, w, s = chain.t, chain.v, chain.w, chain.s
+        m2 = c
+        while m2 + 1 < _CHAIN_CAP - 2 and 2 + 3 * (m2 - c) - t[m2] + t[c] + 1 <= rest:
+            m2 += 1
+        head = (((c - _BASE) & 1) ^ w[c - 1]) if c >= _BASE else 0
+        lo = max(c + 1, _BASE)
+        u_m2 = 1 if m2 == c else 1 - v[m2]
+        carry_cell = s[m2 + 1] ^ u_m2
+        if m2 == c and c >= _BASE:
+            carry_cell ^= v[c]  # phase one already carried v_c into c + 1
+        x_past = head ^ (w[m2] ^ w[lo - 1]) ^ carry_cell
+        return (2, c, m2, head, x_past)
+    m, _ = chain.extent(cut)
+    return (0, m, ((m - _BASE + 1) & 1) ^ chain.w[m], 0, 0)
+
+
+def _planned_bit(chain: _Chain, plan: _Plan, acc: int) -> int:
+    """One row's XOR of post-suffix cells ``_BASE .. acc``, from its plan.
+
+    The pure shape reads the saturated prefix up to the extent and the
+    unsaturated tail past it; the complemented shape has three regions --
+    phase one's, the re-crossed run's, and past the phase-two extent, where
+    the carry cell joins the standing tail.
+    """
+    mode = plan[0]
+    if mode != 2:
+        m, g = plan[1], plan[2]
+        sat = ((acc - _BASE + 1) & 1) ^ chain.w[acc]
+        x = sat if acc <= m else g ^ chain.v[acc]
+        if mode == 1 and plan[3] and acc >= plan[3]:
+            x ^= 1
+        return x
+    _, c, m2, head, x_past = plan
+    if acc < c:
+        return ((acc - _BASE + 1) & 1) ^ chain.w[acc]
+    if acc <= m2:
+        lo = max(c + 1, _BASE)
+        return head ^ (chain.w[acc] ^ chain.w[lo - 1])
+    x = x_past
+    if acc >= m2 + 2:
+        x ^= chain.v[acc] ^ chain.v[m2 + 1]
+    return x
+
+
+def _slice_chains(n: int, sep_index: int, settle: int) -> tuple[list[_Chain], _Pools]:
+    """One slice's row chains and per-orientation pool facts.
+
+    The pool is resolved **once per slice and orientation**, not once per
+    suffix, and three measured facts make that sound: a suffix never writes
+    below cell ``_BASE - 1`` (its brackets start there and only walk right),
+    the embed leaves every cell below ``_BASE`` identical across rows (0
+    violations over every slice at two, three and four inputs), and a pool
+    code never reaches past cell 6 from its clamped start -- so nothing a
+    suffix does can change what :func:`_find_pool` sees, and nothing the
+    rows disagree on can reach it.  The facts are also why the sweep's low
+    span is a constant: cells below ``_BASE`` contribute the same XOR to
+    every row's column, precomputed here per accumulator.
+    """
+    base = _embed(n, settle=settle, sep=_SEPS[sep_index])
+    _clamp(base)
+    _walk_to(base, _BASE - 1)
+    chains = [_Chain([(m.tape >> i) & 1 for i in range(_CHAIN_CAP)]) for m in base.ms]
+    if len({tuple(c.s[:_BASE]) for c in chains}) != 1:
+        # The whole slice-constant treatment of the pool rests on this, so a
+        # violation is a bug in the embed model, not a case to handle.
+        # Measured over every slice at two, three and four inputs: zero
+        # violations, which is why the raise is never reached -- the check
+        # stays because the property belongs to the embed, not to anything
+        # this function establishes.
+        raise AssertionError(  # pragma: no cover - the embed is row-constant
+            "embed left a row-dependent cell below _BASE"
+        )
+    pools: _Pools = {}
+    for cell7 in (0, 1):
+        staged = base.fork()
+        staged.emit("<")
+        _clamp(staged)
+        code = _find_pool(staged, cell7, 8)
+        if code is None:
+            pools[cell7] = None
+            continue
+        probe = staged.fork()
+        probe.emit(code)
+        cur = probe.ms[0].ptr
+        post = [(probe.ms[0].tape >> i) & 1 for i in range(_BASE)]
+        lowxor: dict[int, int] = {}
+        running = 0
+        for i in range(cur + 1, _BASE):
+            running ^= post[i]
+            if i >= _PROBE_WALK_OUT:
+                lowxor[i] = running
+        pools[cell7] = (cur, running, lowxor)
+    return chains, pools
+
+
+def _closed_sweeps(
+    chains: list[_Chain],
+    pools: _Pools,
+    suffix: int | str,
+) -> dict[int, dict[int, tuple[int, ...]]]:
+    """Both orientations' accumulator sweeps for one suffix, derived.
+
+    The same mapping :func:`_column_sweep` builds by emitting the pool code
+    and walking, produced arithmetically instead.  The walk-out law is what
+    joins the pieces: a ``[x`` walk carries each crossed cell's pre-flip
+    value into the next, so the cell the read reports at ``acc`` is the XOR
+    of the standing cells from ``cur + 1`` through ``acc`` -- the slice's
+    low constant, then each row's :func:`_planned_bit`.  A ``cut == 0``
+    insert flips cell ``_BASE - 1`` on its way past, which is the one
+    suffix-dependent bit below ``_BASE``; it is row-independent, so it
+    lands as a constant too.
+
+    Checked against the emit-and-walk sweep over the *entire* enumeration
+    at two, three and four inputs -- 10440 ``(staging, orientation)``
+    sweeps across both suffix families -- with no disagreement, on top of
+    the whole-index equality recorded at :func:`_staging_index`.
+    """
+    if isinstance(suffix, int):
+        cut, rest = suffix, 0
+        lflip = 0
+    else:
+        cut = suffix.index("<")
+        rest = len(suffix) - cut - 1
+        lflip = 1 if cut == 0 and rest > 0 else 0
+    plans = [_suffix_plan(chain, cut, rest) for chain in chains]
+    sweeps: dict[int, dict[int, tuple[int, ...]]] = {}
+    for cell7 in (0, 1):
+        facts = pools[cell7]
+        if facts is None:
+            sweeps[cell7] = {}
+            continue
+        cur, lowfull, lowxor = facts
+        columns: dict[int, tuple[int, ...]] = {}
+        for acc in range(_PROBE_WALK_OUT, _MAX_ACC + 1):
+            if acc - 1 < cur:
+                # Mirrors _column_sweep's guard; the pool lands at 4 or 5,
+                # below the accumulator range, so it never fires.
+                continue  # pragma: no cover - the pool lands below the range
+            if acc < _BASE:
+                bit = lowxor[acc] ^ (lflip if acc == _BASE - 1 else 0)
+                columns[acc] = (bit,) * len(chains)
+            else:
+                columns[acc] = tuple(
+                    lowfull ^ lflip ^ _planned_bit(chain, plan, acc)
+                    for chain, plan in zip(chains, plans, strict=True)
+                )
+        sweeps[cell7] = columns
+    return sweeps
+
+
 @cache
 def _staging_index(n: int) -> dict[tuple[int, ...], _Staging]:
     """Map every column the stagings reach to the staging that prints it.
@@ -2063,17 +2327,25 @@ def _staging_index(n: int) -> dict[tuple[int, ...], _Staging]:
     table is a dict lookup rather than a sweep: :func:`_derive_staging` no
     longer enumerates per table at all.
 
-    **Why a table and not a formula.**  The printed column does not reduce to
-    a closed form in ``(suffix, accumulator)``.  Three translation
-    hypotheses were tested against the measured grid and all fail --
-    ``acc - ceil(k/2)`` leaves 38 of 40 shift classes ambiguous, and the
-    diagonals ``grid[k][a] == grid[k-1][a-1]`` and ``grid[k-2][a-1]`` are
-    violated 306 and 274 times in 700.  The grid *does* saturate the way the
-    bracket-run law predicts -- past ``k`` of about ``2 * (acc - 16) + 1``
-    the column stops moving -- but the pool code depends on the state the
-    staging leaves behind (see :func:`_find_pool`), so the column is not
-    pure tape algebra.  The reachable set is small enough that this does not
-    matter: 16 columns at two inputs, 252 at three, 15994 at four.
+    **The columns are derived, not observed.**  This used to run the
+    interpreter for every staging -- fork the embed, emit the pool code,
+    walk to each accumulator -- and that walk was the shipped build's
+    dominant cost, 63.8M ``_Sim`` steps and 25.6s of a 38.4s five-input
+    build.  Every step of it is now arithmetic: the suffix is the bracket
+    staircase (:class:`_Chain`), the pool is a slice constant
+    (:func:`_slice_chains`), and the walk out is the prefix-XOR the walk-out
+    law names (:func:`_closed_sweeps`).  What survives of the old cost is
+    ten embeds and twenty pool probes per arity.  Measured cold: 6.5s to
+    0.62s at four inputs, 31.5s to 1.12s at five.
+
+    An earlier note here recorded that the printed column "does not reduce
+    to a closed form in ``(suffix, accumulator)``" -- three translation
+    hypotheses failed against the measured grid, because the pool code
+    depends on the state the staging leaves behind.  Both halves were right
+    and the conclusion still wasn't: the column is not a *translation* in
+    ``(suffix, accumulator)``, but it is closed-form in the embed's
+    standing columns, and the pool state-dependence dissolves once the
+    state it depends on is proved slice-constant.
 
     **The order is the contract.**  A table takes the *first* staging that
     prints it, so this fills each column once, walking the enumeration in
@@ -2083,11 +2355,11 @@ def _staging_index(n: int) -> dict[tuple[int, ...], _Staging]:
     reachable and all valid, and still assigns five-input XOR ``None`` where
     the enumeration assigns ``(2, 0, 0, 33)``.  That is why the test for this
     compares staging *tuples* against :func:`_derived_plans` rather than
-    checking that the programs work.
-
-    Measured: 0.1s at two inputs, 0.2s at three, 4.9s at four, 2.4s at five.
-    Five is the budgeted pass, which is what ships today; see
-    :data:`_STAGING_BUDGET_N5`.
+    checking that the programs work -- and why the closed form was accepted
+    only on whole-index equality: at every staged arity, the index it fills
+    equals the emit-and-walk index key for key and staging for staging
+    (16, 252, 15994 and 28096 entries), on top of the standing
+    index-vs-oracle tests.
     """
     index: dict[tuple[int, ...], _Staging] = {}
     spent = 0
@@ -2097,8 +2369,11 @@ def _staging_index(n: int) -> dict[tuple[int, ...], _Staging]:
     def exhausted() -> bool:
         return budget is not None and spent >= budget
 
-    def claim(staged: _Joint, suffix: int | str, head: tuple[int, int]) -> None:
-        sweeps = {cell7: _column_sweep(staged, cell7) for cell7 in (0, 1)}
+    def claim(
+        sweeps: dict[int, dict[int, tuple[int, ...]]],
+        suffix: int | str,
+        head: tuple[int, int],
+    ) -> None:
         for acc in range(_PROBE_WALK_OUT, _MAX_ACC + 1):
             for cell7 in (0, 1):
                 derived = sweeps[cell7].get(acc)
@@ -2109,23 +2384,25 @@ def _staging_index(n: int) -> dict[tuple[int, ...], _Staging]:
                     if column not in index:
                         index[column] = (*head, suffix, acc)
 
+    # The slice states are built once and shared by both passes: the second
+    # pass reads the same embeds, and nothing between the passes writes them.
+    states: dict[tuple[int, int], tuple[list[_Chain], _Pools]] = {}
+
     slices = _slices(n)
     for sep_index, settle in slices:
         if exhausted():
             return index
-        base = _embed(n, settle=settle, sep=_SEPS[sep_index])
-        _clamp(base)
-        _walk_to(base, _BASE - 1)
-        run = base.fork()
+        states[sep_index, settle] = _slice_chains(n, sep_index, settle)
+        chains, pools = states[sep_index, settle]
         for brackets in range(_MAX_BRACKETS + 1):
-            staged = run.fork()
-            staged.emit("<")
-            _clamp(staged)
-            claim(staged, brackets, (sep_index, settle))
+            claim(
+                _closed_sweeps(chains, pools, brackets),
+                brackets,
+                (sep_index, settle),
+            )
             spent += accs
             if exhausted():
                 return index
-            run.emit("[")
 
     if n not in _INSERT_ARITIES:
         return index
@@ -2135,14 +2412,13 @@ def _staging_index(n: int) -> dict[tuple[int, ...], _Staging]:
         # `exhausted()` return, so nothing accrues across the loop boundary.
         if exhausted():
             return index  # pragma: no cover - see _derived_plans
-        base = _embed(n, settle=settle, sep=_SEPS[sep_index])
-        _clamp(base)
-        _walk_to(base, _BASE - 1)
+        chains, pools = states[sep_index, settle]
         for suffix in _insert_suffixes():
-            staged = base.fork()
-            staged.emit(suffix)
-            _clamp(staged)
-            claim(staged, suffix, (sep_index, settle))
+            claim(
+                _closed_sweeps(chains, pools, suffix),
+                suffix,
+                (sep_index, settle),
+            )
             spent += accs
             if exhausted():
                 return index
@@ -2159,11 +2435,10 @@ def _derive_staging(truth_table: str, n: int) -> _Staging | None:
 
     That moves where the cost falls, the same trade :func:`_mux_separate`
     makes.  The first staged table at an arity pays the whole pass (a
-    measured 4.9s at four inputs, 0.2s at three) and every table after it is
-    a dict lookup; before, each table paid its own sweep -- 0.05s for a
-    four-input hit and 4.8s for a span-admitted miss, every time.  So this is
-    slower only for a process that builds a single four-input table and
-    exits, and much faster for anything that builds several or misses once.
+    measured 0.62s at four inputs, 0.03s at three, now that the pass derives
+    its columns arithmetically) and every table after it is a dict lookup;
+    before, each table paid its own sweep -- 0.05s for a four-input hit and
+    4.8s for a span-admitted miss, every time.
 
     Nothing is returned on the strength of the algebra alone.  The
     enumeration used to run :func:`_confirm` on each column it claimed;
