@@ -2352,9 +2352,9 @@ class TestParameterizedOneTwoThree:
         after each embed (see ``one_two_three_construct``) — so the gate
         fell.  Every row of the template is replayed here on the real
         interpreter, the same execution gate the generator itself applies
-        before returning.  Tables whose verdict search cannot converge
-        inside the deterministic work budget still raise, so wider
-        coverage is partial; ``docs/limitations.md`` records the split.
+        before returning.  A build that drains the deterministic work
+        budget still raises rather than emitting; ``docs/limitations.md``
+        records the coverage.
         """
         from esolangs.tools.boolean import parameterized
 
@@ -2370,35 +2370,20 @@ class TestParameterizedOneTwoThree:
             assert self.run(program) == table[combo], (table, bits)
         assert len(sizes) == 1, (table, sizes)
 
-    # Was ~10s and marked slow; the construction speedups took it to well
-    # under a tenth of a second, so it belongs in the default suite.
-    def test_construction_moves_all_fire_on_one_table(self) -> None:
-        """A single table forces every move kind the search offers.
+    def test_every_pipeline_stage_fires_on_one_table(self) -> None:
+        """A single table exercises each stage the docstring describes.
 
-        ``00111000`` needs kills, single- and group-boosts, and a ring
-        round to converge — separation and the pre-verdict residue
-        alignment run on every table — so this one build is a witness
-        that each gadget the module-level docstring describes is not
-        just reachable in principle but taken on a real trajectory, not
-        only inferred from ``construct()``'s success.  (Found by an
-        exhaustive three-input sweep: most tables now chain bottom-up
-        kills without ever needing a boost, so a witness for the rarer
-        moves has to be picked deliberately.)
+        ``00111000`` has 1-rows above 0-rows, so its build takes the
+        shield paints as well as the embed, separation, kill, and
+        endgame — a witness that every stage is on a real trajectory,
+        not only inferred from ``construct()``'s success.
         """
         from esolangs.tools.boolean import one_two_three_construct as construct_mod
 
         called: set[str] = set()
         originals = {
             name: getattr(construct_mod, name)
-            for name in (
-                "_gap_fix",
-                "_align_residues",
-                "_group_boost",
-                "_ring_round",
-                "_boost_row",
-                "_try_kill",
-                "_separate",
-            )
+            for name in ("_phase_a", "_separate", "_paint", "_verdict", "_endgame")
         }
 
         def watch(name: str, fn: object) -> object:
@@ -2424,62 +2409,86 @@ class TestParameterizedOneTwoThree:
             program = self.instantiate(template, bits)
             assert self.run(program) == "00111000"[combo], bits
 
-    def test_a_probed_geometry_resumes_when_the_other_stalls(self) -> None:
-        """A table only the probed geometry builds still builds.
+    def test_the_searched_routes_worst_tables_build_at_once(self) -> None:
+        """The tables that starved the searched verdict are ordinary now.
 
-        ``construct`` gives the uniform layout a slice of the budget,
-        falls back to the staggered one, and only then resumes uniform
-        with the rest.  ``0100000011001001`` is the witness for that
-        last leg at four inputs: the staggered layout exhausts on it,
-        so the build can only come from uniform -- either inside its
-        probe or on the resume.  If the resume were ever dropped, or
-        the probe slice were treated as a hard cap, this would raise.
+        ``1000110011010101`` burned a whole four-input budget under one
+        mark geometry and ``0100000011001001`` exhausted the other —
+        the pair that forced the old geometry probe.  The planned
+        verdict never anchors a test on a mark cell, so a single
+        geometry serves both; each build is checked row by row on the
+        interpreter.
         """
         from esolangs.tools.boolean.one_two_three_construct import construct
 
-        table = "0100000011001001"
-        # verify=False: construct()'s own replay is re-run row by row here.
-        template = construct(table, verify=False)
-        for combo in range(16):
-            bits = [(combo >> (3 - i)) & 1 for i in range(4)]
-            program = self.instantiate(template, bits)
-            assert self.run(program) == table[combo], bits
+        for table in ("1000110011010101", "0100000011001001"):
+            # verify=False: construct()'s replay is re-run row by row here.
+            template = construct(table, verify=False)
+            for combo in range(16):
+                bits = [(combo >> (3 - i)) & 1 for i in range(4)]
+                program = self.instantiate(template, bits)
+                assert self.run(program) == table[combo], (table, bits)
 
-    def test_the_probe_slice_bounds_a_stalling_first_geometry(self) -> None:
-        """A stalling first geometry is parked, not run to exhaustion.
+    def test_paint_marks_one_cell_and_restores_every_position(self) -> None:
+        """``_paint(k)`` flips exactly cell ``pos + k`` per row, in place.
 
-        ``1000110011010101`` is the measured worst case: the uniform
-        layout grinds a whole four-input budget on it and still fails,
-        while the staggered one solves it at once.  The probe is what
-        bounds that, and the bound is on *work* -- so shrink the budget
-        rather than build the real table, and watch the allowances the
-        attempts actually receive.  The sequence pins the whole policy:
-        a slice for the first geometry, then a full budget for the
-        second, then the first resuming with a full budget.  Running
-        this against the true budget would burn the 125M simulated
-        commands the probe exists to avoid paying.
+        The shield algebra rests on this: two walk-descend blocks whose
+        stripes cancel everywhere but the top cell.  Checked across rows
+        at distinct positions with junk tapes, for the ``k == 1`` short
+        form and a spread of wider offsets.
         """
-        from esolangs.tools.boolean import one_two_three_construct as mod
+        from esolangs.tools.boolean.one_two_three_construct import (
+            _RING,
+            _WORK_BUDGET,
+            _Builder,
+            _paint,
+            _work,
+        )
 
-        allowances: list[int] = []
-        original = mod._phase_a  # noqa: SLF001
+        _work[0] = _WORK_BUDGET
+        for k in (1, 2, 3, 17, 100):
+            b = _Builder(2)
+            tapes = (0, 0b1011 << _RING, 1 << (40 + _RING), 0b110 << _RING)
+            for row, pos, tape in zip(b.rows, (1, 5, 29, 41), tapes, strict=True):
+                row.pos, row.tape = pos, tape
+            before = [(r.pos, r.tape) for r in b.rows]
+            _paint(b, k)
+            after = [(r.pos, r.tape) for r in b.rows]
+            for (p0, t0), (p1, t1) in zip(before, after, strict=True):
+                assert p1 == p0, k
+                assert t1 == t0 ^ (1 << (p0 + k + _RING)), k
 
-        def record(b: object, marks: list[int]) -> object:
-            allowances.append(mod._work[0])  # noqa: SLF001
-            return original(b, marks)  # type: ignore[arg-type]
+    def test_the_verdict_checks_its_position_preconditions(self) -> None:
+        """A state violating the parity law raises instead of emitting.
 
-        small = 10_000  # far too little to build anything: every attempt stalls
-        mod._phase_a = record  # type: ignore[assignment]  # noqa: SLF001
-        budget, mod._WORK_BUDGET = mod._WORK_BUDGET, small  # noqa: SLF001
-        try:
-            with pytest.raises(ValueError, match="123 construction failed"):
-                mod.construct("1000110011010101", verify=False)
-        finally:
-            mod._phase_a = original  # type: ignore[assignment]  # noqa: SLF001
-            mod._WORK_BUDGET = budget  # noqa: SLF001
+        The shield algebra needs every live position distinct and odd;
+        separation has delivered that at every probed arity, but the
+        verdict re-checks rather than assumes, so a wider arity that
+        ever broke the parity would raise — never hand out a template
+        whose fates the plan cannot vouch for.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import (
+            _WORK_BUDGET,
+            ConstructError,
+            _Builder,
+            _verdict,
+            _work,
+        )
 
-        probe = small // mod._PROBE_FRACTION  # noqa: SLF001
-        assert allowances == [probe, small, small], allowances
+        _work[0] = _WORK_BUDGET
+        even = _Builder(1)
+        even.rows[0].pos, even.rows[1].pos = 2, 5
+        with pytest.raises(ConstructError, match="precondition"):
+            _verdict(even, "01")
+
+        shared = _Builder(1)
+        shared.rows[0].pos = shared.rows[1].pos = 5
+        with pytest.raises(ConstructError, match="precondition"):
+            _verdict(shared, "01")
+
+        all_zero = _Builder(1)
+        all_zero.rows[0].pos, all_zero.rows[1].pos = 2, 5
+        _verdict(all_zero, "00")  # no 1-rows: nothing to prove, no check
 
     def test_an_exhausted_work_budget_is_declined(self) -> None:
         """A table that would build still raises once the work runs out.
@@ -2498,95 +2507,6 @@ class TestParameterizedOneTwoThree:
                 construct_mod.construct("00000000")
         finally:
             construct_mod._WORK_BUDGET = original_budget  # noqa: SLF001
-
-    def test_an_exhausted_move_budget_is_declined(self) -> None:
-        """A verdict search that never finds a kill still terminates.
-
-        ``_verdict_search``'s own ``budget`` counts DFS nodes rather than
-        simulated commands, so it needs its own exhaustion check: a
-        one-node budget on a table with a live 1-row cannot find any
-        move, and the search must return ``None`` rather than loop or
-        raise past that ceiling.  ``_work`` is reset by hand because this
-        calls the pipeline stages directly instead of going through
-        :func:`construct`, which is the only place that resets it.
-        """
-        from esolangs.tools.boolean.one_two_three_construct import (
-            _WORK_BUDGET,
-            _align_residues,
-            _Builder,
-            _close,
-            _gap_fix,
-            _phase_a,
-            _separate,
-            _verdict_search,
-            _work,
-        )
-
-        n = 3
-        table = "10000000"
-        _work[0] = _WORK_BUDGET
-        b = _Builder(n)
-        marks = [2 ** (n + 1) * 3**i + 1 for i in range(n)]
-        _phase_a(b, marks)
-        _close(b)
-        _separate(b, marks)
-        _gap_fix(b, table)
-        _align_residues(b, table)
-        assert _verdict_search(b, table, budget=1) is None
-
-    def test_distinct_ok_reports_a_real_collision(self) -> None:
-        """Two live rows at one exact state disagree only if their verdicts differ.
-
-        ``_distinct_ok`` tolerates two 0-rows landing on the same state
-        (a cut erases a 0-row's history for good, so nothing distinguishes
-        it from another 0-row sharing the state) but not a 0-row and a
-        1-row: the kill machinery discriminates by state, so a collision
-        between different verdicts is unrecoverable and must be reported.
-        """
-        from esolangs.tools.boolean.one_two_three_construct import (
-            _Builder,
-            _distinct_ok,
-            _mask,
-            _Row,
-        )
-
-        def two_rows_at(pos: int, tape: int) -> _Builder:
-            zero = _Row((0, 0))
-            one = _Row((0, 1))
-            zero.pos = one.pos = pos
-            zero.tape = one.tape = tape
-            b = _Builder.__new__(_Builder)
-            b.n = 2
-            b.chunks = []
-            b.seg = []
-            b.rows = [zero, one]
-            return b
-
-        # table index 0 -> '0', index 1 -> '1': the two rows disagree
-        assert _distinct_ok(two_rows_at(5, _mask({1, 2, 3})), "0100") is False
-        # table index 0 -> '0', index 1 -> '0': both 0-rows, tolerated
-        assert _distinct_ok(two_rows_at(5, _mask({1, 2, 3})), "0000") is True
-
-    def test_one_row_collided_flags_a_live_one_row(self) -> None:
-        """A 1-row sharing a position with any other live row is a trap."""
-        from esolangs.tools.boolean.one_two_three_construct import (
-            _Builder,
-            _mask,
-            _one_row_collided,
-            _Row,
-        )
-
-        zero = _Row((0, 0))
-        one = _Row((1, 0))
-        zero.pos = one.pos = 5
-        zero.tape = one.tape = _mask({1, 2, 3})
-        b = _Builder.__new__(_Builder)
-        b.n = 2
-        b.chunks = []
-        b.seg = []
-        b.rows = [zero, one]
-        # table index 2 (bits (1,0)) -> '1'
-        assert _one_row_collided(b, "0010") is True
 
     def test_normalize_reports_a_live_locked_ring(self) -> None:
         """Four distinct rows pinned to all four ring cells cannot escape.
@@ -2679,7 +2599,7 @@ class TestParameterizedOneTwoThree:
             b.fixpoint(row)
 
     def test_test_reports_a_kill_that_escapes(self) -> None:
-        """``test(kill=...)`` requires the named victim to provably loop."""
+        """``test(kills=...)`` requires every named victim to provably loop."""
         from esolangs.tools.boolean.one_two_three_construct import (
             ConstructError,
             _Builder,
@@ -2698,10 +2618,10 @@ class TestParameterizedOneTwoThree:
         b.rows = [row]
         _work[0] = 10_000  # test() is called outside construct() here
         with pytest.raises(ConstructError, match="kill escaped"):
-            b.test(kill=(0,))
+            b.test(kills=frozenset({(0,)}))
 
     def test_test_reports_a_kill_that_never_fires(self) -> None:
-        """``test(kill=...)`` refuses a close where the victim tested FALSE.
+        """``test(kills=...)`` refuses a close where a victim tested FALSE.
 
         A kill whose victim never lands on a TRUE cell would silently
         leave the row alive; the close must report it instead, because
@@ -2725,7 +2645,7 @@ class TestParameterizedOneTwoThree:
         b.rows = [row]
         _work[0] = 10_000  # test() is called outside construct() here
         with pytest.raises(ConstructError, match="kill missed"):
-            b.test(kill=(0,))
+            b.test(kills=frozenset({(0,)}))
 
     def test_test_reports_an_unintended_loop(self) -> None:
         """A plain ``test()`` requires every TRUE row to escape, not loop."""
@@ -2750,7 +2670,7 @@ class TestParameterizedOneTwoThree:
         b.rows = [row]
         _work[0] = 10_000  # test() is called outside construct() here
         with pytest.raises(ConstructError, match="unintended loop"):
-            b.test(kill=False)
+            b.test()
 
     def test_an_empty_table_is_declined(self) -> None:
         """A table implying zero inputs raises rather than building nothing.
@@ -2843,236 +2763,6 @@ class TestParameterizedOneTwoThree:
         with pytest.raises(_WorkExhaustedError):
             drained(3, "1", -1, 12)
 
-    def test_the_walk_shortcut_declines_what_it_cannot_decide(self) -> None:
-        """``_true_set_after_walk`` is exact only from a clean, non-negative state.
-
-        It reads the verdict off the tape instead of simulating, which is
-        sound only where the walk provably cannot loop or read: no pending
-        segment, and every row at ``pos >= 0``.  Outside that it declines,
-        and it also declines a landing chain longer than the fixpoint's
-        64-re-run cap rather than reporting a set the fixpoint would reject.
-        """
-        from esolangs.tools.boolean.one_two_three_construct import (
-            _RING,
-            _WORK_BUDGET,
-            _Builder,
-            _true_set_after_walk,
-            _work,
-        )
-
-        _work[0] = _WORK_BUDGET
-
-        def flat(n: int = 1) -> _Builder:
-            b = _Builder(n)
-            for row in b.rows:
-                row.pos, row.tape = 0, 0
-            return b
-
-        below = flat()
-        below.rows[0].pos = -1
-        assert _true_set_after_walk(below, 4) is None
-
-        pending = flat()
-        pending.seg.append("1")
-        assert _true_set_after_walk(pending, 4) is None
-
-        # One marked landing at cell 4, and nothing beyond it: a finite chain.
-        landed = flat()
-        landed.rows[0].tape = 1 << (4 + _RING)
-        assert _true_set_after_walk(landed, 4) == {(0,)}
-
-        # Every multiple of the stride marked: the chain never escapes.
-        endless = flat()
-        endless.rows[0].tape = sum(1 << (4 * k + _RING) for k in range(1, 200))
-        assert _true_set_after_walk(endless, 4) is None
-
-    def test_predict_rejects_a_true_row_that_will_not_escape(self) -> None:
-        """A candidate whose TRUE row loops is declined, not emitted.
-
-        Eight ``1``s inside the ring is two whole laps: every ring cell
-        toggles twice, so position and tape both return to exactly where
-        they started.  That is a proven state revisit, which is a ``loop``
-        where no kill was named -- and a kill is what a loop has to be.
-        A stdin read reaches the same answer through ``ConstructError``.
-        """
-        from esolangs.tools.boolean.one_two_three_construct import (
-            _RING,
-            _WORK_BUDGET,
-            _Builder,
-            _predict,
-            _work,
-        )
-
-        _work[0] = _WORK_BUDGET
-
-        def sitting_on_a_mark(pos: int) -> _Builder:
-            b = _Builder(1)
-            for row in b.rows:
-                row.pos, row.tape = pos, 1 << (pos + _RING)
-            return b
-
-        assert _predict(sitting_on_a_mark(0), "1" * 8) is None
-
-        reads_stdin = _Builder(1)
-        for row in reads_stdin.rows:
-            row.pos, row.tape = -3, 0
-        assert _predict(reads_stdin, "2") is None
-
-    def test_the_arithmetic_kill_screens_agree_on_their_refusals(self) -> None:
-        """``_after_ones_pop`` and ``_kill_fate`` decide fates without simulating.
-
-        Both are closed forms over ``(pos, tape)``, which is what lets the
-        kill sweep price every descent for free.  Their two refusals are a
-        ``2`` landing at -3 -- a stdin read, fatal under the harness's empty
-        script -- and a fixpoint that reaches neither verdict inside the pass
-        cap.  The latter needs a row that stays marked without ever repeating
-        a state: with a trailing flip on an empty tape every pass turns a
-        *fresh* cell on and the position advances, so no state recurs.
-        """
-        from esolangs.tools.boolean.one_two_three_construct import (
-            _after_ones_pop,
-            _kill_fate,
-        )
-
-        # rem == 2 lands on -3, where the following `2` would read stdin.
-        assert _after_ones_pop(0, 0, 3) is None
-        assert _after_ones_pop(0, 0, 1) is not None
-
-        assert _kill_fate(0, 0, 3, None) == "invalid"  # the read.
-        assert _kill_fate(0, 0, 1, 3) == "invalid"  # the pass cap.
-        assert _kill_fate(0, 0, 1, None) == "skip"
-
-    def test_the_kill_search_declines_before_it_sweeps(self) -> None:
-        """Two refusals precede the ``a`` sweep, and both are cheap.
-
-        A pad whose own close raises leaves nothing to search -- a ``2``
-        from -3 reads stdin, which is fatal under the harness's empty
-        script -- and a victim the pad left below zero cannot descend at
-        all, since the sweep's ``a`` range starts at its position.
-        """
-        from esolangs.tools.boolean.one_two_three_construct import (
-            _WORK_BUDGET,
-            _Builder,
-            _try_kill,
-            _work,
-        )
-
-        _work[0] = _WORK_BUDGET
-
-        below = _Builder(1)
-        for row in below.rows:
-            row.pos, row.tape = 0, 0
-        below.rows[0].pos = -1
-        assert _try_kill(below, (0,), 0, "01") is None
-
-        reads_stdin = _Builder(1)
-        for row in reads_stdin.rows:
-            row.pos, row.tape = -3, 0
-        assert _try_kill(reads_stdin, (0,), 2, "01") is None
-
-    def test_the_planned_boosts_decline_what_they_cannot_lift(self) -> None:
-        """Both boosts plan on triples, and both give up rather than guess.
-
-        ``_boost_row`` rejects a chain whose post-state collides -- two rows
-        at one exact state with different verdicts -- and gives up when 64
-        planned tests have not lifted the row past its target.
-        ``_group_boost`` declines a candidate whose escape chain runs past
-        the fixpoint's cap, and gives up on the same 64-pass allowance.
-
-        The tapes are built rather than found: a state a real build reaches
-        is one the pipeline's own screens already steered toward, so these
-        shapes have to be constructed to be seen at all.
-        """
-        from esolangs.tools.boolean.one_two_three_construct import (
-            _RING,
-            _WORK_BUDGET,
-            _boost_row,
-            _Builder,
-            _group_boost,
-            _work,
-        )
-
-        _work[0] = _WORK_BUDGET
-
-        def two_rows(low: tuple[int, int], high: tuple[int, int]) -> _Builder:
-            b = _Builder(1)
-            b.rows[0].pos, b.rows[0].tape = low
-            b.rows[1].pos, b.rows[1].tape = high
-            return b
-
-        #: Alternating marks: each planned test lands on a mark, escapes one
-        #: hop to the unmarked neighbour, and so lifts the row by exactly 2.
-        alternating = sum(1 << (c + _RING) for c in range(1, 6000, 2))
-
-        # Cells 1 and 2 marked puts the boosted row's escape exactly where
-        # the other row lands, and the table gives the two different
-        # verdicts -- a collision the plan check has to refuse.
-        collide = (1 << (1 + _RING)) | (1 << (2 + _RING))
-        assert _boost_row(two_rows((0, collide), (2, collide)), (0,), 50, "01") is None
-
-        # 64 tests at +2 apiece cannot clear a target 100000 cells up.
-        lifts_too_slowly = two_rows((0, alternating), (0, 0))
-        assert _boost_row(lifts_too_slowly, (0,), 100_000, "00") is None
-
-        # A fully marked blocker never escapes: its chain runs past the cap,
-        # which invalidates the candidate rather than reporting a set the
-        # close would have rejected.
-        endless = sum(1 << (c + _RING) for c in range(3000))
-        assert _group_boost(two_rows((5, 0), (0, endless)), (0,), "01") is not None
-
-        # The blocker gains on the victim two cells per pass, so a 200-cell
-        # head start outlasts the 64-pass allowance.
-        too_far = two_rows((200, 0), (0, alternating))
-        assert _group_boost(too_far, (0,), "00") is None
-
-    def test_the_best_effort_stages_run_their_bodies(self) -> None:
-        """``_gap_fix`` and ``_align_residues`` both improve a built state.
-
-        Neither is required to succeed -- a gap the boost cannot widen is
-        left to the verdict search, and a residue class it cannot free is
-        left to the shallow moves -- so their bodies only run on a state
-        that actually needs them, which is what these construct.
-        """
-        from esolangs.tools.boolean.one_two_three_construct import (
-            _RING,
-            _WORK_BUDGET,
-            _align_residues,
-            _Builder,
-            _gap_fix,
-            _work,
-        )
-
-        _work[0] = _WORK_BUDGET
-
-        # All four residues mod 4 occupied is the state the alignment exists
-        # to break up: a deep descend-and-pop needs one ring cell free.
-        crowded = _Builder(2)
-        for i, row in enumerate(crowded.rows):
-            row.pos, row.tape = i, 0
-        assert len({row.pos % 4 for row in crowded.live()}) == 4
-        _align_residues(crowded, "0000")
-        assert len({row.pos % 4 for row in crowded.live()}) < 4
-
-        # A round that would fuse two rows of different verdicts is declined
-        # instead: eight rows at 0..7 put two of each class on one cell, and
-        # the alignment leaves the state alone rather than losing a verdict.
-        fuses = _Builder(3)
-        for i, row in enumerate(fuses.rows):
-            row.pos, row.tape = i, 0
-        before = [(row.bits, row.pos) for row in fuses.live()]
-        _align_residues(fuses, "10000000")
-        assert [(row.bits, row.pos) for row in fuses.live()] == before
-
-        # A five-cell gap is under the twelve-cell minimum, and marking the
-        # upper row alone gives the boost a test whose TRUE set is the
-        # uppers -- which is the move the widening is made of.
-        narrow = _Builder(1)
-        narrow.rows[0].pos, narrow.rows[0].tape = 0, 0
-        narrow.rows[1].pos, narrow.rows[1].tape = 5, 1 << (9 + _RING)
-        _gap_fix(narrow, "00")
-        low, high = (row.pos for row in narrow.live())
-        assert high - low > 5
-
     def test_the_endgame_parks_survivors_and_reports_a_state_it_cannot(
         self,
     ) -> None:
@@ -3120,20 +2810,19 @@ class TestParameterizedOneTwoThree:
         with pytest.raises(ConstructError, match="endgame did not converge"):
             _endgame(stranded)
 
-    def test_a_build_that_cannot_settle_raises_rather_than_emitting(
+    def test_a_stage_refusal_surfaces_as_a_value_error(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """An exhausted verdict search is reported, never worked around.
-
-        ``construct`` tries two mark geometries and keeps the last failure,
-        so a search that answers ``None`` under both has to surface as a
-        ``ValueError`` naming what ran out -- the alternative is emitting a
-        template no stage proved.
+        """A stage that cannot prove its move is reported, never worked
+        around -- the alternative is emitting a template no stage proved.
         """
         from esolangs.tools.boolean import one_two_three_construct as module
 
-        monkeypatch.setattr(module, "_verdict_search", lambda *_, **__: None)
-        with pytest.raises(ValueError, match="verdict search exhausted"):
+        def refuse(*_: object, **__: object) -> None:
+            raise module.ConstructError("verdict precondition: constructed refusal")
+
+        monkeypatch.setattr(module, "_verdict", refuse)
+        with pytest.raises(ValueError, match="123 construction failed"):
             module.construct("0110")
 
     def test_the_replay_gate_reads_a_looping_row_as_a_one(self) -> None:
@@ -3150,14 +2839,11 @@ class TestParameterizedOneTwoThree:
         template = construct("01", verify=True)
         assert "{X0}" in template
 
-    def test_the_second_kill_family_settles_what_the_first_leaves(self) -> None:
-        """``_moves`` offers deeper pads and later victims after the cheap ones.
+    def test_a_spread_of_three_input_tables_builds(self) -> None:
+        """A stride-17 sample of the 256 three-input tables all build.
 
-        The first family covers the three lowest victims at pads under 3; a
-        table those do not settle falls through to the rest, and the yield
-        there is what carries the search on.  A spread sample of three-input
-        tables reaches it -- no sweep needed, since the second family is
-        ordinary rather than exceptional.
+        The planned verdict claims totality by argument; this spread is
+        the fast in-suite witness (the slow suite sweeps every table).
         """
         from esolangs.tools.boolean.one_two_three_construct import construct
 
@@ -3198,139 +2884,6 @@ class TestParameterizedOneTwoThree:
         b = _Builder(1)
         b.apply_token(b.rows[0], "1")
         assert b.rows[0].pos == -1
-
-    def test_gap_fix_returns_when_every_gap_is_wide_enough(self) -> None:
-        """Nothing to widen is the ordinary case, and it costs one scan."""
-        from esolangs.tools.boolean.one_two_three_construct import (
-            _WORK_BUDGET,
-            _Builder,
-            _gap_fix,
-            _work,
-        )
-
-        _work[0] = _WORK_BUDGET
-        wide = _Builder(1)
-        wide.rows[0].pos, wide.rows[0].tape = 0, 0
-        wide.rows[1].pos, wide.rows[1].tape = 100, 0
-        _gap_fix(wide, "00")
-        assert [row.pos for row in wide.live()] == [0, 100]
-
-    def test_a_widening_that_would_collide_is_passed_over(self) -> None:
-        """A gap-fix move still has to keep the rows tellable apart.
-
-        Two rows already sharing an exact state stay together under a pure
-        right walk -- it moves every row by the same amount -- so a table
-        giving them different verdicts makes every candidate collide, and
-        the stage leaves the gap for the verdict search rather than adopting
-        one.
-        """
-        from esolangs.tools.boolean.one_two_three_construct import (
-            _RING,
-            _WORK_BUDGET,
-            _Builder,
-            _gap_fix,
-            _work,
-        )
-
-        _work[0] = _WORK_BUDGET
-        shared = 1 << (9 + _RING)
-        colliding = _Builder(2)
-        for row, pos in zip(colliding.rows, (0, 0, 5, 5), strict=True):
-            row.pos, row.tape = pos, shared
-        # (0,0) reads '0' and (0,1) reads '1': the pair cannot be allowed to
-        # share a state, and a walk cannot separate them.
-        _gap_fix(colliding, "0100")
-        assert [row.pos for row in colliding.live()] == [0, 0, 5, 5]
-
-    def test_the_kill_still_validates_what_its_screens_accepted(self) -> None:
-        """``_kill_fate`` is exact only for a row with no pending segment.
-
-        The sweep prices its candidates arithmetically because that is what
-        makes a wide table affordable, but the screens are not the gate:
-        ``_predict`` re-decides every survivor on the real fixpoint, and
-        ``_distinct_ok`` re-checks the adopted state.  A pending segment is
-        what puts the two out of step -- the arithmetic does not know about
-        it -- and a collision the fates never look at is what the distinctness
-        check is there to catch.
-        """
-        from esolangs.tools.boolean.one_two_three_construct import (
-            _RING,
-            _WORK_BUDGET,
-            _Builder,
-            _try_kill,
-            _work,
-        )
-
-        _work[0] = _WORK_BUDGET
-        pending = _Builder(1)
-        pending.rows[0].pos, pending.rows[0].tape = 5, 0x208AA1F7 << _RING
-        pending.rows[1].pos, pending.rows[1].tape = 0, 0x10F4A0FB << _RING
-        pending.seg = ["2"]
-        _try_kill(pending, (0,), 0, "01")
-
-        _work[0] = _WORK_BUDGET
-        # Rows (0,1) and (1,0) share an exact state and read '1' and '0':
-        # their fates are identical, so only the distinctness check sees it.
-        collided = _Builder(2)
-        for row, (pos, tape) in zip(
-            collided.rows,
-            (
-                (0, 0x593087555),
-                (5, 0x6D31CD3165),
-                (5, 0x6D31CD3165),
-                (8, 0xAC613EB19),
-            ),
-            strict=True,
-        ):
-            row.pos, row.tape = pos, tape << _RING
-        assert _try_kill(collided, (0, 0), 0, "0100") is None
-
-    def test_a_kill_whose_close_refuses_is_skipped_not_adopted(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """A candidate the closing step rejects moves the sweep on.
-
-        ``_close`` refuses only when no cell in 100001 right steps is FALSE
-        for every live row, and the screens ahead of it -- the two fate
-        checks, ``_predict``, and ``test`` -- reject a candidate that
-        ill-behaved first, so nothing measured reaches the handler: 1246
-        kills across the 256 three-input builds never fired it.  Nothing
-        *proves* the closing cell exists, though, so the guard stays live
-        and is pinned here on its contract instead -- a refusal has to skip
-        the candidate and let the sweep keep searching, never escape as a
-        ``ConstructError`` out of ``_try_kill``.  The state is one that
-        really does reach the call; the patch only decides what it answers.
-        """
-        from esolangs.tools.boolean import one_two_three_construct as module
-        from esolangs.tools.boolean.one_two_three_construct import (
-            _RING,
-            _WORK_BUDGET,
-            ConstructError,
-            _Builder,
-            _try_kill,
-            _work,
-        )
-
-        _work[0] = _WORK_BUDGET
-        reaches_close = _Builder(1)
-        for row, (pos, tape) in zip(
-            reaches_close.rows,
-            ((13, 213345565110206), (3, 72877178957620)),
-            strict=True,
-        ):
-            row.pos, row.tape = pos, tape << _RING
-        reaches_close.seg = ["2"]
-
-        calls = 0
-
-        def refusing_close(_b: _Builder) -> None:
-            nonlocal calls
-            calls += 1
-            raise ConstructError("no closing cell")
-
-        monkeypatch.setattr(module, "_close", refusing_close)
-        assert _try_kill(reaches_close, (0,), 0, "11") is None
-        assert calls, "the constructed state never reached _close"
 
 
 def test_nocomment_wide_declines_when_the_plan_outgrows_the_skip() -> None:

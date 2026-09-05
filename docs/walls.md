@@ -127,7 +127,7 @@ share the prefix too — dropping the test would misclassify them.  The sibling
 idea (pre-negating stored input bits to halve `not_bit`) remains open but is
 marginal.
 
-## 123 (parameterized; wider arities gated on the verdict search, not expressiveness)
+## 123 (parameterized; every stage of the wider-arity pipeline is now planned)
 
 All four one-input and all sixteen two-input tables build
 (`esolangs.tools.boolean.one_two_three`).
@@ -151,25 +151,37 @@ Every looping row is a proven state revisit (`run_until_halt_or_cycle`
 catches it), never unbounded growth, and every plan emits its slots in name
 order with each `{Xi}` once.
 
-### Wider arities: three stages proven total, one conjecture left
+### Wider arities: every stage planned, none searched
 
 `one_two_three_construct` builds tables past three inputs via a merge phase
 (one synchronized walk-descend-pop per mark, keeping exactly one mark per
 set bit), a separation phase (a planned decode tree, deterministic and
-total at every arity via a `2**(n+1)` mark base), and a verdict phase that
-kills 1-rows bottom-up using two mark geometries (uniform, then staggered
-`+1/+3`) tried in order — together deterministic and strictly stronger than
-either alone.  The endgame closes with a residue-fusion argument, replaying
-in closed form rather than one command at a time (95s to 0.28s at five
-inputs).
+total at every arity via a `2**(n+1)` mark base), and a planned verdict:
+separation leaves every row at a distinct **odd** position with nothing
+marked above its own cell, and on that state the kill
+`"1"*a + "2" + "2"*(a-1) + "12"` (`a` odd) is a closed form — rows at or
+above `a` walk back to exactly where they started and test their own
+unmarked cell, while every row below dips through the ring and provably
+loops unless its tested cell was *pre-marked*, which the segment then
+clears, letting the row skip out.  That escape is the shield: one
+paint pair (`"2"*k + "1"*k` twice, stripes cancelling everywhere but
+`pos + k`) per 0-row, then a single kill two above the highest 1-row
+loops every 1-row at once.  All-odd positions make the shield cells
+collision-free (every clash would need two rows one cell apart) and rule
+out the fatal `-3` read (odd minus odd is even).  The endgame closes with
+a residue-fusion argument, replaying in closed form rather than one
+command at a time (95s to 0.28s at five inputs).
 
-What is *not* proven is the verdict search itself: it remains a bounded DFS
-over kills, boosts and ring rounds, and its totality is a conjecture —
-supported by an exhaustive sweep (all 276 tables through three inputs) and
-random sampling at four and five, not by an argument.  A fixed budget can
-never be total across arities anyway: a table takes `2**n` bits to state, so
-template length and build work are exponential in `n` no matter the
-pipeline.
+The old verdict *search* — a bounded DFS over kills, boosts and ring
+rounds, whose totality was a conjecture and whose anchored kills pinned
+mark residues, forcing two mark geometries and a budget probe between
+them — is gone, and with it the geometry parity law.  The planned verdict
+is checked exhaustively at four inputs (all 65536 tables built and
+replayed) and by random sampling at five and six, and each emission is
+still validated per stage on the exact model and replayed on the
+interpreter before it is returned.  A fixed budget still bounds the build:
+a table takes `2**n` bits to state, so template length and build work are
+exponential in `n` no matter the pipeline.
 
 ### Language facts worth keeping
 

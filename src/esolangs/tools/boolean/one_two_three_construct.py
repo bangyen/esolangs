@@ -39,37 +39,34 @@ The pipeline
    room to survive all ``n`` halvings — which is why this stage cannot
    fail at any arity.  Pure right-walk segments never flip a cell,
    never enter the ring, never read stdin.
-3. **Verdict** (`_verdict_search`): a bounded depth-first search over
-   three move kinds — a *kill* (the segment ``"1"*a + "2"`` or its
-   mark-anchored variant ``"1"*a + "2" + "2"*X + "12"``, which loops the
-   row that dips into the -1..-3 ring and tests TRUE, by a proven
-   periodic revisit; bystander rows the descent also dips may test TRUE
-   once and skip on a later pass), a *boost* (a plain test whose TRUE
-   set excludes the victim, moving blockers out of the way singly or in
-   bulk), and a *ring round* (descend, pop, reshuffle relative residues,
-   depositing the above-position marks boosts need).  On the clean state
-   separation leaves, the first candidate — kill the lowest live 1-row,
-   letting the 0-rows below it dip and skip — succeeds nearly every
-   time, so the search normally runs as a straight-line schedule and
-   backtracking is the insurance, not the mechanism.
+3. **Verdict** (`_verdict`): a *planned* shield-and-sweep, not a
+   search.  Separation leaves every row at a distinct odd position with
+   nothing marked above its own cell, and on that state the kill
+   ``"1"*a + "2" + "2"*(a-1) + "12"`` (``a`` odd) is a closed form:
+   rows at or above ``a`` walk back to exactly where they started and
+   test their own unmarked cell, while every row below ``a`` dips
+   through the ring and tests a cell in its virgin zone that the
+   segment itself just marked — TRUE, and a proven periodic revisit.
+   The one escape is a pre-existing mark on the tested cell, which the
+   segment then *clears* — so each 0-row below the kill is shielded
+   beforehand by one :func:`_paint`, a pair of walk-descend blocks
+   whose flips cancel everywhere except the 0-row's tested cell.  One
+   kill two above the highest 1-row then loops every 1-row at once.
 4. **Endgame** (`_endgame`): survivors need ``pos < 0`` at end of code.
    A deep descent drops everyone into the ring, where same-residue rows
    fuse; once some residue class mod 4 is free the final ``"1"*k`` parks
    every survivor on a negative ring cell and the program halts.
 
-:func:`construct` runs the whole pipeline under two mark geometries in
-order (uniform and residue-staggered — see its comment for the parity
-law that makes some tables solvable under only one), validates every
-candidate move on an exact tracked model of all rows before emitting
-it, and replays every row of the finished template on the real
-interpreter before returning it — a wrong program is never handed out;
-an exhausted search raises instead.
+:func:`construct` runs the whole pipeline, validates every stage on an
+exact tracked model of all rows while emitting, and replays every row
+of the finished template on the real interpreter before returning it —
+a wrong program is never handed out; a violated stage invariant raises
+instead.
 """
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator
-from itertools import pairwise
+from collections.abc import Iterable
 
 __all__ = ["ConstructError", "construct"]
 
@@ -82,43 +79,13 @@ _ONE, _ZERO = "1", "2"
 _RING = 3
 
 
-def _pos_after_ones(p: int, a: int) -> int:
-    """Where ``"1"*a`` leaves a row that starts at ``p >= 0``.
-
-    The walk falls straight to -1 in ``p + 1`` steps and then rides the
-    ring's 4-cycle ``-1, -2, -3, 0``, so the landing cell is arithmetic
-    rather than a simulation.  Verified against the interpreter model
-    over every ``p < 60`` and ``a < 200``.
-    """
-    if a <= p:
-        return p - a
-    return (-1, -2, -3, 0)[(a - (p + 1)) % 4]
-
-
-def _ones_then_pop_reads(positions: list[int], a: int) -> bool:
-    """Report whether ``"1"*a + "2"`` would read stdin for a row.
-
-    The ``2`` is fatal exactly when some row sits at -3 after the
-    descent, and where the descent lands depends only on the starting
-    position -- so a kill prefix can be rejected by arithmetic over the
-    live positions instead of by descending every row hundreds of cells
-    and catching the raise.  Most candidate prefixes die here.
-    """
-    return any(_pos_after_ones(p, a) == -3 for p in positions)
-
-
 def _on_mark(row: _Row) -> bool:
     """Report whether ``row`` is parked on one of its own marked cells."""
     return row.pos >= 0 and bool(row.tape >> (row.pos + _RING) & 1)
 
 
-def _cells(mask: int) -> list[int]:
-    """Ascending cell numbers set in ``mask``."""
-    return [i - _RING for i in range(mask.bit_length()) if mask >> i & 1]
-
-
 def _mask(cells: Iterable[int]) -> int:
-    """Build a tape mask from cell numbers -- the inverse of :func:`_cells`."""
+    """Build a tape mask from cell numbers (bit ``c + _RING`` per cell)."""
     m = 0
     for c in cells:
         m |= 1 << (c + _RING)
@@ -138,11 +105,11 @@ class ConstructError(Exception):
 
 
 class _WorkExhaustedError(Exception):
-    """The deterministic work budget ran out mid-search.
+    """The deterministic work budget ran out mid-build.
 
-    Deliberately not a :class:`ConstructError`: candidate validators
-    swallow those to try the next candidate, and a drained budget must
-    abort the whole build instead of being retried away.
+    Deliberately not a :class:`ConstructError`: stage validators catch
+    those where a refusal has a defined meaning, and a drained budget
+    must abort the whole build instead of being caught on the way.
     """
 
 
@@ -168,18 +135,6 @@ class _Row:
 #: builds or raises identically everywhere.  A list so the counter can be
 #: decremented in place from :func:`_exec_char`.
 _work = [0]
-
-#: Fraction of the work budget the first mark geometry may spend before
-#: :func:`construct` parks it and probes the other one.  The geometries
-#: are wildly asymmetric per table -- one solves in milliseconds what
-#: the other grinds on for twenty minutes before failing -- and which
-#: way round is table-specific, so a fixed order always loses badly on
-#: some table.  Probing caps that loss at this fraction instead: a
-#: first geometry that has not converged by then is *paused*, not
-#: abandoned, and is resumed with the full remaining budget if the
-#: other one also fails to converge.  Measured in simulated commands,
-#: so the switch point is deterministic and machine-independent.
-_PROBE_FRACTION = 16
 
 
 def _exec_char(row: _Row, ch: str) -> None:
@@ -210,7 +165,7 @@ def _exec_char(row: _Row, ch: str) -> None:
 def _exec_run(row: _Row, ch: str, w: int) -> None:
     """Apply ``ch`` repeated ``w`` times to one row.
 
-    Straight runs are nearly everything the searches simulate, and each
+    Straight runs are nearly everything the build simulates, and each
     case below collapses one into O(1) work instead of ``w`` trips
     through :func:`_exec_char`:
 
@@ -384,28 +339,29 @@ class _Builder:
             seen.add(s)
         raise ConstructError(f"fixpoint cap: row {row.bits}")
 
-    def test(self, *, kill: tuple[int, ...] | None = None) -> None:
+    def test(self, *, kills: frozenset[tuple[int, ...]] | None = None) -> None:
         """Close the current segment with ``"33"``.
 
         Rows below 0 ride the NOPs; rows on FALSE skip; rows on TRUE
-        re-run the segment to a fixpoint.  With ``kill`` the named row
-        must provably loop (it is marked dead) — every other TRUE row
-        must still escape, which permits a kill whose descent dips
-        bystander rows: they test TRUE once, re-run, and skip on a later
-        pass.  Without ``kill`` every TRUE row must escape, or the
-        emission is invalid and raises.
+        re-run the segment to a fixpoint.  With ``kills`` every named
+        row must provably loop (it is marked dead) — every other TRUE
+        row must still escape.  Without ``kills`` every TRUE row must
+        escape, or the emission is invalid and raises.
         """
+        kills = kills or frozenset()
         true_rows = [r for r in self.live() if _on_mark(r)]
         for row in true_rows:
             fate = self.fixpoint(row)
-            if row.bits == kill:
+            if row.bits in kills:
                 if fate != "loop":
                     raise ConstructError(f"kill escaped: row {row.bits}")
                 row.dead = True
             elif fate != "skip":
                 raise ConstructError(f"unintended loop: row {row.bits}")
-        if kill is not None and not any(r.dead and r.bits == kill for r in self.rows):
-            raise ConstructError(f"kill missed: row {kill} never tested TRUE")
+        dead = {r.bits for r in self.rows if r.dead}
+        missed = [k for k in kills if k not in dead]
+        if missed:
+            raise ConstructError(f"kill missed: row {missed[0]} never tested TRUE")
         self.seg = []
         self.chunks.append("33")
 
@@ -427,64 +383,6 @@ class _Builder:
 
 def _table_val(table: str, bits: tuple[int, ...]) -> str:
     return table[int("".join(map(str, bits)), 2)]
-
-
-def _predict(
-    b: _Builder, seg: str, *, kill: tuple[int, ...] | None = None
-) -> set[tuple[int, ...]] | None:
-    """Try closing (pending segment + ``seg``) on a clone.
-
-    Returns the TRUE set's row bits on success, ``None`` if any row's
-    fate is invalid (an escaped kill, an unintended loop, a stdin read).
-    With ``kill`` the named row must loop; every other TRUE row must
-    still skip, possibly after re-runs.
-    """
-    nb = b.clone()
-    try:
-        live = nb.live()
-        for ch, w in _runs(seg):
-            for row in live:
-                _exec_run(row, ch, w)
-        true_rows = [r for r in nb.live() if _on_mark(r)]
-        for row in true_rows:
-            fate = nb.fixpoint(row, seg)
-            if (fate != "loop") if row.bits == kill else (fate != "skip"):
-                return None
-        return {r.bits for r in true_rows}
-    except ConstructError:
-        return None
-
-
-def _true_set_after_walk(b: _Builder, w: int) -> set[tuple[int, ...]] | None:
-    """Give the exact TRUE set of closing the pure walk ``"2"*w`` as a test.
-
-    From a normalized state with no pending segment, ``"2"*w + "33"``
-    cannot loop (positions strictly increase, so no state revisits) and
-    cannot read (``2`` at ``pos >= 0`` never touches the ring), so the
-    whole candidate is decidable without simulation: a row is TRUE iff
-    its first landing is marked, and its escape chain -- one more walk
-    per marked landing -- must fit the fixpoint's 64-re-run cap.
-    ``None`` means the shortcut does not apply (a row below zero or a
-    pending segment) or the candidate is invalid (a chain past the
-    cap); anything else is the verdict :func:`_predict` would return,
-    at a few integer ops per row instead of a charged all-rows clone --
-    which was 88% of the whole build's work at five inputs.
-    """
-    live = b.live()
-    if b.seg or any(r.pos < 0 for r in live):
-        return None
-    out = set()
-    for r in live:
-        p = r.pos + w
-        if r.tape >> (p + _RING) & 1:
-            out.add(r.bits)
-            hops = 0
-            while r.tape >> (p + _RING) & 1:
-                p += w
-                hops += 1
-                if hops > 64:
-                    return None
-    return out
 
 
 def _normalize(b: _Builder) -> None:
@@ -551,34 +449,6 @@ def _close(b: _Builder) -> None:
         for row in probe.live():
             _exec_char(row, "2")
     raise ConstructError("no clean closing cell")
-
-
-def _distinct_ok(b: _Builder, table: str) -> bool:
-    """No two rows with different verdicts may share an exact state."""
-    seen: dict[tuple[int, int], tuple[int, ...]] = {}
-    for r in b.live():
-        key = (r.pos, r.tape)
-        if key in seen and seen[key] != r.bits:
-            if _table_val(table, seen[key]) == "0" == _table_val(table, r.bits):
-                continue
-            return False
-        seen[key] = r.bits
-    return True
-
-
-def _one_row_collided(b: _Builder, table: str) -> bool:
-    """Report whether a live 1-row shares a position with any live row.
-
-    That state is a trap: kills discriminate by position first, so the
-    1-rows must stay position-unique.
-    """
-    grp: dict[int, list[_Row]] = {}
-    for r in b.live():
-        grp.setdefault(r.pos, []).append(r)
-    return any(
-        len(g) > 1 and any(_table_val(table, r.bits) == "1" for r in g)
-        for g in grp.values()
-    )
 
 
 def _phase_a(b: _Builder, marks: list[int]) -> None:
@@ -652,632 +522,84 @@ def _separate(b: _Builder, marks: list[int]) -> None:
         raise ConstructError("separation left shared positions")
 
 
-def _gap_fix(b: _Builder, table: str, gap_min: int = 12) -> None:
-    """Boost the rows above any too-narrow gap so kills have headroom.
+def _paint(b: _Builder, k: int) -> None:
+    """Flip exactly cell ``pos + k`` for every live row, positions kept.
 
-    Best-effort: a gap the boost search cannot widen is left for the
-    verdict search's own moves to handle.
+    Two nested blocks cancel: ``"2"*k + "1"*k`` walks up ``k`` and
+    descends back, flipping the stripe ``[pos+1, pos+k]``, and the
+    ``k - 1`` block re-flips ``[pos+1, pos+k-1]`` — the XOR leaves one
+    mark at ``pos + k`` and every position where it started.  The walk
+    never descends past its own start, so no row can enter the ring or
+    read, whatever the tape holds.
     """
-    for _ in range(8 * len(b.live()) + 8):
-        order = sorted(b.live(), key=lambda r: r.pos)
-        boundary = next(
-            (lo.pos for lo, hi in pairwise(order) if 0 < hi.pos - lo.pos < gap_min),
-            None,
-        )
-        if boundary is None:
-            return
-        uppers = {r.bits for r in b.live() if r.pos > boundary}
-        for w in range(1, max(r.pos for r in b.live()) + 64):
-            if _true_set_after_walk(b, w) != uppers:
-                continue
-            nb = b.clone()
-            nb.run("2" * w)
-            nb.test()
-            try:
-                # The move is a pure right walk and `_true_set_after_walk`
-                # already refused any state holding a row below zero, so
-                # every row lands at `pos >= 0` and `_normalize` returns
-                # before its live-lock check -- 20000 sampled moves left no
-                # row negative.  Kept because the walk is only pure by the
-                # caller's construction, not by this function's signature.
-                _normalize(nb)
-            except ConstructError:  # pragma: no cover - the walk cannot descend
-                continue
-            if not _distinct_ok(nb, table):
-                continue
-            b.chunks, b.seg, b.rows = nb.chunks, nb.seg, nb.rows
-            break
-        else:
-            return
+    if k < 1:  # pragma: no cover - the verdict computes k >= 1
+        raise ConstructError(f"paint offset {k} is not above the row")
+    b.run("2" * k + "1" * k)
+    if k > 1:
+        b.run("2" * (k - 1) + "1" * (k - 1))
 
 
-def _after_ones_pop(p: int, tape: int, a: int) -> tuple[int, int] | None:
-    """(pos, tape) after ``"1"*a + "2"`` from ``p >= 0``, ``None`` on a read.
+def _verdict(b: _Builder, table: str) -> None:
+    """Shield every 0-row, then loop every 1-row with one planned kill.
 
-    The same closed forms :func:`_exec_run` batches with, but with no
-    row, no clone and no work charge: a shallow descent is one XOR and a
-    deep one is the ``[0, p]`` flip, a lap parity, and up to three ring
-    steps.  This is what lets the kill sweep consider every ``a`` for
-    free and pay simulation costs only for candidates that survive the
-    screens.  Verified against ``_exec_run`` on 200000 random
-    ``(p, tape, a)`` triples with zero mismatches, raises included.
+    Separation leaves row ``r`` at a distinct odd position ``P(r)`` with
+    tape exactly its set-bit marks, all at or below ``P(0)`` — nothing
+    above any row's own cell is marked (its *virgin zone*).  On that
+    state the kill ``"1"*a + "2" + "2"*(a-1) + "12"`` with ``a`` odd is
+    a closed form, not a candidate:
+
+    * A row at ``p >= a`` descends to ``p - a``, pops, and walks back
+      to exactly ``p``, testing its own (unmarked) cell — FALSE, so the
+      rows above the kill are untouched, positions included.
+    * A row at ``p < a`` dips into the ring — ``a`` and ``p`` both odd
+      means the descent lands at -1 or -2, never the fatal read at -3 —
+      pops to 0 or 1, and tests cell ``a-1`` or ``a``.  Both cells are
+      in its virgin zone, and the segment's trailing ``1`` has just
+      marked the tested cell, so it tests TRUE; each re-run flips the
+      cells below the tested one and restores the tested one, so the
+      second or fourth pass is an exact state revisit — a proven loop.
+    * The one escape is a pre-existing mark on the tested cell: the
+      trailing ``1`` then *clears* it, the row tests FALSE, and it
+      skips out unharmed.  That is the shield, and it is plantable per
+      row because positions are distinct: :func:`_paint` at offset
+      ``k`` marks ``pos + k`` for every row, and with all positions
+      odd, distinct, and below the two tested cells, a shield aimed at
+      one 0-row's tested cell can never land on another row's (the
+      collision cases all force two rows one cell apart — impossible
+      when every position is odd).
+
+    So the whole verdict is: paint one shield per live 0-row below the
+    kill, close the paints (every row still sits on its own unmarked
+    cell, so the test is vacuously FALSE), and emit one kill with ``a``
+    two above the highest 1-row.  Every fate is still validated on the
+    exact model by ``test(kills=...)``, and the closing replay re-runs
+    every row on the interpreter's own rules — the preconditions above
+    make the construction *total*, they are not what proves any single
+    emission.
     """
-    if a <= p:
-        tape ^= ((1 << a) - 1) << (p - a + 1 + _RING)
-        return p - a + 1, tape
-    tape ^= ((1 << (p + 1)) - 1) << _RING  # the straight part: cells 0..p
-    laps, rem = divmod(a - p - 1, 4)
-    if laps & 1:
-        tape ^= 0b1111  # one lap flips cells -3..0 once each
-    for i in range(rem):  # the first `rem` of the cycle -1, -2, -3, 0
-        tape ^= 1 << ((-1 - i if i < 3 else 0) + _RING)
-    land = (-1, -2, -3, 0)[rem]
-    if land == -3:
-        return None  # the "2" would read stdin
-    return (1 if land == 0 else 0), tape
-
-
-def _kill_fate(p: int, tape: int, a: int, x: int | None) -> str:
-    """Decide a lone row's fate under ``"1"*a + "2"`` (+ ``"2"*x + "12"``).
-
-    The kill segment is four straight runs, so a whole fixpoint is
-    iterable arithmetically: each pass is one :func:`_after_ones_pop`,
-    a walk, and one flip -- O(1) per pass, no clone, no work charge.
-    ``"skip"`` means the row escapes (immediately or after re-runs),
-    ``"loop"`` a proven state revisit, ``"invalid"`` a stdin read or no
-    verdict within the pass cap -- verified against a per-row simulated
-    fixpoint on 50000 random ``(p, tape, a, x)`` cases with zero
-    mismatches.  Exact only for a row with no pending segment, which is
-    how kills are tried; _predict remains the adopting gate either way.
-
-    The revisit is found by Brent's cycle detection rather than a set of
-    seen states: the pass function is deterministic, so the cycle is the
-    same either way, but this hashes no tapes and allocates no tuples --
-    and the tapes are big ints on a path taken millions of times per
-    build.  The same 65-pass cap bounds both, and a cycle reachable
-    inside it is found inside it, so the verdicts agree; checked over
-    400000 random cases, the pass-cap frontier included.
-    """
-    cur = (p, tape)
-    passes = 0
-    power = lam = 1
-    tortoise = cur
-    while passes < 65:
-        res = _after_ones_pop(*cur, a)
-        if res is None:
-            return "invalid"
-        np, ntape = res
-        if x is not None:
-            np += x
-            ntape ^= 1 << (np + _RING)
-        if not ntape >> (np + _RING) & 1:
-            return "skip"
-        cur = (np, ntape)
-        passes += 1
-        if cur == tortoise:
-            return "loop"
-        if power == lam:
-            tortoise = cur
-            power *= 2
-            lam = 0
-        lam += 1
-    return "invalid"
-
-
-def _try_kill(
-    b: _Builder, victim: tuple[int, ...], pad: int, table: str
-) -> _Builder | None:
-    """Search a kill of ``victim``: pad, descend ``a``, pop, test.
-
-    ``"1"*a + "2"`` tests cell 0 after the ring pop; the mark-anchored
-    variant appends ``"2"*X + "12"`` so the tested cell is any low TRUE
-    cell ``X`` of the victim — the descent flips X on the way down and
-    the trailing ``1`` restores it, making the victim's re-run periodic.
-    """
-    nb0 = b.clone()
-    try:
-        if pad:
-            nb0.run("2" * pad)
-            _close(nb0)
-    except ConstructError:
-        return None
-    v0 = next(r for r in nb0.live() if r.bits == victim)
-    if v0.pos < 0:
-        return None
-    # On a freshly separated state the victim's marks below its position
-    # are its set bits -- a handful.  After a few kills the descents have
-    # marked hundreds of cells, and sweeping every one of them against
-    # every ``a`` was the dominant wall cost of a stalled node, so the
-    # anchored variant considers a bounded, spread sample instead.
-    below = [c for c in _cells(v0.tape) if 0 <= c < v0.pos]
-    if len(below) > 48:
-        below = below[:24] + below[24 :: max(1, (len(below) - 24) // 24)]
-    xs: list[int | None] = [None, *below]
-    prefix_positions = [r.pos for r in nb0.live()]
-    state_of = {r.bits: (r.pos, r.tape) for r in nb0.live()}
-    for a in range(v0.pos + 1, max(r.pos for r in nb0.live()) + 13):
-        # the victim must pop out of the ring at -1/-2, or the '2' reads
-        if (a - v0.pos) % 4 not in (1, 2):
+    ones = [r for r in b.live() if _table_val(table, r.bits) == "1"]
+    if not ones:
+        return
+    live = b.live()
+    positions = [r.pos for r in live]
+    if len(set(positions)) != len(positions) or any(p % 2 == 0 for p in positions):
+        # Never observed (positions are distinct and odd for n <= 7,
+        # and the mark base keeps the separation gaps even); raising
+        # keeps the no-unproven-template contract if a wider arity
+        # ever breaks the parity.
+        raise ConstructError("verdict precondition: positions not distinct odd")
+    a = max(r.pos for r in ones) + 2
+    painted = False
+    for r in sorted(live, key=lambda row: row.pos):
+        if r.pos >= a or _table_val(table, r.bits) == "1":
             continue
-        # Every candidate for this ``a`` shares the prefix "1"*a + "2"
-        # and then walks right, so the whole x-sweep rides one advancing
-        # state instead of re-simulating the prefix (hundreds of
-        # commands over every live row) once per x.
-        #
-        # A prefix whose pop would read stdin kills the whole ``a``, and
-        # that is decidable from the live positions alone -- which is
-        # most of them, and used to be paid for with a full descent per
-        # row before the raise surfaced.
-        if _ones_then_pop_reads(prefix_positions, a):
-            continue
-        dipped = {r.bits for r in nb0.live() if r.pos < a}
-        # The whole prefix is arithmetic (see _after_ones_pop), so every
-        # candidate ``a`` costs a few int ops per row instead of a full
-        # descent through _exec_run -- which, charged at ``a`` commands
-        # per row per candidate, used to burn the entire work budget on
-        # sweeps at five inputs before a single kill was adopted.
-        head_rows: list[_PlanRow] = []
-        for r in nb0.live():
-            res = _after_ones_pop(r.pos, r.tape, a)
-            if res is None:  # pragma: no cover - screened above
-                head_rows = []
-                break
-            head_rows.append((r.bits, res[0], res[1]))
-        if not head_rows:
-            continue  # pragma: no cover - screened above
-        v_land = next(p for bits, p, _ in head_rows if bits == victim)
-        # Anchored candidates are rejected by one bit test instead of a
-        # row scan.  For a row at ``p`` the anchored variant tests cell
-        # ``p + x`` of a fixed tape and TRUE means that bit is *clear*
-        # (see the scan below), so ``tape >> p`` has bit ``x`` set
-        # exactly when the row tests FALSE at that ``x``.  ANDing those
-        # over the rows that must all test FALSE -- the undipped
-        # non-victim ones -- gives a mask whose bit ``x`` clears every
-        # such row at once.  The identity needs ``p >= 1``, and every row
-        # that reaches here has it: an undipped row is one with
-        # ``r.pos >= a``, which is exactly `_after_ones_pop`'s shallow
-        # branch, landing at ``r.pos - a + 1 >= 1``.  A landing of 0 or 1
-        # comes only from the deep branch, i.e. from ``r.pos < a`` -- a
-        # dipped row, skipped just above.  So the mask needs no
-        # per-candidate fallback (checked exhaustively over ``pos, a <
-        # 400``: no undipped row lands below cell 1).
-        reject_mask = -1
-        for bits, p, tape in head_rows:
-            if bits == victim or bits in dipped:
-                continue
-            reject_mask &= tape >> (p + _RING)
-        for x in xs:
-            seg = ("1" * a + "2") if x is None else ("1" * a + "2" + "2" * x + "12")
-            # The victim's re-run can only revisit a state if each pass
-            # returns it to the cell it tests: the second descent starts
-            # at that cell, so it must pop at -1/-2 (anchored variant)
-            # or land back where the first pop left it (plain variant).
-            # A candidate with the wrong residue *drifts* instead, and
-            # its fixpoint burns the full 64 passes before failing --
-            # which is where the whole work budget went at five inputs.
-            if x is None:
-                land2 = _pos_after_ones(v_land, a)
-                nxt = 0 if land2 in (-1, -2) else 1 if land2 == 0 else None
-                if nxt != v_land:
-                    continue
-            elif _pos_after_ones(x, a) not in (-1, -2):
-                continue
-            # The walk and the closing "12" are arithmetic too: the
-            # ``1`` toggles cell ``p`` and steps to ``p - 1``, the ``2``
-            # steps back (or out of the ring to 0).  From ``pos >= 0``
-            # it can never read stdin, so there is no failure to catch.
-            # Nearly all of the kill sweep's candidates are rejected on
-            # the TRUE set alone, so it decides them before the fixpoint
-            # screens.  The victim must test TRUE; a bystander the
-            # descent *dipped* below zero may also test TRUE -- it skips
-            # on a later pass, and _predict validates exactly that fate
-            # -- but a TRUE row the descent left standing drifts left on
-            # every re-run instead of settling, so those candidates are
-            # rejected before any fixpoint is paid for.
-            #
-            # The undipped-TRUE rejection is decidable row by row, so it
-            # is applied *while* the set is built rather than after: such
-            # a row kills the candidate outright, and the scan stops
-            # there instead of classifying the rows behind it.  This is
-            # the innermost loop of the whole search -- tens of millions
-            # of row classifications on a single four-input build.
-            #
-            # The two variants stay written out rather than sharing a
-            # helper: at that call count the Python call overhead costs
-            # more than the duplication saves (measured, 47s -> 60s,
-            # when this was one nested function).
-            # Most anchored candidates die here, on the precomputed
-            # mask, without touching a row: bit ``x`` says every undipped
-            # non-victim row tests FALSE.  The mask covers all of them
-            # (see its build above), so this is the whole rejection --
-            # only survivors pay for the scan that builds ``true_set``.
-            if x is not None and x >= 1 and not reject_mask >> x & 1:
-                continue
-            true_set = set()
-            ok = True
-            if x is None:
-                for bits, p, tape in head_rows:
-                    if tape >> (p + _RING) & 1:
-                        if bits != victim and bits not in dipped:
-                            ok = False
-                            break
-                        true_set.add(bits)
-            else:
-                for bits, p, tape in head_rows:
-                    # The ``1`` flips cell ``p + x`` and the closing
-                    # ``2`` steps back onto it, so for ``p + x >= 1``
-                    # the row tests the *inverse* of the bit already
-                    # there -- no need to build the flipped tape, which
-                    # is a fresh big-int allocation per row.  Only a
-                    # landing inside the ring still needs the real tape.
-                    c = p + x
-                    if c >= 1:
-                        hit = not tape >> (c + _RING) & 1
-                    else:
-                        hit = bool((tape ^ 1 << (c + _RING)) >> _RING & 1)
-                    if hit:
-                        if bits != victim and bits not in dipped:
-                            ok = False
-                            break
-                        true_set.add(bits)
-            if not ok or victim not in true_set:
-                continue
-            # Per-row fate screens before the all-rows validation: at
-            # five inputs eighteen thousand candidates per kill reached
-            # _predict with a bystander whose fate then failed, and each
-            # paid every live row's simulation -- then per-row *charged*
-            # simulation still drained the budget at 15k commands per
-            # fate, so the fates are arithmetic now (_kill_fate).
-            # The victim is skipped inline rather than by building the
-            # difference set.  This is a wash on time -- the cost here
-            # is _kill_fate itself, not the allocation -- but it drops
-            # a set construction per candidate for the same behaviour.
-            # Reordering these two screens is *not* worth trying: the
-            # bystander loop already rejects almost everything on its
-            # first row (1.91M of 1.95M fates come back "loop" against
-            # 208 candidates that reach _predict), so hoisting the
-            # victim's own fate ahead of it only adds a call.
-            if any(
-                bits != victim and _kill_fate(*state_of[bits], a, x) != "skip"
-                for bits in true_set
-            ):
-                continue
-            if _kill_fate(*state_of[victim], a, x) != "loop":
-                continue
-            if _predict(nb0, seg, kill=victim) is None:
-                continue
-            nb = nb0.clone()
-            nb.run(seg)
-            nb.test(kill=victim)
-            try:
-                # Not reached by anything measured: `_close` refuses only
-                # when no cell in 100001 right steps is FALSE for every live
-                # row, and the three gates above -- the two fate screens,
-                # `_predict`, and `test` itself -- reject a candidate that
-                # ill-behaved first.  All 256 three-input builds reached
-                # `_predict` 1246 times with a kill and this never fired,
-                # nor did 50000 constructed states.  Kept as a real guard
-                # rather than pragma'd away: unlike the walk-only stages
-                # above, nothing here *proves* the closing cell exists, and
-                # the sibling handler in `_ring_round` does fire.
-                _close(nb)
-            except ConstructError:
-                continue
-            # Rows the kill leaves at a shared position are fine as long
-            # as no two of them share the *exact* state with different
-            # verdicts: later kills discriminate by tape as well as by
-            # position, and every adopted move keeps proving itself.
-            if not _distinct_ok(nb, table):
-                continue
-            return nb
-    return None
-
-
-#: A planning row: ``(bits, pos, tape)``.  Pure right-walk tests never
-#: change a tape, so a whole chain of them can be planned on these
-#: triples and materialized through the real builder once, on success.
-type _PlanRow = tuple[tuple[int, ...], int, int]
-
-
-def _walk_plan(
-    state: list[_PlanRow], w: int
-) -> tuple[list[_PlanRow], set[tuple[int, ...]]] | None:
-    """Exact post-state and TRUE set of the test ``"2"*w + "33"``.
-
-    A TRUE row escapes one more walk per marked landing; a chain past
-    the fixpoint's 64-re-run cap invalidates the candidate (``None``),
-    exactly as the simulated close would have raised.
-    """
-    out: list[_PlanRow] = []
-    true_set: set[tuple[int, ...]] = set()
-    for bits, p, tape in state:
-        q = p + w
-        if tape >> (q + _RING) & 1:
-            true_set.add(bits)
-            hops = 0
-            while tape >> (q + _RING) & 1:
-                q += w
-                hops += 1
-                if hops > 64:
-                    return None
-        out.append((bits, q, tape))
-    return out, true_set
-
-
-def _plan_ok(state: list[_PlanRow], table: str, *, ones_unique: bool) -> bool:
-    """Run the planned analogues of ``_distinct_ok`` and ``_one_row_collided``."""
-    seen: dict[tuple[int, int], tuple[int, ...]] = {}
-    for bits, p, tape in state:
-        key = (p, tape)
-        if (
-            key in seen
-            and seen[key] != bits
-            and not (_table_val(table, seen[key]) == "0" == _table_val(table, bits))
-        ):
-            return False
-        seen[key] = bits
-    if ones_unique:
-        grp: dict[int, list[tuple[int, ...]]] = {}
-        for bits, p, _ in state:
-            grp.setdefault(p, []).append(bits)
-        if any(
-            len(g) > 1 and any(_table_val(table, bb) == "1" for bb in g)
-            for g in grp.values()
-        ):
-            return False
-    return True
-
-
-def _materialize_walks(b: _Builder, ws: list[int]) -> _Builder | None:
-    """Emit a planned chain of walk-tests on a clone, model-validated."""
-    nb = b.clone()
-    try:
-        for w in ws:
-            nb.run("2" * w)
-            nb.test()
-    except ConstructError:  # pragma: no cover - the plan is exact
-        return None
-    return nb
-
-
-def _boost_row(
-    b: _Builder, u: tuple[int, ...], above: int, table: str
-) -> _Builder | None:
-    """Move row ``u`` past ``above`` with tests whose TRUE set is ``{u}``.
-
-    Planned on triples and materialized once, like :func:`_group_boost`.
-    """
-    state = [(r.bits, r.pos, r.tape) for r in b.live()]
-    ws: list[int] = []
-    for _ in range(64):
-        u_pos, u_tape = next((p, t) for bits, p, t in state if bits == u)
-        if u_pos > above:
-            return _materialize_walks(b, ws)
-        top = max(p for _, p, _ in state)
-        for w in range(1, top + 48):
-            # cheap screen: the boosted row itself must test TRUE at +w
-            if not u_tape >> (u_pos + w + _RING) & 1:
-                continue
-            res = _walk_plan(state, w)
-            if res is None or res[1] != {u}:
-                continue
-            if not _plan_ok(res[0], table, ones_unique=False):
-                continue
-            state = res[0]
-            ws.append(w)
-            break
-        else:
-            return None
-    return None
-
-
-def _group_boost(b: _Builder, victim: tuple[int, ...], table: str) -> _Builder | None:
-    """Lift the victim's blockers in bulk until it is the minimum.
-
-    A boost's TRUE set need not be a single row: any test whose TRUE set
-    excludes the victim moves floor out from under it wholesale, which
-    turns a mid-pack victim into the bottom row in a handful of moves
-    instead of one campaign per blocker.
-
-    The chain is planned on ``(bits, pos, tape)`` triples -- pure walks
-    never change a tape, so each candidate is a few bit tests -- and
-    materialized through the real builder only once, on success.  The
-    incremental version simulated every adopted inner step on a clone,
-    which at five inputs charged ~30M commands per *rejected* call and
-    was, after everything else got cheap, 88% of the whole build.
-    """
-    state = [(r.bits, r.pos, r.tape) for r in b.live()]
-    ws: list[int] = []
-    for _ in range(64):
-        v_pos, v_tape = next((p, t) for bits, p, t in state if bits == victim)
-        if all(p > v_pos for bits, p, _ in state if bits != victim):
-            break
-        top = max(p for _, p, _ in state)
-        for w in range(1, top + 48):
-            # the victim must skip, and at least one blocker must jump
-            if v_tape >> (v_pos + w + _RING) & 1:
-                continue
-            if not any(
-                t >> (p + w + _RING) & 1
-                for bits, p, t in state
-                if p <= v_pos and bits != victim
-            ):
-                continue
-            res = _walk_plan(state, w)
-            if res is None:
-                continue
-            plan, tb = res
-            # Screened above: a row joins the TRUE set exactly when its
-            # first landing is marked (verified against _walk_plan on
-            # 300000 random cases), so the screen that requires the
-            # victim to skip already keeps it out of `tb`, and the one
-            # that requires a blocker to jump already makes `tb`
-            # non-empty.  Kept as the plan's own statement of what it
-            # needs rather than as a live exit.
-            if not tb or victim in tb:  # pragma: no cover - screened above
-                continue
-            if not _plan_ok(plan, table, ones_unique=True):
-                continue
-            state = plan
-            ws.append(w)
-            break
-        else:
-            return None
-    else:
-        return None
-    return _materialize_walks(b, ws)
-
-
-def _ring_round(b: _Builder, table: str, x: int, depth: int) -> _Builder | None:
-    """Pad, descend past the bottom row, pop.
-
-    Reshuffles relative residues mod 4 — the one thing plain walks
-    cannot change.
-    """
-    nb = b.clone()
-    try:
-        if x:
-            nb.run("2" * x)
-        lo = min(r.pos for r in nb.live())
-        nb.run("1" * (lo + 2 + depth))
-        nb.run("2")
-        _normalize(nb)
-        _close(nb)
-    except ConstructError:
-        return None
-    if _one_row_collided(nb, table) or not _distinct_ok(nb, table):
-        return None
-    return nb
-
-
-def _align_residues(b: _Builder, table: str) -> None:
-    """Best-effort: leave at most three residue classes mod 4 occupied.
-
-    A deep descend-and-pop is only valid when the dipped rows leave one
-    ring cell free for the pop's ``2``; bottom ring rounds give the
-    lowest entity +1 mod 4 per round, which usually frees a class in a
-    few tries.  Failure is acceptable — the verdict search still has its
-    shallow moves.
-    """
-    for _ in range(16):
-        if len({r.pos % 4 for r in b.live()}) < 4:
-            return
-        nb = b.clone()
-        try:
-            lo = min(r.pos for r in nb.live())
-            # The descent stops at -2 and the pop lands there on 0, so every
-            # row comes back to `pos >= 0` whatever its start was: measured
-            # over 300000 random position vectors, none landed negative and
-            # none read.  `_normalize` therefore returns at once and
-            # `_close` has nothing to refuse.
-            nb.run("1" * (lo + 2))
-            nb.run("2")
-            _normalize(nb)
-            _close(nb)
-        except ConstructError:  # pragma: no cover - the round cannot leave the ring
-            return
-        if _one_row_collided(nb, table) or not _distinct_ok(nb, table):
-            return
-        b.chunks, b.seg, b.rows = nb.chunks, nb.seg, nb.rows
-
-
-def _moves(b: _Builder, table: str, ones: list[_Row]) -> Iterator[_Builder]:
-    """Yield successor states, best first.
-
-    A few cheap kill pads for the lowest victims, then boosts of the
-    rows blocking the lowest victim (a mid-pack victim rarely dies
-    before its floor is cleared), then ring-round shuffles, then the
-    kill pads for every victim.  Ordering here is purely a cost
-    heuristic: the search backtracks, so it changes which trajectory is
-    found first, never what is reachable.  The first family stops at
-    the three lowest victims because the schedule is bottom-up anyway:
-    when the bottom rows are dirty enough to poison every dipped-kill
-    fate, sweeping all fifteen victims' doomed kills before the first
-    boost was minutes of wall time per node.
-    """
-    order = sorted(ones, key=lambda r: r.pos)
-    for victim in order[:3]:
-        for pad in range(3):
-            nb = _try_kill(b, victim.bits, pad, table)
-            if nb is not None:
-                yield nb
-    victim = min(ones, key=lambda r: r.pos)
-    nb = _group_boost(b, victim.bits, table)
-    if nb is not None:
-        yield nb
-    blockers = sorted(
-        (r for r in b.live() if r.bits != victim.bits and r.pos <= victim.pos + 24),
-        key=lambda r: r.pos,
-    )
-    for u in blockers:
-        top = max(r.pos for r in b.live())
-        nb = _boost_row(b, u.bits, top + 8, table)
-        if nb is not None:
-            yield nb
-    # ring rounds before the deep kill pads: a row that has only ever
-    # walked right has no TRUE cell above its position, so on a fresh
-    # state no boost can fire until a descend-and-pop deposits one.  The
-    # depths are taken from the blockers' own positions — a bottom-only
-    # dip leaves every mid-pack blocker dirtless and unboostable — and
-    # dipped 0-rows may collide freely, since only the victim's position
-    # must stay unique.
-    lo = min(r.pos for r in b.live())
-    depths = sorted({0, 4} | {r.pos - lo for r in blockers})
-    for depth in depths:
-        for x in range(4):
-            nb = _ring_round(b, table, x, depth)
-            if nb is not None:
-                yield nb
-    for victim in order:
-        for pad in range(12):
-            if victim in order[:3] and pad < 3:
-                continue  # the first family already tried these
-            nb = _try_kill(b, victim.bits, pad, table)
-            if nb is not None:
-                yield nb
-
-
-def _verdict_search(b: _Builder, table: str, budget: int = 0) -> _Builder | None:
-    """Bounded depth-first search until every 1-row is provably looping.
-
-    Backtracking keeps any previously working trajectory reachable, so a
-    fixed move set cannot regress a table that built; the budget bounds
-    the whole search, and exhausting it raises upstream rather than
-    emitting anything.  The default budget scales with the number of
-    rows: a table can need one kill per 1-row, and each may take a few
-    preparatory moves, so a flat cap would starve wide arities.
-    """
-    if not budget:
-        budget = 300 + 60 * len(b.live())
-    seen: set[tuple[tuple[int, tuple[int, ...], int], ...]] = set()
-    spent = [0]
-
-    def sig(bb: _Builder) -> tuple[tuple[int, tuple[int, ...], int], ...]:
-        # ``r.bits`` is unique per row, so the tape never decides the
-        # sort order -- this is the same signature the set-tape build
-        # produced, with the mask standing in for the frozenset.
-        return tuple(sorted((r.pos, r.bits, r.tape) for r in bb.live()))
-
-    def dfs(bb: _Builder) -> _Builder | None:
-        ones = [r for r in bb.live() if _table_val(table, r.bits) == "1"]
-        if not ones:
-            return bb
-        if spent[0] >= budget:
-            return None
-        s = sig(bb)
-        if s in seen:
-            return None
-        seen.add(s)
-        spent[0] += 1
-        for nb in _moves(bb, table, ones):
-            res = dfs(nb)
-            if res is not None:
-                return res
-            if spent[0] >= budget:
-                return None
-        return None
-
-    return dfs(b.clone())
+        tested = a if (a - r.pos) % 4 == 0 else a - 1
+        _paint(b, tested - r.pos)
+        painted = True
+    if painted:
+        b.test()
+    b.run("1" * a + "2" + "2" * (a - 1) + "12")
+    b.test(kills=frozenset(r.bits for r in ones))
 
 
 def _endgame(b: _Builder) -> None:
@@ -1497,16 +819,13 @@ def _replay(template: str, n: int, table: str) -> None:
 #: Counted work, not wall clock, so the same table either builds or
 #: raises identically on every machine.
 #:
-#: The counter is charged for what is actually simulated -- candidate
-#: screens that run on arithmetic (the kill sweep's prefix, fates, and
-#: tails) charge nothing, so the budget buys adopted moves and their
-#: validation rather than rejected candidates.  It is never read by a
-#: search decision -- only tested against zero to abort -- so a table
-#: that built before still emits the same template, and what a cheaper
-#: sweep changes is which tables get far enough to finish at all.  The
-#: budget is what keeps a table whose search cannot converge bounded
-#: instead of endless; :func:`construct` scales it with the row count
-#: so it stays a divergence guard rather than an arity ceiling.
+#: The counter is charged for what is actually simulated.  It is never
+#: read by a planning decision -- only tested against zero to abort --
+#: so charging cannot change which template a table emits, only whether
+#: a diverging build is cut off.  The pipeline is planned end to end,
+#: so the budget is a divergence guard for a stage invariant breaking
+#: at an unprobed arity, not a search allowance; :func:`construct`
+#: scales it with the row count so it never becomes an arity ceiling.
 _WORK_BUDGET = 2_000_000_000
 
 
@@ -1515,8 +834,8 @@ def construct(truth_table: str, *, verify: bool = True) -> str:
 
     Deterministic; every emitted template is replayed row by row on the
     real interpreter before it is returned.  Raises :class:`ValueError`
-    when a search stage exhausts its move budget or the whole build
-    exhausts its work budget — no unproven template is ever produced.
+    when a stage invariant is violated or the build exhausts its work
+    budget — no unproven template is ever produced.
 
     ``verify=False`` skips that closing replay, which is 40-65% of a
     four-input build (the program is long, and running it sixteen times
@@ -1529,79 +848,36 @@ def construct(truth_table: str, *, verify: bool = True) -> str:
     check the template itself is shipping an unproven program.
     """
     n = max(1, (len(truth_table) - 1).bit_length())
-    failure: str | None = None
-    # Two mark geometries, tried in order.  The base must be at least
-    # 2**(n+1): separation halves its minimum inter-group gap once per
-    # level, and every gap has to survive all n levels at >= 2 (see
-    # _separate); the tripling keeps each level's escapes below the
-    # next level's mark.  The two layouts differ in the marks' residues
-    # mod 4: an anchored kill needs its test cell to satisfy a residue
-    # constraint the dipped bystanders pin, so under either single
-    # layout some victim/bystander parity patterns starve the kill
-    # sweep -- measured both ways: the uniform +1 exhausts on a table
-    # the staggered +1/+3 solves in seconds, and vice versa.  Trying
-    # both is deterministic and strictly stronger than either.
+    # One mark geometry.  The base must be at least 2**(n+1): separation
+    # halves its minimum inter-group gap once per level, and every gap
+    # has to survive all n levels at >= 2 (see _separate); the tripling
+    # keeps each level's escapes below the next level's mark.  The
+    # staggered second geometry (and the budget probe that arbitrated
+    # between the two) served the verdict *search*, whose anchored kills
+    # pinned mark residues mod 4; the planned verdict tests only cells
+    # in each row's virgin zone, so one layout serves every table.
     #
-    # Which to try *first* is a pure cost choice -- both are always
-    # attempted, so it can never change the set of tables that build --
-    # but the cost at stake is enormous and table-specific.  Over a
-    # random four-input sample of 60, running each geometry to
-    # completion: uniform-first totals 1612s against 59s for
-    # staggered-first, and the gap is one table (``1000110011010101``)
-    # that uniform grinds on for 1176s before failing and staggered
-    # solves in 0.4s.  At five inputs the sample points the other way.
-    # So no fixed order is safe: whichever is first, some table pays
-    # the full budget before the other is even tried.
-    #
-    # Instead the first geometry gets a *probe*: a
-    # ``1 / _PROBE_FRACTION`` slice of the budget.  If it converges,
-    # nothing is lost; if it stalls, the other geometry is tried with
-    # the full budget, and only if that also stalls does the first
-    # resume with everything left.  A wrong first guess therefore
-    # costs a bounded slice rather than the whole budget, and no table
-    # that used to build stops building -- the fallback still runs
-    # both to exhaustion before giving up.
-    budget = _WORK_BUDGET * max(1, 2 ** (n - 4))
-
-    def attempt(stagger: int, allowance: int) -> str | None:
-        """One geometry under ``allowance`` work; ``None`` if it stalls.
-
-        Raises only on a genuine construction failure; a drained
-        allowance is a stall, which the caller retries elsewhere.
-        """
-        nonlocal failure
-        _work[0] = allowance
-        try:
-            b = _Builder(n)
-            marks = [2 ** (n + 1) * 3**i + 1 + 2 * (i & 1) * stagger for i in range(n)]
-            _phase_a(b, marks)
-            _close(b)
-            _separate(b, marks)
-            _gap_fix(b, truth_table)
-            _align_residues(b, truth_table)
-            result = _verdict_search(b, truth_table)
-            if result is None:
-                raise ConstructError("verdict search exhausted its budget")
-            b = result
-            _endgame(b)
-            template = b.template()
-            if verify:
-                _replay(template, n, truth_table)
-            return template
-        except _WorkExhaustedError:
-            failure = "the work budget ran out before the searches converged"
-        except ConstructError as exc:
-            failure = str(exc)
-        return None
-
-    # The budget still bounds a diverging search, but everything about a
-    # wider table is exponentially bigger -- rows, template length, kill
-    # sweeps -- so the cap scales with the row count (per attempt) to
-    # stay a divergence guard, not an arity ceiling.  Deterministic
-    # either way, and the probe slice scales with it.
-    probe = max(1, budget // _PROBE_FRACTION)
-    for stagger, allowance in ((0, probe), (1, budget), (0, budget)):
-        template = attempt(stagger, allowance)
-        if template is not None:
-            return template
-    raise ValueError(f"123 construction failed for {truth_table!r}: {failure}")
+    # The budget still bounds a diverging build, but everything about a
+    # wider table is exponentially bigger -- rows, template length,
+    # shield paints -- so the cap scales with the row count to stay a
+    # divergence guard, not an arity ceiling.
+    _work[0] = _WORK_BUDGET * max(1, 2 ** (n - 4))
+    try:
+        b = _Builder(n)
+        marks = [2 ** (n + 1) * 3**i + 1 for i in range(n)]
+        _phase_a(b, marks)
+        _close(b)
+        _separate(b, marks)
+        _verdict(b, truth_table)
+        _endgame(b)
+        template = b.template()
+        if verify:
+            _replay(template, n, truth_table)
+    except _WorkExhaustedError:
+        raise ValueError(
+            f"123 construction failed for {truth_table!r}: "
+            "the work budget ran out before the build converged"
+        ) from None
+    except ConstructError as exc:
+        raise ValueError(f"123 construction failed for {truth_table!r}: {exc}") from exc
+    return template
