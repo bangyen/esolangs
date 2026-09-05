@@ -32,8 +32,33 @@ def rng() -> random.Random:
 
 class TestNoCommentFuzz:
     def test_program_alphabet(self, rng) -> None:
-        program = "".join(rng.choice("idclrnfsbo") for _ in range(rng.randint(0, 30)))
+        program = verify_differential._gen_nocomment_program(rng)  # noqa: SLF001
         assert set(program) <= set("idclrnfsbo")
+
+    def test_some_draws_are_stack_disciplined(self, rng) -> None:
+        """Half the draws pop only what they pushed.
+
+        Popping an empty stack is an invalid operation and was where most
+        uniform draws stopped.  A uniform draw goes negative often, so
+        "some draw never does" is only true because the structured half
+        exists -- which is the property worth pinning.
+        """
+
+        def underflows(program: str) -> bool:
+            depth = 0
+            for char in program:
+                depth += (char == "n") - (char == "f")
+                if depth < 0:
+                    return True
+            return False
+
+        draws = [
+            verify_differential._gen_nocomment_program(rng)  # noqa: SLF001
+            for _ in range(200)
+        ]
+        # Non-trivial draws only: the empty program underflows nothing.
+        safe = [p for p in draws if len(p) > 4 and not underflows(p)]
+        assert len(safe) > len(draws) // 5
 
 
 class TestBfPdaFuzz:
@@ -44,10 +69,39 @@ class TestBfPdaFuzz:
 
 class TestRam0Fuzz:
     def test_program_alphabet(self, rng) -> None:
-        program = "".join(
-            rng.choice("ZANCLS123456789") for _ in range(rng.randint(0, 30))
-        )
-        assert set(program) <= set("ZANCLS123456789")
+        program = verify_differential._gen_ram0_program(rng)  # noqa: SLF001
+        assert set(program) <= set("ZANCLS123456789 ")
+
+    def test_some_draws_separate_their_tokens(self, rng) -> None:
+        """Half the draws space their tokens apart.
+
+        Without a space in the alphabet, adjacent digits glue into one
+        multi-digit goto -- ``'4877'`` is a single jump past the end, so the
+        program dumps and halts having executed one token.  That was 63% of
+        uniform draws stopping within two steps.
+        """
+        draws = [
+            verify_differential._gen_ram0_program(rng)  # noqa: SLF001
+            for _ in range(200)
+        ]
+        spaced = [p for p in draws if " " in p]
+        assert len(spaced) > len(draws) // 5
+
+    def test_structured_gotos_are_not_absurdly_out_of_range(self, rng) -> None:
+        """A structured goto lands near the program rather than far past it.
+
+        The uniform half still draws runaway gotos, which is how the
+        out-of-range path stays covered; this pins that the structured half
+        does not, since that was the whole reason its draws ran two steps.
+        """
+        for _ in range(200):
+            program = verify_differential._gen_ram0_program(rng)  # noqa: SLF001
+            if " " not in program:
+                continue  # a uniform draw; runaway gotos are expected there
+            tokens = program.split()
+            for token in tokens:
+                if token.isdigit():
+                    assert int(token) <= len(tokens) + 2
 
 
 class TestBioFuzz:
@@ -71,6 +125,8 @@ class TestGeneratorsReachExecution:
         [
             ("_gen_bfpda_program", "_run_bfpda_python_limited", 0.20),
             ("_gen_bio_program", "_run_bio_python_limited", 0.05),
+            ("_gen_nocomment_program", "_run_nocomment_python_limited", 0.20),
+            ("_gen_ram0_program", "_run_ram0_python_limited", 0.40),
         ],
     )
     def test_a_useful_share_of_draws_executes(
