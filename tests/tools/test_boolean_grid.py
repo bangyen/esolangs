@@ -1,8 +1,10 @@
 """Unit tests for the grid-based boolean generators.
 
-Covers :mod:`esolangs.tools.boolean.a_painter_ant` and
-:mod:`esolangs.tools.boolean.wii2d`, whose programs are two-dimensional
-grids rather than instruction strings.
+Covers :mod:`esolangs.tools.boolean.a_painter_ant`,
+:mod:`esolangs.tools.boolean.wii2d`,
+:mod:`esolangs.tools.boolean.circuit_diagram` and
+:mod:`esolangs.tools.boolean.super_snusp`, whose programs are
+two-dimensional grids rather than instruction strings.
 """
 
 import importlib
@@ -1315,3 +1317,183 @@ class TestCircuitDiagram:
             circuit_diagram("010")
         with pytest.raises(ValueError, match="only '0' and '1'"):
             circuit_diagram("012x")
+
+
+class TestSuperSNUSP:
+    """The Super SNUSP generator (an ANF evaluator over a value stack).
+
+    Super SNUSP has a random ``=`` opcode the generator avoids entirely by
+    evaluating the truth table's algebraic normal form: an XOR of input
+    products, which is exactly what ``^`` and ``&`` give.  Five two-input
+    tables have hand-written short forms; everything else is built by
+    :func:`_emit_anf`, and a table that ignores an input is rebuilt over its
+    essential ones and kept only when that is shorter.
+
+    Every assertion here replays the generated program through the real
+    interpreter over the table's *whole* input space.  That is what makes
+    the construction trustworthy rather than merely plausible: the ANF
+    coefficient fold, the product's ``&`` chain and the ``_move`` runs that
+    reach each retained input are all arithmetic on cell offsets, and a
+    wrong offset still emits a program that runs -- it just computes a
+    different function.  Static assertions on the emitted string cannot see
+    that; a replayed truth table can.
+    """
+
+    @staticmethod
+    def run_table(table: str) -> str:
+        """Return the generated program's output for every input, in order."""
+        from esolangs.interpreters.grid_based.super_snusp import run
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.tools.boolean.super_snusp import super_snusp
+
+        n = len(table).bit_length() - 1
+        program = super_snusp(table).splitlines()
+        results = []
+        for index in range(len(table)):
+            bits = format(index, f"0{n}b")
+            stdin = "".join(f"{bit}\n" for bit in bits)
+            scripted = ScriptedIO(stdin)
+            run(program, scripted)
+            results.append(scripted.getvalue().strip())
+        return "".join(results)
+
+    @pytest.mark.parametrize("table", [format(i, "04b") for i in range(16)])
+    def test_every_two_input_table(self, table: str) -> None:
+        """All sixteen two-input functions, each over all four inputs.
+
+        Five of these take the ``_TWO_INPUT_SHORT`` fast path and eleven are
+        built by the ANF evaluator, so one parametrization covers both.
+        """
+        assert self.run_table(table) == table
+
+    @pytest.mark.parametrize("table", ["01", "10", "00", "11"])
+    def test_every_one_input_table(self, table: str) -> None:
+        assert self.run_table(table) == table
+
+    @pytest.mark.parametrize(
+        "table",
+        [
+            "01101001",  # parity: every ANF coefficient is set
+            "00010111",  # majority
+            "11101000",  # its complement, so the constant term is set
+            "10000000",  # AND3: one minterm, the longest product chain
+            "00000000",
+            "11111111",
+        ],
+    )
+    def test_three_input_tables(self, table: str) -> None:
+        """Parity, majority, AND3 and both constants at three inputs.
+
+        Parity is the case that exercises the coefficient fold hardest --
+        every one of its eight ANF coefficients is nonzero, so every term is
+        emitted and xored -- while AND3 is the opposite shape, a single
+        coefficient whose product spans all three retained inputs.
+        """
+        assert self.run_table(table) == table
+
+    @pytest.mark.parametrize(
+        "table",
+        ["11110000", "00001111", "11001100", "00110011", "10101010", "01010101"],
+    )
+    def test_a_table_ignoring_inputs_still_computes_it(self, table: str) -> None:
+        """Dependency reduction keeps the answer over the full input space.
+
+        Each of these depends on exactly one of its three inputs, so the
+        generator rebuilds it over that single essential input.  The
+        reduction changes which cell the answer is read from, and the
+        rebuilt program is still fed all three bits -- so a projection that
+        picked the wrong input, or a retained-input offset that drifted,
+        shows up here as a wrong bit rather than as a shorter program.
+        """
+        assert self.run_table(table) == table
+
+    def test_a_four_input_table_builds_and_runs(self) -> None:
+        """The construction is not two- and three-input special cases.
+
+        Four inputs put the accumulator four cells from the first retained
+        input, which is the first arity where a ``_move`` run is longer than
+        the products that share its span.
+        """
+        assert self.run_table("0110100110010110") == "0110100110010110"
+
+    @pytest.mark.parametrize(
+        "table", ["01", "0110", "0001", "01101001", "11110000", "00010111"]
+    )
+    def test_every_input_is_consumed(self, table: str) -> None:
+        """One ``,`` per input, including inputs the answer ignores.
+
+        The contract is that every path reads exactly ``n`` lines, so a
+        reduced table still consumes the inputs it does not use -- otherwise
+        a caller feeding several programs from one stream desynchronizes.
+        """
+        from esolangs.tools.boolean.super_snusp import super_snusp
+
+        n = len(table).bit_length() - 1
+        assert super_snusp(table).count(",") == n
+
+    @pytest.mark.parametrize("table", ["01", "0000", "0110", "01101001", "11110000"])
+    def test_every_program_starts_with_the_marker(self, table: str) -> None:
+        """``"`` pins the entry point rather than inheriting the default.
+
+        Without it the interpreter enters at the bottom right moving left,
+        which is undocumented in the spec; the marker is a no-op once
+        execution begins.
+        """
+        from esolangs.tools.boolean.super_snusp import super_snusp
+
+        assert super_snusp(table).startswith('"')
+
+    def test_the_short_forms_are_what_the_generator_emits(self) -> None:
+        """The five hand-written two-input forms are used verbatim.
+
+        They reuse the ``48`` literal both to decode each input and to
+        encode the answer, which the general construction cannot do because
+        it rebuilds the offset at the end.  A regression that stopped
+        consulting the table would still pass every truth-table assertion
+        above, so the dispatch is pinned separately.
+        """
+        from esolangs.tools.boolean.super_snusp import _TWO_INPUT_SHORT, super_snusp
+
+        for table, form in _TWO_INPUT_SHORT.items():
+            assert super_snusp(table) == '"' + form
+
+    def test_the_general_build_is_used_off_the_short_table(self) -> None:
+        """A two-input table with no short form is built by the evaluator."""
+        from esolangs.tools.boolean.super_snusp import _TWO_INPUT_SHORT, super_snusp
+
+        assert "0001" not in _TWO_INPUT_SHORT
+        assert super_snusp("0001") == '"48{,->,->>1<<<{>>>&<<{>>&{<^>48{<+.'
+
+    @pytest.mark.parametrize(
+        ("table", "length"),
+        [
+            ("1010", 28),  # one dependency at two inputs
+            ("1111", 17),  # constant: the reduction drops both inputs
+            ("00000000", 18),  # constant at three
+            ("00000011", 39),  # depends on the last two of three
+        ],
+    )
+    def test_the_reduced_build_is_the_one_emitted(
+        self, table: str, length: int
+    ) -> None:
+        """A table that ignores an input is emitted over its essential ones.
+
+        Both shapes are built and :func:`shortest` picks between them, and
+        the truth-table assertions above cannot see which one won -- both
+        compute the right answer.  Swept over every table to four inputs,
+        the reduced build is strictly shorter on 983 of them and the full
+        build is *never* strictly shorter, so these lengths pin the choice:
+        emitting the unreduced shape here would be longer by one to four
+        commands.
+        """
+        from esolangs.tools.boolean.super_snusp import super_snusp
+
+        assert len(super_snusp(table)) == length
+
+    def test_a_malformed_table_is_rejected(self) -> None:
+        from esolangs.tools.boolean.super_snusp import super_snusp
+
+        with pytest.raises(ValueError, match="power-of-two"):
+            super_snusp("010")
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            super_snusp("012x")
