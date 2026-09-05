@@ -1,5 +1,7 @@
 """Unit tests for the 3x interpreter."""
 
+from fractions import Fraction
+
 import pytest
 
 from esolangs.exceptions import HaltError
@@ -44,6 +46,17 @@ class Test3x:
         assert run_program("333x3!") == "3"
         assert run_program("333x3#!") == "0"  # swapped
 
+    def test_printing_pops_one_value_at_a_time(self) -> None:
+        """``!`` removes the top and leaves everything under it.
+
+        Every case elsewhere prints from a stack one or two deep, where
+        dropping the top and keeping only the bottom leave the same
+        stack.  Three distinct values, popped in turn, separate them --
+        and ``?`` stages them without spending three pushes apiece.
+        """
+        assert run_program("???!!!", "1\n2\n3\n") == "321"
+        assert run_program("????!!!", "1\n2\n3\n4\n") == "432"
+
     def test_read(self) -> None:
         assert run_program("33?x!", "6\n") == "1"  # (6-3)/3
         assert run_program("?3^!", "6\n") == "3"  # unassigned variable -> 3
@@ -51,6 +64,12 @@ class Test3x:
     def test_store_and_recall(self) -> None:
         assert run_program("3^!") == "3"  # default value for an unassigned key
         assert run_program("3333xv3^!") == "0"  # store 0 under 3, recall it
+
+    def test_storing_a_second_key_keeps_the_first(self) -> None:
+        """A binding replaces only its own key, not the whole variable store."""
+        # Store 0 under 3, then 3 under 0.  The final lookup proves the
+        # first binding survived the insertion of the second one.
+        assert run_program("3333xv3333x3v3^!") == "0"
 
     def test_loop(self) -> None:
         # push 1, loop prints 0 then exits on the 0
@@ -137,6 +156,21 @@ class Test3x:
 
 
 class TestStepMachine:
+    def test_stack_commands_replace_or_consume_their_operands(self) -> None:
+        """Arithmetic, output, and swap do not leave stale operands behind."""
+        from esolangs.interpreters.stack_based.three_x import _advance
+
+        three = Fraction(3)
+        zero = Fraction(0)
+        assert _advance((0, (three, three, three), (), ()), "x") == (
+            1,
+            (zero,),
+            (),
+            (),
+        )
+        assert _advance((0, (three, zero), (), ()), "!") == (1, (three,), (), ())
+        assert _advance((0, (three, zero), (), ()), "#") == (1, (zero, three), (), ())
+
     def test_a_close_paren_with_no_open_loop(self) -> None:
         """``)`` on a zero falls out of a loop it was never inside.
 

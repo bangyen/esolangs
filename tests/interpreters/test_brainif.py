@@ -46,6 +46,26 @@ class TestBrainIfBasicCommands:
         code = ["if 0 left", "if 0 increment", "if 1 output"]
         assert run_and_capture(code) == "\x01"
 
+    def test_a_write_keeps_the_cell_to_its_right(self) -> None:
+        """Writing one cell rebuilds the tape around it, dropping nothing.
+
+        Every write elsewhere happens with the cells to its right still
+        zero, and a dropped zero is indistinguishable from a kept one --
+        reading past the end gives zero too.  Marking cell 1 first, then
+        writing cell 0, makes the neighbour's survival visible.
+        """
+        code = [
+            "if 0 increment",  # cell 0 -> 1
+            "if 1 right",  # to cell 1
+            "if 0 increment",  # cell 1 -> 1
+            "if 1 increment",  # cell 1 -> 2
+            "if 2 left",  # back to cell 0
+            "if 1 increment",  # cell 0 -> 2, rebuilding the tape around it
+            "if 2 right",
+            "if 2 output",  # cell 1 must still hold 2
+        ]
+        assert run_and_capture(code) == "\x02"
+
     def test_the_walk_out_and_back(self) -> None:
         """Walk out to cell 3 and back, marking each cell on the return.
 

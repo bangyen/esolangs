@@ -965,6 +965,59 @@ class TestPctSquaredHelpers:
         module._ladder_tables.cache_clear()  # noqa: SLF001
 
 
+class TestPctInterleavedFold:
+    """The staged replacement emits real code between its placeholders."""
+
+    def test_interleaved_template_replays_every_three_input_row(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.pct_squared_minus_one import run
+
+        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        table = "00001111"  # X1 creates equal suffix cofactors before X2
+        template = module._interleaved_fold(table, 3)  # noqa: SLF001
+        assert template is not None
+        slots = [template.index("{X" + str(i) + "}") for i in range(3)]
+        assert slots == sorted(slots)
+        # Slots remain in stream order even when a stage coalesces directly
+        # through equal branches instead of needing a relocation.
+        assert template.count("{X") == 3
+        for row, want in enumerate(table):
+            bits = [(row >> 2) & 1, (row >> 1) & 1, row & 1]
+            io = ScriptedIO()
+            run(module.fill(template, bits), io)
+            assert io.getvalue() == want
+
+    def test_interleaved_fallback_builds_past_the_all_row_ladder(self) -> None:
+        """A late-ignored suffix stays compact instead of spending 4096 rungs.
+
+        Rows are *sampled* on a stride, as at eleven inputs above: the build
+        itself is instant, and all 4096 rows through the interpreter were
+        seven seconds of this module's budget for one table.  The stride is
+        coprime to the arity's runs and covers all four values of the two
+        bits the table actually reads, so every branch of the answer is
+        still executed -- the suffix is ignored by construction, which is
+        the property under test.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.pct_squared_minus_one import run
+
+        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        n = 12
+        # XOR of the first two bits: it is neither a cascade subcube nor a
+        # threshold, and the all-row fold cannot lay its 4096 positions.
+        table = "".join("0110"[row >> (n - 2)] for row in range(2**n))
+        assert module._fold(table, n) is None  # noqa: SLF001
+        template = module.pct_squared_minus_one(table)
+        seen = set()
+        for row in range(0, 2**n, 97):
+            bits = [(row >> shift) & 1 for shift in range(n - 1, -1, -1)]
+            io = ScriptedIO()
+            run(module.fill(template, bits), io)
+            assert io.getvalue() == table[row], f"row {row}"
+            seen.add(row >> (n - 2))
+        assert seen == {0, 1, 2, 3}, seen
+
+
 class TestPctFoldEmitter:
     """The emitter's mirror, driven at the steps the descent rarely asks for.
 
@@ -1352,6 +1405,29 @@ class TestPctFoldPlan:
             bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
             code = "".join(setters[i][bits[i]] for i in range(n))
             assert module._apply(0, code) == positions[row]  # noqa: SLF001
+
+    def test_every_setter_amount_past_the_reset_line_spells(self) -> None:
+        """Amounts at and above the reset line respell by descending.
+
+        The overshoot respelling negates, so from 3002 up it leaves the
+        accumulator above the 3003 reset: the reset zeroes it and the
+        add-back nets ``+k`` rather than ``-amount``.  All 1504 amounts in
+        3002..6008 failed that way and *raised* instead of declining, which
+        ``_interleaved_fold`` reaches through ``span + 2`` once the spread
+        hits 3000.  A pure ``s``/``i`` descent never rises, so it has no
+        such ceiling.
+
+        The whole range a setter can be asked for is checked, since
+        positions span ``+-_LIMIT``: the widest gap is 6006 and the caller
+        adds 2.  Boundaries are checked by execution.
+        """
+        module = self.module()
+        limit = module._LIMIT  # noqa: SLF001
+        for amount in (3002, 3003, 3006, 6006, 2 * limit + 2):
+            zero, one = module._fold_setters(1, (amount,))[0]  # noqa: SLF001
+            assert len(zero) == len(one), amount
+            assert module._apply(0, zero) == 0, amount  # noqa: SLF001
+            assert module._apply(0, one) == -amount, amount  # noqa: SLF001
 
     @pytest.mark.slow  # ~5s: ten inputs, 1024 rows filled and run
     def test_a_low_run_ten_input_table_builds_and_runs(self) -> None:

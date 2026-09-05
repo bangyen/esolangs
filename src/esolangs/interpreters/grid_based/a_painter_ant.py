@@ -160,6 +160,16 @@ class _Machine:
     rather than once per step -- see its docstring for why.
     """
 
+    #: Whether the program can reach a halt of its own.  It belongs to the
+    #: language, not to whoever is stepping it: ``halted`` here is always
+    #: ``False``, so ``while not vm.halted: vm.step()`` never returns.  A
+    #: caller stepping this one has to bound the run itself -- with a hang
+    #: detector, or :func:`esolangs.run`'s ``timeout``.
+    #:
+    #: :func:`run` stops it from outside, by its own means: a pass-boundary
+    #: Brent's cycle detector, then the render.
+    self_halts = False
+
     def __init__(
         self,
         code: str,

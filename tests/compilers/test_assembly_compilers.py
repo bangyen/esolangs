@@ -1561,6 +1561,15 @@ class TestMyScriptCompiler:
         out = self.comp("var a is [ 1, 2, 3 ]")
         assert "li   a0, 3\n    call .alloc_arr" in out
 
+    def test_string_literals_are_interned(self) -> None:
+        """The second occurrence reuses its existing rodata label."""
+        from esolangs.compilers.myscript import _Compiler
+
+        compiler = _Compiler()
+        assert compiler.string_label("same") == ".str0"
+        assert compiler.string_label("same") == ".str0"
+        assert compiler.strings == {"same": ".str0"}
+
     def test_bare_return_yields_none(self) -> None:
         """``return`` with no value returns ``none``, as ``_ReturnError`` does."""
         out = self.comp("var f is func\n    return")

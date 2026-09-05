@@ -169,6 +169,18 @@ class _Row:
 #: decremented in place from :func:`_exec_char`.
 _work = [0]
 
+#: Fraction of the work budget the first mark geometry may spend before
+#: :func:`construct` parks it and probes the other one.  The geometries
+#: are wildly asymmetric per table -- one solves in milliseconds what
+#: the other grinds on for twenty minutes before failing -- and which
+#: way round is table-specific, so a fixed order always loses badly on
+#: some table.  Probing caps that loss at this fraction instead: a
+#: first geometry that has not converged by then is *paused*, not
+#: abandoned, and is resumed with the full remaining budget if the
+#: other one also fails to converge.  Measured in simulated commands,
+#: so the switch point is deterministic and machine-independent.
+_PROBE_FRACTION = 16
+
 
 def _exec_char(row: _Row, ch: str) -> None:
     """Apply one ``1``/``2`` command to a row, mirroring the interpreter.
@@ -717,22 +729,38 @@ def _kill_fate(p: int, tape: int, a: int, x: int | None) -> str:
     fixpoint on 50000 random ``(p, tape, a, x)`` cases with zero
     mismatches.  Exact only for a row with no pending segment, which is
     how kills are tried; _predict remains the adopting gate either way.
+
+    The revisit is found by Brent's cycle detection rather than a set of
+    seen states: the pass function is deterministic, so the cycle is the
+    same either way, but this hashes no tapes and allocates no tuples --
+    and the tapes are big ints on a path taken millions of times per
+    build.  The same 65-pass cap bounds both, and a cycle reachable
+    inside it is found inside it, so the verdicts agree; checked over
+    400000 random cases, the pass-cap frontier included.
     """
-    seen = set()
-    for _ in range(65):
-        res = _after_ones_pop(p, tape, a)
+    cur = (p, tape)
+    passes = 0
+    power = lam = 1
+    tortoise = cur
+    while passes < 65:
+        res = _after_ones_pop(*cur, a)
         if res is None:
             return "invalid"
-        p, tape = res
+        np, ntape = res
         if x is not None:
-            p += x
-            tape ^= 1 << (p + _RING)
-        if not tape >> (p + _RING) & 1:
+            np += x
+            ntape ^= 1 << (np + _RING)
+        if not ntape >> (np + _RING) & 1:
             return "skip"
-        s = (p, tape)
-        if s in seen:
+        cur = (np, ntape)
+        passes += 1
+        if cur == tortoise:
             return "loop"
-        seen.add(s)
+        if power == lam:
+            tortoise = cur
+            power *= 2
+            lam = 0
+        lam += 1
     return "invalid"
 
 
@@ -798,6 +826,26 @@ def _try_kill(
         if not head_rows:
             continue  # pragma: no cover - screened above
         v_land = next(p for bits, p, _ in head_rows if bits == victim)
+        # Anchored candidates are rejected by one bit test instead of a
+        # row scan.  For a row at ``p`` the anchored variant tests cell
+        # ``p + x`` of a fixed tape and TRUE means that bit is *clear*
+        # (see the scan below), so ``tape >> p`` has bit ``x`` set
+        # exactly when the row tests FALSE at that ``x``.  ANDing those
+        # over the rows that must all test FALSE -- the undipped
+        # non-victim ones -- gives a mask whose bit ``x`` clears every
+        # such row at once.  The identity needs ``p >= 1``, and every row
+        # that reaches here has it: an undipped row is one with
+        # ``r.pos >= a``, which is exactly `_after_ones_pop`'s shallow
+        # branch, landing at ``r.pos - a + 1 >= 1``.  A landing of 0 or 1
+        # comes only from the deep branch, i.e. from ``r.pos < a`` -- a
+        # dipped row, skipped just above.  So the mask needs no
+        # per-candidate fallback (checked exhaustively over ``pos, a <
+        # 400``: no undipped row lands below cell 1).
+        reject_mask = -1
+        for bits, p, tape in head_rows:
+            if bits == victim or bits in dipped:
+                continue
+            reject_mask &= tape >> (p + _RING)
         for x in xs:
             seg = ("1" * a + "2") if x is None else ("1" * a + "2" + "2" * x + "12")
             # The victim's re-run can only revisit a state if each pass
@@ -818,29 +866,61 @@ def _try_kill(
             # ``1`` toggles cell ``p`` and steps to ``p - 1``, the ``2``
             # steps back (or out of the ring to 0).  From ``pos >= 0``
             # it can never read stdin, so there is no failure to catch.
-            true_set = set()
-            if x is None:
-                for bits, p, tape in head_rows:
-                    if tape >> (p + _RING) & 1:
-                        true_set.add(bits)
-            else:
-                for bits, p, tape in head_rows:
-                    q = p + x - 1
-                    tape ^= 1 << (p + x + _RING)
-                    q = 0 if q in (-1, -2) else q + 1
-                    if tape >> (q + _RING) & 1:
-                        true_set.add(bits)
             # Nearly all of the kill sweep's candidates are rejected on
-            # this set alone, so it is checked before the fixpoint
+            # the TRUE set alone, so it decides them before the fixpoint
             # screens.  The victim must test TRUE; a bystander the
             # descent *dipped* below zero may also test TRUE -- it skips
             # on a later pass, and _predict validates exactly that fate
             # -- but a TRUE row the descent left standing drifts left on
             # every re-run instead of settling, so those candidates are
             # rejected before any fixpoint is paid for.
-            if victim not in true_set:
+            #
+            # The undipped-TRUE rejection is decidable row by row, so it
+            # is applied *while* the set is built rather than after: such
+            # a row kills the candidate outright, and the scan stops
+            # there instead of classifying the rows behind it.  This is
+            # the innermost loop of the whole search -- tens of millions
+            # of row classifications on a single four-input build.
+            #
+            # The two variants stay written out rather than sharing a
+            # helper: at that call count the Python call overhead costs
+            # more than the duplication saves (measured, 47s -> 60s,
+            # when this was one nested function).
+            # Most anchored candidates die here, on the precomputed
+            # mask, without touching a row: bit ``x`` says every undipped
+            # non-victim row tests FALSE.  The mask covers all of them
+            # (see its build above), so this is the whole rejection --
+            # only survivors pay for the scan that builds ``true_set``.
+            if x is not None and x >= 1 and not reject_mask >> x & 1:
                 continue
-            if any(bits not in dipped for bits in true_set - {victim}):
+            true_set = set()
+            ok = True
+            if x is None:
+                for bits, p, tape in head_rows:
+                    if tape >> (p + _RING) & 1:
+                        if bits != victim and bits not in dipped:
+                            ok = False
+                            break
+                        true_set.add(bits)
+            else:
+                for bits, p, tape in head_rows:
+                    # The ``1`` flips cell ``p + x`` and the closing
+                    # ``2`` steps back onto it, so for ``p + x >= 1``
+                    # the row tests the *inverse* of the bit already
+                    # there -- no need to build the flipped tape, which
+                    # is a fresh big-int allocation per row.  Only a
+                    # landing inside the ring still needs the real tape.
+                    c = p + x
+                    if c >= 1:
+                        hit = not tape >> (c + _RING) & 1
+                    else:
+                        hit = bool((tape ^ 1 << (c + _RING)) >> _RING & 1)
+                    if hit:
+                        if bits != victim and bits not in dipped:
+                            ok = False
+                            break
+                        true_set.add(bits)
+            if not ok or victim not in true_set:
                 continue
             # Per-row fate screens before the all-rows validation: at
             # five inputs eighteen thousand candidates per kill reached
@@ -848,9 +928,18 @@ def _try_kill(
             # paid every live row's simulation -- then per-row *charged*
             # simulation still drained the budget at 15k commands per
             # fate, so the fates are arithmetic now (_kill_fate).
+            # The victim is skipped inline rather than by building the
+            # difference set.  This is a wash on time -- the cost here
+            # is _kill_fate itself, not the allocation -- but it drops
+            # a set construction per candidate for the same behaviour.
+            # Reordering these two screens is *not* worth trying: the
+            # bystander loop already rejects almost everything on its
+            # first row (1.91M of 1.95M fates come back "loop" against
+            # 208 candidates that reach _predict), so hoisting the
+            # victim's own fate ahead of it only adds a call.
             if any(
-                _kill_fate(*state_of[bits], a, x) != "skip"
-                for bits in true_set - {victim}
+                bits != victim and _kill_fate(*state_of[bits], a, x) != "skip"
+                for bits in true_set
             ):
                 continue
             if _kill_fate(*state_of[victim], a, x) != "loop":
@@ -1220,56 +1309,187 @@ def _endgame(b: _Builder) -> None:
         raise ConstructError("a survivor would restart instead of halting")
 
 
+def _jump_tables(code: str) -> tuple[list[int], list[int]]:
+    """Per ``3`` position, where a backward and a forward jump land.
+
+    The interpreter rescans for the partner ``3`` on every jump, which on
+    a template whose segments are hundreds of commands long is a linear
+    scan per executed jump.  The landing sites depend only on the code,
+    so they are computed once for the whole replay.
+    """
+    threes = [i for i, c in enumerate(code) if c == "3"]
+    back = [0] * len(code)
+    fwd = [0] * len(code)
+    prev = -1
+    for i in threes:
+        back[i] = prev + 1  # just after the previous 3, or the start
+        prev = i
+    nxt = len(code)
+    for i in reversed(threes):
+        fwd[i] = nxt + 1 if nxt < len(code) else len(code)
+        nxt = i
+    return back, fwd
+
+
+def _code_runs(code: str) -> tuple[list[int], list[str], list[int]]:
+    """Index ``code`` into maximal ``1``/``2`` runs.
+
+    Returns ``(run_id_at, char_of_run, end_of_run)``, so the executor can
+    take the whole rest of a run in one step from any cursor inside it.
+    """
+    run_at = [-1] * len(code)
+    chars: list[str] = []
+    ends: list[int] = []
+    i = 0
+    while i < len(code):
+        c = code[i]
+        if c not in "12":
+            i += 1
+            continue
+        j = i
+        while j < len(code) and code[j] == c:
+            j += 1
+        for k in range(i, j):
+            run_at[k] = len(chars)
+        chars.append(c)
+        ends.append(j)
+        i = j
+    return run_at, chars, ends
+
+
+def _replay_ones(pos: int, tape: int, w: int) -> tuple[int, int]:
+    """Apply ``"1"*w``, per the interpreter's rule for ``1``.
+
+    Derived from the language, not from the builder's model: ``1`` flips
+    the current cell and steps left, wrapping -4 back to 0.  Above the
+    ring a walk flips exactly the contiguous cells it steps off, which is
+    one XOR; inside it the pointer cycles ``0, -1, -2, -3`` with period
+    4, touching each of the four cells once per lap, so whole laps are a
+    parity and only ``w % 4`` steps remain.
+    """
+    while w > 0:
+        if pos >= 0:
+            head = min(w, pos + 1)
+            tape ^= ((1 << head) - 1) << (pos - head + 1 + _RING)
+            pos -= head
+            w -= head
+            if pos == -4:  # stepping off cell 0 exactly wraps to 0
+                pos = 0
+            continue
+        laps, rest = divmod(w, 4)
+        if laps:
+            if laps & 1:
+                tape ^= 0b1111  # a lap flips cells -3..0 once each
+            w = rest
+            continue
+        for _ in range(w):
+            tape ^= 1 << (pos + _RING)
+            pos -= 1
+            if pos == -4:
+                pos = 0
+        w = 0
+    return pos, tape
+
+
+def _replay_twos(pos: int, tape: int, w: int) -> tuple[int, int]:
+    """Apply ``"2"*w``; the first step decides whether the ring is left.
+
+    ``2`` at -3 reads stdin, which the harness cannot serve, so it raises
+    exactly where the real interpreter would raise :class:`EOFError`.
+    At -1 or -2 it lands on 0 (the -2 route prints a junk byte, which no
+    snapshot can observe), and from ``pos >= 0`` it is a plain walk.
+    """
+    if w <= 0:
+        return pos, tape
+    if pos == -3:
+        raise ConstructError("replay: '2' at -3 reads stdin")
+    if pos in (-1, -2):
+        pos = 0
+        w -= 1
+    return pos + w, tape
+
+
+def _replay_verdict(code: str) -> str | None:
+    """Execute one instantiated program: ``"0"`` halts, ``"1"`` loops.
+
+    This is the closing execution gate, so it is written against the
+    interpreter's own rules rather than against anything the builder
+    believes -- a shared closed form would let one bug pass both.  What
+    it does share is the *shape* of the cost: a template is a few
+    hundred maximal ``1``/``2`` runs, each hundreds of commands long, and
+    each run's effect on ``(pos, tape)`` is closed-form.  Stepping them
+    one command at a time cost 95s per five-input table and hours at six,
+    which made the gate, not the construction, the arity wall.
+
+    Cycle detection stays exact under that batching.  ``ip`` strictly
+    increases within a run and across a forward jump, so an infinite run
+    must pass a *backward* jump or the end-of-code loopback infinitely
+    often.  Sampling ``(ip, pos, tape)`` at only those two events
+    therefore witnesses every loop a per-command detector witnesses, and
+    Brent's method finds the revisit without storing a state per step.
+    The input cursor is not part of the key: a program that reads has
+    already raised above.
+    """
+    if not any(c in "123" for c in code):
+        return "0"  # a command-less program halts with no output
+    back, fwd = _jump_tables(code)
+    run_at, run_ch, run_end = _code_runs(code)
+    size = len(code)
+    ip = pos = tape = 0
+    power = lam = 1
+    saved: tuple[int, int, int] | None = None
+    # Events, not commands: only jumps and loopbacks are counted, and a
+    # run of any length is one step.  The cap guards against a build bug
+    # that diverges without ever revisiting a state.
+    for _ in range(64 * size + 500000):
+        if ip >= size:
+            # End of the program: halt below location 0, else loop.
+            if pos < 0:
+                return "0"
+            ip = 0
+        elif code[ip] == "3":
+            if pos < 0:
+                ip += 1  # below location 0 a 3 is a NOP
+                continue
+            if not tape >> (pos + _RING) & 1:
+                ip = fwd[ip]  # FALSE skips forward; ip still increases
+                continue
+            ip = back[ip]
+        else:
+            r = run_at[ip]
+            if r < 0:  # unrecognized characters are NOPs
+                ip += 1
+                continue
+            fn = _replay_ones if run_ch[r] == _ONE else _replay_twos
+            pos, tape = fn(pos, tape, run_end[r] - ip)
+            ip = run_end[r]
+            continue
+        state = (ip, pos, tape)
+        if saved == state:
+            return "1"
+        if power == lam:
+            saved, power, lam = state, power * 2, 0
+        lam += 1
+    return None
+
+
 def _replay(template: str, n: int, table: str) -> None:
-    """Run every instantiation on the real interpreter.
+    """Run every instantiation and check its verdict against ``table``.
 
     Raises on any wrong verdict: the builder's model is exact, but
     nothing ships on the model's word alone.
     """
-    from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.tape_based.one_two_three import _Machine
-
     for combo in range(2**n):
-        bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
         program = template
-        for i, bit in enumerate(bits):
+        for i in range(n):
+            bit = (combo >> (n - 1 - i)) & 1
             program = program.replace(f"{{X{i}}}", _ONE if bit else _ZERO)
-        machine = _Machine(program, ScriptedIO(""))
-        verdict = None
-        # Brent's cycle detection, with the cheap fields compared first:
-        # a snapshot()-per-step set works at four inputs, but a wider
-        # template is hundreds of thousands of commands and its tape
-        # holds thousands of set cells, so hashing a sorted tuple of
-        # them every step made the closing gate cost more than the whole
-        # build.  Here a step costs an (ip, pos) compare, the tape is
-        # only compared on those rare matches, and states are saved just
-        # at power-of-two step counts.  The cap scales with the template
-        # (a flat 500000 ran out mid-execution at six inputs and called
-        # a halting row None); it only guards against a build bug making
-        # a row diverge without ever revisiting a state.
-        power = lam = 1
-        saved: tuple[int, int, frozenset[int], int] | None = None
-        for _ in range(64 * len(program) + 500000):
-            if machine.halted:
-                verdict = "0"
-                break
-            ip, pos, cells, _done = machine.state
-            if (
-                saved is not None
-                and lam
-                and saved[:2] == (ip, pos)
-                and saved[2] == frozenset(cells)
-                and saved[3] == machine.io.position()
-            ):
-                verdict = "1"
-                break
-            if power == lam:
-                saved = (ip, pos, frozenset(cells), machine.io.position())
-                power *= 2
-                lam = 0
-            lam += 1
-            machine.step()
+        try:
+            verdict = _replay_verdict(program)
+        except ConstructError:  # pragma: no cover - the gate
+            verdict = None
         if verdict != table[combo]:  # pragma: no cover - the gate
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             raise ConstructError(f"replay disagrees at row {bits}: {verdict!r}")
 
 
@@ -1321,13 +1541,36 @@ def construct(truth_table: str, *, verify: bool = True) -> str:
     # sweep -- measured both ways: the uniform +1 exhausts on a table
     # the staggered +1/+3 solves in seconds, and vice versa.  Trying
     # both is deterministic and strictly stronger than either.
-    for stagger in (0, 1):
-        # The budget still bounds a diverging search, but everything
-        # about a wider table is exponentially bigger -- rows, template
-        # length, kill sweeps -- so the cap scales with the row count
-        # (per attempt) to stay a divergence guard, not an arity
-        # ceiling.  Deterministic either way.
-        _work[0] = _WORK_BUDGET * max(1, 2 ** (n - 4))
+    #
+    # Which to try *first* is a pure cost choice -- both are always
+    # attempted, so it can never change the set of tables that build --
+    # but the cost at stake is enormous and table-specific.  Over a
+    # random four-input sample of 60, running each geometry to
+    # completion: uniform-first totals 1612s against 59s for
+    # staggered-first, and the gap is one table (``1000110011010101``)
+    # that uniform grinds on for 1176s before failing and staggered
+    # solves in 0.4s.  At five inputs the sample points the other way.
+    # So no fixed order is safe: whichever is first, some table pays
+    # the full budget before the other is even tried.
+    #
+    # Instead the first geometry gets a *probe*: a
+    # ``1 / _PROBE_FRACTION`` slice of the budget.  If it converges,
+    # nothing is lost; if it stalls, the other geometry is tried with
+    # the full budget, and only if that also stalls does the first
+    # resume with everything left.  A wrong first guess therefore
+    # costs a bounded slice rather than the whole budget, and no table
+    # that used to build stops building -- the fallback still runs
+    # both to exhaustion before giving up.
+    budget = _WORK_BUDGET * max(1, 2 ** (n - 4))
+
+    def attempt(stagger: int, allowance: int) -> str | None:
+        """One geometry under ``allowance`` work; ``None`` if it stalls.
+
+        Raises only on a genuine construction failure; a drained
+        allowance is a stall, which the caller retries elsewhere.
+        """
+        nonlocal failure
+        _work[0] = allowance
         try:
             b = _Builder(n)
             marks = [2 ** (n + 1) * 3**i + 1 + 2 * (i & 1) * stagger for i in range(n)]
@@ -1349,4 +1592,16 @@ def construct(truth_table: str, *, verify: bool = True) -> str:
             failure = "the work budget ran out before the searches converged"
         except ConstructError as exc:
             failure = str(exc)
+        return None
+
+    # The budget still bounds a diverging search, but everything about a
+    # wider table is exponentially bigger -- rows, template length, kill
+    # sweeps -- so the cap scales with the row count (per attempt) to
+    # stay a divergence guard, not an arity ceiling.  Deterministic
+    # either way, and the probe slice scales with it.
+    probe = max(1, budget // _PROBE_FRACTION)
+    for stagger, allowance in ((0, probe), (1, budget), (0, budget)):
+        template = attempt(stagger, allowance)
+        if template is not None:
+            return template
     raise ValueError(f"123 construction failed for {truth_table!r}: {failure}")

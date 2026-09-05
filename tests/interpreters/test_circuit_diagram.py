@@ -18,8 +18,10 @@ import pytest
 
 from esolangs.interpreters.grid_based.circuit_diagram import (
     _OUTPUT,
+    _Connections,
     _Grid,
     _Machine,
+    _merge,
     _Parser,
     run,
 )
@@ -115,6 +117,10 @@ class TestPrimeTester:
     def test_missing_input_bits_read_as_zero(self) -> None:
         """An exhausted stdin fills the remaining wires with zero bits."""
         assert output_for(PRIME_TESTER, "") == "0"
+
+    def test_an_exhausted_one_bit_input_is_zero(self) -> None:
+        """A direct wire distinguishes the zero fallback from a one bit."""
+        assert output_for(["-:"], "") == "0"
 
     def test_as_drawn_the_page_prints_nothing(self) -> None:
         """The unrepaired diagram is silent, for every input.
@@ -280,9 +286,73 @@ class TestMultiWire:
         ]
         assert output_for(circuit, "1\n0\n1\n") == "101"
 
+    def test_a_splitter_keeps_unequal_outputs_separate(self) -> None:
+        """The two output wires are independently 1 and 2 bits wide."""
+        circuit = [
+            "    .-:",
+            "-3-<",
+            "    .-:",
+        ]
+        machine = _Machine(circuit, ScriptedIO("1\n0\n1\n"))
+        machine.step()
+        split = next(g for g in machine.gates if g.kind == "<")
+        upper, lower = (machine.values[machine.index[id(w)]] for w in split.outputs)
+        assert (upper, lower) == ((1,), (0, 1))
+
+    def test_a_combine_totals_its_two_input_widths(self) -> None:
+        """``>`` is the splitter's inverse: its output is the sum.
+
+        The suite splits at length but never combined, and with two
+        one-wire inputs a sum, a difference, and a doubled second operand
+        all agree.  Unequal widths are what separate them.
+        """
+        circuit = [
+            "-1-.",
+            "    >-:",
+            "-2-.",
+        ]
+        machine = _Machine(circuit, ScriptedIO("1\n0\n0\n"))
+        combine = next(g for g in machine.gates if g.kind == ">")
+        assert [w.width for w in combine.inputs] == [1, 2]
+        assert combine.outputs[0].width == 3
+
+    def test_a_combine_concatenates_upper_then_lower(self) -> None:
+        """The upper input's wires lead, in order, as ``<`` splits them.
+
+        Feeding the two inputs distinguishable patterns is what makes the
+        order visible rather than only the total width.
+        """
+        circuit = [
+            "-1-.",
+            "    >-:",
+            "-2-.",
+        ]
+        assert output_for(circuit, "1\n0\n0\n") == "100"
+        assert output_for(circuit, "0\n1\n1\n") == "011"
+        assert output_for(circuit, "0\n1\n0\n") == "010"
+
 
 class TestWiring:
     """The connection rules that turn ASCII into a graph."""
+
+    def test_a_crossover_chain_off_any_edge_connects_to_nothing(self) -> None:
+        """``through`` rejects the cell it lands on, off *any* of the four.
+
+        The chain walks while it sees ``=``, so a chain at the border
+        walks straight off the grid.  The guard covers both axes and both
+        ends of each, and the existing crossover tests all land back on
+        the grid -- so the ``and`` joining the two axes, and each ``<``
+        in it, were free to change.  The east case lands with its row in
+        range and its column one past the last, which is what separates
+        the two halves.
+        """
+        conn = _Connections(_Grid(["-=", "  "]))
+        assert conn.through(0, 0, (0, 1)) is None, "off the right edge"
+        assert conn.through(0, 0, (0, -1)) is None, "off the left edge"
+        assert conn.through(0, 0, (-1, 0)) is None, "off the top"
+        assert conn.through(1, 0, (1, 0)) is None, "off the bottom"
+        # A step that stays on the grid still returns the cell it reaches.
+        assert conn.through(0, 0, (1, 0)) == (1, 0)
 
     def test_a_crossover_joins_opposite_sides(self) -> None:
         assert output_for(["-=-~.-:"], "1\n") == "0"
@@ -330,6 +400,10 @@ class TestWiring:
         assert output_for(circuit, "1\n1\n") == "0"
         assert output_for(circuit, "1\n0\n") == "1"
 
+    def test_overlapping_driver_vectors_are_xored_bit_by_bit(self) -> None:
+        """Each position merges independently, not by last driver wins."""
+        assert _merge([(1, 0), (1, 1)]) == (0, 1)
+
 
 class TestParseErrors:
     """Malformed and out-of-scope programs are rejected, not guessed at."""
@@ -350,6 +424,11 @@ class TestParseErrors:
         """
         with pytest.raises(ValueError, match="out of scope"):
             run([f"{prefix}%"], ScriptedIO(""))
+
+    def test_a_bad_character_after_a_gate_is_still_rejected(self) -> None:
+        """Character validation cannot stop after seeing a gate."""
+        with pytest.raises(ValueError, match="out of scope"):
+            run(["~%"], ScriptedIO(""))
 
     @pytest.mark.parametrize(
         ("code", "name"),

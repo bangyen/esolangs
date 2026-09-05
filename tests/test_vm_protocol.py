@@ -24,6 +24,15 @@ the program from outside, so there is no halt to drive to), and
 heading, so the two sides are not comparable).  Absorbing any of them into
 the driver would make the sweep pass while hiding the distinction.
 
+Two of those three are not only the sweep's business.  A caller outside
+this suite writing ``while not vm.halted: vm.step()`` hangs on the
+never-halting languages and reads ``""`` from the dumping ones, with
+nothing in the protocol to warn them, so both are now declared on the
+interpreters and reported by :attr:`esolangs.vm.VM.self_halts` and
+:attr:`esolangs.vm.VM.dumps_on_the_post_halt_step`.  The sets stay -- the
+sweep needs the answer without building a machine -- and two tests below
+lock them against the traits in both directions.
+
 A fourth set, :data:`~tests.samples.RAISES_ON_THE_POST_HALT_STEP`, was not
 a convention but the sweep's first finding: nine adapters raised
 ``IndexError`` when stepped past their halt instead of doing nothing, and
@@ -41,7 +50,7 @@ import pytest
 
 import esolangs
 from esolangs.registry import RUNNERS
-from esolangs.vm import VM, _StepMachineWithShape, make_vm
+from esolangs.vm import VM, _StepMachineWithShape, make_vm, run_until_halt
 
 from .samples import (
     DUMPS_ON_THE_POST_HALT_STEP,
@@ -64,12 +73,16 @@ _PARAMS = [
 
 
 def _drive(vm: VM) -> str:
-    """Step ``vm`` to its halt and return everything it wrote."""
-    for _ in range(_STEP_BUDGET):
-        if vm.halted:
-            return vm.output
-        vm.step()
-    raise AssertionError(f"no halt within {_STEP_BUDGET} steps")
+    """Step ``vm`` to its halt and return everything it wrote.
+
+    The budget is shared with the other consumers through
+    :func:`~esolangs.vm.run_until_halt`; what stays here is the overrun
+    policy, which for a test is to fail loudly rather than to return a
+    partial run's output as if it were a halt's.
+    """
+    if not run_until_halt(vm, _STEP_BUDGET):
+        raise AssertionError(f"no halt within {_STEP_BUDGET} steps")
+    return vm.output
 
 
 # The prefix the never-halting languages are compared over instead of a
@@ -265,6 +278,43 @@ class TestEveryLanguageHonoursTheProtocol:
         else:
             raised = False
         assert raised == (language in RAISES_ON_THE_POST_HALT_STEP)
+
+    def test_the_halting_convention_matches_what_the_vm_reports(
+        self, language: str, program: str, stdin: str
+    ) -> None:
+        """``vm.self_halts`` is exact against the set above, both ways.
+
+        The trait is what a caller outside this suite reads, so the two
+        have to say the same thing.  Only a declaration check is possible
+        here: a language claiming it never halts cannot be *proved* not to
+        by stepping it, which is the whole reason the fact is declared.
+        """
+        vm = make_vm(language, program, stdin)
+        assert vm.self_halts == (language not in NEVER_SELF_HALTS)
+
+    def test_the_dump_convention_matches_what_the_vm_reports(
+        self, language: str, program: str, stdin: str
+    ) -> None:
+        """``vm.dumps_on_the_post_halt_step`` is exact, and is behavioural.
+
+        Unlike the halting trait this one is checkable against the machine
+        itself: driving to the halt writes everything ``run`` writes,
+        except on the four, where the last step is still owed.  So the
+        declaration is compared against what the language actually does --
+        a machine whose dump moved back into ``run`` would fail here rather
+        than keeping a trait nobody rechecked.
+        """
+        vm = make_vm(language, program, stdin)
+        assert vm.dumps_on_the_post_halt_step == (
+            language in DUMPS_ON_THE_POST_HALT_STEP
+        )
+        if language in NEVER_SELF_HALTS:
+            pytest.skip(f"{language} has no self-halt to drive to")
+        if language in RAISES_ON_THE_POST_HALT_STEP:
+            pytest.xfail(f"{language}.step() raises IndexError past its halt")
+        at_halt = _drive(vm)
+        vm.step()
+        assert (vm.output != at_halt) == vm.dumps_on_the_post_halt_step
 
     def test_snapshot_is_hashable(
         self, language: str, program: str, stdin: str

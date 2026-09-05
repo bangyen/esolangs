@@ -142,6 +142,17 @@ class TestFricatives:
         """
         assert run_program("ʒu" + "θi", char + "\n") == expected
 
+    def test_a_nul_input_character_reads_as_zero(self) -> None:
+        """A NUL byte is 0, not the fallback for a missing one.
+
+        The read is written ``(byte or 0) % 256``, and the only value
+        that reaches the ``or`` is a genuine NUL -- an exhausted stdin
+        raises instead.  So the fallback and the real answer are the same
+        number, and nothing pinned it: any other fallback passes every
+        test above, where the character read is always printable.
+        """
+        assert run_program("ʒu" + "θi", "\x00\n") == "0"
+
     def test_an_unparseable_input_line_reads_as_zero(self) -> None:
         assert run_program("su" + "θi", "banana\n") == "0"
         assert run_program("su" + "θi", "\n") == "0"
@@ -211,6 +222,21 @@ class TestDeque:
         """
         program = "ci" + push + "cici" + push + "co" + pop + "θi"
         assert run_program(program) == expected
+
+    def test_a_pop_leaves_the_rest_of_the_deque_intact(self) -> None:
+        """What a pop *removes* needs three values and a second pop.
+
+        Every test above pops once and reads the value that came off,
+        which is the same under any slice that keeps the right end: it is
+        the remainder that differs.  Two elements cannot separate them
+        either -- dropping the last of two and keeping the first of two
+        are the same tuple.  Three pushes stage ``(1, 3, 6)``, the
+        accumulator carrying across each, and the second pop reads back
+        what the first one left.
+        """
+        three = "cin" + "cici" + "n" + "cicici" + "n"
+        assert run_program(three + "coɲ" + "coɲ" + "θi") == "3"  # 6 then 3
+        assert run_program(three + "coŋ" + "coŋ" + "θi") == "3"  # 1 then 3
 
     @pytest.mark.parametrize("program", ["coŋ", "coɲ"], ids=["front", "back"])
     def test_popping_an_empty_deque_halts(self, program: str) -> None:
