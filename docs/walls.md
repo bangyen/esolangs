@@ -367,6 +367,35 @@ long (O(`n·2**n`) blocks, ~1.4s/execution at `n == 4`).
   builds today at eight inputs, short of the packed ladder's eleven; the gap
   to thirteen is planner engineering, not a discovered obstruction.
 
+  **The ten-input stage-6 stop is reproduced, but it is a budget plateau,
+  not a dead end.**  On the recorded seed-31 table, laying `X6` (zero-based)
+  gives 128 points carrying 96 distinct eight-bit cofactors.  The original
+  count-first, `kcap=3` walk reaches 102 points after 6553 steps and 65490
+  unique states.  Letting exactly that walk continue reaches all 96 targets
+  after 16385 steps and 167201 unique states; it does not empty its move set.
+  The nine-input control reaches its 16 four-bit cofactors after 1419 steps,
+  and a real nine-input staged template was generated and executed correctly
+  on all 512 rows.  Reaching the ten-input stage target is **not yet a
+  ten-input construction**: the resulting 96-point geometry still has to be
+  re-tightened, the remaining inputs laid, and the emitted program run on all
+  1024 rows before such a route can be claimed.
+
+  Instrumentation also rules out an easy duplicate-state cure.  Translation
+  and row-id erasure are already in the search signature.  Renaming cofactor
+  classes by first occurrence and quotienting by reflection are exact
+  bisimulations (reflection swaps top/bottom wipes), but together remove no
+  additional state on this walk: the same 167201 states and 54 revisits are
+  seen either way.  Coarser proposals are unsafe.  Class multiplicities
+  without their positional equality pattern identify an end duplicate with
+  an interior one even though their bounded-depth merge distances differ;
+  clipping gaps loses the exact landing-window endpoints; and smaller span
+  does not dominate larger span, because it enables doubling while the larger
+  gap may be the one that enables a landing.  Any future pruning therefore
+  has to preserve the ordered equality pattern, every exact gap and span, and
+  the remaining depth (the same geometry reached shallower safely dominates
+  only a deeper copy).  None of these observations changes the all-row
+  twelve-input ladder-family wall above.
+
   Note what the twelve-input bound is *not*: the fold's, not the generator's
   — the cascade builds every conjunction/disjunction of literals at any
   width (138 characters), and only a *generic* table past eleven inputs
