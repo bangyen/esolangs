@@ -43,7 +43,7 @@ _HERE = pathlib.Path(__file__).resolve()
 sys.path.insert(0, str(_ROOT / "src"))
 
 from esolangs.exceptions import EsolangError
-from esolangs.vm import make_vm
+from esolangs.vm import make_vm, run_until_halt
 
 # Exceptions an interpreter is allowed to raise at the API boundary.
 #
@@ -234,14 +234,12 @@ def _drive(lang: str, program: str, stdin: str, cap: int) -> bool:
 
     Returns whether it halted, which is what lets :func:`_sweep_one`
     escalate: halting is monotone in the cap, so a program that finishes
-    here finishes at every larger one and never needs rerunning.
+    here finishes at every larger one and never needs rerunning.  That is
+    :func:`~esolangs.vm.run_until_halt`'s verdict exactly, so the drive is
+    its call and the overrun policy -- a cap is not a finding -- is the
+    ``False`` this hands straight back.
     """
-    vm = make_vm(lang, program, stdin)
-    for _ in range(cap):
-        if vm.halted:
-            return True
-        vm.step()
-    return False
+    return run_until_halt(make_vm(lang, program, stdin), cap)
 
 
 #: Wall-clock a language's worker gets before the parent kills it.
