@@ -55,6 +55,7 @@ Usage:
 """
 
 import argparse
+import collections
 import contextlib
 import io
 import pathlib
@@ -79,91 +80,6 @@ def _run_parallel[T, R](fn: Callable[[T], R], tasks: Sequence[T]) -> list[R]:
     """Run ``fn`` over ``tasks`` concurrently, returning results in order."""
     with ThreadPoolExecutor(max_workers=_WORKERS) as executor:
         return list(executor.map(fn, tasks))
-
-
-def _fuzz_boolean[R](
-    name: str,
-    builder: Callable[[str], str],
-    native: Callable[[str, bytes], R | None],
-    python: Callable[[str, bytes], R | None],
-    rng: random.Random,
-    count: int,
-) -> tuple[int, int]:
-    """Fuzz ``count`` random truth tables through both implementations.
-
-    ``native(program, stdin)`` runs the reference (None on a timeout) and
-    ``python(program, stdin)`` the in-package interpreter.  Returns
-    ``(failures, checked)``.
-    """
-    tasks = []
-    for _ in range(count):
-        n = rng.randint(1, 4)
-        table = "".join(rng.choice("01") for _ in range(2**n))
-        program = builder(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            stdin = ("\n".join(map(str, bits)) + "\n").encode()
-            tasks.append((program, stdin, table, bits))
-    results = _run_parallel(lambda t: native(t[0], t[1]), tasks)
-    failures = checked = 0
-    for (program, stdin, table, bits), result in zip(tasks, results, strict=True):
-        if result is None:
-            print(f"{name} boolean {table!r}: reference did not terminate")
-            failures += 1
-            checked += 1
-            continue
-        py = python(program, stdin)
-        checked += 1
-        if result != py:
-            failures += 1
-            print(
-                f"{name} boolean {table!r} combo {bits}: "
-                f"reference {result!r} vs Python {py!r}"
-            )
-    return failures, checked
-
-
-def _fuzz_text[R](
-    name: str,
-    generator: Callable[[str], str],
-    native: Callable[[str, bytes], R | None],
-    python: Callable[[str, bytes], R | None],
-    rng: random.Random,
-    count: int,
-) -> tuple[int, int]:
-    """Fuzz ``count`` random byte texts through both implementations.
-
-    Either side may report ``None`` for "did not terminate" (the native
-    side via a subprocess timeout, the Python side via state-cycle
-    detection where the interpreter is step-capable, on languages whose
-    Python runner has one).  A text generator's programs are expected to
-    always halt, so both sides agreeing they loop is not itself a failure
-    (mirrors ``_run_nocomment_python_limited``'s fuzzer) — only one side
-    halting while the other loops is a real divergence.
-    """
-    tasks = []
-    for _ in range(count):
-        text = "".join(chr(rng.randrange(256)) for _ in range(rng.randint(1, 10)))
-        tasks.append((generator(text), text))
-    results = _run_parallel(lambda t: native(t[0], b""), tasks)
-    failures = checked = 0
-    for (program, text), result in zip(tasks, results, strict=True):
-        checked += 1
-        py = python(program, b"")
-        if result is None and py is None:
-            continue  # agreement: both sides prove the program loops
-        if result is None or py is None:
-            failures += 1
-            print(
-                f"{name} {text!r}: termination mismatch "
-                f"(reference {'looped' if result is None else 'halted'}, "
-                f"Python {'looped' if py is None else 'halted'})"
-            )
-            continue
-        if result != py:
-            failures += 1
-            print(f"{name} {text!r}: reference {result!r} vs Python {py!r}")
-    return failures, checked
 
 
 def _verify_asm(
@@ -227,6 +143,7 @@ def _fuzz_asm(
         return True
 
     failures = checked = loops = 0
+    codes: collections.Counter[int] = collections.Counter()
     for _ in range(count):
         program = gen_program(rng)
         py = run_limited(program, timeout=3)
@@ -245,12 +162,19 @@ def _fuzz_asm(
             )
             continue
         checked += 1
+        codes[asm[1]] += 1
         if py != asm:
             failures += 1
             print(f"{name} fuzz {program!r}: asm={asm!r} py={py!r}")
 
+    # The exit-code split is printed because "N programs match" hides how the
+    # budget was actually spent: a fuzz whose draws all die at the parser
+    # agrees on every one of them and still tests no execution.  0 = ran, 2 =
+    # malformed, 3 = invalid operation.
+    spread = ", ".join(f"exit {code}: {n}" for code, n in sorted(codes.items()))
     print(
         f"{name} fuzz: {checked} programs match, {loops} consistent loops"
+        f"{f' ({spread})' if spread else ''}"
         if not failures
         else f"{name} fuzz: {failures} failures of {checked} (plus {loops} loops)"
     )
@@ -270,21 +194,63 @@ def _random_program(alphabet: str, max_len: int) -> Callable[[random.Random], st
     return gen
 
 
-# Error messages the Basicfuck reference prints to stdout before exiting;
-# stripped so only the program's own output is compared.
-_CPP_ERRORS = (
-    "Identifier is undefined.",
-    "Invalid token.",
-    "Invalid syntax.",
-    "Invalid identifier.",
-    "Missing/Invalid directives.",
-    "Missing/Invalid identifiers.",
-    "Missing overflow directive.",
-    "Invalid overflow directive.",
-    "Insufficient memory.",
-    "Underflow error.",
-    "Overflow error.",
-)
+# How often a structured generator draws a well-formed program rather than a
+# pure-random one.  The parser paths are worth fuzzing too -- they are where
+# the two implementations classify errors -- so the split keeps half the
+# draws random rather than replacing them.
+_STRUCTURED_SHARE = 0.5
+
+
+def _gen_bfpda_program(rng: random.Random) -> str:
+    """Draw a BF-PDA program, half pure-random and half bracket-balanced.
+
+    A pure-random draw from ``@.<>[]`` is almost never balanced -- 89% of
+    them were rejected as malformed, and only 6% produced any output -- so
+    the fuzz spent its budget on the bracket matcher and hardly reached the
+    stack machine at all.  The balanced half never emits a ``]`` that would
+    close nothing and closes whatever is still open at the end, which lifts
+    the executing share to roughly half.
+    """
+    if rng.random() >= _STRUCTURED_SHARE:
+        return "".join(rng.choice("@.<>[]") for _ in range(rng.randint(0, 30)))
+
+    out: list[str] = []
+    depth = 0
+    for _ in range(rng.randint(1, 24)):
+        char = rng.choice("@.<>[]")
+        if char == "]" and not depth:
+            char = rng.choice("@.<>")
+        depth += (char == "[") - (char == "]")
+        out.append(char)
+    return "".join(out) + "]" * depth
+
+
+def _gen_bio_program(rng: random.Random) -> str:
+    """Draw a BIO program, half pure-random and half well-formed commands.
+
+    BIO's commands are four-character triples ended by ``;`` (or ``{`` for a
+    loop guard), so a pure-random draw from the alphabet essentially never
+    forms one: 97% were rejected at the first token and *none* of them
+    produced output, meaning the fuzz never reached the register machine.
+    The structured half emits real commands -- increments, outputs, nested
+    loops, and comments -- so the execution paths are actually exercised.
+    """
+    if rng.random() >= _STRUCTURED_SHARE:
+        alphabet = "01OoIiXxYyZz{};/ \n"
+        return "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 40)))
+
+    def command(depth: int = 0) -> str:
+        roll = rng.random()
+        reg = rng.choice("xyzXYZ")
+        if roll < 0.15 and depth < 2:
+            body = "".join(command(depth + 1) for _ in range(rng.randint(0, 3)))
+            return f"0{rng.choice('iI')}{reg}{{{body}}};"
+        if roll < 0.25:
+            tail = "".join(rng.choice("abc 01") for _ in range(rng.randint(0, 5)))
+            return f"//{tail}\n"
+        return f"{rng.choice('01')}{rng.choice('oOiI')}{reg};"
+
+    return "".join(command() for _ in range(rng.randint(1, 6)))
 
 
 BFPDA_CORPUS = [
@@ -398,6 +364,15 @@ BIO_CORPUS = [
     "0ox;0ix1ox;};",  # a guard missing its `{` is not a command
     "0ox;{1ix;",  # a `{` not carried by a guard
     "0ox;/ 1ix;",  # a lone `/` is not the start of a comment
+    # The terminator has to match the opcode, both directions.  These read
+    # as commands character by character, so a terminator-blind tokenizer
+    # accepted them and then walked off the end at run time; the corpus
+    # above never covered either shape on its own.
+    "0ix;",  # a `0i` guard terminated by `;` instead of `{`
+    "0Iy;",  # the same, uppercase
+    "0ox;0iz;",  # a bare guard after a valid command
+    "0ox{};",  # `{` on a non-guard opcode
+    "1ix{};",  # the same on the output opcode
 ]
 
 
@@ -904,7 +879,7 @@ def _fuzz_bfpda(rng: random.Random, count: int) -> bool:
     return _fuzz_asm(
         "BF-PDA",
         "bfpda",
-        _random_program("@.<>[]", 30),
+        _gen_bfpda_program,
         _run_bfpda_python_limited,
         rng,
         count,
@@ -944,10 +919,11 @@ def _fuzz_bio(rng: random.Random, count: int) -> bool:
     return _fuzz_asm(
         "BIO",
         "bio",
-        # ``/`` and a newline are in the alphabet so the fuzz reaches the
-        # comment scanner (and a lone ``/``, which is a load error) as well
-        # as the command and brace paths.
-        _random_program("01OoIiXxYyZz{};/ \n", 40),
+        # Half the draws are random over the alphabet (``/`` and a newline
+        # are in it so the fuzz reaches the comment scanner, and a lone
+        # ``/`` is a load error); half are well-formed commands, without
+        # which the register machine is never reached at all.
+        _gen_bio_program,
         _run_bio_python_limited,
         rng,
         count,
