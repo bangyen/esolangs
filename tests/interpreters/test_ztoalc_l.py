@@ -44,6 +44,20 @@ class TestZTOALCVariables:
         code = ["3", "jump x 0", "x = input", "print x", "x - 1"]
         assert run_and_capture(code, inputs=["A"]) == "@"
 
+    def test_input_as_an_arithmetic_operand(self) -> None:
+        """``input`` may be the right-hand side of ``+`` or ``-``, not just ``=``.
+
+        The read is threaded through both operands of an arithmetic line,
+        and the only input test above assigns it directly -- so the
+        arithmetic path receives a reader it never uses, and dropping it
+        from either side went unnoticed.  Both directions are asserted:
+        66 minus 1 and 64 plus 1 each print ``A``.
+        """
+        subtract = ["3", "jump x 0", "x = 66", "print x", "x - input"]
+        assert run_and_capture(subtract, inputs=["\x01"]) == "A"
+        add = ["3", "jump x 0", "x = 64", "print x", "x + input"]
+        assert run_and_capture(add, inputs=["\x01"]) == "A"
+
     def test_an_unrecognized_operator_does_nothing(self) -> None:
         """Only ``=``, ``+``/``+=`` and ``-``/``-=`` are statements.
 
