@@ -245,3 +245,48 @@ class TestDivergenceDetection:
 
         with patch.object(verify_differential, "_asm_refs", side_effect=tampered):
             assert not verify_differential._fuzz_minsky_swap(rng, 20)  # noqa: SLF001
+
+
+@pytest.mark.slow
+@pytest.mark.skipif(
+    not verify_differential._asm_refs_ready("bio"),  # noqa: SLF001
+    reason="RISC-V cross-check not buildable",
+)
+class TestShrink:
+    """The shrinker must reduce a real divergence, not just any string."""
+
+    def test_shrinks_the_terminator_bug(self) -> None:
+        """The BIO terminator bug reduces to a fraction of the found draw.
+
+        A positive control rather than a shape assertion: BIO's tokenizer is
+        put back to the loose regex that shipped the bug, so the divergence
+        under test is the real one, and the reduction has to still diverge.
+        Without the monkeypatch there is nothing to shrink and the test
+        would pass vacuously -- so it asserts the setup diverges first.
+        """
+        import re
+
+        from esolangs.interpreters.register_based import bio
+
+        # the draw the fuzz originally found the bug as
+        found = "0Iy;1ox;1oZ;1OZ;0iY{1oY;// 1b\n0iZ{0OZ;// 1\n};};"
+        loose = re.compile(r"[01][oOiI][xXyYzZ](?:\{|;)|\};")
+
+        with patch.object(bio, "_COMMAND", loose):
+            run_limited = verify_differential._run_bio_python_limited  # noqa: SLF001
+            assert verify_differential._diverges("bio", run_limited, found)  # noqa: SLF001
+            small = verify_differential._shrink("bio", run_limited, found)  # noqa: SLF001
+            assert verify_differential._diverges("bio", run_limited, small)  # noqa: SLF001
+            assert len(small) < len(found) // 2
+
+    def test_leaves_an_agreeing_program_alone(self) -> None:
+        """Nothing to shrink when the two sides agree: the input comes back.
+
+        The shrinker is only ever called on a divergence, but a reduction
+        that "succeeded" on an agreeing program would mean the oracle was
+        accepting anything.
+        """
+        run_limited = verify_differential._run_bio_python_limited  # noqa: SLF001
+        good = "0ox;0ix{0oy;1ox;};1iy;"
+        assert not verify_differential._diverges("bio", run_limited, good)  # noqa: SLF001
+        assert verify_differential._shrink("bio", run_limited, good) == good  # noqa: SLF001
