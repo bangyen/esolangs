@@ -123,7 +123,7 @@ def _advance(
     the caller's business -- the value it prints is popped here and handed
     back through the state -- and ``h``'s byte arrives as ``byte``.
 
-    Popping is threaded rather than mutating, which matters for the two
+    Popping is threaded rather than mutating, which matters for the four
     commands that pop twice in one expression.  ``a`` and ``c`` consumed
     the first value before discovering the queue was too short, leaving it
     empty and the cursor unmoved; raising from the *second* ``_pop`` on a

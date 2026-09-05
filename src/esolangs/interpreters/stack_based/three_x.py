@@ -249,9 +249,9 @@ def _advance(
     ``[`` are the caller's business -- neither changes state beyond the
     cursor -- and ``?``'s value arrives as ``value``.
 
-    A ``)`` on a nonzero top jumps back *to* the matching ``(`` rather than
-    past it, so the shared increment re-tests the bracket; on a zero top it
-    drops the pending jump instead.
+    A ``)`` on a nonzero top jumps back to the matching ``(``'s own index,
+    so the shared increment lands on the first command of the body and the
+    bracket is not re-tested; on a zero top it drops the pending jump.
     """
     ind, stack, jumps, variables = state
     char = code[ind]
