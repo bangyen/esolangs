@@ -245,12 +245,30 @@ def _fuzz_asm(
     failures = checked = loops = 0
     codes: collections.Counter[int] = collections.Counter()
     for program, asm in zip(programs, asm_results, strict=True):
-        py = run_limited(program, timeout=3)
+        # An interpreter that raises something other than its own error
+        # categories is a divergence in its own right -- the reference
+        # rejects the program or runs it, but does not crash.  Catching it
+        # here matters most on the weekly job: an uncaught exception would
+        # otherwise abort the whole run and lose every language after this
+        # one, which is how the BIO terminator bug first surfaced.
+        try:
+            py = run_limited(program, timeout=3)
+        except Exception as exc:
+            failures += 1
+            print(f"{name} fuzz {program!r}: python raised {exc!r}, asm={asm!r}")
+            _report_shrunk(name, riscv_name, run_limited, program)
+            continue
         if py is None and asm is None:
             loops += 1
             continue
         if py is None and asm is not None:
-            py = run_limited(program, timeout=30)
+            try:
+                py = run_limited(program, timeout=30)
+            except Exception as exc:
+                failures += 1
+                print(f"{name} fuzz {program!r}: python raised {exc!r}, asm={asm!r}")
+                _report_shrunk(name, riscv_name, run_limited, program)
+                continue
         if py is None or asm is None:
             failures += 1
             print(
