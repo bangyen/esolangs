@@ -7,6 +7,7 @@ there.
 """
 
 import importlib
+import itertools
 
 import pytest
 
@@ -1301,9 +1302,39 @@ class TestPctSquaredHelpers:
             ),
         }
         module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
-        assert frozenset(mined) == module._FOLD_SERVED  # noqa: SLF001
+        assert {k for k in mined if module._fold_served(*k)} == set(mined)  # noqa: SLF001
         for key, plan in mined.items():
             assert module._fold_skeleton(*key) == plan, key  # noqa: SLF001
+
+    def test_fold_served_is_reachability(self) -> None:
+        """``_fold_served`` accepts exactly the buildable low-run keys.
+
+        The predicate replaced a twelve-entry table whose comment called
+        its four absences a corpus measurement.  They are structural, so
+        this re-derives the set rather than pinning it: enumerating every
+        run pattern reproduces the accepted keys exactly, and no key the
+        predicate accepts is one no pattern can produce.
+
+        ``delta`` is set when every middle index of the pattern is ``1``.
+        For ``r`` of 2, 3 and 4 that set contains index 1, so ``delta``
+        implies ``pat[1]``; at ``r == 3`` index 1 is the *only* middle, so
+        the implication runs both ways there.
+        """
+        module = self.module()
+        reachable = set()
+        for r in range(1, 13):
+            for pat in itertools.product((0, 1), repeat=r):
+                mids = {(r - 1) // 2, r // 2}
+                delta = 1 if all(pat[i] for i in mids) else 0
+                reachable.add((r, delta, pat[1] if r > 1 else 0))
+
+        accepted = {
+            k
+            for k in itertools.product(range(9), (0, 1), (0, 1))
+            if module._fold_served(*k)  # noqa: SLF001
+        }
+        assert accepted == {k for k in reachable if 2 <= k[0] <= 5}
+        assert not accepted - reachable
 
     def test_the_ladder_declines_other_arities(self) -> None:
         """Every shipped ladder has three weights, so only ``n == 3`` serves.
