@@ -151,6 +151,18 @@ class TestModulous:
         """POP removes the top of the stack."""
         assert run_and_capture("[PSH INT 5][POP][PSH INT 7][PRT INT][END]") == "7"
 
+    def test_pop_leaves_the_rest_of_the_stack(self) -> None:
+        """It removes one value, not all but the bottom one.
+
+        The case above pops a one-deep stack, where every slice is
+        empty; two deep is no better, since dropping the top of two and
+        keeping the first of two are the same stack.  Three distinct
+        values, popped in turn, separate them.
+        """
+        staged = "[PSH INT 1][PSH INT 2][PSH INT 3]"
+        assert run_and_capture(f"{staged}[POP][PRT INT][END]") == "2"
+        assert run_and_capture(f"{staged}[POP][POP][PRT INT][END]") == "1"
+
     def test_reset(self) -> None:
         """RST restarts from the first module, re-reading input."""
         # After RST the pointer returns to the start, so the second input
