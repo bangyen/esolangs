@@ -12,6 +12,15 @@ Every registered interpreter exposes a ``step()``/``halted`` state object,
 so every language in the registry can be wrapped; only an unregistered name
 is refused.
 
+Two of the languages' conventions defeat the obvious driving loop, so the
+:class:`VM` reports them rather than leaving a caller to find out:
+``self_halts`` is ``False`` where ``halted`` never becomes true, and
+``dumps_on_the_post_halt_step`` is ``True`` where the output is written on
+the step after the halt.  ``while not vm.halted: vm.step()`` hangs on the
+first group and returns ``""`` on the second, and neither is discoverable
+from the protocol alone.  A hang detector below is the other way to drive
+the first group, and takes the bound off the caller entirely.
+
 The four hang detectors here -- :func:`run_until_halt_or_cycle`,
 :func:`run_until_halt_or_all_branches_cycle`,
 :func:`run_until_halt_or_ancestor`, and :func:`run_until_halt_or_growth` --
@@ -573,6 +582,28 @@ class VM(Protocol):
     def stack(self) -> list[object]:
         """The stack, or ``[]`` where the language has none."""
 
+    @property
+    def self_halts(self) -> bool:
+        """Whether the program can reach a halt of its own.
+
+        ``False`` for the two languages whose ``halted`` is always
+        ``False`` -- A Painter Ant and Suffolk -- so the obvious
+        ``while not vm.halted: vm.step()`` never returns on them.  A
+        caller driving one has to bound the run itself: a hang detector
+        above, or :func:`esolangs.run`'s ``timeout``.
+        """
+
+    @property
+    def dumps_on_the_post_halt_step(self) -> bool:
+        """Whether the output arrives on the step *after* the halt.
+
+        ``True`` for the four languages whose ``run`` ends its loop with
+        one more ``step()`` to dump the final tape or registers.  A caller
+        that stops at ``halted`` has driven such a program correctly and
+        still holds ``""``; one further ``step()`` writes what ``run``
+        writes, and the no-op step is the one after that.
+        """
+
 
 class _DelegatingVM:
     """A VM for an interpreter that describes its own shape.
@@ -626,6 +657,25 @@ class _DelegatingVM:
     @property
     def stack(self) -> list[object]:
         return list(self._machine.stack)
+
+    # The two language conventions a stepping caller cannot discover for
+    # itself: that a language never halts, and that its output lands one
+    # step past the halt.  Both come off the machine by ``getattr``, the
+    # way ``reproducible_seed`` does, and for the same reason -- they are
+    # facts about the language, so the interpreter says so and the fifty-odd
+    # that follow the common shape declare nothing.
+    #
+    # The defaults are the common case, which is why the traits are spelled
+    # positively on the machines that carry them: a language that says
+    # nothing self-halts and writes before it does.
+
+    @property
+    def self_halts(self) -> bool:
+        return bool(getattr(self._machine, "self_halts", True))
+
+    @property
+    def dumps_on_the_post_halt_step(self) -> bool:
+        return bool(getattr(self._machine, "dumps_on_the_post_halt_step", False))
 
 
 def _derived_adapter(language: str) -> type[_DelegatingVM]:

@@ -149,6 +149,18 @@ def _advance(
 class _Machine:
     """A LaserFuck run: the grid, the live lasers, and the tape."""
 
+    #: Whether the tape is written on the step *after* the halt.  It
+    #: belongs to the language, not to whoever is stepping it: ``run`` ends
+    #: its loop with one more ``step()``, so a caller who stops at
+    #: ``halted`` has driven the program correctly and still holds none of
+    #: its output.
+    #:
+    #: The dump lives on the machine rather than in ``run`` because the VM
+    #: adapter used to replicate it and drifted: its copy fired on ``not
+    #: lsrs`` where ``run`` fires on ``halted``, so a program stopped by a
+    #: second start marker printed under one and not the other.
+    dumps_on_the_post_halt_step = True
+
     #: The seed a reproducible run starts from.  It belongs to the
     #: language, not to whoever is stepping it: 2 draws the initial
     #: heading 0, up, which is the direction this language's examples

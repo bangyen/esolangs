@@ -96,6 +96,13 @@ class _Machine:
     object.
     """
 
+    #: Whether the tape/registers are written on the step *after* the halt.
+    #: It belongs to the language, not to whoever is stepping it: ``run``
+    #: ends its loop with one more ``step()``, so a caller who stops at
+    #: ``halted`` has driven the program correctly and still holds none of
+    #: its output.
+    dumps_on_the_post_halt_step = True
+
     def __init__(self, code: str, io: IO) -> None:
         """Tokenize ``code`` and reset the register, deque, and cursor."""
         self.io = io
