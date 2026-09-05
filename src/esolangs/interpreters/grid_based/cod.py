@@ -419,7 +419,14 @@ class _Machine:
         cods = cast(_BranchState, state)
         if cods is None:
             launch = self._launch
-            assert launch is not None
+            if launch is None:  # pragma: no cover - snapshot pairs the two
+                # ``branching_snapshot`` returns ``None`` only when
+                # ``_launch`` is set, so the two travel together and this
+                # cannot fire.  It is a raise rather than an ``assert``
+                # because an assert is compiled out under ``-O``, which
+                # would turn the contradiction into an unpacking TypeError
+                # three lines further on.
+                raise AssertionError("a pre-launch state must carry a launch")
             row, col, opens = launch
             return tuple((_Cod(row, col, d, 0),) for d in opens)
 
