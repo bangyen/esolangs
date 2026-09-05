@@ -31,7 +31,7 @@ examples:
   esolangs generate Circlefuck "Hello, World!"
   esolangs generate --width Polynomial "Hello, World!"
   esolangs run Circlefuck hello.txt
-  esolangs transpile brainfuck Circlefuck hello.bf
+  esolangs transpile brainfuck Painfuck hello.bf
 """
 
 

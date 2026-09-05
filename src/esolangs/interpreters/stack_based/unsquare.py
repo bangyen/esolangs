@@ -60,7 +60,7 @@ _MAX_CHAR = 0x10FFFF
 _SURROGATES = range(0xD800, 0xE000)
 
 #: How many stack elements each command needs to run.  ``S`` is the only
-#: one that needs two; the other three need one.  A command absent from
+#: one that needs two; the other two need one.  A command absent from
 #: this mapping needs none.
 _NEEDS = {"A": 1, "o": 1, "S": 2}
 
