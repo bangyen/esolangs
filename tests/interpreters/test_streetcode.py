@@ -32,6 +32,7 @@ from esolangs.interpreters.grid_based.streetcode import (
     _junction_choices,
     _junction_kind,
     _junction_shape,
+    _lane_bounded,
     _Latches,
     _lawful_turn,
     _left,
@@ -293,6 +294,39 @@ class TestStreetcodeAmbiguousTurns:
         grid = _Grid([" C ", "+|+", "   ", "+ +", " | "])
         assert _junction_shape(grid, _Car(0, 1, "S")) == 3
 
+    def test_one_mouth_with_road_ahead_detects_3(self) -> None:
+        """A branch to *one* side, road continuing ahead: three ways.
+
+        The two tests above both have mouths on either side, so they
+        only ever reach the first arm of ``_junction_shape``.  Nothing
+        asked what a single mouth classifies as, which left the ``and``
+        joining the two sides free to be an ``or``.
+        """
+        left_only = _Grid([" C ", "+ +", "  |", "+ +", " | "])
+        right_only = _Grid([" C ", "+ +", "|  ", "+ +", " | "])
+        assert _junction_shape(left_only, _Car(0, 1, "S")) == 3
+        assert _junction_shape(right_only, _Car(0, 1, "S")) == 3
+
+    def test_one_mouth_with_the_road_ahead_blocked_is_no_junction(self) -> None:
+        """One branch and nowhere to go straight is not a junction at all.
+
+        Counting the road behind, that leaves two ways -- a bend, which
+        the driving rules handle without a junction choice.  This is the
+        ``0`` the one-sided arm returns, and the case that separates it
+        from the T above.
+        """
+        left_only = _Grid([" C ", "+|+", "  |", "+ +", " | "])
+        right_only = _Grid([" C ", "+|+", "|  ", "+ +", " | "])
+        assert _junction_shape(left_only, _Car(0, 1, "S")) == 0
+        assert _junction_shape(right_only, _Car(0, 1, "S")) == 0
+
+    def test_a_plain_corridor_is_no_junction(self) -> None:
+        """No mouth on either side, and not driving out through one."""
+        grid = _Grid([" C ", "| |", "| |", "| |", " | "])
+        car = _Car(0, 1, "S")
+        assert not _crossing_mouth(grid, car)
+        assert _junction_shape(grid, car) == 0
+
     def test_turn_into_the_oncoming_lane_is_not_a_road(self) -> None:
         """A turn whose destination has the wall on its left and open road
         on its right would leave the car driving on the left, so it is not
@@ -310,6 +344,27 @@ class TestStreetcodeAmbiguousTurns:
         width of the road, not a road leading off it."""
         grid = _Grid([" C ", "+ +", "   ", "+ +", " | "])
         assert _junction_kind(grid, _Car(0, 1, "S")) == 0
+
+    def test_a_side_road_with_walls_past_its_plus_pair_is_lane_bounded(
+        self,
+    ) -> None:
+        """``_lane_bounded`` reads one cell *past* each ``+``, further out.
+
+        Both grids below present the identical mouth, so the verdict
+        turns only on what lies beyond the two ``+``: wall arms
+        continuing the side road's own bounding walls, or open ground.
+        Only a pair like this separates that read from the neighbouring
+        cells a perturbed offset would reach instead -- the counting-loop
+        program exercises the function but never contrasts the two.
+        """
+        bounded = _Grid(["        ", "C       ", "-+  +---", " |  |   ", " |  |   "])
+        bare = _Grid(["        ", "C       ", "-+  +---", "        ", "        "])
+        car = _Car(1, 0, "E")
+        mouth = _road_mouth(bounded, car, "S")
+        assert mouth is not None
+        assert _road_mouth(bare, car, "S") == mouth, "the mouths must match"
+        assert _lane_bounded(bounded, car, "S", mouth)
+        assert not _lane_bounded(bare, car, "S", mouth)
 
     def test_every_road_a_junction_offers_is_open_ahead(self) -> None:
         """A junction never offers a road the car cannot step onto.
