@@ -2083,26 +2083,39 @@ _FOLD_STEP_SLACK = 16
 
 
 #: Which run-length words the three-phase construction serves.  ``r`` is the
-#: number of runs and the pair is ``(delta, pat[1])``; a word outside this
-#: set falls through to the rule construction, which is what happens for
-#: every ``r >= 6``.  Measured over the low-run corpus at four through seven
-#: inputs, the four combinations absent here never arise.
-_FOLD_SERVED = frozenset(
-    {
-        (2, 0, 0),
-        (2, 0, 1),
-        (2, 1, 1),
-        (3, 0, 0),
-        (3, 1, 1),
-        (4, 0, 0),
-        (4, 0, 1),
-        (4, 1, 1),
-        (5, 0, 0),
-        (5, 0, 1),
-        (5, 1, 0),
-        (5, 1, 1),
-    }
-)
+def _fold_served(r: int, delta: int, pat1: int) -> bool:
+    """Whether the three-phase construction serves this run-length word.
+
+    ``r`` is the number of runs and the pair is ``(delta, pat[1])``; a word
+    this rejects falls through to the rule construction, which is what
+    happens for every ``r >= 6``.
+
+    The second clause is not a budget but an identity.  ``delta`` is set
+    when every middle index ``{(r - 1) // 2, r // 2}`` of the pattern is
+    ``1``, and for ``r`` of 2, 3 and 4 that index set *contains* index 1 --
+    so ``delta`` implies ``pat[1]``, and the three keys ``(2, 1, 0)``,
+    ``(3, 1, 0)`` and ``(4, 1, 0)`` name states that cannot be built.  The
+    converse does not hold and the clause is one-directional: ``(2, 0, 1)``
+    and ``(4, 0, 1)`` are both reachable, because a middle index other than
+    1 can be the ``0`` that clears ``delta``.  At ``r == 3`` the only middle
+    *is* index 1, so there the implication runs both ways and ``(3, 0, 1)``
+    is unreachable too.  At ``r == 5`` the middles are ``{2}`` alone, which
+    frees index 1 entirely.
+
+    This replaced a twelve-entry table of exactly these keys.  The set was
+    recorded as a corpus measurement -- "the four combinations absent here
+    never arise" -- but nothing about it depends on a corpus: enumerating
+    every pattern to ``r == 12`` reproduces the tabulated set exactly, and
+    the four absences are structural.  ``test_fold_served_is_reachability``
+    re-derives it.
+    """
+    if not 2 <= r <= 5:
+        return False
+    if r == 5:
+        return True
+    if delta and not pat1:
+        return False
+    return not (r == 3 and pat1 and not delta)
 
 
 def _fold_skeleton(r: int, delta: int, pat1: int) -> tuple[tuple[str, int, str], ...]:
@@ -2228,7 +2241,7 @@ def _fold_construct(state: _FoldState) -> list[_FoldOp] | None:
     mids = {(r - 1) // 2, r // 2}
     delta = 1 if all(pat[i] for i in mids) else 0
     key = (r, delta, pat[1] if r > 1 else 0)
-    if key not in _FOLD_SERVED:
+    if not _fold_served(*key):
         return None
     skel = _fold_skeleton(*key)
     ops: list[_FoldOp] = []
@@ -2245,7 +2258,7 @@ def _fold_plan(state: _FoldState) -> list[_FoldOp] | None:
     """Plan a full reduction, or ``None`` where no rule applies.
 
     The plan is *constructed* either way now.  Where the table's run-length
-    word is one :data:`_FOLD_SERVED` names -- every word of at most
+    word is one :func:`_fold_served` accepts -- every word of at most
     five runs -- the skeleton names the plan outright, byte-stable with what
     always shipped.  Everywhere else :func:`_fold_reduce` runs the rules of
     :func:`_fold_rule_move` to two points.  The best-first search and the
