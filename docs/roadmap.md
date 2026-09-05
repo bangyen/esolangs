@@ -496,15 +496,15 @@ open:
   that were *replaced*)
   found these, all confirmed by instrumenting the function and
   building real tables.  **Instrument the function the shipped entry
-  actually calls, at the arity where it fires**: this sweep has now
-  reported a false negative *twice* for that reason.  It first missed
+  actually calls, over enough tables to see it fire**: this sweep has
+  now reported a false negative *twice*.  It first missed
   Minifuck by patching `_derived_plans`, the offline sibling, which
   fires zero times in a real build — the runtime path reaches the
   enumeration through `_staging_index` instead.  Then, having closed
   `_staging_index`, it declared Minifuck done while `_mux_probe` was
-  still probing the interpreter per table, because that path is dead
-  below five inputs.  Patching the wrong name — or the right name at
-  too low an arity — reports a clean negative:
+  still probing the interpreter per table, because the tables sampled
+  happened not to route through the sculpt.  Patching the wrong name —
+  or the right name on too few tables — reports a clean negative:
     - **Eval** — **closed; shipped.**  `_eval_stack_programs`
       (`parameterized.py`) was a genuine BFS over `(tree stack, input
       stack, active stack)`; it is now a fold over `_EVAL_REORDERS`, the
@@ -599,17 +599,24 @@ open:
       index: 1060 `_mux_probe` calls and 1727 `_pool_reaches` probes for
       one five-input table, ~4-6s each.
       This is the same miss the note above warns about, one level down.
-      The arity profile is why it hid: probes fire **0, 0, 0, 1090** at
-      `n == 2..5`, so the sculpt path is dead below five inputs and any
-      sweep sized at `n <= 4` reports a clean negative.  Instrumenting
-      `_staging_index` — the thing that *was* closed — also hides it,
+      **Sample size, not arity, is why it hid.**  A first pass here got
+      that wrong too, reading "one random table per arity" as an arity
+      floor; measured properly the sculpt rate is 0/16 exhaustive at
+      `n == 2`, **12/256 exhaustive at `n == 3`**, 154/200 sampled at
+      four and 12/12 at five.  So the path is live from three inputs up
+      — the module's own docstrings say as much ("61% of a four-input
+      build", "38144 sculpting rounds at two and three inputs") — and a
+      single `n <= 4` table misses it better than half the time at three
+      and roughly one try in four at four.  Instrumenting
+      `_staging_index` — the thing that *was* closed — hides it further,
       because that cost is real but one-time and cached per arity.
       The `hint` parameter already documents the shape of the answer:
       the code "never changes between rounds of one sculpt (measured
       over sampled builds: zero switches)", so the scan is re-deriving a
       value that is constant across a sculpt.  Naming what selects the
       pool code — rather than probing for it — is the closed form to
-      find.  Measure at `n == 5` with a warm index, or measure nothing.
+      find.  Measure warm, over *many* tables per arity — a single
+      sample is not a sweep.
   The four entries above stay as the record
   of what each search was and what named it.  For the shape of what
   closing one buys, SLOW
