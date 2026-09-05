@@ -1851,6 +1851,115 @@ class TestRunUntilHaltOrCycle:
         assert run_until_halt_or_ancestor(_Machine(code, ScriptedIO())) is True
 
 
+class TestRunUntilHaltOrGrowth:
+    """The unbounded-growth certificate on brainfuck's tape.
+
+    Every program here is run through the real interpreter: the verdicts
+    are what stepping ``_Machine`` produced, not a hand-written trace.
+    """
+
+    def test_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainfuck import _Machine
+        from esolangs.vm import run_until_halt_or_growth
+
+        # `+[>]` walks right off the set cell onto a zero and leaves.
+        assert run_until_halt_or_growth(_Machine("+[>]", ScriptedIO())) is True
+
+    def test_growing_loop_is_proved_to_hang(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainfuck import _Machine
+        from esolangs.vm import run_until_halt_or_growth
+
+        # The canonical case: one fresh cell and one cell of displacement
+        # per lap, so no whole state ever repeats and Brent's never fires.
+        assert run_until_halt_or_growth(_Machine("+[>+]", ScriptedIO())) is False
+
+    def test_cycle_detector_cannot_prove_the_growing_loop(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainfuck import _Machine
+
+        # The gap this detector exists to close, asserted rather than
+        # described: 5000 steps of `+[>+]` reach no repeated snapshot, so
+        # Brent's has nothing to find however long it is given.
+        machine = _Machine("+[>+]", ScriptedIO())
+        seen = {machine.snapshot()}
+        for _ in range(5000):
+            machine.step()
+            assert machine.snapshot() not in seen
+            seen.add(machine.snapshot())
+        assert len(seen) == 5001
+
+    def test_certificate_holds_only_above_the_periods_lowest_cell(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainfuck import _Machine
+        from esolangs.vm import run_until_halt_or_growth
+
+        # Cell 0 keeps the 1 that `+` left while every later cell fills
+        # with 2, so the tape is never a full-width shift of itself.  Only
+        # comparing from the period's own minimum pointer proves this one.
+        assert run_until_halt_or_growth(_Machine("+[>++]", ScriptedIO())) is False
+
+    def test_certificate_fires_early_rather_than_at_the_limit(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainfuck import _Machine
+        from esolangs.vm import run_until_halt_or_growth
+
+        # A limit far below any wall-clock backstop still returns False:
+        # the verdict comes from the certificate, not from exhausting a
+        # budget, and a mutant that defeats it raises TimeoutError here.
+        assert run_until_halt_or_growth(_Machine("+[>+]", ScriptedIO()), 12) is False
+
+    def test_input_dependent_growth_is_undecided(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainfuck import _Machine
+        from esolangs.vm import run_until_halt_or_growth
+
+        # Each lap reads a byte, so the next one is not a replay of the
+        # last: the loop ends when the input does.  Undecided, never a hang.
+        machine = _Machine("+[>,]", ScriptedIO("ab\ncd\n" * 40))
+        with pytest.raises(TimeoutError, match="undecided after"):
+            run_until_halt_or_growth(machine, 200)
+
+    def test_a_clamped_loop_is_never_certified(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainfuck import _Machine
+        from esolangs.vm import run_until_halt_or_growth
+
+        # `+[<+]` is the reason the certificate demands `m >= 1`.  Its `<`
+        # is clamped at cell 0 every lap, so it does not translate -- and
+        # it in fact halts, once the cell wraps at 256.  Certifying a
+        # left-edge period would have called a halting program a hang.
+        machine = _Machine("+[<+]", ScriptedIO())
+        assert run_until_halt_or_growth(machine) is True
+        assert machine.tape == (0,)
+
+    def test_in_place_cycles_are_left_to_the_cycle_detector(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainfuck import _Machine
+        from esolangs.vm import run_until_halt_or_cycle, run_until_halt_or_growth
+
+        # `+[]` spins on one cell: the tape never grows, so the
+        # displacement is zero and this detector declines to rule.  The
+        # state repeats exactly, which is the cycle detector's to prove.
+        with pytest.raises(TimeoutError, match="undecided after"):
+            run_until_halt_or_growth(_Machine("+[]", ScriptedIO()), 300)
+        assert run_until_halt_or_cycle(_Machine("+[]", ScriptedIO())) is False
+
+    def test_a_growing_run_that_still_halts_is_not_called_a_hang(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainfuck import _Machine
+        from esolangs.vm import run_until_halt_or_growth
+
+        # Nine laps of genuine growth, then the counter in cell 0 runs out
+        # and the outer loop leaves.  The certificate must not fire on the
+        # growth, because the period is not a translation: cell 0 falls.
+        program = "+++++++++[>+<-]"
+        machine = _Machine(program, ScriptedIO())
+        assert run_until_halt_or_growth(machine) is True
+        assert machine.tape[1] == 9
+
+
 class TestFactory:
     def test_unknown_language_raises(self) -> None:
         with pytest.raises(UnknownLanguageError):
