@@ -12,7 +12,7 @@ from typing import Any, ClassVar
 
 import pytest
 
-from esolangs.interpreters.grid_based.wii2d import run
+from esolangs.interpreters.grid_based.wii2d import close, run
 from esolangs.interpreters.io import IO
 from tests.interpreters.contract import CycleContract, SnapshotContract
 
@@ -180,6 +180,33 @@ class TestWII2DArithmetic:
         with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code, IO()))
         assert f.getvalue() == chr(36)  # ASCII 36 = '$'
+
+
+class TestJumpTargets:
+    """Which ``@`` a jump picks, asked of the chooser directly.
+
+    The two ``@`` programs elsewhere offer a single candidate, on a row
+    below the first -- so neither the row-0 exclusion nor the distance
+    being minimised was ever exercised by them.
+    """
+
+    def test_the_nearest_at_by_manhattan_distance_wins(self) -> None:
+        """Two candidates, and the answer changes with where the jump starts."""
+        grid = ["....", "@...", "....", "....", ".....@"]
+        assert close(grid)(2, 0) == (1, 0)
+        assert close(grid)(4, 4) == (4, 5)
+
+    def test_an_at_on_the_first_row_is_not_a_candidate(self) -> None:
+        """Row 0 is excluded even when its ``@`` is much the closest.
+
+        From ``(0, 1)`` the ``@`` at ``(0, 0)`` is one step away and the
+        one at ``(2, 3)`` is four, so a chooser that considered row 0
+        would answer differently.
+        """
+        assert close(["@...", "....", "...@"])(0, 1) == (2, 3)
+
+    def test_no_candidate_gives_none(self) -> None:
+        assert close(["....", "...."])(0, 0) is None
 
 
 class TestWII2DControlFlow:
