@@ -863,6 +863,27 @@ class TestParameterizedMinifuck:
         # reorders what is spent first, it never drops a slice outright.
         assert sorted(module._SLICE_YIELD_ORDER) == sorted(plain)  # noqa: SLF001
 
+    def test_five_input_budget_uses_its_separate_default(self) -> None:
+        """The five-input override is selected only while budgets are off.
+
+        Five inputs were measured separately from the smaller staging passes,
+        so its disabled-budget value must not accidentally inherit a future
+        finite general budget.  Patch both values to make the dispatch, not
+        their current equal ``None`` spelling, observable.
+        """
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_STAGING_BUDGET", None)
+            patch.setattr(module, "_STAGING_BUDGET_N5", 17)
+            assert module._budget(5) == 17  # noqa: SLF001
+            assert module._budget(6) == 17  # noqa: SLF001
+            assert module._budget(4) is None  # noqa: SLF001
+
+            # A finite general budget applies uniformly, including at five.
+            patch.setattr(module, "_STAGING_BUDGET", 23)
+            assert module._budget(5) == 23  # noqa: SLF001
+
     def test_a_budget_gives_up_length_not_coverage(self) -> None:
         """A table the budget skips still builds, through the sculpted route.
 
@@ -2032,25 +2053,23 @@ class TestParameterizedMinifuck:
                         break
                 assert arrived is not None, (n, key, sep_index, settle, suffix, acc)
 
-    @pytest.mark.slow  # 7.8s: builds the searching two-input template
-    def test_instantiations_have_equal_length(self) -> None:
-        """No instantiation leaks its inputs through the program's length."""
-        from esolangs.tools.boolean import parameterized
+    def test_template_is_input_independent_and_equal_length(self) -> None:
+        """The template has placeholders and every fill has the same length.
 
-        template = parameterized.minifuck("0110")
-        lengths = {
-            len(self.instantiate(template, [a, b])) for a in (0, 1) for b in (0, 1)
-        }
-        assert len(lengths) == 1, f"unequal instantiation lengths: {lengths}"
-
-    @pytest.mark.slow  # 9.0s: builds the searching two-input template
-    def test_template_is_input_independent(self) -> None:
-        """The template has {Xi} placeholders, not hardcoded bits."""
+        Both properties concern the same expensive ``0110`` construction.
+        Building it separately only to inspect its placeholders duplicated
+        construction without exercising a distinct path.  The current
+        combined check takes 0.12s serially, so it belongs in the fast suite.
+        """
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.minifuck("0110")
         assert "{X0}" in template
         assert "{X1}" in template
+        lengths = {
+            len(self.instantiate(template, [a, b])) for a in (0, 1) for b in (0, 1)
+        }
+        assert len(lengths) == 1, f"unequal instantiation lengths: {lengths}"
 
     def test_bad_table_rejected(self) -> None:
         """A table whose length is not a power of two is rejected."""

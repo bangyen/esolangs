@@ -11,12 +11,35 @@ language has none).
 Every registered interpreter exposes a ``step()``/``halted`` state object,
 so every language in the registry can be wrapped; only an unregistered name
 is refused.
+
+Two of the languages' conventions defeat the obvious driving loop, so the
+:class:`VM` reports them rather than leaving a caller to find out:
+``self_halts`` is ``False`` where ``halted`` never becomes true, and
+``dumps_on_the_post_halt_step`` is ``True`` where the output is written on
+the step after the halt.  ``while not vm.halted: vm.step()`` hangs on the
+first group and returns ``""`` on the second, and neither is discoverable
+from the protocol alone.  A hang detector below is the other way to drive
+the first group, and takes the bound off the caller entirely.
+
+The four hang detectors here -- :func:`run_until_halt_or_cycle`,
+:func:`run_until_halt_or_all_branches_cycle`,
+:func:`run_until_halt_or_ancestor`, and :func:`run_until_halt_or_growth` --
+each take either a :class:`VM` or the interpreter state one wraps, so
+proving a hang needs nothing more than :func:`make_vm`.  What a detector
+needs beyond stepping is a *sub*-protocol that only some languages have: a
+call stack to compare frames across, enumerable random outcomes to fork, or
+a growing tape.  A language lacking one raises :class:`TypeError` rather
+than being handed a verdict about state it does not keep.
+
+:func:`run_until_halt` sits beside them and proves nothing: it steps a
+machine to its halt within a budget and reports whether it got there.
+That is the loop every consumer of :func:`make_vm` was writing itself.
 """
 
 from __future__ import annotations
 
-from collections.abc import Hashable, Sequence
-from typing import Protocol, runtime_checkable
+from collections.abc import Callable, Hashable, Sequence
+from typing import Any, Protocol, cast, runtime_checkable
 
 from esolangs.exceptions import UnknownLanguageError
 from esolangs.interpreters.io import ScriptedIO
@@ -104,7 +127,48 @@ class _BranchingStepMachine(Protocol):
         """
 
 
-def run_until_halt_or_cycle(machine: _StepMachine) -> bool:
+def _unwrap(machine: object, protocol: type[Any], role: str) -> object:
+    """Return ``machine``, or the interpreter state a :class:`VM` wraps.
+
+    The detectors were written against the interpreters' ``_Machine``
+    classes, so every caller reached past :func:`make_vm` and hand-built
+    one -- the private class, its ``ScriptedIO``, and for a random language
+    the seeded generator, all restated at the call site.  A :class:`VM`
+    already holds exactly that machine, constructed exactly that way, so
+    accepting one and opening it here removes the reason to import a
+    private name.
+
+    The protocol is tried *before* the unwrap, so a raw machine is handed
+    straight back and a wrapper is opened only when it is not itself what
+    the detector needs.  That order is also what keeps
+    :func:`run_until_halt_or_cycle` stepping the object it was given: a
+    :class:`VM` forwards ``step``/``halted``/``snapshot`` and so already
+    satisfies :class:`_StepMachine`, which is why passing one there worked
+    before this function existed and must keep meaning the same thing.
+
+    ``role`` names what the argument failed to be, because the interesting
+    failure is not "wrong type" but "this language has no such thing": a
+    machine without ``frames`` does not recurse, and one without
+    ``branching_successors`` has no random instruction to fork.
+
+    ``protocol`` is ``type[Any]`` and the result is narrowed by a ``cast``
+    at each caller, rather than the ``TypeVar`` this shape invites: mypy
+    refuses a protocol class where a ``type[T]`` is expected
+    (``type-abstract``), since a protocol cannot be instantiated.  The
+    ``isinstance`` below is the real check either way.
+    """
+    if isinstance(machine, protocol):
+        return machine
+    inner = getattr(machine, "_machine", None)
+    if isinstance(inner, protocol):
+        return inner
+    raise TypeError(
+        f"{type(machine).__name__} is not {role}: neither it nor any machine "
+        "it wraps provides the required members"
+    )
+
+
+def run_until_halt_or_cycle(machine: _StepMachine | VM) -> bool:
     """Step ``machine`` until it halts or revisits an exact state.
 
     A deterministic machine that revisits its complete internal state has
@@ -112,8 +176,9 @@ def run_until_halt_or_cycle(machine: _StepMachine) -> bool:
     reported immediately instead of waiting out a wall-clock timeout.
     Returns ``True`` when the machine halts and ``False`` once a cycle is
     proven.  It catches *cycles*, not every hang — an unbounded-growth loop
-    never revisits a state, so callers keep a timeout as the backstop for
-    that class.
+    never revisits a state.  On a tape language,
+    :func:`run_until_halt_or_growth` proves that class instead; elsewhere
+    callers keep a timeout as the backstop for it.
 
     Uses Brent's cycle-detection algorithm: O(1) snapshots held at once
     (one "tortoise" checkpoint compared against the live machine's state on
@@ -121,7 +186,13 @@ def run_until_halt_or_cycle(machine: _StepMachine) -> bool:
     stepping up to ~2x further past the cycle's start before ``False`` is
     returned — callers must not rely on the machine's state at the moment
     of detection, only on the True/False verdict.
+
+    Takes either a raw interpreter state or a :class:`VM` from
+    :func:`make_vm`; see :func:`_unwrap`.
     """
+    machine = cast(
+        _StepMachine, _unwrap(machine, _StepMachine, "steppable with a snapshot")
+    )
     tortoise = machine.snapshot()
     power = 1
     length = 0
@@ -143,7 +214,7 @@ def run_until_halt_or_cycle(machine: _StepMachine) -> bool:
 
 
 def run_until_halt_or_all_branches_cycle(
-    machine: _BranchingStepMachine, limit: int = 10_000
+    machine: _BranchingStepMachine | VM, limit: int = 10_000
 ) -> bool:
     """Explore random outcomes until one halts or every path is cyclic.
 
@@ -162,7 +233,16 @@ def run_until_halt_or_all_branches_cycle(
     The search keeps every exact state it has seen, unlike Brent's O(1)
     deterministic detector, because branches can merge after taking
     different random choices.
+
+    Takes either a raw interpreter state or a :class:`VM` from
+    :func:`make_vm`; see :func:`_unwrap`.  A language with no random
+    instruction has no branching surface to search and raises
+    :class:`TypeError` rather than being reported as a hang.
     """
+    machine = cast(
+        _BranchingStepMachine,
+        _unwrap(machine, _BranchingStepMachine, "branch-enumerable"),
+    )
     pending = [machine.branching_snapshot()]
     seen: set[Hashable] = set()
     while pending:
@@ -213,15 +293,17 @@ class _FramedMachine(Protocol):
         """Return ``frame``'s entry state, hashable and comparable."""
 
 
-def run_until_halt_or_ancestor(machine: _FramedMachine, limit: int = 64) -> bool:
+def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) -> bool:
     """Step ``machine`` until it halts or a call provably replays an ancestor.
 
     :func:`run_until_halt_or_cycle` cannot catch infinite recursion: a call
     that never returns pushes one frame per step and pops none, so the
     machine's whole-state snapshot grows forever and never repeats.  That is
-    the unbounded-growth class, and it is why recursive languages keep a
-    wall-clock backstop -- one that deadlocks under ``pytest --cov`` (see
-    ``docs/walls.md``).
+    the unbounded-growth class -- the same one
+    :func:`run_until_halt_or_growth` handles on a tape, where the growing
+    state is cells rather than frames -- and it is why recursive languages
+    keep a wall-clock backstop, one that deadlocks under ``pytest --cov``
+    (see ``docs/walls.md``).
 
     This is the narrower check that class allows.  Rather than comparing
     whole-machine states across time, it compares each newly-pushed frame
@@ -253,7 +335,13 @@ def run_until_halt_or_ancestor(machine: _FramedMachine, limit: int = 64) -> bool
     headroom "just in case", and a mutant that defeats the early return
     fails a test in milliseconds instead of walking ten thousand steps of
     live recursion.
+
+    Takes either a raw interpreter state or a :class:`VM` from
+    :func:`make_vm`; see :func:`_unwrap`.  A language with no call stack
+    cannot recurse and raises :class:`TypeError` rather than reporting a
+    verdict about frames it does not have.
     """
+    machine = cast(_FramedMachine, _unwrap(machine, _FramedMachine, "framed"))
     keys: dict[int, Hashable] = {}
     pushes = 0
     while pushes < limit:
@@ -275,6 +363,250 @@ def run_until_halt_or_ancestor(machine: _FramedMachine, limit: int = 64) -> bool
         f"undecided after {limit} pushed frames: neither halted nor repeated "
         "an ancestor's entry state"
     )
+
+
+@runtime_checkable
+class _TapeMachine(Protocol):
+    """A :class:`_StepMachine` on a rightward-growing tape of cells.
+
+    The four members are what the growth certificate compares across two
+    visits to one code position.  ``tape`` must be the *committed* tape --
+    brainfuck buffers the cell under the pointer, and a logical state with
+    two spellings would break the comparison exactly as it would break the
+    cycle detector's hash.  ``input_position`` is the input cursor, and it
+    carries the soundness the same way ``frame_entry_key``'s does.
+
+    ``ip`` is the language-shaped code position every machine here already
+    exposes, and it is only ever used as a dictionary key, never
+    arithmetically -- so it is ``Hashable`` rather than ``int``.  That is
+    deliberate.  A 2D language's position is a tuple that includes the
+    heading, and *must* be: two visits to one grid cell travelling in
+    different directions are not the same point in the program, and keying
+    on the coordinates alone would compare them as if they were.  Taking
+    the machine's own ``ip`` gets that right by construction instead of by
+    remembering it per language.
+
+    Together, ``ip``, ``ptr``, ``tape`` and ``input_position`` must be the
+    machine's *complete* state -- the same completeness ``snapshot``
+    promises the cycle detector.  A register or flag living outside them
+    would let two compared visits differ in something the certificate never
+    looked at, and the replay argument would not hold.
+
+    Opting in is also a claim about the language, not just about the
+    members:
+
+    - a transition reads and writes only the cell under the pointer,
+    - the semantics are translation-invariant for ``ptr >= 1`` -- moving
+      the whole configuration one cell right changes nothing, which fails
+      only at the clamped left edge,
+    - the tape grows rightward, by fresh zero cells.
+
+    Brainfuck, BrainIf, Back, 6-5 and Factor satisfy all three.  A language
+    with absolute cell addresses (Suffolk's ``<`` resets the pointer to 0,
+    Minifuck reads cells 0-7 by index), a wrapping or fixed-size tape
+    (Circlefuck, NoComment, Home Row), or leftward growth (Jaune prepends,
+    which shifts every existing index) does not, and must not declare this
+    protocol -- matching member names is not eligibility.
+    """
+
+    def step(self) -> None:
+        """Execute one instruction, advancing the machine."""
+
+    @property
+    def halted(self) -> bool:
+        """Whether the machine has finished executing."""
+
+    @property
+    def ip(self) -> Hashable:
+        """The current code position, hashable and compared by equality."""
+
+    @property
+    def ptr(self) -> int:
+        """The current cell pointer."""
+
+    @property
+    def tape(self) -> tuple[int, ...]:
+        """The committed cells, index 0 leftmost."""
+
+    def input_position(self) -> int:
+        """Return the input cursor, so a reading loop is not a repeat."""
+
+
+def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -> bool:
+    """Step ``machine`` until it halts or provably grows without bound.
+
+    :func:`run_until_halt_or_cycle` cannot catch ``+[>+]``.  The tape gets
+    one cell longer and the pointer one cell further right every lap, so
+    the whole-machine snapshot is new every time and Brent's detector never
+    sees a repeat -- that is the unbounded-growth class its docstring hands
+    back to a wall-clock timeout.
+
+    This is the check that class allows on a tape.  Instead of comparing
+    whole states, it compares two consecutive visits to the *same code
+    position* -- the machine's own ``ip``, so a 2D language's heading is
+    part of it -- and asks whether the second is the first shifted right.
+    Let
+    ``d`` be the pointer's displacement between the visits, ``m`` the
+    lowest cell the pointer reached in between, and write a hang when all
+    of:
+
+    - the input cursor did not move (a ``,`` in the period makes the next
+      lap input-dependent, so it is undecided, not a hang),
+    - ``d > 0`` and the tape grew by exactly ``d`` fresh cells,
+    - ``m >= 1``, so the period never touched the clamped left edge,
+    - ``tape2[i + d] == tape1[i]`` for every ``m <= i < len(tape1)``.
+
+    Together those make the second visit's configuration, restricted to the
+    cells at or right of ``m``, the first's translated by ``d``.  Since the
+    machine reads only the cell under the pointer and its semantics are
+    translation-invariant away from the left edge, the period must replay
+    at ``+d``, and then again at ``+2d``, forever: an induction, not a
+    guess.  Returns ``True`` when the machine halts and ``False`` once such
+    a certificate is found.
+
+    Three details that are the whole soundness argument.  ``m >= 1`` is
+    what licenses translation: a period that touched cell 0 may have been
+    clamped by ``<`` where its shifted copy would not be, and the two would
+    diverge.  The lower bound ``i >= m`` rather than ``i >= 0`` is what
+    makes ``+[>++]`` provable -- its cell 0 keeps the value 1 while the
+    interior fills with 2s, so a full-width shift never matches, while the
+    suffix from the period's own minimum does; cells left of ``m`` are
+    unreachable for the rest of the run, so their disagreeing is not a
+    counterexample.  And the length check is what rules out a shift that
+    merely *looks* aligned: the fresh cells must be exactly the ``d`` zeros
+    the growth created.
+
+    Two things this does not do.  It compares *consecutive* visits to a
+    position, so growth whose period spans two visits stays undecided --
+    like the ancestor detector's ``f(x - 1)``, a real gap, left to the
+    caller's timeout.  And ``d == 0`` is not its business: a loop that
+    grows a cell's value rather than the tape, such as ``+[<+]``, revisits
+    an exact state once the value wraps at 256 and is
+    :func:`run_until_halt_or_cycle`'s to prove.
+
+    ``limit`` bounds the walk in steps.  Exhausting it raises
+    :class:`TimeoutError` rather than returning a verdict, so a program
+    this cannot decide is never reported as halting.
+
+    Takes either a raw interpreter state or a :class:`VM` from
+    :func:`make_vm`; see :func:`_unwrap`.  A language with no tape has
+    nothing to grow and raises :class:`TypeError` rather than a verdict.
+    """
+    machine = cast(_TapeMachine, _unwrap(machine, _TapeMachine, "a tape machine"))
+    # Per code position: the last visit's (pointer, tape, input cursor),
+    # and the lowest pointer seen since that visit.  One entry per position
+    # rather than per state, so this is bounded by the program's length.
+    last: dict[Hashable, tuple[int, tuple[int, ...], int]] = {}
+    lowest: dict[Hashable, int] = {}
+    for _ in range(limit):
+        if machine.halted:
+            return True
+        ip, ptr, tape = machine.ip, machine.ptr, machine.tape
+        for position in lowest:
+            if ptr < lowest[position]:
+                lowest[position] = ptr
+        cursor = machine.input_position()
+        previous = last.get(ip)
+        if previous is not None and _grows_forever(
+            previous, (ptr, tape, cursor), lowest[ip]
+        ):
+            return False
+        last[ip] = (ptr, tape, cursor)
+        lowest[ip] = ptr
+        machine.step()
+    raise TimeoutError(
+        f"undecided after {limit} steps: neither halted nor grew by a "
+        "provable translation"
+    )
+
+
+def _grows_forever(
+    before: tuple[int, tuple[int, ...], int],
+    after: tuple[int, tuple[int, ...], int],
+    lowest: int,
+) -> bool:
+    """Whether ``after`` is ``before`` translated right by the growth.
+
+    The certificate itself, split out so the four conditions read as the
+    list in :func:`run_until_halt_or_growth`'s docstring rather than as one
+    expression buried in a loop.
+    """
+    ptr_before, tape_before, input_before = before
+    ptr_after, tape_after, input_after = after
+    displacement = ptr_after - ptr_before
+    return (
+        input_after == input_before
+        and displacement > 0
+        and len(tape_after) == len(tape_before) + displacement
+        and lowest >= 1
+        and all(
+            tape_after[i + displacement] == tape_before[i]
+            for i in range(lowest, len(tape_before))
+        )
+    )
+
+
+@runtime_checkable
+class _SteppableMachine(Protocol):
+    """The bare step-and-ask-if-halted surface a bounded drive needs.
+
+    Deliberately smaller than :class:`_StepMachine`: driving a machine to
+    its halt never calls ``snapshot()``, and requiring one would exclude
+    the very callers this is for.  :class:`~esolangs.debug.Debugger` is the
+    case that matters -- it forwards ``step``/``halted`` and records a
+    watch on the way, but keeps no snapshot of its own.
+    """
+
+    def step(self) -> None:
+        """Execute one command, advancing the machine."""
+
+    @property
+    def halted(self) -> bool:
+        """Whether the machine has finished executing."""
+
+
+def run_until_halt(
+    machine: _SteppableMachine | VM,
+    limit: int | None = None,
+    *,
+    stop: Callable[[], bool] | None = None,
+) -> bool:
+    """Step ``machine`` until it halts, or the budget or ``stop`` ends it.
+
+    The plain bounded drive, as distinct from the four hang detectors
+    above: it proves nothing, it just runs a machine and reports whether it
+    got to the end.  Returns ``True`` when the machine halted, ``False``
+    when it was still going when the run stopped.
+
+    Every consumer of :func:`make_vm` was writing this loop out again --
+    ``tests/test_vm_protocol.py``, :meth:`~esolangs.debug.Debugger.run`,
+    and ``scripts/verify_no_exception_leaks.py`` -- with a different budget
+    each time and a different thing done on overrun: an ``AssertionError``,
+    a silent return, a ``False``.  Those differences are real and stay with
+    the callers.  What is shared is the verdict underneath them, and that
+    is all this returns; a caller maps ``False`` to its own policy.
+
+    ``limit`` is a bound in steps, and ``None`` means unbounded -- a run
+    with no budget is the common case for a machine known to halt, and
+    making the caller pass a large number instead would just be a budget
+    nobody chose.  ``stop`` is checked *before* each step, so a run that
+    ends on it leaves the condition it stopped for still true; that
+    ordering is what a breakpoint means, and getting it wrong would report
+    the state after the very command the caller wanted to stop before.
+
+    The machine is stepped in place and is left wherever it stopped, which
+    is the point: a caller reads ``output``, ``memory``, or its own records
+    off it afterwards.
+    """
+    steps = 0
+    while not machine.halted:
+        if stop is not None and stop():
+            return False
+        if limit is not None and steps == limit:
+            return False
+        machine.step()
+        steps += 1
+    return True
 
 
 @runtime_checkable
@@ -316,6 +648,28 @@ class VM(Protocol):
     @property
     def stack(self) -> list[object]:
         """The stack, or ``[]`` where the language has none."""
+
+    @property
+    def self_halts(self) -> bool:
+        """Whether the program can reach a halt of its own.
+
+        ``False`` for the two languages whose ``halted`` is always
+        ``False`` -- A Painter Ant and Suffolk -- so the obvious
+        ``while not vm.halted: vm.step()`` never returns on them.  A
+        caller driving one has to bound the run itself: a hang detector
+        above, or :func:`esolangs.run`'s ``timeout``.
+        """
+
+    @property
+    def dumps_on_the_post_halt_step(self) -> bool:
+        """Whether the output arrives on the step *after* the halt.
+
+        ``True`` for the four languages whose ``run`` ends its loop with
+        one more ``step()`` to dump the final tape or registers.  A caller
+        that stops at ``halted`` has driven such a program correctly and
+        still holds ``""``; one further ``step()`` writes what ``run``
+        writes, and the no-op step is the one after that.
+        """
 
 
 class _DelegatingVM:
@@ -370,6 +724,25 @@ class _DelegatingVM:
     @property
     def stack(self) -> list[object]:
         return list(self._machine.stack)
+
+    # The two language conventions a stepping caller cannot discover for
+    # itself: that a language never halts, and that its output lands one
+    # step past the halt.  Both come off the machine by ``getattr``, the
+    # way ``reproducible_seed`` does, and for the same reason -- they are
+    # facts about the language, so the interpreter says so and the fifty-odd
+    # that follow the common shape declare nothing.
+    #
+    # The defaults are the common case, which is why the traits are spelled
+    # positively on the machines that carry them: a language that says
+    # nothing self-halts and writes before it does.
+
+    @property
+    def self_halts(self) -> bool:
+        return bool(getattr(self._machine, "self_halts", True))
+
+    @property
+    def dumps_on_the_post_halt_step(self) -> bool:
+        return bool(getattr(self._machine, "dumps_on_the_post_halt_step", False))
 
 
 def _derived_adapter(language: str) -> type[_DelegatingVM]:

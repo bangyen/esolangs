@@ -23,14 +23,63 @@ nonzero, ``d`` resets the pointer to cell 0, ``t`` repeats the previous
 command ``3``^run-length times, and ``e`` halts.  A ``c``/``t`` run also
 re-fetches the command it repeats: ``c`` consumes the whole ``c`` run and
 repeats the following command, ``t`` consumes the whole ``t`` run and
-repeats the preceding command.  Both interact with the repetition count in
-the same way as the cross-check.
+repeats the preceding command.
+
+Each run is *one* count, not one per character: ``ccc`` is ``7**3`` and
+``ttt`` is ``3**3``.  The two differ in what they can consume.  ``c`` sits
+before its command and runs it outright, so ``cp`` runs ``p`` seven times;
+``t`` sits after one that has already executed and can only add, so ``pt``
+runs ``p`` four times -- once itself, three more from the ``t``.  A ``t``
+cannot retroactively cancel the application that already happened.
+
+The command before a ``t`` run may itself be a ``c`` run, and then the
+``t`` adds applications of *that*: ``ct`` is four ``c``s, ``7 ** 4``.  Both
+runs are read at dispatch rather than letting the ``t`` execute on its own,
+which would have to hand a count backward to a command already gone -- and
+no such handoff leaves ``pt`` and ``ct`` both right.
+
+The wiki specifies neither the composition nor the run lengths, so the
+arithmetic above is this implementation's reading of "do the last command
+3 times" rather than a quoted rule.  No generated program pairs the two:
+every ``t`` run one emits follows a ``p`` or an ``s``.
+
+A repeated ``y`` is the same kind of gap, and the choice made here is worth
+recording because the alternatives are all defensible.  ``y`` binds forward
+to the next command exactly as ``c`` and ``v`` do; the open question is
+whether repeating it makes *one* decision or *n*.  This implementation makes
+n: a run of ``rep`` repeats draws ``rep`` flips, each dropping one
+application of the bound command, so ``rep - heads`` of them run and the
+survivor count is binomial in ``rep``.  ``cyp`` therefore spans
+``{0, 2, ..., 14}``, weighted by ``Binomial(7, 1/2)``.
+
+The two readings rejected, and why:
+
+- *One decision for the whole run* -- any heads skips the command outright,
+  giving ``cyp`` in ``{0, 2}`` with the skip probability rising to 127/128.
+  Coherent, and it keeps ``y`` meaning "this either happens or it does not";
+  it loses because it discards the repeat count, which ``c`` exists to
+  supply.  Under it ``cyp`` can never exceed ``p`` applied once, so the
+  seven is spent on tuning a probability rather than on the command.
+- *Rebinding without gating* -- the shape ``c``/``v``/``t`` use literally,
+  which the retired cross-check also had: the first heads rebinds the
+  repeated command and the remaining repeats *execute* it.  That inverts the
+  instruction, since the command ``y`` names is then the one that runs most
+  (``cyp`` left 12), and it makes the skip count geometric rather than
+  binomial, because the draw stops at the first heads.
+
+All three agree when ``rep`` is 1, which is the only case the wiki
+describes, so nothing here contradicts it.
 
 Documented divergences from the cross-check:
 
-- ``y`` is nondeterministic in the cross-check (a random skip) and the wiki
-  specifies it that way, so it skips the next command with probability 1/2
-  here too; the generator and the differential corpus never use it.
+- ``y`` is nondeterministic (a random skip) in the wiki and in the retired
+  cross-check alike, so it skips the next command with probability 1/2 here
+  too; the generator and the differential corpus never use it.  A *repeated*
+  ``y`` diverges, per the reading argued above: the cross-check rebound the
+  repeated command and executed it, where each repeat here is its own flip.
+  The cross-check was written alongside this interpreter rather than from an
+  independent source, so its agreement was never evidence about the
+  composition -- it shared this implementation's reading of the same gap.
 - Reads at exhausted input raise :class:`EOFError` (the repo-wide
   convention), where the cross-check exits with status 3.
 - ``i`` parses the whole input line as an integer with ``int()``; a line
@@ -110,10 +159,16 @@ type _State = tuple[tuple[int, ...], tuple[int, ...], int, int, int]
 
 @dataclass(frozen=True)
 class _Print:
-    """Write a value, as a number (``o``) or a character (``u``)."""
+    """Write a value, as a number (``o``) or a character (``u``).
+
+    ``count`` is how many times in a row -- a repeated ``o``/``u`` prints
+    the *same* cell every iteration, since nothing between them changes it,
+    so one effect carries the repeat instead of ``rep`` copies of itself.
+    """
 
     value: int
     as_char: bool
+    count: int = 1
 
 
 type _Effect = _Print
@@ -199,6 +254,16 @@ def _grow(tape: tuple[int, ...], ptr: int) -> tuple[int, ...]:
     return (*tape, *([0] * (ptr + 1 - len(tape))))
 
 
+#: Commands whose second application changes nothing, so a repeat of any
+#: length is one application.  Each writes a value taken from somewhere it
+#: does not itself write (a constant, or a neighbouring cell), or moves the
+#: pointer to a fixed place.
+#:
+#: ``h`` is absent because it is not idempotent -- it halves *the cell it
+#: writes* -- but it is still collapsible, by the shift in :func:`_advance`.
+_IDEMPOTENT = frozenset("zwqd")
+
+
 def _set(tape: tuple[int, ...], ptr: int, value: int) -> tuple[int, ...]:
     """Return ``tape`` with the cell at ``ptr`` set to ``value``."""
     return (*tape[:ptr], value, *tape[ptr + 1 :])
@@ -244,6 +309,77 @@ def _advance(
     ind += 1
 
     while rep > 0:
+        # ``c`` and ``t`` make ``rep`` exponential -- 7 per ``c`` in a run, 3
+        # per ``t`` -- so a step can ask for 3**15 iterations of one command.
+        # The commands below are *affine* in the repeat count: running them
+        # ``rep`` times has a closed form that does not depend on anything
+        # the loop mutates, so the remaining iterations are computed at once.
+        # An optimization, not a semantic change; the slow path below
+        # produces the same state one iteration at a time.
+        #
+        # This sits *inside* the loop because ``c``/``t``/``y``/``v`` rebind
+        # ``c`` partway through a step: a ``t`` run multiplies the repeat
+        # count and only then names the command it repeats, so a collapse
+        # that ran once before the loop would miss precisely the case that
+        # made ``rep`` large.
+        #
+        # The rest need their iterations -- a print or read produces ``rep``
+        # separate effects, ``a``/``b`` move the cursor mid-repeat, and the
+        # rebinding commands re-fetch as they go.
+        if rep > 1:
+            if c == "p":
+                tape, rep = _set(tape, ptr, tape[ptr] + 2 * rep), 0
+                continue
+            if c == "s":
+                tape, rep = _set(tape, ptr, tape[ptr] - rep), 0
+                continue
+            if c == "r":
+                ptr += 2 * rep
+                tape, rep = _grow(tape, ptr), 0
+                continue
+            if c == "l":
+                ptr, rep = max(0, ptr - rep), 0
+                continue
+            if c == "h":
+                # Halving ``rep`` times is one shift, but ``_trunc2``
+                # truncates toward zero rather than flooring, so a bare
+                # ``//`` is wrong for every negative not dividing exactly.
+                cell = tape[ptr]
+                shifted = cell // (1 << rep) if cell >= 0 else -((-cell) // (1 << rep))
+                tape, rep = _set(tape, ptr, shifted), 0
+                continue
+            if c == "k" and -1 <= tape[ptr] <= 1:
+                # Squaring has a closed form -- ``x ** (2 ** rep)`` -- but
+                # for ``|x| > 1`` the *result* has 2**rep times the bits, so
+                # no rewrite makes it affordable (measured at 1.0x); the loop
+                # is not the cost there.  At the fixed points it collapses.
+                tape, rep = _set(tape, ptr, tape[ptr] * tape[ptr]), 0
+                continue
+            if c in "ou":
+                # A repeated print emits the same cell every time -- nothing
+                # in the loop writes the tape -- so one effect carries the
+                # count rather than appending ``rep`` identical ones.
+                value = tape[ptr] if c == "o" else tape[ptr] & 0xFF
+                effects.append(_Print(value, as_char=c == "u", count=rep))
+                rep = 0
+                continue
+            if c in _IDEMPOTENT:
+                # Repeating these is doing them once: each writes a value
+                # fixed by the state this iteration began in.
+                rep = 1
+            elif c in "ab":
+                # The wiki defines these as jumps -- "go to the matching b
+                # if the value is zero", "go back to the matching a if it is
+                # not" -- so each is a *decision*, and nothing between two
+                # iterations changes the cell or the cursor it reads.  A
+                # repeat therefore decides the same way every time.
+                #
+                # The loop stack is this interpreter's way of finding the
+                # matching bracket, not part of the language; without this,
+                # a repeated ``a`` pushed ``rep`` identical entries and left
+                # a loop needing ``rep`` closing ``b``s to unwind.
+                rep = 1
+
         rep -= 1
 
         if c == "p":
@@ -306,12 +442,48 @@ def _advance(
                 c = prog[ind] if ind < n else _NUL
                 ind += 1
                 rep *= 7
+            # A ``t`` run directly after the ``c`` run repeats *the ``c``*,
+            # which has already applied once, so it adds ``3 ** len`` more
+            # applications of it: ``ct`` is four ``c``s, ``7 ** 4``.  Read
+            # here rather than letting the ``t`` execute on its own, which
+            # would have to hand a count backward to a command already
+            # dispatched -- the shape that made ``pt`` and ``ct`` unable to
+            # be right at the same time.
+            # The run loop above already pulled the character after the
+            # ``c``s into ``c``, so that one counts too if it is a ``t``.
+            adds = 0
+            if c == "t":
+                adds = 1
+                while ind < n and prog[ind] == "t":
+                    ind += 1
+                    adds += 1
+            if adds:
+                rep **= 1 + 3**adds
+                c = prog[ind] if ind < n else _NUL
+                ind += 1
         elif c == "y":
-            # The wiki specifies a random skip; match the cross-check's
-            # coin flip (the generator and differential avoid `y`).
-            if coin.take() and ind < n:
+            # ``y`` binds forward to the next command, as ``c`` and ``v``
+            # do, and then each repeat decides that command separately: one
+            # flip per repeat, heads dropping that one application.  The
+            # flips are drawn here rather than left to the loop because the
+            # affine collapses above run the whole remaining count in a
+            # closed form, which cannot consult a coin per iteration; the
+            # surviving count is what they are handed.
+            #
+            # ``rep`` flips leave ``rep - heads`` applications, so the
+            # number that run is binomial in the repeat count -- ``cyp``
+            # spans 0 to 14 in steps of two rather than the ``{0, 2}`` a
+            # single decision for the whole run would give.  Both readings
+            # agree at ``rep`` 1, which is the only case the wiki states.
+            # ``rep`` was decremented at the top of the loop, so the
+            # applications still owed are this one plus ``rep`` more.
+            owed = rep + 1
+            rep = owed - sum(coin.take() for _ in range(owed))
+            if ind < n:
                 c = prog[ind]
                 ind += 1
+            if rep <= 0:
+                break
         elif c == "e":
             return ((tape, loop, ptr, n, 0), effects)
         elif c == "v" and tape[ptr] != 0 and ind < n:
@@ -320,6 +492,13 @@ def _advance(
         elif c == "d":
             ptr = 0
         elif c == "t":
+            # The whole run is one count of ``3 ** len``, so the cursor has
+            # to clear all of it: stopping just past the first ``t`` made
+            # each later one a step of its own that walked back over its
+            # predecessors, so ``ptt`` repeated its ``p`` three *then* nine
+            # times instead of nine.
+            while ind < n and prog[ind] == "t":
+                ind += 1
             val = ind
             rep = 1
             found = False
@@ -431,6 +610,13 @@ class _Machine:
                 pending.extend(((*coins, 0), (*coins, 1)))
             except _NeedRead:
                 return None
+            except _Halted as halt:
+                # A malformed loop is a terminal (error) outcome, just as it
+                # is to ``run``.  The branch graph has no error flag, so move
+                # its cursor past the program; ``branching_halted`` then
+                # recognizes it without pretending the failed command ran.
+                tape, loop, ptr, _ind, rep = halt.state
+                successors.append((tape, loop, ptr, self.n, rep))
             else:
                 successors.append(next_state)
         return tuple(successors)
@@ -513,11 +699,21 @@ class _Machine:
         self._restore(state)
 
     def _write(self, effect: _Effect) -> None:
-        """Perform one collected write."""
-        if effect.as_char:
-            self.io.print_char(chr(effect.value))
-        else:
-            self.io.print_num(effect.value)
+        """Perform one collected write, ``count`` times over.
+
+        A repeat is written as one string rather than a loop of calls: the
+        value is the same every time, and ``print_str`` derives its
+        end-of-line state from the text, so the repeated form and the
+        looped one leave the port identical.
+        """
+        if effect.count == 1:
+            if effect.as_char:
+                self.io.print_char(chr(effect.value))
+            else:
+                self.io.print_num(effect.value)
+            return
+        piece = chr(effect.value) if effect.as_char else str(effect.value)
+        self.io.print_str(piece * effect.count)
 
 
 def run(code: str, io: IO, rng: Randomness | None = None) -> None:

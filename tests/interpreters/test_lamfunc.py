@@ -77,6 +77,22 @@ class TestBuiltins:
         assert run_program("p 0b12") == "0b12"
         assert run_program("p 0b0") == "0"
 
+    def test_an_unknown_name_in_a_skipped_branch_is_one_token(self) -> None:
+        """``_scan`` sizes an unevaluated branch without running it.
+
+        A token that is neither a builtin nor a user definition is an
+        atom taking one slot, so the ``p 7`` after it is a separate
+        statement rather than its argument.  Sized as a call instead --
+        which either half of that test being flipped would do -- the
+        unknown name swallows what follows and the 7 is never printed.
+
+        The unchosen branch is what makes this visible: an unknown name
+        the program actually *runs* halts before anything else can show.
+        """
+        assert run_program("p i 1 3 foo p 7") == "11111"  # 3 then 7, in binary
+        with raises_message(HaltError, "calling undefined function 'foo'"):
+            run_program("p i 0 3 foo p 7")
+
     def test_equality(self) -> None:
         assert run_program("p eq 1 1") == "1"
         assert run_program("p eq 1 2") == "0"
@@ -103,6 +119,11 @@ class TestBuiltins:
 
 
 class TestFunctions:
+    def test_call_parameters_shadow_and_restore_variables(self) -> None:
+        """A call temporarily binds its parameter without losing the caller's value."""
+        code = "F f a - p a\nvs a 3\nf 7\np vg a"
+        assert run_program(code) == "11111"
+
     def test_identity(self) -> None:
         # F id f - .f returns the argument without calling it
         assert run_program("F id f - .f\np id 7") == "111"
@@ -154,6 +175,12 @@ class TestRecursion:
 
 
 class TestPartialApplication:
+    def test_a_returned_one_argument_partial_absorbs_the_next_top_level_token(
+        self,
+    ) -> None:
+        """A returned ``p`` partial consumes the remaining main-program token."""
+        assert run_program("F f x - p\nf 1 8") == "1000"
+
     def test_prints_a_partial_application_by_name(self) -> None:
         # p i 5 is a partial of i with only its condition bound; p prints "i.."
         assert run_program("p i 5") == "i.."

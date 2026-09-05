@@ -112,6 +112,7 @@ from esolangs.interpreters.register_based.myscript import (
     _ARITY,
     Node,
     _block_tree,
+    _Builtin,
     _parse_string,
 )
 
@@ -287,7 +288,9 @@ class _Compiler:
         )
         return code, pos + 1
 
-    def emit_builtin(self, name: str, tokens: list[str], pos: int) -> tuple[str, int]:
+    def emit_builtin(
+        self, name: _Builtin, tokens: list[str], pos: int
+    ) -> tuple[str, int]:
         """Emit a builtin call, its arguments evaluated left to right."""
         code = ""
         arity = _ARITY[name]
@@ -297,7 +300,7 @@ class _Compiler:
         # pop into a0 (first argument) and a1 (second), matching push order
         if arity == 1:
             code += "    ld   a0, 0(sp)\n    addi sp, sp, 16\n"
-        elif arity == 2:
+        else:
             code += "    ld   a1, 0(sp)\n    ld   a0, 16(sp)\n    addi sp, sp, 32\n"
         code += f"    call .b_{name}\n"
         return code, pos

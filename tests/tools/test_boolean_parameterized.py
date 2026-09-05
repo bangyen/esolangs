@@ -18,25 +18,23 @@ from tests.tools.boolean_runners import one_two_three_result
 
 
 def _parameterized_generators():
+    """Return every parameterized generator the module exports.
+
+    Read off ``__all__`` rather than hand-listed.  The roster used to name
+    thirteen of the seventeen exports, so ``a_painter_ant``, ``cod`` and
+    ``wii2d`` were silently exempt from the exactly-once and slot-order
+    invariants below -- including ``cod``, which this module's own docstring
+    claims to cover.  The exemption bought nothing (all three satisfy both
+    invariants), which is what makes a silent roster worse than an explicit
+    one: nobody chose it.  ``instantiate`` is the module's shared helper, not
+    a generator, so it is the one name excluded, by name and for a reason.
+    """
     from esolangs.tools.boolean import parameterized
 
     return [
         (name, parameterized.__dict__[name])
-        for name in (
-            "arrowqueue",
-            "bio",
-            "back",
-            "nocomment",
-            "bfpda",
-            "lamfunc",
-            "bitdeque",
-            "ram0",
-            "minsky_swap",
-            "eval",
-            "minifuck",
-            "one_two_three",
-            "pct_squared_minus_one",
-        )
+        for name in parameterized.__all__
+        if name != "instantiate"
     ]
 
 
@@ -1387,6 +1385,57 @@ class TestParameterizedArrowQueue:
             }
             assert len(sizes) == 1, f"{table}: {sizes}"
 
+    def test_bare_ring_is_entry_sensitive(self) -> None:
+        """A bare ring sustains on right-entry and *halts* on down-entry.
+
+        The two ways a subtree is entered are not interchangeable, which is
+        the sharpest edge in the construction: the tree's top level is
+        entered heading down at column 1, while every recursive subtree is
+        entered heading right at its own ``(0, 0)``.  A bare
+        :data:`_TREE_1` only loops under the second.  Pinned because a
+        refactor that "simplified" the top-level entry to hand a bare ring
+        the down-entry would silently turn every constant-``1`` table into
+        a halt -- reporting ``0`` for every entry.
+
+        See ``docs/arrowqueue_generator.md`` (lemmas L2/L2'/L4).
+        """
+        from esolangs.interpreters.grid_based.arrowqueue import _Machine
+        from esolangs.tools.boolean.parameterized import _TREE_1
+        from esolangs.vm import run_until_halt_or_cycle
+
+        rdlu = (0, 1, 2, 3)
+
+        def verdict(state: tuple[int, int, int, tuple[int, ...]]) -> str:
+            machine = _Machine(list(_TREE_1))
+            machine.state = (*state, not machine.grid)
+            return "0" if run_until_halt_or_cycle(machine) else "1"
+
+        assert verdict((0, 0, 0, rdlu)) == "1"  # right-entry: the ring closes
+        assert verdict((0, 1, 1, rdlu)) == "0"  # down-entry: it does not
+
+    def test_constant_one_never_tops_out_as_a_bare_ring(self) -> None:
+        """The top-level tree always carries a drain, so down-entry is safe.
+
+        What makes the entry-sensitivity above harmless: a constant table
+        folds to ``_drained_leaf(v, n)`` with ``n >= 1`` (a one-entry table
+        is refused), so the top-level leaf's first ``+`` sits at ``(0, 1)``
+        -- exactly where the header's descent lands -- and the bare ring
+        appears only nested at column offset 3, where entry is rightward.
+        """
+        from esolangs.tools.boolean.parameterized import (
+            _TREE_1,
+            _drained_leaf,
+            _tree,
+        )
+
+        for n in range(1, 6):
+            assert _tree(list("1" * (2**n))) == _drained_leaf("1", n)
+
+        for n in (1, 2, 3):
+            for value in range(2 ** (2**n)):
+                table = format(value, f"0{2**n}b")
+                assert _tree(list(table)) != list(_TREE_1), table
+
 
 class TestParameterizedBfpda:
     """Input-by-substitution boolean generator for the no-input language BF-PDA."""
@@ -2147,6 +2196,50 @@ class TestParameterizedOneTwoThree:
                     else:  # pragma: no cover - a diverging row would reach here
                         pytest.fail(f"{code!r} neither halts nor revisits a state")
 
+    def test_batched_gate_agrees_with_the_interpreter(self) -> None:
+        """The construction's replay gate matches a per-command run.
+
+        ``_replay_verdict`` executes a maximal ``1``/``2`` run at a time in
+        closed form instead of one command at a time, which is what makes
+        the gate affordable on a six-input template (95s to 0.28s at five
+        inputs).  That batching is only safe if it decides exactly what the
+        real interpreter decides, so every row of every stored plan through
+        three inputs is checked both ways here -- against a per-command run
+        of :class:`_Machine`, not against the builder's own model, which
+        shares no code with either.
+
+        Divergence is the case worth pinning: a batched cycle detector that
+        sampled the wrong events could miss a loop and call it a halt.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.one_two_three import _Machine
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.one_two_three_construct import _replay_verdict
+
+        for n in (1, 2, 3):
+            for table_int in range(2 ** (2**n)):
+                table = format(table_int, f"0{2**n}b")
+                template = parameterized.one_two_three(table)
+                for combo in range(2**n):
+                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    code = self.instantiate(template, bits)
+                    machine = _Machine(code, ScriptedIO(""))
+                    seen = set()
+                    stepwise = "1"
+                    for _ in range(10_000):
+                        if machine.halted:
+                            stepwise = "0"
+                            break
+                        state = machine.snapshot()
+                        if state in seen:
+                            break
+                        seen.add(state)
+                        machine.step()
+                    assert _replay_verdict(code) == stepwise == table[combo], (
+                        table,
+                        bits,
+                    )
+
     def test_slots_run_in_name_order(self) -> None:
         """Every emitted template embeds {X0} before {X1}."""
         from esolangs.tools.boolean import parameterized
@@ -2250,6 +2343,63 @@ class TestParameterizedOneTwoThree:
             bits = [(combo >> (2 - i)) & 1 for i in range(3)]
             program = self.instantiate(template, bits)
             assert self.run(program) == "00111000"[combo], bits
+
+    def test_a_probed_geometry_resumes_when_the_other_stalls(self) -> None:
+        """A table only the probed geometry builds still builds.
+
+        ``construct`` gives the uniform layout a slice of the budget,
+        falls back to the staggered one, and only then resumes uniform
+        with the rest.  ``0100000011001001`` is the witness for that
+        last leg at four inputs: the staggered layout exhausts on it,
+        so the build can only come from uniform -- either inside its
+        probe or on the resume.  If the resume were ever dropped, or
+        the probe slice were treated as a hard cap, this would raise.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import construct
+
+        table = "0100000011001001"
+        # verify=False: construct()'s own replay is re-run row by row here.
+        template = construct(table, verify=False)
+        for combo in range(16):
+            bits = [(combo >> (3 - i)) & 1 for i in range(4)]
+            program = self.instantiate(template, bits)
+            assert self.run(program) == table[combo], bits
+
+    def test_the_probe_slice_bounds_a_stalling_first_geometry(self) -> None:
+        """A stalling first geometry is parked, not run to exhaustion.
+
+        ``1000110011010101`` is the measured worst case: the uniform
+        layout grinds a whole four-input budget on it and still fails,
+        while the staggered one solves it at once.  The probe is what
+        bounds that, and the bound is on *work* -- so shrink the budget
+        rather than build the real table, and watch the allowances the
+        attempts actually receive.  The sequence pins the whole policy:
+        a slice for the first geometry, then a full budget for the
+        second, then the first resuming with a full budget.  Running
+        this against the true budget would burn the 125M simulated
+        commands the probe exists to avoid paying.
+        """
+        from esolangs.tools.boolean import one_two_three_construct as mod
+
+        allowances: list[int] = []
+        original = mod._phase_a  # noqa: SLF001
+
+        def record(b: object, marks: list[int]) -> object:
+            allowances.append(mod._work[0])  # noqa: SLF001
+            return original(b, marks)  # type: ignore[arg-type]
+
+        small = 10_000  # far too little to build anything: every attempt stalls
+        mod._phase_a = record  # type: ignore[assignment]  # noqa: SLF001
+        budget, mod._WORK_BUDGET = mod._WORK_BUDGET, small  # noqa: SLF001
+        try:
+            with pytest.raises(ValueError, match="123 construction failed"):
+                mod.construct("1000110011010101", verify=False)
+        finally:
+            mod._phase_a = original  # type: ignore[assignment]  # noqa: SLF001
+            mod._WORK_BUDGET = budget  # noqa: SLF001
+
+        probe = small // mod._PROBE_FRACTION  # noqa: SLF001
+        assert allowances == [probe, small, small], allowances
 
     def test_an_exhausted_work_budget_is_declined(self) -> None:
         """A table that would build still raises once the work runs out.
@@ -3054,6 +3204,53 @@ class TestParameterizedOneTwoThree:
         ):
             row.pos, row.tape = pos, tape << _RING
         assert _try_kill(collided, (0, 0), 0, "0100") is None
+
+    def test_a_kill_whose_close_refuses_is_skipped_not_adopted(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A candidate the closing step rejects moves the sweep on.
+
+        ``_close`` refuses only when no cell in 100001 right steps is FALSE
+        for every live row, and the screens ahead of it -- the two fate
+        checks, ``_predict``, and ``test`` -- reject a candidate that
+        ill-behaved first, so nothing measured reaches the handler: 1246
+        kills across the 256 three-input builds never fired it.  Nothing
+        *proves* the closing cell exists, though, so the guard stays live
+        and is pinned here on its contract instead -- a refusal has to skip
+        the candidate and let the sweep keep searching, never escape as a
+        ``ConstructError`` out of ``_try_kill``.  The state is one that
+        really does reach the call; the patch only decides what it answers.
+        """
+        from esolangs.tools.boolean import one_two_three_construct as module
+        from esolangs.tools.boolean.one_two_three_construct import (
+            _RING,
+            _WORK_BUDGET,
+            ConstructError,
+            _Builder,
+            _try_kill,
+            _work,
+        )
+
+        _work[0] = _WORK_BUDGET
+        reaches_close = _Builder(1)
+        for row, (pos, tape) in zip(
+            reaches_close.rows,
+            ((13, 213345565110206), (3, 72877178957620)),
+            strict=True,
+        ):
+            row.pos, row.tape = pos, tape << _RING
+        reaches_close.seg = ["2"]
+
+        calls = 0
+
+        def refusing_close(_b: _Builder) -> None:
+            nonlocal calls
+            calls += 1
+            raise ConstructError("no closing cell")
+
+        monkeypatch.setattr(module, "_close", refusing_close)
+        assert _try_kill(reaches_close, (0,), 0, "11") is None
+        assert calls, "the constructed state never reached _close"
 
 
 def test_nocomment_wide_declines_when_the_plan_outgrows_the_skip() -> None:

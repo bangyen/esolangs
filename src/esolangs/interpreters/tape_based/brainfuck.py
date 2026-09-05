@@ -198,6 +198,15 @@ class _Machine:
     def ind(self) -> int:
         return self.state[0]
 
+    def input_position(self) -> int:
+        """Report the input cursor for the growth detector.
+
+        ``snapshot`` folds the same number into its tuple; the growth
+        certificate needs it on its own, because it compares the cursor
+        across two visits rather than hashing a whole state.
+        """
+        return self.io.position()
+
     @property
     def halted(self) -> bool:
         return self.state[0] >= self.size

@@ -1555,6 +1555,32 @@ class TestWeaveInternals:
         # A ring of turns leaves the grid the same way rather than cycling.
         assert _weave_slots([list(row) for row in ("RR", "RR")]) is None
 
+    def test_the_weave_walk_runs_on_the_public_vm(self) -> None:
+        """The generator drives Clockwise through ``make_vm``, not ``_Machine``.
+
+        It reached past the interface before the VM exposed a position to
+        read, and the package's own generator bypassing its own
+        step-and-inspect surface is exactly the drift worth pinning: the
+        walk is the VM's, so a change to ``vm.ip``'s shape has to show up
+        here rather than silently in generated grids.
+        """
+        import esolangs.vm
+        from esolangs.tools.text.other import _weave_slots, _weave_template
+
+        calls: list[str] = []
+        real = esolangs.vm.make_vm
+
+        def spy(language: str, program: str, stdin: str = "") -> esolangs.vm.VM:
+            calls.append(language)
+            return real(language, program, stdin)
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(esolangs.vm, "make_vm", spy)
+            slots = _weave_slots(_weave_template(1, 2))
+
+        assert calls == ["Clockwise"]
+        assert slots  # the walk still found single-visit cells
+
     def test_weave_refuses_a_width_below_the_floor(self) -> None:
         """Under the floor there is no weave to build; the caller clamps."""
         from esolangs.tools.text.other import _clockwise_weave

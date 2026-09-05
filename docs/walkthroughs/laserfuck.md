@@ -42,8 +42,5 @@ The tape starts `[0]` and the laser starts at the `o`.  Under the funnel
 
 ## Why it terminates
 
-The laser's path is finite — it travels the funnel to the program row, is
-turned down by the `v`, and runs off the bottom edge of the grid without
-ever reaching the `\` (one column to its right). Leaving the grid deletes
-the laser, and when no lasers remain the interpreter prints the tape (byte
-65, `'A'`) and halts.
+The laser's path is finite: it runs off the grid edge, and the interpreter
+halts once no lasers remain.

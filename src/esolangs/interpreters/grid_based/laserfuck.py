@@ -21,6 +21,7 @@ Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import sys
+from typing import cast
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
@@ -39,6 +40,21 @@ from esolangs.interpreters.randomness import Randomness, draw
 type _Beams = tuple[tuple[int, int, int], ...]
 type _Tape = tuple[tuple[int, int], ...]
 type _State = tuple[_Tape, int, _Beams, int, bool, tuple[int, int, int]]
+
+#: One instant as the all-outcomes search sees it: ``_State`` without the
+#: reported position, and with ``None`` beams standing for a laser whose
+#: heading has not been drawn yet.
+type _BranchState = tuple[_Tape, int, _Beams | None, int, bool]
+
+#: The position handed to a transition during a branching search.  Every
+#: caller strips the result's copy, so the value only has to be constant.
+_NO_POS = (0, 0, 0)
+
+
+def _strip_pos(state: _State) -> _BranchState:
+    """Drop the reported position from a transition's result."""
+    tape, ptr, lsrs, ind, jmp, _pos = state
+    return (tape, ptr, lsrs, ind, jmp)
 
 
 def _write(tape: _Tape, ptr: int, value: int, touched: int) -> _Tape:
@@ -133,6 +149,18 @@ def _advance(
 class _Machine:
     """A LaserFuck run: the grid, the live lasers, and the tape."""
 
+    #: Whether the tape is written on the step *after* the halt.  It
+    #: belongs to the language, not to whoever is stepping it: ``run`` ends
+    #: its loop with one more ``step()``, so a caller who stops at
+    #: ``halted`` has driven the program correctly and still holds none of
+    #: its output.
+    #:
+    #: The dump lives on the machine rather than in ``run`` because the VM
+    #: adapter used to replicate it and drifted: its copy fired on ``not
+    #: lsrs`` where ``run`` fires on ``halted``, so a program stopped by a
+    #: second start marker printed under one and not the other.
+    dumps_on_the_post_halt_step = True
+
     #: The seed a reproducible run starts from.  It belongs to the
     #: language, not to whoever is stepping it: 2 draws the initial
     #: heading 0, up, which is the direction this language's examples
@@ -171,6 +199,9 @@ class _Machine:
         self.pos = (0, 0, 0)
         self._second_start = False
         self._dumped = False
+        #: Where the ``o`` marker sits, kept so a branching search can place
+        #: the beam itself under each of the four headings.
+        self.start = (0, 0)
 
         self.lsrs: list[list[int]] = []
         for row, line in enumerate(self.text):
@@ -182,6 +213,7 @@ class _Machine:
                     # The random heading is part of LaserFuck's spec, not a
                     # secret.
                     d = draw(rng, 4)
+                    self.start = (row, col)
                     self.lsrs.append([row, col, d])
                     self.pos = (row, col, d)
 
@@ -217,6 +249,95 @@ class _Machine:
             self.ind,
             tuple(tuple(laser) for laser in self.lsrs),
             self.io.position(),
+        )
+
+    # The all-random-outcomes search.  Its state deliberately drops ``pos``
+    # and the input cursor that ``snapshot`` carries: ``pos`` is what the VM
+    # reports for a step and no transition ever reads it, so keeping it would
+    # split behaviourally identical states, and input is declined below.
+
+    def branching_snapshot(self) -> _BranchState:
+        """Return the pre-heading start state for a branching search.
+
+        The initial heading is a draw like any other, so it belongs to the
+        search rather than to the machine that starts it: a verdict of "every
+        sequence of draws runs forever" has to quantify over all four
+        headings, and a live machine has already committed to one.  ``None``
+        marks the beam as unplaced, and :meth:`branching_successors` opens it
+        into the four headings ``__init__`` chooses between.
+
+        A grid that never placed a laser -- no ``o``, or the second ``o``
+        that stops a run at construction -- has no heading to quantify over,
+        so it reports its own empty beams instead and the ordinary
+        emptiness test halts it.  Handing those the sentinel would invent a
+        beam at the grid's origin and search a run the language never has.
+        """
+        unplaced = None if self.lsrs else ()
+        return (self.tape, self.ptr, unplaced, self.ind, self.jmp)
+
+    def branching_halted(self, state: object) -> bool:
+        """Report whether ``state`` has no live beam left.
+
+        The unplaced start state is never halted: :meth:`branching_snapshot`
+        only spells a beam ``None`` when there is one to place, so an
+        unplaced state always has a whole run ahead of it.  A grid with no
+        laser reports empty beams instead, which this halts on directly.
+        """
+        lsrs = cast(_BranchState, state)[2]
+        return lsrs is not None and not lsrs
+
+    def branching_successors(
+        self, state: object, _limit: int
+    ) -> tuple[_BranchState, ...] | None:
+        """Return the state for every draw this state could make.
+
+        Mirrors :meth:`step` rather than :func:`_advance` alone, because the
+        move, the off-grid death and the ``#`` skip all live in the step: a
+        successor calling the transition directly would execute the cell the
+        beam is leaving instead of the one it arrives at.
+
+        Fanout is two at a ``*`` and four at the unplaced start, so ``limit``
+        needs no consulting here -- the caller's cap on distinct states is
+        what bounds the search.  ``,`` returns ``None``: forking it would need
+        an independent input cursor per branch, so the caller reports an
+        undecided result rather than sharing one branch's input with another.
+        """
+        tape, ptr, lsrs, ind, jmp = cast(_BranchState, state)
+        if lsrs is None:
+            return tuple(
+                (tape, ptr, ((self.start[0], self.start[1], d),), ind, jmp)
+                for d in range(4)
+            )
+
+        row, col, d = lsrs[ind]
+        row, col = _move(row, col, d, self.rows)
+
+        if jmp:
+            moved = (*lsrs[:ind], (row, col, d), *lsrs[ind + 1 :])
+            return ((tape, ptr, moved, (ind + 1) % len(moved), False),)
+
+        op = (
+            self.text[row][col]
+            if 0 <= row < self.rows and 0 <= col < len(self.text[0])
+            else "x"
+        )
+        if op == ",":
+            return None
+
+        splits = (0, 1) if op == "*" else (0,)
+        return tuple(
+            _strip_pos(
+                _advance(
+                    (tape, ptr, lsrs, ind, jmp, _NO_POS),
+                    op,
+                    row,
+                    col,
+                    d,
+                    None,
+                    split,
+                )
+            )
+            for split in splits
         )
 
     @property

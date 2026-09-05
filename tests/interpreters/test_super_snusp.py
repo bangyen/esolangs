@@ -5,7 +5,7 @@ from itertools import product
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.grid_based.super_snusp import _advance, run
+from esolangs.interpreters.grid_based.super_snusp import _advance, _floor_root, run
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.randomness import FirstDraw
 from esolangs.tools.boolean.super_snusp import super_snusp
@@ -120,6 +120,47 @@ def test_generator_reduces_unused_inputs_but_reads_them() -> None:
 def test_generator_rejects_invalid_table() -> None:
     with pytest.raises(ValueError, match="power-of-two"):
         super_snusp("011")
+
+
+@pytest.mark.parametrize(
+    ("value", "degree", "expected"),
+    [
+        # Zero, which the negative branch's ``<`` must not claim.
+        (0, 2, 0),
+        (0, 3, 0),
+        # Degree 1, the smallest the rejection admits: the root is the value.
+        (1, 1, 1),
+        (7, 1, 7),
+        # Exact powers, where the search's ``<=`` decides whether the answer
+        # is the root itself or one below it.
+        (8, 3, 2),
+        (9, 2, 3),
+        (10, 2, 3),  # and an inexact one, for contrast
+        # Negatives with an odd degree, exact and not.
+        (-8, 3, -2),
+        (-7, 3, -2),
+    ],
+)
+def test_the_integer_root_at_its_boundaries(
+    value: int, degree: int, expected: int
+) -> None:
+    """``ROOT``'s guards turn on values the wiki's programs never reach.
+
+    The opcode is exercised only through whole programs -- a square root
+    of 4225 and an odd root of a negative -- so zero, a degree of one, and
+    the difference between an exact power and the value just above it were
+    never asked for.
+    """
+    assert _floor_root(value, degree) == expected
+
+
+@pytest.mark.parametrize(("value", "degree"), [(5, 0), (-9, 2), (-1, 4)])
+def test_the_integer_root_refuses_what_it_cannot_answer(
+    value: int, degree: int
+) -> None:
+    """A non-positive degree, and an even root of a negative value."""
+    with pytest.raises(HaltError):
+        _floor_root(value, degree)
 
 
 @pytest.mark.parametrize(

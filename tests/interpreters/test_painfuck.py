@@ -179,6 +179,29 @@ class TestPainfuck:
         assert run_program("pyu", coin=1) == ""
         assert run_program("pyu", coin=0) == "\x02"
 
+    def test_repeated_skip_decides_each_repeat_separately(self) -> None:
+        """A repeated ``y`` flips once per repeat, not once for the run.
+
+        ``y`` binds forward to the next command like ``c`` and ``v``, so
+        ``cyp`` repeats ``p`` seven times with each application gated by
+        its own coin: all tails runs every one (14, the same as the ``cp``
+        that has no ``y`` at all), all heads drops every one (0), and a
+        real coin spreads over ``{0, 2, ..., 14}``.
+
+        The pinned ends are what separate this from the two readings the
+        docstring rejects.  Deciding once for the whole run would cap all
+        tails at 2, since a single non-skip runs ``p`` once; rebinding
+        without gating -- the retired cross-check's shape -- ran the bound
+        command for the repeats left after the first heads, so all heads
+        gave 12 rather than 0.
+        """
+        assert run_program("cypoe", coin=0) == "14"  # every repeat survives
+        assert run_program("cypoe", coin=1) == "0"  # every repeat dropped
+        assert run_program("cpoe", coin=0) == "14"  # a y-free run matches
+        # Unrepeated, every reading agrees: this is the case the wiki states.
+        assert run_program("ypoe", coin=0) == "2"
+        assert run_program("ypoe", coin=1) == "0"
+
     def test_error(self) -> None:
         with pytest.raises(HaltError):
             run_program("b")  # loop close with an empty stack
@@ -289,6 +312,196 @@ class TestStepMachine:
         # cell 0 is zero, so the outer 'a' skips forward; the inner 'a...b'
         # pair must be consumed as a unit, leaving 'u' to print cell 0.
         assert run_program("aabbue") == "\x00"
+
+
+class TestRepeatCollapsing:
+    """The closed forms `_advance` uses instead of looping `rep` times.
+
+    ``c`` multiplies the repeat count by 7 and ``t`` by 3, so a step can ask
+    for millions of iterations of one command; the affine ones are computed
+    directly instead.  Each has to agree with the loop it replaces, which is
+    what these assert -- against explicit iteration rather than against a
+    second interpreter, since ``y`` makes a two-machine differential
+    nondeterministic and unable to prove anything.
+    """
+
+    @staticmethod
+    def _iterate(op: str, tape: tuple[int, ...], ptr: int, rep: int) -> tuple:
+        """Apply ``op`` ``rep`` times, one step at a time."""
+        from esolangs.interpreters.tape_based.painfuck import _set, _trunc2
+
+        for _ in range(rep):
+            if op == "p":
+                tape = _set(tape, ptr, tape[ptr] + 2)
+            elif op == "s":
+                tape = _set(tape, ptr, tape[ptr] - 1)
+            elif op == "r":
+                ptr += 2
+                if ptr >= len(tape):
+                    tape = (*tape, *([0] * (ptr + 1 - len(tape))))
+            elif op == "l":
+                ptr = ptr - 1 if ptr else ptr
+            elif op == "z":
+                tape = _set(tape, ptr, 0)
+            elif op == "w":
+                tape = _set(tape, ptr, tape[ptr + 1] if ptr + 1 < len(tape) else 0)
+            elif op == "q":
+                tape = _set(tape, ptr, tape[ptr - 1]) if ptr else tape
+            elif op == "d":
+                ptr = 0
+            elif op == "h":
+                tape = _set(tape, ptr, _trunc2(tape[ptr]))
+            elif op == "k":
+                tape = _set(tape, ptr, tape[ptr] * tape[ptr])
+        return tape, ptr
+
+    @pytest.mark.parametrize("op", "psrlzwqdhk")
+    @pytest.mark.parametrize("rep", [1, 2, 3, 5, 13, 40])
+    # ``[2]`` is the cell just above the squaring fast path's bound.  The
+    # bound is ``-1 <= x <= 1``, and every other value here is either well
+    # inside it or well outside: widening it by one admits exactly 2 and
+    # nothing else (-2 still fails the *lower* bound, so ``[-2, 6]`` cannot
+    # see it), which collapses 2 to 4 where repeating squares it to 16.
+    @pytest.mark.parametrize("cells", [[0], [5], [-7], [1], [-1], [2], [3, 9], [-2, 6]])
+    def test_a_collapsed_op_equals_repeating_it(
+        self, op: str, rep: int, cells: list[int]
+    ) -> None:
+        from esolangs.interpreters.tape_based.painfuck import _advance
+
+        for ptr in range(len(cells)):
+            tape = tuple(cells)
+            if op == "k" and abs(tape[ptr]) > 1 and rep > 5:
+                continue  # squaring explodes by design; nothing to collapse
+            state = (tape, (), ptr, 0, rep)
+            (got_tape, _loop, got_ptr, _ind, _r), _fx = _advance(state, op, 1, (), ())
+            assert (got_tape, got_ptr) == self._iterate(op, tape, ptr, rep), (
+                f"{op!r} at ptr={ptr} rep={rep}"
+            )
+
+    def test_a_repeated_loop_command_decides_once(self) -> None:
+        """``a``/``b`` are jumps, so repeating one changes nothing.
+
+        The wiki defines them as "go to the matching b if the value is zero"
+        and "go back to the matching a if it is not" -- decisions, not
+        accumulations, and nothing between two iterations of a repeat
+        changes the cell they read.  The loop stack is how this interpreter
+        finds the matching bracket, not part of the language, so a repeated
+        ``a`` must not push once per iteration and leave a loop that needs
+        as many ``b``s to close.
+        """
+        from esolangs.interpreters.tape_based.painfuck import _advance
+
+        entered = None
+        for rep in (1, 2, 7, 1000):
+            state = ((5,), (), 0, 0, rep)  # nonzero cell: the loop is entered
+            (_tape, loop, _ptr, ind, _r), _fx = _advance(state, "ab", 2, (), ())
+            assert len(loop) == 1, f"rep={rep} pushed {len(loop)} entries"
+            entered = (loop, ind) if entered is None else entered
+            assert (loop, ind) == entered, f"rep={rep} differed from rep=1"
+
+        popped = None
+        for rep in (1, 2, 7, 1000):
+            state = ((5,), (7, 8, 9), 0, 3, rep)
+            (_tape, loop, _ptr, ind, _r), _fx = _advance(state, "aaab", 4, (), ())
+            popped = (loop, ind) if popped is None else popped
+            assert (loop, ind) == popped, f"b at rep={rep} differed from rep=1"
+
+    @pytest.mark.parametrize(
+        ("prog", "runs"),
+        [
+            ("cp", 7),
+            ("ccp", 49),
+            ("cccp", 343),
+            # A t run after a c run repeats the *c*, which already applied
+            # once, so it adds 3**len more applications of it.
+            ("ctp", 7**4),
+            ("cctp", 49**4),
+            ("ctttp", 7 ** (1 + 27)),
+            ("ccttp", 49 ** (1 + 9)),
+        ],
+    )
+    def test_a_c_run_absorbs_the_t_run_after_it(self, prog: str, runs: int) -> None:
+        """A ``t`` run after a ``c`` run repeats *the ``c``*.
+
+        ``t`` repeats the command before it, and before a ``t`` that follows
+        a ``c`` run is that ``c``.  The ``c`` has already applied once, so
+        the run adds ``3 ** len`` more applications of it rather than
+        replacing them -- ``ct`` is four ``c``s, ``7 ** 4``, not the three
+        that counting the one already spent would give.
+
+        Both runs are read at dispatch.  Letting the ``t`` execute on its
+        own instead meant handing a count backward to a command already
+        gone, and no such handoff makes ``pt`` and ``ct`` both right.
+        """
+        from esolangs.interpreters.tape_based.painfuck import _advance
+
+        state = ((0,), (), 0, 0, 1)
+        (tape, _loop, _ptr, _ind, _r), _fx = _advance(state, prog, len(prog), (), ())
+        assert tape[0] == 2 * runs, f"{prog!r} ran p {tape[0] // 2}x, wanted {runs}"
+
+    @pytest.mark.parametrize(
+        ("prog", "runs"),
+        [("pt", 1 + 3), ("ptt", 1 + 9), ("pttt", 1 + 27)],
+    )
+    def test_a_t_run_repeats_three_to_its_length_times(
+        self, prog: str, runs: int
+    ) -> None:
+        """``t...`` is one count of ``3 ** len``, as ``c...`` is of ``7 **``.
+
+        The cursor has to clear the whole run: leaving it inside made each
+        later ``t`` a step of its own that walked back over the ones before
+        it, so ``ptt`` ran its ``p`` three *then* nine times -- the
+        geometric sum 1+3+9 rather than 1+9.  The text generator solved for
+        that sum, and so only produced correct programs against it.
+        """
+        from esolangs.interpreters.tape_based.painfuck import _advance
+
+        tape: tuple[int, ...] = (0,)
+        loop: tuple[int, ...] = ()
+        ptr = ind = 0
+        while ind < len(prog):
+            state = (tape, loop, ptr, ind, 1)
+            (tape, loop, ptr, ind, _r), _fx = _advance(state, prog, len(prog), (), ())
+        assert tape[0] == 2 * runs, f"{prog!r} ran p {tape[0] // 2}x, wanted {runs}"
+
+    @pytest.mark.parametrize(
+        ("prog", "trace"),
+        [("pt", [2, 8]), ("ptt", [2, 20]), ("pst", [2, 1, -2])],
+    )
+    def test_a_bare_t_still_repeats_the_previous_command(
+        self, prog: str, trace: list[int]
+    ) -> None:
+        """The forward read is only for a ``t`` reached from a ``c`` run.
+
+        A ``t`` with an ordinary command behind it keeps walking backward,
+        which is the operator's whole meaning; ``pt`` is ``p`` then three
+        more ``p``.
+        """
+        from esolangs.interpreters.tape_based.painfuck import _advance
+
+        tape: tuple[int, ...] = (0,)
+        loop: tuple[int, ...] = ()
+        ptr = ind = 0
+        seen = []
+        while ind < len(prog):
+            state = (tape, loop, ptr, ind, 1)
+            (tape, loop, ptr, ind, _r), _fx = _advance(state, prog, len(prog), (), ())
+            seen.append(tape[0])
+        assert seen == trace
+
+    def test_halving_truncates_toward_zero_not_down(self) -> None:
+        """The one collapse a plain ``//`` would get wrong.
+
+        ``_trunc2`` truncates toward zero, so ``-7`` halved twice is ``-1``;
+        flooring would give ``-2``.  The shift has to match the loop for
+        every negative that does not divide exactly.
+        """
+        from esolangs.interpreters.tape_based.painfuck import _advance
+
+        state = ((-7,), (), 0, 0, 2)
+        (tape, _loop, _ptr, _ind, _r), _fx = _advance(state, "h", 1, (), ())
+        assert tape == (-1,), "halving a negative must truncate toward zero"
+        assert -7 // 4 == -2, "the flooring answer this must not produce"
 
 
 def _machine(code: object) -> object:
