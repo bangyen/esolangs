@@ -127,7 +127,7 @@ share the prefix too — dropping the test would misclassify them.  The sibling
 idea (pre-negating stored input bits to halve `not_bit`) remains open but is
 marginal.
 
-## 123 (parameterized; every stage of the wider-arity pipeline is now planned)
+## 123 (parameterized; every stage of the pipeline is planned, at every arity)
 
 All four one-input and all sixteen two-input tables build
 (`esolangs.tools.boolean.one_two_three`).
@@ -148,8 +148,24 @@ popcount alone, XNOR at `k == 2` and XOR at `k == 4`.  Asymmetric tables use
 count input-dependent — the one non-affine operator in the language.
 
 Every looping row is a proven state revisit (`run_until_halt_or_cycle`
-catches it), never unbounded growth, and every plan emits its slots in name
-order with each `{Xi}` once.
+catches it), never unbounded growth, and every template emits its slots in
+name order with each `{Xi}` once.
+
+**The stored plans are retired.**  Arities up to three used to ship from
+frozen plan tables built on the counter mechanism above; 102 of the 256
+three-input entries were search-found witnesses with no canonical form,
+because no rule reaches the short shapes — the `3` mechanism's pass counts
+depend on the *order* of the fills, not their sum.  Every arity now goes
+through the planned construction below.  The small arities the suite
+sweeps exhaustively use a tight measured geometry (linear mark spacing,
+fixed even escape offsets) plus two free per-table coordinates — which
+input's embed walks to which mark, and each mark's sense, since the scrub
+can re-flip `[0, P]` instead of `[0, P+1]` at equal cost — chosen by an
+exact argmin over the verdict's emission length (separation's position map
+is table-independent, so the cost is computed, not estimated).  The trade
+is length for derivability: mean template 435 characters at three inputs
+against the retired plans' 12, with nothing frozen and every byte
+re-derivable.
 
 ### Wider arities: every stage planned, none searched
 
