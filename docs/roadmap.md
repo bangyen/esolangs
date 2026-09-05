@@ -159,23 +159,23 @@ needs it.**
 ## Hanging-test optimization via state-cycle detection
 
 See `docs/limitations.md` for what `esolangs.vm.run_until_halt_or_cycle`
-already covers.  Randomness is no longer an automatic exclusion: Painfuck's
-`y`, WII2D's `?` and LaserFuck's random heading each implement the branching
-protocol, so `run_until_halt_or_all_branches_cycle` decides them by searching
-every draw instead of one sampled run.
+already covers.  **Randomness no longer costs a language its hang proof.**
+All six random-drawing interpreters — Painfuck's `y`, WII2D's `?`,
+LaserFuck's heading, Super SNUSP's `=`, Modulous's `RND` and COD's junction
+— implement the branching protocol, so `run_until_halt_or_all_branches_cycle`
+decides them by searching every draw instead of one sampled run.
+`tests/test_vm.py` derives that set from the registry and asserts the whole
+of it conforms, so a new random language fails until it is decided too.
 
-**Three of the six random-drawing interpreters are left.**  COD, Modulous
-and Super SNUSP take their chance through the same `rng` parameter but have
-no branching search, so a program that reaches their random command still
-waits out the wall-clock backstop.  Each is the same size of job LaserFuck's
-was: a pure transition the outcomes can be forked over, plus whatever its
-own draw shape needs.  `tests/test_vm.py` derives the random set from the
-registry and names these three, so the list cannot go stale and a new random
-language fails until it is decided either way.
+What remains is the class no snapshot can catch: an unbounded-growth loop
+never revisits a state, so it stays on the wall-clock backstop whatever else
+is built.  That is a property of cycle detection rather than an open
+question, and two undecided results sit beside it by design — a reachable
+input command, which cannot be forked without sibling branches sharing one
+cursor, and a transition whose fanout exceeds its language's per-transition
+cap.  Both raise rather than guessing.
 
-Not on that list: the class no snapshot can catch — an unbounded-growth loop
-never revisits a state, so it stays on the backstop whatever else is built.
-That is a property of cycle detection rather than an open question.
+**This section is closed.**  Nothing here is scheduled work.
 
 ## Input reordering (remainder)
 

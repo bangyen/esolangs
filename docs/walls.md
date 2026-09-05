@@ -814,8 +814,8 @@ snapshot (the machine's internal fields, including the input-cursor position
 determinism; and a `step()`/`halted` state object, since a whole-program
 `run()` exposes no internal state to hash.
 
-**Randomness is not an automatic exclusion.**  LaserFuck's random heading,
-WII2D's `?` and Painfuck's `y` each implement a branching protocol
+**Randomness is not an exclusion at all.**  All six random-drawing
+interpreters implement a branching protocol
 (`branching_snapshot`/`branching_halted`/`branching_successors`),
 and `run_until_halt_or_all_branches_cycle` searches the whole reachable
 graph: `True` once *some* sequence of draws halts, `False` only after the
@@ -827,24 +827,35 @@ rather than Brent's O(1) pair, because branches merge after differing draws.
 Two things stay undecided rather than being guessed at, both raising
 `TimeoutError`: a graph that outgrows the caller's state cap, and a
 transition that cannot be forked.  Input is the second case — sibling
-branches would have to share one input cursor — so a reachable `,`/read
+branches would have to share one input cursor — so a reachable read
 declines instead of letting one branch consume another's bytes.
 
-LaserFuck's initial heading is drawn in the constructor rather than at a
-step, so its search starts from a state whose beam is *unplaced* and opens
-that into the four headings.  Starting from a live machine would silently
-quantify over one heading the constructor already picked, which is the
-wrong verdict: a program that loops under the heading drawn but escapes
-under another is not a universal hang.
+**Two draws happen before the first step, and both need a sentinel.**
+LaserFuck's initial heading and COD's launch direction are drawn in the
+constructor, so those searches start from a state whose pointer is
+*unplaced* and open it into every direction the constructor chose between.
+Starting from a live machine would silently quantify over the one it already
+picked, which is the wrong verdict: a program that loops under the heading
+drawn but escapes under another is not a universal hang.  A start with only
+one way out is no choice to quantify over, and gets no sentinel.
 
-**Three of the six random interpreters have no branching search yet.**  COD,
-Modulous and Super SNUSP take their chance through the same `rng` parameter
-and stay on the wall-clock backstop when a program reaches it.  Nothing
-about them is known to resist the construction — none has been attempted.
+**A draw whose width the program picks needs a per-transition cap.**  A coin
+or a heading fans out by a constant, but Super SNUSP's `=` spans the values
+between the current cell and the stack top, Modulous's `RND n` takes `n`
+from the token, and a COD tick draws once per blocked cod — so its outcomes
+are the *product* over a school that `+` can grow faster than the pond kills
+it (37 live cods within 50 states on a three-row grid).  Each caps its own
+fanout and raises past it.
+
+That cap is deliberately **not** the caller's remaining budget.  The search
+passes `limit - len(seen)`, which shrinks as it proceeds, so guarding on it
+made an ordinary two-outcome `RND 2` raise "undecided after 1 outcomes"
+purely because it was reached late.  Whether a program is decidable has to
+be a property of the program, not of when a search happened to arrive.
+
 `tests/test_vm.py` derives the random set from `_Machine.__init__`'s
-signature and names these three explicitly, asserting in both directions, so
-a language that gains the protocol must leave the list and a new random
-language fails the test until it is decided either way.
+signature and asserts every member conforms, so a new random language fails
+until it is decided too.
 
 Detection uses Brent's two-pointer algorithm rather than a hash set of every
 visited state: one stored "tortoise" snapshot is compared against the live
