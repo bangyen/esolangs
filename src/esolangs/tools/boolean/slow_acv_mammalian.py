@@ -57,6 +57,7 @@ the interface and every table has to consume all ``n`` inputs.
 
 import functools
 import itertools
+from collections.abc import Sequence
 
 from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
 
@@ -104,7 +105,7 @@ _TOKENS_PER_LEAF = 1024
 _LEAF_TAIL = 4
 
 
-def _seeded(array: list[int], count: int) -> list[int]:
+def _seeded(array: Sequence[int], count: int) -> list[int]:
     """``array`` after ``count`` ``SEED``s, which only move the head."""
     out = list(array)
     out[0] = (out[0] + count) % 256
@@ -148,6 +149,25 @@ _Node = tuple[list[str], tuple[list[int], int], tuple[list[int], int], int]
 
 def _candidates(array: list[int], acc: int) -> list[_Node]:
     """Every read node this state admits, with where each one's jump lands.
+
+    Memoised over hashable arguments by :func:`_candidates_cached`, the same
+    shape :func:`_zero_arm_length_cached` uses.
+    """
+    return _candidates_cached(tuple(array), acc)
+
+
+@functools.cache
+def _candidates_cached(array: tuple[int, ...], acc: int) -> list[_Node]:
+    """:func:`_candidates` over hashable arguments, memoised.
+
+    The stash loop asks the same question over and over: at ``n == 3`` its
+    4615 calls carry only 90 distinct ``(array, acc)`` pairs, and the sweep
+    below is 62% of a build.  Memoising takes ``n == 4`` from 118.7s to
+    17.5s, emitting byte-identical programs.  Returning one shared list per
+    state is safe because every caller only reads it -- ``_place*`` index and
+    measure it, ``_emit`` splats its tokens into a fresh list, and
+    ``_stash_chunk`` and ``_shed`` copy the state arrays rather than mutating
+    them.
 
     One entry per ``j1``: the tokens, the state the 0-branch falls through
     with, the state the 1-branch jumps with, and the index the jump resumes

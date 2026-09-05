@@ -1,7 +1,7 @@
 """Boolean-function generators for stack-based languages."""
 
 from functools import cache
-from itertools import permutations, product
+from itertools import product
 
 from esolangs.tools.boolean.helpers import (
     _ASCII_ONE,
@@ -185,12 +185,19 @@ def forth(truth_table: str) -> str:
     # exactly what it emitted before.
     natural = tuple(reversed(range(n)))
     best = _forth_ordered(permute_truth_table(truth_table, natural), natural)
-    for perm in permutations(range(n)):
+    # Iterate the *reachable* arrangements rather than all ``n!`` orders.
+    # ``_forth_ordered`` returns ``""`` for an order whose arrangement the
+    # ops cannot build, and the arrangements it accepts are exactly the keys
+    # of ``_forth_stack_programs`` -- checked equal at every arity through
+    # ``n == 6`` -- so this drops only the orders that lost on length 0
+    # anyway.  There are ``2 * 3**(n - 2)`` of them against ``n!``: the same
+    # program for 28x fewer builds at ``n == 8``, 10x at ``n == 7``, and a
+    # wash below that.  An arrangement is the input order reversed.
+    for arrangement in _forth_stack_programs(n):
+        perm = tuple(reversed(arrangement))
         if perm == natural:
             continue
         candidate = _forth_ordered(permute_truth_table(truth_table, perm), perm)
-        # An empty candidate means the stack cannot be rearranged into this
-        # order, so it is skipped rather than winning on length 0.
         if candidate and (not best or len(candidate) < len(best)):
             best = candidate
     return best

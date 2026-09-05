@@ -391,47 +391,40 @@ directions of every movement, a zero and a maximum operand, an empty
 container and one of length three, a loop of more than one pass, each error
 path, and every optional token both present and absent.
 
-## Generator build cost (measured, not previously catalogued)
+## Generator build cost
 
 A build-frontier sweep over all 64 registry languages — one random table per
-arity, an 8s build budget, **build only: the generated programs were not
-executed** — puts 54 generators past `n == 9` and stops ten below it.  Five
+arity, an 8s build budget, **build only: the generated programs are not
+executed** — put 54 generators past `n == 9` and stopped ten below it.  Five
 stop by *raising a declared cap* (6-5, Factor, Polynomial, WII2D, ZTOALC L),
 each already in the `docs/limitations.md` ledger and structural rather than
-scheduled.  The other five stop by *running out of time*, and two of those
-are recomputation rather than irreducible work.  Re-derive the sweep rather
-than trusting a table here; the figures below are what it found.
+scheduled.  The other five stop by *running out of time*.  Two of those five
+were recomputation and are now fixed (see the commit history for the
+figures); re-derive the sweep rather than trusting a table here.
 
-- **SLOW ACV MAMMALIAN's search recomputes (6.8x measured, unshipped)** — the
-  lowest build frontier in the repo: `n == 3` builds in 1.5s, `n == 4` in
-  **118.7s**, roughly 30x per input while the program itself grows only 2.2x.
-  It is search cost, not size.  `_candidates` is 62% of the build across
-  338,671 calls, and it is a *pure* function of `(array, acc)` asked the same
-  question over and over — at `n == 3`, 4,615 calls carry only **90 distinct
-  argument pairs** (51x redundancy).  Memoizing it on a tuple key cuts
-  `n == 4` from 118.7s to **17.5s** and leaves the emitted program
-  **byte-identical** (verified on 14 tables plus the `n == 4` build).  The
-  module already caches `_zero_arm_length_cached` exactly this way, so the
-  shape has precedent in its own file.  **The open question is whether the
-  cache alone reaches `n == 4` inside a test budget and `n == 5` at all, or
-  whether `_candidates`' per-node `range(256)` sweep needs restructuring** —
-  a 6.8x on a 30x-per-input curve buys well under one input.  Same status as
-  ArrowQueue's reusable drain below: verified, unshipped, worth it only if
-  deeper tables start mattering.
-- **Forþ searches `n!` orders when only `2 * 3**(n-2)` are reachable** — its
-  order loop iterates every permutation and calls `_forth_ordered` on each,
-  which validates the table and *then* discovers the arrangement is
-  unreachable and returns `""`.  The reachable count is the one
-  `_forth_stack_programs` already enumerates, so the filter runs after the
-  cost instead of before it: **28x wasted builds at `n == 8`** (40,320
-  iterated, 1,458 reachable), 10x at `n == 7`, and the waste grows with
-  arity.  Its sibling `unsquare` iterates the *reachable set* directly and is
-  additionally capped by `_ORDER_SEARCH_MAX`; `forth` has no cap at all.
-  Two candidate fixes with different reach — iterate the reachable
-  arrangements as `unsquare` does, or hoist the reachability check above the
-  validation — and neither changes which program wins, since the losers are
-  exactly the orders that return `""` today.  Confirm that before shipping:
-  the reorder rules in `docs/generator-optimizations.md` apply.
+What the two fixes did **not** buy is the interesting part:
+
+- **SLOW ACV MAMMALIAN still has the lowest frontier in the repo.**
+  Memoizing `_candidates` took `n == 4` from 118.7s to 17.5s, but `n == 5`
+  is still past 60s — a 6.8x against a ~30x-per-input curve buys well under
+  one input, which is the general shape of a cache applied to an exponential
+  search.  **The open question is whether `_candidates`' per-node
+  `range(256)` sweep can be narrowed analytically**, since only its extremes
+  (`candidates[0]` and `candidates[-1]`) drive `_placement_gap` and
+  placement takes the first candidate that clears its arm.  If the admissible
+  `j1` range has a closed form, the sweep is a constant-factor loop rather
+  than the frontier.  Worth it only if deeper ACV tables start mattering.
+- **The reachable-set lesson generalizes, and has not been swept for.**
+  `forth` iterated all `n!` input orders when only `2 * 3**(n-2)` are
+  buildable, filtering *after* paying for each — `unsquare`, its sibling in
+  the same module, had always iterated the reachable set instead.  One
+  generator's optimization was simply absent from the other.  **No pass has
+  checked the remaining reorder-searching generators for the same shape**:
+  the question for each is whether its candidate orders are filtered before
+  or after the per-order build, which is cheap to answer per generator and
+  independent of the reorder-screen thresholds in
+  `docs/generator-optimizations.md` (this is not a reorder *win*, it is the
+  same program found faster).
 
 ## Dependency reduction
 
