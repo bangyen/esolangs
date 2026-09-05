@@ -39,8 +39,7 @@ def _parameterized_generators():
     ]
 
 
-@pytest.mark.slow  # ~4s: builds every generator, up to n=4 — the bulk
-# is 123's constructed four-input template, which is derived, not stored
+@pytest.mark.slow  # ~3s: builds every generator, up to n=4
 def test_parameterized_generators_embed_each_input_once() -> None:
     """Every no-input generator embeds each input exactly once.
 
@@ -2349,7 +2348,6 @@ class TestParameterizedOneTwoThree:
             }
             assert len(sizes) == 1, (table, sizes)
 
-    @pytest.mark.slow  # ~2s: one four-input construction, replayed
     def test_a_wider_table_is_constructed(self) -> None:
         """A four-input table builds through the constructed route.
 
