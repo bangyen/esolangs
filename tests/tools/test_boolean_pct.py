@@ -412,17 +412,14 @@ class TestParameterizedPctSquaredMinusOne:
         assert len(lengths) == 1, sorted(lengths)
 
     @pytest.mark.slow  # a 21-point plan plus 32 interpreter runs
-    def test_fold_beams_the_states_too_wide_to_search(self) -> None:
-        """A 21-point table plans quickly instead of exhausting the search.
+    def test_a_wide_state_plans_and_executes(self) -> None:
+        """A 21-point table plans in milliseconds and computes every row.
 
-        The beam's target is what makes this table cheap.  With the target
-        set just under the width at which the exhaustive search starts to
-        struggle, a 21-point state was too wide to search and too narrow to
-        beam: the search explored for fifty seconds and gave up, so the
-        generator *refused a table it can build*.  Beaming to eight points
-        plans it in under a second.  Pinned as the regression, and executed
-        rather than merely planned, because a plan that does not compute is
-        not a fix.
+        Pinned when this table was a planner regression: an earlier
+        search-based configuration explored it for fifty seconds and then
+        *refused a table it can build*.  The rule construction plans it
+        outright, and the rows are executed rather than merely planned,
+        because a plan that does not compute is not a fix.
         """
         from esolangs.tools.boolean.pct_squared_minus_one import _fold
 
@@ -786,6 +783,27 @@ class TestParameterizedPctSquaredMinusOne:
                 shared = set(zero_widths) & set(_spellings_by_width(*one))
                 assert shared, (zero, one)
 
+    def test_every_derived_spelling_behaves_at_every_width(self) -> None:
+        """Each width's string realises its map, padding included.
+
+        The spellings derive from :data:`_SPELL_BASES` -- a minimal witness
+        per parity, widened by ``pp`` suffixes, or by ``s`` prefixes where
+        the erase forgets them -- so this checks the *derived* strings, not
+        just the bases: every entry of every map's width dict is run over
+        the admission window and must land on ``a*x + b`` exactly.
+        """
+        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        for a in module._WIDE_A_VALS:  # noqa: SLF001
+            for b in module._WIDE_B_VALS:  # noqa: SLF001
+                for width, code in module._spellings_by_width(  # noqa: SLF001
+                    a, b
+                ).items():
+                    assert len(code) == width, (a, b, width, code)
+                    assert all(
+                        module._apply(value, code) == a * value + b  # noqa: SLF001
+                        for value in module._SPELL_WINDOW  # noqa: SLF001
+                    ), (a, b, width, code)
+
     def test_slope_zero_forgets_the_accumulator(self) -> None:
         """``'`` is the constant map: it discards whatever it was given.
 
@@ -938,31 +956,37 @@ class TestPctSquaredHelpers:
         assert len(hold) == len(code)
         assert lead == code
 
-    def test_parameter_sets_leaving_one_vector_are_searched_once(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Distinct ladder parameters can leave the same rungs.
+    def test_every_tabulated_ladder_entry_computes_its_split(self) -> None:
+        """Each ``_LADDER_BUILT`` witness is checked by arithmetic, not trust.
 
-        The suffix search depends only on the stage-one vector, so a repeat
-        of one is skipped rather than swept again.  No shipped pair
-        collides, so the guard is driven by duplicating an entry: the
-        tables built must be exactly those the single entry builds.
+        The suffix was once found by a breadth-first composition over the
+        rungs; it is frozen data now, so this re-derives what the search
+        used to guarantee: running the suffix over every rung of its
+        ladder's stage-one vector -- through :func:`_apply`, the exact
+        model of the interpreter's step -- leaves each row's answer in the
+        accumulator.  ``l`` is a no-op to the model, so the final value is
+        what the program prints.
         """
         module = self.module()
-        entry = ((250, 500, 250), 1000)
+        for table, (index, suffix) in module._LADDER_BUILT.items():  # noqa: SLF001
+            weights, base = module._LADDERS[index]  # noqa: SLF001
+            spelled = module._ladder_setters(weights, base)  # noqa: SLF001
+            assert spelled is not None
+            setters, lead = spelled
+            vec = module._ladder_vector(setters, lead, 3)  # noqa: SLF001
+            for row, want in enumerate(table):
+                got = module._apply(vec[row], suffix)  # noqa: SLF001
+                assert got == int(want), (table, row)
 
-        monkeypatch.setattr(module, "_LADDERS", (entry, entry))
-        module._ladder_tables.cache_clear()  # noqa: SLF001
-        twice = module._ladder_tables(3)  # noqa: SLF001
+    def test_the_ladder_declines_other_arities(self) -> None:
+        """Every shipped ladder has three weights, so only ``n == 3`` serves.
 
-        monkeypatch.setattr(module, "_LADDERS", (entry,))
-        module._ladder_tables.cache_clear()  # noqa: SLF001
-        once = module._ladder_tables(3)  # noqa: SLF001
-
-        assert twice == once
-        # The cache outlives the patch, so the shipped table has to be the
-        # one memoized when this test leaves.
-        module._ladder_tables.cache_clear()  # noqa: SLF001
+        The harvest the tabulation froze was empty at every other arity;
+        the guard makes that an explicit decline rather than a lookup miss.
+        """
+        module = self.module()
+        assert module._ladder("0110", 2) is None  # noqa: SLF001
+        assert module._ladder("01" * 8, 4) is None  # noqa: SLF001
 
 
 class TestPctInterleavedFold:
@@ -1019,7 +1043,7 @@ class TestPctInterleavedFold:
 
 
 class TestPctFoldEmitter:
-    """The emitter's mirror, driven at the steps the descent rarely asks for.
+    """The emitter's mirror, driven at the steps the planner rarely asks for.
 
     :class:`_FoldEmitter` tracks every row's accumulator exactly, so its
     moves can be checked as arithmetic: build one over a small table and
@@ -1178,13 +1202,12 @@ class TestPctFoldMoves:
 
 
 class TestPctFoldPlanners:
-    """The two planners' refusals, driven through their own budgets.
+    """The rule construction's refusals, driven through their own guards.
 
-    ``_fold_search`` is a breadth-first search kept as the fallback for a
-    state the descent leaves short, and ``_fold_beam`` is the descent
-    itself.  Both answer ``None`` rather than raising when they cannot
-    finish, and each budget is a parameter, so the refusals are reachable
-    without contriving an unsolvable table.
+    :func:`_fold_reduce` runs the case analysis of ``_fold_rule_move`` to a
+    ``done`` state.  It answers ``None`` rather than raising when no rule
+    applies or the budget runs out, so the refusals are reachable without
+    contriving an unsolvable table.
     """
 
     @staticmethod
@@ -1192,7 +1215,7 @@ class TestPctFoldPlanners:
         return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
 
     #: Four points, alternating classes: not already finished, and small
-    #: enough that the planners answer quickly.
+    #: enough that the rules answer quickly.
     STATE = (
         (0, 0, "0", frozenset({0})),
         (-4, 0, "1", frozenset({1})),
@@ -1200,75 +1223,87 @@ class TestPctFoldPlanners:
         (-12, 0, "1", frozenset({3})),
     )
 
-    def test_the_search_gives_up_on_its_own_budgets(self) -> None:
-        """Each budget refuses on its own: the visit cap and the depth.
+    def test_the_reduction_gives_up_on_its_budget(self) -> None:
+        """A budget of zero takes no step and answers ``None``.
 
-        A cap of zero is exceeded by the first state examined, and a depth
-        of zero pops the start and expands nothing.  Both answer ``None``
-        rather than a partial plan, which is what lets the caller fall
-        through to the next construction.
+        The default budget is derived from the state and is a latency
+        guard the corpus never reaches; passing one drives the refusal
+        without a state the rules genuinely dead-end on.
         """
-        search = self.module()._fold_search  # noqa: SLF001
+        module = self.module()
 
-        assert search(self.STATE, cap=0) is None
-        assert search(self.STATE, maxdepth=0) is None
-        assert search(self.STATE, maxdepth=1) is None
+        done = module._fold_done  # noqa: SLF001
+        assert module._fold_reduce(self.STATE, done, budget=0) is None  # noqa: SLF001
 
-    def test_the_search_finds_a_plan_when_it_is_given_room(self) -> None:
-        """The positive control: the refusals above are the budgets.
+    def test_the_reduction_finishes_when_it_is_given_room(self) -> None:
+        """The positive control: the refusal above is the budget.
 
         Without this a ``None`` could just as well mean the state was
-        malformed, or that no plan exists for any budget.
+        malformed, or that no rule ever applies to it.
         """
-        found = self.module()._fold_search(  # noqa: SLF001
-            (
-                *self.STATE,
-                (-16, 0, "0", frozenset({4})),
-            ),
-            maxdepth=6,
+        module = self.module()
+
+        ops = module._fold_reduce(self.STATE, module._fold_done)  # noqa: SLF001
+        assert ops is not None
+        state = module._fold_norm(list(self.STATE))  # noqa: SLF001
+        for op in ops:
+            state = module._fold_step(state, op)  # noqa: SLF001
+            assert state is not None
+        assert module._fold_done(state)  # noqa: SLF001
+
+    def test_no_rule_applies_to_a_walled_state(self) -> None:
+        """Spans that fill the workspace leave the case analysis empty.
+
+        Two groups whose extents nearly fill the workspace offer no legal
+        wipe in either direction -- the gap ``q1`` is negative both ways --
+        and the spread is past the doubling bound, so every case falls
+        through and the move is ``None``.
+        """
+        module = self.module()
+
+        stuck = (
+            (0, 3000, "0", frozenset({0})),
+            (-10, 3000, "1", frozenset({1})),
         )
-        assert found is not None
-        assert len(found) == 6
+        assert module._fold_rule_move(stuck) is None  # noqa: SLF001
 
-    def test_the_descent_gives_up_when_its_steps_run_out(self) -> None:
-        """A step budget of zero descends nowhere, and one is not enough."""
-        beam = self.module()._fold_beam  # noqa: SLF001
+    def test_a_step_the_state_does_not_offer_answers_none(self) -> None:
+        """``_fold_step`` re-checks a move rather than trusting it.
 
-        assert beam(self.STATE, maxsteps=0) is None
-        assert beam(self.STATE, maxsteps=1) is None
-
-    def test_the_descent_gives_up_when_no_move_is_left(self) -> None:
-        """A target below what the moves can reach exhausts the frontier.
-
-        Two points cannot be folded to one -- the two classes are what the
-        printed answer is read from -- so every move is either seen or
-        illegal and the descent runs out of states rather than steps.
+        An amount outside the window, a wipe with mixed-class victims, and
+        an everything-wipe on a two-class state are each refused, so an op
+        that was never legal cannot be applied by accident.
         """
-        beam = self.module()._fold_beam  # noqa: SLF001
+        module = self.module()
 
-        two = ((0, 0, "0", frozenset({0})), (-4, 0, "1", frozenset({1})))
-        assert beam(two, target=1, maxsteps=30) is None
+        outside = ("d", 1, 99999, frozenset({3}))
+        assert module._fold_step(self.STATE, outside) is None  # noqa: SLF001
+        mixed = ("d", 2, 3004, frozenset({2, 3}))
+        assert module._fold_step(self.STATE, mixed) is None  # noqa: SLF001
+        everything = ("d", 4, 3004, frozenset({0, 1, 2, 3}))
+        assert module._fold_step(self.STATE, everything) is None  # noqa: SLF001
 
-        # A lone point offers no move whatever: the frontier is empty on
-        # the first step rather than after exhausting the seen set.
-        single = ((0, 0, "0", frozenset({0})),)
-        assert beam(single, target=0, maxsteps=5) is None
+    def test_a_clean_amount_skips_an_occupied_landing(self) -> None:
+        """The first collision-free amount is computed, not the minimum.
 
-    def test_replaying_a_move_the_state_does_not_offer_answers_none(self) -> None:
-        """``_fold_apply`` re-derives a move rather than trusting it.
-
-        It looks the operation up among the moves the state actually
-        offers, so one that is not there cannot be applied by accident.
+        A survivor sitting exactly 3004 above the victims occupies the
+        window's first value, so the clean amount is 3005 -- landing there
+        would be a merge the algebra refuses when the classes differ.
         """
-        bogus = ("d", 99, 99999, frozenset({42}))
-        assert self.module()._fold_apply(self.STATE, bogus) is None  # noqa: SLF001
+        module = self.module()
+
+        state = (
+            (0, 0, "1", frozenset({0})),
+            (-3004, 0, "0", frozenset({1})),
+        )
+        assert module._fold_clean_amount(state, "d", 1) == 3005  # noqa: SLF001
 
 
 class TestPctFoldPlan:
     """The plan's rotation pre-pass, and the bound that refuses a table.
 
-    ``_fold_plan`` wipes every group that still has extent before
-    descending, because a group with extent cannot be a collision target.
+    ``_fold_plan`` wipes every group that still has extent before the
+    rules run, because a group with extent cannot be a collision target.
     The pre-pass stops on its own when no such wipe is on offer.
     """
 
@@ -1281,7 +1316,7 @@ class TestPctFoldPlan:
 
         Two groups whose spans nearly fill the workspace leave no room for
         the relocation a wipe needs, so the pre-pass breaks out with the
-        extent still there and the descent that follows has nothing to
+        extent still there and the rules that follow have nothing to
         work with.  The answer is ``None``, not a partial plan.
         """
         stuck = (
@@ -1305,13 +1340,12 @@ class TestPctFoldPlan:
         assert plan is not None
         assert plan
 
-    def test_a_descent_that_cannot_finish_leaves_the_plan_empty(self) -> None:
-        """The pre-pass can clear extent the descent still cannot use.
+    def test_a_reduction_that_cannot_finish_leaves_the_plan_empty(self) -> None:
+        """The pre-pass can clear extent the rules still cannot use.
 
-        Here the wipes run to completion but the descent that follows
-        reaches no two-point state, so it answers ``None`` and the plan
-        falls back to the pre-pass alone -- which the fallback search then
-        cannot close either.  The whole plan is ``None``, so the caller
+        Here the wipes run to completion but the reduction that follows
+        reaches no two-point state -- every case of the rule analysis
+        falls through -- so the whole plan is ``None`` and the caller
         moves on to the next construction rather than emitting a partial
         one.
         """
@@ -1674,7 +1708,7 @@ class TestPctFoldSkeletonResolver:
     resolves each symbolic amount against the live state, so every refusal
     is a property of the *geometry* rather than of a table.  Building the
     states directly is what reaches them: a wipe that leaves no survivor and
-    a landing that does not match are both shapes the fold's own descent
+    a landing that does not match are both shapes the fold's own planner
     steers around, so no generated table drives one.
     """
 

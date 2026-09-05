@@ -487,8 +487,8 @@ open:
 
 ## Smaller open items
 
-- **Closed forms for the two search-based boolean generators** — most
-  generators construct their answer; two still search for it, and each
+- **Closed forms for the search-based boolean generators** — most
+  generators construct their answer; one still searches for it, and each
   could in principle name what it finds instead.  A sweep of every module in
   `tools/boolean/` for a live frontier (rather than for the word "search",
   which appears mostly in prose describing searches that were *replaced*)
@@ -517,13 +517,36 @@ open:
       transiently split a run) — so the closed form names the capped
       catalog, not a distance formula.  The BFS itself survives as the
       specification oracle in `test_reorder_catalog_matches_search`.
-    - **%^2^-1** — five of them: `_ladder_tables` and `_spellings_by_width`
-      run on every call, `_fold_search` and `_fold_beam` from `n >= 4`, and
-      `_fold_to_cofactors` on a rarer fallback.  All are bounded by
-      construction (the ladder's fifteen-state exhaustion, `_SPELL_MAX`,
-      `_COFACTOR_BRIDGE_POINTS`) and the whole build is 0.005s at `n == 5`,
-      so these are the *least* worth closing — the affine reach they search
-      is already partly derived rather than searched.
+    - **%^2^-1** — **closed; shipped.**  All five searches are gone.  The
+      two enumerations froze as named data, the way `_FOLD_SKELETONS` froze
+      the mined plans: `_ladder_tables`' suffix BFS became `_LADDER_BUILT`
+      (24 witnesses, byte-identical templates, each re-derived by `_apply`
+      over its ladder's rungs in the tests) and `_spellings_by_width`'s
+      enumeration became `_SPELL_BASES` (a minimal witness per parity per
+      grid map; every other width derives by `pp`-suffix or, after the
+      erase, `s`-prefix padding — width sets checked equal to the
+      enumeration's over the whole grid, so which tables build and at what
+      width is unchanged).  The three planner searches (`_fold_search`,
+      `_fold_beam`, `_fold_to_cofactors`) fell to one rule construction,
+      `_fold_rule_move`: merge where a landing window holds a same-class
+      wiped point, wipe a same-class end run together, double to grow the
+      windows, hop an end group by the first *collision-free* amount to
+      compress — that computed amount is what the descent's ±2/±4
+      candidate sweeps were actually buying, and naming it is what made
+      the packed eleven-input ladder plan under rules.  Acceptance is
+      measured, not argued: 610 planner states (n == 3 exhaustive, 200 at
+      four, 150 at five, specials included) and 658 harvested bridge
+      states accept exactly the search's set — zero lost, zero gained —
+      and a 452-table baseline diff shows 72 outputs changed (22 affine
+      respellings at non-minimal widths, 50 fold plans at `r >= 6`), every
+      one re-executed on the interpreter, aggregate 22.1% shorter.  Plans
+      are also faster than the searches they replace: 89ms → 1.0ms median
+      at five inputs, 0.53s → 3.2ms at six, and a 997-group eleven-input
+      table plans in 2.3s.  What the mining falsified is worth keeping:
+      the `(r, delta, pat[1])` skeleton key is ambiguous at `r == 6`
+      (patterns 011000 and 110000 share it and need different plans), so
+      the generalisation past the tabulated `r <= 5` is the rule loop, not
+      a wider table.
     - **123** — `_verdict_search` is the one where a closed form would pay.
       It is a bounded DFS over builder states, already documented in
       `docs/limitations.md` as the non-total part of an otherwise
@@ -550,9 +573,9 @@ open:
       cost is ten embeds and twenty pool probes per arity.  The emit-and-walk
       spelling lives on in `_derived_plans`/`_column_sweep` as the oracle
       the tests compare against.
-  Worth picking up for 123 if `n >= 5` tables start mattering.  %^2^-1 is
-  recorded so a future reader does not rediscover it as a cost, and Eval
-  and Minifuck above are done.  For the shape of what closing one buys, SLOW
+  Worth picking up for 123 if `n >= 5` tables start mattering.  Eval,
+  %^2^-1 and Minifuck above are done.  For the shape of what closing one
+  buys, SLOW
   ACV MAMMALIAN is the worked precedent: its own search was replaced by an
   arithmetic construction once the `j1` sweep turned out to be a residue
   solve, taking the contract sweep entry from 3.04s to 0.02s.  The forms to
