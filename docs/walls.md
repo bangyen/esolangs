@@ -367,18 +367,26 @@ long (O(`n·2**n`) blocks, ~1.4s/execution at `n == 4`).
   builds today at eight inputs, short of the packed ladder's eleven; the gap
   to thirteen is planner engineering, not a discovered obstruction.
 
-  **The ten-input stage-6 stop is reproduced, but it is a budget plateau,
-  not a dead end.**  On the recorded seed-31 table, laying `X6` (zero-based)
-  gives 128 points carrying 96 distinct eight-bit cofactors.  The original
-  count-first, `kcap=3` walk reaches 102 points after 6553 steps and 65490
-  unique states.  Letting exactly that walk continue reaches all 96 targets
-  after 16385 steps and 167201 unique states; it does not empty its move set.
-  The nine-input control reaches its 16 four-bit cofactors after 1419 steps,
-  and a real nine-input staged template was generated and executed correctly
-  on all 512 rows.  Reaching the ten-input stage target is **not yet a
-  ten-input construction**: the resulting 96-point geometry still has to be
-  re-tightened, the remaining inputs laid, and the emitted program run on all
-  1024 rows before such a route can be claimed.
+  **The recorded ten-input route now produces a complete template.**  On the
+  seed-31 table, laying `X6` (zero-based) gives 128 gap-2 points carrying 96
+  distinct eight-bit cofactors.  The original count-first, `kcap=3` walk
+  reaches its historical 102-point stop after 6553 steps and 65490 unique
+  states, then reaches all 96 targets after 16385 steps and 167201 states.
+  Replaying those exact moves on the raw rows leaves span 5794; re-tightening
+  takes 488 ops to span 169.  The remaining stages then compact 192 -> 16,
+  32 -> 4, and 8 -> 2 points in 2380, 118, and 20 steps, re-tightening to
+  spans 15, 3, and 1.  No idealised repacking is used.
+
+  `scripts/verify_pct_interleaved_ten.py` reproduces every stage fingerprint,
+  mirrors every relocation through the emitter, and executes the finished
+  program.  The template is 1827116 characters; all 1024 rendered programs
+  are exactly 1826806 characters and print their table row correctly.  Its
+  nine-input positive control still reaches 16 cofactors after 1419 steps,
+  continues to 4 and 2, and executes all 512 rows; that template is 349409
+  characters and renders to 349195.  This is a verified construction for one
+  recorded table, not a claim that the interleaved planner is total at ten
+  inputs; its 19470-op route is retained as an experiment rather than put on
+  the normal generator path.
 
   Instrumentation also rules out an easy duplicate-state cure.  Translation
   and row-id erasure are already in the search signature.  Renaming cofactor
