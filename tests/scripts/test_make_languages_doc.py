@@ -20,6 +20,10 @@ _COMPILERS_START = "<!-- COMPILERS:START -->"
 _COMPILERS_END = "<!-- COMPILERS:END -->"
 _EXTRA_START = "<!-- EXTRA:START -->"
 _EXTRA_END = "<!-- EXTRA:END -->"
+_EXAMPLES_START = "<!-- EXAMPLES:START -->"
+_EXAMPLES_END = "<!-- EXAMPLES:END -->"
+_BOOLEAN_COUNT_START = "<!-- BOOLEAN-COUNT:START -->"
+_BOOLEAN_COUNT_END = "<!-- BOOLEAN-COUNT:END -->"
 
 
 def load_script() -> object:
@@ -96,6 +100,56 @@ def test_readme_extra_section_is_in_sync() -> None:
         _EXTRA_START + "\n\n" + module.render_extra_section() + "\n\n" + _EXTRA_END
     )
     assert text[start:end] == expected
+
+
+def test_readme_examples_section_is_in_sync() -> None:
+    """Regenerating the Examples paragraph leaves it unchanged."""
+    module = load_script()
+    text = README.read_text()
+    start = text.index(_EXAMPLES_START)
+    end = text.index(_EXAMPLES_END) + len(_EXAMPLES_END)
+    expected = (
+        _EXAMPLES_START
+        + "\n\n"
+        + module.render_examples_section()
+        + "\n\n"
+        + _EXAMPLES_END
+    )
+    assert text[start:end] == expected
+
+
+def test_readme_boolean_count_section_is_in_sync() -> None:
+    """Regenerating the boolean-generator count leaves it unchanged."""
+    module = load_script()
+    text = README.read_text()
+    start = text.index(_BOOLEAN_COUNT_START)
+    end = text.index(_BOOLEAN_COUNT_END) + len(_BOOLEAN_COUNT_END)
+    expected = (
+        _BOOLEAN_COUNT_START
+        + "\n\n"
+        + module.render_boolean_count_section()
+        + "\n\n"
+        + _BOOLEAN_COUNT_END
+    )
+    assert text[start:end] == expected
+
+
+def test_readme_counts_match_the_registry() -> None:
+    """The rendered counts are the registry's, not a hand-typed number.
+
+    The counts drifted while they sat as prose (46/58/63 against an actual
+    47/64/64), which is what moving them inside the markers fixes.  Assert the
+    rendered text carries the registry's figures so a wrong-but-in-sync
+    number cannot pass the sync tests above.
+    """
+    module = load_script()
+    text_generators = sum(
+        1 for lang in module.LANGUAGES.values() if lang.text is not None
+    )
+    examples = module.render_examples_section()
+    assert f"each of the {text_generators}\nlanguages with a text" in examples
+    assert f"each of the {len(module.BOOLEAN)} languages" in examples
+    assert f"  {len(module.BOOLEAN)} of the" in module.render_boolean_count_section()
 
 
 def test_boolean_set_names_are_registered() -> None:

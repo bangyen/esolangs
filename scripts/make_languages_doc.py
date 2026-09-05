@@ -139,6 +139,10 @@ _COMPILERS_START = "<!-- COMPILERS:START -->"
 _COMPILERS_END = "<!-- COMPILERS:END -->"
 _EXTRA_START = "<!-- EXTRA:START -->"
 _EXTRA_END = "<!-- EXTRA:END -->"
+_EXAMPLES_START = "<!-- EXAMPLES:START -->"
+_EXAMPLES_END = "<!-- EXAMPLES:END -->"
+_BOOLEAN_COUNT_START = "<!-- BOOLEAN-COUNT:START -->"
+_BOOLEAN_COUNT_END = "<!-- BOOLEAN-COUNT:END -->"
 
 
 def _wiki_name(name: str) -> str:
@@ -180,34 +184,47 @@ def render() -> str:
         "`esolangs/registry.py` by `scripts/make_languages_doc.py`; do not edit by",
         "hand.",
         "",
-        "Python means an in-repo interpreter under `esolangs.interpreters`;",
-        "Cross-check means an implementation in `extra/` that runs as a",
-        "standalone program (RISC-V assembly), used to",
-        "differentially verify the Python interpreter.  The Boolean",
-        "column marks the boolean-function generators; the no-input "
-        "languages (Back, BIO, NoComment, BF-PDA, Lamfunc, Bitdeque, RAM0, "
-        "Minsky Swap, Eval, ArrowQueue, A Painter Ant, WII2D) use "
-        "parameterized generators (the harness substitutes input bits into "
-        "a template).  Cod, Minifuck and %^2^-1 use parameterized "
-        "generators too, for three different reasons: each *has* an input "
-        "command, but reading is walled, weaker, or awkward.  %^2^-1 is the "
-        "walled one -- no program that reads its inputs computes any "
-        "two-input function, proved in `docs/proofs.md`.  Minifuck reads "
-        "fine (a reading construction builds all sixteen two-input tables) "
-        "but stops at two inputs, where embedding is total at every arity. "
-        " Cod's input command is `...` on an edge, which this interpreter "
-        "treats as three separate reads, so a reading generator would have "
-        "to route every crossing horizontally.  %^2^-1 goes further: a "
-        "subcube cascade "
-        "builds every conjunction or disjunction of literals at any arity, "
-        "a composed-affine derivation adds the tables that are no subcube, a "
-        "threshold ladder adds the ones neither reaches by letting the "
-        "over-3003 reset read a weighted sum, a deep band makes three and "
-        "four inputs **total** -- all 256 and all 65536 -- by printing with "
-        "`e` (`chr(acc & 0xFF)`), so a row need only be congruent to 48 or "
-        "49 mod 256 rather than exactly 0 or 1, and a fold closes **five "
-        "inputs** by planning relocations instead of reading the table off "
-        "a weighting (see `docs/limitations.md`).",
+        "## Columns",
+        "",
+        "**Python** means an in-repo interpreter under `esolangs.interpreters`.",
+        "**Cross-check** means an implementation in `extra/` that runs as a",
+        "standalone program (RISC-V assembly), used to differentially verify",
+        "the Python interpreter.  **Boolean** marks the boolean-function",
+        "generators.",
+        "",
+        "## Parameterized generators",
+        "",
+        "A parameterized generator embeds the input bits in the program text -- the",
+        "harness substitutes them into a template -- rather than reading them at run",
+        "time.  Two groups use one:",
+        "",
+        "- **The no-input languages** (Back, BIO, NoComment, BF-PDA, Lamfunc,",
+        "  Bitdeque, RAM0, Minsky Swap, Eval, ArrowQueue, A Painter Ant, WII2D),",
+        "  which have no input command at all.",
+        "- **Cod, Minifuck and %^2^-1**, which each *have* an input command, but",
+        "  whose reading is walled, weaker, or awkward:",
+        "  - **%^2^-1** is the walled one -- no program that reads its inputs",
+        "    computes any two-input function, proved in `docs/proofs.md`.",
+        "  - **Minifuck** reads fine (a reading construction builds all sixteen",
+        "    two-input tables) but stops at two inputs, where embedding is total",
+        "    at every arity.",
+        "  - **Cod**'s input command is `...` on an edge, which this interpreter",
+        "    treats as three separate reads, so a reading generator would have to",
+        "    route every crossing horizontally.",
+        "",
+        "## How %^2^-1 reaches its tables",
+        "",
+        "%^2^-1 goes further than the rest.  A subcube cascade builds every",
+        "conjunction or disjunction of literals at any arity; a composed-affine",
+        "derivation adds the tables that are no subcube; a threshold ladder adds",
+        "the ones neither reaches, by letting the over-3003 reset read a weighted",
+        "sum.  A deep band then makes three and four inputs **total** -- all 256",
+        "and all 65536 -- by printing with `e` (`chr(acc & 0xFF)`), so a row need",
+        "only be congruent to 48 or 49 mod 256 rather than exactly 0 or 1, and a",
+        "fold closes **five inputs** by planning relocations instead of reading",
+        "the table off a weighting (see `docs/limitations.md`).",
+        "",
+        "## The matrix",
         "",
         "| Language | Text generator | Python | Cross-check | Boolean | Compiler |",
         "| --- | :---: | :---: | :---: | :---: | :---: |",
@@ -306,6 +323,44 @@ def render_extra_section() -> str:
     return "\n".join(out).rstrip()
 
 
+def render_examples_section() -> str:
+    """Render the README's Examples paragraph between the markers.
+
+    The two counts are the number of registered text and boolean generators,
+    taken from the registry rather than from ``ls examples/`` -- the same rule
+    the rest of this script follows.  A separate sync test already pins that
+    every generator has its committed file, so the registry is the source
+    that cannot drift.
+    """
+    text_generators = sum(1 for lang in LANGUAGES.values() if lang.text is not None)
+    return "\n".join(
+        [
+            "Ready-to-run programs are committed under [`examples/`](examples/):",
+            f'`examples/hello-world/` holds a "Hello, World!" for each of the'
+            f" {text_generators}",
+            "languages with a text generator; `examples/boolean/` holds a truth-table",
+            f"program for each of the {len(BOOLEAN)} languages with a boolean"
+            " generator.  Both",
+            "regenerate via `scripts/write_examples.py`.",
+        ]
+    )
+
+
+def render_boolean_count_section() -> str:
+    """Render the README's boolean-generator count between the markers."""
+    return "\n".join(
+        [
+            "The truth table is a binary string of length `2**n`,"
+            " most-significant input",
+            f"first; its length implies `n`, so it isn't passed separately."
+            f"  {len(BOOLEAN)} of the",
+            "languages have such a generator, some covering only a documented"
+            " subset of",
+            "tables.",
+        ]
+    )
+
+
 def update_readme() -> None:
     """Rewrite the generated sections of README.md between their markers."""
     path = ROOT / "README.md"
@@ -314,6 +369,8 @@ def update_readme() -> None:
         (_README_START, _README_END, render_languages_section),
         (_COMPILERS_START, _COMPILERS_END, render_compilers_section),
         (_EXTRA_START, _EXTRA_END, render_extra_section),
+        (_EXAMPLES_START, _EXAMPLES_END, render_examples_section),
+        (_BOOLEAN_COUNT_START, _BOOLEAN_COUNT_END, render_boolean_count_section),
     ):
         block = start + "\n\n" + render() + "\n\n" + end
         text = text[: text.index(start)] + block + text[text.index(end) + len(end) :]
