@@ -41,9 +41,10 @@ def algebraic_programming_language(truth_table: str) -> str:
     its right.  So the printed result is the table's bit, and nothing
     depends on how the language spells a non-zero truth value.
 
-    A leading ``NORM`` normalizes each input to 0/1 (``!!a``) so an input
-    fed as any non-zero number behaves the same; the harness feeds 0 and
-    1, but the table's semantics should not rest on that.
+    Each literal carries its own normalization rather than a separate pass:
+    a 1-bit is spelled ``!!a`` and a 0-bit ``!a``, so an input fed as any
+    non-zero number behaves the same; the harness feeds 0 and 1, but the
+    table's semantics should not rest on that.
 
     **The tree splits on its inputs in whichever order emits the shortest
     program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
