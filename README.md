@@ -69,12 +69,15 @@ python -m esolangs.compilers.<language> program.txt
 
 ### Examples
 
+<!-- EXAMPLES:START -->
+
 Ready-to-run programs are committed under [`examples/`](examples/):
-`examples/hello-world/` holds a "Hello, World!" for each of the 46
+`examples/hello-world/` holds a "Hello, World!" for each of the 47
 languages with a text generator; `examples/boolean/` holds a truth-table
-program for 58 languages with a boolean generator (57 generated, one
-hand-written Minifuck program).  Both regenerate via
-`scripts/write_examples.py`.
+program for each of the 64 languages with a boolean generator.  Both
+regenerate via `scripts/write_examples.py`.
+
+<!-- EXAMPLES:END -->
 
 ```bash
 esolangs run Suffolk examples/hello-world/suffolk.txt
@@ -321,10 +324,14 @@ taglate("0110")  # 2-input XOR in Taglate (up to n = 2)
 circlefuck_byte(table)  # arbitrary byte-valued functions
 ```
 
+<!-- BOOLEAN-COUNT:START -->
+
 The truth table is a binary string of length `2**n`, most-significant input
-first; its length implies `n`, so it isn't passed separately.  63 of the
+first; its length implies `n`, so it isn't passed separately.  64 of the
 languages have such a generator, some covering only a documented subset of
 tables.
+
+<!-- BOOLEAN-COUNT:END -->
 
 ### Program Generator
 
