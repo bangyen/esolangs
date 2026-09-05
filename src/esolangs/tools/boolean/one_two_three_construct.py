@@ -1,7 +1,7 @@
 r"""Constructed 123 templates for four and more inputs.
 
 The small-arity route in :mod:`esolangs.tools.boolean.one_two_three`
-covers one, two and three inputs with a tight measured geometry; this
+covers one, two and three inputs from a cheaper bare-fill seed; this
 module builds a template for *any* wider table, under the same contract:
 each ``{Xi}`` appears once in name order, ``1``
 embeds a one and ``2`` a zero (equal width), and the instantiated program
