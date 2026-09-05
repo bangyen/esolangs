@@ -487,8 +487,8 @@ open:
 
 ## Smaller open items
 
-- **Closed forms for the three search-based boolean generators** — most
-  generators construct their answer; three still search for it, and each
+- **Closed forms for the two search-based boolean generators** — most
+  generators construct their answer; two still search for it, and each
   could in principle name what it finds instead.  A sweep of every module in
   `tools/boolean/` for a live frontier (rather than for the word "search",
   which appears mostly in prose describing searches that were *replaced*)
@@ -532,26 +532,27 @@ open:
       built in 401s, emitting 144093 characters.  It *succeeded* — the cost
       is the search, not a wall — but that is one seed against a documented
       high-variance search, so treat it as the shape rather than the figure.
-    - **Minifuck** — `_staging_index` (`minifuck.py`) enumerates
-      `(separator, settle, suffix, accumulator)` stagings in `_stagings`
-      order and takes the first that prints each column.  It is
-      **unbudgeted at every arity** — `_budget` returns `None` throughout,
-      so the whole enumeration runs — and it dominates the shipped build:
-      profiling one random `n == 5` table put **25.6s of a 38.4s build**
-      inside it, 4640 `claim` calls driving 63.8M interpreter steps.  Note
-      that `_staging_index`' own docstring still says "Five is the budgeted
-      pass, which is what ships today", which the lifted budget contradicts.
-      The docstring also records why the obvious closed form is not
-      available: the printed column does not reduce in
-      `(suffix, accumulator)` — three translation hypotheses were tested
-      against the measured grid and all fail — because the pool code
-      depends on the state the staging leaves behind.  So the thing to name
-      here is not the column law but the *first-hit* staging per column.
-  Worth picking up for 123 and Minifuck — 123 only if `n >= 5` tables start
-  mattering, Minifuck sooner, since it already charges 6.4s on a random
-  `n == 4` table and is on the default build path rather than a sampled
-  one.  %^2^-1 is recorded so a future reader does not rediscover it as a
-  cost, and Eval above is done.  For the shape of what closing one buys, SLOW
+    - **Minifuck** — **closed.**  `_staging_index` used to run the
+      interpreter over every staging — 4640 `claim` calls driving 63.8M
+      steps, 25.6s of a 38.4s `n == 5` build — and now derives every
+      column arithmetically: the suffix is a prefix-XOR staircase
+      (`_Chain`), the pool code is a slice constant (the embed leaves
+      every cell below 16 row-independent, a suffix never writes below 15,
+      and no pool code reaches past cell 6), and the walk out is an
+      interval XOR.  The recorded negative — "the printed column does not
+      reduce in `(suffix, accumulator)`" — was about translations and
+      still holds; the column *is* closed-form in the embed's standing
+      columns once the pool's state-dependence is proved slice-constant.
+      Accepted on whole-index equality, key for key and staging for
+      staging, at every staged arity, so the first-hit contract is intact
+      and no template changed.  Measured cold: `_staging_index(4)` 6.5s to
+      0.62s, `_staging_index(5)` 31.5s to 1.12s; what survives of the old
+      cost is ten embeds and twenty pool probes per arity.  The emit-and-walk
+      spelling lives on in `_derived_plans`/`_column_sweep` as the oracle
+      the tests compare against.
+  Worth picking up for 123 if `n >= 5` tables start mattering.  %^2^-1 is
+  recorded so a future reader does not rediscover it as a cost, and Eval
+  and Minifuck above are done.  For the shape of what closing one buys, SLOW
   ACV MAMMALIAN is the worked precedent: its own search was replaced by an
   arithmetic construction once the `j1` sweep turned out to be a residue
   solve, taking the contract sweep entry from 3.04s to 0.02s.  The forms to
