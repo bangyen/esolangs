@@ -18,16 +18,6 @@ from esolangs.tools.boolean.parameterized import _instantiate_arrowqueue
 from tests.tools.boolean_runners import one_two_three_result
 
 
-def _literals(plan: str) -> int:
-    """Count a plan's literal characters, ignoring its slots.
-
-    The slot markers carry digits of their own -- ``{X1}`` and ``{X2}`` --
-    so they have to be removed before counting rather than filtered by
-    character class.
-    """
-    return sum(1 for c in re.sub(r"\{X\d\}", "", plan) if c in "123")
-
-
 def _parameterized_generators():
     """Return every parameterized generator the module exports.
 
@@ -63,7 +53,6 @@ def test_parameterized_generators_embed_each_input_once() -> None:
     longer fills one, so a template carrying it would ship the literal text
     to the interpreter instead of failing, which is worth catching here.
     """
-    import re
 
     checked = 0
     for name, gen in _parameterized_generators():
@@ -156,7 +145,6 @@ def _all_derived_plans(derived_plans, staged_arities, n: int) -> dict:
 
 def _slot_order(gen: object, table: str) -> list[int] | None:
     """The ``{Xi}`` indices in the order ``gen`` emits them, or None."""
-    import re
 
     try:
         template = gen(table)
@@ -196,7 +184,6 @@ def _drawing(template: str) -> str:
     templates directly would count a mere relabelling as a change.  Erasing
     the names leaves exactly what a relabelling cannot alter.
     """
-    import re
 
     return re.sub(r"\{X\d+\}", "{X}", template)
 
@@ -300,7 +287,6 @@ class TestParameterizedBIO:
 
     def test_each_input_is_stored_once(self) -> None:
         """The packing scheme embeds each input exactly once."""
-        import re
 
         from esolangs.tools.boolean import parameterized
 
@@ -415,7 +401,6 @@ class TestParameterizedBack:
 
     def test_each_input_is_stored_once(self) -> None:
         """Each input is embedded once in the tape load, not re-embedded."""
-        import re
 
         from esolangs.tools.boolean import parameterized
 
@@ -507,7 +492,6 @@ class TestParameterizedBack:
         left sequence would have taken the other side of the trade without
         the docstring being updated.
         """
-        import re
         from itertools import permutations
 
         from esolangs.tools.boolean import parameterized
@@ -541,7 +525,6 @@ class TestParameterizedBack:
         backwards -- loading input ``n-1`` first is what puts ``{X0}`` first
         on the page.
         """
-        import re
 
         from esolangs.tools.boolean import parameterized
 
@@ -858,7 +841,6 @@ class TestParameterizedLamfunc:
 
     def test_each_input_is_stored_once(self) -> None:
         """The store-once scheme embeds each input exactly once."""
-        import re
 
         from esolangs.tools.boolean import parameterized
 
@@ -971,7 +953,6 @@ class TestParameterizedRam0:
     """
 
     def run_ram0(self, prog: str) -> str:
-        import re
 
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.ram0 import run
@@ -1528,7 +1509,6 @@ class TestParameterizedBfpda:
 
     def test_program_structure(self) -> None:
         """Each input is embedded once (pre-loaded), not re-embedded per node."""
-        import re
 
         from esolangs.tools.boolean import parameterized
 
@@ -1649,7 +1629,6 @@ class TestParameterizedHomeRow:
         assert "{X1}" in template
 
     def test_each_input_embedded_once(self) -> None:
-        import re
 
         from esolangs.tools.boolean import parameterized
 
@@ -1799,7 +1778,6 @@ class TestParameterizedCOD:
 
     def test_each_input_is_embedded_once(self) -> None:
         """The routing embeds each input exactly once, not per leaf."""
-        import re
 
         from esolangs.tools.boolean import parameterized
 
@@ -2223,10 +2201,13 @@ class TestParameterizedOneTwoThree:
     language's: the +-1 fill used here breaks position lockstep, so XOR and
     NAND come out too and all sixteen two-input tables are covered.
 
-    All 256 three-input tables build as well.  The bare mod-four counter
-    carries only popcount *parity* at three inputs, so the tables that are
-    not parity functions need ``3``'s TRUE-backward re-run; ``01111110``,
-    TRUE unless all three inputs agree, was the last to build.
+    Every arity is *constructed* -- the stored plan tables that used to
+    serve ``n <= 3`` are retired (see git history).  Small arities build
+    with a tight measured geometry and a per-table layout argmin in
+    ``one_two_three``; wider tables go through ``one_two_three_construct``
+    unchanged.  Both routes replay every row on the real interpreter
+    before returning a template, and the sweeps here re-check every
+    ``n <= 3`` row against a per-command run of the interpreter.
     """
 
     def run(self, program: str) -> str:
@@ -2252,110 +2233,6 @@ class TestParameterizedOneTwoThree:
                 got = self.run(self.instantiate(template, bits))
                 assert got == table[combo], (table, bits)
 
-    @pytest.mark.slow  # 5.3s: no shorter plan exists, per entry
-    def test_three_input_plans_are_canonical(self) -> None:
-        """The canonical entries are minimal, re-derived rather than trusted.
-
-        154 of the 256 three-input plans are canonical: the shortest plan
-        over the grammar (literals from ``123``, three slots in name order),
-        ties broken lexicographically.  The other 102 are search-found
-        witnesses that no shortest-first enumeration reaches, marked in the
-        table and checked for correctness by :meth:`test_all_small_tables`.
-
-        This covers the entries of at most five literals, where enumerating
-        everything shorter is affordable.
-
-        Minimality is checked *per entry* rather than by re-running the
-        whole enumeration: for a sample of canonical entries, every plan
-        strictly shorter is enumerated and must fail to compute that table.
-        That is the same guarantee the full sweep gives, for the entries
-        sampled, and it costs seconds instead of minutes -- the full sweep's
-        cost is almost entirely its deepest level, which proves nothing the
-        per-entry check does not.
-
-        A candidate that exceeds the step cap, or reaches the read command
-        and raises :class:`EOFError`, is discarded rather than judged: 123
-        proves a loop by state revisit, never by a fuel cap, so a discard
-        can only make this check weaker, never wrong.
-        """
-        import itertools
-        import random
-
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.one_two_three import _Machine
-        from esolangs.tools.boolean.one_two_three import _THREE_INPUT_PLAN
-
-        rows = list(itertools.product((0, 1), repeat=3))
-        cache: dict[str, str | None] = {}
-
-        def verdict(plan: str) -> str | None:
-            out = []
-            for bits in rows:
-                program = self.instantiate(plan, list(bits))
-                if program not in cache:
-                    machine = _Machine(program, ScriptedIO(""))
-                    seen: set[object] = set()
-                    got = None
-                    try:
-                        for _ in range(3000):
-                            if machine.halted:
-                                got = "0"
-                                break
-                            state = machine.snapshot()
-                            if state in seen:
-                                got = "1"
-                                break
-                            seen.add(state)
-                            machine.step()
-                    except EOFError:
-                        got = None
-                    cache[program] = got
-                answer = cache[program]
-                if answer is None:
-                    return None
-                out.append(answer)
-            return "".join(out)
-
-        def shorter_than(literals: int) -> list[str]:
-            out = []
-            for total in range(literals):
-                for parts in itertools.product(range(total + 1), repeat=4):
-                    if sum(parts) != total:
-                        continue
-                    runs = [
-                        ["".join(p) for p in itertools.product("123", repeat=k)]
-                        for k in parts
-                    ]
-                    for combo in itertools.product(*runs):
-                        out.append(
-                            combo[0]
-                            + "{X0}"
-                            + combo[1]
-                            + "{X1}"
-                            + combo[2]
-                            + "{X2}"
-                            + combo[3]
-                        )
-            return sorted(out)
-
-        # A canonical entry is one no shorter plan reaches, which is what
-        # this test establishes; the witnesses are the ones a shortest-first
-        # sweep never finds, and they are longer than any budget it runs to.
-        canonical = sorted(
-            t for t, plan in _THREE_INPUT_PLAN.items() if _literals(plan) <= 5
-        )
-        assert len(canonical) == 54, len(canonical)
-
-        # Each entry's check is independent, so sampling the deeper ones
-        # gives the same per-entry guarantee at a fraction of the cost.
-        cheap = [t for t in canonical if _literals(_THREE_INPUT_PLAN[t]) <= 4]
-        deep = [t for t in canonical if _literals(_THREE_INPUT_PLAN[t]) == 5]
-        random.Random(0).shuffle(deep)
-        for table in cheap + deep[:8]:
-            plan = _THREE_INPUT_PLAN[table]
-            for candidate in shorter_than(_literals(plan)):
-                assert verdict(candidate) != table, (table, candidate, plan)
-
     def test_the_tables_walls_md_called_unreachable(self) -> None:
         """XOR and NAND build, against the recorded monotone ceiling.
 
@@ -2377,7 +2254,7 @@ class TestParameterizedOneTwoThree:
         """No emitted row marches the pointer right forever.
 
         ``run_until_halt_or_cycle`` never returns on unbounded growth, so a
-        plan with such a row would hang the suite rather than report a 1.
+        template with such a row would hang the suite rather than report a 1.
         Every looping row must therefore revisit a state, which this checks
         by bounding the pointer: a run that neither halts nor cycles within
         the budget, while pushing the pointer past the program, is exactly
@@ -2414,7 +2291,7 @@ class TestParameterizedOneTwoThree:
         closed form instead of one command at a time, which is what makes
         the gate affordable on a six-input template (95s to 0.28s at five
         inputs).  That batching is only safe if it decides exactly what the
-        real interpreter decides, so every row of every stored plan through
+        real interpreter decides, so every row of every emitted template through
         three inputs is checked both ways here -- against a per-command run
         of :class:`_Machine`, not against the builder's own model, which
         shares no code with either.
@@ -2860,7 +2737,6 @@ class TestParameterizedOneTwoThree:
 
     def test_each_input_is_embedded_once(self) -> None:
         """Each placeholder appears exactly once, and no {Ci} appears."""
-        import re
 
         from esolangs.tools.boolean import parameterized
 

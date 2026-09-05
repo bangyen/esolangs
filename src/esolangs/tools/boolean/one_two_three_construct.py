@@ -1,8 +1,9 @@
 r"""Constructed 123 templates for four and more inputs.
 
-The stored plans in :mod:`esolangs.tools.boolean.one_two_three` cover one,
-two and three inputs; this module builds a template for *any* wider table,
-under the same contract: each ``{Xi}`` appears once in name order, ``1``
+The small-arity route in :mod:`esolangs.tools.boolean.one_two_three`
+covers one, two and three inputs with a tight measured geometry; this
+module builds a template for *any* wider table, under the same contract:
+each ``{Xi}`` appears once in name order, ``1``
 embeds a one and ``2`` a zero (equal width), and the instantiated program
 halts for a 0 entry and loops by a proven state revisit for a 1.
 
@@ -844,9 +845,10 @@ def construct(truth_table: str, *, verify: bool = True) -> str:
     themselves anyway — the wider tests here do, and paying for both is
     the same execution twice.  The default stays ``True``: this is the
     only execution gate the constructed route has, since the exhaustive
-    sweeps in the suite cover ``n <= 3``, which the stored plans serve
-    without ever calling this.  A caller that skips it and does not
-    check the template itself is shipping an unproven program.
+    sweeps in the suite cover ``n <= 3``, which the tight route in
+    ``one_two_three`` serves without ever calling this.  A caller that
+    skips it and does not check the template itself is shipping an
+    unproven program.
     """
     n = max(1, (len(truth_table) - 1).bit_length())
     # One mark geometry.  The base must be at least 2**(n+1): separation
