@@ -1167,6 +1167,23 @@ class TestPctSquaredHelpers:
                 got = module._apply(vec[row], suffix)  # noqa: SLF001
                 assert got == int(want), (table, row)
 
+    def test_ladder_gadgets_match_frozen_spellings(self) -> None:
+        """The gadget rule reproduces the five searched spellings, byte for byte.
+
+        These strings are what the rung-composition search froze; the
+        module now spells each from its ``(cut, slope)`` pair, so this is
+        the fixture that keeps the construction honest.  The order matters
+        too -- the fold is first-claim-wins over shortest-first gadgets.
+        """
+        module = self.module()
+        assert module._LADDER_GADGETS == (  # noqa: SLF001
+            "pspmsmipsp",
+            "mpspmipsp",
+            "smpspmipsp",
+            "mmpspmipsp",
+            "pspmimmipsp",
+        )
+
     def test_built_ladder_matches_the_frozen_witnesses(self) -> None:
         """The fold reproduces the table it replaced, entry for entry.
 
