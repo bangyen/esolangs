@@ -38,7 +38,7 @@ class TestNoCommentFuzz:
 
 class TestBfPdaFuzz:
     def test_program_alphabet(self, rng) -> None:
-        program = "".join(rng.choice("@.<>[]") for _ in range(rng.randint(0, 30)))
+        program = verify_differential._gen_bfpda_program(rng)  # noqa: SLF001
         assert set(program) <= set("@.<>[]")
 
 
@@ -52,10 +52,40 @@ class TestRam0Fuzz:
 
 class TestBioFuzz:
     def test_program_alphabet(self, rng) -> None:
-        program = "".join(
-            rng.choice("01OoIiXxYyZz{}; ") for _ in range(rng.randint(0, 40))
-        )
-        assert set(program) <= set("01OoIiXxYyZz{}; ")
+        program = verify_differential._gen_bio_program(rng)  # noqa: SLF001
+        assert set(program) <= set("01OoIiXxYyZz{};/ \nabc")
+
+
+class TestGeneratorsReachExecution:
+    """The structured draws must actually run, not just parse-fail.
+
+    A generator drawing uniformly from a language's alphabet agrees with the
+    reference on every program and still tests no execution: BIO's random
+    draws were rejected at the first token 97% of the time and produced no
+    output at all, so the register machine was never reached.  These pin the
+    property that was missing, not the exact rates.
+    """
+
+    @pytest.mark.parametrize(
+        ("gen_name", "run_name", "floor"),
+        [
+            ("_gen_bfpda_program", "_run_bfpda_python_limited", 0.20),
+            ("_gen_bio_program", "_run_bio_python_limited", 0.05),
+        ],
+    )
+    def test_a_useful_share_of_draws_executes(
+        self, rng, gen_name: str, run_name: str, floor: float
+    ) -> None:
+        gen = getattr(verify_differential, gen_name)
+        run = getattr(verify_differential, run_name)
+        draws = 60
+        ran = 0
+        for _ in range(draws):
+            result = run(gen(rng), timeout=3)
+            # exit 0 means the program loaded and executed to completion.
+            if result is not None and result[1] == 0:
+                ran += 1
+        assert ran / draws >= floor, f"{gen_name}: only {ran}/{draws} executed"
 
 
 class TestMinskySwapFuzz:
