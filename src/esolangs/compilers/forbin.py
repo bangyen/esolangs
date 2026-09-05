@@ -224,7 +224,7 @@ class _Compiler:
         The callee and arguments are evaluated left to right (matching
         ``_eval``'s own order) onto the machine stack, then dispatched: the
         two builtins are handled inline, and a user function goes through
-        ``.invoke``, which builds the frame.  A callee that is neither is
+        ``.dispatch``, which builds the frame.  A callee that is neither is
         the interpreter's "called value is not a function" halt.
         """
         _, callee_node, args = node
@@ -423,7 +423,7 @@ class _Compiler:
     def emit_fn(self, fn: _Function, ind: int) -> str:
         """Emit one function body as a subroutine.
 
-        On entry ``s2`` already points at the frame ``.invoke`` built, so the
+        On entry ``s2`` already points at the frame ``.dispatch`` built, so the
         body only needs its statements and an epilogue.  Falling off the end
         returns 0, matching ``_call``'s ``result if result is not None else 0``.
         """

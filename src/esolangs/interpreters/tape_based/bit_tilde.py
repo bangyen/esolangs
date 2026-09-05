@@ -21,9 +21,9 @@ Semantics:
 - a ``{``/``}`` whose match is missing raises :class:`ValueError` when it
   would have jumped (the former Ruby port
   looped forever);
-- an empty input line yields no character (the cross-check would read a
-  newline), so ``)`` on an empty line raises :class:`IndexError` through
-  :meth:`esolangs.interpreters.io.IO.input_char`.
+- an empty input line is one the user ended immediately, so
+  :meth:`esolangs.interpreters.io.IO.input_char` delivers the newline that
+  ended it and ``)`` reads 10, matching what the cross-check reads.
 
 The interpreter runs on a :class:`_Machine` (the bit pool, the pointer, and
 the code cursor), so it is step-capable: ``step()`` executes one character

@@ -17,7 +17,7 @@ Semantics:
 - an array access past the allocation (``X->n`` beyond the array) raises
   :class:`HaltError`, and the cross-check exits 3 too (it used to be
   undefined out-of-bounds memory);
-- ``,`` (read) stores the first byte of a line and raises
+- ``read -> X`` stores the first byte of a line and raises
   :class:`EOFError` when input runs out, where the cross-check exits with
   status 3.
 
