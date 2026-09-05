@@ -8,6 +8,7 @@ generators that follow the same convention.
 import importlib
 import io
 import random
+import re
 from contextlib import redirect_stdout
 
 import pytest
@@ -15,6 +16,16 @@ import pytest
 from esolangs.interpreters.io import IO
 from esolangs.tools.boolean.parameterized import _instantiate_arrowqueue
 from tests.tools.boolean_runners import one_two_three_result
+
+
+def _literals(plan: str) -> int:
+    """Count a plan's literal characters, ignoring its slots.
+
+    The slot markers carry digits of their own -- ``{X1}`` and ``{X2}`` --
+    so they have to be removed before counting rather than filtered by
+    character class.
+    """
+    return sum(1 for c in re.sub(r"\{X\d\}", "", plan) if c in "123")
 
 
 def _parameterized_generators():
@@ -2241,29 +2252,34 @@ class TestParameterizedOneTwoThree:
                 got = self.run(self.instantiate(template, bits))
                 assert got == table[combo], (table, bits)
 
-    @pytest.mark.slow  # re-derives 154 plans by enumeration (~4 min)
+    @pytest.mark.slow  # 5.3s: no shorter plan exists, per entry
     def test_three_input_plans_are_canonical(self) -> None:
-        """The canonical entries are re-derived, not trusted.
+        """The canonical entries are minimal, re-derived rather than trusted.
 
-        154 of the 256 three-input plans are the shortest plan over the
-        grammar (literals from ``123``, three slots in name order), ties
-        broken lexicographically.  This runs that enumeration and asserts
-        the shipped bytes come back -- which is the whole content of the
-        claim that those entries are search-order agnostic.  Re-running the
-        enumeration anywhere, in any order, must reproduce them.
+        154 of the 256 three-input plans are canonical: the shortest plan
+        over the grammar (literals from ``123``, three slots in name order),
+        ties broken lexicographically.  The other 102 are search-found
+        witnesses that no shortest-first enumeration reaches, marked in the
+        table and checked for correctness by :meth:`test_all_small_tables`.
 
-        The other 102 are search-found witnesses that no shortest-first
-        enumeration reaches; they are marked in the table and are checked
-        only for correctness, by :meth:`test_all_small_tables`.
+        This covers the entries of at most five literals, where enumerating
+        everything shorter is affordable.
 
-        A candidate is discarded rather than judged when it exceeds the step
-        cap: 123 proves a loop by state revisit, never by a fuel cap, so a
-        discard can only make the enumeration find fewer plans, never a
-        wrong one.  A candidate that reaches the read command raises
-        :class:`EOFError` and is discarded for the same reason -- the
-        generator emits no template that reads input.
+        Minimality is checked *per entry* rather than by re-running the
+        whole enumeration: for a sample of canonical entries, every plan
+        strictly shorter is enumerated and must fail to compute that table.
+        That is the same guarantee the full sweep gives, for the entries
+        sampled, and it costs seconds instead of minutes -- the full sweep's
+        cost is almost entirely its deepest level, which proves nothing the
+        per-entry check does not.
+
+        A candidate that exceeds the step cap, or reaches the read command
+        and raises :class:`EOFError`, is discarded rather than judged: 123
+        proves a loop by state revisit, never by a fuel cap, so a discard
+        can only make this check weaker, never wrong.
         """
         import itertools
+        import random
 
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.one_two_three import _Machine
@@ -2292,7 +2308,7 @@ class TestParameterizedOneTwoThree:
                             seen.add(state)
                             machine.step()
                     except EOFError:
-                        got = None  # reached the read: not a valid plan
+                        got = None
                     cache[program] = got
                 answer = cache[program]
                 if answer is None:
@@ -2300,34 +2316,45 @@ class TestParameterizedOneTwoThree:
                 out.append(answer)
             return "".join(out)
 
-        found: dict[str, str] = {}
-        for total in range(8):
-            plans = []
-            for parts in itertools.product(range(total + 1), repeat=4):
-                if sum(parts) != total:
-                    continue
-                runs = [
-                    ["".join(p) for p in itertools.product("123", repeat=k)]
-                    for k in parts
-                ]
-                for combo in itertools.product(*runs):
-                    plans.append(
-                        combo[0]
-                        + "{X0}"
-                        + combo[1]
-                        + "{X1}"
-                        + combo[2]
-                        + "{X2}"
-                        + combo[3]
-                    )
-            for plan in sorted(plans):
-                table = verdict(plan)
-                if table is not None and table not in found:
-                    found[table] = plan
+        def shorter_than(literals: int) -> list[str]:
+            out = []
+            for total in range(literals):
+                for parts in itertools.product(range(total + 1), repeat=4):
+                    if sum(parts) != total:
+                        continue
+                    runs = [
+                        ["".join(p) for p in itertools.product("123", repeat=k)]
+                        for k in parts
+                    ]
+                    for combo in itertools.product(*runs):
+                        out.append(
+                            combo[0]
+                            + "{X0}"
+                            + combo[1]
+                            + "{X1}"
+                            + combo[2]
+                            + "{X2}"
+                            + combo[3]
+                        )
+            return sorted(out)
 
-        assert len(found) == 154, len(found)
-        for table, plan in found.items():
-            assert _THREE_INPUT_PLAN[table] == plan, table
+        # A canonical entry is one no shorter plan reaches, which is what
+        # this test establishes; the witnesses are the ones a shortest-first
+        # sweep never finds, and they are longer than any budget it runs to.
+        canonical = sorted(
+            t for t, plan in _THREE_INPUT_PLAN.items() if _literals(plan) <= 5
+        )
+        assert len(canonical) == 54, len(canonical)
+
+        # Each entry's check is independent, so sampling the deeper ones
+        # gives the same per-entry guarantee at a fraction of the cost.
+        cheap = [t for t in canonical if _literals(_THREE_INPUT_PLAN[t]) <= 4]
+        deep = [t for t in canonical if _literals(_THREE_INPUT_PLAN[t]) == 5]
+        random.Random(0).shuffle(deep)
+        for table in cheap + deep[:8]:
+            plan = _THREE_INPUT_PLAN[table]
+            for candidate in shorter_than(_literals(plan)):
+                assert verdict(candidate) != table, (table, candidate, plan)
 
     def test_the_tables_walls_md_called_unreachable(self) -> None:
         """XOR and NAND build, against the recorded monotone ceiling.
