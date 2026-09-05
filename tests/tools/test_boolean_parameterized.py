@@ -2034,25 +2034,41 @@ class TestEvalBoolean:
         assert _eval_stack_programs(3)[(0, 1, 2)] == ""
 
     def test_reorder_catalog_invariants(self) -> None:
-        """The catalog is capped, deduplicated and (length, ~<*<=)-sorted.
+        """The built words are capped, deduplicated and (length, ~<*<=)-sorted.
 
         The sort order is load-bearing: ``_eval_stack_programs`` folds the
-        catalog first-claim-wins, so cheapest-first is what makes every
+        words first-claim-wins, so cheapest-first is what makes every
         claimed string minimal, and the ``~`` < ``*`` < ``=`` tie order is
         what keeps the fold byte-identical to the search it replaced.
         """
         from esolangs.tools.boolean.parameterized import (
             _EVAL_MAX_OPS,
-            _EVAL_REORDERS,
+            _eval_reorders,
         )
 
-        assert len(_EVAL_REORDERS) == 735
-        assert len(set(_EVAL_REORDERS)) == 735
-        assert _EVAL_REORDERS[0] == ""
-        assert all(len(ops) <= _EVAL_MAX_OPS for ops in _EVAL_REORDERS)
+        built = _eval_reorders()
+        assert len(set(built)) == len(built)
+        assert built[0] == ""
+        assert all(len(ops) <= _EVAL_MAX_OPS for ops in built)
         rank = {"~": 0, "*": 1, "=": 2}
-        keys = [(len(ops), [rank[op] for op in ops]) for ops in _EVAL_REORDERS]
+        keys = [(len(ops), [rank[op] for op in ops]) for ops in built]
         assert keys == sorted(keys)
+
+    def test_reorder_words_are_the_capped_reachable_set(self) -> None:
+        """Every built word replays, and the built set is exactly the cap's.
+
+        The construction admits words the old catalog never listed -- longer
+        spellings of arrangements a shorter word already claims -- so the
+        pin is on what survives the fold, not on the raw word list.  The
+        count that must hold is the arrangement count: 735 from ``n == 12``
+        on, which is where the catalog froze.
+        """
+        from esolangs.tools.boolean.parameterized import _eval_stack_programs
+
+        assert len(_eval_stack_programs(12)) == 735
+        assert len(_eval_stack_programs(13)) == 735
+        assert len(_eval_stack_programs(7)) == 620
+        assert len(_eval_stack_programs(4)) == 24
 
     def test_reorder_catalog_matches_search(self) -> None:
         """The catalog fold reproduces the search it replaced, byte for byte.
