@@ -112,8 +112,9 @@ def run_until_halt_or_cycle(machine: _StepMachine) -> bool:
     reported immediately instead of waiting out a wall-clock timeout.
     Returns ``True`` when the machine halts and ``False`` once a cycle is
     proven.  It catches *cycles*, not every hang — an unbounded-growth loop
-    never revisits a state, so callers keep a timeout as the backstop for
-    that class.
+    never revisits a state.  On a tape language,
+    :func:`run_until_halt_or_growth` proves that class instead; elsewhere
+    callers keep a timeout as the backstop for it.
 
     Uses Brent's cycle-detection algorithm: O(1) snapshots held at once
     (one "tortoise" checkpoint compared against the live machine's state on
@@ -219,9 +220,11 @@ def run_until_halt_or_ancestor(machine: _FramedMachine, limit: int = 64) -> bool
     :func:`run_until_halt_or_cycle` cannot catch infinite recursion: a call
     that never returns pushes one frame per step and pops none, so the
     machine's whole-state snapshot grows forever and never repeats.  That is
-    the unbounded-growth class, and it is why recursive languages keep a
-    wall-clock backstop -- one that deadlocks under ``pytest --cov`` (see
-    ``docs/walls.md``).
+    the unbounded-growth class -- the same one
+    :func:`run_until_halt_or_growth` handles on a tape, where the growing
+    state is cells rather than frames -- and it is why recursive languages
+    keep a wall-clock backstop, one that deadlocks under ``pytest --cov``
+    (see ``docs/walls.md``).
 
     This is the narrower check that class allows.  Rather than comparing
     whole-machine states across time, it compares each newly-pushed frame
@@ -274,6 +277,158 @@ def run_until_halt_or_ancestor(machine: _FramedMachine, limit: int = 64) -> bool
     raise TimeoutError(
         f"undecided after {limit} pushed frames: neither halted nor repeated "
         "an ancestor's entry state"
+    )
+
+
+@runtime_checkable
+class _TapeMachine(Protocol):
+    """A :class:`_StepMachine` on a rightward-growing tape of cells.
+
+    The three members are what the growth certificate compares across two
+    visits to one code position.  ``tape`` must be the *committed* tape --
+    brainfuck buffers the cell under the pointer, and a logical state with
+    two spellings would break the comparison exactly as it would break the
+    cycle detector's hash.  ``input_position`` is the input cursor, and it
+    carries the soundness the same way ``frame_entry_key``'s does.
+
+    Opting in is a claim about the language, not just about the attributes:
+
+    - a transition reads and writes only the cell under the pointer,
+    - the semantics are translation-invariant for ``ptr >= 1`` -- moving
+      the whole configuration one cell right changes nothing, which fails
+      only at the clamped left edge,
+    - the tape grows rightward, one fresh zero cell at a time.
+
+    Brainfuck satisfies all three; a language with absolute cell addresses
+    or a wrapping tape does not, and must not declare this protocol.
+    """
+
+    def step(self) -> None:
+        """Execute one instruction, advancing the machine."""
+
+    @property
+    def halted(self) -> bool:
+        """Whether the machine has finished executing."""
+
+    @property
+    def ind(self) -> int:
+        """The current code position."""
+
+    @property
+    def ptr(self) -> int:
+        """The current cell pointer."""
+
+    @property
+    def tape(self) -> tuple[int, ...]:
+        """The committed cells, index 0 leftmost."""
+
+    def input_position(self) -> int:
+        """Return the input cursor, so a reading loop is not a repeat."""
+
+
+def run_until_halt_or_growth(machine: _TapeMachine, limit: int = 100_000) -> bool:
+    """Step ``machine`` until it halts or provably grows without bound.
+
+    :func:`run_until_halt_or_cycle` cannot catch ``+[>+]``.  The tape gets
+    one cell longer and the pointer one cell further right every lap, so
+    the whole-machine snapshot is new every time and Brent's detector never
+    sees a repeat -- that is the unbounded-growth class its docstring hands
+    back to a wall-clock timeout.
+
+    This is the check that class allows on a tape.  Instead of comparing
+    whole states, it compares two consecutive visits to the *same code
+    position* and asks whether the second is the first shifted right.  Let
+    ``d`` be the pointer's displacement between the visits, ``m`` the
+    lowest cell the pointer reached in between, and write a hang when all
+    of:
+
+    - the input cursor did not move (a ``,`` in the period makes the next
+      lap input-dependent, so it is undecided, not a hang),
+    - ``d > 0`` and the tape grew by exactly ``d`` fresh cells,
+    - ``m >= 1``, so the period never touched the clamped left edge,
+    - ``tape2[i + d] == tape1[i]`` for every ``m <= i < len(tape1)``.
+
+    Together those make the second visit's configuration, restricted to the
+    cells at or right of ``m``, the first's translated by ``d``.  Since the
+    machine reads only the cell under the pointer and its semantics are
+    translation-invariant away from the left edge, the period must replay
+    at ``+d``, and then again at ``+2d``, forever: an induction, not a
+    guess.  Returns ``True`` when the machine halts and ``False`` once such
+    a certificate is found.
+
+    Three details that are the whole soundness argument.  ``m >= 1`` is
+    what licenses translation: a period that touched cell 0 may have been
+    clamped by ``<`` where its shifted copy would not be, and the two would
+    diverge.  The lower bound ``i >= m`` rather than ``i >= 0`` is what
+    makes ``+[>++]`` provable -- its cell 0 keeps the value 1 while the
+    interior fills with 2s, so a full-width shift never matches, while the
+    suffix from the period's own minimum does; cells left of ``m`` are
+    unreachable for the rest of the run, so their disagreeing is not a
+    counterexample.  And the length check is what rules out a shift that
+    merely *looks* aligned: the fresh cells must be exactly the ``d`` zeros
+    the growth created.
+
+    Two things this does not do.  It compares *consecutive* visits to a
+    position, so growth whose period spans two visits stays undecided --
+    like the ancestor detector's ``f(x - 1)``, a real gap, left to the
+    caller's timeout.  And ``d == 0`` is not its business: a loop that
+    grows a cell's value rather than the tape, such as ``+[<+]``, revisits
+    an exact state once the value wraps at 256 and is
+    :func:`run_until_halt_or_cycle`'s to prove.
+
+    ``limit`` bounds the walk in steps.  Exhausting it raises
+    :class:`TimeoutError` rather than returning a verdict, so a program
+    this cannot decide is never reported as halting.
+    """
+    # Per code position: the last visit's (pointer, tape, input cursor),
+    # and the lowest pointer seen since that visit.  One entry per position
+    # rather than per state, so this is bounded by the program's length.
+    last: dict[int, tuple[int, tuple[int, ...], int]] = {}
+    lowest: dict[int, int] = {}
+    for _ in range(limit):
+        if machine.halted:
+            return True
+        ind, ptr, tape = machine.ind, machine.ptr, machine.tape
+        for position in lowest:
+            if ptr < lowest[position]:
+                lowest[position] = ptr
+        previous = last.get(ind)
+        if previous is not None and _grows_forever(
+            previous, (ptr, tape, machine.input_position()), lowest[ind]
+        ):
+            return False
+        last[ind] = (ptr, tape, machine.input_position())
+        lowest[ind] = ptr
+        machine.step()
+    raise TimeoutError(
+        f"undecided after {limit} steps: neither halted nor grew by a "
+        "provable translation"
+    )
+
+
+def _grows_forever(
+    before: tuple[int, tuple[int, ...], int],
+    after: tuple[int, tuple[int, ...], int],
+    lowest: int,
+) -> bool:
+    """Whether ``after`` is ``before`` translated right by the growth.
+
+    The certificate itself, split out so the four conditions read as the
+    list in :func:`run_until_halt_or_growth`'s docstring rather than as one
+    expression buried in a loop.
+    """
+    ptr_before, tape_before, input_before = before
+    ptr_after, tape_after, input_after = after
+    displacement = ptr_after - ptr_before
+    return (
+        input_after == input_before
+        and displacement > 0
+        and len(tape_after) == len(tape_before) + displacement
+        and lowest >= 1
+        and all(
+            tape_after[i + displacement] == tape_before[i]
+            for i in range(lowest, len(tape_before))
+        )
     )
 
 
