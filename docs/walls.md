@@ -869,9 +869,11 @@ revisits a state, so it is invisible to this mechanism however complete the
 snapshot: a brainfuck `+[>+]` grows the tape forever, and a call that never
 returns pushes one frame per `step()` and pops none, so the frame tuple grows
 by one element every step and two whole-machine snapshots can never compare
-equal.  The wall-clock timeout stays as the backstop for that class, and for
-the fuzzers, which do not control program shape the way hand-written tests
-do.
+equal.  Both halves of that class now have their own detector —
+`run_until_halt_or_growth` for the tape, `run_until_halt_or_ancestor` for
+the frames, described below.  The wall-clock timeout stays as the backstop
+for what neither decides, and for the fuzzers, which do not control program
+shape the way hand-written tests do.
 
 `tests/fuzz/test_interpreters_robustness.py` decides the empty-program
 invariant by state-cycle detection for forty-nine string-based step-capable
@@ -904,6 +906,41 @@ design: it has no statement/expression split whose statement side discards
 its value, and a realistic recursive call sits in *argument* position
 relative to the lazy `i` builtin, the language's only conditional.  So every
 call at any depth pushes a `_Frame` rather than only the outermost.
+
+**`run_until_halt_or_growth` catches the tape growth the cycle detector
+cannot.**  `+[>+]` was the standing example of the class above, and it is
+decided rather than timed out.  Instead of comparing whole states across
+time, it compares two consecutive visits to the *same code position* and
+asks whether the second is the first translated rightward.  With `d` the
+pointer's displacement between the visits and `m` the lowest cell the
+pointer reached in between, it reports a hang when the input cursor did not
+move, `d > 0`, the tape grew by exactly `d` fresh cells, `m >= 1`, and
+`tape2[i + d] == tape1[i]` for every `m <= i < len(tape1)`.  The period then
+replays at `+d`, `+2d`, … by induction, because the machine reads only the
+cell under the pointer and its semantics are translation-invariant away from
+the clamped left edge.
+
+Three conditions carry the soundness rather than merely tightening it.
+`m >= 1` is what licenses translation at all: a period touching cell 0 may
+have been clamped by `<` where its shifted copy would not be, and `+[<+]` is
+exactly that shape — it *halts*, when the cell wraps at 256, so certifying a
+left-edge period would call a halting program a hang.  The lower bound
+`i >= m` rather than `i >= 0` is what decides `+[>++]`, which keeps the 1
+that `+` left in cell 0 while the interior fills with 2s and so is never a
+full-width shift of itself; cells left of `m` are unreachable for the rest of
+the run, so their disagreeing is not a counterexample.  And the input cursor
+is load-bearing in the same way the ancestor detector's is: on a *constant*
+byte stream every other condition holds, sixteen times over for `+[>,]`,
+while the program in fact stops at EOF.
+
+Two gaps stay open by design.  It compares consecutive visits to a position,
+so growth whose period spans two visits is undecided; and `d == 0` is not its
+business — a loop growing a cell's value rather than the tape, like `+[]`,
+repeats an exact state and is the cycle detector's.  A machine opts in by
+exposing `ind`/`ptr`/`tape` and an `input_position`, plus the language-level
+claim the protocol documents: single-cell access, rightward growth, and
+semantics invariant under translation for `ptr >= 1`.  Brainfuck qualifies; a
+language with absolute cell addresses or a wrapping tape does not.
 
 **`run_until_halt_or_ancestor` catches the recursion the cycle detector
 cannot.**  It compares a newly-pushed frame's own local state against the
