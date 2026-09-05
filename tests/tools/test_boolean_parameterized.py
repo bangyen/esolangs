@@ -2033,6 +2033,86 @@ class TestEvalBoolean:
         # The free arrangement is the one staging produces, and costs nothing.
         assert _eval_stack_programs(3)[(0, 1, 2)] == ""
 
+    def test_reorder_catalog_invariants(self) -> None:
+        """The catalog is capped, deduplicated and (length, ~<*<=)-sorted.
+
+        The sort order is load-bearing: ``_eval_stack_programs`` folds the
+        catalog first-claim-wins, so cheapest-first is what makes every
+        claimed string minimal, and the ``~`` < ``*`` < ``=`` tie order is
+        what keeps the fold byte-identical to the search it replaced.
+        """
+        from esolangs.tools.boolean.parameterized import (
+            _EVAL_MAX_OPS,
+            _EVAL_REORDERS,
+        )
+
+        assert len(_EVAL_REORDERS) == 735
+        assert len(set(_EVAL_REORDERS)) == 735
+        assert _EVAL_REORDERS[0] == ""
+        assert all(len(ops) <= _EVAL_MAX_OPS for ops in _EVAL_REORDERS)
+        rank = {"~": 0, "*": 1, "=": 2}
+        keys = [(len(ops), [rank[op] for op in ops]) for ops in _EVAL_REORDERS]
+        assert keys == sorted(keys)
+
+    def test_reorder_catalog_matches_search(self) -> None:
+        """The catalog fold reproduces the search it replaced, byte for byte.
+
+        The breadth-first walk over (tree stack, input stack, active stack)
+        that used to run inside ``_eval_stack_programs`` lives on here as
+        the specification.  Equality is asserted on the item *lists*, not
+        the dicts: the shipped fold must claim the same arrangements with
+        the same op strings in the same order, because ``eval``'s stable
+        sort breaks total-length ties by that order.
+        """
+        from collections import deque
+
+        from esolangs.tools.boolean.parameterized import (
+            _EVAL_MAX_OPS,
+            _eval_stack_programs,
+        )
+
+        def searched(n: int) -> dict[tuple[int, ...], str]:
+            start: tuple[tuple[int, ...], tuple[int, ...], int] = (
+                (),
+                tuple(range(n)),
+                0,
+            )
+            seen = {start: ""}
+            frontier = deque([start])
+            reached: dict[tuple[int, ...], str] = {}
+            while frontier:
+                state = frontier.popleft()
+                tree, read, active = state
+                ops = seen[state]
+                if active == 0 and not tree and read not in reached:
+                    reached[read] = ops
+                if len(ops) >= _EVAL_MAX_OPS:
+                    continue
+                stacks = {0: tree, 1: read}
+                moves = [((tree, read, 1 - active), "~")]
+                flipped = tuple(reversed(stacks[active]))
+                moves.append(
+                    ((flipped, read, active), "*")
+                    if active == 0
+                    else ((tree, flipped, active), "*")
+                )
+                if stacks[active]:
+                    moved, rest = stacks[active][-1], stacks[active][:-1]
+                    other = (*stacks[1 - active], moved)
+                    moves.append(
+                        ((rest, other, active), "=")
+                        if active == 0
+                        else ((other, rest, active), "=")
+                    )
+                for next_state, op in moves:
+                    if next_state not in seen:
+                        seen[next_state] = ops + op
+                        frontier.append(next_state)
+            return reached
+
+        for n in range(6):
+            assert list(_eval_stack_programs(n).items()) == list(searched(n).items())
+
     def test_scales_to_more_inputs(self) -> None:
         """The heap tree grows to any n (spot-checked at n = 6)."""
         from esolangs.tools.boolean import parameterized
