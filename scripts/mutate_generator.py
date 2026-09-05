@@ -95,7 +95,8 @@ _SUPPORT = (
 # deselected, 2135 tests run in 39s and the slowest single one is 2.98s, so
 # 20s is nearly seven times the worst case while staying well under the
 # RLIMIT.  The slow tests have to be deselected in configuration for that
-# bound to hold -- see :func:`_pytest_args`.
+# bound to hold -- see :func:`_pytest_args` -- so under ``--slow`` the
+# ceiling is dropped rather than applied to tests it was not measured over.
 _ALARM_FACTOR = 10.0
 _MIN_ALARM = 5.0
 _MAX_ALARM = 20.0
@@ -447,9 +448,11 @@ def main() -> int:
     parser.add_argument(
         "--slow",
         action="store_true",
-        help="include tests marked slow.  They are deselected by default: a "
-        "mutation run pays the suite's cost once per mutant, so a test that "
-        "adds seconds to the baseline adds hours to the run",
+        help="include tests marked slow.  They are deselected by default "
+        "because a mutant that one of them covers pays its cost on every "
+        "run that reaches it, and they also lift the per-test alarm: the "
+        "20s ceiling is measured over the fast suite, so it is dropped here "
+        "rather than applied to tests it was never measured over",
     )
     parser.add_argument(
         "--jobs",
@@ -490,7 +493,15 @@ def main() -> int:
             print(baseline.stdout[-3000:])
             raise SystemExit("the selected tests fail before any mutation")
 
-        budget = min(_MAX_ALARM, max(_MIN_ALARM, elapsed * _ALARM_FACTOR))
+        # The ceiling is derived from the fast suite's worst single test, so
+        # it only applies while the slow tests are deselected.  Under
+        # ``--slow`` they are not, and capping at 20s would fail the very
+        # tests the flag asks for -- the 4s Minifuck build runs far longer
+        # under mutmut's tracing.  There the budget is left uncapped, which
+        # is what ``mutate_one`` does at every run.
+        budget = max(_MIN_ALARM, elapsed * _ALARM_FACTOR)
+        if not args.slow:
+            budget = min(_MAX_ALARM, budget)
         print(f"[note] baseline {elapsed:.2f}s; capping each test at {budget:.1f}s")
 
         env = {
