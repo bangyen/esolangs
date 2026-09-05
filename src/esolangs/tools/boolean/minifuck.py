@@ -2573,11 +2573,14 @@ def _staged(truth_table: str, n: int) -> str | None:
 #   cascade debris from crossing ``C - 1``: scrambled, not controlled.
 #
 # So repeatedly fixing the *highest* disagreeing row strictly lowers the
-# frontier, and the loop lands in at most ``2**n`` rounds.  The one
-# non-structural residue is the pool code: the probe re-derives it each
-# round, and a state-driven switch could in principle disturb a fixed row
-# through the walkout, which is why the loop carries a small allowance and
-# falls through rather than looping.  The trailing ``x`` on every round is
+# frontier, and the loop lands in at most ``2**n`` rounds.  What used to be
+# the one non-structural residue -- the pool code, re-derived each round,
+# where a state-driven switch could in principle have disturbed a fixed row
+# through the walkout -- is now closed by name: the probe state is canonical
+# at every round, so the code is a constant and cannot switch.  See
+# :data:`_SCULPT_POOL_CODE`.  The loop keeps its allowance and its
+# fall-through anyway, because they cost nothing and the cap is what makes
+# "a stall returns None" true.  The trailing ``x`` on every round is
 # the ``_FLIP`` lesson again: a walk whose last ``[`` cascades leaves the
 # skip flag set, and the next instruction must be one the program can afford
 # to lose.
@@ -2818,6 +2821,63 @@ def _mux_separate(n: int) -> _Joint | None:
     return j
 
 
+#: Which pool code a *sculpting* probe reaches, named rather than searched.
+#:
+#: The scan this replaces was re-deriving a constant.  The verdict is fixed
+#: by the construction, in three steps:
+#:
+#: * **The probe state is canonical.**  :func:`_mux_probe` emits ``x`` to
+#:   absorb a pending skip and then :func:`_clamp`\ s, and ``<`` never
+#:   writes -- so every probe, at every round of every sculpt, asks about
+#:   rows whose pointers are all 0, with no skip and no dead row, and whose
+#:   pool region is ``(0, 1, 1, 1, 1, 1, 1, 1)``.  Measured as one state per
+#:   ``cell7``: exhaustive at ``n == 3`` (256 tables, 50688 probes), 200
+#:   sampled at four and 12 at five -- 2 distinct full states in all, which
+#:   are the two values of ``cell7`` and nothing else.
+#: * **Nothing outside the pool region can matter.**  Running any pool code
+#:   from that state touches at most cell 6, inside the 8-wide region the
+#:   verdict reads, so the region *is* the whole input to the question.
+#: * **A sculpt cannot disturb it.**  A round rewinds by ``K`` under the
+#:   guard ``rewind > min(ptrs) - _POOL_WIDTH``, so it never writes into the
+#:   region, and the next round re-clamps to the same state.
+#:
+#: So the answer is a constant of the arity-free construction, not a
+#: property of the table: the fifth code answers ``cell7 == 0`` at every
+#: accumulator and every round, and ``cell7 == 1`` is answered by none.  That
+#: is what the ``hint`` parameter was observing when it measured "zero
+#: switches" -- the hint never switched because it never could.
+#:
+#: **What this is worth, measured rather than inherited.**  The roadmap
+#: entry that opened this frontier read "14.5s of a 17.9s warm five-input
+#: build" as the cost of the *scan*.  That was cumulative time in
+#: :func:`_mux_probe`, and the scan was the smaller half of it: the ``hint``
+#: already skipped the list on all but the first round, so naming the code
+#: takes a warm five-input build from ~3.1s to ~2.8s, about 10%.  Profiled
+#: after the change, :func:`_pool_reaches` is 3% of a build and every call
+#: left comes from :func:`_find_pool` on the derivation path.  The rest of
+#: :func:`_mux_probe` is the *column derivation* -- the walk and clamp over
+#: every row, once a round -- which is a different question from which code
+#: to use and is not closed by this constant.
+#:
+#: So the value here is the rule, not the seconds: the search is gone, and
+#: what remains is arithmetic the module was always going to do.
+#:
+#: This is the sculpting probe only.  :func:`_find_pool` asks the same
+#: question of the *derivation* path, whose joints are not clamped to this
+#: state, and keeps its scan.
+_SCULPT_POOL_CODE = _POOL_CODES[4]
+
+
+def _sculpt_pool_code(cell7: int) -> str | None:
+    """Return the code a sculpting probe reaches, by :data:`_SCULPT_POOL_CODE`.
+
+    ``test_sculpt_pool_code_matches_scan`` replays the replaced scan as the
+    specification oracle, so the constant is checked against
+    :func:`_pool_reaches` rather than trusted.
+    """
+    return _SCULPT_POOL_CODE if cell7 == 0 else None
+
+
 def _mux_probe(
     j: _Joint, acc: int, cell7: int, hint: str | None = None
 ) -> tuple[tuple[int, ...], str] | None:
@@ -2828,34 +2888,28 @@ def _mux_probe(
     one entry per probe and pay for lookups that can never hit.  The pool
     codes are tried directly instead.
 
-    ``hint`` is the code the previous round of the same sculpt used, tried
-    ahead of the list.  Scanning the list is what dominates a sculpt --
-    measured, 61% of a four-input build -- and the code never changes between
-    rounds of one sculpt (measured over sampled builds: zero switches), so
-    the hint hits every time.  The scan stays behind it rather than being
-    replaced by it: :func:`_mux`'s loop is built to survive a switch, and a
-    hint that had become mandatory would turn a survivable switch into a
-    stall.  The code is returned so the caller can pass it back.
+    The code is not searched for.  :data:`_SCULPT_POOL_CODE` names it: the
+    probe state here is canonical (the ``x`` and the clamp below put every
+    row at pointer 0 with the same pool region), so the verdict is a
+    constant of the construction.  See that constant for the derivation and
+    the measurements behind it.  What used to stand here was a scan over
+    :data:`_POOL_CODES` -- 61% of a four-input build, and the module's hot
+    spot at five -- with ``hint`` carrying the previous round's winner ahead
+    of the list to skip most of it.  The hint is accepted and ignored: it
+    was a cache for a value that cannot change between rounds, and the
+    caller still passes it because :func:`_mux` reads the code back out of
+    the return.
 
-    The scan probes at :data:`_PROBE_WALK_OUT` rather than at this caller's
-    accumulator, which is what makes it cheap: a probe walks the pool out to
-    the accumulator, so asking at ``acc - 1`` costs up to 36 walk steps on
-    every row for every candidate, where the fixed probe costs 9.  The
-    verdict does not depend on the distance -- that is the invariance
-    :data:`_PROBE_WALK_OUT` already documents, re-measured here on the states
-    a sculpt actually reaches (50 ``(state, code, cell7)`` triples over
-    walk-outs 9 to 41, no triple changes answer).  The walk that *does* need
-    the real accumulator is the one below, and it runs once.
+    The walk that needs the real accumulator is the one below, and it runs
+    once.  The verdict itself never depended on the distance -- the
+    invariance :data:`_PROBE_WALK_OUT` documents -- which is why naming the
+    code costs no generality.
     """
+    del hint
     probe = j.fork()
     probe.emit("x")  # absorb a pending skip so the clamp below is exact
     _clamp(probe)
-    code = None
-    candidates = _POOL_CODES if hint is None else (hint, *_POOL_CODES)
-    for candidate in candidates:
-        if _pool_reaches(probe, candidate, cell7, _PROBE_WALK_OUT):
-            code = candidate
-            break
+    code = _sculpt_pool_code(cell7)
     if code is None:
         return None
     probe.emit(code)
@@ -2885,9 +2939,12 @@ def _mux_sculpt(
     Derive the column the endgame would print, take the highest-positioned
     row that disagrees, flip its cell ``C`` with one clean round, repeat.
     The frontier argument in the section comment bounds the loop; the cap is
-    that bound plus a small allowance for a pool-code switch, and a stall
-    returns None rather than looping.  The finished joint is handed to
-    :func:`_try_print`, so what is returned was seen to print the table.
+    that bound plus a small allowance, and a stall returns None rather than
+    looping.  The allowance was for a pool-code switch, which
+    :data:`_SCULPT_POOL_CODE` has since ruled out -- it is kept as slack
+    because the cap's job is to make the fall-through true, not to be tight.
+    The finished joint is handed to :func:`_try_print`, so what is returned
+    was seen to print the table.
     """
     want = tuple(int(c) for c in truth_table)
     j = base.fork()
@@ -2958,13 +3015,15 @@ def _mux(truth_table: str, n: int) -> str | None:
     # guard exactly tight rather than slack -- see the constant's own comment.
     for acc in range(highest - lowest + _POOL_WIDTH + 1, lowest - 1):
         for cell7 in (0, 1):
-            # Which pool code serves this ``(acc, cell7)`` is settled on the
-            # separation, before any sculpting: measured at four inputs, one
-            # code answers every accumulator and ``cell7 == 1`` is answered
-            # by none, so half the combinations below are decided here rather
-            # than by re-scanning the list inside each sculpt.  A pair no
-            # code reaches cannot be sculpted at all, so it is skipped -- the
-            # same outcome the sculpt would reach, without the work.
+            # Which pool code serves this ``(acc, cell7)`` is settled before
+            # any sculpting, and now by name rather than by measurement:
+            # :data:`_SCULPT_POOL_CODE` answers ``cell7 == 0`` at every
+            # accumulator and ``cell7 == 1`` is answered by none, so half the
+            # combinations below are decided here.  A pair no code reaches
+            # cannot be sculpted at all, so it is skipped -- the same outcome
+            # the sculpt would reach, without the work.  The seed still runs
+            # because it also derives the column, which the constant does
+            # not; what it no longer does is scan.
             seed = _mux_probe(base, acc, cell7)
             if seed is None:
                 continue
