@@ -487,10 +487,9 @@ open:
 
 ## Smaller open items
 
-- **Closed forms for the search-based boolean generators** — **four
-  closed and shipped; one frontier still open** (Minifuck's mux sculpt,
-  last below).  Most generators construct their answer; four searched
-  for it, and each now names what it finds instead.  A sweep of
+- **Closed forms for the search-based boolean generators** — **all
+  closed and shipped.**  Most generators construct their answer; five
+  searched for it, and each now names what it finds instead.  A sweep of
   every module in `tools/boolean/` for a live frontier (rather than for
   the word "search", which appears mostly in prose describing searches
   that were *replaced*)
@@ -571,7 +570,7 @@ open:
       sample, and dense tables stopped being the expensive case.  See
       `docs/walls.md` for the derivation.
     - **Minifuck's staging index** — **closed** (the module's *other*
-      search is open; see the mux sculpt entry below).
+      search is the mux sculpt below, also closed).
       `_staging_index` used to run the
       interpreter over every staging — 4640 `claim` calls driving 63.8M
       steps, 25.6s of a 38.4s `n == 5` build — and now derives every
@@ -590,34 +589,48 @@ open:
       cost is ten embeds and twenty pool probes per arity.  The emit-and-walk
       spelling lives on in `_derived_plans`/`_column_sweep` as the oracle
       the tests compare against.
-    - **Minifuck's mux sculpt — open, and the one live frontier left.**
-      Closing `_staging_index` did *not* close Minifuck.  Profiling a
-      *warm* build (index already tabulated) puts 14.5s of 17.9s in
-      `_mux` → `_mux_sculpt` → `_mux_probe`, which scans `_POOL_CODES`
-      through `_pool_reaches` — a real interpreter probe, 20.7M
-      `_step` calls over two tables.  Instrumented per table at a warm
-      index: 1060 `_mux_probe` calls and 1727 `_pool_reaches` probes for
-      one five-input table, ~4-6s each.
-      This is the same miss the note above warns about, one level down.
-      **Sample size, not arity, is why it hid.**  A first pass here got
-      that wrong too, reading "one random table per arity" as an arity
-      floor; measured properly the sculpt rate is 0/16 exhaustive at
-      `n == 2`, **12/256 exhaustive at `n == 3`**, 154/200 sampled at
-      four and 12/12 at five.  So the path is live from three inputs up
-      — the module's own docstrings say as much ("61% of a four-input
-      build", "38144 sculpting rounds at two and three inputs") — and a
-      single `n <= 4` table misses it better than half the time at three
-      and roughly one try in four at four.  Instrumenting
-      `_staging_index` — the thing that *was* closed — hides it further,
-      because that cost is real but one-time and cached per arity.
-      The `hint` parameter already documents the shape of the answer:
-      the code "never changes between rounds of one sculpt (measured
-      over sampled builds: zero switches)", so the scan is re-deriving a
-      value that is constant across a sculpt.  Naming what selects the
-      pool code — rather than probing for it — is the closed form to
-      find.  Measure warm, over *many* tables per arity — a single
-      sample is not a sweep.
-  The four entries above stay as the record
+    - **Minifuck's mux sculpt — closed; shipped.**  `_mux_probe` scanned
+      `_POOL_CODES` through `_pool_reaches`, a real interpreter probe, once
+      a round.  It is now `_SCULPT_POOL_CODE`: the fifth code answers
+      `cell7 == 0` at every arity, accumulator and round, and `cell7 == 1`
+      is answered by none.  The rule is structural in three steps —
+      `_mux_probe` emits `x` and clamps, so every probe sees rows at
+      pointer 0 with pool region `(0,1,1,1,1,1,1,1)`; running a pool code
+      from there touches at most cell 6, inside the 8-wide region the
+      verdict reads; and a sculpting round cannot write into that region
+      under the rewind guard `rewind > min(ptrs) - _POOL_WIDTH`.  So the
+      state the verdict reads is a constant of the construction, and the
+      `hint`'s "zero switches" was a theorem, not a coincidence.  Measured
+      at 2 distinct full probe states (the two `cell7` values, nothing
+      else) over exhaustive `n == 3`, 200 sampled at four and 12 at five —
+      169628 probes, code index 4 every time, hint suppressed so the scan's
+      own verdict was recorded.  Acceptance is byte equality on 468 tables
+      (exhaustive three, 200 at four, 12 at five): **0 differ**.  The scan
+      survives as the specification oracle in
+      `test_sculpt_pool_code_matches_scan`, and `_find_pool` keeps its own
+      scan — it asks the same question of the *derivation* path, whose
+      joints are not clamped to this state.
+      **What the entry that opened this got wrong, worth not repeating.**
+      It read "14.5s of a 17.9s warm five-input build" as the cost of the
+      scan.  That was cumulative time in `_mux_probe`, and the scan was the
+      smaller half: the `hint` already skipped the list on every round but
+      the first, so naming the code is worth about 10% (~3.1s to ~2.8s
+      warm), and `_pool_reaches` profiles at 3% afterwards.  The bulk of
+      `_mux_probe` is the *column derivation* — the walk and clamp over
+      every row, once a round — which is a different question and is not
+      closed by this constant.  A cumulative-time attribution names the
+      caller, not the cost; the value here is the rule, not the seconds.
+      **The round loop itself does not close, and the reason is
+      structural.**  A round is provably clean above the frontier — over
+      36864 round transitions at exhaustive `n == 3`, **0** moved a row
+      above the frontier, which is the monotonicity that bounds the loop —
+      but **27656 of 36864 (75%) moved a row below it**, exactly the
+      "value-dependent cascade debris" the section comment predicts for
+      rows that cross `C - 1` on the way back.  So the post-fix column is
+      not predictable without walking, the frontier sequence cannot be
+      computed up front, and the loop stays.  Only the search inside it
+      was removable.
+  The five entries above stay as the record
   of what each search was and what named it.  For the shape of what
   closing one buys, SLOW
   ACV MAMMALIAN is the worked precedent: its own search was replaced by an

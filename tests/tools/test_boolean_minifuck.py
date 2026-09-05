@@ -781,6 +781,63 @@ class TestParameterizedMinifuck:
             assert self.run_minifuck(program) == table[combo], (table, bits)
         assert len(widths) == 1, widths
 
+    def test_sculpt_pool_code_matches_scan(self) -> None:
+        """The named sculpt code is what the replaced scan would have found.
+
+        ``_mux_probe`` used to scan ``_POOL_CODES`` through ``_pool_reaches``
+        -- a real interpreter probe, and the module's hot spot at five
+        inputs.  It is now :data:`_SCULPT_POOL_CODE`, a constant, because the
+        probe state is canonical: the ``x`` and the clamp put every row at
+        pointer 0 with the same pool region, a sculpting round cannot write
+        into that region under the rewind guard, and no pool code's own
+        execution reaches past cell 6.
+
+        This replays the scan on the states a sculpt actually reaches and
+        asserts the constant answers exactly what it returned -- the same
+        specification-oracle shape the other closed searches keep.  Both
+        orientations are checked, so "``cell7 == 1`` is answered by none"
+        stays pinned as a measured fact rather than an assumption baked into
+        the constant.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        seen: list[tuple[object, int]] = []
+        real = module._mux_probe  # noqa: SLF001
+
+        def record(joint: object, acc: int, cell7: int, hint: object = None) -> object:
+            if len(seen) < 60:
+                probe = joint.fork()  # type: ignore[attr-defined]
+                probe.emit("x")
+                module._clamp(probe)  # noqa: SLF001
+                seen.append((probe, cell7))
+            return real(joint, acc, cell7, hint)
+
+        with patch.object(module, "_mux_probe", record):
+            assert module._mux("0110100110010110", 4) is not None  # noqa: SLF001
+        assert seen, "no sculpting probes were observed"
+
+        for probe, cell7 in seen:
+            scanned = next(
+                (
+                    code
+                    for code in module._POOL_CODES  # noqa: SLF001
+                    if module._pool_reaches(  # noqa: SLF001
+                        probe,
+                        code,
+                        cell7,
+                        module._PROBE_WALK_OUT,  # noqa: SLF001
+                    )
+                ),
+                None,
+            )
+            assert scanned == module._sculpt_pool_code(cell7), cell7  # noqa: SLF001
+
+        # Both orientations really were exercised, so the None half above is
+        # a checked answer and not an unvisited branch.
+        assert {cell7 for _, cell7 in seen} == {0, 1}
+
     @pytest.mark.slow  # the six-input build, tens of seconds
     def test_no_arity_is_gated(self) -> None:
         """A fully-essential six-input table builds and prints all 64 rows.
