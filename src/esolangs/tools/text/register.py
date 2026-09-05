@@ -160,7 +160,7 @@ def _dig_vertical(text: str) -> str:
     top-to-bottom down column 0, and the segment is as atomic as it ever
     was, since falling through it consumes the cells in the same order.
 
-    Column 1 carries the digits.  :meth:`_Machine._value` reads a digit from
+    Column 1 carries the digits.  Dig's ``_value`` reads a digit from
     *any* neighbouring cell rather than specifically the one below, so a
     count beside its ``$`` is found exactly as one under it was, and the
     ``%`` that prints a space reads its ``0`` the same way.  This is also
@@ -195,7 +195,7 @@ def _dig_fold(text: str, width: int) -> str:
     leftward command row still needs a spacer between it and the depth
     digits above it.  The return lane is preferred because it doubles as
     that spacer: ``$`` and ``%`` read a digit from *any* adjacent cell, and
-    :meth:`_Machine._value` scans upward first, so a command row must never
+    Dig's ``_value`` scans upward first, so a command row must never
     sit directly beneath another pair's depth digits.  Running every row
     rightward also keeps each segment's cells in the one order.
 
