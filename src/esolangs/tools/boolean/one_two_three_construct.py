@@ -731,7 +731,7 @@ def _replay_twos(pos: int, tape: int, w: int) -> tuple[int, int]:
     return pos + w, tape
 
 
-def _replay_verdict(code: str) -> str | None:
+def _replay_verdict(code: str) -> str:
     """Execute one instantiated program: ``"0"`` halts, ``"1"`` loops.
 
     This is the closing execution gate, so it is written against the
@@ -761,9 +761,11 @@ def _replay_verdict(code: str) -> str | None:
     power = lam = 1
     saved: tuple[int, int, int] | None = None
     # Events, not commands: only jumps and loopbacks are counted, and a
-    # run of any length is one step.  The cap guards against a build bug
-    # that diverges without ever revisiting a state.
-    for _ in range(64 * size + 500000):
+    # run of any length is one step.  There is deliberately no event or
+    # command cap here: the answer is a real halt or an exact state revisit,
+    # never a fuel-limit inference.  Constructed programs only touch a finite
+    # tape prefix, so one of those two outcomes must eventually occur.
+    while True:
         if ip >= size:
             # End of the program: halt below location 0, else loop.
             if pos < 0:
@@ -792,7 +794,6 @@ def _replay_verdict(code: str) -> str | None:
         if power == lam:
             saved, power, lam = state, power * 2, 0
         lam += 1
-    return None
 
 
 def _replay(template: str, n: int, table: str) -> None:
