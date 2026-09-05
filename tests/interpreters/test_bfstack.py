@@ -23,6 +23,29 @@ class TestBFStack:
         """< pops the top of the stack."""
         assert run_and_capture(">+>+<.") == "\x01"
 
+    def test_a_pop_leaves_everything_below_it(self) -> None:
+        """Popping removes one cell, not all but the bottom one.
+
+        ``test_pop`` uses two cells, where dropping the top and keeping
+        only the bottom are the same stack.  Three cells with distinct
+        values separate them, and popping twice reads each in turn.
+        """
+        three = ">+" + ">++" + ">+++"
+        assert run_and_capture(three + ".") == "\x03"
+        assert run_and_capture(three + "<.") == "\x02"
+        assert run_and_capture(three + "<<.") == "\x01"
+
+    def test_a_decrement_rebuilds_the_stack_below_the_top(self) -> None:
+        """``-`` replaces the top and leaves the rest where they were.
+
+        The arm is written as a rebuild, so the slice it keeps has to be
+        everything but the top -- which one cell cannot show.  Popping
+        after the decrement reads what the rebuild preserved.
+        """
+        three = ">+" + ">++" + ">+++"
+        assert run_and_capture(three + "-.") == "\x02"
+        assert run_and_capture(three + "-<.") == "\x02"
+
     def test_input(self) -> None:
         """, pushes ASCII input onto the stack."""
         assert run_and_capture(">,.", inputs=["Z"]) == "Z"
