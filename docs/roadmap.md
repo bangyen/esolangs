@@ -487,13 +487,18 @@ open:
 
 ## Smaller open items
 
-- **Closed forms for the three search-based boolean generators** — most
-  generators construct their answer; three still search for it, and each
+- **Closed forms for the four search-based boolean generators** — most
+  generators construct their answer; four still search for it, and each
   could in principle name what it finds instead.  A sweep of every module in
   `tools/boolean/` for a live frontier (rather than for the word "search",
   which appears mostly in prose describing searches that were *replaced*)
   leaves exactly these, all confirmed by instrumenting the function and
-  building real tables:
+  building real tables.  **Instrument the function the shipped entry
+  actually calls**: an earlier pass of this sweep missed Minifuck below
+  because it patched `_derived_plans`, the offline sibling, which fires
+  zero times in a real build — the runtime path reaches the enumeration
+  through `_staging_index` instead.  Patching the wrong name reports a
+  clean negative:
     - **Eval** — `_eval_stack_programs` (`parameterized.py`) is a genuine
       BFS over `(tree stack, input stack, active stack)` for the shortest op
       string reaching each arrangement.  It returns exactly `n!`
@@ -515,8 +520,25 @@ open:
       built in 401s, emitting 144093 characters.  It *succeeded* — the cost
       is the search, not a wall — but that is one seed against a documented
       high-variance search, so treat it as the shape rather than the figure.
-  Worth picking up only for 123, and only if `n >= 5` tables start
-  mattering; the other two are recorded so a future reader does not
+    - **Minifuck** — `_staging_index` (`minifuck.py`) enumerates
+      `(separator, settle, suffix, accumulator)` stagings in `_stagings`
+      order and takes the first that prints each column.  It is
+      **unbudgeted at every arity** — `_budget` returns `None` throughout,
+      so the whole enumeration runs — and it dominates the shipped build:
+      profiling one random `n == 5` table put **25.6s of a 38.4s build**
+      inside it, 4640 `claim` calls driving 63.8M interpreter steps.  Note
+      that `_staging_index`' own docstring still says "Five is the budgeted
+      pass, which is what ships today", which the lifted budget contradicts.
+      The docstring also records why the obvious closed form is not
+      available: the printed column does not reduce in
+      `(suffix, accumulator)` — three translation hypotheses were tested
+      against the measured grid and all fail — because the pool code
+      depends on the state the staging leaves behind.  So the thing to name
+      here is not the column law but the *first-hit* staging per column.
+  Worth picking up for 123 and Minifuck — 123 only if `n >= 5` tables start
+  mattering, Minifuck sooner, since it already charges 6.4s on a random
+  `n == 4` table and is on the default build path rather than a sampled
+  one.  The other two are recorded so a future reader does not
   rediscover them as costs.  For the shape of what closing one buys, SLOW
   ACV MAMMALIAN is the worked precedent: its own search was replaced by an
   arithmetic construction once the `j1` sweep turned out to be a residue
