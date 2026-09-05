@@ -487,8 +487,8 @@ open:
 
 ## Smaller open items
 
-- **Closed forms for the four search-based boolean generators** — most
-  generators construct their answer; four still search for it, and each
+- **Closed forms for the three search-based boolean generators** — most
+  generators construct their answer; three still search for it, and each
   could in principle name what it finds instead.  A sweep of every module in
   `tools/boolean/` for a live frontier (rather than for the word "search",
   which appears mostly in prose describing searches that were *replaced*)
@@ -499,12 +499,24 @@ open:
   zero times in a real build — the runtime path reaches the enumeration
   through `_staging_index` instead.  Patching the wrong name reports a
   clean negative:
-    - **Eval** — `_eval_stack_programs` (`parameterized.py`) is a genuine
-      BFS over `(tree stack, input stack, active stack)` for the shortest op
-      string reaching each arrangement.  It returns exactly `n!`
-      arrangements — 2, 6, 24 through `n == 4` — and costs 0.034s at
-      `n == 5`, so a closed form buys *determinism and readability*, not
-      time.  The shortest string per arrangement is the thing to name.
+    - **Eval** — **closed; shipped.**  `_eval_stack_programs`
+      (`parameterized.py`) was a genuine BFS over `(tree stack, input
+      stack, active stack)`; it is now a fold over `_EVAL_REORDERS`, the
+      named catalog of every reorder program the 16-op cap admits.  The
+      catalog is finite because a non-identity program spends two ops on
+      toggles and one on a reversal, leaving at most 13 `=`s of travel —
+      it never moves more than six values, so past `n == 12` no new
+      arrangement can appear: the capped search returns 620, 691, 717,
+      728, 733, 735 entries over `n == 7..12` and is frozen at 735 from
+      then on (checked through `n == 16`; byte-identical dicts, order
+      included, plus a 736-table corpus with zero output diffs).  Two
+      hypotheses failed on the way and are worth not rediscovering: the
+      *uncapped* metric has no small exact theory — minimal op strings at
+      `n >= 5` zigzag the cursor, and contracting runs to units is lossy
+      (133 arrangements at `n <= 7` are only optimal via maneuvers that
+      transiently split a run) — so the closed form names the capped
+      catalog, not a distance formula.  The BFS itself survives as the
+      specification oracle in `test_reorder_catalog_matches_search`.
     - **%^2^-1** — five of them: `_ladder_tables` and `_spellings_by_width`
       run on every call, `_fold_search` and `_fold_beam` from `n >= 4`, and
       `_fold_to_cofactors` on a rarer fallback.  All are bounded by
@@ -538,8 +550,8 @@ open:
   Worth picking up for 123 and Minifuck — 123 only if `n >= 5` tables start
   mattering, Minifuck sooner, since it already charges 6.4s on a random
   `n == 4` table and is on the default build path rather than a sampled
-  one.  The other two are recorded so a future reader does not
-  rediscover them as costs.  For the shape of what closing one buys, SLOW
+  one.  %^2^-1 is recorded so a future reader does not rediscover it as a
+  cost, and Eval above is done.  For the shape of what closing one buys, SLOW
   ACV MAMMALIAN is the worked precedent: its own search was replaced by an
   arithmetic construction once the `j1` sweep turned out to be a residue
   solve, taking the contract sweep entry from 3.04s to 0.02s.  The forms to
