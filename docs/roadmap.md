@@ -667,6 +667,84 @@ open:
   every shipped generator covers `n <= 2` at minimum.  6-5 is the one
   documented wall left (`docs/limitations.md`); %^2^-1 is partly lifted with
   the rest open.
+- **The remaining literal tables in `tools/boolean/`** — swept by AST over
+  every module in `src/`, classified by provenance, and each one probed
+  rather than read.  **One was convertible and is shipped; the rest are
+  not candidates**, and the evidence for each is recorded here so the
+  sweep is not re-run from scratch.  The standing rule ("a named rule,
+  never a search or a frozen table") is about *frozen search output* — a
+  measured cover or a tuned ordering over a proven-total structure is a
+  different artefact and converting one trades a table for a search,
+  which is backwards.
+    - **`_FOLD_SERVED` (%^2^-1)** — **closed; shipped** at `57d4c0bb`.  The
+      twelve-entry frozenset is now `_fold_served()`.  Its comment called
+      the four absences a corpus measurement; they are structural.
+      `delta` is set when every middle index `{(r-1)//2, r//2}` is `1`, and
+      for `r` of 2, 3 and 4 that set contains index 1, so `delta` implies
+      `pat[1]` and `(2,1,0)`, `(3,1,0)`, `(4,1,0)` cannot be built; at
+      `r == 3` index 1 is the only middle, so the implication runs both
+      ways and `(3,0,1)` dies too; at `r == 5` the middles are `{2}`,
+      which frees index 1 and is why `(5,1,0)` is served where `(4,1,0)`
+      is not.  **The implication is one-directional** — `(2,0,1)` and
+      `(4,0,1)` are reachable, so the obvious `delta == pat1` predicate
+      looks right on the tabulated keys and silently drops two served
+      ones.  Enumerating every run pattern to `r == 12` reproduces the set
+      exactly; `test_fold_served_is_reachability` re-derives it each run.
+      Byte-identical on all 272 tables at `n <= 3`, and twelve
+      fold-served tables at `n == 4..7` execute every row correctly at
+      equal fill width.
+    - **`_WII2D_JUNCTIONS`** — **not a candidate.**  It is not a freeze but
+      the *product* of one: `ea65a170` removed `_WII2D_BEAMS`, the
+      `(4, 16, 32)` width ladder, `_WII2D_MAX_STATE_BITS` and the
+      magnitude-first retry, leaving this catalogue plus the totality
+      argument for Horner in last place.  Order is a size preference, not
+      a correctness constraint: permuting the twenty merge entries (Horner
+      pinned last) changes 360 of 392 emitted programs with **zero
+      errors**, exhaustive at `n == 2, 3` and sampled at 4 and 5, and the
+      shipped order beats 7 of 8 random permutations on total size (57708
+      against up to 59557; worst case 382 against up to 476).  Recovering
+      the ordering would mean re-running that tuning.  **One real defect:
+      the comment's "cheapest first" is false** — `('', '0')` at one
+      character sits after three two-character entries, and sorting by
+      total characters, by characters with reset/star tiering, and by a
+      weighted op cost all fail to reproduce the order.  The ordering is
+      semantic; the comment should say so.
+    - **`_SLICE_YIELD_ORDER` (Minifuck)** — **not a candidate; dormant, not
+      dead.**  It is unreachable as shipped — `_slices` returns the plain
+      enumeration at every arity because `_STAGING_BUDGET` and
+      `_STAGING_BUDGET_N5` are both `None` and nothing outside the tests
+      assigns them — but it is a working knob rather than dead code.  With
+      a budget set at `n == 4`, the only state that reaches it, the frozen
+      order and the plain order disagree on **3 of 8 tables about whether
+      a staging is found at all** (budget 2000) and emit a different
+      template on one (budget 20000).  Deleting it would silently change
+      behaviour for the documented slow-machine case, whose surrounding
+      machinery is live and tested by
+      `test_a_budget_gives_up_length_not_coverage`.  Whether the frozen
+      order is *better* is **unmeasured**: over 40 random tables 35-38
+      decline at every budget tried, leaving 2-5 to compare, and those
+      split both ways.  Settling it needs a corpus sized to the decline
+      rate, which is a measurement task and not a retirement.
+    - **`_LADDERS` (%^2^-1)** — **not a candidate on cost.**  Eight ladders
+      chosen by greedy set cover over 150 yielding paths; its own comment
+      prices the alternative at ~50s of build time to search the other 248
+      and find nothing further.  A cover is the shape the rule already
+      takes.
+    - **`_LADDER_GADGETS` (%^2^-1)** — **the one genuinely open item, and
+      out of scope as recorded.**  Five spellings whose comment states
+      outright that deriving them from their cuts means re-running the rung
+      composition they were found by.  *Which* gadget each table needs is
+      already computed; only the spellings stayed frozen.  Anyone attempting
+      it should expect to reconstruct that composition, not to find a
+      predicate.
+    - **`_TWO_INPUT_SHORT` (Super SNUSP)** — **not a candidate.**  Five
+      hand-found forms that beat the general ANF path by reusing `48`;
+      deleting them is safe (ANF is correct and total) but regresses size,
+      which is the metric.
+    - Method note, since element count misled this sweep once: a small
+      literal can hold a large frozen table.  The `>= 4`-element threshold
+      that found the six above would have missed `_SCHEDULES` (three keys,
+      one per arity) entirely.  Sweep by provenance, not by size.
 - **NoComment's tape size** — **closed; already shipped.**  The `tape`
   argument on `run`/`nocomment` is the whole mechanism this item proposed,
   and `n == 12` at `tape=16384` already builds, runs and is asserted by
