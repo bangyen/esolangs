@@ -178,10 +178,11 @@ def test_halt_convention_examples_halt(name: str) -> None:
     """The committed program of a halt-convention language terminates.
 
     These three answer with termination rather than output, so the
-    committed file is the halting (0) branch and its expected output is
-    empty.  :func:`test_boolean_example` then runs it with no step cap --
-    which turns a file holding the *looping* branch into a hung suite
-    rather than a failure, with nothing to say which file did it.
+    committed file is the halting (0) branch; ArrowQueue and Point Break
+    print nothing on it, and 123's junk write-bytes are ignored.
+    :func:`test_boolean_example` then runs it with no step cap -- which
+    turns a file holding the *looping* branch into a hung suite rather
+    than a failure, with nothing to say which file did it.
 
     The bound is state-cycle detection, not a step budget: these
     interpreters are step-capable, and a deterministic run that revisits
@@ -324,4 +325,12 @@ def test_boolean_example(name: str) -> None:
         # every VM exactly matches each interpreter's public ``run`` behavior.
         vm.step()
         got = vm.output
+    if name == "123":
+        # The constructed 123 template pops through location -2 while
+        # merging, and a ``2`` there prints whatever the cell holds --
+        # junk bytes that are deliberately not the answer, which is the
+        # proven halt asserted above.  The retired stored plans happened
+        # to have a silent halting row; the construction does not, so the
+        # bytes are not compared.
+        return
     assert got == expected
