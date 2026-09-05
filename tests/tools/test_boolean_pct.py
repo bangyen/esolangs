@@ -957,18 +957,18 @@ class TestPctSquaredHelpers:
         assert lead == code
 
     def test_every_tabulated_ladder_entry_computes_its_split(self) -> None:
-        """Each ``_LADDER_BUILT`` witness is checked by arithmetic, not trust.
+        """Each built ladder entry is checked by arithmetic, not trust.
 
         The suffix was once found by a breadth-first composition over the
-        rungs; it is frozen data now, so this re-derives what the search
-        used to guarantee: running the suffix over every rung of its
-        ladder's stage-one vector -- through :func:`_apply`, the exact
-        model of the interpreter's step -- leaves each row's answer in the
-        accumulator.  ``l`` is a no-op to the model, so the final value is
-        what the program prints.
+        rungs, then frozen as data; it is computed now, so this re-derives
+        what the search used to guarantee: running the suffix over every
+        rung of its ladder's stage-one vector -- through :func:`_apply`,
+        the exact model of the interpreter's step -- leaves each row's
+        answer in the accumulator.  ``l`` is a no-op to the model, so the
+        final value is what the program prints.
         """
         module = self.module()
-        for table, (index, suffix) in module._LADDER_BUILT.items():  # noqa: SLF001
+        for table, (index, suffix) in module._ladder_built().items():  # noqa: SLF001
             weights, base = module._LADDERS[index]  # noqa: SLF001
             spelled = module._ladder_setters(weights, base)  # noqa: SLF001
             assert spelled is not None
@@ -977,6 +977,68 @@ class TestPctSquaredHelpers:
             for row, want in enumerate(table):
                 got = module._apply(vec[row], suffix)  # noqa: SLF001
                 assert got == int(want), (table, row)
+
+    def test_built_ladder_matches_the_frozen_witnesses(self) -> None:
+        """The fold reproduces the table it replaced, entry for entry.
+
+        These twenty-four are what the breadth-first harvest froze: the
+        table each ladder-plus-suffix pair serves, and the pair the harvest
+        picked for it.  Two things the fold may legitimately differ on are
+        allowed for: it names two tables the harvest never listed (the
+        constants, which every earlier path serves in a tenth the
+        characters), and for two more it picks a shorter gadget than the
+        harvest did.  What is asserted is that every frozen table is still
+        served and that the pair chosen computes it -- and, where the pair
+        differs, that the ladder is not what the generator emits anyway.
+        """
+        frozen = {
+            "00010011": (0, "mpspmipspsl"),
+            "11101100": (0, "mpspmipspipl"),
+            "00110111": (0, "smpspmipspsl"),
+            "11001000": (0, "smpspmipspipl"),
+            "00000111": (1, "mpspmipspsl"),
+            "11111000": (1, "mpspmipspipl"),
+            "00011111": (1, "smpspmipspsl"),
+            "11100000": (1, "smpspmipspipl"),
+            "00000001": (2, "mpspmipspsl"),
+            "11111110": (2, "mpspmipspipl"),
+            "00010111": (2, "smpspmipspsl"),
+            "11101000": (2, "smpspmipspipl"),
+            "11111011": (3, "mmpspmipspsl"),
+            "00000100": (3, "mmpspmipspipl"),
+            "01111011": (3, "pspmimmipspsl"),
+            "10000100": (3, "pspmimmipspipl"),
+            "01011011": (4, "pspmimmipspsl"),
+            "10100100": (4, "pspmimmipspipl"),
+            "00001011": (5, "pspmimmipspsl"),
+            "11110100": (5, "pspmimmipspipl"),
+            "00011011": (6, "pspmsmipspsl"),
+            "11100100": (6, "pspmsmipspipl"),
+            "00111011": (7, "pspmimmipspsl"),
+            "11000100": (7, "pspmimmipspipl"),
+        }
+        module = self.module()
+        built = module._ladder_built()  # noqa: SLF001
+        assert frozen.keys() <= built.keys()
+        assert set(built) - set(frozen) == {"00000000", "11111111"}
+        for table, witness in frozen.items():
+            index, suffix = built[table]
+            weights, base = module._LADDERS[index]  # noqa: SLF001
+            spelled = module._ladder_setters(weights, base)  # noqa: SLF001
+            assert spelled is not None
+            setters, lead = spelled
+            vector = module._ladder_vector(setters, lead, 3)  # noqa: SLF001
+            for row, want in enumerate(table):
+                got = module._apply(vector[row], suffix)  # noqa: SLF001
+                assert got == int(want), (table, row)
+            if (index, suffix) != witness:
+                # Two tables are reached by a shorter gadget than the
+                # harvest picked.  Both compute the table, and neither is
+                # emitted: every earlier path serves these in a tenth the
+                # characters, so the ladder is never consulted for them.
+                assert module.pct_squared_minus_one(table) != module._ladder(  # noqa: SLF001
+                    table, 3
+                )
 
     def test_the_ladder_declines_other_arities(self) -> None:
         """Every shipped ladder has three weights, so only ``n == 3`` serves.
