@@ -81,6 +81,24 @@ class TestBuiltins:
         )
         assert run_and_capture(code, inputs=["s", "a", "e", "", "x", "x"]) == "ematchsa"
 
+    def test_a_check_resolves_its_arms_against_the_scope(self) -> None:
+        """The subject, each case, and an ``else`` body all see variables.
+
+        The checks elsewhere compare a bare ``ask`` with itself, which
+        needs no scope to resolve -- so the scope threaded into those
+        three evaluations was never used, and dropping it from any of
+        them went unnoticed.
+        """
+        subject = 'var a is "1",\ncheck a,\n  if "1",\n    say "hit"'
+        assert run_and_capture(subject) == "hit"
+        case = 'var a is "1",\nvar b is "1",\ncheck a,\n  if b,\n    say "hit"'
+        assert run_and_capture(case) == "hit"
+        fallback = (
+            'var a is "1",\nvar b is "2",\ncheck a,\n'
+            '  if b,\n    say "no"\n  else,\n    say a'
+        )
+        assert run_and_capture(fallback) == "1"
+
     def test_arithmetic(self) -> None:
         assert run_and_capture("say divide 7 2") == "3.5"
         assert run_and_capture("say subtract 9 4") == "5"
