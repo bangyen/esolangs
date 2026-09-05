@@ -617,8 +617,9 @@ BY_FUNCTION: dict[str, Language] = {
 # silently skips those languages rather than failing.  That is how Jaune's
 # table-dependent input count survived: it is a boolean-only language, so
 # the read-count contract test never saw it.  Sixteen boolean generators
-# were invisible this way (Bitdeque, RAM0, Lamfunc, Flowchart, Jaune and
-# the rest of the boolean-only set).
+# were invisible this way when that was found (Bitdeque, RAM0, Lamfunc,
+# Flowchart, Jaune and the rest of the boolean-only set, which has grown
+# since).
 BY_BOOLEAN: dict[str, Language] = {
     lang.boolean.__name__: lang
     for lang in LANGUAGES.values()

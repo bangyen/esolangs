@@ -286,7 +286,7 @@ class _Sim:
     tape as cells, the pointer, what has printed, and the two flags below.
 
     The *semantics* are not re-implemented here.  :meth:`exec` calls the
-    interpreter's own ``_advance``, so there is one definition of what a
+    interpreter's own ``_step``, so there is one definition of what a
     Minifuck instruction does and an emitter cannot drift from a real run.
     That became possible when the interpreter's transition was made pure;
     before that this class carried its own copy of the dispatch.
@@ -356,9 +356,9 @@ class _Sim:
     def exec(self, ins: str) -> None:
         """Execute one instruction, delegating the semantics to the interpreter.
 
-        The language itself is not spelled here: :func:`_advance` is the
-        shipped interpreter's pure transition, so an emitter and a real run
-        cannot disagree about what an instruction does.  This used to carry
+        The language itself is not spelled here: the interpreter's ``_step``
+        is the shipped pure transition, so an emitter and a real run cannot
+        disagree about what an instruction does.  This used to carry
         its own copy of the dispatch, which was a second definition of
         Minifuck that had to be kept in step by hand.
 
