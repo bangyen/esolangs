@@ -1,9 +1,9 @@
 r"""Interpreter for Eval.
 
-Commands manipulate two stacks: 0 pushes 0, \\ pushes the current stack index,
-^ duplicates, + and - adjust the top, = moves a value to the other stack, ;
-pops, ~ switches stacks, * reverses, ? skips the next command on a zero pop,
-and ! evaluates the popped string as a program.
+Commands manipulate two stacks: 0 pushes 0, ` pushes the index of the stack
+that is *not* current, ^ duplicates, + and - adjust the top, = moves a value
+to the other stack, ; pops, ~ switches stacks, * reverses, ? skips the next
+command on a zero pop, and ! evaluates the popped string as a program.
 
 Arithmetic on a non-numeric top, or ``!`` on a non-string value, is an invalid
 operation and halts the program with :class:`~esolangs.exceptions.HaltError`.

@@ -61,7 +61,7 @@ def generate(language: str, text: str, width: int | None = None) -> str:
     ``width`` is therefore considered but not guaranteed: every generator
     narrows what it can, and one asked for less than its construction can
     occupy returns its narrowest form rather than raising.  The floor is
-    the generator's own -- five columns for Clockwise's weave, but a
+    the generator's own -- four columns for Clockwise's weave, but a
     function of the *text* for the generators whose programs grow with it,
     so there is no one width below which a caller can expect a refusal.
     Passing a width no generator can meet is safe; it just gets the
@@ -179,8 +179,8 @@ def describe(language: str) -> dict[str, object]:
 def transpile(source: str, target: str, program: str, **kwargs: int) -> str:
     """Rewrite a ``program`` in ``source`` into an equivalent one in ``target``.
 
-    Transpilers with extra options accept them as keyword arguments (for
-    example ``size`` when targeting Circlefuck).
+    Extra keyword arguments are forwarded to the transpiler; none of the
+    shipped ones takes any today.
     """
     try:
         fn = TRANSPILERS[(source, target)]

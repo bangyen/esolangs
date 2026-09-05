@@ -1,9 +1,10 @@
 """Interpreter for Suffolk.
 
 > moves right, < sums the current cell into the accumulator and rewinds the
-pointer, ! zeroes a cell computed from the accumulator, , reads a byte of
-input, and . prints the accumulator minus one.  Execution loops over the
-code until the run decides itself; see :func:`run`.
+pointer, ! writes the current cell a value computed from the accumulator and
+clamped at zero, , reads a byte of input, and . prints the accumulator minus
+one.  Execution loops over the code until the run decides itself; see
+:func:`run`.
 
 The wiki describes ``,`` as reading one character, with EOF setting the
 accumulator to zero; this interpreter reads a whole line (using only its
