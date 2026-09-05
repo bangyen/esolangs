@@ -183,6 +183,25 @@ class _Machine:
     def tape(self) -> tuple[int, ...]:
         return self.state[2]
 
+    # The growth detector's view.  The pointer is ``cell`` here, so it is
+    # aliased to the name ``esolangs.vm._TapeMachine`` asks for.  6-5
+    # qualifies for that protocol: ``3`` clamps at the left edge exactly as
+    # brainfuck's ``<`` does (``elif tok == "3" and cell``), which is what
+    # the certificate's ``m >= 1`` condition is written against, and every
+    # other command reads or writes only ``tape[cell]``.  ``1`` moves *two*
+    # cells and appends two zeros rather than one; that is still fresh
+    # rightward growth, and the certificate checks the tape grew by exactly
+    # the displacement rather than by one.
+
+    @property
+    def ptr(self) -> int:
+        """The cell pointer, under the name the growth detector reads."""
+        return self.state[1]
+
+    def input_position(self) -> int:
+        """Report the input cursor for the growth detector."""
+        return self.io.position()
+
     @property
     def halted(self) -> bool:
         """Whether the cursor has passed the last token."""
