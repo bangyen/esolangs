@@ -315,7 +315,7 @@ _VOID = "?"
 # chain of comparisons with a silent fallthrough at the end.
 #
 # The fold is of the *meaning*, not the character: a cell keeps the glyph
-# as drawn (see :class:`_Open`), because ``_validate_connected`` rejects
+# as drawn (see :class:`_Grid`), because ``_validate_connected`` rejects
 # stray ink off the street and names the glyph it found.  A ``#`` on the
 # street is a no-op; the same ``#`` beside the street is a malformed
 # program, and the two are told apart by where it is, not by what it does.

@@ -61,7 +61,9 @@ __all__ = ["a_painter_ant"]
 # program is a cycle-stable fixed point (the bounding box is identical for
 # any whole number of cycles).
 
-# ``{X0}``: non-final inputs route north/south.
+# The north/south pair a non-final input used to route through.  Unused:
+# ``_instantiate_apa`` builds those moves with :func:`_bit_move`, whose
+# length scales with the bit's position rather than being a fixed pair.
 _X0 = {1: "nn", 0: "ss"}
 # ``{XF}``: the final (least-significant) input routes east/west.
 _XF = {1: "WWwWWEEe", 0: "NENEESWw"}
