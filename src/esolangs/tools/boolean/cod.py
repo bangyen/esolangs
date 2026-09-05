@@ -14,7 +14,7 @@ parameterized convention is kept here anyway because a reading generator
 would have to route every input crossing *horizontally* -- this interpreter
 treats each of the three dot cells as its own read, so a cod that turns into
 the column reads three times for one command, and one that dead-ends there
-re-reads until EOF.  See ``docs/parameterized-input-conversion.md``.
+re-reads until EOF.
 """
 
 import re
