@@ -52,10 +52,10 @@ def comp(code: str) -> str:
     compiles to a labelled block (``.L{i}``, 1-indexed to match
     ``lineNumber``) that falls through to ``.L{i+1}``.  The only runtime
     indirection is an assignment to ``lineNumber``: since the jump target is
-    a computed value, ``line_jump`` (a linear compare-and-branch scan over
+    a computed value, ``dispatch`` (a linear compare-and-branch scan over
     ``1..n``, the same table-scan shape as Jaune's ``.switch``) dispatches
     it, landing on ``.halt`` when the target falls outside ``1..n`` --
-    program entry is just a ``line_jump`` from line 0.
+    program entry is just a jump to ``dispatch`` from line 0.
 
     Scalar variables get one ``.dword`` slot apiece in a compile-time symbol
     table (``negativeOne`` pre-seeded -1, everything else 0, matching the
@@ -142,7 +142,7 @@ def comp(code: str) -> str:
             f".odd{line}:\n"
             "\tmv   a0, t0\n"
             "\tmv   a1, t1\n"
-            "\tcall collatz_odd\n"  # a0 = t0 * (old t2, passed via a2) + t1
+            "\tcall collatz_odd\n"  # a0 = t0 * (old t2, read from t2) + t1
             "\tmv   t2, a0\n"
             f".done{line}:\n"
         )
