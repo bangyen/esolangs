@@ -759,6 +759,43 @@ open:
       literal can hold a large frozen table.  The `>= 4`-element threshold
       that found the six above would have missed `_SCHEDULES` (three keys,
       one per arity) entirely.  Sweep by provenance, not by size.
+    - **`_SCHEDULES` (123)** — **not converted; a priced trade, with the
+      regression run and negative.**  The ten frozen separation schedules
+      are offline first-fit output, the newest table of the target class
+      (introduced while retiring the plan dicts).  Probing: every
+      schedule's replay ends with all `2**n` rows on distinct odd
+      positions, near-consecutive (`{1,3,..,2^(n+1)-1}` for six of ten) —
+      the *end state* is canonical, and what the sweep found is the
+      row-to-position assignment, the same wrong-direction geometry the
+      plan-rule hunt already proved hard (hypothesis D).  The walks and
+      move displacements match no separation-law key (walks `(4,0)`,
+      `(5,4)`, `(3,1)`, `(0,2)` against popcount class sizes `[1,2,1]`;
+      displacements mixed-sign, no halving).  Converting the table to
+      the first-fit greedy that found it trades a table for a search,
+      the rejected landing point; the loop-less rule beneath —
+      `construct()`, total at every arity — is what retiring the
+      schedules falls back to, at roughly the 12x size cost the
+      bare-fill seed was built to remove (n=3 mean ~164 against ~2000
+      constructed).  Same shape as `_THREE_INPUT_PLAN` before it: the
+      rule is known and costs 12x; spending that is the maintainer's
+      call.  The greedy finding no schedule at all at `n == 4` marks the
+      space as tight, so a wider offline sweep is not the lever either.
+    - Re-audit additions (2026-09-05, second pass): **`_PLANS`
+      (Minifuck)** is already the accepted end state — five semantic
+      parameter tuples rendered by `_step`, an ablation-measured cover,
+      the same class as `_LADDERS`; not a candidate.  **`_RING_ROWS` /
+      `_SHARED_ROWS` (Streetcode, boolean and text)** are hand-designed
+      2D program blocks mirrored from the hand-written test program —
+      code, not data, the assembly-template class.  **`_POOL`,
+      `_DEGENERATE_COLUMNS`, `_STAGED_ARITIES` (Minifuck)** are spec
+      constants (ASCII `'0'` bits with the rule in the comment; the
+      complete `<= 1`-bit column enumeration; an arity range); `_SEPS`
+      is a measured cover with its ablation recorded in-line.  A sweep
+      over long *string* literals in `tools/` (the hole the AST
+      element-count sweep leaves) found nothing frozen — four hits, all
+      spec or derived.  Six-Five has no literal table; its capped input-
+      order search is live code with its cost trade documented, a
+      different artefact class.
 - **NoComment's tape size** — **closed; already shipped.**  The `tape`
   argument on `run`/`nocomment` is the whole mechanism this item proposed,
   and `n == 12` at `tape=16384` already builds, runs and is asserted by
