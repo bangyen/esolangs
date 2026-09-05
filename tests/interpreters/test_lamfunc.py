@@ -77,6 +77,22 @@ class TestBuiltins:
         assert run_program("p 0b12") == "0b12"
         assert run_program("p 0b0") == "0"
 
+    def test_an_unknown_name_in_a_skipped_branch_is_one_token(self) -> None:
+        """``_scan`` sizes an unevaluated branch without running it.
+
+        A token that is neither a builtin nor a user definition is an
+        atom taking one slot, so the ``p 7`` after it is a separate
+        statement rather than its argument.  Sized as a call instead --
+        which either half of that test being flipped would do -- the
+        unknown name swallows what follows and the 7 is never printed.
+
+        The unchosen branch is what makes this visible: an unknown name
+        the program actually *runs* halts before anything else can show.
+        """
+        assert run_program("p i 1 3 foo p 7") == "11111"  # 3 then 7, in binary
+        with raises_message(HaltError, "calling undefined function 'foo'"):
+            run_program("p i 0 3 foo p 7")
+
     def test_equality(self) -> None:
         assert run_program("p eq 1 1") == "1"
         assert run_program("p eq 1 2") == "0"
