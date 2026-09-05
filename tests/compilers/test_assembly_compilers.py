@@ -347,10 +347,53 @@ class TestJaune:
         assert "call switch" in mod.comp("v@")
 
     def test_register_arithmetic(self) -> None:
-        """A bare + or - operates on the register via s7."""
+        """``v+``/``v-`` operate on the register via s7; a bare + does not.
+
+        ``_parse`` reads a lone ``+`` as ``+1`` and only ``v+`` as the
+        read-operand form, so the register add belongs to the latter.  The
+        compiler used to emit it for any ``+`` whose predecessor was not a
+        digit, which made a run like ``++++`` add an unread ``s7``.
+        """
         mod = importlib.import_module("esolangs.compilers.jaune")
-        assert "add  t0, t0, s7" in mod.comp("+")
-        assert "sub  t0, t0, s7" in mod.comp("-")
+        assert "add  t0, t0, s7" in mod.comp("v+")
+        assert "sub  t0, t0, s7" in mod.comp("v-")
+        assert "addi t0, t0, 1" in mod.comp("+")
+        assert "addi t0, t0, -1" in mod.comp("-")
+        assert "addi t0, t0, 4" in mod.comp("++++")
+
+    def test_bare_read_stores_into_the_cell(self) -> None:
+        """``v`` writes what it read; ``v+``/``v-`` leave the cell alone.
+
+        ``_advance`` does ``_set(cells, ptr, value)`` for a bare ``v``, so
+        ``v^`` prints the digit.  The compiler only loaded ``s7`` and never
+        stored, so ``v^`` printed whatever the cell already held.
+        """
+        mod = importlib.import_module("esolangs.compilers.jaune")
+        assert "sw   s7, 0(s1)" in mod.comp("v")
+        assert "sw   s7, 0(s1)" not in mod.comp("v+")
+        assert "sw   s7, 0(s1)" not in mod.comp("v-")
+
+    def test_read_uses_scratch_not_a_tape_cell(self) -> None:
+        """The input byte lands below ``sp``, not in the next tape cell.
+
+        Reading into ``s1 - 4`` left the raw character one cell over, so
+        ``v>^`` printed 49 rather than the 0 an untouched cell holds.
+        """
+        mod = importlib.import_module("esolangs.compilers.jaune")
+        out = mod.comp("v")
+        assert "\tmv   a1, sp\n" in out
+        assert "\taddi s1, s1, -4\n" not in out
+
+    def test_multiply_restores_the_loop_counter(self) -> None:
+        """``mult`` leaves ``s3`` at 1, as the looped routines do.
+
+        It takes its multiplier in ``s3`` but never counts back down, so a
+        counted ``&&`` left the shared counter set and the *next* counted
+        command repeated -- ``&&^`` printed twice.
+        """
+        mod = importlib.import_module("esolangs.compilers.jaune")
+        mult = mod.comp("&&").split("mult:")[1]
+        assert "li   s3, 1" in mult
 
     def test_chained_arithmetic(self) -> None:
         """Consecutive digit+ sequences accumulate in count."""
@@ -903,6 +946,28 @@ class TestForbinCompiler:
         outside mapped memory.
         """
         assert ".option norelax" in self.comp("main { }")
+
+    def test_function_values_never_collide_with_a_bit(self) -> None:
+        """No function tags to 0 or 1, which ``!`` and ``out`` accept.
+
+        ``main`` is interned first, so an unbiased ``(index << 1) | 1``
+        gave it the value 1 -- the bit literal exactly.  ``!main`` then
+        passed the ``!`` guard and computed 0 where the interpreter raises
+        "! needs a bit".  The bias makes the smallest function value 3.
+        """
+        out = self.comp("main { x = main; out 0,0,0,0,0,0,0,0; }")
+        # The entry loads main's own tagged value before calling dispatch,
+        # and every `fnlit` loads one the same way.  None may be 0 or 1.
+        loaded = {
+            int(line.split(",")[1])
+            for line in out.splitlines()
+            if line.strip().startswith("li   a0, ")
+            and line.split(",")[1].strip().lstrip("-").isdigit()
+        }
+        entry = out.split("_start:")[1].split("call .dispatch")[0]
+        main_tag = int(entry.rsplit("li   a0, ", 1)[1].split("\n")[0])
+        assert main_tag not in (0, 1), f"main tags to a bit literal: {main_tag}"
+        assert main_tag in loaded
 
     def test_no_main_is_rejected(self) -> None:
         """A program without ``main`` is rejected, as the interpreter does."""
