@@ -487,6 +487,42 @@ open:
 
 ## Smaller open items
 
+- **Closed forms for the three search-based boolean generators** — most
+  generators construct their answer; three still search for it, and each
+  could in principle name what it finds instead.  A sweep of every module in
+  `tools/boolean/` for a live frontier (rather than for the word "search",
+  which appears mostly in prose describing searches that were *replaced*)
+  leaves exactly these, all confirmed by instrumenting the function and
+  building real tables:
+    - **Eval** — `_eval_stack_programs` (`parameterized.py`) is a genuine
+      BFS over `(tree stack, input stack, active stack)` for the shortest op
+      string reaching each arrangement.  It returns exactly `n!`
+      arrangements — 2, 6, 24 through `n == 4` — and costs 0.034s at
+      `n == 5`, so a closed form buys *determinism and readability*, not
+      time.  The shortest string per arrangement is the thing to name.
+    - **%^2^-1** — five of them: `_ladder_tables` and `_spellings_by_width`
+      run on every call, `_fold_search` and `_fold_beam` from `n >= 4`, and
+      `_fold_to_cofactors` on a rarer fallback.  All are bounded by
+      construction (the ladder's fifteen-state exhaustion, `_SPELL_MAX`,
+      `_COFACTOR_BRIDGE_POINTS`) and the whole build is 0.005s at `n == 5`,
+      so these are the *least* worth closing — the affine reach they search
+      is already partly derived rather than searched.
+    - **123** — `_verdict_search` is the one where a closed form would pay.
+      It is a bounded DFS over builder states, already documented in
+      `docs/limitations.md` as the non-total part of an otherwise
+      total-by-argument construction ("high-variance rather than walled"),
+      and it is what makes a dense table expensive: a sampled `n == 5` table
+      built in 401s, emitting 144093 characters.  It *succeeded* — the cost
+      is the search, not a wall — but that is one seed against a documented
+      high-variance search, so treat it as the shape rather than the figure.
+  Worth picking up only for 123, and only if `n >= 5` tables start
+  mattering; the other two are recorded so a future reader does not
+  rediscover them as costs.  For the shape of what closing one buys, SLOW
+  ACV MAMMALIAN is the worked precedent: its own search was replaced by an
+  arithmetic construction once the `j1` sweep turned out to be a residue
+  solve, taking the contract sweep entry from 3.04s to 0.02s.  The forms to
+  find here are different, but the move is the same — name what the search
+  returns rather than caching the search.
 - **ArrowQueue's reusable drain** — a fixed-block leaf drain (rather than a
   staircase) is verified correct and written up in
   `docs/generator-optimizations.md`, but unshipped: it only wins from n≥5,
