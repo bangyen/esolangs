@@ -7,7 +7,7 @@ definition, a function call, a blank line, or a ``#`` comment.
 
 A call is a name followed by space-separated arguments, evaluated left to
 right; arguments are themselves full prefix expressions, so a line's arity
-requirements nest.  The eleven builtins:
+requirements nest.  The twelve builtins:
 
 - ``< x`` returns ``x`` right-shifted by 1, ``> x`` left-shifted by 1.
 - ``& x y``, ``| x y``, ``^ x y`` are bitwise AND, OR and XOR.
