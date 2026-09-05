@@ -57,6 +57,7 @@ Usage:
 import argparse
 import collections
 import contextlib
+import functools
 import io
 import pathlib
 import random
@@ -64,6 +65,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 from collections.abc import Callable, Iterator, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -138,16 +140,25 @@ def _fuzz_asm(
     loops is a divergence.  A Python-only timeout is re-checked with a longer
     budget first, since the 3s budget is a heuristic and the assembly is far
     faster.
+
+    The two sides are run in separate passes rather than interleaved.  Every
+    program is drawn up front, which keeps the RNG draw order identical to a
+    serial run, and the references -- each a unicorn subprocess, so nearly
+    all of the wall time -- go through :func:`_run_parallel`.  The Python
+    side stays serial on purpose: ``_alarm_budget`` arms ``SIGALRM``, which
+    only the main thread can receive, so running the interpreters in the
+    pool would silently lose the hang detector.
     """
     if not _asm_refs_ready(riscv_name):
         return True
 
+    programs = [gen_program(rng) for _ in range(count)]
+    asm_results = _run_parallel(lambda p: _asm_refs(riscv_name, p), programs)
+
     failures = checked = loops = 0
     codes: collections.Counter[int] = collections.Counter()
-    for _ in range(count):
-        program = gen_program(rng)
+    for program, asm in zip(programs, asm_results, strict=True):
         py = run_limited(program, timeout=3)
-        asm = _asm_refs(riscv_name, program)
         if py is None and asm is None:
             loops += 1
             continue
@@ -968,13 +979,23 @@ def _fuzz_minsky_swap(rng: random.Random, count: int) -> bool:
     )
 
 
+@functools.cache
 def _build_riscv(name: str) -> bytes | None:
     """Assemble the RISC-V port ``extra/assembly/{name}-riscv.s``.
 
     Returns None if the cross-compiler is missing.  Cached: the ELF is
     deterministic for a given source, and the differential fuzzers call this
     once per program, so without caching the nocomment fuzz would re-run the
-    cross-compiler for every case.
+    cross-compiler for every case.  It was documented as cached long before
+    it was -- the decorator was missing, and the cross-compiler ran once per
+    fuzzed program, which measured 64% of every reference call.
+
+    The references are now run from a thread pool, and ``functools.cache``
+    does not hold its lock across the call, so two threads can race a cold
+    cache and both compile.  The output therefore goes to a private temporary
+    directory per call rather than one fixed path per language: same
+    deterministic bytes either way, but neither compile can see or truncate
+    the other's file.
     """
     asm = ROOT / "extra" / "assembly" / f"{name}-riscv.s"
     if not asm.exists():
@@ -982,22 +1003,23 @@ def _build_riscv(name: str) -> bytes | None:
     for cc in ("riscv64-linux-gnu-gcc", "riscv64-elf-gcc"):
         if shutil.which(cc) is None:
             continue
-        binary = Path("/tmp") / f"verify-{name}-riscv"
-        rv = subprocess.run(
-            [
-                cc,
-                "-nostdlib",
-                "-static",
-                "-march=rv64i",
-                "-mabi=lp64",
-                str(asm),
-                "-o",
-                str(binary),
-            ],
-            capture_output=True,
-        )
-        if rv.returncode == 0 and binary.exists():
-            return binary.read_bytes()
+        with tempfile.TemporaryDirectory() as scratch:
+            binary = Path(scratch) / f"verify-{name}-riscv"
+            rv = subprocess.run(
+                [
+                    cc,
+                    "-nostdlib",
+                    "-static",
+                    "-march=rv64i",
+                    "-mabi=lp64",
+                    str(asm),
+                    "-o",
+                    str(binary),
+                ],
+                capture_output=True,
+            )
+            if rv.returncode == 0 and binary.exists():
+                return binary.read_bytes()
     return None
 
 
