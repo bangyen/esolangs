@@ -155,17 +155,24 @@ name order with each `{Xi}` once.
 frozen plan tables built on the counter mechanism above; 102 of the 256
 three-input entries were search-found witnesses with no canonical form,
 because no rule reaches the short shapes — the `3` mechanism's pass counts
-depend on the *order* of the fills, not their sum.  Every arity now goes
-through the planned construction below.  The small arities the suite
-sweeps exhaustively use a tight measured geometry (linear mark spacing,
-fixed even escape offsets) plus two free per-table coordinates — which
-input's embed walks to which mark, and each mark's sense, since the scrub
-can re-flip `[0, P]` instead of `[0, P+1]` at equal cost — chosen by an
-exact argmin over the verdict's emission length (separation's position map
-is table-independent, so the cost is computed, not estimated).  The trade
-is length for derivability: mean template 435 characters at three inputs
-against the retired plans' 12, with nothing frozen and every byte
-re-derivable.
+depend on the *order* of the fills, not their sum.  Every arity is now
+constructed.  The small arities the suite sweeps exhaustively build from
+a **bare-fill seed**: with no merge choreography, the fills themselves
+are the embedding (a `1` fill flips the cell it stands on), leaving the
+rows popcount-spread at one shared parity with row-dependent marks, for
+a few characters instead of the synchronized pipeline's walk-merge-scrub
+per input.  A short frozen schedule of walk/descend segments — each
+closed by `33`, each with *even* displacement so escape cascades cannot
+break the shared parity — separates the rows to distinct odd positions,
+and a junk-aware form of the planned kill (paint the rows whose tested
+cell disagrees with the table, rather than exactly the 0-rows) settles
+the verdict.  A few schedules are frozen per arity and a table takes the
+shortest; the schedules were discovered offline but are table-independent
+constants replayed deterministically — nothing searches at build time.
+The trade is length for derivability: mean template lengths are 26.0,
+60.5 and 163.9 characters at one, two and three inputs against the
+retired plans' 5.75, 11.44 and 19.97 (4.5x, 5.3x, 8.2x), with every byte
+re-derivable from the rules plus the frozen constants.
 
 ### Wider arities: every stage planned, none searched
 

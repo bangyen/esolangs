@@ -2203,8 +2203,8 @@ class TestParameterizedOneTwoThree:
 
     Every arity is *constructed* -- the stored plan tables that used to
     serve ``n <= 3`` are retired (see git history).  Small arities build
-    with a tight measured geometry and a per-table layout argmin in
-    ``one_two_three``; wider tables go through ``one_two_three_construct``
+    in ``one_two_three`` from a bare-fill seed and frozen separation
+    schedules; wider tables go through ``one_two_three_construct``
     unchanged.  Both routes replay every row on the real interpreter
     before returning a template, and the sweeps here re-check every
     ``n <= 3`` row against a per-command run of the interpreter.
