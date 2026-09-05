@@ -676,7 +676,7 @@ class _DelegatingVM:
     """A VM for an interpreter that describes its own shape.
 
     The language-shaped mapping -- ``ip``/``memory``/``stack``, genuinely
-    different for all 63 of them -- lives on each interpreter's
+    different for every one of them -- lives on each interpreter's
     ``_Machine`` rather than here, in a file that does not otherwise know
     the languages.  Keeping it next to the state it describes leaves the
     adapter with the one thing that really is per-language: how the machine
@@ -801,7 +801,7 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
 # Language name -> VM adapter.  Every registered language is step-capable,
 # so every one gets a derived adapter and an unregistered name is the only
 # thing that raises UnknownLanguageError.  The set is read off ``RUNNERS``
-# rather than listed again here: a second copy of sixty-three names is a
+# rather than listed again here: a second copy of every name is a
 # second thing to keep in step, and
 # ``test_every_registry_language_has_a_vm_adapter`` existed only to catch
 # the two drifting apart.  Building an adapter imports nothing -- the

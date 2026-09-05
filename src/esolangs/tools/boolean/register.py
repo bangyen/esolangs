@@ -637,10 +637,11 @@ def dig(truth_table: str) -> str:
 
     walk(total // 2, 0, 0, 2**n)
 
-    # Row 0 is always written first (as the tree's root branch, or -- for
-    # n == 0 -- its sole leaf), and both block kinds start with '>'; swap
-    # that one cell for the mole's actual start marker rather than
-    # special-casing row 0's emission in two different places above.
+    # The root branch sits at row ``total // 2``, so row 0 is only ever a
+    # leaf or a deep fragment and its column 0 is blank or left padding --
+    # every block on it starts at level 1 or deeper.  Overwrite that one
+    # free cell with the mole's start marker rather than special-casing
+    # row 0's emission in two different places above.
     lines[0] = "'" + lines[0][1:]
     # Rows are padded to a common width while the blocks are laid out, but the
     # mole never walks past the last command on a row, so the trailing filler
