@@ -938,6 +938,7 @@ def _sub_units(units: int) -> str:
     one ``i`` back to pay it as two ``s`` (so 1 unit alone is
     unspellable, which no caller asks for).
     """
+    assert units != 1  # nosec B101 - unspellable; silence would emit "ss"
     if units % 3 == 0:
         return "i" * (units // 3)
     if units % 3 == 2:

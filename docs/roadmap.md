@@ -774,12 +774,19 @@ open:
       the first-fit greedy that found it trades a table for a search,
       the rejected landing point; the loop-less rule beneath —
       `construct()`, total at every arity — is what retiring the
-      schedules falls back to, at roughly the 12x size cost the
-      bare-fill seed was built to remove (n=3 mean ~164 against ~2000
-      constructed).  Same shape as `_THREE_INPUT_PLAN` before it: the
-      rule is known and costs 12x; spending that is the maintainer's
-      call.  The greedy finding no schedule at all at `n == 4` marks the
-      space as tight, so a wider offline sweep is not the lever either.
+      schedules falls back to.  **Measured, not quoted** (an earlier
+      revision of this entry said ~12x off the pre-ratio-2 audit
+      figures): running `construct()` over every table, the means are
+      55.0 / 178.6 / 605.8 against the schedule path's 26.0 / 60.5 /
+      163.9 — 2.1x / 3.0x / 3.7x, worst single table 10.5x at `n == 3`.
+      So the trade is far cheaper than first recorded, and by the
+      standing preference (a longer program is not a reason to keep a
+      table) retiring `_SCHEDULES` for `construct()` at every arity is a
+      live option; it reverses a size win shipped deliberately days
+      before, so it stays the maintainer's call rather than a closure to
+      ship unasked.  The greedy finding no schedule at all at `n == 4`
+      marks the space as tight, so a wider offline sweep is not the
+      lever either.
     - Re-audit additions (2026-09-05, second pass): **`_PLANS`
       (Minifuck)** is already the accepted end state — five semantic
       parameter tuples rendered by `_step`, an ablation-measured cover,
