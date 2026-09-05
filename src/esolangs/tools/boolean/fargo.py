@@ -15,8 +15,10 @@ the AND-products of its inputs::
 which maps onto ``^``, ``&`` and ``@`` one operator per node, so the program
 is the polynomial and its size tracks the function's *algebraic* complexity
 rather than ``2**n``.  A table depending on one input is one term whatever
-its arity; parity is the worst case at ``n`` terms, since parity's ANF is
-the sum of all ``n`` single-variable terms.  The coefficients come from the
+its arity; parity costs only ``n`` terms, since its ANF is the sum of all
+``n`` single-variable terms, while a dense ANF is the worst case at up to
+``2**n - 1`` terms -- NOR at three inputs spends 7 against parity's 3.  The
+coefficients come from the
 Möbius transform (:func:`_anf_coefficients`), which is the table's own
 XOR-prefix over subsets.
 
