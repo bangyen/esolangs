@@ -50,7 +50,7 @@ import pytest
 
 import esolangs
 from esolangs.registry import RUNNERS
-from esolangs.vm import VM, _StepMachineWithShape, make_vm
+from esolangs.vm import VM, _StepMachineWithShape, make_vm, run_until_halt
 
 from .samples import (
     DUMPS_ON_THE_POST_HALT_STEP,
@@ -73,12 +73,16 @@ _PARAMS = [
 
 
 def _drive(vm: VM) -> str:
-    """Step ``vm`` to its halt and return everything it wrote."""
-    for _ in range(_STEP_BUDGET):
-        if vm.halted:
-            return vm.output
-        vm.step()
-    raise AssertionError(f"no halt within {_STEP_BUDGET} steps")
+    """Step ``vm`` to its halt and return everything it wrote.
+
+    The budget is shared with the other consumers through
+    :func:`~esolangs.vm.run_until_halt`; what stays here is the overrun
+    policy, which for a test is to fail loudly rather than to return a
+    partial run's output as if it were a halt's.
+    """
+    if not run_until_halt(vm, _STEP_BUDGET):
+        raise AssertionError(f"no halt within {_STEP_BUDGET} steps")
+    return vm.output
 
 
 # The prefix the never-halting languages are compared over instead of a

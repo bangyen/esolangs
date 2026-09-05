@@ -30,11 +30,15 @@ needs beyond stepping is a *sub*-protocol that only some languages have: a
 call stack to compare frames across, enumerable random outcomes to fork, or
 a growing tape.  A language lacking one raises :class:`TypeError` rather
 than being handed a verdict about state it does not keep.
+
+:func:`run_until_halt` sits beside them and proves nothing: it steps a
+machine to its halt within a budget and reports whether it got there.
+That is the loop every consumer of :func:`make_vm` was writing itself.
 """
 
 from __future__ import annotations
 
-from collections.abc import Hashable, Sequence
+from collections.abc import Callable, Hashable, Sequence
 from typing import Any, Protocol, cast, runtime_checkable
 
 from esolangs.exceptions import UnknownLanguageError
@@ -540,6 +544,69 @@ def _grows_forever(
             for i in range(lowest, len(tape_before))
         )
     )
+
+
+@runtime_checkable
+class _SteppableMachine(Protocol):
+    """The bare step-and-ask-if-halted surface a bounded drive needs.
+
+    Deliberately smaller than :class:`_StepMachine`: driving a machine to
+    its halt never calls ``snapshot()``, and requiring one would exclude
+    the very callers this is for.  :class:`~esolangs.debug.Debugger` is the
+    case that matters -- it forwards ``step``/``halted`` and records a
+    watch on the way, but keeps no snapshot of its own.
+    """
+
+    def step(self) -> None:
+        """Execute one command, advancing the machine."""
+
+    @property
+    def halted(self) -> bool:
+        """Whether the machine has finished executing."""
+
+
+def run_until_halt(
+    machine: _SteppableMachine | VM,
+    limit: int | None = None,
+    *,
+    stop: Callable[[], bool] | None = None,
+) -> bool:
+    """Step ``machine`` until it halts, or the budget or ``stop`` ends it.
+
+    The plain bounded drive, as distinct from the four hang detectors
+    above: it proves nothing, it just runs a machine and reports whether it
+    got to the end.  Returns ``True`` when the machine halted, ``False``
+    when it was still going when the run stopped.
+
+    Every consumer of :func:`make_vm` was writing this loop out again --
+    ``tests/test_vm_protocol.py``, :meth:`~esolangs.debug.Debugger.run`,
+    and ``scripts/verify_no_exception_leaks.py`` -- with a different budget
+    each time and a different thing done on overrun: an ``AssertionError``,
+    a silent return, a ``False``.  Those differences are real and stay with
+    the callers.  What is shared is the verdict underneath them, and that
+    is all this returns; a caller maps ``False`` to its own policy.
+
+    ``limit`` is a bound in steps, and ``None`` means unbounded -- a run
+    with no budget is the common case for a machine known to halt, and
+    making the caller pass a large number instead would just be a budget
+    nobody chose.  ``stop`` is checked *before* each step, so a run that
+    ends on it leaves the condition it stopped for still true; that
+    ordering is what a breakpoint means, and getting it wrong would report
+    the state after the very command the caller wanted to stop before.
+
+    The machine is stepped in place and is left wherever it stopped, which
+    is the point: a caller reads ``output``, ``memory``, or its own records
+    off it afterwards.
+    """
+    steps = 0
+    while not machine.halted:
+        if stop is not None and stop():
+            return False
+        if limit is not None and steps == limit:
+            return False
+        machine.step()
+        steps += 1
+    return True
 
 
 @runtime_checkable

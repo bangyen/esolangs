@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from esolangs.vm import VM, make_vm
+from esolangs.vm import VM, make_vm, run_until_halt
 
 
 class Debugger:
@@ -130,16 +130,21 @@ class Debugger:
         watched condition still true.  ``max_steps`` bounds the run as a
         guard against runaway programs; the run simply stops (without
         erroring) once that many commands have executed.
+
+        The drive itself is :func:`~esolangs.vm.run_until_halt`, and what
+        is stepped is ``self`` rather than ``self.vm`` -- :meth:`step`
+        already records the watches, so recording stays part of a step
+        instead of becoming a hook the shared loop would have to grow.  A
+        breakpoint is the ``stop`` predicate, which is checked before each
+        step and so keeps the watched condition true at the return.  Its
+        ``False`` verdict is discarded because this method's contract is to
+        stop, not to report why.
         """
-        steps = 0
-        while not self.vm.halted:
-            if any(cond(self.vm) for cond in self._breakpoints):
-                return
-            self.vm.step()
-            self._record()
-            steps += 1
-            if max_steps is not None and steps >= max_steps:
-                return
+        run_until_halt(self, max_steps, stop=self._at_breakpoint)
+
+    def _at_breakpoint(self) -> bool:
+        """Whether any breakpoint condition holds right now."""
+        return any(cond(self.vm) for cond in self._breakpoints)
 
 
 def make_debugger(language: str, program: str, stdin: str = "") -> Debugger:
