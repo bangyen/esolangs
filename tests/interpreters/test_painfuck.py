@@ -357,7 +357,12 @@ class TestRepeatCollapsing:
 
     @pytest.mark.parametrize("op", "psrlzwqdhk")
     @pytest.mark.parametrize("rep", [1, 2, 3, 5, 13, 40])
-    @pytest.mark.parametrize("cells", [[0], [5], [-7], [1], [-1], [3, 9], [-2, 6]])
+    # ``[2]`` is the cell just above the squaring fast path's bound.  The
+    # bound is ``-1 <= x <= 1``, and every other value here is either well
+    # inside it or well outside: widening it by one admits exactly 2 and
+    # nothing else (-2 still fails the *lower* bound, so ``[-2, 6]`` cannot
+    # see it), which collapses 2 to 4 where repeating squares it to 16.
+    @pytest.mark.parametrize("cells", [[0], [5], [-7], [1], [-1], [2], [3, 9], [-2, 6]])
     def test_a_collapsed_op_equals_repeating_it(
         self, op: str, rep: int, cells: list[int]
     ) -> None:
