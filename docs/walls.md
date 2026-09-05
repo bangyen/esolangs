@@ -936,11 +936,40 @@ while the program in fact stops at EOF.
 Two gaps stay open by design.  It compares consecutive visits to a position,
 so growth whose period spans two visits is undecided; and `d == 0` is not its
 business — a loop growing a cell's value rather than the tape, like `+[]`,
-repeats an exact state and is the cycle detector's.  A machine opts in by
-exposing `ind`/`ptr`/`tape` and an `input_position`, plus the language-level
-claim the protocol documents: single-cell access, rightward growth, and
-semantics invariant under translation for `ptr >= 1`.  Brainfuck qualifies; a
-language with absolute cell addresses or a wrapping tape does not.
+repeats an exact state and is the cycle detector's.
+
+**Five languages opt in, and eligibility is semantic, not nominal.**  A
+machine exposes `ip`/`ptr`/`tape` and an `input_position`, which together
+must be its *complete* state — the same completeness `snapshot` promises the
+cycle detector.  The code position is the machine's own `ip` rather than a
+bare index, because a 2D language's position includes its heading: two
+visits to one grid square travelling different ways are not the same point
+in the program, and Back is exactly that case.  Beyond the members, opting
+in asserts single-cell access, rightward growth, and semantics invariant
+under translation for `ptr >= 1`.
+
+| Language | What makes it eligible |
+| --- | --- |
+| Brainfuck | The reference case: `>` appends one zero, `<` clamps |
+| BrainIf | `right` appends one zero, `left` clamps, the guard reads only the cell under the pointer |
+| 6-5 | `3` clamps like `<`; `1` moves *two* cells and appends two zeros, which the exact-growth check accommodates |
+| Back | `>` appends one zero, `<` clamps; the code-side wrap moves the beam, not the tape, and `*` reads the whole tape but halts, so it cannot sit inside a period |
+| Factor | No semantics of its own — it decodes a numeral to brainfuck and inherits its eligibility |
+
+The other fifteen tape languages fail on semantics rather than plumbing,
+in three groups.  **Wrapping or fixed tapes** break translation invariance
+outright: Circlefuck (`ptr = (ptr + 1) % len(cells)`), NoComment (4096 cells,
+wrapping at both ends), Home Row (a 25-cell torus), Slow ACV Mammalian.
+**Absolute or multi-cell addressing** breaks single-cell access: S\*bleq
+(an OISC, every operand an address), Basicfuck (cells indexed by operand),
+bit~ (an eight-cell window), Minifuck (cells 0-7 by index), Painfuck (reads
+neighbours), 123.  **Wrong growth shape**: Jaune prepends (`cells = (0,
+*cells)`), which shifts every existing index, and 3D Brainfuck has a sparse
+3D dict rather than a tape.  Two are worth naming because they look
+eligible — Suffolk has `ind`/`ptr`/`tape` and a correct growing `>`, but its
+`<` does `ptr = 0`, an absolute reset a shifted copy could not replay; and
+Minifuck has all three names while reading absolute cells.  Matching member
+names is not eligibility, and either would produce false hangs.
 
 **`run_until_halt_or_ancestor` catches the recursion the cycle detector
 cannot.**  It compares a newly-pushed frame's own local state against the

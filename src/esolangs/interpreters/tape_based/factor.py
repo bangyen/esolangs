@@ -90,6 +90,26 @@ class _Machine:
         """No stack in this language."""
         return []
 
+    # The growth detector's view, forwarded like everything else here.
+    # Factor has no execution semantics of its own -- it decodes a numeral
+    # to brainfuck and runs that -- so it inherits brainfuck's eligibility
+    # for ``esolangs.vm._TapeMachine`` exactly, rather than making a claim
+    # of its own.
+
+    @property
+    def ptr(self) -> int:
+        """The decoded machine's cell pointer."""
+        return self.bf.ptr
+
+    @property
+    def tape(self) -> tuple[int, ...]:
+        """The decoded machine's committed cells."""
+        return self.bf.tape
+
+    def input_position(self) -> int:
+        """Report the decoded machine's input cursor."""
+        return self.bf.input_position()
+
     def step(self) -> None:
         self.bf.step()
 

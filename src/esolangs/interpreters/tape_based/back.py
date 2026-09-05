@@ -155,6 +155,26 @@ class _Machine:
     def cell(self) -> int:
         return self.state[5]
 
+    # The growth detector's view.  The pointer is ``cell`` here, so it is
+    # aliased to the name ``esolangs.vm._TapeMachine`` asks for; ``ip``
+    # below already carries the beam's direction, which that protocol needs
+    # -- two visits to one grid square travelling different ways are not
+    # the same point in the program.  Back qualifies: ``>`` appends exactly
+    # one fresh zero, ``<`` clamps at cell 0 (``if cell: cell -= 1``), and
+    # the code-side wrap ``(row + a) % len(code)`` moves the *beam*, not
+    # the tape, so it does not disturb translation invariance.  ``*`` is
+    # the one command that reads the whole tape, and it halts, so it can
+    # never occur inside a period the certificate compares.
+
+    @property
+    def ptr(self) -> int:
+        """The cell pointer, under the name the growth detector reads."""
+        return self.state[5]
+
+    def input_position(self) -> int:
+        """Report the input cursor for the growth detector."""
+        return self.io.position()
+
     @property
     def halted(self) -> bool:
         """Whether the beam has reached a ``*``."""
