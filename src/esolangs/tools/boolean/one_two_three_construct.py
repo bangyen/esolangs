@@ -852,7 +852,16 @@ def construct(truth_table: str, *, verify: bool = True) -> str:
     # One mark geometry.  The base must be at least 2**(n+1): separation
     # halves its minimum inter-group gap once per level, and every gap
     # has to survive all n levels at >= 2 (see _separate); the tripling
-    # keeps each level's escapes below the next level's mark.  The
+    # keeps each level's escapes below the next level's mark.  The base
+    # 2**(n+1) is a floor, not a choice: separation halves the minimum
+    # inter-group gap once per level and the verdict needs final positions
+    # distinct and odd, so the initial gap must be at least 2 * 2**n.  The
+    # *ratio* is only required to keep each level clear of the last one's
+    # escapes, and doubling suffices -- tripling was generous.  Measured
+    # over 2048 rows at n == 3 and twelve tables each at n == 2, 4 and 5,
+    # all correct, mean template 2055 -> 1008 characters at three inputs
+    # and 105282 -> 22251 at five, where it also cuts the build from 1773
+    # to 56 seconds.  The
     # staggered second geometry (and the budget probe that arbitrated
     # between the two) served the verdict *search*, whose anchored kills
     # pinned mark residues mod 4; the planned verdict tests only cells
@@ -865,7 +874,7 @@ def construct(truth_table: str, *, verify: bool = True) -> str:
     _work[0] = _WORK_BUDGET * max(1, 2 ** (n - 4))
     try:
         b = _Builder(n)
-        marks = [2 ** (n + 1) * 3**i + 1 for i in range(n)]
+        marks = [2 ** (n + 1) * 2**i + 1 for i in range(n)]
         _phase_a(b, marks)
         _close(b)
         _separate(b, marks)
