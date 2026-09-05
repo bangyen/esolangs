@@ -122,6 +122,93 @@ def _verify_asm(
     return failures == 0
 
 
+def _diverges(riscv_name: str, run_limited: Callable[..., Any], program: str) -> bool:
+    """Whether the two implementations disagree on ``program``.
+
+    The shrinker's oracle.  Uses the same rules as the fuzz loop -- both
+    sides failing to terminate is agreement, and a Python-only timeout is
+    re-checked with a longer budget -- so a shrink can never report a
+    "smaller" program that the fuzz itself would have passed.  An
+    interpreter that raises where the reference merely errors counts as a
+    divergence rather than crashing the shrink.
+    """
+    try:
+        py = run_limited(program, timeout=3)
+    except Exception:
+        return True  # an uncaught interpreter exception is itself a divergence
+    asm = _asm_refs(riscv_name, program)
+    if py is None and asm is None:
+        return False
+    if py is None and asm is not None:
+        try:
+            py = run_limited(program, timeout=30)
+        except Exception:
+            return True
+    return bool(py != asm)
+
+
+def _shrink(riscv_name: str, run_limited: Callable[..., Any], program: str) -> str:
+    """Reduce ``program`` while it still diverges, and return the smallest.
+
+    A raw fuzz draw is mostly noise -- the BIO terminator bug was found as a
+    45-character program whose actual trigger was four characters -- and a
+    weekly job that prints the draw leaves that reduction as manual work.
+
+    Deleting one character at a time is not enough on its own: it stalls as
+    soon as every single deletion breaks the program's structure, which is
+    exactly what happens once a language's commands are more than one
+    character wide.  So chunks are tried largest-first (the standard
+    delta-debugging ladder) before falling back to single characters, and a
+    pass repeats until nothing more comes off.  The result is a local
+    minimum, not a global one, which is all a failure report needs.
+
+    The budget is bounded: each candidate costs a reference run, so this is
+    capped rather than run to exhaustion on a pathological input.
+    """
+    best = program
+    budget = 400
+
+    def accept(candidate: str) -> bool:
+        nonlocal best, budget
+        if not candidate or candidate == best or budget <= 0:
+            return False
+        budget -= 1
+        if _diverges(riscv_name, run_limited, candidate):
+            best = candidate
+            return True
+        return False
+
+    changed = True
+    while changed and budget > 0:
+        changed = False
+        # Chunks largest-first, then single characters as the finest pass.
+        size = max(1, len(best) // 2)
+        while size >= 1 and budget > 0:
+            start = 0
+            while start < len(best) and budget > 0:
+                if accept(best[:start] + best[start + size :]):
+                    changed = True
+                    continue  # same offset: the tail shifted into it
+                start += size
+            size //= 2
+    return best
+
+
+def _report_shrunk(
+    name: str, riscv_name: str, run_limited: Callable[..., Any], program: str
+) -> None:
+    """Print a reduced version of a diverging ``program``, if one is smaller.
+
+    Printed as a second line under the raw draw rather than replacing it:
+    the draw is what reproduces from the seed, and the reduction is what is
+    readable.  Silent when the shrink found nothing, so a already-minimal
+    failure does not print itself twice.
+    """
+    small = _shrink(riscv_name, run_limited, program)
+    if small != program:
+        print(f"{name} fuzz   shrunk to {small!r} ({len(small)} of {len(program)})")
+
+
 def _fuzz_asm(
     name: str,
     riscv_name: str,
@@ -171,12 +258,14 @@ def _fuzz_asm(
                 f"(python {'loops' if py is None else 'halts'}, "
                 f"asm {'loops' if asm is None else 'halts'})"
             )
+            _report_shrunk(name, riscv_name, run_limited, program)
             continue
         checked += 1
         codes[asm[1]] += 1
         if py != asm:
             failures += 1
             print(f"{name} fuzz {program!r}: asm={asm!r} py={py!r}")
+            _report_shrunk(name, riscv_name, run_limited, program)
 
     # The exit-code split is printed because "N programs match" hides how the
     # budget was actually spent: a fuzz whose draws all die at the parser
