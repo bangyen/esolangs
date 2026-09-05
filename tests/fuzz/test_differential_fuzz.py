@@ -279,6 +279,26 @@ class TestShrink:
             assert verify_differential._diverges("bio", run_limited, small)  # noqa: SLF001
             assert len(small) < len(found) // 2
 
+    def test_an_interpreter_crash_is_reported_not_raised(self, capsys) -> None:
+        """A raising interpreter fails the fuzz instead of aborting the run.
+
+        The loop called the interpreter unguarded, so an uncaught exception
+        propagated out of ``_fuzz_asm`` -- on the weekly job that aborts the
+        whole run and loses every language after the one that crashed, which
+        is exactly how the BIO terminator bug first surfaced.  With the
+        tokenizer put back to the loose regex, the fuzz must return False
+        and print a reduced program rather than raise.
+        """
+        import re
+
+        from esolangs.interpreters.register_based import bio
+
+        loose = re.compile(r"[01][oOiI][xXyYzZ](?:\{|;)|\};")
+        with patch.object(bio, "_COMMAND", loose):
+            assert not verify_differential._fuzz_bio(random.Random(11), 40)  # noqa: SLF001
+        out = capsys.readouterr().out
+        assert "shrunk to" in out
+
     def test_leaves_an_agreeing_program_alone(self) -> None:
         """Nothing to shrink when the two sides agree: the input comes back.
 
