@@ -214,6 +214,19 @@ class TestSyntax:
         assert defs["count"].params == ("n",)
         assert defs["count"].code == (":", "n", "count", "<", "n")
 
+    def test_a_one_character_name_still_takes_the_raw_mark(self) -> None:
+        """``:s`` is the shortest raw reference there is.
+
+        The mark is recognised by a ``:`` prefix *and* a length past one,
+        the length being what keeps a bare ``:`` -- the conditional --
+        from reading as a raw reference to the empty name.  The tests
+        either side use a seven-character name and the bare colon, so the
+        boundary between them was never written: requiring one character
+        more would make ``:s`` an ordinary call instead.
+        """
+        assert run_program("s % 0 1\n: 1 :s\n$") == "1"
+        assert run_program("apply c : 1 c\ns % 0 1\napply :s\n$") == "1"
+
     def test_a_parameter_can_hold_a_raw_function_and_be_called(self) -> None:
         assert run_program("apply c : 1 c\nsetter % 0 1\napply :setter\n$") == "1"
 
