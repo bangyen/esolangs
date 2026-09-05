@@ -11,12 +11,22 @@ language has none).
 Every registered interpreter exposes a ``step()``/``halted`` state object,
 so every language in the registry can be wrapped; only an unregistered name
 is refused.
+
+The four hang detectors here -- :func:`run_until_halt_or_cycle`,
+:func:`run_until_halt_or_all_branches_cycle`,
+:func:`run_until_halt_or_ancestor`, and :func:`run_until_halt_or_growth` --
+each take either a :class:`VM` or the interpreter state one wraps, so
+proving a hang needs nothing more than :func:`make_vm`.  What a detector
+needs beyond stepping is a *sub*-protocol that only some languages have: a
+call stack to compare frames across, enumerable random outcomes to fork, or
+a growing tape.  A language lacking one raises :class:`TypeError` rather
+than being handed a verdict about state it does not keep.
 """
 
 from __future__ import annotations
 
 from collections.abc import Hashable, Sequence
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, cast, runtime_checkable
 
 from esolangs.exceptions import UnknownLanguageError
 from esolangs.interpreters.io import ScriptedIO
@@ -104,7 +114,48 @@ class _BranchingStepMachine(Protocol):
         """
 
 
-def run_until_halt_or_cycle(machine: _StepMachine) -> bool:
+def _unwrap(machine: object, protocol: type[Any], role: str) -> object:
+    """Return ``machine``, or the interpreter state a :class:`VM` wraps.
+
+    The detectors were written against the interpreters' ``_Machine``
+    classes, so every caller reached past :func:`make_vm` and hand-built
+    one -- the private class, its ``ScriptedIO``, and for a random language
+    the seeded generator, all restated at the call site.  A :class:`VM`
+    already holds exactly that machine, constructed exactly that way, so
+    accepting one and opening it here removes the reason to import a
+    private name.
+
+    The protocol is tried *before* the unwrap, so a raw machine is handed
+    straight back and a wrapper is opened only when it is not itself what
+    the detector needs.  That order is also what keeps
+    :func:`run_until_halt_or_cycle` stepping the object it was given: a
+    :class:`VM` forwards ``step``/``halted``/``snapshot`` and so already
+    satisfies :class:`_StepMachine`, which is why passing one there worked
+    before this function existed and must keep meaning the same thing.
+
+    ``role`` names what the argument failed to be, because the interesting
+    failure is not "wrong type" but "this language has no such thing": a
+    machine without ``frames`` does not recurse, and one without
+    ``branching_successors`` has no random instruction to fork.
+
+    ``protocol`` is ``type[Any]`` and the result is narrowed by a ``cast``
+    at each caller, rather than the ``TypeVar`` this shape invites: mypy
+    refuses a protocol class where a ``type[T]`` is expected
+    (``type-abstract``), since a protocol cannot be instantiated.  The
+    ``isinstance`` below is the real check either way.
+    """
+    if isinstance(machine, protocol):
+        return machine
+    inner = getattr(machine, "_machine", None)
+    if isinstance(inner, protocol):
+        return inner
+    raise TypeError(
+        f"{type(machine).__name__} is not {role}: neither it nor any machine "
+        "it wraps provides the required members"
+    )
+
+
+def run_until_halt_or_cycle(machine: _StepMachine | VM) -> bool:
     """Step ``machine`` until it halts or revisits an exact state.
 
     A deterministic machine that revisits its complete internal state has
@@ -122,7 +173,13 @@ def run_until_halt_or_cycle(machine: _StepMachine) -> bool:
     stepping up to ~2x further past the cycle's start before ``False`` is
     returned — callers must not rely on the machine's state at the moment
     of detection, only on the True/False verdict.
+
+    Takes either a raw interpreter state or a :class:`VM` from
+    :func:`make_vm`; see :func:`_unwrap`.
     """
+    machine = cast(
+        _StepMachine, _unwrap(machine, _StepMachine, "steppable with a snapshot")
+    )
     tortoise = machine.snapshot()
     power = 1
     length = 0
@@ -144,7 +201,7 @@ def run_until_halt_or_cycle(machine: _StepMachine) -> bool:
 
 
 def run_until_halt_or_all_branches_cycle(
-    machine: _BranchingStepMachine, limit: int = 10_000
+    machine: _BranchingStepMachine | VM, limit: int = 10_000
 ) -> bool:
     """Explore random outcomes until one halts or every path is cyclic.
 
@@ -163,7 +220,16 @@ def run_until_halt_or_all_branches_cycle(
     The search keeps every exact state it has seen, unlike Brent's O(1)
     deterministic detector, because branches can merge after taking
     different random choices.
+
+    Takes either a raw interpreter state or a :class:`VM` from
+    :func:`make_vm`; see :func:`_unwrap`.  A language with no random
+    instruction has no branching surface to search and raises
+    :class:`TypeError` rather than being reported as a hang.
     """
+    machine = cast(
+        _BranchingStepMachine,
+        _unwrap(machine, _BranchingStepMachine, "branch-enumerable"),
+    )
     pending = [machine.branching_snapshot()]
     seen: set[Hashable] = set()
     while pending:
@@ -214,7 +280,7 @@ class _FramedMachine(Protocol):
         """Return ``frame``'s entry state, hashable and comparable."""
 
 
-def run_until_halt_or_ancestor(machine: _FramedMachine, limit: int = 64) -> bool:
+def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) -> bool:
     """Step ``machine`` until it halts or a call provably replays an ancestor.
 
     :func:`run_until_halt_or_cycle` cannot catch infinite recursion: a call
@@ -256,7 +322,13 @@ def run_until_halt_or_ancestor(machine: _FramedMachine, limit: int = 64) -> bool
     headroom "just in case", and a mutant that defeats the early return
     fails a test in milliseconds instead of walking ten thousand steps of
     live recursion.
+
+    Takes either a raw interpreter state or a :class:`VM` from
+    :func:`make_vm`; see :func:`_unwrap`.  A language with no call stack
+    cannot recurse and raises :class:`TypeError` rather than reporting a
+    verdict about frames it does not have.
     """
+    machine = cast(_FramedMachine, _unwrap(machine, _FramedMachine, "framed"))
     keys: dict[int, Hashable] = {}
     pushes = 0
     while pushes < limit:
@@ -347,7 +419,7 @@ class _TapeMachine(Protocol):
         """Return the input cursor, so a reading loop is not a repeat."""
 
 
-def run_until_halt_or_growth(machine: _TapeMachine, limit: int = 100_000) -> bool:
+def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -> bool:
     """Step ``machine`` until it halts or provably grows without bound.
 
     :func:`run_until_halt_or_cycle` cannot catch ``+[>+]``.  The tape gets
@@ -402,7 +474,12 @@ def run_until_halt_or_growth(machine: _TapeMachine, limit: int = 100_000) -> boo
     ``limit`` bounds the walk in steps.  Exhausting it raises
     :class:`TimeoutError` rather than returning a verdict, so a program
     this cannot decide is never reported as halting.
+
+    Takes either a raw interpreter state or a :class:`VM` from
+    :func:`make_vm`; see :func:`_unwrap`.  A language with no tape has
+    nothing to grow and raises :class:`TypeError` rather than a verdict.
     """
+    machine = cast(_TapeMachine, _unwrap(machine, _TapeMachine, "a tape machine"))
     # Per code position: the last visit's (pointer, tape, input cursor),
     # and the lowest pointer seen since that visit.  One entry per position
     # rather than per state, so this is bounded by the program's length.
