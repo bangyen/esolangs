@@ -86,6 +86,24 @@ class TestPolynomialHelperFunctions:
         assert brackets(code, 0) == 3
         assert brackets(code, 1) == 2
 
+    def test_brackets_search_backwards_to_the_first_instruction(self) -> None:
+        """A closer's partner may be instruction 0, which is in range.
+
+        Every case above scans *forward* from an opener, so the bounds
+        check only ever saw the right-hand end.  A backward scan landing
+        on index 0 is legal, and a check that rejected it would call a
+        matched pair unmatched.
+        """
+        assert brackets([[1], [2]], 1) == 0
+        assert brackets([[1], [1], [2], [2]], 3) == 0
+        assert brackets([[1], [1], [2], [2]], 2) == 1
+
+    def test_brackets_reject_an_unmatched_partner_at_either_end(self) -> None:
+        """Running off the left end and the right end both raise."""
+        for code in ([[2]], [[1]]):
+            with pytest.raises(ValueError, match="unmatched control-flow bracket"):
+                brackets(code, 0)
+
 
 class TestPolynomialValidation:
     """Test polynomial input validation."""
