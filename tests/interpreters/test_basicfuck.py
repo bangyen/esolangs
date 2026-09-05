@@ -517,6 +517,24 @@ class TestOverflowAtBothBounds:
                 == "\x09"
             )
 
+    def test_landing_exactly_on_a_bound_is_in_range(self) -> None:
+        """Both guards are strict, so a bound itself is a legal value.
+
+        Every case above goes *past* a bound, where a strict comparison
+        and a non-strict one agree.  A value landing exactly on one is
+        what separates them: at 9 the cell keeps its value under all
+        three modes, where a non-strict guard would halt, wrap to 0, or
+        clamp instead.
+        """
+        for mode in ("halt", "wrap", "nearest"):
+            assert (
+                run_program(
+                    f"#basicfuck t=1 r=0~9 o={mode}\n#allocate a\n"
+                    "a += 9;\nwrite <- a;\n"
+                )
+                == "\x09"
+            ), mode
+
     def test_wrap_needs_both_bounds(self) -> None:
         """``o=wrap`` has nowhere to wrap to unless the range is closed.
 
