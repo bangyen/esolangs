@@ -33,38 +33,60 @@ pointer oppositely, and the looping set need not be upward-closed.
 The construction
 ----------------
 
-Every arity is *constructed*, by the pipeline in
-:mod:`esolangs.tools.boolean.one_two_three_construct`: embed each input as
-a tape mark under a merge choreography that re-synchronizes every
-instantiation's pointer, separate the rows to distinct odd positions by a
-planned decode tree, shield each halting row and loop the rest with one
-planned kill, then park the survivors so the program ends below location
-0 and halts.  Nothing searches; every emission is validated stage by
-stage on an exact model of all rows, and the finished template is
-replayed row by row on the real interpreter before it is returned.
+Every arity is *constructed*; nothing is searched at build time and no
+truth-table-keyed plan is stored.  Wider tables (``n > 3``) go to the
+merge-choreography pipeline in
+:mod:`esolangs.tools.boolean.one_two_three_construct` unchanged.  The
+small arities the suite sweeps exhaustively build here, from a cheaper
+seed the wider pipeline cannot afford to assume:
 
-Arities up to three used to come from stored plan tables instead (see git
-history).  Those plans were one to five literals long -- built on the
-pointer-phase counter the ±1 fills drive, decoded by a short tail -- but
-102 of the 256 three-input entries were search-found witnesses with no
-canonical form: no rule reaches the short shapes, because a plan without
-``3`` or a write computes a function of popcount parity alone, and the
-pass counts of the ``3`` mechanism depend on the order of the fills
-rather than their sum.  Retiring the tables for the constructed route
-trades template length for derivability: constructed templates run about
-forty times longer (mean 435 characters at three inputs against 12), and
-every byte of them is re-derivable from the rules below plus the measured
-geometry constants, with nothing frozen.
+1. **Seed.**  ``"2"*w0 {X0} "2"*w1 {X1} ... "33"`` -- bare fills, no
+   merge.  A ``1`` fill flips the cell it stands on and steps left; a
+   ``2`` fill just steps right.  After the fills the rows sit at
+   popcount-spread positions of one shared parity, carrying
+   row-dependent marks -- the fills *are* the embedding, at a cost of a
+   few characters instead of the synchronized pipeline's walk, merge and
+   scrub per input.  The closing ``33`` lands on the first offset where
+   no row sits on a marked cell (a bounded first-fit scan, the same
+   species as the wider pipeline's ``_close``).
+2. **Separation.**  A short fixed schedule of walk/descend segments,
+   each closed by ``33``: rows on a marked cell re-run the segment until
+   they escape, and a segment's displacement is kept *even* so the
+   cascade count cannot break the shared parity.  Each schedule is a
+   frozen constant below -- discovered offline, but table-independent
+   and re-executed deterministically on the exact model, never searched
+   for at build time -- and ends with every row at a distinct odd
+   position.
+3. **Verdict.**  The wider pipeline's planned kill, generalized to the
+   junky tape the descents leave: instead of shielding exactly the
+   0-rows, one paint per row whose tested cell disagrees with the
+   table's demand (0-rows must test a pre-mark the kill segment clears;
+   1-rows must test clean so the segment's own mark loops them).  The
+   collision-freedom argument is unchanged -- distinct all-odd positions
+   make every paint offset unique -- and ``test(kills=...)`` still
+   validates every fate on the exact model.
+4. **Endgame.**  The wider pipeline's, reused as is.
 
-The small arities the suite sweeps exhaustively (``n <= 3``) use a
-*tight* geometry, measured as the sweep minimum and verified over every
-table; wider arities keep the construct module's proven-total doubling
-geometry.  Two free coordinates shrink the small templates further, both
-chosen per table by an exact cost argmin (see :func:`_choose_layout`):
-which input's embed walks to which mark -- emission stays in name order;
-only the walk target moves -- and each mark's *sense*, because the
-embed's scrub can re-flip ``[0, P]`` instead of ``[0, P+1]`` at equal
-cost, leaving the mark present exactly when the bit is clear.
+Several schedules are frozen per arity, and a table takes the shortest:
+each candidate is built on the exact model (a candidate whose verdict
+preconditions fail simply raises and is skipped), the winner is replayed
+row by row on the real interpreter, and at least one candidate covers
+every table -- the suite's exhaustive ``n <= 3`` sweep is what pins that,
+the same status as the schedule constants themselves.
+
+Why constructed templates are still longer than the retired plans
+-----------------------------------------------------------------
+
+Arities up to three used to come from stored plan tables (see git
+history) with mean template lengths 5.75, 11.44 and 19.97 characters --
+but 102 of the 256 three-input entries were search-found witnesses with
+no canonical form: no rule reaches the short shapes, because a plan
+without ``3`` or a write computes a function of popcount parity alone,
+and the pass counts of the ``3`` mechanism depend on the order of the
+fills rather than their sum.  The constructed route trades length for
+derivability -- mean 26.0, 60.5 and 163.9 characters at one, two and
+three inputs (4.5x, 5.3x and 8.2x the retired plans), every byte
+re-derivable from the rules plus the frozen schedule constants.
 
 Every emitted template loops by a *proven state revisit*, never by
 unbounded growth.  That is a hard requirement rather than an aesthetic
@@ -76,18 +98,19 @@ this directly.
 
 from __future__ import annotations
 
-import itertools
 from functools import cache
 
 from esolangs.tools.boolean.helpers import _validate_truth_table
 from esolangs.tools.boolean.one_two_three_construct import (
+    _RING,
     _WORK_BUDGET,
     ConstructError,
     _Builder,
-    _close,
     _endgame,
+    _on_mark,
+    _paint,
     _replay,
-    _verdict,
+    _table_val,
     _work,
     construct,
 )
@@ -97,201 +120,166 @@ __all__ = ["one_two_three"]
 #: ``{Xi}`` fills.  One character each, so instantiations are equal length.
 ONE, ZERO = "1", "2"
 
-#: A layout: ``assign[i]`` is the mark index input ``i`` embeds at, and
-#: ``comp[i]`` is whether its mark sense is complemented.
-type _Layout = tuple[tuple[int, ...], tuple[int, ...]]
+#: One separation move: ``(r2, r1, t2, t1)``.  The raw part ``"2"*r2 +
+#: "1"*r1`` repositions every row and is closed by its own ``33`` (valid
+#: only when nobody lands on a marked cell); the test part ``"2"*t2 +
+#: "1"*t1 + "33"`` is what splits, and its displacement ``t2 - t1`` is
+#: even so an escape's re-run count cannot change a row's parity.
+type _Move = tuple[int, int, int, int]
 
-#: Tight geometry per small arity: ``(marks, escape offsets)``.
+#: One schedule: pre-fill walk lengths, then the separation moves.
+type _Schedule = tuple[tuple[int, ...], tuple[_Move, ...]]
+
+#: Frozen schedules per arity, tried in order; a table takes the winner.
 #:
-#: These are measured constants, not derived ones: each is the minimum-mean
-#: survivor of an exhaustive sweep of small geometries over *every* table
-#: at its arity (and, at ``n == 3``, every layout of every table), with
-#: each candidate build validated stage by stage and replayed row by row.
-#: They follow ``marks[i] = (i + 1) * 2**n + 1`` and ``ws[i] = 2**(n - i)``
-#: -- linear mark spacing, against the construct module's proven doubling
-#: geometry -- but that pattern is an observation about the swept optima,
-#: not a totality argument, which is why wider arities keep the proven
-#: geometry.  A geometry that failed a table could only raise, never
-#: mis-emit: the suite's exhaustive ``n <= 3`` sweep is what pins these.
-_TIGHT: dict[int, tuple[tuple[int, ...], tuple[int, ...]]] = {
-    1: ((3,), (2,)),
-    2: ((5, 9), (4, 2)),
-    3: ((9, 17, 25), (8, 4, 2)),
+#: These are measured constants with the same status as the wider
+#: pipeline's mark geometry: an offline sweep of seeds and first-fit
+#: separation moves produced them, and what ships is only its *result*
+#: -- each schedule is table-independent and replays deterministically
+#: on the exact model, so nothing searches at build time.  The suite's
+#: exhaustive ``n <= 3`` sweep re-proves, every run, both that every
+#: table is covered by at least one schedule and that every emission is
+#: correct; a schedule that failed a table could only raise, never
+#: mis-emit.
+_SCHEDULES: dict[int, tuple[_Schedule, ...]] = {
+    1: (
+        ((0,), ()),
+        ((1,), ()),
+    ),
+    2: (
+        ((4, 0), ((0, 0, 0, 2),)),
+        ((5, 4), ((0, 0, 0, 4),)),
+        ((3, 1), ((0, 3, 4, 0),)),
+        ((0, 2), ((0, 3, 2, 0),)),
+    ),
+    3: (
+        ((4, 2, 2), ((0, 0, 0, 2), (5, 0, 0, 4), (1, 2, 2, 0))),
+        ((7, 5, 0), ((0, 0, 0, 2), (0, 0, 2, 0), (3, 0, 0, 4), (0, 0, 0, 2))),
+        ((4, 4, 0), ((0, 0, 0, 2), (0, 0, 0, 2), (1, 2, 2, 0), (2, 2, 2, 0))),
+        ((5, 1, 6), ((0, 0, 0, 4), (0, 3, 8, 0), (0, 0, 0, 2), (3, 0, 0, 4))),
+    ),
 }
 
 
-def _embed(
-    b: _Builder,
-    marks: tuple[int, ...],
-    assign: tuple[int, ...],
-    comp: tuple[int, ...],
-) -> None:
-    """Phase A under a layout: embed input ``i`` at ``marks[assign[i]]``.
-
-    The walk-fill-merge choreography is the construct module's
-    (:func:`~esolangs.tools.boolean.one_two_three_construct._phase_a`);
-    the two additions are the assignment -- fills are still emitted in
-    name order, only each one's walk target moves -- and the complemented
-    scrub: re-flipping ``[0, P]`` instead of ``[0, P + 1]`` costs the
-    same two synchronized walks but leaves the cell ``P + 1`` mark
-    present exactly when the bit is *clear*.
-    """
-    for i in range(len(marks)):
-        m = marks[assign[i]]
-        p = m - 1
-        b.run("2" * p)
-        b.fill(i)
-        b.run("1" * (p + 1) + "212112")
-        if comp[i]:
-            b.run("2" * (m - 1) + "1" * m + "2")
-        else:
-            b.run("2" * m + "1" * (m + 1) + "2")
-        if {r.pos for r in b.live()} != {0}:  # pragma: no cover - invariant
-            raise ConstructError("merge failed to re-synchronize")
-
-
-def _separate_fixed(b: _Builder, marks: tuple[int, ...], ws: tuple[int, ...]) -> None:
-    """Separate with a fixed even escape offset per level.
-
-    The construct module's schedule escapes by half the walk distance,
-    which halves the minimum inter-group gap per level and is what its
-    doubling mark base pays for.  With the tight marks the offsets are
-    pinned instead: level ``i``'s escapes move a row ``ws[i]`` to the
-    right per re-run -- *per re-run*, because the marks are equally
-    spaced and an escape can land on the next level's mark and cascade.
-    The exact model tracks every fate either way; distinct positions are
-    asserted here and the verdict re-checks distinct *odd* before it
-    commits to a kill.
-    """
-    for mk, w in zip(marks, ws, strict=True):
-        for _visit in range(2**b.n + 1):
-            pending = [p for p in {r.pos for r in b.live()} if p < mk]
-            if not pending:
-                break
-            d = mk - max(pending)
-            # Strictly greater, not >=: over every layout of every table
-            # at these arities, no visit ever walks exactly the escape
-            # offset (0 of 49416), so a d == w visit -- whose first run
-            # would be empty -- can only mean the geometry changed.
-            if d <= w:  # pragma: no cover - excluded by the swept geometry
-                raise ConstructError(f"mark {mk}: walk {d} not above escape {w}")
-            b.run("2" * (d - w))
-            b.test()
-            b.run("2" * w)
-            b.test()
-        else:  # pragma: no cover - 2**n groups is the exact worst case
-            raise ConstructError(f"mark {mk} did not converge")
-    poss = [r.pos for r in b.live()]
-    if len(set(poss)) != len(poss):  # pragma: no cover - invariant
-        raise ConstructError("separation left shared positions")
-
-
 @cache
-def _positions(n: int) -> dict[frozenset[int], int]:
-    """Map each mark set to its position after separation.
+def _separated(n: int, k: int) -> _Builder:
+    """Execute schedule ``k`` for arity ``n`` up to full separation.
 
-    Separation never consults the table, and a row's trajectory depends
-    only on ``(pos, tape)`` -- that is, on which mark cells it carries --
-    so one reference run of the exact model fixes where every mark set
-    ends up, for every layout at once: a layout only changes *which row*
-    carries which mark set, never where a mark set lands.  This is what
-    makes :func:`_choose_layout`'s cost exact rather than estimated.
+    The result is a prototype the per-table build clones, so each
+    schedule is modelled once per process.  Everything here is
+    deterministic replay of the frozen constants: the only scan is the
+    seed's first-clean-close offset, a bounded first-fit like the wider
+    pipeline's ``_close``.  Raises if the schedule no longer separates
+    -- which the suite's exhaustive sweep turns into a test failure, so
+    a corrupted constant cannot ship a template.
     """
-    marks, ws = _TIGHT[n]
+    walks, moves = _SCHEDULES[n][k]
     _work[0] = _WORK_BUDGET
     b = _Builder(n)
-    _embed(b, marks, tuple(range(n)), (0,) * n)
-    _close(b)
-    _separate_fixed(b, marks, ws)
-    return {frozenset(marks[i] for i in range(n) if r.bits[i]): r.pos for r in b.live()}
-
-
-def _layout_positions(n: int, layout: _Layout) -> list[int]:
-    """Each row's position after separation under ``layout``, by row index."""
-    marks, _ = _TIGHT[n]
-    posmap = _positions(n)
-    assign, comp = layout
-    out = []
-    for r in range(2**n):
-        bits = tuple((r >> (n - 1 - i)) & 1 for i in range(n))
-        out.append(
-            posmap[frozenset(marks[assign[i]] for i in range(n) if bits[i] ^ comp[i])]
-        )
-    return out
-
-
-def _verdict_cost(n: int, table: str, layout: _Layout) -> int:
-    """Exact verdict emission length for ``table`` under ``layout``.
-
-    Mirrors what ``_verdict`` emits -- one shield paint per 0-row below
-    the kill, the paints' closing ``33``, and the kill with its ``33`` --
-    priced on the exact positions from :func:`_positions`.
-    """
-    pos = _layout_positions(n, layout)
-    ones = [pos[r] for r in range(2**n) if table[r] == "1"]
-    if not ones:
-        return 0
-    a = max(ones) + 2
-    cost = 2 * a + 4
-    painted = False
-    for r in sorted(range(2**n), key=lambda r: pos[r]):
-        if pos[r] >= a or table[r] == "1":
+    for i, w in enumerate(walks):
+        if w:
+            b.run("2" * w)
+        b.fill(i)
+    for d in range(4 * 2**n + 9):
+        probe = b.clone()
+        if d:
+            probe.run("2" * d)
+        if any(r.pos < 0 for r in probe.live()):
             continue
-        tested = a if (a - pos[r]) % 4 == 0 else a - 1
-        k = tested - pos[r]
-        cost += 2 * k + (2 * (k - 1) if k > 1 else 0)
-        painted = True
-    return cost + (2 if painted else 0)
+        if not any(_on_mark(r) for r in probe.live()):
+            if d:
+                b.run("2" * d)
+            b.test()
+            break
+    else:  # pragma: no cover - the frozen seeds all close within range
+        raise ConstructError("no clean close for the seed")
+    for r2, r1, t2, t1 in moves:
+        if r2:
+            b.run("2" * r2)
+        if r1:
+            b.run("1" * r1)
+        if r2 or r1:
+            if any(_on_mark(r) for r in b.live()):  # pragma: no cover
+                raise ConstructError("raw walk parked a row on its mark")
+            b.test()
+        if t2:
+            b.run("2" * t2)
+        if t1:
+            b.run("1" * t1)
+        b.test()
+    poss = [r.pos for r in b.live()]
+    if len(set(poss)) != len(poss):  # pragma: no cover - invariant
+        raise ConstructError("schedule left shared positions")
+    return b
 
 
-def _choose_layout(n: int, table: str) -> _Layout:
-    """Pick the layout whose verdict is cheapest to emit, ties lexicographic.
+def _verdict_junky(b: _Builder, table: str) -> None:
+    """Settle the verdict with the planned kill, on a junky tape.
 
-    The assignment and the complements are free coordinates -- every
-    layout embeds, separates and verdicts correctly (at ``n == 3`` every
-    one of the 48 layouts of every table was built and replayed during
-    prototyping; a bad one could in any case only raise, never mis-emit)
-    -- so the choice is pure size optimization.  The verdict is the only
-    stage whose length the layout moves much: it decides where the 1-rows
-    sit, hence the kill depth and how many shield paints the 0-rows need.
-    Measured against building all 48 layouts and keeping the shortest,
-    this argmin gives up under one character of mean template length.
+    The wider pipeline's ``_verdict`` shields exactly the 0-rows because
+    its separation guarantees a clean zone above every row.  Here a
+    row's tested cell may hold a leftover mark either way, so the paints
+    aim at *disagreement* instead: below the kill, a 0-row's tested cell
+    must end marked (the kill segment then clears it and the row skips
+    out) and a 1-row's must end clear (the segment's own trailing mark
+    then loops it).  Paint offsets stay collision-free for the same
+    reason as there -- two rows sharing an offset would sit one cell
+    apart, impossible with every position odd and distinct.  Rows at or
+    above the kill height walk back and test their own cell, which must
+    be clean -- a dirty survivor rejects the candidate schedule (measured
+    over every table and schedule at these arities, none ever has one).
     """
-    return min(
-        (
-            (assign, comp)
-            for assign in itertools.permutations(range(n))
-            for comp in itertools.product((0, 1), repeat=n)
-        ),
-        key=lambda lay: (_verdict_cost(n, table, lay), lay),
-    )
+    ones = [r for r in b.live() if _table_val(table, r.bits) == "1"]
+    if not ones:
+        return
+    live = b.live()
+    positions = [r.pos for r in live]
+    if len(set(positions)) != len(positions) or any(p % 2 == 0 for p in positions):
+        raise ConstructError("verdict precondition: positions not distinct odd")
+    a = max(r.pos for r in ones) + 2
+    if any(r.pos >= a and _on_mark(r) for r in live):  # pragma: no cover
+        raise ConstructError("a survivor sits on a marked cell")
+    painted = False
+    for r in sorted(live, key=lambda row: row.pos):
+        if r.pos >= a:
+            continue
+        tested = a if (a - r.pos) % 4 == 0 else a - 1
+        have = bool(r.tape >> (tested + _RING) & 1)
+        want = _table_val(table, r.bits) == "0"
+        if have != want:
+            _paint(b, tested - r.pos)
+            painted = True
+    if painted:
+        b.test()
+    b.run("1" * a + "2" + "2" * (a - 1) + "12")
+    b.test(kills=frozenset(r.bits for r in ones))
 
 
 def _construct_small(truth_table: str, n: int) -> str:
-    """Build a small-arity template with the tight geometry.
+    """Build the shortest small-arity template the frozen schedules give.
 
-    The same pipeline and contract as
-    :func:`~esolangs.tools.boolean.one_two_three_construct.construct`:
-    every stage validates on the exact model, and the finished template
-    is replayed row by row on the real interpreter before it is
-    returned.  Raises :class:`ValueError` rather than emitting anything
-    unproven.
+    Every candidate is built on the exact model; one whose verdict
+    preconditions fail for this table raises and is skipped.  The winner
+    (shortest, first schedule on ties) is replayed row by row on the
+    real interpreter before it is returned -- the same contract as
+    :func:`~esolangs.tools.boolean.one_two_three_construct.construct`.
     """
-    marks, ws = _TIGHT[n]
-    assign, comp = _choose_layout(n, truth_table)
-    _work[0] = _WORK_BUDGET
-    try:
-        b = _Builder(n)
-        _embed(b, marks, assign, comp)
-        _close(b)
-        _separate_fixed(b, marks, ws)
-        _verdict(b, truth_table)
-        _endgame(b)
+    best: str | None = None
+    for k in range(len(_SCHEDULES[n])):
+        _work[0] = _WORK_BUDGET
+        try:
+            b = _separated(n, k).clone()
+            _verdict_junky(b, truth_table)
+            _endgame(b)
+        except ConstructError:
+            continue
         template = b.template()
-        _replay(template, n, truth_table)
-    except ConstructError as exc:  # pragma: no cover - the contract
-        raise ValueError(f"123 construction failed for {truth_table!r}: {exc}") from exc
-    return template
+        if best is None or len(template) < len(best):
+            best = template
+    if best is None:  # pragma: no cover - the sweep proves coverage
+        raise ValueError(f"123 construction failed for {truth_table!r}: no schedule")
+    _replay(best, n, truth_table)
+    return best
 
 
 def _in_name_order(body: str, n: int) -> str:
@@ -319,10 +307,9 @@ def one_two_three(truth_table: str) -> str:
 
     Every arity is constructed: the old objection — an inert embed shifts
     the pointer phase the plan decodes — bound only the retired stored
-    plans' phase-decode shape, because the construction re-synchronizes
-    every instantiation's pointer after each embed and leaves the bit as
-    a tape mark instead.  Small arities (``n <= 3``) build here with the
-    tight measured geometry; wider tables go to
+    plans' phase-decode shape.  Small arities (``n <= 3``) build here
+    from the bare-fill seed and the frozen separation schedules; wider
+    tables go to
     :func:`~esolangs.tools.boolean.one_two_three_construct.construct`
     unchanged.  Both routes replay every row on the real interpreter
     before returning, and raise :class:`ValueError` rather than emitting
