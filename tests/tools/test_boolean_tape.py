@@ -6,7 +6,7 @@ single-language modules that share its tape-machine shape: ``rotfuck``,
 """
 
 import contextlib
-from itertools import pairwise, permutations
+from itertools import permutations
 
 import pytest
 
@@ -1007,14 +1007,13 @@ class TestSlowAcvMammalian:
             ("0110", 2),  # XOR
             ("0001", 2),  # AND
             ("1110", 2),  # NAND
-            # The three-input tables were 0.68s each when the landings became
-            # solved rather than searched, and were let back into the fast run
-            # on that measurement.  Re-measured 2026-08-31 at one worker they
-            # are 1.68s and 1.65s -- still far better than the 3.5s/3.3s they
-            # started at, but over the one-second budget, so they sit out
-            # again.  CI runs `-m slow`, so both tables still run per push.
-            pytest.param("11111110", 3, marks=pytest.mark.slow),  # NAND3
-            pytest.param("01101001", 3, marks=pytest.mark.slow),  # XOR3
+            # These carried ``slow`` while the generator searched: 3.5s at
+            # worst, 1.68s after the landings were first solved.  The whole
+            # construction is closed-form now -- a build is 0.3ms and this
+            # case is dominated by the eight interpreter runs, measured
+            # 2026-09-05 at 0.07s -- so they rejoin the fast run.
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -1046,8 +1045,6 @@ class TestSlowAcvMammalian:
             run_until_halt_or_cycle(_Machine(program, io_obj))
             assert io_obj.position() == 2
 
-    # 1.6s: it walks the three-input tree, the same build the n=3 tables pay.
-    @pytest.mark.slow
     def test_pointer_never_leaves_array_zero(self) -> None:
         """No ``SPRINT``: the tree lives in code space, not in array space.
 
@@ -1060,240 +1057,142 @@ class TestSlowAcvMammalian:
         assert "SPRINT" not in program
         assert "CONFLAGRATE" not in program
 
-    def test_every_candidate_opens_the_accumulator_on_a_clean_digit(self) -> None:
-        """``ACCEPT`` is entered with ``acc % 256 == 48``, whatever ``j1``.
+    def test_a_node_opens_the_accumulator_on_a_clean_digit(self) -> None:
+        """``ACCEPT`` is entered with ``acc % 256 == 48``, whatever the state.
 
         The whole construction rests on this: a node normalizes the
-        accumulator so ``'0'``/``'1'`` XORs down to a bare ``0``/``1``, and
-        the *high* bytes are then free to aim the jump.  A candidate whose
-        low byte drifted off 48 would append a junk byte and the branch
-        would test something other than the bit just read.
+        accumulator so ``'0'``/``'1'`` XORs down to a bare ``0``/``1``.
+        The aim class delivers it by arithmetic -- ``first`` even with bits
+        4-5 ``01``, so the fixed ``+16`` run flips exactly those bits --
+        and a state whose low byte drifted off 48 would append a junk byte
+        and branch on something other than the bit just read.  Recovered
+        here from either exit: XORing the exit accumulator against the exit
+        sum reproduces what ``ACCEPT`` saw.
         """
-        from esolangs.tools.boolean.slow_acv_mammalian import _candidates
+        from esolangs.tools.boolean.slow_acv_mammalian import _node
 
-        for array, acc in (([0], 0), ([3, 255, 255], 0), ([200, 17, 9], 128)):
-            candidates = _candidates(array, acc)
-            assert candidates, "a state with no read node at all"
-            for _, fell, taken, _ in candidates:
-                # The opening accumulator is what ``ACCEPT`` reads; the two
-                # exits differ only by the bit that was appended to the sum.
-                assert (fell[1] ^ sum(fell[0])) % 256 == 48
-                assert (taken[1] ^ sum(taken[0])) % 256 == 48
+        for array, acc in (
+            ([0], 0),
+            ([3, 255, 255], 0),
+            ([200, 17, 9], 128),
+            ([254, 1, 77, 30], 99999),
+        ):
+            _, fell, taken, _ = _node(list(array), acc)
+            assert (fell[1] ^ sum(fell[0])) % 256 == 48
+            assert (taken[1] ^ sum(taken[0])) % 256 == 48
 
-    def test_a_zero_branch_leaf_never_needs_a_seed(self) -> None:
-        """The leaf under a 0-branch normalizes in zero ``SEED``s.
+    def test_the_landing_is_start_minus_15(self) -> None:
+        """A 1-bit resumes exactly 15 tokens short of the array sum.
 
-        This is the identity that makes subtrees composable.  A node exits
-        its fallthrough with ``acc`` already carrying the residue the next
-        digit is measured against, so what the 0-arm costs does not depend
-        on which candidate the parent committed to -- which is exactly what
-        lets a node one level above the leaves compute its 0-arm's length
-        instead of building the arm to find out.
+        This is the identity that replaced the 256-candidate sweep: on the
+        aim class the ``j1`` seeds cancel out of the jump arithmetic, so
+        the landing is a pure function of the sum and aiming is done by
+        stashing ballast, never by trying candidates.  Machine-backed
+        rather than re-derived, so a drift in either the generator's
+        algebra or the interpreter's ``LEAPFROG`` shows up here.
         """
-        from esolangs.tools.boolean.slow_acv_mammalian import (
-            _candidates,
-            _leaf_seeds,
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+        from esolangs.tools.boolean.slow_acv_mammalian import _node, _seeded
+
+        for array, acc in (([3, 255, 255, 255], 7), ([90, 200, 200, 255], 4242)):
+            tokens, _, taken, landing = _node(list(array), acc)
+            wrap = (256 - array[0]) % 256
+            start = sum([*_seeded(array, wrap), acc % 256])
+            assert landing == start - 15
+            padded = [*tokens, *["SEED"] * (landing + 2 - len(tokens))]
+            machine = _Machine(" ".join(padded), ScriptedIO("1\n"))
+            machine.lst = (tuple(array), *machine.lst[1:])
+            machine.acc = acc
+            while not machine.halted and machine.ind < len(tokens):
+                machine.step()
+            assert machine.ind == landing
+            assert list(machine.lst[0]) == taken[0]
+            assert machine.acc == taken[1]
+
+    def test_the_trampoline_jump_ignores_the_head(self) -> None:
+        """The trampoline lands on its target from any head value.
+
+        ``LEAPFROG``'s target is ``acc - head - 1`` and the final
+        ``DIGEST`` folds the head into the accumulator, so the head cancels
+        and the landing is the non-head sum plus the appended byte.  That
+        cancellation is what makes the jump *solvable* -- no candidate ever
+        has to be tried -- and it holds through a ``SEED`` run that wraps
+        the head, which drops the array sum by 256 but not the target.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+        from esolangs.tools.boolean.slow_acv_mammalian import _trampoline
+
+        target = 900
+        for head in (0, 130, 255):
+            array = [head, 255, 255, 200]
+            tokens, out_array, out_acc = _trampoline(list(array), 5000, target)
+            padded = [*tokens, *["SEED"] * (target + 2 - len(tokens))]
+            machine = _Machine(" ".join(padded), ScriptedIO(""))
+            machine.lst = (tuple(array), *machine.lst[1:])
+            machine.acc = 5000
+            while not machine.halted and machine.ind < len(tokens):
+                machine.step()
+            assert machine.ind == target, f"head {head}"
+            assert list(machine.lst[0]) == out_array
+            assert machine.acc == out_acc
+
+    def test_the_shortest_hop_still_fires(self) -> None:
+        """A hop of one token appends ``b == 1``, the least firing byte.
+
+        The trampoline's ``LEAPFROG`` fires because the appended byte is
+        the array's last element, so ``b == 0`` would fall through into the
+        dead pad and execute garbage.  ``_MIN_HOP`` exists to keep the
+        emitter's targets off that edge, and this pins the edge itself:
+        the shortest representable hop still jumps.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+        from esolangs.tools.boolean.slow_acv_mammalian import _trampoline
+
+        array = [5, 255, 255, 255]
+        target = sum(array) - array[0] + 1
+        tokens, out_array, _ = _trampoline(list(array), 0, target)
+        assert out_array[-1] == 1
+        machine = _Machine(
+            " ".join([*tokens, *["SEED"] * (target + 2 - len(tokens))]),
+            ScriptedIO(""),
         )
+        machine.lst = (tuple(array), *machine.lst[1:])
+        while not machine.halted and machine.ind < len(tokens):
+            machine.step()
+        assert machine.ind == target
 
-        for array, acc in (([0], 0), ([3, 255, 255], 0), ([200, 17, 9], 128)):
-            for _, fell, _, _ in _candidates(array, acc):
-                assert _leaf_seeds(*fell, 0) == 0
-                # The 1-arm has no such guarantee: it is aimed at, not
-                # fallen into, so it pays for its own normalization.
-                assert 0 <= _leaf_seeds(*fell, 1) < 256
+    def test_ballast_is_spent_where_it_stands(self) -> None:
+        """No ``CONSUME``: the parent/child ballast lock never forms.
 
-    def test_a_lone_consume_sheds_nothing(self) -> None:
-        """The last popped value rides back aboard, so sheds come in runs.
-
-        ``CONSUME`` pops the middle element *into* the accumulator, and the
-        node that follows opens with ``EXCRETE``, which appends
-        ``acc % 256`` straight back.  A shed that stopped after one pop
-        would cost a token and move the sum nowhere, which is why
-        :func:`_shed` drains down to a floor instead.
+        The searching construction shed a 0-arm's inherited ballast with
+        ``CONSUME`` runs because a child re-aimed from scratch would
+        otherwise convert every stashed token into padding of its own.
+        Here the 1-subtree inherits the array whose sum *is* its position
+        and the 0-subtree enters through a trampoline carrying the same,
+        so nothing is ever dropped to be rebuilt -- and the program says
+        so: only the six ops the construction needs appear.
         """
-        from esolangs.tools.boolean.slow_acv_mammalian import _shed
+        program = boolean.slow_acv_mammalian_boolean("0110")
+        used = set(program.split())
+        assert used <= {"SEED", "EXCRETE", "DIGEST", "ACCEPT", "PRONOUNCE", "LEAPFROG"}
 
-        tokens, array, acc = _shed([5, 255, 255, 255, 255], 0)
-        assert tokens == ["CONSUME"] * 2
-        # What the following EXCRETE will re-append is the last pop, so the
-        # sum the next node opens on is the shed array plus that byte.
-        assert sum(array) + acc % 256 < sum([5, 255, 255, 255, 255])
-        assert _shed([0], 0) == ([], [0], 0), "nothing to shed is not an error"
+    def test_a_stale_width_table_is_caught_not_emitted(self) -> None:
+        """Slots too narrow for their trampolines raise, loudly.
 
-    def test_a_landing_past_every_band_is_reported(self) -> None:
-        """A base past anything the stashing can reach raises.
-
-        ``base`` is a partial sum of what has already been emitted, so it
-        cannot outrun the finished program, and a depth-``n`` tree has
-        ``2**n`` leaves to pay for.  One far past that describes a tree no
-        emission could have produced.  The loop rejects it at entry rather
-        than discovering it a chunk at a time: such a base needs tens of
-        thousands of them, and grinding through those to reach the same
-        answer would be a hang in all but name.
-        """
-        from esolangs.tools.boolean.slow_acv_mammalian import _subtree
-
-        with pytest.raises(ValueError, match="past anything a 1-input tree"):
-            _subtree("01", 1, 0, "", [0], 0, 10_000_000)
-
-    def test_a_stash_loop_that_stops_closing_the_gap_raises(self) -> None:
-        """A gap that stops falling is reported as a formula failure.
-
-        The loop's whole justification is that a chunk buys more reach than
-        the layout it adds, so the placement gap falls until a landing
-        clears the 0-arm.  A chunk that stopped buying reach would spin
-        forever, since nothing caps the iterations -- the convergence check
-        is what makes an unbounded loop safe, so it has to fire.
+        The slot widths are the one place the construction leans on a
+        bound rather than an exact solve, so a stale ``_widths`` must
+        surface as an error naming the overflow -- not as a program whose
+        trampoline spills into the dead pad and executes it.
         """
         import esolangs.tools.boolean.slow_acv_mammalian as module
 
-        def barren(array: list[int], acc: int) -> tuple[list[str], list[int], int]:
-            # Costs layout and buys nothing: the gap cannot improve.
-            return ["SEED"], list(array), acc
-
         with pytest.MonkeyPatch.context() as patch:
-            patch.setattr(module, "_stash_chunk", barren)
-            with pytest.raises(ValueError, match="stopped converging"):
+            patch.setattr(module, "_widths", lambda n: [0] + [4] * n)
+            with pytest.raises(AssertionError, match="slot"):
                 module.slow_acv_mammalian_boolean("0110")
-
-    def test_the_lock_the_shed_exists_to_break_is_caught_not_hung(self) -> None:
-        """Without the 0-arm's shed, the loop reports rather than spins.
-
-        A child that keeps its inherited ballast converts every token its
-        parent stashed into padding of its own, so reach and subtree grow
-        together and the gap never closes -- the failure this construction
-        is built to avoid.  With no iteration cap, that has to surface as
-        the convergence error; a regression that let it run away would hang
-        the generator instead of failing it.
-
-        The table has to have three inputs.  At ``n <= 2`` the arrays never
-        grow enough to carry ballast worth shedding, so every table there
-        builds with the shed disabled and a smaller case would pass without
-        exercising anything.
-        """
-        import esolangs.tools.boolean.slow_acv_mammalian as module
-
-        def no_shed(array: list[int], acc: int) -> tuple[list[str], list[int], int]:
-            return [], list(array), acc
-
-        with pytest.MonkeyPatch.context() as patch:
-            patch.setattr(module, "_shed", no_shed)
-            with pytest.raises(ValueError, match="stopped converging"):
-                module.slow_acv_mammalian_boolean("01101001")
-
-    def test_the_placement_gap_is_what_forces_a_placement(self) -> None:
-        """The gap includes the 0-arm, and the cheaper proxy does not work.
-
-        Windowing the shortfall against the *node* alone is tempting and
-        wrong: its zero region does not force a placement, so a loop
-        descending it can fall arbitrarily far while every candidate still
-        refuses -- 13512 such iterations were measured over the tables
-        through ``n == 3``.  The gap the loop actually descends adds the
-        0-arm's length, which is the quantity placement turns on.
-        """
-        from esolangs.tools.boolean.slow_acv_mammalian import (
-            _candidates,
-            _placement_gap,
-            _zero_arm_length,
-        )
-
-        candidates = _candidates([0], 0)
-        gap = _placement_gap("0110", 2, 1, "0", [], candidates, 0)
-        proxy = len(candidates[0][0]) - candidates[-1][3]
-        arm = _zero_arm_length("0110", "0", candidates[0][1])
-
-        assert gap == proxy + arm, "the gap must account for the 0-arm"
-        assert arm > 0, "an arm of zero length would make the two identical"
-
-    def test_narrowing_the_window_refuses_tables_that_build(self) -> None:
-        """The window's width is load-bearing, not a spare knob.
-
-        The test above pins the sawtooth as a property of the gap; this
-        pins the consequence, which is what a later simplification would
-        actually break.  Checking each step against the one before it
-        instead of the one two back turns the sawtooth into a false stall,
-        and tables that build stop building -- 16 of the 20 through
-        ``n == 2`` when this was measured.
-        """
-        import esolangs.tools.boolean.slow_acv_mammalian as module
-
-        with pytest.MonkeyPatch.context() as patch:
-            patch.setattr(module, "_WINDOW", 1)
-            with pytest.raises(ValueError, match="stopped converging"):
-                module.slow_acv_mammalian_boolean("0110")
-
-    def test_the_gap_falls_over_every_two_chunk_window(self) -> None:
-        """Progress is windowed and skips a prologue; this pins both.
-
-        A chunk's layout can outrun the reach it buys, so the gap sawtooths
-        up on single steps -- and the *first* chunk always spikes it, since
-        the layout lands before the reach does.  Asserting a per-step fall,
-        or checking from the very first iteration, would both be false.
-        What holds is that any two chunks after the prologue close the gap,
-        measured at 248 tokens minimum over every node of every table
-        through ``n == 3``.
-        """
-        from esolangs.tools.boolean.slow_acv_mammalian import (
-            _candidates,
-            _placement_gap,
-            _stash_chunk,
-        )
-
-        cursor, value, prefix = [0], 0, []
-        gaps = []
-        for _ in range(8):
-            candidates = _candidates(cursor, value)
-            gaps.append(_placement_gap("0110", 2, 1, "0", prefix, candidates, 0))
-            chunk, cursor, value = _stash_chunk(cursor, value)
-            prefix = [*prefix, *chunk]
-
-        assert gaps[1] > gaps[0], (
-            "no prologue spike: the loop's skip of the first step is stale"
-        )
-        body = gaps[1:]
-        assert any(after > before for before, after in pairwise(body)), (
-            "no sawtooth: a per-step check would have done, so this test is stale"
-        )
-        for start, end in zip(body, body[2:], strict=False):
-            assert start - end >= 248, f"two-chunk window closed only {start - end}"
-
-    def test_placement_declines_a_slice_that_lands_short(self) -> None:
-        """A node landing before its own start is passed over, not placed.
-
-        No real build reaches this skip, and the selection is why: ``first``
-        picks the earliest node with ``landing >= start + estimate``, which
-        is strictly stronger than the loop's own ``landing >= start``, so a
-        selected node always clears it.  The skip is reachable only through
-        the ``next(..., 0)`` default -- when *no* candidate clears the
-        selection, the loop walks the slice from the front unfiltered -- and
-        that is the case built here.  It is what keeps an unplaceable slice
-        returning ``None`` rather than emitting a node at a landing behind
-        the cursor.
-        """
-        from esolangs.tools.boolean.slow_acv_mammalian import (
-            _candidates,
-            _place_inner,
-            _zero_arm,
-        )
-
-        table, n, depth, row, prefix, base = "0110", 2, 1, "0", [], 0
-        candidates = _candidates([0], 0)
-        tokens, fell, jump, _landing = candidates[0]
-        reach = base + len(prefix)
-        estimate = len(_zero_arm(table, n, depth, row, fell, reach + len(tokens)))
-
-        # Neither entry clears ``first``: the first lands at 0, and the
-        # second's own tokens put its threshold far past its landing.  The
-        # last entry's landing still clears the early sizing guard, so the
-        # loop is entered rather than refused up front.
-        short_landing = (list(tokens), fell, jump, 0)
-        long_tokens = (list(tokens) * 40, fell, jump, reach + len(tokens) + estimate)
-        assert (
-            _place_inner(
-                table, n, depth, row, prefix, [short_landing, long_tokens], base
-            )
-            is None
-        )
 
 
 class TestSuffolk:
