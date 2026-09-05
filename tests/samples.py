@@ -100,11 +100,15 @@ def bits_of(value: int) -> str:
 # the halt writes what run writes" is false for them by design, and the
 # no-op step is the second one past the halt, not the first.
 #
-# Bitdeque and LaserFuck joined them when their dumps moved out of ``run``.
-# Both had been replicated in the VM adapter instead, and LaserFuck's copy
-# had drifted: it dumped on ``not lsrs`` where ``run`` dumps on ``halted``,
-# so a program stopped by the second start marker printed under ``run`` and
-# not under the VM.  One implementation, in the machine, cannot drift.
+# This is a fact about the language, so a caller does not have to come here
+# to learn it: each of the four declares
+# ``dumps_on_the_post_halt_step = True`` on its ``_Machine``, and
+# :attr:`esolangs.vm.VM.dumps_on_the_post_halt_step` reports it -- the same
+# mechanism ``reproducible_seed`` uses, for the same reason.  The set stays
+# because the sweep needs the answer *without* building a machine, and
+# because ``test_the_dump_convention_matches_what_the_vm_reports`` compares
+# the two in both directions: a language whose trait was dropped fails
+# rather than quietly rejoining the majority.
 DUMPS_ON_THE_POST_HALT_STEP = frozenset(
     {"Minsky Swap", "RAM0", "Bitdeque", "LaserFuck"}
 )
@@ -114,15 +118,14 @@ DUMPS_ON_THE_POST_HALT_STEP = frozenset(
 # protocol is wrong here -- there is simply no halt for a sweep to drive
 # to, so these are carried for the checks that do not need one.
 #
-# The two stop by their own means, and differently.  A Painter Ant's
-# ``run`` steps one whole pass at a time until its state repeats at a pass
-# boundary (a local Brent's cycle detector, snapshotting once per pass
-# rather than once per step), then renders -- so a program that never
-# settles into a fixed routine is stepped for as long as proving that takes,
-# same as any other growth-class program here, and ``esolangs.run(timeout=)``
-# is the backstop.  Suffolk takes no extra argument at all: it stops on the
-# ``EOFError`` from reading past its input, or by detecting a repeated state
-# when it reads nothing.
+# Each of the two declares ``self_halts = False`` on its ``_Machine``, and
+# :attr:`esolangs.vm.VM.self_halts` reports it, so a caller writing the
+# obvious ``while not vm.halted: vm.step()`` can ask instead of hanging.
+# How each one is stopped from outside is recorded next to the trait, which
+# is where the machine that does it lives.  The set stays for the same two
+# reasons the one above does, and
+# ``test_the_halting_convention_matches_what_the_vm_reports`` locks it
+# against the traits in both directions.
 NEVER_SELF_HALTS = frozenset({"A Painter Ant", "Suffolk"})
 
 # Languages whose ``step()`` raises when called on an already-halted
