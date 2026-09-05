@@ -487,19 +487,24 @@ open:
 
 ## Smaller open items
 
-- **Closed forms for the search-based boolean generators** — **closed;
-  all four shipped.**  Most generators construct their answer; four
-  searched for it, and each now names what it finds instead.  A sweep of
+- **Closed forms for the search-based boolean generators** — **four
+  closed and shipped; one frontier still open** (Minifuck's mux sculpt,
+  last below).  Most generators construct their answer; four searched
+  for it, and each now names what it finds instead.  A sweep of
   every module in `tools/boolean/` for a live frontier (rather than for
   the word "search", which appears mostly in prose describing searches
   that were *replaced*)
-  leaves exactly these, all confirmed by instrumenting the function and
+  found these, all confirmed by instrumenting the function and
   building real tables.  **Instrument the function the shipped entry
-  actually calls**: an earlier pass of this sweep missed Minifuck below
-  because it patched `_derived_plans`, the offline sibling, which fires
-  zero times in a real build — the runtime path reaches the enumeration
-  through `_staging_index` instead.  Patching the wrong name reports a
-  clean negative:
+  actually calls, at the arity where it fires**: this sweep has now
+  reported a false negative *twice* for that reason.  It first missed
+  Minifuck by patching `_derived_plans`, the offline sibling, which
+  fires zero times in a real build — the runtime path reaches the
+  enumeration through `_staging_index` instead.  Then, having closed
+  `_staging_index`, it declared Minifuck done while `_mux_probe` was
+  still probing the interpreter per table, because that path is dead
+  below five inputs.  Patching the wrong name — or the right name at
+  too low an arity — reports a clean negative:
     - **Eval** — **closed; shipped.**  `_eval_stack_programs`
       (`parameterized.py`) was a genuine BFS over `(tree stack, input
       stack, active stack)`; it is now a fold over `_EVAL_REORDERS`, the
@@ -565,7 +570,9 @@ open:
       sampling at 5 and 6: `n == 5` builds in ~0.5s against the 401s
       sample, and dense tables stopped being the expensive case.  See
       `docs/walls.md` for the derivation.
-    - **Minifuck** — **closed.**  `_staging_index` used to run the
+    - **Minifuck's staging index** — **closed** (the module's *other*
+      search is open; see the mux sculpt entry below).
+      `_staging_index` used to run the
       interpreter over every staging — 4640 `claim` calls driving 63.8M
       steps, 25.6s of a 38.4s `n == 5` build — and now derives every
       column arithmetically: the suffix is a prefix-XOR staircase
@@ -583,7 +590,27 @@ open:
       cost is ten embeds and twenty pool probes per arity.  The emit-and-walk
       spelling lives on in `_derived_plans`/`_column_sweep` as the oracle
       the tests compare against.
-  Nothing is left to pick up; the four entries above stay as the record
+    - **Minifuck's mux sculpt — open, and the one live frontier left.**
+      Closing `_staging_index` did *not* close Minifuck.  Profiling a
+      *warm* build (index already tabulated) puts 14.5s of 17.9s in
+      `_mux` → `_mux_sculpt` → `_mux_probe`, which scans `_POOL_CODES`
+      through `_pool_reaches` — a real interpreter probe, 20.7M
+      `_step` calls over two tables.  Instrumented per table at a warm
+      index: 1060 `_mux_probe` calls and 1727 `_pool_reaches` probes for
+      one five-input table, ~4-6s each.
+      This is the same miss the note above warns about, one level down.
+      The arity profile is why it hid: probes fire **0, 0, 0, 1090** at
+      `n == 2..5`, so the sculpt path is dead below five inputs and any
+      sweep sized at `n <= 4` reports a clean negative.  Instrumenting
+      `_staging_index` — the thing that *was* closed — also hides it,
+      because that cost is real but one-time and cached per arity.
+      The `hint` parameter already documents the shape of the answer:
+      the code "never changes between rounds of one sculpt (measured
+      over sampled builds: zero switches)", so the scan is re-deriving a
+      value that is constant across a sculpt.  Naming what selects the
+      pool code — rather than probing for it — is the closed form to
+      find.  Measure at `n == 5` with a warm index, or measure nothing.
+  The four entries above stay as the record
   of what each search was and what named it.  For the shape of what
   closing one buys, SLOW
   ACV MAMMALIAN is the worked precedent: its own search was replaced by an
