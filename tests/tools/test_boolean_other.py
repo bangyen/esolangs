@@ -883,6 +883,128 @@ class TestZtoalc:
             with pytest.raises(ValueError, match="past the"):
                 module.ztoalc_l_boolean("0110")
 
+    def test_the_anchor_covers_a_length_landing_on_its_bound(self) -> None:
+        """An interval's bound is inclusive: ``end == length`` still fits.
+
+        ``ANCHORS`` maps a length interval to the start with the smallest
+        peak over it, so an off-by-one at the bound silently takes the
+        *next* interval's start -- a working program, but a needlessly
+        taller trajectory.  Every bound is a real case: a one-input table
+        emits exactly eight commands, which is exactly the second anchor's
+        end, and the two one-input tables that are not constant hit it.
+        """
+        from esolangs.tools.boolean.ztoalc_l import _anchor_for, _commands
+        from esolangs.tools.ztoalc_starts import ANCHORS
+
+        assert (8, 6) in ANCHORS
+        assert len(_commands("01", 1)) == 8
+        assert _anchor_for(8) == 6
+        # The interval below it, to show the lookup is not simply constant.
+        assert _anchor_for(1) == 2
+
+    def test_the_anchor_refusal_names_the_length_and_the_bound(self) -> None:
+        """The refusal reports the request and the committed ceiling.
+
+        Both numbers are what makes the message actionable -- how long a
+        trajectory the table needs, against how far the table reaches -- and
+        a substring match on the wording checks neither, so they are
+        compared whole.  ``_anchor_for`` is exercised directly because no
+        table small enough to build gets near the bound: the longest anchor
+        covers 1132 commands and a five-input table needs tens.
+        """
+        from esolangs.tools.boolean.ztoalc_l import _anchor_for
+        from esolangs.tools.ztoalc_starts import ANCHORS
+
+        longest = ANCHORS[-1][0]
+        with pytest.raises(ValueError, match="longest committed anchor") as caught:
+            _anchor_for(longest + 1)
+        assert str(caught.value) == (
+            f"the ZTOALC L boolean generator needs a trajectory of "
+            f"{longest + 1} steps (the longest committed anchor reaches "
+            f"{longest})"
+        )
+
+    def test_lines_off_the_trajectory_are_left_empty(self) -> None:
+        """A line no command lands on is blank, not filler.
+
+        The program is one line per value up to the trajectory's peak, so
+        most lines carry nothing -- 38 of ``0110``'s 52.  ZTOALC L reads a
+        blank line as a no-op, and anything else there would be executed,
+        so the padding is load-bearing rather than cosmetic.
+        """
+        from esolangs.tools.boolean.ztoalc_l import _collatz_prefix, _commands
+
+        table = "0110"
+        program = boolean.ztoalc_l_boolean(table)
+        lines = program.splitlines()
+        cmds = _commands(table, 2)
+        values = _collatz_prefix(int(lines[0]), len(cmds))
+        occupied = {v - 1 for v in values} | {0}
+        assert [i for i, ln in enumerate(lines) if ln != ""] == sorted(occupied)
+        assert all(lines[i] == "" for i in range(len(lines)) if i not in occupied)
+
+    def test_the_array_is_declared_at_exactly_two_to_the_n(self) -> None:
+        """``t = [2**n]`` holds one slot per row, no more.
+
+        The row index runs to ``2**n - 1``, so a larger declaration is
+        still *correct* -- it just reserves slots nothing can address.  Only
+        the emitted text sees it, which is why it is asserted here rather
+        than left to the truth-table sweeps.
+        """
+        for table, n in (("0110", 2), ("00010111", 3), ("1010001000011000", 4)):
+            program = boolean.ztoalc_l_boolean(table)
+            assert f"t = [{2**n}]" in program, table
+
+    def test_the_shorter_row_set_is_encoded(self) -> None:
+        """The init block encodes the smaller of the one- and zero-rows.
+
+        One command per selected row means encoding the majority polarity
+        would cost up to ``2**n - 1`` commands where the minority costs at
+        most ``2**(n - 1)``.  Both are correct -- the complement is undone
+        by printing ``'1' - r`` -- so the truth-table sweeps cannot see the
+        choice, and it is the whole point of the branch.
+        """
+        from esolangs.tools.boolean.ztoalc_l import _commands
+
+        for n in (1, 2, 3):
+            for table_int in range(2 ** (2**n)):
+                table = format(table_int, f"0{2**n}b")
+                if len(set(table)) == 1:
+                    continue
+                cmds = _commands(table, n)
+                rows = sum(1 for c in cmds if c.startswith("t["))
+                assert rows == min(table.count("0"), table.count("1")), table
+                assert rows <= 2 ** (n - 1), table
+
+    def test_a_balanced_table_encodes_the_one_rows(self) -> None:
+        """On a tie the one-rows win, so no complement is built.
+
+        With equal counts either polarity costs the same, so the tie-break
+        is free -- but it is still a choice, and taking the zero-rows would
+        emit the ``q = '1'`` / ``q -= r`` pair instead of ``r + '0'``.  Same
+        length, different program, invisible to every truth-table
+        assertion.
+        """
+        from esolangs.tools.boolean.ztoalc_l import _commands
+
+        for table in ("0110", "1001", "00001111", "01101001"):
+            n = len(table).bit_length() - 1
+            cmds = _commands(table, n)
+            assert not any(c.startswith("q = ") for c in cmds), table
+            assert any(c.startswith("r + ") for c in cmds), table
+            selected = [c for c in cmds if c.startswith("t[")]
+            assert len(selected) == table.count("1"), table
+
+    def test_a_dense_table_builds_the_complement(self) -> None:
+        """More ones than zeros is encoded as the zero-rows and inverted."""
+        from esolangs.tools.boolean.ztoalc_l import _commands
+
+        cmds = _commands("1110", 2)
+        assert [c for c in cmds if c.startswith("t[")] == ["t[3] = 1"]
+        assert any(c.startswith("q = ") for c in cmds)
+        assert any(c == "q -= r" for c in cmds)
+        assert not any(c.startswith("r + ") for c in cmds)
+
     def test_wrong_length_rejected(self) -> None:
         """A truth table of the wrong length is malformed."""
         with pytest.raises(ValueError, match="entries"):
