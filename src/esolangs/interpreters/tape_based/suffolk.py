@@ -99,6 +99,17 @@ def _advance(state: _State, code: str, byte: int | None = None) -> _State:
 class _Machine:
     """Per-run Suffolk state: the code, tape, and accumulator."""
 
+    #: Whether the program can reach a halt of its own.  It belongs to the
+    #: language, not to whoever is stepping it: the wiki's rerun is
+    #: infinite, so ``while not vm.halted: vm.step()`` never returns.  A
+    #: caller stepping this one has to bound the run itself -- with a hang
+    #: detector, or :func:`esolangs.run`'s ``timeout``.
+    #:
+    #: :func:`run` stops it from outside, and takes no bound to do it: a
+    #: program that reads hits :class:`EOFError` past the end of its input,
+    #: and one that reads nothing returns to the state it began in.
+    self_halts = False
+
     def __init__(self, code: str, io: IO) -> None:
         """Store ``code`` and start the tape and accumulator at zero.
 
