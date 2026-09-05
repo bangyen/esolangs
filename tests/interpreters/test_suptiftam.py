@@ -134,6 +134,25 @@ class TestMath:
         assert run_program("x=%-[0]6%\nterm=%/[x]3%") == "-2"
         assert run_program("term=%/[6]4%") == "1"
 
+    def test_division_signs_over_all_four_combinations(self) -> None:
+        """The sign is negative iff exactly one operand is.
+
+        The case above divides a negative by a positive; a negative
+        *divisor* was never tried, and neither half of the comparison
+        was pinned against zero.  Math cannot nest, so the negatives are
+        built into variables first.
+        """
+        setup = "a=%-[0]7%\nb=%-[0]2%\n"
+        assert run_program(setup + "term=%/[7]2%") == "3"
+        assert run_program(setup + "term=%/[a]2%") == "-3"
+        assert run_program(setup + "term=%/[7]b%") == "-3"
+        assert run_program(setup + "term=%/[a]b%") == "3"
+
+    def test_a_zero_numerator_divides_to_zero(self) -> None:
+        """Zero is neither negative nor positive: the sign never applies."""
+        assert run_program("term=%/[0]2%") == "0"
+        assert run_program("b=%-[0]2%\nterm=%/[0]b%") == "0"
+
     def test_division_by_zero_halts(self) -> None:
         with pytest.raises(HaltError, match="division by zero"):
             run_program("term=%/[3]0%")
@@ -192,6 +211,20 @@ class TestCalls:
         assert run_program(program) == "10"
         assert run_program(program.replace("f:A:()", ")f(:A:")) == "10"
         assert run_program(program.replace("f:A:()", "():x:f")) == "10"
+
+    def test_header_tokens_in_any_order(self) -> None:
+        """The three header tokens permute like a call's four do.
+
+        The argument is whichever ident sits next to the colon on the
+        side away from ``fd``, so ``:x fd f`` puts the colon *first* --
+        with no token before it at all.  Every header elsewhere has one,
+        which left the guard reading that token, and the "no colon at
+        all" test above it, working on positions they never see.
+        """
+        body = "\nterm=x\nfi\nx=A\nf(:A:)"
+        assert run_program("fd f :x" + body) == "10"
+        assert run_program("fd f x:" + body) == "10"
+        assert run_program(":x fd f" + body) == "10"
 
     def test_conditional_call(self) -> None:
         program = "\n".join(["fd f :x", "term='y'", "fi", "term='a'", "f(:0:)if(0)"])
@@ -379,6 +412,9 @@ class TestRobustness:
         ("fd x", "fd header needs a colon"),
         ("fd 5 :x", "fd header needs a function name"),
         ("fd x 5:", "the fd argument must be an identifier"),
+        # The colon leading the line: there is no token before it, so the
+        # argument can only come from after -- and ``fd`` is not one.
+        (":fd f x", "the fd argument must be an identifier"),
         ("f(:x:g)", "a call has exactly one function name"),
         ("f(:x)", "a call needs its argument between two colons"),
         ("f(:x:)5", "unexpected token ('num', 5) in a call"),
