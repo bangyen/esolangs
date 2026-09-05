@@ -186,7 +186,9 @@ templates at four inputs and 2.8x at five — leaves every row at a distinct
 odd position with a clean zone above it, and any failure falls back to the
 doubling `2**(n+1)` mark base whose halving escapes are total at every
 arity by argument.  Every probed arity (through seven) takes the tight
-layout; the fallback is what keeps `construct` total at the rest.  The
+layout; the fallback is what keeps `construct` total at the rest, and the
+reduction — one table-independent reference run certifies every table at
+an arity — is written up in [`docs/proofs.md`](proofs.md).  The
 verdict:
 separation leaves every row at a distinct **odd** position with nothing
 marked above its own cell, and on that state the kill
