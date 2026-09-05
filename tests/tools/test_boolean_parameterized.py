@@ -2429,6 +2429,24 @@ class TestParameterizedOneTwoThree:
                 program = self.instantiate(template, bits)
                 assert self.run(program) == table[combo], (table, bits)
 
+    @pytest.mark.slow  # one four-input template, all rows on the interpreter
+    def test_a_dense_four_input_sweep_witness_stays_exact(self) -> None:
+        """Pin one mixed table from the exhaustive constructor sweep.
+
+        The full sweep belongs in ``scripts/check_123_four_input.py`` rather
+        than the test suite.  This one-table witness keeps its execution gate
+        local: all sixteen rows must halt or revisit an exact interpreter
+        state with the table's verdict, never pass through a fuel limit.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import construct
+
+        table = "1100010001000111"
+        template = construct(table, verify=False)
+        for combo in range(16):
+            bits = [(combo >> (3 - i)) & 1 for i in range(4)]
+            program = self.instantiate(template, bits)
+            assert self.run(program) == table[combo], (table, bits)
+
     def test_paint_marks_one_cell_and_restores_every_position(self) -> None:
         """``_paint(k)`` flips exactly cell ``pos + k`` per row, in place.
 

@@ -175,13 +175,15 @@ command at a time (95s to 0.28s at five inputs).
 The old verdict *search* — a bounded DFS over kills, boosts and ring
 rounds, whose totality was a conjecture and whose anchored kills pinned
 mark residues, forcing two mark geometries and a budget probe between
-them — is gone, and with it the geometry parity law.  The planned verdict
-is checked exhaustively at four inputs (all 65536 tables built and
-replayed) and by random sampling at five and six, and each emission is
-still validated per stage on the exact model and replayed on the
-interpreter before it is returned.  A fixed budget still bounds the build:
-a table takes `2**n` bits to state, so template length and build work are
-exponential in `n` no matter the pipeline.
+them — is gone, and with it the geometry parity law.  The resumable
+`scripts/check_123_four_input.py` sweep constructs all 65536 four-input
+tables and checks all 1048576 instantiated rows: each row must either halt
+or revisit an exact state, with no fuel verdict; the completed sweep had
+zero failures.  Five and six inputs are randomly sampled, and each emission
+is still validated per stage on the exact model and replayed before it is
+returned.  A fixed budget still bounds the build: a table takes `2**n` bits
+to state, so template length and build work are exponential in `n` no
+matter the pipeline.
 
 ### Language facts worth keeping
 
