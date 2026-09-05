@@ -298,6 +298,45 @@ class TestParsing:
         machine = _Machine(list(KOLAKOSKI), ScriptedIO(""))
         assert len(machine.pointers) == 2
 
+    def test_a_fork_copies_the_register_to_both_branches(self) -> None:
+        """Each new pointer starts from the forking pointer's register.
+
+        The fork tests above only count pointers, and a fork at the
+        *start* has an empty register either way -- so nothing pinned
+        what a mid-program fork carries.  Here the register is raised to
+        1 before the ``( )``, and both branches print it.
+        """
+        program = [
+            "( )─[ }─[ }─( )─\\ \\─(( ))",
+            "             │",
+            "            \\ \\",
+            "             │",
+            "           (( ))",
+        ]
+        io = ScriptedIO("")
+        run(program, io)
+        assert io.getvalue() == "11", "both branches print the inherited register"
+
+    def test_a_fork_copies_the_deque_cursor_to_both_branches(self) -> None:
+        """The other half of the copied state: which deque is selected.
+
+        ``[ >`` moves the cursor before the fork, so neither branch may
+        fall back to deque 0.
+        """
+        program = [
+            "( )─[ >─[ }─( )─{ }─(( ))",
+            "             │",
+            "            { }",
+            "             │",
+            "           (( ))",
+        ]
+        machine = _Machine(program, ScriptedIO(""))
+        for _ in range(14):
+            if machine.halted:
+                break
+            machine.step()
+        assert [p.deque for p in machine.pointers] == [1, 1]
+
     def test_off_centre_vertical_entry_is_rejected(self) -> None:
         """A vertical path must meet the middle of the node it enters.
 
