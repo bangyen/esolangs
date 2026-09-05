@@ -670,203 +670,90 @@ _SPELL_WINDOW = range(-90, 91)
 _SPELL_MAX = 7
 
 
-#: The minimal spelling of each grid map, per width parity: ``(a, b)`` to
-#: ``(shortest even-width spelling, shortest odd-width spelling)``, either
-#: ``None`` where that parity has no spelling within :data:`_SPELL_MAX`.
-#: For ``a == 0`` the erase ``\'`` kills everything before it, so one base
-#: is enough and the second slot is always ``None``.
-#:
-#: **Named rather than searched.**  These are the witnesses the old
-#: breadth-first enumeration over ``simp\'`` found -- shortest first, so
-#: each is a minimal-width spelling -- frozen as data, the same way
-#: :data:`_FOLD_SKELETONS` froze the mined plans.  Everything the
-#: enumeration provided beyond them is derivable: appending ``pp`` -- two
-#: negations, an identity the interpreter executes -- widens any spelling
-#: by two without changing its map, and for ``a == 0`` prefixing ``s``
-#: widens by one, because the erase forgets the prefix.  So a map's width
-#: set is exactly the arithmetic progressions its two bases seed, which
-#: :func:`_spellings_by_width` rebuilds below.  Every entry is validated by
-#: execution over :data:`_SPELL_WINDOW` in the test suite, padding included.
-_SPELL_BASES: dict[tuple[int, int], tuple[str | None, str | None]] = {
-    (0, -12): ("'iim", None),
-    (0, -11): ("'ssmi", None),
-    (0, -10): ("'sim", None),
-    (0, -9): ("'iii", None),
-    (0, -8): ("'ssm", None),
-    (0, -7): ("'ssi", None),
-    (0, -6): ("'ii", None),
-    (0, -5): ("'si", None),
-    (0, -4): ("'ss", None),
-    (0, -3): ("'i", None),
-    (0, -2): ("'s", None),
-    (0, -1): ("'spi", None),
-    (0, 0): ("'", None),
-    (0, 1): ("'ips", None),
-    (0, 2): ("'sp", None),
-    (0, 3): ("'ip", None),
-    (0, 4): ("'ssp", None),
-    (0, 5): ("'sip", None),
-    (0, 6): ("'iip", None),
-    (0, 7): ("'ssip", None),
-    (0, 8): ("'ssmp", None),
-    (0, 9): ("'iiip", None),
-    (0, 10): ("'simp", None),
-    (0, 11): ("'ssmip", None),
-    (0, 12): ("'iimp", None),
-    (1, -12): ("iiii", "sssii"),
-    (1, -11): ("siii", "ssssi"),
-    (1, -10): ("ssii", "sssss"),
-    (1, -9): ("sssi", "iii"),
-    (1, -8): ("ssss", "sii"),
-    (1, -7): ("iiipsp", "ssi"),
-    (1, -6): ("ii", "sss"),
-    (1, -5): ("si", "sssspip"),
-    (1, -4): ("ss", "iipsp"),
-    (1, -3): ("ssspip", "i"),
-    (1, -2): ("iipssp", "s"),
-    (1, -1): ("ipsp", "sspip"),
-    (1, 0): ("", "ssspiip"),
-    (1, 1): ("spip", "ipssp"),
-    (1, 2): ("sspiip", "psp"),
-    (1, 3): ("ipsssp", "pip"),
-    (1, 4): ("pssp", "spiip"),
-    (1, 5): ("psip", "sspiiip"),
-    (1, 6): ("piip", "psssp"),
-    (1, 7): ("spiiip", "pssip"),
-    (1, 8): ("pssssp", "psiip"),
-    (1, 9): ("psssip", "piiip"),
-    (1, 10): ("pssiip", "spiiiip"),
-    (1, 11): ("psiiip", "pssssip"),
-    (1, 12): ("piiiip", "psssiip"),
-    (-1, -12): ("psssii", "piiii"),
-    (-1, -11): ("pssssi", "psiii"),
-    (-1, -10): ("spiiii", "pssii"),
-    (-1, -9): ("piii", "psssi"),
-    (-1, -8): ("psii", "pssss"),
-    (-1, -7): ("pssi", "spiii"),
-    (-1, -6): ("psss", "pii"),
-    (-1, -5): ("sspiii", "psi"),
-    (-1, -4): ("spii", "pss"),
-    (-1, -3): ("pi", "ipsss"),
-    (-1, -2): ("ps", "sspii"),
-    (-1, -1): ("ipss", "spi"),
-    (-1, 0): ("ssspii", "p"),
-    (-1, 1): ("sspi", "ips"),
-    (-1, 2): ("sp", "iipss"),
-    (-1, 3): ("ip", "ssspi"),
-    (-1, 4): ("iips", "ssp"),
-    (-1, 5): ("sssspi", "sip"),
-    (-1, 6): ("sssp", "iip"),
-    (-1, 7): ("ssip", "iiips"),
-    (-1, 8): ("siip", "ssssp"),
-    (-1, 9): ("iiip", "sssip"),
-    (-1, 10): ("sssssp", "ssiip"),
-    (-1, 11): ("ssssip", "siiip"),
-    (-1, 12): ("sssiip", "iiiip"),
-    (2, -12): ("sssm", "iim"),
-    (2, -11): ("ssmi", "smssi"),
-    (2, -10): ("ssms", "sim"),
-    (2, -9): ("smsi", "imi"),
-    (2, -8): ("smss", "ssm"),
-    (2, -7): ("mssi", "smi"),
-    (2, -6): ("im", "sms"),
-    (2, -5): ("ssmpip", "msi"),
-    (2, -4): ("sm", "mss"),
-    (2, -3): ("mi", "impip"),
-    (2, -2): ("ms", "smpsp"),
-    (2, -1): ("spimpi", "smpip"),
-    (2, 0): ("smpssp", "m"),
-    (2, 1): ("smpsip", "mspip"),
-    (2, 2): ("mpsp", "spimp"),
-    (2, 3): ("mpip", "pimpi"),
-    (2, 4): ("psmp", "mpssp"),
-    (2, 5): ("spimip", "mpsip"),
-    (2, 6): ("pimp", "mpiip"),
-    (2, 7): ("mpssip", "psmip"),
-    (2, 8): ("spiimp", "pssmp"),
-    (2, 9): ("mpiiip", "pimip"),
-    (2, 10): ("pssmsp", "psimp"),
-    (2, 11): ("pssmip", "spiimip"),
-    (2, 12): ("psssmp", "piimp"),
-    (-2, -12): ("piim", "psssm"),
-    (-2, -11): ("spiimi", "pssmi"),
-    (-2, -10): ("psim", "pssms"),
-    (-2, -9): ("pimi", "mpiii"),
-    (-2, -8): ("pssm", "spiim"),
-    (-2, -7): ("psmi", "mpssi"),
-    (-2, -6): ("mpii", "pim"),
-    (-2, -5): ("mpsi", "spimi"),
-    (-2, -4): ("mpss", "psm"),
-    (-2, -3): ("smpssi", "mpi"),
-    (-2, -2): ("spim", "mps"),
-    (-2, -1): ("mspi", "smpsi"),
-    (-2, 0): ("mp", "smpss"),
-    (-2, 1): ("smpi", "impsi"),
-    (-2, 2): ("smps", "msp"),
-    (-2, 3): ("impi", "mip"),
-    (-2, 4): ("imps", "smp"),
-    (-2, 5): ("msip", "ssmpi"),
-    (-2, 6): ("smsp", "imp"),
-    (-2, 7): ("smip", "simpi"),
-    (-2, 8): ("ssmp", "simps"),
-    (-2, 9): ("imip", "smsip"),
-    (-2, 10): ("simp", "ssmsp"),
-    (-2, 11): ("ssimpi", "ssmip"),
-    (-2, 12): ("iimp", "sssmp"),
-    (4, -12): ("smsm", "imm"),
-    (4, -11): ("smmi", "mssmi"),
-    (4, -10): ("smms", "mssms"),
-    (4, -9): ("mimi", "msmsi"),
-    (4, -8): ("mssm", "smm"),
-    (4, -7): ("msmi", "mmssi"),
-    (4, -6): ("msms", "mim"),
-    (4, -5): ("mmsi", "smpimpi"),
-    (4, -4): ("mmss", "msm"),
-    (4, -3): ("mimpip", "mmi"),
-    (4, -2): ("smpimp", "mms"),
-    (4, -1): ("msmpip", "smpsmip"),
-    (4, 0): ("mm", "smpssmp"),
-    (4, 1): ("mmspip", "smpimip"),
-    (4, 2): ("mspimp", "mmpsp"),
-    (4, 3): ("mpimpi", "mmpip"),
-    (4, 4): ("spimmp", "mpsmp"),
-    (4, 5): ("mmpsip", "mspimip"),
-    (4, 6): ("mmpiip", "mpimp"),
-    (4, 7): ("mpsmip", "spimmip"),
-    (4, 8): ("mpssmp", "psmmp"),
-    (4, 9): ("mpimip", "mmpiiip"),
-    (4, 10): ("mpsimp", "spimimp"),
-    (4, 11): ("psmmip", "mpssmip"),
-    (4, 12): ("mpiimp", "pimmp"),
-    (-4, -12): ("pimm", "mpiim"),
-    (-4, -11): ("mpssmi", "psmmi"),
-    (-4, -10): ("spimim", "mpsim"),
-    (-4, -9): ("mmpiii", "mpimi"),
-    (-4, -8): ("psmm", "mpssm"),
-    (-4, -7): ("spimmi", "mpsmi"),
-    (-4, -6): ("mpim", "mmpii"),
-    (-4, -5): ("mspimi", "mmpsi"),
-    (-4, -4): ("mpsm", "spimm"),
-    (-4, -3): ("mmpi", "smpssmi"),
-    (-4, -2): ("mmps", "mspim"),
-    (-4, -1): ("smpimi", "mmspi"),
-    (-4, 0): ("smpssm", "mmp"),
-    (-4, 1): ("smpsmi", "msmpi"),
-    (-4, 2): ("mmsp", "smpim"),
-    (-4, 3): ("mmip", "mimpi"),
-    (-4, 4): ("msmp", "smpsm"),
-    (-4, 5): ("impsmi", "smmpi"),
-    (-4, 6): ("mimp", "smmps"),
-    (-4, 7): ("smmspi", "msmip"),
-    (-4, 8): ("smmp", "impsm"),
-    (-4, 9): ("smsmpi", "immpi"),
-    (-4, 10): ("ssmpim", "smmsp"),
-    (-4, 11): ("smimpi", "smmip"),
-    (-4, 12): ("immp", "smsmp"),
-}
+#: The alphabet a branch spells its map in: erase, step, double, negate.
+_SPELL_ALPHABET = "simp'"
+
+
+def _spell_map(window: tuple[int, ...]) -> tuple[int, int] | None:
+    """Return ``(a, b)`` if ``window`` is ``a*x + b`` throughout, else ``None``.
+
+    The window carries what a command string leaves for each input in
+    :data:`_SPELL_WINDOW`, so a spelling is admitted because it *behaves*
+    affinely here, not because it matches a template -- which is what lets
+    ``mp`` be found as ``a == -2`` with no rule written for it.
+    """
+    first, second = window[0], window[1]
+    a = second - first
+    b = first - a * _SPELL_WINDOW[0]
+    pairs = zip(_SPELL_WINDOW, window, strict=True)
+    if any(value != a * x + b for x, value in pairs):
+        return None
+    return a, b
 
 
 @cache
+def _spell_bases() -> dict[tuple[int, int], tuple[str | None, str | None]]:
+    """Minimal spelling of each grid map, per width parity.
+
+    ``(a, b)`` maps to ``(shortest even-width spelling, shortest odd-width
+    spelling)``, either ``None`` where that parity has no spelling within
+    :data:`_SPELL_MAX`.  For ``a == 0`` the erase kills everything before
+    it, so one base spells every width above its own and the second slot is
+    always ``None``.
+
+    Built rather than stored.  Command strings are grown a character at a
+    time and carried as the window they leave -- the whole point of
+    :func:`_spell_map` -- so two strings that act alike are one state and
+    the growth stays flat instead of branching five ways per character.
+    The first string to reach a map at a parity is its minimal spelling,
+    since strings are grown shortest first.
+
+    Everything beyond these bases is derivable, which is why only they are
+    built: appending ``pp`` -- two negations, an identity the interpreter
+    executes -- widens any spelling by two without changing its map, and an
+    ``a == 0`` base takes an ``s`` prefix per extra width.  A map's width
+    set is exactly the arithmetic progressions its bases seed, which
+    :func:`_spellings_by_width` rebuilds below.
+    """
+    window = tuple(_SPELL_WINDOW)
+    shortest: dict[tuple[tuple[int, int], int], str] = {}
+    # The empty string is the identity map, and it is even-width.
+    identity = _spell_map(window)
+    assert identity is not None  # nosec B101 - the window is x itself
+    shortest[identity, 0] = ""
+    frontier = {window: ""}
+    for length in range(1, _SPELL_MAX + 1):
+        grown: dict[tuple[int, ...], str] = {}
+        for carried, code in frontier.items():
+            for char in _SPELL_ALPHABET:
+                moved = tuple(_apply(value, char) for value in carried)
+                if moved not in grown:
+                    grown[moved] = code + char
+        frontier = grown
+        for carried, code in frontier.items():
+            spelled = _spell_map(carried)
+            if spelled is None:
+                continue
+            key = (spelled, length % 2)
+            if key not in shortest:
+                shortest[key] = code
+    bases: dict[tuple[int, int], tuple[str | None, str | None]] = {}
+    for a in _WIDE_A_VALS:
+        for b in _WIDE_B_VALS:
+            even = shortest.get(((a, b), 0))
+            odd = shortest.get(((a, b), 1))
+            if a == 0:
+                # The erase forgets the prefix, so the shorter base spells
+                # every width above its own and the odd slot stays empty.
+                found = [code for code in (even, odd) if code is not None]
+                assert found, (a, b)  # nosec B101 - every grid map spells
+                bases[a, b] = (min(found, key=len), None)
+            else:
+                assert even or odd, (a, b)  # nosec B101 - as above
+                bases[a, b] = (even, odd)
+    return bases
+
+
 def _spellings_by_width(a: int, b: int) -> dict[int, str]:
     """Map width to a command string realising ``x -> a*x + b`` at that width.
 
@@ -879,7 +766,7 @@ def _spellings_by_width(a: int, b: int) -> dict[int, str]:
     the grid have spellings of both parities, so this closes nearly every gap
     that padding refused.
 
-    Derived from :data:`_SPELL_BASES` by padding rather than enumerated: a
+    Derived from :func:`_spell_bases` by padding rather than enumerated: a
     base plus ``pp`` repeated reaches every width of its parity, and an
     ``a == 0`` base takes an ``s`` prefix per extra width.  The width *sets*
     are therefore identical to the enumeration's -- checked exhaustively
@@ -888,7 +775,7 @@ def _spellings_by_width(a: int, b: int) -> dict[int, str]:
     wider-than-minimal branch differ, and those are re-executed like
     everything else.
     """
-    found = _SPELL_BASES.get((a, b))
+    found = _spell_bases().get((a, b))
     if found is None:  # pragma: no cover - every grid map has a base
         return {}
     out: dict[int, str] = {}
