@@ -174,6 +174,18 @@ class TestSophieLoops:
         # Should print A, then B's ASCII value (66), then break
         assert f.getvalue() == "66"
 
+    @pytest.mark.usefixtures("timeout_protection")
+    def test_loops_nested_three_deep(self) -> None:
+        """Closing a loop pops one frame, not all but the outermost.
+
+        Two levels cannot show the difference: dropping the top of a
+        two-frame stack and keeping only its bottom leave the same stack.
+        Three levels separate them, and the innermost break prints C.
+        """
+        with redirect_stdout(io.StringIO()) as f:
+            run("#A[#B[#C[.*]]]&", io=IO())
+        assert f.getvalue() == "67"
+
 
 class TestSophieComments:
     """Test Sophie comment functionality."""
