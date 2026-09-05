@@ -905,22 +905,97 @@ def _ladder_vector(
     return tuple(out)
 
 
-#: The five comparator gadgets the ladder path composes after stage one,
-#: shortest first.  Each is a threshold on the accumulator's magnitude --
-#: scale it until the cut clears the over-3003 limit, negate so the reset
-#: can fire, then normalise the two classes onto 0 and 1.  Their measured
-#: cuts are 3004, 1502, 1500, 751 and 3004; the two that share a cut differ
-#: on the rungs stage one already clamped.  Deriving these spellings from
-#: their cuts would mean re-running the rung composition they were found
-#: by, which is out of scope here -- what was tabulated, and is now
-#: computed, is which gadget each table needs.
-_LADDER_GADGETS = (
-    "pspmsmipsp",
-    "mpspmipsp",
-    "smpspmipsp",
-    "mmpspmipsp",
-    "pspmimmipsp",
-)
+#: The five comparators the ladder path composes after stage one, as
+#: ``(cut, slope)`` -- the two numbers a gadget is a function of, with
+#: :func:`_ladder_gadget` spelling each one.  ``cut`` is the outer
+#: threshold on the rung's magnitude and ``slope`` is the total scale the
+#: second stage reaches, which fixes the inner threshold at
+#: ``ceil(3004 / slope)``; between them a gadget sends rungs at or past
+#: the cut (plus rung 0, when the offsets allow it) to one class and the
+#: band between the thresholds to the other.  These pairs are a measured
+#: cover with the same status as :data:`_LADDERS`: which comparators the
+#: twenty tables need was found by search, and what ships is its result.
+#: The spellings themselves are constructed -- an earlier comment here
+#: claimed deriving them meant re-running the rung composition, but the
+#: composition is forced (see :func:`_ladder_gadget`), and the frozen
+#: strings now live in the suite as the fixture the rule must reproduce.
+#:
+#: Five pairs suffice for the same reason eight ladders do: enumerating
+#: every comparator the grammar spells -- one per outer 250-band each
+#: slope reaches, 83 gadgets in all -- and folding them over the ladders
+#: serves nothing these five miss.  It picks up ten tables the shipped
+#: fold never lists, but every one already builds through an earlier
+#: path, and four would flip from the deep band or the fold to a ladder
+#: program, so the wider family buys behaviour change rather than reach.
+_LADDER_CUTS = ((3004, 4), (1502, 4), (1500, 4), (751, 8), (3004, 8))
+
+
+def _sub_units(units: int) -> str:
+    """Shortest ``s``/``i`` spelling of a subtraction of ``units``.
+
+    ``s`` takes 2 and ``i`` takes 3, so the shortest spelling packs as
+    many ``i`` as the remainder mod 3 allows; a remainder of 1 borrows
+    one ``i`` back to pay it as two ``s`` (so 1 unit alone is
+    unspellable, which no caller asks for).
+    """
+    if units % 3 == 0:
+        return "i" * (units // 3)
+    if units % 3 == 2:
+        return "i" * (units // 3) + "s"
+    return "i" * (units // 3 - 1) + "ss"
+
+
+def _ladder_gadget(cut: int, slope: int) -> str:
+    """Spell the comparator with outer threshold ``cut`` and scale ``slope``.
+
+    Every gadget is ``PRE + "psp" + MID + "ipsp"``, and both halves are
+    arithmetic, not composition:
+
+    * ``PRE`` is ``"s" * k + "m" * j``, mapping a rung ``v <= 0`` to
+      magnitude ``2**j * (|v| + 2k)``; the ``p`` that follows turns it
+      positive, so the reset ahead of the next command fires exactly when
+      ``|v| >= ceil(3004 / 2**j) - 2k == cut``.  ``j`` is the largest
+      power fitting under the cut, ``k`` pays the even remainder.
+    * ``MID`` doubles ``slope // 2**j`` times.  Its subtractions are not
+      free: the class that survived the first reset must land on 2 and a
+      rung at 0 must land on 3 (one step past it), so the deficit is
+      pinned at ``max(0, 2*m - m*b - 4)`` where ``b`` is ``PRE``'s
+      additive part.  A ``PRE`` whose ``b`` pushes that negative simply
+      cannot normalise rung 0 -- the ``(1500, 4)`` gadget, whose ladders
+      never stand a rung there.  The deficit is spelled in the highest-
+      weight gap first, each gap's characters doubled by the ``m`` still
+      to run.
+
+    The five shipped pairs come out byte-identical to the strings the
+    search found (``test_ladder_gadgets_match_frozen_spellings``), so
+    this is the same catalogue, constructed.
+    """
+    j = (3004 // cut).bit_length() - 1
+    remainder = -(-3004 // (1 << j)) - cut
+    if remainder < 0 or remainder % 2:
+        j -= 1
+        remainder = -(-3004 // (1 << j)) - cut
+    assert j >= 0  # nosec B101
+    assert remainder >= 0  # nosec B101
+    assert remainder % 2 == 0  # nosec B101
+    k = remainder // 2
+    pre = "s" * k + "m" * j
+    offset = 2 * k * (1 << j)
+    doublings = slope // (1 << j)
+    assert doublings * (1 << j) == slope  # nosec B101
+    assert doublings >= 2  # nosec B101
+    deficit = max(0, 2 * doublings - doublings * offset - 4)
+    mid = ""
+    for gap in range(doublings.bit_length() - 1):
+        weight = 1 << (doublings.bit_length() - 2 - gap)
+        units = deficit // weight
+        mid += "m" + _sub_units(units)
+        deficit -= units * weight
+    assert deficit == 0  # nosec B101
+    return pre + "psp" + mid + "ipsp"
+
+
+_LADDER_GADGETS = tuple(_ladder_gadget(cut, slope) for cut, slope in _LADDER_CUTS)
 
 #: How a gadget finishes: ``sl`` prints the split as it stands, ``ipl``
 #: inverts it first, so the pair covers a table and its complement.

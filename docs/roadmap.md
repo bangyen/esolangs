@@ -730,13 +730,27 @@ open:
       prices the alternative at ~50s of build time to search the other 248
       and find nothing further.  A cover is the shape the rule already
       takes.
-    - **`_LADDER_GADGETS` (%^2^-1)** — **the one genuinely open item, and
-      out of scope as recorded.**  Five spellings whose comment states
-      outright that deriving them from their cuts means re-running the rung
-      composition they were found by.  *Which* gadget each table needs is
-      already computed; only the spellings stayed frozen.  Anyone attempting
-      it should expect to reconstruct that composition, not to find a
-      predicate.
+    - **`_LADDER_GADGETS` (%^2^-1)** — **closed; the spellings are
+      constructed.**  The old comment's claim that deriving them meant
+      re-running the rung composition was wrong: every gadget is
+      `PRE + "psp" + MID + "ipsp"`, where `PRE` (`"s"*k + "m"*j`) spells
+      the outer cut as `ceil(3004/2^j) - 2k` — reproducing the measured
+      3004/1502/1500/751 exactly — and `MID`'s subtractions are *pinned*
+      by normalisation: the class surviving the first reset must land on
+      2 and a rung at 0 on 3, forcing the deficit `max(0, 2m - m*b - 4)`.
+      That formula predicts "msm" (4), "m" (0), "mimm" (12) and predicts
+      the `(1500, 4)` gadget cannot normalise rung 0 (it would need −8),
+      matching its measured garbage there.  `_ladder_gadget(cut, slope)`
+      emits all five byte-identically from `_LADDER_CUTS`; the frozen
+      strings moved into the suite as the fixture
+      (`test_ladder_gadgets_match_frozen_spellings`).  The five pairs
+      that remain are a measured cover in the `_LADDERS` sense, with the
+      analogous defence now measured: folding every comparator the
+      grammar spells (83, one per outer band per slope) serves nothing
+      the five miss — ten extra tables all build through earlier paths,
+      and four would flip away from the deep band/fold, so the full
+      family is a behaviour change, not reach.  Going fully literal-free
+      is therefore a priced option, not a gap.
     - **`_TWO_INPUT_SHORT` (Super SNUSP)** — **not a candidate.**  Five
       hand-found forms that beat the general ANF path by reusing `48`;
       deleting them is safe (ANF is correct and total) but regresses size,
