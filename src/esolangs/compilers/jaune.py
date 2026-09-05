@@ -43,6 +43,17 @@ def count(code: str, ind: int) -> tuple[int | str, int]:
                 if x.isnumeric() and y in "+-":
                     num += int(y + x)
                 ind += 1
+        elif n != "v":
+            # A run like ``++++`` is one counted command of that length, as
+            # ``_parse`` reads it.  Only a ``v`` before the sign is the
+            # read-operand form; anything else starts a run, which used to
+            # report the preceding character as a ``v`` operand and emit an
+            # add of the (unread) input register instead of the count.
+            run = 0
+            while ind < len(code) and code[ind] == start:
+                run += 1
+                ind += 1
+            return (run if start == "+" else -run), ind
         else:
             return n, ind + 1
     elif start in ":$@?!":
@@ -52,6 +63,13 @@ def count(code: str, ind: int) -> tuple[int | str, int]:
         while code[ind] == start:
             num += 1
             ind += 1
+        # A ``v`` immediately before ``+``/``-`` is that operator's operand,
+        # not part of this run: ``_parse`` reads ``vv+`` as ``v`` then
+        # ``v+``.  Counting it here looped the read an extra time and left
+        # the second digit unused.
+        if start == "v" and num > 1 and code[ind] in "+-":
+            num -= 1
+            ind -= 1
 
     return num, ind
 
@@ -154,6 +172,13 @@ def comp(code: str) -> str:
                 routine.looped = True
             res += f"\tcall {routine.label}\n"
             routine.used = True
+            if c == "v" and code[new : new + 1] not in ("+", "-"):
+                # A bare ``v`` stores what it read: ``_advance`` does
+                # ``_set(cells, ptr, value)``, so ``v^`` prints the digit.
+                # The store is here rather than inside ``input:`` because
+                # ``v+``/``v-`` reach the same routine for their operand and
+                # must leave the cell alone, adding ``s7`` to what is there.
+                res += "\tsw   s7, 0(s1)\n"
         elif c == "&":
             if num > 1:
                 res += f"\tli   s3, {num}\n\tcall {subr['&'].label}\n"
@@ -282,16 +307,46 @@ def comp(code: str) -> str:
         )
     if subr["v"].used:
         res += (
+            # One *line* per read, matching the interpreter's
+            # ``io.input_str()``: take the first byte, then drain through
+            # the newline so the next ``v`` starts on the next line.  An
+            # *empty* line gives 0 (``ord(ch[0]) if ch else 0``), while
+            # input that has run out halts, as the interpreter's
+            # ``EOFError`` unwinds the run.  The byte lands in a scratch
+            # slot below the stack pointer; reading into ``s1 - 4`` left
+            # the raw character in the *next* tape cell, so ``v>^`` printed
+            # 49 rather than 0.
             "\ninput:\n"
-            "\taddi s1, s1, -4\n"
+            "\taddi sp, sp, -16\n"
+            "\tli   s7, 0\n"
             "\tli   a7, 63\n"
             "\tli   a0, 0\n"
-            "\tmv   a1, s1\n"
+            "\tmv   a1, sp\n"
             "\tli   a2, 1\n"
             "\tecall\n"
-            "\tlbu  s7, 0(s1)\n"
+            "\tblez a0, .in_eof\n"
+            "\tlbu  s7, 0(sp)\n"
+            "\tli   t0, 10\n"
+            "\tbeq  s7, t0, .in_empty\n"
             "\taddi s7, s7, -48\n"
-            "\taddi s1, s1, 4\n" + end("v")
+            ".in_skip:\n"
+            "\tli   a7, 63\n"
+            "\tli   a0, 0\n"
+            "\tmv   a1, sp\n"
+            "\tli   a2, 1\n"
+            "\tecall\n"
+            "\tblez a0, .in_done\n"
+            "\tlbu  t1, 0(sp)\n"
+            "\tli   t0, 10\n"
+            "\tbne  t1, t0, .in_skip\n"
+            "\tj    .in_done\n"
+            ".in_empty:\n"
+            "\tli   s7, 0\n"
+            ".in_done:\n"
+            "\taddi sp, sp, 16\n" + end("v") + ".in_eof:\n"
+            "\tli   a0, 0\n"
+            "\tli   a7, 93\n"
+            "\tecall\n"
         )
     if subr["<"].used:
         res += (
@@ -315,6 +370,11 @@ def comp(code: str) -> str:
             "\tlw   t0, 0(s1)\n"
             "\tadd  t0, t0, a0\n"
             "\tsw   t0, 0(s1)\n"
+            # `mult` takes its multiplier in s3, the shared loop counter,
+            # and unlike the looped routines it never counts back down.
+            # Leaving it set made the *next* counted command repeat that
+            # many times -- `&&^` printed twice.
+            "\tli   s3, 1\n"
             "\tld   ra, 8(sp)\n"
             "\taddi sp, sp, 16\n"
             "\tret\n"
