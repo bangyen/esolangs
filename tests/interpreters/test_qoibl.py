@@ -183,6 +183,23 @@ class TestQoiblConditionals:
             run(code, IO())
         assert f.getvalue() == chr(1)  # True
 
+    def test_the_orderings_are_strict(self) -> None:
+        """``ye`` and ``ey`` are false when the two operands are equal.
+
+        Every case above compares a smaller value with a larger one, so
+        both orderings could be non-strict without a test noticing.
+        Equal operands are what separates ``<`` from ``<=``.
+        """
+        for op in ("ye", "ey"):
+            code: list[str] = [
+                "we y we yy we",  # var[1] = 3
+                "we ye we yy we",  # var[2] = 3
+                f"tt qe y qe yr {op} yr qe ye qe tt",
+            ]
+            with redirect_stdout(io.StringIO()) as f:
+                run(code, IO())
+            assert f.getvalue() == chr(0), op
+
     def test_not_equal_condition(self) -> None:
         """Test yy (not equal) operator."""
         code: list[str] = [

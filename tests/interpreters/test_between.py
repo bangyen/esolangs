@@ -12,7 +12,7 @@ from typing import ClassVar
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.io import IO
+from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.register_based.between import run
 from tests.interpreters.contract import SnapshotContract
 from tests.interpreters.runner import run_program
@@ -210,6 +210,22 @@ class TestParsing:
         """
         assert run_and_capture("''''p.") == "'"
         assert run_and_capture("''p.") == ""
+
+    def test_a_nested_instruction_still_reaches_the_output(self) -> None:
+        """An instruction inside an expression prints where it stands.
+
+        Every print and read elsewhere sits at the top level, so the
+        output and input handles ``_eval`` threads down for a *nested*
+        instruction are never used -- which leaves them free to be
+        dropped from any of the arithmetic arms.  Here the enclosing
+        ``s`` rejects what the nested ``p`` evaluates to, but the ``5``
+        is written before that happens, and it is written through the
+        handle the thread carries.
+        """
+        io = ScriptedIO("")
+        with pytest.raises(HaltError, match="expected an integer expression"):
+            run("'v'v.\n[v]s||5|p.|\n[v]p.".splitlines(), io)
+        assert io.getvalue() == "5"
 
     def test_nested_pipe_expression(self) -> None:
         code = "'v'v.\n[v]s|[v]+|1||\n[v]p."
