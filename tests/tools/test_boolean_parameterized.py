@@ -2241,6 +2241,94 @@ class TestParameterizedOneTwoThree:
                 got = self.run(self.instantiate(template, bits))
                 assert got == table[combo], (table, bits)
 
+    @pytest.mark.slow  # re-derives 154 plans by enumeration (~4 min)
+    def test_three_input_plans_are_canonical(self) -> None:
+        """The canonical entries are re-derived, not trusted.
+
+        154 of the 256 three-input plans are the shortest plan over the
+        grammar (literals from ``123``, three slots in name order), ties
+        broken lexicographically.  This runs that enumeration and asserts
+        the shipped bytes come back -- which is the whole content of the
+        claim that those entries are search-order agnostic.  Re-running the
+        enumeration anywhere, in any order, must reproduce them.
+
+        The other 102 are search-found witnesses that no shortest-first
+        enumeration reaches; they are marked in the table and are checked
+        only for correctness, by :meth:`test_all_small_tables`.
+
+        A candidate is discarded rather than judged when it exceeds the step
+        cap: 123 proves a loop by state revisit, never by a fuel cap, so a
+        discard can only make the enumeration find fewer plans, never a
+        wrong one.  A candidate that reaches the read command raises
+        :class:`EOFError` and is discarded for the same reason -- the
+        generator emits no template that reads input.
+        """
+        import itertools
+
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.one_two_three import _Machine
+        from esolangs.tools.boolean.one_two_three import _THREE_INPUT_PLAN
+
+        rows = list(itertools.product((0, 1), repeat=3))
+        cache: dict[str, str | None] = {}
+
+        def verdict(plan: str) -> str | None:
+            out = []
+            for bits in rows:
+                program = self.instantiate(plan, list(bits))
+                if program not in cache:
+                    machine = _Machine(program, ScriptedIO(""))
+                    seen: set[object] = set()
+                    got = None
+                    try:
+                        for _ in range(3000):
+                            if machine.halted:
+                                got = "0"
+                                break
+                            state = machine.snapshot()
+                            if state in seen:
+                                got = "1"
+                                break
+                            seen.add(state)
+                            machine.step()
+                    except EOFError:
+                        got = None  # reached the read: not a valid plan
+                    cache[program] = got
+                answer = cache[program]
+                if answer is None:
+                    return None
+                out.append(answer)
+            return "".join(out)
+
+        found: dict[str, str] = {}
+        for total in range(8):
+            plans = []
+            for parts in itertools.product(range(total + 1), repeat=4):
+                if sum(parts) != total:
+                    continue
+                runs = [
+                    ["".join(p) for p in itertools.product("123", repeat=k)]
+                    for k in parts
+                ]
+                for combo in itertools.product(*runs):
+                    plans.append(
+                        combo[0]
+                        + "{X0}"
+                        + combo[1]
+                        + "{X1}"
+                        + combo[2]
+                        + "{X2}"
+                        + combo[3]
+                    )
+            for plan in sorted(plans):
+                table = verdict(plan)
+                if table is not None and table not in found:
+                    found[table] = plan
+
+        assert len(found) == 154, len(found)
+        for table, plan in found.items():
+            assert _THREE_INPUT_PLAN[table] == plan, table
+
     def test_the_tables_walls_md_called_unreachable(self) -> None:
         """XOR and NAND build, against the recorded monotone ceiling.
 
