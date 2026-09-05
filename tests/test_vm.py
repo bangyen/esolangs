@@ -1910,14 +1910,25 @@ class TestRunUntilHaltOrGrowth:
         # budget, and a mutant that defeats it raises TimeoutError here.
         assert run_until_halt_or_growth(_Machine("+[>+]", ScriptedIO()), 12) is False
 
-    def test_input_dependent_growth_is_undecided(self) -> None:
+    def test_a_reading_loop_is_never_certified(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.brainfuck import _Machine
         from esolangs.vm import run_until_halt_or_growth
 
-        # Each lap reads a byte, so the next one is not a replay of the
-        # last: the loop ends when the input does.  Undecided, never a hang.
-        machine = _Machine("+[>,]", ScriptedIO("ab\ncd\n" * 40))
+        # The input cursor is load-bearing, and this is the input that
+        # proves it.  Every lap of `+[>,]` reads the same byte, so the tape
+        # really is a clean right-shift of itself and all three of the
+        # other conditions hold -- 16 times over, before the input runs
+        # out.  Only the moving cursor stands between the certificate and
+        # a hang verdict for a program that stops.  Varying input would
+        # fail on cell values instead and pass this test for free.
+        machine = _Machine("+[>,]", ScriptedIO("a\n" * 6))
+        with pytest.raises(EOFError):
+            run_until_halt_or_growth(machine, 200)
+
+        # With input still to come at the step limit, the same program is
+        # reported undecided rather than as a hang.
+        machine = _Machine("+[>,]", ScriptedIO("a\n" * 400))
         with pytest.raises(TimeoutError, match="undecided after"):
             run_until_halt_or_growth(machine, 200)
 

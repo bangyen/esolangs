@@ -340,9 +340,13 @@ programs by default; deterministic, step-capable machines instead get an
 immediate cycle-detection proof (`esolangs.vm.run_until_halt_or_cycle`),
 and all six random-drawing ones get
 `run_until_halt_or_all_branches_cycle`, which decides them by searching
-every draw rather than sampling one run.  Which interpreters are covered,
-why a few stay on the timeout (unbounded growth, a reachable input command,
-a transition wider than its fanout cap, no `snapshot()` yet), and
+every draw rather than sampling one run.  A loop that *grows* rather than
+repeating is invisible to a cycle proof and has its own:
+`run_until_halt_or_growth` decides brainfuck's `+[>+]` by showing one lap
+is the last translated rightward, and `run_until_halt_or_ancestor` does the
+same for a recursion that re-enters an ancestor's entry state.  Which
+interpreters are covered, why a few stay on the timeout (a reachable input
+command, a transition wider than its fanout cap, no `snapshot()` yet), and
 the `pytest --cov` deadlock this also sidesteps are in
 [`docs/walls.md`](walls.md#state-cycle-detection-coverage-hang-detection-without-a-wall-clock-timeout).
 
