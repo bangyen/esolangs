@@ -46,6 +46,17 @@ class Test3x:
         assert run_program("333x3!") == "3"
         assert run_program("333x3#!") == "0"  # swapped
 
+    def test_printing_pops_one_value_at_a_time(self) -> None:
+        """``!`` removes the top and leaves everything under it.
+
+        Every case elsewhere prints from a stack one or two deep, where
+        dropping the top and keeping only the bottom leave the same
+        stack.  Three distinct values, popped in turn, separate them --
+        and ``?`` stages them without spending three pushes apiece.
+        """
+        assert run_program("???!!!", "1\n2\n3\n") == "321"
+        assert run_program("????!!!", "1\n2\n3\n4\n") == "432"
+
     def test_read(self) -> None:
         assert run_program("33?x!", "6\n") == "1"  # (6-3)/3
         assert run_program("?3^!", "6\n") == "3"  # unassigned variable -> 3
