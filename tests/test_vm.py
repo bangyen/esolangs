@@ -2081,6 +2081,105 @@ class TestGrowthDetectorAcrossLanguages:
         assert run_until_halt_or_growth(machine) is False
 
 
+class TestTheDetectorsTakeAVM:
+    """Every detector accepts what ``make_vm`` returns, not just a ``_Machine``.
+
+    The detectors were written against the interpreters' private
+    ``_Machine`` classes, so every caller in the repo imported one and
+    hand-built it -- the class, its ``ScriptedIO``, and for a random
+    language the seeded generator -- rather than going through the public
+    factory.  A ``VM`` already holds exactly that machine, so ``_unwrap``
+    opens it and the private import stops being the only way in.
+
+    Each case asserts the *same verdict* the hand-built machine gets in
+    the class above, because the point is that the wrapper changes
+    nothing about the answer.  Both directions are checked: a detector
+    that always returned ``True`` would pass a halting-only test.
+    """
+
+    def test_the_cycle_detector_takes_a_vm(self) -> None:
+        """A ``VM`` forwards ``step``/``halted``/``snapshot``.
+
+        It therefore satisfies ``_StepMachine`` on its own and is stepped
+        directly -- ``_unwrap`` returns it untouched rather than reaching
+        for the machine inside.
+        """
+        from esolangs.vm import make_vm, run_until_halt_or_cycle
+
+        halting = make_vm("Point Break", "LET zero:=0")
+        assert run_until_halt_or_cycle(halting) is True
+
+        looping = make_vm(
+            "Point Break", "LET zero:=0\nPOINT loop\nIF zero BREAK loop\nEND loop"
+        )
+        assert run_until_halt_or_cycle(looping) is False
+
+    def test_the_branching_detector_takes_a_vm(self) -> None:
+        """The adapter's seeded ``rng`` must not narrow the search.
+
+        This is the case the unwrap could plausibly break: the derived
+        adapter passes ``rng=Seeded(...)`` so a stepped VM is
+        reproducible, and a search that followed that generator would
+        explore one draw and call the other three unreachable.  It does
+        not, because ``branching_successors`` forks the immutable state
+        rather than the live machine -- so ``?.``, where only east and
+        west reach the halt, is still found to halt.
+        """
+        from esolangs.vm import make_vm, run_until_halt_or_all_branches_cycle
+
+        looping = make_vm("WII2D", ">?\n! ")
+        assert run_until_halt_or_all_branches_cycle(looping) is False
+
+        halting = make_vm("WII2D", "?.\n! ")
+        assert run_until_halt_or_all_branches_cycle(halting) is True
+
+    def test_the_ancestor_detector_takes_a_vm(self) -> None:
+        """APL's truth machine, the shape the frame stack exists for."""
+        from esolangs.vm import make_vm, run_until_halt_or_ancestor
+
+        truth = "x? = x & x?\nn?"
+        halts = make_vm("Algebraic Programming Language", truth, "0\n")
+        assert run_until_halt_or_ancestor(halts) is True
+
+        hangs = make_vm("Algebraic Programming Language", truth, "1\n")
+        assert run_until_halt_or_ancestor(hangs) is False
+
+    def test_the_growth_detector_takes_a_vm(self) -> None:
+        """``+[>+]`` grows the tape a cell a lap and never repeats a state."""
+        from esolangs.vm import make_vm, run_until_halt_or_growth
+
+        # `+[>]` walks right off the set cell onto a zero and leaves.
+        assert run_until_halt_or_growth(make_vm("brainfuck", "+[>]")) is True
+        assert run_until_halt_or_growth(make_vm("brainfuck", "+[>+]")) is False
+
+    def test_a_language_without_the_surface_raises_type_error(self) -> None:
+        """A missing surface is a wrong question, not a hang verdict.
+
+        Point Break neither recurses nor draws at random, so it has no
+        ``frames`` and no ``branching_successors``.  Returning a verdict
+        there would be answering about state the language does not have,
+        so both detectors refuse rather than report.
+        """
+        from esolangs.vm import (
+            make_vm,
+            run_until_halt_or_all_branches_cycle,
+            run_until_halt_or_ancestor,
+        )
+
+        with pytest.raises(TypeError, match="framed"):
+            run_until_halt_or_ancestor(make_vm("Point Break", "LET zero:=0"))
+
+        with pytest.raises(TypeError, match="branch-enumerable"):
+            run_until_halt_or_all_branches_cycle(make_vm("Point Break", "LET zero:=0"))
+
+    def test_an_object_that_is_neither_raises_type_error(self) -> None:
+        """The unwrap looks one level deep, and no further."""
+        from esolangs.vm import run_until_halt_or_cycle
+
+        with pytest.raises(TypeError, match="steppable with a snapshot"):
+            run_until_halt_or_cycle(object())  # type: ignore[arg-type]
+
+
 class TestFactory:
     def test_unknown_language_raises(self) -> None:
         with pytest.raises(UnknownLanguageError):
