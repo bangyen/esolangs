@@ -264,6 +264,64 @@ def _gen_bio_program(rng: random.Random) -> str:
     return "".join(command() for _ in range(rng.randint(1, 6)))
 
 
+def _gen_nocomment_program(rng: random.Random) -> str:
+    """Draw a NoComment program, half pure-random and half stack-disciplined.
+
+    NoComment's alphabet is dense -- every letter is a command -- so a
+    uniform draw parses.  The depth is the problem: ``f`` pops, and popping
+    an empty stack is an invalid operation, so 53% of uniform draws stopped
+    on one, and the median draw executed *six* commands before it did.  The
+    structured half never pops more than it has pushed and biases toward the
+    tape and arithmetic commands, so the run reaches further in before it
+    ends.
+
+    ``s``/``b`` (skip forward / jump back) stay in the draw at their uniform
+    rate: an out-of-range jump is the other invalid operation, and unlike a
+    stack underflow it is worth hitting, being the case where a mis-encoded
+    offset would show up.
+    """
+    if rng.random() >= _STRUCTURED_SHARE:
+        return "".join(rng.choice("idclrnfsbo") for _ in range(rng.randint(0, 30)))
+
+    out: list[str] = []
+    pushed = 0
+    for _ in range(rng.randint(1, 30)):
+        # `f` only when something is on the stack; the rest are always legal.
+        char = rng.choice("idclrnfsbo" if pushed else "idclrnsbo")
+        pushed += (char == "n") - (char == "f")
+        out.append(char)
+    return "".join(out)
+
+
+def _gen_ram0_program(rng: random.Random) -> str:
+    """Draw a RAM0 program, half pure-random and half with separated tokens.
+
+    RAM0 looked healthy on exit codes -- 85% ran to completion, none
+    malformed -- but the median draw executed *two* steps.  The alphabet has
+    no space in it, so adjacent digits glue into one multi-digit goto:
+    ``'4877'`` is a single jump to token 4877, which is past the end, so the
+    program dumps and halts having done nothing.  Roughly half the draws
+    died on their first token that way.
+
+    The structured half separates tokens with spaces and keeps gotos in
+    range of the program being built, so the digit paths still run but land
+    somewhere.  Out-of-range gotos remain reachable through the uniform half
+    and through the ``+2`` slack here.
+    """
+    if rng.random() >= _STRUCTURED_SHARE:
+        return "".join(rng.choice("ZANCLS123456789") for _ in range(rng.randint(0, 30)))
+
+    count = rng.randint(1, 16)
+    tokens: list[str] = []
+    for _ in range(count):
+        if rng.random() < 0.2:
+            # A goto, mostly landing inside the program (1-based token index).
+            tokens.append(str(rng.randint(1, count + 2)))
+        else:
+            tokens.append(rng.choice("ZANCLS"))
+    return " ".join(tokens)
+
+
 BFPDA_CORPUS = [
     "@",  # empty stack: @ auto-pushes a fresh 1
     ".",  # empty stack: prints '0'
@@ -871,7 +929,7 @@ def _fuzz_nocomment(rng: random.Random, count: int) -> bool:
     return _fuzz_asm(
         "NoComment",
         "nocomment",
-        _random_program("idclrnfsbo", 30),
+        _gen_nocomment_program,
         _run_nocomment_python_limited,
         rng,
         count,
@@ -910,7 +968,7 @@ def _fuzz_ram0(rng: random.Random, count: int) -> bool:
     return _fuzz_asm(
         "RAM0",
         "ram0",
-        _random_program("ZANCLS123456789", 30),
+        _gen_ram0_program,
         _run_ram0_python_limited,
         rng,
         count,
