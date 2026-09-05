@@ -854,11 +854,10 @@ def _ladder_splits(vec: tuple[int, ...]) -> dict[str, str]:
 def _ladder_tables(n: int) -> dict[str, tuple[tuple[tuple[str, str], ...], str, str]]:
     """Every table the ladder path builds at ``n`` inputs.
 
-    Derived for a whole arity in one pass and cached, the way
-    :func:`_affine_tables` is: the suffix search is shared across every table a
-    ladder reaches, so harvesting costs one sweep per parameter set rather than
-    one per table.  Parameter sets that leave the same stage-one vector are
-    searched once.
+    Derived for a whole arity in one pass and cached: the suffix search is
+    shared across every table a ladder reaches, so harvesting costs one sweep
+    per parameter set rather than one per table.  Parameter sets that leave the
+    same stage-one vector are searched once.
     """
     built: dict[str, tuple[tuple[tuple[str, str], ...], str, str]] = {}
     searched: set[tuple[int, ...]] = set()
