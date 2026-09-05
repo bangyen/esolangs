@@ -1228,6 +1228,83 @@ class TestPctSquaredHelpers:
                     table, 3
                 )
 
+    def test_built_fold_skeletons_match_the_mined_plans(self) -> None:
+        """The peel/park/close rule reproduces the mined plans exactly.
+
+        These twelve are what the harvest froze: the plan for each run-length
+        word the three-phase construction serves.  The module builds them
+        from ``r``, ``delta`` and ``pat[1]`` now; this remembers what they
+        were.  ``pat[1]`` is ignored at ``r == 5`` -- both pairs there agree
+        -- so the ten distinct plans cover twelve keys.
+        """
+        mined = {
+            (2, 0, 0): (("u", 1, "cmax"),),
+            (2, 0, 1): (("d", 1, "cmax"),),
+            (2, 1, 1): (("d", 1, "cmax"), ("d", 1, "cmax")),
+            (3, 0, 0): (("d", 1, "cmax"), ("u", 2, "cmax")),
+            (3, 1, 1): (("d", 1, "cmax"), ("d", 1, "cmax"), ("d", 2, "cmax")),
+            (4, 0, 0): (
+                ("d", 1, "cmin"),
+                ("m", 0, "m"),
+                ("d", 1, "cmax"),
+                ("u", 1, "land2"),
+                ("u", 2, "cmax"),
+            ),
+            (4, 0, 1): (
+                ("u", 1, "cmin"),
+                ("m", 0, "m"),
+                ("d", 1, "land1"),
+                ("d", 1, "cmax"),
+                ("u", 2, "cmax"),
+            ),
+            (4, 1, 1): (
+                ("d", 1, "cmax"),
+                ("d", 1, "cmin"),
+                ("m", 0, "m"),
+                ("d", 1, "cmax"),
+                ("d", 1, "land2"),
+                ("d", 2, "cmax"),
+            ),
+            (5, 0, 0): (
+                ("d", 1, "cmax"),
+                ("u", 2, "cmin"),
+                ("m", 0, "m"),
+                ("d", 1, "land1"),
+                ("d", 1, "cmax"),
+                ("u", 2, "cmax"),
+            ),
+            (5, 0, 1): (
+                ("d", 1, "cmax"),
+                ("u", 2, "cmin"),
+                ("m", 0, "m"),
+                ("d", 1, "land1"),
+                ("d", 1, "cmax"),
+                ("u", 2, "cmax"),
+            ),
+            (5, 1, 0): (
+                ("d", 1, "cmax"),
+                ("u", 2, "cmax"),
+                ("u", 1, "cmin"),
+                ("m", 0, "m"),
+                ("u", 1, "cmax"),
+                ("u", 1, "land2"),
+                ("u", 2, "cmax"),
+            ),
+            (5, 1, 1): (
+                ("d", 1, "cmax"),
+                ("u", 2, "cmax"),
+                ("u", 1, "cmin"),
+                ("m", 0, "m"),
+                ("u", 1, "cmax"),
+                ("u", 1, "land2"),
+                ("u", 2, "cmax"),
+            ),
+        }
+        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        assert frozenset(mined) == module._FOLD_SERVED  # noqa: SLF001
+        for key, plan in mined.items():
+            assert module._fold_skeleton(*key) == plan, key  # noqa: SLF001
+
     def test_the_ladder_declines_other_arities(self) -> None:
         """Every shipped ladder has three weights, so only ``n == 3`` serves.
 
@@ -1954,7 +2031,7 @@ class TestPctAffineBand:
 class TestPctFoldSkeletonResolver:
     """The tabulated planner's refusals, driven on constructed states.
 
-    ``_fold_construct`` reads a plan out of :data:`_FOLD_SKELETONS` and
+    ``_fold_construct`` builds a plan with :func:`_fold_skeleton` and
     resolves each symbolic amount against the live state, so every refusal
     is a property of the *geometry* rather than of a table.  Building the
     states directly is what reaches them: a wipe that leaves no survivor and
