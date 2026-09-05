@@ -168,20 +168,35 @@ def _weave_slots(grid: list[list[str]]) -> list[tuple[int, int]] | None:
     and serve as the lanes the walk crosses.  Returns ``None`` when the
     template does not close (the walk leaves the grid or never returns to
     the origin), which is how a bad ``units``/``body`` pair is rejected.
+
+    The walk runs on a :func:`~esolangs.vm.make_vm` VM rather than on
+    Clockwise's own ``_Machine``.  Reaching past the public interface was
+    never deliberate here -- it predates the VM growing a position to read
+    -- and the generator bypassing the package's own step-and-inspect
+    surface was the strongest evidence that surface was missing something.
+    ``vm.ip`` is Clockwise's ``(row, col, heading)``, so the cell is its
+    first two fields, read *before* the step for the same reason the old
+    code read ``.row``/``.col`` before one: the instruction a cell holds is
+    the one the pointer leaves, not the one it arrives on.
     """
-    from esolangs.interpreters.grid_based.clockwise import _Machine
-    from esolangs.interpreters.io import IO
+    from esolangs.vm import make_vm
 
     rows = ["".join(row) for row in grid]
-    machine = _Machine(rows, IO())
+    vm = make_vm("Clockwise", "\n".join(rows))
     order: list[tuple[int, int]] = []
     limit = 8 * len(rows) * len(rows[0]) + 64
     for _ in range(limit):
-        if machine.halted:
+        if vm.halted:
             break
-        cell = (machine.row, machine.col)
+        # Clockwise's ip is a grid position; the heading is not part of the
+        # cell's identity, so a row/col pair is what a repeat visit means.
+        # ``ip`` is typed for every language's shape, so narrowing it to
+        # this one's tuple is a type-level fact, not a runtime check.
+        position = vm.ip
+        assert isinstance(position, tuple)  # nosec B101
+        cell = (position[0], position[1])
         try:
-            machine.step()
+            vm.step()
         except ValueError:
             return None  # walked off the grid: the template is not closed
         order.append(cell)
