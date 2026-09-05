@@ -176,6 +176,24 @@ class _Machine:
     def ptr(self) -> int:
         return self.state[1]
 
+    # The growth detector's view.  ``cells`` is already the committed tape
+    # -- there is no write buffer here -- so ``tape`` is the language's own
+    # tuple under the name ``esolangs.vm._TapeMachine`` asks for, and
+    # ``ip`` (below) is the line cursor.  BrainIf qualifies for that
+    # protocol: ``right`` appends exactly one fresh zero, ``left`` clamps
+    # at cell 0 (``ptr = max(0, ptr - 1)``), and every other command reads
+    # or writes only ``cells[ptr]`` -- including the guard, which tests the
+    # cell under the pointer and nothing else.
+
+    @property
+    def tape(self) -> tuple[int, ...]:
+        """The cells, under the name the growth detector reads."""
+        return self.state[2]
+
+    def input_position(self) -> int:
+        """Report the input cursor for the growth detector."""
+        return self.io.position()
+
     @property
     def halted(self) -> bool:
         """Whether the cursor has passed the last line."""

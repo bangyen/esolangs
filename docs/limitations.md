@@ -343,11 +343,14 @@ and all six random-drawing ones get
 every draw rather than sampling one run.  A loop that *grows* rather than
 repeating is invisible to a cycle proof and has its own:
 `run_until_halt_or_growth` decides brainfuck's `+[>+]` by showing one lap
-is the last translated rightward, and `run_until_halt_or_ancestor` does the
-same for a recursion that re-enters an ancestor's entry state.  Which
-interpreters are covered, why a few stay on the timeout (a reachable input
-command, a transition wider than its fanout cap, no `snapshot()` yet), and
-the `pytest --cov` deadlock this also sidesteps are in
+is the last translated rightward — and covers BrainIf, 6-5, Back and
+Factor on the same argument, the five tape languages whose semantics are
+translation-invariant away from the left edge — while
+`run_until_halt_or_ancestor` does the same for a recursion that re-enters
+an ancestor's entry state.  Which interpreters are covered, why a few stay
+on the timeout (a reachable input command, a transition wider than its
+fanout cap, no `snapshot()` yet), and the `pytest --cov` deadlock this also
+sidesteps are in
 [`docs/walls.md`](walls.md#state-cycle-detection-coverage-hang-detection-without-a-wall-clock-timeout).
 
 ## Transpilers: the admission bar, and what it removed

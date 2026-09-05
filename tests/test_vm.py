@@ -1971,6 +1971,116 @@ class TestRunUntilHaltOrGrowth:
         assert machine.tape[1] == 9
 
 
+class TestGrowthDetectorAcrossLanguages:
+    """The certificate is not brainfuck-specific.
+
+    Four more tape languages satisfy ``_TapeMachine``'s semantic contract,
+    and each is checked the same way: a growing program is proved to hang,
+    a halting one still halts, and the growing program is *executed* to
+    confirm it really grows -- a hang verdict on a program that stops
+    would be the one failure this detector must never produce.
+    """
+
+    def test_brainif(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainif import _Machine
+        from esolangs.vm import run_until_halt_or_growth
+
+        # `if 0 right` / `goto 1` walks right forever, one fresh cell per
+        # lap.  Goto targets are 1-based: `goto 0` would park the cursor
+        # at -1, which neither halts nor advances.
+        growing = ["if 0 right", "if 0 goto 1"]
+        assert run_until_halt_or_growth(_Machine(growing, ScriptedIO())) is False
+
+        machine = _Machine(growing, ScriptedIO())
+        for _ in range(600):
+            assert not machine.halted
+            machine.step()
+        assert len(machine.cells) > 250
+
+        # The guard fails on the first pass, so the program runs off the end.
+        halting = ["if 9 goto 1", "if 0 increment"]
+        assert run_until_halt_or_growth(_Machine(halting, ScriptedIO())) is True
+
+    def test_six_five(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.six_five import _Machine
+        from esolangs.vm import run_until_halt_or_growth
+
+        # `4` marks, `1` moves right by two, `81` jumps back to the first
+        # marker.  Markers are 1-based, so `80` would find none.
+        assert run_until_halt_or_growth(_Machine("4181", ScriptedIO())) is False
+
+        machine = _Machine("4181", ScriptedIO())
+        for _ in range(600):
+            assert not machine.halted
+            machine.step()
+        assert len(machine.tape) > 250
+
+        # `5` writes the cell before the move, leaving 5s behind and zeros
+        # between them: growth that is never a full-width shift of itself,
+        # so this is a second language exercising the `i >= m` bound.
+        assert run_until_halt_or_growth(_Machine("45181", ScriptedIO())) is False
+
+        # No jump, so the cursor runs off the end.
+        assert run_until_halt_or_growth(_Machine("41", ScriptedIO())) is True
+
+    def test_back(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.back import _Machine
+        from esolangs.vm import run_until_halt_or_growth
+
+        # A one-cell grid holding `>`: the beam wraps onto itself and moves
+        # one cell right every lap.  This is the case that needs the
+        # heading in the key, which `ip` supplies.
+        assert run_until_halt_or_growth(_Machine([">"], ScriptedIO())) is False
+
+        machine = _Machine([">"], ScriptedIO())
+        for _ in range(600):
+            assert not machine.halted
+            machine.step()
+        assert len(machine.tape) > 250
+
+        # `*` halts the beam.
+        assert run_until_halt_or_growth(_Machine([">*"], ScriptedIO())) is True
+
+    def test_factor(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.factor import _Machine, decode
+        from esolangs.vm import run_until_halt_or_growth
+
+        # Factor is brainfuck as a prime factorization, so the canonical
+        # grower has a numeral: 3*7*23*47*107, whose residues mod 11 spell
+        # `+[>+]` in ascending prime order.
+        assert decode(2429007) == "+[>+]"
+        assert run_until_halt_or_growth(_Machine("2429007", ScriptedIO())) is False
+
+        machine = _Machine("2429007", ScriptedIO())
+        for _ in range(600):
+            assert not machine.halted
+            machine.step()
+        assert len(machine.tape) > 150
+
+        # 3*7*23*41 spells `+[>]`, which walks onto a zero and leaves.
+        assert decode(19803) == "+[>]"
+        assert run_until_halt_or_growth(_Machine("19803", ScriptedIO())) is True
+
+    def test_the_heading_is_part_of_the_code_position(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.back import _Machine
+        from esolangs.vm import run_until_halt_or_growth
+
+        # Why the detector keys on `ip` rather than a bare index.  Back's
+        # position is (row, col, a, b): the beam's square *and* direction.
+        # Two visits to one square travelling different ways are not the
+        # same point in the program, and comparing them as if they were
+        # would compare configurations that never replay each other.
+        machine = _Machine([">"], ScriptedIO())
+        assert isinstance(machine.ip, tuple)
+        assert len(machine.ip) == 4
+        assert run_until_halt_or_growth(machine) is False
+
+
 class TestFactory:
     def test_unknown_language_raises(self) -> None:
         with pytest.raises(UnknownLanguageError):

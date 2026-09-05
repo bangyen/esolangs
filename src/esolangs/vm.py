@@ -284,23 +284,44 @@ def run_until_halt_or_ancestor(machine: _FramedMachine, limit: int = 64) -> bool
 class _TapeMachine(Protocol):
     """A :class:`_StepMachine` on a rightward-growing tape of cells.
 
-    The three members are what the growth certificate compares across two
+    The four members are what the growth certificate compares across two
     visits to one code position.  ``tape`` must be the *committed* tape --
     brainfuck buffers the cell under the pointer, and a logical state with
     two spellings would break the comparison exactly as it would break the
     cycle detector's hash.  ``input_position`` is the input cursor, and it
     carries the soundness the same way ``frame_entry_key``'s does.
 
-    Opting in is a claim about the language, not just about the attributes:
+    ``ip`` is the language-shaped code position every machine here already
+    exposes, and it is only ever used as a dictionary key, never
+    arithmetically -- so it is ``Hashable`` rather than ``int``.  That is
+    deliberate.  A 2D language's position is a tuple that includes the
+    heading, and *must* be: two visits to one grid cell travelling in
+    different directions are not the same point in the program, and keying
+    on the coordinates alone would compare them as if they were.  Taking
+    the machine's own ``ip`` gets that right by construction instead of by
+    remembering it per language.
+
+    Together, ``ip``, ``ptr``, ``tape`` and ``input_position`` must be the
+    machine's *complete* state -- the same completeness ``snapshot``
+    promises the cycle detector.  A register or flag living outside them
+    would let two compared visits differ in something the certificate never
+    looked at, and the replay argument would not hold.
+
+    Opting in is also a claim about the language, not just about the
+    members:
 
     - a transition reads and writes only the cell under the pointer,
     - the semantics are translation-invariant for ``ptr >= 1`` -- moving
       the whole configuration one cell right changes nothing, which fails
       only at the clamped left edge,
-    - the tape grows rightward, one fresh zero cell at a time.
+    - the tape grows rightward, by fresh zero cells.
 
-    Brainfuck satisfies all three; a language with absolute cell addresses
-    or a wrapping tape does not, and must not declare this protocol.
+    Brainfuck, BrainIf, Back, 6-5 and Factor satisfy all three.  A language
+    with absolute cell addresses (Suffolk's ``<`` resets the pointer to 0,
+    Minifuck reads cells 0-7 by index), a wrapping or fixed-size tape
+    (Circlefuck, NoComment, Home Row), or leftward growth (Jaune prepends,
+    which shifts every existing index) does not, and must not declare this
+    protocol -- matching member names is not eligibility.
     """
 
     def step(self) -> None:
@@ -311,8 +332,8 @@ class _TapeMachine(Protocol):
         """Whether the machine has finished executing."""
 
     @property
-    def ind(self) -> int:
-        """The current code position."""
+    def ip(self) -> Hashable:
+        """The current code position, hashable and compared by equality."""
 
     @property
     def ptr(self) -> int:
@@ -337,7 +358,9 @@ def run_until_halt_or_growth(machine: _TapeMachine, limit: int = 100_000) -> boo
 
     This is the check that class allows on a tape.  Instead of comparing
     whole states, it compares two consecutive visits to the *same code
-    position* and asks whether the second is the first shifted right.  Let
+    position* -- the machine's own ``ip``, so a 2D language's heading is
+    part of it -- and asks whether the second is the first shifted right.
+    Let
     ``d`` be the pointer's displacement between the visits, ``m`` the
     lowest cell the pointer reached in between, and write a hang when all
     of:
@@ -383,22 +406,23 @@ def run_until_halt_or_growth(machine: _TapeMachine, limit: int = 100_000) -> boo
     # Per code position: the last visit's (pointer, tape, input cursor),
     # and the lowest pointer seen since that visit.  One entry per position
     # rather than per state, so this is bounded by the program's length.
-    last: dict[int, tuple[int, tuple[int, ...], int]] = {}
-    lowest: dict[int, int] = {}
+    last: dict[Hashable, tuple[int, tuple[int, ...], int]] = {}
+    lowest: dict[Hashable, int] = {}
     for _ in range(limit):
         if machine.halted:
             return True
-        ind, ptr, tape = machine.ind, machine.ptr, machine.tape
+        ip, ptr, tape = machine.ip, machine.ptr, machine.tape
         for position in lowest:
             if ptr < lowest[position]:
                 lowest[position] = ptr
-        previous = last.get(ind)
+        cursor = machine.input_position()
+        previous = last.get(ip)
         if previous is not None and _grows_forever(
-            previous, (ptr, tape, machine.input_position()), lowest[ind]
+            previous, (ptr, tape, cursor), lowest[ip]
         ):
             return False
-        last[ind] = (ptr, tape, machine.input_position())
-        lowest[ind] = ptr
+        last[ip] = (ptr, tape, cursor)
+        lowest[ip] = ptr
         machine.step()
     raise TimeoutError(
         f"undecided after {limit} steps: neither halted nor grew by a "
