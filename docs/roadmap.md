@@ -13,43 +13,119 @@ and a boolean-generator capability (input, a value conditional, output).
 Per-language verdicts on everything ruled out are in the
 assessed-and-rejected ledger in `docs/limitations.md`.
 
-- **function x(y)** — Turing-complete: functions with defaults, `[~]`/`` `~ ``
-  input, `[a]`/`` `a `` output, comparison operators, a ternary, recursion; a
-  boolean generator branches on a comparison and prints 0/1.
 - **DINAC** — `IN` reads an aschar or wubyte, `OUT` prints, IF-ELSE and
-  WHILE on zero/nonzero, truth-machine example.  Bounded-storage machine,
-  so the boolean generator is the whole story.
-- **Packlang** — Turing-complete: packages with the built-in IO package
-  (`charGet`/`charPut`), `If`/`While`, XOR/`!`; the truth-machine example
-  branches on `input ^ 48`.
-- **Interprogck8** — weakest candidate: `u` input, `div` output, and IFT/IFQ
-  plus self-`EXE` (the loop its cat example demonstrates) make a
-  truth-machine, but the conditionals compare the accumulator against
-  *fixed* ASCII codes (84/81), so a generator steers values to `T`/`Q`
-  rather than branching on a bit.  `developer` prints the interpreter's own
-  source — "technically implementation-dependent" on the page — which is a
-  documented judgment call in Taglate's `t` mould rather than a blocker.
-  The randomness is **not** an objection: `[a b]` and `~` are seedable, as
-  LaserFuck's heading already is.
+  WHILE on zero/nonzero, truth-machine example.  "Bounded storage" is the
+  *value* domains (wubyte 0-255, aschar 0-127); the page states no limit on
+  the number of declared variables, and says outright that "AND, OR, and XOR
+  can easily be implemented, it's left to the programmer".  So the generator
+  is an ordinary nested IF-ELSE decision tree, **O(2**n)** with folding and
+  **uncapped in arity** — bounded by program size, not by a structural
+  ceiling.  `OUT` means leaves print directly, so it needs no
+  termination-convention trick.  Two things to pin: block structure is
+  indentation-significant (`N × 4` spaces), which nothing in
+  `src/esolangs/interpreters/` does yet and is the bulk of the work; and `IN`
+  on exhausted input returns a defined sentinel (`\n` for aschar, `00` for
+  wubyte) rather than raising, so DINAC would be a second documented
+  exception to the EOFError convention beside S*bleq.  A text generator
+  comes nearly free (full printable ASCII plus escapes).
 - **Alight** — its boolean generator is an indexed lookup, not a routed
   tree.  It reads each input character, subtracts `'0`, and uses
   ``index = index * 2 + bit`` to build the row number; a string literal holds
   the truth table and ``at{table, index + 0.5}`` supplies the character for
-  `out`.  That is one table character plus a constant-size unrolled update
-  per input: **O(2**n + n)** source, before the interpreter work.  The
-  two-dimensional `skip`/`turn` control flow is therefore exercised by tests
-  rather than made responsible for the generator's cost.
-- **Pinyin** — the stack can retain one nonzero input character as a source
-  of `1` (duplicate it and divide it by itself), but has no table/list
-  storage.  A full planar decision tree is the direct construction.  At each
-  node, a character input is normalized with ``x % ((x / x) + (x / x))``;
-  copies then make zero and `q` compares it with the bit, sending the two
-  outcomes in opposite directions.  The retained character lets either leaf
-  print integer `0` or `1`.  It spends 12 executable character commands per
-  internal node and 3/5 per one/zero leaf, plus routing and grid padding:
-  **O(n * 2**n)** rendered source.  This is a usable, if deliberately large,
-  generator price; the page's `e`/`a`, stack operations, comparison, and
-  truth-machine establish the needed I/O and branch primitives.
+  `out` (lists index from 0.5, so `0.5+k` is the language's own rule, not a
+  trick).  That is one table character plus a constant-size unrolled update
+  per input: **O(2**n + n)** source, additive rather than multiplicative,
+  before the interpreter work.  Measured against the suite median of 218
+  characters that is ~211 at `n == 3` and ~4767 at `n == 12` — nowhere near
+  outlier territory.  The shape is not new: `tools/boolean/ztoalc_l.py`
+  already does double-and-add row indexing into a table, and Alight's is
+  cheaper because the table is a string literal rather than one command per
+  selected row.  The cost is therefore the interpreter — a 2D walker with
+  multi-character command words, three data types and a function system,
+  Flowchart/COD-sized rather than Streetcode-sized.  The
+  two-dimensional `skip`/`turn` control flow is exercised by tests rather
+  than made responsible for the generator's cost.  **The page has no
+  truth-machine or boolean example** (its three examples are cat variants),
+  so the construction above is derived from the primitives rather than
+  lifted from ground truth.
+- **function x(y)** — Turing-complete: functions with defaults, `[~]`/`` `~ ``
+  input, `[a]`/`` `a `` output, comparison operators, a ternary, recursion; a
+  boolean generator branches on a comparison and prints 0/1, reusing
+  `forbin_boolean`'s shape.  Richest generator story of the six and the
+  heaviest interpreter.  **Decide the recursion model before starting**:
+  every call in the page's own examples sits in *expression* position
+  (factorial nests the recursive call inside a multiplication), which is
+  exactly the shape documented below as Forbin's ceiling — so it is the
+  normal case here, not an edge case.  Forbin-style native recursion
+  documents a ~248-level ceiling; a Lamfunc-style explicit frame stack
+  removes it and is the larger build.  Spec debt to pin: the prose defines
+  `/` as integer division but both FizzBuzz bodies use `//`; `=>` is the
+  greater-or-equal token; two or three recursion notations (`{y}`, bare
+  self-call, named call) coexist with no stated relationship; and there is
+  no truth machine, so the boolean claim is inferred from factorial's
+  comparison-feeds-a-ternary shape.
+- **Packlang** — Turing-complete: packages with the built-in IO package
+  (`charGet`/`charPut`), `If`/`While`, XOR/`!`; the truth-machine example
+  branches on `input ^ 48`.  `Dependency` blocks sit in the same file as the
+  `Package`, so this is namespace resolution rather than a linker; the cost
+  is the C-like block grammar, Suptiftam/Forbin-class.  Native `^` makes it
+  a **third** ANF generator beside `fargo.py` and `super_snusp.py`, reusing
+  the existing Möbius-transform construction rather than adding a shape.
+  Three gaps to pin, none reaching the generator: no assignment operator
+  (only `INIT`/`INCR`/`DECR`/`charGet` mutate), no `Else`, and no documented
+  entry point.  A fourth is sharper — **the wiki contradicts itself on
+  numeric literal base**: Hello World and cat use decimal ASCII (`72`, `108`,
+  `44`, digits 2-9 rule out binary) while `plusOrMinus` and the dependency
+  example use bare strings (`101011`, `110000`) that only read as binary.
+  One reading falsifies the other; pick one and document the rest as broken,
+  per Suptiftam's precedent.  The generator's primitives all sit on the
+  decimal, unambiguous side.
+- **Interprogck8** — weakest candidate, but not for the reasons first
+  recorded here.  `u` input, `div` output, and IFT/IFQ plus self-`EXE` (the
+  loop its cat example demonstrates) make a truth-machine.  Steering the
+  accumulator to the *fixed* ASCII codes (84/81) that IFT/IFQ compare
+  against is a one-instruction gadget, **not** the cost driver.  The real
+  open question is control flow: there is exactly one "current function"
+  slot, functions cannot nest, and there is no general backward jump, so a
+  `2**n`-leaf tree has to route through `DownAccLines`' accumulator-keyed
+  computed jump — a mechanism none of the other candidates use, and one
+  nobody has attempted.  That is what ranks it here.  Two corrections to the
+  earlier entry: `developer`, which prints the interpreter's own source and
+  is "technically implementation-dependent" on the page, is **not** in
+  Taglate's `t` mould — `t` transforms the program's own queue into a
+  translate URL by a host-language-independent algorithm, so the precedent
+  does not transfer and the call needs its own argument (excluding the
+  command from generated programs is the likely route).  And the randomness
+  is a non-issue for a simpler reason than seedability: the wiki's own
+  truth-machine uses `[49 49]`, a same-endpoint range that is a disguised
+  constant, and `{values/=a/=b/=c}` takes a plain dice literal — so a
+  generator never draws at all and the VM branching protocol never binds.
+- **Pinyin** — **unpriced; re-audit before building.**  The stack can retain
+  one nonzero input character as a source of `1` (duplicate it and divide it
+  by itself), but has no table/list storage.  A full planar decision tree is
+  the direct construction.  At each node, a character input is normalized
+  with ``x % ((x / x) + (x / x))``; copies then make zero and `q` compares it
+  with the bit, sending the two outcomes in opposite directions.  The
+  retained character lets either leaf print integer `0` or `1`.  It spends 12
+  executable character commands per internal node and 3/5 per one/zero leaf,
+  plus routing and grid padding.  Three unresolved problems sit under that
+  paragraph.  A flat 12-per-node cost over `2**n - 1` nodes is **O(2**n)**;
+  the claimed extra factor of `n` must come entirely from the routing and
+  padding, which is exactly the part never priced.  Commands dispatch on
+  *pinyin phonetics*, so every node and leaf must be a real Chinese
+  character whose romanization supplies the needed
+  (consonant-condition, vowel-effect, tone-direction) triple — a dictionary
+  dependency no other generator here has, and one that breaks the
+  construction outright if some triple has no character.  And the spec never
+  says whether a tone's direction change still applies when the consonant
+  condition fails and the command is a NOP; under the natural reading it does
+  not, in which case a single glyph cannot route two ways and every node
+  needs two placed characters.  The page's own truth-machine is bare
+  characters with no romanization table, so ground truth is not decodable
+  from the page.  ABCDirection is the warning: it passed every check a spec
+  read can apply, then measured 58x the suite median and was removed.  Give
+  this the treatment Super SNUSP got — build the interpreter, attempt one
+  real `n == 2` XOR, measure it — before scheduling it.
 
 These complete the priced survivors of the 2D/grid pass
 (`Category:Two-dimensional languages` ∩ `Category:Unimplemented`). Full
@@ -61,10 +137,32 @@ rest of the pass, is in `notes/twod-unimplemented-audit.md`.
 **Open research item: lowering drawn control flow.**  A Streetcode ring has
 no brainfuck loop image -- the car never returns to the junction that steers
 it as the same drive state -- and the boolean generator's programs are
-decision trees whose leaves each print.  Both are lowerable with scratch
-cells and a converged answer, which is a compiler rather than a program
-rewrite; `docs/limitations.md` carries the measured argument and the
-worked examples.  This is the same class of future work as the OISC pair.
+decision trees whose leaves each print.  Both are lowerable in principle
+with scratch cells and a converged answer, which is a compiler rather than a
+program rewrite.  This is the same class of future work as the OISC pair --
+and that pair is the precedent to follow: `decleq_to_sbleq` clears the
+admission bar by *emulating* the source machine's semantics, because only an
+emulator has no interiors (Decleq can jump into a block's interior;
+Streetcode revisits junctions under a different drive state -- the same
+shape of problem).  It would be the first real control-flow lowering here:
+the other three shipped transpilers are per-command transliteration onto a
+superset target.
+
+Three things price this as **large**, not as queued work.  Following the
+OISC precedent means emulating a 2115-line interpreter
+(`interpreters/grid_based/streetcode.py`) whose own doc lists four-way
+junctions and post-corner behaviour as unverified even in the reference.
+`Streetcode → LaserFuck` was already built once (`0c991940`) and removed
+(`3dab3b18`) as one of six partials that failed the current admission bar,
+and a revived pair inherits LaserFuck's own partiality -- no output command,
+only a tape dump at halt -- needing a second criterion-3 proof or a switch
+to plain brainfuck.  Verification also needs a Streetcode *program* fuzzer
+that does not exist, and random grids will not supply one: an earlier sweep
+of 40k random grids hit zero junction arcs, so the corpus has to be
+constructed.  No worked lowering exists in the repo today; earlier text here
+cited `docs/limitations.md` for "the measured argument and the worked
+examples", but that file carries the removal rationale and unrelated
+decision-tree cost figures, not a construction.
 
 The remaining candidates (a second Forth dialect ↔ Forþ,
 Boolfuck ↔ Minifuck) each need a *new* interpreter first, so they belong
@@ -301,17 +399,49 @@ saving.  Clockwise is the obvious remaining candidate and does not reduce:
 `clockwise` (`other.py:681-888`) makes no `essential_inputs` call.  What is
 open:
 
-- **Taglate's odd-sized sets** are sidestepped by widening the window by one
-  adjacent ignored input, which costs a tier back; narrowing properly needs
-  the reduced program's own ghost handling suppressed.
+- **Taglate's odd-sized sets** — **closed; the premise was wrong.**  Earlier
+  text here said widening the window by one adjacent ignored input "costs a
+  tier back".  It does not: `taglate` already pads any odd `n` to
+  `n_eff = n + 1` with a leading ghost digit (`other.py:630-637`), and the
+  whole `_even_reduce`/`_odd_reduce` cascade is written for even `n_eff`
+  only, so an odd-sized essential set lands on the same tier either way.
+  Measured on parity tables (all inputs essential, so no reduction fires):
+
+  | `n` | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | chars | 14 | 121 | 451 | 451 | 1521 | 1521 | 5499 | 5499 |
+
+  Odd `n` costs exactly what `n + 1` costs, so the sidestep is already near
+  optimal — its marginal cost is one `h` read plus a few selector
+  characters, not a tier.  A real saving would need `taglate`'s core
+  rewritten to handle odd `n_eff` natively: a new odd-parity cascade and a
+  replacement for `_SEL1_N2`, which is committed to exactly two remaining
+  inputs (`other.py:355-368`), plus the seed/prefix formulas that assume
+  even `n_eff`.  That is new machinery rather than a thirteenth instance of
+  the reduction pattern, its payoff is unmeasured, and it would break the
+  read-count contract `test_reduced_programs_still_read_every_input` asserts.
+  Not scheduled.
 
 ## Smaller open items
 
 - **ArrowQueue's reusable drain** — a fixed-block leaf drain (rather than a
   staircase) is verified correct and written up in
   `docs/generator-optimizations.md`, but unshipped: it only wins from n≥5,
-  past where anything exercises folding.  Worth revisiting if deep tables
-  start mattering.
+  past where anything exercises folding.  Two things to know before picking
+  it up.  "Verified but unshipped" means *no source exists* — the commit
+  behind it (`a6ec99de`) touched only the two docs files, so shipping is a
+  build (drain construction, an entry-mode parameter, a depth dispatch, and
+  extending `test_folding_never_grows_a_program` past its `n <= 3` pin), not
+  a swap; the design is settled but the code is not written.  And the
+  crossover is out of reach rather than merely unexercised: the staircase
+  wins at every fold depth through 4 (60/93/111 characters against
+  92/108/116) and only loses from depth 5, which needs an `n >= 5` table
+  carrying a 5-deep constant subtree — `n == 5` is exhaustively ~407
+  CPU-days away, and the suite's two random `n == 5` samples will
+  essentially never contain one.  A wrong entry-mode dispatch previously
+  failed 530/2120 cases, so a careless port costs correctness at `n <= 4`,
+  not just characters.  Revisit if a *proof* pushes exercised coverage to
+  `n >= 5`.
 - **Streetcode evidence types** — carrying `_Machine._validate`'s five proofs
   in a chain of evidence classes would make the ordering checked rather than
   documented.  Deferred: it removes two correct `pragma: no cover` lines and
@@ -323,8 +453,13 @@ open:
   every shipped generator covers `n <= 2` at minimum.  6-5 is the one
   documented wall left (`docs/limitations.md`); %^2^-1 is partly lifted with
   the rest open.
-- **NoComment's tape size** — `run`/`nocomment` take a `tape` argument
-  (`_TAPE = 4096` default, matching the RISC-V cross-check's buffer), so
-  `n == 12` (cell 4650) builds at a larger size without moving the default
-  every existing program agrees with.  The open question is width, not
-  memory: an `n == 11` build is already ~27k characters.
+- **NoComment's tape size** — **closed; already shipped.**  The `tape`
+  argument on `run`/`nocomment` is the whole mechanism this item proposed,
+  and `n == 12` at `tape=16384` already builds, runs and is asserted by
+  `test_a_bigger_tape_lifts_the_cap`, with the lifted bound recorded in
+  `docs/limitations.md`.  Measured source is 27158 characters at `n == 11`
+  and 51407 at `n == 12`; the default 4096 refuses `n == 12` because the
+  generator needs cell 4650, and it stays 4096 because the size is
+  observable through the wrap.  Nothing in the repo calls for `n >= 12`, and
+  raising the tape further buys little: the wide path's *construction* walls
+  well before the tape does (an `n == 15` build does not finish).
