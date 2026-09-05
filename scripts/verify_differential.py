@@ -194,19 +194,40 @@ def _shrink(riscv_name: str, run_limited: Callable[..., Any], program: str) -> s
     return best
 
 
+# How many failures per language are worth reducing.  Shrinking is capped
+# per failure, but a systematic divergence fails on hundreds of draws and
+# they are all the same bug -- three reductions identify it, and the weekly
+# job has a 60-minute timeout to respect.
+_SHRINK_BUDGET = 3
+
+
 def _report_shrunk(
-    name: str, riscv_name: str, run_limited: Callable[..., Any], program: str
+    name: str,
+    riscv_name: str,
+    run_limited: Callable[..., Any],
+    program: str,
+    remaining: list[int],
 ) -> None:
     """Print a reduced version of a diverging ``program``, if one is smaller.
 
     Printed as a second line under the raw draw rather than replacing it:
     the draw is what reproduces from the seed, and the reduction is what is
-    readable.  Silent when the shrink found nothing, so a already-minimal
+    readable.  Silent when the shrink found nothing, so an already-minimal
     failure does not print itself twice.
+
+    ``remaining`` is a one-element list holding this language's shrink
+    allowance, decremented in place; once it runs out the reductions stop
+    and say so, so a systematic bug cannot spend the job's whole timeout
+    reducing the same divergence hundreds of times.
     """
+    if remaining[0] <= 0:
+        return
+    remaining[0] -= 1
     small = _shrink(riscv_name, run_limited, program)
     if small != program:
         print(f"{name} fuzz   shrunk to {small!r} ({len(small)} of {len(program)})")
+    if remaining[0] == 0:
+        print(f"{name} fuzz   (further failures reported unshrunk)")
 
 
 def _fuzz_asm(
@@ -243,6 +264,7 @@ def _fuzz_asm(
     asm_results = _run_parallel(lambda p: _asm_refs(riscv_name, p), programs)
 
     failures = checked = loops = 0
+    shrinks = [_SHRINK_BUDGET]
     codes: collections.Counter[int] = collections.Counter()
     for program, asm in zip(programs, asm_results, strict=True):
         # An interpreter that raises something other than its own error
@@ -256,7 +278,7 @@ def _fuzz_asm(
         except Exception as exc:
             failures += 1
             print(f"{name} fuzz {program!r}: python raised {exc!r}, asm={asm!r}")
-            _report_shrunk(name, riscv_name, run_limited, program)
+            _report_shrunk(name, riscv_name, run_limited, program, shrinks)
             continue
         if py is None and asm is None:
             loops += 1
@@ -267,7 +289,7 @@ def _fuzz_asm(
             except Exception as exc:
                 failures += 1
                 print(f"{name} fuzz {program!r}: python raised {exc!r}, asm={asm!r}")
-                _report_shrunk(name, riscv_name, run_limited, program)
+                _report_shrunk(name, riscv_name, run_limited, program, shrinks)
                 continue
         if py is None or asm is None:
             failures += 1
@@ -276,14 +298,14 @@ def _fuzz_asm(
                 f"(python {'loops' if py is None else 'halts'}, "
                 f"asm {'loops' if asm is None else 'halts'})"
             )
-            _report_shrunk(name, riscv_name, run_limited, program)
+            _report_shrunk(name, riscv_name, run_limited, program, shrinks)
             continue
         checked += 1
         codes[asm[1]] += 1
         if py != asm:
             failures += 1
             print(f"{name} fuzz {program!r}: asm={asm!r} py={py!r}")
-            _report_shrunk(name, riscv_name, run_limited, program)
+            _report_shrunk(name, riscv_name, run_limited, program, shrinks)
 
     # The exit-code split is printed because "N programs match" hides how the
     # budget was actually spent: a fuzz whose draws all die at the parser
