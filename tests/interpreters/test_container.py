@@ -105,8 +105,18 @@ class TestContainer:
         assert buffer.getvalue() == "H"
 
     def test_empty_program_halts(self) -> None:
-        """An empty program halts immediately with no output."""
-        run([], IO())
+        """An empty program has no work, output, or exit status."""
+        from esolangs.interpreters.other.container import _Machine
+
+        machine = _Machine([], IO())
+        assert machine.halted is True
+        assert machine.exit_code is None
+        assert machine.tick == 0
+
+        output = io.StringIO()
+        with redirect_stdout(output):
+            run([], IO())
+        assert output.getvalue() == ""
 
 
 class TestStepMachine:

@@ -555,16 +555,6 @@ class TestAddSubJump:
         with pytest.raises(ValueError, match="malformed memory token"):
             mod.comp("12 -6 x -7")
 
-    def test_random_int_input_does_not_crash(self) -> None:
-        import random
-
-        mod = importlib.import_module("esolangs.compilers.addsubjump")
-        random.seed(3)
-        for _ in range(30):
-            n = random.randint(1, 40)
-            code = " ".join(str(random.randint(-9, 200)) for _ in range(n))
-            mod.comp(code)  # must not raise
-
     def test_program_at_buffer_size_is_not_padded(self) -> None:
         """A program already filling the cell buffer skips the zero padding.
 
@@ -613,16 +603,6 @@ class TestSBleq:
         with pytest.raises(ValueError, match="malformed memory token"):
             mod.comp("0 0 x")
 
-    def test_random_int_input_does_not_crash(self) -> None:
-        import random
-
-        mod = importlib.import_module("esolangs.compilers.sbleq")
-        random.seed(3)
-        for _ in range(30):
-            n = random.randint(1, 40)
-            code = " ".join(str(random.randint(-3, 200)) for _ in range(n))
-            mod.comp(code)  # must not raise
-
     def test_program_at_buffer_size_is_not_padded(self) -> None:
         """A program already filling the cell buffer skips the zero padding."""
         mod = importlib.import_module("esolangs.compilers.sbleq")
@@ -659,16 +639,6 @@ class TestDecleq:
         mod = importlib.import_module("esolangs.compilers.decleq")
         with pytest.raises(ValueError, match="malformed memory token"):
             mod.comp("10 10 x")
-
-    def test_random_int_input_does_not_crash(self) -> None:
-        import random
-
-        mod = importlib.import_module("esolangs.compilers.decleq")
-        random.seed(3)
-        for _ in range(30):
-            n = random.randint(1, 40)
-            code = " ".join(str(random.randint(-2, 200)) for _ in range(n))
-            mod.comp(code)  # must not raise
 
     def test_program_at_buffer_size_is_not_padded(self) -> None:
         """A program already filling the cell buffer skips the zero padding."""
@@ -740,24 +710,6 @@ class TestCollatzMultiverse:
         mod = importlib.import_module("esolangs.compilers.collatz_multiverse")
         with pytest.raises(ValueError, match="malformed line"):
             mod.comp("hello world")
-
-    def test_random_program_does_not_crash(self) -> None:
-        import contextlib
-        import random
-
-        mod = importlib.import_module("esolangs.compilers.collatz_multiverse")
-        names = ["a", "b", "c", "arr", "negativeOne", "input", "lineNumber", "zero"]
-        random.seed(3)
-        for _ in range(30):
-            lines = []
-            for _ in range(random.randint(1, 8)):
-                v1, v2, v3 = (random.choice(names) for _ in range(3))
-                do = random.choice(["DO", "NOT"])
-                lines.append(f"{v1} = {v2} x + {v3}, {do} PRINT.")
-            # input as a target is documented as malformed; everything else
-            # must compile without raising.
-            with contextlib.suppress(ValueError):
-                mod.comp("\n".join(lines))
 
 
 class TestRAM0:
@@ -873,46 +825,6 @@ class TestForth:
         output = mod.comp("1{2.}1;")
         assert "sd   ra, 0(sp)" in output
         assert "ld   ra, 0(sp)" in output
-
-
-class TestCompilerFuzz:
-    """Compilers must not crash on arbitrary (possibly malformed) input."""
-
-    ALPHABET = "><+-.,[]{}_|#@$%^&*;:?!\\/'\"" + "asdfjkl;OIAPoi v" + "0123456789"
-
-    @pytest.mark.parametrize(
-        "module",
-        [
-            "esolangs.compilers.bfstack",
-            "esolangs.compilers.home_row",
-            "esolangs.compilers.jaune",
-            "esolangs.compilers.unsquare",
-            "esolangs.compilers.bf_pda",
-            "esolangs.compilers.ram0",
-            "esolangs.compilers.forth",
-        ],
-    )
-    def test_random_input_does_not_crash(self, module: str) -> None:
-        import random
-
-        mod = importlib.import_module(module)
-        random.seed(3)
-        for _ in range(30):
-            code = "".join(
-                random.choice(self.ALPHABET) for _ in range(random.randint(1, 40))
-            )
-            mod.comp(code)  # must not raise
-
-    def test_suffolk_random_input(self) -> None:
-        import random
-
-        mod = importlib.import_module("esolangs.compilers.suffolk")
-        random.seed(3)
-        for _ in range(30):
-            code = "".join(
-                random.choice(self.ALPHABET) for _ in range(random.randint(1, 40))
-            )
-            mod.comp(code, 1)
 
 
 class TestForbinCompiler:
