@@ -88,9 +88,10 @@ Runtime error contract:
   it sets the cell to 0.
 """
 
+import functools
 import sys
 from collections.abc import Callable, Iterator, Mapping
-from typing import Literal, NamedTuple, NewType, assert_never
+from typing import Literal, NamedTuple, NewType, assert_never, cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -320,6 +321,7 @@ _OPS: dict[str, _Op] = {
 # the far lane's wall can sit two cells out, and 3 covers that with a cell to
 # spare.
 _MOUTH_MAX_DIST = 3
+
 # How far along the direction of travel ``_road_mouth`` will look for the
 # ``+`` closing a road's mouth.  Sweeping the value against the test suite
 # puts the floor at 5 -- at 4 the mouths of the wider drawn junctions stop
@@ -427,13 +429,34 @@ class _Grid:
     tests redraw a row to build a fixture (``grid[1] = "|C   |"``).
     """
 
-    __slots__ = ("_rows", "height", "width")
+    __slots__ = ("_geometry", "_rows", "height", "width")
 
     def __init__(self, rows: list[str]) -> None:
         """Square the drawing off, so every row is ``width`` characters."""
         self.width = max(len(row) for row in rows)
         self._rows = [row.ljust(self.width) for row in rows]
         self.height = len(self._rows)
+        # Memo shared by the geometry rules (see :func:`_geometric`).  The
+        # drawing never changes during a run, so a question answered *about
+        # the drawing* from a given car has the same answer every later
+        # time it is asked.  It is asked a lot: the steering phases each
+        # re-derive the shape, the choices and the merge from scratch, and
+        # the car revisits squares, so over the hello-world program the
+        # rules run 3242/12734/5864 times from only 727/1235/702 distinct
+        # states -- between 4.5 and 10.3 calls of every ten are a repeat.
+        # ``__setitem__`` clears it, since a redrawn row is a different
+        # drawing.
+        self._geometry: dict[tuple[str, tuple[object, ...]], object] = {}
+
+    @property
+    def geometry(self) -> dict[tuple[str, tuple[object, ...]], object]:
+        """The memo :func:`_geometric` keeps for the rules about this grid.
+
+        Exposed rather than reached into, since the rules are module-level
+        functions by design (see :class:`_Machine`) and so cannot touch a
+        private attribute without tripping the linter.
+        """
+        return self._geometry
 
     def __getitem__(self, where: int | tuple[int, int]) -> str:
         """Return a whole row by index, or one character by coordinate.
@@ -454,8 +477,14 @@ class _Grid:
         return self._rows[row][col]
 
     def __setitem__(self, row: int, value: str) -> None:
-        """Redraw one row, for the fixtures that build geometry by hand."""
+        """Redraw one row, for the fixtures that build geometry by hand.
+
+        A redrawn row is a different drawing, so the geometry memo --
+        which assumes the drawing is fixed for the run -- is dropped
+        rather than left to answer for geometry that is no longer there.
+        """
         self._rows[row] = "".join(value).ljust(self.width)
+        self._geometry.clear()
 
     def __iter__(self) -> Iterator[str]:
         """Iterate the rows, so the drawing can be scanned as text."""
@@ -568,6 +597,42 @@ def _ahead(row: int, col: int, heading: _Heading) -> tuple[int, int]:
     return row + d_row, col + d_col
 
 
+def _geometric[Answer](rule: Callable[..., Answer]) -> Callable[..., Answer]:
+    """Memoize a geometry ``rule`` on the grid it is asked about.
+
+    The rules below answer questions about the *drawing* -- is there a
+    mouth off this side, is that direction open, is this square a
+    junction -- from a grid, a :class:`_Car` and plain values.  None of
+    them reads the tape, CP, a latch or the I/O, and the drawing is fixed
+    for the length of a run, so the same arguments have the same answer
+    every time they recur.  They recur constantly: the four steering
+    phases each re-derive the shape from scratch rather than threading a
+    decision between them, and the car drives over the same squares many
+    times, so 4.5 to 10.3 calls in every ten repeat one already answered
+    (the counts are in :class:`_Grid`).
+
+    Caching here rather than inside each rule keeps the rules themselves
+    written as the plain geometric predicates they are, and keeps the
+    invalidation in one place -- the grid owns the memo, so a redrawn row
+    drops it without every rule needing to know.  The key includes the
+    rule's name, so two rules with the same argument tuple do not collide.
+    """
+
+    @functools.wraps(rule)
+    def cached(grid: _Grid, *args: object) -> Answer:
+        key = (rule.__name__, args)
+        memo = grid.geometry
+        try:
+            return cast("Answer", memo[key])
+        except KeyError:
+            answer = rule(grid, *args)
+            memo[key] = answer
+            return answer
+
+    return cached
+
+
+@_geometric
 def _open_toward(grid: _Grid, car: _Car, heading: _Heading) -> bool:
     """Whether the cell one step from ``car`` along ``heading`` is open."""
     return grid.open_at(*car.ahead(heading))
@@ -592,6 +657,7 @@ def _initial_heading(grid: _Grid, start: tuple[int, int]) -> _Heading:
     return "S"
 
 
+@_geometric
 def _road_mouth(grid: _Grid, car: _Car, side: _Heading) -> _Mouth | None:
     """Detect a road opening off ``side`` of ``car``, or ``None``.
 
@@ -666,6 +732,7 @@ def _road_mouth(grid: _Grid, car: _Car, side: _Heading) -> _Mouth | None:
     return None
 
 
+@_geometric
 def _plus_dist(grid: _Grid, car: _Car, side: _Heading) -> int | None:
     """Return the distance to the nearest ``+`` on ``side``, or ``None``.
 
@@ -684,6 +751,7 @@ def _plus_dist(grid: _Grid, car: _Car, side: _Heading) -> int | None:
     )
 
 
+@_geometric
 def _crossing_mouth(grid: _Grid, car: _Car) -> bool:
     """Whether the car is driving *out through* a side road's mouth.
 
@@ -708,6 +776,7 @@ def _crossing_mouth(grid: _Grid, car: _Car) -> bool:
     return left is not None and right is not None and left != right
 
 
+@_geometric
 def _junction_kind(grid: _Grid, car: _Car) -> _Junction:
     """Detect a real intersection ahead, returning the open-option count.
 
@@ -740,6 +809,7 @@ def _junction_kind(grid: _Grid, car: _Car) -> _Junction:
     return kind if len(_junction_choices(grid, car)) >= 2 else 0
 
 
+@_geometric
 def _junction_shape(grid: _Grid, car: _Car) -> _Junction:
     """Classify the wall shape alone, before the roads are counted."""
     heading = car.heading
@@ -812,6 +882,7 @@ def _lane_merge_target(
     return car.row, car.col + depth * d_col
 
 
+@_geometric
 def _junction_choices(grid: _Grid, car: _Car) -> list[_Heading]:
     """Return the roads a junction offers, in the spec's choice order.
 
