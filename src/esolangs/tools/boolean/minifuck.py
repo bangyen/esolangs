@@ -646,68 +646,161 @@ def _pool_reaches(j: _Joint, code: str, cell7: int, walk_out: int) -> bool:
     return True
 
 
-# What :func:`_find_pool_cached` probes with.  The verdict is invariant in
-# the walk out (measured over 9..39, no ``(site, code)`` pair changes answer),
-# so the search needs *a* value and not the caller's; naming one here is what
-# lets the memo key omit it.  The smallest legal accumulator, since
-# :func:`_endgame` rejects anything under 8 and the probe should sit where
-# every caller's does or further left.
+# What the pool derivation probes with.  The verdict is invariant in the walk
+# out (measured over 9..39, no ``(site, code)`` pair changes answer), so the
+# derivation needs *a* value and not the caller's; naming one here is what lets
+# the key omit it.  The smallest legal accumulator, since :func:`_endgame`
+# rejects anything under 8 and the probe should sit where every caller's does
+# or further left.
 _PROBE_WALK_OUT = _POOL_WIDTH + 1
 
+#: The window a pool verdict depends on: cells 0 to ``_POOL_WIDTH - 1``.
+_POOL_MASK = (1 << _POOL_WIDTH) - 1
 
-@cache
-def _find_pool_cached(
-    site: tuple[tuple[object, ...], ...],
-    cell7: int,
-    codes: tuple[str, ...],
-) -> str | None:
-    """:func:`_find_pool` keyed on the joint's state, memoised.
 
-    The search is the build's hot spot -- it walks every pool code through
-    every row of the joint, and re-running it is most of what a derivation
-    would otherwise spend its time on.  Almost all of it is repeated, because
-    the same joint state is reached from many plans: at four inputs, 474170
-    hits against 8390 misses, a 98.3% hit rate.
+#: How far right a row can sit and still be summarised by its window.
+#:
+#: The bound is not "where acceptance stops" -- codes answer out to pointer 10
+#: -- but **where the window stops being the whole key**.  Two things fail
+#: further right, and this is the tighter of them:
+#:
+#: * At pointer 3 the codes reach above cell 7, so the window no longer
+#:   determines the verdict: 3 of 300 random window values changed answer when
+#:   the cells above them were re-randomised.  At pointers 0 to 2 that is 0 of
+#:   2400, over eight redraws of 28 bits each.
+#: * From pointer 4 the verdict also starts depending on the walk out, which
+#:   :func:`_find_pool` deletes: 31 keys change answer across walk outs 9 to
+#:   39, none of them below pointer 4.
+#:
+#: So the table is derived over the pointers where one answer is *the* answer,
+#: and a row beyond it is refused rather than guessed at.  Nothing is lost:
+#: every site a build reaches has the pointer at 0 -- 1956 of 1956 at two and
+#: three inputs -- so the refused region is one the generator never asks about,
+#: and refusing is what keeps the lookup honest instead of returning a verdict
+#: that cells outside the key would contradict.
+_POOL_PTR_MAX = 2
 
-    (The "56 million ``_Sim.exec`` calls" and "30167 calls to 572 sites" this
-    docstring used to quote were measured when ``walk_out`` was still in the
-    key, so they describe a memo that was splitting entries -- kept out of the
-    numbers above rather than carried forward as though they still held.)
 
-    ``walk_out`` is *not* a parameter, which is the whole point -- see
-    :func:`_find_pool` for why the verdict does not depend on it.  It was one
-    once, and that silently halved the memo: the verdict is invariant in
-    ``walk_out`` but the key was not, so every accumulator split one entry
-    into many.  The hit rate ran at 50% while this docstring claimed 98%, and
-    dropping ``walk_out`` from the key took the whole four-input derivation
-    from 330s to 76s and the three-input one from 6.6s to 2.4s, with every
-    template byte-identical.  A cache key that disagrees with the prose is worth
-    more than a comment: this now takes only what the answer depends on, so
-    the two cannot drift apart again.
+def _pool_code_for_row(
+    codes: tuple[str, ...], low: int, ptr: int, cell7: int, *, skip: bool
+) -> tuple[int, int] | None:
+    """Return the pool code this row admits and where it leaves it, or None.
 
-    The search still needs *a* ``walk_out`` to probe with, and by the same
-    invariance any will do, so the miss path uses :data:`_PROBE_WALK_OUT`.
-    That is not a default standing in for the caller's value -- it is the
-    statement that the value cannot matter, which the invariance measurement
-    backs and :func:`_find_pool` documents.
+    The pointer comes back with the code because a pool is only a pool if
+    every row reads it from *one* place: the code that answers each row
+    separately still fails the joint when it leaves the rows on different
+    cells.  That is a cross-row condition, so a per-row verdict alone cannot
+    express it -- see :func:`_find_pool`, which compares the pointers the rows
+    come back with.
 
-    ``codes`` *is* in the key, and is the reason this takes the list as an
-    argument rather than reading the module global.  The pool codes are
-    ablated -- dropped one at a time to measure what each is worth -- and a
-    memo that outlived a swap would answer for a list that is no longer in
-    force, reporting that a dropped code stranded nothing because the old
-    answer was still cached.
+    The verdict depends on **cells 0..7 of the row, where the pointer sits, and
+    whether a skip is pending** -- and on nothing else.  A code is a fixed
+    string, so its effect on that state is a fixed function; the walk out that
+    follows is :meth:`_Sim.run_walk`, whose closed form is the prefix-XOR carry
+    law that method documents.  Composing the two *computes* the answer, so
+    this asks each code what it does rather than trying it against the target,
+    which is why the pool is no longer a search.
+
+    Sufficiency of the window is measured, not assumed: over 400 random values
+    of cells 0..7, each run with cells 8..40 randomised six ways, no verdict
+    changed.  Nothing above the window is read, so a row is summarised by one
+    byte plus its pointer and skip.
+
+    **At the origin at most one code answers a row**: over the 512 keys a
+    build can reach, the accepting sets are singletons (36) or empty (476).
+    That is the fact that makes the pool a lookup rather than a trial -- at
+    every state the generator actually asks about, a key *names* its code.
+
+    Away from the origin the property is not free: of the 3072 keys in the
+    derived domain, 104 admit exactly one code and 4 admit two, the latter all
+    with the pointer moved on or a skip pending.  Those four are settled by the
+    ordering -- the first index wins, which is the answer the scan gave, so the
+    two agree by construction rather than by luck.  Recording the number
+    matters: "one code per key" is true where it is used and false in general,
+    and a rule that claimed the strong form would be wrong at the edges the
+    generator does not visit.
+
+    ``cell7`` is not a second dimension.  At the origin ``(low, cell7)`` is
+    admitted exactly when ``(low ^ 0x80, 1 - cell7)`` is, by the same code,
+    with no exception over the 512: the orientation is a mirror of bit 7 of
+    the window.
     """
-    j = _Joint.__new__(_Joint)
-    j.ms = [_Sim.restore(k) for k in site]
-    for code in codes:
-        if _pool_reaches(j, code, cell7, _PROBE_WALK_OUT):
-            return code
+    for index, code in enumerate(codes):
+        probe = _Sim(_POOL_WIDTH + _PROBE_WALK_OUT + _POOL_PTR_MAX + 4)
+        probe.tape = low
+        probe.ptr = ptr
+        probe.skip = skip
+        for char in code:
+            probe.exec(char)
+        # Neither guard the scan carried can fire inside the derived domain:
+        # over its 7680 (key, code) runs no code leaves a row dead or
+        # mid-skip, and none ends right of the probe's walk out.  They were
+        # refusals when a *candidate* was being tried; the list is fixed now,
+        # so a code that broke either would be a change to the pool rather
+        # than a state to skip past, and raising says so where a ``continue``
+        # would quietly drop the code from the table.
+        if probe.dead or probe.skip:  # pragma: no cover - see the note above
+            raise AssertionError(f"pool code {code!r} left a row unrunnable")
+        steps = _PROBE_WALK_OUT - probe.ptr
+        if steps < 0:  # pragma: no cover - see the note above
+            raise AssertionError(f"pool code {code!r} ended past the walk out")
+        landed = probe.ptr
+        probe.run_walk(steps)
+        target = (*_POOL, cell7)
+        if all(probe.cell(cell) == target[cell] for cell in range(_POOL_WIDTH)):
+            return index, landed
     return None
 
 
+@cache
+def _pool_code_table(
+    codes: tuple[str, ...],
+) -> dict[tuple[int, int, bool, int], tuple[int, int]]:
+    """Derive which code each row state admits, over the whole domain.
+
+    The key is ``(window byte, pointer, pending skip, orientation)`` and the
+    domain is everything a verdict can depend on -- one byte of window, a
+    pointer bounded by :data:`_POOL_PTR_MAX`, one skip bit, one orientation
+    bit.  So this is the *predicate*, derived, not a memo of the states a
+    build happens to reach: it is the same size whether one table is asked
+    for or every table is.
+
+    Keyed on the code list because the codes are ablated -- dropped one at a
+    time to measure what each is worth -- and a table derived against a list
+    no longer in force would report that a dropped code stranded nothing.
+    """
+    return {
+        (low, ptr, skip, cell7): answer
+        for low in range(1 << _POOL_WIDTH)
+        for ptr in range(_POOL_PTR_MAX + 1)
+        for skip in (False, True)
+        for cell7 in (0, 1)
+        if (answer := _pool_code_for_row(codes, low, ptr, cell7, skip=skip)) is not None
+    }
+
+
 def _find_pool(j: _Joint, cell7: int, walk_out: int) -> str | None:
-    """Return a pool code for this orientation, or None if none fits.
+    """Return the pool code for this orientation, or None if none fits.
+
+    Every row names the one code it admits, through :data:`_POOL_CODE_OF`, and
+    the joint answers that code when the rows agree.  **The joint's verdict is
+    the AND over its rows** -- measured over 40000 checks (4000 random joints x
+    1, 2, 4 and 8 rows x both orientations x all five codes) with no
+    disagreement against the simulated :func:`_pool_reaches`.
+
+    That is why this is a lookup per row rather than a trial per code.  The
+    breadth-first search here originally, and the five-code trial that replaced
+    it, both asked "does this candidate match?"; the row's window byte answers
+    "which code does this state admit?" directly, so nothing is tried.
+
+    Row uniformity is *not* required and must not be assumed.  It holds at
+    every site a build reaches -- 2024 call sites at two and three inputs, all
+    with the pointer at 0, no pending skip, no dead row -- but a joint whose
+    rows differ inside the window can still be admitted, because the code's
+    carry cascade can merge differing cells: a constructed two-row state
+    differing at cells 5 and 6 is accepted by the same code both rows name.
+    The AND handles that; a "rows must agree in the window" guard would
+    wrongly refuse it.
 
     ``walk_out`` decides whether a code is *asked*, not whether it fits: the
     verdict is invariant in it.  Measured over walk_outs 9 to 39, no
@@ -715,16 +808,33 @@ def _find_pool(j: _Joint, cell7: int, walk_out: int) -> str | None:
     0 of 300 at sixteen.  That follows from the affine picture, since cells
     0..7 after the walk depend only on what was crossed before them, and it
     is why arity reaches the pool codes only through the joint's rows and
-    window state rather than through how far right the accumulator sits.
-
-    That invariance is what lets the memo below drop ``walk_out`` from its
-    key: two calls differing only in it are the same question.  ``walk_out``
-    is therefore accepted and not forwarded -- it stays in the signature
-    because callers reason in terms of their own accumulator, and dropping it
-    would push the invariance argument out to every call site.
+    window state rather than through how far right the accumulator sits.  It
+    stays in the signature because callers reason in terms of their own
+    accumulator, and dropping it would push the invariance argument out to
+    every call site.
     """
     del walk_out
-    return _find_pool_cached(tuple(m.key() for m in j.ms), cell7, tuple(_POOL_CODES))
+
+    codes = tuple(_POOL_CODES)
+    table = _pool_code_table(codes)
+
+    def answer_for(row: _Sim) -> tuple[int, int] | None:
+        """Which code this row names, and where that code leaves it."""
+        if row.dead or row.ptr > _POOL_PTR_MAX:
+            # A dead row prints nothing, and one past the bound is outside the
+            # window's reach.  Both mean "no pool from here".
+            return None
+        return table.get((row.tape & _POOL_MASK, row.ptr, row.skip, cell7))
+
+    chosen = answer_for(j.ms[0])
+    if chosen is None:
+        return None
+    for row in j.ms[1:]:
+        # Equality covers both conditions at once: the rows must name the same
+        # code *and* be left on the same cell by it.
+        if answer_for(row) != chosen:
+            return None
+    return codes[chosen[0]]
 
 
 def _endgame(j: _Joint, acc: int, read: str, cell7: int) -> None:
@@ -2654,8 +2764,10 @@ def _mux_separate(n: int) -> _Joint | None:
 #: :func:`_mux_probe`, and the scan was the smaller half of it: the ``hint``
 #: already skipped the list on all but the first round, so naming the code
 #: takes a warm five-input build from ~3.1s to ~2.8s, about 10%.  Profiled
-#: after the change, :func:`_pool_reaches` is 3% of a build and every call
-#: left comes from :func:`_find_pool` on the derivation path.  The rest of
+#: when that landed, :func:`_pool_reaches` was 3% of a build and every call
+#: left came from :func:`_find_pool` on the derivation path; those calls are
+#: gone now that the derivation path looks the code up too, and
+#: :func:`_pool_reaches` runs only at import and in the tests.  The rest of
 #: :func:`_mux_probe` is the *column derivation* -- the walk and clamp over
 #: every row, once a round -- which is a different question from which code
 #: to use and is not closed by this constant.
@@ -2663,9 +2775,12 @@ def _mux_separate(n: int) -> _Joint | None:
 #: So the value here is the rule, not the seconds: the search is gone, and
 #: what remains is arithmetic the module was always going to do.
 #:
-#: This is the sculpting probe only.  :func:`_find_pool` asks the same
-#: question of the *derivation* path, whose joints are not clamped to this
-#: state, and keeps its scan.
+#: This is the sculpting probe only, and it is now the special case of a
+#: general rule rather than the one closed corner: :func:`_find_pool` asks the
+#: same question of the *derivation* path, whose joints are not clamped to this
+#: state, and answers it by :data:`_POOL_CODE_OF` without a scan either.  This
+#: constant stays because the sculpting probe's state is known at import, so
+#: naming the code costs nothing at all; the general path needs the lookup.
 _SCULPT_POOL_CODE = _POOL_CODES[4]
 
 
