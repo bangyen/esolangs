@@ -1785,6 +1785,87 @@ class TestParameterizedCOD:
         assert template.count("{X1}") == 1
         assert len(re.findall(r"\{X\d+\}", template)) == 2
 
+    @pytest.mark.parametrize(
+        ("table", "rows", "columns"),
+        [
+            ("01", 5, 20),
+            ("0110", 9, 44),
+            ("0001", 9, 44),
+            ("11110000", 8, 20),
+            ("01101001", 17, 96),
+        ],
+    )
+    def test_the_template_has_exact_dimensions(
+        self, table: str, rows: int, columns: int
+    ) -> None:
+        """The drawing's extents, per table.
+
+        COD's template is a grid of boxes: walls sized from their contents,
+        rows padded to a common width, blocks stacked and joined.  Every
+        one of those is arithmetic on a length, and getting one wrong
+        leaves a *working* program -- the cod still routes to the same
+        leaf, the box is just a character wider or the padding lands on
+        the other side.  The truth-table sweeps in this class read the
+        printed bit and see none of it.
+
+        ``11110000`` is the reduction case: it depends on one of its three
+        inputs and draws at 8 by 20 where a real three-input table needs
+        17 by 96.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        grid = parameterized.cod(table).split("\n")
+        assert len(grid) == rows
+        assert max(len(row) for row in grid) == columns
+
+    def test_a_dead_box_wall_frames_its_contents(self) -> None:
+        """The wall is two wider than the names it encloses.
+
+        One name gives ``~~~`` and two give ``~~~~``: a wall that grew or
+        shrank by one would still draw a box, and the cod would still be
+        trapped in it, since what stops the cod is meeting a wall at all
+        rather than the wall's length.
+        """
+        from esolangs.tools.boolean.cod import _cod_dead_box
+
+        one = _cod_dead_box((0,)).split("\n")
+        assert one == ["~~~", "~{X0}~", "~~~"]
+
+        two = _cod_dead_box((0, 1)).split("\n")
+        assert two == ["~~~~", "~{X0}{X1}~", "~~~~"]
+
+    def test_the_grid_uses_only_cod_characters(self) -> None:
+        """Nothing but the language's glyphs, the slots, and layout space."""
+        from esolangs.tools.boolean import parameterized
+
+        allowed = set(" ()+-012<>X{}~\n")
+        for table in ("01", "0110", "01101001", "11110000"):
+            assert set(parameterized.cod(table)) <= allowed, table
+
+    def test_no_row_carries_trailing_space(self) -> None:
+        """Rows are trimmed, so a row's length is its content's length."""
+        from esolangs.tools.boolean import parameterized
+
+        for table in ("01", "0110", "01101001"):
+            for row in parameterized.cod(table).split("\n"):
+                assert row == row.rstrip(), (table, repr(row))
+
+    def test_a_table_ignoring_inputs_takes_the_reduced_build(self) -> None:
+        """The reduction is kept only when it is strictly shorter.
+
+        Both builds compute the table, so no truth-table assertion can see
+        which was taken; the choice is a single length comparison.  Of the
+        276 tables through three inputs, 46 have a reduction available at
+        all.  The lengths are exact rather than bounded: a bound catches an
+        inflating mutant only when the inflation happens to cross it, and
+        says nothing about one that changes the drawing without growing it.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        for table in ("11110000", "00001111", "10101010"):
+            assert len(parameterized.cod(table)) == 113, table
+        assert len(parameterized.cod("01101001")) == 1504
+
     def test_bad_table_rejected(self) -> None:
         from esolangs.tools.boolean import parameterized
 
