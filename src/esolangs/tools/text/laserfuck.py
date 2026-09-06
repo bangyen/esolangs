@@ -436,7 +436,13 @@ def _laserfuck_snake_ring(text: str, width: int) -> str | None:
         # below, and faces right again with the full width ahead of it.
         # Without this the entry marches off the edge and the whole form is
         # refused, which is what sent long texts to the linear fallback.
-        if entry + len(preload) >= right - 2 and entry > laserfuck_layout.MARGIN:
+        # A block reaches five columns past its spine -- the exit "v" sits
+        # at ``spine + 6`` and the test row's "}-#/)" ends there too -- so
+        # the room a stage needs is its preload *and* that footprint.  A
+        # threshold that counted only the preload let a spine land just
+        # inside the margin and the block overrun it, which is the last
+        # thing sending long texts to the linear form at width 80.
+        if entry + len(preload) > right - 5 and entry > laserfuck_layout.MARGIN:
             # "^v{}" set the heading outright, so no mirror is needed: a
             # "v" drops the beam to the row below, a "{" there sends it
             # back along that row to the left margin, and a "}" on the
