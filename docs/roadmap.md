@@ -235,6 +235,42 @@ so byte-consecutive reads would diverge); Container's refills a queue with
 line contents minus the stripped terminator and consumes one char per pulse,
 so `_riscv_common.GETBYTE` plus a newline skip is the correct lowering there.
 
+### Jaune's computed dispatch: implement in both engines, or delete
+
+`compilers/jaune.py` emits `switch:` and `.switch:` blocks for a `v`-operand
+marker — `v@` (call the subroutine the input names) and `v?`/`v!` (jump to
+the label it names).  **The interpreter does not implement those forms**:
+its `_READ_OPERAND` maps `+` and `-` only, so `v@`, `v?` and `v!` raise
+`ValueError`.  That is a scope decision to ratify or reverse, not an
+oversight to patch — and it is the one Jaune divergence the round-trip
+cases cannot settle, because there is no reference behaviour to compare
+against.
+
+Measured rather than assumed: the blocks are live, not dead.  `prep` strips
+`v:` and `v$` but leaves `v@`/`v?`/`v!` standing, and all four probes below
+emit a switch block.  What they then do is the argument for doing something:
+
+| program | interpreter | compiled |
+| --- | --- | --- |
+| `v@^.1$5+;2$3+;` | `ValueError` | `1` — echoes the input, never calls sub 1 |
+| `v?^.1:9+;` | `ValueError` | emulator fault |
+| `v!^.1:9+;` | `ValueError` | emulator fault |
+| `5+1:v?^.` | `ValueError` | prints nothing |
+
+So the compiler accepts a form the interpreter rejects and then miscompiles
+it.  The fork is the wiki spec, and it decides the work:
+
+- **If the wiki defines the `v` forms** — implement them in the interpreter
+  (a `_READ_OPERAND` entry per marker plus dispatch), fix the emitted
+  blocks, and pin round-trip cases.  Only then is the compiler's existing
+  machinery worth keeping.
+- **If it does not** — delete the `switch:` blocks, the `inp` flags that
+  gate them, and the `-1` operand path in `count` that routes to them, and
+  let `prep` strip `v@`/`v?`/`v!` the way it already strips `v:`/`v$`.
+
+Do not settle it by reading `compilers/jaune.py`: the emitted code is the
+thing under suspicion, so it cannot be its own specification.
+
 ## Forbin's expression-position recursion
 
 Forbin's *expression-position* calls (`x = f(y)`) recurse natively, so their
@@ -479,6 +515,17 @@ open:
 
 ## Smaller open items
 
+- **Jaune's markers read one digit** — `count` takes the operand of `:`,
+  `$`, `@`, `?` and `!` from the single character before them, so a program
+  with ten or more labels or subroutines would spell one `10:` and be read
+  as `0:`.  Not reachable today, and that is the whole reason it is filed
+  here rather than fixed: `prep` renumbers labels and routines from 0
+  upward, so reaching two digits needs a program with ten of one kind.  The
+  counts beside them were widened to full digit runs when they turned out
+  to be broken (`10+` compiled to an add of one); the markers were left
+  alone deliberately, since widening an unreachable path is untestable
+  except through `prep` itself.  Fix it together with any change that lets
+  `prep` emit two-digit markers.
 - **Closed forms for the search-based boolean generators** — **all
   closed and shipped.**  Most generators construct their answer; five
   searched for it, and each now names what it finds instead.  A sweep of
