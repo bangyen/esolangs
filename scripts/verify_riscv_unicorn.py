@@ -118,6 +118,21 @@ for _program, _expected in [
     ("1@2@^.1$5+;2$3+;", "8"),  # two subroutines, called in turn
     ("123^.", "0"),  # a bare number is not a command
     ("x^.", "0"),  # nor is an unknown character
+    # An explicit zero count means one, the interpreter's ``or 1`` fallback.
+    # These compiled to a no-op until the fallback was added.
+    ("0+^.", "1"),
+    ("0-^.", "-1"),
+    # A subroutine whose body calls a routine.  Each of these used to
+    # overwrite ``ra`` and leave the subroutine returning into itself, so
+    # the compiled program spun forever; the prologue at ``$`` fixes the
+    # family, and one case per member keeps it fixed.
+    ("5+1@.1$^;", "5"),  # ``^``
+    ("1@^.1$2@;2$5+;", "5"),  # a nested ``@``
+    # ``<`` inside a subroutine also has to clamp at the same tape floor as
+    # ``<`` outside one.  The floor used to be recomputed from ``sp``, so
+    # saving ``ra`` moved it four cells and these landed a cell off.
+    ("5+1@^.1$<;", "0"),
+    (">>>5+1@^.1$<;", "0"),
 ]:
     COMPILER_CASES.append(("jaune", "jaune", _program, _expected))
 # The reading half, carrying the fifth element.  One digit per line: that is
@@ -128,22 +143,26 @@ for _program, _expected, _stdin in [
     ("v+v+^.", "9", "4\n5\n"),  # the spec's adder
     ("9+v-^.", "5", "4\n"),  # v- is the mirror of v+
     ("v+>v+#<&^.", "7", "3\n4\n"),  # # holds, & adds the hold cell
+    # The reading half of the ``ra``-clobber family above: a subroutine
+    # whose body calls ``<``, ``v``, or a looped ``&``.
+    ("v+>v+1@^.1$#<&;", "7", "3\n4\n"),  # the program that showed the bug
+    ("1@^.1$v+;", "3", "3\n"),
+    ("v+>v+1@^.1$#<&&;", "11", "3\n4\n"),
 ]:
     COMPILER_CASES.append(("jaune", "jaune", _program, _expected, _stdin))
-# Two Jaune programs are deliberately *not* pinned here, because the
-# compiler and the interpreter disagree on them and the interpreter is the
-# one following the documented semantics:
+# One Jaune divergence is still open, and is a *parser* difference rather
+# than an emission one, so it is recorded here rather than pinned:
 #
-#   "0+^." / "0-^."   interpreter 1 / -1, compiled 0.  An explicit zero
-#                     count falls back to one -- the interpreter spells
-#                     that `cmd.arg or 1`; the compiler has no equivalent,
-#                     so `0+` compiles to a no-op.
-#   "v+>v+1@^.1$#<&;" interpreter 7, compiled never halts.  The same body
-#                     inlined ("v+>v+#<&^.") is pinned above and works, so
-#                     it is the hold cell *inside a subroutine* that hangs.
+#   "5+0+^."   interpreter 6, compiled 5.  The interpreter reads two
+#              commands, +5 then a zero count that falls back to +1.  The
+#              compiler's `count` consumes "0+" into the first run-length
+#              instead, so the second "+" never becomes a command at all.
+#              Narrowing that loop risks the multi-digit path ("10+^." is
+#              +10 in both), which is why it was left rather than guessed at.
 #
-# Adding them as cases would fail this script rather than describe the bug,
-# so they are recorded here until the compiler is fixed.
+# Jaune's computed dispatch ("v@", "v?") reaches the `switch:` blocks below
+# and has no interpreter counterpart -- the interpreter rejects those forms
+# -- so there is nothing to round-trip it against here.
 # BF-PDA: the stack, its loops, and the fact that non-commands are comments.
 # Same provenance -- the interpreter's expected outputs, each confirmed
 # against the compiled binary.
