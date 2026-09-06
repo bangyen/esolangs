@@ -1,7 +1,15 @@
 """Qoibl (Qwerty oriented impractical bicharacter language) interpreter.
 
-Qoibl is an esoteric programming language with 8 instructions and a 256-variable list.
-It uses only the characters 'e', 'r', 't', 'w', 'q', 'y' for programming constructs.
+Qoibl is an esoteric programming language with eight instructions and a
+256-variable list, using only the characters 'e', 'r', 't', 'w', 'q', 'y'
+for programming constructs.  The wiki's eight are the seven dispatched
+commands in :data:`INSTRUCTIONS` plus ``e``/``y`` binary literal notation,
+which is a construct here rather than a command: :func:`tokenize` reads a
+``[ey]+`` run as a literal, so it never reaches the instruction table.  The
+four :data:`OPERATORS` (``ee``, ``ey``, ``ye``, ``yy``) are counted
+separately by the wiki; they qualify the instruction they follow, reading
+as ``=``, ``>``, ``<``, ``!=`` after ``yr`` and as ``+``, ``-``, ``*``,
+``/`` after ``ry``.
 
 Per the wiki, characters outside the instruction alphabet are ignored, so
 spaces and newlines are optional: the statement, not the line, is the unit of

@@ -680,8 +680,8 @@ class _Machine:
 
         APL has no addressable store; the nearest thing is the set of
         variables input has bound, which is what a reader wants to see.
-        Non-integral and function values are reported as 0, since this
-        view is typed ``list[int]``.
+        Non-integral values are truncated towards zero and function values
+        are reported as 0, since this view is typed ``list[int]``.
         """
         return [
             int(v) if isinstance(v, (int, float)) else 0

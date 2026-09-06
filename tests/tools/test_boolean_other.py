@@ -95,6 +95,76 @@ class TestInject:
         assert len(reads) == 2, "one readto per input, and no more"
         assert max(reads) < first_branch, "every read precedes every branch"
 
+    def test_every_label_occurs_exactly_twice(self) -> None:
+        """Inject's labels are strictly two-occurrence: an open and a close.
+
+        The construction leans on it -- each leaf carries *its own* escape
+        label precisely because a third occurrence would not be a legal
+        block, and the escape blocks are allowed to overlap only because
+        each closes exactly once in the tail.  A counter that handed out a
+        duplicate would still emit a program, and a table whose paths
+        happen to avoid the clash would still compute correctly, so the
+        rule is checked over the label set rather than through an answer.
+        """
+        from collections import Counter
+
+        for table in ("01", "0001", "0110", "01101001", "11110000"):
+            counts = Counter(
+                line
+                for line in boolean.inject(table).splitlines()
+                if line.endswith(";")
+            )
+            assert all(v == 2 for v in counts.values()), (table, counts)
+
+    def test_an_input_block_starts_empty(self) -> None:
+        """An empty block is two *adjacent* delimiters, with nothing between.
+
+        ``readto`` fills the block, so it has to start empty -- and empty
+        means the two delimiter lines are adjacent and bare.  A stray
+        space before the closing delimiter still parses and still computes
+        the table, which is exactly why the spelling is asserted here
+        instead of being left to the truth-table sweeps.
+        """
+        for n, table in ((1, "01"), (2, "0001"), (3, "01101001")):
+            lines = boolean.inject(table).splitlines()
+            assert lines[: 2 * n] == [f"i{d};" for d in range(n) for _ in (0, 1)]
+
+    def test_the_tree_collapses_on_the_constant_subtree_alone(self) -> None:
+        """Depth never terminates the recursion; a constant subtree always does.
+
+        ``_tree`` stops on ``depth == n`` *or* a subtree whose entries all
+        agree, and the second is the only one that ever fires: at depth
+        ``n`` the remaining table is a single entry, which is constant by
+        definition.  Swept over every table to three inputs, the depth
+        clause explains none of the 1522 collapses.  Stated as a test so
+        the disjunct is known to be belt-and-braces rather than assumed to
+        be load-bearing.
+        """
+        from esolangs.tools.boolean.inject import _tree
+
+        calls: list[tuple[str, int, int]] = []
+
+        def record(table: str, depth: int, n: int, state: dict[str, int]) -> None:
+            calls.append((table, depth, n))
+            if depth == n or table == table[0] * len(table):
+                return
+            half = len(table) // 2
+            record(table[:half], depth + 1, n, state)
+            record(table[half:], depth + 1, n, state)
+
+        for n in (1, 2, 3):
+            for table_int in range(2 ** (2**n)):
+                record(format(table_int, f"0{2**n}b"), 0, n, {})
+        collapsed_by_depth_only = [
+            (t, d) for t, d, n in calls if d == n and t != t[0] * len(t)
+        ]
+        assert collapsed_by_depth_only == []
+        # And the tree itself is unchanged when the depth clause cannot fire.
+        state = {"leaves": 0, "blocks": 0}
+        assert _tree("01101001", 0, 3, state) == _tree(
+            "01101001", 0, 3, {"leaves": 0, "blocks": 0}
+        )
+
 
 class TestSuptiftam:
     @pytest.mark.parametrize(
@@ -382,6 +452,102 @@ class TestCvnc:
         assert module._hoisted_candidate("0" * 16, (0, 2, 1, 3)) == ""  # noqa: SLF001
         # The identity is always unimodal, so a candidate always exists.
         assert module._deque_schedule((0, 1, 2, 3)) is not None  # noqa: SLF001
+
+    @pytest.mark.parametrize(
+        ("n", "servable"),
+        [(1, 1), (2, 2), (3, 6), (4, 20), (5, 70), (6, 252)],
+    )
+    def test_the_servable_orders_are_counted_exactly(
+        self, n: int, servable: int
+    ) -> None:
+        """How many permutations the deque serves, per arity.
+
+        The ends are chosen by *search* over the ``2**n`` push assignments,
+        with the pops then forced, and the search returns the first
+        assignment that works.  That makes the two ends' bit tests
+        surprisingly hard to break visibly: scrambling which bit selects
+        which end still finds *a* working assignment for many orders, so
+        the generator keeps emitting correct programs and only the size of
+        the servable set moves.  Measured at four inputs, the shift and
+        mask edits take it from 20 down to 8 or 16 while every program
+        that is still built stays right.
+
+        The counts are the documented ones (all six at three inputs, 20 of
+        24 at four, 252 of 720 at six) and they are the whole observable,
+        so they are asserted rather than sampled.
+        """
+        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+
+        served = sum(
+            1
+            for perm in itertools.permutations(range(n))
+            if module._deque_schedule(perm) is not None  # noqa: SLF001
+        )
+        assert served == servable
+
+    def test_a_tie_keeps_the_node_read_tree(self) -> None:
+        """The hoisted build must be strictly shorter to be taken.
+
+        Fourteen of the 256 three-input tables build a hoisted program of
+        exactly the tree's length, so ``<`` and ``<=`` ship different
+        programs of *identical size*: invisible to a length bound and to
+        every truth-table assertion, since both shapes compute the table.
+        All fourteen keep the tree.
+
+        The comparison has to be driven through ``best_input_order``, the
+        way the generator does it -- that helper permutes the *table* per
+        order, so calling ``_hoisted_candidate`` on the unpermuted one and
+        taking the best is a different quantity, and gives a different set.
+        """
+        from esolangs.tools.boolean.helpers import best_input_order
+
+        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+
+        tied = []
+        for value in range(2**8):
+            table = bin(value)[2:].zfill(8)
+            tree = module._tree(table, 0)  # noqa: SLF001
+            hoisted = best_input_order(
+                table,
+                module._hoisted_candidate,  # noqa: SLF001
+            )
+            if hoisted and len(hoisted) == len(tree):
+                tied.append(table)
+        assert len(tied) == 14
+        for table in tied:
+            assert boolean.cvnc(table) == module._tree(table, 0)  # noqa: SLF001
+
+    def test_a_served_order_pops_from_the_end_holding_its_input(self) -> None:
+        """The schedule is not merely non-empty; it is the right one.
+
+        A count says how many orders are served, not that the pushes and
+        pops agree with each other.  Replaying the schedule against a
+        model deque is what checks that, and it is the property the
+        construction rests on -- a pop from the wrong end reads another
+        input's bit and the tree tests the wrong variable.
+        """
+        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+
+        for n in (2, 3, 4):
+            for perm in itertools.permutations(range(n)):
+                schedule = module._deque_schedule(perm)  # noqa: SLF001
+                if schedule is None:
+                    continue
+                pushes, pops = schedule
+                assert len(pushes) == n
+                assert len(pops) == n
+                held: list[int] = []
+                for i, push in enumerate(pushes):
+                    if push == module._PUSH_FRONT:  # noqa: SLF001
+                        held.insert(0, i)
+                    else:
+                        held.append(i)
+                for wanted, pop in zip(perm, pops, strict=True):
+                    if pop == module._FETCH_FRONT:  # noqa: SLF001
+                        assert held.pop(0) == wanted, (perm, wanted)
+                    else:
+                        assert held.pop() == wanted, (perm, wanted)
+                assert not held
 
     def test_a_table_folding_at_its_root_normalizes_the_last_read(self) -> None:
         """The hoisted build's folded root still holds an unpredictable bit.
@@ -882,6 +1048,128 @@ class TestZtoalc:
             patch.setattr(module, "_MAX_LINES", 8)
             with pytest.raises(ValueError, match="past the"):
                 module.ztoalc_l_boolean("0110")
+
+    def test_the_anchor_covers_a_length_landing_on_its_bound(self) -> None:
+        """An interval's bound is inclusive: ``end == length`` still fits.
+
+        ``ANCHORS`` maps a length interval to the start with the smallest
+        peak over it, so an off-by-one at the bound silently takes the
+        *next* interval's start -- a working program, but a needlessly
+        taller trajectory.  Every bound is a real case: a one-input table
+        emits exactly eight commands, which is exactly the second anchor's
+        end, and the two one-input tables that are not constant hit it.
+        """
+        from esolangs.tools.boolean.ztoalc_l import _anchor_for, _commands
+        from esolangs.tools.ztoalc_starts import ANCHORS
+
+        assert (8, 6) in ANCHORS
+        assert len(_commands("01", 1)) == 8
+        assert _anchor_for(8) == 6
+        # The interval below it, to show the lookup is not simply constant.
+        assert _anchor_for(1) == 2
+
+    def test_the_anchor_refusal_names_the_length_and_the_bound(self) -> None:
+        """The refusal reports the request and the committed ceiling.
+
+        Both numbers are what makes the message actionable -- how long a
+        trajectory the table needs, against how far the table reaches -- and
+        a substring match on the wording checks neither, so they are
+        compared whole.  ``_anchor_for`` is exercised directly because no
+        table small enough to build gets near the bound: the longest anchor
+        covers 1132 commands and a five-input table needs tens.
+        """
+        from esolangs.tools.boolean.ztoalc_l import _anchor_for
+        from esolangs.tools.ztoalc_starts import ANCHORS
+
+        longest = ANCHORS[-1][0]
+        with pytest.raises(ValueError, match="longest committed anchor") as caught:
+            _anchor_for(longest + 1)
+        assert str(caught.value) == (
+            f"the ZTOALC L boolean generator needs a trajectory of "
+            f"{longest + 1} steps (the longest committed anchor reaches "
+            f"{longest})"
+        )
+
+    def test_lines_off_the_trajectory_are_left_empty(self) -> None:
+        """A line no command lands on is blank, not filler.
+
+        The program is one line per value up to the trajectory's peak, so
+        most lines carry nothing -- 38 of ``0110``'s 52.  ZTOALC L reads a
+        blank line as a no-op, and anything else there would be executed,
+        so the padding is load-bearing rather than cosmetic.
+        """
+        from esolangs.tools.boolean.ztoalc_l import _collatz_prefix, _commands
+
+        table = "0110"
+        program = boolean.ztoalc_l_boolean(table)
+        lines = program.splitlines()
+        cmds = _commands(table, 2)
+        values = _collatz_prefix(int(lines[0]), len(cmds))
+        occupied = {v - 1 for v in values} | {0}
+        assert [i for i, ln in enumerate(lines) if ln != ""] == sorted(occupied)
+        assert all(lines[i] == "" for i in range(len(lines)) if i not in occupied)
+
+    def test_the_array_is_declared_at_exactly_two_to_the_n(self) -> None:
+        """``t = [2**n]`` holds one slot per row, no more.
+
+        The row index runs to ``2**n - 1``, so a larger declaration is
+        still *correct* -- it just reserves slots nothing can address.  Only
+        the emitted text sees it, which is why it is asserted here rather
+        than left to the truth-table sweeps.
+        """
+        for table, n in (("0110", 2), ("00010111", 3), ("1010001000011000", 4)):
+            program = boolean.ztoalc_l_boolean(table)
+            assert f"t = [{2**n}]" in program, table
+
+    def test_the_shorter_row_set_is_encoded(self) -> None:
+        """The init block encodes the smaller of the one- and zero-rows.
+
+        One command per selected row means encoding the majority polarity
+        would cost up to ``2**n - 1`` commands where the minority costs at
+        most ``2**(n - 1)``.  Both are correct -- the complement is undone
+        by printing ``'1' - r`` -- so the truth-table sweeps cannot see the
+        choice, and it is the whole point of the branch.
+        """
+        from esolangs.tools.boolean.ztoalc_l import _commands
+
+        for n in (1, 2, 3):
+            for table_int in range(2 ** (2**n)):
+                table = format(table_int, f"0{2**n}b")
+                if len(set(table)) == 1:
+                    continue
+                cmds = _commands(table, n)
+                rows = sum(1 for c in cmds if c.startswith("t["))
+                assert rows == min(table.count("0"), table.count("1")), table
+                assert rows <= 2 ** (n - 1), table
+
+    def test_a_balanced_table_encodes_the_one_rows(self) -> None:
+        """On a tie the one-rows win, so no complement is built.
+
+        With equal counts either polarity costs the same, so the tie-break
+        is free -- but it is still a choice, and taking the zero-rows would
+        emit the ``q = '1'`` / ``q -= r`` pair instead of ``r + '0'``.  Same
+        length, different program, invisible to every truth-table
+        assertion.
+        """
+        from esolangs.tools.boolean.ztoalc_l import _commands
+
+        for table in ("0110", "1001", "00001111", "01101001"):
+            n = len(table).bit_length() - 1
+            cmds = _commands(table, n)
+            assert not any(c.startswith("q = ") for c in cmds), table
+            assert any(c.startswith("r + ") for c in cmds), table
+            selected = [c for c in cmds if c.startswith("t[")]
+            assert len(selected) == table.count("1"), table
+
+    def test_a_dense_table_builds_the_complement(self) -> None:
+        """More ones than zeros is encoded as the zero-rows and inverted."""
+        from esolangs.tools.boolean.ztoalc_l import _commands
+
+        cmds = _commands("1110", 2)
+        assert [c for c in cmds if c.startswith("t[")] == ["t[3] = 1"]
+        assert any(c.startswith("q = ") for c in cmds)
+        assert any(c == "q -= r" for c in cmds)
+        assert not any(c.startswith("r + ") for c in cmds)
 
     def test_wrong_length_rejected(self) -> None:
         """A truth table of the wrong length is malformed."""
@@ -1672,6 +1960,123 @@ class TestLaserFuck:
         ]
         assert widths == sorted(widths, reverse=True)
 
+    @pytest.mark.parametrize(
+        ("table", "rows", "columns"),
+        [
+            ("01", 3, 44),
+            ("0001", 3, 56),
+            ("0110", 4, 56),
+            ("11111110", 4, 68),
+            ("01101001", 8, 68),
+        ],
+    )
+    def test_the_grid_has_exact_dimensions(
+        self, table: str, rows: int, columns: int
+    ) -> None:
+        """The drawing's extents, pinned.
+
+        Almost everything the layout does is arithmetic on grid offsets --
+        where the reader's blocks sit, how far the beam falls before it is
+        caught, which column a node starts in.  An offset that drifts by
+        one still draws a *working* program: the beam is steered by the
+        characters it meets, not by absolute position, so the table still
+        comes out right and only the shape moves.  The extents are the
+        cheapest thing that sees it.
+        """
+        grid = boolean.laserfuck(table).split("\n")
+        assert len(grid) == rows
+        assert max(len(line) for line in grid) == columns
+
+    @pytest.mark.parametrize(
+        ("width", "rows", "columns"),
+        [
+            (18, 47, 18),
+            (19, 36, 18),
+            (27, 28, 26),
+            (28, 25, 27),
+            (35, 17, 34),
+            (44, 6, 43),
+        ],
+    )
+    def test_the_width_steps_land_where_they_should(
+        self, width: int, rows: int, columns: int
+    ) -> None:
+        """XOR's layout at each width where the fit decision changes.
+
+        The reader is stood on end one block at a time, and whether the
+        next block still fits is a single comparison against the requested
+        width.  These are the widths where that comparison flips: at 18 the
+        grid is 47 rows and at 19 it is 36, and again between 27 and 28.
+        An off-by-one in the fit test moves every one of these boundaries
+        by one column, which no truth-table check and no monotonicity
+        check can see -- the program still computes XOR at every width, and
+        the sizes still decrease.
+        """
+        grid = boolean.laserfuck("0110", width).split("\n")
+        assert len(grid) == rows
+        assert max(len(line) for line in grid) == columns
+
+    @pytest.mark.parametrize(
+        ("table", "flip", "narrow", "wide"),
+        [
+            ("11111110", 69, (6, 49), (4, 68)),
+            ("01101001", 71, (10, 51), (8, 68)),
+        ],
+    )
+    def test_the_straight_layout_starts_at_its_exact_width(
+        self,
+        table: str,
+        flip: int,
+        narrow: tuple[int, int],
+        wide: tuple[int, int],
+    ) -> None:
+        """One comparison chooses between the two whole layouts.
+
+        Given room for the reader and the tree end to end, the tree runs
+        straight on along the reader's own rows and costs no rows of its
+        own; one column short of that, it is mirrored and hung underneath
+        instead.  Both are correct programs of very different shape, so
+        only the geometry sees which was taken -- and the switch is a
+        single ``straight + 1 <= width``, whose ``+ 1`` and ``<=`` are
+        exactly the kind of off-by-one that keeps computing the table.
+
+        These are the widths where each table flips: one below is the
+        mirrored shape, and at the flip the grid reaches the same extents
+        it has with no width asked for at all.
+        """
+        below = boolean.laserfuck(table, flip - 1).split("\n")
+        assert (len(below), max(len(line) for line in below)) == narrow
+
+        at = boolean.laserfuck(table, flip).split("\n")
+        assert (len(at), max(len(line) for line in at)) == wide
+
+        # At the flip the constraint stops binding, so the grid matches the
+        # unconstrained build.
+        free = boolean.laserfuck(table).split("\n")
+        assert (len(free), max(len(line) for line in free)) == wide
+
+    def test_the_grid_uses_only_laserfuck_characters(self) -> None:
+        """Nothing but the language's own glyphs and layout space.
+
+        A stray character in a beam's path is a command; one outside it is
+        invisible.  Both are worth refusing outright, and the alphabet is
+        small enough to name.
+        """
+        allowed = set(" #)+,-/<>\\^_ovx{|}\n")
+        for table in ("01", "0110", "0001", "01101001", "11111110"):
+            assert set(boolean.laserfuck(table)) <= allowed, table
+
+    def test_no_row_carries_trailing_space(self) -> None:
+        """Rows are trimmed, so the grid's width is its content's width.
+
+        The width knob is measured against the longest row, so a row
+        padded past its last glyph would quietly inflate every width
+        decision that follows.
+        """
+        for table in ("01", "0110", "01101001"):
+            for row in boolean.laserfuck(table).split("\n"):
+                assert row == row.rstrip(), (table, repr(row))
+
     def test_a_narrow_width_beats_the_old_floor(self) -> None:
         """Standing blocks on end reaches widths the flat reader cannot."""
         for table, floor in (("0110", 18), ("01101001", 24)):
@@ -1826,6 +2231,54 @@ class TestGeneratorEdgePaths:
         assert _six_five_label(_SIX_FIVE_MAX_LABEL) == "Z"
         with pytest.raises(ValueError, match="no operand character for 36"):
             _six_five_label(_SIX_FIVE_MAX_LABEL + 1)
+
+        # The range is closed at *both* ends, and zero is a real label --
+        # a guard reading ``1 <=`` or ``0 <`` would reject the first one.
+        assert _six_five_label(0) == "0"
+        assert _six_five_label(1) == "1"
+        with pytest.raises(ValueError, match="no operand character for -1"):
+            _six_five_label(-1)
+
+    def test_six_five_move_spells_a_distance_in_pairs(self) -> None:
+        """Rightward moves go two cells at a time, with a ``3`` for the odd one.
+
+        ``1`` steps two cells and ``3`` steps one back, so an even distance
+        is all ``1``s and an odd distance is ``ceil(d / 2)`` of them with a
+        ``3`` to come back over the extra cell.  Leftward is plain ``3``s.
+        Swept over every table through three inputs the generator makes
+        11,600 of these moves, over distances 0, 1 and 2 and in both
+        directions, so every arm here is live -- including the equal case,
+        which occurs 2,296 times and must emit nothing at all.
+        """
+        from esolangs.tools.boolean.six_five import _six_five_move
+
+        assert _six_five_move(2, 2) == ""
+        assert _six_five_move(0, 1) == "13"
+        assert _six_five_move(0, 2) == "1"
+        assert _six_five_move(0, 3) == "113"
+        assert _six_five_move(0, 5) == "1113"
+        assert _six_five_move(3, 0) == "333"
+        assert _six_five_move(5, 0) == "33333"
+
+    def test_six_five_refuses_at_more_than_thirty_five_labels(self) -> None:
+        """The capacity test is ``> 35``, not ``>= 35``.
+
+        An operand is one character and the alphabet ends at ``Z``, so 35
+        branch labels fit and 36 do not.  The refusal is already witnessed
+        by a 63-marker table (see ``test_boolean_tape``), but only from far
+        above -- which leaves the boundary itself free to move by one, and
+        a table needing exactly 35 would then be refused despite being
+        spellable.  ``_six_five_label`` marks that limit, so the two are
+        asserted against each other rather than against a repeated literal.
+        """
+        from esolangs.tools.boolean.six_five import (
+            _SIX_FIVE_MAX_LABEL,
+            _six_five_label,
+        )
+
+        assert _SIX_FIVE_MAX_LABEL == 35
+        assert _six_five_label(_SIX_FIVE_MAX_LABEL) == "Z"
+        assert len(_six_five_label(_SIX_FIVE_MAX_LABEL)) == 1
 
 
 class TestAlgebraicProgrammingLanguage:

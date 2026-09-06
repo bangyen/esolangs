@@ -781,6 +781,63 @@ class TestParameterizedMinifuck:
             assert self.run_minifuck(program) == table[combo], (table, bits)
         assert len(widths) == 1, widths
 
+    def test_sculpt_pool_code_matches_scan(self) -> None:
+        """The named sculpt code is what the replaced scan would have found.
+
+        ``_mux_probe`` used to scan ``_POOL_CODES`` through ``_pool_reaches``
+        -- a real interpreter probe, and the module's hot spot at five
+        inputs.  It is now :data:`_SCULPT_POOL_CODE`, a constant, because the
+        probe state is canonical: the ``x`` and the clamp put every row at
+        pointer 0 with the same pool region, a sculpting round cannot write
+        into that region under the rewind guard, and no pool code's own
+        execution reaches past cell 6.
+
+        This replays the scan on the states a sculpt actually reaches and
+        asserts the constant answers exactly what it returned -- the same
+        specification-oracle shape the other closed searches keep.  Both
+        orientations are checked, so "``cell7 == 1`` is answered by none"
+        stays pinned as a measured fact rather than an assumption baked into
+        the constant.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        seen: list[tuple[object, int]] = []
+        real = module._mux_probe  # noqa: SLF001
+
+        def record(joint: object, acc: int, cell7: int, hint: object = None) -> object:
+            if len(seen) < 60:
+                probe = joint.fork()  # type: ignore[attr-defined]
+                probe.emit("x")
+                module._clamp(probe)  # noqa: SLF001
+                seen.append((probe, cell7))
+            return real(joint, acc, cell7, hint)
+
+        with patch.object(module, "_mux_probe", record):
+            assert module._mux("0110100110010110", 4) is not None  # noqa: SLF001
+        assert seen, "no sculpting probes were observed"
+
+        for probe, cell7 in seen:
+            scanned = next(
+                (
+                    code
+                    for code in module._POOL_CODES  # noqa: SLF001
+                    if module._pool_reaches(  # noqa: SLF001
+                        probe,
+                        code,
+                        cell7,
+                        module._PROBE_WALK_OUT,  # noqa: SLF001
+                    )
+                ),
+                None,
+            )
+            assert scanned == module._sculpt_pool_code(cell7), cell7  # noqa: SLF001
+
+        # Both orientations really were exercised, so the None half above is
+        # a checked answer and not an unvisited branch.
+        assert {cell7 for _, cell7 in seen} == {0, 1}
+
     @pytest.mark.slow  # the six-input build, tens of seconds
     def test_no_arity_is_gated(self) -> None:
         """A fully-essential six-input table builds and prints all 64 rows.
@@ -1240,10 +1297,13 @@ class TestParameterizedMinifuck:
         with patch.object(module, "_find_pool", record_all):
             module._derived_plans.cache_clear()  # noqa: SLF001
             module.minifuck.cache_clear()
-            # A three-input build, because the sample has to be wide: the
-            # enumeration is asked for the table it wants, so a two-input
-            # build visits 77 sites where this one fills the 400-site cap.
-            module.minifuck.__wrapped__("01101001")
+            # Harvested from the oracle's enumeration rather than a build: a
+            # build now derives its columns in closed form and asks
+            # ``_find_pool`` only twice per slice, where the emit-and-walk
+            # enumeration still visits the staged states one by one.  Three
+            # inputs, because the sample has to be wide: a two-input walk
+            # visits 77 sites where this one fills the 400-site cap.
+            module._derived_plans(3, ("01101001",))  # noqa: SLF001
         module.minifuck.cache_clear()
         assert len(wide) > 100, f"expected a cold build's lookups, got {len(wide)}"
 
@@ -1284,10 +1344,11 @@ class TestParameterizedMinifuck:
         with patch.object(module, "_find_pool", record):
             module._derived_plans.cache_clear()  # noqa: SLF001
             module.minifuck.cache_clear()
-            # Three inputs for the width of the sample; see the note above.
-            module.minifuck.__wrapped__("01101001")
+            # The oracle's walk, for the width of the sample; see the note
+            # above -- a build's closed-form derivation visits too few sites.
+            module._derived_plans(3, ("01101001",))  # noqa: SLF001
         module.minifuck.cache_clear()
-        assert len(seen) > 100, f"expected a cold build's lookups, got {len(seen)}"
+        assert len(seen) > 100, f"expected a cold walk's lookups, got {len(seen)}"
 
         # The two witnesses from the other orientation, spelled by the same
         # step law the shipped codes are.
@@ -1819,6 +1880,56 @@ class TestParameterizedMinifuck:
                     if other is not None:
                         assert len(other) >= len(built), (acc, cell7, direct)
 
+    @pytest.mark.parametrize(("sep_index", "settle"), [(2, 0), (0, 1)])
+    def test_closed_sweeps_match_the_emit_and_walk_sweep(
+        self, sep_index: int, settle: int
+    ) -> None:
+        """The derived accumulator sweeps equal the interpreter's, per suffix.
+
+        ``_staging_index`` fills from ``_closed_sweeps``, which computes each
+        staging's columns arithmetically -- the bracket staircase, the
+        slice-constant pool, the walk-out XOR -- where ``_column_sweep``
+        emits the pool code and walks.  The index-vs-oracle tests compare
+        the two end to end; this is the direct per-suffix pin, at the first
+        arity with the insert family, so a formula that drifts is named by
+        the ``(slice, suffix, orientation)`` it breaks on rather than by a
+        reassigned staging three layers up.
+
+        Two slices rather than ten to stay in the fast suite; the full
+        cross-check behind the closed form ran every slice at two, three
+        and four inputs -- 10440 sweeps -- with no disagreement.  The
+        slices chosen span both settles and include the one five-input XOR
+        builds from.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        chains, pools = module._slice_chains(4, sep_index, settle)  # noqa: SLF001
+        base = module._embed(  # noqa: SLF001
+            4,
+            settle=settle,
+            sep=module._SEPS[sep_index],  # noqa: SLF001
+        )
+        module._clamp(base)  # noqa: SLF001
+        module._walk_to(base, module._BASE - 1)  # noqa: SLF001
+        suffixes: list[int | str] = list(range(module._MAX_BRACKETS + 1))  # noqa: SLF001
+        suffixes += list(module._insert_suffixes())  # noqa: SLF001
+        run = base.fork()
+        for suffix in suffixes:
+            if isinstance(suffix, int):
+                staged = run.fork()
+                staged.emit("<")
+                run.emit("[")
+            else:
+                staged = base.fork()
+                staged.emit(suffix)
+            module._clamp(staged)  # noqa: SLF001
+            derived = module._closed_sweeps(chains, pools, suffix)  # noqa: SLF001
+            for cell7 in (0, 1):
+                walked = module._column_sweep(staged, cell7)  # noqa: SLF001
+                assert derived[cell7] == walked, (sep_index, settle, suffix, cell7)
+
     def test_the_staging_index_agrees_with_the_enumeration(self) -> None:
         """The inverted index assigns exactly what the per-table sweep does.
 
@@ -1878,10 +1989,11 @@ class TestParameterizedMinifuck:
         sample at arity 4 does not already contain them the way the
         exhaustive arities above do.
 
-        What is left is the index builds themselves -- ``_staging_index(4)``
-        is 6.3s and ``_staging_index(5)`` 12.5s -- which is the production
-        derivation this test exists to check, not overhead the test can
-        drop.  So it stays marked slow.
+        What is left is the oracle's emit-and-walk enumerations -- the index
+        builds themselves derive their columns in closed form and cost 0.62s
+        and 1.12s -- and the oracle is the independent spelling this test
+        exists to compare against, not overhead the test can drop.  So it
+        stays marked slow.
         """
         import importlib
         import random

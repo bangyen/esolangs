@@ -135,7 +135,7 @@ def _streetcode_strip(before: str, block: list[str]) -> list[str]:
 
     ``before`` is both the label text drawn above the room and the actual
     instructions the car drives over to reach it, so callers thread cell/CP
-    bookkeeping through the label itself (see ``_streetcode_collect`` and
+    bookkeeping through the label itself (see ``_streetcode_populate`` and
     the ``strip`` call in ``streetcode``).
 
     The label sits *beside* the loop, not above it: the whole label has to
@@ -233,7 +233,7 @@ def _streetcode_tree(table: str) -> list[str]:
     Recurses on halves of ``table``, joining the two subtrees with a hall
     that advances CP by one ``=`` and forks the car left/right onto the
     matching subtree -- the same leftmost/second-leftmost ambiguous-turn
-    rule the loops use, now keyed on the bit ``_streetcode_collect`` left
+    rule the loops use, now keyed on the bit ``_streetcode_populate`` left
     behind instead of a byte fresh off ``I``.
 
     A subtree whose rows all agree folds to a leaf rather than driving the
@@ -599,7 +599,8 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     inputs (most significant first); the table length implies ``n``.
 
     The car reads each input bit through a wall-hugging loop that walks
-    its ASCII value down to a bare 0/1 (:func:`_streetcode_collect`), then
+    its ASCII value down to a bare 0/1 (built by :func:`_streetcode_populate`
+    out of :func:`_streetcode_strip` rooms), then
     drives into a binary decision tree (:func:`_streetcode_tree`) whose
     T-junctions apply Streetcode's ambiguous-turn rule -- leftmost when the
     CPth cell is 0, otherwise second-leftmost -- to fork on each bit in

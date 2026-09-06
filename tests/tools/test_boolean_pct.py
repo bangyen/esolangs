@@ -7,6 +7,7 @@ there.
 """
 
 import importlib
+import itertools
 
 import pytest
 
@@ -412,17 +413,14 @@ class TestParameterizedPctSquaredMinusOne:
         assert len(lengths) == 1, sorted(lengths)
 
     @pytest.mark.slow  # a 21-point plan plus 32 interpreter runs
-    def test_fold_beams_the_states_too_wide_to_search(self) -> None:
-        """A 21-point table plans quickly instead of exhausting the search.
+    def test_a_wide_state_plans_and_executes(self) -> None:
+        """A 21-point table plans in milliseconds and computes every row.
 
-        The beam's target is what makes this table cheap.  With the target
-        set just under the width at which the exhaustive search starts to
-        struggle, a 21-point state was too wide to search and too narrow to
-        beam: the search explored for fifty seconds and gave up, so the
-        generator *refused a table it can build*.  Beaming to eight points
-        plans it in under a second.  Pinned as the regression, and executed
-        rather than merely planned, because a plan that does not compute is
-        not a fix.
+        Pinned when this table was a planner regression: an earlier
+        search-based configuration explored it for fifty seconds and then
+        *refused a table it can build*.  The rule construction plans it
+        outright, and the rows are executed rather than merely planned,
+        because a plan that does not compute is not a fix.
         """
         from esolangs.tools.boolean.pct_squared_minus_one import _fold
 
@@ -786,6 +784,215 @@ class TestParameterizedPctSquaredMinusOne:
                 shared = set(zero_widths) & set(_spellings_by_width(*one))
                 assert shared, (zero, one)
 
+    def test_built_spell_bases_match_the_frozen_witnesses(self) -> None:
+        """The fold reproduces the enumeration's witnesses exactly.
+
+        These are what the old breadth-first walk over ``simp'`` found:
+        the shortest spelling of each grid map at each width parity, with
+        ``a == 0`` carrying one base because the erase forgets the prefix.
+        The module grows the same strings; this remembers what they were.
+        """
+        frozen: dict[tuple[int, int], tuple[str | None, str | None]] = {
+            (-4, -12): ("pimm", "mpiim"),
+            (-4, -11): ("mpssmi", "psmmi"),
+            (-4, -10): ("spimim", "mpsim"),
+            (-4, -9): ("mmpiii", "mpimi"),
+            (-4, -8): ("psmm", "mpssm"),
+            (-4, -7): ("spimmi", "mpsmi"),
+            (-4, -6): ("mpim", "mmpii"),
+            (-4, -5): ("mspimi", "mmpsi"),
+            (-4, -4): ("mpsm", "spimm"),
+            (-4, -3): ("mmpi", "smpssmi"),
+            (-4, -2): ("mmps", "mspim"),
+            (-4, -1): ("smpimi", "mmspi"),
+            (-4, 0): ("smpssm", "mmp"),
+            (-4, 1): ("smpsmi", "msmpi"),
+            (-4, 2): ("mmsp", "smpim"),
+            (-4, 3): ("mmip", "mimpi"),
+            (-4, 4): ("msmp", "smpsm"),
+            (-4, 5): ("impsmi", "smmpi"),
+            (-4, 6): ("mimp", "smmps"),
+            (-4, 7): ("smmspi", "msmip"),
+            (-4, 8): ("smmp", "impsm"),
+            (-4, 9): ("smsmpi", "immpi"),
+            (-4, 10): ("ssmpim", "smmsp"),
+            (-4, 11): ("smimpi", "smmip"),
+            (-4, 12): ("immp", "smsmp"),
+            (-2, -12): ("piim", "psssm"),
+            (-2, -11): ("spiimi", "pssmi"),
+            (-2, -10): ("psim", "pssms"),
+            (-2, -9): ("pimi", "mpiii"),
+            (-2, -8): ("pssm", "spiim"),
+            (-2, -7): ("psmi", "mpssi"),
+            (-2, -6): ("mpii", "pim"),
+            (-2, -5): ("mpsi", "spimi"),
+            (-2, -4): ("mpss", "psm"),
+            (-2, -3): ("smpssi", "mpi"),
+            (-2, -2): ("spim", "mps"),
+            (-2, -1): ("mspi", "smpsi"),
+            (-2, 0): ("mp", "smpss"),
+            (-2, 1): ("smpi", "impsi"),
+            (-2, 2): ("smps", "msp"),
+            (-2, 3): ("impi", "mip"),
+            (-2, 4): ("imps", "smp"),
+            (-2, 5): ("msip", "ssmpi"),
+            (-2, 6): ("smsp", "imp"),
+            (-2, 7): ("smip", "simpi"),
+            (-2, 8): ("ssmp", "simps"),
+            (-2, 9): ("imip", "smsip"),
+            (-2, 10): ("simp", "ssmsp"),
+            (-2, 11): ("ssimpi", "ssmip"),
+            (-2, 12): ("iimp", "sssmp"),
+            (-1, -12): ("psssii", "piiii"),
+            (-1, -11): ("pssssi", "psiii"),
+            (-1, -10): ("spiiii", "pssii"),
+            (-1, -9): ("piii", "psssi"),
+            (-1, -8): ("psii", "pssss"),
+            (-1, -7): ("pssi", "spiii"),
+            (-1, -6): ("psss", "pii"),
+            (-1, -5): ("sspiii", "psi"),
+            (-1, -4): ("spii", "pss"),
+            (-1, -3): ("pi", "ipsss"),
+            (-1, -2): ("ps", "sspii"),
+            (-1, -1): ("ipss", "spi"),
+            (-1, 0): ("ssspii", "p"),
+            (-1, 1): ("sspi", "ips"),
+            (-1, 2): ("sp", "iipss"),
+            (-1, 3): ("ip", "ssspi"),
+            (-1, 4): ("iips", "ssp"),
+            (-1, 5): ("sssspi", "sip"),
+            (-1, 6): ("sssp", "iip"),
+            (-1, 7): ("ssip", "iiips"),
+            (-1, 8): ("siip", "ssssp"),
+            (-1, 9): ("iiip", "sssip"),
+            (-1, 10): ("sssssp", "ssiip"),
+            (-1, 11): ("ssssip", "siiip"),
+            (-1, 12): ("sssiip", "iiiip"),
+            (0, -12): ("'iim", None),
+            (0, -11): ("'ssmi", None),
+            (0, -10): ("'sim", None),
+            (0, -9): ("'iii", None),
+            (0, -8): ("'ssm", None),
+            (0, -7): ("'ssi", None),
+            (0, -6): ("'ii", None),
+            (0, -5): ("'si", None),
+            (0, -4): ("'ss", None),
+            (0, -3): ("'i", None),
+            (0, -2): ("'s", None),
+            (0, -1): ("'spi", None),
+            (0, 0): ("'", None),
+            (0, 1): ("'ips", None),
+            (0, 2): ("'sp", None),
+            (0, 3): ("'ip", None),
+            (0, 4): ("'ssp", None),
+            (0, 5): ("'sip", None),
+            (0, 6): ("'iip", None),
+            (0, 7): ("'ssip", None),
+            (0, 8): ("'ssmp", None),
+            (0, 9): ("'iiip", None),
+            (0, 10): ("'simp", None),
+            (0, 11): ("'ssmip", None),
+            (0, 12): ("'iimp", None),
+            (1, -12): ("iiii", "sssii"),
+            (1, -11): ("siii", "ssssi"),
+            (1, -10): ("ssii", "sssss"),
+            (1, -9): ("sssi", "iii"),
+            (1, -8): ("ssss", "sii"),
+            (1, -7): ("iiipsp", "ssi"),
+            (1, -6): ("ii", "sss"),
+            (1, -5): ("si", "sssspip"),
+            (1, -4): ("ss", "iipsp"),
+            (1, -3): ("ssspip", "i"),
+            (1, -2): ("iipssp", "s"),
+            (1, -1): ("ipsp", "sspip"),
+            (1, 0): ("", "ssspiip"),
+            (1, 1): ("spip", "ipssp"),
+            (1, 2): ("sspiip", "psp"),
+            (1, 3): ("ipsssp", "pip"),
+            (1, 4): ("pssp", "spiip"),
+            (1, 5): ("psip", "sspiiip"),
+            (1, 6): ("piip", "psssp"),
+            (1, 7): ("spiiip", "pssip"),
+            (1, 8): ("pssssp", "psiip"),
+            (1, 9): ("psssip", "piiip"),
+            (1, 10): ("pssiip", "spiiiip"),
+            (1, 11): ("psiiip", "pssssip"),
+            (1, 12): ("piiiip", "psssiip"),
+            (2, -12): ("sssm", "iim"),
+            (2, -11): ("ssmi", "smssi"),
+            (2, -10): ("ssms", "sim"),
+            (2, -9): ("smsi", "imi"),
+            (2, -8): ("smss", "ssm"),
+            (2, -7): ("mssi", "smi"),
+            (2, -6): ("im", "sms"),
+            (2, -5): ("ssmpip", "msi"),
+            (2, -4): ("sm", "mss"),
+            (2, -3): ("mi", "impip"),
+            (2, -2): ("ms", "smpsp"),
+            (2, -1): ("spimpi", "smpip"),
+            (2, 0): ("smpssp", "m"),
+            (2, 1): ("smpsip", "mspip"),
+            (2, 2): ("mpsp", "spimp"),
+            (2, 3): ("mpip", "pimpi"),
+            (2, 4): ("psmp", "mpssp"),
+            (2, 5): ("spimip", "mpsip"),
+            (2, 6): ("pimp", "mpiip"),
+            (2, 7): ("mpssip", "psmip"),
+            (2, 8): ("spiimp", "pssmp"),
+            (2, 9): ("mpiiip", "pimip"),
+            (2, 10): ("pssmsp", "psimp"),
+            (2, 11): ("pssmip", "spiimip"),
+            (2, 12): ("psssmp", "piimp"),
+            (4, -12): ("smsm", "imm"),
+            (4, -11): ("smmi", "mssmi"),
+            (4, -10): ("smms", "mssms"),
+            (4, -9): ("mimi", "msmsi"),
+            (4, -8): ("mssm", "smm"),
+            (4, -7): ("msmi", "mmssi"),
+            (4, -6): ("msms", "mim"),
+            (4, -5): ("mmsi", "smpimpi"),
+            (4, -4): ("mmss", "msm"),
+            (4, -3): ("mimpip", "mmi"),
+            (4, -2): ("smpimp", "mms"),
+            (4, -1): ("msmpip", "smpsmip"),
+            (4, 0): ("mm", "smpssmp"),
+            (4, 1): ("mmspip", "smpimip"),
+            (4, 2): ("mspimp", "mmpsp"),
+            (4, 3): ("mpimpi", "mmpip"),
+            (4, 4): ("spimmp", "mpsmp"),
+            (4, 5): ("mmpsip", "mspimip"),
+            (4, 6): ("mmpiip", "mpimp"),
+            (4, 7): ("mpsmip", "spimmip"),
+            (4, 8): ("mpssmp", "psmmp"),
+            (4, 9): ("mpimip", "mmpiiip"),
+            (4, 10): ("mpsimp", "spimimp"),
+            (4, 11): ("psmmip", "mpssmip"),
+            (4, 12): ("mpiimp", "pimmp"),
+        }
+        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        assert module._spell_bases() == frozen  # noqa: SLF001
+
+    def test_every_derived_spelling_behaves_at_every_width(self) -> None:
+        """Each width's string realises its map, padding included.
+
+        The spellings derive from :func:`_spell_bases` -- a minimal witness
+        per parity, widened by ``pp`` suffixes, or by ``s`` prefixes where
+        the erase forgets them -- so this checks the *derived* strings, not
+        just the bases: every entry of every map's width dict is run over
+        the admission window and must land on ``a*x + b`` exactly.
+        """
+        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        for a in module._WIDE_A_VALS:  # noqa: SLF001
+            for b in module._WIDE_B_VALS:  # noqa: SLF001
+                for width, code in module._spellings_by_width(  # noqa: SLF001
+                    a, b
+                ).items():
+                    assert len(code) == width, (a, b, width, code)
+                    assert all(
+                        module._apply(value, code) == a * value + b  # noqa: SLF001
+                        for value in module._SPELL_WINDOW  # noqa: SLF001
+                    ), (a, b, width, code)
+
     def test_slope_zero_forgets_the_accumulator(self) -> None:
         """``'`` is the constant map: it discards whatever it was given.
 
@@ -938,31 +1145,223 @@ class TestPctSquaredHelpers:
         assert len(hold) == len(code)
         assert lead == code
 
-    def test_parameter_sets_leaving_one_vector_are_searched_once(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Distinct ladder parameters can leave the same rungs.
+    def test_every_tabulated_ladder_entry_computes_its_split(self) -> None:
+        """Each built ladder entry is checked by arithmetic, not trust.
 
-        The suffix search depends only on the stage-one vector, so a repeat
-        of one is skipped rather than swept again.  No shipped pair
-        collides, so the guard is driven by duplicating an entry: the
-        tables built must be exactly those the single entry builds.
+        The suffix was once found by a breadth-first composition over the
+        rungs, then frozen as data; it is computed now, so this re-derives
+        what the search used to guarantee: running the suffix over every
+        rung of its ladder's stage-one vector -- through :func:`_apply`,
+        the exact model of the interpreter's step -- leaves each row's
+        answer in the accumulator.  ``l`` is a no-op to the model, so the
+        final value is what the program prints.
         """
         module = self.module()
-        entry = ((250, 500, 250), 1000)
+        for table, (index, suffix) in module._ladder_built().items():  # noqa: SLF001
+            weights, base = module._LADDERS[index]  # noqa: SLF001
+            spelled = module._ladder_setters(weights, base)  # noqa: SLF001
+            assert spelled is not None
+            setters, lead = spelled
+            vec = module._ladder_vector(setters, lead, 3)  # noqa: SLF001
+            for row, want in enumerate(table):
+                got = module._apply(vec[row], suffix)  # noqa: SLF001
+                assert got == int(want), (table, row)
 
-        monkeypatch.setattr(module, "_LADDERS", (entry, entry))
-        module._ladder_tables.cache_clear()  # noqa: SLF001
-        twice = module._ladder_tables(3)  # noqa: SLF001
+    def test_ladder_gadgets_match_frozen_spellings(self) -> None:
+        """The gadget rule reproduces the five searched spellings, byte for byte.
 
-        monkeypatch.setattr(module, "_LADDERS", (entry,))
-        module._ladder_tables.cache_clear()  # noqa: SLF001
-        once = module._ladder_tables(3)  # noqa: SLF001
+        These strings are what the rung-composition search froze; the
+        module now spells each from its ``(cut, slope)`` pair, so this is
+        the fixture that keeps the construction honest.  The order matters
+        too -- the fold is first-claim-wins over shortest-first gadgets.
+        """
+        module = self.module()
+        assert module._LADDER_GADGETS == (  # noqa: SLF001
+            "pspmsmipsp",
+            "mpspmipsp",
+            "smpspmipsp",
+            "mmpspmipsp",
+            "pspmimmipsp",
+        )
 
-        assert twice == once
-        # The cache outlives the patch, so the shipped table has to be the
-        # one memoized when this test leaves.
-        module._ladder_tables.cache_clear()  # noqa: SLF001
+    def test_built_ladder_matches_the_frozen_witnesses(self) -> None:
+        """The fold reproduces the table it replaced, entry for entry.
+
+        These twenty-four are what the breadth-first harvest froze: the
+        table each ladder-plus-suffix pair serves, and the pair the harvest
+        picked for it.  Two things the fold may legitimately differ on are
+        allowed for: it names two tables the harvest never listed (the
+        constants, which every earlier path serves in a tenth the
+        characters), and for two more it picks a shorter gadget than the
+        harvest did.  What is asserted is that every frozen table is still
+        served and that the pair chosen computes it -- and, where the pair
+        differs, that the ladder is not what the generator emits anyway.
+        """
+        frozen = {
+            "00010011": (0, "mpspmipspsl"),
+            "11101100": (0, "mpspmipspipl"),
+            "00110111": (0, "smpspmipspsl"),
+            "11001000": (0, "smpspmipspipl"),
+            "00000111": (1, "mpspmipspsl"),
+            "11111000": (1, "mpspmipspipl"),
+            "00011111": (1, "smpspmipspsl"),
+            "11100000": (1, "smpspmipspipl"),
+            "00000001": (2, "mpspmipspsl"),
+            "11111110": (2, "mpspmipspipl"),
+            "00010111": (2, "smpspmipspsl"),
+            "11101000": (2, "smpspmipspipl"),
+            "11111011": (3, "mmpspmipspsl"),
+            "00000100": (3, "mmpspmipspipl"),
+            "01111011": (3, "pspmimmipspsl"),
+            "10000100": (3, "pspmimmipspipl"),
+            "01011011": (4, "pspmimmipspsl"),
+            "10100100": (4, "pspmimmipspipl"),
+            "00001011": (5, "pspmimmipspsl"),
+            "11110100": (5, "pspmimmipspipl"),
+            "00011011": (6, "pspmsmipspsl"),
+            "11100100": (6, "pspmsmipspipl"),
+            "00111011": (7, "pspmimmipspsl"),
+            "11000100": (7, "pspmimmipspipl"),
+        }
+        module = self.module()
+        built = module._ladder_built()  # noqa: SLF001
+        assert frozen.keys() <= built.keys()
+        assert set(built) - set(frozen) == {"00000000", "11111111"}
+        for table, witness in frozen.items():
+            index, suffix = built[table]
+            weights, base = module._LADDERS[index]  # noqa: SLF001
+            spelled = module._ladder_setters(weights, base)  # noqa: SLF001
+            assert spelled is not None
+            setters, lead = spelled
+            vector = module._ladder_vector(setters, lead, 3)  # noqa: SLF001
+            for row, want in enumerate(table):
+                got = module._apply(vector[row], suffix)  # noqa: SLF001
+                assert got == int(want), (table, row)
+            if (index, suffix) != witness:
+                # Two tables are reached by a shorter gadget than the
+                # harvest picked.  Both compute the table, and neither is
+                # emitted: every earlier path serves these in a tenth the
+                # characters, so the ladder is never consulted for them.
+                assert module.pct_squared_minus_one(table) != module._ladder(  # noqa: SLF001
+                    table, 3
+                )
+
+    def test_built_fold_skeletons_match_the_mined_plans(self) -> None:
+        """The peel/park/close rule reproduces the mined plans exactly.
+
+        These twelve are what the harvest froze: the plan for each run-length
+        word the three-phase construction serves.  The module builds them
+        from ``r``, ``delta`` and ``pat[1]`` now; this remembers what they
+        were.  ``pat[1]`` is ignored at ``r == 5`` -- both pairs there agree
+        -- so the ten distinct plans cover twelve keys.
+        """
+        mined = {
+            (2, 0, 0): (("u", 1, "cmax"),),
+            (2, 0, 1): (("d", 1, "cmax"),),
+            (2, 1, 1): (("d", 1, "cmax"), ("d", 1, "cmax")),
+            (3, 0, 0): (("d", 1, "cmax"), ("u", 2, "cmax")),
+            (3, 1, 1): (("d", 1, "cmax"), ("d", 1, "cmax"), ("d", 2, "cmax")),
+            (4, 0, 0): (
+                ("d", 1, "cmin"),
+                ("m", 0, "m"),
+                ("d", 1, "cmax"),
+                ("u", 1, "land2"),
+                ("u", 2, "cmax"),
+            ),
+            (4, 0, 1): (
+                ("u", 1, "cmin"),
+                ("m", 0, "m"),
+                ("d", 1, "land1"),
+                ("d", 1, "cmax"),
+                ("u", 2, "cmax"),
+            ),
+            (4, 1, 1): (
+                ("d", 1, "cmax"),
+                ("d", 1, "cmin"),
+                ("m", 0, "m"),
+                ("d", 1, "cmax"),
+                ("d", 1, "land2"),
+                ("d", 2, "cmax"),
+            ),
+            (5, 0, 0): (
+                ("d", 1, "cmax"),
+                ("u", 2, "cmin"),
+                ("m", 0, "m"),
+                ("d", 1, "land1"),
+                ("d", 1, "cmax"),
+                ("u", 2, "cmax"),
+            ),
+            (5, 0, 1): (
+                ("d", 1, "cmax"),
+                ("u", 2, "cmin"),
+                ("m", 0, "m"),
+                ("d", 1, "land1"),
+                ("d", 1, "cmax"),
+                ("u", 2, "cmax"),
+            ),
+            (5, 1, 0): (
+                ("d", 1, "cmax"),
+                ("u", 2, "cmax"),
+                ("u", 1, "cmin"),
+                ("m", 0, "m"),
+                ("u", 1, "cmax"),
+                ("u", 1, "land2"),
+                ("u", 2, "cmax"),
+            ),
+            (5, 1, 1): (
+                ("d", 1, "cmax"),
+                ("u", 2, "cmax"),
+                ("u", 1, "cmin"),
+                ("m", 0, "m"),
+                ("u", 1, "cmax"),
+                ("u", 1, "land2"),
+                ("u", 2, "cmax"),
+            ),
+        }
+        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        assert {k for k in mined if module._fold_served(*k)} == set(mined)  # noqa: SLF001
+        for key, plan in mined.items():
+            assert module._fold_skeleton(*key) == plan, key  # noqa: SLF001
+
+    def test_fold_served_is_reachability(self) -> None:
+        """``_fold_served`` accepts exactly the buildable low-run keys.
+
+        The predicate replaced a twelve-entry table whose comment called
+        its four absences a corpus measurement.  They are structural, so
+        this re-derives the set rather than pinning it: enumerating every
+        run pattern reproduces the accepted keys exactly, and no key the
+        predicate accepts is one no pattern can produce.
+
+        ``delta`` is set when every middle index of the pattern is ``1``.
+        For ``r`` of 2, 3 and 4 that set contains index 1, so ``delta``
+        implies ``pat[1]``; at ``r == 3`` index 1 is the *only* middle, so
+        the implication runs both ways there.
+        """
+        module = self.module()
+        reachable = set()
+        for r in range(1, 13):
+            for pat in itertools.product((0, 1), repeat=r):
+                mids = {(r - 1) // 2, r // 2}
+                delta = 1 if all(pat[i] for i in mids) else 0
+                reachable.add((r, delta, pat[1] if r > 1 else 0))
+
+        accepted = {
+            k
+            for k in itertools.product(range(9), (0, 1), (0, 1))
+            if module._fold_served(*k)  # noqa: SLF001
+        }
+        assert accepted == {k for k in reachable if 2 <= k[0] <= 5}
+        assert not accepted - reachable
+
+    def test_the_ladder_declines_other_arities(self) -> None:
+        """Every shipped ladder has three weights, so only ``n == 3`` serves.
+
+        The harvest the tabulation froze was empty at every other arity;
+        the guard makes that an explicit decline rather than a lookup miss.
+        """
+        module = self.module()
+        assert module._ladder("0110", 2) is None  # noqa: SLF001
+        assert module._ladder("01" * 8, 4) is None  # noqa: SLF001
 
 
 class TestPctInterleavedFold:
@@ -1019,7 +1418,7 @@ class TestPctInterleavedFold:
 
 
 class TestPctFoldEmitter:
-    """The emitter's mirror, driven at the steps the descent rarely asks for.
+    """The emitter's mirror, driven at the steps the planner rarely asks for.
 
     :class:`_FoldEmitter` tracks every row's accumulator exactly, so its
     moves can be checked as arithmetic: build one over a small table and
@@ -1178,13 +1577,12 @@ class TestPctFoldMoves:
 
 
 class TestPctFoldPlanners:
-    """The two planners' refusals, driven through their own budgets.
+    """The rule construction's refusals, driven through their own guards.
 
-    ``_fold_search`` is a breadth-first search kept as the fallback for a
-    state the descent leaves short, and ``_fold_beam`` is the descent
-    itself.  Both answer ``None`` rather than raising when they cannot
-    finish, and each budget is a parameter, so the refusals are reachable
-    without contriving an unsolvable table.
+    :func:`_fold_reduce` runs the case analysis of ``_fold_rule_move`` to a
+    ``done`` state.  It answers ``None`` rather than raising when no rule
+    applies or the budget runs out, so the refusals are reachable without
+    contriving an unsolvable table.
     """
 
     @staticmethod
@@ -1192,7 +1590,7 @@ class TestPctFoldPlanners:
         return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
 
     #: Four points, alternating classes: not already finished, and small
-    #: enough that the planners answer quickly.
+    #: enough that the rules answer quickly.
     STATE = (
         (0, 0, "0", frozenset({0})),
         (-4, 0, "1", frozenset({1})),
@@ -1200,75 +1598,87 @@ class TestPctFoldPlanners:
         (-12, 0, "1", frozenset({3})),
     )
 
-    def test_the_search_gives_up_on_its_own_budgets(self) -> None:
-        """Each budget refuses on its own: the visit cap and the depth.
+    def test_the_reduction_gives_up_on_its_budget(self) -> None:
+        """A budget of zero takes no step and answers ``None``.
 
-        A cap of zero is exceeded by the first state examined, and a depth
-        of zero pops the start and expands nothing.  Both answer ``None``
-        rather than a partial plan, which is what lets the caller fall
-        through to the next construction.
+        The default budget is derived from the state and is a latency
+        guard the corpus never reaches; passing one drives the refusal
+        without a state the rules genuinely dead-end on.
         """
-        search = self.module()._fold_search  # noqa: SLF001
+        module = self.module()
 
-        assert search(self.STATE, cap=0) is None
-        assert search(self.STATE, maxdepth=0) is None
-        assert search(self.STATE, maxdepth=1) is None
+        done = module._fold_done  # noqa: SLF001
+        assert module._fold_reduce(self.STATE, done, budget=0) is None  # noqa: SLF001
 
-    def test_the_search_finds_a_plan_when_it_is_given_room(self) -> None:
-        """The positive control: the refusals above are the budgets.
+    def test_the_reduction_finishes_when_it_is_given_room(self) -> None:
+        """The positive control: the refusal above is the budget.
 
         Without this a ``None`` could just as well mean the state was
-        malformed, or that no plan exists for any budget.
+        malformed, or that no rule ever applies to it.
         """
-        found = self.module()._fold_search(  # noqa: SLF001
-            (
-                *self.STATE,
-                (-16, 0, "0", frozenset({4})),
-            ),
-            maxdepth=6,
+        module = self.module()
+
+        ops = module._fold_reduce(self.STATE, module._fold_done)  # noqa: SLF001
+        assert ops is not None
+        state = module._fold_norm(list(self.STATE))  # noqa: SLF001
+        for op in ops:
+            state = module._fold_step(state, op)  # noqa: SLF001
+            assert state is not None
+        assert module._fold_done(state)  # noqa: SLF001
+
+    def test_no_rule_applies_to_a_walled_state(self) -> None:
+        """Spans that fill the workspace leave the case analysis empty.
+
+        Two groups whose extents nearly fill the workspace offer no legal
+        wipe in either direction -- the gap ``q1`` is negative both ways --
+        and the spread is past the doubling bound, so every case falls
+        through and the move is ``None``.
+        """
+        module = self.module()
+
+        stuck = (
+            (0, 3000, "0", frozenset({0})),
+            (-10, 3000, "1", frozenset({1})),
         )
-        assert found is not None
-        assert len(found) == 6
+        assert module._fold_rule_move(stuck) is None  # noqa: SLF001
 
-    def test_the_descent_gives_up_when_its_steps_run_out(self) -> None:
-        """A step budget of zero descends nowhere, and one is not enough."""
-        beam = self.module()._fold_beam  # noqa: SLF001
+    def test_a_step_the_state_does_not_offer_answers_none(self) -> None:
+        """``_fold_step`` re-checks a move rather than trusting it.
 
-        assert beam(self.STATE, maxsteps=0) is None
-        assert beam(self.STATE, maxsteps=1) is None
-
-    def test_the_descent_gives_up_when_no_move_is_left(self) -> None:
-        """A target below what the moves can reach exhausts the frontier.
-
-        Two points cannot be folded to one -- the two classes are what the
-        printed answer is read from -- so every move is either seen or
-        illegal and the descent runs out of states rather than steps.
+        An amount outside the window, a wipe with mixed-class victims, and
+        an everything-wipe on a two-class state are each refused, so an op
+        that was never legal cannot be applied by accident.
         """
-        beam = self.module()._fold_beam  # noqa: SLF001
+        module = self.module()
 
-        two = ((0, 0, "0", frozenset({0})), (-4, 0, "1", frozenset({1})))
-        assert beam(two, target=1, maxsteps=30) is None
+        outside = ("d", 1, 99999, frozenset({3}))
+        assert module._fold_step(self.STATE, outside) is None  # noqa: SLF001
+        mixed = ("d", 2, 3004, frozenset({2, 3}))
+        assert module._fold_step(self.STATE, mixed) is None  # noqa: SLF001
+        everything = ("d", 4, 3004, frozenset({0, 1, 2, 3}))
+        assert module._fold_step(self.STATE, everything) is None  # noqa: SLF001
 
-        # A lone point offers no move whatever: the frontier is empty on
-        # the first step rather than after exhausting the seen set.
-        single = ((0, 0, "0", frozenset({0})),)
-        assert beam(single, target=0, maxsteps=5) is None
+    def test_a_clean_amount_skips_an_occupied_landing(self) -> None:
+        """The first collision-free amount is computed, not the minimum.
 
-    def test_replaying_a_move_the_state_does_not_offer_answers_none(self) -> None:
-        """``_fold_apply`` re-derives a move rather than trusting it.
-
-        It looks the operation up among the moves the state actually
-        offers, so one that is not there cannot be applied by accident.
+        A survivor sitting exactly 3004 above the victims occupies the
+        window's first value, so the clean amount is 3005 -- landing there
+        would be a merge the algebra refuses when the classes differ.
         """
-        bogus = ("d", 99, 99999, frozenset({42}))
-        assert self.module()._fold_apply(self.STATE, bogus) is None  # noqa: SLF001
+        module = self.module()
+
+        state = (
+            (0, 0, "1", frozenset({0})),
+            (-3004, 0, "0", frozenset({1})),
+        )
+        assert module._fold_clean_amount(state, "d", 1) == 3005  # noqa: SLF001
 
 
 class TestPctFoldPlan:
     """The plan's rotation pre-pass, and the bound that refuses a table.
 
-    ``_fold_plan`` wipes every group that still has extent before
-    descending, because a group with extent cannot be a collision target.
+    ``_fold_plan`` wipes every group that still has extent before the
+    rules run, because a group with extent cannot be a collision target.
     The pre-pass stops on its own when no such wipe is on offer.
     """
 
@@ -1281,7 +1691,7 @@ class TestPctFoldPlan:
 
         Two groups whose spans nearly fill the workspace leave no room for
         the relocation a wipe needs, so the pre-pass breaks out with the
-        extent still there and the descent that follows has nothing to
+        extent still there and the rules that follow have nothing to
         work with.  The answer is ``None``, not a partial plan.
         """
         stuck = (
@@ -1305,13 +1715,12 @@ class TestPctFoldPlan:
         assert plan is not None
         assert plan
 
-    def test_a_descent_that_cannot_finish_leaves_the_plan_empty(self) -> None:
-        """The pre-pass can clear extent the descent still cannot use.
+    def test_a_reduction_that_cannot_finish_leaves_the_plan_empty(self) -> None:
+        """The pre-pass can clear extent the rules still cannot use.
 
-        Here the wipes run to completion but the descent that follows
-        reaches no two-point state, so it answers ``None`` and the plan
-        falls back to the pre-pass alone -- which the fallback search then
-        cannot close either.  The whole plan is ``None``, so the caller
+        Here the wipes run to completion but the reduction that follows
+        reaches no two-point state -- every case of the rule analysis
+        falls through -- so the whole plan is ``None`` and the caller
         moves on to the next construction rather than emitting a partial
         one.
         """
@@ -1670,11 +2079,11 @@ class TestPctAffineBand:
 class TestPctFoldSkeletonResolver:
     """The tabulated planner's refusals, driven on constructed states.
 
-    ``_fold_construct`` reads a plan out of :data:`_FOLD_SKELETONS` and
+    ``_fold_construct`` builds a plan with :func:`_fold_skeleton` and
     resolves each symbolic amount against the live state, so every refusal
     is a property of the *geometry* rather than of a table.  Building the
     states directly is what reaches them: a wipe that leaves no survivor and
-    a landing that does not match are both shapes the fold's own descent
+    a landing that does not match are both shapes the fold's own planner
     steers around, so no generated table drives one.
     """
 

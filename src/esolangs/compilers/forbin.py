@@ -130,8 +130,17 @@ class _Compiler:
         return ind
 
     def fn_value(self, fn: _Function) -> int:
-        """Return the tagged word representing ``fn`` as a value."""
-        return (self.fn_index(fn) << 1) | 1
+        """Return the tagged word representing ``fn`` as a value.
+
+        The index is biased by one before tagging so the smallest function
+        value is 3, not 1.  Without the bias the first function interned --
+        always ``main``, which :meth:`compile` reserves before any other --
+        tags to ``(0 << 1) | 1``, which is the bit literal ``1`` exactly.
+        ``!main`` would then pass the ``!`` guard and compute 0 where the
+        interpreter raises "! needs a bit", and ``main`` would read as a
+        true bit to ``out``.
+        """
+        return ((self.fn_index(fn) + 1) << 1) | 1
 
     # -- values -----------------------------------------------------------
 
@@ -224,7 +233,7 @@ class _Compiler:
         The callee and arguments are evaluated left to right (matching
         ``_eval``'s own order) onto the machine stack, then dispatched: the
         two builtins are handled inline, and a user function goes through
-        ``.invoke``, which builds the frame.  A callee that is neither is
+        ``.dispatch``, which builds the frame.  A callee that is neither is
         the interpreter's "called value is not a function" halt.
         """
         _, callee_node, args = node
@@ -423,7 +432,7 @@ class _Compiler:
     def emit_fn(self, fn: _Function, ind: int) -> str:
         """Emit one function body as a subroutine.
 
-        On entry ``s2`` already points at the frame ``.invoke`` built, so the
+        On entry ``s2`` already points at the frame ``.dispatch`` built, so the
         body only needs its statements and an epilogue.  Falling off the end
         returns 0, matching ``_call``'s ``result if result is not None else 0``.
         """
@@ -544,7 +553,7 @@ class _Compiler:
             # main is called with a single dummy argument 0 (per the wiki)
             "    addi sp, sp, -16\n"
             "    sd   zero, 0(sp)\n"
-            f"    li   a0, {(main_ind << 1) | 1}\n"
+            f"    li   a0, {((main_ind + 1) << 1) | 1}\n"
             "    mv   a1, sp\n"
             "    li   a2, 1\n"
             "    call .dispatch\n"
@@ -576,10 +585,15 @@ class _Compiler:
             "    beq  a0, t0, .do_in\n"
             f"    li   t0, {_OUT}\n"
             "    beq  a0, t0, .do_out\n"
-            # a function value is odd; anything else is not callable
+            # a function value is odd; anything else is not callable.  The
+            # bit literal 1 is odd too, so the bias in `fn_value` is what
+            # keeps it out of this branch -- shifted back it would be index
+            # 0, a real body.
             "    andi t0, a0, 1\n"
             "    beqz t0, .abort\n"
             "    srli t0, a0, 1\n"
+            "    addi t0, t0, -1\n"
+            "    bltz t0, .abort\n"
             + self.emit_frame()
             + arms
             + "    j    .abort\n"

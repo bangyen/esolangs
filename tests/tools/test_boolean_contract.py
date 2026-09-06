@@ -71,11 +71,14 @@ _TABLES = ["00000000", "01101001"]
 # above did.
 #
 # ``slow_acv_mammalian_boolean`` joined it 2026-08-31, the same shape of
-# regression: the comment above records it leaving this set at 5.5s and
-# settling at 0.68s once the landings were solved, and it now measures 3.04s
-# in this sweep (its n=3 truth tables in test_boolean_tape moved 0.68s ->
-# 1.68s alongside).  Marked for the same reason and with the same caveat --
-# re-measure and drop the entry when the cost comes back down.
+# regression -- 5.5s originally, 0.68s once the landings were solved, back
+# to 3.04s -- and left 2026-09-05 at **0.02s**, measured in this sweep.  The
+# residual search went away entirely: on the aim class the ``j1`` seeds
+# cancel out of the jump arithmetic, so a landing is a pure function of the
+# array sum and a build is arithmetic end to end -- no candidate sweep, no
+# stash-loop convergence check, no relaxation pass (its n=3 truth tables in
+# test_boolean_tape moved 1.68s -> 0.07s alongside and lost their ``slow``
+# marks).
 #
 # ``pct_squared_minus_one`` joined 2026-08-31 at 6.45s and left 2026-09-02 at
 # **0.25s**, measured in this sweep.  Almost all of that cost was the
@@ -83,9 +86,7 @@ _TABLES = ["00000000", "01101001"]
 # the path now solves its setters from the table instead of enumerating branch
 # pairs, so there is no arity to derive.  Dropped rather than left with a stale
 # number, which is what the entries above ask for.
-_SEARCHING_GENERATORS_REGRESSED: frozenset[str] = frozenset(
-    {"minifuck", "slow_acv_mammalian_boolean"}
-)
+_SEARCHING_GENERATORS_REGRESSED: frozenset[str] = frozenset({"minifuck"})
 
 # Naming the languages rather than timing them at collection time is
 # deliberate: a wall-clock threshold evaluated during collection would make
@@ -430,6 +431,81 @@ def test_greedy_order_is_correct_when_it_is_not_the_identity() -> None:
         stdin = "".join(f"{bit}\n" for bit in bits)
         got = run_program(run, program, stdin)
         assert got == table[combo], f"inputs {bits}"
+
+
+def test_the_greedy_order_is_the_documented_one() -> None:
+    """What the heuristic picks, per table, not merely that it is valid.
+
+    ``_greedy_input_order`` scores each unchosen input by how many constant
+    subtrees splitting on it would produce, and takes the best.  A corrupted
+    score still returns *a* permutation, so every generator downstream still
+    emits a correct program -- just a longer one -- and no truth-table check
+    anywhere sees the difference.  The chosen order is the observable.
+
+    Both halves of the split are scored, and the tie rule is "keep the
+    lowest index", which is what makes the identity the answer for a table
+    no order helps.  94 of the 256 three-input tables get a non-identity
+    order, so the two rules are separable here rather than only in theory.
+    """
+    from esolangs.tools.boolean.helpers import _greedy_input_order
+
+    # Tables the heuristic reorders, and the order it picks.
+    assert _greedy_input_order("00000101", 3) == (0, 2, 1)
+    assert _greedy_input_order("00010001", 3) == (1, 2, 0)
+
+    # Tables no split helps: ties keep the lowest index, giving the identity.
+    for table in ("00011011", "01000111", "00111100", "01101001"):
+        assert _greedy_input_order(table, 3) == (0, 1, 2), table
+
+    # And the wide table the run-it test above uses, pinned positively.
+    assert _greedy_input_order("01" * 64, 7) == (6, 0, 1, 2, 3, 4, 5)
+
+    reordered = sum(
+        1
+        for value in range(256)
+        if _greedy_input_order(format(value, "08b"), 3) != (0, 1, 2)
+    )
+    assert reordered == 94
+
+
+def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
+    """``perm`` reaches the emission in exactly one place, and it shows.
+
+    The layout puts input ``i``'s bit at cell ``2 * perm[i]`` with its
+    complement alongside, and that is the only place the permutation is
+    spent -- the reads and the complement construction above the tree run
+    in their own order.  So a mutated cell formula (``3 * perm[i]``,
+    ``perm[i - 1]``, an off-by-one on the move) still emits a *runnable*
+    brainfuck program over a differently-shaped tape; the generators that
+    consume this are checked by running them, and running still gives the
+    right answer whenever the layout is merely stretched.
+
+    The emitted length is what the formula moves.  All six three-input
+    permutations come out distinct, so the mapping is pinned rather than
+    just its identity case.
+    """
+    from itertools import permutations
+
+    from esolangs.tools.boolean.helpers import _decision_tree_program
+
+    lengths = {
+        perm: len(_decision_tree_program("00010111", ">", "<", perm))
+        for perm in permutations(range(3))
+    }
+    assert lengths == {
+        (0, 1, 2): 769,
+        (0, 2, 1): 785,
+        (1, 0, 2): 783,
+        (1, 2, 0): 799,
+        (2, 0, 1): 797,
+        (2, 1, 0): 797,
+    }
+
+    # One and two inputs, where the tape is short enough that an off-by-one
+    # in the move would still land inside it.
+    assert len(_decision_tree_program("01", ">", "<", (0,))) == 225
+    assert len(_decision_tree_program("0110", ">", "<", (0, 1))) == 485
+    assert len(_decision_tree_program("0110", ">", "<", (1, 0))) == 499
 
 
 # The shape each boolean generator's construction takes, which decides which

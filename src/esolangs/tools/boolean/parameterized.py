@@ -42,7 +42,6 @@ from ``{Xi}`` at runtime with its ``s``-as-NOT-gate.  The placeholder and
 the ``set_comp`` argument that filled it are gone.
 """
 
-from collections import deque
 from functools import cache
 
 # Re-exported so this module stays the import site for the whole
@@ -137,11 +136,133 @@ def bio(truth_table: str) -> str:
 _EVAL_TREE_STACK, _EVAL_READ_STACK = 0, 1
 # Longest op string worth building.  Costs run to roughly 3 characters per
 # displaced input, and an arrangement that expensive has already lost to the
-# folds it was meant to buy; the cap keeps the search finite.
+# folds it was meant to buy; the cap also bounds how deep any program can
+# reach, which is what makes the construction below finite.
 _EVAL_MAX_OPS = 16
-# (tree stack, input stack, which stack is active), each stack listed
-# bottom to top by the input index it carries.
-type _EvalState = tuple[tuple[int, ...], tuple[int, ...], int]
+# The reorder words, built rather than stored.  A word is a skeleton over
+# ``~``, ``*`` and ``=``-runs, and only three shapes are ever redundant:
+# ``~~`` and ``**`` are the identity, and two adjacent ``=``-runs are one
+# run.  Ruling those out leaves the skeletons below, and the run lengths
+# are pinned by a conservation law: the ``~`` parity before a run fixes
+# which way it moves, and a word can only end with the tree stack empty if
+# everything pushed onto it comes back, so the out-runs and the in-runs
+# must sum alike -- and it must hold at every prefix, since an in-run can
+# only carry back what is already parked.  Enumerating (skeleton, run
+# lengths) under that law, in order of length and then ``~`` < ``*`` <
+# ``=``, gives the words ``_eval_stack_programs`` folds.
+#
+# The law over-approximates and never under-approximates: it admits longer
+# spellings of arrangements a shorter word already reaches -- 37255 words
+# for the 735 arrangements the cap allows -- which first-claim-wins
+# discards.  That is what makes the construction safe: no arrangement can
+# be lost, only re-spelled.  The fold this feeds is byte-identical to the
+# 735-entry catalog it replaced, at every ``n`` from 1 to 14.  The set is
+# finite for *every* ``n``: a word moves at most six values, deeper riding
+# along in rigid whole-stack reversals, so arrangements stop appearing
+# once the stack outgrows that reach (620, 691, 717, 728, 733, 735 over
+# ``n == 7..12``, then constant).  ``test_reorder_catalog_matches_search``
+# replays the replaced breadth-first search and asserts byte equality.
+_EVAL_OP_RANK = {"~": 0, "*": 1, "=": 2}
+
+
+def _eval_skeletons(max_ops: int) -> list[str]:
+    """Reorder-word skeletons, ``E`` marking an ``=``-run of unfixed length.
+
+    A skeleton starts with ``~`` -- the read stack holds the bits, so
+    nothing can happen before the first switch -- and carries no ``~~``,
+    no ``**`` and no two adjacent runs, each of which spells a word some
+    shorter skeleton already spells.
+    """
+    out: list[str] = []
+
+    def grow(skeleton: str, last: str, cost: int) -> None:
+        if skeleton:
+            out.append(skeleton)
+        if cost >= max_ops:
+            return
+        for char in "~*E":
+            if char == last and char != "E":
+                continue
+            if char == "E" and last == "E":
+                continue
+            if not skeleton and char != "~":
+                continue
+            grow(skeleton + char, char, cost + 1)
+
+    grow("", "", 0)
+    return out
+
+
+def _eval_run_directions(skeleton: str) -> list[int]:
+    """Which stack each ``E`` run pops from, by the ``~`` parity before it."""
+    active = _EVAL_TREE_STACK
+    directions: list[int] = []
+    for char in skeleton:
+        if char == "~":
+            active = 1 - active
+        elif char == "E":
+            directions.append(active)
+    return directions
+
+
+def _eval_fill_runs(
+    skeleton: str,
+    directions: list[int],
+    budget: int,
+    words: set[str],
+) -> None:
+    """Add every word spelling ``skeleton`` whose runs balance within budget.
+
+    The runs are filled left to right, spending the cap as we go, so the
+    walk never builds a word it would only discard for length.  ``balance``
+    is the running out-mass minus in-mass; a word is valid exactly when it
+    lands back at zero, every value pushed onto the tree stack having come
+    home.
+    """
+
+    def fill(index: int, spent: int, balance: int, runs: tuple[int, ...]) -> None:
+        if index == len(directions):
+            if balance == 0:
+                parts = iter(runs)
+                words.add(
+                    "".join(
+                        "=" * next(parts) if char == "E" else char for char in skeleton
+                    )
+                )
+            return
+        side = directions[index]
+        remaining = len(directions) - index - 1
+        ceiling = budget - spent - remaining
+        if side == _EVAL_TREE_STACK:
+            # An in-run can only carry back what is already parked.
+            ceiling = min(ceiling, balance)
+        for length in range(1, ceiling + 1):
+            shift = length if side == _EVAL_READ_STACK else -length
+            fill(index + 1, spent + length, balance + shift, (*runs, length))
+
+    fill(0, 0, 0, ())
+
+
+@cache
+def _eval_reorders(max_ops: int = _EVAL_MAX_OPS) -> tuple[str, ...]:
+    """Every reorder word the cap admits, shortest first then ``~*=``."""
+    words: set[str] = set()
+    for skeleton in _eval_skeletons(max_ops):
+        directions = _eval_run_directions(skeleton)
+        if not directions:
+            # No transfers: the only word worth emitting is a bare
+            # reversal of the read stack; longer identity spellings are
+            # discarded by the fold anyway.
+            if skeleton == "~*~":
+                words.add(skeleton)
+            continue
+        _eval_fill_runs(
+            skeleton, directions, max_ops - (len(skeleton) - len(directions)), words
+        )
+    ordered = sorted(
+        words, key=lambda word: (len(word), [_EVAL_OP_RANK[c] for c in word])
+    )
+    return ("", *ordered)
 
 
 @cache
@@ -153,9 +274,14 @@ def _eval_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     and nothing else, so these ops run between the staging and the tree and
     are free to reverse or shuttle them.
 
-    A breadth-first walk over (tree stack, input stack, active stack) finds
-    the shortest.  Only states that end back on the tree stack with nothing
-    left staged are usable, since the tree expects to start there.
+    Each catalog program is replayed on the staged stacks, and the first to
+    reach an arrangement claims it -- valid because the catalog holds every
+    program the cap admits, cheapest first.  A program that pops an empty
+    stack at this ``n`` is skipped, and one that leaves values on the tree
+    stack (or the wrong stack active) ends unusable, since the tree expects
+    to start from a bare tree stack; at small ``n`` the catalog collapses
+    onto the reachable arrangements -- 1, 2, 6 and 24 through ``n == 4`` --
+    and from ``n == 12`` all 735 programs claim distinct arrangements.
 
     **This is a runtime reorder, not a relabelling.**  The ``{Xi}`` blocks
     keep their slots and the harness fills them exactly as before; what
@@ -164,40 +290,27 @@ def _eval_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     semicolon run fixed by its heap index -- so the arrangement is the only
     thing that decides which input a level tests.
     """
-    start: _EvalState = ((), tuple(range(n)), _EVAL_TREE_STACK)
-    seen = {start: ""}
-    frontier = deque([start])
     reached: dict[tuple[int, ...], str] = {}
-    while frontier:
-        state = frontier.popleft()
-        tree, read, active = state
-        ops = seen[state]
-        if active == _EVAL_TREE_STACK and not tree and read not in reached:
-            reached[read] = ops
-        if len(ops) >= _EVAL_MAX_OPS:
-            continue
-
-        stacks = {_EVAL_TREE_STACK: tree, _EVAL_READ_STACK: read}
-        moves: list[tuple[_EvalState, str]] = [((tree, read, 1 - active), "~")]
-        flipped = tuple(reversed(stacks[active]))
-        moves.append(
-            ((flipped, read, active), "*")
-            if active == _EVAL_TREE_STACK
-            else ((tree, flipped, active), "*")
-        )
-        if stacks[active]:
-            moved, rest = stacks[active][-1], stacks[active][:-1]
-            other = (*stacks[1 - active], moved)
-            moves.append(
-                ((rest, other, active), "=")
-                if active == _EVAL_TREE_STACK
-                else ((other, rest, active), "=")
-            )
-
-        for next_state, op in moves:
-            if next_state not in seen:
-                seen[next_state] = ops + op
-                frontier.append(next_state)
+    for ops in _eval_reorders():
+        stacks: tuple[list[int], list[int]] = ([], list(range(n)))
+        active = _EVAL_TREE_STACK
+        for op in ops:
+            if op == "~":
+                active = 1 - active
+            elif op == "*":
+                stacks[active].reverse()
+            elif stacks[active]:
+                stacks[1 - active].append(stacks[active].pop())
+            else:
+                break
+        else:
+            arrangement = tuple(stacks[_EVAL_READ_STACK])
+            if (
+                active == _EVAL_TREE_STACK
+                and not stacks[_EVAL_TREE_STACK]
+                and arrangement not in reached
+            ):
+                reached[arrangement] = ops
     return reached
 
 

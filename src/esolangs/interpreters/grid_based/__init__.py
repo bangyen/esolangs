@@ -6,7 +6,8 @@ Every module that indexes a *program grid* addresses it as
 downward.  Tuples are built and unpacked in that order throughout, so a
 position reads the same way it indexes.  The one convention holds across
 ``flowchart``, ``circuit_diagram``, ``clockwise``, ``arrowqueue``,
-``streetcode``, ``wii2d``, ``dig``, ``cod`` and ``laserfuck``.
+``streetcode``, ``wii2d``, ``dig``, ``cod``, ``super_snusp`` and
+``laserfuck``.
 
 Some of these used ``x``/``y`` before, and not all of them agreed on what
 ``x`` meant: it was the column in ``flowchart`` and ``circuit_diagram``

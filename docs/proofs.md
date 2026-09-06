@@ -14,6 +14,13 @@ the third is a negative result binding future boolean-generator work on
 `%^2^-1`, and the wall entry in [`docs/walls.md`](walls.md) points here for
 its argument.
 
+A fourth entry, the 123 geometry reduction, is of a different provenance
+and says so: a prose argument over a finite *certificate* that the code
+recomputes from scratch in every process, not a Lean theorem.  It is kept
+here because it plays the same role — it is what a size optimization's
+correctness rests on — and because its trust base is worth stating
+exactly.
+
 ## MAMMALIAN generator totality
 
 **Claim.**  The MAMMALIAN text generator
@@ -251,3 +258,72 @@ depends on the last bit alone" step has no object to apply to.  See the
 `Classical.choice`, `Quot.sound`.  No `sorryAx`, no `Lean.ofReduceBool` —
 nothing here rested on `native_decide`, as befits a claim over unbounded
 program length.
+
+## The 123 geometry reduction (per-arity certificate)
+
+**Claim.**  At every arity `n` whose *reference certificate* (below)
+holds, `construct`
+(`src/esolangs/tools/boolean/one_two_three_construct.py`) is correct over
+all `2**(2**n)` truth tables while using the tight linear mark geometry —
+marks `(i+1)*2**n + 1`, fixed even escape offsets `2**(n-i)` — which
+measured 2.1x smaller templates at four inputs and 2.8x at five than the
+doubling geometry it optimizes.  At any arity whose certificate fails,
+`_geometry` falls back to the doubling base, whose separate totality
+argument (halving escapes against a `2**(n+1)` mark base, in
+[`docs/walls.md`](walls.md)) is untouched — so `construct` stays total by
+argument at every arity, and this entry only has to justify the tight
+path.
+
+This is not a theorem that the tight geometry works at every arity, and
+no such claim is made anywhere: it is a *reduction* of "correct for all
+`2**(2**n)` tables at arity `n`" to a table-independent check that costs
+one model run.
+
+**Fact 1 (separation is table-independent).**  `_phase_a`, `_close` and
+`_separate` never read the truth table — their signatures have no table
+parameter, and the table first appears at `_verdict`.  Every row's state
+after separation is therefore a function of the arity and the geometry
+alone: one reference run fixes, for all tables at once, where each of the
+`2**n` rows ends and what its tape holds.
+
+**The certificate.**  `_geometry(n)` performs that reference run on the
+exact row model and admits the tight geometry only if all four
+invariants hold on the final state:
+
+1. the live rows' positions are pairwise distinct;
+2. every position is odd;
+3. no row is parked on one of its own marked cells;
+4. no row carries a mark strictly above its own position (its zone
+   above is *virgin*).
+
+A raise anywhere during the run — a walk shorter than its escape offset,
+a level that fails to converge, a fatal `-3` read — rejects the geometry
+the same as a violated invariant.
+
+**Lemma (the certificate implies per-table verdict correctness).**  The
+planned verdict's closed forms, argued in the 123 entry of
+[`docs/walls.md`](walls.md), consume exactly these invariants and
+nothing else about the geometry: the kill height `a` (two above the
+highest 1-row) is odd by (2); rows at or above `a` test their own cell,
+unmarked by (3); rows below `a` dip through the ring — never the fatal
+`-3` read, by parity from (2) — and test a cell in their virgin zone,
+unmarked before the verdict by (4); and the shield paints are
+collision-free because two rows sharing a paint offset would have to sit
+one cell apart, impossible under (1) + (2).  Since the invariants are
+facts about the table-independent post-separation state, the walls.md
+argument applies verbatim to every table at the certified arity.  The
+endgame's convergence argument is about positions and ring residues, not
+the mark geometry, and transfers unchanged.
+
+**Trust base, in three layers.**  (a) The argument above.  (b)
+Independent of it, every emission is validated move by move on the exact
+row model — `test(kills=...)` raises on any fate the plan did not
+intend — and every returned template is replayed row by row on the real
+interpreter first, so a gap in (a) can only surface as a refused build
+(`ValueError`), never a wrong template.  (c) Empirically: the tight
+geometry is certified at every probed arity (one through seven), the
+suite's exhaustive `n <= 3` sweep re-runs every small table each run,
+and `scripts/check_123_four_input.py` re-ran on this geometry in full —
+65536 tables, 1048576 rows, every row a clean halt or an exact state
+revisit, zero failures.  The certificate itself is never stored: each
+process re-derives it, so it cannot go stale against the code.

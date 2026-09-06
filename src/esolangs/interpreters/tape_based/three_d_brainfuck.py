@@ -17,8 +17,9 @@ Documented decisions filling those gaps:
   at its cell, then advances one cell in its heading; moving onto a cell with
   no block halts the program;
 - a heading block (``N``/``S``/``E``/``W``/``U``/``D``) only changes the
-  heading; a heading other than +X immediately walks the pointer off the
-  source line and halts;
+  heading; every heading but +X and -X walks the pointer off the source
+  line and halts, while -X (``S``) runs back along it, so blocks re-execute
+  and a program can bounce between two headings forever;
 - the array grid is unbounded, cells are created on demand and wrap 0-255;
 - no blocks are ever emitted (the wiki's generation semantics are
   unspecified), so the generation pointer has no observable state and is not
