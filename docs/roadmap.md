@@ -404,29 +404,23 @@ figures); re-derive the sweep rather than trusting a table here.
 
 What the two fixes did **not** buy is the interesting part:
 
-- **SLOW ACV MAMMALIAN still has the lowest frontier in the repo.**
-  Memoizing `_candidates` took `n == 4` from 118.7s to 17.5s, but `n == 5`
-  is still past 60s — a 6.8x against a ~30x-per-input curve buys well under
-  one input, which is the general shape of a cache applied to an exponential
-  search.  **The open question is whether `_candidates`' per-node
-  `range(256)` sweep can be narrowed analytically**, since only its extremes
-  (`candidates[0]` and `candidates[-1]`) drive `_placement_gap` and
-  placement takes the first candidate that clears its arm.  If the admissible
-  `j1` range has a closed form, the sweep is a constant-factor loop rather
-  than the frontier.  Worth it only if deeper ACV tables start mattering.
-  A cheap precedent for that kind of narrowing turned up in the order sweep
-  below and is worth knowing before starting: `CV(N)(C)`'s servable input
-  orders are exactly those readable off the two ends of *some* front/back
-  deque split (checked exhaustively against `_deque_schedule` through
-  `n == 7`), and they are counted exactly by the central binomial
-  coefficient `C(2*(n-1), n-1)` — 2, 6, 20, 70, 252, 924, 3432 through
-  `n == 8`.  **An `O(n)` predicate for that set is not known**; the obvious
-  guesses are wrong in both directions (a two-monotone-subsequence merge
-  over-accepts at 22 against 20 for `n == 4`; a prefix-interval test
-  under-accepts at `2**(n-1)`).  It costs nothing today — `_deque_schedule`
-  is called once per order under a cap — so this is a curiosity rather than
-  a task, and it is recorded only because an exact count with no known cheap
-  test is the same shape as ACV's `j1` question above.
+- **SLOW ACV MAMMALIAN's candidate sweep is closed and shipped.**  The
+  former `_candidates` scan (118.7s at `n == 4`, then 17.5s after
+  memoization) is now an arithmetic construction.  A read node chooses
+  `j1` by residue -- at most 49 `SEED`s put its first digest on the even
+  `01` bits-4--5 aim class -- and its taken branch consequently lands at
+  exactly `start - 15`, independent of `j1`.  Stash chunks raise that start
+  sum to aim the landing, while a `DIGEST`-based trampoline cancels the head
+  and solves any target with one byte plus enough 255-valued chunks.  No
+  candidate or neighbour is retried.
+
+  The build cost is now 0.0003s for the `n == 3` parity table (from 0.745s)
+  and 0.02s for the contract sweep entry (from 3.04s).  It was checked by
+  running all 276 tables through `n == 3`, 50 random `n == 4` tables, and
+  five `n == 5` tables over every input row.  The tradeoff is source size:
+  `n == 3` parity grew from 4264 to 8704 tokens because fixed trampoline
+  slots and dead pads replace adaptive placement.  This is not scheduled
+  work; re-measure only if a future layout wants to reclaim that size.
 - **The reachable-set lesson does not generalize — swept, and `forth` was
   the only case.**  `forth` iterated all `n!` input orders when only
   `2 * 3**(n-2)` are buildable, filtering *after* paying for each, while
