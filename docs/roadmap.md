@@ -691,12 +691,14 @@ open:
       errors**, exhaustive at `n == 2, 3` and sampled at 4 and 5, and the
       shipped order beats 7 of 8 random permutations on total size (57708
       against up to 59557; worst case 382 against up to 476).  Recovering
-      the ordering would mean re-running that tuning.  **One real defect:
-      the comment's "cheapest first" is false** — `('', '0')` at one
-      character sits after three two-character entries, and sorting by
-      total characters, by characters with reset/star tiering, and by a
-      weighted op cost all fail to reproduce the order.  The ordering is
-      semantic; the comment should say so.
+      the ordering would mean re-running that tuning.  **Its one real
+      defect is fixed:** the header said "cheapest first", which is false —
+      `('', '0')` at one character sits after three two-character entries,
+      and sorting by total characters, by characters with reset/star
+      tiering, and by a weighted op cost all fail to reproduce the order.
+      The header now reads "in merge order" and the block records that the
+      order is semantic, along with the permutation figures above, so a
+      reader cannot mistake a size-tuned preference for a cost sort.
     - **`_SLICE_YIELD_ORDER` (Minifuck)** — **not a candidate; dormant, not
       dead.**  Unreachable as shipped — `_slices` returns the plain
       enumeration at every arity because `_STAGING_BUDGET` and
