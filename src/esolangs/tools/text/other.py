@@ -463,7 +463,13 @@ def magnitude(text: str) -> str:
 
         prog += (n // 2) * "s" + ("p" if mode else "") + "e"
         last = ord(c)
-        mode = False
+        # The accumulator is left holding the character just printed, so it
+        # is positive again -- except when that character is a zero, where
+        # there is no magnitude for the ``p`` to make positive and the flip
+        # lands on zero.  ``mode`` has to keep tracking the sign there, or
+        # the next character is built the wrong way round and prints as its
+        # two's complement: ``a\0b`` came out ``a\0\x9e`` (98 -> -98).
+        mode = mode and not ord(c)
 
     return prog
 
