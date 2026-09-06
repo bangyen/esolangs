@@ -739,8 +739,13 @@ class TestGeneratorRoundTrips:
         """Folding actually buys columns, rather than only reshaping."""
         # a text whose bytes are spread out enough that neither the multiply
         # passes nor a shared base pays, so the linear run is what folds --
-        # three clusters, which one split into two bands cannot cover
-        text = "!Q~!Q~!Q~"
+        # four clusters, which one split into two bands cannot cover.
+        # ``!Q~!Q~!Q~`` used to serve here and no longer does: once the
+        # base-1 write started paying for its zero cells, the size model
+        # stopped under-counting the fallback, a second multiply pass
+        # became worth keeping, and that text now comes out 69 columns
+        # wide.  The low byte is what keeps this one spread.
+        text = "\x01!Q~\x01!Q~"
         assert max(len(ln) for ln in gen.laserfuck(text).split("\n")) > 200
         assert max(len(ln) for ln in gen.laserfuck(text, 80).split("\n")) <= 80
 
@@ -930,10 +935,13 @@ class TestGeneratorRoundTrips:
         bounded = gen.laserfuck(text, 80)
         assert max(len(ln) for ln in bounded.split("\n")) <= 80
         assert bounded != loop
-        # still the loop form -- the bracket mirrors are what say so -- and
-        # so no bigger than the unfolded program, unlike the linear fallback
+        # Still the loop form -- the bracket mirrors are what say so --
+        # rather than the linear fallback several times its size.  The fold
+        # spends a little padding to buy the columns (529 -> 587 here), so
+        # it is not compared against the unfolded loop: what the width
+        # buys is the *shape*, not a shorter program.
         assert "#^)#^" in bounded
-        assert len(bounded) <= len(loop)
+        assert len(bounded) < 2 * len(loop)
 
     def test_laserfuck_narrow_width_still_falls_back_to_linear(self) -> None:
         """A width no folded span can fit takes the linear form instead."""
