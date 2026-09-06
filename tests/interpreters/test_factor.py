@@ -108,6 +108,55 @@ class TestStepMachine:
         assert machine.halted
 
 
+class TestFactorint:
+    """``_factorint`` must answer exactly what ``sympy.factorint`` would.
+
+    It divides small primes out itself and only hands the residue to
+    sympy (see the function's docstring), so the two can disagree only
+    where that split is wrong -- which is precisely what these check.
+    """
+
+    @pytest.mark.parametrize(
+        "number",
+        [
+            2,
+            3,
+            4,
+            1,
+            2**10,
+            6619**3 * 2,
+            # A residue that survives the sieve: both factors are past
+            # _SMALL_PRIME_LIMIT, so the composite goes to sympy whole.
+            999983 * 999979,
+            # One large prime, the other end of the same split.
+            (10**9 + 7) * 4,
+            # A Mersenne prime, which the sieve cannot touch at all.
+            2**61 - 1,
+            # The shape Factor actually emits: many small primes.
+            2**49 * 3**20 * 5**7 * 6619,
+        ],
+    )
+    def test_matches_sympy(self, number: int) -> None:
+        import sympy
+
+        from esolangs.interpreters.tape_based.factor import _factorint
+
+        assert _factorint(number) == sympy.factorint(number)
+
+    def test_matches_sympy_on_random_integers(self) -> None:
+        """A sweep, since the cases above are all deliberately chosen."""
+        import random
+
+        import sympy
+
+        from esolangs.interpreters.tape_based.factor import _factorint
+
+        rng = random.Random(7)
+        for _ in range(200):
+            number = rng.randint(2, 10**12)
+            assert _factorint(number) == sympy.factorint(number), number
+
+
 def _machine(code: object) -> object:
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.factor import _Machine
