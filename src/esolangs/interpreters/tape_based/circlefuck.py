@@ -163,7 +163,12 @@ def _advance(
     elif char == "-":
         edit = ("set", ptr, (cells[ptr] - 1) % 256)
     elif char == ",":
-        edit = ("set", ptr, byte if byte is not None else 0)
+        # Reduced like ``+`` and ``-`` above: ``input_char`` returns a whole
+        # code point, so an input line starting above U+00FF otherwise put
+        # that code point into a cell the two arithmetic arms keep in
+        # 0..255 -- and left it disagreeing with itself, since the next
+        # ``+`` reduced what ``,`` had not.
+        edit = ("set", ptr, (byte if byte is not None else 0) % 256)
     elif char in "[]":
         ind = find(cells, ind, ptr)
     elif char == "@":

@@ -120,6 +120,20 @@ class TestIO:
     def test_input_echo(self) -> None:
         assert run_program(build(",>,<.>."), "A\nB") == "AB"
 
+    def test_an_input_character_above_255_is_taken_modulo_256(self) -> None:
+        """``,`` writes a cell, so it reduces as ``+`` and ``-`` do.
+
+        Only a code point above 255 reaches this: an ASCII character is
+        already its own residue, so the echo above cannot tell a reduced
+        read from an unreduced one.  It used to be unreduced, putting the
+        raw code point on the 8-bit tape the module documents, and leaving
+        the cell disagreeing with itself -- ``,+`` reduced where ``,``
+        alone did not.
+        """
+        assert run_program(build(",."), "Ā") == "\x00"
+        assert run_program(build(",."), "ā") == "\x01"
+        assert run_program(build(",+."), "Ā") == "\x01"
+
     def test_input_running_out_raises_eof(self) -> None:
         io = ScriptedIO("")
         with pytest.raises(EOFError):
