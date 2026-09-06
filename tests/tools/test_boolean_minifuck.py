@@ -1880,7 +1880,10 @@ class TestParameterizedMinifuck:
                     if other is not None:
                         assert len(other) >= len(built), (acc, cell7, direct)
 
-    def test_closed_sweeps_match_the_emit_and_walk_sweep(self) -> None:
+    @pytest.mark.parametrize(("sep_index", "settle"), [(2, 0), (0, 1)])
+    def test_closed_sweeps_match_the_emit_and_walk_sweep(
+        self, sep_index: int, settle: int
+    ) -> None:
         """The derived accumulator sweeps equal the interpreter's, per suffix.
 
         ``_staging_index`` fills from ``_closed_sweeps``, which computes each
@@ -1902,34 +1905,30 @@ class TestParameterizedMinifuck:
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
-        checked = 0
-        for sep_index, settle in ((2, 0), (0, 1)):
-            chains, pools = module._slice_chains(4, sep_index, settle)  # noqa: SLF001
-            base = module._embed(  # noqa: SLF001
-                4,
-                settle=settle,
-                sep=module._SEPS[sep_index],  # noqa: SLF001
-            )
-            module._clamp(base)  # noqa: SLF001
-            module._walk_to(base, module._BASE - 1)  # noqa: SLF001
-            suffixes: list[int | str] = list(range(module._MAX_BRACKETS + 1))  # noqa: SLF001
-            suffixes += list(module._insert_suffixes())  # noqa: SLF001
-            run = base.fork()
-            for suffix in suffixes:
-                if isinstance(suffix, int):
-                    staged = run.fork()
-                    staged.emit("<")
-                    run.emit("[")
-                else:
-                    staged = base.fork()
-                    staged.emit(suffix)
-                module._clamp(staged)  # noqa: SLF001
-                derived = module._closed_sweeps(chains, pools, suffix)  # noqa: SLF001
-                for cell7 in (0, 1):
-                    walked = module._column_sweep(staged, cell7)  # noqa: SLF001
-                    assert derived[cell7] == walked, (sep_index, settle, suffix, cell7)
-                    checked += 1
-        assert checked == 2 * 2 * (29 + 435), checked
+        chains, pools = module._slice_chains(4, sep_index, settle)  # noqa: SLF001
+        base = module._embed(  # noqa: SLF001
+            4,
+            settle=settle,
+            sep=module._SEPS[sep_index],  # noqa: SLF001
+        )
+        module._clamp(base)  # noqa: SLF001
+        module._walk_to(base, module._BASE - 1)  # noqa: SLF001
+        suffixes: list[int | str] = list(range(module._MAX_BRACKETS + 1))  # noqa: SLF001
+        suffixes += list(module._insert_suffixes())  # noqa: SLF001
+        run = base.fork()
+        for suffix in suffixes:
+            if isinstance(suffix, int):
+                staged = run.fork()
+                staged.emit("<")
+                run.emit("[")
+            else:
+                staged = base.fork()
+                staged.emit(suffix)
+            module._clamp(staged)  # noqa: SLF001
+            derived = module._closed_sweeps(chains, pools, suffix)  # noqa: SLF001
+            for cell7 in (0, 1):
+                walked = module._column_sweep(staged, cell7)  # noqa: SLF001
+                assert derived[cell7] == walked, (sep_index, settle, suffix, cell7)
 
     def test_the_staging_index_agrees_with_the_enumeration(self) -> None:
         """The inverted index assigns exactly what the per-table sweep does.

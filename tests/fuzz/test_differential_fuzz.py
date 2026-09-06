@@ -129,6 +129,7 @@ class TestGeneratorsReachExecution:
             ("_gen_ram0_program", "_run_ram0_python_limited", 0.40),
         ],
     )
+    @pytest.mark.slow
     def test_a_useful_share_of_draws_executes(
         self, rng, gen_name: str, run_name: str, floor: float
     ) -> None:
