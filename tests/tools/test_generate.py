@@ -93,6 +93,19 @@ def laserfuck_roundtrip(program: str, heading: int) -> str:
     return buffer.getvalue()
 
 
+def assert_text_roundtrip(generator: Callable[[str], str], text: str) -> None:
+    """Run generated text through the registered interpreter."""
+    program = generator(text)
+    if generator is gen.laserfuck:
+        for heading in range(4):
+            assert laserfuck_roundtrip(program, heading) == text
+        return
+
+    from esolangs.registry import BY_FUNCTION
+
+    assert roundtrip_language(BY_FUNCTION[generator.__name__], program) == text
+
+
 _run_123 = importlib.import_module("esolangs.interpreters.tape_based.one_two_three").run
 _run_pct = importlib.import_module(
     "esolangs.interpreters.register_based.pct_squared_minus_one"
@@ -1477,20 +1490,20 @@ class TestGeneratorBranches:
         ]
         for gen_fn in generators:
             for text in inputs:
-                gen_fn(text)
+                assert_text_roundtrip(gen_fn, text)
 
     def test_control_character_123(self) -> None:
-        """The 123 generator must not crash on control characters."""
-        gen.one_two_three("\x00")
-        gen.one_two_three("".join(chr(k) for k in range(1, 20)))
+        """The 123 generator preserves control characters."""
+        assert_text_roundtrip(gen.one_two_three, "\x00")
+        assert_text_roundtrip(gen.one_two_three, "".join(chr(k) for k in range(1, 20)))
 
     def test_laserfuck_zero_loop(self) -> None:
-        """A small value makes laserfuck's loop end with no tail."""
-        gen.laserfuck("\x14")
+        """A small value makes LaserFuck's loop end with no tail."""
+        assert_text_roundtrip(gen.laserfuck, "\x14")
 
     def test_painfuck_negative_loop(self) -> None:
-        """A large negative delta exercises painfuck's subtract loop."""
-        gen.painfuck("H$")
+        """A large negative delta exercises PainFuck's subtract loop."""
+        assert_text_roundtrip(gen.painfuck, "H$")
 
     def test_painfuck_roundtrip(self) -> None:
         """Generated programs round-trip through the interpreter."""

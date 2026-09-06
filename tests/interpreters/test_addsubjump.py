@@ -293,9 +293,10 @@ class TestStepMachine:
     def test_snapshot_includes_the_input_cursor(self) -> None:
         from esolangs.interpreters.register_based.addsubjump import _Machine
 
-        machine = _Machine("0 0 0 0", ScriptedIO())
-        assert hash(machine.snapshot()) is not None
-        assert machine.io.position() == 0
+        machine = _Machine("0 0 0 0", ScriptedIO("one\n"))
+        before = machine.snapshot()
+        machine.io.input_str()
+        assert machine.snapshot() != before
 
     def test_a_cell_written_to_zero_matches_one_never_written(self) -> None:
         """The sparse store must not distinguish a stored zero from no key.
