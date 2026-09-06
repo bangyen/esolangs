@@ -208,9 +208,53 @@ def _mutated_sources(language: str) -> list[tuple[str, str]]:
     return variants
 
 
-@pytest.mark.slow
-@pytest.mark.parametrize("language", sorted(RUNNERS))
-def test_every_interpreter_fuzzes_mutated_sources(language: str) -> None:
+@pytest.fixture(scope="module")
+def fuzz_cases(request: pytest.FixtureRequest) -> tuple[str, list[tuple[str, str]]]:
+    """Build one language's deterministic mutation corpus once."""
+    language = request.param
+    return language, _mutated_sources(language)
+
+
+def _fuzz_mutated_source(language: str, program: str, stdin: str) -> None:
+    """Drive one hostile variant through the bounded VM checks."""
+    if not _affordable_variant(program):
+        return  # a numeral too long to factor; see _MAX_OPERAND_DIGITS
+    try:
+        vm = make_vm(language, program, stdin)
+        # A step is not a unit of time.  Factor's generated seed is a
+        # 67-digit number and Polynomial's an 8th-degree polynomial, so
+        # a hundred *steps* of either is minutes of arithmetic.  The
+        # budget is what bounds the fuzzer, so it is spent in seconds
+        # as well as steps, and a variant that runs out of either is
+        # simply one the fuzzer stops driving -- not a failure.
+        deadline = time.monotonic() + 0.5
+        if run_until_halt(vm, limit=100, stop=_expired_at(deadline)):
+            return
+        if time.monotonic() > deadline:
+            return  # out of time, not proven stuck: nothing to decide
+        if os.name != "posix":
+            return  # signal.alarm is POSIX-only; the cap stands alone
+        # Still going at the cap: try to decide it on a fresh machine.
+        # Brent's detector is unbounded, so a quarter-second alarm keeps
+        # this individual regression below a second.
+        old_handler = signal.signal(signal.SIGALRM, _on_alarm)
+        signal.setitimer(signal.ITIMER_REAL, 0.25)
+        try:
+            run_until_halt_or_cycle(make_vm(language, program, stdin))
+        except _TimeoutError:
+            pass  # undecided: the growth class, not a failure
+        finally:
+            signal.setitimer(signal.ITIMER_REAL, 0)
+            signal.signal(signal.SIGALRM, old_handler)
+    except (EsolangError, ValueError, EOFError, SystemExit):
+        pass  # rejection and exhausted input are documented outcomes
+
+
+@pytest.mark.parametrize("case_index", range(11))
+@pytest.mark.parametrize("fuzz_cases", sorted(RUNNERS), indirect=True, scope="module")
+def test_every_interpreter_fuzzes_mutated_sources(
+    fuzz_cases: tuple[str, list[tuple[str, str]]], case_index: int
+) -> None:
     """Fuzz every registered interpreter through bounded VM execution.
 
     A variant still running at the step cap used to end the check there,
@@ -228,37 +272,10 @@ def test_every_interpreter_fuzzes_mutated_sources(language: str) -> None:
     naming them -- a hardcoded list of exempt languages is how this suite
     silently lost twelve interpreters once before.
     """
-    for program, stdin in _mutated_sources(language):
-        if not _affordable_variant(program):
-            continue  # a numeral too long to factor; see _MAX_OPERAND_DIGITS
-        try:
-            vm = make_vm(language, program, stdin)
-            # A step is not a unit of time.  Factor's generated seed is a
-            # 67-digit number and Polynomial's an 8th-degree polynomial, so
-            # a hundred *steps* of either is minutes of arithmetic.  The
-            # budget is what bounds the fuzzer, so it is spent in seconds
-            # as well as steps, and a variant that runs out of either is
-            # simply one the fuzzer stops driving -- not a failure.
-            deadline = time.monotonic() + 0.5
-            if run_until_halt(vm, limit=100, stop=_expired_at(deadline)):
-                continue
-            if time.monotonic() > deadline:
-                continue  # out of time, not proven stuck: nothing to decide
-            if os.name != "posix":
-                continue  # signal.alarm is POSIX-only; the cap stands alone
-            # Still going at the cap: try to decide it on a fresh machine.
-            # Brent's detector is unbounded, so the alarm bounds it.
-            old_handler = signal.signal(signal.SIGALRM, _on_alarm)
-            signal.alarm(1)
-            try:
-                run_until_halt_or_cycle(make_vm(language, program, stdin))
-            except _TimeoutError:
-                pass  # undecided: the growth class, not a failure
-            finally:
-                signal.alarm(0)
-                signal.signal(signal.SIGALRM, old_handler)
-        except (EsolangError, ValueError, EOFError, SystemExit):
-            pass  # rejection and exhausted input are documented outcomes
+    language, cases = fuzz_cases
+    if case_index >= len(cases):
+        pytest.skip("language has no generated seed")
+    _fuzz_mutated_source(language, *cases[case_index])
 
 
 class _TimeoutError(Exception):
