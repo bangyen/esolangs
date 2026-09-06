@@ -208,6 +208,7 @@ def _mutated_sources(language: str) -> list[tuple[str, str]]:
     return variants
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("language", sorted(RUNNERS))
 def test_every_interpreter_fuzzes_mutated_sources(language: str) -> None:
     """Fuzz every registered interpreter through bounded VM execution.
