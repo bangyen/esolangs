@@ -637,7 +637,8 @@ def _spell_bases() -> dict[tuple[int, int], tuple[str | None, str | None]]:
     shortest: dict[tuple[tuple[int, int], int], str] = {}
     # The empty string is the identity map, and it is even-width.
     identity = _spell_map(window)
-    assert identity is not None  # nosec B101 - the window is x itself
+    # The window is x itself.
+    assert identity is not None  # nosec B101
     shortest[identity, 0] = ""
     frontier = {window: ""}
     for length in range(1, _SPELL_MAX + 1):
@@ -664,10 +665,12 @@ def _spell_bases() -> dict[tuple[int, int], tuple[str | None, str | None]]:
                 # The erase forgets the prefix, so the shorter base spells
                 # every width above its own and the odd slot stays empty.
                 found = [code for code in (even, odd) if code is not None]
-                assert found, (a, b)  # nosec B101 - every grid map spells
+                # Every grid map spells.
+                assert found, (a, b)  # nosec B101
                 bases[a, b] = (min(found, key=len), None)
             else:
-                assert even or odd, (a, b)  # nosec B101 - as above
+                # As above.
+                assert even or odd, (a, b)  # nosec B101
                 bases[a, b] = (even, odd)
     return bases
 
@@ -856,7 +859,8 @@ def _sub_units(units: int) -> str:
     one ``i`` back to pay it as two ``s`` (so 1 unit alone is
     unspellable, which no caller asks for).
     """
-    assert units != 1  # nosec B101 - unspellable; silence would emit "ss"
+    # Unspellable; silence would emit "ss".
+    assert units != 1  # nosec B101
     if units % 3 == 0:
         return "i" * (units // 3)
     if units % 3 == 2:
@@ -946,7 +950,8 @@ def _ladder_built() -> dict[str, tuple[int, str]]:
     vectors = []
     for weights, base in _LADDERS:
         spelled = _ladder_setters(weights, base)
-        assert spelled is not None, weights  # nosec B101 - the cover spells
+        # The cover spells.
+        assert spelled is not None, weights  # nosec B101
         setters, lead = spelled
         vectors.append(_ladder_vector(setters, lead, 3))
     for gadget in _LADDER_GADGETS:
@@ -991,7 +996,8 @@ def _ladder(truth_table: str, n: int) -> str | None:
     index, suffix = found
     weights, base = _LADDERS[index]
     spelled = _ladder_setters(weights, base)
-    assert spelled is not None, index  # nosec B101 - every shipped weight spells
+    # Every shipped weight spells.
+    assert spelled is not None, index  # nosec B101
     setters, lead = spelled
     header = ";".join(f"{k}={zero}|{one}" for k, (zero, one) in enumerate(setters))
     body = lead + "".join("{X" + str(k) + "}" for k in range(n)) + suffix
