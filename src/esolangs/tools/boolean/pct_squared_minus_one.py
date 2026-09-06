@@ -47,26 +47,12 @@ pair of class values.  None of that is a search over *programs* -- the
 multipliers come from the table and the offsets are solved -- so the emitted
 program can be reasoned about rather than merely measured.
 
-An earlier version enumerated setter assignments instead, a product of size
-``len(options) ** (2 * n)`` guarded by a budget.  The derivation replaced it
-outright and needs none.
-
-Coverage: every table at ``n <= 2``, the sixteen two-input functions with XOR
-and XNOR included; a one-input table is derived as the two-input table that
-ignores its second input.
-
-The derivation above does not generalise past two inputs -- it reads one
-slope per column of a two-input table -- and the reason is structural: one
-affine map per input composes into a *shared* value, which forces each
-cofactor of the table to be constant or an affine image of one shared
-function.  Only 88 of the 256 three-input tables satisfy that.
-
 Above two inputs a second construction takes over, :func:`_cascade`, which
-escapes that constraint by using the erase multiplier as a conditional -- the
-position at which the accumulator is wiped depends on the inputs, which is a
-branch realised arithmetically.  It builds every conjunction or disjunction
-of literals at any arity, in ``2n + 4`` characters, which is why it is tried
-first.
+escapes the two-input derivation's structural limit by using the erase
+multiplier as a conditional -- the position at which the accumulator is wiped
+depends on the inputs, which is a branch realised arithmetically.  It builds
+every conjunction or disjunction of literals at any arity, in ``2n + 4``
+characters, which is why it is tried first.
 
 A third construction, :func:`_affine`, catches tables that are no subcube.
 It composes one affine setter per input the way the two-input derivation
@@ -76,10 +62,8 @@ branch per value of the last input, so the table's even and odd rows are two
 affine images of one shared vector.  Reading that backwards gives the whole
 construction -- the vector's partition is forced by which rows the table
 agrees on, two points fix each branch of the last setter, and the first two
-setters invert by division.  An enumeration over branch pairs stood here
-before, reaching the same 86 tables at 6.4 seconds for the arity against 0.8
-and emitting longer programs; what is left of it is the equal-width spelling
-by :func:`_spellings_by_width`, which is what lets an odd width gap close --
+setters invert by division.  The equal-width spelling by
+:func:`_spellings_by_width` is what lets an odd width gap close --
 ``_pad_pair`` pads with ``pp`` and refuses an odd shortfall, and parity-3's
 witness wants branches of width 6 and 5.
 
@@ -95,11 +79,9 @@ reset read the weighted sum.  A threshold on a weighted sum is a majority,
 which is why this path builds majority-3 -- the smallest OR of disjoint
 subcubes, and one the composed-affine search cannot reach.
 
-One bound is known about the ladder: a single reset is one threshold, and only
-104 of the 256 three-input tables are linearly separable, so that shape cannot
-be made total by widening its grid.  What lifts it is not more arithmetic but a
-different *printing command*, which is the fifth construction,
-:func:`_deep_band`.
+A single reset is one threshold, so widening the ladder's grid cannot make it
+total.  What lifts it is not more arithmetic but a different *printing
+command*, which is the fifth construction, :func:`_deep_band`.
 
 Every path above prints with ``l``, which spells the accumulator in decimal and
 so needs it to *be* 0 or 1 -- that is what pins the two answer classes to two
@@ -113,54 +95,23 @@ Nothing is searched -- a wiped band thereafter takes the same translations as
 the survivors, so the parking amount cancels out of their residue gap and each
 stage's translation is fixed by one congruence.
 
-Two choices decide how far that reaches, and both are assumptions of the shape
-rather than of the language.  Building the ladder **positive** makes every row
-sum sit under the limit at once, so distinct sums need weights behaving like a
-binary code -- at least ``2**n - 1`` units against the ``3003 // 256 == 11``
-the limit allows, which stops at three inputs because four needs 15.  Building
-it by **subtraction** instead puts the whole order below zero, where the reset
-cannot fire and no budget applies.  And distinct sums are more than the table
-needs: a cut *erases*, so every row it wipes lands on zero together whatever
-the gaps between them were, and only the boundaries *between* runs need a full
-residue system.  Rows may therefore collide when they share a class, which
-prices a table's span by its number of runs instead of by ``2**n``, and admits
+Two shape choices decide how far that reaches: the ladder is built by
+**subtraction**, putting the whole order below zero where the reset cannot
+fire, and rows are allowed to **collide when they share a class**, which
+prices a table's span by its number of runs instead of by ``2**n`` and admits
 the popcount ladder -- every weight one -- on which parity spans ``n`` units
-rather than ``2**n - 1``.
+rather than ``2**n - 1``.  Both are assumptions of the shape rather than of
+the language, and together they carry :func:`_deep_band` from three inputs to
+four: all 65536 four-input tables build, against the 496 the constructions
+above reach.
 
-:func:`_deep_band` makes both of those choices, which carries it from three
-inputs to four.  A positive-ladder version shipped alongside it for a while
-and was removed once measured: it served no table the deep band does not (0
-of 256 at three inputs, the only arity it reached) and its programs were
-about four times longer (median 11492 characters against 3144), so it was
-strictly dominated on both axes.
-
-Four inputs are total on that path, all 65536 tables, against the 496 the
-constructions above reach.  Parity has been executed on the interpreter through
-six inputs.
-
-What bounds :func:`_deep_band` is **distinctness**, and the count is worth
-stating because the obvious guess is wrong: it is not the number of runs.  A
-first reading had each run boundary consuming a residue system, allowing
-about ``3003 // 256 == 11`` of them, but random five-input tables refuse at
-five to eight runs, well inside that.
-
-The real budget is the span distinctness costs.  Two rows sharing a value are
-merged by the first cut that reaches them and can never be separated again, so
-a weighting serves a table only if every collision it forces joins rows of one
-class.  Keeping *all* rows distinct needs weights growing like a binary code, a
-span of ``(2**n - 1) * 256``: 1792 at three inputs, which fits under the limit,
-against 3840 at four and 7936 at five, which do not.  From four inputs on,
-then, every weighting inside the limit collides some rows, and a table builds
-only if its structure tolerates the collisions forced on it.
-
-Four inputs are total because 3840 overshoots 3003 only slightly and enough
-weightings survive.  At five the searched family collides two rows of opposite
-classes in all 537792 of its weightings for a random table, which is why
-generic five-input tables are refused by the deep band -- while *symmetric*
-tables build at any arity, the popcount ladder spanning only ``n * 256`` and
-colliding exactly the rows such a table already agrees on.  Parity-5,
-majority-5 and threshold-5 all build, and parity is executed on the
-interpreter through six inputs.
+What bounds it is **distinctness** -- the span it costs to keep rows apart,
+not the number of runs, which is the obvious guess and is wrong.  Symmetric
+tables escape that bound at any arity, so parity-5, majority-5 and
+threshold-5 all build, and parity is executed on the interpreter through six
+inputs.  ``docs/pct_squared_minus_one_generator.md`` has the spans, the
+collision counts and the positive-ladder variant that was measured and
+removed.
 
 The distinctness budget is a property of reading the table off **one**
 weighting, and :func:`_fold` is the construction that stops doing that.  It
@@ -178,57 +129,25 @@ same-class end run together, double to grow the windows, hop an end group
 to compress -- and the emitted program is then mirrored on every row and
 asserted rather than trusted.
 
-Five inputs close on that path: every table tried plans and executes -- all
-256 at three inputs, 120 random at four, 300 random at five plus parity,
-every threshold, near-parity and the fully alternating 32-run worst case,
-and 40 at six inputs -- against the 496 the weighted constructions reach at
-five.  The fold is not *proved* total at any arity it does not enumerate.
+Five inputs close on that path, and it is not *proved* total at any arity it
+does not enumerate.  What bounds it is the **workspace**: the ladder's
+footprint has to fit inside ``[-3003, 0]``, which is what
+:data:`_FOLD_NARROW_STEP` and the packed :data:`_FOLD_SUBSET_LADDER` are for
+-- the latter meets the exact distinctness floor ``2**n + 1`` and carries
+eleven inputs.  Twelve ends it, and there the wall is the move algebra rather
+than the spelling: the doubling ``m`` is offered only under a spread bound
+that ``2**12`` distinct positions cannot meet, so no twelve-input ladder ever
+doubles.  Thirteen is impossible by counting alone.
 
-What bounds it is the **workspace**, and the bound is the ladder's footprint
-rather than an arity check.  Rows start at ``-step * r``, so the ladder spans
-``step * (2**n - 1)``, and the emitter lays it from a zero accumulator, which
-means it has to fit inside ``[-3003, 0]``.  At the shipped spacing of 4 that
-is 4092 at ten inputs, over the workspace, and no plan on such a ladder could
-ever be emitted.  Halving the spacing halves the footprint to 2046, which is
-what :data:`_FOLD_NARROW_STEP` is for.
-
-But *uniform* spacing is itself the waste.  The plan needs only that the rows
-sit at ``2**n`` **distinct** positions, and distinctness costs about ``2**n``
-rather than the ``2 * (2**n - 1)`` a step-2 ladder spends.  The packed ladder
-:data:`_FOLD_SUBSET_LADDER` meets the exact floor, ``2**n + 1``, which is
-what carries **eleven inputs** at 2049 where the uniform one wanted 4094.
-
-Twelve is where it ends, and there the wall is the move algebra rather than
-the spelling.  The doubling ``m`` -- which this module proves is the only way
-to reorder groups at all -- is offered only when the state's spread is at most
-3002, and ``2**12`` distinct positions span at least 4095 wherever they sit.
-So no twelve-input ladder ever doubles: the search from such a state
-**exhausts after fifteen states**, an empty frontier rather than a budget.
-Thirteen is impossible by counting alone, ``2**13`` positions against the 6007
-values a ``p`` can address.  That bounds this construction, not the language:
-as everywhere else here, what it misses is *unreached*, and the Lean wall in
-``Esolangs.PctBooleanWall`` covers the reading model only.
-
-Cost, since it decides where the fold sits in the chain: a fold plan is
-0.15ms at three inputs, 0.36ms at four, 1.0ms at five and 3.2ms at six
-(medians; worst observed 3.3ms at five, 5.9ms at six; a 997-group
-eleven-input plan is 2.3s).  Two things make that hold rather than degrade.
-The plan is one named move per state rather than a search -- the
-search-based configurations this replaced once left a 21-point table too
-wide to search and too narrow for their descent's target, spending fifty
-seconds to refuse a table they could build, a failure mode a case analysis
-does not have.  And :func:`_deep_band` is screened above four inputs
-instead of enumerated, since a refusal there cost about eighteen seconds
-and a generic five-input table can never build: only tables agreeing on
-every popcount class survive the collisions its weightings force.
-Screening moved a generic five-input build from ~18.3s to ~0.13s, at the
-price of the shorter programs the deep band would have found for the
-asymmetric tables it happened to serve.
+The fold is tried last because it is the most expensive path, and
+:func:`_deep_band` is screened rather than enumerated above four inputs for
+the same reason.  ``docs/pct_squared_minus_one_generator.md`` has the
+measured plan costs, the screening trade and the arity arithmetic.
 
 As before whatever it misses is *unreached*, not proved unreachable -- the
-wall in ``docs/proofs.md`` covers the reading model only, and
-nothing here bounds embedded-input programs in general.
-``docs/limitations.md`` records what bounds are actually known.
+wall in ``docs/proofs.md`` and the Lean wall in ``Esolangs.PctBooleanWall``
+cover the reading model only, and nothing here bounds embedded-input programs
+in general.  ``docs/limitations.md`` records what bounds are actually known.
 
 Unlike the other parameterized generators, *which* command strings a setter
 uses is derived per table rather than fixed by the language, so a bare

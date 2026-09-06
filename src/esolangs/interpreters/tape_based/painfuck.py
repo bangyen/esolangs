@@ -42,43 +42,21 @@ arithmetic above is this implementation's reading of "do the last command
 3 times" rather than a quoted rule.  No generated program pairs the two:
 every ``t`` run one emits follows a ``p`` or an ``s``.
 
-A repeated ``y`` is the same kind of gap, and the alternatives are all
-defensible.  ``y`` binds forward to the next command exactly as ``c`` and
-``v`` do; the open question is whether repeating it makes *one* decision or
-*n*.  This implementation makes
-n: a run of ``rep`` repeats draws ``rep`` flips, each dropping one
-application of the bound command, so ``rep - heads`` of them run and the
-survivor count is binomial in ``rep``.  ``cyp`` therefore spans
-``{0, 2, ..., 14}``, weighted by ``Binomial(7, 1/2)``.
-
-The two readings rejected, and why:
-
-- *One decision for the whole run* -- any heads skips the command outright,
-  giving ``cyp`` in ``{0, 2}`` with the skip probability rising to 127/128.
-  Coherent, and it keeps ``y`` meaning "this either happens or it does not";
-  it loses because it discards the repeat count, which ``c`` exists to
-  supply.  Under it ``cyp`` can never exceed ``p`` applied once, so the
-  seven is spent on tuning a probability rather than on the command.
-- *Rebinding without gating* -- the shape ``c``/``v``/``t`` use literally,
-  which the retired cross-check also had: the first heads rebinds the
-  repeated command and the remaining repeats *execute* it.  That inverts the
-  instruction, since the command ``y`` names is then the one that runs most
-  (``cyp`` left 12), and it makes the skip count geometric rather than
-  binomial, because the draw stops at the first heads.
-
-All three agree when ``rep`` is 1, which is the only case the wiki
-describes, so nothing here contradicts it.
+A repeated ``y`` is the same kind of gap.  Each repeat is its own flip, so a
+run of ``rep`` drops ``heads`` applications of the bound command and ``cyp``
+spans ``{0, 2, ..., 14}``, weighted by ``Binomial(7, 1/2)``.  All the
+candidate readings agree at ``rep`` 1, the only case the wiki describes;
+``docs/painfuck.md`` argues the choice and records the two rejected.
 
 Documented divergences from the cross-check:
 
 - ``y`` is nondeterministic (a random skip) in the wiki and in the retired
   cross-check alike, so it skips the next command with probability 1/2 here
   too; the generator and the differential corpus never use it.  A *repeated*
-  ``y`` diverges, per the reading argued above: the cross-check rebound the
-  repeated command and executed it, where each repeat here is its own flip.
-  The cross-check was written alongside this interpreter rather than from an
-  independent source, so its agreement was never evidence about the
-  composition -- it shared this implementation's reading of the same gap.
+  ``y`` diverges: the cross-check rebound the repeated command and executed
+  it, where each repeat here is its own flip.  The cross-check was written
+  alongside this interpreter rather than from an independent source, so its
+  agreement was never evidence about the composition.
 - Reads at exhausted input raise :class:`EOFError` (the repo-wide
   convention), where the cross-check exits with status 3.
 - ``i`` parses the whole input line as an integer with ``int()``; a line

@@ -250,11 +250,18 @@ and one-input projections to `_degenerate` before the route is reached.
 A six-input table with a *narrow essential core* projects down to a smaller
 arity, which is why "does `n = 6` build?" has to be asked with a
 fully-essential table to mean anything.  There is no arity, and no table at
-any arity, that the Minifuck boolean generator declines.
+any arity, that the Minifuck boolean generator declines.  Six inputs is
+covered in the suite by `test_no_arity_is_gated`, which builds a
+fully-essential table and runs all 64 rows on the shipped interpreter.
+
+Sampled at five inputs, the sculpted route builds and prints every row of
+**200 of 200** fully-essential tables.
 
 Coverage before this route closed the arity: complementing inputs as they
 land took four inputs to **60942 of 64594 (94.35%)**, and that residue is
-what the sculpting was built to attack.
+what the sculpting was built to attack.  That second pass has since been
+removed outright — every table it placed the sculpted route also builds, and
+it cost a **300-second** whole-arity sweep to place them.
 
 ## `n == 5` ships partially; full coverage is out of reach of any flat family
 
@@ -378,3 +385,51 @@ not total from this alone — it needed the sculpted route.  The chain pool
 is itself finite and fixed-size, so it does not obviously close another
 arity.  Not shipped; the sweep and verification scripts are gitignored
 working files (`notes/minifuck_chain_sweep.py`, `notes/minifuck_chain_verify.py`).
+
+## Cost history of the contract sweep's `slow` set
+
+`tests/tools/test_boolean_contract.py` marks generators that *search* rather
+than emit, on a one-second budget per entry in that sweep.  The set is named
+rather than timed at collection, so the selected test set cannot depend on
+machine load.  This is the ledger of what entered and left it, kept so a
+future regression can be told from a cost the construction always carried.
+
+Measured originally (`pytest --durations -n 0`, one worker): minifuck 41.1s,
+`slow_acv_mammalian` 5.5s, the next entry down `polynomial` at 0.5s, median
+around 0.03s.
+
+- **`ztoalc_l_boolean`** was listed at 2.8s and now runs in 0.02s.  The cost
+  moved to the *reordering* sweeps, which is why those two sets are kept
+  separate rather than shared.
+- **`pct_squared_minus_one`** was briefly in the set at 4.6s: it searched
+  setter assignments and the sweep's parity table is `n == 3`, which it could
+  not separate, so it paid a whole search budget before raising.  It now
+  derives its programs and rejects that arity outright.  It rejoined
+  2026-08-31 at 6.45s and left 2026-09-02 at **0.25s** — almost all of that
+  cost was the composed-affine path deriving a whole arity into a cache on
+  its first call; the path now solves its setters from the table instead of
+  enumerating branch pairs, so there is no arity to derive.
+- **`minifuck`** left at 41.1s once it stopped searching at `n <= 3` (every
+  table up to three inputs comes from a staging table), its parity case
+  falling to 0.09s.
+- **`slow_acv_mammalian_boolean`** left at 5.5s when a read node's landing
+  point became solvable from the array sum rather than found by measuring
+  where a candidate jumped; its parity case cost 0.68s.  It rejoined
+  2026-08-31 at 3.04s and left 2026-09-05 at **0.02s**: on the aim class the
+  `j1` seeds cancel out of the jump arithmetic, so a landing is a pure
+  function of the array sum and a build is arithmetic end to end — no
+  candidate sweep, no stash-loop convergence check, no relaxation pass.  Its
+  `n=3` truth tables in `test_boolean_tape` moved 1.68s -> 0.07s alongside
+  and lost their `slow` marks.
+
+**The open regression.**  `minifuck` is back, at 14.9s of the sweep's 18.0s
+across sixty generators — a *regression*, not the cost the construction ought
+to carry.  Bisected 2026-08-30 by checking out
+`src/esolangs/tools/boolean/minifuck.py` alone at each commit that touched
+it: the parity table costs 0.08s at `ef651aa1` and `c48b1cdf`, 0.00s at
+`2a91ab70`, and 14.71s from `32f5638c` ("derive the stagings instead of
+storing 117 of them") onwards, unchanged through HEAD.  Deriving what was
+stored is cheap to *build* and expensive to *run*.  The `slow` mark keeps the
+fast run fast; it does not make the cost acceptable.  When the derivation is
+made to pay for itself, re-measure and drop the entry rather than leaving a
+stale number behind.

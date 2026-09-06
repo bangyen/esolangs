@@ -275,3 +275,27 @@ Summary of what has been run:
 The `n = 12` run is 4096 inputs against a 227,937-byte program: past any
 arity the sweeps reach, and the point at which the induction is doing the
 work rather than the enumeration.
+
+## Fixed: the embedding blocks leaked their bits through program length
+
+A one bit's block used to be its `~` and nothing else, where a zero bit's is
+a dense box — so `_compact` dropped the one's blank rows and the emitted
+program's size counted the ones.  At `n == 2` the four programs came out
+**123, 110, 110 and 97** characters, which is the parameterized convention's
+equal-width rule broken: the length alone identified the inputs.
+
+The one blocks now carry **inert walls**, sized so each block's glyphs occupy
+the same number of characters as the zero block it stands against — **18** for
+the first block, **14** for the rest.
+
+Two facts make those walls cheap and safe:
+
+- What a row costs is `len(row.rstrip())`, so only the column its *last* glyph
+  sits in matters.  A row needs one wall, not a run of them, and the blanks to
+  its left are paid for either way.  That holds for the `~` rows too: leading
+  blanks hold the `~` at column 3 just as well as glyphs would, so the row is
+  a bare `~` with one wall past it.
+- `*` turns the IP clockwise, so a wall is only inert where the IP cannot
+  reach it.  The IP enters the header at `(0, 0)` heading right and crosses
+  columns 0-2 of that row to reach its `*`, so the first block's row 0 is left
+  exactly as it was.  Every cell walled here is one no run visits.
