@@ -747,8 +747,22 @@ _Branch = tuple[int, int]
 #: These eight are a *cover*, not a grid.  The full product of four weights and
 #: four bases leaves 256 distinct ladders, of which 150 reach some table the
 #: other paths miss; greedy set cover over their yields picks these eight, which
-#: between them reach all twenty.  Searching the other 248 costs about fifty
-#: seconds of build time and finds nothing further, so the cover is what ships.
+#: between them reach all twenty.
+#:
+#: The cover is minimal -- dropping any one of the eight strands tables (four
+#: for the first three, two for the rest) -- and it is load-bearing on *size*:
+#: removing the ladder path entirely costs no correctness but 88% more
+#: characters over the twenty it serves (31615 against 59457), with
+#: majority-of-three going 874 to 2280.
+#:
+#: **What keeping eight rather than all 256 buys is assignment stability, not
+#: build time.**  An earlier revision of this comment priced the full grid at
+#: about fifty seconds; measured, folding all 256 takes **0.21s** against the
+#: cover's 0.01s.  What the full grid does change is reach -- 50 tables against
+#: 26 -- and every one of those 24 extras already builds by an earlier path, so
+#: widening would only move which path claims them.  That is a behaviour
+#: change, which is the reason the cover ships, and it is the same argument
+#: :data:`_LADDER_CUTS` makes.
 _LADDERS = (
     ((250, 500, 250), 1000),
     ((500, 250, 250), 1000),
