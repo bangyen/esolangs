@@ -95,6 +95,76 @@ class TestInject:
         assert len(reads) == 2, "one readto per input, and no more"
         assert max(reads) < first_branch, "every read precedes every branch"
 
+    def test_every_label_occurs_exactly_twice(self) -> None:
+        """Inject's labels are strictly two-occurrence: an open and a close.
+
+        The construction leans on it -- each leaf carries *its own* escape
+        label precisely because a third occurrence would not be a legal
+        block, and the escape blocks are allowed to overlap only because
+        each closes exactly once in the tail.  A counter that handed out a
+        duplicate would still emit a program, and a table whose paths
+        happen to avoid the clash would still compute correctly, so the
+        rule is checked over the label set rather than through an answer.
+        """
+        from collections import Counter
+
+        for table in ("01", "0001", "0110", "01101001", "11110000"):
+            counts = Counter(
+                line
+                for line in boolean.inject(table).splitlines()
+                if line.endswith(";")
+            )
+            assert all(v == 2 for v in counts.values()), (table, counts)
+
+    def test_an_input_block_starts_empty(self) -> None:
+        """An empty block is two *adjacent* delimiters, with nothing between.
+
+        ``readto`` fills the block, so it has to start empty -- and empty
+        means the two delimiter lines are adjacent and bare.  A stray
+        space before the closing delimiter still parses and still computes
+        the table, which is exactly why the spelling is asserted here
+        instead of being left to the truth-table sweeps.
+        """
+        for n, table in ((1, "01"), (2, "0001"), (3, "01101001")):
+            lines = boolean.inject(table).splitlines()
+            assert lines[: 2 * n] == [f"i{d};" for d in range(n) for _ in (0, 1)]
+
+    def test_the_tree_collapses_on_the_constant_subtree_alone(self) -> None:
+        """Depth never terminates the recursion; a constant subtree always does.
+
+        ``_tree`` stops on ``depth == n`` *or* a subtree whose entries all
+        agree, and the second is the only one that ever fires: at depth
+        ``n`` the remaining table is a single entry, which is constant by
+        definition.  Swept over every table to three inputs, the depth
+        clause explains none of the 1522 collapses.  Stated as a test so
+        the disjunct is known to be belt-and-braces rather than assumed to
+        be load-bearing.
+        """
+        from esolangs.tools.boolean.inject import _tree
+
+        calls: list[tuple[str, int, int]] = []
+
+        def record(table: str, depth: int, n: int, state: dict[str, int]) -> None:
+            calls.append((table, depth, n))
+            if depth == n or table == table[0] * len(table):
+                return
+            half = len(table) // 2
+            record(table[:half], depth + 1, n, state)
+            record(table[half:], depth + 1, n, state)
+
+        for n in (1, 2, 3):
+            for table_int in range(2 ** (2**n)):
+                record(format(table_int, f"0{2**n}b"), 0, n, {})
+        collapsed_by_depth_only = [
+            (t, d) for t, d, n in calls if d == n and t != t[0] * len(t)
+        ]
+        assert collapsed_by_depth_only == []
+        # And the tree itself is unchanged when the depth clause cannot fire.
+        state = {"leaves": 0, "blocks": 0}
+        assert _tree("01101001", 0, 3, state) == _tree(
+            "01101001", 0, 3, {"leaves": 0, "blocks": 0}
+        )
+
 
 class TestSuptiftam:
     @pytest.mark.parametrize(
