@@ -20,7 +20,6 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "mutate_generator.py"
 TOOLS_TESTS = REPO_ROOT / "tests" / "tools"
-BOOLEAN = REPO_ROOT / "src" / "esolangs" / "tools" / "boolean"
 
 
 def load_script() -> object:
@@ -174,11 +173,42 @@ class TestUndecorateClasses:
         assert cmd(1) != cmd(2, "a")  # type: ignore[operator]
 
 
-class TestModulePath:
-    def test_a_real_generator_module_resolves(self) -> None:
-        """Every module the package ships is a valid target."""
+class TestParseTarget:
+    def test_a_qualified_target_resolves_in_each_family(self) -> None:
+        """Both families are reachable, named ``family/module``."""
         script = load_script()
-        assert script._module_path("register") == BOOLEAN / "register.py"  # noqa: SLF001
+        assert script._parse_target("boolean/register") == ("boolean", "register")  # noqa: SLF001
+        assert script._parse_target("text/register") == ("text", "register")  # noqa: SLF001
+
+    def test_an_unambiguous_bare_name_still_resolves(self) -> None:
+        """The boolean-only spelling keeps working where it is unambiguous."""
+        script = load_script()
+        assert script._parse_target("minifuck") == ("boolean", "minifuck")  # noqa: SLF001
+
+    def test_a_name_in_both_families_is_refused(self) -> None:
+        """The failure this prevents is silent, which is why it is an error.
+
+        Eight modules -- helpers, laserfuck, other, register, stack,
+        streetcode, super_snusp, tape -- exist in both packages, which the
+        assertion below recomputes rather than trusts.  Defaulting a bare one
+        to boolean would mutate the wrong file for someone asking about
+        text, and still print a plausible percentage: the run succeeds, the
+        score is real, and it describes a module nobody asked about.  So
+        the ambiguity is reported and both spellings offered.
+        """
+        import pytest
+
+        script = load_script()
+        shared = sorted(
+            set(script._modules("boolean")) & set(script._modules("text"))  # noqa: SLF001
+        )
+        assert shared, "the families no longer share a module name"
+        for name in shared:
+            with pytest.raises(SystemExit) as excinfo:
+                script._parse_target(name)  # noqa: SLF001
+            message = str(excinfo.value)
+            assert f"boolean/{name}" in message
+            assert f"text/{name}" in message
 
     def test_an_unknown_module_lists_the_choices(self) -> None:
         """The error names what may be run rather than only what may not."""
@@ -186,7 +216,76 @@ class TestModulePath:
 
         script = load_script()
         with pytest.raises(SystemExit) as excinfo:
-            script._module_path("nosuchmodule")  # noqa: SLF001
+            script._parse_target("nosuchmodule")  # noqa: SLF001
         message = str(excinfo.value)
         assert "nosuchmodule" in message
         assert "register" in message
+
+    def test_an_unknown_family_is_refused(self) -> None:
+        """A qualified target with a bad family names the families instead."""
+        import pytest
+
+        script = load_script()
+        with pytest.raises(SystemExit) as excinfo:
+            script._parse_target("nosuchfamily/register")  # noqa: SLF001
+        message = str(excinfo.value)
+        assert "nosuchfamily" in message
+        assert "boolean" in message
+        assert "text" in message
+
+    def test_entry_points_are_not_targets(self) -> None:
+        """``__init__`` and ``__main__`` hold no generation logic.
+
+        ``text`` ships a ``__main__``; offering it as a target would spend a
+        run mutating an argv check.
+        """
+        script = load_script()
+        assert (
+            REPO_ROOT / "src" / "esolangs" / "tools" / "text" / "__main__.py"
+        ).exists()
+        for family in ("boolean", "text"):
+            modules = script._modules(family)  # noqa: SLF001
+            assert "__init__" not in modules
+            assert "__main__" not in modules
+
+    def test_every_listed_module_is_a_file_in_its_family(self) -> None:
+        """A listed target resolves to a real file, in every family."""
+        script = load_script()
+        for family in ("boolean", "text"):
+            for name in script._modules(family):  # noqa: SLF001
+                assert (script._pkg_dir(family) / f"{name}.py").exists()  # noqa: SLF001
+
+
+class TestPrepare:
+    def test_the_mutated_path_is_the_requested_family(self, tmp_path: Path) -> None:
+        """``paths_to_mutate`` must name the family that was asked for.
+
+        The bug this pins shipped once: the path was built with a literal
+        ``boolean`` while the score was read from the target's own family,
+        so ``text/streetcode`` mutated *boolean's* streetcode and then found
+        no result file where it looked.  That mismatch is what made it
+        loud.  Had both sides shared the wrong literal it would have been
+        silent -- a run reporting a real, plausible score for a module
+        nobody asked about, which is possible for the eight names the two
+        packages share.
+        """
+        script = load_script()
+        proj, _ = script._prepare("text", "streetcode", tmp_path, slow=False)  # noqa: SLF001
+        config = (proj / "pyproject.toml").read_text()
+        assert 'paths_to_mutate = ["esolangs/tools/text/streetcode.py"]' in config
+        assert "boolean/streetcode.py" not in config
+
+    def test_the_mutated_path_and_the_score_path_agree(self, tmp_path: Path) -> None:
+        """The file mutmut writes is the file the score is read from.
+
+        Asserted as a pair rather than separately: they are two spellings of
+        one path in different functions, and the failure mode is them
+        drifting apart.
+        """
+        script = load_script()
+        proj, _ = script._prepare("text", "tape", tmp_path, slow=False)  # noqa: SLF001
+        config = (proj / "pyproject.toml").read_text()
+        mutated = config.split('paths_to_mutate = ["')[1].split('"]')[0]
+        # The same expression ``_score`` uses to find mutmut's result file.
+        scored = proj / "mutants" / "esolangs" / "tools" / "text" / "tape.py.meta"
+        assert scored == proj / "mutants" / f"{mutated}.meta"
