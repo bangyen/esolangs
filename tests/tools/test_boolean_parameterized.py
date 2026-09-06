@@ -3283,6 +3283,111 @@ class TestParameterizedOneTwoThree:
         b.apply_token(b.rows[0], "1")
         assert b.rows[0].pos == -1
 
+    def test_a_two_at_minus_three_is_refused_rather_than_reading_stdin(self) -> None:
+        """``2`` at -3 would read real input, so the move is rejected.
+
+        The harness runs on an empty script, so a read is fatal rather than
+        merely wrong -- the builder has to decline the candidate that
+        reached this cell instead of emitting it.  The neighbouring
+        positions are the contrast: -2 lands on 0 (printing a junk byte no
+        snapshot sees) and anything else is a plain step right.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import (
+            _WORK_BUDGET,
+            ConstructError,
+            _exec_char,
+            _Row,
+            _work,
+        )
+
+        _work[0] = _WORK_BUDGET
+        reads_stdin = _Row((0,))
+        reads_stdin.pos = -3
+        with pytest.raises(ConstructError, match="reads stdin"):
+            _exec_char(reads_stdin, "2")
+
+        wraps = _Row((0,))
+        wraps.pos = -2
+        _exec_char(wraps, "2")
+        assert wraps.pos == 0
+
+        steps = _Row((0,))
+        steps.pos = 4
+        _exec_char(steps, "2")
+        assert steps.pos == 5
+
+    def test_closing_walks_only_when_a_row_sits_on_a_true_cell(self) -> None:
+        """``_close`` emits the walk it needs and nothing when already clean.
+
+        A fresh builder starts every row on cell 0 with a blank tape, which
+        is already a FALSE cell, so the close is free.  Flipping cell 0
+        first forces the walk, and the emitted ``2``s are what carry every
+        row to a clean cell -- emitting none there would leave the next
+        segment starting on a TRUE cell.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import (
+            _RING,
+            _WORK_BUDGET,
+            _Builder,
+            _close,
+            _work,
+        )
+
+        _work[0] = _WORK_BUDGET
+        already_clean = _Builder(1)
+        _close(already_clean)
+        assert "2" not in "".join(already_clean.chunks)
+
+        _work[0] = _WORK_BUDGET
+        needs_a_walk = _Builder(1)
+        needs_a_walk.run("1")  # flips cell 0 TRUE and steps into the ring
+        _close(needs_a_walk)
+        emitted = "".join(needs_a_walk.chunks)
+        assert "2" in emitted
+        # Every row ends on a cell that is FALSE, which is what "closed" means.
+        assert all(
+            row.pos >= 0 and not row.tape >> (row.pos + _RING) & 1
+            for row in needs_a_walk.live()
+        )
+
+    def test_replaying_twos_handles_the_empty_walk_and_the_stdin_cell(self) -> None:
+        """A zero-width run is a no-op; a run starting at -3 is refused.
+
+        ``_replay_twos`` re-derives the interpreter's rule for ``2`` without
+        the builder's model, so it owns the same stdin refusal ``_exec_char``
+        does -- reached here by starting a real run on the cell rather than
+        by walking onto it.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import (
+            ConstructError,
+            _replay_twos,
+        )
+
+        # Nothing to walk: the state is handed straight back.
+        assert _replay_twos(5, 0b1011, 0) == (5, 0b1011)
+        assert _replay_twos(-3, 0, -2) == (-3, 0)  # a negative width is empty too
+
+        with pytest.raises(ConstructError, match="reads stdin"):
+            _replay_twos(-3, 0, 1)
+
+    def test_replaying_a_verdict_skips_commandless_and_unknown_characters(
+        self,
+    ) -> None:
+        """Only ``1`` and ``2`` are commands; everything else is a NOP.
+
+        A program with no command at all never starts the walk and halts
+        with no output, which is the ``"0"`` verdict.  A program that mixes
+        commands with other characters has to step over them rather than
+        treating them as a run -- so the two spellings agree.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import _replay_verdict
+
+        assert _replay_verdict("") == "0"
+        assert _replay_verdict("xyz") == "0"  # no command: nothing to run
+        # The NOPs are skipped, so padding a program cannot change its verdict.
+        assert _replay_verdict("1x1") == _replay_verdict("11")
+        assert _replay_verdict("x1y1z") == _replay_verdict("11")
+
 
 def test_nocomment_wide_declines_when_the_plan_outgrows_the_skip() -> None:
     """Past fifteen inputs the summand plan leaves no room to widen.

@@ -1216,6 +1216,291 @@ class TestPctSquaredHelpers:
             "pspmimmipsp",
         )
 
+    def test_the_move_algebra_refuses_what_it_cannot_place(self) -> None:
+        """Each refusal in ``_fold_step`` is a placement the window forbids.
+
+        These are the guards a plan search only meets by accident, so they
+        are driven from constructed states instead: a doubling whose result
+        leaves the window, a degenerate state with nothing to double, and
+        an everything-wipe while two classes are still live (which would
+        merge points the suffix still has to tell apart).  Each is paired
+        with the state that *is* accepted, so a guard that stopped firing
+        would fail here rather than silently widening the algebra.
+        """
+        module = self.module()
+        fold_step = module._fold_step  # noqa: SLF001
+        limit = module._LIMIT  # noqa: SLF001
+        double = ("m", 0, 0, frozenset())
+
+        # A doubling has to leave the whole state inside the window.
+        too_wide = (
+            (limit, 0, "a", frozenset({0})),
+            (-limit, 0, "a", frozenset({1})),
+        )
+        assert fold_step(too_wide, double) is None
+
+        # A single point at the origin has a zero span, which is refused by
+        # the same guard's lower bound -- there is nothing to scale.
+        flat = ((0, 0, "a", frozenset({0})),)
+        assert fold_step(flat, double) is None
+
+        # A state that does fit doubles: the normalization re-anchors the
+        # top at 0, so what the scaling shows up as is the doubled gap.
+        fits = ((10, 0, "a", frozenset({0})), (0, 0, "a", frozenset({1})))
+        doubled = fold_step(fits, double)
+        assert doubled is not None
+        positions = sorted(p for p, _, _, _ in doubled)
+        assert positions[-1] - positions[0] == 20
+
+        # The everything-wipe merges all points onto one, so it is legal
+        # only once a single class is left.
+        all_wipe = ("d", 2, limit + 1, frozenset())
+        two_classes = (
+            (10, 0, "a", frozenset({0})),
+            (0, 0, "b", frozenset({1})),
+        )
+        assert fold_step(two_classes, all_wipe) is None
+
+        one_class = (
+            (10, 0, "a", frozenset({0})),
+            (0, 0, "a", frozenset({1})),
+        )
+        assert fold_step(one_class, all_wipe) == ((0, 0, "a", frozenset({0, 1})),)
+
+    def test_a_rise_relocates_survivors_above_the_victims(self) -> None:
+        """``u`` mirrors ``d``: the survivors move relative to the victim bottom.
+
+        The two directions are separate arms of the same wipe, and only the
+        dive is on the common path, so the rise is driven here directly.
+        Both must land every group inside the window and keep one merged
+        victim point, which is what makes the resulting state legal.
+        """
+        module = self.module()
+        fold_step = module._fold_step  # noqa: SLF001
+        clean_amount = module._fold_clean_amount  # noqa: SLF001
+
+        state = (
+            (0, 0, "a", frozenset({0})),
+            (100, 0, "a", frozenset({1})),
+            (300, 0, "a", frozenset({2})),
+        )
+        for kind in ("u", "d"):
+            amount = clean_amount(state, kind, 1)
+            assert amount is not None, kind
+            moved = fold_step(state, (kind, 1, amount, frozenset()))
+            assert moved is not None, kind
+            # One group is wiped onto the origin; the other two survive.
+            assert len(moved) == 3, kind
+            assert any(p == 0 for p, _, _, _ in moved), kind
+            # Every id is still accounted for -- a wipe merges, never drops.
+            assert {x for _, _, _, ids in moved for x in ids} == {0, 1, 2}, kind
+
+    def test_a_wipe_whose_survivors_will_not_fit_is_refused(self) -> None:
+        """The span is re-checked *after* the relocation, not only before it.
+
+        A wipe's amount is picked from the landing window, so it always
+        passes the window check -- but an extent rides along with its group
+        and is not scaled by the move, so a wide enough one puts the
+        relocated state outside the accumulator's range even at a legal
+        amount.  That is what the second span check catches, and nothing
+        earlier can: the same wipe on the same positions is accepted once
+        the extent is small.
+        """
+        module = self.module()
+        fold_step = module._fold_step  # noqa: SLF001
+
+        positions = ((0, 10, 20), ("a", "a", "a"))
+        wide = (
+            (0, 6000, "a", frozenset({0})),
+            (10, 0, "a", frozenset({1})),
+            (20, 0, "a", frozenset({2})),
+        )
+        assert fold_step(wide, ("u", 1, 3004, frozenset())) is None
+
+        # Same geometry, ordinary extent: the wipe goes through.
+        narrow = tuple(
+            (p, 0, c, frozenset({i}))
+            for i, (p, c) in enumerate(zip(*positions, strict=True))
+        )
+        assert fold_step(narrow, ("u", 1, 3004, frozenset())) is not None
+
+    def test_a_clean_amount_needs_a_frame_to_land_in(self) -> None:
+        """With no room to relocate into, there is no amount to return.
+
+        A single point has no survivor to measure a window against, so the
+        frame is undefined and the caller gets ``None`` rather than an
+        amount that would collide.  A state with survivors returns the
+        first free landing instead.
+        """
+        module = self.module()
+        clean_amount = module._fold_clean_amount  # noqa: SLF001
+        limit = module._LIMIT  # noqa: SLF001
+
+        assert clean_amount(((0, 0, "a", frozenset({0})),), "d", 1) is None
+
+        spread = ((10, 0, "a", frozenset({0})), (0, 0, "b", frozenset({1})))
+        for kind in ("d", "u"):
+            assert clean_amount(spread, kind, 1) == limit + 1
+
+    def test_a_reduction_gives_up_when_its_own_move_is_refused(self) -> None:
+        """The rules can name a move the algebra then rejects, and that ends it.
+
+        These are two different refusals and only one of them is "no move
+        exists": here ``_fold_rule_move`` does return an op -- a rise of the
+        bottom group -- but the extents riding along put the relocated state
+        outside the window, so ``_fold_step`` refuses it.  The reduction
+        stops rather than skipping to a second-choice move, because the
+        rules are a construction and not a search.
+        """
+        module = self.module()
+        fold_reduce = module._fold_reduce  # noqa: SLF001
+        fold_rule_move = module._fold_rule_move  # noqa: SLF001
+        fold_step = module._fold_step  # noqa: SLF001
+        fold_done = module._fold_done  # noqa: SLF001
+
+        state = (
+            (-40, 6000, "a", frozenset({0})),
+            (-33, 2000, "b", frozenset({1})),
+            (-26, 0, "a", frozenset({2})),
+        )
+        # The state is unfinished and the rules do offer a move for it ...
+        assert fold_done(state) is False
+        move = fold_rule_move(state)
+        assert move is not None
+        # ... but that very move is one the algebra will not take.
+        assert fold_step(state, move) is None
+        assert fold_reduce(state, fold_done, budget=5) is None
+
+    def test_a_reduction_gives_up_when_no_move_applies(self) -> None:
+        """``_fold_reduce`` returns ``None`` rather than an unfinished plan.
+
+        A state whose only candidate moves are refused cannot be driven to
+        the done condition, and reporting a partial op list would hand the
+        emitter a plan that does not reach the answer.  The budget is
+        small here so the loop ends on the refusal, not on exhaustion.
+        """
+        module = self.module()
+        fold_reduce = module._fold_reduce  # noqa: SLF001
+        limit = module._LIMIT  # noqa: SLF001
+
+        never_done = ((10, 0, "a", frozenset({0})), (0, 0, "b", frozenset({1})))
+        assert fold_reduce(never_done, lambda _state: False, budget=3) is None
+
+        too_wide = (
+            (limit, 0, "a", frozenset({0})),
+            (-limit, 0, "a", frozenset({1})),
+        )
+        assert fold_reduce(too_wide, lambda _state: False, budget=3) is None
+
+    def test_the_all_wipe_candidate_needs_one_class_and_something_to_move(
+        self,
+    ) -> None:
+        """``_fold_moves`` offers the everything-wipe only where it is legal.
+
+        It collapses every point onto one, so it is offered only once a
+        single class remains -- and only when some group still carries a
+        position or an extent, since collapsing an already-collapsed state
+        is not a move.
+        """
+        module = self.module()
+        fold_moves = module._fold_moves  # noqa: SLF001
+
+        def kinds(state: object) -> list[tuple[str, int]]:
+            return [(m[0], m[1]) for m in fold_moves(state)]
+
+        one_class = (
+            (10, 0, "a", frozenset({0})),
+            (0, 0, "a", frozenset({1})),
+        )
+        # k == len(state) is the everything-wipe.
+        assert ("d", 2) in kinds(one_class)
+
+        two_classes = (
+            (10, 0, "a", frozenset({0})),
+            (0, 0, "b", frozenset({1})),
+        )
+        assert ("d", 2) not in kinds(two_classes)
+
+        # Already collapsed: nothing to offer at all.
+        assert kinds(((0, 0, "a", frozenset({0})),)) == []
+
+    def test_sub_units_borrows_an_i_back_to_pay_a_remainder_of_one(self) -> None:
+        """A remainder of 1 cannot be spelled directly, so a whole ``i`` is broken up.
+
+        ``s`` takes 2 and ``i`` takes 3, so the shortest spelling packs
+        as many ``i`` as it can.  A remainder of 1 has no spelling of its
+        own -- nothing costs a single unit -- so the rule borrows one
+        ``i`` back and pays the resulting 4 as two ``s``.  Every arm is
+        pinned here because the lengths are what the width arithmetic
+        upstream budgets against.
+        """
+        module = self.module()
+        sub_units = module._sub_units  # noqa: SLF001
+
+        # Exact multiples of 3: all i, nothing left over.
+        assert sub_units(3) == "i"
+        assert sub_units(9) == "iii"
+        # Remainder 2: one trailing s pays it exactly.
+        assert sub_units(2) == "s"
+        assert sub_units(5) == "is"
+        # Remainder 1: borrow an i back, so 4 units spell as two s.
+        assert sub_units(4) == "ss"
+        assert sub_units(7) == "iss"
+        assert sub_units(10) == "iiss"
+
+        # Whatever the arm, the spelling has to be worth what was asked,
+        # and no other spelling of the same value may be shorter.
+        for units in range(2, 40):
+            spelled = sub_units(units)
+            assert spelled.count("i") * 3 + spelled.count("s") * 2 == units, units
+            best = min(
+                (
+                    threes + twos
+                    for threes in range(units // 3 + 1)
+                    for twos in range(units // 2 + 1)
+                    if threes * 3 + twos * 2 == units
+                ),
+                default=None,
+            )
+            assert len(spelled) == best, units
+
+    def test_a_ladder_cut_that_overshoots_backs_the_doubling_off(self) -> None:
+        """When the largest power overshoots the cut, ``j`` steps down one.
+
+        ``j`` is picked as the largest doubling that fits under the cut,
+        but that first choice can leave a remainder that is negative (the
+        threshold already passed the cut) or odd (``k`` pays it two units
+        at a time and cannot spell a half).  Either way the only repair is
+        a smaller ``j``, and the assertions just past it are what say the
+        second choice always lands -- so a gadget still comes back.
+        """
+        module = self.module()
+        ladder_gadget = module._ladder_gadget  # noqa: SLF001
+
+        def chosen_j(cut: int) -> tuple[int, bool]:
+            """Return the j the gadget settles on, and whether it backed off."""
+            j = (3004 // cut).bit_length() - 1
+            remainder = -(-3004 // (1 << j)) - cut
+            if remainder < 0 or remainder % 2 != 0:
+                return j - 1, True
+            return j, False
+
+        # The back-off is the common case, not a corner: most cuts need it.
+        assert sum(chosen_j(cut)[1] for cut in range(1, 3005)) > 1000
+
+        # A slope has to be a whole number of doublings at the settled j,
+        # so it is picked from that j rather than fixed in advance.
+        backed_off = ladder_gadget(1, 2 << chosen_j(1)[0])
+        assert chosen_j(1)[1] is True
+        assert "psp" in backed_off
+        assert backed_off.endswith("ipsp")
+
+        # A cut that does not overshoot keeps its first j, same shape.
+        clean_cut = next(cut for cut in range(1, 3005) if not chosen_j(cut)[1])
+        clean = ladder_gadget(clean_cut, 2 << chosen_j(clean_cut)[0])
+        assert "psp" in clean
+        assert clean.endswith("ipsp")
+
     def test_built_ladder_matches_the_frozen_witnesses(self) -> None:
         """The fold reproduces the table it replaced, entry for entry.
 
@@ -1417,6 +1702,62 @@ class TestPctInterleavedFold:
             io = ScriptedIO()
             run(module.fill(template, bits), io)
             assert io.getvalue() == want
+
+    def test_every_three_input_table_builds_or_declines_exactly(self) -> None:
+        """Sweep all 256 three-input tables through the staged build.
+
+        One table exercises one route; the whole space is what reaches the
+        merge, split and refusal arms, and it is the only way to hold the
+        two outcomes to their contracts at once.  A build must replay every
+        row on the interpreter -- a template that computes the wrong table
+        is worse than a decline -- and a decline must be exactly ``None``,
+        never a partial template a caller might emit.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.pct_squared_minus_one import run
+
+        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        built = 0
+        for value in range(256):
+            table = format(value, "08b")
+            template = module._interleaved_fold(table, 3)  # noqa: SLF001
+            if template is None:
+                continue
+            built += 1
+            assert template.count("{X") == 3, table
+            slots = [template.index("{X" + str(i) + "}") for i in range(3)]
+            assert slots == sorted(slots), table  # slots stay in stream order
+            for row, want in enumerate(table):
+                bits = [(row >> 2) & 1, (row >> 1) & 1, row & 1]
+                io = ScriptedIO()
+                run(module.fill(template, bits), io)
+                assert io.getvalue() == want, (table, row)
+        # The route is selective by design -- it runs before the all-row
+        # fallback -- so pin that it neither builds everything nor nothing.
+        assert built == 136
+
+    @pytest.mark.slow  # ~10s: 4096 four-input builds
+    def test_four_input_tables_build_or_decline_without_raising(self) -> None:
+        """At four inputs the merge has room to act, so its arms are reached here.
+
+        Build-only on a stride: what is under test is that every table
+        either yields a well-formed template or declines cleanly.  A raise
+        would mean the planner emitted a move its own algebra refuses,
+        which is the failure the guards exist to prevent, and no amount of
+        row replay would reveal it if the build never returned.
+        """
+        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        built = 0
+        for value in range(0, 2**16, 16):
+            table = format(value, "016b")
+            template = module._interleaved_fold(table, 4)  # noqa: SLF001
+            if template is None:
+                continue
+            built += 1
+            assert template.count("{X") == 4, table
+            slots = [template.index("{X" + str(i) + "}") for i in range(4)]
+            assert slots == sorted(slots), table
+        assert built == 1444
 
     def test_interleaved_fallback_builds_past_the_all_row_ladder(self) -> None:
         """A late-ignored suffix stays compact instead of spending 4096 rungs.

@@ -1151,6 +1151,27 @@ class TestRunUntilHaltOrCycle:
             is False
         )
 
+    def test_painfuck_a_malformed_loop_is_a_terminal_branch(self) -> None:
+        """An unmatched ``b`` ends its branch instead of escaping the search.
+
+        ``run`` treats a malformed loop as an error outcome, and the branch
+        graph has no error flag to carry that, so the successor is the same
+        state with its cursor moved past the program -- which is exactly
+        what ``branching_halted`` reads as finished.  Letting the exception
+        out instead would abort the whole search over a branch that simply
+        ended.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.painfuck import _Machine
+
+        machine = _Machine(_painfuck_source("b"), ScriptedIO())
+        start = machine.branching_snapshot()
+        assert machine.branching_halted(start) is False
+
+        (ended,) = machine.branching_successors(start, 100) or ()
+        assert machine.branching_halted(ended) is True
+        assert ended[3] == machine.n  # cursor parked past the program
+
     def test_laserfuck_all_initial_headings_can_be_proved_to_loop(self) -> None:
         """The four headings are searched, not the one the machine drew.
 
@@ -1411,6 +1432,40 @@ class TestRunUntilHaltOrCycle:
         quiet = _Machine("[RND 0]", ScriptedIO())
         with pytest.raises(HaltError):
             quiet.branching_successors(quiet.branching_snapshot(), 100)
+
+    def test_modulous_non_command_tokens_advance_one_branch(self) -> None:
+        """A token no handler claims still steps, and forks nothing.
+
+        Three shapes reach the branch search without a handler: an empty
+        token, a bare word, and a variable assignment.  Only the last
+        changes anything -- ``VAR1+1`` is arithmetic the dispatch table does
+        not list -- and none of them opens a second outcome, so each must
+        return exactly one successor rather than ``None`` (which would
+        claim the step needs input) or a fork.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.modulous import _Machine
+
+        for code in ("[]", "[FOO]", "[VAR1+1]", "[VAR1-1]"):
+            machine = _Machine(code, ScriptedIO())
+            successors = machine.branching_successors(machine.branching_snapshot(), 100)
+            assert successors is not None, code
+            assert len(successors) == 1, code
+
+        # The arithmetic token is the only one that writes a variable, and
+        # the bare word leaves the state alone apart from the cursor.
+        for token, expected in (("[VAR1+1]", 1), ("[VAR1-1]", -1)):
+            arith = _Machine(token, ScriptedIO())
+            (stepped,) = (
+                arith.branching_successors(arith.branching_snapshot(), 100) or ()
+            )
+            assert dict(stepped[0][1])["VAR1"] == expected, token
+
+        word = _Machine("[FOO]", ScriptedIO())
+        start = word.branching_snapshot()
+        (after,) = word.branching_successors(start, 100) or ()
+        assert after[0][0] == start[0][0]  # stack untouched
+        assert after[0][2] == start[0][2] + 1  # cursor advanced one token
 
     def test_modulous_declines_input_and_caps_a_wide_draw(self) -> None:
         """``INP`` cannot be forked, and one ``RND`` cannot be unbounded."""
