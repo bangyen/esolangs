@@ -1631,6 +1631,14 @@ def _budget(n: int) -> int | None:
 # arity the ranking is unmeasured, so the full enumeration order is used
 # unless a budget is actually set.  Ordering only matters when something is
 # going to be given up.
+#
+# The yield is *marginal*: a slice is credited with the columns it is first
+# to reach walking the plain enumeration, not with every column it could
+# place alone -- ranking by independent reach gives a different order.  So
+# this is derived rather than frozen, and
+# ``test_the_slice_order_is_its_measured_yield`` re-derives it from
+# ``_staging_index(4)`` each run instead of trusting the numbers above.  All
+# ten counts differ, so descending order is total with no tie-break.
 _SLICE_YIELD_ORDER = (
     (3, 0),
     (2, 0),
