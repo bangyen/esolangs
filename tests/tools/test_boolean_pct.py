@@ -784,6 +784,38 @@ class TestParameterizedPctSquaredMinusOne:
                 shared = set(zero_widths) & set(_spellings_by_width(*one))
                 assert shared, (zero, one)
 
+    def test_the_wide_multipliers_are_the_command_closure(self) -> None:
+        """``_WIDE_A_VALS`` is generated, and the generator is the language.
+
+        ``m`` doubles and ``p`` negates, so the reachable multipliers are
+        the signed powers of two plus the erase -- a closure over the two
+        commands, not a list of measured answers.  Only the *bound* is
+        measured, which is why it is a separate constant.
+
+        Order is asserted alongside the set because the wide search takes
+        the first spelling that behaves: ascending magnitude, positive
+        before negative.  Reordering would change which spelling wins
+        without changing what is reachable, so a set-only assertion would
+        not see it.
+        """
+        from esolangs.tools.boolean.pct_squared_minus_one import (
+            _WIDE_A_LIMIT,
+            _WIDE_A_VALS,
+            _wide_a_vals,
+        )
+
+        assert _WIDE_A_VALS == (0, 1, -1, 2, -2, 4, -4)
+        assert _wide_a_vals(_WIDE_A_LIMIT) == _WIDE_A_VALS
+
+        # The closure itself: reachable by doubling and negating from 1.
+        reach = {0, 1}
+        for _ in range(_WIDE_A_LIMIT.bit_length()):
+            reach |= {2 * v for v in reach} | {-v for v in reach}
+        assert set(_WIDE_A_VALS) == {v for v in reach if abs(v) <= _WIDE_A_LIMIT}
+
+        # Widening is a knob, not a rewrite: the next power just appears.
+        assert _wide_a_vals(8) == (0, 1, -1, 2, -2, 4, -4, 8, -8)
+
     def test_built_spell_bases_match_the_frozen_witnesses(self) -> None:
         """The fold reproduces the enumeration's witnesses exactly.
 
