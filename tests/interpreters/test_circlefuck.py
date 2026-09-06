@@ -174,6 +174,28 @@ class TestStepMachine:
         assert machine.ind == 3
         assert machine.cells == (0, 44, 123, 43, 46, 64)
 
+    def test_state_reports_the_fields_and_copies_the_tape(self) -> None:
+        """``state`` is an observer, so it must not alias the live tape.
+
+        The shell owns the tape as a list and edits it in place, so an
+        observer that handed the list out would let a caller's earlier
+        reading change under it -- the reason every observer here copies.
+        Taking a state, stepping, and re-reading pins both halves: the
+        fields track the machine, and the tuple taken before the step does
+        not.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.circlefuck import _Machine
+
+        machine = _Machine("+.@", ScriptedIO())
+        before = machine.state
+        assert before == (0, 0, (43, 46, 64), False)
+
+        machine.step()  # + raises cell 0 from 43 to 44
+        assert machine.state == (1, 0, (44, 46, 64), False)
+        # The earlier reading is a copy, so the write did not reach it.
+        assert before == (0, 0, (43, 46, 64), False)
+
     def test_delete_last_cell_halts(self) -> None:
         """Deleting the last cell is an invalid operation."""
         import pytest

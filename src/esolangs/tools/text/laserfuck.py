@@ -771,7 +771,14 @@ def _laserfuck_multiply(text: str, width: int | None = None) -> str:
             remainder = fallback[prefix:]
             exit_row = f"x{remainder[::-1]}{{"
             grid.insert(0, exit_row.rjust(len(grid[0])))
-        else:
+        else:  # pragma: no cover - base-1 chunks touches every cell
+            # ``fallback`` is ``chunks(1)``, and that branch writes ``>`` plus
+            # ``_cell(n)`` for *every* value with no ``rstrip`` -- a zero
+            # spells ``+-`` rather than being skipped, which is what keeps a
+            # NUL in the output.  So it is at least two characters whenever
+            # there is a value, and an empty text raises at ``max()`` long
+            # before the layout runs.  The arm stays as the structural
+            # partner of the ``if``.
             grid[0] += "x"  # no fallback: the frame ends by killing the laser
 
     # A folded frame is bounded by the width rather than by its longest
