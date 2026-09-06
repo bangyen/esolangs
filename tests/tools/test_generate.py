@@ -784,20 +784,47 @@ class TestGeneratorRoundTrips:
         assert program.count("#/)") <= 1
 
     @pytest.mark.parametrize("width", [5, 8, 12, 20, 30])
-    def test_laserfuck_snake_ring_refuses_a_width_it_cannot_fit(
-        self, width: int
-    ) -> None:
-        """Too narrow for the ring, the builder answers None, not a bad grid.
+    def test_laserfuck_snake_ring_never_overruns_a_width(self, width: int) -> None:
+        """Either the builder answers None, or the grid it answers fits.
 
         The snake needs a spine to count down and a right margin to turn in,
-        and the finished block still has to sit inside the width.  Each of
-        those is checked separately and each answers ``None``, which is what
-        lets :func:`laserfuck` fall back to a form that does fit rather than
-        emitting a ring whose rows overrun.
+        and the finished block still has to sit inside the width.  What
+        matters is that it never emits a ring whose rows overrun: when a
+        width cannot be met it answers ``None`` and :func:`laserfuck` falls
+        back to a form that does fit.
+
+        A block that ends near the right edge is relanded at the margin
+        rather than refused, so widths that once had no ring now have one --
+        width 30 fits ``"Hi"``.  The invariant is the fit, not the refusal,
+        so this asserts the fit and runs whatever it gets.
         """
         from esolangs.tools.text.laserfuck import _laserfuck_snake_ring
 
-        assert _laserfuck_snake_ring("Hi", width) is None
+        program = _laserfuck_snake_ring("Hi", width)
+        if program is None:
+            return
+        assert max(len(line) for line in program.split("\n")) <= width
+        for heading in range(4):
+            assert laserfuck_roundtrip(program, heading) == "Hi"
+
+    def test_laserfuck_snake_ring_relands_a_crowded_entry(self) -> None:
+        """A long text keeps its ring: the entry drops back to the margin.
+
+        Each block leaves the beam further right than the last, so a text
+        long enough to need several stages once marched the entry off the
+        edge and the whole form was refused -- which sent every 55-character
+        string to the linear fallback at width 80.  The beam is carried down
+        to the margin instead, so the ring survives and stays inside the
+        width.
+        """
+        from esolangs.tools.text.laserfuck import _laserfuck_snake_ring
+
+        text = "".join(chr(0x21 + (index * 7) % 90) for index in range(55))
+        program = _laserfuck_snake_ring(text, 80)
+        assert program is not None
+        assert max(len(line) for line in program.split("\n")) <= 80
+        for heading in range(4):
+            assert laserfuck_roundtrip(program, heading) == text
 
     def test_laserfuck_snake_needs_a_spine_and_a_margin(self) -> None:
         """A spine with no room either side cannot carry a snake."""

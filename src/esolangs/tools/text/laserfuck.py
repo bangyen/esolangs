@@ -429,6 +429,27 @@ def _laserfuck_snake_ring(text: str, width: int) -> str | None:
 
     row, entry = 0, 3
     for preload, body in stages:
+        # Each block leaves the beam further right than the last, so on a
+        # bound width the entry drifts until a stage's preload no longer
+        # fits before the margin.  Carry it down to a fresh row at the left
+        # instead: the beam drops on a "v", is caught by a "}" on the row
+        # below, and faces right again with the full width ahead of it.
+        # Without this the entry marches off the edge and the whole form is
+        # refused, which is what sent long texts to the linear fallback.
+        if entry + len(preload) >= right - 2 and entry > laserfuck_layout.MARGIN:
+            # "^v{}" set the heading outright, so no mirror is needed: a
+            # "v" drops the beam to the row below, a "{" there sends it
+            # back along that row to the left margin, and a "}" on the
+            # next row down faces it right again with the full width free.
+            # The turns must share a column with the drop, since a beam
+            # only meets what lies directly along its heading.
+            put(row, entry, "v")
+            row += 1
+            put(row, entry, "{")
+            put(row, laserfuck_layout.MARGIN - 1, "v")
+            row += 1
+            put(row, laserfuck_layout.MARGIN - 1, "}")
+            entry = laserfuck_layout.MARGIN
         col = entry
         for char in preload:
             put(row, col, char)
@@ -449,8 +470,20 @@ def _laserfuck_snake_ring(text: str, width: int) -> str | None:
         exit_col = spine + 6
         put(test_row, exit_col, "v")
         row = test_row + 2
-        put(row, exit_col, "}")
-        entry = exit_col + 1
+        # A block exits six columns right of its spine, so the last one can
+        # leave the beam within a few columns of the edge -- too close for
+        # even the "}" that faces it right, let alone what follows.  Bring
+        # it back to the margin the same way a crowded entry is brought
+        # back, rather than refusing the whole form over three columns.
+        if exit_col >= right - 2:
+            put(row, exit_col, "{")
+            put(row, laserfuck_layout.MARGIN - 1, "v")
+            row += 1
+            put(row, laserfuck_layout.MARGIN - 1, "}")
+            entry = laserfuck_layout.MARGIN
+        else:
+            put(row, exit_col, "}")
+            entry = exit_col + 1
 
     height = max(index for index, _ in cells) + 1
     span = max(index for _, index in cells) + 1
