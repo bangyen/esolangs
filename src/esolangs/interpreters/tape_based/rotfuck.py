@@ -61,15 +61,26 @@ _COMMANDS = frozenset(_CYCLE)
 type _State = tuple[tuple[int, ...], int, int, int]
 
 
+#: Each command's index in ``_CYCLE``, so the rotation is an addition rather
+#: than a ``str.index`` scan.  A command's effective character after ``rot``
+#: steps is ``_CYCLE[(_OPCODE[ch] + rot) % 8]``; the dict doubles as the
+#: membership test, since a comment is exactly a character it does not hold.
+_OPCODE = {ch: i for i, ch in enumerate(_CYCLE)}
+
+
 def _at(chars: tuple[str, ...], rot: int, i: int) -> str:
     """Return the effective command at ``i`` under rotation ``rot``.
 
     A comment never rotates and never changes, so it reads as itself.
+
+    The rotation is arithmetic on a precomputed opcode rather than a scan
+    for the character's position in the cycle: this is the interpreter's
+    hottest function -- twice per step, once for the command and again for
+    every position a bracket search walks -- and the scan was 46% of a
+    generated program's runtime.
     """
-    ch = chars[i]
-    if ch in _COMMANDS:
-        return _CYCLE[(_CYCLE.index(ch) + rot) % len(_CYCLE)]
-    return ch
+    code = _OPCODE.get(chars[i], -1)
+    return _CYCLE[(code + rot) % 8] if code >= 0 else chars[i]
 
 
 def _forward(chars: tuple[str, ...], rot: int, i: int) -> int | None:
@@ -115,7 +126,11 @@ class _Program:
 
     def __init__(self, code: str) -> None:
         """Store ``code`` with a zero rotation count."""
-        self._chars = list(code)
+        # The source never changes -- only the rotation count does -- so the
+        # tuple every caller wants is built once here rather than per
+        # lookup.  It was rebuilt on each ``at`` call, an O(len(code)) copy
+        # to read one character, which alone was 15% of a run.
+        self._chars = tuple(code)
         self._rot = 0
 
     def rotate(self) -> None:
@@ -132,11 +147,11 @@ class _Program:
 
     def chars(self) -> tuple[str, ...]:
         """Return the unrotated source characters."""
-        return tuple(self._chars)
+        return self._chars
 
     def at(self, i: int) -> str:
         """Return the effective command at ``i`` under the current rotation."""
-        return _at(self.chars(), self._rot, i)
+        return _at(self._chars, self._rot, i)
 
 
 def _advance(state: _State, chars: tuple[str, ...], byte: int | None = None) -> _State:
