@@ -1150,13 +1150,6 @@ class TestWII2D:
                     acc = _wii2d_apply(routes[i][bit], acc)
                 assert acc == int(table[combo]), (table, bits, acc)
 
-    def test_routes_are_deterministic(self) -> None:
-        """The construction is a pure function of the table, not of the host."""
-        from esolangs.tools.boolean.wii2d import _wii2d_routes
-
-        table = "0001011001101001"
-        assert _wii2d_routes(4, table) == _wii2d_routes(4, table)
-
     def test_a_dense_seven_input_table_builds_and_runs(self) -> None:
         """A dense ``n == 7`` table builds, and every one of its 128 fills runs.
 

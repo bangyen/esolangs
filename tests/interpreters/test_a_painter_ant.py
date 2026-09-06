@@ -118,10 +118,24 @@ EpWSpN
 WsPN
 ESpNWePW
 sss
-ePwPsPN"""
+        ePwPsPN"""
         output = run_program(counter, 2000)
-        assert output  # runs without error and dumps a grid
-        assert len(output.splitlines()) >= 1
+        lines = output.splitlines()
+        # This long walk reaches the lower-left leaf after painting a 28-wide
+        # comb.  Non-empty output alone would not distinguish a truncated
+        # trace from the counterexample that prompted this regression test.
+        assert len(lines) == 5927
+        assert {len(line) for line in lines} == {28}
+        assert lines[:4] == [
+            "###.........................",
+            ".#..........................",
+            "............................",
+            "##..........................",
+        ]
+        assert lines[-2:] == [
+            "@#..........................",
+            "#...........................",
+        ]
 
 
 class TestStepMachine:

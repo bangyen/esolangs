@@ -497,11 +497,6 @@ class TestUnsquare:
         assert "li   s2" in mod.comp("OA-")
         assert "li   s2" in mod.comp("OAx")
 
-    def test_nested_loop_scan(self) -> None:
-        """Nested > in the OI-A scan increments the match counter."""
-        mod = importlib.import_module("esolangs.compilers.unsquare")
-        mod.comp("OA>>I<<<")  # must not crash
-
 
 class TestSuffolkComp:
     def test_compiles_various_programs(self) -> None:

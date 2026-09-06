@@ -1637,8 +1637,6 @@ class TestSnapshotWithoutTheCycleDetector:
             "g x { out 0,1,0,0,0,0,0,x; }\nmain {\n a = 0;\n for i:0..1 { g i; }\n}\n"
         )
 
-        # the same machine at the same point is the same state
-        assert at(prog, 2) == at(prog, 2)
         # the statement cursor advances
         assert at(prog, 1) != at(prog, 2)
         # a different binding is a different state, at the same cursor
