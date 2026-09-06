@@ -2768,7 +2768,15 @@ def _mux_sculpt(
             # nothing about the construction makes it *more* than enough.
             # This is the guard a change to either side would trip first.
             return None  # pragma: no cover - not observed; margin reaches 0
-        j.emit("<" * rewind + "[x" * rewind + "x")
+        # Emitted as three runs rather than one concatenated string.  The
+        # template is ``"".join(parts)`` either way, so the program is
+        # unchanged -- but a mixed string has no closed form, and this is
+        # the loop's hot path: split, the rewind's two long runs go through
+        # `_Sim.run_left` and `_Sim.run_walk` instead of being stepped one
+        # character at a time per row.
+        j.emit("<" * rewind)
+        j.emit("[x" * rewind)
+        j.emit("x")
     else:
         # The loop runs `2**n + 4` rounds and each fixes at least the
         # frontier row, so a table that needs more rounds than it has rows
