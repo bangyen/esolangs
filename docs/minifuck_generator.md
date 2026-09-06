@@ -422,14 +422,63 @@ around 0.03s.
   `n=3` truth tables in `test_boolean_tape` moved 1.68s -> 0.07s alongside
   and lost their `slow` marks.
 
-**The open regression.**  `minifuck` is back, at 14.9s of the sweep's 18.0s
-across sixty generators — a *regression*, not the cost the construction ought
-to carry.  Bisected 2026-08-30 by checking out
-`src/esolangs/tools/boolean/minifuck.py` alone at each commit that touched
-it: the parity table costs 0.08s at `ef651aa1` and `c48b1cdf`, 0.00s at
-`2a91ab70`, and 14.71s from `32f5638c` ("derive the stagings instead of
-storing 117 of them") onwards, unchanged through HEAD.  Deriving what was
-stored is cheap to *build* and expensive to *run*.  The `slow` mark keeps the
-fast run fast; it does not make the cost acceptable.  When the derivation is
-made to pay for itself, re-measure and drop the entry rather than leaving a
-stale number behind.
+- **`minifuck`** rejoined at 14.9s of the sweep's 18.0s across sixty
+  generators — a *regression*, not the cost the construction ought to carry.
+  Bisected 2026-08-30 by checking out
+  `src/esolangs/tools/boolean/minifuck.py` alone at each commit that touched
+  it: the parity table costs 0.08s at `ef651aa1` and `c48b1cdf`, 0.00s at
+  `2a91ab70`, and 14.71s from `32f5638c` ("derive the stagings instead of
+  storing 117 of them") onwards.  Deriving what was stored is cheap to
+  *build* and expensive to *run*.  It left 2026-09-06 at **0.03s** when the
+  emitter stopped stepping its straight runs character by character; see
+  below.
+
+The set is now empty.
+
+## The emitter's straight runs
+
+The generator simulates one row per truth-table row and advances them in
+lockstep as code is emitted, so the emitter's cost is `char x row`
+simulated steps.  Profiled on a six-input parity build, that was 173.7M
+`_Sim.exec` calls — and two thirds of those characters were a run of a
+single token:
+
+| emitted code         | n=6 steps  | n=6 share | n=5 share |
+|----------------------|------------|-----------|-----------|
+| `_clamp`, `"<" * k`  | 58,263,360 |     33.8% |     60.6% |
+| varied code          | 57,846,592 |     33.6% |     38.5% |
+| `_walk_to`, `"[x" * k` | 55,814,528 |   32.4% |      0.9% |
+
+The arity matters: at five inputs the clamp looks dominant and the walk
+free, because `acc` is small while the pool code already advances the
+pointer ~28 cells.  At six they are level, which is the shape to plan
+against.
+
+Both runs now take a closed form on `_Sim` rather than being stepped:
+
+- `"<" * k` is `ptr = max(ptr - k, 0)`.  `<` is the interpreter's cheapest
+  branch — no tape write, no print, no skip — so the whole run is one
+  saturating subtraction.
+- `"[x" * k` stays per-cell, because each `[` flips the cell it steps onto
+  and *cascades* into the cell beyond when that flip lands on zero.  The
+  win there is dropping the per-character call and six-tuple unpack, not
+  the loop.
+
+**The cascade is the trap.**  A first closed form that ignored it agreed
+with the stepper on fresh rows and diverged on 877 of 3000 random states.
+`test_the_closed_form_runs_agree_with_stepping_them` is that control, kept
+as a test: it builds arbitrary states before comparing, because a fresh row
+has a zero tape and no pending skip, which is exactly where a wrong model
+still looks right.
+
+`_Sim.exec` also inlines the two pointer-only instructions (`<` and a
+comment character) instead of delegating them.  Those are the only two that
+cannot print, read, cascade or set the skip; `.` and `[` still go to the
+interpreter's `_step`, which stays the single definition of what a Minifuck
+instruction means.
+
+Measured end to end on the six-input parity table: **43.6s -> 18.1s.**  The
+remaining cost is the varied-code third, which no run-length form reaches.
+Getting past it means not iterating rows in Python at all — holding each
+cell as a `2**n`-bit int and executing an instruction once with bitwise ops
+— which is a much larger change and is not done here.

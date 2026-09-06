@@ -29,15 +29,17 @@ _TABLES = ["00000000", "01101001"]
 
 # Generators marked ``slow`` for a cost that is a *regression*, not the cost
 # the construction ought to carry.  The rule is a one-second budget per entry
-# in this sweep.  ``minifuck`` is here at 14.9s of the sweep's 18.0s across
-# sixty generators, bisected 2026-08-30 to 32f5638c ("derive the stagings
-# instead of storing 117 of them"): the parity table costs 0.08s before it
-# and 14.71s from it onwards.  The mark keeps the fast run fast; it does not
-# make the cost acceptable.  When the derivation is made to pay for itself,
-# re-measure and drop the entry rather than leaving a stale number.
-# ``docs/minifuck_generator.md`` has the full ledger of what entered and left
-# this set, with the measurement behind each.
-_SEARCHING_GENERATORS_REGRESSED: frozenset[str] = frozenset({"minifuck"})
+# in this sweep.  The mark keeps the fast run fast; it does not make the cost
+# acceptable, so an entry leaves when the cost is paid for rather than when
+# it stops being noticed.
+#
+# The set is empty.  ``minifuck`` was its last member, at 14.9s of the
+# sweep's 18.0s, and left on 2026-09-06 when the emitter stopped stepping
+# its straight runs one character at a time: the entry now measures 0.03s
+# against the one-second budget.  ``docs/minifuck_generator.md`` has the
+# full ledger of what entered and left this set, with the measurement
+# behind each.
+_SEARCHING_GENERATORS_REGRESSED: frozenset[str] = frozenset()
 
 # Naming the languages rather than timing them at collection time is
 # deliberate: a wall-clock threshold evaluated during collection would make

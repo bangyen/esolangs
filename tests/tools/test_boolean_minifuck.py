@@ -2320,6 +2320,64 @@ class TestParameterizedMinifuck:
         assert deaths, "no stream hit the zero-pool read"
         assert skips, "no stream ended on a pending skip"
 
+    def test_the_closed_form_runs_agree_with_stepping_them(self) -> None:
+        """``run_left`` and ``run_walk`` match ``exec``ing the same run.
+
+        The two are the closed forms of ``"<" * k`` and ``"[x" * k``, which
+        together were two thirds of a six-input build's simulated steps.
+        They are an optimization only while they agree with the stepper, and
+        the disagreement they invite is not hypothetical: a first ``run_walk``
+        that ignored the cascade a ``[`` fires when its flip lands on zero
+        matched on the easy states and diverged on 877 of 3000 random ones.
+
+        So the comparison is made from *arbitrary* states, not fresh ones --
+        a fresh row has a zero tape and no pending skip, which is exactly
+        where a wrong model still looks right.
+        """
+        import random
+
+        from esolangs.tools.boolean.minifuck import _Sim
+
+        rng = random.Random(20260906)
+        skips = walks_cascaded = clamped = 0
+
+        for _ in range(400):
+            start = _Sim(96)
+            for _ in range(rng.randrange(0, 25)):
+                start.exec(rng.choice("<[.x"))
+            count = rng.randrange(0, 12)
+
+            for token, closed in (("<", "run_left"), ("[x", "run_walk")):
+                stepped = start.copy()
+                for ins in token * count:
+                    stepped.exec(ins)
+
+                direct = start.copy()
+                getattr(direct, closed)(count)
+
+                assert direct.key() == stepped.key(), (
+                    token,
+                    count,
+                    start.key(),
+                    "the closed form left a different state",
+                )
+
+            if start.skip:
+                skips += 1
+            if start.ptr and count:
+                clamped += 1
+            probe = start.copy()
+            probe.run_walk(count)
+            if probe.tape != start.tape:
+                walks_cascaded += 1
+
+        # A sweep that never reaches the interesting states proves nothing:
+        # the pending skip is what makes the run's first instruction special,
+        # and a walk that never wrote a cell never exercised the cascade.
+        assert skips, "no state carried a pending skip"
+        assert clamped, "no clamp started away from cell 0"
+        assert walks_cascaded, "no walk touched the tape"
+
     def test_the_walk_needs_a_converged_pointer_going_right(self) -> None:
         """``[x`` walks are only safe rightward from one shared position.
 
