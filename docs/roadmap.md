@@ -657,13 +657,24 @@ open:
   the rest open.
 - **The remaining literal tables in `tools/boolean/`** — swept by AST over
   every module in `src/`, classified by provenance, and each one probed
-  rather than read.  **One was convertible and is shipped; the rest are
-  not candidates**, with the evidence for each recorded so the sweep is
+  rather than read.  **Three closed and are shipped; the rest are not
+  candidates**, with the evidence for each recorded so the sweep is
   not re-run from scratch.  The standing rule ("a named rule,
   never a search or a frozen table") is about *frozen search output* — a
   measured cover or a tuned ordering over a proven-total structure is a
   different artefact and converting one trades a table for a search,
   which is backwards.
+  Two method notes from the pass that closed `_SCHEDULES`, both of which
+  cost time here: **the multiplicity of a table can be the finding.**
+  Four schedules per arity looked like a cover and were a size contest —
+  every one served every table — and that is what turned "collapse ten
+  tuples" into "find one shape".  And **a longer entry can be the
+  collapsible one**: length-optimal entries are incompressible *because*
+  they are optimal, so the family that closes is found by relaxing size,
+  not by chasing the shipped bytes.  Both closures that needed a new
+  construction (`_LADDER_GADGETS`, `_LAWS`) came from paying characters
+  for uniformity; every attempt to reproduce a minimal entry exactly
+  failed.
     - **`_FOLD_SERVED` (%^2^-1)** — **closed; shipped** at `57d4c0bb`.  The
       twelve-entry frozenset is now `_fold_served()`.  Its comment called
       the four absences a corpus measurement; they are structural.
@@ -691,16 +702,34 @@ open:
       errors**, exhaustive at `n == 2, 3` and sampled at 4 and 5, and the
       shipped order beats 7 of 8 random permutations on total size (57708
       against up to 59557; worst case 382 against up to 476).  Recovering
-      the ordering would mean re-running that tuning.  **Its one real
-      defect is fixed:** the header said "cheapest first", which is false —
-      `('', '0')` at one character sits after three two-character entries,
-      and sorting by total characters, by characters with reset/star
-      tiering, and by a weighted op cost all fail to reproduce the order.
-      The header now reads "in merge order" and the block records that the
-      order is semantic, along with the permutation figures above, so a
-      reader cannot mistake a size-tuned preference for a cost sort.
-    - **`_SLICE_YIELD_ORDER` (Minifuck)** — **not a candidate; dormant, not
-      dead.**  Unreachable as shipped — `_slices` returns the plain
+      the ordering would mean re-running that tuning.  **The negative is
+      now a proof, and the comment is fixed** (`8434def4`).  Widening the
+      earlier three failed sort keys to 1.9M candidates — 63 features
+      (field lengths, per-character counts, weighted op costs) in every
+      1-to-3-deep lexicographic composition, both directions — yields
+      **zero** monotone along the shipped sequence, against a positive
+      control recovering 172 keys for a deliberately sorted list.  Two
+      adjacent *descents* in total length (index 10→11 and 17→18) close
+      it outright: no key monotone in length can order this table, so no
+      wider battery is worth running.  The old "cheapest first" claim
+      was false and undercounted — `('', '0')` sits behind **six**
+      two-character entries, not three, and the table holds **42**
+      total-character inversions across two regions.  The header now
+      reads "in merge order", so a reader cannot mistake a size-tuned
+      preference for a cost sort.
+    - **`_SLICE_YIELD_ORDER` (Minifuck)** — **derived; the derivation is
+      now checked** (`8434def4`).  The order is the ten slices ranked by
+      *marginal* first-hit column yield at `n == 4` — what each slice is
+      first to reach walking the plain enumeration, not what it could
+      place alone, which ranks them differently and was the ambiguity
+      that made this look frozen.  All ten counts differ (2874 best, 424
+      worst, matching the figures the comment already quoted), so
+      descending order is total and needs no tie-break, and
+      `test_the_slice_order_is_its_measured_yield` reproduces the tuple
+      exactly from `_staging_index(4)` each run.  A stated measurement is
+      not a checked one, and this table is **dormant, not dead** — so
+      nothing else would have caught it drifting.  Unreachable as
+      shipped — `_slices` returns the plain
       enumeration at every arity because `_STAGING_BUDGET` and
       `_STAGING_BUDGET_N5` are both `None` and nothing outside the tests
       assigns them — but a working knob rather than dead code.  With
@@ -747,36 +776,43 @@ open:
       which is the metric.
     - Method note, since element count misled this sweep once: a small
       literal can hold a large frozen table.  The `>= 4`-element threshold
-      that found the six above would have missed `_SCHEDULES` (three keys,
-      one per arity) entirely.  Sweep by provenance, not by size.
-    - **`_SCHEDULES` (123)** — **not converted; a priced trade, with the
-      regression run and negative.**  The ten frozen separation schedules
-      are offline first-fit output, the newest table of the target class
-      (introduced while retiring the plan dicts).  Probing: every
-      schedule's replay ends with all `2**n` rows on distinct odd
-      positions, near-consecutive (`{1,3,..,2^(n+1)-1}` for six of ten) —
-      the *end state* is canonical, and what the sweep found is the
-      row-to-position assignment, the same wrong-direction geometry the
-      plan-rule hunt already proved hard (hypothesis D).  The walks and
-      move displacements match no separation-law key (walks `(4,0)`,
-      `(5,4)`, `(3,1)`, `(0,2)` against popcount class sizes `[1,2,1]`;
-      displacements mixed-sign, no halving).  Converting the table to
-      the first-fit greedy that found it trades a table for a search,
-      the rejected landing point; the loop-less rule beneath —
-      `construct()`, total at every arity — is what retiring the
-      schedules falls back to.  **Measured, not quoted** (an earlier
-      revision of this entry said ~12x off the pre-ratio-2 audit
-      figures): running `construct()` over every table, the means are
-      55.0 / 178.6 / 605.8 against the schedule path's 26.0 / 60.5 /
-      163.9 — 2.1x / 3.0x / 3.7x, worst single table 10.5x at `n == 3`.
-      So the trade is far cheaper than first recorded, and by the
-      standing preference (a longer program is not a reason to keep a
-      table) retiring `_SCHEDULES` for `construct()` at every arity is a
-      live option; it reverses a size win shipped deliberately days
-      before, so it stays the maintainer's call rather than a closure to
-      ship unasked.  The greedy finding no schedule at all at `n == 4`
-      marks the space as tight, so a wider offline sweep is not the
-      lever either.
+      that found the six above would have missed the ten separation
+      schedules (three keys, one per arity) entirely — and their
+      replacement `_LAWS` is three keys too, so the threshold would miss
+      it again.  Sweep by provenance, not by size.
+    - **`_SCHEDULES` (123)** — **closed; the table is gone** (`56c3754a`).
+      The ten frozen schedules are replaced by `_LAWS`, one separation
+      *shape* per arity.  Two findings reframed it.  First, the
+      multiplicity bought nothing structural: **every schedule serves
+      every table at `n >= 2`** (4/4 candidates build all 16 and all 256),
+      so the four per arity were a size contest over an already-total
+      structure, not a cover.  Second, the reason a walk-only law fails
+      here: after a bare fill the rows differ in their **marks**, not
+      their positions (8 distinct states for 8 rows, all sharing a
+      parity), so no walk can split them and the separator has to be a
+      *test* whose displacement leaves some rows marked and others clear.
+      That collapses the grammar — one constant pre-fill walk, then pure
+      tests alternating `1`-runs and `2`-runs, no raw repositioning part
+      at all.  Selecting by least mean template length, one rule at every
+      arity, gives `(0, ())`, `(2, (3,2,4))`, `(3, (1,3,9,4))`; at
+      `n == 3` only **13 laws** cover all 256 tables and the winner leads
+      by 18%.  Price: **1.28x** (55238 characters over 276 tables against
+      43020; 1.02/1.26/1.29 by arity, worst single table 3.0x, best
+      0.62x), still 2.9x under `construct()`'s 158152.  All 276 replay
+      row by row, and `test_the_separation_law_is_the_least_mean`
+      re-derives the `n <= 2` constants by the same sweep each run.
+      **Two routes rejected first, both worth not re-running.** Deriving
+      the shipped moves by shortest-then-lex search reproduces 3 of 4 at
+      `n == 2` but is **not cap-stable** at `n == 3` — widening the
+      per-field cap returns *costlier* tuples (14→22, 11→25), so those
+      constants are not canonical and re-freezing a search's output only
+      moves the table.  And the retired synchronized pipeline's geometry
+      *is* a real closed form — `marks[i] = (i+1)*2**n + 1`,
+      `ws[i] = 2**(n-i)`, which its own comment called "an observation,
+      not a totality argument" but which **separates at `n = 4` and `5`**,
+      two arities past its freeze — yet costs **2.65x**, because the
+      merge choreography that buys a mark per input is what makes
+      gap-halving work at all.
     - Re-audit additions (2026-09-05, second pass): **`_PLANS`
       (Minifuck)** is already the accepted end state — five semantic
       parameter tuples rendered by `_step`, an ablation-measured cover,

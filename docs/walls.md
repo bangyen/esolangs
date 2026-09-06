@@ -160,18 +160,25 @@ a **bare-fill seed**: with no merge choreography, the fills themselves
 are the embedding (a `1` fill flips the cell it stands on), leaving the
 rows popcount-spread at one shared parity with row-dependent marks, for
 a few characters instead of the synchronized pipeline's walk-merge-scrub
-per input.  A short frozen schedule of walk/descend segments — each
-closed by `33`, each with *even* displacement so escape cascades cannot
-break the shared parity — separates the rows to distinct odd positions,
-and a junk-aware form of the planned kill (paint the rows whose tested
-cell disagrees with the table, rather than exactly the 0-rows) settles
-the verdict.  A few schedules are frozen per arity and a table takes the
-shortest; the schedules were discovered offline but are table-independent
-constants replayed deterministically — nothing searches at build time.
-The trade is length for derivability: mean template lengths are 26.0,
-60.5 and 163.9 characters at one, two and three inputs against the
-retired plans' 5.75, 11.44 and 19.97 (4.5x, 5.3x, 8.2x), with every byte
-re-derivable from the rules plus the frozen constants.
+per input.  Separation is then a **law, not a schedule**.  What separates
+the rows is not where they sit — after a bare fill they share a parity
+and differ only in their *marks*, so no walk can split them — but a test
+whose displacement leaves some rows on a marked cell and others clear:
+the marked ones re-run the segment and escape, the clear ones skip.  So
+the whole family is one constant pre-fill walk followed by pure tests
+alternating `1`-runs and `2`-runs, one displacement each, each closed by
+its own `33`.  One law per arity is named, chosen by least mean template
+length; at three inputs only thirteen laws cover all 256 tables.  A
+junk-aware form of the planned kill (paint the rows whose tested cell
+disagrees with the table, rather than exactly the 0-rows) then settles
+the verdict.  Nothing searches at build time: one prototype is replayed
+per arity and every table clones it.
+The trade is length for derivability: mean template lengths are 26.5,
+76.2 and 210.6 characters at one, two and three inputs against the
+retired plans' 5.75, 11.44 and 19.97, with every byte re-derivable from
+the rules plus the law's two constants.  That is 1.28x the schedules the
+law replaced and still 2.9x under the wide constructor, which is the
+only route needing no constants at all.
 
 ### Wider arities: every stage planned, none searched
 
