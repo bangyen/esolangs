@@ -9,6 +9,8 @@ import argparse
 import importlib
 import random
 
+from _pct_fold import collision_candidates, signature, span
+
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.pct_squared_minus_one import run
 
@@ -35,11 +37,6 @@ _EXPECTED = {
         "ops": 19_470,
     },
 }
-
-
-def signature(state):
-    """Keep exact geometry and cofactor strings, including their remaining depth."""
-    return tuple((point, point_span, cls) for point, point_span, cls, _rows in state)
 
 
 def search(state, target, *, maxsteps=200_000, kcap=3):
@@ -77,10 +74,6 @@ def search(state, target, *, maxsteps=200_000, kcap=3):
             best = current
             print("search", steps, len(seen), len(best), span(best), flush=True)
     return None, best, steps, len(seen)
-
-
-def span(state):
-    return max(p for p, _s, _c, _r in state) - min(p - s for p, s, _c, _r in state)
 
 
 def tighten(state):
@@ -128,29 +121,14 @@ def tighten(state):
                 ):
                     candidates.append((span(nxt), [op], nxt))
         # A cmin collision at span 3004 is entered through the legal
-        # two-step form: widen the endpoint to exactly 3003 at cmax, then
-        # contract that same endpoint from the opposite side at cmin.
-        for kind, opposite in (("d", "u"), ("u", "d")):
-            frame = pct._fold_wipe_frame(current, kind, 1)
-            if frame is None:
-                continue
-            q1, _tops = frame
-            widen = pct._fold_op(current, kind, 1, pct._LIMIT + q1)
-            widened = pct._fold_step(current, widen)
-            if widened is None or span(widened) != pct._LIMIT:
-                continue
-            amount = pct._fold_clean_amount(widened, opposite, 1)
-            if amount is None:
-                continue
-            contract = pct._fold_op(widened, opposite, 1, amount)
-            nxt = pct._fold_step(widened, contract)
-            if (
-                nxt is not None
-                and len(nxt) == len(current)
-                and span(nxt) <= pct._LIMIT
-                and signature(nxt) not in seen
-            ):
-                candidates.append((span(nxt), [widen, contract], nxt))
+        # two-step form, spelled once in _pct_fold.  Compaction has already
+        # reached the target count here, so a candidate that changes it is
+        # not a tightening and is dropped.
+        candidates.extend(
+            (new_span, list(pair), nxt)
+            for new_span, pair, nxt in collision_candidates(current, seen)
+            if len(nxt) == len(current)
+        )
         if not candidates:
             raise AssertionError(
                 ("tightening stuck", len(current), before, guard, signature(current))
