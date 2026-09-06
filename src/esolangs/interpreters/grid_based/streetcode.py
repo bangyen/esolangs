@@ -17,8 +17,8 @@ How this module is laid out
 ---------------------------
 
 Movement is pure and lives at module level; the run is mutable and lives
-in :class:`_Machine`.  The line between them is exactly the line between
-what steers and what does not.
+in :class:`_Machine`.  That line is exactly the line between what steers
+and what does not.
 
 * The types come first: :class:`_Car` (where the car is and which way it
   points), :class:`_Latches` (what the steering phases carry between
@@ -40,9 +40,9 @@ what steers and what does not.
       _drive(grid, state, arrival_cell, current_cell) -> _State | "halt" | None
 
   A drawing, a state, and the only two tape values movement is allowed to
-  read -- and that is everything a step depends on.  The intersection
-  logic in particular can be reasoned about by reading these functions:
-  none of them can consult a machine, because none of them is given one.
+  read -- everything a step depends on.  The intersection logic can be
+  reasoned about from these functions alone: none of them can consult a
+  machine, because none of them is given one.
 
 * :class:`_Machine` holds what is genuinely a run rather than a rule --
   the tape, CP, the I/O, whether the car has stopped, and where it
@@ -50,12 +50,10 @@ what steers and what does not.
   (that is where every effect happens) and then applies :func:`_drive` to
   find the next state.
 
-Two things fall out of the split.  :meth:`_Machine._drive_states` can
-enumerate the entire reachable state space by *calling* :func:`_drive`,
-where it used to have to move the machine onto each state, run the rules
-for their side effects, and restore every field afterwards.  And a rule
-can be asked about a hypothetical car -- in a test, or in the search --
-without a car being driven there and back.
+Two things fall out of the split: :meth:`_Machine._drive_states`
+enumerates the reachable state space by *calling* :func:`_drive` (see
+:class:`_State`), and a rule can be asked about a hypothetical car -- in a
+test, or in the search -- without a car being driven there and back.
 
 Runtime error contract:
 
@@ -105,17 +103,17 @@ _Pattern = Literal["?", "W", "."]
 
 # The four compass headings the car drives under.  Naming them keeps a
 # heading distinct from the cell characters and form patterns that are also
-# plain strings, so a mix-up is a type error rather than a silent lookup
-# against the wrong alphabet.
+# plain strings, so a mix-up is a type error, not a silent lookup against
+# the wrong alphabet.
 _Heading = Literal["N", "E", "S", "W"]
 
 # What a junction detector reports: the number of roads the drawn shape
 # offers, counting the one the car came in on, or 0 for no junction at
 # all.  Only 0, 3 and 4 are reachable -- a "two-way junction" is a
 # corridor and a five-way needs a fifth direction -- so naming the three
-# lets the checker reject an arm for a count that cannot occur, the same
-# way ``_Pattern`` does for the form alphabet.  The values stay plain
-# ints rather than an enum: ``_junction_kind`` is used as a truth value
+# lets the checker reject an arm for a count that cannot occur, as
+# ``_Pattern`` does for the form alphabet.  The values stay plain ints
+# rather than an enum: ``_junction_kind`` is used as a truth value
 # (``not self._junction_kind(...)``) and 0 has to keep meaning false.
 _Junction = Literal[0, 3, 4]
 
@@ -123,23 +121,22 @@ _Junction = Literal[0, 3, 4]
 # under.  A latch is only ever set for a turn onto a detected side road:
 # ``_junction_choices`` offers nothing but ``_left(heading)``, ``heading``
 # and ``_right(heading)``, and ``turning`` in
-# :func:`_heading_from_junction` rules out the straight-ahead
-# case, so these two are the whole space -- straight and reverse are not
-# merely unobserved, they are unreachable.  Storing the turn rather than
-# the destination heading is what makes a merge's two direction fields
-# different types, so :class:`_Merge` cannot be built with them swapped.
+# :func:`_heading_from_junction` rules out the straight-ahead case, so
+# these two are the whole space -- straight and reverse are unreachable,
+# not merely unobserved.  Storing the turn rather than the destination
+# heading makes a merge's two direction fields different types, so
+# :class:`_Merge` cannot be built with them swapped.
 _Turn = Literal["left", "right"]
 
 
 class _Mouth(NamedTuple):
     """A road mouth as :func:`_road_mouth` measured it.
 
-    Three bare ints that mean three different things, and the two depths
-    are interchangeable to the checker: named fields are what keep
-    ``near`` and ``far`` from being read in the wrong order by the
-    helpers that consume a mouth (:func:`_lane_bounded`,
-    :func:`_lane_merge_target`, and the hug suppression in
-    :func:`_heading_from_junction`).
+    Three bare ints meaning three different things, and the two depths
+    are interchangeable to the checker: named fields keep ``near`` and
+    ``far`` from being read in the wrong order by the helpers that
+    consume a mouth (:func:`_lane_bounded`, :func:`_lane_merge_target`,
+    and the hug suppression in :func:`_heading_from_junction`).
     """
 
     # Perpendicular distance from the car to the wall carrying the mouth.
@@ -164,14 +161,14 @@ class _Merge(NamedTuple):
     two from being swapped in a positional call -- a mistake the checker
     could not see and the drive-state graph would faithfully reproduce.
     A :data:`_Turn` beside a :data:`_Heading` is two different types, so
-    the swap no longer typechecks; it is ruled out by the record's shape
-    rather than by a convention the next construction site has to follow.
+    the swap no longer typechecks; the record's shape rules it out, not a
+    convention the next construction site has to follow.
 
-    Storing the turn also keeps one fact in one place.  The destination
-    is recovered by :attr:`new_heading`, and the "was this a left turn?"
-    question :func:`_heading_from_merge_target` asks when it
-    re-reads the branch is now the stored field rather than a comparison
-    that reconstructs it -- the two spellings could previously disagree.
+    Storing the turn also keeps one fact in one place.  :attr:`new_heading`
+    recovers the destination, and the "was this a left turn?" question
+    :func:`_heading_from_merge_target` asks when it re-reads the branch is
+    now the stored field rather than a comparison that reconstructs it --
+    the two spellings could previously disagree.
 
     ``None`` (rather than an instance) means no merge is in progress.
     See ``_Machine.__init__``.
@@ -208,17 +205,17 @@ class _Latches(NamedTuple):
 
     Grouped into one record because they travel together everywhere: the
     machine's field, :meth:`_Machine.snapshot`, and the successor states
-    the drive-state search builds all used to spell the same three
-    fields out independently, so adding or reordering a latch meant
-    editing several lists in step and silently corrupting the drive-state
-    graph on missing one.  One record means one field order.
+    the drive-state search builds all used to spell the same three fields
+    out independently, so adding or reordering a latch meant editing
+    several lists in step and silently corrupting the drive-state graph on
+    missing one.  One record means one field order.
 
-    The record is also what makes the steering phases functions rather
-    than mutations.  Each takes the latches it was handed and returns the
-    ones the next phase and the next step should see (see
-    :class:`_Steer`); a phase used to write them back onto the machine
-    one field at a time, which is why its effect on the following step
-    could not be read off its signature.
+    The record also makes the steering phases functions rather than
+    mutations.  Each takes the latches it was handed and returns the ones
+    the next phase and the next step should see (see :class:`_Steer`); a
+    phase used to write them back onto the machine one field at a time,
+    which is why its effect on the following step could not be read off
+    its signature.
     """
 
     # Set when a junction turn is detected but not yet reached (phase 1).
@@ -234,21 +231,21 @@ class _State(NamedTuple):
     """The movement half of a machine's state.
 
     Where the car is, which way it points, and the latches it carries.
-    The tape, CP and I/O are deliberately absent -- they do not steer,
-    and leaving them out is what makes the state space finite and small
-    enough to enumerate (see ``_Machine._drive_states``).  A NamedTuple
-    rather than a plain tuple so that the graph's keys, the successors
-    :func:`_drive` returns and ``step``'s lookup all name their fields;
-    it stays hashable and tuple-compatible, which is what the graph dict
-    and :meth:`_Machine.snapshot` need.
+    The tape, CP and I/O are deliberately absent -- they do not steer, and
+    leaving them out makes the state space finite and small enough to
+    enumerate (see ``_Machine._drive_states``).  A NamedTuple rather than
+    a plain tuple so that the graph's keys, the successors :func:`_drive`
+    returns and ``step``'s lookup all name their fields; it stays hashable
+    and tuple-compatible, as the graph dict and :meth:`_Machine.snapshot`
+    need.
 
     :class:`_Machine` holds one of these as the whole of its steering
     state, so the value a step looks up in the graph is the machine's own
     rather than one rebuilt from separate fields to match.  Those were
     once separate -- a ``_Car`` beside a ``_Latches`` -- and ``step`` had
-    to assemble a state on the way in and take one apart on the way out,
-    which is two conversions that existed only because the same four
-    values were written down twice.
+    to assemble a state on the way in and take one apart on the way out:
+    two conversions that existed only because the same four values were
+    written down twice.
     """
 
     row: int

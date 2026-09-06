@@ -3,9 +3,9 @@ r"""Constructed 123 templates for four and more inputs.
 The small-arity route in :mod:`esolangs.tools.boolean.one_two_three`
 covers one, two and three inputs from a cheaper bare-fill seed; this
 module builds a template for *any* wider table, under the same contract:
-each ``{Xi}`` appears once in name order, ``1``
-embeds a one and ``2`` a zero (equal width), and the instantiated program
-halts for a 0 entry and loops by a proven state revisit for a 1.
+each ``{Xi}`` appears once in name order, ``1`` embeds a one and ``2`` a
+zero (equal width), and the instantiated program halts for a 0 entry and
+loops by a proven state revisit for a 1.
 
 Why this is possible at all
 ---------------------------
@@ -14,8 +14,8 @@ Why this is possible at all
 phase *is* the computed value, so a trailing inert embed shifts the very
 quantity the plan decodes."  That objection binds the phase-decode shape
 the searched plans use, not the language: after each embed the two fill
-branches can be *re-merged* to a common pointer position, because ``2``
-maps both -1 and -2 to 0 (the -2 route prints a junk byte, which is
+branches can be *re-merged* to a common pointer position, since ``2`` maps
+both -1 and -2 to 0 (the -2 route prints a junk byte, which is
 snapshot-invisible — ``ScriptedIO.position()`` counts reads, not writes).
 The common string ``"1"*(P+1) + "212112"`` merges the branches of a fill
 executed at position ``P`` back to position 0 for every ``P``, leaving the
@@ -397,23 +397,23 @@ def _normalize(b: _Builder) -> None:
     absorbing dead state, so the loop raises rather than spinning.
     """
     # Which character comes next depends only on where the rows *are* --
-    # ``1`` when some row sits at -3, ``2`` otherwise -- and never on
-    # what they have marked.  So the whole string is planned on a plain
-    # list of positions, with no tape and no builder clone, and only the
-    # finished string is executed (once, through the batched ``run``).
-    # This is the difference between planning and simulating: the probe
-    # used to run every row's tape through ``_exec_char`` per character,
-    # which was 92% of every command the separation stage simulated.
+    # ``1`` when some row sits at -3, ``2`` otherwise -- never on what they
+    # have marked.  So the whole string is planned on a plain list of
+    # positions, with no tape and no builder clone, and only the finished
+    # string is executed (once, through the batched ``run``).  This is the
+    # difference between planning and simulating: the probe used to run
+    # every row's tape through ``_exec_char`` per character, 92% of every
+    # command the separation stage simulated.
     positions = [r.pos for r in b.live()]
     if all(p >= 0 for p in positions):
         return
-    # A live-lock is a repeated position vector, and it is reached almost
-    # at once: the step is deterministic and only the four ring cells can
-    # hold a negative row, so a cycling state repeats within a handful of
-    # steps (measured worst case: nine).  Detecting the repeat ends those
-    # calls immediately instead of spinning to a 10000-iteration cap --
-    # which is where this loop spent 4.96M of its 4.96M iterations, since
-    # the calls that *do* normalize emit only a few characters each.
+    # A live-lock is a repeated position vector, reached almost at once:
+    # the step is deterministic and only the four ring cells can hold a
+    # negative row, so a cycling state repeats within a handful of steps
+    # (measured worst case: nine).  Detecting the repeat ends those calls
+    # immediately instead of spinning to a 10000-iteration cap -- where
+    # this loop spent 4.96M of its 4.96M iterations, since the calls that
+    # *do* normalize emit only a few characters each.
     out: list[str] = []
     seen: set[tuple[int, ...]] = {tuple(positions)}
     while True:
@@ -463,12 +463,12 @@ def _phase_a(b: _Builder, marks: list[int]) -> None:
 
     The fill+merge flips the whole interval ``[0, P+1]`` for a 0 row and
     ``[0, P]`` for a 1 row — hundreds of contiguous junk marks per embed,
-    which used to push every later closing walk (and so every position)
-    far above the cells that still distinguish the rows.  Since all rows
-    are position-synchronized after the merge, one more walk-descend-pop
-    over ``[0, P+1]`` re-flips the junk identically for every row and
-    cancels it, leaving exactly one mark at ``P+1`` per *set* bit:
-    after phase A row ``r``'s tape is ``{marks[i] : r.bits[i] == 1}``.
+    which used to push every later closing walk (and so every position) far
+    above the cells that still distinguish the rows.  Since all rows are
+    position-synchronized after the merge, one more walk-descend-pop over
+    ``[0, P+1]`` re-flips the junk identically for every row and cancels it,
+    leaving exactly one mark at ``P+1`` per *set* bit: after phase A row
+    ``r``'s tape is ``{marks[i] : r.bits[i] == 1}``.
     """
     for i, m in enumerate(marks):
         p = m - 1
@@ -585,12 +585,12 @@ def _geometry(n: int) -> tuple[tuple[int, ...], tuple[int, ...] | None]:
 def _paint(b: _Builder, k: int) -> None:
     """Flip exactly cell ``pos + k`` for every live row, positions kept.
 
-    Two nested blocks cancel: ``"2"*k + "1"*k`` walks up ``k`` and
-    descends back, flipping the stripe ``[pos+1, pos+k]``, and the
-    ``k - 1`` block re-flips ``[pos+1, pos+k-1]`` — the XOR leaves one
-    mark at ``pos + k`` and every position where it started.  The walk
-    never descends past its own start, so no row can enter the ring or
-    read, whatever the tape holds.
+    Two nested blocks cancel: ``"2"*k + "1"*k`` walks up ``k`` and descends
+    back, flipping the stripe ``[pos+1, pos+k]``, and the ``k - 1`` block
+    re-flips ``[pos+1, pos+k-1]`` — the XOR leaves one mark at ``pos + k``
+    and every position where it started.  The walk never descends past its
+    own start, so no row can enter the ring or read, whatever the tape
+    holds.
     """
     if k < 1:  # pragma: no cover - the verdict computes k >= 1
         raise ConstructError(f"paint offset {k} is not above the row")
@@ -629,13 +629,12 @@ def _verdict(b: _Builder, table: str) -> None:
       when every position is odd).
 
     So the whole verdict is: paint one shield per live 0-row below the
-    kill, close the paints (every row still sits on its own unmarked
-    cell, so the test is vacuously FALSE), and emit one kill with ``a``
-    two above the highest 1-row.  Every fate is still validated on the
-    exact model by ``test(kills=...)``, and the closing replay re-runs
-    every row on the interpreter's own rules — the preconditions above
-    make the construction *total*, they are not what proves any single
-    emission.
+    kill, close the paints (every row still sits on its own unmarked cell,
+    so the test is vacuously FALSE), and emit one kill with ``a`` two above
+    the highest 1-row.  Every fate is still validated on the exact model by
+    ``test(kills=...)``, and the closing replay re-runs every row on the
+    interpreter's own rules — the preconditions above make the construction
+    *total*, they are not what proves any single emission.
     """
     ones = [r for r in b.live() if _table_val(table, r.bits) == "1"]
     if not ones:
@@ -694,10 +693,10 @@ def _endgame(b: _Builder) -> None:
 def _jump_tables(code: str) -> tuple[list[int], list[int]]:
     """Per ``3`` position, where a backward and a forward jump land.
 
-    The interpreter rescans for the partner ``3`` on every jump, which on
-    a template whose segments are hundreds of commands long is a linear
-    scan per executed jump.  The landing sites depend only on the code,
-    so they are computed once for the whole replay.
+    The interpreter rescans for the partner ``3`` on every jump, which on a
+    template whose segments are hundreds of commands long is a linear scan
+    per executed jump.  The landing sites depend only on the code, so they
+    are computed once for the whole replay.
     """
     threes = [i for i, c in enumerate(code) if c == "3"]
     back = [0] * len(code)

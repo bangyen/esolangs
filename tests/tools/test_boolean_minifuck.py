@@ -1939,9 +1939,9 @@ class TestParameterizedMinifuck:
         tuple for tuple, because the order -- not a stored answer -- is what
         decides which program a truth table gets.
 
-        This is the regression net for one specific mistake, and it is worth
-        stating what makes it hard to catch: an index that walks the order
-        wrongly still produces columns that are all reachable and all valid.
+        This is the regression net for one specific mistake, and what makes
+        it hard to catch: an index that walks the order wrongly still
+        produces columns that are all reachable and all valid.
         A draft of the index interleaved the two enumeration passes per
         slice instead of running every pure bracket run before any insert
         suffix, and the only symptom was five-input XOR being assigned

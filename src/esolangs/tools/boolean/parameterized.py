@@ -27,10 +27,10 @@ reads each of its ``n`` inputs exactly once per run; a no-input language's
 parameterized generator should match that, so a template may contain each
 ``{Xi}`` placeholder at most once.  Re-embedding a bit at multiple decision
 nodes would let a no-input program "read" an input more than its
-input-capable counterpart does, which muddies the generator API.  Each
-generator below therefore stores every input once (a tape load, a register
-pack, a deque/stack push, a variable, or a mirror) and reads it back, rather
-than re-substituting it.
+input-capable counterpart does, muddying the generator API.  Each generator
+below therefore stores every input once (a tape load, a register pack, a
+deque/stack push, a variable, or a mirror) and reads it back, rather than
+re-substituting it.
 
 There is no complement placeholder.  :func:`instantiate` used to fill a
 ``{Ci}`` beside each ``{Xi}``, for a generator that wanted ``1 - bit``
@@ -38,8 +38,8 @@ embedded as a constant, but none does: ``bfpda``'s node structure needs a
 truthy marker to stay on the stack after each bit is consumed, and the
 marker's value never depends on the bit, so it is a constant written
 straight into the template; ``nocomment`` computes each bit's complement
-from ``{Xi}`` at runtime with its ``s``-as-NOT-gate.  The placeholder and
-the ``set_comp`` argument that filled it are gone.
+from ``{Xi}`` at runtime with its ``s``-as-NOT-gate.  The placeholder and the
+``set_comp`` argument that filled it are gone.
 """
 
 from functools import cache
@@ -154,11 +154,11 @@ _EVAL_MAX_OPS = 16
 # The law over-approximates and never under-approximates: it admits longer
 # spellings of arrangements a shorter word already reaches -- 37255 words
 # for the 735 arrangements the cap allows -- which first-claim-wins
-# discards.  That is what makes the construction safe: no arrangement can
-# be lost, only re-spelled.  The fold this feeds is byte-identical to the
+# discards.  That is what makes the construction safe: no arrangement can be
+# lost, only re-spelled.  The fold this feeds is byte-identical to the
 # 735-entry catalog it replaced, at every ``n`` from 1 to 14.  The set is
-# finite for *every* ``n``: a word moves at most six values, deeper riding
-# along in rigid whole-stack reversals, so arrangements stop appearing
+# finite for *every* ``n``: a word moves at most six values, deeper ones
+# riding along in rigid whole-stack reversals, so arrangements stop appearing
 # once the stack outgrows that reach (620, 691, 717, 728, 733, 735 over
 # ``n == 7..12``, then constant).  ``test_reorder_catalog_matches_search``
 # replays the replaced breadth-first search and asserts byte equality.
@@ -284,11 +284,11 @@ def _eval_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     and from ``n == 12`` all 735 programs claim distinct arrangements.
 
     **This is a runtime reorder, not a relabelling.**  The ``{Xi}`` blocks
-    keep their slots and the harness fills them exactly as before; what
-    changes is the emitted program, which now rearranges the stack the nodes
-    pop from.  The nodes themselves name no input -- each is ``~=~?`` plus a
-    semicolon run fixed by its heap index -- so the arrangement is the only
-    thing that decides which input a level tests.
+    keep their slots and the harness fills them as before; what changes is
+    the emitted program, which now rearranges the stack the nodes pop from.
+    The nodes themselves name no input -- each is ``~=~?`` plus a semicolon
+    run fixed by its heap index -- so the arrangement alone decides which
+    input a level tests.
     """
     reached: dict[tuple[int, ...], str] = {}
     for ops in _eval_reorders():
@@ -349,10 +349,10 @@ def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
     round: the heap is *positional*, so the ``;`` run is a function of the
     node's own index and every child sits at a pinned ``2i+1``/``2i+2``, and
     deleting a subtree the way a token-stream generator does would shift
-    every later index and misroute the whole tree.  Emptying the slots
-    instead leaves the arithmetic untouched, and an emptied slot is never
-    popped because the only node that routed into it has become a leaf.  A
-    constant table goes from 127 to 47 characters at ``n == 3``.
+    every later index and misroute the whole tree.  Emptying the slots leaves
+    the arithmetic untouched, and an emptied slot is never popped because the
+    only node that routed into it has become a leaf.  A constant table goes
+    from 127 to 47 characters at ``n == 3``.
     """
     n = _validate_truth_table(truth_table)
     # The staging leaves the input stack holding only the bits and nothing
@@ -407,9 +407,9 @@ def _eval_ordered(truth_table: str, ops: str) -> str:
     # it would have reached.  The heap is positional -- every node's children
     # are pinned at 2i+1/2i+2 and its own ``;`` run is a function of ``i`` --
     # so a folded subtree cannot be deleted the way a token-stream tree's
-    # can, or every later index would shift.  Leaving the slots in place and
-    # emptying them keeps all of that arithmetic untouched: an empty string
-    # is never popped, because the only node that routed into it is gone.
+    # can, or every later index would shift.  Emptying the slots in place
+    # keeps that arithmetic untouched: an empty string is never popped,
+    # because the only node that routed into it is gone.
     dead: set[int] = set()
     tree: list[str] = []
     for i in range(2 ** (n + 1) - 1):
@@ -479,9 +479,9 @@ def back(truth_table: str) -> str:
     layout kept a 0-cell and a 1-cell and parked the head on whichever
     matched; that made the result unreadable from the program's own output,
     so Back could have no committed example and its generator tests had to
-    reimplement the language to find the head.  One answer cell costs
-    nothing -- a leaf spends one ``-`` instead of one extra pointer move --
-    and makes the dump self-describing.
+    reimplement the language to find the head.  One answer cell costs nothing
+    -- a leaf spends one ``-`` instead of one extra pointer move -- and makes
+    the dump self-describing.
     """
     return best_input_order(truth_table, _back_ordered)
 
@@ -508,9 +508,9 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
     **This is not the cheapest build, and the trade is deliberate.**
     Filling in *cell* order -- cell ``c`` taking ``{X perm[c]}`` -- emits no
-    walk at all, because the pointer only ever steps one cell forward, and
-    it delivered the full 12.0% screen against the 9.15% here.  That build
-    is not kept: it puts the template's placeholders out of name order, and
+    walk at all, since the pointer only ever steps one cell forward, and it
+    delivered the full 12.0% screen against the 9.15% here.  That build is
+    not kept: it puts the template's placeholders out of name order, and
     every other generator in this module emits ``{X0}``..``{Xn-1}`` in
     sequence.  Both forms are correct -- ``instantiate`` substitutes by
     *name*, so a placeholder is filled wherever it sits -- so this is a
@@ -522,10 +522,10 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     2.85 points only because Back's programs are small -- 82 characters on
     average at n=3, against LaserFuck's 326.
 
-    Keeping the ``-``/``{Xi}`` pairs intact is what preserves the
-    equal-width embedding: the primer and the placeholder are one unit and
-    are never separated, so both bits still cost the same two rows and the
-    template's height cannot leak an input.
+    Keeping the ``-``/``{Xi}`` pairs intact preserves the equal-width
+    embedding: the primer and the placeholder are one unit and are never
+    separated, so both bits still cost the same two rows and the template's
+    height cannot leak an input.
     """
     n = _validate_truth_table(truth_table)
 
@@ -538,13 +538,13 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # has to test input ``perm[c]``, so input ``i`` belongs at cell
     # ``perm.index(i)`` -- the inverse of the permutation.
     #
-    # Filling in cell order instead (cell ``c`` taking ``{X perm[c]}``) would
-    # emit no walk at all and is what this generator did briefly: it costs
-    # nothing and delivers the full 12.0% screen against the 9.15% here.  It
-    # is not kept, because it puts the template's placeholders out of name
-    # order, and every other generator in this module emits ``{X0}``..
-    # ``{Xn-1}`` in sequence.  The saving is real but the exception is not
-    # worth it; see the docstring for the trade.
+    # Filling in cell order instead (cell ``c`` taking ``{X perm[c]}``) emits
+    # no walk at all and is what this generator did briefly: it costs nothing
+    # and delivers the full 12.0% screen against the 9.15% here.  It is not
+    # kept, because it puts the template's placeholders out of name order,
+    # and every other generator in this module emits ``{X0}``..``{Xn-1}`` in
+    # sequence.  The saving is real but the exception is not worth it; see
+    # the docstring for the trade.
     cells = [0] * n
     for level, i in enumerate(perm):
         cells[i] = level
@@ -593,10 +593,10 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # A single '/' at the origin performs both turns.  The beam starts at (0,0)
     # heading right; the '/' turns it up, off the top edge and onto the bottom
     # row, where it runs the load *upward* back to the origin; the '/' takes it
-    # a second time, now heading up, and turns it right into the tree.  So the
-    # load is written bottom-to-top, and an earlier layout's two '\' -- one to
-    # drop the beam off the load's end, one to turn it back right -- are both
-    # gone along with the row and the indent they cost.
+    # again, now heading up, and turns it right into the tree.  So the load is
+    # written bottom-to-top, and an earlier layout's two '\' -- one to drop the
+    # beam off the load's end, one to turn it back right -- are both gone along
+    # with the row and the indent they cost.
     #
     # Riding off the top edge makes the grid's toroidal wrap load-bearing:
     # ``_Machine.step`` advances with ``% len(code)``, so up from row 0 lands
@@ -636,13 +636,13 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
     # The grid is as tall as whichever of the two needs more rows: the tree
     # wants 2**n and the load wants one row per unit below the '/'.  Past
-    # n = 3 the tree is the taller of the two, so the load's rows start
-    # sharing with tree rows -- which is safe for the same reason the whole
-    # template is: a '{Xi}' is the only thing on its row that instantiation
-    # resizes, it always shrinks by exactly three (every embedding is one
-    # character, for either bit value), and it sits left of the tree, so the
-    # tree glyphs on that row slide back to the columns they were drawn for.
-    # An embedding whose width depended on the bit would break that silently.
+    # n = 3 the tree is the taller, so the load's rows start sharing with tree
+    # rows -- safe for the same reason the whole template is: a '{Xi}' is the
+    # only thing on its row that instantiation resizes, it always shrinks by
+    # exactly three (every embedding is one character, for either bit value),
+    # and it sits left of the tree, so the tree glyphs on that row slide back
+    # to the columns they were drawn for.  An embedding whose width depended
+    # on the bit would break that silently.
     height = max(max(r for r, _ in grid) + 1, 1 + len(units))
     width = max(c for _, c in grid) + 1
     rows = [[" "] * width for _ in range(height)]
@@ -709,8 +709,8 @@ def _nocomment_wide(truth_table: str, n: int, tape: int) -> str:
 
     The narrow generator lands the pointer on ``table[index]`` with a single
     ``s`` whose skip amount *is* the index, which caps it at ``n == 8``.
-    Nothing about the language caps it there, though, because **skips
-    compose**.  Two compositions do the work:
+    Nothing about the language caps it there, because **skips compose**.  Two
+    compositions do the work:
 
     *Chained guards.*  ``s`` peeks the stack rather than popping it and does
     not move the pointer, so after a skip fires the guard cell is still under
@@ -888,14 +888,14 @@ def nocomment(truth_table: str, tape: int = _TAPE) -> str:
     NoComment has no input command, so this is a parameterized generator: the
     template's ``{Xi}`` placeholders become a constant-length setter for each
     input bit, and the harness instantiates one program per input
-    combination.  Unlike an earlier version of this generator, the
-    complement is *not* embedded: NoComment's ``s`` (skip the next block iff
-    the tested cell is nonzero) doubles as a NOT gate, because the skipped
-    block only runs when the cell is zero.  A short runtime prologue pushes
-    a fixed skip length, tests each raw bit cell, and increments a fresh
-    complement cell in the skipped block -- so ``comp_i = 1 - bit_i`` is
-    computed once per input from the embedded bit, with no ``{Ci}``
-    placeholder and no second embed.
+    combination.  Unlike an earlier version of this generator, the complement
+    is *not* embedded: NoComment's ``s`` (skip the next block iff the tested
+    cell is nonzero) doubles as a NOT gate, since the skipped block only runs
+    when the cell is zero.  A short runtime prologue pushes a fixed skip
+    length, tests each raw bit cell, and increments a fresh complement cell
+    in the skipped block -- so ``comp_i = 1 - bit_i`` is computed once per
+    input from the embedded bit, with no ``{Ci}`` placeholder and no second
+    embed.
 
     Rather than routing a decision tree, the program **computes the input's
     numeric index** and uses it as a byte-sized ``s`` skip into a staircase of
@@ -907,10 +907,10 @@ def nocomment(truth_table: str, tape: int = _TAPE) -> str:
 
     This is a straight-line program: no leaf chains, no interleaved stations,
     no placement.  A single ``s`` skip is byte-sized, so this narrow form
-    needs the whole index to fit a byte and works through ``n == 8``.  That
-    is a property of the *one-skip* decode, not of the language: past eight
-    inputs :func:`_nocomment_wide` composes several byte-sized skips instead,
-    and the binding constraint becomes the tape size.
+    needs the whole index to fit a byte and works through ``n == 8`` -- a
+    property of the *one-skip* decode, not of the language: past eight inputs
+    :func:`_nocomment_wide` composes several byte-sized skips instead, and
+    the binding constraint becomes the tape size.
     """
     n = _validate_truth_table(truth_table)
     if n > _NOCOMMENT_NARROW_MAX:
@@ -919,7 +919,7 @@ def nocomment(truth_table: str, tape: int = _TAPE) -> str:
     # A table that ignores some of its inputs is a smaller table, and almost
     # everything here is sized by the *index range*: the staircase is one
     # ``l`` per row, and one output cell per row is preloaded and stepped
-    # through in the setup's sorted climb.  So evaluating over the essential
+    # through in the setup's sorted climb.  Evaluating over the essential
     # inputs alone shrinks the dominant term from ``2**n`` to ``2**width``.
     #
     # Every input keeps its ``{Xi}`` setter and its NOT-gate prologue -- the
@@ -1069,12 +1069,12 @@ def bfpda(truth_table: str) -> str:
     ``@`` needs the guard still on top.  The zero-branch is selected by the
     second loop testing the marker: when the bit is zero, ``[`` never
     entered, so the outer ``>`` pops the *bit* instead (it was never
-    consumed), exposing the marker as the new top.  The marker's role is
-    only to be truthy there -- its value never depends on the input, so a
-    constant 1 (not the input's complement) is correct, and it is embedded
-    directly in the template rather than through the bit-value substitution.
-    A leaf pops the remaining pre-loaded bits (``2*(n-level)`` of them) and
-    prints the constant answer.
+    consumed), exposing the marker as the new top.  The marker's role is only
+    to be truthy there -- its value never depends on the input, so a constant
+    1 (not the input's complement) is correct, and it is embedded directly in
+    the template rather than through the bit-value substitution.  A leaf pops
+    the remaining pre-loaded bits (``2*(n-level)`` of them) and prints the
+    constant answer.
     """
     n = _validate_truth_table(truth_table)
 
@@ -1135,11 +1135,10 @@ def lamfunc(truth_table: str) -> str:
 
     **The tree splits on its inputs in whichever order emits the shortest
     program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`),
-    since whether a subtree collapses depends on which rows it covers, and
-    that is what the split order decides.  Reading a bit back is by *name*,
-    so the reorder costs nothing here: the ``vs v{i} {Xi}`` head still
-    stores input ``i`` in ``v{i}``, and only the variable a node names
-    changes.
+    since whether a subtree collapses depends on which rows it covers, which
+    the split order decides.  Reading a bit back is by *name*, so the reorder
+    costs nothing here: the ``vs v{i} {Xi}`` head still stores input ``i`` in
+    ``v{i}``, and only the variable a node names changes.
     """
     return best_input_order(truth_table, _lamfunc_ordered)
 
@@ -1179,9 +1178,9 @@ def bitdeque(truth_table: str) -> str:
     combination.  The earlier wall said the absolute ``GOTO N`` targets shift
     because the setter had variable length (``INVERT`` vs nothing); the fixed
     setter removes that: each bit is pushed as exactly ``INVERT PUSH`` when
-    it differs from the register and ``PUSH INVERT`` when it matches, and
-    the register flips after every block, so the load is always ``2n``
-    commands and no absolute index moves between instantiations.
+    it differs from the register and ``PUSH INVERT`` when it matches, and the
+    register flips after every block, so the load is always ``2n`` commands
+    and no absolute index moves between instantiations.
 
     Bits are pushed in reverse order so ``POP`` (LIFO) yields the most
     significant bit first, matching the contiguous MSB-first decision-tree
@@ -1201,7 +1200,7 @@ def bitdeque(truth_table: str) -> str:
     and is not restricted to the order the load pushed.  Rotation costs two
     commands per position, so an order pays for its folds; the search
     measures rather than models, and an order whose rotations outweigh its
-    savings simply loses to the identity.
+    savings loses to the identity.
 
     The rotations happen *inside the tree*, never in the load block: the
     ``{Xi}`` setter's ``INVERT PUSH``/``PUSH INVERT`` choice depends on the
@@ -1243,13 +1242,13 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # ``n - 1`` and the head is input 0.
     #
     # Pushing in name order rather than reversed is free.  The reversed load
-    # was there to make the first ``POP`` the *most significant* bit, which
-    # only fixes which input a root-level test reaches first -- and the
-    # rotation search already brings any bit to either end, so both loads
-    # reach the same set of orders at the same cost.  Measured over every
-    # order at n = 2, 3 and 4, the rotation-length multisets are identical.
-    # Name order is the better default because it keeps the emitted template
-    # in ``{X0}``..``{Xn-1}`` sequence.
+    # made the first ``POP`` the *most significant* bit, which only fixes
+    # which input a root-level test reaches first -- and the rotation search
+    # already brings any bit to either end, so both loads reach the same set
+    # of orders at the same cost.  Measured over every order at n = 2, 3 and
+    # 4, the rotation-length multisets are identical.  Name order is the
+    # better default: it keeps the emitted template in ``{X0}``..``{Xn-1}``
+    # sequence.
     deque = list(range(n))
     rotations: list[list[str]] = []
     for level in range(n):
@@ -1752,12 +1751,11 @@ def home_row(truth_table: str) -> str:
     either clears it again (``s``) or leaves it (``j``, whose skip does not
     fire on the now-nonzero cell), spending the same width either way.
 
-    Unlike the removed ``n <= 2``
-    routing generator (which tried to send the beam to one of ``2**n``
-    distinct leaf cells -- a wall past ``n == 2`` on the fixed 5x5 grid),
-    this closed-form construction packs the bits into a single binary
-    accumulator and then walks a linear chain of leaf checks, so it never
-    needs more than a handful of live cells regardless of ``n``.
+    Unlike the removed ``n <= 2`` routing generator (which tried to send the
+    beam to one of ``2**n`` distinct leaf cells -- a wall past ``n == 2`` on
+    the fixed 5x5 grid), this closed-form construction packs the bits into a
+    single binary accumulator and then walks a linear chain of leaf checks,
+    so it never needs more than a handful of live cells regardless of ``n``.
 
     A cell holds the current value under test; the setup line seeds a
     second cell with the ASCII digit base (``48``, ``'0'``).  Each of the
@@ -1766,8 +1764,8 @@ def home_row(truth_table: str) -> str:
     nonzero, consuming the guard" gate (loops cannot nest -- ``l``s pair
     strictly by order of appearance -- so this gate, not a BF-style bracket
     match, is what makes the packing safe to chain), and its body adds the
-    bit's binary weight to the accumulator only when the bit is 1. After
-    all ``n`` gates the accumulator holds the combination's integer index
+    bit's binary weight to the accumulator only when the bit is 1.  After all
+    ``n`` gates the accumulator holds the combination's integer index
     ``0 .. 2**n - 1``.
 
     The remaining ``2**n`` lines are a linear equality chain, one per
@@ -1788,10 +1786,10 @@ def home_row(truth_table: str) -> str:
     # leaf chain -- the whole cost here -- is 2**n lines regardless of what
     # the table says, so dropping an input halves the program.  The gates
     # stay: every input keeps its ``{Xi}`` setter and its packing line, and
-    # an ignored one simply carries binary weight zero, so its gate runs and
+    # an ignored one carries binary weight zero, so its gate runs and
     # consumes its guard exactly as before while adding nothing to the
     # accumulator.  Nothing is relocated and no setter changes width, which
-    # is what keeps the slot-order and equal-width invariants intact.
+    # keeps the slot-order and equal-width invariants intact.
     used = essential_inputs(truth_table, n)
     # A constant table depends on nothing and reduces to a one-input table,
     # never to the length-1 table, which is not a valid shape.

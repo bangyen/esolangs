@@ -6,9 +6,8 @@ character that appears in one of the two cycles ``pevkjzwr`` and
 ``yuctsobqihald`` is replaced by the character ``k`` steps further along
 that cycle, where ``k`` is the number of characters translated so far (so
 the substitution is a position-dependent Caesar shift per cycle); characters
-in no cycle are dropped.  This is
-the inverse of the generator's own cycle rotation, so a generated program
-round-trips.
+in no cycle are dropped.  This is the inverse of the generator's own cycle
+rotation, so a generated program round-trips.
 
 The translated program runs over a tape of unbounded integers starting as a
 single 0 cell.  ``p``/``s`` add 2/subtract 1 from the current cell,
@@ -43,10 +42,10 @@ arithmetic above is this implementation's reading of "do the last command
 3 times" rather than a quoted rule.  No generated program pairs the two:
 every ``t`` run one emits follows a ``p`` or an ``s``.
 
-A repeated ``y`` is the same kind of gap, and the choice made here is worth
-recording because the alternatives are all defensible.  ``y`` binds forward
-to the next command exactly as ``c`` and ``v`` do; the open question is
-whether repeating it makes *one* decision or *n*.  This implementation makes
+A repeated ``y`` is the same kind of gap, and the alternatives are all
+defensible.  ``y`` binds forward to the next command exactly as ``c`` and
+``v`` do; the open question is whether repeating it makes *one* decision or
+*n*.  This implementation makes
 n: a run of ``rep`` repeats draws ``rep`` flips, each dropping one
 application of the bound command, so ``rep - heads`` of them run and the
 survivor count is binomial in ``rep``.  ``cyp`` therefore spans

@@ -6,13 +6,13 @@ pane shows usefully.  Since most languages treat a newline as whitespace
 (or as a comment character), such a program can be broken across lines
 without changing what it does.
 
-The wrapping is *token-aware*, and that is the whole point of this module.
+The wrapping is *token-aware*, which is the whole point of this module.
 Slicing a program every ``width`` characters is wrong for any language
 whose tokens are longer than one character: it can split ``-6`` into ``-``
 and ``6`` (a load error in the numeric languages, which is at least loud),
-or split BIO's fixed-width ``0ox`` triples so that the program still runs
-and prints garbage (which is not).  Each wrapper here knows what a token
-is in its family and only ever breaks between two of them.
+or split BIO's fixed-width ``0ox`` triples so the program still runs and
+prints garbage (which is not).  Each wrapper here knows what a token is in
+its family and only ever breaks between two of them.
 
 Not every language can take newlines, so wrapping is opt-in per language
 rather than a blanket post-processing pass:
@@ -24,10 +24,10 @@ rather than a blanket post-processing pass:
 - Forbin would tolerate a reflow -- its interpreter reads whitespace, not
   lines -- but its ``out`` statements sit one per line inside a ``main {}``
   block, and that layout is how the language is meant to be read.  Packing
-  those statements to a width would cost more than the ragged right edge it
-  saves, so a language whose own idiom is one-statement-per-line is left
-  alone even when reflowing it would be safe.
-- Basicfuck is excluded for the same reason as Forbin rather than for a
+  them to a width costs more than the ragged right edge it saves, so a
+  language whose own idiom is one-statement-per-line is left alone even
+  when reflowing it would be safe.
+- Basicfuck is excluded for the same reason as Forbin rather than a
   semantic one, and the distinction is worth recording because its
   *program* does not reflow while its *body* does.  Its first two lines are
   structural -- the ``#basicfuck`` directive and the ``#allocate`` list are
@@ -38,21 +38,21 @@ rather than a blanket post-processing pass:
   :data:`MULTILINE` wrapper over :func:`wrap_space_delimited`, not the
   character one.  It stays unwrapped because packing ``X += Y`` and
   ``while (X) { ... }`` into dense rows is minification of a structured
-  source language, which is the readability the wrapping exists to serve.
+  source language, the opposite of the readability wrapping exists to serve.
   A ``//`` comment is not the obstacle it looks like either: it packs as a
-  single token that forces its line to end there, which is exactly what it
-  already does, and comment text too long for one line splits across
-  several, each re-prefixed with ``//``.  Verified with comments injected
-  into the committed example down to 30 columns.  So nothing mechanical
-  stands in the way -- the exclusion is a readability judgement about
-  minifying source, and only that.
+  single token that forces its line to end there, which is what it already
+  does, and comment text too long for one line splits across several, each
+  re-prefixed with ``//``.  Verified with comments injected into the
+  committed example down to 30 columns.  So nothing mechanical stands in the
+  way -- the exclusion is a readability judgement about minifying source,
+  and only that.
 - MyScript builds its output from string literals like the languages
   :data:`_QUOTE_LITERAL` covers, but its boolean program's newlines are
   structural (its blocks are indented and its interpreter reads them), so it
   cannot be wrapped by making the literal one token the way Eval is.  It is
-  excluded until a wrapper that understands its block layout exists; being
-  safe today only because its programs come out under one line is not the
-  same as being wrappable.
+  excluded until a wrapper understanding its block layout exists; being safe
+  today only because its programs come out under one line is not the same as
+  being wrappable.
 
 ROTfuck used to belong on that list: its interpreter rotated the program on
 *every* character the pointer passed, comments included, so an inserted
@@ -63,13 +63,13 @@ wraps like any other single-character-command language.
 
 Being unwrappable is not the same as being unbounded, though.  A generator
 that lays out its own *shape* can honour a width by building a different
-shape, which is something no after-the-fact reflow can do: Clockwise picks
-a ring that fits, Streetcode and WII2D fold their instruction line into a
-boustrophedon, and LaserFuck steers the beam down and back so a straight
-run of tape commands costs rows instead of columns.  Those generators take
-the width themselves -- :func:`takes_width` is how the callers tell -- and
-never reach :func:`wrap_program`, which would skip them anyway for being
-already multi-line.
+shape, which no after-the-fact reflow can do: Clockwise picks a ring that
+fits, Streetcode and WII2D fold their instruction line into a boustrophedon,
+and LaserFuck steers the beam down and back so a straight run of tape
+commands costs rows instead of columns.  Those generators take the width
+themselves -- :func:`takes_width` is how the callers tell -- and never reach
+:func:`wrap_program`, which would skip them anyway for being already
+multi-line.
 
 Wrapping otherwise assumes a single-line program, since a newline in one
 already means layout.  Taglate is the exception: its first line seeds the
@@ -83,18 +83,18 @@ programs actually have.  :func:`_bio` indents a nested BIO program two
 spaces per loop level, since the boolean generator nests one loop per
 truth-table row and that telescoping chain is invisible packed flat; a
 program under two levels deep -- every text-generator one -- is packed as
-before, because indenting a flat run shows nothing.  :func:`wrap_grid`
-right-aligns into columns instead: the subleq-family OISCs
-(AddSubJump, Decleq, S*bleq) have uniform-width numeric tokens, so padding
-each into a cell and right-aligning it lines the columns up between rows,
-which is what makes a diff of one readable.  It is opt-in for the same
-reason wrapping is -- Polynomial is space-delimited too, but its tokens run
-from 1 to 98 characters, and padding those to a common width would be
-nonsense.  Polynomial gets its own wrapper for a related reason: its
-one-character tokens are the ``+`` and ``-`` between terms, and
-:func:`_polynomial` glues each of those to the term it signs so that no
-line is just a sign.  That wrapper then puts one term to a line rather
-than packing them to the width, for the reason its docstring gives.
+before, since indenting a flat run shows nothing.  :func:`wrap_grid`
+right-aligns into columns instead: the subleq-family OISCs (AddSubJump,
+Decleq, S*bleq) have uniform-width numeric tokens, so padding each into a
+cell and right-aligning it lines the columns up between rows, which makes a
+diff of one readable.  It is opt-in for the same reason wrapping is --
+Polynomial is space-delimited too, but its tokens run from 1 to 98
+characters, and padding those to a common width would be nonsense.
+Polynomial gets its own wrapper for a related reason: its one-character
+tokens are the ``+`` and ``-`` between terms, and :func:`_polynomial` glues
+each to the term it signs so no line is just a sign.  That wrapper then puts
+one term to a line rather than packing them to the width, for the reason its
+docstring gives.
 
 :data:`WRAPPERS` maps a language id to the wrapper it needs; a language
 absent from it is not wrapped.  :func:`wrap_program` is the entry point the
@@ -124,8 +124,8 @@ def shortest(*candidates: str) -> str:
 
     This names that rule so a reader meets it as a decision rather than
     re-deriving it from a ``min`` with a ``key``.  Ties keep the first
-    argument, so callers should pass the shape they consider canonical first
-    and the output stays stable when two shapes come out the same length.
+    argument, so callers should pass the canonical shape first and the output
+    stays stable when two shapes come out the same length.
     """
     return min(candidates, key=len)
 
@@ -150,17 +150,17 @@ def wrap_grid(program: str, width: int) -> str:
     :func:`wrap_space_delimited` does, leaves the columns ragged, so
     nothing lines up between one row and the next even though every row
     holds the same kind of field.  Padding each token to a common cell
-    width and right-aligning it inside that cell makes the columns line up
-    vertically, which is what makes a diff of one readable: a changed
-    operand stays in its column instead of shifting every token after it.
+    width and right-aligning it inside that cell lines the columns up
+    vertically, which makes a diff of one readable: a changed operand
+    stays in its column instead of shifting every token after it.
 
     The cell width is :func:`_cell_width` of the program's own tokens, so
     it follows the program rather than being fixed.  A token too wide for
     one cell spans as many whole cells as it needs (see :func:`_span`)
     instead of pushing the rest of its row out of alignment -- every later
     token on the row still starts on a cell boundary.  Such a token never
-    straddles a row boundary; it starts a new row if the current one
-    cannot hold its span.
+    straddles a row boundary; it starts a new row if the current one cannot
+    hold its span.
 
     Right-aligning pads on the left, so no line ever carries trailing
     whitespace.  The interpreters split on whitespace *runs*
@@ -299,9 +299,9 @@ _SIX_FIVE_COMMAND = r"7[\s\S](?:[78][\s\S]|[\s\S])|8[\s\S]|[\s\S]"
 #
 # A literal wider than the width is then left on its own line rather than
 # broken, which is :func:`_join_tokens`'s existing behaviour for an
-# oversized token: a 3x hello-world is one ``[...]`` and simply does not
-# wrap.  An over-wide line is the honest outcome here, since the alternative
-# is a program that prints something else.
+# oversized token: a 3x hello-world is one ``[...]`` and does not wrap.  An
+# over-wide line is the honest outcome here, since the alternative is a
+# program that prints something else.
 _SOPHIE_COMMAND = r"#\$\d+,|#.,?|."
 _BRACKET_LITERAL = r"\[[^\]]*\]|."
 _QUOTE_LITERAL = r'"[^"]*"|.'
@@ -318,18 +318,17 @@ def _bio(program: str, width: int) -> str:
     The boolean BIO generator separates commands with spaces while the text
     one does not, so a space is one of BIO's tokens here.  A line must not
     start with that separator, so break *before* the command it precedes:
-    attaching each space to the following command makes the pair a single
+    attaching each space to the following command makes the pair one
     unbreakable token and keeps the newline where a space already was.
 
     A *nested* program is then laid out by depth rather than packed flat.
     The boolean generator nests one loop per truth-table row (``0ix{1ox
-    ... }``), so its program is a telescoping chain whose shape is the
-    thing worth seeing; packed to a width it reads as one undifferentiated
-    run.  ``0i?`` opens a level and ``}`` closes one, so the depth is a
-    running count and each line is indented by it.  The text generator's
-    program is a flat sequence of depth-1 groups, where indenting would
-    show nothing that packing does not, so a program shallower than two
-    levels takes the flat path.
+    ... }``), so its program is a telescoping chain whose shape is worth
+    seeing; packed to a width it reads as one undifferentiated run.  ``0i?``
+    opens a level and ``}`` closes one, so the depth is a running count and
+    each line is indented by it.  The text generator's program is a flat
+    sequence of depth-1 groups, where indenting shows nothing packing does
+    not, so a program shallower than two levels takes the flat path.
 
     The indent is whitespace *between* commands, which BIO ignores, and no
     break lands inside one -- so an indented program means exactly what the
@@ -459,9 +458,9 @@ def _sophie(program: str, width: int) -> str:
     Sophie prints the character *after* the ``#`` literally, so a break
     between the two makes the newline the argument: the program prints a
     newline where that character should have gone and the intended one is
-    lost.  The output stays the same length, which is what makes this the
-    quiet failure of the group -- ``Hello, World!`` came back as ``Hello,
-    Worll!`` rather than as anything that looked wrong.
+    lost.  The output stays the same length, which makes this the quiet
+    failure of the group -- ``Hello, World!`` came back as ``Hello, Worll!``
+    rather than as anything that looked wrong.
     """
     return wrap_tokens(program, width, _SOPHIE_COMMAND)
 
@@ -484,32 +483,29 @@ def _quote_literal(program: str, width: int) -> str:
 def _polynomial(program: str, _width: int) -> str:
     """Lay a Polynomial program out one signed term to a line.
 
-    Polynomial's terms are space-delimited, so
-    :func:`wrap_space_delimited` would wrap it -- but the ``+`` and ``-``
-    between two terms are tokens of their own, and once the terms grow
-    wider than the width every one of those signs lands alone on a line of
-    its own.  A Hello-World program wrapped into forty lines that
-    alternated a hundred-character coefficient with a single ``+``, which
-    is the raggedest possible reading of a polynomial.
+    Polynomial's terms are space-delimited, so :func:`wrap_space_delimited`
+    would wrap it -- but the ``+`` and ``-`` between two terms are tokens of
+    their own, and once the terms grow wider than the width every one of
+    those signs lands alone on its own line.  A Hello-World program wrapped
+    into forty lines alternating a hundred-character coefficient with a
+    single ``+``, the raggedest possible reading of a polynomial.
 
     Keeping each sign with the term it signs fixes that much, and packing
     the resulting pairs to a width would be the obvious next step.  This
-    wrapper does not: a packed line holds however many terms happen to
-    fit -- five, then two, then three -- so its breaks fall where the
-    arithmetic lands rather than anywhere meaningful.  One term to a line
-    makes every line the same kind of thing and the descending exponents a
-    column you can read down, which is the layout a polynomial is written
-    in by hand.  It is the same judgement the module docstring records for
-    Forbin: a language whose own idiom is one-item-per-line is left that
-    way rather than packed to a width.
+    wrapper does not: a packed line holds however many terms happen to fit
+    -- five, then two, then three -- so its breaks fall where the arithmetic
+    lands rather than anywhere meaningful.  One term to a line makes every
+    line the same kind of thing and the descending exponents a column you
+    can read down, the layout a polynomial is written in by hand.  It is the
+    same judgement the module docstring records for Forbin: a language whose
+    own idiom is one-item-per-line is left that way rather than packed.
 
-    The width is therefore only the on/off switch that
-    :func:`wrap_program` already applies -- the layout does not depend on
-    its value, since the terms of any interesting program outrun any
-    width, so the parameter is taken and ignored to keep the shape every
-    :data:`WRAPPERS` entry is called with.  The header stays with the
-    first term so that ``f(x)`` and ``=`` do not become lines of their
-    own.
+    The width is therefore only the on/off switch :func:`wrap_program`
+    already applies -- the layout does not depend on its value, since the
+    terms of any interesting program outrun any width, so the parameter is
+    taken and ignored to keep the shape every :data:`WRAPPERS` entry is
+    called with.  The header stays with the first term so ``f(x)`` and ``=``
+    do not become lines of their own.
 
     Replacing every newline with a space reproduces the input exactly, so
     the program is untouched; the interpreter strips whitespace before
@@ -551,11 +547,11 @@ def _between(program: str, width: int) -> str:
 
     Both dialects wrap.  Between is goto-based and its branch addresses are
     0-indexed *line numbers*, so splitting one statement into several moves
-    every line after it: the addresses are recomputed against the new
-    layout rather than the wrapper giving up on a program that jumps.  Only
-    a literal ``|N|f`` target is rewritten -- a computed one is an
-    expression whose value this cannot know, and a program carrying any is
-    returned untouched.
+    every line after it: the addresses are recomputed against the new layout
+    rather than the wrapper giving up on a program that jumps.  Only a
+    literal ``|N|f`` target is rewritten -- a computed one is an expression
+    whose value this cannot know, and a program carrying any is returned
+    untouched.
 
     A literal is cut between *units*: an apostrophe inside it is written
     ``''`` and both halves have to stay on the one line, or each half closes
@@ -663,10 +659,10 @@ def _nevermind(program: str, width: int) -> str:
     unit.  A ``$`` opening a line reads as a variable reference and halts
     the program, so it binds to the character before it.
 
-    A unit can exceed the room a narrow width leaves, which is why the
-    lines are packed rather than sliced: a width too small for a unit gets
-    a line as wide as that unit needs, the same preference-not-guarantee
-    the shape-building generators give it.
+    A unit can exceed the room a narrow width leaves, which is why the lines
+    are packed rather than sliced: a width too small for a unit gets a line
+    as wide as that unit needs, the same preference-not-guarantee the
+    shape-building generators give it.
     """
     head, _, payload = program.partition(",")
     if head != "print" or not payload:

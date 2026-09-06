@@ -7,13 +7,12 @@ cell whose colour is the table entry, and (b) is a *cycle-stable fixed
 point*: the whole machine state after two cycles equals the state after one,
 so every later cycle repeats it exactly.
 
-The point of this document is that the claim is established without sweeping
-the tables.  A boolean-generator sweep runs `2**(2**n)` tables, so the
-exhaustive route stops at `n <= 4` (65536 tables, about a minute) and is
-already ~407 CPU-days at `n == 5` — the pricing recorded in
-[`docs/walls.md`](walls.md).  The argument below replaces the sweep for
-`n >= 5` with four lemmas, three of them arithmetic and one a finite check
-over a state set that does not grow with `n`.
+The claim is established without sweeping the tables.  A boolean-generator
+sweep runs `2**(2**n)` tables, so the exhaustive route stops at `n <= 4`
+(65536 tables, about a minute) and is already ~407 CPU-days at `n == 5` —
+the pricing recorded in [`docs/walls.md`](walls.md).  The argument below
+replaces the sweep for `n >= 5` with four lemmas, three of them arithmetic
+and one a finite check over a state set that does not grow with `n`.
 
 The machine checks live in `tests/tools/apa_uniform_proof_check.py`; run
 them with `uv run python tests/tools/apa_uniform_proof_check.py`.  They are
@@ -38,8 +37,8 @@ Two consequences used throughout.  The transition of a whole cycle depends
 only on `(grid, position)`, and the grid never loses a white cell; so if the
 state after cycle 2 equals the state after cycle 1, every subsequent cycle
 reproduces it — a *state fixed point* is a proof of stability, not a sample
-of it.  That is the observation that made the `n <= 4` sweep cheap, and it
-is reused here as the stability criterion.
+of it.  That made the `n <= 4` sweep cheap, and it is reused here as the
+stability criterion.
 
 ## L1 — leaves are distinct and at least four apart
 
@@ -65,8 +64,8 @@ same head.  A lowercase move is blocked exactly when its target is white, so
 the head's trajectory could in principle depend on the table.  It does not:
 walking the weighted runs from the origin, every intermediate *move target*
 is at Chebyshev distance at least 1 from every foreign leaf, and none is
-ever *on* one.  The reason is again superincreasingness — along the outbound
-walk the weights not yet spent dominate the difference to any other leaf's
+ever *on* one.  Superincreasingness again: along the outbound walk the
+weights not yet spent dominate the difference to any other leaf's
 coordinate, so a partial sum cannot coincide with one.
 
 Executed for `n` of 1..9: move targets landing on a foreign leaf, **0** at
@@ -91,8 +90,7 @@ This is the lemma that removes `n` from the behavioural argument.  The runs
 `_bit_move` emits have length `2 ** (n - k)`, which is where program size
 grows (a `n == 7` XOR program is 34788 characters), but a blocked run's
 *effect* is independent of its length.  What remains of a unit's behaviour
-is its first character and its anchors — a vocabulary that does not depend
-on the arity.
+is its first character and its anchors — a vocabulary independent of arity.
 
 ## L4 — the cycle-2 dance is a bounded, paint-free fixed point
 
@@ -140,9 +138,9 @@ segments (`Ssn`, the routing, the body, and the final `WWwWWEEe` /
 `NENEESWw` dance) are fixed strings, checked directly from the canonical
 state.
 
-The table is small and it *predicts*, which is the check that separates a
-closed induction from a recorded observation.  Learned from `n == 5` alone
-it has **30 entries**; replaying it against arities it never saw —
+The table is small and it *predicts* — the check that separates a closed
+induction from a recorded observation.  Learned from `n == 5` alone it has
+**30 entries**; replaying it against arities it never saw —
 reconstructing each block's unit-by-unit motion from the table and comparing
 to the real trace — gives **0 prediction errors** over 320 programs at `n`
 of 6, 7, 8, 9 and 10, on adversarial and random tables alike.  A table whose

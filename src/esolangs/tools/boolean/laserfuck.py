@@ -1,12 +1,12 @@
 """The LaserFuck boolean generator.
 
 One language, one file -- the pattern this package already follows for
-``wii2d.py``, ``streetcode.py``, ``circuit_diagram.py``, and the rest of
-the larger generators, and the one the text package follows for its own
+``wii2d.py``, ``streetcode.py``, ``circuit_diagram.py``, and the rest of the
+larger generators, and the one the text package follows for its own
 LaserFuck.  It earns it here for the same reason: at ~420 lines it was
-better than a quarter of ``other.py``, and it is the only generator in
-that file that lays out a grid, builds a looping input reader, and rotates
-a block on end to meet a width.
+better than a quarter of ``other.py``, and it is the only generator in that
+file that lays out a grid, builds a looping input reader, and rotates a
+block on end to meet a width.
 """
 
 from itertools import permutations
@@ -41,10 +41,9 @@ def _laserfuck_cells(n: int, perm: tuple[int, ...]) -> list[int]:
 
     A node is ``>#v)``: it steps the pointer and then tests the cell under
     it, so level ``k`` tests cell ``k + 1`` whatever is in it.  Level ``k``
-    has to test original input ``perm[k]``, so that input is the one read
-    into cell ``k + 1`` -- the *inverse* of ``perm``.  Reading it forward
-    puts the right bits in the wrong cells and computes a different
-    function.
+    has to test original input ``perm[k]``, so that input is read into cell
+    ``k + 1`` -- the *inverse* of ``perm``.  Reading it forward puts the
+    right bits in the wrong cells and computes a different function.
     """
     cells = [0] * n
     for level, i in enumerate(perm):
@@ -62,10 +61,9 @@ def _laserfuck_reads(n: int, perm: tuple[int, ...]) -> str:
     changes the walks between the ``,``.
 
     Nothing here is conditional.  The read section sits between the two
-    rings, past ``multiply``'s ``)`` and before ``retire``'s ``}``, so it
-    is a straight run the beam crosses once: a walk cannot steer it, which
-    is what makes the placement free of the steering hazards a ring body
-    would carry.
+    rings, past ``multiply``'s ``)`` and before ``retire``'s ``}``, so it is
+    a straight run the beam crosses once: a walk cannot steer it, which
+    frees the placement of the steering hazards a ring body would carry.
     """
     cells = _laserfuck_cells(n, perm)
     out = ""
@@ -156,7 +154,7 @@ def _laserfuck_rotate(rows: list[str]) -> list[str]:
     r"""Turn ``rows`` a quarter turn, so a rightward block becomes downward.
 
     The cells move as any rotation moves them -- the last row becomes the
-    first column -- and each one is then substituted, since a mirror or a
+    first column -- and each is then substituted, since a mirror or a
     heading-setter means something different once the beam runs the other
     way.  ``,``, ``+``, ``-``, ``<``, ``>``, ``#`` and ``x`` are unchanged:
     they act on the tape, not on the beam.
@@ -238,13 +236,13 @@ class _LaserBlock(NamedTuple):
 def _laserfuck_place(block: list[str], upright: str) -> _LaserBlock:
     r"""Give ``block`` an explicit entry/exit contract in one orientation.
 
-    ``F`` leaves the block flat: the beam enters at its left edge and
-    leaves on the same row past its right edge, so there is nothing to
-    connect.  ``R`` stands it on end with :func:`_laserfuck_rotate`, which
-    turns the rightward beam downward -- so the placement needs a ``v`` one
-    row *above* the block to drop the beam in at the rotated ring's own
-    entry column, and a ``\`` one row *below* to turn it right again.  The
-    entry column is read off the rotated block's first row rather than
+    ``F`` leaves the block flat: the beam enters at its left edge and leaves
+    on the same row past its right edge, so there is nothing to connect.
+    ``R`` stands it on end with :func:`_laserfuck_rotate`, which turns the
+    rightward beam downward -- so the placement needs a ``v`` one row
+    *above* the block to drop the beam in at the rotated ring's own entry
+    column, and a ``\`` one row *below* to turn it right again.  The entry
+    column is read off the rotated block's first row rather than
     rediscovered by the caller.
     """
     if upright == "F":
@@ -341,31 +339,31 @@ def _laserfuck_build(
     code at all.
 
     A subtree whose rows all agree becomes a leaf rather than branching on
-    bits that cannot change the answer, and how a leaf retires the inputs
-    is what the fold turns on.  Sized to the bit, retiring is one ``-`` for
-    a zero and two for a one -- but a folded leaf never learned the bits it
+    bits that cannot change the answer, and how a leaf retires the inputs is
+    what the fold turns on.  Sized to the bit, retiring is one ``-`` for a
+    zero and two for a one -- but a folded leaf never learned the bits it
     did not branch on.  It does not have to: only the cells *above* its
     depth are unknown, and a flat two ``-`` retires either value (0 -> -2,
     1 -> -1), while the cells the path did consume keep the sized run.  So
     the flat form is spent exactly on the cells that need it, and a table
-    with no constant subtree comes out exactly as it did before folding.
-    The sweep still covers all ``n`` cells, since an unconsumed one sits at
-    0 or 1 and would print beside the answer, so a folded leaf steps out to
-    cell ``n`` first and sweeps back from there.
+    with no constant subtree comes out as it did before folding.  The sweep
+    still covers all ``n`` cells, since an unconsumed one sits at 0 or 1 and
+    would print beside the answer, so a folded leaf steps out to cell ``n``
+    first and sweeps back from there.
 
     LaserFuck has no output instruction: it prints the tape when the last
     laser dies, in decimal, skipping negative cells.  Cell (0, 0) is left
     blank deliberately -- a ``\\xff`` there would select byte mode.
 
     ``width`` bounds the columns.  The tree adds only a column or two past
-    the reader, so the reader is what a width has to bargain with: laid
-    flat it is one row and forty-odd columns, and when that will not fit
+    the reader, so the reader is what a width has to bargain with: laid flat
+    it is one row and forty-odd columns, and when that will not fit
     :func:`_laserfuck_rotate` stands it on end instead -- two columns and
-    forty-odd rows.  A ring body cannot simply be broken across rows, since
-    the return leg re-enters at the ``}`` and re-runs the whole body, which
-    is why the block is rotated rather than folded.  Below the width the
-    *tree* needs there is nothing left to give, and the grid comes out as
-    wide as the tree.
+    forty-odd rows.  A ring body cannot be broken across rows, since the
+    return leg re-enters at the ``}`` and re-runs the whole body, which is
+    why the block is rotated rather than folded.  Below the width the *tree*
+    needs there is nothing left to give, and the grid comes out as wide as
+    the tree.
     """
     n = _validate_truth_table(truth_table)
     # The tree adds only a column or two past the reader, so the reader is
@@ -463,7 +461,7 @@ def _laserfuck_build(
             #
             # Cells above ``depth`` were never branched on, so their value is
             # unknown here and two ``-`` retire either one (0 -> -2, 1 ->
-            # -1).  The cells the path *did* consume are known, and keep the
+            # -1).  The cells the path *did* consume are known and keep the
             # sized run of one ``-`` more than the bit -- which is why a
             # table that folds nothing comes out exactly as it always did.
             run = ">" * (n - depth)
@@ -501,7 +499,7 @@ def _laserfuck_build(
     #
     # Otherwise the tree is mirrored and hung underneath.  The beam turns
     # down at the reader's end and a '/' on the tree's first row faces it
-    # left into a tree that runs backwards -- which needs no row to be
+    # left into a tree that runs backwards -- needing no row to be
     # *reached*, unlike a rightward tree below, which would need one to
     # carry the beam back to the margin first.
     straight = margin + reader_exit_col + max(len(line) for line in upright)
@@ -548,10 +546,10 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     program, so more subtrees fold.  That is a *placement*: a node is
     ``>#v)``, which steps the pointer and tests the cell under it, so level
     ``k`` tests cell ``k + 1`` whatever is in it, and moving which cell an
-    input is read into is enough to change what every node tests.  Only the
-    reader's read section changes (see :func:`_laserfuck_reads`); the tree,
-    the fold, the leaf sweeps and the retire ring are untouched, and the
-    reads stay in stream order -- one ``,`` per input, left to right.
+    input is read into changes what every node tests.  Only the reader's
+    read section changes (see :func:`_laserfuck_reads`); the tree, the fold,
+    the leaf sweeps and the retire ring are untouched, and the reads stay in
+    stream order -- one ``,`` per input, left to right.
 
     The identity order is built first and ties keep it, so a table no
     reorder improves emits exactly what it emitted before.

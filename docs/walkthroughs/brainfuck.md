@@ -13,9 +13,9 @@ when nonzero).  Cells start at 0 and wrap at 8 bits.
 ++++++++[>++++++++<-]>+.
 ```
 
-Sets cell 0 to 8, runs a loop that adds 8 to cell 1 on each of the eight
-passes (so cell 1 ends at `8 × 8 = 64`), then adds one more and prints
-cell 1 — the byte 65, which is `'A'`.
+Sets cell 0 to 8, runs a loop adding 8 to cell 1 on each of the eight passes
+(so cell 1 ends at `8 × 8 = 64`), then adds one more and prints cell 1 — the
+byte 65, `'A'`.
 
 ## Step by step
 

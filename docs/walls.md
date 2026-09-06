@@ -20,9 +20,9 @@ language.  Where a cap no longer exists, `docs/limitations.md` records the
 current status and the history is in git.
 
 **Re-running a wider search is mostly not how an entry here falls.**  A
-sweep of this file looking for walls to re-sweep under better tooling found
-almost nothing to run: the searched claims nearly all carry a *structural*
-argument alongside the search, and a proof does not fall to a wider sweep.
+sweep of this file for walls to re-sweep under better tooling found almost
+nothing to run: the searched claims nearly all carry a *structural* argument
+alongside the search, and a proof does not fall to a wider sweep.
 The identity's odd-width spelling is settled by a parity argument (an odd
 number of the only sign-flipping command cannot compose to `+0`), ROTfuck's
 by a congruence (`q ≡ p+1` against `q ≡ p`), the `%^2^-1` ladder's span by a
@@ -52,15 +52,14 @@ marker, so 35 is the highest marker index any jump can reach: markers past
 that exist in the program text but are unaddressable.
 
 **Labels cannot be reused, so the budget is a total-nodes count and not a
-live-set one.**  This is the piece a resource argument needs and it holds on
-the interpreter's own semantics: `8n` resolves its target by scanning the
-token list *from the start* and counting `4` tokens until it reaches the
-n-th.  A label is therefore a global ordinal fixed by position in the
-emitted string — not a name bound in a scope, not a nearest-match, and not
-something a subtree can consume and free.  Two distinct jump targets need
-two distinct ordinals for the whole life of the program, so the tree cannot
-recycle a label once its subtree is finished.  The bound is `2**n - 1`
-standing nodes against 35, not tree depth against 35.
+live-set one.**  It holds on the interpreter's own semantics: `8n` resolves
+its target by scanning the token list *from the start* and counting `4`
+tokens until it reaches the n-th.  A label is a global ordinal fixed by
+position in the emitted string — not a name bound in a scope, not a
+nearest-match, and not something a subtree can consume and free.  Two
+distinct jump targets need two distinct ordinals for the whole life of the
+program, so the tree cannot recycle a label once its subtree is finished.
+The bound is `2**n - 1` standing nodes against 35, not tree depth against 35.
 
 Given both, the generator is a decision tree that folds its constant
 subtrees, one label per internal node the fold leaves standing.  That makes
@@ -77,8 +76,8 @@ label budget.  Not worth building for that reason.
 
 ### The attack that does not work: operands past `Z`
 
-This wall was once overturned and the lift was **reverted**.  Recording the
-attack so it is not retried: this repo's interpreter decodes an operand as
+This wall was once overturned and the lift was **reverted**.  The attack, so
+it is not retried: this repo's interpreter decodes an operand as
 
 ```python
 def num(char: str) -> int:
@@ -188,8 +187,7 @@ doubling `2**(n+1)` mark base whose halving escapes are total at every
 arity by argument.  Every probed arity (through seven) takes the tight
 layout; the fallback is what keeps `construct` total at the rest, and the
 reduction — one table-independent reference run certifies every table at
-an arity — is written up in [`docs/proofs.md`](proofs.md).  The
-verdict:
+an arity — is written up in [`docs/proofs.md`](proofs.md).  The verdict:
 separation leaves every row at a distinct **odd** position with nothing
 marked above its own cell, and on that state the kill
 `"1"*a + "2" + "2"*(a-1) + "12"` (`a` odd) is a closed form — rows at or
@@ -213,11 +211,11 @@ them — is gone, and with it the geometry parity law.  The resumable
 tables and checks all 1048576 instantiated rows: each row must either halt
 or revisit an exact state, with no fuel verdict; the completed sweep had
 zero failures, and was re-run in full under the tight geometry when it
-became the four-input default.  Five and six inputs are randomly sampled, and each emission
-is still validated per stage on the exact model and replayed before it is
-returned.  A fixed budget still bounds the build: a table takes `2**n` bits
-to state, so template length and build work are exponential in `n` no
-matter the pipeline.
+became the four-input default.  Five and six inputs are randomly sampled,
+and each emission is still validated per stage on the exact model and
+replayed before it is returned.  A fixed budget still bounds the build: a
+table takes `2**n` bits to state, so template length and build work are
+exponential in `n` no matter the pipeline.
 
 ### Language facts worth keeping
 
@@ -260,8 +258,8 @@ exactly once.
 The language was removed: that re-embedding (and the ``{Ci}`` placeholder it
 needed) is the workaround for having no state, and the text generator is a
 plain literal-embed, so Dotlang was too thin to justify being the sole
-exception to the exactly-once rule.  The construction is recorded here as a
-negative result so the assessment is not redone.
+exception to the exactly-once rule.  Recorded here so the assessment is not
+redone.
 
 ## Polynomial (numeric root-finding ruled out; caps at 138 instructions)
 
@@ -274,9 +272,9 @@ silently solves the wrong polynomial, and a residual-based gate cannot work
 interpreter factors the monic integer polynomial over Z with sympy instead.
 
 That exact factorization defines the boolean generator's practical bound,
-but the bound is on **instructions, not inputs** — each instruction consumes
-a fresh prime, so the degree (and the factoring cost) tracks the instruction
-count, which is what `_POLYNOMIAL_MAX_INSTRS = 138` caps.  The generator
+on **instructions, not inputs** — each instruction consumes a fresh prime,
+so the degree (and the factoring cost) tracks the instruction count, which
+is what `_POLYNOMIAL_MAX_INSTRS = 138` caps.  The generator
 builds both a decision tree and a residual-merge state machine (an ordered
 BDD, merging any two prefixes with the same residual subfunction) and emits
 the shorter: parity renders through `n == 8` at 106 instructions, while
@@ -303,15 +301,15 @@ long (O(`n·2**n`) blocks, ~1.4s/execution at `n == 4`).
   branch over code, so a program cannot route two inputs to different tails.
 
   **The wall and its scope.**  The full argument is in
-  [`docs/proofs.md`](proofs.md); it proves
-  `computes_ignores` — every program meeting the boolean contract (halt
-  cleanly, consume both bits, print one character) computes a function that
-  ignores one of its two inputs — so `no_xor` and `no_and` follow.  Two
-  structural facts drive it: `n` *overwrites* the accumulator, so the state
-  at the last read is a function of the last bit alone; and `t` jumps only to
-  position 0, so a run that halts must have input enough for every read ahead
-  of the cursor (`count_le_of_halts`), which forbids the two runs from
-  diverging at a `t`.  Output therefore factors as `A(b1) ++ B(b2)`, and a
+  [`docs/proofs.md`](proofs.md); it proves `computes_ignores` — every
+  program meeting the boolean contract (halt cleanly, consume both bits,
+  print one character) computes a function that ignores one of its two
+  inputs — so `no_xor` and `no_and` follow.  Two structural facts drive it:
+  `n` *overwrites* the accumulator, so the state at the last read is a
+  function of the last bit alone; and `t` jumps only to position 0, so a run
+  that halts must have input enough for every read ahead of the cursor
+  (`count_le_of_halts`), which forbids the two runs from diverging at a
+  `t`.  Output therefore factors as `A(b1) ++ B(b2)`, and a
   one-character output forces one factor empty.  This is an induction over
   unbounded length, not a bounded search: the axiom audit reported only
   `propext`, `Classical.choice` and `Quot.sound` — no `sorryAx`, no
@@ -467,11 +465,11 @@ long (O(`n·2**n`) blocks, ~1.4s/execution at `n == 4`).
   ahead of the next junction; the final accumulator is the table entry.
 
   The op strings are **constructed, not searched**: nothing keeps an
-  alternative, widens a beam, or retries.  Because no cell's behaviour can
+  alternative, widens a beam, or retries.  Since no cell's behaviour can
   depend on the accumulator, a junction's two op strings are shared by every
-  prefix that reaches it, which leaves exactly one shape — a chain that
-  folds the bits into a single number, then a decode that turns that number
-  into the entry.
+  prefix that reaches it, leaving exactly one shape — a chain that folds the
+  bits into a single number, then a decode that turns that number into the
+  entry.
 
   *The chain* walks the table's decision diagram one input at a time, taking
   the first legal pair from a fixed catalogue (`_WII2D_JUNCTIONS`).  A pair
@@ -519,9 +517,9 @@ long (O(`n·2**n`) blocks, ~1.4s/execution at `n == 4`).
   whose eventual compressed magnitude loses to one it discarded.
 
   There is no useful universal fallback (a tree would need each input
-  re-embedded at every node, which WII2D has no way to store).  There is,
-  however, a **total fold construction** proving representability at any
-  finite domain: given two live values needing the same bit, a chosen offset
+  re-embedded at every node, which WII2D has no way to store).  But a
+  **total fold construction** proves representability at any finite
+  domain: given two live values needing the same bit, a chosen offset
   `C` and merge modulus `M = (a-C)^2 + (b-C)^2` merges them by injective
   translation then one square-fold, excluding same-bit collisions by
   construction, so each round strictly lowers the live count.  This is an
@@ -686,11 +684,11 @@ languages reach multi-input threshold functions:
   **The coverage question is settled anyway, by proof rather than by
   sweep** ([`docs/arrowqueue_generator.md`](arrowqueue_generator.md)).
   Since the routing never depends on the table's contents, ``n == 5`` and
-  every arity above it are covered without enumerating a single one of the
-  ``2**32`` tables.  The 407-CPU-day figure remains the price of an
-  *exhaustive sweep*, which is now a redundant way to learn what the
-  induction already gives — a worked instance of the general rule that
-  these walls fall to proofs rather than to wider sweeps.
+  every arity above it are covered without enumerating one of the ``2**32``
+  tables.  The 407-CPU-day figure remains the price of an *exhaustive
+  sweep*, now a redundant way to learn what the induction already gives — a
+  worked instance of the rule that these walls fall to proofs rather than to
+  wider sweeps.
 
   The pricing run checked its tables rather than only timing them (500
   random tables across ``n == 3``-``5`` plus the constant, half and
@@ -710,10 +708,10 @@ languages reach multi-input threshold functions:
   ``POINT loop`` / ``IF g BREAK loop`` / ``END loop`` — halts iff ``f`` is
   0 and loops forever iff ``f`` is 1, exactly the wiki's own truth-machine
   semantics.  No other language in the repo needed the new harness
-  contract (termination as the answer); Point Break is the first where
-  the convention unlocks an arbitrary table rather than hitting a
-  structural ceiling.  The looping side is decided deterministically by
-  state-cycle detection: Point Break is step-capable and a repeated
+  contract (termination as the answer); Point Break is the first where the
+  convention unlocks an arbitrary table rather than a structural ceiling.
+  The looping side is decided deterministically by state-cycle
+  detection: Point Break is step-capable and a repeated
   complete-state snapshot proves the loop (see the roadmap's
   hang-detection section), so the boolean tests need no wall-clock bound
   at all — which also sidesteps the coverage-tracer deadlock that a
@@ -798,10 +796,7 @@ and keep head walks off foreign leaves), a blocked run is a no-op at any
 length so the arity-dependent run magnitudes drop out, and the cycle-2
 dance is a paint-free fixed point over a three-offset state set whose
 30-entry motif table, learned at ``n == 5``, replays with 0 prediction
-errors at ``n`` of 6-9.  The general method — encode each combination as a
-distinct leaf position reached by the weighted bit-moves, and anchor the
-cycle-2 run back onto that leaf — is recorded in
-``docs/a_painter_ant_generator.md``.
+errors at ``n`` of 6-9.
 
 ``n == 4`` was previously sampled at three tables; promoting it cost about
 a minute because the stability verdict is a **state fixed point** rather
@@ -833,8 +828,8 @@ property of the input, not of the function.  So there is no
 ``multiply(language, n)`` class to build across the registry — a language
 either reads until a delimiter (``*`` between the operands, ``#`` at the
 end) and needs one sentinel construction for any digit count, or it cannot.
-Jaune is the first language found with the capability; the rest of
-the registry's languages are not known to have it (their generators are
+Jaune is the first language found with the capability; the rest of the
+registry's languages are not known to have it (their generators are
 text-only or absent), so this records the criterion and the one realized
 construction rather than a family of generators.
 
@@ -846,7 +841,7 @@ single-digit pairs 0-9 × 0-9).**
 For n > 1 the right construction is grade-school long multiplication:
 allocate 2n cells for the 2n operand digits (each 0-9, fitting a byte) and
 carry over between result cells, so no single cell ever holds the full
-product.  This avoids the single-cell overflow that blocks accumulating the
+product — avoiding the single-cell overflow that blocks accumulating the
 product in one cell.  But the per-digit *carry* needs a "while >= 10"
 operation, and with the interpreter's documented 8-bit wrapping cells (mod
 256) the standard divmod/carry algorithms assume non-wrapping cells and do
@@ -907,7 +902,7 @@ graph: `True` once *some* sequence of draws halts, `False` only after the
 graph closes with no halted state in it, which proves every draw runs
 forever.  Revisiting a state on one outcome alone would prove nothing, since
 another outcome could still escape — so this keeps every visited state
-rather than Brent's O(1) pair, because branches merge after differing draws.
+rather than Brent's O(1) pair; branches merge after differing draws.
 
 Two things stay undecided rather than being guessed at, both raising
 `TimeoutError`: a graph that outgrows the caller's state cap, and a

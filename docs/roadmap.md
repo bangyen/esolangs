@@ -42,9 +42,9 @@ assessed-and-rejected ledger in `docs/limitations.md`.
   cheaper because the table is a string literal rather than one command per
   selected row.  The cost is therefore the interpreter — a 2D walker with
   multi-character command words, three data types and a function system,
-  Flowchart/COD-sized rather than Streetcode-sized.  The
-  two-dimensional `skip`/`turn` control flow is exercised by tests rather
-  than made responsible for the generator's cost.  **The page has no
+  Flowchart/COD-sized rather than Streetcode-sized.  The two-dimensional
+  `skip`/`turn` control flow is exercised by tests rather than made
+  responsible for the generator's cost.  **The page has no
   truth-machine or boolean example** (its three examples are cat variants),
   so the construction above is derived from the primitives rather than
   lifted from ground truth.
@@ -139,12 +139,11 @@ no brainfuck loop image -- the car never returns to the junction that steers
 it as the same drive state -- and the boolean generator's programs are
 decision trees whose leaves each print.  Both are lowerable in principle
 with scratch cells and a converged answer, which is a compiler rather than a
-program rewrite.  This is the same class of future work as the OISC pair --
-and that pair is the precedent to follow: `decleq_to_sbleq` clears the
-admission bar by *emulating* the source machine's semantics, because only an
-emulator has no interiors (Decleq can jump into a block's interior;
-Streetcode revisits junctions under a different drive state -- the same
-shape of problem).  It would be the first real control-flow lowering here:
+program rewrite.  The OISC pair is the precedent to follow: `decleq_to_sbleq`
+clears the admission bar by *emulating* the source machine's semantics,
+because only an emulator has no interiors (Decleq can jump into a block's
+interior; Streetcode revisits junctions under a different drive state -- the
+same shape of problem).  It would be the first real control-flow lowering:
 the other three shipped transpilers are per-command transliteration onto a
 superset target.
 
@@ -267,11 +266,11 @@ of it conforms, so a new random language fails until it is decided too.
 
 What remains is the class no snapshot can catch: an unbounded-growth loop
 never revisits a state, so it stays on the wall-clock backstop whatever else
-is built.  That is a property of cycle detection rather than an open
-question, and two undecided results sit beside it by design — a reachable
-input command, which cannot be forked without sibling branches sharing one
-cursor, and a transition whose fanout exceeds its language's per-transition
-cap.  Both raise rather than guessing.
+is built — a property of cycle detection rather than an open question.  Two
+undecided results sit beside it by design: a reachable input command, which
+cannot be forked without sibling branches sharing one cursor, and a
+transition whose fanout exceeds its language's per-transition cap.  Both
+raise rather than guessing.
 
 **This section is closed.**  Nothing here is scheduled work.
 
@@ -440,13 +439,12 @@ What the two fixes did **not** buy is the interesting part:
       fires below the arity where the table is unbuildable anyway: 0 of 1200
       order builds discarded at `n <= 5`, and 5760 of 5760 at `n == 6`, where
       `six_five` raises regardless.
-  **Both negatives are controlled**, which is what makes them worth
-  recording: the first sweep reported zero discards everywhere because
-  patching `esolangs.tools.boolean.cvnc` silently patched the *generator
-  function* the package `__init__` exports under that name, not the module.
-  A positive control — `CV(N)(C)`, documented to return `""` — was what
-  caught it, and `six_five` at `n == 6` is the control for the self-rolled
-  half.  Re-derive with those controls or not at all.
+  **Both negatives are controlled**: the first sweep reported zero discards
+  everywhere because patching `esolangs.tools.boolean.cvnc` silently patched
+  the *generator function* the package `__init__` exports under that name,
+  not the module.  A positive control — `CV(N)(C)`, documented to return
+  `""` — caught it, and `six_five` at `n == 6` is the control for the
+  self-rolled half.  Re-derive with those controls or not at all.
 
 ## Dependency reduction
 
@@ -486,11 +484,10 @@ open:
   searched for it, and each now names what it finds instead.  A sweep of
   every module in `tools/boolean/` for a live frontier (rather than for
   the word "search", which appears mostly in prose describing searches
-  that were *replaced*)
-  found these, all confirmed by instrumenting the function and
-  building real tables.  **Instrument the function the shipped entry
-  actually calls, over enough tables to see it fire**: this sweep has
-  now reported a false negative *twice*.  It first missed
+  that were *replaced*) found these, all confirmed by instrumenting the
+  function and building real tables.  **Instrument the function the
+  shipped entry actually calls, over enough tables to see it fire**: this
+  sweep has now reported a false negative *twice*.  It first missed
   Minifuck by patching `_derived_plans`, the offline sibling, which
   fires zero times in a real build — the runtime path reaches the
   enumeration through `_staging_index` instead.  Then, having closed
@@ -624,14 +621,12 @@ open:
       not predictable without walking, the frontier sequence cannot be
       computed up front, and the loop stays.  Only the search inside it
       was removable.
-  The five entries above stay as the record
-  of what each search was and what named it.  For the shape of what
-  closing one buys, SLOW
-  ACV MAMMALIAN is the worked precedent: its own search was replaced by an
-  arithmetic construction once the `j1` sweep turned out to be a residue
-  solve, taking the contract sweep entry from 3.04s to 0.02s.  The forms to
-  find here are different, but the move is the same — name what the search
-  returns rather than caching the search.
+  The five entries above stay as the record of what each search was and
+  what named it.  SLOW ACV MAMMALIAN is the worked precedent for what
+  closing one buys: its own search was replaced by an arithmetic
+  construction once the `j1` sweep turned out to be a residue solve, taking
+  the contract sweep entry from 3.04s to 0.02s.  The move is always the
+  same — name what the search returns rather than caching the search.
 - **ArrowQueue's reusable drain** — a fixed-block leaf drain (rather than a
   staircase) is verified correct and written up in
   `docs/generator-optimizations.md`, but unshipped: it only wins from n≥5,
@@ -640,16 +635,15 @@ open:
   behind it (`a6ec99de`) touched only the two docs files, so shipping is a
   build (drain construction, an entry-mode parameter, a depth dispatch, and
   extending `test_folding_never_grows_a_program` past its `n <= 3` pin), not
-  a swap; the design is settled but the code is not written.  And the
-  crossover is out of reach rather than merely unexercised: the staircase
-  wins at every fold depth through 4 (60/93/111 characters against
-  92/108/116) and only loses from depth 5, which needs an `n >= 5` table
-  carrying a 5-deep constant subtree — `n == 5` is exhaustively ~407
-  CPU-days away, and the suite's two random `n == 5` samples will
-  essentially never contain one.  A wrong entry-mode dispatch previously
-  failed 530/2120 cases, so a careless port costs correctness at `n <= 4`,
-  not just characters.  Revisit if a *proof* pushes exercised coverage to
-  `n >= 5`.
+  a swap.  And the crossover is out of reach rather than merely
+  unexercised: the staircase wins at every fold depth through 4 (60/93/111
+  characters against 92/108/116) and only loses from depth 5, which needs an
+  `n >= 5` table carrying a 5-deep constant subtree — `n == 5` is
+  exhaustively ~407 CPU-days away, and the suite's two random `n == 5`
+  samples will essentially never contain one.  A wrong entry-mode dispatch
+  previously failed 530/2120 cases, so a careless port costs correctness at
+  `n <= 4`, not just characters.  Revisit if a *proof* pushes exercised
+  coverage to `n >= 5`.
 - **Streetcode evidence types** — carrying `_Machine._validate`'s five proofs
   in a chain of evidence classes would make the ordering checked rather than
   documented.  Deferred: it removes two correct `pragma: no cover` lines and
@@ -664,8 +658,8 @@ open:
 - **The remaining literal tables in `tools/boolean/`** — swept by AST over
   every module in `src/`, classified by provenance, and each one probed
   rather than read.  **One was convertible and is shipped; the rest are
-  not candidates**, and the evidence for each is recorded here so the
-  sweep is not re-run from scratch.  The standing rule ("a named rule,
+  not candidates**, with the evidence for each recorded so the sweep is
+  not re-run from scratch.  The standing rule ("a named rule,
   never a search or a frozen table") is about *frozen search output* — a
   measured cover or a tuned ordering over a proven-total structure is a
   different artefact and converting one trades a table for a search,
@@ -687,8 +681,8 @@ open:
       Byte-identical on all 272 tables at `n <= 3`, and twelve
       fold-served tables at `n == 4..7` execute every row correctly at
       equal fill width.
-    - **`_WII2D_JUNCTIONS`** — **not a candidate.**  It is not a freeze but
-      the *product* of one: `ea65a170` removed `_WII2D_BEAMS`, the
+    - **`_WII2D_JUNCTIONS`** — **not a candidate.**  Not a freeze but the
+      *product* of one: `ea65a170` removed `_WII2D_BEAMS`, the
       `(4, 16, 32)` width ladder, `_WII2D_MAX_STATE_BITS` and the
       magnitude-first retry, leaving this catalogue plus the totality
       argument for Horner in last place.  Order is a size preference, not
@@ -704,10 +698,10 @@ open:
       weighted op cost all fail to reproduce the order.  The ordering is
       semantic; the comment should say so.
     - **`_SLICE_YIELD_ORDER` (Minifuck)** — **not a candidate; dormant, not
-      dead.**  It is unreachable as shipped — `_slices` returns the plain
+      dead.**  Unreachable as shipped — `_slices` returns the plain
       enumeration at every arity because `_STAGING_BUDGET` and
       `_STAGING_BUDGET_N5` are both `None` and nothing outside the tests
-      assigns them — but it is a working knob rather than dead code.  With
+      assigns them — but a working knob rather than dead code.  With
       a budget set at `n == 4`, the only state that reaches it, the frozen
       order and the plain order disagree on **3 of 8 tables about whether
       a staging is found at all** (budget 2000) and emit a different

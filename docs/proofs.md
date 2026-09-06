@@ -18,8 +18,7 @@ A fourth entry, the 123 geometry reduction, is of a different provenance
 and says so: a prose argument over a finite *certificate* that the code
 recomputes from scratch in every process, not a Lean theorem.  It is kept
 here because it plays the same role — it is what a size optimization's
-correctness rests on — and because its trust base is worth stating
-exactly.
+correctness rests on.
 
 ## MAMMALIAN generator totality
 
@@ -35,11 +34,11 @@ Two structural facts make the search always succeed.
 
 **1. Number theory (`even_q_solvable`).**  Every even array `q` has
 `gcd (q + 1) 256 = 1`, so the value equation `(q + 1) * final ≡ target`
-(mod 256) is solvable for every target.  The reason is immediate: `q` even
-makes `q + 1` odd, `256 = 2^8`, and an odd number is coprime to every power
-of two — so `q + 1` is a unit in `ZMod 256` and `final = (q+1)⁻¹ * target`
-is the solution.  The generator only ever needs an even array, and on one it
-can always hit any target byte.
+(mod 256) is solvable for every target.  `q` even makes `q + 1` odd,
+`256 = 2^8`, and an odd number is coprime to every power of two — so
+`q + 1` is a unit in `ZMod 256` and `final = (q+1)⁻¹ * target` is the
+solution.  The generator only ever needs an even array, and on one it can
+always hit any target byte.
 
 **2. Reachability (`walk_reaches_even`).**  The SPRINT walk from every
 pointer reaches an even array in steps 1..46.  The walk is
@@ -127,10 +126,10 @@ computation.
 program meeting the boolean contract computes a function that ignores one of
 its two inputs, so XOR and AND — which depend on both — are unreachable.
 
-The scope matters: the claim quantifies over programs of unbounded length,
-and non-termination of a `t` loop is not decidable by simulation, so this is
-an induction on the execution and **not** a bounded search.  No amount of
-enumeration would have established it.
+The claim quantifies over programs of unbounded length, and non-termination
+of a `t` loop is not decidable by simulation, so this is an induction on the
+execution and **not** a bounded search.  No amount of enumeration would have
+established it.
 
 ### The machine
 
@@ -174,9 +173,9 @@ input untouched, a read pays one input byte for the one read it crosses, and
 a taken rewind restarts at 0, where the count is at least the count at the
 current cursor.
 
-That second fact is what forbids the two runs from diverging at a `t`: the
-branch that rewinds must pay for the reads it re-crosses.  Two consequences
-carry the argument.
+That second fact forbids the two runs from diverging at a `t`: the branch
+that rewinds must pay for the reads it re-crosses.  Two consequences carry
+the argument.
 
 - *With no input left, a taken `t` is fatal* (`rewind_fatal_of_empty`): it
   returns to position 0, and any contract-satisfying program has a read
@@ -214,12 +213,12 @@ same, so the lemma applies a second time.
 
 ### The wall
 
-Putting those together, a program meeting the contract prints
-`A b₁ ++ B b₂` (`computes_splits`): a prefix determined by the first bit,
-then a suffix determined by the second.  The split is at the canonical read
-positions — the first read from 0, and the read reached after it — which are
-functions of the program alone.  That is what makes `B` independent of `b₁`:
-the tail run starts from a state naming only `b₂`.
+Together, a program meeting the contract prints `A b₁ ++ B b₂`
+(`computes_splits`): a prefix determined by the first bit, then a suffix
+determined by the second.  The split is at the canonical read positions —
+the first read from 0, and the read reached after it — which are functions
+of the program alone.  That is what makes `B` independent of `b₁`: the tail
+run starts from a state naming only `b₂`.
 
 Now take lengths.  The contract prints exactly one character, so
 `1 = |A b₁| + |B b₂|` on all four combinations, forcing `|B 48| = |B 49|`
@@ -274,10 +273,9 @@ argument (halving escapes against a `2**(n+1)` mark base, in
 argument at every arity, and this entry only has to justify the tight
 path.
 
-This is not a theorem that the tight geometry works at every arity, and
-no such claim is made anywhere: it is a *reduction* of "correct for all
-`2**(2**n)` tables at arity `n`" to a table-independent check that costs
-one model run.
+This is not a theorem that the tight geometry works at every arity: it is
+a *reduction* of "correct for all `2**(2**n)` tables at arity `n`" to a
+table-independent check that costs one model run.
 
 **Fact 1 (separation is table-independent).**  `_phase_a`, `_close` and
 `_separate` never read the truth table — their signatures have no table

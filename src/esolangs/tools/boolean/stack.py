@@ -62,11 +62,11 @@ def grapheme(truth_table: str) -> str:
     # minterm here spends one factor per input, so dropping an input shortens
     # each of the (now fewer) minterms as well.  The reads stay -- they are
     # the interface -- but an ignored one costs a *single* character: ``W``
-    # pushes the line it read and nothing ever pops it, since every operator
-    # here pops what it consumes and ``Y`` prints the top of the stack, so a
-    # value left below the accumulator is unreachable rather than merely
-    # unused.  That makes it cheaper than taglate's rotate-and-drop, which
-    # has a queue's positional arithmetic to keep undisturbed.
+    # pushes the line it read and nothing pops it, since every operator here
+    # pops what it consumes and ``Y`` prints the top of the stack, so a value
+    # left below the accumulator is unreachable rather than merely unused.
+    # That makes it cheaper than taglate's rotate-and-drop, which has a
+    # queue's positional arithmetic to keep undisturbed.
     used = essential_inputs(truth_table, n) or [0]
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
     width = len(used)
@@ -152,9 +152,9 @@ def forth(truth_table: str) -> str:
     result byte instead of dispatching, and its whole subtree goes
     unemitted.  That costs nothing to arrange because Forþ keys its scope
     table by the number pushed before ``{`` and looks it up with a default,
-    so a gap in the numbering is simply a scope that never exists; no index
-    has to move.  The reads sit outside the tree, so a folded program
-    consumes its input exactly as an unfolded one does.
+    so a gap in the numbering is a scope that never exists; no index has to
+    move.  The reads sit outside the tree, so a folded program consumes its
+    input exactly as an unfolded one does.
 
     **The tree splits on its inputs in whichever order emits the shortest
     program.**  ``;`` pops the stack, so the *natural* order tests the last
@@ -242,14 +242,14 @@ def _forth_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     before later reads bury it, reaches 18 at n == 4 and 54 at n == 5.
 
     A breadth-first search over (arrangement, reads done) finds op strings
-    that are shorter on some arrangements, because they compose across reads
-    -- a late ``c`` can do work several per-read ``v``s would each repeat.
-    It is not used: the difference is 1-2 characters on an intermediate
-    string, and since :func:`forth` keeps the shortest program over every
-    order, a longer rotation usually loses to a different order instead.
-    Measured over the emitted programs the whole effect is +0.13% at n == 3
-    and +0.03% at n == 5, which does not pay for a search in a generator
-    meant to be read.
+    shorter on some arrangements, because they compose across reads -- a
+    late ``c`` can do work several per-read ``v``s would each repeat.  It is
+    not used: the difference is 1-2 characters on an intermediate string,
+    and since :func:`forth` keeps the shortest program over every order, a
+    longer rotation usually loses to a different order instead.  Measured
+    over the emitted programs the whole effect is +0.13% at n == 3 and
+    +0.03% at n == 5, which does not pay for a search in a generator meant
+    to be read.
     """
     reached: dict[tuple[int, ...], str] = {}
     for sinks in product(_FORTH_SINKS, repeat=n):
@@ -455,16 +455,16 @@ def unsquare(truth_table: str) -> str:
     rotates to depth.  That reads the ops singly.  Together they rotate,
     because **the accumulator is the second place to hold a bit**: ``A``
     pops the top into it, ``S`` swaps the two now exposed, and ``P`` pushes
-    it back, which sinks a bit two places (:data:`_UNSQUARE_SINKS`).
+    it back, sinking a bit two places (:data:`_UNSQUARE_SINKS`).
 
     **The sinks are interleaved with the reads, not run after them.**  A bit
     stashed in the accumulator does not survive a read block -- the block's
-    own ``A`` overwrites it -- so a bit has to be moved while it is still
-    near the top, before later reads bury it.  Every sink costs characters,
-    so an order pays for the folds it wins or loses to the natural one and
-    the search measures rather than assumes.  Measured saving: 15.6% over
-    all 256 tables at n == 3 (112 improved, none grown), 18.0% and 13.8%
-    over samples at n == 4 and n == 5.
+    own ``A`` overwrites it -- so a bit has to be moved while still near the
+    top, before later reads bury it.  Every sink costs characters, so an
+    order pays for the folds it wins or loses to the natural one and the
+    search measures rather than assumes.  Measured saving: 15.6% over all
+    256 tables at n == 3 (112 improved, none grown), 18.0% and 13.8% over
+    samples at n == 4 and n == 5.
     """
     n = _validate_truth_table(truth_table)
     # ``A`` pops, so the tree tests the *last* input at the root: the order
@@ -549,11 +549,11 @@ def _unsquare_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     the rejected alternative: there the search *does* find shorter op strings
     on some arrangements, because a late ``c`` composes across reads, and it
     is dropped as a trade -- 1-2 characters that mostly do not survive to the
-    output, against code a reader can follow.  Here there is no trade to make.
-    A search over (arrangement, reads done) finds the *same* set with the
+    output, against code a reader can follow.  Here there is no trade.  A
+    search over (arrangement, reads done) finds the *same* set with the
     *same* shortest string at every width through n == 7, because these sinks
-    do not compose across reads at all, so the enumeration is both the simpler
-    code and the optimal one.
+    do not compose across reads at all, so the enumeration is both the
+    simpler code and the optimal one.
     """
     reached: dict[tuple[int, ...], str] = {}
     for sinks in product(_UNSQUARE_SINKS, repeat=n):

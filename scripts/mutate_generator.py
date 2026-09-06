@@ -21,11 +21,10 @@ import time.
 
 So the layout is the package itself, copied whole into a work directory
 that shadows the editable install because the runner's cwd leads
-``sys.path``.  That shadowing is the one mechanism worth stating outright:
-it has to hold inside ``mutants/`` too, where mutmut chdirs, and it does --
-verified by importing the target and printing its ``__file__`` before the
-baseline runs, which is the positive control this harness keeps rather than
-assumes.
+``sys.path``.  The shadowing has to hold inside ``mutants/`` too, where
+mutmut chdirs, and it does -- verified by importing the target and printing
+its ``__file__`` before the baseline runs, the positive control this harness
+keeps rather than assumes.
 
 One limit on how a score here should be read: **module-level constants are
 not mutated.**  mutmut 3.x mutates function bodies through a trampoline, so
@@ -36,8 +35,8 @@ covered, not the tables.
 
 The tests are not a limit: every suite in ``tests/tools`` runs, rather than
 the ones that name the target.  :func:`_test_files` has the measurement
-behind that, and it is the correction this harness needed most -- selecting
-by import alone under-reported 19 of the 27 generator modules.
+behind that -- the correction this harness needed most, since selecting by
+import alone under-reported 19 of the 27 generator modules.
 
 Usage:
     python scripts/mutate_generator.py register

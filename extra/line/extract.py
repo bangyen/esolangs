@@ -14,16 +14,16 @@ into opcodes (:func:`classify_ops`) and verifying the walk accounted for
 all the source image's ink (:func:`coverage_gap`).
 
 The walk itself -- finding *where* the path tree branches, which is not a
-local per-pixel question (the wiki's own "multiplication" example contains
-a real 4-way crossing a naive per-pixel shape check cannot tell apart from a
-genuine decision point using only the few pixels immediately around it) --
-lives in :mod:`lattice` instead, whose star-probe walker replaced an earlier
-region-adjacency approach that lived directly in this module (see its
-module docstring, and ``WIP.md``, for why: a merge, where one stroke's last
-leg runs straight into a *different*, already-drawn stroke's ink with no
-separating background pixel, could not be told apart from an ordinary
-continuation by that walker, and three attempts at a local pixel-geometry
-fix on it were each tried and reverted).
+local per-pixel question (the wiki's own "multiplication" example contains a
+real 4-way crossing a naive per-pixel shape check cannot tell apart from a
+genuine decision point using only the pixels immediately around it) -- lives
+in :mod:`lattice` instead, whose star-probe walker replaced an earlier
+region-adjacency approach in this module (see its module docstring, and
+``WIP.md``, for why: a merge, where one stroke's last leg runs straight into
+a *different*, already-drawn stroke's ink with no separating background
+pixel, could not be told apart from an ordinary continuation by that walker,
+and three attempts at a local pixel-geometry fix were each tried and
+reverted).
 """
 
 from __future__ import annotations
@@ -45,8 +45,8 @@ from mask import Mask
 #   piece to replace" -- a brute-force replacement is O(ink x background) and
 #   took 2.6s on a 500x500 fixture.  But find_cursor never wanted a distance
 #   transform: its only use was the threshold ``dist > 1.5``.  No pixel with a
-#   non-ink 8-neighbor can exceed sqrt(2) ~ 1.414, so that test is exactly "all
-#   8 neighbors are ink" -- a 3x3 binary erosion (:func:`_erode`).  Confirmed
+#   non-ink 8-neighbor can exceed sqrt(2) ~ 1.414, so that test is "all 8
+#   neighbors are ink" -- a 3x3 binary erosion (:func:`_erode`).  Confirmed
 #   bit-identical to the scipy threshold on every fixture, cropped and
 #   normalized.  label/sum/center_of_mass were the easy remainder: a BFS
 #   (:func:`_largest_thick_region`) and a plain coordinate mean.
@@ -61,15 +61,15 @@ from mask import Mask
 #   1x-5x.
 #
 #   Pillow was expected to be the hard one, since Image.open is real codec
-#   work.  But the only images that pass through here are PNGs this repo's own
+#   work.  But the only images passing through here are PNGs this repo's own
 #   render.py wrote or the wiki reference drawings in fixtures/, and PNG's
 #   container is length-tagged chunks over zlib, both in the standard library
 #   -- so ``png.py`` decodes them outright, matching Pillow byte-for-byte on
-#   all five fixtures.  Image.resize(NEAREST) was the triviality it looked
-#   like (a strided slice), with one wrinkle about grid alignment recorded in
-#   normalize_scale.  Every PNG is readable, including interlaced and 16-bit,
-#   since a drawing that has been through an image editor comes back in
-#   whatever that editor preferred and is still the same drawing.
+#   all five fixtures.  Image.resize(NEAREST) was a strided slice, with one
+#   wrinkle about grid alignment recorded in normalize_scale.  Every PNG is
+#   readable, including interlaced and 16-bit, since a drawing that has been
+#   through an image editor comes back in whatever that editor preferred and
+#   is still the same drawing.
 #
 #   The narrowing that stands: only PNG.  A baseline JPEG decoder was written
 #   -- it worked, and is recorded in WIP.md -- and then deliberately dropped,
@@ -81,11 +81,11 @@ from mask import Mask
 #   numpy looked like the one with a real cost, since the masks reach 9Mpx and
 #   pure-Python per-pixel loops over that would be minutes.  The answer was to
 #   stop storing pixels individually: ``mask.py`` keeps one Python int per row
-#   and lets CPython's bigints do whole-row bitwise work, which is *faster*
-#   than the numpy it replaced on the operations that matter here (see that
-#   module's docstring for the measurements).  It also retired the quadtree
-#   this file used for bounding boxes, which existed only to work around
-#   numpy's whole-canvas nonzero() scan.
+#   and lets CPython's bigints do whole-row bitwise work, *faster* than the
+#   numpy it replaced on the operations that matter here (see that module's
+#   docstring for the measurements).  It also retired the quadtree this file
+#   used for bounding boxes, which existed only to work around numpy's
+#   whole-canvas nonzero() scan.
 
 
 def load_binary(path: str) -> Mask:
