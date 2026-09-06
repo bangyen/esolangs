@@ -15,12 +15,12 @@ from esolangs.registry import BY_BOOLEAN, BY_FUNCTION, LANGUAGES
 from esolangs.vm import run_until_halt_or_cycle
 
 # One constant table against one that folds nothing.  A generator loses reads
-# by *folding*, so a table that folds completely and a table that folds not at
-# all are what the comparison needs; near-constant tables in between produce
-# intermediate counts but never catch a generator these two miss.  This sweep
-# runs every interpreter on every table on every pytest invocation, so the
-# cases that add cost without adding detection are not worth carrying --
-# ``00000001`` and ``11111110`` were dropped for exactly that reason.
+# by *folding*, so the comparison needs a table that folds completely and one
+# that folds not at all; near-constant tables in between produce intermediate
+# counts but never catch a generator these two miss.  This sweep runs every
+# interpreter on every table on every pytest invocation, so cases that add
+# cost without adding detection are not worth carrying -- ``00000001`` and
+# ``11111110`` were dropped for that reason.
 #
 # ``01101001`` is parity, the one table with no constant subtree above a
 # single row, so nothing about it can fold.
@@ -41,8 +41,8 @@ _TABLES = ["00000000", "01101001"]
 # ``pct_squared_minus_one`` was briefly in this set, at 4.6s: it searched
 # setter assignments and this sweep's parity table is ``n == 3``, which it
 # could not separate, so it paid a whole search budget before raising.  It
-# now derives its programs instead and rejects that arity outright, which
-# puts it below the measurement floor.
+# now derives its programs and rejects that arity outright, putting it below
+# the measurement floor.
 #
 # ``minifuck`` left the set for the same reason, having been its most
 # expensive member at 41.1s.  It no longer searches at ``n <= 3`` -- every

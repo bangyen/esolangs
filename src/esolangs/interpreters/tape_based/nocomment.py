@@ -31,7 +31,7 @@ total and side-effect free by construction rather than by inspection.
 It holds one ``_State`` and rebinds it each step, so the mutation lives in
 exactly one assignment and every rule about what NoComment *does* stays in
 the pure layer.  Printing, and the two errors a program can raise, stay in
-the shell -- which is what leaves the transition total.
+the shell -- which leaves the transition total.
 """
 
 from __future__ import annotations

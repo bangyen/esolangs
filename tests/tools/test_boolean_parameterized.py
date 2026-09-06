@@ -27,7 +27,7 @@ def _parameterized_generators():
     invariants below -- including ``cod``, which this module's own docstring
     claims to cover.  The exemption bought nothing (all three satisfy both
     invariants), which is what makes a silent roster worse than an explicit
-    one: nobody chose it.  ``instantiate`` is the module's shared helper, not
+    one: nobody chose it.  ``instantiate`` is the shared helper, not
     a generator, so it is the one name excluded, by name and for a reason.
     """
     from esolangs.tools.boolean import parameterized

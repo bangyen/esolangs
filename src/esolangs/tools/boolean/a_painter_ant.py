@@ -37,21 +37,21 @@ __all__ = ["a_painter_ant"]
 # table entry and left unpainted (a space, ignored by the interpreter) for a
 # zero.  Only ``P`` is ever used -- the generator never paints a cell black --
 # so the white cells are monotone increasing: cycle 1 establishes them and
-# every later cycle only re-confirms a subset, which is what makes the
-# programs cycle-stable.  The ``body`` then funnels the ant (from whichever
-# corner it ends cycle 2 at) to a canonical routing point, and the final
-# input's embedding does the last east/west route onto the output leaf.
+# every later cycle only re-confirms a subset, which makes the programs
+# cycle-stable.  The ``body`` then funnels the ant (from whichever corner it
+# ends cycle 2 at) to a canonical routing point, and the final input's
+# embedding does the last east/west route onto the output leaf.
 #
 # The head is built generically: for one and two inputs the leaves sit on
 # the axes (the final input on ``x = +-2``, the first on ``y = +-2`` or
 # ``0``) and the cycle-2 ant dances on the pre-painted stars (see
 # ``docs/a_painter_ant_generator.md`` for the ring rule).  For three inputs
-# the leaves sit on one row ``y = -2`` at ``x = +-2 +-4 +-8``,
-# four cells apart so adjacent stars share their axis cells and symmetric
-# across the y-axis.  The row generalises: this one ``_head`` serves every
-# arity, not just the three spelled out above -- XOR builds and lands
-# correctly on all inputs through ``n == 7`` (34788 characters), which is as
-# far as it was measured, not a ceiling.
+# the leaves sit on one row ``y = -2`` at ``x = +-2 +-4 +-8``, four cells
+# apart so adjacent stars share their axis cells and symmetric across the
+# y-axis.  The row generalises: this one ``_head`` serves every arity, not
+# just the three above -- XOR builds and lands correctly on all inputs
+# through ``n == 7`` (34788 characters), which is as far as it was measured,
+# not a ceiling.
 #
 # The template routes the first ``n-1`` inputs by their weight (west/north
 # for a one bit, east/south for a zero) before the body and the final input
@@ -126,9 +126,9 @@ def _leaf_positions(n: int) -> list[tuple[int, int, tuple[int, ...]]]:
 
     The coordinates come from the same weighted rule the head walks and the
     routing reads: each bit ``k`` contributes ``+-2 ** (n-k)`` on the axis
-    chosen by index parity, with a cleared bit negative.  The head only
-    uses the ``bits``; it reaches each leaf by walking those weights, so
-    ``(x, y)`` is the mirror position the routing reads.
+    chosen by index parity, with a cleared bit negative.  The head uses only
+    the ``bits``, reaching each leaf by walking those weights, so ``(x, y)``
+    is the mirror position the routing reads.
     """
     out: list[tuple[int, int, tuple[int, ...]]] = []
 
@@ -154,13 +154,13 @@ def _head(truth_table: str, bits: list[int]) -> str:
 
     The head paints every white leaf and returns to the origin.  It walks
     each leaf out and back piecewise -- one weighted move per input bit
-    (:func:`_bit_move`), in the same order and direction the routing uses,
+    (:func:`_bit_move`), in the same order and direction the routing uses --
     so the outbound path never crosses a previously painted leaf (the
     intermediate cells are never leaf positions) and the reverse path
-    retraces it cleanly.  The ``N`` prefix and ``Ssn`` ending are no-ops
-    on the empty first cycle; from cycle 2 on the ``WS``/``NE`` anchors
-    launch the ant off the leaf onto the painted ring, making the whole
-    program a cycle-stable fixed point.
+    retraces it cleanly.  The ``N`` prefix and ``Ssn`` ending are no-ops on
+    the empty first cycle; from cycle 2 on the ``WS``/``NE`` anchors launch
+    the ant off the leaf onto the painted ring, making the whole program a
+    cycle-stable fixed point.
     """
     n = len(bits)
     out = ["N"]
@@ -190,17 +190,17 @@ def _head(truth_table: str, bits: list[int]) -> str:
 def _body() -> str:
     """Generate the routing body.
 
-    The body paints two two-layer stars -- one around the output leaf and
-    one around its y-mirror -- so the final input never has to be
-    re-embedded: it only routes to whichever star is already painted.
-    Each star is walked as a clockwise spiral of ``P`` paints (the ring
-    cells at distance 1 and the axis cells at distance 2), and the two
-    stars are connected by the black gap between their rings: the star
-    centres are four cells apart and each ring reaches one cell toward the
-    other, so the gap is ``4 - 2`` east moves on the row above.  The body
-    starts and ends on the shared cell at ``(0, +-2)`` -- the canonical
-    point the final input's east/west routing leaves from -- and its
-    blocked-uppercase returns are the anchors of the cycle-2 dance.
+    The body paints two two-layer stars -- one around the output leaf and one
+    around its y-mirror -- so the final input never has to be re-embedded: it
+    only routes to whichever star is already painted.  Each star is walked as
+    a clockwise spiral of ``P`` paints (the ring cells at distance 1 and the
+    axis cells at distance 2), and the two stars are connected by the black
+    gap between their rings: the centres are four cells apart and each ring
+    reaches one cell toward the other, so the gap is ``4 - 2`` east moves on
+    the row above.  The body starts and ends on the shared cell at
+    ``(0, +-2)`` -- the canonical point the final input's east/west routing
+    leaves from -- and its blocked-uppercase returns are the anchors of the
+    cycle-2 dance.
     """
     # West star, entered from the shared cell: east ring cell, then the
     # clockwise spiral (single ring steps, L-shaped detours out to the axis
@@ -232,7 +232,7 @@ def a_painter_ant(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
 
-    # The head paints every leaf; the body paints the two stars; the first
+    # The head paints every leaf, the body paints the two stars, the first
     # n-1 inputs route by weight before the body, and the final
     # (least-significant) input routes east/west onto its leaf after it.
     head = _head(truth_table, [0] * n)

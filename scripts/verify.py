@@ -17,9 +17,9 @@ this script.
 By default the run is *scoped*: each step declares the paths it guards (see
 ``STEP_SCOPE``), and a step whose paths this branch never touched is skipped,
 because nothing the branch did could have broken it.  Three steps take a file
-list instead of being all-or-nothing, so they are narrowed rather than skipped
--- pre-commit to the changed files, pytest to the matching test modules, and
-the differential corpora to the cross-checked languages that moved.
+list instead, so they are narrowed rather than skipped -- pre-commit to the
+changed files, pytest to the matching test modules, and the differential
+corpora to the cross-checked languages that moved.
 
 Scoping only ever subtracts work that provably could not have broken.  When
 the branch's diff cannot be read, or it touches the shared interpreter
@@ -39,10 +39,10 @@ still run them.
 
 The steps do not all run one after another.  ``pytest`` takes longer than
 everything else put together, so it is launched first and the short steps run
-while it goes; ``pre-commit`` is the exception on the other side, run to
-completion before anything else starts because its fix hooks rewrite the very
-files the other steps read.  That makes the timing table's two totals differ:
-the sum is how much work ran, the wall is how long the push waited.
+while it goes; ``pre-commit`` runs to completion before anything else starts,
+because its fix hooks rewrite the very files the other steps read.  That
+makes the timing table's two totals differ: the sum is how much work ran, the
+wall is how long the push waited.
 
 Usage:
     python scripts/verify.py [--only STEPS] [--skip STEPS] [--full] [--list]
@@ -183,10 +183,10 @@ STEPS = [
     # which the changed-line gate reads afterwards.
     #
     # `--cov-branch` is asked for unconditionally, but only because the
-    # interpreter moved.  It is worth recording why, since the answer has now
-    # flipped twice.  sys.monitoring cannot measure branches before 3.14, so
-    # asking for arcs there drops coverage onto the old tracer -- measured on
-    # 3.13 over this suite (-n 4, coverage 7.13.4, the fast selection):
+    # interpreter moved -- and the answer has now flipped twice.
+    # sys.monitoring cannot measure branches before 3.14, so asking for arcs
+    # there drops coverage onto the old tracer -- measured on 3.13 over this
+    # suite (-n 4, coverage 7.13.4, the fast selection):
     #
     #     no coverage                36.5s
     #     --cov (line, sysmon)       36.1s
@@ -423,8 +423,8 @@ def _parse_only_skip() -> tuple[set[str] | None, set[str] | None, bool, bool]:
 
 # The step that mutates the working tree.  pre-commit's ruff/ruff-format and
 # whitespace hooks rewrite files in place, so anything that reads the tree has
-# to wait for it -- running it alongside pytest would race the edit against the
-# read.  It is the only such step: everything else only reads.
+# to wait for it -- running it alongside pytest would race the edit against
+# the read.  The only such step: everything else only reads.
 MUTATES_TREE = "pre-commit"
 
 # The long pole.  Every other step put together is shorter than this one, so

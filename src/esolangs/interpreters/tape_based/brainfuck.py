@@ -2,16 +2,15 @@
 
 The tape is 8-bit wrapping and grows rightward, ``<`` is clamped at the
 left edge, and loops are matching-bracket.  The transpiler targets are held
-to these same semantics, which is what lets each one be verified
-end-to-end.
+to these same semantics, which lets each one be verified end-to-end.
 
 The execution model is a pure function over an immutable ``_State``:
 :func:`_advance` maps a state and a command to the next state, and never
 mutates what it is given.  It takes no ``io`` argument at all, so it is
 total and side-effect free by construction rather than by inspection.  The
 tape is a tuple, so a state is a value that can be stored, compared, and
-hashed as it stands -- which is what ``snapshot`` returns directly rather
-than rebuilding.
+hashed as it stands -- ``snapshot`` returns it directly rather than
+rebuilding.
 
 :class:`_Machine` is the mutable shell the interpreter protocol requires
 (``esolangs.vm`` wraps it, ``run_until_halt_or_cycle`` steps it, and

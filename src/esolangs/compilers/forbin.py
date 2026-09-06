@@ -4,8 +4,8 @@ Forbin's values are bits and functions, and its functions nest, are
 first-class, and recurse -- so unlike the transliterating compilers this
 lowers to a real call graph over a runtime frame chain.
 
-**Scoping is dynamic, not lexical**, and that is the fact the whole design
-turns on.  ``_call`` builds each frame as ``_Frame(callee, caller)``, so the
+**Scoping is dynamic, not lexical** -- the fact the whole design turns on.
+``_call`` builds each frame as ``_Frame(callee, caller)``, so the
 chain a name resolves through is the *call* chain, not the enclosing text.
 Both halves of ``_lookup`` walk it: a frame's ``locals`` and its function's
 ``nested`` table are checked at each level before moving outward, so a
@@ -31,9 +31,9 @@ points at a static, NUL-terminated ``(name_id, fn_value)`` array emitted
 per function, searched at the same level as that frame's locals.
 
 Values are tagged 64-bit words: a bit is ``0`` or ``1``, and a function is
-``(index << 1) | 1`` where ``index`` selects a compiled body.  Tagging is
-what lets ``!`` and ``out`` reject a function the way the interpreter's
-``HaltError`` does, and lets a call check that its callee is callable.
+``(index << 1) | 1`` where ``index`` selects a compiled body.  Tagging lets
+``!`` and ``out`` reject a function the way the interpreter's ``HaltError``
+does, and lets a call check that its callee is callable.
 The two builtins are the reserved values ``-2`` (``in``) and ``-4``
 (``out``), which no bit or function value collides with.
 

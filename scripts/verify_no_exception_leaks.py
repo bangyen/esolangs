@@ -11,11 +11,11 @@ KeyError -- is a bug in the interpreter, not in the program it was given.
 The corpus is deliberately hostile but *derived from real programs*: the
 generic fragments below, plus every shipped example for the language, plus
 mutations of those examples (truncated, a character dropped, one doubled,
-one inserted).  Truncation is what finds the interesting cases -- a
-half-written program reaches states no hand-written test thinks to build.
+one inserted).  Truncation finds the interesting cases -- a half-written
+program reaches states no hand-written test thinks to build.
 
 By default only the languages this branch actually touched are swept,
-which is what makes it cheap enough to run habitually: a change to one
+which makes it cheap enough to run habitually: a change to one
 interpreter is checked in seconds, and a change to shared machinery
 (``io.py``, ``vm.py``, ``exceptions.py``) still sweeps everything, since
 that is exactly where a one-line bug reaches all 59 languages at once --

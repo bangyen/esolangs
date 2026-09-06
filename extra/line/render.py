@@ -8,19 +8,19 @@ grid, and rasterizes it into an image shaped like the wiki's own examples --
 straight runs, unlabeled corners, a small diagonal kink for each of the seven
 instructions, and a filled triangular arrowhead marking the cursor.
 
-The kink shapes below (``_OPS``) were measured pixel-by-pixel directly from
-the wiki's own reference images (``Lineanim4.png`` through ``Lineanim11.png``,
-plus ``Lineanim6.png`` for repeats), and fall into two distinct families, not
-one shared template -- see the comment directly above ``_OPS`` for the full
-measurement.  In short: ``+``/``-`` are a single diagonal jog with no
-sideways connector, and repeating one back to back *stretches that same
-diagonal* rather than drawing separate kinks (``+++`` measured at exactly 3x
-a lone ``+``'s diagonal length in ``Lineanim6.png``).  ``>``/``<``/``i``/``o``
-each have a short *purely sideways* connector (not another diagonal) bridging
-one or two diagonal legs, are not mergeable the same way, and are always
-drawn as their own fixed-size kink even when repeated.  This module does not
-invent new geometry -- it replays those measured run-length templates at an
-arbitrary grid position and heading.
+The kink shapes below (``_OPS``) were measured pixel-by-pixel from the wiki's
+own reference images (``Lineanim4.png`` through ``Lineanim11.png``, plus
+``Lineanim6.png`` for repeats), and fall into two distinct families, not one
+shared template -- see the comment directly above ``_OPS`` for the full
+measurement.  ``+``/``-`` are a single diagonal jog with no sideways
+connector, and repeating one back to back *stretches that same diagonal*
+rather than drawing separate kinks (``+++`` measured at exactly 3x a lone
+``+``'s diagonal length in ``Lineanim6.png``).  ``>``/``<``/``i``/``o`` each
+have a short *purely sideways* connector (not another diagonal) bridging one
+or two diagonal legs, are not mergeable the same way, and are always drawn as
+their own fixed-size kink even when repeated.  This module invents no
+geometry -- it replays those measured run-length templates at an arbitrary
+grid position and heading.
 
 Conditional turn (``?``) is not a 2-endpoint kink like the others: the wiki's
 ``Lineanim9.png`` shows a real T-branch, one incoming stem meeting a
@@ -315,11 +315,11 @@ _MERGEABLE = {"+", "-"}
 # ink -- and `lattice._band_lit` deliberately probes the exact ray *plus one
 # pixel to each side*, to absorb hand-drawn stroke slop (see `lattice.py`'s
 # module docstring), so it reads the neighbor as a real lit direction.  An
-# extra lit direction at an ordinary point is exactly what turns it into a
-# spurious 3-lit `"fork"`, which `simulate` then executes as a conditional
-# turn.  A cell of mandated clearance restores the band probe's
-# unambiguity: with a gap, its off-center rays fall on background, so only
-# the stroke actually being walked lights up.
+# extra lit direction at an ordinary point turns it into a spurious 3-lit
+# `"fork"`, which `simulate` then executes as a conditional turn.  A cell of
+# mandated clearance restores the band probe's unambiguity: with a gap, its
+# off-center rays fall on background, so only the stroke actually being
+# walked lights up.
 #
 # (Historically the *nested-loop regression itself* was a searched route
 # touching *itself* -- per-stroke attribution on `++[>++[>+<-]<-]>>.` showed
@@ -330,11 +330,11 @@ _MERGEABLE = {"+", "-"}
 # every program it checks develops between-stroke adjacency (up to 76
 # consecutive abutting cells on `++[>++[>+<-]<-]>>+++.`), at 1 none does.
 #
-# That test exists because the ordinary suites do *not* catch this on their
-# own -- they assert on program output, and a drawing can rasterize a 2px
-# ribbon while still happening to extract and execute correctly.  Setting
-# this to 0 left every other test passing, which is exactly why measuring
-# stroke separation directly was needed to pin it.
+# That test exists because the ordinary suites do *not* catch this -- they
+# assert on program output, and a drawing can rasterize a 2px ribbon while
+# still extracting and executing correctly.  Setting this to 0 left every
+# other test passing, which is why stroke separation had to be measured
+# directly to pin it.
 _CLEARANCE = 1
 
 
@@ -365,25 +365,24 @@ _STEM_LEN = 10
 # The diagonal arrival is load-bearing, not cosmetic.  Every other leg of a
 # return path is cardinal, and the stem being landed on is itself a cardinal
 # run, so a cardinal final approach is necessarily *perpendicular* to the
-# stem -- and a perpendicular touch-down onto a straight run lights exactly
-# the arrival direction plus the stem's own two directions, which is
-# precisely the T-branch signature `lattice._classify` calls a real
-# `"fork"`.  The extractor would then read the loop-back merge as a
-# conditional turn, and `simulate` would execute the reconnection as a
-# branch instead of a jump.  Arriving diagonally lights that same stem pair
-# plus a direction *not* perpendicular to it, which `_classify` correctly
-# calls `"merge"` -- stopping the stroke as a leaf, exactly what
-# `simulate._compile`'s `find_merge` rescues into a `goto`.  This matches
-# how the wiki's own hand-drawn fixtures reconnect (`addition.png`'s
+# stem -- and a perpendicular touch-down onto a straight run lights the
+# arrival direction plus the stem's own two directions: the T-branch
+# signature `lattice._classify` calls a real `"fork"`.  The extractor would
+# then read the loop-back merge as a conditional turn, and `simulate` would
+# execute the reconnection as a branch instead of a jump.  Arriving
+# diagonally lights that same stem pair plus a direction *not* perpendicular
+# to it, which `_classify` calls `"merge"` -- stopping the stroke as a leaf,
+# what `simulate._compile`'s `find_merge` rescues into a `goto`.  This
+# matches how the wiki's own hand-drawn fixtures reconnect (`addition.png`'s
 # loop-body arm arrives at its stem on a diagonal).
 #
 # Being *longer* than the probe is what makes this work, not shorter: the
 # probe must find a full, unbroken band segment along the diagonal so the
 # merge point lights that third direction and `lattice._classify` reads
-# `"merge"`.  A diagonal too short to fill the probe would leave the merge
-# point reading only the stem's own two directions -- an ordinary
-# `"straight"` bend, which the walker would sail straight through, continuing
-# down the stem instead of stopping the stroke as a leaf.
+# `"merge"`.  A diagonal too short to fill the probe leaves the merge point
+# reading only the stem's own two directions -- an ordinary `"straight"`
+# bend, which the walker sails through, continuing down the stem instead of
+# stopping the stroke as a leaf.
 _DIAGONAL_APPROACH = 6
 
 
@@ -401,14 +400,13 @@ _DIAGONAL_APPROACH = 6
 # unaccounted for" failure, since growing rather than the absolute scale was
 # the bug).
 #
-# But counting forks is a proxy for the thing that actually matters, and a
-# poor one: it is blind to how much ink a subtree lays down, so two programs
-# with identical branching structure and very different content got identical
-# arms, and a fork's two arms got the same length even when one held 4 ops and
-# the other 14.  :func:`_arm_spacing` now measures each subtree's real extent
-# instead (see :func:`_subtree_extent`), which subsumes the H-tree insight
-# exactly: "how far does this subtree reach back toward the trunk" is the
-# quantity the halving was approximating, and measuring answers it directly.
+# But counting forks is a poor proxy: it is blind to how much ink a subtree
+# lays down, so two programs with identical branching structure and very
+# different content got identical arms, and a fork's two arms got the same
+# length even when one held 4 ops and the other 14.  :func:`_arm_spacing` now
+# measures each subtree's real extent instead (see :func:`_subtree_extent`),
+# which subsumes the H-tree insight: "how far does this subtree reach back
+# toward the trunk" is the quantity the halving was approximating.
 #
 # What remains here is a floor, not a scaling law -- a subtree that reaches
 # back barely at all still needs sibling arms not to start flush against the
@@ -425,12 +423,12 @@ _BRANCH_SPACING = 5
 # :func:`_loop_return_legs` a bay at least ``_BRANCH_SPACING +
 # _GOTO_CORRIDOR`` = 8 cells wide between body content and the trunk axis.
 #
-# This is not a chosen number, which matters: a fixed `_GOTO_CHANNEL`
-# constant was tried during the depth-3 work and removed precisely because
-# it was guessing at a quantity nothing had measured.  It is the swath a
-# drawn path actually blocks: one cell of its own stroke, plus `_CLEARANCE`
-# of mandated gap on either side.  Written as the expression rather than its
-# value so that changing `_CLEARANCE` moves the corridors with it.
+# Not a chosen number: a fixed `_GOTO_CHANNEL` constant was tried during the
+# depth-3 work and removed because it guessed at a quantity nothing had
+# measured.  This is the swath a drawn path actually blocks: one cell of its
+# own stroke, plus `_CLEARANCE` of mandated gap on either side.  Written as
+# the expression rather than its value so that changing `_CLEARANCE` moves
+# the corridors with it.
 _GOTO_CORRIDOR = 1 + 2 * _CLEARANCE
 
 
@@ -438,17 +436,16 @@ _GOTO_CORRIDOR = 1 + 2 * _CLEARANCE
 #
 # Measuring is a full dry-run `_layout` of the subtree, and every fork asks
 # about subtrees that themselves contain forks -- so without memoization the
-# work is exponential in nesting depth, not merely repeated.  That is not a
-# theoretical cost: an unmemoized version of this stalled outright on a
-# depth-3 program (no output at all after two minutes, where the memoized one
-# finishes in well under a second).
+# work is exponential in nesting depth, not merely repeated.  An unmemoized
+# version stalled outright on a depth-3 program (no output at all after two
+# minutes, where the memoized one finishes in well under a second).
 #
 # Cleared at the start of every `render()` rather than living as a permanent
 # global, because `id()` is only unique among *live* objects: a `Node` freed
 # between two renders can have its address reused by an unrelated node in the
 # next one, which a persistent cache would answer with the dead node's extent.
-# Scoping to a single render means every measured node is reachable from that
-# render's own root for the whole time the cache exists.
+# Per-render scoping keeps every measured node reachable from that render's
+# own root for the whole time the cache exists.
 _EXTENT_CACHE: dict[int, tuple[int, int, int, int]] = {}
 
 
@@ -497,14 +494,13 @@ def _subtree_extent(node: Node | None) -> tuple[int, int, int, int]:
 
     Deliberately runs the *real* :func:`_layout` against a scratch cursor
     rather than reimplementing its geometry: a parallel size-estimating walk
-    would drift from the code that actually draws, and then every extent it
-    reports is a quiet lie.  The dry run draws every *nested* loop-back
-    (their target forks live inside the measured chain, so their constructed
-    returns are pure local geometry -- see :func:`_loop_return_legs`), which
-    is exactly what lets ancestors reserve room for them; only the chain's
-    own outermost ``goto`` is treated as terminal, since its target fork
-    belongs to the caller's frame, and that is precisely where its return
-    path gets drawn instead.
+    would drift from the code that actually draws, making every extent it
+    reports a quiet lie.  The dry run draws every *nested* loop-back (their
+    target forks live inside the measured chain, so their constructed returns
+    are pure local geometry -- see :func:`_loop_return_legs`), which lets
+    ancestors reserve room for them; only the chain's own outermost ``goto``
+    is terminal, since its target fork belongs to the caller's frame, where
+    its return path gets drawn instead.
     """
     if node is None:
         return (0, 0, 0, 0)
@@ -539,12 +535,12 @@ def _arm_spacing(arm: Node | None) -> int:
     length even when one held 4 ops and the other 14 (see
     :func:`_subtree_extent`).
 
-    Sibling separation needs no term of its own, which is worth stating since
-    an intermediate version of this function had one and it was actively
-    harmful.  The two arms leave the fork in opposite directions along one
-    axis, and `reach_back` already puts each subtree's *entire* bounding box
-    strictly on its own side of the trunk -- so the two boxes are separated by
-    at least twice the margin automatically.  The arms' lateral spans spread
+    Sibling separation needs no term of its own; an intermediate version of
+    this function had one and it was actively harmful.  The two arms leave
+    the fork in opposite directions along one axis, and `reach_back` already
+    puts each subtree's *entire* bounding box strictly on its own side of the
+    trunk -- so the two boxes are separated by at least twice the margin
+    automatically.  The arms' lateral spans spread
     along the perpendicular axis, where the boxes cannot meet at all.  Adding
     a lateral term regardless double-counted it into both arms and, because
     each fork's measured span then contained its children's already-inflated
@@ -575,12 +571,10 @@ def _arm_spacing(arm: Node | None) -> int:
     44% at depth 10 (the multiplier compounded through nested extents, so
     its cost grew with depth just as its removal's savings do).
 
-    The term is deliberately added to the arm being measured, once, and only
-    for arms that carry a `goto`: an earlier version of this function had a
-    lateral term applied to both arms regardless, which double-counted into
-    each fork's measured span and so amplified geometrically with depth (see
-    above).  Here a goto-free arm gets exactly `+0`, so a program with no
-    loop-backs renders pixel-identically to before this term existed.
+    The term is added to the arm being measured, once, and only for arms
+    carrying a `goto` -- unlike the harmful lateral term above, which applied
+    to both arms regardless.  A goto-free arm gets exactly `+0`, so a program
+    with no loop-backs renders pixel-identically to before this term existed.
     """
     if arm is None:
         return _BRANCH_SPACING

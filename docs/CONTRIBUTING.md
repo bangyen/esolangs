@@ -7,10 +7,10 @@ assessed-and-rejected ledger in `docs/limitations.md`.  A candidate must
 meet all of these:
 
 - **Complete, stable specification.**  The wiki page must fully define the
-  commands and behavior. A stub, work-in-progress, or spec the author
+  commands and behavior.  A stub, work-in-progress, or spec the author
   calls unfinished isn't enough to verify an interpreter against.
 - **Deterministic, computable behavior.**  Uncomputable or irreducibly
-  random languages can't be verified. *Seeded* randomness is fine (e.g.
+  random languages can't be verified.  *Seeded* randomness is fine (e.g.
   LaserFuck's initial heading is drawn from a seed the tests fix).
 - **A usable file-based I/O protocol.**  Input/output as characters/lines
   through the repo's `IO` seam (see interpreter conventions in
@@ -29,10 +29,10 @@ meet all of these:
   verifiable by hand.  A language whose only observable result is an
   interpreter-invented state dump (no language-defined output at all) is
   admitted only as a self-contained interpreter, and is a standing removal
-  candidate.  A language with no data-dependent control flow (no input, no
-  conditional — output is a fixed function of the program text) is
-  likewise a standing removal candidate even with a computational text
-  generator, since its boolean generator is structurally impossible.
+  candidate.  So is a language with no data-dependent control flow (no
+  input, no conditional — output is a fixed function of the program text),
+  even with a computational text generator, since its boolean generator is
+  structurally impossible.
 
 Two judgment calls, applied case by case and recorded rather than absolute:
 
@@ -44,9 +44,8 @@ Two judgment calls, applied case by case and recorded rather than absolute:
   interpreter here, or by a working implementation on its own wiki page,
   is not a gap.
 
-Record rejected candidates in the assessed-and-rejected ledger in
-`docs/limitations.md`, so the assessment isn't redone. `docs/roadmap.md`
-tracks candidates still open.
+Record rejected candidates in that ledger so the assessment isn't redone.
+`docs/roadmap.md` tracks candidates still open.
 
 ## Layout
 
@@ -54,7 +53,7 @@ tracks candidates still open.
   language, exposing `run(code, io)` (program as a string, or a list of
   lines for grid/line-based languages, plus the `IO` object owning
   input/output).  Categories: `tape_based`, `stack_based`, `register_based`,
-  `grid_based`, `queue_based`, `other`. Copy `_template.py` to start; it
+  `grid_based`, `queue_based`, `other`.  Copy `_template.py` to start; it
   encodes the I/O, error, and docstring conventions.
 - `src/esolangs/tools/text/` — text generators, one module per state model
   (`register.py`, `tape.py`, `stack.py`, `other.py`).  Each `def <name>(text)`
@@ -64,7 +63,7 @@ tracks candidates still open.
 - `src/esolangs/tools/boolean/` — truth-table generators for languages with
   input and value branching.  Two legal shapes:
   - *table-in, program-out*: `def <name>(truth_table)` returns a program
-    reading n inputs and printing the table's answer. `n` is implied by
+    reading n inputs and printing the table's answer.  `n` is implied by
     table length, never a parameter.
   - *template-in, instantiated-per-row*: for a language with no input
     command, the generator emits a template the harness instantiates per
@@ -83,16 +82,15 @@ tracks candidates still open.
 - `src/esolangs/registry.py` — single source of truth: which languages have
   a generator, a compiler, an interpreter, how programs are handed to the
   interpreter, and each language's canonical id.  The public API and test
-  tables derive from it.  Registering something here is the whole of adding
-  it — the `check_*` scripts walk the source directories and fail on
-  anything missing from the registry.
+  tables derive from it, so registering something here is the whole of
+  adding it.
 - `src/esolangs/__init__.py` — public API (`generate`, `run`,
   `list_languages`); `src/esolangs/cli.py` — the `esolangs` command.
 - `scripts/` — verification tooling (`check_docstrings.py`,
   `check_compilers.py`, `check_generators.py`, differential/emulation
-  checks, `verify.py`).  The three `check_*` scripts each walk a source
-  directory and fail on anything missing from the registry or departing
-  from a signature convention; they run as steps in `verify.py`.
+  checks, `verify.py`).  Each `check_*` script walks a source directory and
+  fails on anything missing from the registry or departing from a signature
+  convention; they run as steps in `verify.py`.
 
 ## Adding a language
 
@@ -102,13 +100,13 @@ tracks candidates still open.
    `_template.py`; `scripts/check_docstrings.py` enforces the mechanical
    parts).
 2. **Generator** (optional) — add `def <name>(text)` to the right module in
-   `tools/text/` and register it in `registry.py`. If the language reads
+   `tools/text/` and register it in `registry.py`.  If the language reads
    input and branches, add a truth-table generator to `tools/boolean/`.
 3. **Registry** — add a `Language` entry in `registry.py` (display name,
    canonical id, generator, interpreter module, whether the program is
    split into lines, extra `run()` kwargs).  This single entry wires up the
    API and the tests.
-4. **Tests** — add a round-trip test in `tests/tools/test_generate.py`. The
+4. **Tests** — add a round-trip test in `tests/tools/test_generate.py`.  The
    fuzz (`tests/fuzz/test_fuzz_generators.py`) and example
    (`tests/scripts/test_examples.py`) tables derive from the registry
    automatically; add a committed program under
@@ -136,5 +134,5 @@ needs the native toolchain; the qemu steps are CI-only.
   input raises `EOFError` (or follows the spec where it defines EOF),
   malformed programs raise `ValueError`, and invalid runtime operations
   raise `HaltError` — never a raw Python exception.
-- New code must pass ruff (lint and format) and mypy, and keep line coverage at 100%
-  (the coverage-badge CI job enforces it).
+- New code must pass ruff (lint and format) and mypy, and keep line coverage
+  at 100% (the coverage-badge CI job enforces it).

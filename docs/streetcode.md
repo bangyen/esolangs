@@ -46,8 +46,8 @@ shape actually marks an intersection rather than a plain corner:
   special case.
 
 * **Genuine ambiguous turns**: a real intersection, as opposed to a plain
-  corner, is recognized by the local wall shape rather than by counting
-  open neighbors (an open room can present two or three open orthogonal
+  corner, is recognized by local wall shape rather than by counting open
+  neighbors (an open room can present two or three open orthogonal
   neighbors at an ordinary corner without being a drawn intersection).  A
   branch is a gap in the wall with a `+` marking each end (`_road_mouth`
   scans up to `_MOUTH_MAX_DIST` cells out, anchoring the near `+` at depth
@@ -170,7 +170,7 @@ three seen sideways.
 One exemption remains: a grid with no walls is not a street network to
 measure, so bare `CU` still constructs and reaches the residual
 `HaltError` path.  There is deliberately no "no instruction characters"
-exemption, which would be content sniffing rather than geometry.  The
+exemption -- that would be content sniffing rather than geometry.  The
 wall-shape fixtures disable validation through a test-local helper,
 keeping the escape hatch out of the interpreter.
 
@@ -219,7 +219,7 @@ edges, and rejects whatever is still drawn: a detached second box, a
 stray fragment of wall, an instruction sealed inside an island, or the
 middle of a solid block.  A hollow island needs no special case, since
 every cell of a one-thick wall is within one step of the road around it.
-Two decisions here are worth recording:
+Two decisions here:
 
 * **Solid blocks are rejected.**  Permitting them would mean a second
   flood-fill pass to tell a hole enclosed by the region from the outside
@@ -297,10 +297,9 @@ with the car starting at (row0, col1) heading South landing on
 `TestStreetcodeCountingLoop` (`tests/interpreters/test_streetcode.py`) is
 an enterable ring: the car counts a cell up on the way in, laps an
 island under that count's control, and leaves once it hits zero.  Building
-one correctly depends on exactly three rules already stated above (a road
-is two cells deep, a turn may not enter the oncoming lane, a junction
-reads the cell as the car arrives); the test is the standing check that
-they hold together.
+one correctly depends on exactly three rules above (a road is two cells
+deep, a turn may not enter the oncoming lane, a junction reads the cell as
+the car arrives); the test is the standing check that they hold together.
 
 A ring must also respect two invariants a future change must not violate:
 
@@ -328,9 +327,9 @@ which prints the same thing.  In `tools/text/streetcode.py` that is
 `None` to decline; in `tools/boolean/streetcode.py` it is
 `_streetcode_ring`, `_streetcode_lift` and `_streetcode_shared_lap`.
 
-These are the conditions under which the shorter shape is safe, and any
-change to those optimizations must keep satisfying them.  They are
-consequences of the movement rules above, not restatements of them.
+These are the conditions under which the shorter shape is safe; any change
+to those optimizations must keep satisfying them.  They are consequences
+of the movement rules above, not restatements of them.
 
 * **Every gap crossing is a junction and reads the CPth cell.**  Wherever a
   ring or hallway's mouth is crossed, CP must name a cell whose zero/nonzero

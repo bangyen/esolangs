@@ -19,8 +19,8 @@ cell *holding* the answer and then lose it to the prefix-XOR on the walk out,
 while the staging selects on the column **as the read sees it**.  Sampled
 tables that fail after ~130 seconds of searching build in under 0.08s from a
 staging.  `src/esolangs/tools/boolean/minifuck.py` carries the mechanism and
-the pool-code derivation; what follows is only what is *not* reachable and
-what was disproved along the way.
+the pool-code derivation; below is only what is *not* reachable and what
+was disproved along the way.
 
 ## The termination convention is not available
 
@@ -43,10 +43,9 @@ arity tried through seven — 243, 429, 622, 2511, 9565 and 39915 characters
 at `n` of 2 to 7.  **448 of 448 rows correct** on the shipped interpreter,
 sampled across `n` of 5, 6 and 7 (XOR and random tables).
 
-`_mux` never raises, so *total* means exactly "no `None`-site fires".  There
-are six such sites, and the failure surface is therefore finite.  A table also
-needs only **one** `(acc, cell7, direct)` combination to succeed, so a witness
-argument suffices.
+`_mux` never raises, so *total* means "no `None`-site fires".  There are six
+such sites, so the failure surface is finite.  A table also needs only **one**
+`(acc, cell7, direct)` combination to succeed, so a witness argument suffices.
 
 The whole chain rests on one atom.  From a skip-free state `'[x'` advances the
 pointer, flips the cell, conditionally flips the neighbour, and **never leaves
@@ -78,11 +77,11 @@ wake**, while a `bit = 0` row never starts.  Probed on a blank tape the gadget
 therefore stalls after a single read — displacement −1 whatever `k` is — which
 is not staleness but simply that there is no wake to consume.
 
-This matters because it converts the gadget's linearity from a measurement
-into an inequality.  The gadget is linear exactly while the wake lasts, so it
-saturates at `k > start + 1`: at four inputs, where `start = 31`, the spread
-climbs with `k` to 32 and is pinned at 32 for every larger `k`.  The 32 is not
-a constant of the language — it is that arity's own starting cell.
+That converts the gadget's linearity from a measurement into an inequality.
+The gadget is linear exactly while the wake lasts, so it saturates at
+`k > start + 1`: at four inputs, where `start = 31`, the spread climbs with
+`k` to 32 and is pinned at 32 for every larger `k`.  The 32 is not a constant
+of the language — it is that arity's own starting cell.
 
 **So the first gadget never saturates, for any `n`.**  It needs
 `k = 2**(n-1)` and has `start + 1` cells of wake, and
@@ -149,9 +148,9 @@ so at most `2**n` rounds are needed under a cap of `2**n + 4` (measured: 0
 non-monotone events, 232 of 232 frontier flips, at most 40 rounds used against
 a cap of 68 at six inputs).
 
-The tempting shortcut here is *false* and is worth recording as such: cell
-`acc−1` is 1 in 104 of 207 rounds, so its cascade does fire.  It simply lands
-after the walk has already flipped `acc`, and cannot undo it.
+The tempting shortcut here is *false*: cell `acc−1` is 1 in 104 of 207
+rounds, so its cascade does fire.  It simply lands after the walk has
+already flipped `acc`, and cannot undo it.
 
 **Pool coverage (site 3) closes too, and uniformly in `n`.**  `_pool_reaches`
 reads cells 0..7 after walking out, plus the pointer, skip and dead gates.
@@ -183,8 +182,8 @@ varied, and over 1426 probe calls at four, five and six inputs there were no
 
 The witness is that one orientation.  A code answers `cell7 == 0` or
 `cell7 == 1` and never both, so the `cell7 == 1` arm of the sweep contributes
-nothing to existence — the claim is precisely that **at `cell7 == 0` a code
-always reaches**, which is all a totality witness needs.  The `_walk_to`
+nothing to existence — the claim is that **at `cell7 == 0` a code always
+reaches**, which is all a totality witness needs.  The `_walk_to`
 sub-case cannot raise: `_pool_reaches` accepts a code only after checking its
 pointer is converged, and that check precedes the emit.
 
@@ -197,9 +196,9 @@ value-independent and its cascade writes `cell + 1`, strictly rightward, so
 once a walk has crossed cell 8 no later step of it can reach back into cells
 0..7 — and those are the only cells the verdict reads.  The verdict is
 therefore identical for every walk-out of nine or more, whatever debris the
-walk crosses.  Site 6 closes given
-site 3, because the sculpt's exit test and `_try_print` go through the same
-pool-walk-read path, so column agreement implies a correct print.
+walk crosses.  Site 6 closes given site 3: the sculpt's exit test and
+`_try_print` go through the same pool-walk-read path, so column agreement
+implies a correct print.
 
 **So all six sites close, and `_mux` is total at every arity.**  The `[x`
 atom, skip cleanliness, pointer restoration and write confinement are finite
@@ -242,7 +241,7 @@ characters.
 **The generator is total.**  `_MUX_ARITIES` was a verification boundary and
 nothing more; widening it needed no new construction and no new check,
 because the three arguments above hold at every `n`.  What it still owed was
-*execution*, since this repository's standing rule is that a claim about a
+*execution* — this repository's standing rule is that a claim about a
 generated program is worth what its run on the shipped interpreter is
 worth — now paid, at 448/448.  The tuple is replaced by the floor
 `_MUX_MIN_ARITY = 2`, which exists only because `_solve` routes constants
@@ -309,8 +308,8 @@ five**; they are constant-factor headroom and do not change the story above.
 
 A construction composing sub-results through the pointer position fails
 because the combine step **creates no information**.  Superseded as a route
-to closing an arity, but kept because it rules out the whole
-*position-decode* shape rather than one attempt at it.
+to closing an arity, but kept: it rules out the whole *position-decode*
+shape rather than one attempt at it.
 
 **"No decode from an accumulated position" — the exact content.**  A mux
 needs a selector read then a cofactor read.  With the cofactors planted as
@@ -370,7 +369,7 @@ all — it reshapes the tape so the existing print route lands.  A sweep of
 78/78 interpreter-verified), extrapolating to roughly 39% coverage — not a
 measurement of the whole space.
 
-**What survives.**  The mux analysis above is still correct about what it
+**What survives.**  The mux analysis above is correct about what it
 examined — `ptr = entry + v + ans` does sum the selector with the answer —
 as a statement about position-decoding, and false as a statement about
 chains in general.  The counting argument still governs the *staging

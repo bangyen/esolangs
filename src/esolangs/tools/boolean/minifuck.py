@@ -40,8 +40,8 @@ sculpted route below, which is why no third suffix family is carried here.
 The selection rule is the load-bearing part, and it is why the enumeration
 tests rather than predicts: the accumulator that works is the one whose
 column reads correctly **at the read**, not the cell holding the answer
-beforehand.  Those differ, because the walk out applies the running
-prefix-XOR -- an AND column can arrive as a constant, and XOR can arrive as a
+beforehand.  Those differ, since the walk out applies the running prefix-XOR
+-- an AND column can arrive as a constant, and XOR can arrive as a
 projection.  Choosing pre-walk covers 10 of the 16 two-input tables and looks
 nearly right, which is the trap.
 
@@ -60,17 +60,16 @@ reaches 15404 of the 64594 fully essential four-input tables (23.9%),
 four-input XOR among them.  What buys those is one widening of the suffix --
 a single ``<`` inside the bracket run, enumerated after every pure run.  A
 two-insert family one step wider existed here and was removed: it served a
-single three-input pair that the sculpted route now builds.
-Partial coverage is worth gating on because a miss is not a failure: it falls
-through to the sculpted route below, which closes the arity -- a missing
-staging degrades rather than raises.  What a four-input table does pay for is the
-derivation, which at this arity cannot stop early; see
-:data:`_STAGED_ARITIES`.
+single three-input pair that the sculpted route now builds.  Partial coverage
+is worth gating on because a miss is not a failure: it falls through to the
+sculpted route below, which closes the arity -- a missing staging degrades
+rather than raises.  What a four-input table does pay for is the derivation,
+which at this arity cannot stop early; see :data:`_STAGED_ARITIES`.
 
 A second pass once took the arity to **60942 of 64594 (94.35%)** by
 complementing inputs as they land.  It has been removed: every table it
-placed is one the sculpted route below also builds, and it cost a
-300-second whole-arity sweep to place them.  ``docs/minifuck_generator.md`` keeps the
+placed is one the sculpted route below also builds, and it cost a 300-second
+whole-arity sweep to place them.  ``docs/minifuck_generator.md`` keeps the
 mechanism and the measurement.
 
 **The remaining 3652 fall to the sculpted route**, :func:`_mux`, which is a
@@ -93,15 +92,14 @@ mechanism and the measurements.
 **The generator is total.**  The route carried an arity gate until every one
 of its six refusal sites was closed by an argument with no residual ``n``
 (``docs/minifuck_generator.md``, "Is ``_mux`` total?"); with the gate
-replaced by the floor :data:`_MUX_MIN_ARITY`, there is no arity and no
-table it declines.  Six
-inputs is covered here by :meth:`test_no_arity_is_gated`, which builds a
-fully-essential table and runs all 64 rows on the shipped interpreter;
-``docs/minifuck_generator.md`` records 448 of 448 rows correct at five, six and seven.
-Cost grows with ``2**n`` and is the only thing that bounds a caller now:
-about 0.14s a table at five inputs, 40s at six, and 820s at seven, where the
-template reaches 13685 characters.  A caller wanting eight should budget for
-that curve rather than assume a refusal.
+replaced by the floor :data:`_MUX_MIN_ARITY`, there is no arity and no table
+it declines.  Six inputs is covered here by :meth:`test_no_arity_is_gated`,
+which builds a fully-essential table and runs all 64 rows on the shipped
+interpreter; ``docs/minifuck_generator.md`` records 448 of 448 rows correct
+at five, six and seven.  Cost grows with ``2**n`` and is the only thing
+bounding a caller now: about 0.14s a table at five inputs, 40s at six, and
+820s at seven, where the template reaches 13685 characters.  A caller
+wanting eight should budget for that curve rather than assume a refusal.
 
 Five inputs is staged on the same terms and a far thinner slice: the family
 produces 24582 fully-essential 32-bit columns against 4294642034 such tables,
@@ -111,11 +109,10 @@ thing that had to change is the spelling: a derivation over all ``2**32``
 tables cannot run, so the enumeration is *inverted* rather than run per
 table -- see :func:`_staging_index`, which every arity now uses that way,
 and which since the closed form landed fills its columns arithmetically
-rather than by running the interpreter over each staging.
-What catches
-the rest is the sculpted route, which since its separation became a
-construction reaches five as readily as four: 200 of 200 sampled
-fully-essential five-input tables build and print every row.
+rather than by running the interpreter over each staging.  What catches the
+rest is the sculpted route, which since its separation became a construction
+reaches five as readily as four: 200 of 200 sampled fully-essential
+five-input tables build and print every row.
 
 Paying that per table is what makes a *screen* worth having, and there is
 one: everything the endgame emits after the suffix is GF(2)-affine in the
@@ -123,9 +120,9 @@ columns standing at that point, so a printed column lies in their span.  A
 table in no staging's span cannot be printed by any of them, and
 :func:`_span_admits` says so in about 3.6 milliseconds where the enumeration
 takes 143 seconds to find nothing.  It only ever declines, so no table that
-built before builds differently now.
-A table that ignores some inputs is solved at the arity it uses and renumbered
-back, so a wide table with a narrow core is as cheap as that core.
+built before builds differently now.  A table that ignores some inputs is
+solved at the arity it uses and renumbered back, so a wide table with a
+narrow core is as cheap as that core.
 
 **Nothing here searches.**  Every route is a construction or an enumeration
 of a small derived product: the staged families enumerate a bounded plan
@@ -135,10 +132,10 @@ route separates by weighting each input as it lands and then sculpts under a
 termination argument.  A breadth-first search over ``<[x`` used to back all
 of them -- a column search, a parked search, a reconverging-reset search, and
 four more inside the sculpted route's separation.  All are gone: each was
-replaced by something that derives the answer instead of hunting for it, and
-what they used to reach is now reached faster and further.  A table no route
-builds raises, which is a bounded failure a caller can handle; a search that
-cannot finish is not.
+replaced by something deriving the answer instead of hunting for it, and what
+they used to reach is now reached faster and further.  A table no route
+builds raises, a bounded failure a caller can handle; a search that cannot
+finish is not.
 
 Nothing here is hand-tracked either: :class:`_Joint` runs all ``2**n``
 instantiations in lockstep as the template is emitted, every choice is made
@@ -153,11 +150,11 @@ the guards.  Fixed width-2 stage chains reach only 88 of 256 tables at
 ``n == 3`` and 520 of 65536 at ``n == 4``, so no quality of gadget makes
 them total.  Harvesting (sweeping embed variants for a table that lands in
 a cell) finds all 16 at ``n == 2`` but 105 of 256 at ``n == 3`` -- a
-shortcut, not a totality argument.  Relocating an ignored placeholder
-fails because a fill writes the live tape; the working route emits the
-ignored setters first and reconverges to a common *non-blank* state, blank
-being unreachable since the all-ones row ends a cell right of the others
-and ``<`` clamps without writing.
+shortcut, not a totality argument.  Relocating an ignored placeholder fails
+because a fill writes the live tape; the working route emits the ignored
+setters first and reconverges to a common *non-blank* state, blank being
+unreachable since the all-ones row ends a cell right of the others and ``<``
+clamps without writing.
 
 **Five apparent walls here were artifacts of how the question was asked**,
 each costing a round to re-derive -- worth recognizing before believing any
@@ -185,8 +182,8 @@ complement of its bit, so the program computes a table the caller
 pre-transformed.  Input *permutation* is fine -- it is entirely inside the
 template.
 
-``docs/minifuck_generator.md`` records the wider searches and the measurements behind
-these.
+``docs/minifuck_generator.md`` records the wider searches and the
+measurements behind these.
 """
 
 import re
@@ -215,12 +212,12 @@ _BASE = 16
 # the ``<`` steps back over a cell so the parities stay distinguishable.
 #
 # The separator decides the affine picture the whole construction reads from,
-# and the first two here were picked by hand.  That turned out to be the
-# binding constraint rather than a detail: between them they leave only 92
-# distinct columns standing, and 112 of the 120 tables the searches could not
-# reach were absent from the tape entirely rather than merely hard to print.
-# Enumerating short strings over the same alphabet fixed that -- the three
-# added below carry 118 of those 120, and the searches never had to change.
+# and the first two here were picked by hand -- the binding constraint rather
+# than a detail: between them they leave only 92 distinct columns standing,
+# and 112 of the 120 tables the searches could not reach were absent from the
+# tape entirely rather than merely hard to print.  Enumerating short strings
+# over the same alphabet fixed that -- the three added below carry 118 of
+# those 120, and the searches never had to change.
 # Only the first two are used by the routes that scan separators (the
 # degenerate path and the fallback searches); the rest are reached by the
 # staging enumeration, so adding one costs those routes nothing.
@@ -573,13 +570,13 @@ def _embed(
 # there would mark cell 3 and walk cleanly; what the widened step buys is the
 # pointer.
 #
-# Neither widening is slack, and the fourth code is the one that proves it
-# cannot be read off a blank tape.  Narrowed to the default its trace on an
-# empty tape is *identical* -- mark at 6, pointer at 5 -- because ``<`` clamps
-# at cell 0 and both spellings start there.  On the live states the endgame
-# actually presents, the pool cells are already set, so the opening ``[``
-# fires and the pointer is no longer at 0 when the second ``<`` runs.  The
-# two spellings then walk different tapes and land the pool two cells apart.
+# Neither widening is slack, and the fourth code proves it cannot be read off
+# a blank tape.  Narrowed to the default its trace on an empty tape is
+# *identical* -- mark at 6, pointer at 5 -- because ``<`` clamps at cell 0 and
+# both spellings start there.  On the live states the endgame actually
+# presents, the pool cells are already set, so the opening ``[`` fires and the
+# pointer is no longer at 0 when the second ``<`` runs.  The two spellings
+# then walk different tapes and land the pool two cells apart.
 # Narrowed and ablated the way the searches-stubbed test ablates a whole code,
 # the default spelling strands 18 tables at ``n == 3`` -- the same 18 that
 # dropping the code strands, so the widening *is* the code.
@@ -598,8 +595,8 @@ def _embed(
 # This is worth stating because every surface measure says the opposite.
 # Pairwise edit distance runs 2 to 7, prefix-factoring an exact regex makes it
 # *longer* (73 characters against 64), and the minimal DFA finds only one pair
-# converging.  All true, and all measuring spelling rather than behaviour: the
-# structure is in what the strings do to the tape.
+# converging.  All true, and all measuring spelling rather than behaviour:
+# the structure is in what the strings do to the tape.
 #
 # Setting the pool is not a search: across every table at ``n <= 3`` the
 # breadth-first search this replaced returned one of a handful of strings, and
@@ -624,9 +621,9 @@ def _embed(
 # That measurement is the one to repeat before adding a code.  An earlier
 # version of this list carried ten strings, the extra five being the
 # ``cell7 == 1`` mirrors; they cost 136 changed templates and bought nothing,
-# which only became visible when the ablation was run with the searches
-# stubbed.  Ablating with the fallthrough open reports success either way,
-# because the searches quietly rebuild whatever the pool list drops.
+# visible only when the ablation was run with the searches stubbed.  Ablating
+# with the fallthrough open reports success either way, since the searches
+# quietly rebuild whatever the pool list drops.
 #
 # **Would re-adding them help now?**  Worth answering here because the drop was
 # measured at ``n <= 3`` only, and the four-input work below turns on exactly
@@ -641,10 +638,9 @@ def _embed(
 # and the build fails -- the same numbers the closure pair gives.  Serving the
 # orientation closes *sites* and builds no table.  What the drop got right was
 # the conclusion; what it could not have known is that the surplus reach is
-# real and simply has nothing to fix -- every table at ``n <= 3`` already
-# builds.  As an implementation they are also dominated: ten strings of length
-# 14 to 23, of which four cover anything and two matter, against a pair at 11
-# and 14.
+# real and has nothing to fix -- every table at ``n <= 3`` already builds.  As
+# an implementation they are also dominated: ten strings of length 14 to 23,
+# of which four cover anything and two matter, against a pair at 11 and 14.
 #
 # The flips themselves are one step each under the law below: ``'[[[[<'`` is
 # ``_step(2, 1, odd=False)`` and ``'[[[[[[<'`` is ``_step(3, 1, odd=False)``.
@@ -1167,9 +1163,9 @@ def _degenerate_cells(n: int) -> dict[str, int]:
     These were six written-down cell numbers, and the reason they were
     constant is also the reason they need not be written down: the carry
     chain preserves ``b0`` and ``b1`` individually before the prefix-XOR
-    starts mixing, so the cells holding them can simply be *read off* the
-    embedded tape.  Measured, this reproduces the six exactly at every arity
-    the route serves.
+    starts mixing, so the cells holding them can be *read off* the embedded
+    tape.  Measured, this reproduces the six exactly at every arity the route
+    serves.
 
     Later inputs are not separable here at any settle count -- the affine
     transform fixes which bits stay apart.  A column search used to pick
@@ -1412,8 +1408,8 @@ _Staging = tuple[int, int, int | str, int]
 
 # **Coverage, and the one table that must still be stored.**  The enumeration
 # reaches 108 of the 109 non-degenerate three-input pairs and all 8 at two
-# inputs.  The holdout is ``01101101`` / ``10010010``, and it is worth knowing
-# why, because it was the hardest table here by some margin and the searches
+# inputs.  The holdout is ``01101101`` / ``10010010``, and why is worth
+# knowing: it was the hardest table here by some margin and the searches
 # never built it at all -- both members raise after about 96 seconds.
 #
 # Its answer column is not scarce: 14375 of 804600 sparse suffixes leave it
@@ -1452,7 +1448,7 @@ _Staging = tuple[int, int, int | str, int]
 # changing between ``k == 25`` and ``k == 38`` depending on separator and
 # settle count, so the sweep ran to 40 and anything past it is provably
 # redundant.  The deepest first hit the enumeration actually needs is
-# ``k == 26`` at three inputs and ``k == 6`` at two, which is where
+# ``k == 26`` at three inputs and ``k == 6`` at two, where
 # :data:`_MAX_BRACKETS` comes from; stopping at 30 would have been a cap
 # rather than a bound.
 #
