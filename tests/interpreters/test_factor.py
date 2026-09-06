@@ -143,6 +143,35 @@ class TestFactorint:
 
         assert _factorint(number) == sympy.factorint(number)
 
+    def test_does_not_strand_a_large_composite_on_sympy(self) -> None:
+        """The residue handed to sympy must never be a large composite.
+
+        Stopping the sieve at a fixed prime looks harmless -- whatever is
+        left goes to ``factorint`` -- but it hands over exactly the input
+        that function is worst at, and it takes minutes where the same
+        call on the original number takes milliseconds.  This is the
+        program that caught it: the parity table's 3243-digit number
+        factors into 237 primes reaching 16189, and a 10000 ceiling left
+        80 of them inside a 1275-digit composite.
+        """
+        import re
+        import time
+
+        from esolangs.interpreters.tape_based.factor import _factorint
+        from esolangs.tools import boolean as boolean_tools
+
+        program = str(boolean_tools.factor("01101001"))
+        number = int(re.sub(r"[^0-9]", "", program))
+        start = time.perf_counter()
+        factors = _factorint(number)
+        elapsed = time.perf_counter() - start
+
+        assert max(factors) > 10000, "the case only bites above a 10000 sieve"
+        # Generous next to the ~0.004s it takes, and far under the minutes
+        # a stranded composite costs, so this fails on the bug and not on
+        # a slow machine.
+        assert elapsed < 5.0, f"factorizing took {elapsed:.1f}s"
+
     def test_matches_sympy_on_random_integers(self) -> None:
         """A sweep, since the cases above are all deliberately chosen."""
         import random

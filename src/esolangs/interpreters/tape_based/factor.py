@@ -41,42 +41,61 @@ _RESIDUE = {1: ">", 2: "<", 3: "+", 4: "-", 5: ".", 6: ",", 7: "[", 8: "]"}
 type _State = _BFMachine
 
 
-#: Where :func:`_factorint` stops dividing by small primes and hands what
-#: is left to sympy.  A Factor program is a product of *many small* primes
-#: -- one per instruction, so the prime is bounded by the alphabet's reach
-#: rather than by the program's length -- and the committed examples top
-#: out at 6619 while running to 1276 digits.  Sieving to 10000 therefore
-#: clears them entirely, and the general factorization behind it is what
-#: keeps a number this does not suit correct rather than merely fast.
-_SMALL_PRIME_LIMIT = 10000
+#: How far :func:`_factorint` extends its sieve at a time.  It keeps going
+#: while the residue is still composite, so this is a batch size and not a
+#: ceiling on the primes it will find.
+_SIEVE_CHUNK = 20000
 
 
 def _factorint(number: int) -> dict[int, int]:
     """Factorize ``number``, dividing small primes out before sympy sees it.
 
     ``sympy.factorint`` is a general factorizer, and generality is the
-    wrong tool for the shape Factor actually produces: the number is a
-    product of a hundred-odd primes all under 7000, so the work is
-    dividing them out, not finding them.  Walking the sieve and shrinking
-    ``number`` as each comes out does that directly, and shrinks the
-    operand fast, which matters because these are bignums -- 1276 digits
-    for the committed boolean example -- where every ``%`` is priced by
-    the number's length.  Measured 1.7x faster on both committed examples.
+    wrong tool for the shape Factor produces: the number is a product of
+    many smallish primes -- one per instruction -- so the work is dividing
+    them out, not searching for them.  Walking primes in order and
+    shrinking ``number`` as each comes out does that directly, which
+    matters because these are bignums (1276 digits for the committed
+    boolean example) where every operation is priced by the length.
 
-    Whatever is left after the sieve goes to ``sympy.factorint``: the
-    residue may be a large prime, or composite with every factor past the
-    limit, and neither is this loop's business.  So the answer is sympy's
-    on any number this shape does not suit, and identical on the ones it
-    does -- checked against ``factorint`` over 300 random integers plus
-    products of large primes.
+    The loop must not stop at a fixed prime, and that is the whole
+    subtlety here.  A ceiling looks safe -- whatever is left just goes to
+    sympy -- but it is not: the residue it hands over is then a *large
+    composite* with every factor past the ceiling, which is the input
+    ``factorint`` is worst at.  It abandons trial division for Pollard rho
+    and takes minutes, where the same call on the original number takes
+    milliseconds.  A 10000 ceiling did exactly that to the parity table
+    whose 3243-digit program factors into 237 primes reaching 16189: 80 of
+    them sat above the ceiling, and the sweep that runs it hung.
+
+    So the sieve extends in chunks until the residue is prime or fully
+    divided, and sympy is only ever asked about a residue that is prime,
+    or one left when the number is genuinely hard -- never a composite
+    this loop simply gave up on.  ``isprime`` is what makes that cheap to
+    decide.  Measured 1.7x faster than plain ``factorint`` on the
+    committed examples, and no slower on the sweep's tables.
     """
     factors: dict[int, int] = {}
-    for prime in sympy.sieve.primerange(2, _SMALL_PRIME_LIMIT):
-        if prime * prime > number:
-            break
-        while not number % prime:
-            factors[prime] = factors.get(prime, 0) + 1
-            number //= prime
+    start = 2
+    while number > 1:
+        if sympy.isprime(number):
+            factors[number] = factors.get(number, 0) + 1
+            return factors
+        stop = start + _SIEVE_CHUNK
+        for prime in sympy.sieve.primerange(start, stop):
+            if prime * prime > number:
+                # Nothing below the root divides it, so the residue is
+                # prime and the test at the top of the loop will take it.
+                break
+            while not number % prime:
+                factors[prime] = factors.get(prime, 0) + 1
+                number //= prime
+        else:
+            # The chunk ran out with the residue still composite and still
+            # bigger than the primes tried, so widen and keep going.
+            start = stop
+            continue
+        break
     if number > 1:
         for prime, exponent in sympy.factorint(number).items():
             factors[prime] = factors.get(prime, 0) + exponent
