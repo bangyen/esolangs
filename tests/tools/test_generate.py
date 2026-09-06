@@ -826,6 +826,27 @@ class TestGeneratorRoundTrips:
         for heading in range(4):
             assert laserfuck_roundtrip(program, heading) == text
 
+    @pytest.mark.parametrize("width", [60, 70, 78, 80, 90, 120])
+    def test_laserfuck_snake_ring_fits_every_width_it_answers(self, width: int) -> None:
+        """A block reaches past its spine, and the reland leaves room for it.
+
+        The entry threshold has to count the block's whole footprint -- the
+        exit ``v`` and the test row both reach ``spine + 6`` -- not just the
+        preload that precedes it.  Counting only the preload let a spine land
+        just inside the margin and the block overrun by a couple of columns.
+        Sweeping several widths catches an off-by-one in that reservation
+        that a single width would step over.
+        """
+        from esolangs.tools.text.laserfuck import _laserfuck_snake_ring
+
+        text = "".join(chr(0x21 + (index * 11) % 90) for index in range(55))
+        program = _laserfuck_snake_ring(text, width)
+        if program is None:
+            return
+        assert max(len(line) for line in program.split("\n")) <= width
+        for heading in range(4):
+            assert laserfuck_roundtrip(program, heading) == text
+
     def test_laserfuck_snake_needs_a_spine_and_a_margin(self) -> None:
         """A spine with no room either side cannot carry a snake."""
         from esolangs.tools.text.laserfuck import _laserfuck_snake
