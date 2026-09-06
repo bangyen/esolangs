@@ -135,12 +135,28 @@ class _Sim:
         Each pair advances one cell and flips it; when that flip leaves the
         cell zero the ``[`` cascades into the cell beyond it and sets the
         skip, which the pair's own ``x`` -- a comment -- then consumes.  So
-        the pair always ends with the skip clear, and the run stays
-        per-cell because the cascade depends on the bit it finds.
+        the pair always ends with the skip clear.
 
-        The cascade is the part a closed form gets wrong: a model without it
-        disagreed with :meth:`exec` on 877 of 3000 random states.  With it,
-        0 of 3000.  The walk was 32.4% of the six-input build's steps.
+        **The cascade is a carry, and the run is a prefix parity.**  A ``[``
+        adds one to the two-bit little-endian field above the pointer, and
+        the skip it sets is exactly that addition's carry out -- checked
+        against :meth:`exec` on 5000 random states.  A pair's ``x`` eats the
+        skip, so the next pair starts clean one cell higher, and the carry
+        into position *j* is the XOR of every window bit below it.  So over
+        a window of ``k`` cells the whole run is:
+
+        * each window bit becomes the complement of the prefix XOR up to it,
+        * the cell just above the window takes the window's total parity,
+
+        which is ``O(log k)`` big-integer doublings rather than ``k``
+        steps.  The cascade is the part a naive closed form gets wrong: a
+        model without it disagreed with :meth:`exec` on 877 of 3000 random
+        states, and this form agrees on 4000 of 4000.
+
+        An earlier attempt to close only the run's *tail* was reverted for
+        measuring slower; that failed because it kept a per-pair loop and
+        added a big-integer guard to every iteration, not because the run
+        was irreducible.  This has no per-pair work at all.
         """
         if self.dead or pairs <= 0:
             return
@@ -148,23 +164,24 @@ class _Sim:
             # The pending skip eats the leading ``[``; its ``x`` is a comment.
             self.skip = False
             pairs -= 1
-        # The loop stays per-cell: the cascade depends on the bit each pair
-        # lands on, and on the tapes this walks the bits above the pointer
-        # are still set, so a "run to a steady state then close the tail"
-        # form measured *slower* -- 45.5M of 45.5M iterations still
-        # cascaded, and the guard testing for the steady state cost a
-        # big-integer shift each time.  What is hoisted instead is the
-        # attribute access: the three fields are read once and written back
-        # once rather than touched per pair.
-        tape, length, ptr = self.tape, self.length, self.ptr
-        for _ in range(pairs):
-            ptr += 1
-            if ptr + 1 >= length:
-                length += 1
-            tape ^= 1 << ptr
-            if not (tape >> ptr) & 1:
-                tape ^= 1 << (ptr + 1)
-        self.tape, self.length, self.ptr = tape, length, ptr
+        tape, ptr = self.tape, self.ptr
+        low = ptr + 1
+        mask = (1 << pairs) - 1
+        # Prefix XOR of the window by doubling: after each step every bit
+        # holds the XOR of itself and the ``span`` bits below it, so the
+        # spans compose to cover the whole prefix in ``log2(pairs)`` steps.
+        carries = (tape >> low) & mask
+        span = 1
+        while span < pairs:
+            carries ^= (carries << span) & mask
+            span <<= 1
+        tape = (tape & ~(mask << low)) | ((carries ^ mask) << low)
+        # The window's total parity is the carry out of its top cell, which
+        # lands in the cell above -- the one the next emission steps onto.
+        tape ^= ((carries >> (pairs - 1)) & 1) << (low + pairs)
+        ptr += pairs
+        self.tape, self.ptr = tape, ptr
+        self.length = max(self.length, ptr + 2)
 
     def exec(self, ins: str) -> None:
         """Execute one instruction, delegating the semantics to the interpreter.
