@@ -199,6 +199,12 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
     "interpreter: marks tests for specific interpreters",
+    # Its own marker rather than "slow": the mutation harness deselects slow
+    # tests, and these are the only ones that can see a compiler emitting
+    # working-but-wrong code, so folding them into "slow" would remove them
+    # from exactly the run that needs them.  test-quick deselects this one
+    # by name instead, keeping the inner loop free of the ~10s round-trip.
+    "unicorn: round-trips compiled output as RISC-V under unicorn",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
