@@ -657,7 +657,7 @@ open:
   the rest open.
 - **The remaining literal tables in `tools/boolean/`** — swept by AST over
   every module in `src/`, classified by provenance, and each one probed
-  rather than read.  **Three closed and are shipped; the rest are not
+  rather than read.  **Four closed and are shipped; the rest are not
   candidates**, with the evidence for each recorded so the sweep is
   not re-run from scratch.  The standing rule ("a named rule,
   never a search or a frozen table") is about *frozen search output* — a
@@ -744,11 +744,29 @@ open:
       decline at every budget tried, leaving 2-5 to compare, and those
       split both ways.  Settling it needs a corpus sized to the decline
       rate, which is a measurement task and not a retirement.
-    - **`_LADDERS` (%^2^-1)** — **not a candidate on cost.**  Eight ladders
-      chosen by greedy set cover over 150 yielding paths; its own comment
-      prices the alternative at ~50s of build time to search the other 248
-      and find nothing further.  A cover is the shape the rule already
-      takes.
+    - **`_WIDE_A_VALS` (%^2^-1)** — **closed; shipped** at `765f9564`.
+      The seven multipliers are the closure of the two commands its own
+      comment already named — `m` doubles, `p` negates — so they are the
+      signed powers of two plus the erase, and only the *bound* is a
+      measurement (`|a| <= 4` reaches no further table).  Now generated
+      from `_WIDE_A_LIMIT`, byte-identical **including order**, which is
+      load-bearing: the wide search takes the first spelling that
+      behaves, so iteration order decides the winning spelling even
+      though it cannot change what is reachable.  Missed by every earlier
+      sweep because a seven-element tuple does not look like a table;
+      found by grepping module-level literals for *provenance language*
+      in their comments, which is the method note below applied.
+    - **`_LADDERS` (%^2^-1)** — **not a candidate; a minimal cover, and
+      its stated price was wrong by 240x.**  Eight ladders chosen by
+      greedy set cover over 150 yielding paths.  Re-probed: the cover is
+      **minimal** (dropping any one strands tables — 4,4,4,2,2,2,2,2) and
+      load-bearing on size (removing the ladder path costs no correctness
+      but **+88%** over the twenty it serves, 31615 → 59457).  The
+      comment priced the full-grid alternative at ~50s; folding all 256
+      takes **0.21s**.  What that alternative actually changes is reach —
+      50 tables against 26 — with all 24 extras already building by
+      earlier paths, so widening moves which path claims them.  The
+      defence is assignment stability, not build cost; comment corrected.
     - **`_LADDER_GADGETS` (%^2^-1)** — **closed; the spellings are
       constructed.**  The old comment's claim that deriving them meant
       re-running the rung composition was wrong: every gadget is
@@ -829,6 +847,40 @@ open:
       spec or derived.  Six-Five has no literal table; its capped input-
       order search is live code with its cost trade documented, a
       different artefact class.
+    - Third pass (2026-09-06), re-probing rather than quoting the five
+      covers — which is what caught three wrong stated numbers.
+      **`_PLANS`**: the *spelling* is already a construction (`_step`
+      derives each code from `(carry, backs, odd)` by the `ceil(k/2)`
+      law); only the values are a cover, and drop-one strands
+      0/0/20/18/8.  **Plans 0 and 1 strand nothing** — dropping both is
+      byte-identical at `n == 3` exhaustive (256/256 build, all rows
+      correct, 60382 bytes either way) and over 60 sampled `n == 4`
+      tables (30799 bytes either way).  A priced deletion, not a
+      closure: the remaining defence is unsampled `n >= 4` behaviour.
+      **`_TWO_INPUT_SHORT`** confirmed exactly — with it monkeypatched
+      away all 16 tables still build and execute correctly (including
+      the `"0000"` constant, the case that could have changed how many
+      inputs are read), at **+138.9%** over the five it covers.
+      **`ANCHORS`** — `make_ztoalc_table.py --check` reproduces all 21;
+      empirical Collatz records with a working regenerator is already
+      the right shape.  **`_SEPS` is load-bearing but its figures did
+      not reproduce, and the convention is unrecovered**: two
+      independent probes disagreed with the comment *and with each
+      other's denominator* (49 against the stated "Two separators: 99 of
+      109"; a 252-pair population via `_staging_index` against the
+      comment's 109), and the nearby "92 distinct columns" measured 126.
+      Flagged rather than corrected — an edit here would be guessing,
+      and whoever takes it should recover the population first.
+      One further priced option: adding 3 to `_INSERT_ARITIES` reaches
+      `01101101`/`10010010`, which prose near `_Staging` calls
+      unreachable, changing exactly 2 of 256 templates (60382 → 60128).
+      Also swept module-level literals by *provenance language* rather
+      than element count, which found three the size sweeps missed:
+      `_WIDE_A_VALS` (closed, above), **`_X0` (A Painter Ant)** — dead
+      code, its own comment said "Unused", one definition and zero uses,
+      now deleted — and **`_COND` (Polynomial)** plus
+      **`_PRINTED_COLUMNS` (Minifuck)**, which are not tables at all: a
+      spec dispatch on instruction codes, and an empty runtime memo.
 - **NoComment's tape size** — **closed; already shipped.**  The `tape`
   argument on `run`/`nocomment` is the whole mechanism this item proposed,
   and `n == 12` at `tape=16384` already builds, runs and is asserted by
