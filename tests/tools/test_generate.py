@@ -2,8 +2,9 @@
 
 import importlib
 import inspect
+import signal
 import subprocess
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from typing import Any
 from unittest.mock import patch
 
@@ -44,6 +45,7 @@ from esolangs.interpreters.tape_based.slow_acv_mammalian import run as mammalian
 from esolangs.interpreters.tape_based.suffolk import run as suffolk_run
 from esolangs.interpreters.tape_based.three_d_brainfuck import run as three_d_bf_run
 from esolangs.tools.text import other
+from tests.raises import raises_message
 
 WIDTH_CONTRACT_TEXT = "Hello, World!"
 EDGE_GENERATORS = [
@@ -1611,3 +1613,161 @@ class TestWeaveInternals:
         from esolangs.tools.text.other import _clockwise_weave
 
         assert _clockwise_weave(";" * 400, 4) is not None
+
+
+# Every text generator, swept from the registry rather than listed here.
+# ``EDGE_GENERATORS`` above covers twelve of these by hand; a hand list is
+# what let thirty-five of them go unprobed, and it is how the LaserFuck
+# divergence below survived -- the generator *was* in that list, but the
+# input that broke it hung rather than failed, so a run that never
+# finished was never read as a failure.
+HOSTILE_INPUTS = {
+    "nul_only": "\x00",
+    "nul_interior": "a\x00b",
+    "nul_trailing": "ab\x00",
+    "nul_leading": "\x00ab",
+    "nul_run": "a\x00\x00b",
+    "low_after_first": "a\x01",
+    "low_leading": "\x01a",
+    "max_byte": "\x7f",
+    "big_drop": "z\x00",
+    "repeat": "aaaa",
+    "single": "a",
+}
+
+# What each generator refuses, and why.  Pinned rather than tolerated: a
+# bare "any ValueError passes" would also pass a generator that started
+# refusing everything, which is the failure this table is here to catch.
+# The reason is matched whole -- the alphabet each language can print is
+# the contract, so the message that names it is part of the assertion.
+HOSTILE_REFUSALS = {
+    "dig": (
+        "Dig can only output letters, digits, spaces and .,!?",
+        {
+            "nul_only",
+            "nul_interior",
+            "nul_trailing",
+            "nul_leading",
+            "nul_run",
+            "low_after_first",
+            "low_leading",
+            "max_byte",
+            "big_drop",
+        },
+    ),
+    "minifuck": (
+        "Minifuck cannot output the NUL character",
+        {
+            "nul_only",
+            "nul_interior",
+            "nul_trailing",
+            "nul_leading",
+            "nul_run",
+            "big_drop",
+        },
+    ),
+    "myscript": (
+        "MyScript can only output its representable bytes",
+        {"low_after_first", "low_leading", "max_byte"},
+    ),
+    "suptiftam": (
+        "Suptiftam can only output printable non-quote ASCII (32-126 except ')",
+        {
+            "nul_only",
+            "nul_interior",
+            "nul_trailing",
+            "nul_leading",
+            "nul_run",
+            "low_after_first",
+            "low_leading",
+            "max_byte",
+            "big_drop",
+        },
+    ),
+}
+
+
+def _text_generators() -> list[str]:
+    """Every public text generator, from the module rather than a list."""
+    return sorted(
+        name
+        for name in dir(gen)
+        if not name.startswith("_") and name != "main" and callable(getattr(gen, name))
+    )
+
+
+EDGE_GENERATORS_BY_NAME = frozenset(fn.__name__ for fn in EDGE_GENERATORS)
+
+
+@pytest.fixture
+def hostile_timeout() -> Generator[None, None, None]:
+    """Fail a hostile case that hangs instead of letting it stall the run.
+
+    A generated program that never halts is what this whole sweep is for,
+    so the bound has to be part of the test rather than left to whoever is
+    watching the terminal.
+    """
+
+    def _raise(_signum: int, _frame: object) -> None:
+        raise TimeoutError("hostile input did not finish in 20s")
+
+    old = signal.signal(signal.SIGALRM, _raise)
+    signal.alarm(20)
+    try:
+        yield
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, old)
+
+
+class TestHostileInputs:
+    """Every generator against the inputs that break the careless ones.
+
+    A generator either round-trips the text or refuses it for a named
+    reason.  Both bugs this suite was written for -- a LaserFuck program
+    that never halted on a low byte after the first, and a %^2^-1 delta
+    encoding that printed the byte after a NUL as its two's complement --
+    are in here as ``low_after_first`` and ``nul_interior``.
+    """
+
+    def test_the_sweep_covers_every_generator(self) -> None:
+        """The sweep is registry-wide, so a new generator joins it for free.
+
+        Without this a generator added tomorrow is silently untested here,
+        which is exactly how ``EDGE_GENERATORS`` came to cover twelve of
+        forty-five.
+        """
+        names = _text_generators()
+        assert len(names) >= 45, names
+        assert set(EDGE_GENERATORS_BY_NAME) <= set(names)
+
+    @pytest.mark.parametrize("label", sorted(HOSTILE_INPUTS))
+    @pytest.mark.parametrize("name", _text_generators())
+    @pytest.mark.usefixtures("hostile_timeout")
+    def test_generator_survives_hostile_input(self, name: str, label: str) -> None:
+        """Round-trip the text, or refuse it with the reason that is pinned.
+
+        The timeout fixture is what makes a non-terminating *program* a
+        failure rather than a stalled run: the LaserFuck divergence sat in
+        a slow-marked test for as long as it did because nothing bounded
+        it, so a hang and a slow test were indistinguishable.
+        """
+        text = HOSTILE_INPUTS[label]
+        generator = getattr(gen, name)
+
+        reason, refused = HOSTILE_REFUSALS.get(name, ("", set()))
+        if label in refused:
+            with raises_message(ValueError, reason):
+                generator(text)
+            return
+
+        program = generator(text)
+        from esolangs.registry import BY_FUNCTION
+
+        if name == "laserfuck":
+            # the start heading is random by spec, so every one has to land
+            for heading in range(4):
+                assert laserfuck_roundtrip(program, heading) == text
+            return
+
+        assert roundtrip_language(BY_FUNCTION[name], program) == text
