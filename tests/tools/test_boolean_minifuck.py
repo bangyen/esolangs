@@ -920,6 +920,37 @@ class TestParameterizedMinifuck:
         # reorders what is spent first, it never drops a slice outright.
         assert sorted(module._SLICE_YIELD_ORDER) == sorted(plain)  # noqa: SLF001
 
+    @pytest.mark.slow
+    def test_the_slice_order_is_its_measured_yield(self) -> None:
+        """The yield ranking is re-derived, not trusted.
+
+        The comment above ``_SLICE_YIELD_ORDER`` states the measurement
+        that produced it -- each slice's yield at four inputs, best 2874
+        against worst 424 -- but a stated measurement is not a checked
+        one, and the table is dormant as shipped, so nothing else would
+        catch it drifting.
+
+        The yield is *marginal*, not intrinsic: a slice is credited with
+        the columns it is the first to reach in the plain enumeration,
+        not with everything it could place on its own.  That distinction
+        is what picks this order out -- ranking slices by their
+        independent reach gives a different one -- so the assertion
+        pins the mechanism and not just the numbers.  All ten counts are
+        distinct, so descending order is total and needs no tie-break.
+        """
+        import importlib
+        from collections import Counter
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        index = module._staging_index(4)  # noqa: SLF001
+        counts = Counter((entry[0], entry[1]) for entry in index.values())
+        assert len(set(counts.values())) == len(counts), counts
+        derived = tuple(sorted(counts, key=lambda slot: -counts[slot]))
+        assert derived == module._SLICE_YIELD_ORDER  # noqa: SLF001
+        assert max(counts.values()) == 2874
+        assert min(counts.values()) == 424
+
     def test_five_input_budget_uses_its_separate_default(self) -> None:
         """The five-input override is selected only while budgets are off.
 
