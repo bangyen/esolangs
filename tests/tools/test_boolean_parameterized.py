@@ -2471,7 +2471,7 @@ class TestParameterizedOneTwoThree:
 
         The two exact-template tests above go through
         ``parameterized.one_two_three``, which sends ``n <= 3`` to the
-        frozen-schedule route and never enters this module at all.  So the
+        separation-law route and never enters this module at all.  So the
         wider construction had no golden of its own, and a plan that
         emitted three bytes more per table, or two fewer, changed nothing
         any test compared.
@@ -2485,7 +2485,7 @@ class TestParameterizedOneTwoThree:
     def test_the_constructed_lengths_are_stable_over_three_inputs(self) -> None:
         """Total emitted bytes over every three-input table.
 
-        The paint flag and the separation schedule move a handful of bytes
+        The paint flag and the separation law move a handful of bytes
         per table without changing a verdict, so no single table is a
         reliable witness -- ``00111000`` moves by two and ``11111111`` by
         two the other way.  The sum over the sweep is, and it is the same
@@ -2549,13 +2549,13 @@ class TestParameterizedOneTwoThree:
         ("table", "length"),
         [
             ("00000000", 72),
-            ("10000000", 132),
-            ("00010111", 148),
-            ("01101001", 210),
+            ("10000000", 368),
+            ("00010111", 210),
+            ("01101001", 160),
         ],
     )
     def test_three_inputs_take_the_small_route(self, table: str, length: int) -> None:
-        """``n == 3`` builds from the frozen schedules, not the wide route.
+        """``n == 3`` builds from the separation law, not the wide route.
 
         Both routes emit a *correct* template, so every truth-table
         assertion above passes either way and the choice is invisible to
@@ -2568,6 +2568,98 @@ class TestParameterizedOneTwoThree:
         from esolangs.tools.boolean import parameterized
 
         assert len(parameterized.one_two_three(table)) == length
+
+    @pytest.mark.slow
+    def test_the_separation_law_is_the_least_mean(self) -> None:
+        """The law's constants are re-derived, not trusted.
+
+        ``_LAWS`` claims one selection rule at every arity: over constant
+        walk seeds and alternating pure-test displacement vectors, the
+        law with the least mean template length.  This re-runs that sweep
+        at ``n <= 2`` and checks the shipped constants win it, so a
+        hand-edited constant fails here rather than shipping quietly.
+        ``n == 3`` is left to the exhaustive build sweep -- its domain is
+        13 laws over 256 tables, minutes rather than seconds.
+        """
+        from itertools import product
+
+        from esolangs.tools.boolean.one_two_three import (
+            _LAWS,
+            _WORK_BUDGET,
+            ConstructError,
+            _Builder,
+            _endgame,
+            _on_mark,
+            _verdict_junky,
+            _work,
+        )
+
+        def prototype(n: int, walk: int, disps: tuple[int, ...]) -> object:
+            """Replay one candidate law, or ``None`` if it does not fit.
+
+            A candidate that walks a row off the ring raises exactly as a
+            build would; here that only means "not this law", so the
+            raise is caught rather than propagated.
+            """
+            _work[0] = _WORK_BUDGET
+            try:
+                b = _Builder(n)
+                for i in range(n):
+                    if walk:
+                        b.run("2" * walk)
+                    b.fill(i)
+                for d in range(4 * 2**n + 9):
+                    probe = b.clone()
+                    if d:
+                        probe.run("2" * d)
+                    if any(r.pos < 0 for r in probe.live()):
+                        continue
+                    if not any(_on_mark(r) for r in probe.live()):
+                        if d:
+                            b.run("2" * d)
+                        b.test()
+                        break
+                else:
+                    return None
+                for i, step in enumerate(disps):
+                    b.run(("1" if i % 2 == 0 else "2") * step)
+                    b.test()
+            except ConstructError:
+                return None
+            poss = [r.pos for r in b.live()]
+            if len(set(poss)) != len(poss) or any(p % 2 == 0 for p in poss):
+                return None
+            return b
+
+        def mean_length(n: int, proto: object) -> float | None:
+            total = 0
+            tables = ["".join(t) for t in product("01", repeat=2**n)]
+            for table in tables:
+                _work[0] = _WORK_BUDGET
+                b = proto.clone()  # type: ignore[attr-defined]
+                try:
+                    _verdict_junky(b, table)
+                    _endgame(b)
+                except ConstructError:
+                    return None
+                total += len(b.template())
+            return total / len(tables)
+
+        for n in (1, 2):
+            ranked = []
+            for walk in range(9):
+                for depth in range(5):
+                    for disps in product(range(1, 11), repeat=depth):
+                        proto = prototype(n, walk, disps)
+                        if proto is None:
+                            continue
+                        mean = mean_length(n, proto)
+                        if mean is not None:
+                            ranked.append((mean, walk, disps))
+            assert ranked, n
+            ranked.sort()
+            _best_mean, best_walk, best_disps = ranked[0]
+            assert (best_walk, best_disps) == _LAWS[n], (n, ranked[:3])
 
     def test_the_wide_route_is_bigger_where_they_overlap(self) -> None:
         """The small route earns its place at the arity they share.
@@ -2586,20 +2678,19 @@ class TestParameterizedOneTwoThree:
         ("table", "template"),
         [
             ("01", "{X0}223311122212331111"),
-            ("0001", "2222{X0}{X1}2223311332133111222123311111111121121"),
+            ("0001", "22{X0}22{X1}22331113322331111332133121233111111121121"),
         ],
     )
     def test_the_emitted_template_is_exact(self, table: str, template: str) -> None:
         """The construction is deterministic down to the byte.
 
-        ``_construct_small`` keeps the shortest template and, on a tie, the
-        earliest schedule -- the rule :func:`shortest` documents.  Nine of
-        the 276 tables through three inputs have two schedules producing
-        templates of *equal* length, so a tie-break that took the last
-        instead of the first would ship a different program of the same
-        size: correct, same length, and invisible to every other assertion
-        here.  Pinning two templates exactly is what makes that choice
-        observable.
+        ``_construct_small`` builds one prototype per arity, so there is
+        no candidate field and no tie-break: the emission is a function
+        of the law and the table alone.  Pinning two templates exactly is
+        what turns "deterministic" from a claim into a check -- a change
+        to the law's constants, or to the order its tests fire in, moves
+        these bytes even where it leaves every truth-table assertion
+        passing.
         """
         from esolangs.tools.boolean import parameterized
 
@@ -2610,14 +2701,17 @@ class TestParameterizedOneTwoThree:
     ) -> None:
         """``b.test()`` after the paints is conditional, and the flag varies.
 
-        Of the 276 tables through three inputs, 28 need no paint at all, so
-        the flag is genuinely two-valued rather than a constant dressed as
-        one.  Forcing it either way leaves every template correct -- the
-        extra or missing test costs or saves commands without changing the
-        verdict -- so only the emitted size sees it: pinning it True
-        changes 11 of the 276 templates and dropping it changes 264.  The
-        total is asserted rather than one table because the flag's effect
-        is spread across the whole sweep.
+        Of the 276 tables through three inputs, 10 need no paint at all,
+        so the flag is genuinely two-valued rather than a constant
+        dressed as one.  Forcing it either way leaves every template
+        correct -- the extra or missing test costs or saves commands
+        without changing the verdict -- so only the emitted size sees it.
+        The total is asserted rather than one table because the flag's
+        effect is spread across the whole sweep; it also pins the
+        separation law's price, 55238 characters against the retired
+        schedules' 43020 and the wide constructor's 158152 -- the law
+        gives up 1.28x to delete the table and keeps 2.9x over the route
+        that needs none.
         """
         from esolangs.tools.boolean import parameterized
 
@@ -2626,22 +2720,19 @@ class TestParameterizedOneTwoThree:
             for table_int in range(2 ** (2**n)):
                 table = format(table_int, f"0{2**n}b")
                 total += len(parameterized.one_two_three(table))
-        assert total == 43020
+        assert total == 55238
 
-    def test_a_schedule_with_even_positions_is_refused(self) -> None:
+    def test_a_seed_with_even_positions_is_refused(self) -> None:
         """The junky verdict rejects a seed whose rows are not distinct odd.
 
         The paint offsets are collision-free only because every live row
         sits at a distinct *odd* position -- two rows sharing an offset
         would have to sit one cell apart, which odd-and-distinct forbids.
         So the precondition is what the collision-freedom argument rests
-        on, and it is reachable rather than defensive: swept over every
-        table and schedule through three inputs it fires three times, all
-        on schedule 1 at ``n == 1``, whose seed leaves rows at ``[2, 0]``.
-
-        ``_construct_small`` catches this and moves to the next schedule,
-        which is why no table fails to build; reaching the raise itself
-        takes the builder directly.
+        on.  The shipped law separates to odd positions at every arity,
+        so no build reaches the raise; the state is constructed here
+        instead, which is what keeps the guard checked rather than
+        merely asserted.
         """
         from esolangs.tools.boolean.one_two_three import (
             _WORK_BUDGET,
@@ -2652,8 +2743,10 @@ class TestParameterizedOneTwoThree:
         )
 
         _work[0] = _WORK_BUDGET
-        builder = _separated(1, 1).clone()
-        assert [r.pos for r in builder.live()] == [2, 0]
+        builder = _separated(1).clone()
+        # Nudge one row onto an even cell; the law itself never does.
+        builder.live()[0].pos += 1
+        assert any(r.pos % 2 == 0 for r in builder.live())
         with pytest.raises(ConstructError) as caught:
             _verdict_junky(builder, "01")
         assert str(caught.value) == "verdict precondition: positions not distinct odd"
