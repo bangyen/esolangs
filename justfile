@@ -21,7 +21,7 @@ help:
     @echo "  test-line    - extra/line suites with pytest only (~3s)"
     @echo "  test-anchor  - ztoalc anchor table check (~3.2s)"
     @echo "  mutate LANG  - mutation-test one interpreter (e.g. just mutate Qoibl)"
-    @echo "  mutate-gen MOD - mutation-test one boolean generator (e.g. just mutate-gen register)"
+    @echo "  mutate-gen MOD - mutation-test one generator (e.g. just mutate-gen text/streetcode)"
     @echo "  install-dev  - Install development dependencies"
     @echo "  clean        - Clean up generated files"
     @echo ""
@@ -106,11 +106,13 @@ test-docstring *args:
 mutate language *args:
     {{PYTHON}} scripts/mutate_one.py {{language}} {{args}}
 
-# the same for one boolean generator, named by its module in
-# src/esolangs/tools/boolean (e.g. just mutate-gen register).  Which test
-# files run is worked out from what they import; slow tests are deselected
-# unless --slow is passed, since a mutation run pays the suite's cost once
-# per mutant.
+# the same for one generator, named family/module after where it lives under
+# src/esolangs/tools (e.g. just mutate-gen boolean/register, just mutate-gen
+# text/streetcode).  A bare name works where only one family defines it, but
+# eight -- helpers, laserfuck, other, register, stack, streetcode,
+# super_snusp, tape -- exist in both and are refused unqualified.  Every
+# suite in tests/tools runs; slow tests are deselected unless --slow is
+# passed, since a mutation run pays the suite's cost once per mutant.
 mutate-gen module *args:
     {{PYTHON}} scripts/mutate_generator.py {{module}} {{args}}
 

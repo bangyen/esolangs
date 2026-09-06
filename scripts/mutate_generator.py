@@ -1,4 +1,4 @@
-"""Mutation-test one boolean generator against the boolean test suites.
+"""Mutation-test one generator -- boolean or text -- against ``tests/tools``.
 
 The companion to ``scripts/mutate_one.py``, which does this for
 interpreters.  The question is the same one line coverage cannot answer:
@@ -16,8 +16,10 @@ import-time trampoline in ``registry``/``lamfunc`` before mutmut has set
 ``paths_to_mutate``, so only it gets trampolines; every other module is
 copied verbatim and imports normally.  The generator modules also import
 cleanly on their own -- ``esolangs.tools.boolean.*`` reaches only
-``helpers``, ``text.helpers`` and ``_polynomial``, none of which do work at
-import time.
+``helpers``, ``text.helpers`` and ``_polynomial``, and
+``esolangs.tools.text.*`` only ``text.helpers``, ``wrap``, ``_polynomial``,
+``laserfuck_layout`` and ``ztoalc_starts``.  None of them do work at import
+time, which is what lets both families share this layout.
 
 So the layout is the package itself, copied whole into a work directory
 that shadows the editable install because the runner's cwd leads
@@ -38,8 +40,14 @@ the ones that name the target.  :func:`_test_files` has the measurement
 behind that -- the correction this harness needed most, since selecting by
 import alone under-reported 19 of the 27 generator modules.
 
+Both generator families are reachable, named ``family/module``.  Eight
+module names -- helpers, laserfuck, other, register, stack, streetcode,
+super_snusp, tape -- exist in *both* packages, so a bare name is accepted
+only where it is unambiguous; see :func:`_parse_target`.
+
 Usage:
-    python scripts/mutate_generator.py register
+    python scripts/mutate_generator.py boolean/register
+    python scripts/mutate_generator.py text/streetcode
     python scripts/mutate_generator.py dimensional --keep   # leave the work dir
 
 Requires: mutmut==3.7.0, the same pin ``mutate_one`` documents.
@@ -60,22 +68,49 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-# The package the generators live in, and where it sits on disk.
-_PKG = "esolangs.tools.boolean"
-_PKG_DIR = ROOT / "src" / "esolangs" / "tools" / "boolean"
+# The generator families this harness can mutate, by the name the CLI takes.
+# Both live under ``esolangs.tools`` and satisfy the same two preconditions
+# the layout below relies on: each module imports cleanly on its own, and
+# nothing it reaches does work at import time.  ``text.*`` reaches only
+# ``text.helpers``, ``wrap``, ``_polynomial``, ``laserfuck_layout`` and
+# ``ztoalc_starts``, none of which do.
+_FAMILIES = ("boolean", "text")
 
-# The boolean test modules live here.  Only these are copied: pointing
-# mutmut at the whole suite made its stats pass collect
+
+def _pkg(family: str) -> str:
+    """Return the dotted package name for a generator family."""
+    return f"esolangs.tools.{family}"
+
+
+def _pkg_dir(family: str) -> Path:
+    """Return where a generator family sits on disk."""
+    return ROOT / "src" / "esolangs" / "tools" / family
+
+
+# The generator test modules live here, both families' alike.  Only these
+# are copied: pointing mutmut at the whole suite made its stats pass collect
 # ``tests/fuzz/test_differential_fuzz.py``, which imports ``scripts.*`` and
 # so cannot resolve from the work directory -- the run died before
 # generating a mutant.
 _TESTS_DIR = ROOT / "tests" / "tools"
 
-# Test-support modules the boolean suites import that are not themselves
-# tests.  ``tests.interpreters.runner`` is what ``boolean_runners`` drives
-# the interpreters through, so a generator's output can be executed.
+# Test-support modules the suites import that are not themselves tests.
+# ``tests.interpreters.runner`` is what ``boolean_runners`` drives the
+# interpreters through, so a generator's output can be executed, and
+# ``tests.raises`` is a helper ``test_generate`` imports at module scope.
+#
+# ``tests.raises`` was missing until the text families were reachable, and
+# the way it surfaced is worth keeping: every suite in ``tests/tools`` is
+# copied, so the *file* was there, but ``tests/raises.py`` sits one level up
+# and was not -- so ``test_generate`` failed to import and the baseline gate
+# stopped the run.  That gate is the reason this cost minutes rather than a
+# wrong number: a missing support module fails collection, and with
+# ``tests_dir`` pointing at ``tests/tools`` a silently uncollected
+# ``test_generate`` would have scored every text generator against the
+# boolean suites alone.
 _SUPPORT = (
     Path("tests/__init__.py"),
+    Path("tests/raises.py"),
     Path("tests/interpreters/__init__.py"),
     Path("tests/interpreters/runner.py"),
 )
@@ -111,15 +146,61 @@ _BASELINE_TIMEOUT = 600.0
 _MIN_KILL_RATE = 0.1
 
 
-def _module_path(name: str) -> Path:
-    """Return the generator module named ``name``, or raise if absent."""
-    path = _PKG_DIR / f"{name}.py"
-    if not path.exists():
-        names = sorted(p.stem for p in _PKG_DIR.glob("*.py") if p.stem != "__init__")
-        raise SystemExit(
-            f"unknown generator {name!r}; choose one of: {', '.join(names)}"
+# Modules in a family package that are not generators.  ``__init__`` is the
+# re-export surface and ``__main__`` is the ``python -m`` entry point, which
+# the text package has and the boolean one does not; neither holds
+# generation logic worth a mutant.  ``helpers`` is deliberately *not* here:
+# it is shared machinery both families' output depends on, so it is a real
+# target.
+_NON_TARGETS = frozenset({"__init__", "__main__"})
+
+
+def _modules(family: str) -> list[str]:
+    """Return the generator module names in ``family``, sorted."""
+    return sorted(
+        p.stem for p in _pkg_dir(family).glob("*.py") if p.stem not in _NON_TARGETS
+    )
+
+
+def _parse_target(target: str) -> tuple[str, str]:
+    """Return the (family, module) a CLI target names, or raise.
+
+    Accepts ``text/streetcode`` and the bare ``streetcode`` the boolean-only
+    version took.  A bare name is resolved against every family, which makes
+    it an error rather than a silent choice when more than one matches:
+    eight modules -- helpers, laserfuck, other, register, stack, streetcode,
+    super_snusp, tape -- exist in both packages, and picking the default for
+    those would quietly mutate boolean's ``tape`` for someone who asked for
+    text's.  Bare names that are unambiguous still work, so
+    ``mutate_generator.py minifuck`` needs no qualifier.
+    """
+    if "/" in target:
+        family, _, module = target.partition("/")
+        if family not in _FAMILIES:
+            raise SystemExit(
+                f"unknown generator family {family!r}; "
+                f"choose one of: {', '.join(_FAMILIES)}"
+            )
+        if module not in _modules(family):
+            raise SystemExit(
+                f"unknown {family} generator {module!r}; "
+                f"choose one of: {', '.join(_modules(family))}"
+            )
+        return family, module
+
+    matches = [family for family in _FAMILIES if target in _modules(family)]
+    if not matches:
+        listing = "\n".join(
+            f"  {family}: {', '.join(_modules(family))}" for family in _FAMILIES
         )
-    return path
+        raise SystemExit(f"unknown generator {target!r}; choose one of:\n{listing}")
+    if len(matches) > 1:
+        spellings = ", ".join(f"{family}/{target}" for family in matches)
+        raise SystemExit(
+            f"{target!r} names a generator in more than one family; "
+            f"say which: {spellings}"
+        )
+    return matches[0], target
 
 
 def _test_files() -> list[str]:
@@ -297,7 +378,9 @@ def _runner_command(tests: list[str]) -> str:
     return "python -m pytest " + shlex.join(_pytest_args(tests))
 
 
-def _prepare(module: str, work: Path, *, slow: bool) -> tuple[Path, list[str]]:
+def _prepare(
+    family: str, module: str, work: Path, *, slow: bool
+) -> tuple[Path, list[str]]:
     """Lay out the work directory; return (project dir, selected test files).
 
     The whole package is copied rather than bundled, so every import the
@@ -334,7 +417,7 @@ def _prepare(module: str, work: Path, *, slow: bool) -> tuple[Path, list[str]]:
         (base / "examples").symlink_to(ROOT / "examples")
     (proj / "tests" / "fixtures").symlink_to(ROOT / "tests" / "fixtures")
 
-    target = proj / "esolangs" / "tools" / "boolean" / f"{module}.py"
+    target = proj / "esolangs" / "tools" / family / f"{module}.py"
     moved = _undecorate_classes(target)
     if moved:
         print(
@@ -342,7 +425,7 @@ def _prepare(module: str, work: Path, *, slow: bool) -> tuple[Path, list[str]]:
             "so mutmut can see it"
         )
 
-    rel_target = f"esolangs/tools/boolean/{module}.py"
+    rel_target = f"esolangs/tools/{family}/{module}.py"
     runner = _runner_command(tests)
     # In addopts rather than in the runner's arguments, so that mutmut's
     # stats pass -- which supplies its own -- deselects these too.
@@ -377,7 +460,7 @@ def _prepare(module: str, work: Path, *, slow: bool) -> tuple[Path, list[str]]:
     return proj, tests
 
 
-def _check_shadowing(proj: Path, module: str) -> None:
+def _check_shadowing(proj: Path, family: str, module: str) -> None:
     """Fail unless the copied package is what an import in ``proj`` resolves to.
 
     This is the positive control, and it is the one thing about this layout
@@ -389,7 +472,7 @@ def _check_shadowing(proj: Path, module: str) -> None:
     perfect score having tested nothing.  A score of 100% is exactly what
     this failure looks like, which is why it is checked rather than assumed.
     """
-    dotted = f"{_PKG}.{module}"
+    dotted = f"{_pkg(family)}.{module}"
     code = (
         "import sys, importlib; "
         f"importlib.import_module({dotted!r}); "
@@ -416,7 +499,7 @@ def _check_shadowing(proj: Path, module: str) -> None:
         )
 
 
-def _score(proj: Path, module: str) -> tuple[int, int, list[str]]:
+def _score(proj: Path, family: str, module: str) -> tuple[int, int, list[str]]:
     """Return (killed, total, survivor names) from mutmut's own result file.
 
     Simpler than ``mutate_one._score``: only the target file is mutated, so
@@ -424,9 +507,7 @@ def _score(proj: Path, module: str) -> tuple[int, int, list[str]]:
     out.  ``mutate_one`` needs a class-ownership filter because its bundle
     inlines two other modules alongside the interpreter.
     """
-    meta_path = (
-        proj / "mutants" / "esolangs" / "tools" / "boolean" / f"{module}.py.meta"
-    )
+    meta_path = proj / "mutants" / "esolangs" / "tools" / family / f"{module}.py.meta"
     if not meta_path.exists():
         raise SystemExit(
             f"mutmut wrote no result file at {meta_path}: the run did not get "
@@ -440,7 +521,11 @@ def _score(proj: Path, module: str) -> tuple[int, int, list[str]]:
 def main() -> int:
     """Copy the package, mutate one generator, and report what survived."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("module", help="generator module, e.g. register")
+    parser.add_argument(
+        "module",
+        help="generator module as family/module, e.g. text/streetcode.  A "
+        "bare name works where only one family defines it",
+    )
     parser.add_argument(
         "--keep", action="store_true", help="leave the work directory in place"
     )
@@ -462,12 +547,13 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    _module_path(args.module)
+    family, module = _parse_target(args.module)
     work = Path(tempfile.mkdtemp(prefix="mutate-generator-"))
     try:
-        proj, tests = _prepare(args.module, work, slow=args.slow)
+        proj, tests = _prepare(family, module, work, slow=args.slow)
+        print(f"[note] mutating {family}/{module}")
         print(f"[note] selected {len(tests)} test file(s): {', '.join(tests)}")
-        _check_shadowing(proj, args.module)
+        _check_shadowing(proj, family, module)
         print("[note] the copied package shadows the installed one")
 
         started = time.monotonic()
@@ -517,7 +603,7 @@ def main() -> int:
             check=False,
         )
 
-        killed, total, survivors = _score(proj, args.module)
+        killed, total, survivors = _score(proj, family, module)
         if not total:
             raise SystemExit("no mutants were generated")
         if killed < total * _MIN_KILL_RATE:
@@ -530,7 +616,10 @@ def main() -> int:
                 "-- usually the suite fails inside mutants/, where it runs "
                 "from a different directory than the baseline."
             )
-        print(f"\n{args.module}: {killed}/{total} killed ({100 * killed / total:.1f}%)")
+        print(
+            f"\n{family}/{module}: {killed}/{total} killed "
+            f"({100 * killed / total:.1f}%)"
+        )
         if survivors:
             print(f"\n{len(survivors)} survived:")
             for name in survivors:
