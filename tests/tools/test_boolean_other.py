@@ -453,6 +453,102 @@ class TestCvnc:
         # The identity is always unimodal, so a candidate always exists.
         assert module._deque_schedule((0, 1, 2, 3)) is not None  # noqa: SLF001
 
+    @pytest.mark.parametrize(
+        ("n", "servable"),
+        [(1, 1), (2, 2), (3, 6), (4, 20), (5, 70), (6, 252)],
+    )
+    def test_the_servable_orders_are_counted_exactly(
+        self, n: int, servable: int
+    ) -> None:
+        """How many permutations the deque serves, per arity.
+
+        The ends are chosen by *search* over the ``2**n`` push assignments,
+        with the pops then forced, and the search returns the first
+        assignment that works.  That makes the two ends' bit tests
+        surprisingly hard to break visibly: scrambling which bit selects
+        which end still finds *a* working assignment for many orders, so
+        the generator keeps emitting correct programs and only the size of
+        the servable set moves.  Measured at four inputs, the shift and
+        mask edits take it from 20 down to 8 or 16 while every program
+        that is still built stays right.
+
+        The counts are the documented ones (all six at three inputs, 20 of
+        24 at four, 252 of 720 at six) and they are the whole observable,
+        so they are asserted rather than sampled.
+        """
+        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+
+        served = sum(
+            1
+            for perm in itertools.permutations(range(n))
+            if module._deque_schedule(perm) is not None  # noqa: SLF001
+        )
+        assert served == servable
+
+    def test_a_tie_keeps_the_node_read_tree(self) -> None:
+        """The hoisted build must be strictly shorter to be taken.
+
+        Fourteen of the 256 three-input tables build a hoisted program of
+        exactly the tree's length, so ``<`` and ``<=`` ship different
+        programs of *identical size*: invisible to a length bound and to
+        every truth-table assertion, since both shapes compute the table.
+        All fourteen keep the tree.
+
+        The comparison has to be driven through ``best_input_order``, the
+        way the generator does it -- that helper permutes the *table* per
+        order, so calling ``_hoisted_candidate`` on the unpermuted one and
+        taking the best is a different quantity, and gives a different set.
+        """
+        from esolangs.tools.boolean.helpers import best_input_order
+
+        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+
+        tied = []
+        for value in range(2**8):
+            table = bin(value)[2:].zfill(8)
+            tree = module._tree(table, 0)  # noqa: SLF001
+            hoisted = best_input_order(
+                table,
+                module._hoisted_candidate,  # noqa: SLF001
+            )
+            if hoisted and len(hoisted) == len(tree):
+                tied.append(table)
+        assert len(tied) == 14
+        for table in tied:
+            assert boolean.cvnc(table) == module._tree(table, 0)  # noqa: SLF001
+
+    def test_a_served_order_pops_from_the_end_holding_its_input(self) -> None:
+        """The schedule is not merely non-empty; it is the right one.
+
+        A count says how many orders are served, not that the pushes and
+        pops agree with each other.  Replaying the schedule against a
+        model deque is what checks that, and it is the property the
+        construction rests on -- a pop from the wrong end reads another
+        input's bit and the tree tests the wrong variable.
+        """
+        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+
+        for n in (2, 3, 4):
+            for perm in itertools.permutations(range(n)):
+                schedule = module._deque_schedule(perm)  # noqa: SLF001
+                if schedule is None:
+                    continue
+                pushes, pops = schedule
+                assert len(pushes) == n
+                assert len(pops) == n
+                held: list[int] = []
+                for i, push in enumerate(pushes):
+                    if push == module._PUSH_FRONT:  # noqa: SLF001
+                        held.insert(0, i)
+                    else:
+                        held.append(i)
+                for wanted, pop in zip(perm, pops, strict=True):
+                    if pop == module._FETCH_FRONT:  # noqa: SLF001
+                        assert held.pop(0) == wanted, (perm, wanted)
+                    else:
+                        assert held.pop() == wanted, (perm, wanted)
+                assert not held
+
     def test_a_table_folding_at_its_root_normalizes_the_last_read(self) -> None:
         """The hoisted build's folded root still holds an unpredictable bit.
 
