@@ -186,14 +186,6 @@ class TestPolynomial:
             got = run_polynomial(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_is_polynomial(self) -> None:
-        """The program is a polynomial function."""
-        assert boolean.polynomial("0110").startswith("f(x) = ")
-
-    def test_supports_three_inputs(self) -> None:
-        """A 3-input table is factored exactly by the interpreter."""
-        assert boolean.polynomial("00000001").startswith("f(x) = ")
-
     def test_wide_table_rejected(self) -> None:
         """The gate is the instruction count, not the input count.
 

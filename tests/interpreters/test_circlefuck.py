@@ -140,13 +140,6 @@ class TestStepMachine:
         """[ skips its body when the current cell is zero."""
         assert run_and_capture("\\0[.].@") == "\x00"
 
-    def test_unmatched_bracket_rejected(self) -> None:
-        """An unmatched [ is a malformed program."""
-        import pytest
-
-        with pytest.raises(ValueError, match="unmatched"):
-            run_and_capture("\\0[.@")
-
     def test_the_unmatched_bracket_message_reads_exactly(self) -> None:
         """``match=`` only looks for a substring, so pin the whole message."""
 
@@ -158,13 +151,6 @@ class TestStepMachine:
 
     def test_decrement(self) -> None:
         assert run_and_capture("-@") == ""
-
-    def test_empty_program_rejected(self) -> None:
-        """A program with no instructions is malformed."""
-        import pytest
-
-        with pytest.raises(ValueError, match="empty"):
-            run_and_capture("")
 
     def test_the_empty_program_message_reads_exactly(self) -> None:
         """``match=`` only looks for a substring, so pin the whole message."""

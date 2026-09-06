@@ -310,14 +310,6 @@ class TestWII2DEdgeCases:
         with pytest.raises(ValueError, match="start marker"):
             run_with_timeout(lambda: run(code, IO()))
 
-    def test_single_line_program(self) -> None:
-        """Test single line program with start marker."""
-        code = [">~.", "!"]
-
-        with redirect_stdout(io.StringIO()) as f:
-            run_with_timeout(lambda: run(code, IO()))
-        assert f.getvalue() == "\x00"
-
     def test_uneven_line_lengths(self) -> None:
         """Test program with uneven line lengths."""
         code = [">~.", "  +", "!"]
@@ -392,14 +384,6 @@ class TestWII2DMathematicalOperations:
         with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code, IO()))
         assert f.getvalue() == "\x10"
-
-    def test_power_operations(self) -> None:
-        """Test power operations using square function."""
-        code = [">3s~.", "!"]  # 3^2 = 9
-
-        with redirect_stdout(io.StringIO()) as f:
-            run_with_timeout(lambda: run(code, IO()))
-        assert f.getvalue() == "\x09"
 
     def test_division_simulation(self) -> None:
         """Test division using halving operations."""

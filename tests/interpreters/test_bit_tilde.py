@@ -155,16 +155,6 @@ class TestBitTilde:
         with pytest.raises(EOFError):
             run_scripted(")(")
 
-    def test_unmatched_open_bracket_is_malformed(self) -> None:
-        """A ``{`` that would jump to a missing ``}`` is malformed."""
-        with pytest.raises(ValueError, match="unmatched"):
-            run_and_capture("{~")
-
-    def test_unmatched_close_bracket_is_malformed(self) -> None:
-        """A ``}`` that would jump to a missing ``{`` is malformed."""
-        with pytest.raises(ValueError, match="unmatched"):
-            run_and_capture("~}")
-
     def test_unmatched_bracket_message_is_exact(self) -> None:
         """The message itself is pinned, not just a substring of it.
 

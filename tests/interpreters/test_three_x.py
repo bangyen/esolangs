@@ -94,16 +94,6 @@ class Test3x:
         with pytest.raises(HaltError):
             run_program(")")
 
-    def test_error_division_by_zero(self) -> None:
-        with pytest.raises(HaltError):
-            run_program("333x33x!")
-
-    def test_error_bad_input(self) -> None:
-        with pytest.raises(ValueError, match="integer or a fraction"):
-            run_program("?", "abc")
-        with pytest.raises(ValueError, match="integer or a fraction"):
-            run_program("?", "1/0")
-
     def test_every_error_message_is_exact(self) -> None:
         """All four messages are pinned whole, from each place they are raised.
 

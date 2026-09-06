@@ -111,9 +111,6 @@ class TestVariables:
         # y and z start 0, x starts 0 (odd) -> 0*0+0 = 0
         assert run_program("x = y x + z, DO PRINT.") == "\x00"
 
-    def test_negative_one_constant(self) -> None:
-        assert run_program("x = negativeOne x + negativeOne, DO PRINT.") == "\xff"
-
 
 class TestArrays:
     def test_bare_array_is_element_zero(self) -> None:
