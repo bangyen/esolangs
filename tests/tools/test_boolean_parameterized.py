@@ -2408,6 +2408,94 @@ class TestParameterizedOneTwoThree:
                         bits,
                     )
 
+    @pytest.mark.slow
+    def test_the_replay_gate_agrees_on_programs_it_did_not_build(self) -> None:
+        """The batched executor is checked against arbitrary 123 code.
+
+        ``_replay_verdict`` is a general 123 interpreter -- it batches
+        maximal runs into closed form -- but every other test drives it on
+        programs the construction *built*, which are a narrow, well-behaved
+        shape: the pointer stays in range, the reads never fire, the loops
+        are the ones the plan laid.  An executor that is wrong outside that
+        shape agrees on all of them and still ships.
+
+        Random programs over the three commands close that.  The comparison
+        is against a per-command run of :class:`_Machine`, which shares no
+        code with the batching, and both sides are treated alike: a program
+        that reads stdin, or that neither halts nor repeats a state inside
+        the budget, is skipped rather than counted as a disagreement.
+
+        Sampled at a fixed seed so a failure is reproducible; the baseline
+        is 177 comparable programs and zero disagreements.
+        """
+        import random
+
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.one_two_three import _Machine
+        from esolangs.tools.boolean.one_two_three_construct import _replay_verdict
+
+        def stepwise(code: str) -> str | None:
+            """The interpreter's own verdict, or None if it is not comparable."""
+            machine = _Machine(code, ScriptedIO(""))
+            seen = set()
+            for _ in range(20_000):
+                if machine.halted:
+                    return "0"
+                state = machine.snapshot()
+                if state in seen:
+                    return "1"
+                seen.add(state)
+                try:
+                    machine.step()
+                except EOFError:
+                    return None
+            return None
+
+        rng = random.Random(7)
+        compared = 0
+        for _ in range(300):
+            code = "".join(rng.choice("123") for _ in range(rng.randint(1, 12)))
+            expected = stepwise(code)
+            if expected is None:
+                continue
+            try:
+                got = _replay_verdict(code)
+            except ValueError:
+                continue  # the executor's own guards; not a verdict to compare
+            compared += 1
+            assert got == expected, code
+        assert compared == 177
+
+    def test_the_construction_emits_an_exact_template(self) -> None:
+        """``construct`` itself, pinned -- not the small route.
+
+        The two exact-template tests above go through
+        ``parameterized.one_two_three``, which sends ``n <= 3`` to the
+        frozen-schedule route and never enters this module at all.  So the
+        wider construction had no golden of its own, and a plan that
+        emitted three bytes more per table, or two fewer, changed nothing
+        any test compared.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import construct
+
+        assert construct("01") == (
+            "22{X0}11121211222211112332332233222211112221113311111112222222123311111111"
+        )
+
+    def test_the_constructed_lengths_are_stable_over_three_inputs(self) -> None:
+        """Total emitted bytes over every three-input table.
+
+        The paint flag and the separation schedule move a handful of bytes
+        per table without changing a verdict, so no single table is a
+        reliable witness -- ``00111000`` moves by two and ``11111111`` by
+        two the other way.  The sum over the sweep is, and it is the same
+        shape of assertion the small route already carries.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import construct
+
+        total = sum(len(construct(format(value, "08b"))) for value in range(256))
+        assert total == 155074
+
     def test_slots_run_in_name_order(self) -> None:
         """Every emitted template embeds {X0} before {X1}."""
         from esolangs.tools.boolean import parameterized
