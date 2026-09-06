@@ -261,7 +261,15 @@ class _Machine:
         if char == ".":
             self.io.print_char(chr(acc))
         elif char == ",":
-            state = (ind, ptr, tape, self.io.input_char(), True)
+            # Reduced, like every other write to a cell.  ``input_char``
+            # returns a whole code point, so an input line starting above
+            # U+00FF used to put that code point straight into a cell on an
+            # 8-bit tape: ``,.`` round-tripped an emoji, and the tape held
+            # 128512.  Worse, the value was inconsistent with itself --
+            # unreduced until arithmetic touched it, so ``,.`` printed the
+            # emoji while ``,+.`` printed ``\x01``.  CVNC already reads
+            # ``(byte or 0) % 256`` for this reason.
+            state = (ind, ptr, tape, self.io.input_char() % 256, True)
         self.state = _advance(state, self.code, self.brackets)
 
 

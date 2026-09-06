@@ -185,7 +185,16 @@ def _advance(state: _State, chars: tuple[str, ...], byte: int | None = None) -> 
     elif char == "-":
         tape = (*tape[:ptr], (tape[ptr] - 1) % 256, *tape[ptr + 1 :])
     elif char == ",":
-        tape = (*tape[:ptr], byte if byte is not None else 0, *tape[ptr + 1 :])
+        # Reduced like ``+`` and ``-`` above.  ``input_char`` returns a
+        # whole code point, so an input line starting above U+00FF
+        # otherwise put that code point on the 8-bit tape this module's
+        # docstring describes, and left the cell disagreeing with itself:
+        # the next ``+`` reduced what ``,`` had not.
+        tape = (
+            *tape[:ptr],
+            (byte if byte is not None else 0) % 256,
+            *tape[ptr + 1 :],
+        )
     elif char == "[" and tape[ptr] == 0:
         rot += 1
         partner = _forward(chars, rot, ind)
