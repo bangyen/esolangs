@@ -288,12 +288,28 @@ def _laserfuck_assemble_reader(
         row += placed.exit_row
         col += placed.exit_col
 
+    # Render row by row from the cells that exist.  Probing every cell of
+    # the bounding rectangle instead costs ``height x span`` dict lookups
+    # for a grid that is mostly blank -- 5.8M of them on a six-input build,
+    # the generator's hot path -- where the occupied cells are a small
+    # fraction of that.  Bucketing by row and filling the gaps between the
+    # columns actually present builds the same lines, ``rstrip`` included,
+    # in time proportional to the marks rather than the area.
     height = max(r for r, _ in cells) + 1
-    span = max(c for _, c in cells) + 1
-    lines = [
-        "".join(cells.get((r, c), " ") for c in range(span)).rstrip()
-        for r in range(height)
-    ]
+    rows: list[list[tuple[int, str]]] = [[] for _ in range(height)]
+    for (r, c), char in cells.items():
+        rows[r].append((c, char))
+    lines = []
+    for marks in rows:
+        marks.sort()
+        parts: list[str] = []
+        cursor = 0
+        for c, char in marks:
+            if c > cursor:
+                parts.append(" " * (c - cursor))
+            parts.append(char)
+            cursor = c + 1
+        lines.append("".join(parts))
     return lines, row, col
 
 
@@ -389,11 +405,20 @@ def _laserfuck_build(
     grid: list[list[str]] = []
 
     def put(row: int, col: int, char: str) -> None:
-        while len(grid) <= row:
-            grid.append([])
+        """Write one cell, growing the ragged grid to reach it.
+
+        The grid's final extent is not known here -- the tree is laid out
+        and mirrored as it goes -- so it stays ragged and grows on demand.
+        What changed is how: the two ``while`` loops appended one element
+        per call, which is 1.8M calls and the generator's hot path on a
+        six-input build.  Extending by the whole shortfall at once leaves
+        the same grid and lets the list resize in one step.
+        """
+        if len(grid) <= row:
+            grid.extend([] for _ in range(row + 1 - len(grid)))
         line = grid[row]
-        while len(line) <= col:
-            line.append(" ")
+        if len(line) <= col:
+            line.extend(" " * (col + 1 - len(line)))
         line[col] = char
 
     # The funnel: every start heading ends up on row 0 moving right.  Cell

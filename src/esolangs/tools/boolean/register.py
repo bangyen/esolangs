@@ -294,12 +294,19 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     build(0, list(range(2**n)))
 
     base_data = 4 * len(instructions)
-    names: list[str] = []
+    # Insertion-ordered name -> index.  A dict rather than a list because the
+    # list spelling scanned twice per call -- ``in`` and then ``.index`` --
+    # which is O(names) on a table that calls this once per operand: 1.6M
+    # calls and 2.4s of a 3.8s six-input build, the generator's whole cost.
+    # ``dict`` preserves insertion order, so the numbering it hands out is
+    # the same one the scan produced.
+    names: dict[str, int] = {}
 
     def cell(name: str) -> int:
-        if name not in names:
-            names.append(name)
-        return base_data + names.index(name)
+        index = names.get(name)
+        if index is None:
+            index = names[name] = len(names)
+        return base_data + index
 
     for ins in instructions:
         for v in ins:
