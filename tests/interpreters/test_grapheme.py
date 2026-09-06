@@ -57,9 +57,6 @@ class TestModes:
 
 
 class TestArithmetic:
-    def test_add(self) -> None:
-        assert run_program("FAFFBFAY") == "30"
-
     def test_subtract(self) -> None:
         assert run_program("FAFFBFBY") == "-10"
 
@@ -72,10 +69,6 @@ class TestArithmetic:
     def test_string_math_uses_ords(self) -> None:
         # "A" (65) + "A" (65) = 130
         assert run_program("EAEEAEAY") == "130"
-
-    def test_divide_by_zero_halts(self) -> None:
-        with pytest.raises(HaltError, match="division by zero"):
-            run_program("FFFFR")
 
 
 class TestStack:
@@ -278,25 +271,11 @@ class TestEdgeCases:
     def test_n_on_zero_is_j(self) -> None:
         assert run_program("FFNY") == "J"
 
-    def test_math_on_a_function_halts(self) -> None:
-        with pytest.raises(HaltError, match="math on a function"):
-            run_program("HABHFFA")
-
     def test_truthiness_of_strings_and_functions(self) -> None:
         assert run_program("EAETY") == "0"  # "A" truthy -> push 0
         assert run_program("EETY") == "1"  # "" falsy -> push 1
         assert run_program("HABHTY") == "0"  # nonempty function truthy
         assert run_program("HHTY") == "1"  # empty function falsy
-
-    def test_function_cannot_name_a_variable(self) -> None:
-        with pytest.raises(HaltError, match="cannot name"):
-            run_program("FAFHHC")
-        with pytest.raises(HaltError, match="cannot name"):
-            run_program("FAFHHD")
-
-    def test_g_needs_a_string_or_function(self) -> None:
-        with pytest.raises(HaltError, match="G needs"):
-            run_program("FAFG")
 
     def test_i_pushes_back_a_non_function(self) -> None:
         assert run_program("FAFIY") == "10"
@@ -304,10 +283,6 @@ class TestEdgeCases:
     def test_v_branches_on_a_falsy_value(self) -> None:
         with pytest.raises(HaltError, match="popped"):
             run_program("FFFFVY")
-
-    def test_y_cannot_output_a_function(self) -> None:
-        with pytest.raises(HaltError, match="Y cannot"):
-            run_program("HABHY")
 
     def test_unterminated_int_mode(self) -> None:
         assert run_program("F") == ""

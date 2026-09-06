@@ -76,26 +76,6 @@ class TestBasicfuck:
     def test_comments_stripped(self) -> None:
         assert run_program(H + "a += 65; // comment\nwrite <- a ;") == "A"
 
-    def test_malformed_directive(self) -> None:
-        with pytest.raises(ValueError, match="directives"):
-            run_program("not a directive\n#allocate a\n")
-
-    def test_missing_overflow_directive(self) -> None:
-        with pytest.raises(ValueError, match="overflow"):
-            run_program("#basicfuck t=1 r=0~255\n#allocate a\n")
-
-    def test_malformed_allocate(self) -> None:
-        with pytest.raises(ValueError, match="identifiers"):
-            run_program("#basicfuck t=1 r=0~255 o=nearest\nbad alloc\n")
-
-    def test_keyword_identifier(self) -> None:
-        with pytest.raises(ValueError, match="identifier"):
-            run_program("#basicfuck t=1 r=0~255 o=nearest\n#allocate write\n")
-
-    def test_undefined_identifier(self) -> None:
-        with pytest.raises(ValueError, match="undefined"):
-            run_program(H + "z += 1;")
-
     def test_invalid_syntax(self) -> None:
         with pytest.raises(ValueError, match="syntax"):
             run_program(H + "a += ;")

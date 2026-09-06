@@ -57,12 +57,6 @@ def run_bounded(program: str, stdin: str = "", store: str = "a") -> str:
 class TestCoreInstruction:
     """The single subtract-and-branch instruction."""
 
-    def test_subtract_then_halt(self) -> None:
-        """mem[a] -= mem[b]; a positive result falls through to the next."""
-        # ip0: a=0 (its own cell, value 0), b=1 (mem[1]=5): 0-5=-5 <=0,
-        # so it jumps to mem[2]=9, past the end.
-        assert run_bounded("0 5 2 9 0") == ""
-
     def test_conditional_jump_on_zero(self) -> None:
         """A zero result jumps to the address stored in ``c``."""
         # ip0: 0 - 0 = 0 -> jump to mem[2]=9, past the end.

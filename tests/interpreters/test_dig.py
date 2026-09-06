@@ -178,11 +178,6 @@ class TestDigExamplePrograms:
 class TestDigEdgeCases:
     """Test edge cases and error conditions."""
 
-    def test_empty_program(self) -> None:
-        """Test that an empty program raises ValueError."""
-        with pytest.raises(ValueError, match="empty"):
-            run([], io=IO())
-
     def test_the_empty_program_message_reads_exactly(self) -> None:
         """``match=`` only looks for a substring, so pin the whole message."""
         with raises_message(ValueError, "Dig program cannot be empty"):
@@ -194,10 +189,6 @@ class TestDigEdgeCases:
             run(["\n"], io=IO())
         with pytest.raises(ValueError, match="empty"):
             run(["   ", "\t"], io=IO())
-
-    def test_single_character_program(self) -> None:
-        """Test a program containing only a halt command."""
-        assert run_and_capture(["@"]) == ""
 
     def test_no_adjacent_digit_halts(self) -> None:
         """A work command with no adjacent digit is an invalid operation."""

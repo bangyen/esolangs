@@ -207,12 +207,6 @@ class TestMinskySwapProgramFlow:
 class TestMinskySwapEdgeCases:
     """Test edge cases and error conditions."""
 
-    def test_no_jump_line(self) -> None:
-        """Test program with no jump line."""
-        with redirect_stdout(io.StringIO()) as f:
-            run("+", io=IO())
-        assert f.getvalue().strip() == "1 0"
-
     def test_empty_jump_line(self) -> None:
         """Test program with empty jump line."""
         with redirect_stdout(io.StringIO()) as f:

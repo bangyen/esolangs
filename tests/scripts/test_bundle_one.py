@@ -66,14 +66,6 @@ def _outcome(fn: object) -> tuple[str, str | None]:
 
 
 class TestBundleCompiles:
-    def test_every_language_bundles(self, tmp_path: Path) -> None:
-        """Every registered interpreter produces a compiling bundle."""
-        bundle_one = load_script()
-        for name in RUNNERS:
-            out = tmp_path / f"{name}.py"
-            bundle_one.bundle(name, bundle_one.Source(None), out)
-            compile(out.read_text(), out.name, "exec")
-
     def test_every_bundle_exposes_run(self, tmp_path: Path) -> None:
         """Every bundled file is importable and defines ``run``."""
         bundle_one = load_script()

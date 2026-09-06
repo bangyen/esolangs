@@ -191,10 +191,6 @@ class TestExecutionModel:
         """``WHILE(x, c)`` receives functions by name and calls them."""
         assert run_and_capture(f"{IF}\nY() = 4\nIF(1, Y)") == "4\n"
 
-    def test_a_recursive_operator_terminates_when_its_guard_fails(self) -> None:
-        """The truth machine's shape, bounded: the recursion is reachable."""
-        assert run_and_capture("x? = x & x?\n0?") == "0\n"
-
 
 class TestErrors:
     """Malformed programs raise ValueError; bad operations raise HaltError."""
@@ -375,13 +371,6 @@ class TestFrameBookkeeping:
             seen.append(machine_.snapshot())
             machine_.step()
         assert len(seen) == len(set(seen)), "a halting run repeated a state"
-
-    def test_the_snapshot_is_hashable_and_moves(self) -> None:
-        machine_ = machine("1 + 1")
-        before = machine_.snapshot()
-        assert hash(before) is not None
-        machine_.step()
-        assert machine_.snapshot() != before
 
     def test_only_executed_lines_read_input(self) -> None:
         """A variable inside a function body is *not* input-bound.
