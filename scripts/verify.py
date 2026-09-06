@@ -123,7 +123,7 @@ HEARTBEAT_SECONDS = 20.0
 # `pytest` is LONG_STEP -- launched with Popen and left running while the
 # short steps go by.  A sibling step would race it and read a half-written
 # file, so the gate is run by _run_steps once the long step has exited.
-DIFF_COVERAGE_STEP = "changed-line coverage"
+DIFF_COVERAGE_STEP = "touched-file coverage"
 
 
 def _line_addopts(env: dict[str, str]) -> str:
@@ -180,7 +180,7 @@ STEPS = [
     # scripts' imports), so scripts/ is type-checked here, in the project env.
     ("mypy (src + scripts)", [*PY, "-m", "mypy"]),
     # `--cov-report=` writes no report: the run is here for the data file,
-    # which the changed-line gate reads afterwards.
+    # which the touched-file gate reads afterwards.
     #
     # `--cov-branch` is free on 3.14 (17.89s vs 17.81s without) but costs
     # 3.3x before it, where sys.monitoring cannot measure branches and
@@ -439,7 +439,7 @@ def _run_steps(
 
     ``pytest`` is longer than everything else combined, so it is launched
     first and left running while the short steps go by in order.  *gate* is
-    the changed-line coverage check, which reads the data file ``pytest``
+    the touched-file coverage check, which reads the data file ``pytest``
     writes and so can only run once it has exited.  Its output
     is captured either way -- two live subprocesses writing to one terminal
     interleave into nonsense -- so unlike the short steps it does not stream

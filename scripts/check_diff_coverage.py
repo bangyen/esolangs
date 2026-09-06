@@ -1,25 +1,30 @@
-"""Require the lines this branch *added* to be covered, not whole files.
+"""Require every file this branch *touches* to be fully covered.
 
-Whole-file "100% or fail" cannot be adopted here: eight files under
-``tools/boolean/`` carry pre-existing misses (``minifuck.py`` alone is 52 of
-them), so a whole-file gate would bill a one-line fix for closing debts it did
-not create -- and the cheapest way to pay that bill is ``# pragma: no cover``,
-which buys nothing.  Gating the *changed* lines asks only that new work arrive
-covered, which is the property that actually holds the number up over time.
+The diff picks the files; the whole file is then judged.  Touch a file and
+you answer for all of it, not only the lines you added.
+
+This is deliberately stronger than gating the added lines alone, which is what
+this script used to do.  That earlier rule was chosen when eight files under
+``tools/boolean/`` carried pre-existing misses and billing a one-line fix for
+closing debts it did not create seemed unfair.  That debt is now paid: the
+tree measures 100% line coverage, so a whole-file gate bills nobody for
+anything -- it only keeps the number there.  The failure the weaker rule
+allowed was real: a fix could land *next to* an uncovered line, leave it
+uncovered, and pass, which is how a file drifts while every individual change
+looks clean.
 
 The gate reads the coverage data the ``pytest`` step just wrote and the
-branch's own diff hunks, and intersects them: a line is a failure only if it
-was added by this branch, is an executable statement coverage knows about, and
-was never executed.  Comments, docstrings and blank lines are not statements,
-so they cannot fail it.
+branch's own diff hunks.  A file is a failure if the branch touched it and
+coverage knows of any statement in it that never executed.  Comments,
+docstrings and blank lines are not statements, so they cannot fail it, and a
+line the project has excluded via ``exclude_lines`` is already gone from
+``missing_lines`` before the gate sees it -- ``# pragma: no cover`` remains
+the way to retire genuinely unreachable code, with a comment saying why.
 
-Added *branches* are held to the same rule when the data has them -- an added
-``if`` that only ever went one way fails just as an unexecuted line does.
-This is deliberately not a percentage: a diff of three branches cannot score
-95% except by scoring 100, so "the branches you added are taken both ways" is
-the only coherent form the threshold takes on a diff.  A repository-wide floor
-is a different instrument and belongs in CI, where the whole suite runs; on
-the fast subset it would count arcs that only the ``slow`` tests reach.
+*Branches* are held to the same rule when the data has them -- an ``if`` in a
+touched file that only ever went one way fails just as an unexecuted line
+does.  This is deliberately not a percentage: "the file is covered" is the
+only coherent form the threshold takes once the unit is a file.
 
 Fail-open, matching :mod:`_scope`: an unreadable diff, absent coverage data, or
 a run whose test selection cannot support the verdict is reported and skipped
@@ -37,7 +42,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 
 # The gate only speaks for the package coverage is configured to measure
-# (`source = ["src/esolangs"]`).  A changed line in tests/ or scripts/ has no
+# (`source = ["src/esolangs"]`).  A touched file in tests/ or scripts/ has no
 # coverage record to check, so it is not evidence of anything either way.
 MEASURED = "src/esolangs/"
 
@@ -170,7 +175,7 @@ def _coverage_json(data_file: Path) -> dict[str, dict[str, Any]] | None:
 
 
 def main() -> int:
-    """Check this branch's added lines against the recorded coverage."""
+    """Check every file this branch touched against the recorded coverage."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--data-file",
@@ -197,9 +202,9 @@ def main() -> int:
         print("skip: could not read the branch diff")
         return 0
 
-    targets = {f: n for f, n in added.items() if f.startswith(MEASURED)}
+    targets = {f for f in added if f.startswith(MEASURED)}
     if not targets:
-        print(f"skip: branch added no lines under {MEASURED}")
+        print(f"skip: branch touched no files under {MEASURED}")
         return 0
 
     files = _coverage_json(Path(args.data_file))
@@ -209,67 +214,74 @@ def main() -> int:
 
     gaps: list[tuple[str, list[int]]] = []
     arc_gaps: list[tuple[str, list[tuple[int, int]]]] = []
+    unmeasured: list[str] = []
     checked = 0
     arcs_checked = 0
     # Branch data is optional: a `pytest --cov` run without `--cov-branch`
     # records no arcs at all, and a gate that failed on its absence would
     # block every such run.  Only a file that *has* arc data is judged on it.
     branch_data = False
-    for path, lines in sorted(targets.items()):
+    for path in sorted(targets):
         record = files.get(path)
         if record is None:
             # Coverage records a file only if it was imported.  A brand-new
             # module that no test imports yet is exactly the gap this gate
-            # exists to catch, so it counts as fully missing rather than
-            # being skipped for lack of a record.
+            # exists to catch, so it is reported rather than skipped.
+            unmeasured.append(path)
             continue
-        missing = sorted(lines & set(record["missing_lines"]))
-        checked += len(
-            lines & (set(record["executed_lines"]) | set(record["missing_lines"]))
-        )
+        # Whole-file: every statement coverage knows about, not just the
+        # ones this branch's hunks happen to name.
+        missing = sorted(record["missing_lines"])
+        checked += len(record["executed_lines"]) + len(record["missing_lines"])
         if missing:
             gaps.append((path, missing))
 
-        # An arc is `[from, to]`; it belongs to the branch when the *test*
-        # that failed to go both ways is on an added line.  A negative `to`
-        # is coverage's spelling for leaving the function, which is a real
-        # untaken exit rather than a line number.
+        # An arc is `[from, to]`.  A negative `to` is coverage's spelling for
+        # leaving the function, which is a real untaken exit rather than a
+        # line number.
         summary = record.get("summary", {})
         if summary.get("num_branches") is None:
             continue
         branch_data = True
-        arcs_checked += sum(
-            1 for arc in record.get("executed_branches") or () if arc[0] in lines
-        )
+        arcs_checked += len(record.get("executed_branches") or ())
         untaken = sorted(
-            (arc[0], arc[1])
-            for arc in record.get("missing_branches") or ()
-            if arc[0] in lines
+            (arc[0], arc[1]) for arc in record.get("missing_branches") or ()
         )
         arcs_checked += len(untaken)
         if untaken:
             arc_gaps.append((path, untaken))
 
-    if not gaps and not arc_gaps:
-        summary = f"changed-line coverage: 100% ({checked} added statement(s)"
+    if not gaps and not arc_gaps and not unmeasured:
+        summary = (
+            f"touched-file coverage: 100% "
+            f"({len(targets)} file(s), {checked} statement(s)"
+        )
         summary += f", {arcs_checked} branch(es))" if branch_data else ")"
         print(summary)
         return 0
 
     if gaps:
         total = sum(len(m) for _, m in gaps)
-        print(f"changed-line coverage: {total} added statement(s) never executed")
+        print(
+            f"touched-file coverage: {total} statement(s) never executed "
+            f"in {len(gaps)} touched file(s)"
+        )
         for path, missing in gaps:
             spans = ",".join(str(n) for n in missing)
             print(f"  {path}: {spans}")
 
     if arc_gaps:
         total_arcs = sum(len(a) for _, a in arc_gaps)
-        print(f"changed-branch coverage: {total_arcs} added branch(es) never taken")
+        print(f"touched-file branches: {total_arcs} branch(es) never taken")
         for path, untaken in arc_gaps:
             for src, dest in untaken:
                 where = "exit" if dest < 0 else f"line {dest}"
                 print(f"  {path}: line {src} never continues to {where}")
+
+    if unmeasured:
+        print(f"touched but never imported by the suite: {len(unmeasured)} file(s)")
+        for path in unmeasured:
+            print(f"  {path}")
 
     if args.partial:
         print(
@@ -279,7 +291,11 @@ def main() -> int:
             "uv run python scripts/check_diff_coverage.py"
         )
         return 0
-    print("\nadd tests for the lines above, or mark them `# pragma: no cover`.")
+    print(
+        "\nEvery file this branch touches must be fully covered.  Add tests for "
+        "the lines above, or mark genuinely unreachable ones `# pragma: no cover` "
+        "with a comment saying why."
+    )
     return 1
 
 

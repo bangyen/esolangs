@@ -754,8 +754,10 @@ def _replay_ones(pos: int, tape: int, w: int) -> tuple[int, int]:
             tape ^= ((1 << head) - 1) << (pos - head + 1 + _RING)
             pos -= head
             w -= head
-            if pos == -4:  # stepping off cell 0 exactly wraps to 0
-                pos = 0
+            # No wrap check here: ``head`` is capped at ``pos + 1``, so this
+            # walk stops at -1 at the lowest and cannot reach -4.  The cell-0
+            # wrap belongs to the inside-the-ring loop below, which is the
+            # only place the pointer steps one at a time.
             continue
         laps, rest = divmod(w, 4)
         if laps:

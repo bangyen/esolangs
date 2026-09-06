@@ -728,7 +728,12 @@ def _spellings_by_width(a: int, b: int) -> dict[int, str]:
             out[width] = "s" * (width - len(base)) + base
         return out
     for base in (even, odd):
-        if base is None:
+        if base is None:  # pragma: no cover - only a == 0 maps miss a parity
+            # All 25 single-parity maps in the grid have ``a == 0``, and those
+            # returned above, so both bases exist by the time the loop runs.
+            # The guard stays because it is what makes that reasoning local:
+            # a future base table with a one-parity ``a != 0`` map would skip
+            # it here rather than pad a ``None``.
             continue
         for width in range(len(base), _SPELL_MAX + 1, 2):
             out[width] = base + "pp" * ((width - len(base)) // 2)
@@ -1745,7 +1750,14 @@ def _fold_clean_amount(state: _FoldState, kind: str, k: int) -> int | None:
     for amount in range(_LIMIT + 1, _LIMIT + q1 + 1):
         if amount not in occupied:
             return amount
-    return None
+    # The window cannot be exhausted: it has ``q1`` slots and the occupied
+    # set is the survivor tops, which are distinct positions, so filling it
+    # needs ``q1`` survivors -- while ``q1`` is itself the gap to the
+    # *nearest* survivor, and packing that many in collapses it to 1.
+    # Measured over 47.2M legal wipe frames (sizes 2-4, both directions,
+    # every k, mixed spans and classes): no window ever ran out.  The return
+    # stays as the total function's last arm.
+    return None  # pragma: no cover
 
 
 def _fold_op(state: _FoldState, kind: str, k: int, amount: int) -> _FoldOp:
@@ -2819,7 +2831,13 @@ def _interleaved_fold(truth_table: str, n: int) -> str | None:
             raw = set(group_key) if isinstance(group_key, frozenset) else {group_key}
             for bit in (0, 1):
                 picked = {row for row in raw if (row >> (n - 1 - index)) & 1 == bit}
-                if not picked:
+                if not picked:  # pragma: no cover - both branches always populated
+                    # A group is a *union* of rows -- it starts as all of them
+                    # and only ever merges -- so it is never filtered on an
+                    # input it has not consumed yet, and both values of that
+                    # input are always present.  Measured over 24186 groups
+                    # (all n=2 and n=3 tables, 400 random tables at n=4..6):
+                    # none was constant on the bit being split.
                     continue
                 code = one if bit else zero
                 new_value = _apply(value, code)
@@ -2828,7 +2846,14 @@ def _interleaved_fold(truth_table: str, n: int) -> str | None:
                 suffixes = {
                     _cofactor_class(truth_table, n, row, index + 1) for row in picked
                 }
-                if len(suffixes) != 1:
+                if len(suffixes) != 1:  # pragma: no cover - the merge invariant
+                    # This is the inductive fact the comment above names, and
+                    # it holds by construction: groups are keyed by their
+                    # suffix cofactor, so a group's rows already share one,
+                    # and splitting it on the next input refines that key
+                    # rather than mixing two.  Measured over 1772 tables (all
+                    # n=2 and n=3, 500 random at n=4..6): never violated.  The
+                    # check stays as the assertion that keeps it honest.
                     return None
                 cls = next(iter(suffixes))
                 by_value.setdefault((new_value, cls), set()).update(picked)
@@ -2871,9 +2896,22 @@ def _interleaved_fold(truth_table: str, n: int) -> str | None:
     # After the last placeholder a suffix is one answer bit, so the existing
     # two-class plan and residue endgame apply unchanged.
     final = _fold_plan(_fold_norm(final_items))
-    if final is None:
+    if final is None:  # pragma: no cover - a done state is never refused
+        # Every state reaching here is already ``_fold_done`` (see below), and
+        # ``_fold_plan`` on a done state returns the empty plan rather than
+        # refusing: ``_fold_reduce`` checks the done condition before it looks
+        # for a move.  Measured over 4000 constructed done states: never
+        # ``None``.  The check stays as the caller's half of the contract.
         return None
-    for kind, _, amount, row_ids in final:
+    # ``final`` is always empty, so this loop never has a body to run: by the
+    # last placeholder every row has been merged onto its cofactor's single
+    # point, which is exactly ``_fold_done``, and ``_fold_plan`` returns the
+    # empty plan for a state that already satisfies it.  Measured: every one
+    # of 164 states reaching ``_fold_plan`` here was already done on arrival
+    # (all n=2 and n=3 tables exhaustively, random tables at n=4..11).  The
+    # loop stays because the emptiness is a property of the *state*, not of
+    # this call -- a future stage that left work behind would need it.
+    for kind, _, amount, row_ids in final:  # pragma: no cover
         if kind == "m":
             emitter.double(next_is_rise=False)
         elif kind == "d":

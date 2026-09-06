@@ -1,15 +1,20 @@
-"""The changed-line gate holds added branches to the rule it holds added lines to.
+"""The touched-file gate holds branches to the rule it holds lines to.
 
-``scripts/check_diff_coverage.py`` fails a branch that adds a statement no test
-runs.  It now does the same for an added *branch* that only ever goes one way,
-which is a different failure: the line executed, so the line check passes, and
-only the arc records that the other side was never taken.
+``scripts/check_diff_coverage.py`` fails a branch that leaves a statement no
+test runs in a file it touched.  It does the same for a *branch* that only
+ever goes one way, which is a different failure: the line executed, so the
+line check passes, and only the arc records that the other side was never
+taken.
 
-Two properties matter as much as the check itself.  It has to stay fail-open --
-a run that collected no branch data must skip the arc check rather than fail
-every file for lacking it -- and it must judge only the arcs whose test is on a
-line this branch added, since an untaken arc in untouched code is a debt the
-branch did not create.
+The unit is the file, not the hunk: the diff picks which files are judged and
+the whole file is then judged, so an uncovered line or one-sided arc anywhere
+in a touched file fails.  That is deliberate -- gating only the added lines
+let a fix land beside uncovered code and pass, which is how a file drifts
+while every individual change looks clean.
+
+Fail-open still matters as much as the check itself: a run that collected no
+branch data must skip the arc check rather than fail every file for lacking
+it.
 """
 
 import importlib.util
@@ -108,7 +113,7 @@ class TestAddedBranches:
         }
         code, out = run_gate(tmp_path, files, {PATH: {10, 11}})
         assert code == 1
-        assert "1 added branch(es) never taken" in out
+        assert "1 branch(es) never taken" in out
         assert "line 10 never continues to line 12" in out
 
     def test_an_untaken_exit_is_named_as_one(self, tmp_path: Path) -> None:
@@ -126,10 +131,16 @@ class TestAddedBranches:
         assert code == 1
         assert "line 10 never continues to exit" in out
 
-    def test_an_untaken_arc_outside_the_diff_is_not_this_branch_s(
+    def test_an_untaken_arc_outside_the_diff_still_fails_the_file(
         self, tmp_path: Path
     ) -> None:
-        """A one-sided branch on an untouched line is a pre-existing debt."""
+        """Touching a file answers for its one-sided branches too.
+
+        This is the case the whole-file rule exists for: the branch edited
+        line 10 and left a one-sided arc at line 40 alone.  Judging only the
+        added lines passed it, which is how an uncovered arc survives every
+        individual change that walks past it.
+        """
         files = {
             PATH: record(
                 [10, 40],
@@ -140,8 +151,8 @@ class TestAddedBranches:
             )
         }
         code, out = run_gate(tmp_path, files, {PATH: {10}})
-        assert code == 0
-        assert "never taken" not in out
+        assert code == 1
+        assert "line 40 never continues to line 42" in out
 
     def test_both_sides_taken_passes_and_counts_the_branches(
         self, tmp_path: Path
@@ -172,12 +183,12 @@ class TestWithoutBranchData:
         assert code == 0
         assert "branch(es)" not in out
 
-    def test_an_uncovered_added_line_still_fails(self, tmp_path: Path) -> None:
-        """The original line rule is unchanged by the arc rule."""
+    def test_an_uncovered_line_still_fails(self, tmp_path: Path) -> None:
+        """The line rule is unchanged by the arc rule."""
         files = {PATH: record([10], [11])}
         code, out = run_gate(tmp_path, files, {PATH: {10, 11}})
         assert code == 1
-        assert "1 added statement(s) never executed" in out
+        assert "1 statement(s) never executed" in out
 
 
 class TestPartial:
