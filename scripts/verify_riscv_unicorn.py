@@ -122,6 +122,16 @@ for _program, _expected in [
     # These compiled to a no-op until the fallback was added.
     ("0+^.", "1"),
     ("0-^.", "-1"),
+    # A digit run is the operand of the operator that follows it, and each
+    # ``<digits><op>`` is its own command.  Reading one digit backwards made
+    # ``10+`` an add of 1, and summing chains made ``5+0+`` a single add of
+    # 5 rather than the two commands the interpreter runs.
+    ("10+^.", "10"),
+    ("12+^.", "12"),
+    ("5+0+^.", "6"),
+    ("5+0-^.", "4"),
+    ("1+2+3+^.", "6"),
+    ("9+2-1-^.", "6"),
     # A subroutine whose body calls a routine.  Each of these used to
     # overwrite ``ra`` and leave the subroutine returning into itself, so
     # the compiled program spun forever; the prologue at ``$`` fixes the
@@ -150,16 +160,6 @@ for _program, _expected, _stdin in [
     ("v+>v+1@^.1$#<&&;", "11", "3\n4\n"),
 ]:
     COMPILER_CASES.append(("jaune", "jaune", _program, _expected, _stdin))
-# One Jaune divergence is still open, and is a *parser* difference rather
-# than an emission one, so it is recorded here rather than pinned:
-#
-#   "5+0+^."   interpreter 6, compiled 5.  The interpreter reads two
-#              commands, +5 then a zero count that falls back to +1.  The
-#              compiler's `count` consumes "0+" into the first run-length
-#              instead, so the second "+" never becomes a command at all.
-#              Narrowing that loop risks the multi-digit path ("10+^." is
-#              +10 in both), which is why it was left rather than guessed at.
-#
 # Jaune's computed dispatch ("v@", "v?") reaches the `switch:` blocks below
 # and has no interpreter counterpart -- the interpreter rejects those forms
 # -- so there is nothing to round-trip it against here.

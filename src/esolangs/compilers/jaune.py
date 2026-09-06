@@ -23,8 +23,14 @@ _CALLED: frozenset[_Subr] = frozenset(("^", "v", "<"))
 def count(code: str, ind: int) -> tuple[int | str, int]:
     """Return the operand value at ``ind`` and the next index.
 
-    Handles run-lengths, signed ``+``/``-`` operands, and the marker commands
+    Handles digit-run operands, command run-lengths, and the marker commands
     ``: $ @ ? !`` whose operand is the preceding character.
+
+    A digit run is read *forward* and belongs to the operator that follows
+    it, which is how the interpreter's ``_parse`` reads it and what makes
+    each ``<digits><op>`` an independent command.  Reading a single digit
+    backwards instead -- and summing a chain of them -- is what made
+    ``10+`` an add of one and collapsed ``5+0+`` into a single add of five.
     """
 
     # ``at`` stands in for the trailing space this used to append: the scan
@@ -40,35 +46,48 @@ def count(code: str, ind: int) -> tuple[int | str, int]:
     def at(k: int) -> str:
         return code[k] if 0 <= k < len(code) else " "
 
-    def check(k: int, s: str) -> bool:
-        ch = at(k)
-        return ch.isnumeric() or ch in s
-
     start = code[ind]
     num = 0
 
+    if start.isdigit():
+        # A digit run is the operand of whatever operator follows it, which
+        # is how ``_parse`` reads it: scan the *whole* run forward, then
+        # attach it.  Reading a single digit backwards from the operator --
+        # what this did before -- made ``10+`` an add of 1 rather than 10,
+        # and let a chain like ``5+0+`` be summed into one command instead
+        # of the two the interpreter runs.
+        j = ind
+        while j < len(code) and code[j].isdigit():
+            j += 1
+        value = int(code[ind:j])
+        if at(j) in "+-":
+            # The sign belongs to the count, so the caller's ``c`` is the
+            # digit and the emitted step has to carry it.
+            return (value if at(j) == "+" else -value), j + 1
+        # A numbered marker (``: $ @ ? !``) keeps reading its operand from
+        # the preceding character, which ``prep`` has already renumbered
+        # into a single digit.  A bare number with no operator is a no-op
+        # in the interpreter, and falls through to one here.
+        return 0, j
+
     if start in "+-":
-        if (n := at(ind - 1)).isnumeric():
-            num = int(start + at(ind - 1))
-            while check(ind, "+-"):
-                x, y = at(ind), at(ind + 1)
-                if x.isnumeric() and y in "+-":
-                    num += int(y + x)
-                ind += 1
-        elif n != "v":
-            # A run like ``++++`` is one counted command of that length, as
-            # ``_parse`` reads it.  Only a ``v`` before the sign is the
-            # read-operand form; anything else starts a run, which used to
-            # report the preceding character as a ``v`` operand and emit an
-            # add of the (unread) input register instead of the count.
-            run = 0
-            while ind < len(code) and code[ind] == start:
-                run += 1
-                ind += 1
-            return (run if start == "+" else -run), ind
-        else:
+        if (n := at(ind - 1)) == "v":
             return n, ind + 1
-    elif start in ":$@?!":
+        # A run like ``++++`` is one counted command of that length, as
+        # ``_parse`` reads it.  A digit before the sign was consumed by the
+        # digit arm above, which returns past the sign, so reaching here
+        # means the sign genuinely starts a run.
+        run = 0
+        while ind < len(code) and code[ind] == start:
+            run += 1
+            ind += 1
+        return (run if start == "+" else -run), ind
+    if start in ":$@?!":
+        # These still read a single preceding character, which is safe only
+        # because ``prep`` renumbers labels and routines from 0 upward: a
+        # program with ten or more of either would spell one ``10:`` and be
+        # read here as ``0:``.  Not reachable through ``prep`` today, and
+        # left alone rather than widened along with the counts above.
         num = -1 if (c := at(ind - 1)) == "v" else int(c) if c.isdigit() else -1
         ind += 1
     else:
@@ -167,6 +186,23 @@ def comp(code: str) -> str:
     while ind < len(code):
         c = code[ind]
         num, new = count(code, ind)
+
+        # A digit run is not a command of its own: it is the operand of the
+        # operator that follows, and ``count`` has already returned past
+        # that operator.  Dispatch on the operator rather than on the digit
+        # -- ``10+`` is an add of ten, whose ``c`` would otherwise be "1".
+        # A digit run with no operator after it is the interpreter's
+        # bare-number no-op, which ``count`` reports as a zero step.
+        if c.isdigit():
+            # ``count`` returns past the sign when there is one, so the
+            # character just before ``new`` says whether this run was an
+            # operand or a bare number.  It cannot be read off ``num``: a
+            # zero count is a real ``0+``, which adds one.
+            sign = code[new - 1] if new and new <= len(code) else ""
+            if sign not in "+-":
+                ind = new  # a bare number: the interpreter ignores it
+                continue
+            c = sign
 
         # ``+``/``-`` is the only command whose operand can be a bare ``v``,
         # which ``count`` reports as a str; taking that arm first leaves
