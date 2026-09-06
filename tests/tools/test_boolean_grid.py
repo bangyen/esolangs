@@ -199,6 +199,64 @@ class TestAPainterAnt:
         assert len(positions) == 16
         assert len({(x, y) for x, y, _ in positions}) == 16  # all distinct
 
+    def test_leaf_coordinates_agree_with_the_moves_that_walk_them(self) -> None:
+        """``_leaf_positions`` is the mirror of what ``_bit_move`` emits.
+
+        The head reaches a leaf by walking ``_bit_move`` per bit, and the
+        routing reads it at the coordinate ``_leaf_positions`` reports;
+        the docstrings say the two always agree, and nothing checked it.
+        Distinctness alone does not: perturbing the weight to
+        ``2**(n-k+1)``, or swapping the axis parity, leaves all ``2**n``
+        points distinct and every ``bits`` tuple unchanged, so the layout
+        looks fine while the head walks somewhere the routing does not
+        read.  Deriving the coordinate from the moves catches exactly that.
+
+        The two are mirrored on **x only**: a set bit moves west
+        (``-x``) but counts ``+2**(n-k)``, while on the vertical axis a set
+        bit moves north and counts positive alike.  That asymmetry is the
+        "mirror position" the docstring names, and pinning it is what makes
+        an axis-parity flip visible.
+        """
+        from esolangs.tools.boolean.a_painter_ant import _bit_move, _leaf_positions
+
+        step = {"w": (-1, 0), "e": (1, 0), "n": (0, 1), "s": (0, -1)}
+        for n in (1, 2, 3, 4, 5):
+            for x, y, bits in _leaf_positions(n):
+                walked_x = walked_y = 0
+                for k, bit in enumerate(bits):
+                    for move in _bit_move(n, k, bit):
+                        dx, dy = step[move]
+                        walked_x += dx
+                        walked_y += dy
+                assert (walked_x, walked_y) == (-x, y), (n, bits)
+
+    def test_leaf_coordinates_are_the_weighted_grid(self) -> None:
+        """Each bit contributes ``+-2**(n-k)`` on the axis its index picks.
+
+        Pinned exactly at two and three inputs, since the weight and the
+        axis choice are both invisible to a distinctness check and to
+        every behavioural assertion in this class -- the head only consumes
+        the ``bits`` field.
+        """
+        from esolangs.tools.boolean.a_painter_ant import _leaf_positions
+
+        assert _leaf_positions(2) == [
+            (-2, -4, (0, 0)),
+            (2, -4, (0, 1)),
+            (-2, 4, (1, 0)),
+            (2, 4, (1, 1)),
+        ]
+        assert [(x, y) for x, y, _ in _leaf_positions(3)] == [
+            (-10, -4),
+            (-6, -4),
+            (-10, 4),
+            (-6, 4),
+            (6, -4),
+            (10, -4),
+            (6, 4),
+            (10, 4),
+        ]
+
     def test_four_and_five_input_generator_works(self) -> None:
         """The generator handles n == 4 and n == 5, exact and cycle-stable."""
         from itertools import product
