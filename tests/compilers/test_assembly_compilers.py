@@ -1,6 +1,9 @@
 """Unit tests for the RISC-V assembly compilers."""
 
+import hashlib
 import importlib
+import json
+from pathlib import Path
 
 import pytest
 
@@ -63,6 +66,54 @@ def test_compiler_produces_assembly(module: str, program: str) -> None:
     output = str(mod.comp(program))
     assert ".global _start" in output
     assert program not in output  # source text is compiled, not embedded
+
+
+# Goldens live beside the fixtures, one ``.s`` per compiler, plus a
+# ``checksums.json`` covering every one of them.  Three backends
+# (addsubjump, decleq, sbleq) emit ~276KB for their sample program, which is
+# neither reviewable in a diff nor worth committing, so those are pinned by
+# digest alone; the rest are pinned as readable text *and* by digest.
+_GOLDENS = Path(__file__).resolve().parents[1] / "fixtures" / "compiler_goldens"
+with open(_GOLDENS / "checksums.json") as _f:
+    _CHECKSUMS = json.load(_f)
+
+
+def test_every_compiler_has_a_golden() -> None:
+    """The golden table is exactly the sweep's table, pinned both ways.
+
+    Same failing direction as the program roster above: a new backend has no
+    golden until someone regenerates them, and a golden left behind for a
+    deleted backend fails the other way.  Without this a compiler could be
+    added, be given a program, and still never have its output pinned.
+    """
+    assert set(_CHECKSUMS) == set(_PROGRAMS)
+
+
+@pytest.mark.parametrize(("module", "program"), sorted(_PROGRAMS.items()))
+def test_compiler_output_matches_its_golden(module: str, program: str) -> None:
+    """Each compiler emits exactly the assembly it emitted when pinned.
+
+    This is the assertion with teeth.  The sweep above passes for any mutant
+    that still writes a header and does not echo its source, which is nearly
+    all of them -- a mutation run measured 48% of ``jaune``'s mutants
+    surviving, several of which emitted assembly of the same length and
+    different content.  Comparing against a recorded output kills those,
+    because a compiler that computes something else writes something else.
+
+    A legitimate codegen change fails this test by design: regenerate the
+    goldens, and review the diff as part of the change.  For the three
+    backends too large to store as text, the digest is the whole check.
+    """
+    mod = importlib.import_module(f"esolangs.compilers.{module}")
+    output = str(mod.comp(program))
+
+    expected = _GOLDENS / f"{module}.s"
+    if expected.exists():
+        assert output == expected.read_text()
+
+    digest = hashlib.sha256(output.encode()).hexdigest()
+    assert digest == _CHECKSUMS[module]["sha256"]
+    assert len(output) == _CHECKSUMS[module]["chars"]
 
 
 def test_suffolk_compiler() -> None:

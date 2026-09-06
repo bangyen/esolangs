@@ -22,6 +22,7 @@ help:
     @echo "  test-anchor  - ztoalc anchor table check (~3.2s)"
     @echo "  mutate LANG  - mutation-test one interpreter (e.g. just mutate Qoibl)"
     @echo "  mutate-gen MOD - mutation-test one generator (e.g. just mutate-gen text/streetcode)"
+    @echo "  mutate-comp MOD - mutation-test one compiler (e.g. just mutate-comp jaune)"
     @echo "  install-dev  - Install development dependencies"
     @echo "  clean        - Clean up generated files"
     @echo ""
@@ -67,8 +68,12 @@ test-full *args:
     {{PYTHON}} scripts/verify.py --full {{args}}
 
 # fast dev loop: pre-commit + pytest (skip slow) (skips 32s differential + 10s unicorn) — quiet by default
+#
+# "not unicorn" as well as "not slow": the compiled-output round-trip is its
+# own marker so the mutation harness can keep it (see pyproject), which
+# means the inner loop has to name it to stay out of the ~12s it costs.
 test-quick *args:
-    PYTEST_ADDOPTS="-m 'not slow'" {{PYTHON}} scripts/verify.py --quiet --only pre-commit,pytest {{args}}
+    PYTEST_ADDOPTS="-m 'not slow and not unicorn'" {{PYTHON}} scripts/verify.py --quiet --only pre-commit,pytest {{args}}
 
 # granular targets — each maps to one STEPS entry in scripts/verify.py (see verify.py --list)
 # add --quiet to any of these for terse output (e.g. just test-py --quiet)
@@ -115,6 +120,15 @@ mutate language *args:
 # passed, since a mutation run pays the suite's cost once per mutant.
 mutate-gen module *args:
     {{PYTHON}} scripts/mutate_generator.py {{module}} {{args}}
+
+# the same for one RISC-V compiler backend (e.g. just mutate-comp jaune).
+# Same harness, pointed at src/esolangs/compilers and tests/compilers; the
+# names are unambiguous, so no family prefix is needed.  The unicorn
+# round-trip runs as part of the kill test where the toolchain is present,
+# and the run says so -- without it a score is measured without the only
+# check that sees output which assembles and computes the wrong thing.
+mutate-comp module *args:
+    {{PYTHON}} scripts/mutate_generator.py compilers/{{module}} {{args}}
 
 # clean generated
 clean:
