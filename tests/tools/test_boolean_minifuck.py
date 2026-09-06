@@ -2075,6 +2075,111 @@ class TestParameterizedMinifuck:
         # empty results above are the guard and not an exhausted search.
         assert _all_derived_plans(_derived_plans, _STAGED_ARITIES, 2)
 
+    def test_the_pool_rule_matches_the_scan_it_replaced(self) -> None:
+        """``_find_pool`` answers what trying every code would have answered.
+
+        The scan below *is* the specification: it is what ``_find_pool`` used
+        to do -- walk the codes in order through the simulator and take the
+        first that reaches the pool.  The shipped rule instead asks each row
+        which code it names and checks the rows agree, so this pins the two
+        together over the whole domain the rule claims, not over the states a
+        build happens to visit.
+
+        Both halves matter and each caught a real bug while landing.  The
+        exhaustive half covers every single-row key; the random half builds
+        *joints*, which is where the two cross-row conditions live -- rows must
+        name the same code and be left on the same cell by it.  Independent
+        random rows almost never collide in the low byte, so the joints are
+        drawn by perturbing one window: with rows drawn independently the
+        end-pointer split showed up in none of 40000 joints, and in 5 of the
+        first 80000 built this way.
+        """
+        import importlib
+        import random
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        codes = module._POOL_CODES  # noqa: SLF001
+        width = module._POOL_WIDTH  # noqa: SLF001
+        ptr_max = module._POOL_PTR_MAX  # noqa: SLF001
+
+        def scan(joint: object, cell7: int, walk_out: int) -> str | None:
+            """The replaced search, kept as the oracle."""
+            for code in codes:
+                if module._pool_reaches(joint, code, cell7, walk_out):  # noqa: SLF001
+                    return code
+            return None
+
+        def joint_of(sims: list[object]) -> object:
+            joint = module._Joint.__new__(module._Joint)  # noqa: SLF001
+            joint.ms = sims
+            return joint
+
+        def row(tape: int, ptr: int = 0, *, skip: bool = False) -> object:
+            sim = module._Sim(512)  # noqa: SLF001
+            sim.tape = tape
+            sim.ptr = ptr
+            sim.skip = skip
+            return sim
+
+        # Every single-row key in the derived domain, against the oracle.
+        for low in range(1 << width):
+            for ptr in range(ptr_max + 1):
+                for skip in (False, True):
+                    for cell7 in (0, 1):
+                        joint = joint_of([row(low, ptr, skip=skip)])
+                        walk_out = module._PROBE_WALK_OUT  # noqa: SLF001
+                        assert module._find_pool(joint, cell7, walk_out) == scan(  # noqa: SLF001
+                            joint, cell7, walk_out
+                        ), (low, ptr, skip, cell7)
+
+        # Joints, where the cross-row conditions live.
+        rnd = random.Random(20260906)
+        for _ in range(3000):
+            seed_low = rnd.getrandbits(width)
+            ptr = rnd.randint(0, ptr_max)
+            sims = []
+            for _ in range(rnd.choice([2, 4, 8])):
+                low = seed_low
+                if rnd.random() < 0.5:
+                    low ^= 1 << rnd.randrange(width)
+                sims.append(row(low | (rnd.getrandbits(16) << width), ptr))
+            joint = joint_of(sims)
+            for cell7 in (0, 1):
+                walk_out = rnd.choice([9, 12, 20, 33])
+                assert module._find_pool(joint, cell7, walk_out) == scan(  # noqa: SLF001
+                    joint, cell7, walk_out
+                ), [(s.tape & ((1 << width) - 1), s.ptr) for s in sims]
+
+    def test_the_pool_rule_declines_outside_its_domain(self) -> None:
+        """The bound is a refusal, not a gap in a table.
+
+        Past ``_POOL_PTR_MAX`` the window byte is no longer the whole key --
+        the codes reach above cell 7 -- so there is no answer to look up and
+        the rule says None rather than guessing.  Codes do still fit out
+        there, which is the point: this is where the rule stops claiming, not
+        where the language stops working.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        ptr_max = module._POOL_PTR_MAX  # noqa: SLF001
+
+        outside = module._Sim(512)  # noqa: SLF001
+        outside.tape = 156
+        outside.ptr = 3
+        joint = module._Joint.__new__(module._Joint)  # noqa: SLF001
+        joint.ms = [outside]
+
+        assert ptr_max == 2, "the bound this test pins has moved"
+        assert module._find_pool(joint, 1, 12) is None  # noqa: SLF001
+        # ... while the simulator still finds a code from there.
+        served = [
+            code
+            for code in module._POOL_CODES  # noqa: SLF001
+            if module._pool_reaches(joint, code, 1, 12)  # noqa: SLF001
+        ]
+        assert served, "expected the scan to still answer outside the domain"
+
     def test_pool_reaches_refuses_a_code_that_kills_a_row(self) -> None:
         """``_pool_reaches`` rejects code that kills or desynchronises a row.
 
