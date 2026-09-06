@@ -126,17 +126,6 @@ class TestPolynomialValidation:
         ):
             run("invalid program", io=IO())
 
-    def test_valid_format_acceptance(self) -> None:
-        """Test that valid format is accepted."""
-        # This should not raise an error, but we won't execute it to avoid hanging
-        try:
-            # Just test that the format is accepted
-            code = "f(x) = 1"
-            # We'll just validate the format without running
-            assert code.startswith("f(x) = ")
-        except Exception:
-            pytest.fail("Valid format should be accepted")
-
 
 class TestPolynomialParsing:
     """Test polynomial parsing functionality."""
@@ -175,14 +164,9 @@ class TestPolynomialParsing:
 class TestPolynomialMathematicalProperties:
     """Test polynomial mathematical properties."""
 
-    def test_convert_function_exists(self) -> None:
-        """Test that convert function exists and is callable."""
-        # Just test that the function exists and is callable
-        assert callable(convert)
-
-        # Test with empty list (should be safe)
+    def test_convert_empty_list(self) -> None:
+        """An empty root list converts to an empty instruction list."""
         result = convert([])
-        assert isinstance(result, list)
         assert result == []
 
 

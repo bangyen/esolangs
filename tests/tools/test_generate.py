@@ -1127,10 +1127,13 @@ class TestGeneratorRoundTrips:
 
     def test_suptiftam_alphabet_limits(self) -> None:
         """A tab, newline, quote, or non-ASCII char cannot be emitted."""
+        suptiftam_run = importlib.import_module(
+            "esolangs.interpreters.other.suptiftam"
+        ).run
         for bad in ("a\tb", "a\nb", "a'b", "\x7f", "\x00", "é", "😀"):
             with pytest.raises(ValueError, match="printable non-quote ASCII"):
                 gen.suptiftam(bad)
-        assert gen.suptiftam("a b")  # a space is fine
+        assert roundtrip(suptiftam_run, gen.suptiftam("a b")) == "a b"
 
     def test_minifuck(self) -> None:
         """Each character is printed by flipping the differing tape bits."""
@@ -1357,22 +1360,6 @@ class TestWidthContract:
             assert roundtrip_language(LANGUAGES[name], bounded) == (
                 WIDTH_CONTRACT_TEXT
             ), f"{name} at width={width} stopped printing its text"
-
-
-class TestGeneratorProducesOutput:
-    def test_supported_languages(self) -> None:
-        """Every generator produces non-empty output for non-empty text."""
-        generators = [
-            gen.between,
-            gen.forth,
-            gen.laserfuck,
-            gen.pct_squared_minus_one,
-            gen.painfuck,
-            gen.suffolk,
-            gen.one_two_three,
-        ]
-        for gen_fn in generators:
-            assert gen_fn("Hi"), gen_fn.__name__
 
 
 class TestGeneratorBranches:
