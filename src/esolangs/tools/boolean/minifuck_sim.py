@@ -32,6 +32,7 @@ states rather than fresh ones.
 
 from esolangs.interpreters.tape_based.minifuck import _step as _minifuck_step
 
+
 class _Sim:
     """A Minifuck machine fed one instruction at a time.
 
@@ -147,6 +148,14 @@ class _Sim:
             # The pending skip eats the leading ``[``; its ``x`` is a comment.
             self.skip = False
             pairs -= 1
+        # The loop stays per-cell: the cascade depends on the bit each pair
+        # lands on, and on the tapes this walks the bits above the pointer
+        # are still set, so a "run to a steady state then close the tail"
+        # form measured *slower* -- 45.5M of 45.5M iterations still
+        # cascaded, and the guard testing for the steady state cost a
+        # big-integer shift each time.  What is hoisted instead is the
+        # attribute access: the three fields are read once and written back
+        # once rather than touched per pair.
         tape, length, ptr = self.tape, self.length, self.ptr
         for _ in range(pairs):
             ptr += 1
@@ -250,6 +259,27 @@ def _straight_run(code: str) -> tuple[str, int] | None:
     return None
 
 
+# Marks a key whose rows must be stepped: the code printed or died there,
+# and neither is expressible as a tape delta.
+_STEP_IT: tuple[int, int, int, bool] = (-1, -1, -1, False)
+
+
+def _reach(code: str) -> int:
+    """Bound how many cells above the pointer ``code`` can read or write.
+
+    ``.`` and ``[`` advance one cell before touching anything and ``[`` can
+    cascade one further, so a code of length ``L`` cannot reach past
+    ``L + 2`` cells above where it starts; ``<`` only walks back toward
+    cell 0, which the key covers by holding the pointer itself.  A print
+    reads the low byte, so the bound never drops below eight.
+
+    Deliberately loose.  A key wider than the code's true reach costs a few
+    redundant entries; one narrower would merge rows that differ where the
+    code can see, which is a wrong answer -- so this over-counts on purpose.
+    """
+    return max(len(code) + 2, 8)
+
+
 def _set_bit(bit: int) -> str:
     """Return the ``{Xi}`` fill writing ``bit`` at ``ptr+1``.
 
@@ -294,9 +324,61 @@ class _Joint:
             for m in self.ms:
                 getattr(m, method)(count)
             return
+
+        # Mixed code: step one row, then *carry the effect* to the rows that
+        # entered in the same state.  Rows are advanced in lockstep, so they
+        # meet a given emission having seen the same instructions -- what
+        # differs is only the bits their setters embedded, and a short code
+        # reads only the handful of cells it can reach.  Rows agreeing on
+        # those cells therefore transform identically, so the effect is
+        # computed once per distinct key and applied as arithmetic to the
+        # rest.  The sculpting probe's pool code is the case this is for:
+        # 288,640 applications at six inputs, all from the canonical clamped
+        # state, which is one key and one effect.
+        span = _reach(code)
+        mask = (1 << span) - 1
+        effects: dict[tuple[int, int, int, bool], tuple[int, int, int, bool]] = {}
         for m in self.ms:
-            for ch in code:
-                m.exec(ch)
+            if m.dead:
+                continue
+            # The window is read *relative to the pointer*, and the print
+            # also reads the absolute low byte, so both go in the key --
+            # keying on absolute cells alone merges rows sitting at
+            # different pointers, which builds the wrong program.
+            key = (
+                ((m.tape >> m.ptr) & mask) | ((m.tape & 0xFF) << span),
+                m.length - m.ptr,
+                m.ptr,
+                m.skip,
+            )
+            effect = effects.get(key)
+            if effect is None:
+                probe = m.copy()
+                for ch in code:
+                    probe.exec(ch)
+                if probe.dead or probe.out != m.out:
+                    # A row that printed or died is not describable as a
+                    # tape delta, so it -- and any row sharing its key --
+                    # is stepped rather than carried.
+                    effects[key] = _STEP_IT
+                    for ch in code:
+                        m.exec(ch)
+                    continue
+                effect = effects[key] = (
+                    probe.tape ^ m.tape,
+                    probe.length - m.length,
+                    probe.ptr - m.ptr,
+                    probe.skip,
+                )
+            elif effect is _STEP_IT:
+                for ch in code:
+                    m.exec(ch)
+                continue
+            flip, grow, move, skip = effect
+            m.tape ^= flip
+            m.length += grow
+            m.ptr += move
+            m.skip = skip
 
     def emit_setter(self, i: int) -> None:
         """Emit the ``{Xi}`` placeholder, simulating each row with its bit."""
