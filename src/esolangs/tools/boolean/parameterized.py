@@ -1090,8 +1090,9 @@ def bfpda(truth_table: str) -> str:
     head = "".join("<@{X" + str(i) + "}" for i in range(n))
 
     def leaf(level: int, value: str) -> str:
-        # consume the remaining pre-loaded bits, then print the answer
-        return ">" * (2 * (n - level)) + ("<@" if value == "1" else "<") + ".>"
+        drain_preloaded_bits = ">" * (2 * (n - level))
+        print_answer = ("<@" if value == "1" else "<") + ".>"
+        return drain_preloaded_bits + print_answer
 
     # Not routed through :func:`decision_tree_tokens`: this tree is a plain
     # string with no index to thread, so the walker's token lists would have
@@ -1272,8 +1273,9 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         # the rotation, its consuming pop, and the node's own ``GOTO``
         return len(rotations[level]) + 1
 
-    # the load block, in name order; each placeholder expands to two commands
-    head = ["{X" + str(i) + "}" for i in range(n)]
+    # Each placeholder expands to two commands, which is what ``start`` below
+    # counts; see the docstring for why the load is byte-identical per order.
+    load_block_in_name_order = ["{X" + str(i) + "}" for i in range(n)]
 
     # A node spends its rotation, its pop and its ``GOTO`` before either
     # subtree, so the walker's ``at`` lands on this node and ``at +
@@ -1294,7 +1296,10 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         collapse=True,
     )
     end = 2 * n + len(tree)
-    return " ".join(head + ["GOTO " + str(end) if t == "GOTO@END" else t for t in tree])
+    return " ".join(
+        load_block_in_name_order
+        + ["GOTO " + str(end) if t == "GOTO@END" else t for t in tree]
+    )
 
 
 def _ram0_width(address: int) -> int:
@@ -1525,23 +1530,13 @@ _TREE_BRANCH_1 = ["*  ", "** ", "   "]  # reflects the down-route back to the ri
 # the ``~``, while every later block is entered heading down from the
 # previous block's exit (each block leaves the pointer heading down at
 # column 3, one row below itself).
-# A one bit's block used to be its ``~`` and nothing else, where a zero
-# bit's is a dense box, so ``_compact`` dropped the one's blank rows and the
-# emitted program's size counted the ones: at n == 2 the four programs came
-# out 123, 110, 110, and 97 characters.  The one blocks now carry inert
-# walls sized so each block's glyphs occupy the same number of characters as
-# the zero block it stands against (18 for the first, 14 for the rest).
-#
-# What a row costs is ``len(row.rstrip())``, so what matters is the column
-# its *last* glyph sits in -- a row needs one wall, not a run of them, and
-# the blanks to its left are paid for either way.  That holds for the ``~``
-# rows too: leading blanks hold the ``~`` at column 3 just as well as glyphs
-# would, so the row is a bare ``~`` with one wall past it.
-#
-# ``*`` turns the IP clockwise, so a wall is only inert where the IP cannot
-# reach it.  The IP enters the header at (0, 0) heading right and crosses
-# columns 0-2 of that row to reach its ``*``, so the first block's row 0 is
-# left exactly as it was; every cell walled here is one no run visits.
+# The one blocks carry **inert walls** so each block's glyphs occupy the same
+# number of characters as the zero block it stands against -- without them the
+# emitted program's length counts the one bits, breaking the equal-width rule.
+# A wall is only inert where the IP cannot reach it, which is why the first
+# block's row 0 is left exactly as it was.  See
+# ``docs/arrowqueue_generator.md`` for the leak that forced this and why one
+# wall per row suffices.
 _FIRST_ONE = ["   *", "   ~*", "  *", "  *", "  *"]
 _FIRST_ZERO = ["   *", "*~* ", "*  *", "*  *", "* * "]
 _NEXT_ONE = ["   ~*", "  *", "  *", "  *"]

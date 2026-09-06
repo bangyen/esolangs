@@ -118,14 +118,8 @@ _Heading = Literal["N", "E", "S", "W"]
 _Junction = Literal[0, 3, 4]
 
 # Which way a merge latch turns, relative to the heading it was taken
-# under.  A latch is only ever set for a turn onto a detected side road:
-# ``_junction_choices`` offers nothing but ``_left(heading)``, ``heading``
-# and ``_right(heading)``, and ``turning`` in
-# :func:`_heading_from_junction` rules out the straight-ahead case, so
-# these two are the whole space -- straight and reverse are unreachable,
-# not merely unobserved.  Storing the turn rather than the destination
-# heading makes a merge's two direction fields different types, so
-# :class:`_Merge` cannot be built with them swapped.
+# under.  These two are the whole space: straight and reverse are
+# unreachable, not merely unobserved -- see ``docs/streetcode.md``.
 _Turn = Literal["left", "right"]
 
 
@@ -156,19 +150,9 @@ class _Merge(NamedTuple):
     """An in-progress lane merge, latched until the car reaches ``target``.
 
     The latch holds *which way it turns* rather than the heading it turns
-    to.  Both were once a :data:`_Heading`, and a NamedTuple cannot make
-    its fields keyword-only, so nothing but argument order stopped the
-    two from being swapped in a positional call -- a mistake the checker
-    could not see and the drive-state graph would faithfully reproduce.
-    A :data:`_Turn` beside a :data:`_Heading` is two different types, so
-    the swap no longer typechecks; the record's shape rules it out, not a
-    convention the next construction site has to follow.
-
-    Storing the turn also keeps one fact in one place.  :attr:`new_heading`
-    recovers the destination, and the "was this a left turn?" question
-    :func:`_heading_from_merge_target` asks when it re-reads the branch is
-    now the stored field rather than a comparison that reconstructs it --
-    the two spellings could previously disagree.
+    to, so a merge's two direction fields are different types and cannot be
+    built swapped; :attr:`new_heading` recovers the destination.  See
+    ``docs/streetcode.md`` for why both were once a :data:`_Heading`.
 
     ``None`` (rather than an instance) means no merge is in progress.
     See ``_Machine.__init__``.
@@ -341,18 +325,9 @@ _MOUTH_MAX_DIST = 3
 # puts the floor at 5 -- at 4 the mouths of the wider drawn junctions stop
 # being seen and three tests fail -- while 5 and up are indistinguishable.
 # 7 is that floor plus slack for mouths wider than anything drawn so far.
-#
-# Raising it is not conservatively safer, which is why the slack is small.
-# The bound is two-sided: too low and a real mouth is truncated, too high
-# and the scan runs past the box it is reading and pairs up two ``+`` that
-# bound nothing.  The 1-arity boolean programs are the worked example --
-# from ``(9, 6)`` heading East, a generous bound finds a "mouth" spanning
-# the blank margin between two drawn boxes, which 7 correctly does not
-# see.  Behaviour is unaffected there only because ``_junction_choices``
-# offers one road and the junction does not fire.  So what is checked is
-# the driving, not the scan: ``tests`` compares the whole drive-state
-# graph at this bound against a generous one over the corpus, and the
-# graphs agree.  Nothing depends on the exact value in that sense.
+# Raising it is not conservatively safer: the bound is two-sided, since too
+# high a scan runs past the box it is reading and pairs up two ``+`` that
+# bound nothing.  ``docs/streetcode.md`` has the worked example.
 _MOUTH_MAX_DEPTH = 7
 
 

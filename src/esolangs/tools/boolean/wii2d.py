@@ -67,13 +67,10 @@ __all__ = ["wii2d"]
 # candidate is taken at each step and the decode is whatever that chain of
 # choices produces.
 #
-# That this suffices is not an assumption.  Every 0/1 pattern through
-# ``D == 16`` -- 65536 of 65536, the widest domain the general path asks for
-# at ``n == 5`` -- is realized by the single-candidate rule, verified by
-# applying the emitted op string back over the domain.  ``D == 8`` is
-# likewise exhaustive at 256 of 256, and the maximally-alternating patterns
-# (needing the most folds, since a fold at best halves the block count) are
-# among the successes rather than the exceptions.
+# That this suffices is not an assumption: it is exhaustive over every 0/1
+# pattern through ``D == 16``, the widest domain the general path asks for,
+# verified by applying the emitted op string back over the domain.  See
+# ``docs/wii2d_generator.md``.
 
 # The widest fold centre worth emitting.  A centre costs ``abs(c)`` cells --
 # ``'-' * c`` is spelled out in the grid -- so this is a bound on program
@@ -93,32 +90,18 @@ _WII2D_MAX_CENTRE = 4096
 #
 # Compression is the expensive half of a candidate -- a halving loop over the
 # whole domain, rebuilding the live map at every step -- and the decode takes
-# only the head, so compressing every candidate is work thrown away.  Before
-# this screen the count rose with the domain: 7 compressions per fold
-# actually used at ``D == 16``, 15 at ``D == 32`` and 50 at ``D == 64``, all
-# but one discarded.  That, not the emitted string, is why build time used to
-# climb so much faster than the domain.
+# only the head, so compressing every candidate is work thrown away.
 #
 # The screen cannot be a *bound*.  Compression is a contraction, so the
-# uncompressed magnitude says almost nothing about the compressed one -- 529
-# collapsing to 17 is a measured case -- and over 80 sampled states there was
-# always a candidate whose uncompressed magnitude exceeded the eventual
-# winner's compressed magnitude.  Any early exit justified that way changes
-# the answer, so this is an admitted approximation: the shortlist is ranked
-# on the uncompressed state, and only its members get the real key.
+# uncompressed magnitude says almost nothing about the compressed one, and no
+# early exit justified that way preserves the answer.  This is an admitted
+# approximation: the shortlist is ranked on the uncompressed state, and only
+# its members get the real key.
 #
-# Four is where the trade settles.  Measured over the same random tables,
-# median/worst emitted characters and build time for the whole sweep:
-#
-#     eager (all candidates):  n6  832 / 1182   366 ms
-#     shortlist 2:             n6  884 / 1976   215 ms
-#     shortlist 3:             n6  750 / 1404   201 ms
-#     shortlist 4:             n6  714 / 1242   194 ms
-#     shortlist 6:             n6  740 / 1024   207 ms
-#
-# Four is both smaller and faster than compressing everything, which is not
-# the trade one expects from a cut: the eager ranking is not better here, it
-# merely ranks more candidates that the screen was right to drop.
+# Four is where the trade settles, and it is both smaller and faster than
+# compressing everything -- not the trade one expects from a cut.  The sweep
+# behind that, and the counterexample that rules out a bound, are in
+# ``docs/wii2d_generator.md``.
 _WII2D_SHORTLIST = 4
 
 # The widest decode domain the general (non-symmetric) path will attempt, so
@@ -133,29 +116,10 @@ _WII2D_SHORTLIST = 4
 # without ever looking at it.
 #
 # What the constant buys is bounded *width*, which still grows as the domain
-# doubles.  Measured through :func:`_wii2d_decode`, 25 random patterns each:
-#
-#     D == 16 (n == 5):  median     60 cells, worst    155, under 0.01s
-#     D == 32 (n == 6):  median    204 cells, worst    389, under 0.01s
-#     D == 64 (n == 7):  median   1213 cells, worst   1878, under 0.06s
-#
-# 64 is where it now sits, which admits dense ``n == 7``.  Whole programs at
-# that width, 25 random non-symmetric tables each, measured end to end:
-#
-#     n == 5:  median   312 chars, worst   412,   1.3 ms
-#     n == 6:  median   758 chars, worst  1054,   7.8 ms
-#     n == 7:  median  2776 chars, worst  4270,  65.1 ms
-#
-# So the price of ``n == 7`` is size, not time; the emitted programs were run
-# through the interpreter on all 128 input combinations.  The old note that
-# this "never established that anything fails" was right: nothing did.
-#
-# Ranking the folds by what they *emit* instead of by magnitude was tried and
-# is much worse -- see :func:`_wii2d_folds` -- so this width is the honest
-# price rather than an artifact of the ranking.
-#
-# Symmetric tables never reach this check: they decode over ``n`` points via
-# the popcount chain, so majority-of-12 is 397 characters and instant.
+# doubles; 64 admits dense ``n == 7``, where the price is size rather than
+# time.  Symmetric tables never reach this check: they decode over ``n``
+# points via the popcount chain.  ``docs/wii2d_generator.md`` has the measured
+# width and time tables this value was chosen against.
 _WII2D_MAX_INDEX_DOMAIN = 64
 
 # The widest *real* chain domain any table may decode over, whatever the
@@ -168,20 +132,11 @@ _WII2D_MAX_INDEX_DOMAIN = 64
 # with no merge available the walk falls through to Horner, and a non-merging
 # pair can leave a domain far *above* ``2 ** (n - 1)``.
 #
-# Measured, that overshoot is rare but unbounded.  Random tables overshoot in
-# 0.5% of cases at ``n == 5`` (domain 37 against a worst case of 16) and 0.2%
-# at ``n == 6`` (domain 197 against 32); those still decode, but the 197-point
-# one emits 8808 characters in 694 ms, twelve times the ``n == 6`` median.
-# Structured tables reach further: ``(b0|b1)&(b2|b3)&(b4|b5)`` leaves 17 at
-# ``n == 5`` and 34 at ``n == 6``, but **1025** at ``n == 7``, and that decode
-# did not return within minutes.
-#
-# So this is the same policy as :data:`_WII2D_MAX_CENTRE` one level up:
-# correct, but too wide to be worth emitting.  256 sits above every overshoot
-# measured to decode (197) and below the one that does not (1025).  Refusing
-# the latter is not a regression -- at the old constant of 32 it was refused
-# anyway, since its worst case of 64 exceeded it -- the cap only trims what
-# raising the constant to 64 would newly have let in.
+# Measured, that overshoot is rare but unbounded, so this is the same policy
+# as :data:`_WII2D_MAX_CENTRE` one level up: correct, but too wide to be worth
+# emitting.  256 sits above every overshoot measured to decode and below the
+# one that does not.  ``docs/wii2d_generator.md`` has both figures and why
+# refusing the latter is not a regression.
 _WII2D_MAX_REAL_DOMAIN = 256
 
 
@@ -365,11 +320,8 @@ def _wii2d_folds(
     # live values *are* the program's width: keeping them small is what keeps
     # the emitted grid small, and it also steers away from the squaring
     # blow-up, since every later fold squares whatever this one leaves.
-    # Ranking by live count instead -- merging as hard as possible at each
-    # step -- reaches the same two-value state but through much larger
-    # numbers: measured over the same random tables at ``n == 6``, live-count
-    # first gives a median 2124 cells and a worst case of 19594, where this
-    # gives 832 and 1182.
+    # Ranking by live count instead reaches the same two-value state through
+    # much larger numbers -- measured in ``docs/wii2d_generator.md``.
     out.sort(key=lambda cand: cand[:3])
     return out
 
@@ -765,8 +717,9 @@ def _wii2d_layout(n: int, start: int, routes: list[tuple[str, str]]) -> list[str
             placeholder_col[i + 1] = merge_col[i] + 1
 
     decode_start = merge_col[n - 1] + 1  # the column past the last merge
-    ascii_zero = _ASCII_ZERO
-    total_cols = decode_start + ascii_zero + len("~.")
+    shift_to_ascii_digit = _ASCII_ZERO
+    print_op = "~."
+    total_cols = decode_start + shift_to_ascii_digit + len(print_op)
 
     grid = [[" "] * total_cols for _ in range(n + 1)]
     grid[0][0] = ">"
@@ -786,11 +739,10 @@ def _wii2d_layout(n: int, start: int, routes: list[tuple[str, str]]) -> list[str
             grid[i + 1][placeholder_col[i] + 1 + k] = ch
         grid[i + 1][merge_col[i]] = "^"
         grid[0][merge_col[i]] = ">"
-    # shift the 0/1 accumulator up to the ASCII digit and print it
-    for k in range(ascii_zero):
+    for k in range(shift_to_ascii_digit):
         grid[0][decode_start + k] = "+"
-    grid[0][decode_start + ascii_zero] = "~"
-    grid[0][decode_start + ascii_zero + 1] = "."
+    for k, op in enumerate(print_op):
+        grid[0][decode_start + shift_to_ascii_digit + k] = op
     grid[1][0] = "!"
     rows = ["".join(row).rstrip() for row in grid]
     return [

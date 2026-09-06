@@ -214,7 +214,7 @@ def render() -> str:
         "",
         "## How %^2^-1 reaches its tables",
         "",
-        "%^2^-1 goes further than the rest.  A subcube cascade builds every",
+        "%^2^-1 goes further.  A subcube cascade builds every",
         "conjunction or disjunction of literals at any arity; a composed-affine",
         "derivation adds the tables that are no subcube; a threshold ladder adds",
         "the ones neither reaches, by letting the over-3003 reset read a weighted",
