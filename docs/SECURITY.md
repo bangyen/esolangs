@@ -7,9 +7,9 @@ maintenance branches for older versions.
 
 ## What is in scope
 
-This project runs esoteric-language programs. Interpreters execute untrusted
-input by design, so a program producing wrong output, looping forever, or
-exhausting memory is a correctness bug — please open a normal issue for those.
+Interpreters execute untrusted programs by design, so a program producing
+wrong output, looping forever, or exhausting memory is a correctness bug —
+open a normal issue for those.
 
 In scope for a security report is anything that escapes the interpreter:
 
@@ -30,6 +30,6 @@ Please include the language, the smallest program that shows it, the commit or
 released version, and what the program achieved that it should not have been
 able to.
 
-Expect an acknowledgement within a week. Since this is a personal project
-maintained in spare time, a fix may take longer; you will get an honest
+Expect an acknowledgement within a week. This is a personal project
+maintained in spare time, so a fix may take longer; you will get an honest
 estimate rather than silence.

@@ -59,9 +59,9 @@ def decleq(truth_table: str) -> str:
     count rather than the output -- an output-based test cannot see it.
 
     Every input is still read, so the program consumes exactly ``n`` input
-    bytes.  An ignored input never controls a non-folded branch, however,
-    so it does not need the 47-step normalization chain.  The fixed cost is
-    therefore ``47 * len(essential_inputs)`` rather than ``47 * n``.
+    bytes.  But an ignored input never controls a non-folded branch, so it
+    needs no 47-step normalization chain: the fixed cost is
+    ``47 * len(essential_inputs)`` rather than ``47 * n``.
     """
     n = _validate_truth_table(truth_table)
 
@@ -77,10 +77,10 @@ def decleq(truth_table: str) -> str:
     def tree_instrs(level: int, row: int) -> int:
         """Instructions the subtree at ``(level, row)`` emits.
 
-        The data cells sit above the code, so their addresses depend on
-        how long the tree turns out to be -- which folding changes.  The
-        count has to come from the same walk that emits, or every leaf
-        would name the wrong output cell.
+        The data cells sit above the code, so their addresses depend on the
+        tree's length -- which folding changes.  The count has to come from
+        the same walk that emits, or every leaf would name the wrong output
+        cell.
         """
         if level == n or constant(level, row):
             return 2  # output, then halt
@@ -124,11 +124,11 @@ def decleq(truth_table: str) -> str:
         for _ in range(47):
             emit(rc, rc, pc() + 3)
 
-    # The halt jump has to name an address past the end of memory, which is
-    # not known until the data cells below have been appended.  Each leaf
-    # emits this placeholder and the real address is substituted once the
-    # program is complete, so the sentinel is exactly one past the last cell
-    # however the tree came out.
+    # The halt jump has to name an address past the end of memory, unknown
+    # until the data cells below have been appended.  Each leaf emits this
+    # placeholder and the real address is substituted once the program is
+    # complete, so the sentinel is exactly one past the last cell however the
+    # tree came out.
     halts: list[int] = []
 
     def node(level: int, row: int) -> None:
@@ -156,14 +156,14 @@ def decleq(truth_table: str) -> str:
     # One past the last cell: the interpreter halts as soon as the pointer
     # leaves memory, so this is the smallest address that stops the program.
     #
-    # Being derived from the cell count is also what keeps it out of
-    # wrap_grid's way, however big the program gets.  Every leaf names
-    # out48 or out49 -- len(mem) - 2 and len(mem) - 1 -- so a token within
-    # two of the sentinel always exists, and the two can differ by at most
-    # one digit (only across a power of ten).  _cell_width drops an outlier
-    # only while it is at least *twice* the next width, which one digit
-    # never is above 9 cells, so the sentinel widens the cell at worst and
-    # never spans two of them the way the old constant 10**9 did.
+    # Deriving it from the cell count also keeps it out of wrap_grid's way,
+    # however big the program gets.  Every leaf names out48 or out49 --
+    # len(mem) - 2 and len(mem) - 1 -- so a token within two of the sentinel
+    # always exists, and the two can differ by at most one digit (only across
+    # a power of ten).  _cell_width drops an outlier only while it is at
+    # least *twice* the next width, which one digit never is above 9 cells,
+    # so the sentinel widens the cell at worst and never spans two of them
+    # the way the old constant 10**9 did.
     for addr in halts:
         mem[addr] = len(mem)
     return " ".join(map(str, mem))
@@ -191,16 +191,15 @@ def addsubjump(truth_table: str) -> str:
     whichever bit it tests, and ``goto *J``.  Reading at the node instead
     would repeat the four-instruction normalization at every node and make a
     folded leaf drain the reads its untaken siblings skipped; hoisting pays
-    for both once, which is 25.1% of the program at n == 3 before any
-    reordering.
+    for both once, 25.1% of the program at n == 3 before any reordering.
 
     **The tree then splits on its inputs in whichever order emits the
     shortest program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`),
-    which the hoist is what enables: with every bit in its own cell, ``J +=
-    *b`` can name any of them, so a node is not tied to the bit just read.
-    The reads stay in stream order, so the program consumes its input
-    exactly as before.  Reordering adds 8.9% on top of the hoist at n == 3,
-    for 31.7% together, rising to 41.0% at n == 4 and 47.8% at n == 5.
+    which the hoist enables: with every bit in its own cell, ``J += *b`` can
+    name any of them, so a node is not tied to the bit just read.  The reads
+    stay in stream order, so the program consumes its input exactly as
+    before.  Reordering adds 8.9% on top of the hoist at n == 3, for 31.7%
+    together, rising to 41.0% at n == 4 and 47.8% at n == 5.
 
     Only the inputs the tree actually branches on get a cell; one no node
     tests is read into write-only scratch, so a constant table still
@@ -216,10 +215,10 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     permuted frame; ``perm`` surfaces only where a node names the *stream*
     input whose cell it tests.
 
-    Cells are named by the input they hold (``B{i}`` for stream input
-    ``i``), not by the instruction index that allocated them.  The node-read
-    build keyed its names off ``len(instructions)``, which a reorder shifts;
-    naming by input keeps every reference stable however the tree comes out.
+    Cells are named by the input they hold (``B{i}`` for stream input ``i``),
+    not by the instruction index that allocated them.  The node-read build
+    keyed its names off ``len(instructions)``, which a reorder shifts; naming
+    by input keeps every reference stable however the tree comes out.
     """
     n = _validate_truth_table(truth_table)
 
@@ -350,10 +349,10 @@ def collatz_multiverse(truth_table: str) -> str:
     byte constants come from the text generator's constant table.
 
     A table with more ones than zeros selects its *zero* rows instead, since
-    a minterm costs an indicator per input plus an AND chain.  Inverting
-    the answer costs nothing: the OR already ends on the ``flip`` that turns
-    ``prod (1 - minterm)`` into the result, so a complemented table simply
-    keeps the accumulator as it stands.
+    a minterm costs an indicator per input plus an AND chain.  Inverting the
+    answer costs nothing: the OR already ends on the ``flip`` that turns
+    ``prod (1 - minterm)`` into the result, so a complemented table keeps the
+    accumulator as it stands.
     """
     n = _validate_truth_table(truth_table)
     if all(c == truth_table[0] for c in truth_table):
@@ -397,13 +396,12 @@ def collatz_multiverse(truth_table: str) -> str:
     # chain, and a flip -- so a dense table is built from its zeros.
     # Inverting is free here: the OR already ends on a ``flip``, so the
     # complement drops it rather than adding one.
-    # A table that ignores some of its inputs is a smaller table, and a
-    # minterm costs an indicator *per input* plus an AND chain on top of one
-    # minterm per selected row -- so dropping an input removes rows and
-    # shortens the rows that remain.  Every input keeps its ``b{i}`` read
-    # (the reads are the interface); an ignored one is simply never turned
-    # into an indicator.  This is the constant branch above generalized from
-    # "no essential inputs" to "the ones that matter".
+    # A table that ignores some of its inputs is a smaller table, and since a
+    # minterm costs an indicator *per input*, dropping an input removes rows
+    # and shortens the rows that remain.  Every input keeps its ``b{i}`` read
+    # (the reads are the interface); an ignored one is never turned into an
+    # indicator.  This is the constant branch above generalized from "no
+    # essential inputs" to "the ones that matter".
     used = essential_inputs(truth_table, n) or [0]
     reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
     width = len(used)
@@ -468,7 +466,7 @@ def sophie(truth_table: str) -> str:
     generators: ``;`` and ``:`` *assign* to the accumulator, ``#`` loads only
     a literal, and nothing else writes it, so a bit can only be branched on
     before the next read and the test order is the stream order.  The merge
-    is what collects the saving a reorder would have found.
+    collects the saving a reorder would have found.
     """
     _validate_truth_table(truth_table)
     tree = _sophie_tree(truth_table)
@@ -513,15 +511,15 @@ def _sophie_dag(truth_table: str) -> str:
 
     Each level is a *flat chain* of ``@$L{...}`` blocks, one per live state,
     and the read happens inside whichever block fires.  Nesting the blocks
-    instead would just restate the tree -- what makes this a DAG is that two
-    prefixes leaving the same residual subfunction get the same label and
-    therefore the same block.
+    would restate the tree -- what makes this a DAG is that two prefixes
+    leaving the same residual subfunction get the same label and so the same
+    block.
 
     Re-fire needs no arithmetic here, unlike :func:`_polynomial_dag`: Sophie
-    tests equality against an arbitrary literal, so it is enough that
-    consecutive levels draw labels from disjoint bands.  A fired block leaves
-    the accumulator holding a *next*-level label, which no remaining test in
-    the current chain can match.
+    tests equality against an arbitrary literal, so consecutive levels
+    drawing labels from disjoint bands is enough.  A fired block leaves the
+    accumulator holding a *next*-level label, which no remaining test in the
+    current chain can match.
 
     Level 0 has one state and the accumulator starts at 0, so its dispatch is
     skipped.  Leaves halt inside their block, so the last level cannot
@@ -570,18 +568,18 @@ def dig(truth_table: str) -> str:
     for the input combination they stand for.
 
     A subtree whose rows all agree becomes a leaf, and the rows it would
-    have filled are simply never written -- which is what the walk buys
-    over filling the grid level by level, where a pruned row still had to
-    be skipped by hand.  A constant table collapses to a single line.
+    have filled are never written -- which is what the walk buys over filling
+    the grid level by level, where a pruned row still had to be skipped by
+    hand.  A constant table collapses to a single line.
 
     A folded leaf still reads the inputs it never branched on, since a
     program whose input count depended on its table would desync a caller
     feeding several programs from one stream.  Those reads are cheap: a
-    branch spends ``;`` to store its bit for its own ``#``, and a leaf
-    turns nowhere, so the read is bare -- and ``$`` covers a run of cells
-    at once, so they need no block each.  ``$`` takes its count from the
-    digit beside it, so a run is at most nine cells and longer ones chain,
-    each window spending one cell on the ``>`` that opens the next.
+    branch spends ``;`` to store its bit for its own ``#``, and a leaf turns
+    nowhere, so the read is bare -- and ``$`` covers a run of cells at once,
+    so they need no block each.  ``$`` takes its count from the digit beside
+    it, so a run is at most nine cells and longer ones chain, each window
+    spending one cell on the ``>`` that opens the next.
     """
     n = _validate_truth_table(truth_table)
     total = 2 ** (n + 1) - 1
@@ -595,14 +593,14 @@ def dig(truth_table: str) -> str:
     def leaf(reads: int, value: int) -> str:
         """Build a leaf that consumes ``reads`` inputs, then prints ``value``.
 
-        ``$`` makes the cells after it commands, as many as the digit
-        beside it says, so the reads a folded leaf still owes need no block
-        each: one ``$`` covers every ``~`` plus the three cells that print.
+        ``$`` makes the cells after it commands, as many as the digit beside
+        it says, so the reads a folded leaf still owes need no block each:
+        one ``$`` covers every ``~`` plus the three cells that print.
 
         Its count is a single digit, so a window holds at most nine cells.
         Past that the windows chain -- each spends one of its nine on the
-        ``>`` that opens the next -- which stays linear in the reads where
-        a block apiece is four characters each.
+        ``>`` that opens the next -- staying linear in the reads where a
+        block apiece is four characters each.
         """
         if reads == 0:
             return _DIG_LEAF.format(value)
@@ -673,15 +671,15 @@ def qoibl(truth_table: str) -> str:
     under the size of the sparser half.
     """
     n = _validate_truth_table(truth_table)
-    # A table that ignores some of its inputs is a smaller table, and a
+    # A table that ignores some of its inputs is a smaller table, and since a
     # minterm costs one ``qe`` factor *per input* on top of two lines per
-    # selected row -- so dropping an input removes rows and shortens the
-    # rows that remain.  Every input keeps its ``et`` read, its
-    # normalization and its complement (they are the interface); an ignored
-    # one is simply never named as a factor.  Measured at ``n == 3``, that
-    # setup is 29% of a one-dependency program and the minterm body the
-    # other 71%, so most of the arity cost here is reachable -- unlike
-    # ``suffolk``, whose per-input setup is 96% of the program.
+    # selected row, dropping an input removes rows and shortens the rows that
+    # remain.  Every input keeps its ``et`` read, its normalization and its
+    # complement (they are the interface); an ignored one is never named as a
+    # factor.  Measured at ``n == 3``, that setup is 29% of a one-dependency
+    # program and the minterm body the other 71%, so most of the arity cost
+    # here is reachable -- unlike ``suffolk``, whose per-input setup is 96%
+    # of the program.
     used = essential_inputs(truth_table, n) or [0]
     reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
     width = len(used)
@@ -766,17 +764,16 @@ def polynomial(truth_table: str) -> str:
     at n == 8.  Over random tables the machine wins from n == 3 up (median
     0.87x the tree's instructions at n == 3, 0.43x at n == 6), while small
     or near-constant tables still favour the tree, which is why both are
-    built and measured.  Measured over all 256 tables at n == 3, the
-    dispatch is 18.4% shorter than the tree alone, improving 112 and
-    growing none.
+    built and measured.  Over all 256 tables at n == 3 the dispatch is 18.4%
+    shorter than the tree alone, improving 112 and growing none.
 
     **The order the tree tests its inputs in is not free here**, unlike
     every other decision-tree generator: a read *assigns* to the single
     register, so nothing survives it and the tested bit is always the one
-    just read.  Both constructions therefore consume input in stream order,
-    and reordering is unreachable rather than merely unhelpful.  What the
-    machine recovers is the *saving* a reorder would have bought -- the
-    residual merge subsumes the folds a better order would have exposed.
+    just read.  Both constructions consume input in stream order, so
+    reordering is unreachable rather than merely unhelpful.  What the machine
+    recovers is the *saving* a reorder would have bought -- the residual
+    merge subsumes the folds a better order would have exposed.
 
     A table needing more than ``_POLYNOMIAL_MAX_INSTRS`` instructions under
     both constructions raises :class:`ValueError`: the interpreter recovers
@@ -798,17 +795,17 @@ def polynomial(truth_table: str) -> str:
     #
     # Reduction sidesteps that because it is *order-blind*: it rewrites the
     # table before any tree is built.  The ignored inputs are drained first
-    # -- read, subtract 48 -- which is the same pair the tree already emits
-    # for a collapsed leaf's untaken siblings, so every path still consumes
-    # exactly ``n`` inputs.
+    # -- read, subtract 48 -- the same pair the tree already emits for a
+    # collapsed leaf's untaken siblings, so every path still consumes exactly
+    # ``n`` inputs.
     # Only a *leading* run of ignored inputs can be handled this way. The
     # drain reads the stream in order, so it can stand in for inputs the
     # reduced tree would otherwise have read *before* the ones it keeps; an
     # ignored input sitting after an essential one would be drained out of
-    # turn and the tree would then branch on the wrong bit -- measured, that
-    # is 26 tables at ``n <= 3`` and 92 wrong rows. Reordering the drains is
-    # not available either, since a read assigns to the single register, so
-    # a non-prefix ignored set simply keeps the unreduced build.
+    # turn and the tree would branch on the wrong bit -- measured, 26 tables
+    # at ``n <= 3`` and 92 wrong rows. Reordering the drains is not available
+    # either, since a read assigns to the single register, so a non-prefix
+    # ignored set keeps the unreduced build.
     essential = essential_inputs(truth_table, n) or [0]
     lead = next((i for i in range(n) if i in essential), n)
     if lead:
@@ -866,7 +863,7 @@ def _polynomial_assemble(instrs: list[list[int]]) -> str:
 def _polynomial_tree(truth_table: str) -> list[list[int]]:
     """Emit the decision-tree instructions; see :func:`polynomial`.
 
-    A subtree whose rows are all the same value is collapsed to its single
+    A subtree whose rows are all the same value collapses to its single
     output, so constant and near-constant tables skip the tree that would
     otherwise isolate every leaf.  A collapsed leaf still drains the reads
     its untaken siblings would have made, so every path consumes ``n``.
@@ -917,9 +914,9 @@ def _polynomial_states(truth_table: str, n: int) -> list[list[str]]:
 
     Level ``k``'s states are the distinct subtables of width ``2**(n-k)``
     reachable after reading ``k`` bits.  Two prefixes that leave the same
-    subtable are the *same* state and share one continuation -- the merge
-    a decision tree cannot make, since it can only collapse a subtable that
-    is constant.
+    subtable are the *same* state and share one continuation -- the merge a
+    decision tree cannot make, since it can only collapse a constant
+    subtable.
     """
     levels = [[truth_table]]
     for k in range(n):
@@ -946,10 +943,10 @@ def _polynomial_dag(truth_table: str) -> list[list[int]]:
 
     **``[0, b]`` is I/O, not arithmetic.**  The interpreter tests ``a == 0``
     before the opcode, so ``[0, 3]`` reads a character rather than
-    multiplying by zero -- which is exactly the instruction a naive builder
-    wants when both children merge.  That case instead reads and divides the
-    bit away (``//= 50``), and an assertion below keeps any other ``a == 0``
-    from being emitted.
+    multiplying by zero -- exactly the instruction a naive builder wants when
+    both children merge.  That case instead reads and divides the bit away
+    (``//= 50``), and an assertion below keeps any other ``a == 0`` from
+    being emitted.
 
     **A chain of equality tests re-fires.**  A taken branch leaves the
     register holding its child state, and the chain's remaining ``-= 1``
@@ -1009,9 +1006,9 @@ def _polynomial_dag(truth_table: str) -> list[list[int]]:
 
     for instr in instrs:
         # ``a == 0`` is how the interpreter spells I/O, so an arithmetic
-        # instruction that computed a zero operand would silently become a
-        # read -- a wrong program rather than a failure.  The builder never
-        # emits one; this raises rather than asserting so the guard survives
+        # instruction computing a zero operand would silently become a read
+        # -- a wrong program rather than a failure.  The builder never emits
+        # one; this raises rather than asserting so the guard survives
         # ``-O``, where the trap it catches would be silent.
         if len(instr) == 2 and instr[0] == 0 and instr not in ([0, 1], [0, 2]):
             raise AssertionError(
@@ -1056,13 +1053,13 @@ def point_break(truth_table: str) -> str:
     The result ``f`` feeds a fixed template -- ``LET g:=one-f`` then
     ``POINT loop`` / ``IF g BREAK loop`` / ``END loop`` -- where ``g`` is
     nonzero exactly when ``f`` is 0, so the loop breaks (and the program
-    halts) exactly on the 0 outputs and spins forever on the 1 outputs.
-    A constant table needs none of the sum, so it emits the template
-    directly -- all-0 a ``LET`` that always halts, all-1 the loop with a
-    never-firing break -- but it still *reads* its ``n`` inputs first and
-    discards them.  A program whose input count depended on its truth table
-    would leave the caller's remaining bits on the stream for whatever ran
-    next; the reads are the interface, and only the body may shrink.
+    halts) exactly on the 0 outputs and spins forever on the 1 outputs.  A
+    constant table needs none of the sum and emits the template directly --
+    all-0 a ``LET`` that always halts, all-1 the loop with a never-firing
+    break -- but it still *reads* its ``n`` inputs first and discards them.
+    A program whose input count depended on its truth table would leave the
+    caller's remaining bits on the stream for whatever ran next; the reads
+    are the interface, and only the body may shrink.
     """
     n = _validate_truth_table(truth_table)
     # The reads a constant table makes and throws away.  ``?`` is the read,
@@ -1092,14 +1089,13 @@ def point_break(truth_table: str) -> str:
     # a table with more ones than zeros is cheaper summed over its *zero*
     # rows.  Inverting is free: the tail already needs ``1 - f`` for the
     # loop guard, so a complemented sum *is* that guard.
-    # A table that ignores some of its inputs is a smaller table, and each
-    # selected row costs a ``LET`` per factor -- so dropping an input removes
+    # A table that ignores some of its inputs is a smaller table, and since
+    # each selected row costs a ``LET`` per factor, dropping an input removes
     # rows and shortens the rows that remain.  The reads and the complements
-    # stay at the full arity, exactly as the constant branch above keeps
-    # them; an ignored input is simply never named as a factor.  This is
-    # that branch generalized from "no essential inputs" to "the ones that
-    # matter", and the docstring's rule -- only the body may shrink -- is
-    # what makes it safe.
+    # stay at the full arity, as the constant branch above keeps them; an
+    # ignored input is never named as a factor.  This is that branch
+    # generalized from "no essential inputs" to "the ones that matter", and
+    # the docstring's rule -- only the body may shrink -- makes it safe.
     used = essential_inputs(truth_table, n) or [0]
     reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
     width = len(used)

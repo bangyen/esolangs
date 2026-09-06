@@ -11,8 +11,7 @@ interpreter docstring). This example uses just three special addresses:
 -1 4 -8 -7 65
 ```
 
-This prints the byte held in cell 4 (the literal `65`, which is `'A'`) and
-then halts.
+Prints the byte held in cell 4 (the literal `65`, `'A'`), then halts.
 
 ## Step by step
 

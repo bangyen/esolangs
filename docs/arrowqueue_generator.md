@@ -30,11 +30,11 @@ optimization divides `2**32` down — a runner 100x faster still leaves
 four CPU-days.  The table count is the wall, so coverage past four inputs
 needs an argument that never enumerates a table.
 
-The construction makes that possible because **the table's contents only
-ever choose which leaf blocks appear**, never how the program is routed.
-Routing depends on `n` and on the fold structure, and the leaves are
-finitely many shapes.  So the proof factorises into a chain of lemmas
-about pieces, plus an induction over the tree.
+That is possible because **the table's contents only ever choose which leaf
+blocks appear**, never how the program is routed.  Routing depends on `n`
+and on the fold structure, and the leaves are finitely many shapes.  So the
+proof factorises into a chain of lemmas about pieces, plus an induction
+over the tree.
 
 ## The shape of an instantiated program
 
@@ -121,9 +121,8 @@ arithmetic back at it.
 
 **B1 (`+` pops on arrival regardless of heading) [code].** `_advance`
 handles `+` before it moves, and a pop *replaces* the heading outright, so
-`+` behaves identically whichever way the IP arrived.  This is what lets
-the same subtree be entered two different ways, which the induction
-needs.
+`+` behaves identically whichever way the IP arrived.  That is what lets
+the induction enter the same subtree two different ways.
 
 **B2 (0-branch routes on the popped bit) [exec].** Entered at its `+`
 with the bit at the queue's head, `_TREE_BRANCH_0` pops it and exits
@@ -177,8 +176,8 @@ it expects.  Verified for `k = 0..8` against **every** stale-bit pattern
 Deep-`k` chains are exercised end to end by the all-ones runs at `n = 8`
 and `n = 10` (k = 8 and 10).
 
-**L4 (a bare ring is never the top-level tree) [code, exec].** This is
-what reconciles L2 with L2′.  `_tree` folds a constant slice to
+**L4 (a bare ring is never the top-level tree) [code, exec].** This
+reconciles L2 with L2′.  `_tree` folds a constant slice to
 `_drained_leaf(v, k)` with `k = log2(len(values))`.  At the top level
 `len(values) = 2**n`, so `k = n >= 1` — the domain requires `n >= 1`
 (`_validate_truth_table` rejects one-entry tables), so the top-level leaf
@@ -240,8 +239,8 @@ a horizontal run through a blank column likewise, and a run that would
 leave the grid still leaves it.  Deleting rows and columns *together*
 preserves every glyph's relative row and column ordering, which is all
 the routing depends on — B2/B3's exits are "the next glyph
-rightward/downward", not absolute coordinates.  So halting runs still
-halt and cycling runs still cycle.  Verified on both uncompacted and
+rightward/downward", not absolute coordinates.  Halting runs still halt
+and cycling runs still cycle.  Verified on both uncompacted and
 compacted programs for every instantiation of all tables at `n <= 3` plus
 40 random tables at `n = 4`: **2760 pairs, 0 verdict mismatches**.
 

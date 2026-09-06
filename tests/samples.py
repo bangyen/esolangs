@@ -6,8 +6,8 @@ stepping to completion matches ``run``, and a halting program is proven to
 halt.  Those checks say nothing about the language; they say that the
 language's adapter honours the VM protocol.  Written once per file they
 are sixty-odd near-identical bodies differing only in which ``_Machine``
-to import and which program to hand it, which is the shape a table plus a
-sweep replaces.
+to import and which program to hand it -- the shape a table plus a sweep
+replaces.
 
 :data:`SAMPLES` is that table: for every name in
 :data:`~esolangs.registry.RUNNERS`, the smallest program that reaches the

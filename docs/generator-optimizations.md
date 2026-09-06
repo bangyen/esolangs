@@ -39,7 +39,7 @@ or three.
 ## Which shape a boolean generator is
 
 Most of the boolean techniques apply to one shape and are meaningless for
-the other, so the shape is worth knowing before reaching for one. Folding
+the other, so know the shape before reaching for one. Folding
 (5) and input reordering (11) are tree optimizations; complement/polarity
 (6) is a minterm one. Dependency reduction (10) is the exception that
 belongs to **neither**: it rewrites the table over its essential inputs
@@ -96,8 +96,8 @@ had grown a tree.
 `circlefuck_byte`.  Some are a different shape and some simply raise on the
 `n == 3` tables the test uses — `one_two_three` caps at two inputs, and
 `minifuck` and `pct_squared_minus_one` are parameterized routes whose length
-tracks their embed rather than any table shape.  Two are worth naming for
-their mechanism: `wii2d` measures *negative* (a one-dependency table costs
+tracks their embed rather than any table shape.  Two mechanisms worth
+naming: `wii2d` measures *negative* (a one-dependency table costs
 slightly more than parity), its construction being a route search over a
 grid; and `ztoalc_l` measures a flat **0%** — every table in the comparison
 has ones-count 4 and they all render to exactly the same length — because it
@@ -132,8 +132,8 @@ projection. This is dependency reduction (10), not a subtree fold or an
 input reorder: the resulting program is shorter because it has fewer input
 products to form.
 
-One entry sits near the boundary and is worth reading as a measurement
-rather than a label: `minsky_swap` comes out at 10% only because a
+One entry sits near the boundary, and is a measurement rather than a
+label: `minsky_swap` comes out at 10% only because a
 one-dependency table is *smaller* than parity there by a few characters of
 embedding, not because anything folds.
 
@@ -245,9 +245,9 @@ one-row, so there are no subtrees to fold. A constant table is small there
 because the sum is *empty*. **Nothing is left to convert.**
 
 Six of the seven are literally sums of minterms. `a_painter_ant` is the
-exception and is worth naming, because reading "sum-of-minterms" as a
-statement about its *structure* is wrong: it paints a decision tree, one leaf
-per input combination. It belongs here anyway because a one-leaf costs a
+exception, because reading "sum-of-minterms" as a statement about its
+*structure* is wrong: it paints a decision tree, one leaf per input
+combination. It belongs here anyway because a one-leaf costs a
 paint-and-return walk and a zero-leaf costs a single space, so its size
 tracks the ones-count and nothing folds — every ones-count-4 table at n=3
 costs exactly 268 characters, whether it depends on one input or is parity.
@@ -281,10 +281,10 @@ It is the same shape as `123`, whose affine ceiling turned out to belong to
 its printing route rather than to the language: **when a measured ceiling
 will not build, suspect the output convention before the construction.**
 
-Mind also the trap that `_maybe_complement`'s docstring records: an all-ones
-table complements to the same empty sum an all-zeros table has, which is
-wrong for `circuit_diagram`, which special-cases constants to a single
-self-fed gate.
+Mind the trap `_maybe_complement`'s docstring records: an all-ones table
+complements to the same empty sum an all-zeros table has, which is wrong
+for `circuit_diagram`, which special-cases constants to a single self-fed
+gate.
 
 Structure and cost model can disagree here — `_head` literally paints a
 tree, one leaf per input combination — and the catalogue tracks the cost
@@ -485,10 +485,9 @@ and that is set by the interface rather than by the construction:
 
 - **`three_x` is the first *tree* generator reduced deliberately.** Its tree
   prunes only the rows that *differ from the default*, which for a
-  one-dependency table
-  is still half of them, each carrying a full-depth guard chain; folding
-  never sees the degeneracy. Reducing collapses those to one guard: 603 →
-  **185** at `n == 3` (69.3%).
+  one-dependency table is still half of them, each carrying a full-depth
+  guard chain; folding never sees the degeneracy. Reducing collapses those
+  to one guard: 603 → **185** at `n == 3` (69.3%).
 
   **The bug it produced is worth keeping.** `_three_x_ordered` receives an
   *already-permuted* table from `best_input_order`, so the essential set it
@@ -549,12 +548,12 @@ evidence without being built.**
 
 **What to check on the next candidate.** The win is available wherever cost
 tracks *arity* rather than the table's contents, which is why it crosses the
-tree/sum divide. The question is only what the ignored input's placeholder or read
-must still do — and the five shipped answers (rotate-and-drop it, erase it,
-weigh it zero, abandon it on a stack, wall it off) are roughly in increasing
-order of cheapness. Two things make it
-free rather than merely cheap: a construction where the ignored input's
-contribution is already multiplied by something the generator picks, so the
+tree/sum divide. The question is only what the ignored input's placeholder
+or read must still do — and the five shipped answers (rotate-and-drop it,
+erase it, weigh it zero, abandon it on a stack, wall it off) are roughly in
+increasing order of cheapness. Two things make it free rather than merely
+cheap: a construction where the ignored input's contribution is already
+multiplied by something the generator picks, so the
 factor can be set to zero; or **a dimension the interpreter cannot reach
 into**, which is why the 2D languages are the better hunting ground — a 1D
 tape has no dead cells, which is exactly why minifuck needed reconvergence
@@ -595,11 +594,10 @@ is not on the same line as the callee.  A grep that names the authority is
 only as good as the spellings it matches, and a one-line pattern cannot see
 a wrapped call or an inherited one.
 
-`bitdeque`'s is the one worth reading, because it is *not*
-the free reorder the roadmap still lists as open — its rotations happen
-inside the tree (`EJECT PUSH`, `POP INJECT`, two commands per position),
-while the load block stays byte-identical because the `{Xi}` setter's parity
-is derived from the input's name.
+`bitdeque`'s is *not* the free reorder the roadmap still lists as open —
+its rotations happen inside the tree (`EJECT PUSH`, `POP INJECT`, two
+commands per position), while the load block stays byte-identical because
+the `{Xi}` setter's parity is derived from the input's name.
 
 **Not applicable — sum-of-minterms**, where the minterm count does not depend
 on split order: `a_painter_ant`, `circlefuck_byte`, `circuit_diagram`, `cod`,

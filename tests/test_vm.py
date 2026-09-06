@@ -1528,8 +1528,8 @@ class TestRunUntilHaltOrCycle:
                 PainfuckMachine(_painfuck_source("j"), ScriptedIO("A\n"))
             )
         # c repeats y 49 times.  Limiting the frontier at the transition,
-        # rather than after materializing its 2**49 outcomes, is what keeps
-        # the detector a bounded attempt rather than an accidental OOM.
+        # rather than after materializing its 2**49 outcomes, keeps the
+        # detector a bounded attempt rather than an accidental OOM.
         with pytest.raises(TimeoutError, match="coin outcomes"):
             run_until_halt_or_all_branches_cycle(
                 PainfuckMachine(_painfuck_source("ccy"), ScriptedIO()), limit=4

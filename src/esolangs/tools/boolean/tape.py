@@ -115,18 +115,18 @@ def brainif(truth_table: str) -> str:
     advances exactly one cell -- no digit is around to fire the next line
     too -- and the tree then reads its inputs from that far cell back down
     toward the answer.  So a level is a read, two branch tests, and a step
-    left, and a leaf is simply *there*: the reads have already carried the
-    pointer home, and it adds one iff its entry is a ``1`` before joining a
-    two-line tail.
+    left, and a leaf is *there* already: the reads have carried the pointer
+    home, and it adds one iff its entry is a ``1`` before joining a two-line
+    tail.
 
     That is what makes the tree foldable.  A subtree whose rows all agree
     becomes a leaf rather than branching on bits that cannot change the
-    answer -- and because a leaf spends no moves getting to the answer, the
+    answer -- and since a leaf spends no moves getting to the answer, the
     saving is not handed back.  The skipped levels' *reads* still happen:
     consumption must not depend on the table, or a caller feeding several
-    programs from one stream would desync.  An earlier arrangement built
-    the answer past the inputs and had each leaf walk out to it, which cost
-    two lines per skipped level and cancelled the fold exactly.
+    programs from one stream would desync.  An earlier arrangement built the
+    answer past the inputs and had each leaf walk out to it, which cost two
+    lines per skipped level and cancelled the fold exactly.
     """
     n = _validate_truth_table(truth_table)
     entries: list[_Entry] = []
@@ -378,11 +378,10 @@ def _circlefuck_ordered(truth_table: list[int], perm: tuple[int, ...]) -> str:
 
     **The walk is what makes this generator's reorder a real question.**  A
     node here does not name its input, it tests the cell under the pointer,
-    so a level costs ``|previous cell - perm[k]|`` move characters on top
-    of its branch.  The identity order is the one the walk is free for --
-    it steps left one cell per level, which is the single ``<`` the
-    unordered build emitted -- so any other order has to fold enough to pay
-    for its moves.
+    so a level costs ``|previous cell - perm[k]|`` move characters on top of
+    its branch.  The identity order is the one the walk is free for -- it
+    steps left one cell per level, the single ``<`` the unordered build
+    emitted -- so any other order has to fold enough to pay for its moves.
     """
     n = len(perm)
     prog: list[str] = []
@@ -463,13 +462,13 @@ def brainfuck(truth_table: str) -> str:
     This is :func:`bf_tree`, a decision tree sharing the bit tests.
 
     There used to be a second construction here -- a branch-free sum of
-    minterms -- and ``bf`` returned whichever came out shorter, because the
+    minterms -- and ``bf`` returned whichever came out shorter, since the
     tree was full and so paid for every input on sparse tables where the
     minterm paid only per one-row.  Once the tree started folding constant
     subtrees it won on every table at n <= 4 but the two constant ones,
     where it costs about 2.5x the minterm (629 against 253 characters at
-    n == 4) -- a bounded factor on two tables out of 65536, which is not
-    worth a second construction and a dispatch to choose between them.
+    n == 4) -- a bounded factor on two tables out of 65536, not worth a
+    second construction and a dispatch to choose between them.
     """
     return bf_tree(truth_table)
 
@@ -496,11 +495,11 @@ def factor(truth_table: str) -> str:
     grow the underlying brainfuck program (and so the encoded integer)
     quickly.  CPython refuses to render an integer above
     ``sys.get_int_max_str_digits()`` decimal digits (a DoS guard, not a
-    Factor property), and the Factor *interpreter* parses its input the
-    same way, so a program past that limit would not just fail to print
-    here -- it would fail to run.  The check estimates the digit count from
-    the integer's bit length (``log10(2) ~= 0.30103``) to avoid paying for
-    the same oversized conversion just to reject it.
+    Factor property), and the Factor *interpreter* parses its input the same
+    way, so a program past that limit would not merely fail to print here --
+    it would fail to run.  The check estimates the digit count from the
+    integer's bit length (``log10(2) ~= 0.30103``) to avoid paying for the
+    same oversized conversion just to reject it.
     """
     number = _factor_encode(brainfuck(truth_table))
     limit = sys.get_int_max_str_digits()
@@ -701,8 +700,8 @@ def sbleq(truth_table: str) -> str:
     *drain* the reads its untaken siblings never made -- an input-capable
     language reads each of its n inputs exactly once per run whatever the
     table says -- and that drain cost two instructions and a data triple per
-    undrained level, per leaf.  The hoisted read block pays for each input
-    once for the whole program.
+    undrained level, per leaf.  The hoisted read block pays once per input
+    for the whole program.
 
     Leaves print ``-3 D 0`` (``D`` a constant 48/49 cell) and halt with
     ``0 0 HALT`` (``HALT`` holds -1, a negative jump target).  Whole
@@ -725,7 +724,7 @@ def sbleq(truth_table: str) -> str:
     drain *is* the whole program, which comes out one character shorter than
     a read block for inputs no branch ever tests.  Keeping the older build
     in the dispatch is what makes this a pure shrink -- 24.65% at n=3 with
-    nothing grown, against 24.64% if the hoisted build simply replaced it.
+    nothing grown, against 24.64% if the hoisted build replaced it outright.
     """
     _validate_truth_table(truth_table)
     return min(
@@ -916,9 +915,9 @@ def jaune(truth_table: str) -> str:
     a read is followed by ``>`` when its bit is needed later and left to be
     overwritten by the next read when it is not, so the kept bits sit in one
     contiguous block and the tree navigates a span as wide as the function's
-    real dependencies.  A leaf then prints from the cell it is already
-    standing on -- its parent's test cell, whose value it knows -- so the
-    answer costs at most one ``+``/``-`` and no navigation at all.
+    real dependencies.  A leaf then prints from the cell it is standing on
+    -- its parent's test cell, whose value it knows -- so the answer costs
+    at most one ``+``/``-`` and no navigation.
 
     **Reading up front is what makes the input count constant.**  The reads
     used to sit *at* the nodes, so a folded tree skipped them: a constant
@@ -930,8 +929,8 @@ def jaune(truth_table: str) -> str:
 
     **The tree splits on its inputs in whichever order emits the shortest
     program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`),
-    which the hoist is what enables: with every bit parked in its own cell,
-    a node can test any of them.  Navigation costs one ``>``/``<`` per cell
+    which the hoist enables: with every bit parked in its own cell, a node
+    can test any of them.  Navigation costs one ``>``/``<`` per cell
     crossed, so an order pays for the folds it wins, and the search measures
     rather than assumes.
     """

@@ -67,8 +67,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 # Tests that reach past the interpreter -- into the VM or the registry --
 # cannot run against a bundle, which inlines neither.  They are dropped from
 # the copied test file, so the score is over the tests that can run.
-# :func:`_reaches_unbundled` is what decides that, reading each test's
-# syntax rather than its text.
+# :func:`_reaches_unbundled` decides that, reading each test's syntax rather
+# than its text.
 
 # Packages the bundle does not inline, whose imports must therefore keep
 # resolving against the installed package.  This is deliberately *not* the
@@ -80,15 +80,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 _NOT_REWRITTEN = ("vm", "registry", "tools")
 
 # The two modules ``bundle_one`` inlines alongside the interpreter.  Their
-# classes are the *only* ones a score may legitimately leave out, which is
-# what ``_score`` checks its exclusions against.
+# classes are the *only* ones a score may legitimately leave out, which
+# ``_score`` checks its exclusions against.
 _INLINED = ("esolangs.exceptions", "esolangs.interpreters.io")
 
 # How far past the unmutated baseline a single test may run before the alarm
-# in ``_CONFTEST`` fails it.  Both numbers are deliberately generous: the
-# only job here is to come in under mutmut's ``(estimate + 1) * 30``
-# CPU-second RLIMIT, and the cost of being too tight (a passing test failed,
-# scored as a kill nothing earned) is far worse than being too loose.
+# in ``_CONFTEST`` fails it.  Both numbers are deliberately generous: the only
+# job here is to come in under mutmut's ``(estimate + 1) * 30`` CPU-second
+# RLIMIT, and being too tight (a passing test failed, scored as a kill nothing
+# earned) is far worse than being too loose.
 _ALARM_FACTOR = 10.0
 _MIN_ALARM = 2.0
 
