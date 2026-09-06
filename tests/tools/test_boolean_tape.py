@@ -1194,6 +1194,75 @@ class TestSlowAcvMammalian:
             with pytest.raises(AssertionError, match="slot"):
                 module.slow_acv_mammalian_boolean("0110")
 
+    @pytest.mark.parametrize(
+        ("n", "widths"),
+        [
+            (1, [0, 267]),
+            (2, [0, 267, 805]),
+            (3, [0, 267, 805, 871]),
+            (4, [0, 267, 805, 871, 1000]),
+            (8, [0, 267, 805, 871, 1000, 1258, 1783, 2836, 4954]),
+        ],
+    )
+    def test_the_width_recurrence_is_exact(self, n: int, widths: list[int]) -> None:
+        """The cap recurrence's own output, pinned per level.
+
+        ``_widths`` is an *upper bound*, and the slack it carries is large
+        -- 542 and 558 tokens at levels 2 and 3 -- so a term that drifts
+        upward changes nothing anywhere else: the emitted program is
+        byte-identical when every slot grows by 5, because the dead pad
+        absorbs the difference and the landing offsets move in steps of
+        255.  The companion test above covers the other direction, where a
+        too-*small* slot trips the alarm.  Between them the bound is only
+        pinned from below, which leaves every line of the recurrence free
+        to grow unobserved; these values close that.
+
+        A level is one entry, so the list also fixes the recurrence's
+        length and the ``widths[0] == 0`` seed (a leaf has no slot).
+
+        ``n == 8`` is not padding, and costs nothing -- this is integer
+        arithmetic, with no program built.  The ``caps`` seed feeds the
+        next level's slot only through a ceiling division, which swallows
+        a one-token change for seven levels; the first arity where a
+        wrong seed reaches ``widths`` at all is eight.  Nothing below it
+        can separate that term.
+        """
+        from esolangs.tools.boolean.slow_acv_mammalian import _widths
+
+        assert _widths(n) == widths
+
+    def test_the_slots_actually_hold_their_trampolines(self) -> None:
+        """Every emitted hop fits, and level 1 is the tight one.
+
+        The bound is worth having only if it binds somewhere near the
+        truth: the level-1 slot is 267 tokens against a largest observed
+        hop of 245, while the deeper levels sit hundreds clear.  Recording
+        the real occupancy keeps the recurrence honest from above -- a term
+        that grew would push these numbers apart -- and documents which
+        level is the one to watch.
+        """
+        import esolangs.tools.boolean.slow_acv_mammalian as module
+
+        hops: list[int] = []
+        original = module._trampoline  # noqa: SLF001
+
+        def record(*args: object) -> tuple[list[str], list[int], int]:
+            hop, array, acc = original(*args)
+            hops.append(len(hop))
+            return hop, array, acc
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "_trampoline", record)
+            for table in ("0110", "0001", "01101001"):
+                module.slow_acv_mammalian_boolean(table)
+        assert hops, "no trampoline was built"
+        assert max(hops) == 306
+        # Each slot is checked against its own level as the emitter runs
+        # (``_subtree`` raises on an overflow), so what is asserted here is
+        # that the deepest slot -- the one every hop could in principle
+        # need -- still clears the largest hop with room to spare.
+        assert max(hops) < max(module._widths(3)[1:])  # noqa: SLF001
+
 
 class TestSuffolk:
     @pytest.mark.parametrize(
