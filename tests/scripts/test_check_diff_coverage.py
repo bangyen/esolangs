@@ -201,6 +201,7 @@ class TestPartial:
 
 
 class TestTheGateRuns:
+    @pytest.mark.slow
     def test_the_script_executes_against_the_real_repository(self) -> None:
         """A smoke test that the module's own wiring still runs end to end.
 

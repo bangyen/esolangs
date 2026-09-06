@@ -2,6 +2,7 @@
 
 import importlib
 import inspect
+import subprocess
 from collections.abc import Callable
 from typing import Any
 from unittest.mock import patch
@@ -45,6 +46,34 @@ from esolangs.interpreters.tape_based.three_d_brainfuck import run as three_d_bf
 from esolangs.tools.text import other
 
 WIDTH_CONTRACT_TEXT = "Hello, World!"
+EDGE_GENERATORS = [
+    gen.pct_squared_minus_one,
+    gen.painfuck,
+    gen.laserfuck,
+    gen.suffolk,
+    gen.modulous,
+    gen.qoibl,
+    gen.sophie,
+    gen.bio,
+    gen.six_five,
+    gen.wii2d,
+    gen.clockwise,
+    gen.slow_acv_mammalian,
+]
+EDGE_INPUTS = [
+    "\x01",
+    "a\x01",
+    "za",
+    "AB",
+    "zZ",
+    " \n",
+    "\x7f",
+    "!@#",
+    "aaaa",
+    "".join(chr(k) for k in range(33, 127)),
+    "".join(chr(k) for k in range(1, 20)),
+    "z\x00",
+]
 
 
 def roundtrip_language(language: Any, program: str) -> str:
@@ -104,6 +133,18 @@ def assert_text_roundtrip(generator: Callable[[str], str], text: str) -> None:
     from esolangs.registry import BY_FUNCTION
 
     assert roundtrip_language(BY_FUNCTION[generator.__name__], program) == text
+
+
+@pytest.fixture
+def text_module_output() -> subprocess.CompletedProcess[str]:
+    """Run the text-generator module once for its subprocess contract."""
+    import sys
+
+    return subprocess.run(
+        [sys.executable, "-m", "esolangs.tools.text", "Hi"],
+        capture_output=True,
+        text=True,
+    )
 
 
 _run_123 = importlib.import_module("esolangs.interpreters.tape_based.one_two_three").run
@@ -1457,40 +1498,12 @@ class TestGeneratorBranches:
         out = capsys.readouterr().out
         assert "usage: python -m esolangs.tools.text" in out
 
-    @pytest.mark.slow  # 3.2s: every generator over the edge-case corpus
-    def test_edge_case_inputs(self) -> None:
-        """Generators must not crash on edge-case inputs."""
-        generators = [
-            gen.pct_squared_minus_one,
-            gen.painfuck,
-            gen.laserfuck,
-            gen.suffolk,
-            gen.modulous,
-            gen.qoibl,
-            gen.sophie,
-            gen.bio,
-            gen.six_five,
-            gen.wii2d,
-            gen.clockwise,
-            gen.slow_acv_mammalian,
-        ]
-        inputs = [
-            "\x01",
-            "a\x01",
-            "za",
-            "AB",
-            "zZ",
-            " \n",
-            "\x7f",
-            "!@#",
-            "aaaa",
-            "".join(chr(k) for k in range(33, 127)),
-            "".join(chr(k) for k in range(1, 20)),
-            "z\x00",
-        ]
-        for gen_fn in generators:
-            for text in inputs:
-                assert_text_roundtrip(gen_fn, text)
+    @pytest.mark.slow
+    @pytest.mark.parametrize("generator", EDGE_GENERATORS, ids=lambda fn: fn.__name__)
+    @pytest.mark.parametrize("text", EDGE_INPUTS)
+    def test_edge_case_inputs(self, generator: Callable[[str], str], text: str) -> None:
+        """Each generated edge-case program prints its original text."""
+        assert_text_roundtrip(generator, text)
 
     def test_control_character_123(self) -> None:
         """The 123 generator preserves control characters."""
@@ -1512,21 +1525,21 @@ class TestGeneratorBranches:
             roundtrip(_run_painfuck, gen.painfuck("Hello, World!")) == "Hello, World!"
         )
 
-    def test_module_entry_point(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """python -m esolangs.tools.text runs as a script."""
-        import subprocess
-        import sys
-
-        result = subprocess.run(
-            [sys.executable, "-m", "esolangs.tools.text", "Hi"],
-            capture_output=True,
-            text=True,
-        )
+    def test_module_entry_point(
+        self, text_module_output: subprocess.CompletedProcess[str]
+    ) -> None:
+        """The subprocess entry point succeeds and lists its generators."""
+        result = text_module_output
         assert result.returncode == 0
         assert "--- BFStack ---" in result.stdout
 
+    def test_module_entry_point_is_traceable_in_process(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The in-process module entry point remains visible to coverage."""
         # run in-process via runpy so the entry point's own lines are traced
         import runpy
+        import sys
 
         with patch.object(sys, "argv", ["esolangs.tools.text", "Hi"]):
             runpy.run_module("esolangs.tools.text", run_name="__main__")
