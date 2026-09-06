@@ -1370,6 +1370,182 @@ class TestCircuitDiagram:
             circuit_diagram("012x")
 
 
+class TestCircuitDiagramLayoutGuards:
+    """The layout's collision checks, reached by constructing the state.
+
+    ``_Layout`` asserts its own geometry as it is built: two signals may
+    not run the same way through a cell, a glyph may not land on a wire or
+    another glyph, and two different signals' junctions may not come within
+    one cell of each other (a ``.`` connects to all eight neighbours, so
+    adjacent junctions merge into one wiring).
+
+    None of these fires on a table the generator actually builds -- swept
+    over every table through three inputs, the closest two different
+    signals' junctions ever come is Chebyshev distance 2, one clear of the
+    guard.  That is the design working, and it is also why the guards were
+    the single largest cluster of surviving mutants in the module: code
+    that never runs cannot be wrong in a way a truth table notices.  So the
+    states are built directly rather than searched for.
+
+    Each check is asserted in both directions.  The negative cases are what
+    stop a guard from being "fixed" by making it fire always: a wire may
+    legally re-claim a cell for the *same* signal, may cross itself in the
+    other direction, and same-signal junctions may touch.
+    """
+
+    @staticmethod
+    def _layout() -> object:
+        from esolangs.tools.boolean.circuit_diagram import _Layout
+
+        return _Layout()
+
+    def test_two_signals_may_not_run_the_same_way_through_a_cell(self) -> None:
+        layout = self._layout()
+        layout._occupy(layout.horizontal, 3, 4, 7, "horizontally")  # noqa: SLF001
+        with pytest.raises(AssertionError) as caught:
+            layout._occupy(layout.horizontal, 3, 4, 9, "horizontally")  # noqa: SLF001
+        assert str(caught.value) == "two signals run horizontally through (3, 4)"
+
+    def test_one_signal_may_reclaim_its_own_cell(self) -> None:
+        """A repeated claim by the same signal is the ordinary case."""
+        layout = self._layout()
+        layout._occupy(layout.horizontal, 3, 4, 7, "horizontally")  # noqa: SLF001
+        layout._occupy(layout.horizontal, 3, 4, 7, "horizontally")  # noqa: SLF001
+        assert layout.horizontal[(3, 4)] == 7
+
+    def test_two_signals_may_cross_at_right_angles(self) -> None:
+        """The clash is per direction: crossing wires share the cell."""
+        layout = self._layout()
+        layout._occupy(layout.horizontal, 5, 5, 1, "horizontally")  # noqa: SLF001
+        layout._occupy(layout.vertical, 5, 5, 2, "vertically")  # noqa: SLF001
+        assert layout.horizontal[(5, 5)] == 1
+        assert layout.vertical[(5, 5)] == 2
+
+    def test_a_wire_may_not_cross_a_glyph(self) -> None:
+        layout = self._layout()
+        layout.glyphs[(2, 2)] = "&"
+        with pytest.raises(AssertionError) as caught:
+            layout._occupy(layout.horizontal, 2, 2, 1, "horizontally")  # noqa: SLF001
+        assert str(caught.value) == "wire crosses glyph at (2, 2)"
+
+    def test_a_glyph_may_not_land_on_a_glyph(self) -> None:
+        layout = self._layout()
+        layout.glyphs[(1, 1)] = "&"
+        with pytest.raises(AssertionError) as caught:
+            layout._check_free(1, 1)  # noqa: SLF001
+        assert str(caught.value) == "two glyphs at (1, 1)"
+
+    @pytest.mark.parametrize("axis", ["horizontal", "vertical"])
+    def test_a_glyph_may_not_land_on_a_wire(self, axis: str) -> None:
+        """Both wire tables are consulted, not just the first."""
+        layout = self._layout()
+        layout._occupy(getattr(layout, axis), 1, 1, 1, axis)  # noqa: SLF001
+        with pytest.raises(AssertionError) as caught:
+            layout._check_free(1, 1)  # noqa: SLF001
+        assert str(caught.value) == "glyph at (1, 1) lands on a wire"
+
+    def test_a_free_cell_takes_a_glyph(self) -> None:
+        self._layout()._check_free(1, 1)  # noqa: SLF001
+
+    @pytest.mark.parametrize(
+        ("dx", "dy"),
+        [(dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if (dx, dy) != (0, 0)],
+    )
+    def test_adjacent_junctions_of_different_signals_are_rejected(
+        self, dx: int, dy: int
+    ) -> None:
+        """All eight neighbours, diagonals included, merge and so are refused.
+
+        The message is compared whole rather than by substring: it names
+        the offending pair, and the second coordinate is built from the
+        same ``dx``/``dy`` the scan walks, so a sign slipped into it points
+        the reader at a cell that holds nothing.  Which of the two
+        junctions is reported first depends on dictionary order, so both
+        readings are accepted -- the guard scans outwards from every
+        junction, which is also why negating a loop offset is invisible.
+        """
+        layout = self._layout()
+        layout.junctions[(5, 5)] = 1
+        layout.junctions[(5 + dx, 5 + dy)] = 2
+        with pytest.raises(AssertionError) as caught:
+            layout._check_junction_spacing()  # noqa: SLF001
+        assert str(caught.value) in (
+            f"junctions of different signals touch at (5, 5) and ({5 + dx}, {5 + dy})",
+            f"junctions of different signals touch at ({5 + dx}, {5 + dy}) and (5, 5)",
+        )
+
+    def test_junctions_of_the_same_signal_may_touch(self) -> None:
+        """One signal's own junctions are a single wiring already."""
+        layout = self._layout()
+        layout.junctions[(5, 5)] = 1
+        layout.junctions[(6, 6)] = 1
+        layout._check_junction_spacing()  # noqa: SLF001
+
+    def test_junctions_one_clear_of_each_other_are_accepted(self) -> None:
+        """Distance 2 is what every real layout keeps, and it is legal."""
+        layout = self._layout()
+        layout.junctions[(5, 5)] = 1
+        layout.junctions[(7, 5)] = 2
+        layout._check_junction_spacing()  # noqa: SLF001
+
+    @pytest.mark.parametrize(
+        ("table", "rows", "columns"),
+        [
+            ("01", 1, 4),
+            ("0001", 7, 11),
+            ("0110", 23, 35),
+            ("00010111", 61, 91),
+        ],
+    )
+    def test_the_drawing_has_exact_dimensions(
+        self, table: str, rows: int, columns: int
+    ) -> None:
+        """The band and column steps place every part of the drawing.
+
+        A bus that starts a row lower, a gate band that advances by one
+        step too many, or a signal counter seeded at 1 all draw a *valid*
+        circuit -- the wires still connect the same gates and the table
+        still comes out right -- at different coordinates.  Nothing else
+        here can see that: the truth-table sweeps read the printed bit,
+        and the collision guards only fire when the spacing collapses
+        entirely rather than merely drifts.  The extents are the cheapest
+        observable that moves when any of the layout constants does.
+        """
+        from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+
+        drawing = circuit_diagram(table).split("\n")
+        assert len(drawing) == rows
+        assert max(len(row) for row in drawing) == columns
+
+    def test_real_layouts_never_come_within_one_cell(self) -> None:
+        """The generator's spacing keeps every table clear of the guard.
+
+        The guard is a net, not a mechanism -- this is the property that
+        makes it never fire, measured rather than assumed, so a spacing
+        regression names itself here instead of tripping an assertion deep
+        in a render.
+        """
+        from esolangs.tools.boolean.circuit_diagram import _Layout, circuit_diagram
+
+        closest = []
+        original = _Layout._check_junction_spacing  # noqa: SLF001
+
+        def record(layout: object) -> None:
+            items = list(layout.junctions.items())
+            for index, ((x1, y1), first) in enumerate(items):
+                for (x2, y2), second in items[index + 1 :]:
+                    if first != second:
+                        closest.append(max(abs(x1 - x2), abs(y1 - y2)))
+            original(layout)
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(_Layout, "_check_junction_spacing", record)
+            for table_int in range(16):
+                circuit_diagram(format(table_int, "04b"))
+        assert closest, "no layout carried two signals' junctions"
+        assert min(closest) >= 2
+
+
 class TestSuperSNUSP:
     """The Super SNUSP generator (an ANF evaluator over a value stack).
 
