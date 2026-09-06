@@ -1960,6 +1960,123 @@ class TestLaserFuck:
         ]
         assert widths == sorted(widths, reverse=True)
 
+    @pytest.mark.parametrize(
+        ("table", "rows", "columns"),
+        [
+            ("01", 3, 44),
+            ("0001", 3, 56),
+            ("0110", 4, 56),
+            ("11111110", 4, 68),
+            ("01101001", 8, 68),
+        ],
+    )
+    def test_the_grid_has_exact_dimensions(
+        self, table: str, rows: int, columns: int
+    ) -> None:
+        """The drawing's extents, pinned.
+
+        Almost everything the layout does is arithmetic on grid offsets --
+        where the reader's blocks sit, how far the beam falls before it is
+        caught, which column a node starts in.  An offset that drifts by
+        one still draws a *working* program: the beam is steered by the
+        characters it meets, not by absolute position, so the table still
+        comes out right and only the shape moves.  The extents are the
+        cheapest thing that sees it.
+        """
+        grid = boolean.laserfuck(table).split("\n")
+        assert len(grid) == rows
+        assert max(len(line) for line in grid) == columns
+
+    @pytest.mark.parametrize(
+        ("width", "rows", "columns"),
+        [
+            (18, 47, 18),
+            (19, 36, 18),
+            (27, 28, 26),
+            (28, 25, 27),
+            (35, 17, 34),
+            (44, 6, 43),
+        ],
+    )
+    def test_the_width_steps_land_where_they_should(
+        self, width: int, rows: int, columns: int
+    ) -> None:
+        """XOR's layout at each width where the fit decision changes.
+
+        The reader is stood on end one block at a time, and whether the
+        next block still fits is a single comparison against the requested
+        width.  These are the widths where that comparison flips: at 18 the
+        grid is 47 rows and at 19 it is 36, and again between 27 and 28.
+        An off-by-one in the fit test moves every one of these boundaries
+        by one column, which no truth-table check and no monotonicity
+        check can see -- the program still computes XOR at every width, and
+        the sizes still decrease.
+        """
+        grid = boolean.laserfuck("0110", width).split("\n")
+        assert len(grid) == rows
+        assert max(len(line) for line in grid) == columns
+
+    @pytest.mark.parametrize(
+        ("table", "flip", "narrow", "wide"),
+        [
+            ("11111110", 69, (6, 49), (4, 68)),
+            ("01101001", 71, (10, 51), (8, 68)),
+        ],
+    )
+    def test_the_straight_layout_starts_at_its_exact_width(
+        self,
+        table: str,
+        flip: int,
+        narrow: tuple[int, int],
+        wide: tuple[int, int],
+    ) -> None:
+        """One comparison chooses between the two whole layouts.
+
+        Given room for the reader and the tree end to end, the tree runs
+        straight on along the reader's own rows and costs no rows of its
+        own; one column short of that, it is mirrored and hung underneath
+        instead.  Both are correct programs of very different shape, so
+        only the geometry sees which was taken -- and the switch is a
+        single ``straight + 1 <= width``, whose ``+ 1`` and ``<=`` are
+        exactly the kind of off-by-one that keeps computing the table.
+
+        These are the widths where each table flips: one below is the
+        mirrored shape, and at the flip the grid reaches the same extents
+        it has with no width asked for at all.
+        """
+        below = boolean.laserfuck(table, flip - 1).split("\n")
+        assert (len(below), max(len(line) for line in below)) == narrow
+
+        at = boolean.laserfuck(table, flip).split("\n")
+        assert (len(at), max(len(line) for line in at)) == wide
+
+        # At the flip the constraint stops binding, so the grid matches the
+        # unconstrained build.
+        free = boolean.laserfuck(table).split("\n")
+        assert (len(free), max(len(line) for line in free)) == wide
+
+    def test_the_grid_uses_only_laserfuck_characters(self) -> None:
+        """Nothing but the language's own glyphs and layout space.
+
+        A stray character in a beam's path is a command; one outside it is
+        invisible.  Both are worth refusing outright, and the alphabet is
+        small enough to name.
+        """
+        allowed = set(" #)+,-/<>\\^_ovx{|}\n")
+        for table in ("01", "0110", "0001", "01101001", "11111110"):
+            assert set(boolean.laserfuck(table)) <= allowed, table
+
+    def test_no_row_carries_trailing_space(self) -> None:
+        """Rows are trimmed, so the grid's width is its content's width.
+
+        The width knob is measured against the longest row, so a row
+        padded past its last glyph would quietly inflate every width
+        decision that follows.
+        """
+        for table in ("01", "0110", "01101001"):
+            for row in boolean.laserfuck(table).split("\n"):
+                assert row == row.rstrip(), (table, repr(row))
+
     def test_a_narrow_width_beats_the_old_floor(self) -> None:
         """Standing blocks on end reaches widths the flat reader cannot."""
         for table, floor in (("0110", 18), ("01101001", 24)):
