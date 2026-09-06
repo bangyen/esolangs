@@ -202,6 +202,29 @@ class TestBIOEdgeCases:
         with pytest.raises(ValueError, match="not a command"):
             run("0ox;0ix1ox;}", io=IO())
 
+    @pytest.mark.parametrize(
+        "code",
+        [
+            "0ix;",  # a guard terminated by `;` instead of its `{`
+            "0Iy;",  # the same, uppercase
+            "0ox;0iz;",  # a guard alone, after a valid command
+            "0ox{};",  # `{` on an increment, which opens nothing
+            "1ix{};",  # `{` on an output command
+        ],
+    )
+    def test_terminator_must_match_the_opcode(self, code: str) -> None:
+        """Only ``0i`` takes ``{``; every other opcode takes ``;``.
+
+        The tokenizer used to accept either terminator on any opcode, and
+        both mismatched shapes then ran off the end of the command list
+        rather than being rejected: a ``0i`` without its ``{`` searched for
+        a ``};`` that brace matching never required, and a ``{`` on a
+        non-guard left its ``};`` popping a stack nothing had pushed.  The
+        adjacent-text cases above never covered either shape on its own.
+        """
+        with pytest.raises(ValueError, match="not a command"):
+            run(code, io=IO())
+
     def test_stray_closing_brace_is_rejected(self) -> None:
         """A ``}`` with no loop to close is malformed."""
         with pytest.raises(ValueError, match="closes no loop"):

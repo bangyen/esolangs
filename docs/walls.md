@@ -127,7 +127,7 @@ share the prefix too — dropping the test would misclassify them.  The sibling
 idea (pre-negating stored input bits to halve `not_bit`) remains open but is
 marginal.
 
-## 123 (parameterized; wider arities gated on the verdict search, not expressiveness)
+## 123 (parameterized; every stage of the pipeline is planned, at every arity)
 
 All four one-input and all sixteen two-input tables build
 (`esolangs.tools.boolean.one_two_three`).
@@ -148,28 +148,76 @@ popcount alone, XNOR at `k == 2` and XOR at `k == 4`.  Asymmetric tables use
 count input-dependent — the one non-affine operator in the language.
 
 Every looping row is a proven state revisit (`run_until_halt_or_cycle`
-catches it), never unbounded growth, and every plan emits its slots in name
-order with each `{Xi}` once.
+catches it), never unbounded growth, and every template emits its slots in
+name order with each `{Xi}` once.
 
-### Wider arities: three stages proven total, one conjecture left
+**The stored plans are retired.**  Arities up to three used to ship from
+frozen plan tables built on the counter mechanism above; 102 of the 256
+three-input entries were search-found witnesses with no canonical form,
+because no rule reaches the short shapes — the `3` mechanism's pass counts
+depend on the *order* of the fills, not their sum.  Every arity is now
+constructed.  The small arities the suite sweeps exhaustively build from
+a **bare-fill seed**: with no merge choreography, the fills themselves
+are the embedding (a `1` fill flips the cell it stands on), leaving the
+rows popcount-spread at one shared parity with row-dependent marks, for
+a few characters instead of the synchronized pipeline's walk-merge-scrub
+per input.  A short frozen schedule of walk/descend segments — each
+closed by `33`, each with *even* displacement so escape cascades cannot
+break the shared parity — separates the rows to distinct odd positions,
+and a junk-aware form of the planned kill (paint the rows whose tested
+cell disagrees with the table, rather than exactly the 0-rows) settles
+the verdict.  A few schedules are frozen per arity and a table takes the
+shortest; the schedules were discovered offline but are table-independent
+constants replayed deterministically — nothing searches at build time.
+The trade is length for derivability: mean template lengths are 26.0,
+60.5 and 163.9 characters at one, two and three inputs against the
+retired plans' 5.75, 11.44 and 19.97 (4.5x, 5.3x, 8.2x), with every byte
+re-derivable from the rules plus the frozen constants.
+
+### Wider arities: every stage planned, none searched
 
 `one_two_three_construct` builds tables past three inputs via a merge phase
 (one synchronized walk-descend-pop per mark, keeping exactly one mark per
-set bit), a separation phase (a planned decode tree, deterministic and
-total at every arity via a `2**(n+1)` mark base), and a verdict phase that
-kills 1-rows bottom-up using two mark geometries (uniform, then staggered
-`+1/+3`) tried in order — together deterministic and strictly stronger than
-either alone.  The endgame closes with a residue-fusion argument, replaying
-in closed form rather than one command at a time (95s to 0.28s at five
-inputs).
+set bit), a separation phase (a planned decode tree, not a search), and a
+planned verdict.  The mark geometry is chosen per arity: separation never
+consults the table, so one cheap reference run decides whether the *tight*
+layout — marks `(i+1)*2**n + 1`, fixed even escapes, 2.1x smaller
+templates at four inputs and 2.8x at five — leaves every row at a distinct
+odd position with a clean zone above it, and any failure falls back to the
+doubling `2**(n+1)` mark base whose halving escapes are total at every
+arity by argument.  Every probed arity (through seven) takes the tight
+layout; the fallback is what keeps `construct` total at the rest, and the
+reduction — one table-independent reference run certifies every table at
+an arity — is written up in [`docs/proofs.md`](proofs.md).  The
+verdict:
+separation leaves every row at a distinct **odd** position with nothing
+marked above its own cell, and on that state the kill
+`"1"*a + "2" + "2"*(a-1) + "12"` (`a` odd) is a closed form — rows at or
+above `a` walk back to exactly where they started and test their own
+unmarked cell, while every row below dips through the ring and provably
+loops unless its tested cell was *pre-marked*, which the segment then
+clears, letting the row skip out.  That escape is the shield: one
+paint pair (`"2"*k + "1"*k` twice, stripes cancelling everywhere but
+`pos + k`) per 0-row, then a single kill two above the highest 1-row
+loops every 1-row at once.  All-odd positions make the shield cells
+collision-free (every clash would need two rows one cell apart) and rule
+out the fatal `-3` read (odd minus odd is even).  The endgame closes with
+a residue-fusion argument, replaying in closed form rather than one
+command at a time (95s to 0.28s at five inputs).
 
-What is *not* proven is the verdict search itself: it remains a bounded DFS
-over kills, boosts and ring rounds, and its totality is a conjecture —
-supported by an exhaustive sweep (all 276 tables through three inputs) and
-random sampling at four and five, not by an argument.  A fixed budget can
-never be total across arities anyway: a table takes `2**n` bits to state, so
-template length and build work are exponential in `n` no matter the
-pipeline.
+The old verdict *search* — a bounded DFS over kills, boosts and ring
+rounds, whose totality was a conjecture and whose anchored kills pinned
+mark residues, forcing two mark geometries and a budget probe between
+them — is gone, and with it the geometry parity law.  The resumable
+`scripts/check_123_four_input.py` sweep constructs all 65536 four-input
+tables and checks all 1048576 instantiated rows: each row must either halt
+or revisit an exact state, with no fuel verdict; the completed sweep had
+zero failures, and was re-run in full under the tight geometry when it
+became the four-input default.  Five and six inputs are randomly sampled, and each emission
+is still validated per stage on the exact model and replayed before it is
+returned.  A fixed budget still bounds the build: a table takes `2**n` bits
+to state, so template length and build work are exponential in `n` no
+matter the pipeline.
 
 ### Language facts worth keeping
 
@@ -352,6 +400,43 @@ long (O(`n·2**n`) blocks, ~1.4s/execution at `n == 4`).
   in search cost (113034 states at nine, a 2M cap at ten).  So interleaving
   builds today at eight inputs, short of the packed ladder's eleven; the gap
   to thirteen is planner engineering, not a discovered obstruction.
+
+  **The recorded ten-input route now produces a complete template.**  On the
+  seed-31 table, laying `X6` (zero-based) gives 128 gap-2 points carrying 96
+  distinct eight-bit cofactors.  The original count-first, `kcap=3` walk
+  reaches its historical 102-point stop after 6553 steps and 65490 unique
+  states, then reaches all 96 targets after 16385 steps and 167201 states.
+  Replaying those exact moves on the raw rows leaves span 5794; re-tightening
+  takes 488 ops to span 169.  The remaining stages then compact 192 -> 16,
+  32 -> 4, and 8 -> 2 points in 2380, 118, and 20 steps, re-tightening to
+  spans 15, 3, and 1.  No idealised repacking is used.
+
+  `scripts/verify_pct_interleaved_ten.py` reproduces every stage fingerprint,
+  mirrors every relocation through the emitter, and executes the finished
+  program.  The template is 1827116 characters; all 1024 rendered programs
+  are exactly 1826806 characters and print their table row correctly.  Its
+  nine-input positive control still reaches 16 cofactors after 1419 steps,
+  continues to 4 and 2, and executes all 512 rows; that template is 349409
+  characters and renders to 349195.  This is a verified construction for one
+  recorded table, not a claim that the interleaved planner is total at ten
+  inputs; its 19470-op route is retained as an experiment rather than put on
+  the normal generator path.
+
+  Instrumentation also rules out an easy duplicate-state cure.  Translation
+  and row-id erasure are already in the search signature.  Renaming cofactor
+  classes by first occurrence and quotienting by reflection are exact
+  bisimulations (reflection swaps top/bottom wipes), but together remove no
+  additional state on this walk: the same 167201 states and 54 revisits are
+  seen either way.  Coarser proposals are unsafe.  Class multiplicities
+  without their positional equality pattern identify an end duplicate with
+  an interior one even though their bounded-depth merge distances differ;
+  clipping gaps loses the exact landing-window endpoints; and smaller span
+  does not dominate larger span, because it enables doubling while the larger
+  gap may be the one that enables a landing.  Any future pruning therefore
+  has to preserve the ordered equality pattern, every exact gap and span, and
+  the remaining depth (the same geometry reached shallower safely dominates
+  only a deeper copy).  None of these observations changes the all-row
+  twelve-input ladder-family wall above.
 
   Note what the twelve-input bound is *not*: the fold's, not the generator's
   — the cascade builds every conjunction/disjunction of literals at any

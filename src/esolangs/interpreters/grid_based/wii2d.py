@@ -119,7 +119,8 @@ def _advance(
 
     * ``@`` jumps to the row *above* the closest other ``@`` and returns
       without moving or touching the accumulator, so the next step reads
-      that cell rather than stepping over it.
+      that cell rather than stepping over it.  A lone ``@`` has no other
+      to find, so it falls through and is stepped over like scenery.
     * ``.`` stops the run, likewise without moving.
     * ``|`` flips between the two axes by nudging the heading one place,
       which works because the headings are ordered N, S, W, E.

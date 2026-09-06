@@ -55,7 +55,9 @@ Usage:
 """
 
 import argparse
+import collections
 import contextlib
+import functools
 import io
 import pathlib
 import random
@@ -63,6 +65,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 from collections.abc import Callable, Iterator, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -79,91 +82,6 @@ def _run_parallel[T, R](fn: Callable[[T], R], tasks: Sequence[T]) -> list[R]:
     """Run ``fn`` over ``tasks`` concurrently, returning results in order."""
     with ThreadPoolExecutor(max_workers=_WORKERS) as executor:
         return list(executor.map(fn, tasks))
-
-
-def _fuzz_boolean[R](
-    name: str,
-    builder: Callable[[str], str],
-    native: Callable[[str, bytes], R | None],
-    python: Callable[[str, bytes], R | None],
-    rng: random.Random,
-    count: int,
-) -> tuple[int, int]:
-    """Fuzz ``count`` random truth tables through both implementations.
-
-    ``native(program, stdin)`` runs the reference (None on a timeout) and
-    ``python(program, stdin)`` the in-package interpreter.  Returns
-    ``(failures, checked)``.
-    """
-    tasks = []
-    for _ in range(count):
-        n = rng.randint(1, 4)
-        table = "".join(rng.choice("01") for _ in range(2**n))
-        program = builder(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            stdin = ("\n".join(map(str, bits)) + "\n").encode()
-            tasks.append((program, stdin, table, bits))
-    results = _run_parallel(lambda t: native(t[0], t[1]), tasks)
-    failures = checked = 0
-    for (program, stdin, table, bits), result in zip(tasks, results, strict=True):
-        if result is None:
-            print(f"{name} boolean {table!r}: reference did not terminate")
-            failures += 1
-            checked += 1
-            continue
-        py = python(program, stdin)
-        checked += 1
-        if result != py:
-            failures += 1
-            print(
-                f"{name} boolean {table!r} combo {bits}: "
-                f"reference {result!r} vs Python {py!r}"
-            )
-    return failures, checked
-
-
-def _fuzz_text[R](
-    name: str,
-    generator: Callable[[str], str],
-    native: Callable[[str, bytes], R | None],
-    python: Callable[[str, bytes], R | None],
-    rng: random.Random,
-    count: int,
-) -> tuple[int, int]:
-    """Fuzz ``count`` random byte texts through both implementations.
-
-    Either side may report ``None`` for "did not terminate" (the native
-    side via a subprocess timeout, the Python side via state-cycle
-    detection where the interpreter is step-capable, on languages whose
-    Python runner has one).  A text generator's programs are expected to
-    always halt, so both sides agreeing they loop is not itself a failure
-    (mirrors ``_run_nocomment_python_limited``'s fuzzer) — only one side
-    halting while the other loops is a real divergence.
-    """
-    tasks = []
-    for _ in range(count):
-        text = "".join(chr(rng.randrange(256)) for _ in range(rng.randint(1, 10)))
-        tasks.append((generator(text), text))
-    results = _run_parallel(lambda t: native(t[0], b""), tasks)
-    failures = checked = 0
-    for (program, text), result in zip(tasks, results, strict=True):
-        checked += 1
-        py = python(program, b"")
-        if result is None and py is None:
-            continue  # agreement: both sides prove the program loops
-        if result is None or py is None:
-            failures += 1
-            print(
-                f"{name} {text!r}: termination mismatch "
-                f"(reference {'looped' if result is None else 'halted'}, "
-                f"Python {'looped' if py is None else 'halted'})"
-            )
-            continue
-        if result != py:
-            failures += 1
-            print(f"{name} {text!r}: reference {result!r} vs Python {py!r}")
-    return failures, checked
 
 
 def _verify_asm(
@@ -204,6 +122,114 @@ def _verify_asm(
     return failures == 0
 
 
+def _diverges(riscv_name: str, run_limited: Callable[..., Any], program: str) -> bool:
+    """Whether the two implementations disagree on ``program``.
+
+    The shrinker's oracle.  Uses the same rules as the fuzz loop -- both
+    sides failing to terminate is agreement, and a Python-only timeout is
+    re-checked with a longer budget -- so a shrink can never report a
+    "smaller" program that the fuzz itself would have passed.  An
+    interpreter that raises where the reference merely errors counts as a
+    divergence rather than crashing the shrink.
+    """
+    try:
+        py = run_limited(program, timeout=3)
+    except Exception:
+        return True  # an uncaught interpreter exception is itself a divergence
+    asm = _asm_refs(riscv_name, program)
+    if py is None and asm is None:
+        return False
+    if py is None and asm is not None:
+        try:
+            py = run_limited(program, timeout=30)
+        except Exception:
+            return True
+    return bool(py != asm)
+
+
+def _shrink(riscv_name: str, run_limited: Callable[..., Any], program: str) -> str:
+    """Reduce ``program`` while it still diverges, and return the smallest.
+
+    A raw fuzz draw is mostly noise -- the BIO terminator bug was found as a
+    45-character program whose actual trigger was four characters -- and a
+    weekly job that prints the draw leaves that reduction as manual work.
+
+    Deleting one character at a time is not enough on its own: it stalls as
+    soon as every single deletion breaks the program's structure, which is
+    exactly what happens once a language's commands are more than one
+    character wide.  So chunks are tried largest-first (the standard
+    delta-debugging ladder) before falling back to single characters, and a
+    pass repeats until nothing more comes off.  The result is a local
+    minimum, not a global one, which is all a failure report needs.
+
+    The budget is bounded: each candidate costs a reference run, so this is
+    capped rather than run to exhaustion on a pathological input.
+    """
+    best = program
+    budget = 400
+
+    def accept(candidate: str) -> bool:
+        nonlocal best, budget
+        if not candidate or candidate == best or budget <= 0:
+            return False
+        budget -= 1
+        if _diverges(riscv_name, run_limited, candidate):
+            best = candidate
+            return True
+        return False
+
+    changed = True
+    while changed and budget > 0:
+        changed = False
+        # Chunks largest-first, then single characters as the finest pass.
+        size = max(1, len(best) // 2)
+        while size >= 1 and budget > 0:
+            start = 0
+            while start < len(best) and budget > 0:
+                if accept(best[:start] + best[start + size :]):
+                    changed = True
+                    continue  # same offset: the tail shifted into it
+                start += size
+            size //= 2
+    return best
+
+
+# How many failures per language are worth reducing.  Shrinking is capped
+# per failure, but a systematic divergence fails on hundreds of draws and
+# they are all the same bug -- three reductions identify it, and the weekly
+# job has a 60-minute timeout to respect.
+_SHRINK_BUDGET = 3
+
+
+def _report_shrunk(
+    name: str,
+    riscv_name: str,
+    run_limited: Callable[..., Any],
+    program: str,
+    remaining: list[int],
+) -> None:
+    """Print a reduced version of a diverging ``program``, if one is smaller.
+
+    Printed as a second line under the raw draw rather than replacing it:
+    the draw is what reproduces from the seed, and the reduction is what is
+    readable.  Silent when the shrink found nothing, so an already-minimal
+    failure does not print itself twice.
+
+    ``remaining`` is a one-element list holding this language's shrink
+    allowance, decremented in place; once it runs out the reductions stop
+    and say so, so a systematic bug cannot spend the job's whole timeout
+    reducing the same divergence hundreds of times.
+    """
+    if remaining[0] <= 0:
+        return
+    remaining[0] -= 1
+    small = _shrink(riscv_name, run_limited, program)
+    if small != program:
+        print(f"{name} fuzz   shrunk to {small!r} ({len(small)} of {len(program)})")
+    if remaining[0] == 0:
+        print(f"{name} fuzz   (further failures reported unshrunk)")
+
+
 def _fuzz_asm(
     name: str,
     riscv_name: str,
@@ -222,20 +248,49 @@ def _fuzz_asm(
     loops is a divergence.  A Python-only timeout is re-checked with a longer
     budget first, since the 3s budget is a heuristic and the assembly is far
     faster.
+
+    The two sides are run in separate passes rather than interleaved.  Every
+    program is drawn up front, which keeps the RNG draw order identical to a
+    serial run, and the references -- each a unicorn subprocess, so nearly
+    all of the wall time -- go through :func:`_run_parallel`.  The Python
+    side stays serial on purpose: ``_alarm_budget`` arms ``SIGALRM``, which
+    only the main thread can receive, so running the interpreters in the
+    pool would silently lose the hang detector.
     """
     if not _asm_refs_ready(riscv_name):
         return True
 
+    programs = [gen_program(rng) for _ in range(count)]
+    asm_results = _run_parallel(lambda p: _asm_refs(riscv_name, p), programs)
+
     failures = checked = loops = 0
-    for _ in range(count):
-        program = gen_program(rng)
-        py = run_limited(program, timeout=3)
-        asm = _asm_refs(riscv_name, program)
+    shrinks = [_SHRINK_BUDGET]
+    codes: collections.Counter[int] = collections.Counter()
+    for program, asm in zip(programs, asm_results, strict=True):
+        # An interpreter that raises something other than its own error
+        # categories is a divergence in its own right -- the reference
+        # rejects the program or runs it, but does not crash.  Catching it
+        # here matters most on the weekly job: an uncaught exception would
+        # otherwise abort the whole run and lose every language after this
+        # one, which is how the BIO terminator bug first surfaced.
+        try:
+            py = run_limited(program, timeout=3)
+        except Exception as exc:
+            failures += 1
+            print(f"{name} fuzz {program!r}: python raised {exc!r}, asm={asm!r}")
+            _report_shrunk(name, riscv_name, run_limited, program, shrinks)
+            continue
         if py is None and asm is None:
             loops += 1
             continue
         if py is None and asm is not None:
-            py = run_limited(program, timeout=30)
+            try:
+                py = run_limited(program, timeout=30)
+            except Exception as exc:
+                failures += 1
+                print(f"{name} fuzz {program!r}: python raised {exc!r}, asm={asm!r}")
+                _report_shrunk(name, riscv_name, run_limited, program, shrinks)
+                continue
         if py is None or asm is None:
             failures += 1
             print(
@@ -243,14 +298,23 @@ def _fuzz_asm(
                 f"(python {'loops' if py is None else 'halts'}, "
                 f"asm {'loops' if asm is None else 'halts'})"
             )
+            _report_shrunk(name, riscv_name, run_limited, program, shrinks)
             continue
         checked += 1
+        codes[asm[1]] += 1
         if py != asm:
             failures += 1
             print(f"{name} fuzz {program!r}: asm={asm!r} py={py!r}")
+            _report_shrunk(name, riscv_name, run_limited, program, shrinks)
 
+    # The exit-code split is printed because "N programs match" hides how the
+    # budget was actually spent: a fuzz whose draws all die at the parser
+    # agrees on every one of them and still tests no execution.  0 = ran, 2 =
+    # malformed, 3 = invalid operation.
+    spread = ", ".join(f"exit {code}: {n}" for code, n in sorted(codes.items()))
     print(
         f"{name} fuzz: {checked} programs match, {loops} consistent loops"
+        f"{f' ({spread})' if spread else ''}"
         if not failures
         else f"{name} fuzz: {failures} failures of {checked} (plus {loops} loops)"
     )
@@ -270,21 +334,121 @@ def _random_program(alphabet: str, max_len: int) -> Callable[[random.Random], st
     return gen
 
 
-# Error messages the Basicfuck reference prints to stdout before exiting;
-# stripped so only the program's own output is compared.
-_CPP_ERRORS = (
-    "Identifier is undefined.",
-    "Invalid token.",
-    "Invalid syntax.",
-    "Invalid identifier.",
-    "Missing/Invalid directives.",
-    "Missing/Invalid identifiers.",
-    "Missing overflow directive.",
-    "Invalid overflow directive.",
-    "Insufficient memory.",
-    "Underflow error.",
-    "Overflow error.",
-)
+# How often a structured generator draws a well-formed program rather than a
+# pure-random one.  The parser paths are worth fuzzing too -- they are where
+# the two implementations classify errors -- so the split keeps half the
+# draws random rather than replacing them.
+_STRUCTURED_SHARE = 0.5
+
+
+def _gen_bfpda_program(rng: random.Random) -> str:
+    """Draw a BF-PDA program, half pure-random and half bracket-balanced.
+
+    A pure-random draw from ``@.<>[]`` is almost never balanced -- 89% of
+    them were rejected as malformed, and only 6% produced any output -- so
+    the fuzz spent its budget on the bracket matcher and hardly reached the
+    stack machine at all.  The balanced half never emits a ``]`` that would
+    close nothing and closes whatever is still open at the end, which lifts
+    the executing share to roughly half.
+    """
+    if rng.random() >= _STRUCTURED_SHARE:
+        return "".join(rng.choice("@.<>[]") for _ in range(rng.randint(0, 30)))
+
+    out: list[str] = []
+    depth = 0
+    for _ in range(rng.randint(1, 24)):
+        char = rng.choice("@.<>[]")
+        if char == "]" and not depth:
+            char = rng.choice("@.<>")
+        depth += (char == "[") - (char == "]")
+        out.append(char)
+    return "".join(out) + "]" * depth
+
+
+def _gen_bio_program(rng: random.Random) -> str:
+    """Draw a BIO program, half pure-random and half well-formed commands.
+
+    BIO's commands are four-character triples ended by ``;`` (or ``{`` for a
+    loop guard), so a pure-random draw from the alphabet essentially never
+    forms one: 97% were rejected at the first token and *none* of them
+    produced output, meaning the fuzz never reached the register machine.
+    The structured half emits real commands -- increments, outputs, nested
+    loops, and comments -- so the execution paths are actually exercised.
+    """
+    if rng.random() >= _STRUCTURED_SHARE:
+        alphabet = "01OoIiXxYyZz{};/ \n"
+        return "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 40)))
+
+    def command(depth: int = 0) -> str:
+        roll = rng.random()
+        reg = rng.choice("xyzXYZ")
+        if roll < 0.15 and depth < 2:
+            body = "".join(command(depth + 1) for _ in range(rng.randint(0, 3)))
+            return f"0{rng.choice('iI')}{reg}{{{body}}};"
+        if roll < 0.25:
+            tail = "".join(rng.choice("abc 01") for _ in range(rng.randint(0, 5)))
+            return f"//{tail}\n"
+        return f"{rng.choice('01')}{rng.choice('oOiI')}{reg};"
+
+    return "".join(command() for _ in range(rng.randint(1, 6)))
+
+
+def _gen_nocomment_program(rng: random.Random) -> str:
+    """Draw a NoComment program, half pure-random and half stack-disciplined.
+
+    NoComment's alphabet is dense -- every letter is a command -- so a
+    uniform draw parses.  The depth is the problem: ``f`` pops, and popping
+    an empty stack is an invalid operation, so 53% of uniform draws stopped
+    on one, and the median draw executed *six* commands before it did.  The
+    structured half never pops more than it has pushed and biases toward the
+    tape and arithmetic commands, so the run reaches further in before it
+    ends.
+
+    ``s``/``b`` (skip forward / jump back) stay in the draw at their uniform
+    rate: an out-of-range jump is the other invalid operation, and unlike a
+    stack underflow it is worth hitting, being the case where a mis-encoded
+    offset would show up.
+    """
+    if rng.random() >= _STRUCTURED_SHARE:
+        return "".join(rng.choice("idclrnfsbo") for _ in range(rng.randint(0, 30)))
+
+    out: list[str] = []
+    pushed = 0
+    for _ in range(rng.randint(1, 30)):
+        # `f` only when something is on the stack; the rest are always legal.
+        char = rng.choice("idclrnfsbo" if pushed else "idclrnsbo")
+        pushed += (char == "n") - (char == "f")
+        out.append(char)
+    return "".join(out)
+
+
+def _gen_ram0_program(rng: random.Random) -> str:
+    """Draw a RAM0 program, half pure-random and half with separated tokens.
+
+    RAM0 looked healthy on exit codes -- 85% ran to completion, none
+    malformed -- but the median draw executed *two* steps.  The alphabet has
+    no space in it, so adjacent digits glue into one multi-digit goto:
+    ``'4877'`` is a single jump to token 4877, which is past the end, so the
+    program dumps and halts having done nothing.  Roughly half the draws
+    died on their first token that way.
+
+    The structured half separates tokens with spaces and keeps gotos in
+    range of the program being built, so the digit paths still run but land
+    somewhere.  Out-of-range gotos remain reachable through the uniform half
+    and through the ``+2`` slack here.
+    """
+    if rng.random() >= _STRUCTURED_SHARE:
+        return "".join(rng.choice("ZANCLS123456789") for _ in range(rng.randint(0, 30)))
+
+    count = rng.randint(1, 16)
+    tokens: list[str] = []
+    for _ in range(count):
+        if rng.random() < 0.2:
+            # A goto, mostly landing inside the program (1-based token index).
+            tokens.append(str(rng.randint(1, count + 2)))
+        else:
+            tokens.append(rng.choice("ZANCLS"))
+    return " ".join(tokens)
 
 
 BFPDA_CORPUS = [
@@ -398,6 +562,15 @@ BIO_CORPUS = [
     "0ox;0ix1ox;};",  # a guard missing its `{` is not a command
     "0ox;{1ix;",  # a `{` not carried by a guard
     "0ox;/ 1ix;",  # a lone `/` is not the start of a comment
+    # The terminator has to match the opcode, both directions.  These read
+    # as commands character by character, so a terminator-blind tokenizer
+    # accepted them and then walked off the end at run time; the corpus
+    # above never covered either shape on its own.
+    "0ix;",  # a `0i` guard terminated by `;` instead of `{`
+    "0Iy;",  # the same, uppercase
+    "0ox;0iz;",  # a bare guard after a valid command
+    "0ox{};",  # `{` on a non-guard opcode
+    "1ix{};",  # the same on the output opcode
 ]
 
 
@@ -885,7 +1058,7 @@ def _fuzz_nocomment(rng: random.Random, count: int) -> bool:
     return _fuzz_asm(
         "NoComment",
         "nocomment",
-        _random_program("idclrnfsbo", 30),
+        _gen_nocomment_program,
         _run_nocomment_python_limited,
         rng,
         count,
@@ -904,7 +1077,7 @@ def _fuzz_bfpda(rng: random.Random, count: int) -> bool:
     return _fuzz_asm(
         "BF-PDA",
         "bfpda",
-        _random_program("@.<>[]", 30),
+        _gen_bfpda_program,
         _run_bfpda_python_limited,
         rng,
         count,
@@ -924,7 +1097,7 @@ def _fuzz_ram0(rng: random.Random, count: int) -> bool:
     return _fuzz_asm(
         "RAM0",
         "ram0",
-        _random_program("ZANCLS123456789", 30),
+        _gen_ram0_program,
         _run_ram0_python_limited,
         rng,
         count,
@@ -944,10 +1117,11 @@ def _fuzz_bio(rng: random.Random, count: int) -> bool:
     return _fuzz_asm(
         "BIO",
         "bio",
-        # ``/`` and a newline are in the alphabet so the fuzz reaches the
-        # comment scanner (and a lone ``/``, which is a load error) as well
-        # as the command and brace paths.
-        _random_program("01OoIiXxYyZz{};/ \n", 40),
+        # Half the draws are random over the alphabet (``/`` and a newline
+        # are in it so the fuzz reaches the comment scanner, and a lone
+        # ``/`` is a load error); half are well-formed commands, without
+        # which the register machine is never reached at all.
+        _gen_bio_program,
         _run_bio_python_limited,
         rng,
         count,
@@ -992,13 +1166,23 @@ def _fuzz_minsky_swap(rng: random.Random, count: int) -> bool:
     )
 
 
+@functools.cache
 def _build_riscv(name: str) -> bytes | None:
     """Assemble the RISC-V port ``extra/assembly/{name}-riscv.s``.
 
     Returns None if the cross-compiler is missing.  Cached: the ELF is
     deterministic for a given source, and the differential fuzzers call this
     once per program, so without caching the nocomment fuzz would re-run the
-    cross-compiler for every case.
+    cross-compiler for every case.  It was documented as cached long before
+    it was -- the decorator was missing, and the cross-compiler ran once per
+    fuzzed program, which measured 64% of every reference call.
+
+    The references are now run from a thread pool, and ``functools.cache``
+    does not hold its lock across the call, so two threads can race a cold
+    cache and both compile.  The output therefore goes to a private temporary
+    directory per call rather than one fixed path per language: same
+    deterministic bytes either way, but neither compile can see or truncate
+    the other's file.
     """
     asm = ROOT / "extra" / "assembly" / f"{name}-riscv.s"
     if not asm.exists():
@@ -1006,22 +1190,23 @@ def _build_riscv(name: str) -> bytes | None:
     for cc in ("riscv64-linux-gnu-gcc", "riscv64-elf-gcc"):
         if shutil.which(cc) is None:
             continue
-        binary = Path("/tmp") / f"verify-{name}-riscv"
-        rv = subprocess.run(
-            [
-                cc,
-                "-nostdlib",
-                "-static",
-                "-march=rv64i",
-                "-mabi=lp64",
-                str(asm),
-                "-o",
-                str(binary),
-            ],
-            capture_output=True,
-        )
-        if rv.returncode == 0 and binary.exists():
-            return binary.read_bytes()
+        with tempfile.TemporaryDirectory() as scratch:
+            binary = Path(scratch) / f"verify-{name}-riscv"
+            rv = subprocess.run(
+                [
+                    cc,
+                    "-nostdlib",
+                    "-static",
+                    "-march=rv64i",
+                    "-mabi=lp64",
+                    str(asm),
+                    "-o",
+                    str(binary),
+                ],
+                capture_output=True,
+            )
+            if rv.returncode == 0 and binary.exists():
+                return binary.read_bytes()
     return None
 
 

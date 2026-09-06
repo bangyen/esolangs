@@ -24,7 +24,7 @@ __all__ = ["laserfuck"]
 
 # The two loops that normalize the input cells.  ``,`` reads a character, so
 # ``'0'``/``'1'`` arrive as 48/49 and every input needs 48 subtracted.
-# Writing that straight costs 48 columns per input; running it as a loop
+# Writing that straight costs 49 columns per input; running it as a loop
 # costs a counter instead, and the counter itself is built by a second loop
 # rather than by 48 ``+`` -- ``_LASER_OUTER * _LASER_INNER`` is 48.
 _LASER_OUTER = 8

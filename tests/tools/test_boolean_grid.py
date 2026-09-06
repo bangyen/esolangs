@@ -1,8 +1,10 @@
 """Unit tests for the grid-based boolean generators.
 
-Covers :mod:`esolangs.tools.boolean.a_painter_ant` and
-:mod:`esolangs.tools.boolean.wii2d`, whose programs are two-dimensional
-grids rather than instruction strings.
+Covers :mod:`esolangs.tools.boolean.a_painter_ant`,
+:mod:`esolangs.tools.boolean.wii2d`,
+:mod:`esolangs.tools.boolean.circuit_diagram` and
+:mod:`esolangs.tools.boolean.super_snusp`, whose programs are
+two-dimensional grids rather than instruction strings.
 """
 
 import importlib
@@ -196,6 +198,64 @@ class TestAPainterAnt:
         positions = _leaf_positions(4)
         assert len(positions) == 16
         assert len({(x, y) for x, y, _ in positions}) == 16  # all distinct
+
+    def test_leaf_coordinates_agree_with_the_moves_that_walk_them(self) -> None:
+        """``_leaf_positions`` is the mirror of what ``_bit_move`` emits.
+
+        The head reaches a leaf by walking ``_bit_move`` per bit, and the
+        routing reads it at the coordinate ``_leaf_positions`` reports;
+        the docstrings say the two always agree, and nothing checked it.
+        Distinctness alone does not: perturbing the weight to
+        ``2**(n-k+1)``, or swapping the axis parity, leaves all ``2**n``
+        points distinct and every ``bits`` tuple unchanged, so the layout
+        looks fine while the head walks somewhere the routing does not
+        read.  Deriving the coordinate from the moves catches exactly that.
+
+        The two are mirrored on **x only**: a set bit moves west
+        (``-x``) but counts ``+2**(n-k)``, while on the vertical axis a set
+        bit moves north and counts positive alike.  That asymmetry is the
+        "mirror position" the docstring names, and pinning it is what makes
+        an axis-parity flip visible.
+        """
+        from esolangs.tools.boolean.a_painter_ant import _bit_move, _leaf_positions
+
+        step = {"w": (-1, 0), "e": (1, 0), "n": (0, 1), "s": (0, -1)}
+        for n in (1, 2, 3, 4, 5):
+            for x, y, bits in _leaf_positions(n):
+                walked_x = walked_y = 0
+                for k, bit in enumerate(bits):
+                    for move in _bit_move(n, k, bit):
+                        dx, dy = step[move]
+                        walked_x += dx
+                        walked_y += dy
+                assert (walked_x, walked_y) == (-x, y), (n, bits)
+
+    def test_leaf_coordinates_are_the_weighted_grid(self) -> None:
+        """Each bit contributes ``+-2**(n-k)`` on the axis its index picks.
+
+        Pinned exactly at two and three inputs, since the weight and the
+        axis choice are both invisible to a distinctness check and to
+        every behavioural assertion in this class -- the head only consumes
+        the ``bits`` field.
+        """
+        from esolangs.tools.boolean.a_painter_ant import _leaf_positions
+
+        assert _leaf_positions(2) == [
+            (-2, -4, (0, 0)),
+            (2, -4, (0, 1)),
+            (-2, 4, (1, 0)),
+            (2, 4, (1, 1)),
+        ]
+        assert [(x, y) for x, y, _ in _leaf_positions(3)] == [
+            (-10, -4),
+            (-6, -4),
+            (-10, 4),
+            (-6, 4),
+            (6, -4),
+            (10, -4),
+            (6, 4),
+            (10, 4),
+        ]
 
     def test_four_and_five_input_generator_works(self) -> None:
         """The generator handles n == 4 and n == 5, exact and cycle-stable."""
@@ -685,7 +745,14 @@ class TestWII2D:
         _chain, states = _wii2d_chain(n, table)
         assert _wii2d_real_domain(states) > _WII2D_MAX_REAL_DOMAIN
 
-        with pytest.raises(ValueError, match="width guard"):
+        # Matched on the numbers, not just the phrase: the message reports
+        # the domain it measured and the limit it was compared against, and
+        # a substring match on "width guard" passes however those drift.
+        # 1025 is n == 7's worst case, one past the 2**10 the chain would
+        # need to merge, so an off-by-one in the domain count shows here.
+        with pytest.raises(
+            ValueError, match=r"domain of 1025 points.*_WII2D_MAX_REAL_DOMAIN = 256"
+        ):
             boolean.wii2d(table)
 
     @pytest.mark.slow
@@ -1090,13 +1157,6 @@ class TestWII2D:
                     acc = _wii2d_apply(routes[i][bit], acc)
                 assert acc == int(table[combo]), (table, bits, acc)
 
-    def test_routes_are_deterministic(self) -> None:
-        """The construction is a pure function of the table, not of the host."""
-        from esolangs.tools.boolean.wii2d import _wii2d_routes
-
-        table = "0001011001101001"
-        assert _wii2d_routes(4, table) == _wii2d_routes(4, table)
-
     def test_a_dense_seven_input_table_builds_and_runs(self) -> None:
         """A dense ``n == 7`` table builds, and every one of its 128 fills runs.
 
@@ -1170,6 +1230,79 @@ class TestWII2D:
         template = "\n".join(_wii2d_layout(1, 5, [("", "+")]))
         for bit, expected in ((0, "5"), (1, "6")):
             assert self.run_chain(template, [bit]) == expected
+        # The digit's own column is part of the layout, and running the
+        # template cannot see it: a start written one column over still
+        # computes the same answer.
+        assert template == (">5{X0} >" + "+" * 48 + "~.\n! >+^")
+
+    @pytest.mark.parametrize(
+        ("table", "length"),
+        [
+            ("0110", 76),
+            ("00000001", 101),
+            ("00000010", 101),
+            ("00000110", 120),
+        ],
+    )
+    def test_the_template_has_an_exact_length(self, table: str, length: int) -> None:
+        """The emitted template's size, per table.
+
+        Every route, fold and threshold decision in this generator is a
+        choice between spellings that all compute the table -- the chain is
+        replayed and checked, so a mutant either dies there or emerges
+        correct and differently shaped.  The truth-table sweeps above are
+        semantic only, which leaves the size unobserved; these four tables
+        move under a blank column, a trailing row, a repeated glyph, a
+        different compression and a wider threshold respectively.
+        """
+        assert len(boolean.wii2d(table)) == length
+
+    def test_the_xor_template_is_exact(self) -> None:
+        """XOR's template, spelled out.
+
+        The shortest table that exercises the whole pipeline, so it is
+        pinned as text rather than only as a length -- a glyph swapped for
+        another of the same width moves nothing a length check can see.
+        """
+        assert boolean.wii2d("0110") == (
+            ">{X0}->{X1}+>" + "+" * 48 + "~.\n!>*^\n    >s^"
+        )
+
+    @pytest.mark.parametrize(
+        ("table", "routes"),
+        [
+            ("01101001", (0, [("", "+"), ("", "-s"), ("", "-s")])),
+            ("00000000", (0, [("", "+"), ("", "+"), ("0", "0")])),
+        ],
+    )
+    def test_the_route_plan_is_exact(
+        self, table: str, routes: tuple[int, list[tuple[str, str]]]
+    ) -> None:
+        """The per-level route pairs the chain search settles on.
+
+        ``_wii2d_routes`` returns the start digit and one (zero, one) pair
+        per level, and several pairs spell the same arithmetic at different
+        lengths -- so a search that picks a worse pair still produces a
+        template that computes the table, just a longer one.  Pinning the
+        plan makes the choice observable where the emitted answer cannot.
+        """
+        from esolangs.tools.boolean.wii2d import _wii2d_routes
+
+        n = len(table).bit_length() - 1
+        assert _wii2d_routes(n, table) == routes
+
+    def test_decode_and_threshold_spellings_are_exact(self) -> None:
+        """Two helpers whose output is a spelling, not a value.
+
+        Both are reached with a single shape in production -- every
+        threshold pair is ``(0, 1)`` and every decode domain is small -- so
+        the arms that differ elsewhere are only visible when the helpers are
+        called directly with the states that separate them.
+        """
+        from esolangs.tools.boolean.wii2d import _wii2d_decode, _wii2d_threshold
+
+        assert _wii2d_decode([0, 0, 0, 0, 1, 1, 0, 1]) == "-s///---s+/+/+/-s-//+-s"
+        assert _wii2d_threshold({3: 0, 9: 1}) == "---------////+"
 
 
 class TestCircuitDiagram:
@@ -1315,3 +1448,359 @@ class TestCircuitDiagram:
             circuit_diagram("010")
         with pytest.raises(ValueError, match="only '0' and '1'"):
             circuit_diagram("012x")
+
+
+class TestCircuitDiagramLayoutGuards:
+    """The layout's collision checks, reached by constructing the state.
+
+    ``_Layout`` asserts its own geometry as it is built: two signals may
+    not run the same way through a cell, a glyph may not land on a wire or
+    another glyph, and two different signals' junctions may not come within
+    one cell of each other (a ``.`` connects to all eight neighbours, so
+    adjacent junctions merge into one wiring).
+
+    None of these fires on a table the generator actually builds -- swept
+    over every table through three inputs, the closest two different
+    signals' junctions ever come is Chebyshev distance 2, one clear of the
+    guard.  That is the design working, and it is also why the guards were
+    the single largest cluster of surviving mutants in the module: code
+    that never runs cannot be wrong in a way a truth table notices.  So the
+    states are built directly rather than searched for.
+
+    Each check is asserted in both directions.  The negative cases are what
+    stop a guard from being "fixed" by making it fire always: a wire may
+    legally re-claim a cell for the *same* signal, may cross itself in the
+    other direction, and same-signal junctions may touch.
+    """
+
+    @staticmethod
+    def _layout() -> object:
+        from esolangs.tools.boolean.circuit_diagram import _Layout
+
+        return _Layout()
+
+    def test_two_signals_may_not_run_the_same_way_through_a_cell(self) -> None:
+        layout = self._layout()
+        layout._occupy(layout.horizontal, 3, 4, 7, "horizontally")  # noqa: SLF001
+        with pytest.raises(AssertionError) as caught:
+            layout._occupy(layout.horizontal, 3, 4, 9, "horizontally")  # noqa: SLF001
+        assert str(caught.value) == "two signals run horizontally through (3, 4)"
+
+    def test_one_signal_may_reclaim_its_own_cell(self) -> None:
+        """A repeated claim by the same signal is the ordinary case."""
+        layout = self._layout()
+        layout._occupy(layout.horizontal, 3, 4, 7, "horizontally")  # noqa: SLF001
+        layout._occupy(layout.horizontal, 3, 4, 7, "horizontally")  # noqa: SLF001
+        assert layout.horizontal[(3, 4)] == 7
+
+    def test_two_signals_may_cross_at_right_angles(self) -> None:
+        """The clash is per direction: crossing wires share the cell."""
+        layout = self._layout()
+        layout._occupy(layout.horizontal, 5, 5, 1, "horizontally")  # noqa: SLF001
+        layout._occupy(layout.vertical, 5, 5, 2, "vertically")  # noqa: SLF001
+        assert layout.horizontal[(5, 5)] == 1
+        assert layout.vertical[(5, 5)] == 2
+
+    def test_a_wire_may_not_cross_a_glyph(self) -> None:
+        layout = self._layout()
+        layout.glyphs[(2, 2)] = "&"
+        with pytest.raises(AssertionError) as caught:
+            layout._occupy(layout.horizontal, 2, 2, 1, "horizontally")  # noqa: SLF001
+        assert str(caught.value) == "wire crosses glyph at (2, 2)"
+
+    def test_a_glyph_may_not_land_on_a_glyph(self) -> None:
+        layout = self._layout()
+        layout.glyphs[(1, 1)] = "&"
+        with pytest.raises(AssertionError) as caught:
+            layout._check_free(1, 1)  # noqa: SLF001
+        assert str(caught.value) == "two glyphs at (1, 1)"
+
+    @pytest.mark.parametrize("axis", ["horizontal", "vertical"])
+    def test_a_glyph_may_not_land_on_a_wire(self, axis: str) -> None:
+        """Both wire tables are consulted, not just the first."""
+        layout = self._layout()
+        layout._occupy(getattr(layout, axis), 1, 1, 1, axis)  # noqa: SLF001
+        with pytest.raises(AssertionError) as caught:
+            layout._check_free(1, 1)  # noqa: SLF001
+        assert str(caught.value) == "glyph at (1, 1) lands on a wire"
+
+    def test_a_free_cell_takes_a_glyph(self) -> None:
+        self._layout()._check_free(1, 1)  # noqa: SLF001
+
+    @pytest.mark.parametrize(
+        ("dx", "dy"),
+        [(dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if (dx, dy) != (0, 0)],
+    )
+    def test_adjacent_junctions_of_different_signals_are_rejected(
+        self, dx: int, dy: int
+    ) -> None:
+        """All eight neighbours, diagonals included, merge and so are refused.
+
+        The message is compared whole rather than by substring: it names
+        the offending pair, and the second coordinate is built from the
+        same ``dx``/``dy`` the scan walks, so a sign slipped into it points
+        the reader at a cell that holds nothing.  Which of the two
+        junctions is reported first depends on dictionary order, so both
+        readings are accepted -- the guard scans outwards from every
+        junction, which is also why negating a loop offset is invisible.
+        """
+        layout = self._layout()
+        layout.junctions[(5, 5)] = 1
+        layout.junctions[(5 + dx, 5 + dy)] = 2
+        with pytest.raises(AssertionError) as caught:
+            layout._check_junction_spacing()  # noqa: SLF001
+        assert str(caught.value) in (
+            f"junctions of different signals touch at (5, 5) and ({5 + dx}, {5 + dy})",
+            f"junctions of different signals touch at ({5 + dx}, {5 + dy}) and (5, 5)",
+        )
+
+    def test_junctions_of_the_same_signal_may_touch(self) -> None:
+        """One signal's own junctions are a single wiring already."""
+        layout = self._layout()
+        layout.junctions[(5, 5)] = 1
+        layout.junctions[(6, 6)] = 1
+        layout._check_junction_spacing()  # noqa: SLF001
+
+    def test_junctions_one_clear_of_each_other_are_accepted(self) -> None:
+        """Distance 2 is what every real layout keeps, and it is legal."""
+        layout = self._layout()
+        layout.junctions[(5, 5)] = 1
+        layout.junctions[(7, 5)] = 2
+        layout._check_junction_spacing()  # noqa: SLF001
+
+    @pytest.mark.parametrize(
+        ("table", "rows", "columns"),
+        [
+            ("01", 1, 4),
+            ("0001", 7, 11),
+            ("0110", 23, 35),
+            ("00010111", 61, 91),
+        ],
+    )
+    def test_the_drawing_has_exact_dimensions(
+        self, table: str, rows: int, columns: int
+    ) -> None:
+        """The band and column steps place every part of the drawing.
+
+        A bus that starts a row lower, a gate band that advances by one
+        step too many, or a signal counter seeded at 1 all draw a *valid*
+        circuit -- the wires still connect the same gates and the table
+        still comes out right -- at different coordinates.  Nothing else
+        here can see that: the truth-table sweeps read the printed bit,
+        and the collision guards only fire when the spacing collapses
+        entirely rather than merely drifts.  The extents are the cheapest
+        observable that moves when any of the layout constants does.
+        """
+        from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+
+        drawing = circuit_diagram(table).split("\n")
+        assert len(drawing) == rows
+        assert max(len(row) for row in drawing) == columns
+
+    def test_real_layouts_never_come_within_one_cell(self) -> None:
+        """The generator's spacing keeps every table clear of the guard.
+
+        The guard is a net, not a mechanism -- this is the property that
+        makes it never fire, measured rather than assumed, so a spacing
+        regression names itself here instead of tripping an assertion deep
+        in a render.
+        """
+        from esolangs.tools.boolean.circuit_diagram import _Layout, circuit_diagram
+
+        closest = []
+        original = _Layout._check_junction_spacing  # noqa: SLF001
+
+        def record(layout: object) -> None:
+            items = list(layout.junctions.items())
+            for index, ((x1, y1), first) in enumerate(items):
+                for (x2, y2), second in items[index + 1 :]:
+                    if first != second:
+                        closest.append(max(abs(x1 - x2), abs(y1 - y2)))
+            original(layout)
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(_Layout, "_check_junction_spacing", record)
+            for table_int in range(16):
+                circuit_diagram(format(table_int, "04b"))
+        assert closest, "no layout carried two signals' junctions"
+        assert min(closest) >= 2
+
+
+class TestSuperSNUSP:
+    """The Super SNUSP generator (an ANF evaluator over a value stack).
+
+    Super SNUSP has a random ``=`` opcode the generator avoids entirely by
+    evaluating the truth table's algebraic normal form: an XOR of input
+    products, which is exactly what ``^`` and ``&`` give.  Five two-input
+    tables have hand-written short forms; everything else is built by
+    :func:`_emit_anf`, and a table that ignores an input is rebuilt over its
+    essential ones and kept only when that is shorter.
+
+    Every assertion here replays the generated program through the real
+    interpreter over the table's *whole* input space.  That is what makes
+    the construction trustworthy rather than merely plausible: the ANF
+    coefficient fold, the product's ``&`` chain and the ``_move`` runs that
+    reach each retained input are all arithmetic on cell offsets, and a
+    wrong offset still emits a program that runs -- it just computes a
+    different function.  Static assertions on the emitted string cannot see
+    that; a replayed truth table can.
+    """
+
+    @staticmethod
+    def run_table(table: str) -> str:
+        """Return the generated program's output for every input, in order."""
+        from esolangs.interpreters.grid_based.super_snusp import run
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.tools.boolean.super_snusp import super_snusp
+
+        n = len(table).bit_length() - 1
+        program = super_snusp(table).splitlines()
+        results = []
+        for index in range(len(table)):
+            bits = format(index, f"0{n}b")
+            stdin = "".join(f"{bit}\n" for bit in bits)
+            scripted = ScriptedIO(stdin)
+            run(program, scripted)
+            results.append(scripted.getvalue().strip())
+        return "".join(results)
+
+    @pytest.mark.parametrize("table", [format(i, "04b") for i in range(16)])
+    def test_every_two_input_table(self, table: str) -> None:
+        """All sixteen two-input functions, each over all four inputs.
+
+        Five of these take the ``_TWO_INPUT_SHORT`` fast path and eleven are
+        built by the ANF evaluator, so one parametrization covers both.
+        """
+        assert self.run_table(table) == table
+
+    @pytest.mark.parametrize("table", ["01", "10", "00", "11"])
+    def test_every_one_input_table(self, table: str) -> None:
+        assert self.run_table(table) == table
+
+    @pytest.mark.parametrize(
+        "table",
+        [
+            "01101001",  # parity: every ANF coefficient is set
+            "00010111",  # majority
+            "11101000",  # its complement, so the constant term is set
+            "10000000",  # AND3: one minterm, the longest product chain
+            "00000000",
+            "11111111",
+        ],
+    )
+    def test_three_input_tables(self, table: str) -> None:
+        """Parity, majority, AND3 and both constants at three inputs.
+
+        Parity is the case that exercises the coefficient fold hardest --
+        every one of its eight ANF coefficients is nonzero, so every term is
+        emitted and xored -- while AND3 is the opposite shape, a single
+        coefficient whose product spans all three retained inputs.
+        """
+        assert self.run_table(table) == table
+
+    @pytest.mark.parametrize(
+        "table",
+        ["11110000", "00001111", "11001100", "00110011", "10101010", "01010101"],
+    )
+    def test_a_table_ignoring_inputs_still_computes_it(self, table: str) -> None:
+        """Dependency reduction keeps the answer over the full input space.
+
+        Each of these depends on exactly one of its three inputs, so the
+        generator rebuilds it over that single essential input.  The
+        reduction changes which cell the answer is read from, and the
+        rebuilt program is still fed all three bits -- so a projection that
+        picked the wrong input, or a retained-input offset that drifted,
+        shows up here as a wrong bit rather than as a shorter program.
+        """
+        assert self.run_table(table) == table
+
+    def test_a_four_input_table_builds_and_runs(self) -> None:
+        """The construction is not two- and three-input special cases.
+
+        Four inputs put the accumulator four cells from the first retained
+        input, which is the first arity where a ``_move`` run is longer than
+        the products that share its span.
+        """
+        assert self.run_table("0110100110010110") == "0110100110010110"
+
+    @pytest.mark.parametrize(
+        "table", ["01", "0110", "0001", "01101001", "11110000", "00010111"]
+    )
+    def test_every_input_is_consumed(self, table: str) -> None:
+        """One ``,`` per input, including inputs the answer ignores.
+
+        The contract is that every path reads exactly ``n`` lines, so a
+        reduced table still consumes the inputs it does not use -- otherwise
+        a caller feeding several programs from one stream desynchronizes.
+        """
+        from esolangs.tools.boolean.super_snusp import super_snusp
+
+        n = len(table).bit_length() - 1
+        assert super_snusp(table).count(",") == n
+
+    @pytest.mark.parametrize("table", ["01", "0000", "0110", "01101001", "11110000"])
+    def test_every_program_starts_with_the_marker(self, table: str) -> None:
+        """``"`` pins the entry point rather than inheriting the default.
+
+        Without it the interpreter enters at the bottom right moving left,
+        which is undocumented in the spec; the marker is a no-op once
+        execution begins.
+        """
+        from esolangs.tools.boolean.super_snusp import super_snusp
+
+        assert super_snusp(table).startswith('"')
+
+    def test_the_short_forms_are_what_the_generator_emits(self) -> None:
+        """The five hand-written two-input forms are used verbatim.
+
+        They reuse the ``48`` literal both to decode each input and to
+        encode the answer, which the general construction cannot do because
+        it rebuilds the offset at the end.  A regression that stopped
+        consulting the table would still pass every truth-table assertion
+        above, so the dispatch is pinned separately.
+        """
+        from esolangs.tools.boolean.super_snusp import _TWO_INPUT_SHORT, super_snusp
+
+        for table, form in _TWO_INPUT_SHORT.items():
+            assert super_snusp(table) == '"' + form
+
+    def test_the_general_build_is_used_off_the_short_table(self) -> None:
+        """A two-input table with no short form is built by the evaluator."""
+        from esolangs.tools.boolean.super_snusp import _TWO_INPUT_SHORT, super_snusp
+
+        assert "0001" not in _TWO_INPUT_SHORT
+        assert super_snusp("0001") == '"48{,->,->>1<<<{>>>&<<{>>&{<^>48{<+.'
+
+    @pytest.mark.parametrize(
+        ("table", "length"),
+        [
+            ("1010", 28),  # one dependency at two inputs
+            ("1111", 17),  # constant: the reduction drops both inputs
+            ("00000000", 18),  # constant at three
+            ("00000011", 39),  # depends on the last two of three
+        ],
+    )
+    def test_the_reduced_build_is_the_one_emitted(
+        self, table: str, length: int
+    ) -> None:
+        """A table that ignores an input is emitted over its essential ones.
+
+        Both shapes are built and :func:`shortest` picks between them, and
+        the truth-table assertions above cannot see which one won -- both
+        compute the right answer.  Swept over every table to four inputs,
+        the reduced build is strictly shorter on 983 of them and the full
+        build is *never* strictly shorter, so these lengths pin the choice:
+        emitting the unreduced shape here would be longer by one to four
+        commands.
+        """
+        from esolangs.tools.boolean.super_snusp import super_snusp
+
+        assert len(super_snusp(table)) == length
+
+    def test_a_malformed_table_is_rejected(self) -> None:
+        from esolangs.tools.boolean.super_snusp import super_snusp
+
+        with pytest.raises(ValueError, match="power-of-two"):
+            super_snusp("010")
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            super_snusp("012x")

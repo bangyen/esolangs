@@ -683,9 +683,10 @@ def _register() -> None:
             _fill_pct_squared_minus_one,
         ),
         # 123 answers with the termination convention, as ArrowQueue does, so
-        # only the halting (0) branch is committed.  The 1,0 row halts too but
-        # prints a stray 0x80 on its way out; 0,1 halts silently, so it is the
-        # row whose committed output is the clean empty string.
+        # only the halting (0) branch is committed.  The constructed template
+        # pops through location -2 while merging, which prints junk bytes on
+        # every row; ``test_boolean_example`` asserts the halt and ignores
+        # them, so ``expected`` is vestigial here.
         "123": _embedded(
             b.one_two_three,
             "tape_based.one_two_three",
