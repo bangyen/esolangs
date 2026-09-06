@@ -80,8 +80,8 @@ _HEADING: dict[str, _Heading] = {h: h for h in _MOVE}
 
 #: One instant of a run: ``(grid, x, y, ip, visited)`` -- the painted
 #: cells, the ant's position, the instruction cursor, and every cell the
-#: ant has stood on.  A value :func:`_advance` maps forward rather than
-#: editing in place.
+#: ant has stood on.  The input :func:`_advance` reads; it returns a
+#: :data:`_Move` rather than another of these, since only the shell writes.
 #:
 #: The grid has to be in the state, unlike WII2D's: ``p`` and ``P`` write
 #: to it, so what a move finds ahead of the ant is something an earlier
@@ -101,28 +101,34 @@ _HEADING: dict[str, _Heading] = {h: h for h in _MOVE}
 type _Grid = Mapping[tuple[int, int], int]
 type _State = tuple[_Grid, int, int, int]
 
+#: What one instruction did: ``(x, y, ip, paint)`` -- where the ant ended
+#: up, and the single cell it painted as ``(cell, colour)``, or ``None``
+#: when it painted nothing.  A transition returns this rather than a whole
+#: new grid so that recording one painted cell costs one write instead of
+#: a copy of every cell painted so far; :meth:`_Machine._restore` applies
+#: it to the grid the shell owns.
+type _Move = tuple[int, int, int, tuple[tuple[int, int], int] | None]
+
 
 def _colour(grid: _Grid, cell: tuple[int, int]) -> int:
     """Return a cell's colour; an unpainted cell is black (``0``)."""
     return grid.get(cell, 0)
 
 
-def _paint(grid: _Grid, cell: tuple[int, int], colour: int) -> _Grid:
-    """Return ``grid`` with ``cell`` set to ``colour``, replacing any entry.
+def _advance(state: _State, command: str) -> _Move:
+    """Return the position after one instruction, plus any paint it made.
 
-    A copy, so the grid handed in is left as it was; this is the only
-    place a step grows the plane, so it is the only copy a step makes.
-    """
-    return {**grid, cell: colour}
-
-
-def _advance(state: _State, command: str) -> _State:
-    """Return the state after executing one instruction.
-
-    Pure: it reads ``state`` and returns a new one.  The language has no
-    I/O at all, so unlike the other steps in this series there is no effect
-    for a shell to keep -- the whole instruction lives here, and the cursor
+    Pure: it reads ``state`` and returns a description of what changed,
+    touching nothing.  The language has no I/O at all, so the cursor
     advance is the caller's, since only it knows the program's length.
+
+    The paint comes back as ``(cell, colour)`` rather than as a rewritten
+    grid.  Returning a new grid meant copying every painted cell to record
+    one -- O(grid) per paint, so a walk that paints ``n`` cells cost
+    O(n**2) overall, and the plane runs to thousands of cells.  Naming the
+    one cell instead makes a paint O(1) and leaves the shell to apply it.
+    The grid is still only *read* here, and still a plain ``Mapping`` so
+    that lookup stays O(1) -- the axis the type note above is about.
 
     A move is conditional on the colour ahead: lowercase goes only onto a
     black cell and uppercase only onto a white one, which is the same test
@@ -131,9 +137,9 @@ def _advance(state: _State, command: str) -> _State:
     """
     grid, x, y, ip = state
     if command == "p":
-        return (_paint(grid, (x, y), 0), x, y, ip)
+        return (x, y, ip, ((x, y), 0))
     if command == "P":
-        return (_paint(grid, (x, y), 1), x, y, ip)
+        return (x, y, ip, ((x, y), 1))
 
     # Not a move command at all unless the lowercased character is one of
     # the four headings, which is what the lookup requires.
@@ -142,8 +148,8 @@ def _advance(state: _State, command: str) -> _State:
         raise ValueError(f"unknown command {command!r}")
     dx, dy = _MOVE[heading]
     if (_colour(grid, (x + dx, y + dy)) == 1) == command.isupper():
-        return (grid, x + dx, y + dy, ip)
-    return state
+        return (x + dx, y + dy, ip, None)
+    return (x, y, ip, None)
 
 
 class _Machine:
@@ -217,17 +223,29 @@ class _Machine:
         """The machine's fields as the value the transition works on."""
         return (self.grid, self.x, self.y, self.ip)
 
-    def _restore(self, state: _State) -> None:
+    def _restore(self, move: _Move) -> None:
         """Write a transition's result back onto the machine's fields.
 
         The fields are this class's published shape -- ``render`` walks the
         grid and the tests read the position -- so they stay; the one
         assignment a step makes is here rather than in the rule above.
+
+        The grid is the shell's own dict, so a paint is written into it
+        directly.  The transition never held a reference to mutate, having
+        only read it and named the cell.
         """
-        grid, self.x, self.y, self.ip = state
-        # dict() only when the transition actually replaced it; a step that
-        # did not paint hands back the very object it was given.
-        self.grid = grid if isinstance(grid, dict) else dict(grid)
+        self.x, self.y, self.ip, paint = move
+        if paint is not None:
+            cell, colour = paint
+            # Written unconditionally.  73.7% of the paints in this
+            # module's counterexample walk are redundant, but guarding them
+            # with a ``grid.get(cell, 0) != colour`` test measured *slower*
+            # (0.1113s against 0.1095s): the read costs about what the
+            # write it saves does.  Storing black cells rather than
+            # deleting them keeps the two colours symmetric here; nothing
+            # can tell the difference, since ``_glyph`` and ``_colour``
+            # both read through ``grid.get(cell, 0)``.
+            self.grid[cell] = colour
         # Standing on a cell is what marks it visited, so recording the
         # position the transition returned covers every move.
         self.visited.add((self.x, self.y))
@@ -243,8 +261,8 @@ class _Machine:
         # this keeps a direct caller from indexing it.
         if not self.prog:  # pragma: no cover - run() never steps an empty program
             return
-        grid, x, y, _ip = _advance(self._state, self.prog[self.ip])
-        self._restore((grid, x, y, (self.ip + 1) % len(self.prog)))
+        x, y, _ip, paint = _advance(self._state, self.prog[self.ip])
+        self._restore((x, y, (self.ip + 1) % len(self.prog), paint))
 
     def render(self) -> str:
         """Render the visited bounding box, marking the ant's cell.
