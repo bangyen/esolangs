@@ -572,6 +572,90 @@ class TestStreetcode:
         for table in ("10", "0110", "11111110"):
             assert boolean.streetcode(table, None) == boolean.streetcode(table)
 
+    def test_a_requested_width_is_never_overrun(self) -> None:
+        """A width that *can* be met is met, measured on the emitted columns.
+
+        The width is a promise about the widest row, and the only way to
+        keep it is to pick a shape that already fits, so measuring the
+        wrong thing -- splitting the program on whitespace rather than on
+        newlines, say -- selects a shape that overruns while every
+        truth-table check still passes.  ``0001`` at 33 is the tight case:
+        the winning shape is exactly 33 columns, so a column count that
+        drifts either way changes which shape is returned.
+        """
+        for table, width in (("0001", 33), ("0110", 33), ("01", 29)):
+            program = boolean.streetcode(table, width)
+            assert _columns(program) <= width, (table, width)
+
+    def test_the_narrowest_fallback_is_really_the_narrowest(self) -> None:
+        """Below every shape's width, the narrowest shape comes back.
+
+        ``10`` cannot witness this: its candidates happen to agree, so a
+        fallback that returned the first or the lexicographically smallest
+        program would pass.  ``0100`` separates them -- the narrowest is 33
+        columns where the wrong pick is 36.
+        """
+        program = boolean.streetcode("0100", 1)
+        assert _columns(program) == 33
+        for combo in range(4):
+            bits = [str((combo >> 1) & 1), str(combo & 1)]
+            assert run_streetcode(program, bits) == "0100"[combo]
+
+    def test_a_width_equal_to_a_shape_is_wide_enough(self) -> None:
+        """The fit test is inclusive: exactly the shape's width fits it.
+
+        At its own column count the default shape still fits, so asking for
+        exactly that many columns must return it rather than falling
+        through to a narrower, longer one.  One column more is the same
+        program; the suite otherwise only asks for 1, 25 and 100, none of
+        which lands on a boundary.
+        """
+        default = boolean.streetcode("01")
+        assert _columns(default) == 29
+        assert boolean.streetcode("01", 29) == default
+        assert boolean.streetcode("01", 30) == default
+
+    @pytest.mark.parametrize(
+        ("table", "length"),
+        [("01", 302), ("0000", 340), ("0101", 340)],
+    )
+    def test_the_emitted_program_has_an_exact_length(
+        self, table: str, length: int
+    ) -> None:
+        """The layout is deterministic down to the character.
+
+        Streetcode's rows are built from fixed templates and padded runs,
+        so a run one wide, a lap one column longer, or a trailing blank row
+        all leave a *working* program of a different size -- and nothing
+        else here measures size at all.
+        """
+        assert len(boolean.streetcode(table)) == length
+
+    def test_no_trailing_blank_row(self) -> None:
+        """The grid ends on its last real row.
+
+        The row count is one plus the deepest row written, and an off-by-one
+        there appends an empty row that the interpreter walks over
+        harmlessly -- invisible to every behavioural check.
+        """
+        for table in ("01", "0101", "0110", "11111110"):
+            program = boolean.streetcode(table)
+            assert not program.endswith("\n"), table
+            assert program.split("\n")[-1].strip(), table
+
+    def test_the_program_is_only_streetcode_characters(self) -> None:
+        """Only the glyphs Streetcode reads, plus layout space.
+
+        Measured over every table through three inputs and a spread of
+        widths rather than read off the spec: the generator uses a subset,
+        and asserting the spec's full set would pass vacuously.
+        """
+        allowed = set(" +-;=CIOU^_|~\n")
+        for table in ("01", "0000", "0110", "11111110"):
+            assert set(boolean.streetcode(table)) <= allowed, table
+        for width in (1, 20, 29, 33):
+            assert set(boolean.streetcode("0110", width)) <= allowed, width
+
     def test_order_search_stops_at_the_cap(self) -> None:
         """Past the cap only the identity order is offered.
 
