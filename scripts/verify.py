@@ -182,25 +182,13 @@ STEPS = [
     # `--cov-report=` writes no report: the run is here for the data file,
     # which the changed-line gate reads afterwards.
     #
-    # `--cov-branch` is asked for unconditionally, but only because the
-    # interpreter moved -- and the answer has now flipped twice.
-    # sys.monitoring cannot measure branches before 3.14, so asking for arcs
-    # there drops coverage onto the old tracer -- measured on 3.13 over this
-    # suite (-n 4, coverage 7.13.4, the fast selection):
-    #
-    #     no coverage                36.5s
-    #     --cov (line, sysmon)       36.1s
-    #     --cov --cov-branch         119.3s   <- 3.3x, the no-sysmon fallback
-    #
-    # 3.14's sys.monitoring measures branches, so the fallback never happens
-    # and the flag is free again.  Re-measured on 3.14, same suite and flags:
-    #
-    #     --cov (line, sysmon)       17.81s
-    #     --cov --cov-branch         17.89s   <- free
-    #
-    # An older interpreter would silently pay the 3.3x rather than break, so
-    # if this ever feels slow again, check the interpreter before the tests:
-    # coverage says so on stderr with a `no-sysmon` CoverageWarning.
+    # `--cov-branch` is free on 3.14 (17.89s vs 17.81s without) but costs
+    # 3.3x before it, where sys.monitoring cannot measure branches and
+    # coverage falls back to the old tracer.  An older interpreter pays that
+    # silently rather than breaking, so if this ever feels slow again check
+    # the interpreter before the tests: coverage says so on stderr with a
+    # `no-sysmon` CoverageWarning.  Both timing tables are in
+    # ``docs/verification_tooling.md``.
     ("pytest", [*PY, "-m", "pytest", "-q", "--cov", "--cov-branch", "--cov-report="]),
     ("bandit", ["uv", "run", "--with", "bandit", "bandit", "-r", "src", "-q"]),
     (

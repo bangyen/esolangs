@@ -27,65 +27,16 @@ from esolangs.vm import run_until_halt_or_cycle
 _TABLES = ["00000000", "01101001"]
 
 
-# Generators that search rather than emit, and so cost seconds per table
-# instead of milliseconds.  The rule is a one-second budget per entry in this
-# sweep: over that, the case carries ``slow`` and sits out the fast run.
-# Measured at the time of writing (``pytest --durations -n 0``, one worker):
-# minifuck 41.1s, slow_acv_mammalian 5.5s, and the next entry down is
-# polynomial at 0.5s, with the median around 0.03s.
-#
-# ``ztoalc_l_boolean`` used to be listed here at 2.8s and now runs in 0.02s,
-# so it is no longer marked -- the cost moved to the *reordering* sweeps
-# below, which is why the two sets are kept separate rather than shared.
-#
-# ``pct_squared_minus_one`` was briefly in this set, at 4.6s: it searched
-# setter assignments and this sweep's parity table is ``n == 3``, which it
-# could not separate, so it paid a whole search budget before raising.  It
-# now derives its programs and rejects that arity outright, putting it below
-# the measurement floor.
-#
-# ``minifuck`` left the set for the same reason, having been its most
-# expensive member at 41.1s.  It no longer searches at ``n <= 3`` -- every
-# table up to three inputs comes from a staging table -- and this sweep's
-# parity case now costs 0.09s, two orders of magnitude under the budget.
-#
-# ``slow_acv_mammalian_boolean`` left it last, at 5.5s.  It no longer
-# searches at all: a read node's landing point is now solved from the array
-# sum rather than found by measuring where a candidate jumped, so building a
-# table is arithmetic plus a bounded relaxation pass.  Its parity case costs
-# 0.68s, which is under the budget but not by much -- the tree still carries
-# ``2**n`` leaves and the padding between them.
-#
-# ``minifuck`` is back, at 14.9s of this sweep's 18.0s across sixty
-# generators -- and this is a *regression*, not the cost the construction
-# ought to carry.  Bisected 2026-08-30 by checking out
-# ``src/esolangs/tools/boolean/minifuck.py`` alone at each commit that
-# touched it: the parity table costs 0.08s at ef651aa1 and c48b1cdf, 0.00s
-# at 2a91ab70, and 14.71s from 32f5638c ("derive the stagings instead of
-# storing 117 of them") onwards, unchanged through HEAD.  Deriving what was
-# stored is cheap to *build* and expensive to *run*.
-#
-# The mark keeps the fast run fast; it does not make the cost acceptable.
-# When the derivation is made to pay for itself, re-measure and drop the
-# entry rather than leaving this comment to rot the way the 0.09s claim
-# above did.
-#
-# ``slow_acv_mammalian_boolean`` joined it 2026-08-31, the same shape of
-# regression -- 5.5s originally, 0.68s once the landings were solved, back
-# to 3.04s -- and left 2026-09-05 at **0.02s**, measured in this sweep.  The
-# residual search went away entirely: on the aim class the ``j1`` seeds
-# cancel out of the jump arithmetic, so a landing is a pure function of the
-# array sum and a build is arithmetic end to end -- no candidate sweep, no
-# stash-loop convergence check, no relaxation pass (its n=3 truth tables in
-# test_boolean_tape moved 1.68s -> 0.07s alongside and lost their ``slow``
-# marks).
-#
-# ``pct_squared_minus_one`` joined 2026-08-31 at 6.45s and left 2026-09-02 at
-# **0.25s**, measured in this sweep.  Almost all of that cost was the
-# composed-affine path deriving a whole arity into a cache on its first call;
-# the path now solves its setters from the table instead of enumerating branch
-# pairs, so there is no arity to derive.  Dropped rather than left with a stale
-# number, which is what the entries above ask for.
+# Generators marked ``slow`` for a cost that is a *regression*, not the cost
+# the construction ought to carry.  The rule is a one-second budget per entry
+# in this sweep.  ``minifuck`` is here at 14.9s of the sweep's 18.0s across
+# sixty generators, bisected 2026-08-30 to 32f5638c ("derive the stagings
+# instead of storing 117 of them"): the parity table costs 0.08s before it
+# and 14.71s from it onwards.  The mark keeps the fast run fast; it does not
+# make the cost acceptable.  When the derivation is made to pay for itself,
+# re-measure and drop the entry rather than leaving a stale number.
+# ``docs/minifuck_generator.md`` has the full ledger of what entered and left
+# this set, with the measurement behind each.
 _SEARCHING_GENERATORS_REGRESSED: frozenset[str] = frozenset({"minifuck"})
 
 # Naming the languages rather than timing them at collection time is

@@ -36,62 +36,15 @@ import png
 from lattice import _DIRS, _ink
 from mask import Mask
 
-# Dependency notes.  This started on four undeclared third-party libraries
-# (Pillow, numpy, scipy, scikit-image) and now has none: everything below runs
-# on the standard library alone.  The recurring lesson, in all four cases, was
-# that the call did not need the library's actual algorithm.
-#
-#   scipy.ndimage.distance_transform_edt was previously called "the one hard
-#   piece to replace" -- a brute-force replacement is O(ink x background) and
-#   took 2.6s on a 500x500 fixture.  But find_cursor never wanted a distance
-#   transform: its only use was the threshold ``dist > 1.5``.  No pixel with a
-#   non-ink 8-neighbor can exceed sqrt(2) ~ 1.414, so that test is "all 8
-#   neighbors are ink" -- a 3x3 binary erosion (:func:`_erode`).  Confirmed
-#   bit-identical to the scipy threshold on every fixture, cropped and
-#   normalized.  label/sum/center_of_mass were the easy remainder: a BFS
-#   (:func:`_largest_thick_region`) and a plain coordinate mean.
-#
-#   scikit-image's skeletonize() only ever fed a scalar length into
-#   detect_scale()'s ink/skeleton-length ratio, a ~5%-accurate estimate of the
-#   stroke width.  normalize_scale's docstring already stated the real
-#   invariant -- input is "an integer pixel-replication blow-up of a 1px-wide
-#   drawing, not a resampled photograph" -- so detect_scale now tests that
-#   invariant directly (block uniformity), which is exact rather than
-#   approximate.  Verified to agree with the old ratio on both fixtures at
-#   1x-5x.
-#
-#   Pillow was expected to be the hard one, since Image.open is real codec
-#   work.  But the only images passing through here are PNGs this repo's own
-#   render.py wrote or the wiki reference drawings in fixtures/, and PNG's
-#   container is length-tagged chunks over zlib, both in the standard library
-#   -- so ``png.py`` decodes them outright, matching Pillow byte-for-byte on
-#   all five fixtures.  Image.resize(NEAREST) was a strided slice, with one
-#   wrinkle about grid alignment recorded in normalize_scale.  Every PNG is
-#   readable, including interlaced and 16-bit, since a drawing that has been
-#   through an image editor comes back in whatever that editor preferred and
-#   is still the same drawing.
-#
-#   The narrowing that stands: only PNG.  A baseline JPEG decoder was written
-#   -- it worked, and is recorded in WIP.md -- and then deliberately dropped,
-#   because 300 lines for *partial* JPEG support was the least defensible of
-#   the three available positions (all of it, none of it, or an awkward
-#   middle).  ``render(scale=)`` solves the underlying problem in 20 lines by
-#   making drawings survive lossy pipelines whoever decodes them.
-#
-#   numpy looked like the one with a real cost, since the masks reach 9Mpx and
-#   pure-Python per-pixel loops over that would be minutes.  The answer was to
-#   stop storing pixels individually: ``mask.py`` keeps one Python int per row
-#   and lets CPython's bigints do whole-row bitwise work, *faster* than the
-#   numpy it replaced on the operations that matter here (see that module's
-#   docstring for the measurements).  It also retired the quadtree this file
-#   used for bounding boxes, which existed only to work around numpy's
-#   whole-canvas nonzero() scan.
+# This module runs on the standard library alone.  Pillow, numpy, scipy and
+# scikit-image were each removed, and PNG-only is a deliberate narrowing --
+# see ``docs/line_tooling.md`` for the measurements behind all five decisions.
 
 
 def load_binary(path: str) -> Mask:
     """Load a PNG as a boolean ink mask (True = black/foreground).
 
-    PNG only, deliberately -- see the dependency notes above.  A file in any
+    PNG only, deliberately -- see ``docs/line_tooling.md``.  A file in any
     other format is refused with a message naming what to do about it rather
     than a bare signature complaint, since "convert it to PNG" is the whole
     of the fix and a lossy format was never a good home for 1px strokes

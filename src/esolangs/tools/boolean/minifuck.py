@@ -66,11 +66,8 @@ sculpted route below, which closes the arity -- a missing staging degrades
 rather than raises.  What a four-input table does pay for is the derivation,
 which at this arity cannot stop early; see :data:`_STAGED_ARITIES`.
 
-A second pass once took the arity to **60942 of 64594 (94.35%)** by
-complementing inputs as they land.  It has been removed: every table it
-placed is one the sculpted route below also builds, and it cost a 300-second
-whole-arity sweep to place them.  ``docs/minifuck_generator.md`` keeps the
-mechanism and the measurement.
+A second pass that complemented inputs as they land was removed; every table
+it placed the sculpted route also builds.  See ``docs/minifuck_generator.md``.
 
 **The remaining 3652 fall to the sculpted route**, :func:`_mux`, which is a
 different construction rather than another coordinate on this one -- and it
@@ -89,30 +86,23 @@ five inputs is reached on every table sampled (200 of 200, five-input XOR
 among them).  See the comment block above :data:`_MUX_BASE` for the
 mechanism and the measurements.
 
-**The generator is total.**  The route carried an arity gate until every one
-of its six refusal sites was closed by an argument with no residual ``n``
-(``docs/minifuck_generator.md``, "Is ``_mux`` total?"); with the gate
-replaced by the floor :data:`_MUX_MIN_ARITY`, there is no arity and no table
-it declines.  Six inputs is covered here by :meth:`test_no_arity_is_gated`,
-which builds a fully-essential table and runs all 64 rows on the shipped
-interpreter; ``docs/minifuck_generator.md`` records 448 of 448 rows correct
-at five, six and seven.  Cost grows with ``2**n`` and is the only thing
-bounding a caller now: about 0.14s a table at five inputs, 40s at six, and
-820s at seven, where the template reaches 13685 characters.  A caller
-wanting eight should budget for that curve rather than assume a refusal.
+**The generator is total** -- no arity and no table it declines, the gate
+replaced by the floor :data:`_MUX_MIN_ARITY`.  Cost, not expressiveness, is
+what bounds a caller: it grows with ``2**n``, so a caller wanting eight
+inputs should budget for that curve rather than assume a refusal.  The
+totality argument, the execution evidence and the measured cost curve are in
+``docs/minifuck_generator.md``.
 
-Five inputs is staged on the same terms and a far thinner slice: the family
-produces 24582 fully-essential 32-bit columns against 4294642034 such tables,
-so this is 0.00057% of the arity rather than a quarter of it.  It ships for
-the reason four did -- a miss costs nothing but the fall-through.  The one
-thing that had to change is the spelling: a derivation over all ``2**32``
-tables cannot run, so the enumeration is *inverted* rather than run per
-table -- see :func:`_staging_index`, which every arity now uses that way,
-and which since the closed form landed fills its columns arithmetically
-rather than by running the interpreter over each staging.  What catches the
-rest is the sculpted route, which since its separation became a construction
-reaches five as readily as four: 200 of 200 sampled fully-essential
-five-input tables build and print every row.
+Five inputs is staged on the same terms and a far thinner slice -- a miss
+costs nothing but the fall-through.  The one thing that had to change is the
+spelling: a derivation over all ``2**32`` tables cannot run, so the
+enumeration is *inverted* rather than run per table -- see
+:func:`_staging_index`, which every arity now uses that way, and which since
+the closed form landed fills its columns arithmetically rather than by
+running the interpreter over each staging.  What catches the rest is the
+sculpted route, which since its separation became a construction reaches
+five as readily as four.  ``docs/minifuck_generator.md`` has the column
+counts and why no flat family closes this arity.
 
 Paying that per table is what makes a *screen* worth having, and there is
 one: everything the endgame emits after the suffix is GF(2)-affine in the

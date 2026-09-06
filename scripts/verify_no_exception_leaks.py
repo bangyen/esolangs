@@ -145,34 +145,13 @@ _STEP_CAP = int(os.environ.get("LEAKSWEEP_STEP_CAP", 0)) or 20000
 #: unchanged; only the number of runs that pay for it is.
 _CAP_LADDER = (10, 100, 1000, _STEP_CAP)
 
-# The cap is not what makes `--all` expensive.  **Factor is**, and no value
-# of the cap helps: its programs are integers whose *factorization* is the
-# program, so `make_vm` calls `sympy.factorint` before a single step runs.
-# A mutation that alters a digit can turn a factorable number into a ~120
-# digit one that is infeasible, and that work is uninterruptible C -- a
-# SIGALRM cannot land on it, since the timer needs a bytecode boundary.
-# `Factor prog[69]` (of the seeded corpus) is the specific run; it wedges a
-# sweep before COD is ever reached.  Bounding it needs a subprocess with a
-# hard kill, or a digit-length guard on Factor's mutants.
-#
-# What the cap costs, measured on COD, the most expensive language to *run*.
-# Five mutants of its example (a dropped or inserted character in the `~`
-# border) shift the entrance corridor to the tree, so the cod never reaches
-# open water and loops forever -- crossing `+` increments as it goes.  Its
-# value therefore grows without bound, no state ever repeats, and the cycle
-# detector cannot decide it: this is the unbounded-growth class, and the
-# programs are genuinely non-terminating rather than slow.
-#
-# Those 5 programs x 4 stdins are 20 runs that always reach the cap, and
-# the growing integer makes each step dearer than the last.
-#
-# The cap stays 20000, but the ladder below means few runs pay it.  What is
-# *not* true -- measured, after assuming otherwise -- is that a smaller cap
-# would fix the slow languages.  Their cost is per-step, not step count:
-# 87 of Painfuck's 376 runs survive cap 10, and cost ~7ms a step after it,
-# so halving the ceiling only halves the bill.  Four languages (COD, Factor,
-# Painfuck, Suptiftam) exceed any cap worth setting, and the subprocess
-# timeout is what actually bounds them.
+# The cap is not what makes `--all` expensive, and lowering it would not
+# help: the slow languages cost per *step*, not per step count.  Four of them
+# (COD, Factor, Painfuck, Suptiftam) exceed any cap worth setting, and the
+# subprocess timeout is what actually bounds them -- Factor because
+# `make_vm` factorizes before a single step runs, in uninterruptible C a
+# SIGALRM cannot land on.  The cap stays 20000, and the ladder above means
+# few runs pay it.  Measurements in ``docs/verification_tooling.md``.
 
 # Four inputs, not a dozen: the distinctions that actually change a read
 # are no input at all, a blank line, a digit, and a non-digit.  Extra
