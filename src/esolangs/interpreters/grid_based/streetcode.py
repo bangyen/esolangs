@@ -69,8 +69,14 @@ Runtime error contract:
    :class:`~esolangs.exceptions.HaltError` when the street has no walls
    to validate against.
 
-* CP is unsigned and right-unbounded: decrementing it below 0 is an invalid
-  runtime operation and raises :class:`~esolangs.exceptions.HaltError`.
+* CP is unsigned and right-unbounded, so ``_`` at cell 0 **clamps**: the
+  move is a no-op and the car drives on.  The wiki bounds CP on the left
+  ("The CP is unsigned and right-unbounded") but never says what a
+  below-zero ``_`` does -- no example uses ``_`` at all, and the page
+  carries no error-handling text.  Clamping fills that gap the way the rest
+  of this package does: brainfuck clamps ``<``, and CVNC reads its own
+  "unbounded *unsigned* integer" memory as flooring at zero rather than
+  failing.  An unsigned quantity that cannot go lower saturates.
   Cells are unbounded signed integers (plain Python ``int`` arithmetic, so
   ``~`` can drive a cell negative with no wraparound); there is no
   brainfuck-style byte wraparound on ``O`` either, so outputting a cell
@@ -2050,9 +2056,11 @@ class _Machine:
         elif op == "RIGHT":
             self.cp += 1
         elif op == "LEFT":
-            if self.cp == 0:
-                raise HaltError
-            self.cp -= 1
+            # Clamped, not an error: CP is unsigned, and an unsigned
+            # quantity that cannot go lower saturates.  See the module
+            # docstring for why this fills the spec's gap the way the rest
+            # of the package does.
+            self.cp = max(0, self.cp - 1)
         elif op == "IN":
             value = self.io.input_str()
             self._set_cell(ord(value[0]) if value else 0)

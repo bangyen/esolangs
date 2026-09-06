@@ -109,7 +109,11 @@ for _program, _expected in [
     ("+^.", "1"),  # a bare +/- is a count of one
     ("++^.", "2"),  # a repeated command is a counted one
     ("5+%^.", "0"),  # % zeroes the cell
-    ("5+<>^.", "5"),  # pointer moves back and forth
+    # ``<`` at cell 0 clamps, so this is not "back and forth": the ``<``
+    # moves nothing and the ``>`` lands on the fresh cell 1.  It expected 5
+    # while the compiled floor sat three cells left of the start, which let
+    # the ``<`` step into scratch and the ``>`` come back to the 5.
+    ("5+<>^.", "0"),
     (">+>+<^>^.", "11"),  # two cells, printed in turn
     ("<^.", "0"),  # moving left of cell 0 clamps
     ("&^.", "0"),  # the hold cell starts at zero
@@ -140,9 +144,18 @@ for _program, _expected in [
     ("1@^.1$2@;2$5+;", "5"),  # a nested ``@``
     # ``<`` inside a subroutine also has to clamp at the same tape floor as
     # ``<`` outside one.  The floor used to be recomputed from ``sp``, so
-    # saving ``ra`` moved it four cells and these landed a cell off.
-    ("5+1@^.1$<;", "0"),
+    # saving ``ra`` moved it four cells and these landed a cell off.  Both
+    # expectations changed when the floor moved to cell 0: they were
+    # computed against a floor three cells left of the start, where a ``<``
+    # at cell 0 stepped into scratch instead of clamping.
+    ("5+1@^.1$<;", "5"),
     (">>>5+1@^.1$<;", "0"),
+    # ``<`` at cell 0 clamps.  The compiler always clamped (``left:`` stops
+    # at the tape floor) while the interpreter used to insert a fresh cell
+    # and leave the pointer on it, so this printed 0 there and 5 here --
+    # a divergence nothing pinned, now settled by clamping in both.
+    ("5+<^.", "5"),
+    ("5+<<<^.", "5"),
 ]:
     COMPILER_CASES.append(("jaune", "jaune", _program, _expected))
 # The reading half, carrying the fifth element.  One digit per line: that is

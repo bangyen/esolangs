@@ -19,10 +19,13 @@ Documented decisions for gaps in the wiki spec:
   output routine does the same), not as a byte;
 - ``v`` reads one input character and stores ``ord(c) - 48`` (the compiler
   subtracts 48), raising :class:`EOFError` when input runs out;
-- the pointer starts at cell 0 and moves into an unbounded array of
-  zero-initialized cells; cells hold plain integers with no wrapping (the
-  author's reference JauneJS stores each cell as a JavaScript number and
-  does plain ``+=``/``-=``, no modulo or bitmask);
+- the pointer starts at cell 0 and moves into an array of zero-initialized
+  cells unbounded to the *right*; ``<`` at cell 0 is clamped, as brainfuck
+  clamps its own.  The wiki says only "Moves pointer to the previous cell",
+  so the left edge is a gap; this package fills it by clamping everywhere
+  (see also Streetcode's ``_``).  Cells hold plain integers with no wrapping
+  (the author's reference JauneJS stores each cell as a JavaScript number
+  and does plain ``+=``/``-=``, no modulo or bitmask);
 - a read operand is evaluated to have a command at all, so ``v?``/``v!``
   consume their input digit whether or not the branch is taken;
 - a read operand converts exactly as ``v`` does (``ord(c) - 48``, an empty
@@ -206,9 +209,8 @@ def _advance(
     unchanged -- and the three reading forms arrive as ``value``, already
     taken from the port and already converted from its digit.
 
-    The tape grows at both ends: ``>`` past the right edge appends a cell,
-    while ``<`` at the left inserts one and leaves the pointer where it is,
-    so the new cell becomes cell zero.
+    The tape grows rightward only: ``>`` past the right edge appends a
+    cell, while ``<`` at cell 0 is clamped and moves nothing.
 
     A jump that is taken, a call, and a return all set the cursor outright
     rather than stepping it, which is why each returns early.
@@ -229,10 +231,12 @@ def _advance(
         if ptr == len(cells):
             cells = (*cells, 0)
     elif c == "<":
-        if ptr == 0:
-            cells = (0, *cells)
-        else:
-            ptr -= 1
+        # Clamped at cell 0, as brainfuck clamps its own ``<``.  This used
+        # to insert a fresh cell and leave the pointer where it was, which
+        # grew the tape leftward; the wiki says only "Moves pointer to the
+        # previous cell" and nothing about bounds, so both readings filled a
+        # gap, and clamping is the one the rest of this package uses.
+        ptr = max(0, ptr - 1)
     elif c == "#":
         hold = cells[ptr]
     elif c == "&":
