@@ -56,7 +56,8 @@ def _programs() -> dict[str, str]:
     the mismatch would not surface until someone read both files.
     """
     spec = importlib.util.spec_from_file_location("_tac", _TEST_MODULE)
-    assert spec is not None and spec.loader is not None
+    assert spec is not None
+    assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return dict(module._PROGRAMS)  # noqa: SLF001
