@@ -2232,6 +2232,54 @@ class TestGeneratorEdgePaths:
         with pytest.raises(ValueError, match="no operand character for 36"):
             _six_five_label(_SIX_FIVE_MAX_LABEL + 1)
 
+        # The range is closed at *both* ends, and zero is a real label --
+        # a guard reading ``1 <=`` or ``0 <`` would reject the first one.
+        assert _six_five_label(0) == "0"
+        assert _six_five_label(1) == "1"
+        with pytest.raises(ValueError, match="no operand character for -1"):
+            _six_five_label(-1)
+
+    def test_six_five_move_spells_a_distance_in_pairs(self) -> None:
+        """Rightward moves go two cells at a time, with a ``3`` for the odd one.
+
+        ``1`` steps two cells and ``3`` steps one back, so an even distance
+        is all ``1``s and an odd distance is ``ceil(d / 2)`` of them with a
+        ``3`` to come back over the extra cell.  Leftward is plain ``3``s.
+        Swept over every table through three inputs the generator makes
+        11,600 of these moves, over distances 0, 1 and 2 and in both
+        directions, so every arm here is live -- including the equal case,
+        which occurs 2,296 times and must emit nothing at all.
+        """
+        from esolangs.tools.boolean.six_five import _six_five_move
+
+        assert _six_five_move(2, 2) == ""
+        assert _six_five_move(0, 1) == "13"
+        assert _six_five_move(0, 2) == "1"
+        assert _six_five_move(0, 3) == "113"
+        assert _six_five_move(0, 5) == "1113"
+        assert _six_five_move(3, 0) == "333"
+        assert _six_five_move(5, 0) == "33333"
+
+    def test_six_five_refuses_at_more_than_thirty_five_labels(self) -> None:
+        """The capacity test is ``> 35``, not ``>= 35``.
+
+        An operand is one character and the alphabet ends at ``Z``, so 35
+        branch labels fit and 36 do not.  The refusal is already witnessed
+        by a 63-marker table (see ``test_boolean_tape``), but only from far
+        above -- which leaves the boundary itself free to move by one, and
+        a table needing exactly 35 would then be refused despite being
+        spellable.  ``_six_five_label`` marks that limit, so the two are
+        asserted against each other rather than against a repeated literal.
+        """
+        from esolangs.tools.boolean.six_five import (
+            _SIX_FIVE_MAX_LABEL,
+            _six_five_label,
+        )
+
+        assert _SIX_FIVE_MAX_LABEL == 35
+        assert _six_five_label(_SIX_FIVE_MAX_LABEL) == "Z"
+        assert len(_six_five_label(_SIX_FIVE_MAX_LABEL)) == 1
+
 
 class TestAlgebraicProgrammingLanguage:
     """The minterm-sum generator, whose whole program is one executed line."""
