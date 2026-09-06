@@ -402,18 +402,54 @@ class TestJaune:
         assert "lw   t0, 0(s1)" in mod.comp("1+")
         assert "lw   t0, 0(s1)" in mod.comp("1-")
 
-    def test_a_zero_operand_emits_no_arithmetic(self) -> None:
-        """``0+`` adds zero, so the add is skipped rather than emitted.
+    def test_a_zero_operand_adjusts_by_one(self) -> None:
+        """``0+`` adds one: an explicit zero count falls back to a count of one.
 
-        The digit before the sign is the operand, and an operand of zero
-        leaves nothing to add -- the load/add/store is guarded on it being
-        nonzero.
+        This test used to assert the opposite -- that a zero operand emits
+        no arithmetic at all -- which is what the compiler did and what the
+        interpreter does not.  The interpreter spells the fallback
+        ``cells[ptr] + (cmd.arg or 1)`` and has a test naming ``0+``/``0-``
+        as the only spelling that reaches it, so a compiled ``0+^.``
+        printed 0 where the interpreter printed 1.
+
+        The sign has to come back from the command rather than the operand,
+        because ``count`` folds it into the value and ``int("-0")`` is
+        ``0``.
         """
         mod = importlib.import_module("esolangs.compilers.jaune")
-        assert "addi t0, t0," not in mod.comp("0+")
-        assert "addi t0, t0," not in mod.comp("0-")
-        # not vacuous: a nonzero operand does emit the add
-        assert "addi t0, t0, 1" in mod.comp("1+")
+        assert "addi t0, t0, 1" in mod.comp("0+")
+        assert "addi t0, t0, -1" in mod.comp("0-")
+        # not vacuous: an explicit count is still used as written
+        assert "addi t0, t0, 5" in mod.comp("5+")
+
+    def test_a_subroutine_saves_the_return_address(self) -> None:
+        """A subroutine body that calls a routine must not lose ``ra``.
+
+        ``^ v < &`` and a nested ``@`` all compile to a ``call``, which
+        overwrites ``ra``.  Without a prologue the subroutine's own ``ret``
+        went back into its body instead of to the caller, and the compiled
+        program spun there forever -- ``1$#<&;`` was the program that showed
+        it.  Pinned at the boundary because it is the whole family, not one
+        routine.
+        """
+        mod = importlib.import_module("esolangs.compilers.jaune")
+        out = mod.comp("1@.1$#<&;")
+        assert "sd   ra, 8(sp)" in out
+        assert "ld   ra, 8(sp)" in out
+
+    def test_the_tape_floor_does_not_move_with_the_stack(self) -> None:
+        """``<`` clamps against a fixed floor, not against ``sp``.
+
+        The clamp used to be recomputed as ``sp - 48`` at the moment of the
+        move, so once a subroutine saved ``ra`` the floor shifted four cells
+        and ``<`` inside one landed a cell off.  ``s0`` holds it instead,
+        set once in the header.
+        """
+        mod = importlib.import_module("esolangs.compilers.jaune")
+        out = mod.comp("<")
+        assert "addi s0, sp, -48" in out
+        assert "bge  s0, s1" in out
+        assert "addi t1, sp, -48" not in out
 
     def test_subroutines(self) -> None:
         mod = importlib.import_module("esolangs.compilers.jaune")
