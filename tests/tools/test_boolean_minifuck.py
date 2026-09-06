@@ -2378,6 +2378,63 @@ class TestParameterizedMinifuck:
         assert clamped, "no clamp started away from cell 0"
         assert walks_cascaded, "no walk touched the tape"
 
+    def test_carrying_an_effect_matches_stepping_every_row(self) -> None:
+        """``_Joint.emit`` carries a mixed code's effect between like rows.
+
+        Rows advance in lockstep, so they meet an emission having seen the
+        same instructions; what differs is the bits their setters embedded.
+        A short code reads only the cells it can reach, so rows agreeing
+        there transform identically and the effect is computed once and
+        applied as arithmetic to the rest.
+
+        The key is the whole claim.  It must hold everything the code can
+        observe -- the window *relative to the pointer*, the pointer itself,
+        the low byte a print reads, the skip -- and a key missing any of
+        those merges rows that are not equivalent.  Keying on absolute cells
+        alone did exactly that, and built 27 wrong programs out of 39 before
+        the corpus caught it.  So this compares a carried joint against one
+        that steps every row, over codes mixed enough to move the pointer,
+        print, and cascade.
+        """
+        from esolangs.tools.boolean import minifuck_sim
+        from esolangs.tools.boolean.minifuck import minifuck
+
+        # Synthetic codes do not reach the states this has to get right:
+        # random emissions leave the rows' pointers converged, and it is
+        # precisely the *divergent* pointers the real construction creates
+        # that a bad key merges.  So the generator itself drives the
+        # comparison, with every emission checked both ways as it happens.
+        real_emit = minifuck_sim._Joint.emit  # noqa: SLF001
+        checked = [0]
+
+        def checking_emit(self: object, code: str) -> None:
+            rows = self.ms  # type: ignore[attr-defined]
+            reference = [m.copy() for m in rows]
+            real_emit(self, code)
+            for row in reference:
+                for ch in code:
+                    row.exec(ch)
+            assert [m.key() for m in rows] == [m.key() for m in reference], (
+                f"carrying the effect of {code!r} diverged from stepping it"
+            )
+            # What makes the comparison bite is rows whose pointers differ:
+            # a key holding absolute cells merges those, and they are the
+            # ones the construction actually produces.
+            if len({m.ptr for m in reference}) > 1:
+                checked[0] += 1
+
+        # ``minifuck`` and the pool searches under it are cached, so a table
+        # an earlier test already built emits far less the second time.
+        # Counting only the divergent-pointer emissions keeps the floor
+        # meaningful without depending on which caches happen to be warm.
+        minifuck.cache_clear()
+        with patch.object(minifuck_sim._Joint, "emit", checking_emit):  # noqa: SLF001
+            for table in ("01", "0110", "10010110"):
+                minifuck(table)
+        minifuck.cache_clear()
+
+        assert checked[0], "no emission met rows whose pointers had diverged"
+
     def test_the_walk_needs_a_converged_pointer_going_right(self) -> None:
         """``[x`` walks are only safe rightward from one shared position.
 
