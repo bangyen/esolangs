@@ -295,10 +295,28 @@ class TestParseTarget:
         caught here rather than by a run that cannot find its target.
         """
         script = load_script()
-        for family in ("boolean", "text", "compilers"):
+        for family in ("boolean", "text", "tools", "compilers"):
             kind = script._KINDS[family]  # noqa: SLF001
             for name in script._modules(family):  # noqa: SLF001
                 assert (kind.pkg_dir / f"{name}.py").exists()
+
+    def test_the_bare_tools_modules_are_a_target_kind(self) -> None:
+        """``transpilers`` is reachable, and the subpackages are not swept in.
+
+        The kind globs ``*.py`` directly under ``esolangs/tools``, so it
+        picks up the modules that sit beside the two generator families
+        without listing ``boolean`` and ``text`` a second time -- a
+        directory does not match the glob.  ``transpilers`` is the one that
+        matters: it turns one language's program into another's, and
+        without this kind it had no harness path at all.
+        """
+        script = load_script()
+        modules = script._modules("tools")  # noqa: SLF001
+        assert "transpilers" in modules
+        assert "boolean" not in modules
+        assert "text" not in modules
+        kind = script._KINDS["tools"]  # noqa: SLF001
+        assert kind.rel_target("transpilers") == "esolangs/tools/transpilers.py"
 
     def test_the_compilers_are_a_target_kind(self) -> None:
         """The RISC-V backends are reachable, and land in tests/compilers.

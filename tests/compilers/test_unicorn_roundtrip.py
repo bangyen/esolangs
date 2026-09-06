@@ -80,13 +80,15 @@ def _cases() -> list[tuple[str, str, str, str, str]]:
 _CASES = _cases()
 
 
+# The case's own name rides in the test id rather than as a parameter: it
+# labels the case for a reader and is not something the test asserts on.
 @pytest.mark.parametrize(
-    ("name", "module", "source", "expected", "stdin"),
-    _CASES,
+    ("module", "source", "expected", "stdin"),
+    [case[1:] for case in _CASES],
     ids=[f"{name}-{i}" for i, (name, *_) in enumerate(_CASES)],
 )
 def test_compiled_output_runs_correctly(
-    name: str, module: str, source: str, expected: str, stdin: str
+    module: str, source: str, expected: str, stdin: str
 ) -> None:
     """Each compiler's output prints what the source program means."""
     from riscv_elf_runner import assemble_source, run_elf
