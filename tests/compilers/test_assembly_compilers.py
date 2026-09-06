@@ -100,9 +100,10 @@ def test_compiler_output_matches_its_golden(module: str, program: str) -> None:
     different content.  Comparing against a recorded output kills those,
     because a compiler that computes something else writes something else.
 
-    A legitimate codegen change fails this test by design: regenerate the
-    goldens, and review the diff as part of the change.  For the three
-    backends too large to store as text, the digest is the whole check.
+    A legitimate codegen change fails this test by design: regenerate with
+    ``scripts/make_compiler_goldens.py`` (or ``just goldens``), and review
+    the diff as part of the change.  For the three backends too large to
+    store as text, the digest is the whole check.
     """
     mod = importlib.import_module(f"esolangs.compilers.{module}")
     output = str(mod.comp(program))

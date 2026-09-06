@@ -130,6 +130,13 @@ mutate-gen module *args:
 mutate-comp module *args:
     {{PYTHON}} scripts/mutate_generator.py compilers/{{module}} {{args}}
 
+# regenerate the pinned compiler output after a deliberate codegen change
+# (tests/compilers pins what every backend emits, so such a change fails
+# them by design -- regenerate, then review the diff).  --check reports
+# staleness without writing.
+goldens *args:
+    {{PYTHON}} scripts/make_compiler_goldens.py {{args}}
+
 # clean generated
 clean:
     #!/usr/bin/env bash
