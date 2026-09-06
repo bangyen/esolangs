@@ -56,6 +56,11 @@ class TestGrapheme:
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.grapheme("02")
 
+    def test_the_program_is_only_grapheme_commands(self) -> None:
+        """Only the letters Grapheme reads as commands are emitted."""
+        for table in ("10", "0110", "0001", "11111110"):
+            assert set(boolean.grapheme(table)) <= set("ABCDEFGIRSTWYZ"), table
+
 
 class TestForth:
     def test_program_structure(self) -> None:
@@ -208,6 +213,30 @@ class TestForth:
         assert _forth_const(0) == "0"
         assert len(_forth_const(300)) > len(_forth_const(48))
 
+    def test_const_is_base_fifteen(self) -> None:
+        """Digits are ``0-E`` and the radix is 15, not 16.
+
+        Forþ spells a literal digit by digit, so the radix decides both the
+        digits used and how many there are.  A radix one too large still
+        builds *a* number for every constant the generator needs -- the
+        digits stay inside the alphabet and the arithmetic still lands --
+        so only the spelling shows it.  These are the boundaries: 14 is the
+        last single digit, 15 rolls over, and 225 is the first three-digit
+        constant.
+        """
+        from esolangs.tools.boolean.stack import _forth_const
+
+        assert _forth_const(14) == "E"
+        assert _forth_const(15) == "1F*0+"
+        assert _forth_const(48) == "3F*3+"
+        assert _forth_const(224) == "EF*E+"
+        assert _forth_const(225) == "1F*0+F*0+"
+
+    def test_the_program_is_only_forth_commands(self) -> None:
+        """Only the characters Forþ reads are emitted."""
+        for table in ("10", "0110", "0001", "11111110"):
+            assert set(boolean.forth(table)) <= set("*+,-.123456789;ABCDEFcv{}"), table
+
 
 class TestModulous:
     @pytest.mark.parametrize(
@@ -273,6 +302,18 @@ class TestBfstack:
         assert program.startswith(">>+,")  # result cell, accumulator, first input
         assert program.count(",") == 2  # one read per input
         assert program.endswith("+" * 48 + ".")  # print 48 + result
+
+    def test_the_program_is_only_bfstack_commands(self) -> None:
+        """No character outside the eight commands is emitted.
+
+        BFStack ignores anything it does not recognise, the brainfuck
+        convention, so a stray character is a *no-op* rather than an error:
+        splicing one beside a ``[`` leaves the program computing exactly
+        the same table.  That makes every behavioural check blind to it,
+        and the alphabet the only thing that is not.
+        """
+        for table in ("10", "0110", "0001", "11111110"):
+            assert set(boolean.bfstack(table)) <= set("+,-.<>[]"), table
 
 
 class TestUnsquare:
@@ -419,3 +460,8 @@ class TestUnsquare:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.unsquare("02")
+
+    def test_the_program_is_only_unsquare_commands(self) -> None:
+        """Only the characters Unsquare reads are emitted."""
+        for table in ("10", "0110", "0001", "11111110"):
+            assert set(boolean.unsquare(table)) <= set("+-<>AIOPSiox"), table
