@@ -3,9 +3,9 @@ repos:
     rev: v6.0.0
     hooks:
       - id: trailing-whitespace
-        exclude: ^examples/  # Generated programs match the generator exactly
+        exclude: ^(examples/|tests/fixtures/compiler_goldens/)  # Recorded output matches its generator exactly
       - id: end-of-file-fixer
-        exclude: ^examples/  # Generated programs match the generator exactly
+        exclude: ^(examples/|tests/fixtures/compiler_goldens/)  # Recorded output matches its generator exactly
       - id: check-yaml
         args: ['--unsafe']  # Allow custom YAML tags
       - id: check-added-large-files
