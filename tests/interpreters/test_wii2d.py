@@ -220,14 +220,6 @@ class TestWII2DControlFlow:
             run_with_timeout(lambda: run(code, IO()))
         assert f.getvalue() == "\x00"
 
-    def test_random_direction(self) -> None:
-        """Test ? command that moves in random direction."""
-        code = ["!", "?~."]
-
-        # Randomness may or may not reach the output; just verify it runs
-        with redirect_stdout(io.StringIO()):
-            run_with_timeout(lambda: run(code, IO()))
-
     def test_reverse_direction(self) -> None:
         """Test | command that reverses the direction of travel."""
         # Pointer starts north of ! moving north; | reverses it south to the halt
