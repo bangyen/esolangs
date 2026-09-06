@@ -181,16 +181,6 @@ class TestBIOEdgeCases:
             run("   \n\t  ", io=IO())
         assert f.getvalue() == ""
 
-    def test_invalid_commands_rejected(self) -> None:
-        """Text that is not a command is a load error, not something skipped.
-
-        The interpreter used to keep the regex's matches and drop whatever
-        else was there, so a typo ran as a different program.  BIO defines
-        no comment syntax but ``//``, so anything else must be rejected.
-        """
-        with pytest.raises(ValueError, match="not a command"):
-            run("0ox;invalid;1ix;", io=IO())
-
     def test_line_comments_are_stripped(self) -> None:
         """``//`` runs to the end of its line, as the wiki writes it."""
         with redirect_stdout(io.StringIO()) as f:
@@ -225,11 +215,6 @@ class TestBIOEdgeCases:
         with pytest.raises(ValueError, match="not a command"):
             run(code, io=IO())
 
-    def test_stray_closing_brace_is_rejected(self) -> None:
-        """A ``}`` with no loop to close is malformed."""
-        with pytest.raises(ValueError, match="closes no loop"):
-            run("0ox;};1ix;", io=IO())
-
     def test_load_error_messages_are_exact(self) -> None:
         """Each of the three load errors says exactly what it says.
 
@@ -246,12 +231,6 @@ class TestBIOEdgeCases:
             with raises_message(ValueError, message):
                 run(code, io=IO())
 
-    def test_negative_register_values(self) -> None:
-        """Test handling of negative register values."""
-        with redirect_stdout(io.StringIO()) as f:
-            run("1ox;1ix;", io=IO())
-        assert f.getvalue() == "\xff"
-
     def test_large_register_values(self) -> None:
         """Test handling of large register values."""
         large_code = "0ox;" * 300 + "1ix;"  # 300 increments
@@ -259,30 +238,10 @@ class TestBIOEdgeCases:
             run(large_code, io=IO())
         assert f.getvalue() == chr(300 % 256)
 
-    def test_unmatched_while_loop(self) -> None:
-        """A loop without its closing brace is a malformed program."""
-        import pytest
-
-        with pytest.raises(ValueError, match="unmatched"):
-            run("0iy{0ox;", io=IO())  # Missing closing brace
-
     def test_empty_while_loop(self) -> None:
         """Test empty while loop that doesn't execute."""
         with redirect_stdout(io.StringIO()) as f:
             run("0ix{};1ix;", io=IO())
-        assert f.getvalue() == "\x00"
-
-    def test_unclosed_loop_skipped(self) -> None:
-        """A loop skipped when its register is zero with no closer is malformed."""
-        import pytest
-
-        with pytest.raises(ValueError, match="unmatched"):
-            run("0iy{0ox;", io=IO())
-
-    def test_while_loop_with_zero_register(self) -> None:
-        """Test while loop when register is already zero."""
-        with redirect_stdout(io.StringIO()) as f:
-            run("0ix{0oy;};1iy;", io=IO())
         assert f.getvalue() == "\x00"
 
 

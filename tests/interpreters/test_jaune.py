@@ -237,15 +237,11 @@ class TestErrors:
         with pytest.raises(HaltError, match="undefined label"):
             run_program("1!")
 
-    def test_return_without_a_call(self) -> None:
-        with pytest.raises(HaltError, match="no active subroutine"):
-            run_program(";^")
-
     def test_the_return_error_reads_in_full(self) -> None:
-        """The whole message, not the fragment the other tests match on.
+        """The whole message, not just the fragment a ``match=`` looks for.
 
-        ``match=`` is a substring search, so every assertion above passes
-        on a message padded or reworded around the phrase it looks for.
+        ``match=`` is a substring search, so such an assertion passes on a
+        message padded or reworded around the phrase it looks for.
         """
         with pytest.raises(HaltError) as caught:
             run_program(";^")

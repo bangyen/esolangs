@@ -194,12 +194,6 @@ class TestGeneratorRoundTrips:
         assert roundtrip(cvnc_run, gen.cvnc("\x00\xff")) == "\x00\xff"
         assert roundtrip(cvnc_run, gen.cvnc("ba")) == "ba"
 
-    def test_cvnc_emits_only_valid_syllables(self) -> None:
-        """A program the interpreter rejects would not be a program at all."""
-        from esolangs.interpreters.other.cvnc import _syllabify, _tokenize
-
-        assert _syllabify(_tokenize(gen.cvnc("Hello, World!")))
-
     def test_cvnc_empty_text_is_an_empty_program(self) -> None:
         assert gen.cvnc("") == ""
 

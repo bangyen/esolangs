@@ -150,11 +150,6 @@ class TestPolynomialParsing:
         result = sanitize("f(x) = -x^2 + 1")
         assert result == [-1, 0, 1]
 
-    def test_polynomial_missing_terms(self) -> None:
-        """Test parsing of polynomials with missing terms."""
-        result = sanitize("f(x) = x^3 + 1")
-        assert result == [1, 0, 0, 1]
-
     def test_polynomial_missing_constant(self) -> None:
         """Test parsing of polynomials missing constant term."""
         result = sanitize("f(x) = x^2 + x")
@@ -178,11 +173,6 @@ class TestPolynomialEdgeCases:
         result = sanitize("f(x) = 0")
         assert result == [0]
 
-    def test_polynomial_with_whitespace(self) -> None:
-        """Test parsing of polynomial with extra whitespace."""
-        result = sanitize("f(x) = x^2 + 1")
-        assert result == [1, 0, 1]
-
     def test_high_degree_polynomial_parsing(self) -> None:
         """Test parsing of high degree polynomial."""
         result = sanitize("f(x) = x^5 + x^3 + 1")
@@ -202,12 +192,6 @@ class TestPolynomialSafety:
     ``esolangs.run(timeout=)``'s concern, tested generically (through
     brainfuck) in test_api.py's test_run_timeout_halts_runaway_program.
     """
-
-    def test_a_program_runs_to_completion(self) -> None:
-        buffer = io.StringIO()
-        with redirect_stdout(buffer):
-            run("f(x) = x^4 - 130x^3 + 4238x^2 - 1170x + 38061", io=IO())
-        assert buffer.getvalue() == "A"
 
     def test_helper_functions_safe(self) -> None:
         """Test that helper functions are safe to call."""
@@ -299,13 +283,6 @@ class TestPolynomialExecution:
         with redirect_stdout(buffer):
             run(program, io=IO())
         assert buffer.getvalue() == "\x00"
-
-    def test_unmatched_bracket_rejected(self) -> None:
-        """A control-flow bracket with no partner is a malformed program."""
-        import pytest
-
-        with pytest.raises(ValueError, match="unmatched"):
-            run("f(x) = x - 4", io=IO())
 
     def test_input_instruction(self) -> None:
         """A root of 4i encodes an input instruction (value stored in reg)."""

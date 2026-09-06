@@ -216,27 +216,17 @@ class TestParsing:
         machine = _Machine(["(( ))─( )"], ScriptedIO(""))
         assert machine.nodes[(0, 0)][0] == "(( ))"
 
-    def test_program_without_a_start_is_rejected(self) -> None:
-        """A grid with no ``( )`` has nowhere to begin."""
-        with pytest.raises(ValueError, match="no '\\( \\)' start node"):
-            _Machine(["(( ))"], ScriptedIO(""))
-
-    def test_unknown_character_is_rejected(self) -> None:
-        """Anything that is neither a node, a line, nor a space is an error."""
-        with pytest.raises(ValueError, match="unknown character"):
-            _Machine(["( )─?─(( ))"], ScriptedIO(""))
-
     def test_empty_program_is_rejected(self) -> None:
-        """An empty grid has no start node either."""
+        """An empty grid has no start node to begin from."""
         with pytest.raises(ValueError, match="no '\\( \\)' start node"):
             _Machine([], ScriptedIO(""))
 
     def test_the_rejection_messages_are_exact(self) -> None:
         """Both messages are pinned whole, position included.
 
-        The cases above use ``match=``, a substring search, so the wording
-        around each fragment was free -- and the unknown character's
-        coordinates were never checked at all.
+        ``match=`` is a substring search, so a fragment leaves the wording
+        around it free -- and the unknown character's coordinates would
+        never be checked at all.
         """
         with raises_message(ValueError, "unknown character '?' at (4, 0)"):
             _Machine(["( )─?─(( ))"], ScriptedIO(""))

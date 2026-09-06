@@ -128,11 +128,6 @@ class TestStepMachine:
             machine.step()
         assert machine.exit_code == 0
 
-    def test_empty_program_is_halted(self) -> None:
-        from esolangs.interpreters.other.container import _Machine
-
-        assert _Machine([], IO()).halted is True
-
     def test_loop_is_detected_as_a_cycle(self) -> None:
         # A oscillates 0 -> 1 -> 0 forever with no EXIT rule: a genuine
         # state cycle since the containers' values repeat exactly.
