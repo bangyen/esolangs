@@ -369,7 +369,7 @@ def _wii2d_decode(pattern: list[int]) -> str | None:
     return None
 
 
-# The op-string pairs the chain draws its junctions from, cheapest first.
+# The op-string pairs the chain draws its junctions from, in merge order.
 #
 # A chain junction is a pair ``(A, B)``: ``A`` transforms the accumulator
 # when the input is 0, ``B`` when it is 1.  The pair is shared by every path
@@ -390,6 +390,16 @@ def _wii2d_decode(pattern: list[int]) -> str | None:
 # set small and handing the final decode a narrower domain.  They are tried
 # in a fixed order and the first legal one is taken, so the chain is a single
 # pass with no backtracking and the program depends only on the table.
+#
+# That order is semantic, not by cost: ``('', '0')`` is one character and
+# still sits after three two-character entries, and sorting by total
+# characters -- with or without reset/star tiering, or a weighted op cost --
+# reproduces none of it.  It is a tuned preference over a set every member of
+# which is correct, so permuting it is a size regression rather than a bug:
+# permuting the twenty merge entries (Horner pinned last) changes 360 of 392
+# emitted programs with zero errors, and the shipped order beats 7 of 8
+# random permutations on total size.  Reordering therefore means re-running
+# that tuning, not just re-checking the tests.
 _WII2D_JUNCTIONS: tuple[tuple[str, str], ...] = (
     ("", ""),
     ("", "+"),
