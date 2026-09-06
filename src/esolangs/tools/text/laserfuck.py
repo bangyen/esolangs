@@ -184,7 +184,15 @@ def _laserfuck_base_ring(
     first_base, first_factor, _ = stages[0]
     preload = ">" * home
     if first_factor is None:
-        preload += "<" * (home - count) + "+" * first_base + ">" * (home - count)
+        # Load the counter and *stay* on it.  Every ring body and the tail
+        # walk home from the counter, and the spread ring decrements the
+        # cell it starts on, so a preload that returned to ``home`` left the
+        # first ring testing the scratch cell while decrementing the
+        # counter: the two then diverged by one per pass and the loop never
+        # closed.  This only bites when the first stage does not multiply
+        # (nothing else moves the pointer) but a later one does, which is
+        # what puts a scratch cell past the counter in the first place.
+        preload += "<" * (home - count) + "+" * first_base
     else:
         preload += "+" * first_factor[0]
 
@@ -550,10 +558,29 @@ def _laserfuck_multiply(text: str, width: int | None = None) -> str:
     _require_bytes(text, "LaserFuck")
     values = [ord(c) for c in text]
     code = ""
-    linear = "".join(">" + "+" * ord(c) for c in text).rstrip(">")
+
+    def _cell(units: int) -> str:
+        # A cell is dumped only when it is *touched*, so a zero has to be
+        # written rather than skipped: "+-" leaves the value at 0 and the
+        # flag set, which is what prints a NUL.  Without it a NUL in the
+        # text emitted a bare '>' and vanished from the output.
+        return "+" * units if units else "+-"
+
+    linear = "".join(">" + _cell(ord(c)) for c in text)
 
     def chunks(base: int) -> str:
         # one '>' then '+' per value's base-chunk, ending back at the left
+        if base == 1:
+            # Base 1 is the *final* write: what it leaves is what is dumped,
+            # so a zero has to be *touched* rather than skipped (see _cell),
+            # including a trailing one -- a cell that is never visited is
+            # never dumped, which is how a NUL used to fall out of the
+            # output.  The old rstrip here dropped exactly that cell.
+            #
+            # This costs two columns per zero over the previous spelling
+            # (``!@#`` goes 147 -> 149) and buys back every text with a NUL
+            # in it, which the multiplying form got wrong outright.
+            return "".join(">" + _cell(n) for n in values)
         return "".join(">" + "+" * (n // base) for n in values).rstrip(">")
 
     while True:
