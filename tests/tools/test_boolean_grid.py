@@ -745,7 +745,14 @@ class TestWII2D:
         _chain, states = _wii2d_chain(n, table)
         assert _wii2d_real_domain(states) > _WII2D_MAX_REAL_DOMAIN
 
-        with pytest.raises(ValueError, match="width guard"):
+        # Matched on the numbers, not just the phrase: the message reports
+        # the domain it measured and the limit it was compared against, and
+        # a substring match on "width guard" passes however those drift.
+        # 1025 is n == 7's worst case, one past the 2**10 the chain would
+        # need to merge, so an off-by-one in the domain count shows here.
+        with pytest.raises(
+            ValueError, match=r"domain of 1025 points.*_WII2D_MAX_REAL_DOMAIN = 256"
+        ):
             boolean.wii2d(table)
 
     @pytest.mark.slow
@@ -1223,6 +1230,79 @@ class TestWII2D:
         template = "\n".join(_wii2d_layout(1, 5, [("", "+")]))
         for bit, expected in ((0, "5"), (1, "6")):
             assert self.run_chain(template, [bit]) == expected
+        # The digit's own column is part of the layout, and running the
+        # template cannot see it: a start written one column over still
+        # computes the same answer.
+        assert template == (">5{X0} >" + "+" * 48 + "~.\n! >+^")
+
+    @pytest.mark.parametrize(
+        ("table", "length"),
+        [
+            ("0110", 76),
+            ("00000001", 101),
+            ("00000010", 101),
+            ("00000110", 120),
+        ],
+    )
+    def test_the_template_has_an_exact_length(self, table: str, length: int) -> None:
+        """The emitted template's size, per table.
+
+        Every route, fold and threshold decision in this generator is a
+        choice between spellings that all compute the table -- the chain is
+        replayed and checked, so a mutant either dies there or emerges
+        correct and differently shaped.  The truth-table sweeps above are
+        semantic only, which leaves the size unobserved; these four tables
+        move under a blank column, a trailing row, a repeated glyph, a
+        different compression and a wider threshold respectively.
+        """
+        assert len(boolean.wii2d(table)) == length
+
+    def test_the_xor_template_is_exact(self) -> None:
+        """XOR's template, spelled out.
+
+        The shortest table that exercises the whole pipeline, so it is
+        pinned as text rather than only as a length -- a glyph swapped for
+        another of the same width moves nothing a length check can see.
+        """
+        assert boolean.wii2d("0110") == (
+            ">{X0}->{X1}+>" + "+" * 48 + "~.\n!>*^\n    >s^"
+        )
+
+    @pytest.mark.parametrize(
+        ("table", "routes"),
+        [
+            ("01101001", (0, [("", "+"), ("", "-s"), ("", "-s")])),
+            ("00000000", (0, [("", "+"), ("", "+"), ("0", "0")])),
+        ],
+    )
+    def test_the_route_plan_is_exact(
+        self, table: str, routes: tuple[int, list[tuple[str, str]]]
+    ) -> None:
+        """The per-level route pairs the chain search settles on.
+
+        ``_wii2d_routes`` returns the start digit and one (zero, one) pair
+        per level, and several pairs spell the same arithmetic at different
+        lengths -- so a search that picks a worse pair still produces a
+        template that computes the table, just a longer one.  Pinning the
+        plan makes the choice observable where the emitted answer cannot.
+        """
+        from esolangs.tools.boolean.wii2d import _wii2d_routes
+
+        n = len(table).bit_length() - 1
+        assert _wii2d_routes(n, table) == routes
+
+    def test_decode_and_threshold_spellings_are_exact(self) -> None:
+        """Two helpers whose output is a spelling, not a value.
+
+        Both are reached with a single shape in production -- every
+        threshold pair is ``(0, 1)`` and every decode domain is small -- so
+        the arms that differ elsewhere are only visible when the helpers are
+        called directly with the states that separate them.
+        """
+        from esolangs.tools.boolean.wii2d import _wii2d_decode, _wii2d_threshold
+
+        assert _wii2d_decode([0, 0, 0, 0, 1, 1, 0, 1]) == "-s///---s+/+/+/-s-//+-s"
+        assert _wii2d_threshold({3: 0, 9: 1}) == "---------////+"
 
 
 class TestCircuitDiagram:
