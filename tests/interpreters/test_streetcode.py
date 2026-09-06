@@ -876,9 +876,19 @@ class TestStreetcodeIO:
 
 
 class TestStreetcodeCPBounds:
-    def test_cp_decrement_below_zero_halts(self) -> None:
-        with pytest.raises(HaltError):
-            run(["C_;"], io=IO())
+    def test_cp_decrement_below_zero_is_clamped(self) -> None:
+        """``_`` at CP 0 moves nothing rather than raising.
+
+        The wiki bounds CP on the left ("The CP is unsigned and
+        right-unbounded") but never says what a below-zero ``_`` does -- no
+        example uses ``_``, and the page has no error-handling text.  An
+        unsigned quantity that cannot go lower saturates, which is also how
+        brainfuck's ``<`` and CVNC's accumulator behave.  This used to
+        raise ``HaltError``.
+        """
+        assert run_street("C_^O;") == chr(1)
+        # repeated clamping stays on cell 0 rather than drifting
+        assert run_street("C___^O;") == chr(1)
 
     def test_cp_can_move_right_and_back_to_zero(self) -> None:
         assert run_street("C=_^O;") == chr(1)
