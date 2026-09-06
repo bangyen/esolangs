@@ -570,10 +570,30 @@ def _cascade(truth_table: str, n: int) -> str | None:
     return header + _HEADER_END + body
 
 
-#: Multipliers the wide search composes.  ``m`` doubles and ``p`` negates, so
-#: ``mp`` is ``-2``, ``mm`` is ``4`` and ``mmp`` is ``-4``; widening past this
-#: was measured and reaches no further table.
-_WIDE_A_VALS = (0, 1, -1, 2, -2, 4, -4)
+#: Multipliers the wide search composes: the closure of ``m`` (double) and
+#: ``p`` (negate) over the identity, bounded by ``_WIDE_A_LIMIT``, then the
+#: erase.  So ``mp`` is ``-2``, ``mm`` is ``4`` and ``mmp`` is ``-4``.
+#:
+#: Written as the closure rather than as the seven values it comes to,
+#: because the bound is the only measured part: widening past ``|a| == 4``
+#: reaches no further table, while the *shape* -- signed powers of two --
+#: is what the two commands generate and is not a search result.  Order is
+#: load-bearing, since the wide search takes the first spelling that
+#: behaves: ascending magnitude, positive before negative.
+_WIDE_A_LIMIT = 4
+
+
+def _wide_a_vals(limit: int) -> tuple[int, ...]:
+    """Return the reachable multipliers up to ``limit``, in search order."""
+    powers = []
+    value = 1
+    while value <= limit:
+        powers.append(value)
+        value *= 2
+    return (0, *(signed for p in powers for signed in (p, -p)))
+
+
+_WIDE_A_VALS = _wide_a_vals(_WIDE_A_LIMIT)
 
 #: Offsets the wide search composes.  Measured: widening to ``+/-16`` reaches
 #: no table that ``+/-12`` misses.
