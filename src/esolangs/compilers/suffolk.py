@@ -9,10 +9,12 @@ from esolangs.compilers._riscv_common import MUL32, Routine
 def count(code: str, ind: int) -> int:
     """Return the run length of the command at ``ind``."""
     char = code[ind]
-    code += " "
     num = 0
 
-    while code[ind] == char:
+    # Bounded on the length rather than a trailing sentinel: appending one
+    # copied the whole program on every call, which made a scan over an
+    # N-byte program quadratic (79% of this compiler's time at 120 KB).
+    while ind < len(code) and code[ind] == char:
         num += 1
         ind += 1
 

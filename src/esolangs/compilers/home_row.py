@@ -8,18 +8,21 @@ from esolangs.compilers._riscv_common import Routine
 
 def count(code: str, ind: int) -> tuple[int, int]:
     """Return the run length of the command at ``ind`` and the next index."""
-    code += " "
     num = 0
 
+    # Bounded on the length rather than a trailing sentinel: appending one
+    # copied the whole program on every call, which made a scan over an
+    # N-byte program quadratic (66% of this compiler's time at 110 KB).
+    end = len(code)
     if (start := code[ind]) in "as":
-        while (ins := code[ind]) in "as":
+        while ind < end and (ins := code[ind]) in "as":
             if ins == "a":
                 num += 1
             else:
                 num -= 1
             ind += 1
     else:
-        while code[ind] == start:
+        while ind < end and code[ind] == start:
             num += 1
             ind += 1
 

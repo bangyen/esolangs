@@ -16,14 +16,22 @@ _SUBRS: frozenset[_Func] = frozenset(get_args(_Func))
 
 def count(code: str, ind: int) -> tuple[int, int]:
     """Return the run length (or OI arithmetic value) at ``ind``."""
-    code += "  "
+
+    # ``at`` stands in for the two trailing spaces this used to append: the
+    # scan reads one position of lookahead past the end, and appending a
+    # sentinel copied the whole program on every call (quadratic over a
+    # long program, as it measurably was in the Suffolk and Home Row
+    # compilers).  Reading the pad instead of materializing it is O(1).
+    def at(k: int) -> str:
+        return code[k] if k < len(code) else " "
+
     num = 0
 
-    if (start := code[ind]) in "OI" and code[ind + 1] == "A":
+    if (start := at(ind)) in "OI" and at(ind + 1) == "A":
         num = 0 if start == "O" else 1
         ind += 2
 
-        while (ins := code[ind]) in "+-x":
+        while (ins := at(ind)) in "+-x":
             if ins == "+":
                 num += 2
             elif ins == "-":
@@ -34,14 +42,14 @@ def count(code: str, ind: int) -> tuple[int, int]:
 
         return num, ind
     if start in "+-":
-        while (ins := code[ind]) in "+-":
+        while (ins := at(ind)) in "+-":
             if ins == "+":
                 num += 2
             else:
                 num -= 2
             ind += 1
     else:
-        while code[ind] == start:
+        while at(ind) == start:
             num += 1
             ind += 1
 

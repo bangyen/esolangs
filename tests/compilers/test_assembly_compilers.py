@@ -250,6 +250,18 @@ class TestHomeRow:
         assert "lw   t0, 0(s1)" in mod.comp("s")
         assert "addi t0, t0, -2" in mod.comp("ss")
 
+    def test_a_cancelling_run_emits_no_arithmetic(self) -> None:
+        """``as`` sums to zero, so the add is skipped rather than emitted.
+
+        ``count`` folds a run of ``a``/``s`` into one signed total, and a
+        run that cancels leaves nothing to add -- the arm that emits the
+        load/add/store is guarded on that total being nonzero.
+        """
+        mod = importlib.import_module("esolangs.compilers.home_row")
+        assert "addi t0, t0," not in mod.comp("as")
+        # not vacuous: an uncancelled run does emit the add
+        assert "addi t0, t0, 1" in mod.comp("a")
+
     def test_movement(self) -> None:
         mod = importlib.import_module("esolangs.compilers.home_row")
         assert "down:" in mod.comp("d")
@@ -338,6 +350,19 @@ class TestJaune:
         assert "lw   t0, 0(s1)" in mod.comp("1+")
         assert "lw   t0, 0(s1)" in mod.comp("1-")
 
+    def test_a_zero_operand_emits_no_arithmetic(self) -> None:
+        """``0+`` adds zero, so the add is skipped rather than emitted.
+
+        The digit before the sign is the operand, and an operand of zero
+        leaves nothing to add -- the load/add/store is guarded on it being
+        nonzero.
+        """
+        mod = importlib.import_module("esolangs.compilers.jaune")
+        assert "addi t0, t0," not in mod.comp("0+")
+        assert "addi t0, t0," not in mod.comp("0-")
+        # not vacuous: a nonzero operand does emit the add
+        assert "addi t0, t0, 1" in mod.comp("1+")
+
     def test_subroutines(self) -> None:
         mod = importlib.import_module("esolangs.compilers.jaune")
         assert "call output" in mod.comp("^")
@@ -390,6 +415,29 @@ class TestJaune:
         assert "sub  t0, t0, s7" in mod.comp("v-")
         assert "addi t0, t0, 1" in mod.comp("+")
         assert "addi t0, t0, -1" in mod.comp("-")
+
+    def test_a_leading_sign_reads_its_operand_as_blank(self) -> None:
+        """A sign at index 0 takes no operand from the end of the program.
+
+        ``count`` reads the character *before* the sign for the operand, so
+        at index 0 that index is ``-1``.  The scan used to run over a
+        ``code + " "`` copy, where ``-1`` was the appended space; dropping
+        that copy -- it made a scan over an N-byte program quadratic --
+        exposed Python's negative indexing instead, and the last character
+        of the program silently became the leading sign's operand.  A
+        trailing digit then turned ``+`` into a counted add of that digit.
+
+        Pinned across the three arms the predecessor selects: a digit
+        operand, the ``v`` register form, and the plain run.
+        """
+        mod = importlib.import_module("esolangs.compilers.jaune")
+        # count() reports the same operand whether or not a trailing
+        # character exists to be misread as one.
+        assert mod.count("+", 0) == mod.count("+9", 0)
+        assert mod.count("+", 0) == mod.count("+v", 0)
+        # and the emitted code is the lone-sign form, not a counted add
+        assert "addi t0, t0, 1" in mod.comp("+9")
+        assert "add  t0, t0, s7" not in mod.comp("+9")
         assert "addi t0, t0, 4" in mod.comp("++++")
 
     def test_bare_read_stores_into_the_cell(self) -> None:
@@ -495,6 +543,18 @@ class TestJaune:
 
 
 class TestUnsquare:
+    def test_a_cancelling_pair_emits_no_arithmetic(self) -> None:
+        """``+-`` sums to zero, so the add is skipped rather than emitted.
+
+        ``count`` folds a ``+``/``-`` run into one signed total, and a pair
+        that cancels leaves nothing to add -- the ``addi`` is guarded on
+        that total being nonzero.
+        """
+        mod = importlib.import_module("esolangs.compilers.unsquare")
+        assert "addi s2, s2," not in mod.comp("+-")
+        # not vacuous: a lone + does emit the add
+        assert "addi s2, s2, 2" in mod.comp("+")
+
     def test_register_commands(self) -> None:
         mod = importlib.import_module("esolangs.compilers.unsquare")
         assert "call zero" in mod.comp("O")

@@ -27,19 +27,31 @@ def count(code: str, ind: int) -> tuple[int | str, int]:
     ``: $ @ ? !`` whose operand is the preceding character.
     """
 
+    # ``at`` stands in for the trailing space this used to append: the scan
+    # reads one position of lookahead past the end, and appending a sentinel
+    # copied the whole program on every call, which is quadratic over a long
+    # program (as it measurably was in the Suffolk and Home Row compilers).
+    #
+    # The negative index is part of that contract, not an accident.  A sign
+    # at index 0 reads ``code[-1]`` for its operand, which on the *padded*
+    # string was the appended space -- so it must stay a space here rather
+    # than wrapping around to the program's own last character, which is
+    # what Python's negative indexing would otherwise give.
+    def at(k: int) -> str:
+        return code[k] if 0 <= k < len(code) else " "
+
     def check(k: int, s: str) -> bool:
-        ch = code[k]
+        ch = at(k)
         return ch.isnumeric() or ch in s
 
     start = code[ind]
-    code += " "
     num = 0
 
     if start in "+-":
-        if (n := code[ind - 1]).isnumeric():
-            num = int(start + code[ind - 1])
+        if (n := at(ind - 1)).isnumeric():
+            num = int(start + at(ind - 1))
             while check(ind, "+-"):
-                x, y = code[ind], code[ind + 1]
+                x, y = at(ind), at(ind + 1)
                 if x.isnumeric() and y in "+-":
                     num += int(y + x)
                 ind += 1
@@ -57,17 +69,17 @@ def count(code: str, ind: int) -> tuple[int | str, int]:
         else:
             return n, ind + 1
     elif start in ":$@?!":
-        num = -1 if (c := code[ind - 1]) == "v" else int(c) if c.isdigit() else -1
+        num = -1 if (c := at(ind - 1)) == "v" else int(c) if c.isdigit() else -1
         ind += 1
     else:
-        while code[ind] == start:
+        while at(ind) == start:
             num += 1
             ind += 1
         # A ``v`` immediately before ``+``/``-`` is that operator's operand,
         # not part of this run: ``_parse`` reads ``vv+`` as ``v`` then
         # ``v+``.  Counting it here looped the read an extra time and left
         # the second digit unused.
-        if start == "v" and num > 1 and code[ind] in "+-":
+        if start == "v" and num > 1 and at(ind) in "+-":
             num -= 1
             ind -= 1
 
