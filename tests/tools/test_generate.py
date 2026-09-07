@@ -869,6 +869,33 @@ class TestGeneratorRoundTrips:
         for heading in range(4):
             assert laserfuck_roundtrip(program, heading) == text
 
+    @pytest.mark.parametrize(
+        "text",
+        ["Hello, World!", "A b C d", "the rain in spain", "\x00H", "abc", "x"],
+    )
+    def test_laserfuck_snake_ring_bands_its_values(self, text: str) -> None:
+        """Banded or not, every cell ends up holding its own byte.
+
+        Splitting the values into bands gives each its own base and its own
+        pair of rings, so a cell must be added to by *its* band and left
+        alone by the others.  Getting the pointer handoff wrong between
+        stages is invisible in the grid and obvious here: a cell that both
+        bands reach comes out holding the sum of two bases.
+
+        ``"\\x00H"`` is the awkward one -- the base search runs over
+        ``range(1, 128)`` and cannot express 0, so the NUL's band counts to
+        one and the tail takes it back down again.
+        """
+        from esolangs.tools.text.laserfuck import _laserfuck_snake_ring
+
+        for grouped in (False, True):
+            program = _laserfuck_snake_ring(text, 80, grouped=grouped)
+            if program is None:
+                continue
+            assert max(len(line) for line in program.split("\n")) <= 80
+            for heading in range(4):
+                assert laserfuck_roundtrip(program, heading) == text
+
     def test_laserfuck_snake_needs_a_spine_and_a_margin(self) -> None:
         """A spine with no room either side cannot carry a snake."""
         from esolangs.tools.text.laserfuck import _laserfuck_snake
