@@ -40,8 +40,8 @@ sculpted route below, which is why no third suffix family is carried here.
 The selection rule is the load-bearing part, and it is why the enumeration
 tests rather than predicts: the accumulator that works is the one whose
 column reads correctly **at the read**, not the cell holding the answer
-beforehand.  Those differ, because the walk out applies the running
-prefix-XOR -- an AND column can arrive as a constant, and XOR can arrive as a
+beforehand.  Those differ, since the walk out applies the running prefix-XOR
+-- an AND column can arrive as a constant, and XOR can arrive as a
 projection.  Choosing pre-walk covers 10 of the 16 two-input tables and looks
 nearly right, which is the trap.
 
@@ -60,18 +60,14 @@ reaches 15404 of the 64594 fully essential four-input tables (23.9%),
 four-input XOR among them.  What buys those is one widening of the suffix --
 a single ``<`` inside the bracket run, enumerated after every pure run.  A
 two-insert family one step wider existed here and was removed: it served a
-single three-input pair that the sculpted route now builds.
-Partial coverage is worth gating on because a miss is not a failure: it falls
-through to the sculpted route below, which closes the arity -- a missing
-staging degrades rather than raises.  What a four-input table does pay for is the
-derivation, which at this arity cannot stop early; see
-:data:`_STAGED_ARITIES`.
+single three-input pair that the sculpted route now builds.  Partial coverage
+is worth gating on because a miss is not a failure: it falls through to the
+sculpted route below, which closes the arity -- a missing staging degrades
+rather than raises.  What a four-input table does pay for is the derivation,
+which at this arity cannot stop early; see :data:`_STAGED_ARITIES`.
 
-A second pass once took the arity to **60942 of 64594 (94.35%)** by
-complementing inputs as they land.  It has been removed: every table it
-placed is one the sculpted route below also builds, and it cost a
-300-second whole-arity sweep to place them.  ``docs/minifuck_generator.md`` keeps the
-mechanism and the measurement.
+A second pass that complemented inputs as they land was removed; every table
+it placed the sculpted route also builds.  See ``docs/minifuck_generator.md``.
 
 **The remaining 3652 fall to the sculpted route**, :func:`_mux`, which is a
 different construction rather than another coordinate on this one -- and it
@@ -90,42 +86,31 @@ five inputs is reached on every table sampled (200 of 200, five-input XOR
 among them).  See the comment block above :data:`_MUX_BASE` for the
 mechanism and the measurements.
 
-**The generator is total.**  The route carried an arity gate until every one
-of its six refusal sites was closed by an argument with no residual ``n``
-(``docs/minifuck_generator.md``, "Is ``_mux`` total?"); with the gate
-replaced by the floor :data:`_MUX_MIN_ARITY`, there is no arity and no
-table it declines.  Six
-inputs is covered here by :meth:`test_no_arity_is_gated`, which builds a
-fully-essential table and runs all 64 rows on the shipped interpreter;
-``docs/minifuck_generator.md`` records 448 of 448 rows correct at five, six and seven.
-Cost grows with ``2**n`` and is the only thing that bounds a caller now:
-about 0.14s a table at five inputs, 40s at six, and 820s at seven, where the
-template reaches 13685 characters.  A caller wanting eight should budget for
-that curve rather than assume a refusal.
+**The generator is total** -- no arity and no table it declines, the gate
+replaced by the floor :data:`_MUX_MIN_ARITY`.  Cost, not expressiveness, is
+what bounds a caller: it grows with ``2**n``, so a caller wanting eight
+inputs should budget for that curve rather than assume a refusal.  The
+totality argument, the execution evidence and the measured cost curve are in
+``docs/minifuck_generator.md``.
 
-Five inputs is staged on the same terms and a far thinner slice: the family
-produces 24582 fully-essential 32-bit columns against 4294642034 such tables,
-so this is 0.00057% of the arity rather than a quarter of it.  It ships for
-the reason four did -- a miss costs nothing but the fall-through.  The one
-thing that had to change is the spelling: a derivation over all ``2**32``
-tables cannot run, so the enumeration is *inverted* rather than run per
-table -- see :func:`_staging_index`, which every arity now uses that way,
-and which since the closed form landed fills its columns arithmetically
-rather than by running the interpreter over each staging.
-What catches
-the rest is the sculpted route, which since its separation became a
-construction reaches five as readily as four: 200 of 200 sampled
-fully-essential five-input tables build and print every row.
+Five inputs is staged on the same terms and a far thinner slice -- a miss
+costs nothing but the fall-through.  The one thing that had to change is the
+spelling: a derivation over all ``2**32`` tables cannot run, so the
+enumeration is *inverted* rather than run per table -- see
+:func:`_staging_index`, which every arity now uses that way, and which since
+the closed form landed fills its columns arithmetically rather than by
+running the interpreter over each staging.  What catches the rest is the
+sculpted route, which since its separation became a construction reaches
+five as readily as four.  ``docs/minifuck_generator.md`` has the column
+counts and why no flat family closes this arity.
 
-Paying that per table is what makes a *screen* worth having, and there is
-one: everything the endgame emits after the suffix is GF(2)-affine in the
-columns standing at that point, so a printed column lies in their span.  A
-table in no staging's span cannot be printed by any of them, and
-:func:`_span_admits` says so in about 3.6 milliseconds where the enumeration
-takes 143 seconds to find nothing.  It only ever declines, so no table that
-built before builds differently now.
-A table that ignores some inputs is solved at the arity it uses and renumbered
-back, so a wide table with a narrow core is as cheap as that core.
+A linear-algebra screen used to sit before that lookup, declining tables
+outside every staging's span; the index inversion made it redundant -- an
+unreachable table is a dict miss -- and it is gone, its mechanism and the
+equivalence measurements recorded where it stood, above
+:data:`_CHAIN_CAP`.  A table that ignores some inputs is solved at the
+arity it uses and renumbered back, so a wide table with a narrow core is
+as cheap as that core.
 
 **Nothing here searches.**  Every route is a construction or an enumeration
 of a small derived product: the staged families enumerate a bounded plan
@@ -135,15 +120,19 @@ route separates by weighting each input as it lands and then sculpts under a
 termination argument.  A breadth-first search over ``<[x`` used to back all
 of them -- a column search, a parked search, a reconverging-reset search, and
 four more inside the sculpted route's separation.  All are gone: each was
-replaced by something that derives the answer instead of hunting for it, and
-what they used to reach is now reached faster and further.  A table no route
-builds raises, which is a bounded failure a caller can handle; a search that
-cannot finish is not.
+replaced by something deriving the answer instead of hunting for it, and what
+they used to reach is now reached faster and further.  A table no route
+builds raises, a bounded failure a caller can handle; a search that cannot
+finish is not.
 
 Nothing here is hand-tracked either: :class:`_Joint` runs all ``2**n``
 instantiations in lockstep as the template is emitted, every choice is made
-against the simulated truth, and :func:`minifuck` raises rather than
-returning a program it has not seen print the table.
+against that tracked state, and :func:`minifuck` raises rather than
+returning a program it has not seen print the table.  The tracking itself
+is not an interpreter: the rows advance by the closed-form laws
+:mod:`esolangs.tools.boolean.minifuck_sim` states -- one law per maximal
+run of the alphabet -- and the tests pin those laws to the interpreter's
+``_step`` differentially, so the build path never drives an interpreter.
 
 **Mechanisms ruled out for real, not to be revisited.**  Chaining ``[<``
 reads across planted indicators: ``[<`` sets the cell to its *right* and
@@ -153,11 +142,11 @@ the guards.  Fixed width-2 stage chains reach only 88 of 256 tables at
 ``n == 3`` and 520 of 65536 at ``n == 4``, so no quality of gadget makes
 them total.  Harvesting (sweeping embed variants for a table that lands in
 a cell) finds all 16 at ``n == 2`` but 105 of 256 at ``n == 3`` -- a
-shortcut, not a totality argument.  Relocating an ignored placeholder
-fails because a fill writes the live tape; the working route emits the
-ignored setters first and reconverges to a common *non-blank* state, blank
-being unreachable since the all-ones row ends a cell right of the others
-and ``<`` clamps without writing.
+shortcut, not a totality argument.  Relocating an ignored placeholder fails
+because a fill writes the live tape; the working route emits the ignored
+setters first and reconverges to a common *non-blank* state, blank being
+unreachable since the all-ones row ends a cell right of the others and ``<``
+clamps without writing.
 
 **Five apparent walls here were artifacts of how the question was asked**,
 each costing a round to re-derive -- worth recognizing before believing any
@@ -185,21 +174,26 @@ complement of its bit, so the program computes a table the caller
 pre-transformed.  Input *permutation* is fine -- it is entirely inside the
 template.
 
-``docs/minifuck_generator.md`` records the wider searches and the measurements behind
-these.
+``docs/minifuck_generator.md`` records the wider searches and the
+measurements behind these.
 """
 
 import re
 from collections.abc import Callable, Iterator
 from functools import cache
 
-from esolangs.interpreters.tape_based.minifuck import _step as _minifuck_step
 from esolangs.tools.boolean.helpers import (
     _validate_shape,
     _validate_truth_table,
     essential_inputs,
     read_at,
 )
+
+# The machine the construction below emits against.  ``_Sim`` and ``_Joint``
+# are re-exported rather than referenced through the module because the test
+# suite imports them from here by name, and because every use in this file
+# reads as part of the construction rather than as a call into a simulator.
+from esolangs.tools.boolean.minifuck_sim import _clamp, _Joint, _runs, _Sim, _walk_to
 
 __all__ = ["minifuck"]
 
@@ -215,12 +209,12 @@ _BASE = 16
 # the ``<`` steps back over a cell so the parities stay distinguishable.
 #
 # The separator decides the affine picture the whole construction reads from,
-# and the first two here were picked by hand.  That turned out to be the
-# binding constraint rather than a detail: between them they leave only 92
-# distinct columns standing, and 112 of the 120 tables the searches could not
-# reach were absent from the tape entirely rather than merely hard to print.
-# Enumerating short strings over the same alphabet fixed that -- the three
-# added below carry 118 of those 120, and the searches never had to change.
+# and the first two here were picked by hand -- the binding constraint rather
+# than a detail: between them they leave only 92 distinct columns standing,
+# and 112 of the 120 tables the searches could not reach were absent from the
+# tape entirely rather than merely hard to print.  Enumerating short strings
+# over the same alphabet fixed that -- the three added below carry 118 of
+# those 120, and the searches never had to change.
 # Only the first two are used by the routes that scan separators (the
 # degenerate path and the fallback searches); the rest are reached by the
 # staging enumeration, so adding one costs those routes nothing.
@@ -277,204 +271,6 @@ _POOL_WIDTH = len(_POOL) + 1
 # every reachable pool conserves that XOR, so the read polarity -- not the
 # pool -- is what makes a table and its complement both printable.
 _READS = ("[<", "[x<[<")
-
-
-class _Sim:
-    """A Minifuck machine fed one instruction at a time.
-
-    An emitter cannot hand a whole program over and read the answer: it must
-    advance a machine and branch on where that left it.  So this accepts
-    instructions singly, and holds the state an emitter branches on -- the
-    tape as cells, the pointer, what has printed, and the two flags below.
-
-    The *semantics* are not re-implemented here.  :meth:`exec` calls the
-    interpreter's own ``_step``, so there is one definition of what a
-    Minifuck instruction does and an emitter cannot drift from a real run.
-    That became possible when the interpreter's transition was made pure;
-    before that this class carried its own copy of the dispatch.
-
-    ``dead`` marks the one transition a parameterized program must never
-    take: a ``.`` on a zero pool reads a byte of input.
-    """
-
-    __slots__ = ("dead", "length", "out", "ptr", "skip", "tape")
-
-    def __init__(self, size: int) -> None:
-        """Start with a zeroed tape of ``size`` cells at the origin.
-
-        The tape is an ``int`` bitvector, cell *i* at bit *i* -- the same
-        spelling the interpreter's ``_State`` uses, so :meth:`exec` can hand
-        it straight over.  Holding it as a list of cells instead would mean
-        converting both ways on every step, which measured 68-78% of a step
-        and made an O(1) flip cost O(tape).
-        """
-        self.tape = 0
-        self.length = size
-        self.ptr = 0
-        self.out: list[str] = []
-        self.dead = False
-        self.skip = False
-
-    def cell(self, index: int) -> int:
-        """Return the bit in cell ``index``."""
-        return (self.tape >> index) & 1
-
-    def cells(self, stop: int) -> tuple[int, ...]:
-        """Return cells ``0..stop-1``, the shape a column comparison wants."""
-        return tuple((self.tape >> i) & 1 for i in range(stop))
-
-    def copy(self) -> "_Sim":
-        """Return an independent copy, for branching a search or a probe."""
-        clone = _Sim.__new__(_Sim)
-        clone.tape = self.tape
-        clone.length = self.length
-        clone.ptr = self.ptr
-        clone.out = list(self.out)
-        clone.dead = self.dead
-        clone.skip = self.skip
-        return clone
-
-    def key(self) -> tuple[object, ...]:
-        """Return the whole state, hashable, so a search can dedup on it."""
-        return (self.tape, self.length, self.ptr, tuple(self.out), self.dead, self.skip)
-
-    @staticmethod
-    def restore(key: tuple[object, ...]) -> "_Sim":
-        """Rebuild the machine :meth:`key` described.
-
-        The inverse of :meth:`key`, so a memo can hold states rather than
-        machines and hand back something the probes can step.
-        """
-        tape, length, ptr, out, dead, skip = key
-        clone = _Sim.__new__(_Sim)
-        clone.tape = tape  # type: ignore[assignment]
-        clone.length = length  # type: ignore[assignment]
-        clone.ptr = ptr  # type: ignore[assignment]
-        clone.out = list(out)  # type: ignore[call-overload]
-        clone.dead = dead  # type: ignore[assignment]
-        clone.skip = skip  # type: ignore[assignment]
-        return clone
-
-    def exec(self, ins: str) -> None:
-        """Execute one instruction, delegating the semantics to the interpreter.
-
-        The language itself is not spelled here: the interpreter's ``_step``
-        is the shipped pure transition, so an emitter and a real run cannot
-        disagree about what an instruction does.  This used to carry
-        its own copy of the dispatch, which was a second definition of
-        Minifuck that had to be kept in step by hand.
-
-        What stays is the *shape* the emitter needs, which the interpreter
-        has no reason to provide.  Two translations are involved:
-
-        * The interpreter holds the tape as an ``int`` bitvector and the
-          emitter as a list of cells, so a step converts across the two.
-        * A ``[`` that flips its cell to zero skips the *next* instruction.
-          The interpreter spells that by advancing ``ind`` past it inside one
-          program; an emitter is handed instructions singly and has no next
-          instruction yet, so the skip is held on ``self.skip`` and consumed
-          when that instruction arrives.
-
-        ``dead`` marks the transition a parameterized program must never
-        take -- a ``.`` on a zero pool, which the interpreter reports as
-        ``_Effect.reads`` because a real run would fetch a byte of input.
-        """
-        if self.dead:
-            return
-        if self.skip:
-            self.skip = False
-            return
-
-        tape, length, ptr, skipped, char, reads = _minifuck_step(
-            ins, self.tape, self.length, self.ptr
-        )
-
-        if reads:
-            self.dead = True
-            return
-        if char is not None:
-            self.out.append(char)
-
-        self.tape = tape
-        self.length = length
-        self.ptr = ptr
-        self.skip = skipped
-
-
-def _set_bit(bit: int) -> str:
-    """Return the ``{Xi}`` fill writing ``bit`` at ``ptr+1``.
-
-    Both spellings are two characters and leave the pointer where they found
-    it, so every instantiation has the same length -- without that, the
-    program's length would leak the inputs it is meant to be evaluating.
-    """
-    return "[<" if bit else "xx"
-
-
-class _Joint:
-    """The ``2**n`` instantiations, advanced in lockstep as code is emitted."""
-
-    def __init__(self, n: int, size: int = 512) -> None:
-        """Start one machine per row of the truth table."""
-        self.n = n
-        self.rows = [[(r >> (n - 1 - k)) & 1 for k in range(n)] for r in range(2**n)]
-        self.ms = [_Sim(size) for _ in self.rows]
-        self.parts: list[str] = []
-
-    def emit(self, code: str) -> None:
-        """Append code and run it on every row, keeping them in lockstep."""
-        self.parts.append(code)
-        for m in self.ms:
-            for ch in code:
-                m.exec(ch)
-
-    def emit_setter(self, i: int) -> None:
-        """Emit the ``{Xi}`` placeholder, simulating each row with its bit."""
-        self.parts.append("{X" + str(i) + "}")
-        for bits, m in zip(self.rows, self.ms, strict=True):
-            for ch in _set_bit(bits[i]):
-                m.exec(ch)
-
-    def fork(self) -> "_Joint":
-        """Return a copy, for trying a continuation without committing."""
-        clone = _Joint.__new__(_Joint)
-        clone.n = self.n
-        clone.rows = self.rows
-        clone.ms = [m.copy() for m in self.ms]
-        clone.parts = list(self.parts)
-        return clone
-
-    def col(self, cell: int) -> tuple[int, ...]:
-        """Return ``cell``'s value across the rows -- the function it holds."""
-        return tuple(m.cell(cell) for m in self.ms)
-
-    def ptrs(self) -> tuple[int, ...]:
-        """Return each row's pointer, so callers can see divergence."""
-        return tuple(m.ptr for m in self.ms)
-
-    def printed(self) -> list[str]:
-        """Return what each row has printed so far."""
-        return ["".join(m.out) for m in self.ms]
-
-    def template(self) -> str:
-        """Return the emitted template, ``{Xi}`` placeholders included."""
-        return "".join(self.parts)
-
-
-def _walk_to(j: _Joint, target: int) -> None:
-    """Walk right to ``target`` with ``[x``, which is safe over any junk."""
-    ptrs = set(j.ptrs())
-    if len(ptrs) != 1:
-        raise ValueError(f"walk needs a converged pointer, got {ptrs}")
-    cur = ptrs.pop()
-    if target < cur:
-        raise ValueError(f"cannot walk left with [x ({cur} -> {target})")
-    j.emit("[x" * (target - cur))
-
-
-def _clamp(j: _Joint) -> None:
-    """Clamp every row's pointer to 0.  ``<`` never writes, so this is free."""
-    j.emit("<" * (max(j.ptrs()) + 1))
 
 
 # What complements the bit a setter just wrote.  ``<`` steps back over the
@@ -573,13 +369,13 @@ def _embed(
 # there would mark cell 3 and walk cleanly; what the widened step buys is the
 # pointer.
 #
-# Neither widening is slack, and the fourth code is the one that proves it
-# cannot be read off a blank tape.  Narrowed to the default its trace on an
-# empty tape is *identical* -- mark at 6, pointer at 5 -- because ``<`` clamps
-# at cell 0 and both spellings start there.  On the live states the endgame
-# actually presents, the pool cells are already set, so the opening ``[``
-# fires and the pointer is no longer at 0 when the second ``<`` runs.  The
-# two spellings then walk different tapes and land the pool two cells apart.
+# Neither widening is slack, and the fourth code proves it cannot be read off
+# a blank tape.  Narrowed to the default its trace on an empty tape is
+# *identical* -- mark at 6, pointer at 5 -- because ``<`` clamps at cell 0 and
+# both spellings start there.  On the live states the endgame actually
+# presents, the pool cells are already set, so the opening ``[`` fires and the
+# pointer is no longer at 0 when the second ``<`` runs.  The two spellings
+# then walk different tapes and land the pool two cells apart.
 # Narrowed and ablated the way the searches-stubbed test ablates a whole code,
 # the default spelling strands 18 tables at ``n == 3`` -- the same 18 that
 # dropping the code strands, so the widening *is* the code.
@@ -598,8 +394,8 @@ def _embed(
 # This is worth stating because every surface measure says the opposite.
 # Pairwise edit distance runs 2 to 7, prefix-factoring an exact regex makes it
 # *longer* (73 characters against 64), and the minimal DFA finds only one pair
-# converging.  All true, and all measuring spelling rather than behaviour: the
-# structure is in what the strings do to the tape.
+# converging.  All true, and all measuring spelling rather than behaviour:
+# the structure is in what the strings do to the tape.
 #
 # Setting the pool is not a search: across every table at ``n <= 3`` the
 # breadth-first search this replaced returned one of a handful of strings, and
@@ -624,9 +420,9 @@ def _embed(
 # That measurement is the one to repeat before adding a code.  An earlier
 # version of this list carried ten strings, the extra five being the
 # ``cell7 == 1`` mirrors; they cost 136 changed templates and bought nothing,
-# which only became visible when the ablation was run with the searches
-# stubbed.  Ablating with the fallthrough open reports success either way,
-# because the searches quietly rebuild whatever the pool list drops.
+# visible only when the ablation was run with the searches stubbed.  Ablating
+# with the fallthrough open reports success either way, since the searches
+# quietly rebuild whatever the pool list drops.
 #
 # **Would re-adding them help now?**  Worth answering here because the drop was
 # measured at ``n <= 3`` only, and the four-input work below turns on exactly
@@ -641,10 +437,9 @@ def _embed(
 # and the build fails -- the same numbers the closure pair gives.  Serving the
 # orientation closes *sites* and builds no table.  What the drop got right was
 # the conclusion; what it could not have known is that the surplus reach is
-# real and simply has nothing to fix -- every table at ``n <= 3`` already
-# builds.  As an implementation they are also dominated: ten strings of length
-# 14 to 23, of which four cover anything and two matter, against a pair at 11
-# and 14.
+# real and has nothing to fix -- every table at ``n <= 3`` already builds.  As
+# an implementation they are also dominated: ten strings of length 14 to 23,
+# of which four cover anything and two matter, against a pair at 11 and 14.
 #
 # The flips themselves are one step each under the law below: ``'[[[[<'`` is
 # ``_step(2, 1, odd=False)`` and ``'[[[[[[<'`` is ``_step(3, 1, odd=False)``.
@@ -853,68 +648,166 @@ def _pool_reaches(j: _Joint, code: str, cell7: int, walk_out: int) -> bool:
     return True
 
 
-# What :func:`_find_pool_cached` probes with.  The verdict is invariant in
-# the walk out (measured over 9..39, no ``(site, code)`` pair changes answer),
-# so the search needs *a* value and not the caller's; naming one here is what
-# lets the memo key omit it.  The smallest legal accumulator, since
-# :func:`_endgame` rejects anything under 8 and the probe should sit where
-# every caller's does or further left.
+# What the pool derivation probes with.  The verdict is invariant in the walk
+# out (measured over 9..39, no ``(site, code)`` pair changes answer), so the
+# derivation needs *a* value and not the caller's; naming one here is what lets
+# the key omit it.  The smallest legal accumulator, since :func:`_endgame`
+# rejects anything under 8 and the probe should sit where every caller's does
+# or further left.
 _PROBE_WALK_OUT = _POOL_WIDTH + 1
 
+#: The window a pool verdict depends on: cells 0 to ``_POOL_WIDTH - 1``.
+_POOL_MASK = (1 << _POOL_WIDTH) - 1
 
-@cache
-def _find_pool_cached(
-    site: tuple[tuple[object, ...], ...],
-    cell7: int,
-    codes: tuple[str, ...],
-) -> str | None:
-    """:func:`_find_pool` keyed on the joint's state, memoised.
 
-    The search is the build's hot spot -- it walks every pool code through
-    every row of the joint, and re-running it is most of what a derivation
-    would otherwise spend its time on.  Almost all of it is repeated, because
-    the same joint state is reached from many plans: at four inputs, 474170
-    hits against 8390 misses, a 98.3% hit rate.
+#: How far right a row can sit and still be summarised by its window.
+#:
+#: The bound is not "where acceptance stops" -- codes answer out to pointer 10
+#: -- but **where the window stops being the whole key**.  Two things fail
+#: further right, and this is the tighter of them:
+#:
+#: * At pointer 3 the codes reach above cell 7, so the window no longer
+#:   determines the verdict: 3 of 300 random window values changed answer when
+#:   the cells above them were re-randomised.  At pointers 0 to 2 that is 0 of
+#:   2400, over eight redraws of 28 bits each.
+#: * From pointer 4 the verdict also starts depending on the walk out, which
+#:   :func:`_find_pool` deletes: 31 keys change answer across walk outs 9 to
+#:   39, none of them below pointer 4.
+#:
+#: So the table is derived over the pointers where one answer is *the* answer,
+#: and a row beyond it is refused rather than guessed at.  Nothing is lost:
+#: every site a build reaches has the pointer at 0 -- 1956 of 1956 at two and
+#: three inputs -- so the refused region is one the generator never asks about,
+#: and refusing is what keeps the lookup honest instead of returning a verdict
+#: that cells outside the key would contradict.
+_POOL_PTR_MAX = 2
 
-    (The "56 million ``_Sim.exec`` calls" and "30167 calls to 572 sites" this
-    docstring used to quote were measured when ``walk_out`` was still in the
-    key, so they describe a memo that was splitting entries -- kept out of the
-    numbers above rather than carried forward as though they still held.)
 
-    ``walk_out`` is *not* a parameter, which is the whole point -- see
-    :func:`_find_pool` for why the verdict does not depend on it.  It was one
-    once, and that silently halved the memo: the verdict is invariant in
-    ``walk_out`` but the key was not, so every accumulator split one entry
-    into many.  The hit rate ran at 50% while this docstring claimed 98%, and
-    dropping ``walk_out`` from the key took the whole four-input derivation
-    from 330s to 76s and the three-input one from 6.6s to 2.4s, with every
-    template byte-identical.  A cache key that disagrees with the prose is worth
-    more than a comment: this now takes only what the answer depends on, so
-    the two cannot drift apart again.
+def _pool_code_for_row(
+    codes: tuple[str, ...], low: int, ptr: int, cell7: int, *, skip: bool
+) -> tuple[int, int] | None:
+    """Return the pool code this row admits and where it leaves it, or None.
 
-    The search still needs *a* ``walk_out`` to probe with, and by the same
-    invariance any will do, so the miss path uses :data:`_PROBE_WALK_OUT`.
-    That is not a default standing in for the caller's value -- it is the
-    statement that the value cannot matter, which the invariance measurement
-    backs and :func:`_find_pool` documents.
+    The pointer comes back with the code because a pool is only a pool if
+    every row reads it from *one* place: the code that answers each row
+    separately still fails the joint when it leaves the rows on different
+    cells.  That is a cross-row condition, so a per-row verdict alone cannot
+    express it -- see :func:`_find_pool`, which compares the pointers the rows
+    come back with.
 
-    ``codes`` *is* in the key, and is the reason this takes the list as an
-    argument rather than reading the module global.  The pool codes are
-    ablated -- dropped one at a time to measure what each is worth -- and a
-    memo that outlived a swap would answer for a list that is no longer in
-    force, reporting that a dropped code stranded nothing because the old
-    answer was still cached.
+    The verdict depends on **cells 0..7 of the row, where the pointer sits, and
+    whether a skip is pending** -- and on nothing else.  A code is a fixed
+    string, so its effect on that state is a fixed function; the walk out that
+    follows is :meth:`_Sim.run_walk`, whose closed form is the prefix-XOR carry
+    law that method documents.  Composing the two *computes* the answer, so
+    this asks each code what it does rather than trying it against the target,
+    which is why the pool is no longer a search.
+
+    Sufficiency of the window is measured, not assumed: over 400 random values
+    of cells 0..7, each run with cells 8..40 randomised six ways, no verdict
+    changed.  Nothing above the window is read, so a row is summarised by one
+    byte plus its pointer and skip.
+
+    **At the origin at most one code answers a row**: over the 512 keys a
+    build can reach, the accepting sets are singletons (36) or empty (476).
+    That is the fact that makes the pool a lookup rather than a trial -- at
+    every state the generator actually asks about, a key *names* its code.
+
+    Away from the origin the property is not free: of the 3072 keys in the
+    derived domain, 104 admit exactly one code and 4 admit two, the latter all
+    with the pointer moved on or a skip pending.  Those four are settled by the
+    ordering -- the first index wins, which is the answer the scan gave, so the
+    two agree by construction rather than by luck.  Recording the number
+    matters: "one code per key" is true where it is used and false in general,
+    and a rule that claimed the strong form would be wrong at the edges the
+    generator does not visit.
+
+    ``cell7`` is not a second dimension.  At the origin ``(low, cell7)`` is
+    admitted exactly when ``(low ^ 0x80, 1 - cell7)`` is, by the same code,
+    with no exception over the 512: the orientation is a mirror of bit 7 of
+    the window.
     """
-    j = _Joint.__new__(_Joint)
-    j.ms = [_Sim.restore(k) for k in site]
-    for code in codes:
-        if _pool_reaches(j, code, cell7, _PROBE_WALK_OUT):
-            return code
+    for index, code in enumerate(codes):
+        probe = _Sim(_POOL_WIDTH + _PROBE_WALK_OUT + _POOL_PTR_MAX + 4)
+        probe.tape = low
+        probe.ptr = ptr
+        probe.skip = skip
+        probe.apply(_runs(code))
+        # Neither guard the scan carried can fire inside the derived domain:
+        # over its 7680 (key, code) runs no code leaves a row dead or
+        # mid-skip, and none ends right of the probe's walk out.  They were
+        # refusals when a *candidate* was being tried; the list is fixed now,
+        # so a code that broke either would be a change to the pool rather
+        # than a state to skip past, and raising says so where a ``continue``
+        # would quietly drop the code from the table.
+        if probe.dead or probe.skip:  # pragma: no cover - see the note above
+            raise AssertionError(f"pool code {code!r} left a row unrunnable")
+        steps = _PROBE_WALK_OUT - probe.ptr
+        if steps < 0:  # pragma: no cover - see the note above
+            raise AssertionError(f"pool code {code!r} ended past the walk out")
+        landed = probe.ptr
+        probe.run_walk(steps)
+        target = (*_POOL, cell7)
+        if all(probe.cell(cell) == target[cell] for cell in range(_POOL_WIDTH)):
+            return index, landed
     return None
 
 
+@cache
+def _pool_slice(
+    codes: tuple[str, ...], ptr: int, *, skip: bool
+) -> dict[tuple[int, int], tuple[int, int]]:
+    """Derive the verdict for every window byte at one ``(pointer, skip)``.
+
+    The slice is **exhaustive in the coordinates the caller does not fix**:
+    every one of the 256 window bytes at both orientations.  So this is still
+    the predicate over its slice rather than a memo of the states a build
+    reached -- ask it once and it answers for windows that never occur as
+    readily as for the one that did.
+
+    Deriving a slice at a time is what keeps a caller from paying for the
+    whole domain.  Builds only ever ask at the origin with no skip -- all 1956
+    sites at two and three inputs -- so a build derives one slice of six and
+    the rest come into being only if something asks, which in practice is the
+    test that sweeps them.  Whole-domain derivation cost 57ms on first touch
+    against a 0.2ms one-input build; the slice is a sixth of that, and the
+    exhaustiveness argument the whole-domain form was carrying now lives where
+    it belongs, in the test that checks every key against the scan.
+
+    Keyed on the code list because the codes are ablated -- dropped one at a
+    time to measure what each is worth -- and a table derived against a list
+    no longer in force would report that a dropped code stranded nothing.
+    """
+    return {
+        (low, cell7): answer
+        for low in range(1 << _POOL_WIDTH)
+        for cell7 in (0, 1)
+        if (answer := _pool_code_for_row(codes, low, ptr, cell7, skip=skip)) is not None
+    }
+
+
 def _find_pool(j: _Joint, cell7: int, walk_out: int) -> str | None:
-    """Return a pool code for this orientation, or None if none fits.
+    """Return the pool code for this orientation, or None if none fits.
+
+    Every row names the one code it admits, through :data:`_POOL_CODE_OF`, and
+    the joint answers that code when the rows agree.  **The joint's verdict is
+    the AND over its rows** -- measured over 40000 checks (4000 random joints x
+    1, 2, 4 and 8 rows x both orientations x all five codes) with no
+    disagreement against the simulated :func:`_pool_reaches`.
+
+    That is why this is a lookup per row rather than a trial per code.  The
+    breadth-first search here originally, and the five-code trial that replaced
+    it, both asked "does this candidate match?"; the row's window byte answers
+    "which code does this state admit?" directly, so nothing is tried.
+
+    Row uniformity is *not* required and must not be assumed.  It holds at
+    every site a build reaches -- 2024 call sites at two and three inputs, all
+    with the pointer at 0, no pending skip, no dead row -- but a joint whose
+    rows differ inside the window can still be admitted, because the code's
+    carry cascade can merge differing cells: a constructed two-row state
+    differing at cells 5 and 6 is accepted by the same code both rows name.
+    The AND handles that; a "rows must agree in the window" guard would
+    wrongly refuse it.
 
     ``walk_out`` decides whether a code is *asked*, not whether it fits: the
     verdict is invariant in it.  Measured over walk_outs 9 to 39, no
@@ -922,16 +815,33 @@ def _find_pool(j: _Joint, cell7: int, walk_out: int) -> str | None:
     0 of 300 at sixteen.  That follows from the affine picture, since cells
     0..7 after the walk depend only on what was crossed before them, and it
     is why arity reaches the pool codes only through the joint's rows and
-    window state rather than through how far right the accumulator sits.
-
-    That invariance is what lets the memo below drop ``walk_out`` from its
-    key: two calls differing only in it are the same question.  ``walk_out``
-    is therefore accepted and not forwarded -- it stays in the signature
-    because callers reason in terms of their own accumulator, and dropping it
-    would push the invariance argument out to every call site.
+    window state rather than through how far right the accumulator sits.  It
+    stays in the signature because callers reason in terms of their own
+    accumulator, and dropping it would push the invariance argument out to
+    every call site.
     """
     del walk_out
-    return _find_pool_cached(tuple(m.key() for m in j.ms), cell7, tuple(_POOL_CODES))
+
+    codes = tuple(_POOL_CODES)
+
+    def answer_for(row: _Sim) -> tuple[int, int] | None:
+        """Which code this row names, and where that code leaves it."""
+        if row.dead or row.ptr > _POOL_PTR_MAX:
+            # A dead row prints nothing, and one past the bound is outside the
+            # window's reach.  Both mean "no pool from here".
+            return None
+        rows = _pool_slice(codes, row.ptr, skip=row.skip)
+        return rows.get((row.tape & _POOL_MASK, cell7))
+
+    chosen = answer_for(j.ms[0])
+    if chosen is None:
+        return None
+    for row in j.ms[1:]:
+        # Equality covers both conditions at once: the rows must name the same
+        # code *and* be left on the same cell by it.
+        if answer_for(row) != chosen:
+            return None
+    return codes[chosen[0]]
 
 
 def _endgame(j: _Joint, acc: int, read: str, cell7: int) -> None:
@@ -1014,9 +924,22 @@ def _printed_column(j: _Joint, acc: int, cell7: int) -> tuple[int, ...] | None:
     hit = _PRINTED_COLUMNS.get(key, _MISSING)
     if hit is not _MISSING:
         return hit  # type: ignore[return-value]
+    column = _derive_column(j, acc, cell7)
+    _PRINTED_COLUMNS[key] = column
+    return column
+
+
+def _derive_column(j: _Joint, acc: int, cell7: int) -> tuple[int, ...] | None:
+    """Return the column :func:`_printed_column` memoises, derived fresh.
+
+    Split out because two callers want opposite cache behaviour: the staged
+    oracle asks about the same few stagings again and again, so the memo
+    above pays for itself, while :func:`_try_print` is handed a fresh
+    template on every sculpted build -- a memo keyed on those would grow one
+    entry per build and never hit.
+    """
     code = _find_pool(j, cell7, acc - 1)
     if code is None:
-        _PRINTED_COLUMNS[key] = None
         return None
     probe = j.fork()
     probe.emit(code)
@@ -1035,11 +958,8 @@ def _printed_column(j: _Joint, acc: int, cell7: int) -> tuple[int, ...] | None:
         # and three inputs, walked over the whole accumulator range with the
         # cache cleared each time -- no failure.  A direct `_walk_to` to an
         # unreachable target raises, as the control.
-        _PRINTED_COLUMNS[key] = None
         return None
-    column = tuple(probe.col(probe.ms[0].ptr + 1))
-    _PRINTED_COLUMNS[key] = column
-    return column
+    return tuple(probe.col(probe.ms[0].ptr + 1))
 
 
 def _column_sweep(j: _Joint, cell7: int) -> dict[int, tuple[int, ...]]:
@@ -1126,16 +1046,64 @@ def _confirm(
 
 
 def _try_print(j: _Joint, truth_table: str, acc: int) -> _Joint | None:
-    """Try every read and orientation at ``acc``; return one that prints."""
+    """Emit the endgame that prints the table at ``acc``, or None.
+
+    The choice of read and orientation is **computed, not tried**.  This
+    used to fork the joint four ways, run all four endgames, and keep
+    whichever printed -- the last candidate search on the build path.  What
+    each pair prints was never in doubt, though: the column is fixed by the
+    tape once the pool is set and the walk has run (:func:`_derive_column`),
+    and the two reads differ only in polarity -- ``'[x<[<'`` reports the
+    column directly and ``'[<'`` complemented, the same mapping the staging
+    index's ``claim`` uses.  So one derivation per orientation names the
+    pair, in the order the trial loop used, and one endgame is emitted.
+
+    Nothing is returned on the strength of the algebra alone: the emitted
+    endgame's own output is still compared against the table, which is the
+    module-wide standard, and :func:`_endgame` still asserts the pool is
+    input-independent.  Both guards are kept as the acceptance even though
+    a divergence has never been observed -- the derivation was checked
+    against the emission over 15600 columns when it landed, and the corpus
+    is byte-identical under the computed choice.
+    """
+    if acc < _POOL_WIDTH:
+        # The endgame's own first refusal, mirrored: an accumulator inside
+        # the pool cannot be printed from, and asking the derivation about
+        # one would send its walk leftward instead.  ``_degenerate`` probes
+        # every recorded cell and the constant-one column stands at cell 1
+        # -- the walk-in's own wake -- so this is a case every degenerate
+        # build reaches rather than a guard.
+        return None
+    want = list(truth_table)
+    derived: dict[int, tuple[int, ...] | None] = {}
     for read in _READS:
         for cell7 in (0, 1):
+            if cell7 not in derived:
+                derived[cell7] = _derive_column(j, acc, cell7)
+            column = derived[cell7]
+            if column is None:
+                continue
+            digits = column if read == _READS[1] else _complement(column)
+            if list(map(str, digits)) != want:
+                continue
             probe = j.fork()
             try:
                 _endgame(probe, acc, read, cell7)
-            except ValueError:
+            except ValueError:  # pragma: no cover - not observed; see below
+                # The endgame refuses on exactly the two conditions the
+                # derivation already declined on -- no pool code, or a walk
+                # that cannot reach -- so a pair the derivation offered has
+                # somewhere to go.  Kept because the derivation and the
+                # emission disagreeing is precisely what the acceptance
+                # below exists to catch, and a raise here is that
+                # disagreement's other spelling.
                 continue
-            if probe.printed() == list(truth_table):
-                return probe
+            if probe.printed() != want:  # pragma: no cover - the acceptance
+                # Never observed -- the derivation is the emission's own
+                # algebra -- but this is the "seen to print" standard, so a
+                # divergence is reported as a miss rather than shipped.
+                continue
+            return probe
     return None
 
 
@@ -1167,9 +1135,9 @@ def _degenerate_cells(n: int) -> dict[str, int]:
     These were six written-down cell numbers, and the reason they were
     constant is also the reason they need not be written down: the carry
     chain preserves ``b0`` and ``b1`` individually before the prefix-XOR
-    starts mixing, so the cells holding them can simply be *read off* the
-    embedded tape.  Measured, this reproduces the six exactly at every arity
-    the route serves.
+    starts mixing, so the cells holding them can be *read off* the embedded
+    tape.  Measured, this reproduces the six exactly at every arity the route
+    serves.
 
     Later inputs are not separable here at any settle count -- the affine
     transform fixes which bits stay apart.  A column search used to pick
@@ -1412,8 +1380,8 @@ _Staging = tuple[int, int, int | str, int]
 
 # **Coverage, and the one table that must still be stored.**  The enumeration
 # reaches 108 of the 109 non-degenerate three-input pairs and all 8 at two
-# inputs.  The holdout is ``01101101`` / ``10010010``, and it is worth knowing
-# why, because it was the hardest table here by some margin and the searches
+# inputs.  The holdout is ``01101101`` / ``10010010``, and why is worth
+# knowing: it was the hardest table here by some margin and the searches
 # never built it at all -- both members raise after about 96 seconds.
 #
 # Its answer column is not scarce: 14375 of 804600 sparse suffixes leave it
@@ -1452,7 +1420,7 @@ _Staging = tuple[int, int, int | str, int]
 # changing between ``k == 25`` and ``k == 38`` depending on separator and
 # settle count, so the sweep ran to 40 and anything past it is provably
 # redundant.  The deepest first hit the enumeration actually needs is
-# ``k == 26`` at three inputs and ``k == 6`` at two, which is where
+# ``k == 26`` at three inputs and ``k == 6`` at two, where
 # :data:`_MAX_BRACKETS` comes from; stopping at 30 would have been a cap
 # rather than a bound.
 #
@@ -1474,16 +1442,31 @@ _Staging = tuple[int, int, int | str, int]
 #   single one delivers 13 pairs and the mean is 5.8**, against 109 to place.
 #   So this is short by a factor of eight, not marginally.
 #
-#   Nor can the enumeration be *indexed* instead of swept -- the map from
-#   staging to table behaves like a hash.  Measured on the full many-to-many
-#   relation (not on the first-hit assignment, which is contaminated by
-#   separator 0 claiming everything it reaches first): at four inputs no
-#   tested invariant yields a necessary condition, every one of the ten
-#   (separator, settle) slices contributes tables reachable nowhere else,
-#   and 72% of tables are served by exactly one slice.  Hamming weight does
-#   predict a *rate* -- 78.4% reachable at weight 2 and 14 against 18.8% at
-#   weight 8 -- but no weight class is empty, so nothing licenses declining
-#   early.  See ``docs/minifuck_generator.md``.
+#   Nor is there a *cheap predictor* of which staging serves a table.
+#   Measured on the full many-to-many relation (not on the first-hit
+#   assignment, which is contaminated by separator 0 claiming everything it
+#   reaches first): at four inputs no tested invariant yields a necessary
+#   condition, every one of the ten (separator, settle) slices contributes
+#   tables reachable nowhere else, and 72% of tables are served by exactly
+#   one slice.  Hamming weight does predict a *rate* -- 78.4% reachable at
+#   weight 2 and 14 against 18.8% at weight 8 -- but no weight class is
+#   empty, so nothing licenses declining early.  See
+#   ``docs/minifuck_generator.md``.
+#
+#   An earlier version of this note said the map "behaves like a hash" and
+#   cannot be indexed at all, which overstated that evidence: it predates
+#   the closed-form column algebra, and the algebra *inverts*.  Computing a
+#   target's first pure-run staging directly -- per-row admissible-``k``
+#   bitmasks read off the bracket staircase, intersected across rows, first
+#   set bit in enumeration order -- reproduces the index exactly (all 252
+#   keys at three inputs, 464 sampled pure-claimed keys at four, zero
+#   mismatches).  What the measurements do support is *density*, not
+#   opacity: the 4640 stagings collapse to about 4190 distinct plan
+#   vectors, so there is no large many-to-one structure to exploit, a
+#   per-table inversion of the insert family has no demonstrated
+#   sub-sweep form, and the pure inversion runs ~20-30ms a table against a
+#   0.4-0.75s whole-arity fill that then answers every table -- which is
+#   why the tabulation stays.
 # * **Two separators: 99 of 109**, and *not* for want of room -- re-running
 #   with bracket counts to 70 and accumulators to 60 reaches the same 99.
 #   The ten stragglers need a different separator, not a longer program.
@@ -1645,6 +1628,14 @@ def _budget(n: int) -> int | None:
 # arity the ranking is unmeasured, so the full enumeration order is used
 # unless a budget is actually set.  Ordering only matters when something is
 # going to be given up.
+#
+# The yield is *marginal*: a slice is credited with the columns it is first
+# to reach walking the plain enumeration, not with every column it could
+# place alone -- ranking by independent reach gives a different order.  So
+# this is derived rather than frozen, and
+# ``test_the_slice_order_is_its_measured_yield`` re-derives it from
+# ``_staging_index(4)`` each run instead of trusting the numbers above.  All
+# ten counts differ, so descending order is total with no tie-break.
 _SLICE_YIELD_ORDER = (
     (3, 0),
     (2, 0),
@@ -1706,6 +1697,12 @@ def _insert_suffixes() -> Iterator[str]:
     for k in range(_MAX_BRACKETS + 1):
         for cut in range(k + 1):
             yield "[" * cut + "<" + "[" * (k - cut)
+
+
+# The insert family, materialized once: the constraint query needs to hand
+# a winning ordinal back as its suffix string, and the family is 435 short
+# strings.  :func:`_insert_suffixes` stays the specification of the order.
+_INSERT_SUFFIXES = tuple(_insert_suffixes())
 
 
 def _stagings(n: int) -> Iterator[_Staging]:
@@ -1945,117 +1942,27 @@ def _clear_derived_plans(
     _wrapped()
     _PRINTED_COLUMNS.clear()
     _staging_index.cache_clear()
+    _row_constraints.cache_clear()
 
 
 _derived_plans.cache_clear = _clear_derived_plans  # type: ignore[method-assign]
 
 
-# The arities whose enumeration is worth screening before it is run.  Only
-# five: the screen below is *vacuous* at four inputs and cheaper to skip than
-# to evaluate.  See :func:`_span_admits` for why the arity is what decides it.
-_SCREENED_ARITIES = (5,)
-
-
-def _span_basis(vectors: list[int]) -> list[int]:
-    """Row-reduce ``vectors`` to a GF(2) basis, greatest leading bit first.
-
-    Columns are packed one bit per row, so a table and a tape column are the
-    same kind of object and XOR is their addition.
-    """
-    basis: list[int] = []
-    for v in vectors:
-        cur = v
-        for b in basis:
-            cur = min(cur, cur ^ b)
-        if cur:
-            basis.append(cur)
-            basis.sort(reverse=True)
-    return basis
-
-
-def _in_span(v: int, basis: list[int]) -> bool:
-    """Whether ``v`` is a GF(2) combination of ``basis``."""
-    cur = v
-    for b in basis:
-        cur = min(cur, cur ^ b)
-    return cur == 0
-
-
-@cache
-def _staging_spans(n: int) -> tuple[tuple[int, ...], ...]:
-    """Return one basis per staging, spanning its standing columns.
-
-    Built once per arity and cached, because it does not depend on the table
-    being asked for: it is a property of the enumeration, not of the target.
-    """
-    out: list[tuple[int, ...]] = []
-    window = range(1, _BASE + n * _SPAN + 12)
-
-    def pack(j: _Joint) -> list[int]:
-        cols = []
-        for cell in window:
-            v = 0
-            for bit in j.col(cell):
-                v = (v << 1) | bit
-            cols.append(v)
-        return cols
-
-    for sep_index in range(len(_SEPS)):
-        for settle in (0, 1):
-            base = _embed(n, settle=settle, sep=_SEPS[sep_index])
-            _clamp(base)
-            _walk_to(base, _BASE - 1)
-            run = base.fork()
-            for _k in range(_MAX_BRACKETS + 1):
-                staged = run.fork()
-                staged.emit("<")
-                _clamp(staged)
-                out.append(tuple(_span_basis(pack(staged))))
-                run.emit("[")
-            if n not in _INSERT_ARITIES:
-                continue
-            for suffix in _insert_suffixes():
-                staged = base.fork()
-                staged.emit(suffix + "<")
-                _clamp(staged)
-                out.append(tuple(_span_basis(pack(staged))))
-    return tuple(out)
-
-
-def _span_admits(truth_table: str, n: int) -> bool:
-    """Whether any staging *could* print this table, on a linear-algebra test.
-
-    A **necessary** condition, and the asymmetry is the point: False means no
-    staging prints the table and the enumeration can be skipped outright,
-    while True means only that the enumeration has to run.  A miss at five
-    inputs costs a measured 143 seconds and this answers in about 3.6
-    milliseconds, so what it saves is the sweep that was going to fail.
-
-    Everything the endgame emits after the suffix is GF(2)-affine in the
-    columns standing at that point, so a printed column lies in their span.
-    Measured over the whole family rather than argued: 241280 of 241280
-    (staging, printed column) incidences are contained at five inputs, and no
-    reachable table is declined -- 0 false negatives over all 24582.  The
-    check that matters most is the one against the *generator* rather than
-    against that harvest: sampled declined tables were handed to the real
-    derivation and it agreed, taking about 143 seconds each to find nothing.
-
-    **Only five inputs.**  At four the test is vacuous -- ambient dimension
-    16 against bases whose rank reaches 16, so every table is admitted at
-    exactly the base rate -- and evaluating it would cost more than it saves.
-    At five the ambient dimension is 32 against a median rank of 16, which is
-    what makes it bite: it declines 53.4% of unreachable tables.
-
-    Scope is the shipped caps, separators and setter.  Change any of them and
-    the spans change with them; ``test_span_screen_declines_no_reachable_table``
-    is what fails if this is ever no longer true.
-    """
-    if n not in _SCREENED_ARITIES:
-        return True
-    packed = 0
-    for bit in truth_table:
-        packed = (packed << 1) | int(bit)
-    return any(_in_span(packed, list(b)) for b in _staging_spans(n))
+# **A linear-algebra screen sat here, and it is gone.**  Everything the
+# endgame emits after the suffix is GF(2)-affine in the columns standing at
+# that point, so a printed column lies in the span of the staging's standing
+# columns, and ``_span_admits`` used that to decline unreachable five-input
+# tables before the per-table enumeration -- 3.6 milliseconds against the
+# 143 seconds a doomed sweep cost.  The index inversion made both numbers
+# obsolete: the arity is tabulated once and a miss is a dict lookup, so the
+# screen's only remaining effect was its own setup -- a measured 0.72s of
+# span bases against the 0.88s index build it could at best skip, paid by
+# every process that built any staged five-input table.  Equivalence at
+# removal: an index key is a printed column and the screen admitted every
+# printed column by its own standing test, so screen-then-lookup and bare
+# lookup answer identically -- checked directly, 400 sampled keys with 0
+# declines and 120 tables with 0 divergences.  The affine-span fact stays
+# true; nothing consumes it any more.
 
 
 # How far right the closed-form column derivation tracks the tape.  The
@@ -2213,6 +2120,45 @@ def _planned_bit(chain: _Chain, plan: _Plan, acc: int) -> int:
     return x
 
 
+def _planned_bits(chain: _Chain, plan: _Plan, accs: range) -> list[int]:
+    """Return every accumulator's :func:`_planned_bit`, resolved by region.
+
+    The per-accumulator spelling re-decides the plan's shape on every call
+    -- 2.9 million times filling the five-input index -- when the region
+    boundaries (the extent, the re-crossed cell, the phase-two extent) are
+    fixed by the plan and the accumulators are asked in order.  This walks
+    the same case analysis once per region instead; the loop body is that
+    function's arms verbatim, and ``test_the_batched_planned_bits_match``
+    holds the two spellings equal over every plan the staged arities build.
+    """
+    w, v = chain.w, chain.v
+    mode = plan[0]
+    if mode != 2:
+        m, g = plan[1], plan[2]
+        out = [
+            (((acc - _BASE + 1) & 1) ^ w[acc]) if acc <= m else (g ^ v[acc])
+            for acc in accs
+        ]
+        if mode == 1 and plan[3]:
+            for i in range(max(plan[3] - accs.start, 0), len(out)):
+                out[i] ^= 1
+        return out
+    _, c, m2, head, x_past = plan
+    hb = head ^ w[max(c + 1, _BASE) - 1]
+    tail = x_past ^ v[m2 + 1]
+    out = []
+    for acc in accs:
+        if acc < c:
+            out.append(((acc - _BASE + 1) & 1) ^ w[acc])
+        elif acc <= m2:
+            out.append(hb ^ w[acc])
+        elif acc >= m2 + 2:
+            out.append(tail ^ v[acc])
+        else:
+            out.append(x_past)
+    return out
+
+
 def _slice_chains(n: int, sep_index: int, settle: int) -> tuple[list[_Chain], _Pools]:
     """One slice's row chains and per-orientation pool facts.
 
@@ -2302,19 +2248,24 @@ def _closed_sweeps(
             continue
         cur, lowfull, lowxor = facts
         columns: dict[int, tuple[int, ...]] = {}
-        for acc in range(_PROBE_WALK_OUT, _MAX_ACC + 1):
+        for acc in range(_PROBE_WALK_OUT, _BASE):
             if acc - 1 < cur:
                 # Mirrors _column_sweep's guard; the pool lands at 4 or 5,
                 # below the accumulator range, so it never fires.
                 continue  # pragma: no cover - the pool lands below the range
-            if acc < _BASE:
-                bit = lowxor[acc] ^ (lflip if acc == _BASE - 1 else 0)
-                columns[acc] = (bit,) * len(chains)
-            else:
-                columns[acc] = tuple(
-                    lowfull ^ lflip ^ _planned_bit(chain, plan, acc)
-                    for chain, plan in zip(chains, plans, strict=True)
-                )
+            bit = lowxor[acc] ^ (lflip if acc == _BASE - 1 else 0)
+            columns[acc] = (bit,) * len(chains)
+        # The accumulators at ``_BASE`` and above, batched: one region walk
+        # per row rather than one plan dispatch per (row, accumulator), and
+        # the row-major bits transposed to columns at the C level.
+        accs = range(_BASE, _MAX_ACC + 1)
+        const = lowfull ^ lflip
+        rowbits = [
+            [const ^ bit for bit in _planned_bits(chain, plan, accs)]
+            for chain, plan in zip(chains, plans, strict=True)
+        ]
+        for acc, column in zip(accs, zip(*rowbits, strict=True), strict=True):
+            columns[acc] = column
         sweeps[cell7] = columns
     return sweeps
 
@@ -2323,9 +2274,12 @@ def _closed_sweeps(
 def _staging_index(n: int) -> dict[tuple[int, ...], _Staging]:
     """Map every column the stagings reach to the staging that prints it.
 
-    The inverse of the enumeration, tabulated once per arity.  With it a
-    table is a dict lookup rather than a sweep: :func:`_derive_staging` no
-    longer enumerates per table at all.
+    The inverse of the enumeration, tabulated once per arity.  **This is
+    the oracle spelling now, not the build path**: :func:`_derive_staging`
+    assigns through :func:`_first_staging`'s constraint intersection, and
+    the tests hold the two equal key for key -- on top of the standing
+    index-vs-:func:`_derived_plans` checks, so all three spellings of the
+    one order keep pinning each other.
 
     **The columns are derived, not observed.**  This used to run the
     interpreter for every staging -- fork the embed, emit the pool code,
@@ -2425,40 +2379,172 @@ def _staging_index(n: int) -> dict[tuple[int, ...], _Staging]:
     return index
 
 
+# One pass's constraint masks for a slice, keyed by ``(cell7, acc)``: the
+# suffixes whose sweep reaches that pair at all, and, per row, the suffixes
+# under which the row's printed bit is 1 for the direct read.
+_RowMasks = dict[tuple[int, int], tuple[int, tuple[int, ...]]]
+
+
+@cache
+def _row_constraints(n: int) -> dict[tuple[int, int], dict[str, _RowMasks]]:
+    """Tabulate, per slice, what every staging does to every row.
+
+    The same walk :func:`_staging_index` makes, transposed: instead of
+    filing each staging's finished column under first-claim-wins, this
+    records per-row *facts* -- bit ``s`` of a row's mask says the slice's
+    suffix ``s`` leaves that row's printed bit at 1 for the direct read at
+    that ``(orientation, accumulator)``.  The assignment then stops being a
+    property of dict insertion order and becomes the rule
+    :func:`_first_staging` states: a table's staging is the first one, in
+    enumeration order, that every row's constraint admits.
+
+    The enumeration does not disappear -- it produces row facts instead of
+    final answers, and it cannot do less: the 4640 stagings collapse to
+    only ~4190 distinct behaviours (the density note above
+    :data:`_STAGED_ARITIES`), so anything that answers arbitrary tables
+    carries index-equivalent information.  What changes is what the
+    tabulated object *means*.  A mask bit is one row's behaviour under one
+    staging -- checkable against a single :class:`_Chain` walk -- where an
+    index entry is only "the answer", explainable by nothing short of
+    replaying the whole claim order.
+
+    Budget-independent, unlike the index: the budget caps which stagings a
+    *query* may consult, so it is applied as a mask prefix in
+    :func:`_first_staging` rather than baked into the tabulation.
+    """
+    rows = 2**n
+    inserts: tuple[int | str, ...] = _INSERT_SUFFIXES if n in _INSERT_ARITIES else ()
+    pures: tuple[int | str, ...] = tuple(range(_MAX_BRACKETS + 1))
+    out: dict[tuple[int, int], dict[str, _RowMasks]] = {}
+    for sep_index, settle in _slices(n):
+        chains, pools = _slice_chains(n, sep_index, settle)
+        per: dict[str, _RowMasks] = {}
+        for name, suffixes in (("pure", pures), ("insert", inserts)):
+            building: dict[tuple[int, int], tuple[int, list[int]]] = {}
+            for ordinal, suffix in enumerate(suffixes):
+                bit = 1 << ordinal
+                sweeps = _closed_sweeps(chains, pools, suffix)
+                for cell7 in (0, 1):
+                    for acc, column in sweeps[cell7].items():
+                        entry = building.get((cell7, acc))
+                        if entry is None:
+                            entry = building[cell7, acc] = (0, [0] * rows)
+                        present, rowmasks = entry
+                        building[cell7, acc] = (present | bit, rowmasks)
+                        for row, value in enumerate(column):
+                            if value:
+                                rowmasks[row] |= bit
+            per[name] = {
+                key: (present, tuple(rowmasks))
+                for key, (present, rowmasks) in building.items()
+            }
+        out[sep_index, settle] = per
+    return out
+
+
+def _first_staging(truth_table: str, n: int) -> _Staging | None:
+    """Return the first staging, in enumeration order, printing the table.
+
+    **The order is the contract, and it is stated here once**: the pure
+    bracket runs across every slice, then the insert family across every
+    slice -- interleaving the passes still yields valid stagings and
+    assigns five-input XOR the wrong one -- and within a slice the
+    comparison key ``(suffix, accumulator, orientation, read)``, which is
+    exactly :func:`_staging_index`'s claim order.  What used to be implicit
+    in dict insertion is the ``min`` below.
+
+    The rule itself is one sentence.  A row admits the suffixes whose
+    printed bit matches its wanted bit -- its constraint mask directly for
+    the direct read, complemented for the complementing one -- so the
+    stagings that print the table are the AND of the rows' masks, and the
+    winner is the lowest set bit.  Where no bit survives the AND, no
+    staging at this slice and accumulator prints the table, which is the
+    miss the caller falls through on.
+
+    The budget caps how many stagings may be consulted.  It is counted in
+    claims of ``_MAX_ACC - _POOL_WIDTH`` accumulators each, exactly as the
+    index's walk spends it, so the cap in suffixes is the ceiling division,
+    laid over the passes in the same global order.
+    """
+    want = [int(c) for c in truth_table]
+    budget = _budget(n)
+    allowed: int | None = None
+    if budget is not None:
+        allowed = 0 if budget <= 0 else -(-budget // (_MAX_ACC - _POOL_WIDTH))
+    slices = _slices(n)
+    inserts = _INSERT_SUFFIXES if n in _INSERT_ARITIES else ()
+    constraints = _row_constraints(n)
+    passes = (
+        ("pure", _MAX_BRACKETS + 1, 0),
+        ("insert", len(inserts), len(slices) * (_MAX_BRACKETS + 1)),
+    )
+    for name, count, done in passes:
+        if count == 0:
+            continue
+        for position, slot in enumerate(slices):
+            cap = count
+            if allowed is not None:
+                cap = min(count, max(0, allowed - done - position * count))
+                if cap == 0:
+                    break
+            capmask = (1 << cap) - 1
+            masks = constraints[slot][name]
+            best: tuple[int, int, int, int] | None = None
+            for acc in range(_PROBE_WALK_OUT, _MAX_ACC + 1):
+                for cell7 in (0, 1):
+                    entry = masks.get((cell7, acc))
+                    if entry is None:
+                        continue
+                    present, rowmasks = entry
+                    for read_index, read in enumerate(_READS):
+                        direct = read == _READS[1]
+                        admissible = present & capmask
+                        for rowmask, target in zip(rowmasks, want, strict=True):
+                            wanted = target if direct else 1 - target
+                            admissible &= rowmask if wanted else ~rowmask
+                            if not admissible:
+                                break
+                        if admissible:
+                            lowest = (admissible & -admissible).bit_length() - 1
+                            candidate = (lowest, acc, cell7, read_index)
+                            if best is None or candidate < best:
+                                best = candidate
+            if best is not None:
+                ordinal, acc, _cell7, _read_index = best
+                suffix: int | str = ordinal if name == "pure" else inserts[ordinal]
+                return (*slot, suffix, acc)
+    return None
+
+
 def _derive_staging(truth_table: str, n: int) -> _Staging | None:
     """Return the staging that builds ``truth_table``, or None if none does.
 
-    A lookup in :func:`_staging_index`, which tabulates the enumeration once
-    per arity.  The enumeration order is still the whole specification -- it,
-    and not a stored answer, decides which program a truth table gets -- but
-    it is now walked once for the arity rather than once per table.
+    :func:`_first_staging` answers from the tabulated row constraints --
+    the enumeration order is still the whole specification, it decides
+    which program a truth table gets, but the assignment is now the stated
+    intersection rule rather than a finished-answer dictionary.
+    :func:`_staging_index` keeps the dictionary spelling as the oracle the
+    tests hold this to, key for key.
 
-    That moves where the cost falls, the same trade :func:`_mux_separate`
-    makes.  The first staged table at an arity pays the whole pass (a
-    measured 0.62s at four inputs, 0.03s at three, now that the pass derives
-    its columns arithmetically) and every table after it is a dict lookup;
-    before, each table paid its own sweep -- 0.05s for a four-input hit and
-    4.8s for a span-admitted miss, every time.
+    The cost trade, measured: the first staged table at an arity pays the
+    tabulation (0.45s at four inputs, 0.9s at five, about a tenth over the
+    index fill it replaced) and each table after it costs ~0.6ms of mask
+    intersection where the dict hit was ~1us -- the price of an assignment
+    that reads as a rule, and small beside the ~10ms replay below.
 
     Nothing is returned on the strength of the algebra alone.  The
     enumeration used to run :func:`_confirm` on each column it claimed;
-    confirming all of them here would mean an endgame per reachable column
-    (15994 of them at four inputs) for the few a process actually asks about,
-    so the check moves to the lookup instead -- the plan this hands back is
-    the one that gets confirmed, which is the same standard applied to
-    exactly the plans that are used.  A plan that fails it is reported as a
-    miss, so the caller falls through to :func:`_mux` rather than receiving a
+    confirming all of them would mean an endgame per reachable column
+    (15994 of them at four inputs) for the few a process actually asks
+    about, so the check rides on the answer instead -- the plan handed back
+    is the one that gets confirmed, the same standard applied to exactly
+    the plans that are used.  A plan that fails it is reported as a miss,
+    so the caller falls through to :func:`_mux` rather than receiving a
     program that does not print.
     """
     if n not in _STAGED_ARITIES:
         return None
-    # A linear-algebra screen before the pass, where one is worth running.
-    # It only ever declines -- see :func:`_span_admits` -- so the result is
-    # the same and a table it rejects skips a tabulation that was going to
-    # fail to answer it.
-    if not _span_admits(truth_table, n):
-        return None
-    plan = _staging_index(n).get(tuple(int(c) for c in truth_table))
+    plan = _first_staging(truth_table, n)
     if plan is None:
         return None
     return plan if _replay(truth_table, n, plan) is not None else None
@@ -2853,8 +2939,11 @@ def _mux_separate(n: int) -> _Joint | None:
 #: :func:`_mux_probe`, and the scan was the smaller half of it: the ``hint``
 #: already skipped the list on all but the first round, so naming the code
 #: takes a warm five-input build from ~3.1s to ~2.8s, about 10%.  Profiled
-#: after the change, :func:`_pool_reaches` is 3% of a build and every call
-#: left comes from :func:`_find_pool` on the derivation path.  The rest of
+#: when that landed, :func:`_pool_reaches` was 3% of a build and every call
+#: left came from :func:`_find_pool` on the derivation path; those calls are
+#: gone now that the derivation path looks the code up too, and
+#: :func:`_pool_reaches` runs only when a slice is first derived and in the
+#: tests -- never on a build's own path.  The rest of
 #: :func:`_mux_probe` is the *column derivation* -- the walk and clamp over
 #: every row, once a round -- which is a different question from which code
 #: to use and is not closed by this constant.
@@ -2862,9 +2951,12 @@ def _mux_separate(n: int) -> _Joint | None:
 #: So the value here is the rule, not the seconds: the search is gone, and
 #: what remains is arithmetic the module was always going to do.
 #:
-#: This is the sculpting probe only.  :func:`_find_pool` asks the same
-#: question of the *derivation* path, whose joints are not clamped to this
-#: state, and keeps its scan.
+#: This is the sculpting probe only, and it is now the special case of a
+#: general rule rather than the one closed corner: :func:`_find_pool` asks the
+#: same question of the *derivation* path, whose joints are not clamped to this
+#: state, and answers it by :data:`_POOL_CODE_OF` without a scan either.  This
+#: constant stays because the sculpting probe's state is known at import, so
+#: naming the code costs nothing at all; the general path needs the lookup.
 _SCULPT_POOL_CODE = _POOL_CODES[4]
 
 
@@ -2967,7 +3059,15 @@ def _mux_sculpt(
             # nothing about the construction makes it *more* than enough.
             # This is the guard a change to either side would trip first.
             return None  # pragma: no cover - not observed; margin reaches 0
-        j.emit("<" * rewind + "[x" * rewind + "x")
+        # Emitted as three runs rather than one concatenated string.  The
+        # template is ``"".join(parts)`` either way, so the program is
+        # unchanged -- but a mixed string has no closed form, and this is
+        # the loop's hot path: split, the rewind's two long runs go through
+        # `_Sim.run_left` and `_Sim.run_walk` instead of being stepped one
+        # character at a time per row.
+        j.emit("<" * rewind)
+        j.emit("[x" * rewind)
+        j.emit("x")
     else:
         # The loop runs `2**n + 4` rounds and each fixes at least the
         # frontier row, so a table that needs more rounds than it has rows
@@ -3086,12 +3186,13 @@ def _solve(truth_table: str) -> str:
 
     The emitted program embeds each input once, computes the table in cells
     past the pool, relays the answer into the *pointer* (values cannot travel
-    left, but the pointer can), and prints one ASCII digit.  Every step is
-    simulated against all ``2**n`` rows as it is emitted, and a
-    :class:`ValueError` is raised rather than returning a program that has
-    not been seen to print the table.
+    left, but the pointer can), and prints one ASCII digit.  Every emission
+    is tracked against all ``2**n`` rows by the closed-form laws in
+    :mod:`esolangs.tools.boolean.minifuck_sim`, and a :class:`ValueError` is
+    raised rather than returning a program that has not been seen to print
+    the table.
 
-    Cached, because at four inputs and above the simulated search is what
+    Cached, because at four inputs and above the derivation is what
     this module costs -- seconds to tens of seconds a table, against
     effectively zero to *run* the program it returns.  Below that nothing
     searches at all: two and three inputs are derived from the staging

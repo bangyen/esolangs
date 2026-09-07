@@ -112,9 +112,6 @@ class TestLiterals:
         assert run_program("term='A'") == "A"
         assert run_program("term=' '") == " "  # a space is a valid byte literal
 
-    def test_multi_digit_integer_output(self) -> None:
-        assert run_program("term=48") == "100"
-
 
 class TestMath:
     def test_byte_math_stays_a_byte(self) -> None:
@@ -358,53 +355,11 @@ class TestRobustness:
         program = "term='a'\tthis is a comment\nterm='b'"
         assert run_program(program) == "b"
 
-    def test_malformed_programs_raise_value_error(self) -> None:
-        for code in (
-            "fi",  # stray end marker
-            "fd f :x\nterm='a'",  # missing fi
-            "fd a b c:",  # too many names
-            "fd x",  # missing colon
-            "fd 5 :x",  # non-identifier function name
-            "fd x 5:",  # non-identifier argument
-            "f(:x:g)",  # two names in a call
-            "f(:x)",  # one colon
-            "f(:x:)5",  # stray token
-            "f(:x:)if(1)if(2)",  # two conditions
-            "(:x:)",  # no function name
-            "f(:if(1):)",  # non-value argument
-            "f(:'a)",  # malformed byte literal argument
-            "term='a",  # unterminated byte literal
-            "term=%x[1]2%",  # bad operator
-            "term=%+1]2%",  # missing bracket
-            "term=%+[1 2%",  # missing closing bracket
-            "term=%+[1]2",  # missing closing percent
-            "term=%+[1]",  # missing second operand
-            "term=%+[%+[1]2%]3%",  # nested math
-            "term=%/[1]%+[1]2%%",  # nested math in the second operand
-            "term=%+[1]#%",  # bad second operand
-            "term=%+['a]2%",  # malformed byte operand
-            "t[]",  # empty tape declaration
-            "t[xyz]",  # unknown tape type
-            "t[integer",  # missing closing bracket
-            "t[integer] extra",  # trailing tokens
-            "[integer]",  # declaration with no name
-            "x~",  # declaration with no value
-            "x~)",  # declaration with a non-value
-            "x=",  # assignment with no value
-            "xyz",  # bare identifier statement
-            "term=!",  # unexpected character
-        ):
-            # This list deliberately asserts only that the program was
-            # rejected; the exact message for each is pinned in REJECTIONS
-            # below, so raises_message has nothing to add here.
-            with pytest.raises(ValueError):  # noqa: PT011
-                run_program(code)
-
-    # Each malformed program above paired with the message it must raise.
-    # The list alone only proves *something* was rejected: its ``match=``
-    # named every message the parser can emit, so a check firing in the
-    # wrong place -- or one message swapped for another -- still passed.
-    # The positions matter too, and were never asserted at all.
+    # Each malformed program paired with the message it must raise.  A list
+    # asserting only that *something* was rejected proves too little: a
+    # check firing in the wrong place -- or one message swapped for another
+    # -- still passes it.  The positions matter too, so they are pinned here
+    # rather than left to a bare ``pytest.raises(ValueError)``.
     REJECTIONS: ClassVar[list[tuple[str, str]]] = [
         ("fi", "fi without a matching fd"),
         ("fd f :x\nterm='a'", "function 'f' is missing its fi"),

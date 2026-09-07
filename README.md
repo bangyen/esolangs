@@ -23,12 +23,11 @@ Working interpreters, compilers, and transpilers for esoteric programming
 languages, each verified against its spec.  Most interpreters read the
 program file from the first command-line argument.
 
-Planned work is tracked in [`docs/roadmap.md`](docs/roadmap.md); documented
-limitations and ruled-out ideas live in [`docs/limitations.md`](docs/limitations.md),
-with the full wall arguments in [`docs/walls.md`](docs/walls.md).
-Annotated example programs — one per state model (tape, stack, OISC, and 2D
-grid), each traced command by command — are in
-[`docs/walkthroughs/`](docs/walkthroughs/).
+Planned work: [`docs/roadmap.md`](docs/roadmap.md).  Limitations and
+ruled-out ideas: [`docs/limitations.md`](docs/limitations.md), with the full
+wall arguments in [`docs/walls.md`](docs/walls.md).  Annotated programs —
+one per state model (tape, stack, OISC, 2D grid), traced command by command
+— are in [`docs/walkthroughs/`](docs/walkthroughs/).
 
 ## Usage
 
@@ -57,7 +56,7 @@ esolangs transpile BFStack brainfuck program.txt  # rewrite between languages
 Most generators emit one long line.  `--width N` (default 80) bounds a
 program to that many columns, as in the [committed examples](examples/),
 breaking only between whole commands.  Shape-based generators (Clockwise,
-Streetcode, WII2D, LaserFuck) use the width to lay out their shape instead.
+Streetcode, WII2D, LaserFuck) lay out their shape to that width instead.
 Languages whose newlines carry meaning (the 2D grid languages, NoComment)
 ignore the flag.
 
@@ -230,15 +229,15 @@ Implementations written in languages other than Python, used as cross-check refe
 
 </details>
 
-One further body of work lives under `extra/` without being a cross-check
+One more body of work lives under `extra/` without being a cross-check
 interpreter, so it is not listed above:
 
 - **Line** (`extra/line`) implements
   [Line](https://esolangs.org/wiki/Line), whose spec is a set of hand-drawn
-  curve images with no text format.  Its programs are PNGs rather than text,
-  so it cannot go through the registry's pipeline; it keeps its own renderer,
-  pixel extractor, and interpreter, plus brainfuck and boolean generators
-  that target it.  `just test-line` runs its suites.
+  curve images with no text format.  Its programs are PNGs, so it cannot go
+  through the registry's pipeline; it keeps its own renderer, pixel
+  extractor, and interpreter, plus brainfuck and boolean generators that
+  target it.  `just test-line` runs its suites.
 
 ## Compilers
 
@@ -278,8 +277,8 @@ Transpilers rewrite a program in one esolang into an equivalent program in anoth
 
 Every transpiler here is **total** over its source language: it accepts
 every program that language's own interpreter accepts.  Partial ones are
-not carried; the admission criteria are documented in
-`esolangs/tools/transpilers.py`.
+not carried; `esolangs/tools/transpilers.py` documents the admission
+criteria.
 
 | Source | Direction | Target |
 | --- | :---: | --- |
@@ -301,7 +300,7 @@ bf = esolangs.transpile("BFStack", "brainfuck", source)  # or via the API
 
 ### Boolean Function Generator
 
-The `boolean` package builds a program that computes a truth table
+The `boolean` package builds a program computing a truth table
 (most-significant input first) in each language with suitable control flow:
 
 ```python
@@ -335,15 +334,15 @@ tables.
 
 ### Program Generator
 
-The `text` package builds a program that prints a given string in each
+The `text` package builds a program printing a given string in each
 language with a text generator:
 
 ```bash
 python -m esolangs.tools.text "Hello, World!"
 ```
 
-Every generator is also available through `esolangs list` and
-`esolangs generate` (see above); run `esolangs list` for the full set.
+Every generator is also reachable through `esolangs generate` (see above);
+run `esolangs list` for the full set.
 
 ### Single-Interpreter Install
 
@@ -367,14 +366,15 @@ python scripts/bundle_one.py Nevermind
 
 ## Contributing
 
-Check the [roadmap](docs/roadmap.md) and [limitations](docs/limitations.md)
-first, and read [CONTRIBUTING.md](docs/CONTRIBUTING.md) — including whether
-a language is worth adding — before proposing one.  New languages register
-in `src/esolangs/registry.py`.  Run `just test` (lint, pytest, bandit, and
-the Python verify scripts, scoped to this branch) to verify a change;
-`just test-full` runs every step over the whole tree.  `just install-dev`
-already wires `scripts/verify.py` into a pre-push hook.
+Before proposing a language, check the [roadmap](docs/roadmap.md) and
+[limitations](docs/limitations.md), and read
+[CONTRIBUTING.md](docs/CONTRIBUTING.md) — including whether a language is
+worth adding.  New languages register in `src/esolangs/registry.py`.  Run
+`just test` (lint, pytest, bandit, and the Python verify scripts, scoped to
+this branch) to verify a change; `just test-full` runs every step over the
+whole tree.  `just install-dev` already wires `scripts/verify.py` into a
+pre-push hook.
 
 ## License
 
-This project is licensed under the GPL v3 License - see the [LICENSE](LICENSE) file for details.
+GPL v3 — see [LICENSE](LICENSE).

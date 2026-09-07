@@ -20,7 +20,6 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "mutate_generator.py"
 TOOLS_TESTS = REPO_ROOT / "tests" / "tools"
-BOOLEAN = REPO_ROOT / "src" / "esolangs" / "tools" / "boolean"
 
 
 def load_script() -> object:
@@ -45,7 +44,7 @@ class TestTestFiles:
         included the moment it is added, with nothing to remember.
         """
         script = load_script()
-        selected = script._test_files()  # noqa: SLF001
+        selected = script._test_files(script._KINDS["boolean"])  # noqa: SLF001
         assert selected == sorted(p.name for p in TOOLS_TESTS.glob("test_*.py"))
 
     def test_the_suites_that_only_import_the_package_are_included(self) -> None:
@@ -58,7 +57,7 @@ class TestTestFiles:
         assertion above would still pass if the directory itself lost them.
         """
         script = load_script()
-        selected = script._test_files()  # noqa: SLF001
+        selected = script._test_files(script._KINDS["boolean"])  # noqa: SLF001
         assert "test_generate.py" in selected
         assert "test_boolean_other.py" in selected
         assert "test_boolean_contract.py" in selected
@@ -76,7 +75,8 @@ class TestPytestArgs:
         directory's ``addopts``, which all three passes honour.
         """
         script = load_script()
-        args = script._pytest_args(["test_boolean_tape.py"])  # noqa: SLF001
+        kind = script._KINDS["boolean"]  # noqa: SLF001
+        args = script._pytest_args(kind, ["test_boolean_tape.py"])  # noqa: SLF001
         assert "-m" not in args
 
     def test_xdist_is_turned_off(self) -> None:
@@ -86,7 +86,8 @@ class TestPytestArgs:
         workers to run a suite that takes seconds.
         """
         script = load_script()
-        args = script._pytest_args(["test_boolean_tape.py"])  # noqa: SLF001
+        kind = script._KINDS["boolean"]  # noqa: SLF001
+        args = script._pytest_args(kind, ["test_boolean_tape.py"])  # noqa: SLF001
         assert args[args.index("-n") + 1] == "0"
 
     def test_the_runner_command_quotes_its_arguments(self) -> None:
@@ -100,9 +101,11 @@ class TestPytestArgs:
         import shlex
 
         script = load_script()
+        kind = script._KINDS["boolean"]  # noqa: SLF001
         tests = ["test_boolean_tape.py"]
-        command = script._runner_command(tests)  # noqa: SLF001
-        assert shlex.split(command)[3:] == script._pytest_args(tests)  # noqa: SLF001
+        command = script._runner_command(kind, tests)  # noqa: SLF001
+        expected = script._pytest_args(kind, tests)  # noqa: SLF001
+        assert shlex.split(command)[3:] == expected
 
 
 class TestAlarmBudget:
@@ -120,6 +123,41 @@ class TestAlarmBudget:
         assert script._MIN_ALARM < script._MAX_ALARM  # noqa: SLF001
         # 20s against a measured worst single test of 2.98s.
         assert script._MAX_ALARM >= 3 * 2.98  # noqa: SLF001
+
+    def test_the_conftest_skips_the_alarm_during_the_stats_pass(self) -> None:
+        """The stats pass runs under tracing, which the budget never priced.
+
+        This is the failure that reported ``compilers/jaune`` as 0/711 with
+        a passing baseline.  The compiler suite baselines at 0.73s, so the
+        budget lands at its floor; the traced ``jaune`` compile outruns it,
+        the alarm fails mutmut's *stats* pass rather than a mutant, no stats
+        are written, and every mutant is skipped as "not checked" while a
+        percentage is still printed.
+
+        mutmut marks that pass by setting ``MUTANT_UNDER_TEST`` to the
+        literal ``stats``, so the conftest tells it apart exactly rather
+        than by a timing heuristic.  Both directions are asserted: skipping
+        under the sentinel is only correct if the alarm still installs for
+        the mutant runs it was measured for.
+        """
+        script = load_script()
+        conftest = script._CONFTEST  # noqa: SLF001
+        assert (
+            '_STATS_PASS = os.environ.get("MUTANT_UNDER_TEST") == "stats"' in conftest
+        )
+        assert "if _budget and not _STATS_PASS:" in conftest
+
+    def test_a_failed_stats_pass_is_not_reported_as_a_score(self) -> None:
+        """mutmut leaves a full meta of zeros when it cannot collect stats.
+
+        Every exit code is still at its initial 0, which scores as
+        "everything survived" rather than as the failure it is.  The
+        kill-rate floor catches the total case; this message is what catches
+        a partial one, and it names the cause instead of leaving a
+        plausible-looking percentage to be believed.
+        """
+        source = (REPO_ROOT / "scripts" / "mutate_generator.py").read_text()
+        assert '"failed to collect stats" in mutation.stdout' in source
 
 
 class TestUndecorateClasses:
@@ -174,11 +212,42 @@ class TestUndecorateClasses:
         assert cmd(1) != cmd(2, "a")  # type: ignore[operator]
 
 
-class TestModulePath:
-    def test_a_real_generator_module_resolves(self) -> None:
-        """Every module the package ships is a valid target."""
+class TestParseTarget:
+    def test_a_qualified_target_resolves_in_each_family(self) -> None:
+        """Both families are reachable, named ``family/module``."""
         script = load_script()
-        assert script._module_path("register") == BOOLEAN / "register.py"  # noqa: SLF001
+        assert script._parse_target("boolean/register") == ("boolean", "register")  # noqa: SLF001
+        assert script._parse_target("text/register") == ("text", "register")  # noqa: SLF001
+
+    def test_an_unambiguous_bare_name_still_resolves(self) -> None:
+        """The boolean-only spelling keeps working where it is unambiguous."""
+        script = load_script()
+        assert script._parse_target("minifuck") == ("boolean", "minifuck")  # noqa: SLF001
+
+    def test_a_name_in_both_families_is_refused(self) -> None:
+        """The failure this prevents is silent, which is why it is an error.
+
+        Eight modules -- helpers, laserfuck, other, register, stack,
+        streetcode, super_snusp, tape -- exist in both packages, which the
+        assertion below recomputes rather than trusts.  Defaulting a bare one
+        to boolean would mutate the wrong file for someone asking about
+        text, and still print a plausible percentage: the run succeeds, the
+        score is real, and it describes a module nobody asked about.  So
+        the ambiguity is reported and both spellings offered.
+        """
+        import pytest
+
+        script = load_script()
+        shared = sorted(
+            set(script._modules("boolean")) & set(script._modules("text"))  # noqa: SLF001
+        )
+        assert shared, "the families no longer share a module name"
+        for name in shared:
+            with pytest.raises(SystemExit) as excinfo:
+                script._parse_target(name)  # noqa: SLF001
+            message = str(excinfo.value)
+            assert f"boolean/{name}" in message
+            assert f"text/{name}" in message
 
     def test_an_unknown_module_lists_the_choices(self) -> None:
         """The error names what may be run rather than only what may not."""
@@ -186,7 +255,116 @@ class TestModulePath:
 
         script = load_script()
         with pytest.raises(SystemExit) as excinfo:
-            script._module_path("nosuchmodule")  # noqa: SLF001
+            script._parse_target("nosuchmodule")  # noqa: SLF001
         message = str(excinfo.value)
         assert "nosuchmodule" in message
         assert "register" in message
+
+    def test_an_unknown_family_is_refused(self) -> None:
+        """A qualified target with a bad family names the families instead."""
+        import pytest
+
+        script = load_script()
+        with pytest.raises(SystemExit) as excinfo:
+            script._parse_target("nosuchfamily/register")  # noqa: SLF001
+        message = str(excinfo.value)
+        assert "nosuchfamily" in message
+        assert "boolean" in message
+        assert "text" in message
+
+    def test_entry_points_are_not_targets(self) -> None:
+        """``__init__`` and ``__main__`` hold no generation logic.
+
+        ``text`` ships a ``__main__``; offering it as a target would spend a
+        run mutating an argv check.
+        """
+        script = load_script()
+        assert (
+            REPO_ROOT / "src" / "esolangs" / "tools" / "text" / "__main__.py"
+        ).exists()
+        for family in ("boolean", "text"):
+            modules = script._modules(family)  # noqa: SLF001
+            assert "__init__" not in modules
+            assert "__main__" not in modules
+
+    def test_every_listed_module_is_a_file_in_its_family(self) -> None:
+        """A listed target resolves to a real file, in every kind.
+
+        Covers the compilers as well as the two generator families: all
+        three are the same table, so a path built wrong for one kind is
+        caught here rather than by a run that cannot find its target.
+        """
+        script = load_script()
+        for family in ("boolean", "text", "tools", "compilers"):
+            kind = script._KINDS[family]  # noqa: SLF001
+            for name in script._modules(family):  # noqa: SLF001
+                assert (kind.pkg_dir / f"{name}.py").exists()
+
+    def test_the_bare_tools_modules_are_a_target_kind(self) -> None:
+        """``transpilers`` is reachable, and the subpackages are not swept in.
+
+        The kind globs ``*.py`` directly under ``esolangs/tools``, so it
+        picks up the modules that sit beside the two generator families
+        without listing ``boolean`` and ``text`` a second time -- a
+        directory does not match the glob.  ``transpilers`` is the one that
+        matters: it turns one language's program into another's, and
+        without this kind it had no harness path at all.
+        """
+        script = load_script()
+        modules = script._modules("tools")  # noqa: SLF001
+        assert "transpilers" in modules
+        assert "boolean" not in modules
+        assert "text" not in modules
+        kind = script._KINDS["tools"]  # noqa: SLF001
+        assert kind.rel_target("transpilers") == "esolangs/tools/transpilers.py"
+
+    def test_the_compilers_are_a_target_kind(self) -> None:
+        """The RISC-V backends are reachable, and land in tests/compilers.
+
+        ``_riscv_common`` stays a target on the same reasoning that keeps
+        ``helpers`` one: it is shared machinery the emitted assembly
+        depends on, not an entry point.
+        """
+        script = load_script()
+        kind = script._KINDS["compilers"]  # noqa: SLF001
+        modules = script._modules("compilers")  # noqa: SLF001
+        assert "jaune" in modules
+        assert "_riscv_common" in modules
+        assert kind.tests_rel == "tests/compilers"
+        assert kind.rel_target("jaune") == "esolangs/compilers/jaune.py"
+        assert kind.dotted("jaune") == "esolangs.compilers.jaune"
+
+
+class TestPrepare:
+    def test_the_mutated_path_is_the_requested_family(self, tmp_path: Path) -> None:
+        """``paths_to_mutate`` must name the family that was asked for.
+
+        The bug this pins shipped once: the path was built with a literal
+        ``boolean`` while the score was read from the target's own family,
+        so ``text/streetcode`` mutated *boolean's* streetcode and then found
+        no result file where it looked.  That mismatch is what made it
+        loud.  Had both sides shared the wrong literal it would have been
+        silent -- a run reporting a real, plausible score for a module
+        nobody asked about, which is possible for the eight names the two
+        packages share.
+        """
+        script = load_script()
+        proj, _ = script._prepare("text", "streetcode", tmp_path, slow=False)  # noqa: SLF001
+        config = (proj / "pyproject.toml").read_text()
+        assert 'paths_to_mutate = ["esolangs/tools/text/streetcode.py"]' in config
+        assert "boolean/streetcode.py" not in config
+
+    def test_the_mutated_path_and_the_score_path_agree(self, tmp_path: Path) -> None:
+        """The file mutmut writes is the file the score is read from.
+
+        Asserted as a pair rather than separately: they are two spellings of
+        one path in different functions, and the failure mode is them
+        drifting apart.
+        """
+        script = load_script()
+        proj, _ = script._prepare("text", "tape", tmp_path, slow=False)  # noqa: SLF001
+        config = (proj / "pyproject.toml").read_text()
+        mutated = config.split('paths_to_mutate = ["')[1].split('"]')[0]
+        # The same expression ``_score`` uses to find mutmut's result file.
+        scored = proj / "mutants" / "esolangs" / "tools" / "text" / "tape.py.meta"
+        assert scored == proj / "mutants" / f"{mutated}.meta"

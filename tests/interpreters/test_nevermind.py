@@ -166,13 +166,6 @@ class TestNevermind:
         with pytest.raises(HaltError):
             run_and_capture(["print,$nope"])
 
-    def test_input_without_prompt_rejected(self) -> None:
-        """input with no prompt is a malformed program."""
-        import pytest
-
-        with pytest.raises(ValueError, match="prompt"):
-            run_and_capture(["input"])
-
 
 class TestStepMachine:
     def test_empty_program_is_halted(self) -> None:

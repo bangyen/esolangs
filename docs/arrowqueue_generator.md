@@ -30,11 +30,11 @@ optimization divides `2**32` down — a runner 100x faster still leaves
 four CPU-days.  The table count is the wall, so coverage past four inputs
 needs an argument that never enumerates a table.
 
-The construction makes that possible because **the table's contents only
-ever choose which leaf blocks appear**, never how the program is routed.
-Routing depends on `n` and on the fold structure, and the leaves are
-finitely many shapes.  So the proof factorises into a chain of lemmas
-about pieces, plus an induction over the tree.
+That is possible because **the table's contents only ever choose which leaf
+blocks appear**, never how the program is routed.  Routing depends on `n`
+and on the fold structure, and the leaves are finitely many shapes.  So the
+proof factorises into a chain of lemmas about pieces, plus an induction
+over the tree.
 
 ## The shape of an instantiated program
 
@@ -121,9 +121,8 @@ arithmetic back at it.
 
 **B1 (`+` pops on arrival regardless of heading) [code].** `_advance`
 handles `+` before it moves, and a pop *replaces* the heading outright, so
-`+` behaves identically whichever way the IP arrived.  This is what lets
-the same subtree be entered two different ways, which the induction
-needs.
+`+` behaves identically whichever way the IP arrived.  That is what lets
+the induction enter the same subtree two different ways.
 
 **B2 (0-branch routes on the popped bit) [exec].** Entered at its `+`
 with the bit at the queue's head, `_TREE_BRANCH_0` pops it and exits
@@ -177,8 +176,8 @@ it expects.  Verified for `k = 0..8` against **every** stale-bit pattern
 Deep-`k` chains are exercised end to end by the all-ones runs at `n = 8`
 and `n = 10` (k = 8 and 10).
 
-**L4 (a bare ring is never the top-level tree) [code, exec].** This is
-what reconciles L2 with L2′.  `_tree` folds a constant slice to
+**L4 (a bare ring is never the top-level tree) [code, exec].** This
+reconciles L2 with L2′.  `_tree` folds a constant slice to
 `_drained_leaf(v, k)` with `k = log2(len(values))`.  At the top level
 `len(values) = 2**n`, so `k = n >= 1` — the domain requires `n >= 1`
 (`_validate_truth_table` rejects one-entry tables), so the top-level leaf
@@ -240,8 +239,8 @@ a horizontal run through a blank column likewise, and a run that would
 leave the grid still leaves it.  Deleting rows and columns *together*
 preserves every glyph's relative row and column ordering, which is all
 the routing depends on — B2/B3's exits are "the next glyph
-rightward/downward", not absolute coordinates.  So halting runs still
-halt and cycling runs still cycle.  Verified on both uncompacted and
+rightward/downward", not absolute coordinates.  Halting runs still halt
+and cycling runs still cycle.  Verified on both uncompacted and
 compacted programs for every instantiation of all tables at `n <= 3` plus
 40 random tables at `n = 4`: **2760 pairs, 0 verdict mismatches**.
 
@@ -276,3 +275,27 @@ Summary of what has been run:
 The `n = 12` run is 4096 inputs against a 227,937-byte program: past any
 arity the sweeps reach, and the point at which the induction is doing the
 work rather than the enumeration.
+
+## Fixed: the embedding blocks leaked their bits through program length
+
+A one bit's block used to be its `~` and nothing else, where a zero bit's is
+a dense box — so `_compact` dropped the one's blank rows and the emitted
+program's size counted the ones.  At `n == 2` the four programs came out
+**123, 110, 110 and 97** characters, which is the parameterized convention's
+equal-width rule broken: the length alone identified the inputs.
+
+The one blocks now carry **inert walls**, sized so each block's glyphs occupy
+the same number of characters as the zero block it stands against — **18** for
+the first block, **14** for the rest.
+
+Two facts make those walls cheap and safe:
+
+- What a row costs is `len(row.rstrip())`, so only the column its *last* glyph
+  sits in matters.  A row needs one wall, not a run of them, and the blanks to
+  its left are paid for either way.  That holds for the `~` rows too: leading
+  blanks hold the `~` at column 3 just as well as glyphs would, so the row is
+  a bare `~` with one wall past it.
+- `*` turns the IP clockwise, so a wall is only inert where the IP cannot
+  reach it.  The IP enters the header at `(0, 0)` heading right and crosses
+  columns 0-2 of that row to reach its `*`, so the first block's row 0 is left
+  exactly as it was.  Every cell walled here is one no run visits.

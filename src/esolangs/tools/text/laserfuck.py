@@ -184,7 +184,15 @@ def _laserfuck_base_ring(
     first_base, first_factor, _ = stages[0]
     preload = ">" * home
     if first_factor is None:
-        preload += "<" * (home - count) + "+" * first_base + ">" * (home - count)
+        # Load the counter and *stay* on it.  Every ring body and the tail
+        # walk home from the counter, and the spread ring decrements the
+        # cell it starts on, so a preload that returned to ``home`` left the
+        # first ring testing the scratch cell while decrementing the
+        # counter: the two then diverged by one per pass and the loop never
+        # closed.  This only bites when the first stage does not multiply
+        # (nothing else moves the pointer) but a later one does, which is
+        # what puts a scratch cell past the counter in the first place.
+        preload += "<" * (home - count) + "+" * first_base
     else:
         preload += "+" * first_factor[0]
 
@@ -349,7 +357,9 @@ def _laserfuck_snake(body: str, spine: int, right: int) -> list[str] | None:
     return ["".join(row).rstrip() for row in grid]
 
 
-def _laserfuck_snake_ring(text: str, width: int) -> str | None:
+def _laserfuck_snake_ring(
+    text: str, width: int, *, grouped: bool = False
+) -> str | None:
     r"""Build a base-init program whose rings are snaked across rows.
 
     A ring body cannot be folded the way a straight run of ops can -- the
@@ -371,37 +381,74 @@ def _laserfuck_snake_ring(text: str, width: int) -> str | None:
     """
     values = [ord(char) for char in text]
     count = len(values)
-    base = min(range(1, 128), key=lambda m: sum(abs(m - v) for v in values))
+    bands = _laserfuck_base_groups(values, count) if grouped else [values]
 
-    # Writing the base out one '+' at a time would push the first spine
-    # past the width before the body even starts, so it is factored into a
-    # multiply block whenever that is shorter.
-    factor = _laserfuck_base_factor(base)
-    scratch = factor is not None
+    # One base suits text whose bytes cluster, but most text has two
+    # clusters -- letters near a hundred, spaces and punctuation in the
+    # thirties -- and a base between them leaves every cell a long way from
+    # it.  Each band gets its own base and its own pair of rings, exactly as
+    # :func:`_laserfuck_base_ring` does; ``reached`` records what every cell
+    # holds once they have run, so the tail writes only what is left.
+    reached = [0] * count
+    plans: list[tuple[int, tuple[int, int, int] | None, list[int]]] = []
+    for band in bands:
+        if not band:
+            continue  # pragma: no cover - the grouper emits no empty band
+        members = set(band)
+        band_base = min(range(1, 128), key=lambda m: sum(abs(m - v) for v in band))
+        owned = [index for index, value in enumerate(values) if value in members]
+        for index in owned:
+            reached[index] = band_base
+        # Writing the base out one '+' at a time would push the first spine
+        # past the width before the body even starts, so it is factored into
+        # a multiply block whenever that is shorter.
+        plans.append((band_base, _laserfuck_base_factor(band_base), owned))
+
+    scratch = any(factor is not None for _, factor, _ in plans)
     home = count + 1 if scratch else count
 
-    # the spread ring starts and ends on the counter, which is the cell its
-    # own test looks at -- a body that came back anywhere else would spend
-    # the wrong cell and never terminate
-    spread = "<" * count + "+" + ">+" * (count - 1) + ">"
     tail = "-"
     if scratch:
         tail += ">-<"
     tail += "<" * count
     for index, value in enumerate(values):
-        step = value - base
+        step = value - reached[index]
         tail += ("+" if step > 0 else "-") * abs(step)
         if index < count - 1:
             tail += ">"
 
-    if factor is not None:
-        outer, inner, residual = factor
-        stages = [
-            (">" * home + "+" * outer, "<" + "+" * inner + ">"),
-            ("<" + "+" * residual, spread),
-        ]
-    else:
-        stages = [(">" * home + "+" * base, spread)]
+    stages = []
+    for position, (band_base, factor, owned) in enumerate(plans):
+        # A band's spread adds one only to the cells it owns, and starts and
+        # ends on the counter -- the cell its own test looks at, so a body
+        # returning anywhere else would spend the wrong cell and never
+        # terminate.  The trailing '-' is left off: _laserfuck_snake's test
+        # row supplies it, and a body that decremented too would spend the
+        # counter twice a pass.
+        members = set(owned)
+        spread = "<" * count
+        for index in range(count):
+            if index in members:
+                spread += "+"
+            if index < count - 1:
+                spread += ">"
+        spread += ">"
+        # Where a stage's load lands depends on what it loads and what came
+        # before.  A multiply counts its scratch cell, one past the counter;
+        # anything else counts the counter itself, and has to *stay* there,
+        # since the spread decrements the cell it starts on.  The first
+        # stage walks out from the funnel; a later one already stands on the
+        # counter, its own ring having counted it back down to zero.
+        if factor is None:
+            # ">" * home would end on the scratch when some other band
+            # multiplies, so walk only as far as the counter.
+            walk = ">" * count if not position else ""
+            stages.append((walk + "+" * band_base, spread))
+        else:
+            outer, inner, residual = factor
+            walk = ">" * home if not position else ">"
+            stages.append((walk + "+" * outer, "<" + "+" * inner + ">"))
+            stages.append(("<" + "+" * residual, spread))
 
     right = width - 2
     cells: dict[tuple[int, int], str] = {}
@@ -421,12 +468,65 @@ def _laserfuck_snake_ring(text: str, width: int) -> str | None:
 
     row, entry = 0, 3
     for preload, body in stages:
+        # Each block leaves the beam further right than the last, so on a
+        # bound width the entry drifts until a stage's preload no longer
+        # fits before the margin.  Carry it down to a fresh row at the left
+        # instead: the beam drops on a "v", is caught by a "}" on the row
+        # below, and faces right again with the full width ahead of it.
+        # Without this the entry marches off the edge and the whole form is
+        # refused, which is what sent long texts to the linear fallback.
+        # A block reaches five columns past its spine -- the exit "v" sits
+        # at ``spine + 6`` and the test row's "}-#/)" ends there too -- so
+        # the room a stage needs is its preload *and* that footprint.  A
+        # threshold that counted only the preload let a spine land just
+        # inside the margin and the block overrun it, which is the last
+        # thing sending long texts to the linear form at width 80.
+        if entry + len(preload) > right - 5 and entry > laserfuck_layout.MARGIN:
+            # "^v{}" set the heading outright, so no mirror is needed: a
+            # "v" drops the beam to the row below, a "{" there sends it
+            # back along that row to the left margin, and a "}" on the
+            # next row down faces it right again with the full width free.
+            # The turns must share a column with the drop, since a beam
+            # only meets what lies directly along its heading.
+            put(row, entry, "v")
+            row += 1
+            put(row, entry, "{")
+            put(row, laserfuck_layout.MARGIN - 1, "v")
+            row += 1
+            put(row, laserfuck_layout.MARGIN - 1, "}")
+            entry = laserfuck_layout.MARGIN
+        # A preload can be wider than the whole width on its own: the walk
+        # out to the counter is one '>' per cell, so 55 characters spend 56
+        # columns before the first '+'.  No reland helps -- the entry is
+        # already at the margin -- but a preload is a straight run of tape
+        # ops, which is exactly what a fold takes rows for instead of
+        # columns.  This is the once-executed half of the program; the
+        # walk stays here rather than moving to cell 0, which would delete
+        # it from the preload only to re-run it inside a body that repeats
+        # about ``base`` times.
         col = entry
-        for char in preload:
-            put(row, col, char)
-            col += 1
+        if entry + len(preload) > right - 5:
+            laid = max((index for index, _ in cells), default=row)
+            folded = [[" "] * (width + 2) for _ in range(max(laid, row) + 1)]
+            for (index, index_col), char in cells.items():
+                folded[index][index_col] = char
+            end_row, end_col = laserfuck_layout.fold(folded, preload, row, entry, width)
+            cells.clear()
+            for index, laid_row in enumerate(folded):
+                for index_col, char in enumerate(laid_row):
+                    put(index, index_col, char)
+            row, col = end_row, end_col
+        else:
+            for char in preload:
+                put(row, col, char)
+                col += 1
         spine = col
-        if spine >= right - 2:
+        # A fold that turned at least once leaves the beam just past a "}"
+        # it laid at the margin, so the spine is already as far left as it
+        # can be and needs no reland; one that never turned ends where a
+        # straight lay would.  Either way the footprint rule decides
+        # whether a block still fits.
+        if spine > right - 5:
             return None
         # drop the beam into this block's entry '}', directly below
         put(row, spine, "v")
@@ -441,8 +541,20 @@ def _laserfuck_snake_ring(text: str, width: int) -> str | None:
         exit_col = spine + 6
         put(test_row, exit_col, "v")
         row = test_row + 2
-        put(row, exit_col, "}")
-        entry = exit_col + 1
+        # A block exits six columns right of its spine, so the last one can
+        # leave the beam within a few columns of the edge -- too close for
+        # even the "}" that faces it right, let alone what follows.  Bring
+        # it back to the margin the same way a crowded entry is brought
+        # back, rather than refusing the whole form over three columns.
+        if exit_col >= right - 2:
+            put(row, exit_col, "{")
+            put(row, laserfuck_layout.MARGIN - 1, "v")
+            row += 1
+            put(row, laserfuck_layout.MARGIN - 1, "}")
+            entry = laserfuck_layout.MARGIN
+        else:
+            put(row, exit_col, "}")
+            entry = exit_col + 1
 
     height = max(index for index, _ in cells) + 1
     span = max(index for _, index in cells) + 1
@@ -510,9 +622,14 @@ def laserfuck(text: str, width: int | None = None) -> str:
     if width is not None:
         # the snaked form exists only for the bounded case: it spends rows
         # to buy columns, which is a loss when there is no bound to meet
-        snake = _laserfuck_snake_ring(text, width)
-        if snake is not None:
-            forms.append(snake)
+        # Banding the values costs a second pair of rings and saves on the
+        # residual tail, and which way that trade falls depends on how the
+        # bytes cluster -- so both are built and measured, as everywhere
+        # else here, rather than predicted.
+        for banded in (False, True):
+            snake = _laserfuck_snake_ring(text, width, grouped=banded)
+            if snake is not None:
+                forms.append(snake)
     return min(forms, key=_laserfuck_area)
 
 
@@ -550,10 +667,29 @@ def _laserfuck_multiply(text: str, width: int | None = None) -> str:
     _require_bytes(text, "LaserFuck")
     values = [ord(c) for c in text]
     code = ""
-    linear = "".join(">" + "+" * ord(c) for c in text).rstrip(">")
+
+    def _cell(units: int) -> str:
+        # A cell is dumped only when it is *touched*, so a zero has to be
+        # written rather than skipped: "+-" leaves the value at 0 and the
+        # flag set, which is what prints a NUL.  Without it a NUL in the
+        # text emitted a bare '>' and vanished from the output.
+        return "+" * units if units else "+-"
+
+    linear = "".join(">" + _cell(ord(c)) for c in text)
 
     def chunks(base: int) -> str:
         # one '>' then '+' per value's base-chunk, ending back at the left
+        if base == 1:
+            # Base 1 is the *final* write: what it leaves is what is dumped,
+            # so a zero has to be *touched* rather than skipped (see _cell),
+            # including a trailing one -- a cell that is never visited is
+            # never dumped, which is how a NUL used to fall out of the
+            # output.  The old rstrip here dropped exactly that cell.
+            #
+            # This costs two columns per zero over the previous spelling
+            # (``!@#`` goes 147 -> 149) and buys back every text with a NUL
+            # in it, which the multiplying form got wrong outright.
+            return "".join(">" + _cell(n) for n in values)
         return "".join(">" + "+" * (n // base) for n in values).rstrip(">")
 
     while True:
@@ -744,7 +880,14 @@ def _laserfuck_multiply(text: str, width: int | None = None) -> str:
             remainder = fallback[prefix:]
             exit_row = f"x{remainder[::-1]}{{"
             grid.insert(0, exit_row.rjust(len(grid[0])))
-        else:
+        else:  # pragma: no cover - base-1 chunks touches every cell
+            # ``fallback`` is ``chunks(1)``, and that branch writes ``>`` plus
+            # ``_cell(n)`` for *every* value with no ``rstrip`` -- a zero
+            # spells ``+-`` rather than being skipped, which is what keeps a
+            # NUL in the output.  So it is at least two characters whenever
+            # there is a value, and an empty text raises at ``max()`` long
+            # before the layout runs.  The arm stays as the structural
+            # partner of the ``if``.
             grid[0] += "x"  # no fallback: the frame ends by killing the laser
 
     # A folded frame is bounded by the width rather than by its longest

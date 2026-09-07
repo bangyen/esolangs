@@ -46,8 +46,8 @@ shape actually marks an intersection rather than a plain corner:
   special case.
 
 * **Genuine ambiguous turns**: a real intersection, as opposed to a plain
-  corner, is recognized by the local wall shape rather than by counting
-  open neighbors (an open room can present two or three open orthogonal
+  corner, is recognized by local wall shape rather than by counting open
+  neighbors (an open room can present two or three open orthogonal
   neighbors at an ordinary corner without being a drawn intersection).  A
   branch is a gap in the wall with a `+` marking each end (`_road_mouth`
   scans up to `_MOUTH_MAX_DIST` cells out, anchoring the near `+` at depth
@@ -170,7 +170,7 @@ three seen sideways.
 One exemption remains: a grid with no walls is not a street network to
 measure, so bare `CU` still constructs and reaches the residual
 `HaltError` path.  There is deliberately no "no instruction characters"
-exemption, which would be content sniffing rather than geometry.  The
+exemption -- that would be content sniffing rather than geometry.  The
 wall-shape fixtures disable validation through a test-local helper,
 keeping the escape hatch out of the interpreter.
 
@@ -219,7 +219,7 @@ edges, and rejects whatever is still drawn: a detached second box, a
 stray fragment of wall, an instruction sealed inside an island, or the
 middle of a solid block.  A hollow island needs no special case, since
 every cell of a one-thick wall is within one step of the road around it.
-Two decisions here are worth recording:
+Two decisions here:
 
 * **Solid blocks are rejected.**  Permitting them would mean a second
   flood-fill pass to tell a hole enclosed by the region from the outside
@@ -297,10 +297,9 @@ with the car starting at (row0, col1) heading South landing on
 `TestStreetcodeCountingLoop` (`tests/interpreters/test_streetcode.py`) is
 an enterable ring: the car counts a cell up on the way in, laps an
 island under that count's control, and leaves once it hits zero.  Building
-one correctly depends on exactly three rules already stated above (a road
-is two cells deep, a turn may not enter the oncoming lane, a junction
-reads the cell as the car arrives); the test is the standing check that
-they hold together.
+one correctly depends on exactly three rules above (a road is two cells
+deep, a turn may not enter the oncoming lane, a junction reads the cell as
+the car arrives); the test is the standing check that they hold together.
 
 A ring must also respect two invariants a future change must not violate:
 
@@ -328,9 +327,9 @@ which prints the same thing.  In `tools/text/streetcode.py` that is
 `None` to decline; in `tools/boolean/streetcode.py` it is
 `_streetcode_ring`, `_streetcode_lift` and `_streetcode_shared_lap`.
 
-These are the conditions under which the shorter shape is safe, and any
-change to those optimizations must keep satisfying them.  They are
-consequences of the movement rules above, not restatements of them.
+These are the conditions under which the shorter shape is safe; any change
+to those optimizations must keep satisfying them.  They are consequences
+of the movement rules above, not restatements of them.
 
 * **Every gap crossing is a junction and reads the CPth cell.**  Wherever a
   ring or hallway's mouth is crossed, CP must name a cell whose zero/nonzero
@@ -352,3 +351,47 @@ consequences of the movement rules above, not restatements of them.
   leading `^`, which leaves cell 0 nonzero for the whole leg so every
   crossing passes straight over.  A prefix still filling those same cells
   does not yet have it, so it cannot be lifted.
+
+## Why the mouth scan is bounded at 7
+
+`_MOUTH_MAX_DEPTH` in
+`src/esolangs/interpreters/grid_based/streetcode.py` caps how far along the
+direction of travel `_road_mouth` looks for the `+` closing a road's mouth.
+Sweeping the value against the test suite puts the floor at 5 -- at 4 the
+mouths of the wider drawn junctions stop being seen and three tests fail --
+while 5 and up are indistinguishable.  7 is that floor plus slack for mouths
+wider than anything drawn so far.
+
+Raising it is not conservatively safer, which is why the slack is small.  The
+bound is two-sided: too low and a real mouth is truncated, too high and the
+scan runs past the box it is reading and pairs up two `+` that bound nothing.
+The 1-arity boolean programs are the worked example -- from `(9, 6)` heading
+East, a generous bound finds a "mouth" spanning the blank margin between two
+drawn boxes, which 7 correctly does not see.  Behaviour is unaffected there
+only because `_junction_choices` offers one road and the junction does not
+fire.  So what is checked is the driving, not the scan: the tests compare the
+whole drive-state graph at this bound against a generous one over the corpus,
+and the graphs agree.  Nothing depends on the exact value in that sense.
+
+## Why a merge latch stores a turn, not a heading
+
+`_Merge` holds *which way it turns* rather than the heading it turns to.
+Both fields were once a `_Heading`, and a NamedTuple cannot make its fields
+keyword-only, so nothing but argument order stopped the two from being
+swapped in a positional call -- a mistake the type checker could not see and
+the drive-state graph would faithfully reproduce.  A `_Turn` beside a
+`_Heading` is two different types, so the swap no longer typechecks; the
+record's shape rules it out, not a convention each construction site has to
+follow.
+
+Storing the turn also keeps one fact in one place.  `new_heading` recovers
+the destination, and the "was this a left turn?" question
+`_heading_from_merge_target` asks when it re-reads the branch is now the
+stored field rather than a comparison that reconstructs it -- the two
+spellings could previously disagree.
+
+Only `left` and `right` are reachable.  A latch is only ever set for a turn
+onto a detected side road: `_junction_choices` offers nothing but
+`_left(heading)`, `heading` and `_right(heading)`, and the `turning` test in
+`_heading_from_junction` rules out the straight-ahead case.  Straight and
+reverse are unreachable, not merely unobserved.

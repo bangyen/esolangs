@@ -2,9 +2,8 @@ r"""Compiler that turns MyScript programs into RISC-V Linux assembly.
 
 MyScript is the richest call graph the compilers cover: first-class
 functions, ``return``, ``while``/``check`` blocks, and values that are not
-just machine words.  Three facts about the language shape the whole
-design, and each was probed against the interpreter rather than taken
-from the wiki.
+just machine words.  Three facts about the language shape the whole design,
+each probed against the interpreter rather than taken from the wiki.
 
 **Scoping is lexical, over live frames.**  ``_Function`` stores the
 *declaration* scope and ``_call_function`` runs the body in
@@ -44,9 +43,9 @@ upper 61 the payload, so an integer is ``value << 3``::
     100  array    (payload is an arena address >> 3)
     101  function (payload is a closure record address >> 3)
 
-Tagging is what lets ``add`` reject a string the way the interpreter's
-``_num`` raises ``HaltError``, and lets ``say`` print ``yes`` for a
-boolean while printing ``1`` for the integer that compares equal to it.
+Tagging lets ``add`` reject a string the way the interpreter's ``_num``
+raises ``HaltError``, and lets ``say`` print ``yes`` for a boolean while
+printing ``1`` for the integer that compares equal to it.
 Booleans are a distinct tag rather than the integers 0 and 1 because the
 interpreter prints them differently while comparing them equal
 (``equals yes 1`` is true, but ``say yes`` writes ``yes``); arithmetic and

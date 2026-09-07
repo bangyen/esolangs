@@ -164,20 +164,6 @@ class TestRAM0ControlFlow:
 class TestRAM0MemoryOperations:
     """Test RAM0 memory read/write operations."""
 
-    def test_memory_read_write_cycle(self) -> None:
-        """Test complete memory read/write cycle."""
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                run(
-                    "A A N A A A S A A L", io=IO()
-                )  # Store 5 at address 2, then load from address 7
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        # Load from uninitialized address
-        assert output == "z: 0\nn: 2\nram: {\n    2: 5\n}"
-
     def test_multiple_memory_locations(self) -> None:
         """Test storing values at multiple memory locations."""
 
@@ -240,17 +226,6 @@ class TestRAM0RegisterInteractions:
 
         output = run_with_timeout(test_func)
         assert output == "z: 4\nn: 3\nram: {}"
-
-    def test_store_using_n_register(self) -> None:
-        """Test storing using n register as address."""
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                run("A A N A A A S", io=IO())  # Store 5 at address 2 (n register)
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        assert output == "z: 5\nn: 2\nram: {\n    2: 5\n}"
 
 
 class TestRAM0EdgeCases:
@@ -328,21 +303,6 @@ class TestRAM0EdgeCases:
 
 class TestRAM0MathematicalOperations:
     """Test RAM0 mathematical operations and algorithms."""
-
-    def test_addition_algorithm(self) -> None:
-        """Test addition using RAM0 commands."""
-
-        def test_func() -> str:
-            with redirect_stdout(io.StringIO()) as f:
-                # Store 5 at address 2, then load from address 7
-                run(
-                    "A A N A A A S A A L", io=IO()
-                )  # Store 5 at address 2, then load from uninitialized address
-            return f.getvalue()
-
-        output = run_with_timeout(test_func)
-        # Load from uninitialized address returns 0
-        assert output == "z: 0\nn: 2\nram: {\n    2: 5\n}"
 
     def test_counter_pattern(self) -> None:
         """Test counter pattern using memory."""

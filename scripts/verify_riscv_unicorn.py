@@ -98,9 +98,90 @@ for text in ["Hi", "Hello, World!", "esolangs!"]:
     COMPILER_CASES.append(("cvnc", "cvnc", gen.cvnc(text), text))
     COMPILER_CASES.append(("myscript", "myscript", gen.myscript(text), text))
 COMPILER_CASES.append(("home_row", "home_row", "a" * 65 + "k;", "A"))
-COMPILER_CASES.append(("jaune", "jaune", "6+5+^.", "11"))
 COMPILER_CASES.append(("unsquare", "unsquare", "IA" + "+" * 32 + "Po", "A"))
-COMPILER_CASES.append(("bf_pda", "bf_pda", "<.>@.", "01"))
+# Jaune: one case per feature the backend implements, rather than several
+# spellings of arithmetic.  Every expected output here is the Jaune
+# interpreter's, checked against the compiled binary before being pinned --
+# which is how the two divergences noted below were found.
+for _program, _expected in [
+    ("6+5+^.", "11"),  # counted add, then subtract
+    ("8+3-^.", "5"),
+    ("+^.", "1"),  # a bare +/- is a count of one
+    ("++^.", "2"),  # a repeated command is a counted one
+    ("5+%^.", "0"),  # % zeroes the cell
+    ("5+<>^.", "5"),  # pointer moves back and forth
+    (">+>+<^>^.", "11"),  # two cells, printed in turn
+    ("<^.", "0"),  # moving left of cell 0 clamps
+    ("&^.", "0"),  # the hold cell starts at zero
+    ("1+1?2:^1:^.", "1"),  # ? jumps when the cell is nonzero
+    ("1!1:^.", "0"),  # ! jumps when it is zero
+    ("1@2@^.1$5+;2$3+;", "8"),  # two subroutines, called in turn
+    ("123^.", "0"),  # a bare number is not a command
+    ("x^.", "0"),  # nor is an unknown character
+    # An explicit zero count means one, the interpreter's ``or 1`` fallback.
+    # These compiled to a no-op until the fallback was added.
+    ("0+^.", "1"),
+    ("0-^.", "-1"),
+    # A digit run is the operand of the operator that follows it, and each
+    # ``<digits><op>`` is its own command.  Reading one digit backwards made
+    # ``10+`` an add of 1, and summing chains made ``5+0+`` a single add of
+    # 5 rather than the two commands the interpreter runs.
+    ("10+^.", "10"),
+    ("12+^.", "12"),
+    ("5+0+^.", "6"),
+    ("5+0-^.", "4"),
+    ("1+2+3+^.", "6"),
+    ("9+2-1-^.", "6"),
+    # A subroutine whose body calls a routine.  Each of these used to
+    # overwrite ``ra`` and leave the subroutine returning into itself, so
+    # the compiled program spun forever; the prologue at ``$`` fixes the
+    # family, and one case per member keeps it fixed.
+    ("5+1@.1$^;", "5"),  # ``^``
+    ("1@^.1$2@;2$5+;", "5"),  # a nested ``@``
+    # ``<`` inside a subroutine also has to clamp at the same tape floor as
+    # ``<`` outside one.  The floor used to be recomputed from ``sp``, so
+    # saving ``ra`` moved it four cells and these landed a cell off.
+    ("5+1@^.1$<;", "0"),
+    (">>>5+1@^.1$<;", "0"),
+]:
+    COMPILER_CASES.append(("jaune", "jaune", _program, _expected))
+# The reading half, carrying the fifth element.  One digit per line: that is
+# the spelling the interpreter's tests use and the one the compiled reader
+# agrees with, where feeding the digits bare drops every one after the first.
+for _program, _expected, _stdin in [
+    ("v^.", "7", "7\n"),  # v reads a digit
+    ("v+v+^.", "9", "4\n5\n"),  # the spec's adder
+    ("9+v-^.", "5", "4\n"),  # v- is the mirror of v+
+    ("v+>v+#<&^.", "7", "3\n4\n"),  # # holds, & adds the hold cell
+    # The reading half of the ``ra``-clobber family above: a subroutine
+    # whose body calls ``<``, ``v``, or a looped ``&``.
+    ("v+>v+1@^.1$#<&;", "7", "3\n4\n"),  # the program that showed the bug
+    ("1@^.1$v+;", "3", "3\n"),
+    ("v+>v+1@^.1$#<&&;", "11", "3\n4\n"),
+]:
+    COMPILER_CASES.append(("jaune", "jaune", _program, _expected, _stdin))
+# Jaune's computed dispatch ("v@", "v?") reaches the `switch:` blocks below
+# and has no interpreter counterpart -- the interpreter rejects those forms
+# -- so there is nothing to round-trip it against here.
+# BF-PDA: the stack, its loops, and the fact that non-commands are comments.
+# Same provenance -- the interpreter's expected outputs, each confirmed
+# against the compiled binary.
+for _program, _expected in [
+    ("<.>@.", "01"),
+    ("<@.", "1"),  # @ toggles the top of the stack
+    ("<.", "0"),
+    ("<@@.", "0"),  # toggling twice restores it
+    ("<@@@.", "1"),
+    ("<<@.>.", "10"),  # two cells, printed in turn
+    ("abc<@.xyz", "1"),  # letters are comments
+    ("<@\n.\t>", "1"),  # so is whitespace
+    ("<[.]", ""),  # a loop over a zero cell never runs
+    ("<@[>]", ""),
+    ("<@<@[.>]", "11"),  # a loop that walks the stack
+    ("<@[@.]", "0"),  # the loop body clears its own condition
+    ("<@[>.]", "0"),
+]:
+    COMPILER_CASES.append(("bf_pda", "bf_pda", _program, _expected))
 COMPILER_CASES.append(("ram0", "ram0", "A A A", "z: 3\nn: 0\nram: {}"))
 COMPILER_CASES.append(("ram0", "ram0", "A A N S", "z: 2\nn: 2\nram: {\n    2: 2\n}"))
 COMPILER_CASES.append(("forth", "forth", "65.", "\x05"))

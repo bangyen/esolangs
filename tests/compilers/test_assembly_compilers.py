@@ -1,6 +1,9 @@
 """Unit tests for the RISC-V assembly compilers."""
 
+import hashlib
 import importlib
+import json
+from pathlib import Path
 
 import pytest
 
@@ -63,6 +66,55 @@ def test_compiler_produces_assembly(module: str, program: str) -> None:
     output = str(mod.comp(program))
     assert ".global _start" in output
     assert program not in output  # source text is compiled, not embedded
+
+
+# Goldens live beside the fixtures, one ``.s`` per compiler, plus a
+# ``checksums.json`` covering every one of them.  Three backends
+# (addsubjump, decleq, sbleq) emit ~276KB for their sample program, which is
+# neither reviewable in a diff nor worth committing, so those are pinned by
+# digest alone; the rest are pinned as readable text *and* by digest.
+_GOLDENS = Path(__file__).resolve().parents[1] / "fixtures" / "compiler_goldens"
+with open(_GOLDENS / "checksums.json") as _f:
+    _CHECKSUMS = json.load(_f)
+
+
+def test_every_compiler_has_a_golden() -> None:
+    """The golden table is exactly the sweep's table, pinned both ways.
+
+    Same failing direction as the program roster above: a new backend has no
+    golden until someone regenerates them, and a golden left behind for a
+    deleted backend fails the other way.  Without this a compiler could be
+    added, be given a program, and still never have its output pinned.
+    """
+    assert set(_CHECKSUMS) == set(_PROGRAMS)
+
+
+@pytest.mark.parametrize(("module", "program"), sorted(_PROGRAMS.items()))
+def test_compiler_output_matches_its_golden(module: str, program: str) -> None:
+    """Each compiler emits exactly the assembly it emitted when pinned.
+
+    This is the assertion with teeth.  The sweep above passes for any mutant
+    that still writes a header and does not echo its source, which is nearly
+    all of them -- a mutation run measured 48% of ``jaune``'s mutants
+    surviving, several of which emitted assembly of the same length and
+    different content.  Comparing against a recorded output kills those,
+    because a compiler that computes something else writes something else.
+
+    A legitimate codegen change fails this test by design: regenerate with
+    ``scripts/make_compiler_goldens.py`` (or ``just goldens``), and review
+    the diff as part of the change.  For the three backends too large to
+    store as text, the digest is the whole check.
+    """
+    mod = importlib.import_module(f"esolangs.compilers.{module}")
+    output = str(mod.comp(program))
+
+    expected = _GOLDENS / f"{module}.s"
+    if expected.exists():
+        assert output == expected.read_text()
+
+    digest = hashlib.sha256(output.encode()).hexdigest()
+    assert digest == _CHECKSUMS[module]["sha256"]
+    assert len(output) == _CHECKSUMS[module]["chars"]
 
 
 def test_suffolk_compiler() -> None:
@@ -193,6 +245,19 @@ class TestUnsquareLoopCollapse:
         assert mod.prep("OA>") == "OA>"
         assert mod.prep("IA>") == "IA>"
 
+    def test_a_nested_loop_matches_the_outer_close(self) -> None:
+        """An inner ``>`` raises the balance, so the first ``<`` is not the match.
+
+        The single-level cases above never exercise that: their scan meets a
+        ``<`` while the balance is still one and stops immediately.  Nesting
+        makes the scan step over the inner pair before the outer one closes,
+        and only then is the whole span droppable.
+        """
+        mod = importlib.import_module("esolangs.compilers.unsquare")
+        assert mod.prep("OA>><<") == "OA"
+        # Still unbalanced once nested: the outer > never closes, so it stays.
+        assert mod.prep("OA>><") == "OA>><"
+
 
 class TestUnsquareDoubledPairCollapse:
     """``(OO|II|PP)S+`` keeps the pair and drops the ``S``s after it.
@@ -237,6 +302,18 @@ class TestHomeRow:
         assert "lw   t0, 0(s1)" in mod.comp("s")
         assert "addi t0, t0, -2" in mod.comp("ss")
 
+    def test_a_cancelling_run_emits_no_arithmetic(self) -> None:
+        """``as`` sums to zero, so the add is skipped rather than emitted.
+
+        ``count`` folds a run of ``a``/``s`` into one signed total, and a
+        run that cancels leaves nothing to add -- the arm that emits the
+        load/add/store is guarded on that total being nonzero.
+        """
+        mod = importlib.import_module("esolangs.compilers.home_row")
+        assert "addi t0, t0," not in mod.comp("as")
+        # not vacuous: an uncancelled run does emit the add
+        assert "addi t0, t0, 1" in mod.comp("a")
+
     def test_movement(self) -> None:
         mod = importlib.import_module("esolangs.compilers.home_row")
         assert "down:" in mod.comp("d")
@@ -276,6 +353,24 @@ class TestHomeRow:
         mod = importlib.import_module("esolangs.compilers.home_row")
         assert "bnez t0, .top" in mod.comp("jlajl")
 
+    def test_j_prefix_makes_arithmetic_a_single_signed_step(self) -> None:
+        """After ``j``, ``a``/``s`` are +1/-1 regardless of the run length.
+
+        The count is discarded and replaced by the sign, so ``aja`` adds 1
+        for the trailing ``a`` rather than folding it into a run.  The
+        leading ``a`` is what keeps the ``j`` in the program at all: the
+        normalization drops a ``j`` that starts one.
+        """
+        mod = importlib.import_module("esolangs.compilers.home_row")
+        assert "addi t0, t0, 1" in mod.comp("aja")
+        assert "addi t0, t0, -1" in mod.comp("ajs")
+
+    def test_j_prefix_makes_movement_a_single_step(self) -> None:
+        """After ``j``, a movement/print command carries a count of one."""
+        mod = importlib.import_module("esolangs.compilers.home_row")
+        assert "li   t3, 1" in mod.comp("ajd")
+        assert "li   t3, 1" in mod.comp("ajf")
+
     def test_conditionals_and_loop(self) -> None:
         mod = importlib.import_module("esolangs.compilers.home_row")
         assert ".skip" in mod.comp("j")
@@ -306,6 +401,55 @@ class TestJaune:
         mod = importlib.import_module("esolangs.compilers.jaune")
         assert "lw   t0, 0(s1)" in mod.comp("1+")
         assert "lw   t0, 0(s1)" in mod.comp("1-")
+
+    def test_a_zero_operand_adjusts_by_one(self) -> None:
+        """``0+`` adds one: an explicit zero count falls back to a count of one.
+
+        This test used to assert the opposite -- that a zero operand emits
+        no arithmetic at all -- which is what the compiler did and what the
+        interpreter does not.  The interpreter spells the fallback
+        ``cells[ptr] + (cmd.arg or 1)`` and has a test naming ``0+``/``0-``
+        as the only spelling that reaches it, so a compiled ``0+^.``
+        printed 0 where the interpreter printed 1.
+
+        The sign has to come back from the command rather than the operand,
+        because ``count`` folds it into the value and ``int("-0")`` is
+        ``0``.
+        """
+        mod = importlib.import_module("esolangs.compilers.jaune")
+        assert "addi t0, t0, 1" in mod.comp("0+")
+        assert "addi t0, t0, -1" in mod.comp("0-")
+        # not vacuous: an explicit count is still used as written
+        assert "addi t0, t0, 5" in mod.comp("5+")
+
+    def test_a_subroutine_saves_the_return_address(self) -> None:
+        """A subroutine body that calls a routine must not lose ``ra``.
+
+        ``^ v < &`` and a nested ``@`` all compile to a ``call``, which
+        overwrites ``ra``.  Without a prologue the subroutine's own ``ret``
+        went back into its body instead of to the caller, and the compiled
+        program spun there forever -- ``1$#<&;`` was the program that showed
+        it.  Pinned at the boundary because it is the whole family, not one
+        routine.
+        """
+        mod = importlib.import_module("esolangs.compilers.jaune")
+        out = mod.comp("1@.1$#<&;")
+        assert "sd   ra, 8(sp)" in out
+        assert "ld   ra, 8(sp)" in out
+
+    def test_the_tape_floor_does_not_move_with_the_stack(self) -> None:
+        """``<`` clamps against a fixed floor, not against ``sp``.
+
+        The clamp used to be recomputed as ``sp - 48`` at the moment of the
+        move, so once a subroutine saved ``ra`` the floor shifted four cells
+        and ``<`` inside one landed a cell off.  ``s0`` holds it instead,
+        set once in the header.
+        """
+        mod = importlib.import_module("esolangs.compilers.jaune")
+        out = mod.comp("<")
+        assert "addi s0, sp, -48" in out
+        assert "bge  s0, s1" in out
+        assert "addi t1, sp, -48" not in out
 
     def test_subroutines(self) -> None:
         mod = importlib.import_module("esolangs.compilers.jaune")
@@ -359,6 +503,29 @@ class TestJaune:
         assert "sub  t0, t0, s7" in mod.comp("v-")
         assert "addi t0, t0, 1" in mod.comp("+")
         assert "addi t0, t0, -1" in mod.comp("-")
+
+    def test_a_leading_sign_reads_its_operand_as_blank(self) -> None:
+        """A sign at index 0 takes no operand from the end of the program.
+
+        ``count`` reads the character *before* the sign for the operand, so
+        at index 0 that index is ``-1``.  The scan used to run over a
+        ``code + " "`` copy, where ``-1`` was the appended space; dropping
+        that copy -- it made a scan over an N-byte program quadratic --
+        exposed Python's negative indexing instead, and the last character
+        of the program silently became the leading sign's operand.  A
+        trailing digit then turned ``+`` into a counted add of that digit.
+
+        Pinned across the three arms the predecessor selects: a digit
+        operand, the ``v`` register form, and the plain run.
+        """
+        mod = importlib.import_module("esolangs.compilers.jaune")
+        # count() reports the same operand whether or not a trailing
+        # character exists to be misread as one.
+        assert mod.count("+", 0) == mod.count("+9", 0)
+        assert mod.count("+", 0) == mod.count("+v", 0)
+        # and the emitted code is the lone-sign form, not a counted add
+        assert "addi t0, t0, 1" in mod.comp("+9")
+        assert "add  t0, t0, s7" not in mod.comp("+9")
         assert "addi t0, t0, 4" in mod.comp("++++")
 
     def test_bare_read_stores_into_the_cell(self) -> None:
@@ -445,8 +612,37 @@ class TestJaune:
         mod = importlib.import_module("esolangs.compilers.jaune")
         assert "sub" in mod.comp("5$")
 
+    def test_v_before_an_operator_is_that_operator_s_operand(self) -> None:
+        """A ``v`` run ending at ``+``/``-`` gives its last ``v`` to the operator.
+
+        ``_parse`` reads ``vv+`` as ``v`` then ``v+``, so the run counts one,
+        not two, and the index steps back to leave the second ``v`` unread.
+        Counting it here looped the read an extra time and left the digit
+        unused.  Runs not followed by an operator keep their full length.
+        """
+        mod = importlib.import_module("esolangs.compilers.jaune")
+        assert mod.count("vv+", 0) == (1, 1)
+        assert mod.count("vvv+", 0) == (2, 2)
+        assert mod.count("vv-", 0) == (1, 1)
+        # No trailing operator: the whole run belongs to this read.
+        assert mod.count("vv", 0) == (2, 2)
+        # A single v has nothing to give back, so it is left alone.
+        assert mod.count("v+", 0) == (1, 1)
+
 
 class TestUnsquare:
+    def test_a_cancelling_pair_emits_no_arithmetic(self) -> None:
+        """``+-`` sums to zero, so the add is skipped rather than emitted.
+
+        ``count`` folds a ``+``/``-`` run into one signed total, and a pair
+        that cancels leaves nothing to add -- the ``addi`` is guarded on
+        that total being nonzero.
+        """
+        mod = importlib.import_module("esolangs.compilers.unsquare")
+        assert "addi s2, s2," not in mod.comp("+-")
+        # not vacuous: a lone + does emit the add
+        assert "addi s2, s2, 2" in mod.comp("+")
+
     def test_register_commands(self) -> None:
         mod = importlib.import_module("esolangs.compilers.unsquare")
         assert "call zero" in mod.comp("O")
@@ -511,6 +707,27 @@ class TestSuffolkComp:
         mod = importlib.import_module("esolangs.compilers.suffolk")
         assert "li   s5" in mod.comp("<<<<", 1)
 
+    def test_two_lefts_inline_the_second_instead_of_calling(self) -> None:
+        """``<<`` unrolls: two adds and no ``call left``.
+
+        Three or more spell the count into s5 and call the subroutine; at
+        exactly two the call costs more than repeating the body, so the
+        second is inlined.  Pinning both sides keeps the boundary honest --
+        a compiler that called the subroutine at two would still be correct
+        but would lose the reason this arm exists.
+        """
+        mod = importlib.import_module("esolangs.compilers.suffolk")
+        two = mod.comp("<<", 1)
+        assert two.count("add  s3, s3, t0") == 2
+        assert "call left" not in two
+        assert "call left" in mod.comp("<<<", 1)
+
+    def test_input_emits_its_subroutine(self) -> None:
+        """``,`` is the only command that pulls in the input subroutine."""
+        mod = importlib.import_module("esolangs.compilers.suffolk")
+        assert "input:" in mod.comp("!,.", 1)
+        assert "input:" not in mod.comp("!.", 1)
+
 
 class TestBFPDA:
     def test_push_flip_pop(self) -> None:
@@ -523,6 +740,26 @@ class TestBFPDA:
     def test_output_emits_syscall(self) -> None:
         mod = importlib.import_module("esolangs.compilers.bf_pda")
         assert "ecall" in mod.comp(".")
+
+    def test_loop_emits_both_labels_and_the_back_jump(self) -> None:
+        """``[`` opens a labelled test, ``]`` closes it and jumps back.
+
+        The two arms are a matched pair: ``[`` emits the top label and the
+        two exits (stack empty, or top is zero), and ``]`` pops the same
+        label to emit the back edge and the bottom.  Asserting only one
+        would pass on a compiler that emitted a loop it never closed.
+        """
+        mod = importlib.import_module("esolangs.compilers.bf_pda")
+        output = mod.comp("+[>+]")
+        assert ".T0:" in output
+        assert "beqz t0, .B0" in output  # zero top leaves the loop
+        assert "j .T0\n.B0:" in output  # ] jumps back, then lands past it
+
+    def test_unmatched_close_bracket_emits_no_back_edge(self) -> None:
+        """A ``]`` with no open ``[`` is skipped rather than popping empty."""
+        mod = importlib.import_module("esolangs.compilers.bf_pda")
+        output = mod.comp("+]")
+        assert ".B" not in output
 
 
 class TestAddSubJump:
@@ -711,6 +948,25 @@ class TestCollatzMultiverse:
         with pytest.raises(ValueError, match="malformed line"):
             mod.comp("hello world")
 
+    def test_reading_input_pulls_in_the_subroutine(self) -> None:
+        """``input`` as an operand emits the read, and gates the subroutine on it.
+
+        The subroutine is emitted only when something calls it -- the same
+        ``used``-flag gate the tape compilers apply -- so a program that
+        never names ``input`` must not carry it.
+        """
+        mod = importlib.import_module("esolangs.compilers.collatz_multiverse")
+        reads = mod.comp("x = y x + input, DO PRINT.")
+        assert "call read_input" in reads
+        assert "read_input:" in reads
+        assert "read_input:" not in mod.comp("x = y x + z, DO PRINT.")
+
+    def test_assigning_to_input_raises(self) -> None:
+        """``input`` names the stdin read, so it cannot be a target."""
+        mod = importlib.import_module("esolangs.compilers.collatz_multiverse")
+        with pytest.raises(ValueError, match="input cannot be redefined"):
+            mod.comp("input = y x + z, DO PRINT.")
+
 
 class TestRAM0:
     def test_parse(self) -> None:
@@ -790,6 +1046,22 @@ class TestForth:
         mod = importlib.import_module("esolangs.compilers.forth")
         output = mod.comp("1[1(2.)]")
         assert output.count(".scope") >= 4  # loop body, branch body, + labels
+
+    def test_same_bracket_nests_by_depth(self) -> None:
+        """A loop inside a loop closes on its own ``]``, not the inner one.
+
+        The mixed-bracket case above never raises the depth counter: the
+        matcher counts only the same open character, so a ``(`` inside
+        ``[...]`` leaves it alone.  Two ``[`` do raise it, and the outer
+        loop has to skip past the inner ``]`` to find its own -- getting
+        that wrong ends the outer body early and silently drops the tail.
+        """
+        mod = importlib.import_module("esolangs.compilers.forth")
+        output = mod.comp("1[2[3.]]")
+        # Both loop bodies become scopes, and the print survives in the
+        # inner one -- proof the outer match did not stop at the inner ].
+        assert output.count(".scope") >= 4
+        assert "call print_top" in output
 
     def test_unmatched_bracket_compiles_without_crashing(self) -> None:
         mod = importlib.import_module("esolangs.compilers.forth")

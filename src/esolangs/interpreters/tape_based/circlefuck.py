@@ -12,35 +12,38 @@ the last cell (``}``) is an invalid operation and halts the program with
 
 Exhausted input raises :class:`EOFError` (the repo-wide convention).
 
-The execution model is a pure function over an immutable ``_State``:
-:func:`_advance` maps a state to the next state, and never mutates what it
-is given.  It takes no ``io`` argument at all, so it is total and
-side-effect free by construction rather than by inspection.
+The execution model splits the rules from the writing.  :func:`_advance` is
+pure: it reads the tape and *reports* what one cell does -- the new cursors
+and the single edit -- without touching anything.  It takes no ``io``
+argument at all, so it is total and side-effect free by construction rather
+than by inspection.
 
-The cells have to be in the state rather than beside it, and not only
-because they change: they *are* the program.  ``{`` and ``}`` insert and
-remove cells, so the code the cursor is walking moves out from under it,
-and the tape's length -- which every wrap is taken modulo -- is something a
-step decides.
+The tape is the program, so ``{`` and ``}`` move the code out from under the
+cursor and the tape's length -- which every wrap is taken modulo -- is
+something a step decides.  :func:`_advance` therefore wraps the cursors
+against the length its own edit will produce, not the one it was handed.
 
 :class:`_Machine` is the mutable shell the interpreter protocol requires.
-It holds one ``_State`` and rebinds it each step, so the mutation lives in
-exactly one assignment and every rule about what Circlefuck *does* stays in
-the pure layer.
+It owns the tape as a list and applies each reported edit in place, so a
+write costs one assignment.  Returning a rewritten tape instead meant
+copying every cell to record one, which made a program that writes ``n``
+times cost O(n**2); naming the edit made the same walk linear (22x at 96
+characters of generated text).  Every observer -- ``cells``, ``memory``,
+``state``, ``snapshot`` -- copies the list, so nothing outside the class can
+reach it and one logical state keeps one spelling.
 """
 
 from __future__ import annotations
 
 import re
 import sys
+from collections.abc import Sequence
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
 #: One instant of a run: ``(ind, ptr, cells, done)`` -- the code cursor, the
-#: data pointer, the tape, and whether ``@`` has halted the run.  A value,
-#: not a record: every transition below returns a new one rather than
-#: editing one in place, and the tape is a ``tuple`` for the same reason.
+#: data pointer, the tape, and whether ``@`` has halted the run.
 #:
 #: ``done`` is state because halting here is a decision a cell makes -- the
 #: pointer reaching an ``@`` -- rather than a position the cursor passes:
@@ -49,6 +52,18 @@ from esolangs.interpreters.io import IO
 #: ``done`` stays out of ``snapshot``, which reports the three live fields
 #: plus the input cursor, in the order it always returned them.
 type _State = tuple[int, int, tuple[int, ...], bool]
+
+#: The one change a cell makes to the tape: ``("set", i, value)`` writes a
+#: cell, ``("insert", i, 0)`` grows the tape at ``i``, ``("delete", i, 0)``
+#: removes that cell, and ``None`` leaves the tape alone.  Named rather than
+#: applied so that recording a write does not copy the tape -- see
+#: :func:`_advance`.
+type _Edit = tuple[str, int, int] | None
+
+#: What executing one cell did: ``(ind, ptr, done, edit)``.  The cursors are
+#: already wrapped against the length the edit produces, so the shell can
+#: apply the edit and store the cursors without recomputing anything.
+type _Move = tuple[int, int, bool, _Edit]
 
 
 def parse(code: str) -> list[int]:
@@ -71,12 +86,15 @@ def parse(code: str) -> list[int]:
     return [ord(c) for c in code]
 
 
-def find(code: list[int], ind: int, ptr: int) -> int:
+def find(code: Sequence[int], ind: int, ptr: int) -> int:
     """Return the matching bracket for ``ind``.
 
     Raises :class:`ValueError` if the brackets are unbalanced: the wiki
     defines ``[``/``]`` only for matched pairs, so an unmatched bracket is a
     malformed program.
+
+    Takes any read-only sequence, so the caller passes the tape it already
+    holds rather than copying it into a list on every bracket.
     """
     char = chr(code[ind])
     if char == "[":
@@ -104,47 +122,64 @@ def find(code: list[int], ind: int, ptr: int) -> int:
     return ind
 
 
-def _advance(state: _State, byte: int | None = None) -> _State:
-    """Return the state after executing one cell.
+def _advance(
+    cells: Sequence[int], ind: int, ptr: int, byte: int | None = None
+) -> _Move:
+    """Return what executing one cell does, without doing it.
 
-    Pure: it reads ``state`` and returns a new one.  It takes no ``io``
-    argument, so ``,`` and ``.`` are the caller's business -- ``.`` changes
-    no state at all, and ``,``'s byte arrives already read.
+    Pure: it reads the tape and reports the change as a :data:`_Move` --
+    the new cursors, whether the run stopped, and the one edit the cell
+    makes.  It takes no ``io`` argument, so ``,`` and ``.`` are the
+    caller's business -- ``.`` changes no state at all, and ``,``'s byte
+    arrives already read.
+
+    The edit is *named*, not applied, because the tape is also the program:
+    rewriting it to record one changed cell copied the whole thing, so a
+    program that writes ``n`` times cost O(n**2).  Naming the cell makes a
+    write O(1) and leaves :meth:`_Machine.step` to apply it to the list it
+    owns.  Self-modification still works exactly: the edit is applied
+    before the next fetch, so a write onto the cursor's own cell is read
+    back as the next instruction, and a write that lands ahead of the
+    cursor is seen when the cursor arrives.
 
     ``{`` and ``}`` change the tape's *length*, and the wrap at the end is
-    taken modulo the new one.  An insert at or before the cursor shifts the
-    code under it, which is the language working as intended: the tape is
-    the program.
+    taken modulo the new one -- so they report the length their edit will
+    produce rather than the one they were handed.  An insert at or before
+    the cursor shifts the code under it, which is the language working as
+    intended.
 
     ``#`` and ``{`` advance the cursor an extra cell, so they skip past
     what follows them; every other cell takes only the shared wrap.
     """
-    ind, ptr, cells, _done = state
     char = chr(cells[ind])
+    size = len(cells)
+    edit: _Edit = None
     if char == ">":
-        ptr = (ptr + 1) % len(cells)
+        ptr = (ptr + 1) % size
     elif char == "<":
-        ptr = (ptr - 1) % len(cells)
+        ptr = (ptr - 1) % size
     elif char == "+":
-        cells = (*cells[:ptr], (cells[ptr] + 1) % 256, *cells[ptr + 1 :])
+        edit = ("set", ptr, (cells[ptr] + 1) % 256)
     elif char == "-":
-        cells = (*cells[:ptr], (cells[ptr] - 1) % 256, *cells[ptr + 1 :])
+        edit = ("set", ptr, (cells[ptr] - 1) % 256)
     elif char == ",":
-        cells = (*cells[:ptr], byte if byte is not None else 0, *cells[ptr + 1 :])
+        edit = ("set", ptr, byte if byte is not None else 0)
     elif char in "[]":
-        ind = find(list(cells), ind, ptr)
+        ind = find(cells, ind, ptr)
     elif char == "@":
         # The run stops on the ``@`` itself, without wrapping past it.
-        return (ind, ptr, cells, True)
+        return (ind, ptr, True, None)
     elif char == "#":
         ind += 1
     elif char == "{":
-        cells = (*cells[:ptr], 0, *cells[ptr:])
+        edit = ("insert", ptr, 0)
+        size += 1
         ind += 1
     elif char == "}":
-        cells = (*cells[:ptr], *cells[ptr + 1 :])
-        ptr %= len(cells)
-    return ((ind + 1) % len(cells), ptr, cells, False)
+        edit = ("delete", ptr, 0)
+        size -= 1
+        ptr %= size
+    return ((ind + 1) % size, ptr, False, edit)
 
 
 class _Machine:
@@ -163,28 +198,40 @@ class _Machine:
         cells = parse(code)
         if not cells:
             raise ValueError("Circlefuck program cannot be empty")
-        self.state: _State = (0, 0, tuple(cells), False)
+        # The shell owns the tape as a mutable list: a write is one
+        # assignment rather than a rebuilt tuple.  Every observer below
+        # copies it, so nothing outside this class can reach the list.
+        self._cells = cells
+        self._ind = 0
+        self._ptr = 0
+        self._done = False
 
-    # The language's own names.  They are views on the current state rather
-    # than fields of their own, so there is one place a step can change.
+    # The language's own names.  Each copies the tape rather than handing
+    # out the list the shell mutates, so an observer's view never changes
+    # under it and one logical state keeps one spelling.
+
+    @property
+    def state(self) -> _State:
+        """The machine's fields as the value the old transition took."""
+        return (self._ind, self._ptr, tuple(self._cells), self._done)
 
     @property
     def cells(self) -> tuple[int, ...]:
         """The tape, which is also the program."""
-        return self.state[2]
+        return tuple(self._cells)
 
     @property
     def ind(self) -> int:
-        return self.state[0]
+        return self._ind
 
     @property
     def ptr(self) -> int:
-        return self.state[1]
+        return self._ptr
 
     @property
     def halted(self) -> bool:
         """Whether the pointer hit ``@``."""
-        return self.state[3]
+        return self._done
 
     # The VM's language-shaped view: Self-modifying circular tape + cursor; ip cursor,
     # memory cells.
@@ -192,12 +239,12 @@ class _Machine:
     @property
     def ip(self) -> int:
         """The current instruction position."""
-        return self.state[0]
+        return self._ind
 
     @property
     def memory(self) -> list[int]:
         """The addressable cells."""
-        return list(self.state[2])
+        return list(self._cells)
 
     @property
     def stack(self) -> list[object]:
@@ -206,10 +253,11 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The tape is already a tuple, so it goes in as it stands, in the
-        # order this returned before ``done`` joined the state.
-        ind, ptr, cells, _done = self.state
-        return (cells, ind, ptr, self.io.position())
+        # A tuple copy of the tape, not the list itself: the detector holds
+        # snapshots across steps, and a live reference would mutate under
+        # it and make a real repeat compare unequal to itself.  The order
+        # is the one this returned before ``done`` joined the state.
+        return (tuple(self._cells), self._ind, self._ptr, self.io.position())
 
     def step(self) -> None:
         """Execute one cell, advancing the pointers.
@@ -218,10 +266,10 @@ class _Machine:
         in the transition: this is the shell, so it is where an effect or a
         raise belongs, and it leaves :func:`_advance` total.
         """
-        ind, ptr, cells, done = self.state
-        if done:
+        if self._done:
             return
-        char = chr(cells[ind])
+        cells = self._cells
+        char = chr(cells[self._ind])
         byte = None
         if char == "}" and len(cells) == 1:
             # Deleting the last cell would leave nothing to run.
@@ -229,8 +277,18 @@ class _Machine:
         if char == ",":
             byte = self.io.input_char()
         elif char == ".":
-            self.io.print_char(chr(cells[ptr]))
-        self.state = _advance(self.state, byte)
+            self.io.print_char(chr(cells[self._ptr]))
+        self._ind, self._ptr, self._done, edit = _advance(
+            cells, self._ind, self._ptr, byte
+        )
+        if edit is not None:
+            kind, at, value = edit
+            if kind == "set":
+                cells[at] = value
+            elif kind == "insert":
+                cells.insert(at, value)
+            else:
+                del cells[at]
 
 
 def run(code: str, io: IO) -> None:

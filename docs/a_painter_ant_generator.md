@@ -10,7 +10,7 @@ interpreter module's docstring, authoritative and not restated here.
 - The interpreter's output is the **bounding box of visited cells** (`#`
   white / `.` black, ant's cell as `@` or `o`), which carries no
   coordinates, so the generator reads its answer from a *semantic grid
-  model* (the ant's actual position and cell colours) instead.
+  model* — the ant's actual position and cell colours.
 - The answer is the **colour of the cell the ant lands on** at the end of
   a cycle (white is one, black is zero).
 
@@ -23,11 +23,11 @@ instantiated program must be a **cycle-stable fixed point**.
 
 A program is origin-relative — moves and paints are tuned to run from the
 origin on a black grid — but the ant *ends* a cycle at its output leaf.  On
-cycle 2 the ant starts at the output, so the origin-relative setup
-commands misfire unless the cycle-2 run is a closed, zero-paint dance back
-to the output.  Any change to the head, body, or routing must preserve
-that dance on cycle 2 and every cycle after — verify on the interpreter (1
-vs. many cycles), not by inspection.
+cycle 2 the ant starts at the output, so the setup commands misfire unless
+the cycle-2 run is a closed, zero-paint dance back to the output.  Any
+change to the head, body, or routing must preserve that dance on cycle 2
+and every cycle after — verify on the interpreter (1 vs. many cycles), not
+by inspection.
 
 ### Verification coverage (know what's untested before extending arity)
 

@@ -17,8 +17,8 @@ How this module is laid out
 ---------------------------
 
 Movement is pure and lives at module level; the run is mutable and lives
-in :class:`_Machine`.  The line between them is exactly the line between
-what steers and what does not.
+in :class:`_Machine`.  That line is exactly the line between what steers
+and what does not.
 
 * The types come first: :class:`_Car` (where the car is and which way it
   points), :class:`_Latches` (what the steering phases carry between
@@ -40,9 +40,9 @@ what steers and what does not.
       _drive(grid, state, arrival_cell, current_cell) -> _State | "halt" | None
 
   A drawing, a state, and the only two tape values movement is allowed to
-  read -- and that is everything a step depends on.  The intersection
-  logic in particular can be reasoned about by reading these functions:
-  none of them can consult a machine, because none of them is given one.
+  read -- everything a step depends on.  The intersection logic can be
+  reasoned about from these functions alone: none of them can consult a
+  machine, because none of them is given one.
 
 * :class:`_Machine` holds what is genuinely a run rather than a rule --
   the tape, CP, the I/O, whether the car has stopped, and where it
@@ -50,12 +50,10 @@ what steers and what does not.
   (that is where every effect happens) and then applies :func:`_drive` to
   find the next state.
 
-Two things fall out of the split.  :meth:`_Machine._drive_states` can
-enumerate the entire reachable state space by *calling* :func:`_drive`,
-where it used to have to move the machine onto each state, run the rules
-for their side effects, and restore every field afterwards.  And a rule
-can be asked about a hypothetical car -- in a test, or in the search --
-without a car being driven there and back.
+Two things fall out of the split: :meth:`_Machine._drive_states`
+enumerates the reachable state space by *calling* :func:`_drive` (see
+:class:`_State`), and a rule can be asked about a hypothetical car -- in a
+test, or in the search -- without a car being driven there and back.
 
 Runtime error contract:
 
@@ -90,9 +88,10 @@ Runtime error contract:
   it sets the cell to 0.
 """
 
+import functools
 import sys
 from collections.abc import Callable, Iterator, Mapping
-from typing import Literal, NamedTuple, NewType, assert_never
+from typing import Literal, NamedTuple, NewType, assert_never, cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -105,41 +104,34 @@ _Pattern = Literal["?", "W", "."]
 
 # The four compass headings the car drives under.  Naming them keeps a
 # heading distinct from the cell characters and form patterns that are also
-# plain strings, so a mix-up is a type error rather than a silent lookup
-# against the wrong alphabet.
+# plain strings, so a mix-up is a type error, not a silent lookup against
+# the wrong alphabet.
 _Heading = Literal["N", "E", "S", "W"]
 
 # What a junction detector reports: the number of roads the drawn shape
 # offers, counting the one the car came in on, or 0 for no junction at
 # all.  Only 0, 3 and 4 are reachable -- a "two-way junction" is a
 # corridor and a five-way needs a fifth direction -- so naming the three
-# lets the checker reject an arm for a count that cannot occur, the same
-# way ``_Pattern`` does for the form alphabet.  The values stay plain
-# ints rather than an enum: ``_junction_kind`` is used as a truth value
+# lets the checker reject an arm for a count that cannot occur, as
+# ``_Pattern`` does for the form alphabet.  The values stay plain ints
+# rather than an enum: ``_junction_kind`` is used as a truth value
 # (``not self._junction_kind(...)``) and 0 has to keep meaning false.
 _Junction = Literal[0, 3, 4]
 
 # Which way a merge latch turns, relative to the heading it was taken
-# under.  A latch is only ever set for a turn onto a detected side road:
-# ``_junction_choices`` offers nothing but ``_left(heading)``, ``heading``
-# and ``_right(heading)``, and ``turning`` in
-# :func:`_heading_from_junction` rules out the straight-ahead
-# case, so these two are the whole space -- straight and reverse are not
-# merely unobserved, they are unreachable.  Storing the turn rather than
-# the destination heading is what makes a merge's two direction fields
-# different types, so :class:`_Merge` cannot be built with them swapped.
+# under.  These two are the whole space: straight and reverse are
+# unreachable, not merely unobserved -- see ``docs/streetcode.md``.
 _Turn = Literal["left", "right"]
 
 
 class _Mouth(NamedTuple):
     """A road mouth as :func:`_road_mouth` measured it.
 
-    Three bare ints that mean three different things, and the two depths
-    are interchangeable to the checker: named fields are what keep
-    ``near`` and ``far`` from being read in the wrong order by the
-    helpers that consume a mouth (:func:`_lane_bounded`,
-    :func:`_lane_merge_target`, and the hug suppression in
-    :func:`_heading_from_junction`).
+    Three bare ints meaning three different things, and the two depths
+    are interchangeable to the checker: named fields keep ``near`` and
+    ``far`` from being read in the wrong order by the helpers that
+    consume a mouth (:func:`_lane_bounded`, :func:`_lane_merge_target`,
+    and the hug suppression in :func:`_heading_from_junction`).
     """
 
     # Perpendicular distance from the car to the wall carrying the mouth.
@@ -159,19 +151,9 @@ class _Merge(NamedTuple):
     """An in-progress lane merge, latched until the car reaches ``target``.
 
     The latch holds *which way it turns* rather than the heading it turns
-    to.  Both were once a :data:`_Heading`, and a NamedTuple cannot make
-    its fields keyword-only, so nothing but argument order stopped the
-    two from being swapped in a positional call -- a mistake the checker
-    could not see and the drive-state graph would faithfully reproduce.
-    A :data:`_Turn` beside a :data:`_Heading` is two different types, so
-    the swap no longer typechecks; it is ruled out by the record's shape
-    rather than by a convention the next construction site has to follow.
-
-    Storing the turn also keeps one fact in one place.  The destination
-    is recovered by :attr:`new_heading`, and the "was this a left turn?"
-    question :func:`_heading_from_merge_target` asks when it
-    re-reads the branch is now the stored field rather than a comparison
-    that reconstructs it -- the two spellings could previously disagree.
+    to, so a merge's two direction fields are different types and cannot be
+    built swapped; :attr:`new_heading` recovers the destination.  See
+    ``docs/streetcode.md`` for why both were once a :data:`_Heading`.
 
     ``None`` (rather than an instance) means no merge is in progress.
     See ``_Machine.__init__``.
@@ -208,17 +190,17 @@ class _Latches(NamedTuple):
 
     Grouped into one record because they travel together everywhere: the
     machine's field, :meth:`_Machine.snapshot`, and the successor states
-    the drive-state search builds all used to spell the same three
-    fields out independently, so adding or reordering a latch meant
-    editing several lists in step and silently corrupting the drive-state
-    graph on missing one.  One record means one field order.
+    the drive-state search builds all used to spell the same three fields
+    out independently, so adding or reordering a latch meant editing
+    several lists in step and silently corrupting the drive-state graph on
+    missing one.  One record means one field order.
 
-    The record is also what makes the steering phases functions rather
-    than mutations.  Each takes the latches it was handed and returns the
-    ones the next phase and the next step should see (see
-    :class:`_Steer`); a phase used to write them back onto the machine
-    one field at a time, which is why its effect on the following step
-    could not be read off its signature.
+    The record also makes the steering phases functions rather than
+    mutations.  Each takes the latches it was handed and returns the ones
+    the next phase and the next step should see (see :class:`_Steer`); a
+    phase used to write them back onto the machine one field at a time,
+    which is why its effect on the following step could not be read off
+    its signature.
     """
 
     # Set when a junction turn is detected but not yet reached (phase 1).
@@ -234,21 +216,21 @@ class _State(NamedTuple):
     """The movement half of a machine's state.
 
     Where the car is, which way it points, and the latches it carries.
-    The tape, CP and I/O are deliberately absent -- they do not steer,
-    and leaving them out is what makes the state space finite and small
-    enough to enumerate (see ``_Machine._drive_states``).  A NamedTuple
-    rather than a plain tuple so that the graph's keys, the successors
-    :func:`_drive` returns and ``step``'s lookup all name their fields;
-    it stays hashable and tuple-compatible, which is what the graph dict
-    and :meth:`_Machine.snapshot` need.
+    The tape, CP and I/O are deliberately absent -- they do not steer, and
+    leaving them out makes the state space finite and small enough to
+    enumerate (see ``_Machine._drive_states``).  A NamedTuple rather than
+    a plain tuple so that the graph's keys, the successors :func:`_drive`
+    returns and ``step``'s lookup all name their fields; it stays hashable
+    and tuple-compatible, as the graph dict and :meth:`_Machine.snapshot`
+    need.
 
     :class:`_Machine` holds one of these as the whole of its steering
     state, so the value a step looks up in the graph is the machine's own
     rather than one rebuilt from separate fields to match.  Those were
     once separate -- a ``_Car`` beside a ``_Latches`` -- and ``step`` had
-    to assemble a state on the way in and take one apart on the way out,
-    which is two conversions that existed only because the same four
-    values were written down twice.
+    to assemble a state on the way in and take one apart on the way out:
+    two conversions that existed only because the same four values were
+    written down twice.
     """
 
     row: int
@@ -339,23 +321,15 @@ _OPS: dict[str, _Op] = {
 # the far lane's wall can sit two cells out, and 3 covers that with a cell to
 # spare.
 _MOUTH_MAX_DIST = 3
+
 # How far along the direction of travel ``_road_mouth`` will look for the
 # ``+`` closing a road's mouth.  Sweeping the value against the test suite
 # puts the floor at 5 -- at 4 the mouths of the wider drawn junctions stop
 # being seen and three tests fail -- while 5 and up are indistinguishable.
 # 7 is that floor plus slack for mouths wider than anything drawn so far.
-#
-# Raising it is not conservatively safer, which is why the slack is small.
-# The bound is two-sided: too low and a real mouth is truncated, too high
-# and the scan runs past the box it is reading and pairs up two ``+`` that
-# bound nothing.  The 1-arity boolean programs are the worked example --
-# from ``(9, 6)`` heading East, a generous bound finds a "mouth" spanning
-# the blank margin between two drawn boxes, which 7 correctly does not
-# see.  Behaviour is unaffected there only because ``_junction_choices``
-# offers one road and the junction does not fire.  So what is checked is
-# the driving, not the scan: ``tests`` compares the whole drive-state
-# graph at this bound against a generous one over the corpus, and the
-# graphs agree.  Nothing depends on the exact value in that sense.
+# Raising it is not conservatively safer: the bound is two-sided, since too
+# high a scan runs past the box it is reading and pairs up two ``+`` that
+# bound nothing.  ``docs/streetcode.md`` has the worked example.
 _MOUTH_MAX_DEPTH = 7
 
 
@@ -455,13 +429,34 @@ class _Grid:
     tests redraw a row to build a fixture (``grid[1] = "|C   |"``).
     """
 
-    __slots__ = ("_rows", "height", "width")
+    __slots__ = ("_geometry", "_rows", "height", "width")
 
     def __init__(self, rows: list[str]) -> None:
         """Square the drawing off, so every row is ``width`` characters."""
         self.width = max(len(row) for row in rows)
         self._rows = [row.ljust(self.width) for row in rows]
         self.height = len(self._rows)
+        # Memo shared by the geometry rules (see :func:`_geometric`).  The
+        # drawing never changes during a run, so a question answered *about
+        # the drawing* from a given car has the same answer every later
+        # time it is asked.  It is asked a lot: the steering phases each
+        # re-derive the shape, the choices and the merge from scratch, and
+        # the car revisits squares, so over the hello-world program the
+        # rules run 3242/12734/5864 times from only 727/1235/702 distinct
+        # states -- between 4.5 and 10.3 calls of every ten are a repeat.
+        # ``__setitem__`` clears it, since a redrawn row is a different
+        # drawing.
+        self._geometry: dict[tuple[str, tuple[object, ...]], object] = {}
+
+    @property
+    def geometry(self) -> dict[tuple[str, tuple[object, ...]], object]:
+        """The memo :func:`_geometric` keeps for the rules about this grid.
+
+        Exposed rather than reached into, since the rules are module-level
+        functions by design (see :class:`_Machine`) and so cannot touch a
+        private attribute without tripping the linter.
+        """
+        return self._geometry
 
     def __getitem__(self, where: int | tuple[int, int]) -> str:
         """Return a whole row by index, or one character by coordinate.
@@ -482,8 +477,14 @@ class _Grid:
         return self._rows[row][col]
 
     def __setitem__(self, row: int, value: str) -> None:
-        """Redraw one row, for the fixtures that build geometry by hand."""
+        """Redraw one row, for the fixtures that build geometry by hand.
+
+        A redrawn row is a different drawing, so the geometry memo --
+        which assumes the drawing is fixed for the run -- is dropped
+        rather than left to answer for geometry that is no longer there.
+        """
         self._rows[row] = "".join(value).ljust(self.width)
+        self._geometry.clear()
 
     def __iter__(self) -> Iterator[str]:
         """Iterate the rows, so the drawing can be scanned as text."""
@@ -596,6 +597,42 @@ def _ahead(row: int, col: int, heading: _Heading) -> tuple[int, int]:
     return row + d_row, col + d_col
 
 
+def _geometric[Answer](rule: Callable[..., Answer]) -> Callable[..., Answer]:
+    """Memoize a geometry ``rule`` on the grid it is asked about.
+
+    The rules below answer questions about the *drawing* -- is there a
+    mouth off this side, is that direction open, is this square a
+    junction -- from a grid, a :class:`_Car` and plain values.  None of
+    them reads the tape, CP, a latch or the I/O, and the drawing is fixed
+    for the length of a run, so the same arguments have the same answer
+    every time they recur.  They recur constantly: the four steering
+    phases each re-derive the shape from scratch rather than threading a
+    decision between them, and the car drives over the same squares many
+    times, so 4.5 to 10.3 calls in every ten repeat one already answered
+    (the counts are in :class:`_Grid`).
+
+    Caching here rather than inside each rule keeps the rules themselves
+    written as the plain geometric predicates they are, and keeps the
+    invalidation in one place -- the grid owns the memo, so a redrawn row
+    drops it without every rule needing to know.  The key includes the
+    rule's name, so two rules with the same argument tuple do not collide.
+    """
+
+    @functools.wraps(rule)
+    def cached(grid: _Grid, *args: object) -> Answer:
+        key = (rule.__name__, args)
+        memo = grid.geometry
+        try:
+            return cast("Answer", memo[key])
+        except KeyError:
+            answer = rule(grid, *args)
+            memo[key] = answer
+            return answer
+
+    return cached
+
+
+@_geometric
 def _open_toward(grid: _Grid, car: _Car, heading: _Heading) -> bool:
     """Whether the cell one step from ``car`` along ``heading`` is open."""
     return grid.open_at(*car.ahead(heading))
@@ -620,6 +657,7 @@ def _initial_heading(grid: _Grid, start: tuple[int, int]) -> _Heading:
     return "S"
 
 
+@_geometric
 def _road_mouth(grid: _Grid, car: _Car, side: _Heading) -> _Mouth | None:
     """Detect a road opening off ``side`` of ``car``, or ``None``.
 
@@ -694,6 +732,7 @@ def _road_mouth(grid: _Grid, car: _Car, side: _Heading) -> _Mouth | None:
     return None
 
 
+@_geometric
 def _plus_dist(grid: _Grid, car: _Car, side: _Heading) -> int | None:
     """Return the distance to the nearest ``+`` on ``side``, or ``None``.
 
@@ -712,6 +751,7 @@ def _plus_dist(grid: _Grid, car: _Car, side: _Heading) -> int | None:
     )
 
 
+@_geometric
 def _crossing_mouth(grid: _Grid, car: _Car) -> bool:
     """Whether the car is driving *out through* a side road's mouth.
 
@@ -736,6 +776,7 @@ def _crossing_mouth(grid: _Grid, car: _Car) -> bool:
     return left is not None and right is not None and left != right
 
 
+@_geometric
 def _junction_kind(grid: _Grid, car: _Car) -> _Junction:
     """Detect a real intersection ahead, returning the open-option count.
 
@@ -768,6 +809,7 @@ def _junction_kind(grid: _Grid, car: _Car) -> _Junction:
     return kind if len(_junction_choices(grid, car)) >= 2 else 0
 
 
+@_geometric
 def _junction_shape(grid: _Grid, car: _Car) -> _Junction:
     """Classify the wall shape alone, before the roads are counted."""
     heading = car.heading
@@ -840,6 +882,7 @@ def _lane_merge_target(
     return car.row, car.col + depth * d_col
 
 
+@_geometric
 def _junction_choices(grid: _Grid, car: _Car) -> list[_Heading]:
     """Return the roads a junction offers, in the spec's choice order.
 

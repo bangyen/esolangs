@@ -206,6 +206,34 @@ class TestForth:
         assert _forth_sink_top((0, 1, 2), 1) == (0, 2, 1)
         assert _forth_sink_top((0, 1, 2), 2) == (2, 0, 1)
 
+    def test_an_unreachable_order_returns_empty_rather_than_building(self) -> None:
+        """An order the ops cannot stack is declined, not approximated.
+
+        Only 18 of the 24 orders are reachable at n == 4, so ``forth`` has
+        to be able to ask for one and be told no -- the empty string is the
+        signal to try a different order.  Building something for an order
+        the reads cannot produce would emit a program that tests its inputs
+        in the wrong places, which is why this returns rather than falling
+        through to the tree.
+        """
+        from esolangs.tools.boolean.stack import (
+            _forth_ordered,
+            _forth_stack_programs,
+        )
+
+        table = "0110100110010110"
+        reachable = _forth_stack_programs(4)
+
+        unreachable = (0, 1, 2, 3)
+        assert tuple(reversed(unreachable)) not in reachable
+        assert _forth_ordered(table, unreachable) == ""
+
+        # The same table on an order the reads *can* stack still builds, so
+        # the empty answer above is the order's doing and not the table's.
+        buildable = (0, 1, 3, 2)
+        assert tuple(reversed(buildable)) in reachable
+        assert _forth_ordered(table, buildable) != ""
+
     def test_const_large(self) -> None:
         """Constants above 225 need multiple base-15 digits."""
         from esolangs.tools.boolean.stack import _forth_const
