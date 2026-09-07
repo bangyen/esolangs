@@ -211,8 +211,12 @@ _BASE = 16
 #
 # The separator decides the affine picture the whole construction reads from,
 # and the first two here were picked by hand -- the binding constraint rather
-# than a detail: between them they leave only 92 distinct columns standing,
-# and 112 of the 120 tables the searches could not reach were absent from the
+# than a detail: between them they leave 126 distinct columns standing in
+# :func:`_staging_index` against the 252 all five reach (98 of them, 49 as
+# complement pairs, inside the population the coverage figures use).  The
+# figure here read 92, which no frame reproduces; it is corrected with its
+# frame named, since a bare count is what made it unrecoverable.
+# And 112 of the 120 tables the searches could not reach were absent from the
 # tape entirely rather than merely hard to print.  Enumerating short strings
 # over the same alphabet fixed that -- the three added below carry 118 of
 # those 120, and the searches never had to change.
@@ -1379,9 +1383,22 @@ def _reconverged(truth_table: str, essential: list[int], n: int) -> str | None:
 # why the counts below are given in complement pairs.
 _Staging = tuple[int, int, int | str, int]
 
+# **The population every figure below is stated over.**  109 is the number of
+# complement pairs of three-input tables that are non-degenerate *and* depend
+# on all three inputs: 128 pairs, less the 3 the degenerate route claims,
+# less the 16 that ignore an input and go to the projection route.  Saying
+# only "non-degenerate" leaves 125, and that missing half of the definition
+# is why two later re-probes could not reconcile these counts -- one of them
+# reporting 252, which is not a population at all but the column count of
+# :func:`_staging_index`, twice 126 because the index holds each column and
+# its complement.  Derived with :func:`essential_inputs` rather than a local
+# copy of the test.
+#
 # **Coverage, and the one table that must still be stored.**  The enumeration
-# reaches 108 of the 109 non-degenerate three-input pairs and all 8 at two
-# inputs.  The holdout is ``01101101`` / ``10010010``, and why is worth
+# reaches 108 of those 109 and all 8 at two inputs.  That the single miss is
+# the table named just below is what pins the definition: a wrong population
+# of a similar size would not put the holdout there.
+# The holdout is ``01101101`` / ``10010010``, and why is worth
 # knowing: it was the hardest table here by some margin and the searches
 # never built it at all -- both members raise after about 96 seconds.
 #
@@ -1408,8 +1425,8 @@ _Staging = tuple[int, int, int | str, int]
 # one (all 255 parity masks checked), so nothing here forbids it.
 #
 # What closed the *other* gaps was not a better search but a wider separator
-# set.  See the note on :data:`_SEPS`: the first two separators leave only 92
-# distinct columns standing, and 112 of the 120 tables the searches could not
+# set.  See the note on :data:`_SEPS`: the first two separators leave 126 of
+# the 252 columns standing, and 112 of the 120 tables the searches could not
 # reach did not stand as a column at all.  Three more separators carry 118 of
 # those 120, every one of which builds, computes and emits in name order.
 #
@@ -1468,12 +1485,23 @@ _Staging = tuple[int, int, int | str, int]
 #   sub-sweep form, and the pure inversion runs ~20-30ms a table against a
 #   0.4-0.75s whole-arity fill that then answers every table -- which is
 #   why the tabulation stays.
-# * **Two separators: 99 of 109**, and *not* for want of room -- re-running
-#   with bracket counts to 70 and accumulators to 60 reaches the same 99.
-#   The ten stragglers need a different separator, not a longer program.
-#   This is why :func:`_stagings` walks all five.
-# * **Dropping the settle field: 99 of 109.**  Ten pairs are reachable only
-#   at ``settle == 1``, so the staging cannot shrink to three fields.
+# * **Two separators: 49 of 109.**  Re-measured; the figure here read 99,
+#   which was wrong by more than half -- most likely copied from the settle
+#   line directly below, whose 99 is correct.  The direction of the old
+#   claim survives and is in fact stronger: two separators cover well under
+#   half the population, so the stragglers need a different separator rather
+#   than a longer program, which is why the enumeration walks all five.
+# * **Dropping the settle field: 99 of 109.**  Confirmed.  Ten pairs are
+#   reachable only at ``settle == 1``, so the staging cannot shrink to three
+#   fields.
+#
+#   Both ablations are measured against :func:`_slices`, the enumeration the
+#   index really walks.  Patching :func:`_stagings` instead measures nothing
+#   -- it has no callers -- and reports the baseline as the ablation's own
+#   result, which is a third instance of the false negative this module has
+#   now produced twice before (see :func:`_staging_index` and the mux
+#   sculpt).  ``_staging_index`` is cached, so a variant that does not clear
+#   it reports the baseline for the same reason.
 #
 # Separator 0 is the one curiosity: no *three-input* table needs it, since
 # separators 1 to 4 reach 108 of the 109 between them.  It is enumerated
