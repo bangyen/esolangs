@@ -88,7 +88,7 @@ def _check_table(table_index: int) -> dict[str, Any]:
     started = time.monotonic()
     try:
         # The harness supplies the independent closing gate below.
-        template = construct(table, verify=False)
+        template = construct(table)
     except Exception as exc:
         return {
             "ok": False,
