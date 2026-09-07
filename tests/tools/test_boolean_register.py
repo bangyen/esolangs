@@ -242,6 +242,19 @@ class TestPolynomial:
             bits = [(combo >> (2 - i)) & 1 for i in range(3)]
             assert run_polynomial(program, [str(b) for b in bits]) == table[combo]
 
+    def test_cost_models_match_the_emitters(self) -> None:
+        """Selection prices instructions without building the losing program."""
+        from esolangs.tools.boolean.register import (
+            _polynomial_dag_cost,
+            _polynomial_tree_cost,
+        )
+
+        for n in range(1, 4):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                assert _polynomial_tree_cost(table) == len(_polynomial_tree(table))
+                assert _polynomial_dag_cost(table) == len(_polynomial_dag(table))
+
     def test_every_path_reads_each_input_once(self) -> None:
         """Whichever construction wins, a run consumes exactly ``n`` inputs.
 
@@ -331,6 +344,36 @@ class TestDig:
 
 
 class TestSophie:
+    def test_hybrid_subsumes_both_routes(self) -> None:
+        """The hybrid is no longer than either prior construction through n=3."""
+        from esolangs.tools.boolean.register import _sophie_hybrid
+
+        improved = 0
+        for n in range(1, 4):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                hybrid = _sophie_hybrid(table)
+                assert len(hybrid) <= min(
+                    len(_sophie_tree(table)), len(_sophie_dag(table))
+                )
+                improved += len(hybrid) < min(
+                    len(_sophie_tree(table)), len(_sophie_dag(table))
+                )
+        assert improved == 132
+
+    def test_cost_models_match_the_emitters(self) -> None:
+        """Selection prices strings without building the losing program."""
+        from esolangs.tools.boolean.register import (
+            _sophie_dag_cost,
+            _sophie_tree_cost,
+        )
+
+        for n in range(1, 4):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                assert _sophie_tree_cost(table) == len(_sophie_tree(table))
+                assert _sophie_dag_cost(table) == len(_sophie_dag(table))
+
     @pytest.mark.parametrize(
         ("table", "n"),
         [
@@ -373,10 +416,8 @@ class TestSophie:
     def test_merge_only_shrinks(self) -> None:
         """No table comes out longer than the nested tree alone.
 
-        A state block costs more than a tree node, so the tree wins small and
-        near-constant tables -- 22 of 256 at n == 3 go the other way.  Both
-        are built and the shorter is emitted, ties keeping the tree, so the
-        dispatch cannot regress a table the merge does not help.
+        The hybrid inlines unshared states as tree branches, so labels only
+        pay for actual merges. At n == 3, 130 of 256 tables shrink.
         """
         improved = 0
         for value in range(256):
@@ -385,7 +426,7 @@ class TestSophie:
             tree = len(_sophie_tree(table))
             assert dispatched <= tree, table
             improved += dispatched < tree
-        assert improved == 22
+        assert improved == 130
 
     def test_merge_is_linear_where_the_tree_doubles(self) -> None:
         """Parity needs two states per level however wide it gets.

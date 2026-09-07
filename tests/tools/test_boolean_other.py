@@ -416,7 +416,7 @@ class TestCvnc:
 
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_every_table_computes_its_function(self, n: int) -> None:
-        """Exhaustive over both constructions, since either may be returned."""
+        """Exhaustive over the stream and reordered paths."""
         for value in range(2 ** (2**n)):
             table = bin(value)[2:].zfill(2**n)
             program = boolean.cvnc(table)
@@ -449,7 +449,7 @@ class TestCvnc:
         module = importlib.import_module("esolangs.tools.boolean.cvnc")
         # (0, 2, 1, 3) is the smallest non-unimodal permutation.
         assert module._deque_schedule((0, 2, 1, 3)) is None  # noqa: SLF001
-        assert module._hoisted_candidate("0" * 16, (0, 2, 1, 3)) == ""  # noqa: SLF001
+        assert module._stored_candidate("0" * 16, (0, 2, 1, 3)) == ""  # noqa: SLF001
         # The identity is always unimodal, so a candidate always exists.
         assert module._deque_schedule((0, 1, 2, 3)) is not None  # noqa: SLF001
 
@@ -496,7 +496,7 @@ class TestCvnc:
 
         The comparison has to be driven through ``best_input_order``, the
         way the generator does it -- that helper permutes the *table* per
-        order, so calling ``_hoisted_candidate`` on the unpermuted one and
+        order, so calling ``_ordered_candidate`` on the unpermuted one and
         taking the best is a different quantity, and gives a different set.
         """
         from esolangs.tools.boolean.helpers import best_input_order
@@ -509,7 +509,7 @@ class TestCvnc:
             tree = module._tree(table, 0)  # noqa: SLF001
             hoisted = best_input_order(
                 table,
-                module._hoisted_candidate,  # noqa: SLF001
+                module._stored_candidate,  # noqa: SLF001
             )
             if hoisted and len(hoisted) == len(tree):
                 tied.append(table)
@@ -557,7 +557,7 @@ class TestCvnc:
         climbs from that and prints one too many for a 1 input.
         """
         module = importlib.import_module("esolangs.tools.boolean.cvnc")
-        program = module._hoisted("00", (0,))  # noqa: SLF001
+        program = module._ordered("00", (0,))  # noqa: SLF001
         assert program is not None
         assert "cə" in program
         for bit in ("0", "1"):
