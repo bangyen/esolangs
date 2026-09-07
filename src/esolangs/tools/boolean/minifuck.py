@@ -1442,16 +1442,31 @@ _Staging = tuple[int, int, int | str, int]
 #   single one delivers 13 pairs and the mean is 5.8**, against 109 to place.
 #   So this is short by a factor of eight, not marginally.
 #
-#   Nor can the enumeration be *indexed* instead of swept -- the map from
-#   staging to table behaves like a hash.  Measured on the full many-to-many
-#   relation (not on the first-hit assignment, which is contaminated by
-#   separator 0 claiming everything it reaches first): at four inputs no
-#   tested invariant yields a necessary condition, every one of the ten
-#   (separator, settle) slices contributes tables reachable nowhere else,
-#   and 72% of tables are served by exactly one slice.  Hamming weight does
-#   predict a *rate* -- 78.4% reachable at weight 2 and 14 against 18.8% at
-#   weight 8 -- but no weight class is empty, so nothing licenses declining
-#   early.  See ``docs/minifuck_generator.md``.
+#   Nor is there a *cheap predictor* of which staging serves a table.
+#   Measured on the full many-to-many relation (not on the first-hit
+#   assignment, which is contaminated by separator 0 claiming everything it
+#   reaches first): at four inputs no tested invariant yields a necessary
+#   condition, every one of the ten (separator, settle) slices contributes
+#   tables reachable nowhere else, and 72% of tables are served by exactly
+#   one slice.  Hamming weight does predict a *rate* -- 78.4% reachable at
+#   weight 2 and 14 against 18.8% at weight 8 -- but no weight class is
+#   empty, so nothing licenses declining early.  See
+#   ``docs/minifuck_generator.md``.
+#
+#   An earlier version of this note said the map "behaves like a hash" and
+#   cannot be indexed at all, which overstated that evidence: it predates
+#   the closed-form column algebra, and the algebra *inverts*.  Computing a
+#   target's first pure-run staging directly -- per-row admissible-``k``
+#   bitmasks read off the bracket staircase, intersected across rows, first
+#   set bit in enumeration order -- reproduces the index exactly (all 252
+#   keys at three inputs, 464 sampled pure-claimed keys at four, zero
+#   mismatches).  What the measurements do support is *density*, not
+#   opacity: the 4640 stagings collapse to about 4190 distinct plan
+#   vectors, so there is no large many-to-one structure to exploit, a
+#   per-table inversion of the insert family has no demonstrated
+#   sub-sweep form, and the pure inversion runs ~20-30ms a table against a
+#   0.4-0.75s whole-arity fill that then answers every table -- which is
+#   why the tabulation stays.
 # * **Two separators: 99 of 109**, and *not* for want of room -- re-running
 #   with bracket counts to 70 and accumulators to 60 reaches the same 99.
 #   The ten stragglers need a different separator, not a longer program.
@@ -1941,8 +1956,6 @@ _derived_plans.cache_clear = _clear_derived_plans  # type: ignore[method-assign]
 # lookup answer identically -- checked directly, 400 sampled keys with 0
 # declines and 120 tables with 0 divergences.  The affine-span fact stays
 # true; nothing consumes it any more.
-
-
 
 
 # How far right the closed-form column derivation tracks the tape.  The
