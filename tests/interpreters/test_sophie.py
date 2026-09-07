@@ -374,14 +374,6 @@ class TestMiscCommands:
         # Only valid commands should execute
         assert f.getvalue() == "A"
 
-    @pytest.mark.usefixtures("timeout_protection")
-    def test_whitespace_ignored(self) -> None:
-        """Test that whitespace is ignored."""
-        with redirect_stdout(io.StringIO()) as f:
-            run("#A,&", io=IO())
-        # Only valid commands should execute
-        assert f.getvalue() == "A"
-
 
 class TestSophieExamples:
     """Test Sophie example programs from the wiki."""

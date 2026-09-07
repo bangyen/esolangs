@@ -94,7 +94,7 @@ def _streetcode_ring(c: str) -> list[str]:
 
     The car counts the counter up to eight on the way in, U-turns onto the
     island, and laps it; each lap walks the value by six and takes one off
-    the counter.  At the island's corner the roads are out through the gap
+    the counter.  At the island's corner the roads run out through the gap
     or on around the island, so the countdown steers the loop -- nonzero
     laps again, zero leaves -- and the car exits with CP back on the value.
 
@@ -116,14 +116,14 @@ def _streetcode_ring(c: str) -> list[str]:
 def _streetcode_hallway(c: str) -> list[str]:
     """Build a wall-hugging loop of exactly 48 ``c`` cells, one per row-pair.
 
-    Driving into the loop and back out crosses 48 ``c`` cells total (two
-    per row), so it always adjusts a cell by 48 -- enough to walk an ASCII
-    digit (``'0'`` = 48, ``'1'`` = 49) down to a bare 0/1, or a fresh 0 cell
-    up to ASCII ``'0'``.
+    Driving into the loop and back out crosses 48 ``c`` cells total (two per
+    row), so it always adjusts a cell by 48 -- enough to walk an ASCII digit
+    (``'0'`` = 48, ``'1'`` = 49) down to a bare 0/1, or a fresh 0 cell up to
+    ASCII ``'0'``.
 
     Twenty-nine rows tall and four columns wide, against the ring's eight
-    and eight: which of the two is cheaper depends on the tree beside it,
-    so :func:`streetcode` builds both programs and keeps the shorter.
+    and eight: which is cheaper depends on the tree beside it, so
+    :func:`streetcode` builds both programs and keeps the shorter.
     """
     top = ["----", "    ", "    ", "+  +", "|  |"]
     row = f"|{c * 2}|"
@@ -139,7 +139,7 @@ def _streetcode_strip(before: str, block: list[str]) -> list[str]:
     the ``strip`` call in ``streetcode``).
 
     The label sits *beside* the loop, not above it: the whole label has to
-    run before the car is level with the loop's mouth, because its trailing
+    run before the car is level with the loop's mouth, since its trailing
     ``^`` is what the junction there reads.
     """
     width = len(before)
@@ -212,10 +212,10 @@ def _streetcode_leaf(bit: int, skipped: int = 0) -> list[str]:
     49 here, so the leaf is shared.
 
     ``skipped`` is how many levels folded away above this leaf.  Every hall
-    advances CP by one ``=`` on the way down, so a leaf reached without
-    them has to spend those advances itself or it prints from the wrong
-    cell -- an all-zeros table came out as ``'\x00'`` before this was
-    threaded through.
+    advances CP by one ``=`` on the way down, so a leaf reached without them
+    has to spend those advances itself or it prints from the wrong cell --
+    an all-zeros table came out as ``'\x00'`` before this was threaded
+    through.
     """
     op = " " if bit else "~"
     body = "=" * skipped + f"{op}O;"
@@ -304,12 +304,12 @@ def _streetcode_tree(table: str) -> list[str]:
 def _streetcode_lift(rows: list[str]) -> list[str]:
     """Run the leading instructions westbound along row 1 instead of row 2.
 
-    Row 1 is the oncoming lane, and it is blank across the whole program:
-    the car only drives it coming back from the hairpin at the western
-    wall.  Starting the car *there* costs nothing and frees the columns the
-    leading run occupied at the head of the driving lane -- the ``C^`` start
-    and the first loop's label, nine columns for the ring's labels and seven
-    for the hallway's, off every row of the program.
+    Row 1 is the oncoming lane, blank across the whole program: the car only
+    drives it coming back from the hairpin at the western wall.  Starting
+    the car *there* costs nothing and frees the columns the leading run
+    occupied at the head of the driving lane -- the ``C^`` start and the
+    first loop's label, nine columns for the ring's labels and seven for the
+    hallway's, off every row of the program.
 
     The run is written East-to-West, since a ``C`` with the northern wall on
     its right heads West: the car reads it in reverse, hairpins at the west
@@ -317,10 +317,10 @@ def _streetcode_lift(rows: list[str]) -> list[str]:
     it used to.
 
     The run's leading ``^`` is what makes this safe.  The westbound leg
-    passes over every loop mouth in the program, and each is a junction that
-    reads the CPth cell; a zero there captures the car into the first mouth
-    it meets.  The ``^`` the start already carried leaves cell 0 nonzero for
-    the whole leg, so every crossing passes straight over.
+    passes over every loop mouth in the program, and each is a junction
+    reading the CPth cell; a zero there captures the car into the first
+    mouth it meets.  The ``^`` the start already carried leaves cell 0
+    nonzero for the whole leg, so every crossing passes straight over.
     """
     lane = rows[2]
     # The prefix runs from the ``C`` to the first blank; what follows it
@@ -474,7 +474,7 @@ def _streetcode_shared(n: int, perm: tuple[int, ...] | None = None) -> list[str]
     legs.  The two junctions read cells chosen for the job: the descent gap
     and the exit corner both read the counter, and the drop on the way out
     lands CP on the loader, which is seeded to 1 and only climbs from there.
-    That seed is load-bearing for exactly this reason.
+    That seed is load-bearing for this reason.
 
     The trailing ``_`` then walk CP back to cell 1.  There is nothing to
     correct on the way: with no ``^`` after the reads the ring subtracts 48
@@ -572,14 +572,14 @@ def _streetcode_orders(n: int) -> list[tuple[int, ...]]:
 
     The cap is shared with ``best_input_order`` rather than reinvented:
     above it the exhaustive search is ``n!`` builds of an ``O(2**n)``
-    drawing, which is the cost that does not announce itself.  Past the cap
-    this returns the identity alone rather than ``best_input_order``'s
-    greedy order -- a Streetcode program is a *drawing*, so the greedy
-    score (how many subtrees a split leaves constant) misses the per-order
-    cost that actually decides the winner here, which is the walk the
-    prefix spends putting each bit in its cell.  A table that big is
-    outside what the suite exercises; wiring the greedy path in unmeasured
-    would be guessing at its own benchmark.
+    drawing, the cost that does not announce itself.  Past the cap this
+    returns the identity alone rather than ``best_input_order``'s greedy
+    order -- a Streetcode program is a *drawing*, so the greedy score (how
+    many subtrees a split leaves constant) misses the per-order cost that
+    actually decides the winner here, the walk the prefix spends putting
+    each bit in its cell.  A table that big is outside what the suite
+    exercises; wiring the greedy path in unmeasured would be guessing at its
+    own benchmark.
     """
     identity = tuple(range(n))
     if n <= _ORDER_SEARCH_MAX:
@@ -598,16 +598,15 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    The car reads each input bit through a wall-hugging loop that walks
-    its ASCII value down to a bare 0/1 (built by :func:`_streetcode_populate`
-    out of :func:`_streetcode_strip` rooms), then
-    drives into a binary decision tree (:func:`_streetcode_tree`) whose
-    T-junctions apply Streetcode's ambiguous-turn rule -- leftmost when the
-    CPth cell is 0, otherwise second-leftmost -- to fork on each bit in
-    turn.  A final loader loop (folded into :func:`_streetcode_populate`)
-    ramps a fresh cell up to ASCII ``'0'`` before the tree, so every leaf
-    can print the table's digit directly rather than building its own
-    ramp.
+    The car reads each input bit through a wall-hugging loop that walks its
+    ASCII value down to a bare 0/1 (built by :func:`_streetcode_populate`
+    out of :func:`_streetcode_strip` rooms), then drives into a binary
+    decision tree (:func:`_streetcode_tree`) whose T-junctions apply
+    Streetcode's ambiguous-turn rule -- leftmost when the CPth cell is 0,
+    otherwise second-leftmost -- to fork on each bit in turn.  A final
+    loader loop (folded into :func:`_streetcode_populate`) ramps a fresh
+    cell up to ASCII ``'0'`` before the tree, so every leaf prints the
+    table's digit directly rather than building its own ramp.
 
     Whichever shape wins, the leading run then moves to the oncoming lane
     and runs westbound (:func:`_streetcode_lift`), which takes its columns
@@ -627,13 +626,13 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
 
     ``width`` bounds the columns by *choosing among the shapes* rather than
     reflowing the winner: a Streetcode program's rows are streets, so no
-    after-the-fact fold can narrow one.  The shapes already differ in
-    aspect -- the ring is the shortest program but the widest, the hallway
-    trades columns for rows -- so a width that the shortest shape overruns
-    is often met by another that was built anyway.  The narrowest shape
-    wins when none fits, since a width is a preference about layout and
-    returning nothing would be worse than returning the best available; the
-    generator has no shape narrower than its tree.
+    after-the-fact fold can narrow one.  The shapes already differ in aspect
+    -- the ring is the shortest program but the widest, the hallway trades
+    columns for rows -- so a width the shortest shape overruns is often met
+    by another that was built anyway.  The narrowest shape wins when none
+    fits, since a width is a preference about layout and returning nothing
+    would be worse than returning the best available; the generator has no
+    shape narrower than its tree.
     """
     n = _validate_truth_table(truth_table)
     tree = _streetcode_tree(truth_table)

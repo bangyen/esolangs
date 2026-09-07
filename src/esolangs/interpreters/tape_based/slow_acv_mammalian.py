@@ -54,10 +54,17 @@ def _total(op: int, arrays: _Arrays) -> _Arrays:
     that way, and reproducing that is the point.
     """
     if not op:
-        return tuple(
-            ((arr[0] + num + 1) % 256, *arr[1:]) if arr else arr
-            for num, arr in enumerate(arrays)
-        )
+        # Spelled as a loop rather than the genexpr this reads as, because
+        # SEED is the whole cost of a run: the boolean example runs it 1317
+        # times, and a generator suspends and resumes once per array, so
+        # the comprehension spent 42% of the run in 31608 frame
+        # resumptions -- more than the arithmetic it was carrying.  The
+        # arrays are 23 short tuples, so building the list directly is the
+        # same work without the frames.
+        seeded = []
+        for num, arr in enumerate(arrays):
+            seeded.append(((arr[0] + num + 1) % 256, *arr[1:]) if arr else arr)
+        return tuple(seeded)
 
     size = [len(arr) for arr in arrays]
     flat: list[int] = functools.reduce(operator.iadd, (list(a) for a in arrays), [])
@@ -123,6 +130,13 @@ _INS = (
     "ACCEPT",
     "PRONOUNCE",
 )
+
+# Token -> opcode, so a step names its instruction by lookup.  ``step``
+# used ``_INS.index(...)``, which walks the tuple comparing strings, and
+# does it once per token executed: SEED is first and costs one compare,
+# but PRONOUNCE is last and costs ten, so the price depended on which
+# instruction was running rather than on the work it did.
+_OPCODE = {name: op for op, name in enumerate(_INS)}
 
 
 def _advance(state: _State, n: int, byte: int | None = None) -> _State:
@@ -247,7 +261,7 @@ class _Machine:
         """
         if self.halted:
             return
-        n = _INS.index(self.tokens[self.ind])
+        n = _OPCODE[self.tokens[self.ind]]
 
         byte = None
         if n == 8:

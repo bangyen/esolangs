@@ -140,13 +140,6 @@ class TestStepMachine:
         """[ skips its body when the current cell is zero."""
         assert run_and_capture("\\0[.].@") == "\x00"
 
-    def test_unmatched_bracket_rejected(self) -> None:
-        """An unmatched [ is a malformed program."""
-        import pytest
-
-        with pytest.raises(ValueError, match="unmatched"):
-            run_and_capture("\\0[.@")
-
     def test_the_unmatched_bracket_message_reads_exactly(self) -> None:
         """``match=`` only looks for a substring, so pin the whole message."""
 
@@ -158,13 +151,6 @@ class TestStepMachine:
 
     def test_decrement(self) -> None:
         assert run_and_capture("-@") == ""
-
-    def test_empty_program_rejected(self) -> None:
-        """A program with no instructions is malformed."""
-        import pytest
-
-        with pytest.raises(ValueError, match="empty"):
-            run_and_capture("")
 
     def test_the_empty_program_message_reads_exactly(self) -> None:
         """``match=`` only looks for a substring, so pin the whole message."""
@@ -187,6 +173,28 @@ class TestStepMachine:
         machine.step()  # { inserts a zero before it and steps past both
         assert machine.ind == 3
         assert machine.cells == (0, 44, 123, 43, 46, 64)
+
+    def test_state_reports_the_fields_and_copies_the_tape(self) -> None:
+        """``state`` is an observer, so it must not alias the live tape.
+
+        The shell owns the tape as a list and edits it in place, so an
+        observer that handed the list out would let a caller's earlier
+        reading change under it -- the reason every observer here copies.
+        Taking a state, stepping, and re-reading pins both halves: the
+        fields track the machine, and the tuple taken before the step does
+        not.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.circlefuck import _Machine
+
+        machine = _Machine("+.@", ScriptedIO())
+        before = machine.state
+        assert before == (0, 0, (43, 46, 64), False)
+
+        machine.step()  # + raises cell 0 from 43 to 44
+        assert machine.state == (1, 0, (44, 46, 64), False)
+        # The earlier reading is a copy, so the write did not reach it.
+        assert before == (0, 0, (43, 46, 64), False)
 
     def test_delete_last_cell_halts(self) -> None:
         """Deleting the last cell is an invalid operation."""

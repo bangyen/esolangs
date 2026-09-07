@@ -12,7 +12,7 @@ ignored.
 8 8 * 1 + .
 ```
 
-This computes `8 × 8 + 1 = 65` and prints it, which is the byte for `A`.
+Computes `8 × 8 + 1 = 65` and prints it — the byte for `A`.
 
 ## Step by step
 

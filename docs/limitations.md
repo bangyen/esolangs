@@ -18,9 +18,9 @@ predictable across languages:
   content to start — a Collatz seed line (ZTOALC L), or a program grid
   (Circlefuck, BF-PDA, Suffolk, Dig, Back, Clockwise) — in which case it is
   rejected with a clear `ValueError` (usually ``"... cannot be empty"``).
-- **Exhausted input raises :class:`EOFError` by default.**  A program that
-  reads past the end of `stdin` is almost always a bug, and the loud error
-  surfaces it (and lets `,[.,]`-style cat loops terminate).  S*bleq reads
+- **Exhausted input raises :class:`EOFError` by default.**  Reading past the
+  end of `stdin` is almost always a bug, and the loud error surfaces it (and
+  lets `,[.,]`-style cat loops terminate).  S*bleq reads
   `0` at EOF instead, per the wiki.  Malformed programs raise `ValueError`
   and runtime halts raise :class:`HaltError`, never a raw Python exception.
 - **Byte input is line-delimited.**  ``io.input_char`` reads a whole input
@@ -86,7 +86,7 @@ per-character encoding can be meaningfully shortened:
 
 | Language | Why it cannot compute a truth table |
 | --- | --- |
-| 123 | Parameterized (only reads real stdin at one fixed location, so a decision tree cannot read its inputs); answers with the termination convention. All 276 tables through `n == 3` build and replay correctly, constructed like every other arity (the stored plan tables are retired; small arities build from a bare-fill seed and a few frozen table-independent separation schedules, swept exhaustively in the suite). Every stage of the pipeline — embed scrub, planned separation, shield-and-sweep verdict, endgame — is planned and total by argument; nothing searches (see [`docs/walls.md`](walls.md) for the verdict's closed form). Four inputs: exhaustive, all 65536 tables build and replay (re-swept under the tight per-arity geometry, which one table-independent reference run admits per arity, with the proven doubling base as fallback). Five and six inputs: random samples build in well under a second per table, replayed row by row. The work budget remains as a divergence guard so a stage invariant breaking at an unprobed arity raises rather than hanging; it scales with row count and bounds divergence, not arity. |
+| 123 | Parameterized (only reads real stdin at one fixed location, so a decision tree cannot read its inputs); answers with the termination convention. All 276 tables through `n == 3` build and replay correctly, constructed like every other arity (the stored plan tables are retired; small arities build from a bare-fill seed and one derived table-independent separation law per arity, swept exhaustively in the suite). Every stage of the pipeline — embed scrub, planned separation, shield-and-sweep verdict, endgame — is planned and total by argument; nothing searches (see [`docs/walls.md`](walls.md) for the verdict's closed form). Four inputs: exhaustive, all 65536 tables build and replay (re-swept under the tight per-arity geometry, which one table-independent reference run admits per arity, with the proven doubling base as fallback). Five and six inputs: random samples build in well under a second per table, replayed row by row. The work budget remains as a divergence guard so a stage invariant breaking at an unprobed arity raises rather than hanging; it scales with row count and bounds divergence, not arity. |
 | %^2^-1 | Only control flow is `t` (rewind on a nonzero accumulator), a whole-program loop that cannot count passes; no program that *reads* its inputs computes any two-input function (proved; [`docs/proofs.md`](proofs.md)). The shipped generator is parameterized and embeds instead — six constructions build every table at `n <= 4` and every table tried from five through eleven inputs. Construction-by-construction detail is in the `%^2^-1` row of the Generator caps table below. |
 
 ## Generator caps (shipped)
@@ -112,7 +112,7 @@ totality argument.
 
 Known places where an interpreter here is more permissive than its language's
 spec.  These are **not** capability findings: a generator must not build on
-them, because behaviour outside the spec is undefined rather than available.
+them — behaviour outside the spec is undefined rather than available.
 
 ### 6-5: `num` accepts operands the spec does not define
 
@@ -134,10 +134,10 @@ transpiler was removed) is derived from the operand alphabet, and
 `_six_five_label` raises for any value outside `0..35` — any future emitter
 into this language must respect the same cap.
 
-The interpreter's `num` itself stays permissive: it still accepts the
-undefined operands rather than rejecting them.  Whether a 6-5 program using
-one should hard-error is a behaviour change for callers, not a bug fix, so
-it is recorded here rather than made.
+The interpreter's `num` stays permissive: it still accepts the undefined
+operands rather than rejecting them.  Whether a 6-5 program using one should
+hard-error is a behaviour change for callers, not a bug fix, so it is
+recorded here rather than made.
 
 ## Compilers are bounded-agreement, not total, over unbounded values
 
@@ -155,7 +155,7 @@ wrong — no compiler diagnoses it, and the assembler accepts the truncation.
 *Which* compilers this applies to is deliberately **not** listed here — the
 list would go stale on any new compiler or interpreter change, and the rule
 derives it in one read.  A compiler is exact when its **interpreter** is
-itself bounded, and bounded-agreement when it is not:
+bounded, and bounded-agreement when it is not:
 
 - **Exact.** Forth's interpreter wraps every result through `_wrap32`, and
   BFStack's cells are `% 256`; the compiler reproducing that width is
@@ -184,8 +184,7 @@ so `4_2` and `\xa042` read as 0 compiled and 42 interpreted.  General lesson
 for any new compiler: agreement can be narrowed by a library function's
 generality, not only by a machine word's width.
 
-Two measured boundary checks, both at the same place, one per shape of
-entry:
+Two measured boundary checks, both at the same place, one per entry shape:
 
 - **Decleq** takes the value straight from the program text, so no
   arithmetic is needed to reach it: cell `2**63` is stored as
@@ -237,8 +236,8 @@ accepts.
 `examples/boolean` holds one committed program per boolean generator, and
 the bar is that the answer must be *recoverable from what the program
 prints* — not that the program prints the answer and nothing else, since
-several of these languages have no output instruction at all and dump their
-state at halt.  Three cases stay divergent for reasons no *generator* change
+several of these languages have no output instruction and dump their state
+at halt.  Three cases stay divergent for reasons no *generator* change
 reaches:
 
 - **state dump around the answer** (`back`, `minsky-swap`, `ram0`) — no
@@ -258,11 +257,11 @@ BF-PDA as missing.  It has an example.
 ## Assessed and rejected
 
 Languages from the wiki that were assessed against the admission criteria
-and did not make the repo — whether they were never implemented (the
-roadmap's fell-through) or were removed after being implemented.  The
-viable candidates are in `docs/roadmap.md`; the full rationale for each
-verdict is in the commit history.  ``(removed)`` marks languages whose
-interpreter, generator, and tests were deleted from the repo.
+and did not make the repo — never implemented (the roadmap's fell-through)
+or removed after being implemented.  The viable candidates are in
+`docs/roadmap.md`; the full rationale for each verdict is in the commit
+history.  ``(removed)`` marks languages whose interpreter, generator, and
+tests were deleted from the repo.
 
 - **2 Bits 1 Byte** (removed): joke; single-byte program, no text or boolean generator, externally implemented.
 - **2dFish** (removed): its `(...)*` capture-and-print makes its true generator floor a literal-embed, and its boolean generator was separately walled as affine-only with no total once-embedding construction — the same generator-story criterion The Temporary Stack was removed under.
@@ -325,12 +324,12 @@ The Rust and RISC-V cross-checks were all removed, along with the cargo
 toolchain and `scripts/verify_extra_generators.py`.  Seven went for not
 meeting the independent-and-broad bar — no generator, or a corpus-only
 cross-check that added nothing over the round-trip tests.  Of the remaining
-eight, six were written alongside the Python interpreters they
-checked (so their agreement was not independent evidence), and retaining the
-two that were genuinely independent would have kept the full toolchain cost
-for a fraction of the coverage.  `extra/assembly` stays — it shares its
-toolchain with the RISC-V compilers in `src/esolangs/compilers/`.  The
-per-cross-check list is in
+eight, six were written alongside the Python interpreters they checked (so
+their agreement was not independent evidence), and keeping the two genuinely
+independent ones would have kept the full toolchain cost for a fraction of
+the coverage.  `extra/assembly` stays — it shares its toolchain with the
+RISC-V compilers in `src/esolangs/compilers/`.  The per-cross-check list
+is in
 [`docs/walls.md`](walls.md#cross-check-removals-why-seven-were-dropped).
 
 ## Hang detection
@@ -434,9 +433,9 @@ history at `528fe2c2`.  Every other proof (the ported interpreters, their
 equivalence proofs, and the generator correctness proofs) had already been
 dropped as redundant with the round-trip test suite.
 
-Note the scope of the `%^2^-1` wall: the contract binds one program across
-all four bit combinations and feeds the bits in through the machine's input
-list, so the theorem is about programs that *read* their inputs.  The shipped
+The `%^2^-1` wall's scope: the contract binds one program across all four
+bit combinations and feeds the bits in through the machine's input list, so
+the theorem is about programs that *read* their inputs.  The shipped
 generator is parameterized and builds every two-input table, so the theorem
 bounds the reading model, not the language.
 

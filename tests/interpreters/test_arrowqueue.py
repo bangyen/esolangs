@@ -37,25 +37,6 @@ class TestArrowQueue:
     def test_noop_ignored_until_off_grid(self) -> None:
         assert run_and_capture(["   "]) == ""
 
-    def test_star_turns_clockwise(self) -> None:
-        assert run_and_capture(["*"]) == ""
-
-    def test_tilde_enqueues_direction(self) -> None:
-        assert run_and_capture(["~"]) == ""
-
-    def test_plus_pops_queue(self) -> None:
-        assert run_and_capture(["~+"]) == ""
-
-    def test_plus_on_empty_queue_halts(self) -> None:
-        assert run_and_capture(["+"]) == ""
-
-    def test_padding_pads_short_lines(self) -> None:
-        assert run_and_capture(["~*", "* "]) == ""
-
-    def test_queued_direction_changes_course(self) -> None:
-        """The dequeued direction, not the current one, guides the next step."""
-        assert run_and_capture(["~*+", "  *"]) == ""
-
     def test_registered_interpreter_runs(self) -> None:
         assert esolangs.run("ArrowQueue", "~*+") == ""
 

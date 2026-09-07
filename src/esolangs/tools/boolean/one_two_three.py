@@ -120,65 +120,58 @@ __all__ = ["one_two_three"]
 #: ``{Xi}`` fills.  One character each, so instantiations are equal length.
 ONE, ZERO = "1", "2"
 
-#: One separation move: ``(r2, r1, t2, t1)``.  The raw part ``"2"*r2 +
-#: "1"*r1`` repositions every row and is closed by its own ``33`` (valid
-#: only when nobody lands on a marked cell); the test part ``"2"*t2 +
-#: "1"*t1 + "33"`` is what splits, and its displacement ``t2 - t1`` is
-#: even so an escape's re-run count cannot change a row's parity.
-type _Move = tuple[int, int, int, int]
-
-#: One schedule: pre-fill walk lengths, then the separation moves.
-type _Schedule = tuple[tuple[int, ...], tuple[_Move, ...]]
-
-#: Frozen schedules per arity, tried in order; a table takes the winner.
+#: One separation law: the constant pre-fill walk, then the alternating
+#: test displacements.
 #:
-#: These are measured constants with the same status as the wider
-#: pipeline's mark geometry: an offline sweep of seeds and first-fit
-#: separation moves produced them, and what ships is only its *result*
-#: -- each schedule is table-independent and replays deterministically
-#: on the exact model, so nothing searches at build time.  The suite's
-#: exhaustive ``n <= 3`` sweep re-proves, every run, both that every
-#: table is covered by at least one schedule and that every emission is
-#: correct; a schedule that failed a table could only raise, never
-#: mis-emit.
-_SCHEDULES: dict[int, tuple[_Schedule, ...]] = {
-    1: (
-        ((0,), ()),
-        ((1,), ()),
-    ),
-    2: (
-        ((4, 0), ((0, 0, 0, 2),)),
-        ((5, 4), ((0, 0, 0, 4),)),
-        ((3, 1), ((0, 3, 4, 0),)),
-        ((0, 2), ((0, 3, 2, 0),)),
-    ),
-    3: (
-        ((4, 2, 2), ((0, 0, 0, 2), (5, 0, 0, 4), (1, 2, 2, 0))),
-        ((7, 5, 0), ((0, 0, 0, 2), (0, 0, 2, 0), (3, 0, 0, 4), (0, 0, 0, 2))),
-        ((4, 4, 0), ((0, 0, 0, 2), (0, 0, 0, 2), (1, 2, 2, 0), (2, 2, 2, 0))),
-        ((5, 1, 6), ((0, 0, 0, 4), (0, 3, 8, 0), (0, 0, 0, 2), (3, 0, 0, 4))),
-    ),
+#: Both parts are one *shape*, not a set of answers.  The seed walks the
+#: same distance before every fill, so it is a single number; separation
+#: is then a sequence of pure tests alternating ``"1"``-runs and
+#: ``"2"``-runs, one displacement each, with no raw repositioning part
+#: at all.  Every displacement is closed by its own ``33``: rows whose
+#: tested cell is marked re-run the segment and escape, rows whose cell
+#: is clear skip, and that split is what separates -- the rows differ in
+#: their *marks* after a bare fill, not in their positions, so a walk
+#: alone can never split them (a halving-gap law of the retired
+#: synchronized pipeline's shape fails here for exactly that reason).
+type _Law = tuple[int, tuple[int, ...]]
+
+#: The separation law per small arity.
+#:
+#: These are *derived* constants, not a frozen search log: over constant
+#: seeds and alternating displacement vectors, each is the law with the
+#: least mean template length, which is one selection rule applied
+#: identically at every arity.  ``test_separation_law_is_least_mean``
+#: re-derives all three by that sweep rather than trusting them.  At
+#: ``n == 3`` the domain is genuinely tight -- 13 laws cover all 256
+#: tables and the winner leads the runner-up by 18% -- which is why one
+#: law replaces what were ten hand-swept schedules.  A law that failed a
+#: table could only raise, never mis-emit, and the suite's exhaustive
+#: ``n <= 3`` sweep re-proves coverage and correctness every run.
+_LAWS: dict[int, _Law] = {
+    1: (0, ()),
+    2: (2, (3, 2, 4)),
+    3: (3, (1, 3, 9, 4)),
 }
 
 
 @cache
-def _separated(n: int, k: int) -> _Builder:
-    """Execute schedule ``k`` for arity ``n`` up to full separation.
+def _separated(n: int) -> _Builder:
+    """Execute arity ``n``'s separation law up to full separation.
 
-    The result is a prototype the per-table build clones, so each
-    schedule is modelled once per process.  Everything here is
-    deterministic replay of the frozen constants: the only scan is the
-    seed's first-clean-close offset, a bounded first-fit like the wider
-    pipeline's ``_close``.  Raises if the schedule no longer separates
-    -- which the suite's exhaustive sweep turns into a test failure, so
-    a corrupted constant cannot ship a template.
+    The result is a prototype the per-table build clones, so the law is
+    modelled once per process.  Everything here is deterministic replay
+    of the derived constants: the only scan is the seed's
+    first-clean-close offset, a bounded first-fit like the wider
+    pipeline's ``_close``.  Raises if the law no longer separates --
+    which the suite's exhaustive sweep turns into a test failure, so a
+    corrupted constant cannot ship a template.
     """
-    walks, moves = _SCHEDULES[n][k]
+    walk, disps = _LAWS[n]
     _work[0] = _WORK_BUDGET
     b = _Builder(n)
-    for i, w in enumerate(walks):
-        if w:
-            b.run("2" * w)
+    for i in range(n):
+        if walk:
+            b.run("2" * walk)
         b.fill(i)
     for d in range(4 * 2**n + 9):
         probe = b.clone()
@@ -191,25 +184,15 @@ def _separated(n: int, k: int) -> _Builder:
                 b.run("2" * d)
             b.test()
             break
-    else:  # pragma: no cover - the frozen seeds all close within range
+    else:  # pragma: no cover - the derived seeds all close within range
         raise ConstructError("no clean close for the seed")
-    for r2, r1, t2, t1 in moves:
-        if r2:
-            b.run("2" * r2)
-        if r1:
-            b.run("1" * r1)
-        if r2 or r1:
-            if any(_on_mark(r) for r in b.live()):  # pragma: no cover
-                raise ConstructError("raw walk parked a row on its mark")
-            b.test()
-        if t2:
-            b.run("2" * t2)
-        if t1:
-            b.run("1" * t1)
+    # Pure tests, alternating ``1``-runs and ``2``-runs by position.
+    for i, d in enumerate(disps):
+        b.run(("1" if i % 2 == 0 else "2") * d)
         b.test()
     poss = [r.pos for r in b.live()]
     if len(set(poss)) != len(poss):  # pragma: no cover - invariant
-        raise ConstructError("schedule left shared positions")
+        raise ConstructError("the law left shared positions")
     return b
 
 
@@ -256,30 +239,24 @@ def _verdict_junky(b: _Builder, table: str) -> None:
 
 
 def _construct_small(truth_table: str, n: int) -> str:
-    """Build the shortest small-arity template the frozen schedules give.
+    """Build the small-arity template arity ``n``'s separation law gives.
 
-    Every candidate is built on the exact model; one whose verdict
-    preconditions fail for this table raises and is skipped.  The winner
-    (shortest, first schedule on ties) is replayed row by row on the
-    real interpreter before it is returned -- the same contract as
+    One prototype, not a field of candidates: the law covers every table
+    at its arity, so there is nothing to choose between.  The template
+    is replayed row by row on the real interpreter before it is returned
+    -- the same contract as
     :func:`~esolangs.tools.boolean.one_two_three_construct.construct`.
     """
-    best: str | None = None
-    for k in range(len(_SCHEDULES[n])):
-        _work[0] = _WORK_BUDGET
-        try:
-            b = _separated(n, k).clone()
-            _verdict_junky(b, truth_table)
-            _endgame(b)
-        except ConstructError:
-            continue
-        template = b.template()
-        if best is None or len(template) < len(best):
-            best = template
-    if best is None:  # pragma: no cover - the sweep proves coverage
-        raise ValueError(f"123 construction failed for {truth_table!r}: no schedule")
-    _replay(best, n, truth_table)
-    return best
+    _work[0] = _WORK_BUDGET
+    try:
+        b = _separated(n).clone()
+        _verdict_junky(b, truth_table)
+        _endgame(b)
+    except ConstructError as exc:  # pragma: no cover - the sweep proves coverage
+        raise ValueError(f"123 construction failed for {truth_table!r}: {exc}") from exc
+    template = b.template()
+    _replay(template, n, truth_table)
+    return template
 
 
 def _in_name_order(body: str, n: int) -> str:
@@ -308,7 +285,7 @@ def one_two_three(truth_table: str) -> str:
     Every arity is constructed: the old objection — an inert embed shifts
     the pointer phase the plan decodes — bound only the retired stored
     plans' phase-decode shape.  Small arities (``n <= 3``) build here
-    from the bare-fill seed and the frozen separation schedules; wider
+    from the bare-fill seed and the derived separation law; wider
     tables go to
     :func:`~esolangs.tools.boolean.one_two_three_construct.construct`
     unchanged.  Both routes replay every row on the real interpreter

@@ -8,17 +8,11 @@ against Qoibl at 100% line coverage this found three real gaps, all of them
 guards -- the failure mode where a rejection stops rejecting and nothing
 looks wrong until malformed input gets through.
 
-Mutating the installed package does not work.  mutmut copies the code into
-``mutants/`` and runs the suite from there, which fails two ways: naming one
-module leaves the other 124 unimportable, and copying all of them means
-every module that does trampolined work at *import* time (``registry``
-building LANGUAGES, ``lamfunc``, ...) fires a trampoline before mutmut has
-set ``mutmut.config`` -- "NoneType has no attribute max_stack_depth", once
-per module, unfixable one at a time.
-
-So this mutates the *bundle* instead.  ``scripts/bundle_one.py`` already
+Mutating the installed package does not work -- it leaves the other modules
+unimportable, or fires an import-time trampoline before mutmut is
+configured.  So this mutates the *bundle* instead: ``scripts/bundle_one.py``
 inlines an interpreter plus its shared modules into one dependency-closed
-file, whose executable code is byte-identical to the interpreter's (only
+file whose executable code is byte-identical to the interpreter's (only
 docstrings move).  That gives mutmut a single self-contained target, and the
 language's own test file -- with its imports repointed at the bundle -- as
 the runner.
@@ -27,24 +21,9 @@ Usage:
     python scripts/mutate_one.py Qoibl
     python scripts/mutate_one.py Grapheme --keep   # leave the work dir
 
-Requires: mutmut==3.7.0.  It was pinned to 3.3.1 for a long stretch, against
-a bug where the trampoline built its qualname with
-mangled_name_from_mutant_name(), stripping the class part so that
-class-method mutants could never be selected and were silently reported as
-killed.  3.7.0 does not have it: it carries the class through the mangled
-name itself (``mangle_function_name`` joins it with a ``CLASS_NAME_SEPARATOR``
-and ``orig_function_and_class_names_from_key`` reads it back), and a run over
-Minifuck selects and reports all four of its surviving ``_Machine`` mutants,
-which the bug would have hidden.
-
-3.7.0 also drops a class of mutant 3.3.1 emitted: bodies textually identical
-to the original.  Bitdeque had one, and it read as a survivor -- no test can
-kill code that changes nothing -- so 3.3.1 scored it 83/84 where 3.7.0 scores
-the same suite 83/83.  The higher number is the true one.
-
-Note when comparing against older notes: mutants are numbered per function in
-generation order, so an ID like ``__init____mutmut_15`` does not refer to the
-same edit across the two versions.
+Requires: mutmut==3.7.0, which fixes a 3.3.1 bug that silently reported
+class-method mutants as killed.  Mutant IDs are not comparable across the
+two versions.  ``docs/verification_tooling.md`` has both arguments in full.
 """
 
 import argparse
@@ -67,8 +46,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 # Tests that reach past the interpreter -- into the VM or the registry --
 # cannot run against a bundle, which inlines neither.  They are dropped from
 # the copied test file, so the score is over the tests that can run.
-# :func:`_reaches_unbundled` is what decides that, reading each test's
-# syntax rather than its text.
+# :func:`_reaches_unbundled` decides that, reading each test's syntax rather
+# than its text.
 
 # Packages the bundle does not inline, whose imports must therefore keep
 # resolving against the installed package.  This is deliberately *not* the
@@ -80,15 +59,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 _NOT_REWRITTEN = ("vm", "registry", "tools")
 
 # The two modules ``bundle_one`` inlines alongside the interpreter.  Their
-# classes are the *only* ones a score may legitimately leave out, which is
-# what ``_score`` checks its exclusions against.
+# classes are the *only* ones a score may legitimately leave out, which
+# ``_score`` checks its exclusions against.
 _INLINED = ("esolangs.exceptions", "esolangs.interpreters.io")
 
 # How far past the unmutated baseline a single test may run before the alarm
-# in ``_CONFTEST`` fails it.  Both numbers are deliberately generous: the
-# only job here is to come in under mutmut's ``(estimate + 1) * 30``
-# CPU-second RLIMIT, and the cost of being too tight (a passing test failed,
-# scored as a kill nothing earned) is far worse than being too loose.
+# in ``_CONFTEST`` fails it.  Both numbers are deliberately generous: the only
+# job here is to come in under mutmut's ``(estimate + 1) * 30`` CPU-second
+# RLIMIT, and being too tight (a passing test failed, scored as a kill nothing
+# earned) is far worse than being too loose.
 _ALARM_FACTOR = 10.0
 _MIN_ALARM = 2.0
 
@@ -96,9 +75,8 @@ _MIN_ALARM = 2.0
 _BASELINE_TIMEOUT = 120.0
 
 # Below this share of mutants killed, the run is treated as broken rather
-# than reported.  The lowest score this harness has ever legitimately
-# produced is 76.7%, and a suite good enough to be worth mutating does not
-# miss nine mutants in ten -- so a figure down here means they never ran.
+# than reported: the lowest score this harness has ever legitimately produced
+# is 76.7%, so a figure down here means the tests never ran.
 _MIN_KILL_RATE = 0.1
 
 

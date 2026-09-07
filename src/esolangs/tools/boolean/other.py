@@ -57,7 +57,7 @@ def _const(n: int) -> str:
     ``n`` is written in base 3 and its digits are processed most significant
     first: ``v`` starts as the leading digit and each following digit ``d``
     applies the affine map ``v -> 3v + d`` via one ``x`` (see ``_NEG_THIRD``).
-    The result is a closed-form program of ``O(log_3 n)`` length that leaves
+    The result is a closed-form program of ``O(log_3 n)`` length leaving
     exactly ``[n]`` on the stack.
     """
     if n <= 2:
@@ -129,10 +129,10 @@ def three_x(truth_table: str) -> str:
       the result variable (3), and a sentinel zero exits the loop.
 
     The result variable defaults to the majority table value (so the
-    ``( ... )`` loop emits no override at all when every row matches), and
-    only the input combinations whose table entry differs from the default
-    get an override block.  Each override's ``( ... )`` guard leaves the
-    stack balanced via the trash pop, so arbitrary ``n`` works.
+    ``( ... )`` loop emits no override when every row matches), and only the
+    input combinations whose table entry differs from the default get an
+    override block.  Each override's ``( ... )`` guard leaves the stack
+    balanced via the trash pop, so arbitrary ``n`` works.
 
     **The tree splits on its inputs in whichever order emits the shortest
     program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
@@ -201,8 +201,8 @@ def _three_x_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # half of them, each carrying a full-depth guard chain.  Reducing to the
     # essential inputs collapses those to one guard.  The reads stay in
     # stream order -- every input is still ``?``-read and stored, which is
-    # the interface -- and an ignored one simply lands in a variable the
-    # tree never reads.
+    # the interface -- and an ignored one lands in a variable the tree never
+    # reads.
     essential = essential_inputs(truth_table, n) or [0]
     if len(essential) < n:
         table = read_at(truth_table, essential, n)
@@ -398,18 +398,18 @@ def between(truth_table: str) -> str:
     is computed ahead of the linear layout.
 
     A subtree whose rows all agree becomes a leaf rather than branching on
-    bits that cannot change the answer.  Because the addresses come from
-    ``size`` walking the tree a second time, the fold has to be a property
-    of the path alone -- ``constant`` -- so both walks stop in the same
-    places; a check either walk applied and the other did not would leave
-    every branch below it naming the wrong line.
+    bits that cannot change the answer.  Since the addresses come from
+    ``size`` walking the tree a second time, the fold has to be a property of
+    the path alone -- ``constant`` -- so both walks stop in the same places;
+    a check either walk applied and the other did not would leave every
+    branch below it naming the wrong line.
 
     **The tree splits on its inputs in whichever order emits the shortest
     program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`),
-    since which rows a subtree covers -- and so whether it folds -- is what
-    the split order decides.  The reads stay put: the ``'i'v.``/``[i]i.``
-    block above the tree still stores input ``i`` in variable ``[i]`` in
-    stream order, and only the variable a branch line *names* moves.
+    since the split order decides which rows a subtree covers -- and so
+    whether it folds.  The reads stay put: the ``'i'v.``/``[i]i.`` block
+    above the tree still stores input ``i`` in variable ``[i]`` in stream
+    order, and only the variable a branch line *names* moves.
     """
     return best_input_order(truth_table, _between_ordered)
 
@@ -572,11 +572,11 @@ def taglate(truth_table: str) -> str:
     A discard can also go *between* the reduced program's reads.  After its
     ``j``-th ``h``, the queue has ``len(seed) + j`` cells; ``h`` then appends
     the ignored input, so rotating that many times brings the new tail cell
-    to the front for ``f``.  This restores the exact queue the next command
+    to the front for ``f``.  That restores the exact queue the next command
     expects, allowing a gapped set such as inputs 0 and 2.  An odd-sized
-    dependency set would make the reduced program ghost-pad itself and
-    expect an input the stream does not carry, so the set is widened by one
-    adjacent ignored input to keep it even.
+    dependency set would make the reduced program ghost-pad itself and expect
+    an input the stream does not carry, so the set is widened by one adjacent
+    ignored input to keep it even.
     """
     n = _validate_truth_table(truth_table)
 
@@ -584,10 +584,9 @@ def taglate(truth_table: str) -> str:
     # taglate's cost is almost all fixed overhead scaled by the input count
     # -- the seed alone is ``2**(n_eff + 2)`` cells -- so dropping one input
     # drops a whole tier.  Emit the reduced table's program and read the
-    # ignored inputs anyway, discarding each: ``h`` appends the character to
-    # the queue's tail, ``e`` rotated once per queued cell brings it back to
-    # the front, and ``f`` drops it, leaving the queue exactly as it was so
-    # the reduces' positional arithmetic is undisturbed.
+    # ignored inputs anyway, discarding each with ``h``/``e``-rotate/``f``,
+    # which leaves the queue exactly as it was so the reduces' positional
+    # arithmetic is undisturbed.
     #
     used = essential_inputs(truth_table, n)
     # A constant table depends on nothing, so it reduces to the smallest
@@ -716,19 +715,18 @@ def clockwise(truth_table: str) -> str:
 
     A subtree whose rows all agree stops branching, which narrows the ring:
     the width is the sum of the displacements its nodes spend, and a folded
-    node spends none.  Since that width grows as ``2 ** (n + 1)``, the
-    saving is real -- a constant table is 411 characters against 621 at
-    ``n == 3`` and 863 against 1479 at ``n == 4``.
+    node spends none.  Since that width grows as ``2 ** (n + 1)``, the saving
+    is real -- a constant table is 411 characters against 621 at ``n == 3``
+    and 863 against 1479 at ``n == 4``.
 
     Two things the fold does *not* get to do.  It cannot drop the reads:
     Clockwise reads inside the tree, seven ``.`` per level, so a folded
     column still spends them (and an ``S`` where the ``?`` would have been,
     keeping every column the same height so each leaf's exit lands on the
     shared bottom row the ring closes through).  And it cannot narrow past
-    the hoist: at ``n == 2`` a tree folded to seven columns loses those
-    seven hoisted rows and comes out *larger* than the unfolded program,
-    263 characters against 255, so the width floors at what the hoist
-    needs.
+    the hoist: at ``n == 2`` a tree folded to seven columns loses those seven
+    hoisted rows and comes out *larger* than the unfolded program, 263
+    characters against 255, so the width floors at what the hoist needs.
     """
     n = _validate_truth_table(truth_table)
     cells: dict[tuple[int, int], str] = {}
@@ -753,11 +751,11 @@ def clockwise(truth_table: str) -> str:
     # Anything wider is dead space: the turns are relative, so the tree's
     # absolute column never matters.
     #
-    # A folded node spends no displacement, since it has no one-branch to
-    # send anywhere -- so the span is summed over the nodes that actually
-    # branch rather than assumed full.  This is where the fold pays: the
-    # full width grows as ``2 ** (n + 1)``, and a table whose subtrees
-    # collapse needs only the columns its surviving branches displace.
+    # A folded node spends no displacement, having no one-branch to send
+    # anywhere -- so the span is summed over the nodes that actually branch
+    # rather than assumed full.  This is where the fold pays: the full width
+    # grows as ``2 ** (n + 1)``, and a table whose subtrees collapse needs
+    # only the columns its surviving branches displace.
     def tree_span(bit: int, combo: int) -> int:
         if bit == n or (bit > 0 and constant(bit, combo)):
             return 0
@@ -769,13 +767,12 @@ def clockwise(truth_table: str) -> str:
         return displacement + below
 
     # Never narrow past the hoist's own requirement.  The hoist puts the
-    # root's seven reads on row 0, left of the corner, which retires seven
-    # rows of spine -- worth more than the columns narrowing below it would
-    # save, and at ``n == 2`` a tree folded to seven columns loses the
-    # hoist and comes out *larger* than the unfolded program (263 against
-    # 255 characters).  So the tree may shrink only down to the width the
-    # hoist needs, and a table whose fold would go further simply keeps
-    # those columns blank.
+    # root's seven reads on row 0, left of the corner, retiring seven rows of
+    # spine -- worth more than the columns narrowing below it would save, and
+    # at ``n == 2`` a tree folded to seven columns loses the hoist and comes
+    # out *larger* than the unfolded program (263 against 255 characters).
+    # So the tree may shrink only down to the width the hoist needs, and a
+    # table whose fold would go further keeps those columns blank.
     root = max(tree_span(0, 0) + 2, 8 if 2 ** (n + 1) >= 8 else 0)
     # Seven free columns left of the root are what the hoist needs; see
     # above.
@@ -913,10 +910,10 @@ def container(truth_table: str) -> str:
 
     That last block costs one line per row the table sends to 1, so a dense
     table is summed from its **zero** rows instead: ``OUT`` starts at 49 and
-    each surviving zero row subtracts one, printing ``49 - S``.  The clamp
-    at zero never bites, since the value stays at 48 or 49.  Worth up to
-    12.7% at ``n == 4`` (1356 characters down to 1184 for fifteen ones of
-    sixteen); the per-row survivor blocks above are fixed and unaffected.
+    each surviving zero row subtracts one, printing ``49 - S``.  The clamp at
+    zero never bites, since the value stays at 48 or 49.  Worth up to 12.7%
+    at ``n == 4`` (1356 characters down to 1184 for fifteen ones of sixteen);
+    the per-row survivor blocks above are fixed and unaffected.
     """
     n = _validate_truth_table(truth_table)
 
@@ -949,8 +946,8 @@ def container(truth_table: str) -> str:
     lines.append(f"-1 T>={2 * n - 1}")
     lines.append(f"+1 T>={2 * n}")
     # OUT is 48 plus one ``+1`` per row the table sends to 1, so a dense
-    # table pays for nearly every row.  Evaluating the *zero* rows instead
-    # costs one line each and starts from 49, subtracting: ``49 - S`` is the
+    # table pays for nearly every row.  Evaluating the *zero* rows costs one
+    # line each and starts from 49, subtracting: ``49 - S`` is the
     # complement, and since ``S`` is 0 or 1 the value stays at 48 or 49, so
     # the container's clamp at zero never bites.  Whichever row-set is
     # smaller wins; ties keep the plain form.
@@ -995,10 +992,9 @@ def bit_tilde(truth_table: str) -> str:
     # A table that ignores some of its inputs is a smaller table, and every
     # cost here is per *one-row* and per *input within it*: each minterm
     # pre-copies one cell per input and nests one ``{`` test per input, so
-    # dropping an input removes rows and shortens the rows that remain.
-    # The reads stay -- one ``)`` per input, and they are the interface --
-    # so the ignored inputs are still read into their own cells and simply
-    # never copied out of them.
+    # dropping an input removes rows and shortens the rows that remain.  The
+    # reads stay -- one ``)`` per input, and they are the interface -- so the
+    # ignored inputs are read into their own cells and never copied out.
     used = essential_inputs(truth_table, n) or [0]
     reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
 
@@ -1045,8 +1041,8 @@ def bit_tilde(truth_table: str) -> str:
         # has to be consumed whether or not the table depends on it.  When
         # input 0 is essential the first copy below does that as a side
         # effect; when it is *ignored* nothing else touches cell 7, and the
-        # output comes out as the input bit rather than the answer -- which
-        # is exactly the 16 tables at ``n <= 3`` that ignore input 0.
+        # output comes out as the input bit rather than the answer -- exactly
+        # the 16 tables at ``n <= 3`` that ignore input 0.
         move(7)
         prog.append("{ ~ }")
         pos = 7
@@ -1191,8 +1187,7 @@ def suptiftam(truth_table: str) -> str:
     sum inverted, since a minterm is four lines per input and ``1 - sum`` is
     one line however many it saves.  No constant table needs excluding here,
     unlike the gate-network generators: an all-ones table complements to no
-    minterms at all, leaving ``sum`` at 0, and ``1 - 0`` is the 1 it should
-    print.
+    minterms, leaving ``sum`` at 0, and ``1 - 0`` is the 1 it should print.
     """
     n = _validate_truth_table(truth_table)
     names = [_suptiftam_bit(i) for i in range(n)]
@@ -1211,11 +1206,11 @@ def suptiftam(truth_table: str) -> str:
     # One minterm per row selected, so a dense table is summed over its
     # zeros and the sum inverted -- ``1 - sum`` is one line however many
     # minterms it saves.
-    # A table that ignores some of its inputs is a smaller table, and a
+    # A table that ignores some of its inputs is a smaller table, and since a
     # minterm costs four lines *per input* on top of one row per selected
-    # row -- so dropping an input removes rows and shortens the rows that
-    # remain.  Every input keeps its read and its normalization (they are
-    # the interface); an ignored one is simply never named as a factor.
+    # row, dropping an input removes rows and shortens the rows that remain.
+    # Every input keeps its read and its normalization (they are the
+    # interface); an ignored one is never named as a factor.
     used = essential_inputs(truth_table, n) or [0]
     reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
     width = len(used)
@@ -1244,11 +1239,10 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
     Leaves are placed first, on a fixed pitch, and the switches are then
     collapsed upwards: each pair of entry columns yields a ``< >`` centred
     between them with rails drawn out to both.  Positioning everything from
-    the leaf pitch is what keeps the drawing tight -- an earlier recursive
-    version assembled each subtree into its own padded block and separated
-    the blocks by a gutter, which cost a column of blanks for every leaf at
-    every level even though two ``(( ))`` boxes may sit flush against each
-    other.
+    the leaf pitch keeps the drawing tight -- an earlier recursive version
+    assembled each subtree into its own padded block and separated the blocks
+    by a gutter, costing a column of blanks for every leaf at every level
+    even though two ``(( ))`` boxes may sit flush against each other.
 
     Rows run ``( )``, its rail, then four rows per level (``/ /``, a rail,
     ``< >``, a rail), then the five-row leaf block.
@@ -1307,9 +1301,9 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
         if len(set(truth_table[lo:hi])) == 1:
             # Constant: no branch below here can change the answer, so this
             # is a leaf.  Leaves all sit on the bottom row whatever their
-            # depth, so the rail from the switch above covers the levels
-            # this fold skipped: the rows are a fixed grid and only the
-            # branching goes away.
+            # depth, so the rail from the switch above covers the levels this
+            # fold skipped: the rows are a fixed grid and only the branching
+            # goes away.
             #
             # The *reads* those levels would have done do not go away.  A
             # program must consume its ``n`` inputs whatever the table says
@@ -1376,27 +1370,26 @@ def flowchart(truth_table: str) -> str:
     depth-``n`` tree draws ``2**n - 1`` read nodes, one per internal node,
     yet any single run walks one root-to-leaf path and so executes exactly
     ``n`` of them -- which is why a *folded* leaf carries the reads of the
-    levels it skipped on its own rail.  Without them a run that folded
-    early would consume fewer inputs than one that did not, making the
-    program's stream consumption a function of its truth table; only the
-    branching may fold away, never the reads.  The duplication is spatial,
-    the way an unrolled
-    brainfuck branch repeats ``,`` in each arm of a nested ``[ ]`` without
-    any one execution reading twice.  This is deliberately *not* the
+    levels it skipped on its own rail.  Without them a run that folded early
+    would consume fewer inputs than one that did not, making the program's
+    stream consumption a function of its truth table; only the branching may
+    fold away, never the reads.  The duplication is spatial, the way an
+    unrolled brainfuck branch repeats ``,`` in each arm of a nested ``[ ]``
+    without any one execution reading twice.  This is deliberately *not* the
     once-only embedding rule that ``tools.boolean.parameterized`` documents:
     that rule exists so a language with no input mechanism cannot, through
     repeated ``{Xi}`` substitution, consult a bit more often than an
-    input-capable language would.  Flowchart has a real input command, so
-    it is an input-reading generator like :func:`streetcode` (whose ``I``
+    input-capable language would.  Flowchart has a real input command, so it
+    is an input-reading generator like :func:`streetcode` (whose ``I``
     commands likewise repeat across tree branches), not a parameterized one.
 
     An alternative construction reads all ``n`` bits up front into a deque
-    and pops one per level instead, which exercises the deques -- the
-    language's defining feature, untouched here.  It was built and verified
-    over the same tables, and is worth revisiting if Flowchart ever gets a
-    cross-check that would benefit from the wider coverage; it costs a
-    ``4n``-row prologue and depends on push-top/pop-bottom being FIFO, a
-    silent wrong-answer trap if the pop is ever changed to pop-top.
+    and pops one per level instead, exercising the deques -- the language's
+    defining feature, untouched here.  It was built and verified over the
+    same tables, and is worth revisiting if Flowchart ever gets a cross-check
+    that would benefit from the wider coverage; it costs a ``4n``-row
+    prologue and depends on push-top/pop-bottom being FIFO, a silent
+    wrong-answer trap if the pop is ever changed to pop-top.
     """
     _validate_truth_table(truth_table)
     return _flowchart_render(_flowchart_cells(truth_table))

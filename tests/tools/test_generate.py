@@ -2,8 +2,9 @@
 
 import importlib
 import inspect
+import signal
 import subprocess
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from typing import Any
 from unittest.mock import patch
 
@@ -44,6 +45,7 @@ from esolangs.interpreters.tape_based.slow_acv_mammalian import run as mammalian
 from esolangs.interpreters.tape_based.suffolk import run as suffolk_run
 from esolangs.interpreters.tape_based.three_d_brainfuck import run as three_d_bf_run
 from esolangs.tools.text import other
+from tests.raises import raises_message
 
 WIDTH_CONTRACT_TEXT = "Hello, World!"
 EDGE_GENERATORS = [
@@ -193,12 +195,6 @@ class TestGeneratorRoundTrips:
         # the extremes of the byte range, and a value needing a walk down
         assert roundtrip(cvnc_run, gen.cvnc("\x00\xff")) == "\x00\xff"
         assert roundtrip(cvnc_run, gen.cvnc("ba")) == "ba"
-
-    def test_cvnc_emits_only_valid_syllables(self) -> None:
-        """A program the interpreter rejects would not be a program at all."""
-        from esolangs.interpreters.other.cvnc import _syllabify, _tokenize
-
-        assert _syllabify(_tokenize(gen.cvnc("Hello, World!")))
 
     def test_cvnc_empty_text_is_an_empty_program(self) -> None:
         assert gen.cvnc("") == ""
@@ -439,6 +435,32 @@ class TestGeneratorRoundTrips:
         needing a floor below which only a walk works.
         """
         assert roundtrip(streetcode_run, gen.streetcode(char).splitlines()) == char
+
+    @pytest.mark.parametrize(
+        "text",
+        ["\x00H", "\x00\xff", "\x00\x00H", "\x00Hello", "\x00\x01", "\x00"],
+    )
+    def test_streetcode_rings_past_an_unringable_start(self, text: str) -> None:
+        """A leading NUL costs the NUL, not the whole ring.
+
+        ``_plan_ring(0)`` is ``None`` -- there is nothing to factor for a
+        zero -- and the ring used to build the *first* character only, so
+        any text starting with NUL walked every later value unarily:
+        ``"\\x00\\xff"`` came to 1047 characters against 231 for the
+        ``"\\xff"`` alone.  The ring builds its product in cell 1 and
+        leaves CP there, so cell 0 is free to print the characters before
+        it, and the ring goes to the first character that can use one.
+        """
+        assert roundtrip(streetcode_run, gen.streetcode(text).splitlines()) == text
+
+    def test_streetcode_unringable_start_is_not_paid_for_twice(self) -> None:
+        """The saving is real: a leading NUL is worth a few characters.
+
+        Pinned as a bound rather than a length so the test survives a
+        cheaper ring, but tight enough to fail if the ring is forfeited
+        again -- the old shape was over four times this.
+        """
+        assert len(gen.streetcode("\x00\xff")) < 300
 
     def test_streetcode_ring_beats_the_straight_walk(self) -> None:
         """A ring is only emitted when it is smaller than walking.
@@ -745,8 +767,13 @@ class TestGeneratorRoundTrips:
         """Folding actually buys columns, rather than only reshaping."""
         # a text whose bytes are spread out enough that neither the multiply
         # passes nor a shared base pays, so the linear run is what folds --
-        # three clusters, which one split into two bands cannot cover
-        text = "!Q~!Q~!Q~"
+        # four clusters, which one split into two bands cannot cover.
+        # ``!Q~!Q~!Q~`` used to serve here and no longer does: once the
+        # base-1 write started paying for its zero cells, the size model
+        # stopped under-counting the fallback, a second multiply pass
+        # became worth keeping, and that text now comes out 69 columns
+        # wide.  The low byte is what keeps this one spread.
+        text = "\x01!Q~\x01!Q~"
         assert max(len(ln) for ln in gen.laserfuck(text).split("\n")) > 200
         assert max(len(ln) for ln in gen.laserfuck(text, 80).split("\n")) <= 80
 
@@ -783,20 +810,117 @@ class TestGeneratorRoundTrips:
         assert program.count("#/)") <= 1
 
     @pytest.mark.parametrize("width", [5, 8, 12, 20, 30])
-    def test_laserfuck_snake_ring_refuses_a_width_it_cannot_fit(
-        self, width: int
-    ) -> None:
-        """Too narrow for the ring, the builder answers None, not a bad grid.
+    def test_laserfuck_snake_ring_never_overruns_a_width(self, width: int) -> None:
+        """Either the builder answers None, or the grid it answers fits.
 
         The snake needs a spine to count down and a right margin to turn in,
-        and the finished block still has to sit inside the width.  Each of
-        those is checked separately and each answers ``None``, which is what
-        lets :func:`laserfuck` fall back to a form that does fit rather than
-        emitting a ring whose rows overrun.
+        and the finished block still has to sit inside the width.  What
+        matters is that it never emits a ring whose rows overrun: when a
+        width cannot be met it answers ``None`` and :func:`laserfuck` falls
+        back to a form that does fit.
+
+        A block that ends near the right edge is relanded at the margin
+        rather than refused, so widths that once had no ring now have one --
+        width 30 fits ``"Hi"``.  The invariant is the fit, not the refusal,
+        so this asserts the fit and runs whatever it gets.
         """
         from esolangs.tools.text.laserfuck import _laserfuck_snake_ring
 
-        assert _laserfuck_snake_ring("Hi", width) is None
+        program = _laserfuck_snake_ring("Hi", width)
+        if program is None:
+            return
+        assert max(len(line) for line in program.split("\n")) <= width
+        for heading in range(4):
+            assert laserfuck_roundtrip(program, heading) == "Hi"
+
+    def test_laserfuck_snake_ring_relands_a_crowded_entry(self) -> None:
+        """A long text keeps its ring: the entry drops back to the margin.
+
+        Each block leaves the beam further right than the last, so a text
+        long enough to need several stages once marched the entry off the
+        edge and the whole form was refused -- which sent every 55-character
+        string to the linear fallback at width 80.  The beam is carried down
+        to the margin instead, so the ring survives and stays inside the
+        width.
+        """
+        from esolangs.tools.text.laserfuck import _laserfuck_snake_ring
+
+        text = "".join(chr(0x21 + (index * 7) % 90) for index in range(55))
+        program = _laserfuck_snake_ring(text, 80)
+        assert program is not None
+        assert max(len(line) for line in program.split("\n")) <= 80
+        for heading in range(4):
+            assert laserfuck_roundtrip(program, heading) == text
+
+    @pytest.mark.parametrize("width", [60, 70, 78, 80, 90, 120])
+    def test_laserfuck_snake_ring_fits_every_width_it_answers(self, width: int) -> None:
+        """A block reaches past its spine, and the reland leaves room for it.
+
+        The entry threshold has to count the block's whole footprint -- the
+        exit ``v`` and the test row both reach ``spine + 6`` -- not just the
+        preload that precedes it.  Counting only the preload let a spine land
+        just inside the margin and the block overrun by a couple of columns.
+        Sweeping several widths catches an off-by-one in that reservation
+        that a single width would step over.
+        """
+        from esolangs.tools.text.laserfuck import _laserfuck_snake_ring
+
+        text = "".join(chr(0x21 + (index * 11) % 90) for index in range(55))
+        program = _laserfuck_snake_ring(text, width)
+        if program is None:
+            return
+        assert max(len(line) for line in program.split("\n")) <= width
+        for heading in range(4):
+            assert laserfuck_roundtrip(program, heading) == text
+
+    @pytest.mark.parametrize("length", [21, 34, 55])
+    def test_laserfuck_snake_ring_folds_a_preload_wider_than_the_width(
+        self, length: int
+    ) -> None:
+        """A preload wider than the width costs rows, not a refusal.
+
+        The walk out to the counter is one ``>`` per cell, so 55 characters
+        spend 56 columns before the first ``+`` -- wider than a width of 40
+        on its own, with the entry already at the margin and nothing left to
+        reland.  A preload is a straight run of tape ops, so it folds like
+        any other run, and the form survives a width its preload could not
+        have met.
+        """
+        from esolangs.tools.text.laserfuck import _laserfuck_snake_ring
+
+        text = "".join(chr(0x21 + (index * 13) % 90) for index in range(length))
+        program = _laserfuck_snake_ring(text, 40)
+        assert program is not None
+        assert max(len(line) for line in program.split("\n")) <= 40
+        for heading in range(4):
+            assert laserfuck_roundtrip(program, heading) == text
+
+    @pytest.mark.parametrize(
+        "text",
+        ["Hello, World!", "A b C d", "the rain in spain", "\x00H", "abc", "x"],
+    )
+    def test_laserfuck_snake_ring_bands_its_values(self, text: str) -> None:
+        """Banded or not, every cell ends up holding its own byte.
+
+        Splitting the values into bands gives each its own base and its own
+        pair of rings, so a cell must be added to by *its* band and left
+        alone by the others.  Getting the pointer handoff wrong between
+        stages is invisible in the grid and obvious here: a cell that both
+        bands reach comes out holding the sum of two bases.
+
+        ``"\\x00H"`` is the awkward one -- the base search runs over
+        ``range(1, 128)`` and cannot express 0, so the NUL's band counts to
+        one and the tail takes it back down again.
+        """
+        from esolangs.tools.text.laserfuck import _laserfuck_snake_ring
+
+        for grouped in (False, True):
+            program = _laserfuck_snake_ring(text, 80, grouped=grouped)
+            if program is None:
+                continue
+            assert max(len(line) for line in program.split("\n")) <= 80
+            for heading in range(4):
+                assert laserfuck_roundtrip(program, heading) == text
 
     def test_laserfuck_snake_needs_a_spine_and_a_margin(self) -> None:
         """A spine with no room either side cannot carry a snake."""
@@ -936,10 +1060,13 @@ class TestGeneratorRoundTrips:
         bounded = gen.laserfuck(text, 80)
         assert max(len(ln) for ln in bounded.split("\n")) <= 80
         assert bounded != loop
-        # still the loop form -- the bracket mirrors are what say so -- and
-        # so no bigger than the unfolded program, unlike the linear fallback
+        # Still the loop form -- the bracket mirrors are what say so --
+        # rather than the linear fallback several times its size.  The fold
+        # spends a little padding to buy the columns (529 -> 587 here), so
+        # it is not compared against the unfolded loop: what the width
+        # buys is the *shape*, not a shorter program.
         assert "#^)#^" in bounded
-        assert len(bounded) <= len(loop)
+        assert len(bounded) < 2 * len(loop)
 
     def test_laserfuck_narrow_width_still_falls_back_to_linear(self) -> None:
         """A width no folded span can fit takes the linear form instead."""
@@ -1609,3 +1736,161 @@ class TestWeaveInternals:
         from esolangs.tools.text.other import _clockwise_weave
 
         assert _clockwise_weave(";" * 400, 4) is not None
+
+
+# Every text generator, swept from the registry rather than listed here.
+# ``EDGE_GENERATORS`` above covers twelve of these by hand; a hand list is
+# what let thirty-five of them go unprobed, and it is how the LaserFuck
+# divergence below survived -- the generator *was* in that list, but the
+# input that broke it hung rather than failed, so a run that never
+# finished was never read as a failure.
+HOSTILE_INPUTS = {
+    "nul_only": "\x00",
+    "nul_interior": "a\x00b",
+    "nul_trailing": "ab\x00",
+    "nul_leading": "\x00ab",
+    "nul_run": "a\x00\x00b",
+    "low_after_first": "a\x01",
+    "low_leading": "\x01a",
+    "max_byte": "\x7f",
+    "big_drop": "z\x00",
+    "repeat": "aaaa",
+    "single": "a",
+}
+
+# What each generator refuses, and why.  Pinned rather than tolerated: a
+# bare "any ValueError passes" would also pass a generator that started
+# refusing everything, which is the failure this table is here to catch.
+# The reason is matched whole -- the alphabet each language can print is
+# the contract, so the message that names it is part of the assertion.
+HOSTILE_REFUSALS = {
+    "dig": (
+        "Dig can only output letters, digits, spaces and .,!?",
+        {
+            "nul_only",
+            "nul_interior",
+            "nul_trailing",
+            "nul_leading",
+            "nul_run",
+            "low_after_first",
+            "low_leading",
+            "max_byte",
+            "big_drop",
+        },
+    ),
+    "minifuck": (
+        "Minifuck cannot output the NUL character",
+        {
+            "nul_only",
+            "nul_interior",
+            "nul_trailing",
+            "nul_leading",
+            "nul_run",
+            "big_drop",
+        },
+    ),
+    "myscript": (
+        "MyScript can only output its representable bytes",
+        {"low_after_first", "low_leading", "max_byte"},
+    ),
+    "suptiftam": (
+        "Suptiftam can only output printable non-quote ASCII (32-126 except ')",
+        {
+            "nul_only",
+            "nul_interior",
+            "nul_trailing",
+            "nul_leading",
+            "nul_run",
+            "low_after_first",
+            "low_leading",
+            "max_byte",
+            "big_drop",
+        },
+    ),
+}
+
+
+def _text_generators() -> list[str]:
+    """Every public text generator, from the module rather than a list."""
+    return sorted(
+        name
+        for name in dir(gen)
+        if not name.startswith("_") and name != "main" and callable(getattr(gen, name))
+    )
+
+
+EDGE_GENERATORS_BY_NAME = frozenset(fn.__name__ for fn in EDGE_GENERATORS)
+
+
+@pytest.fixture
+def hostile_timeout() -> Generator[None, None, None]:
+    """Fail a hostile case that hangs instead of letting it stall the run.
+
+    A generated program that never halts is what this whole sweep is for,
+    so the bound has to be part of the test rather than left to whoever is
+    watching the terminal.
+    """
+
+    def _raise(_signum: int, _frame: object) -> None:
+        raise TimeoutError("hostile input did not finish in 20s")
+
+    old = signal.signal(signal.SIGALRM, _raise)
+    signal.alarm(20)
+    try:
+        yield
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, old)
+
+
+class TestHostileInputs:
+    """Every generator against the inputs that break the careless ones.
+
+    A generator either round-trips the text or refuses it for a named
+    reason.  Both bugs this suite was written for -- a LaserFuck program
+    that never halted on a low byte after the first, and a %^2^-1 delta
+    encoding that printed the byte after a NUL as its two's complement --
+    are in here as ``low_after_first`` and ``nul_interior``.
+    """
+
+    def test_the_sweep_covers_every_generator(self) -> None:
+        """The sweep is registry-wide, so a new generator joins it for free.
+
+        Without this a generator added tomorrow is silently untested here,
+        which is exactly how ``EDGE_GENERATORS`` came to cover twelve of
+        forty-five.
+        """
+        names = _text_generators()
+        assert len(names) >= 45, names
+        assert set(EDGE_GENERATORS_BY_NAME) <= set(names)
+
+    @pytest.mark.parametrize("label", sorted(HOSTILE_INPUTS))
+    @pytest.mark.parametrize("name", _text_generators())
+    @pytest.mark.usefixtures("hostile_timeout")
+    def test_generator_survives_hostile_input(self, name: str, label: str) -> None:
+        """Round-trip the text, or refuse it with the reason that is pinned.
+
+        The timeout fixture is what makes a non-terminating *program* a
+        failure rather than a stalled run: the LaserFuck divergence sat in
+        a slow-marked test for as long as it did because nothing bounded
+        it, so a hang and a slow test were indistinguishable.
+        """
+        text = HOSTILE_INPUTS[label]
+        generator = getattr(gen, name)
+
+        reason, refused = HOSTILE_REFUSALS.get(name, ("", set()))
+        if label in refused:
+            with raises_message(ValueError, reason):
+                generator(text)
+            return
+
+        program = generator(text)
+        from esolangs.registry import BY_FUNCTION
+
+        if name == "laserfuck":
+            # the start heading is random by spec, so every one has to land
+            for heading in range(4):
+                assert laserfuck_roundtrip(program, heading) == text
+            return
+
+        assert roundtrip_language(BY_FUNCTION[name], program) == text

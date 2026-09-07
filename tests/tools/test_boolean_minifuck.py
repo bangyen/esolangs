@@ -323,109 +323,126 @@ def test_a_flipped_embed_complements_in_place_and_keeps_slot_order() -> None:
 
 
 @pytest.mark.slow  # 7.1s: enumerates the stagings the screen claims to skip
-def test_span_screen_declines_no_reachable_table() -> None:
-    """The span screen never declines a table some staging prints.
+def test_the_constraint_query_matches_the_index() -> None:
+    """``_first_staging`` answers exactly what the index spelling answers.
 
-    ``_span_admits`` is a necessary condition used to skip an enumeration
-    that would fail, so its only dangerous error is a false *negative*.  This
-    replays the derivation's own enumeration and asserts two things over
-    every column it prints: that the column lies in the span of the standing
-    columns at that staging, and that the screen therefore admits it.
-
-    This is the test that must fail if the caps, separators or setter ever
-    change -- the spans are a property of those, and a screen validated
-    against an older enumeration would silently decline tables the new one
-    reaches.  It is deliberately not a sampled check.
-    """
-
-    from esolangs.tools.boolean.minifuck import (
-        _BASE,
-        _MAX_ACC,
-        _MAX_BRACKETS,
-        _READS,
-        _SEPS,
-        _SPAN,
-        _clamp,
-        _embed,
-        _endgame,
-        _in_span,
-        _span_admits,
-        _span_basis,
-        _staging_spans,
-        _walk_to,
-    )
-
-    n = 5
-    assert _staging_spans(n), "no spans built"
-    window = range(1, _BASE + n * _SPAN + 12)
-
-    def pack(table: tuple[int, ...] | str) -> int:
-        packed = 0
-        for bit in table:
-            packed = (packed << 1) | int(bit)
-        return packed
-
-    # Replay the enumeration, checking each printed column against the span
-    # of the staging that printed it, and against the screen as a whole.
-    checked = 0
-    for sep_index in range(len(_SEPS)):
-        for settle in (0, 1):
-            base = _embed(n, settle=settle, sep=_SEPS[sep_index])
-            _clamp(base)
-            _walk_to(base, _BASE - 1)
-            run = base.fork()
-            for _k in range(_MAX_BRACKETS + 1):
-                staged = run.fork()
-                staged.emit("<")
-                _clamp(staged)
-                # Built in place rather than indexed out of _staging_spans:
-                # that list interleaves each slice's pure runs with its
-                # insert family, so a counter that walks only the pure runs
-                # drifts onto another staging's span after the first slice.
-                # An indexing bug there would fail exactly like a violated
-                # rule, which is not a confusion this test may make.
-                basis = _span_basis([pack(staged.col(cell)) for cell in window])
-                for acc in range(9, _MAX_ACC + 1, 5):
-                    for read in _READS:
-                        probe = staged.fork()
-                        try:
-                            _endgame(probe, acc, read, 0)
-                        except ValueError:
-                            continue
-                        printed = probe.printed()
-                        if any(len(d) != 1 for d in printed):
-                            continue
-                        column = "".join(printed)
-                        checked += 1
-                        assert _in_span(pack(column), basis), (
-                            f"printed column outside its staging's span: {column}"
-                        )
-                        assert _span_admits(column, n), (
-                            f"screen declines a reachable table: {column}"
-                        )
-                run.emit("[")
-
-    assert checked > 1000, f"too few columns checked to be evidence: {checked}"
-
-
-def test_span_screen_is_only_offered_where_it_bites() -> None:
-    """The screen admits everything at an arity it does not serve.
-
-    It is gated to five inputs because at four the ambient dimension (16)
-    matches the ranks the bases reach, so the test is vacuous there and
-    evaluating it would cost more than it saves.  Pinning that keeps a future
-    widening honest: offering it at another arity must be a measured choice,
-    not an accident of the gate.
+    The constraint intersection is the shipped assignment and the
+    first-claim-wins dictionary stays as its oracle, so the two are held
+    equal key for key -- every reachable column at two and three inputs,
+    plus random tables for the misses, plus small budgets, whose cap the
+    query lays over the passes where the index bakes it into the fill.
     """
     import importlib
+    import random
 
     module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
-    assert module._SCREENED_ARITIES == (5,)  # noqa: SLF001
-    # Four inputs is not screened, so every table is admitted without the
-    # spans ever being built.
-    assert module._span_admits("0110100110010110", 4)  # noqa: SLF001
-    assert module._span_admits("1" * 16, 4)  # noqa: SLF001
+    rng = random.Random(17)
+    for n in (2, 3):
+        index = module._staging_index(n)  # noqa: SLF001
+        assert index, n
+        for key in index:
+            table = "".join(str(bit) for bit in key)
+            assert module._first_staging(table, n) == index[key], table  # noqa: SLF001
+        for _ in range(30):
+            table = format(rng.getrandbits(2**n), f"0{2**n}b")
+            expected = index.get(tuple(int(c) for c in table))
+            assert module._first_staging(table, n) == expected, table  # noqa: SLF001
+
+    # The budget arm: a capped query consults the same staging prefix the
+    # capped fill visits, including budgets that stop mid-slice and before
+    # the first staging.
+    original = module._STAGING_BUDGET  # noqa: SLF001
+    try:
+        for budget in (0, 1, 40, 900):
+            module._STAGING_BUDGET = budget  # noqa: SLF001
+            module._derived_plans.cache_clear()  # noqa: SLF001
+            capped = module._staging_index(3)  # noqa: SLF001
+            probes = ["".join(str(bit) for bit in key) for key in capped]
+            probes += [format(rng.getrandbits(8), "08b") for _ in range(20)]
+            for table in probes:
+                expected = capped.get(tuple(int(c) for c in table))
+                assert module._first_staging(table, 3) == expected, (  # noqa: SLF001
+                    budget,
+                    table,
+                )
+    finally:
+        module._STAGING_BUDGET = original  # noqa: SLF001
+        module._derived_plans.cache_clear()  # noqa: SLF001
+
+
+@pytest.mark.slow  # two arity tabulations plus ~2600 mask queries, ~4s
+def test_the_constraint_query_matches_the_index_where_inserts_live() -> None:
+    """The same equality at the arities the insert family serves.
+
+    Two and three inputs never reach the insert pass, so this is the check
+    that the pass boundary -- pure runs across every slice before any
+    insert -- survives in the query's spelling of the order.  Sampled,
+    because the full four-input key set costs ~10s; the sample is spread
+    across the whole index rather than taken from its head, so both passes
+    and every slice appear.
+    """
+    import importlib
+    import random
+
+    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+    rng = random.Random(23)
+    for n, width in ((4, 2000), (5, 400)):
+        index = module._staging_index(n)  # noqa: SLF001
+        keys = list(index)
+        sampled = keys[:: max(1, len(keys) // width)]
+        inserts = sum(isinstance(index[key][2], str) for key in sampled)
+        assert inserts, "the sample missed the insert family entirely"
+        for key in sampled:
+            table = "".join(str(bit) for bit in key)
+            assert module._first_staging(table, n) == index[key], table  # noqa: SLF001
+        for _ in range(25):
+            table = format(rng.getrandbits(2**n), f"0{2**n}b")
+            expected = index.get(tuple(int(c) for c in table))
+            assert module._first_staging(table, n) == expected, table  # noqa: SLF001
+
+
+def test_the_batched_planned_bits_match() -> None:
+    """``_planned_bits`` equals ``_planned_bit`` per accumulator, per plan.
+
+    The batched form re-spells the per-accumulator case analysis one region
+    at a time, so the per-accumulator function stays as the specification
+    and every plan the staged arities actually build is walked both ways.
+    """
+    from esolangs.tools.boolean.minifuck import (
+        _BASE,
+        _MAX_ACC,
+        _insert_suffixes,
+        _planned_bit,
+        _planned_bits,
+        _slice_chains,
+        _slices,
+        _suffix_plan,
+    )
+
+    accs = range(_BASE, _MAX_ACC + 1)
+    checked = 0
+    modes: set[int] = set()
+    for n in (2, 3):
+        for sep_index, settle in _slices(n):
+            chains, _pools = _slice_chains(n, sep_index, settle)
+            suffixes: list[tuple[int, int]] = [(cut, 0) for cut in range(29)]
+            suffixes += [
+                (s.index("<"), len(s) - s.index("<") - 1) for s in _insert_suffixes()
+            ]
+            for cut, rest in suffixes:
+                for chain in chains:
+                    plan = _suffix_plan(chain, cut, rest)
+                    assert _planned_bits(chain, plan, accs) == [
+                        _planned_bit(chain, plan, acc) for acc in accs
+                    ], (n, sep_index, settle, cut, rest)
+                    modes.add(plan[0])
+                    checked += 1
+    assert checked > 10000, f"too few plans walked: {checked}"
+    # A sweep that never reaches a plan shape proves nothing about it: all
+    # three -- pure, point-flip, complemented chain -- must have fired.
+    assert modes == {0, 1, 2}, modes
 
 
 # 3.7s standalone: the target-set derivation is the cost.  It is free when the
@@ -920,6 +937,37 @@ class TestParameterizedMinifuck:
         # reorders what is spent first, it never drops a slice outright.
         assert sorted(module._SLICE_YIELD_ORDER) == sorted(plain)  # noqa: SLF001
 
+    @pytest.mark.slow
+    def test_the_slice_order_is_its_measured_yield(self) -> None:
+        """The yield ranking is re-derived, not trusted.
+
+        The comment above ``_SLICE_YIELD_ORDER`` states the measurement
+        that produced it -- each slice's yield at four inputs, best 2874
+        against worst 424 -- but a stated measurement is not a checked
+        one, and the table is dormant as shipped, so nothing else would
+        catch it drifting.
+
+        The yield is *marginal*, not intrinsic: a slice is credited with
+        the columns it is the first to reach in the plain enumeration,
+        not with everything it could place on its own.  That distinction
+        is what picks this order out -- ranking slices by their
+        independent reach gives a different one -- so the assertion
+        pins the mechanism and not just the numbers.  All ten counts are
+        distinct, so descending order is total and needs no tie-break.
+        """
+        import importlib
+        from collections import Counter
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        index = module._staging_index(4)  # noqa: SLF001
+        counts = Counter((entry[0], entry[1]) for entry in index.values())
+        assert len(set(counts.values())) == len(counts), counts
+        derived = tuple(sorted(counts, key=lambda slot: -counts[slot]))
+        assert derived == module._SLICE_YIELD_ORDER  # noqa: SLF001
+        assert max(counts.values()) == 2874
+        assert min(counts.values()) == 424
+
     def test_five_input_budget_uses_its_separate_default(self) -> None:
         """The five-input override is selected only while budgets are off.
 
@@ -1056,17 +1104,17 @@ class TestParameterizedMinifuck:
             module._STAGING_BUDGET = original  # noqa: SLF001
             module._derived_plans.cache_clear()  # noqa: SLF001
 
-    @pytest.mark.slow  # ~3.6s: a five-input screen plus a sculpted build
-    def test_the_span_screen_costs_length_not_coverage(self) -> None:
-        """A table the span screen declines still builds, the other way.
+    @pytest.mark.slow  # ~3.6s: a five-input index fill plus a sculpted build
+    def test_a_table_no_staging_reaches_costs_length_not_coverage(self) -> None:
+        """A table outside every staging still builds, the other way.
 
-        ``_span_admits`` is a linear-algebra screen run before the staging
-        tabulation, and it only ever declines -- so the danger is not that it
-        admits something wrong but that a table it rejects stops being built
-        at all.  Nothing drove that arm: every table the suite derives is
-        admitted, so the refusal and the fall-through below it were unrun.
+        A five-input table the tabulation cannot answer is an index miss --
+        the linear-algebra screen that used to pre-empt the lookup is gone,
+        see the note above ``_CHAIN_CAP`` -- so the danger is not a wrong
+        admission but a table that stops being built at all.  This drives
+        the miss and the fall-through below it.
 
-        Executed on every row rather than merely emitted, because a screen
+        Executed on every row rather than merely emitted, because a miss
         that quietly rerouted a table to a *wrong* program would look
         identical to one that rerouted it to a longer one.
         """
@@ -1075,7 +1123,6 @@ class TestParameterizedMinifuck:
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
         table = "01001100001110000110000011001011"
-        assert not module._span_admits(table, 5)  # noqa: SLF001
         module._derived_plans.cache_clear()  # noqa: SLF001
         assert module._derive_staging(table, 5) is None  # noqa: SLF001
 
@@ -1939,9 +1986,9 @@ class TestParameterizedMinifuck:
         tuple for tuple, because the order -- not a stored answer -- is what
         decides which program a truth table gets.
 
-        This is the regression net for one specific mistake, and it is worth
-        stating what makes it hard to catch: an index that walks the order
-        wrongly still produces columns that are all reachable and all valid.
+        This is the regression net for one specific mistake, and what makes
+        it hard to catch: an index that walks the order wrongly still
+        produces columns that are all reachable and all valid.
         A draft of the index interleaved the two enumeration passes per
         slice instead of running every pure bracket run before any insert
         suffix, and the only symptom was five-input XOR being assigned
@@ -2043,6 +2090,153 @@ class TestParameterizedMinifuck:
         # At a staged arity the enumeration really does have entries, so the
         # empty results above are the guard and not an exhausted search.
         assert _all_derived_plans(_derived_plans, _STAGED_ARITIES, 2)
+
+    def test_the_pool_rule_matches_the_scan_it_replaced(self) -> None:
+        """``_find_pool`` answers what trying every code would have answered.
+
+        The scan below *is* the specification: it is what ``_find_pool`` used
+        to do -- walk the codes in order through the simulator and take the
+        first that reaches the pool.  The shipped rule instead asks each row
+        which code it names and checks the rows agree, so this pins the two
+        together over the whole domain the rule claims, not over the states a
+        build happens to visit.
+
+        Both halves matter and each caught a real bug while landing.  The
+        exhaustive half covers every single-row key; the random half builds
+        *joints*, which is where the two cross-row conditions live -- rows must
+        name the same code and be left on the same cell by it.  Independent
+        random rows almost never collide in the low byte, so the joints are
+        drawn by perturbing one window: with rows drawn independently the
+        end-pointer split showed up in none of 40000 joints, and in 5 of the
+        first 80000 built this way.
+        """
+        import importlib
+        import random
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        codes = module._POOL_CODES  # noqa: SLF001
+        width = module._POOL_WIDTH  # noqa: SLF001
+        ptr_max = module._POOL_PTR_MAX  # noqa: SLF001
+
+        def scan(joint: object, cell7: int, walk_out: int) -> str | None:
+            """The replaced search, kept as the oracle."""
+            for code in codes:
+                if module._pool_reaches(joint, code, cell7, walk_out):  # noqa: SLF001
+                    return code
+            return None
+
+        def joint_of(sims: list[object]) -> object:
+            joint = module._Joint.__new__(module._Joint)  # noqa: SLF001
+            joint.ms = sims
+            return joint
+
+        def row(tape: int, ptr: int = 0, *, skip: bool = False) -> object:
+            sim = module._Sim(512)  # noqa: SLF001
+            sim.tape = tape
+            sim.ptr = ptr
+            sim.skip = skip
+            return sim
+
+        # Every single-row key in the derived domain, against the oracle.
+        for low in range(1 << width):
+            for ptr in range(ptr_max + 1):
+                for skip in (False, True):
+                    for cell7 in (0, 1):
+                        joint = joint_of([row(low, ptr, skip=skip)])
+                        walk_out = module._PROBE_WALK_OUT  # noqa: SLF001
+                        assert module._find_pool(joint, cell7, walk_out) == scan(  # noqa: SLF001
+                            joint, cell7, walk_out
+                        ), (low, ptr, skip, cell7)
+
+        # Joints, where the cross-row conditions live.
+        rnd = random.Random(20260906)
+        for _ in range(3000):
+            seed_low = rnd.getrandbits(width)
+            ptr = rnd.randint(0, ptr_max)
+            sims = []
+            for _ in range(rnd.choice([2, 4, 8])):
+                low = seed_low
+                if rnd.random() < 0.5:
+                    low ^= 1 << rnd.randrange(width)
+                sims.append(row(low | (rnd.getrandbits(16) << width), ptr))
+            joint = joint_of(sims)
+            for cell7 in (0, 1):
+                walk_out = rnd.choice([9, 12, 20, 33])
+                assert module._find_pool(joint, cell7, walk_out) == scan(  # noqa: SLF001
+                    joint, cell7, walk_out
+                ), [(s.tape & ((1 << width) - 1), s.ptr) for s in sims]
+
+    def test_the_pool_slices_cover_the_whole_domain(self) -> None:
+        """Deriving a slice at a time answers what one big table would.
+
+        The slices exist so a caller pays for the ``(pointer, skip)`` it
+        actually asks about -- a build touches one of the six, and deriving
+        all of them on first use billed a 0.2ms build 57ms of work it had no
+        use for.  What must not change is the *answers*: this rebuilds the
+        whole-domain derivation the slices replaced and pins the union to it,
+        so a slice that quietly disagreed with it would fail here.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        codes = module._POOL_CODES  # noqa: SLF001
+        ptr_max = module._POOL_PTR_MAX  # noqa: SLF001
+
+        whole = {
+            (low, ptr, skip, cell7): answer
+            for low in range(1 << module._POOL_WIDTH)  # noqa: SLF001
+            for ptr in range(ptr_max + 1)
+            for skip in (False, True)
+            for cell7 in (0, 1)
+            if (
+                answer := module._pool_code_for_row(  # noqa: SLF001
+                    codes, low, ptr, cell7, skip=skip
+                )
+            )
+            is not None
+        }
+
+        union = {
+            (low, ptr, skip, cell7): answer
+            for ptr in range(ptr_max + 1)
+            for skip in (False, True)
+            for (low, cell7), answer in module._pool_slice(  # noqa: SLF001
+                codes, ptr, skip=skip
+            ).items()
+        }
+
+        assert union == whole
+        assert whole, "the derivation should not be empty"
+
+    def test_the_pool_rule_declines_outside_its_domain(self) -> None:
+        """The bound is a refusal, not a gap in a table.
+
+        Past ``_POOL_PTR_MAX`` the window byte is no longer the whole key --
+        the codes reach above cell 7 -- so there is no answer to look up and
+        the rule says None rather than guessing.  Codes do still fit out
+        there, which is the point: this is where the rule stops claiming, not
+        where the language stops working.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        ptr_max = module._POOL_PTR_MAX  # noqa: SLF001
+
+        outside = module._Sim(512)  # noqa: SLF001
+        outside.tape = 156
+        outside.ptr = 3
+        joint = module._Joint.__new__(module._Joint)  # noqa: SLF001
+        joint.ms = [outside]
+
+        assert ptr_max == 2, "the bound this test pins has moved"
+        assert module._find_pool(joint, 1, 12) is None  # noqa: SLF001
+        # ... while the simulator still finds a code from there.
+        served = [
+            code
+            for code in module._POOL_CODES  # noqa: SLF001
+            if module._pool_reaches(joint, code, 1, 12)  # noqa: SLF001
+        ]
+        assert served, "expected the scan to still answer outside the domain"
 
     def test_pool_reaches_refuses_a_code_that_kills_a_row(self) -> None:
         """``_pool_reaches`` rejects code that kills or desynchronises a row.
@@ -2242,10 +2436,12 @@ class TestParameterizedMinifuck:
 
         The edges above are hand-picked; this is the same claim made over
         random programs, which is what would catch a divergence nobody
-        thought to write a case for.  ``_Sim.exec`` calls the interpreter's
-        ``_step`` so the two *cannot* disagree today -- this is the test that
-        fails if some later change gives the emitter its own copy of the
-        dispatch again.
+        thought to write a case for.  ``_Sim`` advances by its own closed-
+        form laws -- that is the point of the module, the build path no
+        longer drives the interpreter -- so the two *can* disagree now, and
+        this comparison against a real ``run`` is one of the two tests that
+        would say so (the other pins each law to ``_step`` from arbitrary
+        states, below).
 
         Only live rows are compared cell by cell: once a row is ``dead`` the
         emitter stops tracking it by contract, while a real run keeps going,
@@ -2288,6 +2484,275 @@ class TestParameterizedMinifuck:
         assert printed, "no stream printed"
         assert deaths, "no stream hit the zero-pool read"
         assert skips, "no stream ended on a pending skip"
+
+    def test_the_closed_form_runs_agree_with_stepping_them(self) -> None:
+        """A whole run's law matches applying it one instruction at a time.
+
+        ``run_left``, ``run_walk`` and ``run_brackets`` each claim a closed
+        form over a run of ``k`` tokens; ``exec`` applies the same laws one
+        token at a time.  The two spellings must compose to the same state
+        -- the staircase inverse and the prefix-XOR doubling are exactly the
+        parts a per-token application does not share -- and the
+        disagreement this invites is not hypothetical: a first ``run_walk``
+        that ignored the cascade a ``[`` fires when its flip lands on zero
+        matched on the easy states and diverged on 877 of 3000 random ones.
+
+        So the comparison is made from *arbitrary* states, not fresh ones --
+        a fresh row has a zero tape and no pending skip, which is exactly
+        where a wrong model still looks right.
+        """
+        import random
+
+        from esolangs.tools.boolean.minifuck import _Sim
+
+        rng = random.Random(20260906)
+        skips = walks_cascaded = clamped = 0
+
+        for _ in range(400):
+            start = _Sim(96)
+            for _ in range(rng.randrange(0, 25)):
+                start.exec(rng.choice("<[.x"))
+            count = rng.randrange(0, 12)
+
+            for token, closed in (
+                ("<", "run_left"),
+                ("[x", "run_walk"),
+                ("[", "run_brackets"),
+            ):
+                stepped = start.copy()
+                for ins in token * count:
+                    stepped.exec(ins)
+
+                direct = start.copy()
+                getattr(direct, closed)(count)
+
+                assert direct.key() == stepped.key(), (
+                    token,
+                    count,
+                    start.key(),
+                    "the closed form left a different state",
+                )
+
+            if start.skip:
+                skips += 1
+            if start.ptr and count:
+                clamped += 1
+            probe = start.copy()
+            probe.run_walk(count)
+            if probe.tape != start.tape:
+                walks_cascaded += 1
+
+        # A sweep that never reaches the interesting states proves nothing:
+        # the pending skip is what makes the run's first instruction special,
+        # and a walk that never wrote a cell never exercised the cascade.
+        assert skips, "no state carried a pending skip"
+        assert clamped, "no clamp started away from cell 0"
+        assert walks_cascaded, "no walk touched the tape"
+
+    def test_the_laws_agree_with_the_interpreters_step(self) -> None:
+        """Every law matches ``_step``, from arbitrary states, over the
+        construction's own vocabulary.
+
+        The laws are the module's own statement of the language -- the build
+        path no longer delegates to the interpreter -- so this differential
+        is what now pins them to ``_step``, which stays Minifuck's single
+        definition.  The reference is the retired delegating stepper,
+        rebuilt here from ``_step`` itself; the states are arbitrary rather
+        than fresh (fresh ones are where a wrong model still looks right);
+        and the codes are the strings the generator actually emits --
+        separators, setters, reads, pool codes, weight gadgets, resets --
+        plus bare runs and random mixed streams, so no law is exercised
+        only on the shapes it was derived from.
+        """
+        import importlib
+        import random
+
+        from esolangs.interpreters.tape_based.minifuck import _step
+        from esolangs.tools.boolean.minifuck_sim import _runs, _Sim
+
+        # The package re-exports the generator function under the
+        # submodule's name, so the module comes through importlib.
+        m = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        def reference(row: _Sim, code: str) -> None:
+            """The retired stepper: one ``_step`` call per character."""
+            for ins in code:
+                if row.dead:
+                    return
+                if row.skip:
+                    row.skip = False
+                    continue
+                if ins == "<":
+                    if row.ptr:
+                        row.ptr -= 1
+                    continue
+                if ins not in ".[":
+                    continue
+                tape, length, ptr, skipped, char, reads = _step(
+                    ins, row.tape, row.length, row.ptr
+                )
+                if reads:
+                    row.dead = True
+                    return
+                if char is not None:
+                    row.out.append(char)
+                row.tape, row.length, row.ptr, row.skip = tape, length, ptr, skipped
+
+        gadgets = [
+            *m._SEPS,  # noqa: SLF001
+            *m._POOL_CODES,  # noqa: SLF001
+            *m._READS,  # noqa: SLF001
+            m._FLIP,  # noqa: SLF001
+            "[<",
+            "xx",
+            "[x",
+            "[x.",
+            m._reset_code(2),  # noqa: SLF001
+            m._mux_weight(4),  # noqa: SLF001
+            m._mux_weight(8),  # noqa: SLF001
+        ]
+
+        rng = random.Random(20260906)
+        deaths = printed = skips = 0
+        for _ in range(4000):
+            tape = rng.getrandbits(48)
+            ptr = rng.randrange(0, 40)
+            skip = rng.random() < 0.3
+            pick = rng.random()
+            if pick < 0.4:
+                code = rng.choice(gadgets)
+            elif pick < 0.55:
+                code = "[" * rng.randrange(1, 30)
+            elif pick < 0.7:
+                code = "[x" * rng.randrange(1, 20)
+            else:
+                code = "".join(rng.choice("[<x.") for _ in range(rng.randrange(1, 25)))
+
+            lawful = _Sim(48)
+            lawful.tape, lawful.ptr, lawful.skip = tape, ptr, skip
+            stepped = lawful.copy()
+            lawful.apply(_runs(code))
+            reference(stepped, code)
+            assert lawful.key() == stepped.key(), (
+                f"laws diverged from _step on {code!r} at tape={tape:#x} "
+                f"ptr={ptr} skip={skip}"
+            )
+            deaths += stepped.dead
+            printed += len(stepped.out)
+            skips += stepped.skip
+
+        # The comparison is worthless if the interesting transitions never
+        # fire, so assert the sample reached all three.
+        assert deaths, "no state hit the zero-pool read"
+        assert printed, "no state printed"
+        assert skips, "no state ended on a pending skip"
+
+    def test_the_parsed_emission_matches_stepping_every_row(self) -> None:
+        """``_Joint.emit`` parses a code once and advances rows by whole runs.
+
+        The parse and the per-run laws have to compose to exactly what
+        applying the laws one character at a time does -- the run boundaries
+        and the skip handed from one run to the next are where a parse bug
+        would live.  Synthetic codes do not reach the states this has to get
+        right: random emissions leave the rows' pointers converged, and it
+        is precisely the *divergent* pointers the real construction creates
+        that make an emission's effect differ row by row.  So the generator
+        itself drives the comparison, with every emission checked both ways
+        as it happens.
+        """
+        from esolangs.tools.boolean import minifuck_sim
+        from esolangs.tools.boolean.minifuck import minifuck
+
+        real_emit = minifuck_sim._Joint.emit  # noqa: SLF001
+        checked = [0]
+
+        def checking_emit(self: object, code: str) -> None:
+            rows = self.ms  # type: ignore[attr-defined]
+            reference = [m.copy() for m in rows]
+            real_emit(self, code)
+            for row in reference:
+                for ch in code:
+                    row.exec(ch)
+            assert [m.key() for m in rows] == [m.key() for m in reference], (
+                f"the parsed emission of {code!r} diverged from stepping it"
+            )
+            # What makes the comparison bite is rows whose pointers differ:
+            # an emission's effect is row-dependent exactly there, and they
+            # are the states the construction actually produces.
+            if len({m.ptr for m in reference}) > 1:
+                checked[0] += 1
+
+        # ``minifuck`` and the pool searches under it are cached, so a table
+        # an earlier test already built emits far less the second time.
+        # Counting only the divergent-pointer emissions keeps the floor
+        # meaningful without depending on which caches happen to be warm.
+        minifuck.cache_clear()
+        with patch.object(minifuck_sim._Joint, "emit", checking_emit):  # noqa: SLF001
+            for table in ("01", "0110", "10010110"):
+                minifuck(table)
+        minifuck.cache_clear()
+
+        assert checked[0], "no emission met rows whose pointers had diverged"
+
+    def test_the_computed_endgame_choice_matches_trying_all_four(self) -> None:
+        """``_try_print`` names the pair the retired four-fork trial found.
+
+        The trial loop -- fork the joint, run every ``(read, orientation)``
+        endgame, keep whichever printed -- is the specification, so it is
+        replayed here, spelled as it stood, against the computed choice on
+        the call sites real builds reach.  Corpus identity already pins
+        today's outcomes; this pins the *selection rule*, which is what
+        would drift if the polarity mapping or the trial order were edited.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        def retired(joint: object, truth_table: str, acc: int) -> object:
+            """The replaced trial loop, verbatim."""
+            for read in module._READS:  # noqa: SLF001
+                for cell7 in (0, 1):
+                    probe = joint.fork()  # type: ignore[attr-defined]
+                    try:
+                        module._endgame(probe, acc, read, cell7)  # noqa: SLF001
+                    except ValueError:
+                        continue
+                    if probe.printed() == list(truth_table):
+                        return probe
+            return None
+
+        sites: list[tuple[object, str, int]] = []
+        real = module._try_print  # noqa: SLF001
+
+        def record(joint: object, truth_table: str, acc: int) -> object:
+            if len(sites) < 200:
+                sites.append((joint.fork(), truth_table, acc))  # type: ignore[attr-defined]
+            return real(joint, truth_table, acc)
+
+        # One table per route: a constant (the degenerate cell scan,
+        # including the in-pool cell 1 the computed refusal now answers), a
+        # staged pair, a reconverged projection, and the sculpted holdout.
+        with patch.object(module, "_try_print", record):
+            module.minifuck.cache_clear()
+            for table in ("1111", "0110", "0011", "01101101"):
+                module.minifuck.__wrapped__(table)
+        module.minifuck.cache_clear()
+
+        assert len(sites) > 10, f"expected real call sites, got {len(sites)}"
+        misses = hits = 0
+        for joint, table, acc in sites:
+            expected = retired(joint, table, acc)
+            got = real(joint, table, acc)
+            if expected is None:
+                assert got is None, (table, acc)
+                misses += 1
+            else:
+                assert got is not None, (table, acc)
+                assert got.template() == expected.template(), (table, acc)
+                hits += 1
+        # The comparison has to see both verdicts to mean anything.
+        assert hits, "no site printed"
+        assert misses, "no site declined"
 
     def test_the_walk_needs_a_converged_pointer_going_right(self) -> None:
         """``[x`` walks are only safe rightward from one shared position.
@@ -2351,27 +2816,6 @@ class TestParameterizedMinifuck:
             patch.setattr(module, "_find_pool", lambda *_a, **_k: None)
             with pytest.raises(ValueError, match="no pool pattern"):
                 _endgame(joint.fork(), 12, "[<", 0)
-
-
-class TestMinifuckArityGates:
-    """The staging passes that decline outside the arities they serve.
-
-    Each pass is gated on an arity tuple, and the gate is what keeps a
-    three-input table from paying a four-input sweep.  Asking at an arity
-    outside the gate returns ``None`` without building anything.
-    """
-
-    @staticmethod
-    def module():
-        return importlib.import_module("esolangs.tools.boolean.minifuck")
-
-    def test_staging_spans_skips_the_insert_suffixes(self) -> None:
-        """Two inputs are not an insert arity, so only the bracket runs are
-        spanned -- the suffix loop is skipped rather than run and discarded.
-        """
-        m = self.module()
-        assert 2 not in m._INSERT_ARITIES  # noqa: SLF001
-        assert m._staging_spans(2)  # noqa: SLF001
 
 
 @pytest.mark.slow  # one four-input staging enumeration, ~1.2s

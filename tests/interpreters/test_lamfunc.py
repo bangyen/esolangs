@@ -204,31 +204,14 @@ class TestValues:
 
 
 class TestErrors:
-    def test_redefinition_is_malformed(self) -> None:
-        with pytest.raises(ValueError, match="redefined"):
-            run_program("F f x - x\nF f y - y")
-
-    def test_undefined_function_halts(self) -> None:
-        with pytest.raises(HaltError, match="undefined"):
-            run_program("nosuch 1")
-
-    def test_definition_needs_dash(self) -> None:
-        with pytest.raises(ValueError, match="'-'"):
-            run_program("F f x x")
-
-    def test_bit_builtin_on_a_function_halts(self) -> None:
-        # lb of a function value is not a number
-        with pytest.raises(HaltError, match="expected a number"):
-            run_program("lb .p")
-
     def test_the_rejection_messages_are_exact(self) -> None:
         """Each message is pinned whole, and names what it is complaining about.
 
-        The cases above match a fragment, and ``match=`` is a substring
-        search -- so the wording was free and the name each message quotes
-        was never checked.  The undefined-function message is raised from
-        two separate places, a bare call and a ``.`` reference, and both
-        have to name the function.
+        ``match=`` is a substring search, so a fragment leaves the wording
+        free and never checks the name each message quotes.  The
+        undefined-function message is raised from two separate places, a
+        bare call and a ``.`` reference, and both have to name the
+        function.
 
         ``expected a number`` is deliberately not compared whole: it
         interpolates a function object with no ``__repr__``, so the text

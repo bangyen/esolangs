@@ -19,8 +19,8 @@ cell *holding* the answer and then lose it to the prefix-XOR on the walk out,
 while the staging selects on the column **as the read sees it**.  Sampled
 tables that fail after ~130 seconds of searching build in under 0.08s from a
 staging.  `src/esolangs/tools/boolean/minifuck.py` carries the mechanism and
-the pool-code derivation; what follows is only what is *not* reachable and
-what was disproved along the way.
+the pool-code derivation; below is only what is *not* reachable and what
+was disproved along the way.
 
 ## The termination convention is not available
 
@@ -43,10 +43,9 @@ arity tried through seven — 243, 429, 622, 2511, 9565 and 39915 characters
 at `n` of 2 to 7.  **448 of 448 rows correct** on the shipped interpreter,
 sampled across `n` of 5, 6 and 7 (XOR and random tables).
 
-`_mux` never raises, so *total* means exactly "no `None`-site fires".  There
-are six such sites, and the failure surface is therefore finite.  A table also
-needs only **one** `(acc, cell7, direct)` combination to succeed, so a witness
-argument suffices.
+`_mux` never raises, so *total* means "no `None`-site fires".  There are six
+such sites, so the failure surface is finite.  A table also needs only **one**
+`(acc, cell7, direct)` combination to succeed, so a witness argument suffices.
 
 The whole chain rests on one atom.  From a skip-free state `'[x'` advances the
 pointer, flips the cell, conditionally flips the neighbour, and **never leaves
@@ -78,11 +77,11 @@ wake**, while a `bit = 0` row never starts.  Probed on a blank tape the gadget
 therefore stalls after a single read — displacement −1 whatever `k` is — which
 is not staleness but simply that there is no wake to consume.
 
-This matters because it converts the gadget's linearity from a measurement
-into an inequality.  The gadget is linear exactly while the wake lasts, so it
-saturates at `k > start + 1`: at four inputs, where `start = 31`, the spread
-climbs with `k` to 32 and is pinned at 32 for every larger `k`.  The 32 is not
-a constant of the language — it is that arity's own starting cell.
+That converts the gadget's linearity from a measurement into an inequality.
+The gadget is linear exactly while the wake lasts, so it saturates at
+`k > start + 1`: at four inputs, where `start = 31`, the spread climbs with
+`k` to 32 and is pinned at 32 for every larger `k`.  The 32 is not a constant
+of the language — it is that arity's own starting cell.
 
 **So the first gadget never saturates, for any `n`.**  It needs
 `k = 2**(n-1)` and has `start + 1` cells of wake, and
@@ -149,9 +148,9 @@ so at most `2**n` rounds are needed under a cap of `2**n + 4` (measured: 0
 non-monotone events, 232 of 232 frontier flips, at most 40 rounds used against
 a cap of 68 at six inputs).
 
-The tempting shortcut here is *false* and is worth recording as such: cell
-`acc−1` is 1 in 104 of 207 rounds, so its cascade does fire.  It simply lands
-after the walk has already flipped `acc`, and cannot undo it.
+The tempting shortcut here is *false*: cell `acc−1` is 1 in 104 of 207
+rounds, so its cascade does fire.  It simply lands after the walk has
+already flipped `acc`, and cannot undo it.
 
 **Pool coverage (site 3) closes too, and uniformly in `n`.**  `_pool_reaches`
 reads cells 0..7 after walking out, plus the pointer, skip and dead gates.
@@ -183,8 +182,8 @@ varied, and over 1426 probe calls at four, five and six inputs there were no
 
 The witness is that one orientation.  A code answers `cell7 == 0` or
 `cell7 == 1` and never both, so the `cell7 == 1` arm of the sweep contributes
-nothing to existence — the claim is precisely that **at `cell7 == 0` a code
-always reaches**, which is all a totality witness needs.  The `_walk_to`
+nothing to existence — the claim is that **at `cell7 == 0` a code always
+reaches**, which is all a totality witness needs.  The `_walk_to`
 sub-case cannot raise: `_pool_reaches` accepts a code only after checking its
 pointer is converged, and that check precedes the emit.
 
@@ -197,9 +196,9 @@ value-independent and its cascade writes `cell + 1`, strictly rightward, so
 once a walk has crossed cell 8 no later step of it can reach back into cells
 0..7 — and those are the only cells the verdict reads.  The verdict is
 therefore identical for every walk-out of nine or more, whatever debris the
-walk crosses.  Site 6 closes given
-site 3, because the sculpt's exit test and `_try_print` go through the same
-pool-walk-read path, so column agreement implies a correct print.
+walk crosses.  Site 6 closes given site 3: the sculpt's exit test and
+`_try_print` go through the same pool-walk-read path, so column agreement
+implies a correct print.
 
 **So all six sites close, and `_mux` is total at every arity.**  The `[x`
 atom, skip cleanliness, pointer restoration and write confinement are finite
@@ -242,7 +241,7 @@ characters.
 **The generator is total.**  `_MUX_ARITIES` was a verification boundary and
 nothing more; widening it needed no new construction and no new check,
 because the three arguments above hold at every `n`.  What it still owed was
-*execution*, since this repository's standing rule is that a claim about a
+*execution* — this repository's standing rule is that a claim about a
 generated program is worth what its run on the shipped interpreter is
 worth — now paid, at 448/448.  The tuple is replaced by the floor
 `_MUX_MIN_ARITY = 2`, which exists only because `_solve` routes constants
@@ -251,11 +250,18 @@ and one-input projections to `_degenerate` before the route is reached.
 A six-input table with a *narrow essential core* projects down to a smaller
 arity, which is why "does `n = 6` build?" has to be asked with a
 fully-essential table to mean anything.  There is no arity, and no table at
-any arity, that the Minifuck boolean generator declines.
+any arity, that the Minifuck boolean generator declines.  Six inputs is
+covered in the suite by `test_no_arity_is_gated`, which builds a
+fully-essential table and runs all 64 rows on the shipped interpreter.
+
+Sampled at five inputs, the sculpted route builds and prints every row of
+**200 of 200** fully-essential tables.
 
 Coverage before this route closed the arity: complementing inputs as they
 land took four inputs to **60942 of 64594 (94.35%)**, and that residue is
-what the sculpting was built to attack.
+what the sculpting was built to attack.  That second pass has since been
+removed outright — every table it placed the sculpted route also builds, and
+it cost a **300-second** whole-arity sweep to place them.
 
 ## `n == 5` ships partially; full coverage is out of reach of any flat family
 
@@ -309,8 +315,8 @@ five**; they are constant-factor headroom and do not change the story above.
 
 A construction composing sub-results through the pointer position fails
 because the combine step **creates no information**.  Superseded as a route
-to closing an arity, but kept because it rules out the whole
-*position-decode* shape rather than one attempt at it.
+to closing an arity, but kept: it rules out the whole *position-decode*
+shape rather than one attempt at it.
 
 **"No decode from an accumulated position" — the exact content.**  A mux
 needs a selector read then a cofactor read.  With the cofactors planted as
@@ -370,7 +376,7 @@ all — it reshapes the tape so the existing print route lands.  A sweep of
 78/78 interpreter-verified), extrapolating to roughly 39% coverage — not a
 measurement of the whole space.
 
-**What survives.**  The mux analysis above is still correct about what it
+**What survives.**  The mux analysis above is correct about what it
 examined — `ptr = entry + v + ans` does sum the selector with the answer —
 as a statement about position-decoding, and false as a statement about
 chains in general.  The counting argument still governs the *staging
@@ -379,3 +385,114 @@ not total from this alone — it needed the sculpted route.  The chain pool
 is itself finite and fixed-size, so it does not obviously close another
 arity.  Not shipped; the sweep and verification scripts are gitignored
 working files (`notes/minifuck_chain_sweep.py`, `notes/minifuck_chain_verify.py`).
+
+## Cost history of the contract sweep's `slow` set
+
+`tests/tools/test_boolean_contract.py` marks generators that *search* rather
+than emit, on a one-second budget per entry in that sweep.  The set is named
+rather than timed at collection, so the selected test set cannot depend on
+machine load.  This is the ledger of what entered and left it, kept so a
+future regression can be told from a cost the construction always carried.
+
+Measured originally (`pytest --durations -n 0`, one worker): minifuck 41.1s,
+`slow_acv_mammalian` 5.5s, the next entry down `polynomial` at 0.5s, median
+around 0.03s.
+
+- **`ztoalc_l_boolean`** was listed at 2.8s and now runs in 0.02s.  The cost
+  moved to the *reordering* sweeps, which is why those two sets are kept
+  separate rather than shared.
+- **`pct_squared_minus_one`** was briefly in the set at 4.6s: it searched
+  setter assignments and the sweep's parity table is `n == 3`, which it could
+  not separate, so it paid a whole search budget before raising.  It now
+  derives its programs and rejects that arity outright.  It rejoined
+  2026-08-31 at 6.45s and left 2026-09-02 at **0.25s** — almost all of that
+  cost was the composed-affine path deriving a whole arity into a cache on
+  its first call; the path now solves its setters from the table instead of
+  enumerating branch pairs, so there is no arity to derive.
+- **`minifuck`** left at 41.1s once it stopped searching at `n <= 3` (every
+  table up to three inputs comes from a staging table), its parity case
+  falling to 0.09s.
+- **`slow_acv_mammalian_boolean`** left at 5.5s when a read node's landing
+  point became solvable from the array sum rather than found by measuring
+  where a candidate jumped; its parity case cost 0.68s.  It rejoined
+  2026-08-31 at 3.04s and left 2026-09-05 at **0.02s**: on the aim class the
+  `j1` seeds cancel out of the jump arithmetic, so a landing is a pure
+  function of the array sum and a build is arithmetic end to end — no
+  candidate sweep, no stash-loop convergence check, no relaxation pass.  Its
+  `n=3` truth tables in `test_boolean_tape` moved 1.68s -> 0.07s alongside
+  and lost their `slow` marks.
+
+- **`minifuck`** rejoined at 14.9s of the sweep's 18.0s across sixty
+  generators — a *regression*, not the cost the construction ought to carry.
+  Bisected 2026-08-30 by checking out
+  `src/esolangs/tools/boolean/minifuck.py` alone at each commit that touched
+  it: the parity table costs 0.08s at `ef651aa1` and `c48b1cdf`, 0.00s at
+  `2a91ab70`, and 14.71s from `32f5638c` ("derive the stagings instead of
+  storing 117 of them") onwards.  Deriving what was stored is cheap to
+  *build* and expensive to *run*.  It left 2026-09-06 at **0.03s** when the
+  emitter stopped stepping its straight runs character by character; see
+  below.
+
+The set is now empty.
+
+## The emitter's straight runs
+
+The generator simulates one row per truth-table row and advances them in
+lockstep as code is emitted, so the emitter's cost is `char x row`
+simulated steps.  Profiled on a six-input parity build, that was 173.7M
+`_Sim.exec` calls — and two thirds of those characters were a run of a
+single token:
+
+| emitted code         | n=6 steps  | n=6 share | n=5 share |
+|----------------------|------------|-----------|-----------|
+| `_clamp`, `"<" * k`  | 58,263,360 |     33.8% |     60.6% |
+| varied code          | 57,846,592 |     33.6% |     38.5% |
+| `_walk_to`, `"[x" * k` | 55,814,528 |   32.4% |      0.9% |
+
+The arity matters: at five inputs the clamp looks dominant and the walk
+free, because `acc` is small while the pool code already advances the
+pointer ~28 cells.  At six they are level, which is the shape to plan
+against.
+
+Since then the whole machine has become closed forms — `_Sim` advances by
+four laws, one per maximal run of the alphabet, and no longer imports the
+interpreter at all:
+
+- `"<" * k` is `ptr = max(ptr - k, 0)`.  `<` is the language's cheapest
+  instruction — no tape write, no print, no skip — so the whole run is one
+  saturating subtraction.
+- A comment run can only consume a pending skip.
+- `"[x" * k` is the prefix-XOR carry law: each window cell becomes the
+  complement of the prefix XOR up to it, and the cell above the window
+  takes the window's total parity — `O(log k)` big-integer doublings.
+- `"[" * k` writes the same prefix-XOR window — a cascade folds into the
+  next cell's effective value — but *costs* the bracket staircase: a
+  crossing whose effective value is 1 spends two instructions, its skip
+  eating the next `[`, so the extent is the staircase inverse, and a run
+  can end one instruction into a crossing with the skip left pending.
+- `.` advances, flips, and prints the pool byte — or reads on a zero byte,
+  which marks the row dead with its state frozen where it stood.
+
+`_Joint.emit` parses each emission into maximal runs once and advances
+every row by whole runs, so the `char x row` cost above is gone rather
+than optimized — the varied-code third included.
+
+**The cascade is the trap.**  A first walk law that ignored it agreed with
+the stepper on fresh rows and diverged on 877 of 3000 random states.  The
+laws are the emitter's own statement of the language now, so nothing rests
+on their derivation alone: `test_the_laws_agree_with_the_interpreters_step`
+pins every law to the interpreter's `_step` — still the single definition
+of what a Minifuck instruction means — from arbitrary states over the
+construction's whole gadget vocabulary,
+`test_the_closed_form_runs_agree_with_stepping_them` checks each run law
+against its own single-instruction case, and
+`test_the_simulator_agrees_with_a_real_run_on_random_streams` compares
+whole random programs against a real `run`.  All three build arbitrary
+states before comparing, because a fresh row has a zero tape and no
+pending skip, which is exactly where a wrong model still looks right.
+
+The earlier stepping-era measurement on the six-input parity table —
+**43.6s -> 18.1s** from closing just the two straight runs — is kept above
+for why the runs mattered; with the laws the corpus re-emits byte for byte
+identically and build times are level to slightly better (five-input XOR
+3.1s -> 2.8s cold).

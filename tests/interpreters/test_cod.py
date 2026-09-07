@@ -280,10 +280,6 @@ class TestCOD:
         with pytest.raises(ValueError, match="fully enclosed"):
             run("~~~~\n~>\n~~~~", IO())
 
-    def test_no_start_marker_is_malformed(self) -> None:
-        with pytest.raises(ValueError, match="no cod start"):
-            run("~~~~~", IO())
-
     def test_an_empty_program_has_no_start_marker(self) -> None:
         """Code with no rows at all reports the missing ``>``.
 
@@ -292,15 +288,6 @@ class TestCOD:
         """
         with pytest.raises(ValueError, match="no cod start"):
             run("", IO())
-
-    def test_two_start_markers_is_malformed(self) -> None:
-        code = "\n".join(["~~~~~~~", "~> > ~~", "~~~~~~~"])
-        with pytest.raises(ValueError, match="multiple cod start"):
-            run(code, IO())
-
-    def test_unknown_instruction_is_malformed(self) -> None:
-        with pytest.raises(ValueError, match="unknown instruction"):
-            run("~>q~", IO())
 
     def test_an_uppercase_letter_is_no_more_passable_than_a_lowercase_one(
         self,
@@ -314,10 +301,6 @@ class TestCOD:
         """
         with pytest.raises(ValueError, match="unknown instruction"):
             run("~>X~", IO())
-
-    def test_fully_enclosed_start_is_malformed(self) -> None:
-        with pytest.raises(ValueError, match="fully enclosed"):
-            run("~~~\n~>~\n~~~", IO())
 
     def test_the_malformed_messages_read_in_full(self) -> None:
         """Each message entire, not the fragment the tests match on.

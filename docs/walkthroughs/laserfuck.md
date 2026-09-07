@@ -3,11 +3,11 @@
 `LaserFuck` is a grid: a laser starts at `o` and travels in its current
 heading (full semantics in the interpreter docstring). This example uses
 just `+` (increment the current tape cell), `v`/`\` (turn the laser down /
-reflect it), and `.`, which in this interpreter is a no-op — the whole tape
-prints only when the laser dies. The laser's *initial* heading is chosen
-randomly, so a funnel of `|`/`^`/`}` around `o` routes 3 of the 4 possible
-headings onto the top row moving right (the fourth, down, runs off the
-bottom edge before touching the tape).
+reflect it), and `.`, a no-op in this interpreter — the whole tape prints
+only when the laser dies. The laser's *initial* heading is random, so a
+funnel of `|`/`^`/`}` around `o` routes 3 of the 4 possible headings onto
+the top row moving right (the fourth, down, runs off the bottom edge before
+touching the tape).
 
 ## The program
 
@@ -18,11 +18,10 @@ bottom edge before touching the tape).
 ```
 
 The top row sets cell 0 to 65, then a `v` turns the laser down column 68.
-It passes over a blank cell and the `.` (a no-op in this interpreter) and
-runs off the bottom edge, which kills it. The `\` at row 2, column 69 is
-never reached — the beam is one column to its left the whole way down.
-Killing the last laser triggers the tape dump, which prints byte 65 as
-`A`.
+It passes over a blank cell and the `.` and runs off the bottom edge, which
+kills it. The `\` at row 2, column 69 is never reached — the beam is one
+column to its left the whole way down. Killing the last laser triggers the
+tape dump, which prints byte 65 as `A`.
 
 ## Step by step
 

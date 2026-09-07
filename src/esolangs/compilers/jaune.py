@@ -23,51 +23,82 @@ _CALLED: frozenset[_Subr] = frozenset(("^", "v", "<"))
 def count(code: str, ind: int) -> tuple[int | str, int]:
     """Return the operand value at ``ind`` and the next index.
 
-    Handles run-lengths, signed ``+``/``-`` operands, and the marker commands
+    Handles digit-run operands, command run-lengths, and the marker commands
     ``: $ @ ? !`` whose operand is the preceding character.
+
+    A digit run is read *forward* and belongs to the operator that follows
+    it, which is how the interpreter's ``_parse`` reads it and what makes
+    each ``<digits><op>`` an independent command.  Reading a single digit
+    backwards instead -- and summing a chain of them -- is what made
+    ``10+`` an add of one and collapsed ``5+0+`` into a single add of five.
     """
 
-    def check(k: int, s: str) -> bool:
-        ch = code[k]
-        return ch.isnumeric() or ch in s
+    # ``at`` stands in for the trailing space this used to append: the scan
+    # reads one position of lookahead past the end, and appending a sentinel
+    # copied the whole program on every call, which is quadratic over a long
+    # program (as it measurably was in the Suffolk and Home Row compilers).
+    #
+    # The negative index is part of that contract, not an accident.  A sign
+    # at index 0 reads ``code[-1]`` for its operand, which on the *padded*
+    # string was the appended space -- so it must stay a space here rather
+    # than wrapping around to the program's own last character, which is
+    # what Python's negative indexing would otherwise give.
+    def at(k: int) -> str:
+        return code[k] if 0 <= k < len(code) else " "
 
     start = code[ind]
-    code += " "
     num = 0
 
+    if start.isdigit():
+        # A digit run is the operand of whatever operator follows it, which
+        # is how ``_parse`` reads it: scan the *whole* run forward, then
+        # attach it.  Reading a single digit backwards from the operator --
+        # what this did before -- made ``10+`` an add of 1 rather than 10,
+        # and let a chain like ``5+0+`` be summed into one command instead
+        # of the two the interpreter runs.
+        j = ind
+        while j < len(code) and code[j].isdigit():
+            j += 1
+        value = int(code[ind:j])
+        if at(j) in "+-":
+            # The sign belongs to the count, so the caller's ``c`` is the
+            # digit and the emitted step has to carry it.
+            return (value if at(j) == "+" else -value), j + 1
+        # A numbered marker (``: $ @ ? !``) keeps reading its operand from
+        # the preceding character, which ``prep`` has already renumbered
+        # into a single digit.  A bare number with no operator is a no-op
+        # in the interpreter, and falls through to one here.
+        return 0, j
+
     if start in "+-":
-        if (n := code[ind - 1]).isnumeric():
-            num = int(start + code[ind - 1])
-            while check(ind, "+-"):
-                x, y = code[ind], code[ind + 1]
-                if x.isnumeric() and y in "+-":
-                    num += int(y + x)
-                ind += 1
-        elif n != "v":
-            # A run like ``++++`` is one counted command of that length, as
-            # ``_parse`` reads it.  Only a ``v`` before the sign is the
-            # read-operand form; anything else starts a run, which used to
-            # report the preceding character as a ``v`` operand and emit an
-            # add of the (unread) input register instead of the count.
-            run = 0
-            while ind < len(code) and code[ind] == start:
-                run += 1
-                ind += 1
-            return (run if start == "+" else -run), ind
-        else:
+        if (n := at(ind - 1)) == "v":
             return n, ind + 1
-    elif start in ":$@?!":
-        num = -1 if (c := code[ind - 1]) == "v" else int(c) if c.isdigit() else -1
+        # A run like ``++++`` is one counted command of that length, as
+        # ``_parse`` reads it.  A digit before the sign was consumed by the
+        # digit arm above, which returns past the sign, so reaching here
+        # means the sign genuinely starts a run.
+        run = 0
+        while ind < len(code) and code[ind] == start:
+            run += 1
+            ind += 1
+        return (run if start == "+" else -run), ind
+    if start in ":$@?!":
+        # These still read a single preceding character, which is safe only
+        # because ``prep`` renumbers labels and routines from 0 upward: a
+        # program with ten or more of either would spell one ``10:`` and be
+        # read here as ``0:``.  Not reachable through ``prep`` today, and
+        # left alone rather than widened along with the counts above.
+        num = -1 if (c := at(ind - 1)) == "v" else int(c) if c.isdigit() else -1
         ind += 1
     else:
-        while code[ind] == start:
+        while at(ind) == start:
             num += 1
             ind += 1
         # A ``v`` immediately before ``+``/``-`` is that operator's operand,
         # not part of this run: ``_parse`` reads ``vv+`` as ``v`` then
         # ``v+``.  Counting it here looped the read an extra time and left
         # the second digit unused.
-        if start == "v" and num > 1 and code[ind] in "+-":
+        if start == "v" and num > 1 and at(ind) in "+-":
             num -= 1
             ind -= 1
 
@@ -133,6 +164,14 @@ def comp(code: str) -> str:
         "    .global _start\n"
         "_start:\n"
         "    addi s1, sp, -60\n"
+        # The tape floor, fixed once here.  ``left:`` used to recompute it
+        # as ``sp - 48`` at the moment of the move, which silently made the
+        # floor depend on whatever the stack pointer happened to be -- so a
+        # subroutine that saves ``ra`` (16 bytes) moved the floor four cells
+        # and ``<`` inside one landed a cell off.  Anchoring it in a saved
+        # register keeps the floor a property of the tape rather than of
+        # the call depth.
+        "    addi s0, sp, -48\n"
         "    li   s2, 0\n"
         "    li   s3, 1\n"
         "    li   s7, 0\n\n"
@@ -148,17 +187,42 @@ def comp(code: str) -> str:
         c = code[ind]
         num, new = count(code, ind)
 
+        # A digit run is not a command of its own: it is the operand of the
+        # operator that follows, and ``count`` has already returned past
+        # that operator.  Dispatch on the operator rather than on the digit
+        # -- ``10+`` is an add of ten, whose ``c`` would otherwise be "1".
+        # A digit run with no operator after it is the interpreter's
+        # bare-number no-op, which ``count`` reports as a zero step.
+        if c.isdigit():
+            # ``count`` returns past the sign when there is one, so the
+            # character just before ``new`` says whether this run was an
+            # operand or a bare number.  It cannot be read off ``num``: a
+            # zero count is a real ``0+``, which adds one.
+            sign = code[new - 1] if new and new <= len(code) else ""
+            if sign not in "+-":
+                ind = new  # a bare number: the interpreter ignores it
+                continue
+            c = sign
+
         # ``+``/``-`` is the only command whose operand can be a bare ``v``,
         # which ``count`` reports as a str; taking that arm first leaves
         # ``num`` narrowed to int for every command below.
         if c in "+-":
-            if num:
-                if isinstance(num, int):
-                    res += f"\tlw   t0, 0(s1)\n\taddi t0, t0, {num}\n\tsw   t0, 0(s1)\n"
-                elif c == "+":
-                    res += "\tlw   t0, 0(s1)\n\tadd  t0, t0, s7\n\tsw   t0, 0(s1)\n"
-                else:
-                    res += "\tlw   t0, 0(s1)\n\tsub  t0, t0, s7\n\tsw   t0, 0(s1)\n"
+            if isinstance(num, int):
+                # An explicit zero count means one, the same fallback the
+                # interpreter spells ``cells[ptr] + (cmd.arg or 1)``.  It has
+                # to be re-derived from ``c`` rather than left to ``num``,
+                # because ``count`` folds the sign into the value and
+                # ``int("-0")`` is ``0`` -- so a bare zero cannot say which
+                # direction it meant.  Only ``+``/``-`` take this fallback:
+                # a zero count on ``> < ^ &`` is a no-op in the interpreter
+                # too, checked against it rather than assumed.
+                step = num or (1 if c == "+" else -1)
+                res += f"\tlw   t0, 0(s1)\n\taddi t0, t0, {step}\n\tsw   t0, 0(s1)\n"
+            elif c == "+":
+                res += "\tlw   t0, 0(s1)\n\tadd  t0, t0, s7\n\tsw   t0, 0(s1)\n"
+            else:
+                res += "\tlw   t0, 0(s1)\n\tsub  t0, t0, s7\n\tsw   t0, 0(s1)\n"
             ind = new
             continue
 
@@ -202,7 +266,15 @@ def comp(code: str) -> str:
         elif c == ".":
             res += "\n\tli   a0, 0\n\tli   a7, 93\n\tecall\n"
         elif c == "$":
-            res += f"sub{add(num)}:\n"
+            # Save the return address on entry.  Every command that
+            # compiles to a ``call`` -- ``^ v < &`` and a nested ``@`` --
+            # overwrites ``ra``, so a subroutine containing one used to
+            # ``ret`` back into its own body and spin there forever.
+            # ``1$#<&;`` was the program that showed it; ``^``, ``v``, a
+            # looped ``&`` and a nested ``@`` all hang the same way, which
+            # is why this sits at the subroutine boundary rather than in
+            # any one routine.  Same idiom as ``output:`` and ``mult:``.
+            res += f"sub{add(num)}:\n\taddi sp, sp, -16\n\tsd   ra, 8(sp)\n"
         elif c == "@":
             if num >= 0:
                 res += f"\tcall sub{add(num)}\n"
@@ -210,7 +282,7 @@ def comp(code: str) -> str:
                 res += "\tcall switch\n"
                 inp[1] = True
         elif c == ";":
-            res += "\tret\n"
+            res += "\tld   ra, 8(sp)\n\taddi sp, sp, 16\n\tret\n"
         elif c == "%":
             res += "\tsw   zero, 0(s1)\n"
 
@@ -353,9 +425,8 @@ def comp(code: str) -> str:
             "\nleft:\n"
             "\tslli t0, s3, 2\n"
             "\tadd  s1, s1, t0\n"
-            "\taddi t1, sp, -48\n"
-            "\tbge  t1, s1, .left_done\n"
-            "\tmv   s1, t1\n"
+            "\tbge  s0, s1, .left_done\n"
+            "\tmv   s1, s0\n"
             ".left_done:\n"
             "\tret\n"
         )

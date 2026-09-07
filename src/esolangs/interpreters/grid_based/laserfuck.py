@@ -203,7 +203,15 @@ class _Machine:
         #: the beam itself under each of the four headings.
         self.start = (0, 0)
 
-        self.lsrs: list[list[int]] = []
+        # Beams are held as the tuples ``_Beams`` is made of, not as
+        # lists.  The list store meant ``_state`` rebuilt every beam as a
+        # tuple and ``_restore`` rebuilt every one back as a list, once
+        # per step each -- 46% of a run over the hello-world program,
+        # measured -- to hold a value nothing mutates in place: ``*`` and
+        # ``x`` add and drop whole beams, and a moved beam is assigned
+        # over, never edited.  The list around them stays, since the
+        # round-robin index has to survive that growing and shrinking.
+        self.lsrs: list[tuple[int, int, int]] = []
         for row, line in enumerate(self.text):
             for col, c in enumerate(line):
                 if c == "o":
@@ -214,7 +222,7 @@ class _Machine:
                     # secret.
                     d = draw(rng, 4)
                     self.start = (row, col)
-                    self.lsrs.append([row, col, d])
+                    self.lsrs.append((row, col, d))
                     self.pos = (row, col, d)
 
     @property
@@ -247,7 +255,7 @@ class _Machine:
             self.tape,
             self.jmp,
             self.ind,
-            tuple(tuple(laser) for laser in self.lsrs),
+            tuple(self.lsrs),
             self.io.position(),
         )
 
@@ -346,7 +354,7 @@ class _Machine:
         return (
             self.tape,
             self.ptr,
-            tuple((r, c, d) for r, c, d in self.lsrs),
+            tuple(self.lsrs),
             self.ind,
             self.jmp,
             self.pos,
@@ -361,7 +369,7 @@ class _Machine:
         """
         tape, self.ptr, lsrs, self.ind, self.jmp, self.pos = state
         self.tape = tape
-        self.lsrs = [list(laser) for laser in lsrs]
+        self.lsrs = list(lsrs)
 
     def step(self) -> None:
         """Move the active laser one step, dumping the tape once halted.
@@ -393,7 +401,7 @@ class _Machine:
 
         if self.jmp:
             self.jmp = False
-            self.lsrs[self.ind] = [row, col, d]
+            self.lsrs[self.ind] = (row, col, d)
             self.ind = (self.ind + 1) % len(self.lsrs)
             return
 
