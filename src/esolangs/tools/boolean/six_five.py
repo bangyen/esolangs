@@ -16,7 +16,6 @@ assembler were retired.
 """
 
 import string
-from contextlib import suppress
 from itertools import permutations
 from math import factorial
 
@@ -75,7 +74,7 @@ def six_five(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    Both constructions are decision trees over ``78``: the ``7`` compares the
+    The construction is a decision tree over ``78``: the ``7`` compares the
     cell to 8, so a zero bit skips the following ``8n`` jump and falls into
     the left subtree, while a one bit takes the jump to the n-th ``4`` marker
     holding the right subtree.  A leaf adds ``48 + value - base`` (8 for a
@@ -84,23 +83,10 @@ def six_five(truth_table: str) -> str:
     halts with ``0``.  A subtree whose rows all hold the same value folds to
     a single leaf rather than the branches that would all reach it.
 
-    What differs is where the reads sit.  :func:`_six_five_node_read` reads
-    at the node that tests the bit, which forces the tree to test its inputs
-    in stream order.  :func:`_six_five_hoisted` reads every input up front
-    into a cell of its own, which lets a node test *any* input and so lets
-    the tree split in whichever order folds best -- 6-5 has a tape and a
-    pointer (``B`` reads the current cell, ``1``/``3`` move it), so the read
-    order and the test order are independent.
-
-    **The shortest of both constructions over every input order wins.**  The
-    hoist is not free -- it pays a pointer move per node and eight ``2``s per
-    stored input where the node-read tree normalizes in place -- so on small
-    or shallow tables it loses to the tree it replaces (at n == 3 the
-    hoisted identity order is longer than the node-read build on 96 of 256
-    tables).  Keeping the node-read build as one more candidate is what makes
-    this a pure shrink: measured over all 256 tables at n == 3 the dispatch
-    is 18.1% shorter, improving 186 and growing none, and 23.6% shorter over
-    a sample at n == 4.
+    The identity order reads and tests in place. A reordered tree stores its
+    inputs first, then tests any cell. 6-5 has a tape and pointer (``B``,
+    ``1``/``3``), so one ordered builder covers both cases. Every order is
+    measured and the shortest emitted program wins.
 
     The branch labels are the digits 0..9 then A..Z (values 1..35, consumed
     as ``8n`` operands), one per internal node the fold leaves standing.
@@ -131,12 +117,6 @@ def six_five(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     best = ""
-    # The node-read build goes first and ties keep it, so a table no hoist
-    # and no reorder improves emits exactly what it emitted before.  It
-    # raises on a table whose identity tree overflows the budget, which is
-    # not a refusal of the *table* any more -- another order may still fit.
-    with suppress(ValueError):
-        best = _six_five_node_read(truth_table)
     identity = tuple(range(n))
     # The same cap ``best_input_order`` uses, for the same reason: ``n!``
     # builds of an ``O(2**n)`` program does not announce itself.  This
@@ -202,6 +182,8 @@ def _six_five_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
     n = _validate_truth_table(truth_table)
     if _six_five_markers(truth_table) > 35:
         return ""
+    if perm == tuple(range(n)):
+        return _six_five_stream_ordered(truth_table)
     stored = stored_inputs(truth_table, perm)
     # Reads run in input order; only a stored input claims a cell, so the
     # kept bits occupy a contiguous block from cell 0 and every clobbered
@@ -275,7 +257,7 @@ def _six_five_move(frm: int, to: int) -> str:
     return "3" * (frm - to)
 
 
-def _six_five_node_read(truth_table: str) -> str:
+def _six_five_stream_ordered(truth_table: str) -> str:
     """Emit the read-at-the-node 6-5 program; see :func:`six_five`.
 
     Each input is read with ``B`` at the node that tests it and normalized in

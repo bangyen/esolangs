@@ -11,7 +11,6 @@ from esolangs.tools.boolean.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.tools.wrap import shortest
 
 __all__ = ["super_snusp"]
 
@@ -44,7 +43,9 @@ def _move(start: int, end: int) -> str:
     return (">" if end > start else "<") * abs(end - start)
 
 
-def _emit_anf(n: int, truth_table: str, used: list[int]) -> str:
+def _emit_anf(
+    n: int, truth_table: str, used: list[int], *, coefficients: list[int] | None = None
+) -> str:
     """Emit an ANF evaluator over ``used`` stream inputs."""
     program = ['"', "48{"]
     for input_index in range(n):
@@ -59,7 +60,9 @@ def _emit_anf(n: int, truth_table: str, used: list[int]) -> str:
     if not used or used[-1] != n - 1:
         program.append("0")
     product = len(used) + 1
-    coefficients = _anf_coefficients(truth_table)
+    coefficients = (
+        _anf_coefficients(truth_table) if coefficients is None else coefficients
+    )
     if coefficients[0]:
         program.append(")")
 
@@ -86,6 +89,33 @@ def _emit_anf(n: int, truth_table: str, used: list[int]) -> str:
     return "".join(program)
 
 
+def _anf_cost(
+    n: int,
+    truth_table: str,
+    used: list[int],
+    *,
+    coefficients: list[int] | None = None,
+) -> int:
+    """Return the rendered length of :func:`_emit_anf` without emitting it."""
+    cost = 4 + 2 * n + len(used) + 7
+    if not used or used[-1] != n - 1:
+        cost += 1
+    coefficients = (
+        _anf_coefficients(truth_table) if coefficients is None else coefficients
+    )
+    cost += coefficients[0]
+    product = len(used) + 1
+    for mask, coefficient in enumerate(coefficients[1:], start=1):
+        if not coefficient:
+            continue
+        cost += 5  # ``>1`` then ``{<^`` around the product.
+        for input_index in range(len(used)):
+            table_bit = 1 << (len(used) - 1 - input_index)
+            if mask & table_bit:
+                cost += 2 * (product - input_index) + 2
+    return cost
+
+
 def super_snusp(truth_table: str) -> str:
     """Build a deterministic Super SNUSP program for ``truth_table``.
 
@@ -103,8 +133,15 @@ def super_snusp(truth_table: str) -> str:
         return '"' + _TWO_INPUT_SHORT[truth_table]
 
     used = essential_inputs(truth_table, n)
+    full = list(range(n))
+    if len(used) == n:
+        return _emit_anf(n, truth_table, full)
     reduced = read_at(truth_table, used, n)
-    return shortest(
-        _emit_anf(n, truth_table, list(range(n))),
-        _emit_anf(n, reduced, used),
+    full_coefficients = _anf_coefficients(truth_table)
+    reduced_coefficients = _anf_coefficients(reduced)
+    return (
+        _emit_anf(n, truth_table, full, coefficients=full_coefficients)
+        if _anf_cost(n, truth_table, full, coefficients=full_coefficients)
+        <= _anf_cost(n, reduced, used, coefficients=reduced_coefficients)
+        else _emit_anf(n, reduced, used, coefficients=reduced_coefficients)
     )

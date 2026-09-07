@@ -474,8 +474,8 @@ def unsquare(truth_table: str) -> str:
     # before.
     arrangements = _unsquare_stack_programs(n)
 
-    def build_from(arrangement: tuple[int, ...]) -> str:
-        """Emit the program whose stack ends in ``arrangement``."""
+    def candidate_from(arrangement: tuple[int, ...]) -> tuple[int, str, str]:
+        """Price the program whose stack ends in ``arrangement``."""
         # The tree pops LIFO, so an arrangement tests its inputs in reverse.
         # ``permute_truth_table`` puts the input tested at level ``k`` in the
         # table's ``k``-th *most* significant bit, but this tree splits on
@@ -484,11 +484,12 @@ def unsquare(truth_table: str) -> str:
         # the two frames; without it a table is read against the wrong axis
         # and the program computes a different function.
         table = permute_truth_table(truth_table, arrangement)
-        return arrangements[arrangement] + _unsquare_tree(table, n)
+        prefix = arrangements[arrangement]
+        return _unsquare_cost(table, n, prefix), table, prefix
 
     # The natural order is the identity arrangement, which the product always
     # reaches (every sink can be zero), so this needs no reachability check.
-    best = build_from(tuple(range(n)))
+    best: tuple[int, str, str] | None = None
     # Iterate the *reachable* arrangements rather than all ``n!`` orders:
     # only ``2 * 3**(n - 2)`` of them can be built, so this is the candidate
     # set rather than a filter over a much larger one.  (The unreachable
@@ -499,15 +500,16 @@ def unsquare(truth_table: str) -> str:
     # n == 10 is 18 seconds of a call that is milliseconds at n == 6.  Above
     # the cap only the natural order is emitted, which is what this generator
     # produced before reordering existed -- never worse, just unimproved.
-    if n > _ORDER_SEARCH_MAX:
-        return best
     for arrangement in arrangements:
-        if arrangement == tuple(range(n)):
+        if n > _ORDER_SEARCH_MAX and arrangement != tuple(range(n)):
             continue
-        other = build_from(arrangement)
-        if len(other) < len(best):
-            best = other
-    return best
+        candidate = candidate_from(arrangement)
+        if best is None or candidate[0] < best[0]:
+            best = candidate
+    if best is None:  # pragma: no cover - the identity arrangement is reachable
+        raise RuntimeError("Unsquare's identity stack arrangement is missing")
+    _, table, prefix = best
+    return prefix + _unsquare_tree(table, n)
 
 
 # The read that pushes one normalized input bit.
@@ -577,6 +579,20 @@ def _unsquare_stack_programs(n: int) -> dict[tuple[int, ...], str]:
             ):
                 reached[stack] = text
     return reached
+
+
+def _unsquare_cost(truth_table: str, n: int, prefix: str) -> int:
+    """Return one Unsquare candidate's exact rendered length without emitting it."""
+    _validate_truth_table(truth_table)
+
+    def cost(rows: list[int], bit: int) -> int:
+        if len({truth_table[row] for row in rows}) == 1:
+            return 29
+        ones = [row for row in rows if (row >> bit) & 1]
+        zeros = [row for row in rows if not (row >> bit) & 1]
+        return 17 + cost(ones, bit + 1) + cost(zeros, bit + 1)
+
+    return len(prefix) + cost(list(range(2**n)), 0) + 1
 
 
 def _unsquare_tree(truth_table: str, n: int) -> str:

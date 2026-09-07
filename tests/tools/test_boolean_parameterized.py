@@ -2063,6 +2063,28 @@ class TestEvalBoolean:
             improved += dispatched < staged
         assert improved == 114
 
+    def test_reorder_cost_selects_the_emitted_template(self) -> None:
+        """The pricing model matches every candidate and picks the shortest."""
+        from esolangs.tools import boolean
+        from esolangs.tools.boolean.helpers import permute_truth_table
+        from esolangs.tools.boolean.parameterized import (
+            _eval_cost,
+            _eval_ordered,
+            _eval_stack_programs,
+        )
+
+        for n in (1, 2, 3):
+            for value in range(2 ** (2**n)):
+                table = format(value, f"0{2**n}b")
+                costs = []
+                for arrangement, ops in _eval_stack_programs(n).items():
+                    permuted = permute_truth_table(table, tuple(reversed(arrangement)))
+                    assert _eval_cost(permuted, ops) == len(
+                        _eval_ordered(permuted, ops)
+                    )
+                    costs.append(_eval_cost(permuted, ops))
+                assert len(boolean.eval(table)) == min(costs)
+
     def test_reorder_ops_run_outside_the_placeholders(self) -> None:
         """The rearrangement is emitted code, not a change to the fills.
 

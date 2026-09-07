@@ -361,18 +361,45 @@ def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
     # the arrangement reversed.  Staging pushes X0 first, so the free
     # arrangement is ``(0, ..., n-1)`` and its split order is the reversal
     # -- which is why the no-ops candidate is not the identity permutation.
-    best = ""
+    best: tuple[int, str, str] | None = None
     for arrangement, ops in sorted(
         _eval_stack_programs(n).items(), key=lambda item: len(item[1])
     ):
         perm = tuple(reversed(arrangement))
-        candidate = _eval_ordered(permute_truth_table(truth_table, perm), ops)
+        table = permute_truth_table(truth_table, perm)
+        candidate = (_eval_cost(table, ops), table, ops)
         # Sorted by op cost with the free arrangement first, and the
         # comparison is strict, so a table no reorder helps emits exactly
         # what it emitted before.
-        if not best or len(candidate) < len(best):
+        if best is None or candidate[0] < best[0]:
             best = candidate
-    return best
+    if best is None:  # pragma: no cover - the free arrangement is always reachable
+        raise RuntimeError("Eval's free stack arrangement is missing")
+    _, table, ops = best
+    return _eval_ordered(table, ops)
+
+
+def _eval_cost(truth_table: str, ops: str) -> int:
+    """Return :func:`_eval_ordered`'s exact rendered length without emitting it."""
+    n = _validate_truth_table(truth_table)
+    slots = 2 ** (n + 1) - 1
+
+    def tree_cost(index: int, first: int, width: int) -> int:
+        values = truth_table[first : first + width]
+        if width == 1 or len(set(values)) == 1:
+            return 3 if values[0] == "1" else 2
+        half = width // 2
+        return (
+            index
+            + 6
+            + tree_cost(2 * index + 1, first, half)
+            + tree_cost(2 * index + 2, first + half, half)
+        )
+
+    bits = sum(len(str(i)) + 3 for i in range(n))
+    # Every positional heap slot remains quoted, including descendants of a
+    # folded node, whose empty strings cost just their two quote marks.
+    return int(bits + len(ops) + 2 * slots + tree_cost(0, 0, 2**n) + 2)
 
 
 def _eval_ordered(truth_table: str, ops: str) -> str:

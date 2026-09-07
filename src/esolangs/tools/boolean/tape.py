@@ -678,24 +678,20 @@ def sbleq(truth_table: str) -> str:
     opposite sides of zero.
 
     **The reads are hoisted above the tree**, which is what lets the tree
-    split in any input order.  The read block is ``2n`` instructions, two
-    per input::
+    split in any input order. The read block is one instruction per input::
 
         v_i -2   NXT    # v_i = -byte (always <= 0, so NXT is the next instr)
-        v_i NEG49 NXT2  # v_i = 49 - byte; both outcomes continue to the next
 
-    and a branch node is then a *single* instruction that tests its value
-    cell against a zero constant::
+    A branch then normalizes and tests that stored value in one destructive
+    instruction::
 
-        v_j ZERO ONE    # a one jumps to ONE, a zero falls through
+        v_j NEG49 ONE   # a one jumps to ONE, a zero falls through
 
-    Subtracting zero is what makes the test **non-destructive**, so a value
-    cell survives being tested and the tree may name its inputs in any
-    order.  A destructive test would also work -- a root-to-leaf path tests
-    each input at most once -- but only by accident of the tree's shape, and
-    it would break the moment a node wanted to re-test a bit.
+    The tree tests each input at most once on every root-to-leaf path, so the
+    destructive branch is safe. This removes the separate normalization and
+    its continuation address without limiting input order.
 
-    Hoisting is a saving in its own right, independent of the reorder.  The
+    Hoisting is a saving in its own right, independent of the reorder. The
     node-read build it replaces read at each node, so every leaf had to
     *drain* the reads its untaken siblings never made -- an input-capable
     language reads each of its n inputs exactly once per run whatever the
@@ -710,7 +706,7 @@ def sbleq(truth_table: str) -> str:
     S*bleq's operands are addresses, so a cell holding a transient 0/1 is
     misread as a jump target if any ``c`` references it.  The generator
     therefore keeps *constant* cells (``NEG49``, ``D48``, ``D49``, ``HALT``,
-    ``ZERO``, and the ``NXT``/``NXT2``/``ONE`` targets, the only cells ever
+    and the ``NXT``/``ONE`` targets, the only cells ever
     used as a ``c`` operand) strictly separate from *value* cells (each
     input's ``v``, written by the read and never used as a ``c`` operand).
     The jump targets are back-patched once the code layout is known.  The
@@ -718,20 +714,12 @@ def sbleq(truth_table: str) -> str:
     ``store="b"``/``"ab"`` variants would overwrite, so this generator
     targets base S*bleq (``store="a"``).
 
-    **Both constructions are kept as candidates** (technique 4).  Hoisting
-    wins on 254 of the 256 tables at n=3, but the two constant tables are
-    the exception: the node-read build folds them to a single leaf whose
-    drain *is* the whole program, which comes out one character shorter than
-    a read block for inputs no branch ever tests.  Keeping the older build
-    in the dispatch is what makes this a pure shrink -- 24.65% at n=3 with
-    nothing grown, against 24.64% if the hoisted build replaced it outright.
+    The node-read form is now redundant: the hoisted route has the same
+    one-instruction read-and-test shape at a node but shares its input reads
+    across the tree. It handles every table alone.
     """
     _validate_truth_table(truth_table)
-    return min(
-        best_input_order(truth_table, _sbleq_hoisted),
-        _sbleq_node_read(truth_table),
-        key=len,
-    )
+    return best_input_order(truth_table, _sbleq_hoisted)
 
 
 def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
@@ -742,8 +730,8 @@ def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
     as the node-read build did.
     """
     n = _validate_truth_table(truth_table)
-    neg49, d48, zero_const = 0, 1, 4
-    vbase = 5
+    neg49, d48 = 0, 1
+    vbase = 4
     nxtbase = vbase + n
     del d48
 
@@ -754,7 +742,6 @@ def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
 
     for i in range(n):
         instructions.append((vbase + i, -2, "nxt", i))
-        instructions.append((vbase + i, neg49, "nxt2", i))
 
     def build(level: int, rows: list[int]) -> None:
         results = {truth_table[r] for r in rows}
@@ -764,7 +751,7 @@ def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
             return
         slot = len(ones)
         ones.append(0)
-        instructions.append((vbase + perm[level], zero_const, "one", slot))
+        instructions.append((vbase + perm[level], neg49, "one", slot))
         bit = n - 1 - level
         build(level + 1, [r for r in rows if not ((r >> bit) & 1)])
         ones[slot] = 3 * len(instructions)
@@ -772,9 +759,7 @@ def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
 
     build(0, list(range(2**n)))
 
-    m = len(ones)
     onebase = nxtbase + n
-    nxt2base = onebase + m
     data_base = 3 * len(instructions)
 
     cells: list[int] = []
@@ -785,82 +770,15 @@ def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
             cells += [0, 0, data_base + 3]
         elif kind == "nxt":
             cells += [data_base + a, -2, data_base + nxtbase + arg]
-        elif kind == "nxt2":
-            cells += [data_base + a, data_base + b, data_base + nxt2base + arg]
         else:
             cells += [data_base + a, data_base + b, data_base + onebase + arg]
 
     data = (
-        [-_ASCII_ONE, _ASCII_ZERO, _ASCII_ONE, -1, 0]
+        [-_ASCII_ONE, _ASCII_ZERO, _ASCII_ONE, -1]
         + [0] * n
-        + [3 * (2 * i + 1) for i in range(n)]
+        + [3 * (i + 1) for i in range(n)]
         + ones
-        + [3 * (2 * i + 2) for i in range(n)]
     )
-    cells += data
-    return " ".join(map(str, cells))
-
-
-def _sbleq_node_read(truth_table: str) -> str:
-    """Emit the node-read S*bleq program; see :func:`sbleq`.
-
-    Each node reads its own bit, so every leaf drains the reads its untaken
-    siblings never made.  Kept as a candidate because that drain is cheaper
-    than a read block on a table no node ever branches on -- the constant
-    tables, where the whole program is one leaf.
-    """
-    n = _validate_truth_table(truth_table)
-
-    instructions: list[tuple[int, int, int]] = []
-    nodes: list[tuple[int, int, int]] = []  # (v offset, normalize addr, one addr)
-    counter = 0
-
-    def build(level: int, rows: list[int]) -> None:
-        nonlocal counter
-        results = {truth_table[r] for r in rows}
-        if len(results) == 1:
-            instructions.append((-3, 1 + int(results.pop()), 0))
-            for _ in range(level, n):
-                nid = counter
-                counter += 1
-                instructions.append((4 + nid, -2, 0))  # read; c patched to NXT
-                normalize_addr = 3 * len(instructions)
-                instructions.append((4 + nid, 0, 0))  # normalize; patched below
-                nodes.append((nid, normalize_addr, 3 * len(instructions)))
-            instructions.append((0, 0, 3))
-            return
-        nid = counter
-        counter += 1
-        instructions.append((4 + nid, -2, 0))  # read; c patched to this node's NXT
-        normalize_addr = 3 * len(instructions)
-        instructions.append((4 + nid, 0, 0))  # normalize; b and c patched below
-        zero = [r for r in rows if not ((r >> (n - 1 - level)) & 1)]
-        one = [r for r in rows if (r >> (n - 1 - level)) & 1]
-        build(level + 1, zero)
-        one_addr = 3 * len(instructions)
-        build(level + 1, one)
-        nodes.append((nid, normalize_addr, one_addr))
-
-    build(0, list(range(2**n)))
-
-    m = len(nodes)
-    for nid, normalize_addr, _one_addr in nodes:
-        instructions[normalize_addr // 3 - 1] = (4 + nid, -2, 4 + m + nid)
-        instructions[normalize_addr // 3] = (4 + nid, 0, 4 + 2 * m + nid)
-
-    data_base = 3 * len(instructions)
-    cells: list[int] = []
-    for a, b, c in instructions:
-        if a == -3:  # output the constant at b
-            cells += [-3, data_base + b, 0]
-        elif a == 0 and b == 0:  # halt via the HALT constant at c
-            cells += [0, 0, data_base + c]
-        else:  # read/normalize: make every data-cell operand absolute
-            cells += [data_base + a, -2 if b == -2 else data_base + b, data_base + c]
-    data = [-_ASCII_ONE, _ASCII_ZERO, _ASCII_ONE, -1] + [0] * (3 * m)
-    for nid, normalize_addr, one_addr in nodes:
-        data[4 + m + nid] = normalize_addr
-        data[4 + 2 * m + nid] = one_addr
     cells += data
     return " ".join(map(str, cells))
 
@@ -1124,6 +1042,40 @@ def jaune_multiply() -> str:
     return "".join(out)
 
 
+def _suffolk_candidate_cost(truth_table: str, wanted: str, *, invert: bool) -> int:
+    """Return the rendered length of one non-constant Suffolk polarity."""
+    n = _validate_truth_table(truth_table)
+    used = essential_inputs(truth_table, n) or [0]
+    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
+    width = len(used)
+
+    # ``const(gap, value)`` is ``value`` copies of ``'>' * gap + '!'``.
+    cost = 2 * _ASCII_ONE
+    for i in range(n):
+        gap = 2 + i
+        cost += (gap + 1) * _ASCII_ZERO + gap + 2
+    for i in range(n):
+        gap = 2 + i
+        raw_gap = 2 + n + i
+        cost += gap + raw_gap + 2
+
+    cells: list[int] = []
+    next_cell = 2 + 2 * n
+    for row in range(2**width):
+        if reduced[row] != wanted:
+            continue
+        for slot in range(width):
+            bit = (row >> (width - 1 - slot)) & 1
+            literal = 2 + used[slot] if bit else 2 + n + used[slot]
+            cost += literal + 1
+        cost += next_cell + 1
+        cells.append(next_cell)
+        next_cell += 1
+
+    cost += sum(cell + 1 for cell in cells)
+    return cost + (5 if invert else 3)
+
+
 def suffolk(truth_table: str) -> str:
     """Build a Suffolk program computing the given truth table.
 
@@ -1149,14 +1101,10 @@ def suffolk(truth_table: str) -> str:
     the accumulator only has to hold 50 (all-ones, prints ``49``) or 49
     (all-zeros, prints ``48``) at the print.
 
-    A table with more ones than zeros is evaluated from its **zero** rows
-    and the answer inverted, which costs one minterm block per row less.
-    Both polarities are built and the shorter returned, rather than counting
-    rows: the two are not symmetric, since a complement literal sits at a
-    nearer cell than a raw one and every ``>`` run is paid per unit.  The
-    saving averages 5.1% over every table at ``n == 3`` and reaches 45% on
-    the densest tables at ``n == 4``.  ``_maybe_complement`` is deliberately
-    not used -- its all-ones case complements to *no* minterms, which the
+    A table can be evaluated from its zero rows and the answer inverted.
+    The exact rendered cost of both polarities is counted first, so only the
+    shorter program is built.  ``_maybe_complement`` is deliberately not
+    used -- its all-ones case complements to *no* minterms, which the
     constant-table branch above already handles better.
     """
     n = _validate_truth_table(truth_table)
@@ -1251,6 +1199,11 @@ def suffolk(truth_table: str) -> str:
         body += ">" + "<"
         return body + "."
 
-    plain = evaluate("1", invert=False)
-    flipped = evaluate("0", invert=True)
-    return min(plain, flipped, key=len)
+    plain_cost = _suffolk_candidate_cost(truth_table, "1", invert=False)
+    flipped_cost = _suffolk_candidate_cost(truth_table, "0", invert=True)
+    # ``min((plain, flipped), key=len)`` previously retained plain on ties.
+    return (
+        evaluate("1", invert=False)
+        if plain_cost <= flipped_cost
+        else evaluate("0", invert=True)
+    )
