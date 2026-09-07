@@ -94,19 +94,32 @@ def count(code: str, ind: int) -> tuple[int | str, int]:
         while at(ind) == start:
             num += 1
             ind += 1
-        # A ``v`` immediately before ``+``/``-`` is that operator's operand,
-        # not part of this run: ``_parse`` reads ``vv+`` as ``v`` then
-        # ``v+``.  Counting it here looped the read an extra time and left
-        # the second digit unused.
-        if start == "v" and num > 1 and at(ind) in "+-":
+        # A ``v`` immediately before an operator that takes a number is that
+        # operator's operand, not part of this run: ``_parse`` reads ``vv+``
+        # as ``v`` then ``v+``, and ``vv?`` as ``v`` then ``v?``.  Counting
+        # it here looped the read an extra time and left the second digit
+        # unused.
+        if start == "v" and num > 1 and at(ind) in "+-?!@":
             num -= 1
             ind -= 1
 
     return num, ind
 
 
-def prep(code: str) -> tuple[str, list[int], list[int]]:
-    """Filter to the command alphabet and assign labels to jumps/routines."""
+def prep(
+    code: str,
+) -> tuple[str, list[int], list[int], dict[str, list[tuple[int, int]]]]:
+    """Filter to the command alphabet and assign labels to jumps/routines.
+
+    The fourth element is what a *computed* jump or call needs: the numbers
+    the source spelled, paired with the ones they were renumbered to, under
+    ``":"`` for labels and ``"$"`` for subroutines.  A static ``1@`` is
+    rewritten to the new number at compile time and never needs it, but
+    ``v@`` compares an input digit against what the program spelled, so the
+    switch has to know both.  It is a list of pairs rather than a dict
+    because a *run* of adjacent markers (``1:2:``) collapses to a single
+    label, leaving several originals sharing one renumbered target.
+    """
 
     def rep(sym: str) -> str:
         return sub(r"\d[?!]", "", sym)
@@ -117,6 +130,7 @@ def prep(code: str) -> tuple[str, list[int], list[int]]:
 
     jump: list[int] = []
     rout: list[int] = []
+    spelled: dict[str, list[tuple[int, int]]] = {":": [], "$": []}
 
     for c in ":$":
         esc = "\\$" if c == "$" else c
@@ -129,6 +143,8 @@ def prep(code: str) -> tuple[str, list[int], list[int]]:
             plus = num[-1] + 1 if num else 0
             num.append(plus)
             m = str(plus)
+
+            spelled[c].extend((int(n), plus) for n in lst)
 
             for n in lst:
                 for k in opr:
@@ -146,7 +162,7 @@ def prep(code: str) -> tuple[str, list[int], list[int]]:
 
         code = code.replace(s, repl)
 
-    return code, jump, rout
+    return code, jump, rout, spelled
 
 
 def comp(code: str) -> str:
@@ -155,7 +171,7 @@ def comp(code: str) -> str:
     def add(m: int) -> str:
         return str(m + 1) if m else ""
 
-    code, jump, rout = prep(code)
+    code, jump, rout, spelled = prep(code)
     inp = [False, False]
     ind = 0
 
@@ -236,12 +252,16 @@ def comp(code: str) -> str:
                 routine.looped = True
             res += f"\tcall {routine.label}\n"
             routine.used = True
-            if c == "v" and code[new : new + 1] not in ("+", "-"):
+            if c == "v" and code[new : new + 1] not in ("+", "-", "?", "!", "@"):
                 # A bare ``v`` stores what it read: ``_advance`` does
                 # ``_set(cells, ptr, value)``, so ``v^`` prints the digit.
                 # The store is here rather than inside ``input:`` because
-                # ``v+``/``v-`` reach the same routine for their operand and
-                # must leave the cell alone, adding ``s7`` to what is there.
+                # every operator taking a read operand reaches the same
+                # routine and must leave the cell alone: ``v+``/``v-`` add
+                # ``s7`` to what is there, and ``v?``/``v!``/``v@`` select
+                # on it without touching the tape.  Storing for those three
+                # put the digit in cell 0, which is what made ``v@`` print
+                # its own input instead of calling the subroutine it names.
                 res += "\tsw   s7, 0(s1)\n"
         elif c == "&":
             if num > 1:
@@ -261,6 +281,12 @@ def comp(code: str) -> str:
             if num >= 0:
                 res += f"\t{jcc} t0, .label{add(num)}\n"
             else:
+                # The ``v`` before the marker is its own command and has
+                # already emitted the read, leaving the digit in ``s7`` for
+                # the switch to select on -- the same division of labour
+                # ``v+`` uses.  Because that read runs before the branch is
+                # tested, the digit is consumed whether or not the jump is
+                # taken, which is the interpreter's rule too.
                 res += f"\t{jcc} t0, .switch\n"
                 inp[0] = True
         elif c == ".":
@@ -279,6 +305,8 @@ def comp(code: str) -> str:
             if num >= 0:
                 res += f"\tcall sub{add(num)}\n"
             else:
+                # As with ``v?`` above, the preceding ``v`` has already read
+                # the digit ``switch`` selects on.
                 res += "\tcall switch\n"
                 inp[1] = True
         elif c == ";":
@@ -288,25 +316,40 @@ def comp(code: str) -> str:
 
         ind = new
 
+    # The switches select on ``s7``, the digit the preceding ``v`` read, and
+    # so compare against the numbers the *source* spelled rather than the
+    # ones ``prep`` renumbered to: a program naming label 3 is asking for
+    # the input 3, whatever index the label ended up with.  Comparing the
+    # renumbered index instead is what made every computed jump miss.
+    #
+    # An input naming no label or no subroutine falls through: the call
+    # switch returns and the jump switch continues at the branch, where the
+    # interpreter raises ``HaltError`` instead.  The compiled program has no
+    # error path to raise on, so this stays a documented divergence rather
+    # than an emitted trap.
     if jump and inp[0]:
         res += "\n.switch:\n"
-        for k in jump[:-1]:
-            res += f"\tli   t0, {k}\n\tbeq  s7, t0, .lab{add(k)}\n"
-        for k in jump[::-1]:
-            n = add(k)
-            if k != jump[-1]:
-                res += f".lab{n}:\n"
-            res += f"\tj .label{n}\n"
+        for spell, k in spelled[":"]:
+            res += f"\tli   t0, {spell}\n\tbeq  s7, t0, .lab{add(k)}\n"
+        res += "\tj .switch_end\n"
+        for k in jump:
+            res += f".lab{add(k)}:\n\tj .label{add(k)}\n"
+        res += ".switch_end:\n"
     if rout and inp[1]:
-        res += "\nswitch:\n"
-        for k in rout[:-1]:
-            res += f"\tli   t0, {k}\n\tbeq  s7, t0, .sub{add(k)}\n"
-        res += "\tret\n"
-        for k in rout[::-1]:
-            n = add(k)
-            if k != rout[-1]:
-                res += f".sub{n}:\n"
-            res += f"\tcall sub{n}\n\tret\n"
+        # ``switch`` is itself reached by ``call``, and each arm below is a
+        # further ``call`` that overwrites ``ra`` -- the same clobber the
+        # ``$`` prologue fixes for a subroutine body.  Without a frame here
+        # the arm's ``ret`` returns into ``switch`` rather than to the
+        # caller and the program spins, which is what ``v@`` did.
+        res += "\nswitch:\n\taddi sp, sp, -16\n\tsd   ra, 8(sp)\n"
+        for spell, k in spelled["$"]:
+            res += f"\tli   t0, {spell}\n\tbeq  s7, t0, .sub{add(k)}\n"
+        res += "\tld   ra, 8(sp)\n\taddi sp, sp, 16\n\tret\n"
+        for k in rout:
+            res += (
+                f".sub{add(k)}:\n\tcall sub{add(k)}\n"
+                "\tld   ra, 8(sp)\n\taddi sp, sp, 16\n\tret\n"
+            )
 
     def end(opr: _Subr) -> str:
         if subr[opr].looped:
