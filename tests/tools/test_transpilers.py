@@ -404,23 +404,38 @@ def test_decleq_transpiler_is_total() -> None:
         esolangs.transpile("Decleq", "S*bleq", "1 x 3")
 
 
-def test_decleq_empty_input_line_is_a_target_language_collision() -> None:
-    """An empty input line is the one thing S*bleq cannot represent.
+def test_decleq_end_of_input_is_a_target_language_collision() -> None:
+    """End-of-input is the one thing S*bleq cannot represent.
 
-    Decleq's reader turns an empty line into ``10`` (the newline that ended
-    it) and a ``"\x00"`` line into ``0``.  S*bleq's only input primitive,
-    address ``-2``, yields ``0`` for *both* -- two inputs reaching one
-    value.  Every S*bleq computation is a function of the values it reads,
-    so no S*bleq program can separate them and no translation can either;
-    the same collision sends end-of-input to ``0`` where Decleq raises
-    ``EOFError``.  This asserts the divergence rather than hiding it.
+    S*bleq's only input primitive, address ``-2``, yields ``0`` when the
+    input is exhausted, where Decleq raises :class:`EOFError`.  Every
+    S*bleq computation is a function of the values it reads, so no S*bleq
+    program can tell "a zero was read" from "there was nothing to read",
+    and no translation can either.  This asserts the divergence rather
+    than hiding it.
+
+    The *empty line* used to belong to this collision too, because
+    ``io.input_char`` returned ``10`` there while S*bleq returned ``0``.
+    It no longer does: ``input_char`` reads a blank line as ``0``, the
+    value the interpreters calling ``input_str`` already used, so the two
+    languages now agree.  What remains below the surface is a genuine
+    S*bleq property -- it still cannot separate an empty line from a NUL
+    line -- but that is no longer a *divergence*, because Decleq collapses
+    them the same way.
     """
     program = "-1 0 3 -2 0 0"
     sb_program = esolangs.transpile("Decleq", "S*bleq", program)
-    assert esolangs.run("Decleq", program, "\n") == "\n"
+
+    # the empty line now agrees, in both directions
+    assert esolangs.run("Decleq", program, "\n") == "\x00"
     assert esolangs.run("S*bleq", sb_program, "\n") == "\x00"
-    # the collision: a NUL line is what S*bleq reports for both
+    # ... and S*bleq still cannot separate it from a NUL line
     assert esolangs.run("S*bleq", sb_program, "\x00") == "\x00"
+
+    # the surviving collision: exhausted input
+    with pytest.raises(EOFError):
+        esolangs.run("Decleq", program, "")
+    assert esolangs.run("S*bleq", sb_program, "") == "\x00"
 
 
 def test_decleq_fuzz_unrestricted_programs() -> None:
