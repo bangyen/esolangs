@@ -2,53 +2,127 @@
 
 The generator cannot hand a whole program to the interpreter and read the
 answer: it decides what to emit *next* from what the program built so far
-has done, so it needs a machine it can feed one instruction at a time and
+has done, so it needs a machine it can feed one emission at a time and
 inspect between them.  :class:`_Sim` is that machine, and :class:`_Joint`
 runs one per truth-table row in lockstep, which is how a single emitted
 template is checked against every row of the table at once.
 
-This lives beside the generator rather than inside it because the two
-answer different questions.  Everything here is *what Minifuck does* --
-one instruction's effect on a tape, a pointer and a skip flag.  The
-construction in :mod:`esolangs.tools.boolean.minifuck` is *what to emit*:
-pools, separators, sculpting rounds and the endgame, all of which consume
-this machine and none of which this machine knows about.  Splitting them
-keeps a 3300-line module from also being the place the language's
-semantics are mirrored, and makes the mirror's one hard rule visible on
-its own terms:
+**The machine is a set of laws, not an interpreter.**  This module used to
+import the interpreter's ``_step`` and advance one character at a time --
+the simulator the standing loop-less rule names.  What replaced it is four
+closed-form laws, one per maximal run of the language's alphabet, so any
+emitted string advances a row in as many law applications as it has runs
+rather than characters:
 
-**The semantics are not respelled here.**  ``.`` and ``[`` -- the only
-instructions that can print, read, or cascade into a neighbour -- delegate
-to the interpreter's ``_step``, which stays the single definition of what
-a Minifuck instruction means.  What this module adds is the *shape* the
-emitter needs and the interpreter has no reason to provide: a per-row
-pending-skip flag, a ``dead`` marker for the read a parameterized program
-must never take, and closed forms for the two straight runs that would
-otherwise be stepped one character at a time.  Those closed forms are an
-optimization only while they agree with the stepper, which
-``test_the_closed_form_runs_agree_with_stepping_them`` checks over random
-states rather than fresh ones.
+* **The left law** (:meth:`_Sim.run_left`): ``<`` never writes and clamps
+  at 0, so ``"<" * k`` is ``ptr = max(ptr - k, 0)``.
+* **The comment law** (:meth:`_Sim.run_comment`): a comment character can
+  only consume a pending skip.
+* **The bracket law** (:meth:`_Sim.run_brackets`): ``"[" * k`` writes the
+  complement of the running prefix-XOR over the cells it crosses, exactly
+  like a walk, because a ``[``'s cascade flip folds into the next cell's
+  effective value.  What the run *costs* is the staircase: crossing a cell
+  whose effective value is 1 spends two instructions, its cascade's skip
+  eating the next ``[``, so the extent is the inverse of
+  ``T(m) = m + sum(e_1..e_m)`` -- the same staircase :class:`_Chain` walks
+  for the staging index.  A run can end one instruction into a 2-cost
+  crossing, which is the one way it leaves a skip pending.
+* **The print law** (:meth:`_Sim.run_dot`): ``.`` advances, flips, and
+  prints cells 0-7 as one byte -- or, on a zero byte, *reads*, which a
+  parameterized program must never do; the row is marked ``dead`` and its
+  state freezes where it stood, exactly as the emitter always treated it.
+
+``"[x" * k`` keeps its own spelling (:meth:`_Sim.run_walk`) because the
+parse below would otherwise pay two law calls per pair; it is the bracket
+law with every skip eaten immediately, and the two share the prefix-XOR
+carry derivation.
+
+The laws are this module's own statement of the language, which is the
+point -- the build path no longer drives an interpreter -- and it is also
+the risk, so nothing rests on the derivation alone.  The interpreter's
+``_step`` stays the single *definition* of Minifuck, and the tests pin the
+laws to it differentially: every law against character-by-character
+stepping from arbitrary states (fresh ones are exactly where a wrong model
+still looks right -- the first cascade-less walk law matched fresh states
+and diverged on 877 of 3000 random ones), and :meth:`_Sim.apply` against
+stepping over random mixed streams.  At the prototype stage that
+comparison ran 40000 random ``(state, code)`` pairs over the generator's
+whole gadget vocabulary with no disagreement; the shipped tests keep the
+same check.
+
+This lives beside the generator rather than inside it because the two
+answer different questions.  Everything here is *what Minifuck does* to a
+row; the construction in :mod:`esolangs.tools.boolean.minifuck` is *what
+to emit* -- embeds, stagings, separations, sculpting rounds and the
+endgame, all of which consume this machine and none of which it knows
+about.
 """
 
-from esolangs.interpreters.tape_based.minifuck import _step as _minifuck_step
+# How an emitted string decomposes: each entry is a law and its repeat
+# count.  ``dot`` carries no count -- prints are emitted singly -- and the
+# ``walk`` fast path keeps a pure ``[x`` run at one law call.
+_Runs = list[tuple[str, int]]
+
+
+def _runs(code: str) -> _Runs:
+    """Parse ``code`` into maximal runs, one law application each.
+
+    The alphabet splits four ways -- ``<``, ``[``, ``.``, and everything
+    else, which is a comment -- so the parse is a single scan.  A ``[`` is
+    checked for the ``[x`` walk pattern first: the walk law covers ``k``
+    pairs in one call where the bracket and comment laws would take two per
+    pair, and walks are most of what the construction emits.
+    """
+    parsed: _Runs = []
+    i, n = 0, len(code)
+    while i < n:
+        ch = code[i]
+        if ch == "[":
+            j = i
+            while j + 1 < n and code[j] == "[" and code[j + 1] == "x":
+                j += 2
+            if j > i:
+                parsed.append(("run_walk", (j - i) // 2))
+                i = j
+                continue
+            j = i
+            while j < n and code[j] == "[":
+                j += 1
+            parsed.append(("run_brackets", j - i))
+            i = j
+        elif ch == "<":
+            j = i
+            while j < n and code[j] == "<":
+                j += 1
+            parsed.append(("run_left", j - i))
+            i = j
+        elif ch == ".":
+            parsed.append(("run_dot", 1))
+            i += 1
+        else:
+            j = i
+            while j < n and code[j] not in "[<.":
+                j += 1
+            parsed.append(("run_comment", j - i))
+            i = j
+    return parsed
 
 
 class _Sim:
-    """A Minifuck machine fed one instruction at a time.
+    """A Minifuck machine advanced by the four laws above.
 
     An emitter cannot hand a whole program over and read the answer: it must
     advance a machine and branch on where that left it.  So this accepts
-    instructions singly, and holds the state an emitter branches on -- the
-    tape as cells, the pointer, what has printed, and the two flags below.
-
-    The *semantics* are not re-implemented here.  :meth:`exec` calls the
-    interpreter's own ``_step``, so there is one definition of what a
-    Minifuck instruction does and an emitter cannot drift from a real run.
-    That became possible when the interpreter's transition was made pure;
-    before that this class carried its own copy of the dispatch.
+    emissions one at a time, and holds the state an emitter branches on --
+    the tape as cells, the pointer, what has printed, and the two flags
+    below.
 
     ``dead`` marks the one transition a parameterized program must never
-    take: a ``.`` on a zero pool reads a byte of input.
+    take: a ``.`` on a zero pool reads a byte of input.  ``skip`` is the
+    cascade's pending skip, which the interpreter spells by advancing past
+    the next instruction inside one program; an emitter is handed code in
+    pieces and has no next instruction yet, so the skip is held here and
+    consumed when that instruction arrives.
     """
 
     __slots__ = ("dead", "length", "out", "ptr", "skip", "tape")
@@ -57,10 +131,9 @@ class _Sim:
         """Start with a zeroed tape of ``size`` cells at the origin.
 
         The tape is an ``int`` bitvector, cell *i* at bit *i* -- the same
-        spelling the interpreter's ``_State`` uses, so :meth:`exec` can hand
-        it straight over.  Holding it as a list of cells instead would mean
-        converting both ways on every step, which measured 68-78% of a step
-        and made an O(1) flip cost O(tape).
+        spelling the interpreter's ``_State`` uses, so the laws and the
+        differential tests read the same object.  Holding it as a list of
+        cells instead would make an O(1) flip cost O(tape).
         """
         self.tape = 0
         self.length = size
@@ -78,7 +151,7 @@ class _Sim:
         return tuple((self.tape >> i) & 1 for i in range(stop))
 
     def copy(self) -> "_Sim":
-        """Return an independent copy, for branching a search or a probe."""
+        """Return an independent copy, for branching a derivation or a probe."""
         clone = _Sim.__new__(_Sim)
         clone.tape = self.tape
         clone.length = self.length
@@ -89,7 +162,7 @@ class _Sim:
         return clone
 
     def key(self) -> tuple[object, ...]:
-        """Return the whole state, hashable, so a search can dedup on it."""
+        """Return the whole state, hashable, so a caller can dedup on it."""
         return (self.tape, self.length, self.ptr, tuple(self.out), self.dead, self.skip)
 
     @staticmethod
@@ -97,7 +170,7 @@ class _Sim:
         """Rebuild the machine :meth:`key` described.
 
         The inverse of :meth:`key`, so a memo can hold states rather than
-        machines and hand back something the probes can step.
+        machines and hand back something the probes can advance.
         """
         tape, length, ptr, out, dead, skip = key
         clone = _Sim.__new__(_Sim)
@@ -110,17 +183,12 @@ class _Sim:
         return clone
 
     def run_left(self, count: int) -> None:
-        """Apply ``"<" * count`` in closed form.
+        """Apply ``"<" * count``: the left law.
 
-        ``<`` is the interpreter's cheapest branch -- ``ptr - 1 if ptr else
-        ptr``, with no tape write, no print and no skip -- so a run of them
-        is exactly ``max(ptr - count, 0)`` and does not need stepping.  A
-        pending skip still eats the first one, and a dead row does not move.
-
-        This is not a second definition of the language: it is the closed
-        form *of* :meth:`exec` over one instruction, checked against it by a
-        randomized differential control (see the module's test).  The clamp
-        this serves was 33.8% of the six-input build's ``char x row`` steps.
+        ``<`` is the language's cheapest instruction -- ``ptr - 1 if ptr
+        else ptr``, with no tape write, no print and no skip -- so a run of
+        them is exactly ``max(ptr - count, 0)``.  A pending skip still eats
+        the first one, and a dead row does not move.
         """
         if self.dead or count <= 0:
             return
@@ -129,8 +197,20 @@ class _Sim:
             count -= 1
         self.ptr = max(self.ptr - count, 0)
 
+    def run_comment(self, count: int) -> None:
+        """Apply a run of comment characters: the comment law.
+
+        A comment moves only the interpreter's cursor, which an emitter does
+        not model -- except that a pending skip consumes the first one, which
+        is why ``x`` is the construction's "absorb the skip" instruction.
+        """
+        if self.dead or count <= 0:
+            return
+        if self.skip:
+            self.skip = False
+
     def run_walk(self, pairs: int) -> None:
-        """Apply ``"[x" * pairs`` in closed form.
+        """Apply ``"[x" * pairs``: the walk law, in closed form.
 
         Each pair advances one cell and flips it; when that flip leaves the
         cell zero the ``[`` cascades into the cell beyond it and sets the
@@ -140,7 +220,7 @@ class _Sim:
         **The cascade is a carry, and the run is a prefix parity.**  A ``[``
         adds one to the two-bit little-endian field above the pointer, and
         the skip it sets is exactly that addition's carry out -- checked
-        against :meth:`exec` on 5000 random states.  A pair's ``x`` eats the
+        against stepping on 5000 random states.  A pair's ``x`` eats the
         skip, so the next pair starts clean one cell higher, and the carry
         into position *j* is the XOR of every window bit below it.  So over
         a window of ``k`` cells the whole run is:
@@ -148,15 +228,10 @@ class _Sim:
         * each window bit becomes the complement of the prefix XOR up to it,
         * the cell just above the window takes the window's total parity,
 
-        which is ``O(log k)`` big-integer doublings rather than ``k``
-        steps.  The cascade is the part a naive closed form gets wrong: a
-        model without it disagreed with :meth:`exec` on 877 of 3000 random
-        states, and this form agrees on 4000 of 4000.
-
-        An earlier attempt to close only the run's *tail* was reverted for
-        measuring slower; that failed because it kept a per-pair loop and
-        added a big-integer guard to every iteration, not because the run
-        was irreducible.  This has no per-pair work at all.
+        which is ``O(log k)`` big-integer doublings rather than ``k`` steps.
+        The cascade is the part a naive closed form gets wrong: a model
+        without it disagreed with stepping on 877 of 3000 random states, and
+        this form agrees on 4000 of 4000.
         """
         if self.dead or pairs <= 0:
             return
@@ -164,6 +239,8 @@ class _Sim:
             # The pending skip eats the leading ``[``; its ``x`` is a comment.
             self.skip = False
             pairs -= 1
+            if pairs == 0:
+                return
         tape, ptr = self.tape, self.ptr
         low = ptr + 1
         mask = (1 << pairs) - 1
@@ -183,118 +260,134 @@ class _Sim:
         self.tape, self.ptr = tape, ptr
         self.length = max(self.length, ptr + 2)
 
-    def exec(self, ins: str) -> None:
-        """Execute one instruction, delegating the semantics to the interpreter.
+    def run_brackets(self, count: int) -> None:
+        """Apply ``"[" * count``: the bracket law.
 
-        The language itself is not spelled here: the interpreter's ``_step``
-        is the shipped pure transition, so an emitter and a real run cannot
-        disagree about what an instruction does.  This used to carry
-        its own copy of the dispatch, which was a second definition of
-        Minifuck that had to be kept in step by hand.
+        What a bare bracket run writes is the walk law again.  Crossing cell
+        *j* (counting up from the pointer) sees the effective value
+        ``e_j = c_1 XOR ... XOR c_j`` -- each cascade flip folds into the
+        next cell's effective value, which is what makes ``e`` the prefix
+        XOR -- and leaves ``NOT e_j`` behind.  What differs is the *cost*:
+        a cascade's skip eats the next ``[`` of the run itself, so crossing
+        a cell with ``e_j == 1`` spends two instructions, and the run's
+        extent is the largest ``m`` with
 
-        What stays is the *shape* the emitter needs, which the interpreter
-        has no reason to provide.  Two translations are involved:
+            T(m) = m + sum(e_1..e_m) <= count
 
-        * The interpreter holds the tape as an ``int`` bitvector and the
-          emitter as a list of cells, so a step converts across the two.
-        * A ``[`` that flips its cell to zero skips the *next* instruction.
-          The interpreter spells that by advancing ``ind`` past it inside one
-          program; an emitter is handed instructions singly and has no next
-          instruction yet, so the skip is held on ``self.skip`` and consumed
-          when that instruction arrives.
+        -- the bracket staircase the staging index's :class:`_Chain` walks,
+        inverted.  The remainder ``count - T(m)`` is 0 or 1 by maximality:
+        a full remainder would mean another crossing fit.  At remainder 1
+        the next crossing has ``e == 1`` (a 1-cost crossing would also have
+        fit), and its ``[`` executes -- writes its cell, fires the cascade
+        -- with the skip left *pending* for whatever instruction follows the
+        run.  That partial crossing is the one way a bracket run ends
+        mid-cell, and the one way it hands a skip to the next emission.
 
-        ``dead`` marks the transition a parameterized program must never
-        take -- a ``.`` on a zero pool, which the interpreter reports as
-        ``_Effect.reads`` because a real run would fetch a byte of input.
+        The last crossing's cascade flip is the walk law's carry: it lands
+        on the first cell above the window, iff ``e`` over the whole window
+        is 1.  Every earlier cascade landed on a cell the run then crossed
+        and rewrote, which is why no other flip survives.
 
-        **The two pointer-only instructions are inlined.**  Delegating costs
-        a call and a six-tuple pack and unpack per character, which is the
-        emitter's remaining hot path; ``<`` and a comment character are the
-        two cases that cannot print, read, cascade or set the skip, so their
-        whole effect is the pointer move spelled here.  Everything that can
-        do any of those -- ``.`` and ``[`` -- still goes to ``_step``, which
-        stays the single definition of what those instructions mean.  The
-        inlined pair is pinned to the interpreter by a differential test
-        that steps both routes over random states.
+        The staircase is inverted by binary search over popcounts rather
+        than walked: the prefix-XOR vector is one doubling pass, and
+        ``T(m)`` is ``m`` plus a masked ``bit_count``, so the whole run is
+        ``O(log k)`` big-integer operations like the walk it generalises.
         """
-        if self.dead:
+        if self.dead or count <= 0:
             return
         if self.skip:
             self.skip = False
+            count -= 1
+            if count == 0:
+                return
+        tape, ptr = self.tape, self.ptr
+        low = ptr + 1
+        # e_j for j = 1..count: a run of k brackets crosses at most k cells,
+        # so the window never needs to be wider than the run.
+        mask = (1 << count) - 1
+        effective = (tape >> low) & mask
+        span = 1
+        while span < count:
+            effective ^= (effective << span) & mask
+            span <<= 1
+        # The staircase inverse: T is nondecreasing, so binary-search the
+        # largest m with T(m) <= count.
+        lo, hi = 0, count
+        while lo < hi:
+            mid = (lo + hi + 1) // 2
+            if mid + (effective & ((1 << mid) - 1)).bit_count() <= count:
+                lo = mid
+            else:
+                hi = mid - 1
+        crossed = lo
+        if crossed + (effective & ((1 << crossed) - 1)).bit_count() < count:
+            # Remainder 1: the next crossing starts, cascades, and leaves
+            # its skip pending for the instruction after the run.
+            crossed += 1
+            skip_out = True
+        else:
+            skip_out = False
+        if crossed == 0:
             return
-
-        if ins == "<":
-            # _step: ``ptr - 1 if ptr else ptr`` -- no write, print or skip.
-            if self.ptr:
-                self.ptr -= 1
-            return
-        if ins not in ".[":
-            # _step: a comment character moves only the interpreter's cursor.
-            return
-
-        tape, length, ptr, skipped, char, reads = _minifuck_step(
-            ins, self.tape, self.length, self.ptr
-        )
-
-        if reads:
-            self.dead = True
-            return
-        if char is not None:
-            self.out.append(char)
-
+        window = (1 << crossed) - 1
+        effective &= window
+        tape = (tape & ~(window << low)) | ((effective ^ window) << low)
+        # The carry: the last crossing's cascade lands above the window.
+        tape ^= ((effective >> (crossed - 1)) & 1) << (low + crossed)
         self.tape = tape
-        self.length = length
-        self.ptr = ptr
-        self.skip = skipped
+        self.ptr = ptr + crossed
+        self.skip = skip_out
+        self.length = max(self.length, self.ptr + 2)
 
+    def run_dot(self, count: int = 1) -> None:
+        """Apply ``.``: the print law.
 
-# The two straight runs the emitter builds, named so the classifier below
-# compares against a constant rather than a bare character literal -- bandit
-# reads ``token == "<"`` as a hardcoded-password check (B105).
-_LEFT = "<"
-_WALK = "[x"
+        ``.`` advances one cell, flips it, and reads cells 0-7 as one byte,
+        cell 0 the most significant bit.  A non-zero byte prints; a zero one
+        *reads*, which a parameterized program must never do -- the row is
+        marked ``dead``, and its state freezes where it stood, because the
+        emitter stops modelling a row the moment it leaves the contract.
 
+        ``count`` exists only so every law shares the parse's shape; prints
+        are emitted singly.
+        """
+        for _ in range(count):
+            if self.dead:
+                return
+            if self.skip:
+                self.skip = False
+                continue
+            ptr = self.ptr + 1
+            tape = self.tape ^ (1 << ptr)
+            window = tape & 0xFF
+            if window == 0:
+                self.dead = True
+                return
+            self.ptr = ptr
+            self.tape = tape
+            self.length = max(self.length, ptr + 2)
+            self.out.append(chr(sum(((window >> i) & 1) << (7 - i) for i in range(8))))
 
-def _straight_run(code: str) -> tuple[str, int] | None:
-    """Name the :class:`_Sim` method that applies ``code`` in closed form.
+    def apply(self, parsed: _Runs) -> None:
+        """Advance by an already-parsed emission, one law call per run."""
+        for law, count in parsed:
+            getattr(self, law)(count)
 
-    Returns ``("run_left", k)`` for ``"<" * k`` and ``("run_walk", k)`` for
-    ``"[x" * k`` -- the two shapes :func:`_clamp` and :func:`_walk_to` emit
-    -- with the repeat count.  Mixed code returns ``None`` and is stepped
-    character by character as before.
+    def exec(self, ins: str) -> None:
+        """Execute one instruction, the single-character case of the laws.
 
-    Deliberately strict: it recognises only these two exact spellings, so a
-    string that merely starts with them (``"[x[["``) falls through to the
-    stepper rather than taking a closed form that does not describe it.
-    """
-    head = code[0]
-    if head == _LEFT:
-        return ("run_left", len(code)) if code.count(_LEFT) == len(code) else None
-    if head == "[" and len(code) % 2 == 0:
-        pairs = len(code) // 2
-        return ("run_walk", pairs) if code == _WALK * pairs else None
-    return None
-
-
-# Marks a key whose rows must be stepped: the code printed or died there,
-# and neither is expressible as a tape delta.
-_STEP_IT: tuple[int, int, int, bool] = (-1, -1, -1, False)
-
-
-def _reach(code: str) -> int:
-    """Bound how many cells above the pointer ``code`` can read or write.
-
-    ``.`` and ``[`` advance one cell before touching anything and ``[`` can
-    cascade one further, so a code of length ``L`` cannot reach past
-    ``L + 2`` cells above where it starts; ``<`` only walks back toward
-    cell 0, which the key covers by holding the pointer itself.  A print
-    reads the low byte, so the bound never drops below eight.
-
-    Deliberately loose.  A key wider than the code's true reach costs a few
-    redundant entries; one narrower would merge rows that differ where the
-    code can see, which is a wrong answer -- so this over-counts on purpose.
-    """
-    return max(len(code) + 2, 8)
+        Kept because probes and tests drive a machine instruction by
+        instruction.  It dispatches to the same four laws as :meth:`apply`,
+        so there is one spelling of each law however the code arrives.
+        """
+        if ins == "<":
+            self.run_left(1)
+        elif ins == "[":
+            self.run_brackets(1)
+        elif ins == ".":
+            self.run_dot()
+        else:
+            self.run_comment(1)
 
 
 def _set_bit(bit: int) -> str:
@@ -320,89 +413,31 @@ class _Joint:
     def emit(self, code: str) -> None:
         """Append code and run it on every row, keeping them in lockstep.
 
-        Straight runs take a closed form.  Stepping every row one character
-        at a time is what made this the generator's cost -- 173.7M ``exec``
-        calls on a six-input build -- and two thirds of those characters are
-        a run of a single token: ``"<" * k`` from :func:`_clamp` and
-        ``"[x" * k`` from :func:`_walk_to`.  Both have an effect that
-        :class:`_Sim` can apply directly, so the rows skip the per-character
-        dispatch without changing what is emitted or what the rows hold.
+        The code is parsed once and each row advances by the laws, so an
+        emission costs one law call per run per row however long its runs
+        are.  The effect-carrying dedup that used to live here -- step one
+        row per distinct window key, apply the delta to the rest -- was an
+        optimization over per-character stepping, and went with the
+        stepping: the laws are already arithmetic, so there is no per-
+        character cost to share.
 
-        The template is appended before the dispatch either way, so the
-        program this builds is byte-identical to the stepped one; only the
-        route the simulated rows take differs.
+        The template is appended before the rows advance either way, so the
+        program this builds never depends on how the rows are modelled.
         """
         self.parts.append(code)
         if not code:
             return
-        run = _straight_run(code)
-        if run is not None:
-            method, count = run
-            for m in self.ms:
-                getattr(m, method)(count)
-            return
-
-        # Mixed code: step one row, then *carry the effect* to the rows that
-        # entered in the same state.  Rows are advanced in lockstep, so they
-        # meet a given emission having seen the same instructions -- what
-        # differs is only the bits their setters embedded, and a short code
-        # reads only the handful of cells it can reach.  Rows agreeing on
-        # those cells therefore transform identically, so the effect is
-        # computed once per distinct key and applied as arithmetic to the
-        # rest.  The sculpting probe's pool code is the case this is for:
-        # 288,640 applications at six inputs, all from the canonical clamped
-        # state, which is one key and one effect.
-        span = _reach(code)
-        mask = (1 << span) - 1
-        effects: dict[tuple[int, int, int, bool], tuple[int, int, int, bool]] = {}
+        parsed = _runs(code)
         for m in self.ms:
-            if m.dead:
-                continue
-            # The window is read *relative to the pointer*, and the print
-            # also reads the absolute low byte, so both go in the key --
-            # keying on absolute cells alone merges rows sitting at
-            # different pointers, which builds the wrong program.
-            key = (
-                ((m.tape >> m.ptr) & mask) | ((m.tape & 0xFF) << span),
-                m.length - m.ptr,
-                m.ptr,
-                m.skip,
-            )
-            effect = effects.get(key)
-            if effect is None:
-                probe = m.copy()
-                for ch in code:
-                    probe.exec(ch)
-                if probe.dead or probe.out != m.out:
-                    # A row that printed or died is not describable as a
-                    # tape delta, so it -- and any row sharing its key --
-                    # is stepped rather than carried.
-                    effects[key] = _STEP_IT
-                    for ch in code:
-                        m.exec(ch)
-                    continue
-                effect = effects[key] = (
-                    probe.tape ^ m.tape,
-                    probe.length - m.length,
-                    probe.ptr - m.ptr,
-                    probe.skip,
-                )
-            elif effect is _STEP_IT:
-                for ch in code:
-                    m.exec(ch)
-                continue
-            flip, grow, move, skip = effect
-            m.tape ^= flip
-            m.length += grow
-            m.ptr += move
-            m.skip = skip
+            m.apply(parsed)
 
     def emit_setter(self, i: int) -> None:
         """Emit the ``{Xi}`` placeholder, simulating each row with its bit."""
         self.parts.append("{X" + str(i) + "}")
+        one = _runs(_set_bit(1))
+        zero = _runs(_set_bit(0))
         for bits, m in zip(self.rows, self.ms, strict=True):
-            for ch in _set_bit(bits[i]):
-                m.exec(ch)
+            m.apply(one if bits[i] else zero)
 
     def fork(self) -> "_Joint":
         """Return a copy, for trying a continuation without committing."""
