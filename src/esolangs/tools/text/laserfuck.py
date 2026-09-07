@@ -357,7 +357,9 @@ def _laserfuck_snake(body: str, spine: int, right: int) -> list[str] | None:
     return ["".join(row).rstrip() for row in grid]
 
 
-def _laserfuck_snake_ring(text: str, width: int) -> str | None:
+def _laserfuck_snake_ring(
+    text: str, width: int, *, grouped: bool = False
+) -> str | None:
     r"""Build a base-init program whose rings are snaked across rows.
 
     A ring body cannot be folded the way a straight run of ops can -- the
@@ -379,37 +381,74 @@ def _laserfuck_snake_ring(text: str, width: int) -> str | None:
     """
     values = [ord(char) for char in text]
     count = len(values)
-    base = min(range(1, 128), key=lambda m: sum(abs(m - v) for v in values))
+    bands = _laserfuck_base_groups(values, count) if grouped else [values]
 
-    # Writing the base out one '+' at a time would push the first spine
-    # past the width before the body even starts, so it is factored into a
-    # multiply block whenever that is shorter.
-    factor = _laserfuck_base_factor(base)
-    scratch = factor is not None
+    # One base suits text whose bytes cluster, but most text has two
+    # clusters -- letters near a hundred, spaces and punctuation in the
+    # thirties -- and a base between them leaves every cell a long way from
+    # it.  Each band gets its own base and its own pair of rings, exactly as
+    # :func:`_laserfuck_base_ring` does; ``reached`` records what every cell
+    # holds once they have run, so the tail writes only what is left.
+    reached = [0] * count
+    plans: list[tuple[int, tuple[int, int, int] | None, list[int]]] = []
+    for band in bands:
+        if not band:
+            continue  # pragma: no cover - the grouper emits no empty band
+        members = set(band)
+        band_base = min(range(1, 128), key=lambda m: sum(abs(m - v) for v in band))
+        owned = [index for index, value in enumerate(values) if value in members]
+        for index in owned:
+            reached[index] = band_base
+        # Writing the base out one '+' at a time would push the first spine
+        # past the width before the body even starts, so it is factored into
+        # a multiply block whenever that is shorter.
+        plans.append((band_base, _laserfuck_base_factor(band_base), owned))
+
+    scratch = any(factor is not None for _, factor, _ in plans)
     home = count + 1 if scratch else count
 
-    # the spread ring starts and ends on the counter, which is the cell its
-    # own test looks at -- a body that came back anywhere else would spend
-    # the wrong cell and never terminate
-    spread = "<" * count + "+" + ">+" * (count - 1) + ">"
     tail = "-"
     if scratch:
         tail += ">-<"
     tail += "<" * count
     for index, value in enumerate(values):
-        step = value - base
+        step = value - reached[index]
         tail += ("+" if step > 0 else "-") * abs(step)
         if index < count - 1:
             tail += ">"
 
-    if factor is not None:
-        outer, inner, residual = factor
-        stages = [
-            (">" * home + "+" * outer, "<" + "+" * inner + ">"),
-            ("<" + "+" * residual, spread),
-        ]
-    else:
-        stages = [(">" * home + "+" * base, spread)]
+    stages = []
+    for position, (band_base, factor, owned) in enumerate(plans):
+        # A band's spread adds one only to the cells it owns, and starts and
+        # ends on the counter -- the cell its own test looks at, so a body
+        # returning anywhere else would spend the wrong cell and never
+        # terminate.  The trailing '-' is left off: _laserfuck_snake's test
+        # row supplies it, and a body that decremented too would spend the
+        # counter twice a pass.
+        members = set(owned)
+        spread = "<" * count
+        for index in range(count):
+            if index in members:
+                spread += "+"
+            if index < count - 1:
+                spread += ">"
+        spread += ">"
+        # Where a stage's load lands depends on what it loads and what came
+        # before.  A multiply counts its scratch cell, one past the counter;
+        # anything else counts the counter itself, and has to *stay* there,
+        # since the spread decrements the cell it starts on.  The first
+        # stage walks out from the funnel; a later one already stands on the
+        # counter, its own ring having counted it back down to zero.
+        if factor is None:
+            # ">" * home would end on the scratch when some other band
+            # multiplies, so walk only as far as the counter.
+            walk = ">" * count if not position else ""
+            stages.append((walk + "+" * band_base, spread))
+        else:
+            outer, inner, residual = factor
+            walk = ">" * home if not position else ">"
+            stages.append((walk + "+" * outer, "<" + "+" * inner + ">"))
+            stages.append(("<" + "+" * residual, spread))
 
     right = width - 2
     cells: dict[tuple[int, int], str] = {}
@@ -583,9 +622,14 @@ def laserfuck(text: str, width: int | None = None) -> str:
     if width is not None:
         # the snaked form exists only for the bounded case: it spends rows
         # to buy columns, which is a loss when there is no bound to meet
-        snake = _laserfuck_snake_ring(text, width)
-        if snake is not None:
-            forms.append(snake)
+        # Banding the values costs a second pair of rings and saves on the
+        # residual tail, and which way that trade falls depends on how the
+        # bytes cluster -- so both are built and measured, as everywhere
+        # else here, rather than predicted.
+        for banded in (False, True):
+            snake = _laserfuck_snake_ring(text, width, grouped=banded)
+            if snake is not None:
+                forms.append(snake)
     return min(forms, key=_laserfuck_area)
 
 
