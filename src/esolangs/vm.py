@@ -51,7 +51,7 @@ class _StepMachine(Protocol):
     """The minimal step-capable surface the hang detector steps on.
 
     ``snapshot()`` must return a hashable tuple of the machine's *complete*
-    internal state — including the input cursor — or a "repeat" is not a
+    internal state, including the input cursor, or a "repeat" is not a
     real cycle.
     """
 
@@ -175,7 +175,7 @@ def run_until_halt_or_cycle(machine: _StepMachine | VM) -> bool:
     looped forever, so a repeated snapshot is a *proof* of a hang that is
     reported immediately instead of waiting out a wall-clock timeout.
     Returns ``True`` when the machine halts and ``False`` once a cycle is
-    proven.  It catches *cycles*, not every hang — an unbounded-growth loop
+    proven.  It catches *cycles*, not every hang.  An unbounded-growth loop
     never revisits a state.  On a tape language,
     :func:`run_until_halt_or_growth` proves that class instead; elsewhere
     callers keep a timeout as the backstop for it.
@@ -184,7 +184,7 @@ def run_until_halt_or_cycle(machine: _StepMachine | VM) -> bool:
     (one "tortoise" checkpoint compared against the live machine's state on
     every step) instead of a hash set of every state visited, at the cost of
     stepping up to ~2x further past the cycle's start before ``False`` is
-    returned — callers must not rely on the machine's state at the moment
+    returned.  Callers must not rely on the machine's state at the moment
     of detection, only on the True/False verdict.
 
     Takes either a raw interpreter state or a :class:`VM` from
