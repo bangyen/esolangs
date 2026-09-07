@@ -1,45 +1,9 @@
-r"""Boolean-function generators via input-by-substitution.
+r"""Boolean generators that embed each input once.
 
-A normal boolean generator produces one program that *reads* its inputs.
-Some languages have no input mechanism but still have enough computation
-power (output, constant construction, and a value-testable branch) to
-evaluate a boolean function from *embedded* constants.  For those, a
-parameterized generator emits a **template** with ``{X0}``.. placeholders
-for the input bits; :func:`instantiate` replaces each placeholder with the
-language's code that sets that input cell to the bit value.  The harness
-instantiates the template once per input and runs it, so the program is a
-decision tree over constants rather than a reader of input.
-
-This is a separate class from the input-reading generators: it is useful
-exactly for the no-input languages, and it does not make them read input —
-the harness performs the injection.  :func:`bio` replaces ``{Xi}`` with an
-increment that loads the raw bit into a register; :func:`back` replaces
-``{Xi}`` with a ``\\`` or ``/`` mirror so the beam is reflected toward the
-correct subtree; :func:`nocomment` replaces ``{Xi}`` with a constant-length
-tape setter (``c``/``i``) and routes a decision tree with the ``s`` skip
-(a runtime prologue computes each bit's complement via ``s``-as-NOT-gate,
-so no ``{Ci}`` is needed); :func:`bitdeque`, :func:`ram0`, and
-:func:`minsky_swap` replace ``{Xi}`` with fixed-length setters and route a
-``POP``/``GOTO``, ``C``/``goto``, or ``~`` decision tree.
-
-**Every input must be embedded exactly once.**  An input-capable language
-reads each of its ``n`` inputs exactly once per run; a no-input language's
-parameterized generator should match that, so a template may contain each
-``{Xi}`` placeholder at most once.  Re-embedding a bit at multiple decision
-nodes would let a no-input program "read" an input more than its
-input-capable counterpart does, muddying the generator API.  Each generator
-below therefore stores every input once (a tape load, a register pack, a
-deque/stack push, a variable, or a mirror) and reads it back, rather than
-re-substituting it.
-
-There is no complement placeholder.  :func:`instantiate` used to fill a
-``{Ci}`` beside each ``{Xi}``, for a generator that wanted ``1 - bit``
-embedded as a constant, but none does: ``bfpda``'s node structure needs a
-truthy marker to stay on the stack after each bit is consumed, and the
-marker's value never depends on the bit, so it is a constant written
-straight into the template; ``nocomment`` computes each bit's complement
-from ``{Xi}`` at runtime with its ``s``-as-NOT-gate.  The placeholder and the
-``set_comp`` argument that filled it are gone.
+Templates contain {Xi} placeholders. The harness instantiates and runs one
+program per input row, allowing no-input languages to compute Boolean
+functions without pretending to read stdin. Equal-width setters prevent input
+bits leaking through program length.
 """
 
 from functools import cache
