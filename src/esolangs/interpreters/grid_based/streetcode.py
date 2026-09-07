@@ -1621,7 +1621,7 @@ class _Machine:
         names the square.
 
         What this can actually catch is narrower than "dead ends", and
-        worth stating plainly.  :meth:`_heading_from_hug` falls back
+        needed here. :meth:`_heading_from_hug` falls back
         through all four directions including the reverse, and a
         validated street is connected with at least two cells, so every
         reachable cell has an open neighbour and the hug cannot return

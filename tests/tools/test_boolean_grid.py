@@ -606,7 +606,7 @@ class TestWII2D:
     def test_decode_realizes_every_small_pattern(self) -> None:
         """The decode primitive fits every 0/1 pattern on its domain.
 
-        This is the whole construction's load-bearing claim: the chain half
+        This is the construction's key claim: the chain half
         is fixed, so the generator reaches a table exactly when
         :func:`_wii2d_decode` fits the two columns.  Every pattern through
         eight points is checked here; the widest domain the generator asks

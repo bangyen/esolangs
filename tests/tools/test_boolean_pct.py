@@ -2111,7 +2111,7 @@ class TestPctFoldPlan:
 
         The emitter lays the rows from a zero accumulator, so a ladder has to
         fit ``[-_LIMIT, _LIMIT]`` -- not the ``2 * _LIMIT`` span a *relative*
-        plan state may occupy.  Gating on the latter lets the planner spend
+        plan state may occupy.  Checking only the latter lets the planner spend
         thousands of moves on a geometry the emitter refuses on its first op.
 
         Which ladder is offered sets the reach.  The uniform ones spend

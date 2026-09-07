@@ -106,7 +106,7 @@ def _advance(state: _State, line: _Line, byte: int | None = None) -> _State:
 
     The guard reads the cell under the pointer *now*, not a value saved
     before the line ran.  That is what produces the documented double-fire
-    of an adjacent guard pair, and it is load-bearing.
+    of an adjacent guard pair, and it is required.
 
     ``goto`` sets the cursor to its target minus two, because the shared
     increment below then lands it on target minus one -- the language
