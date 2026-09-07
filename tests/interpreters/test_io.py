@@ -21,17 +21,41 @@ def test_input_char() -> None:
 
 
 def test_input_char_on_an_empty_line() -> None:
-    """An empty line is one ended immediately: the character is its newline."""
+    """An empty line has no character to take, so it reads as 0.
+
+    This is the value the interpreters that call ``input_str`` directly
+    already return for the same input, so the package answers a blank
+    line one way rather than two.
+    """
     with patch("builtins.input", return_value=""):
-        assert IO().input_char() == ord("\n")
+        assert IO().input_char() == 0
+
+
+def test_input_char_agrees_with_a_hand_rolled_input_str_guard() -> None:
+    """The two ways of reading a character agree on a blank line.
+
+    ``if line else 0`` is what Streetcode, LaserFuck, Suffolk and Jaune
+    each spell at their own call site.  Pinned here because the split
+    between that and ``input_char`` is what this test exists to prevent
+    coming back.
+    """
+    for text in ("", "a", "xyz"):
+        with patch("builtins.input", return_value=text):
+            hand_rolled = ord(text[0]) if text else 0
+            assert IO().input_char() == hand_rolled
 
 
 def test_input_char_empty_line_is_not_end_of_input() -> None:
-    """A blank line still feeds a character; only exhaustion is EOF."""
+    """A blank line still feeds a value; only exhaustion is EOF.
+
+    ``"".splitlines()`` is ``[]`` -- no line at all, which is EOF -- while
+    ``"\\n".splitlines()`` is ``[""]``: one line, which happens to be
+    empty.  Reading it yields 0 rather than raising.
+    """
     import pytest
 
     io_obj = ScriptedIO("\n")
-    assert io_obj.input_char() == ord("\n")
+    assert io_obj.input_char() == 0
     with pytest.raises(EOFError):
         io_obj.input_char()
 
