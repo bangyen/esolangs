@@ -322,6 +322,46 @@ def test_a_flipped_embed_complements_in_place_and_keeps_slot_order() -> None:
             assert order == slots, (mask, order)
 
 
+def test_the_coverage_population_is_its_stated_definition() -> None:
+    """The 109 the ``_SEPS`` figures are stated over, re-derived each run.
+
+    The comment used to say only "non-degenerate", which is 125 -- and that
+    missing half of the definition is what left two later re-probes unable
+    to reconcile the counts.  Deriving it here means the denominator cannot
+    drift from the words again.
+
+    The holdout is the pin: a wrong population of a coincidentally similar
+    size would not put the single miss on the table the comment names.
+    """
+    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+    def complement(table: str) -> str:
+        return "".join("1" if c == "0" else "0" for c in table)
+
+    tables = [format(i, "08b") for i in range(256)]
+    pairs = {min(t, complement(t)) for t in tables}
+    assert len(pairs) == 128
+
+    degenerate = {t for t in tables if module._degenerate(t, 3) is not None}  # noqa: SLF001
+    assert len({min(t, complement(t)) for t in degenerate}) == 3
+
+    population = {
+        min(t, complement(t))
+        for t in tables
+        if t not in degenerate and len(essential_inputs(t, 3)) == 3
+    }
+    assert len(population) == 109
+
+    index = module._staging_index(3)  # noqa: SLF001
+    missed = [
+        p
+        for p in population
+        if tuple(int(c) for c in p) not in index
+        and tuple(int(c) for c in complement(p)) not in index
+    ]
+    assert missed == ["01101101"], missed
+
+
 @pytest.mark.slow  # 7.1s: enumerates the stagings the screen claims to skip
 def test_the_constraint_query_matches_the_index() -> None:
     """``_first_staging`` answers exactly what the index spelling answers.
