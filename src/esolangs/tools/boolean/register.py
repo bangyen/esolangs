@@ -946,7 +946,7 @@ def _polynomial_dag(truth_table: str) -> list[list[int]]:
     ``-= 1`` / ``if == 0`` tests over the live states, and the branch that
     fires reads its bit and moves to the child state's index.
 
-    Two details are load-bearing.
+    Two details are required.
 
     **``[0, b]`` is I/O, not arithmetic.**  The interpreter tests ``a == 0``
     before the opcode, so ``[0, 3]`` reads a character rather than

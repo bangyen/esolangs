@@ -121,7 +121,7 @@ class _Compiled:
 
     :func:`_compile` builds one of these per :class:`extract.Stroke` up
     front so :func:`run`'s hot loop never re-classifies the same stroke's
-    ops on a later visit -- load-bearing for a looping program, which by
+    ops on a later visit -- required for a looping program, which by
     construction revisits the same stroke many times (see module
     docstring).  ``goto`` is set only for a leaf (``zero``/``nonzero`` both
     ``None``) whose drawn path reconnects to an earlier point -- see

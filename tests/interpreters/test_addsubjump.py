@@ -346,7 +346,7 @@ class TestStepMachine:
         ``TestFlags`` above proves the flags through *programs*, which read
         them back out of memory at ``-3``..``-5``; nothing read them off the
         machine object.  They are the language's own names on the stepped
-        surface, and ``of`` in particular is load-bearing elsewhere: the VM
+        surface, and ``of`` in particular is required elsewhere: the VM
         looks up ``of`` on a state class to find an alternative constructor
         and only accepts it when callable, precisely because AddSubJump
         spells its overflow flag that way.

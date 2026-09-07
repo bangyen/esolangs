@@ -1568,7 +1568,7 @@ def _clear_derived_plans(
 ) -> None:
     """Clear the plan cache and everything derived alongside it.
 
-    The staging index goes too, and that is the load-bearing part now that it
+    The staging index goes too, and that is the key part now that it
     is what :func:`_derive_staging` reads: a caller asking for a cold
     derivation means a cold one.  Tests harvest ``_find_pool`` call sites
     from a build and assert they saw hundreds, which a warm index cuts to
@@ -2433,7 +2433,7 @@ def _mux_weight(k: int) -> str:
     between such reads compounds them, and ``k`` of them displace by ``k``
     times the bit.  Measured linear for ``k`` of 1 to 8, with no row dying.
 
-    *Fresh* is load-bearing and is the whole reason an earlier attempt at
+    *Fresh* is required and is the reason an earlier attempt at
     per-setter weighting read 1 for every weight: a single ``[x`` between the
     setter and this gadget folds the bit into the running prefix-XOR, and the
     reads then see the walk's wake rather than the bit.  Emit this directly
