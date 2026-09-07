@@ -323,7 +323,7 @@ def find_cursor(mask: Mask) -> Cursor:
     either left outline pixels behind or, sized larger, ate into the real
     path stroke nearby, and connected-component labeling swallowed the
     entire drawing, since the arrow's tip touches the path by construction.
-    Gating growth on local pixel density stops naturally at the point the
+    Limiting growth by local pixel density stops naturally at the point the
     silhouette narrows down to the 1px-wide stroke leaving it -- the same
     place a human eye would call "where the arrowhead ends" -- typically
     within a pixel of the triangle's true boundary.

@@ -145,9 +145,9 @@ def bf_to_painfuck(program: str) -> str:
     Painfuck's source is first translated through a fixed two-cycle Caesar
     substitution (each source character in a cycle is rewritten ``k`` steps
     along it, ``k`` counting the characters translated), then executed.
-    Brainfuck maps onto Painfuck's commands directly — ``>``/``<`` become
+    Brainfuck maps onto Painfuck's commands directly: ``>``/``<`` become
     ``rl``/``l``, ``+``/``-`` become ``ps``/``s``, ``[``/``]``/``,``/``.``
-    become ``a``/``b``/``j``/``u`` — and the interpreter's forward shift is
+    become ``a``/``b``/``j``/``u``.  The interpreter's forward shift is
     undone by pre-shifting each emitted command ``k`` steps *back* along its
     cycle, so a generated program round-trips.  Every brainfuck program is in
     class; comment characters are dropped (Painfuck ignores characters in no

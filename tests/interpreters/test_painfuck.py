@@ -191,7 +191,7 @@ class TestPainfuck:
         The pinned ends are what separate this from the two readings the
         docstring rejects.  Deciding once for the whole run would cap all
         tails at 2, since a single non-skip runs ``p`` once; rebinding
-        without gating -- the retired cross-check's shape -- ran the bound
+        without per-repeat checks -- the retired cross-check ran the bound
         command for the repeats left after the first heads, so all heads
         gave 12 rather than 0.
         """

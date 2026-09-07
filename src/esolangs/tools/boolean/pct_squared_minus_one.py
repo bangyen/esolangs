@@ -2837,12 +2837,12 @@ def _fold_positions(n: int, weights: tuple[int, ...]) -> list[int]:
 def _fold_at(truth_table: str, n: int, weights: tuple[int, ...]) -> str | None:
     """Build a fold template on a given ladder, or ``None``.
 
-    **The ladder is gated against ``_LIMIT``, not ``2 * _LIMIT``.**  The plan
+    **The ladder is bounded by ``_LIMIT``, not ``2 * _LIMIT``.**  The plan
     state is relative -- :func:`_fold_moves` allows a *span* of ``2 * _LIMIT``
     because a state may sit anywhere in ``[-_LIMIT, _LIMIT]`` -- but the
     emitter lays the rows at absolute positions starting from a zero
     accumulator, so the ladder itself has to fit in ``[-_LIMIT, _LIMIT]``.
-    Gating on the relative bound lets the planner spend thousands of moves on
+    Checking only the relative bound lets the planner spend thousands of moves on
     a geometry the emitter then refuses on its first op: the alternating
     table at eleven inputs plans 2833 ops on a 4094-wide uniform ladder and
     asserts immediately.

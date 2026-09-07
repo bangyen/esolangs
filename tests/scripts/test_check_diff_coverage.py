@@ -8,7 +8,7 @@ taken.
 
 The unit is the file, not the hunk: the diff picks which files are judged and
 the whole file is then judged, so an uncovered line or one-sided arc anywhere
-in a touched file fails.  That is deliberate -- gating only the added lines
+in a touched file fails.  That is deliberate -- checking only the added lines
 let a fix land beside uncovered code and pass, which is how a file drifts
 while every individual change looks clean.
 

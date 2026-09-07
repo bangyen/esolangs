@@ -27,8 +27,8 @@ class Routine:
     which is what decides whether the routine ends by branching back on the
     counter or plainly returning.  Both start false and only ever turn on.
 
-    Gating a body on ``used`` is why a program that never reads carries no
-    reader; the compilers whose helpers are fixed runtime scaffolding
+    Emitting a body only when ``used`` is why a program that never reads
+    carries no reader; the compilers whose helpers are fixed runtime scaffolding
     instead key the same decision off their emitted call sites.
     """
 
