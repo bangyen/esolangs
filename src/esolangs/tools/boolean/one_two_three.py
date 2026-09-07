@@ -69,10 +69,10 @@ seed the wider pipeline cannot afford to assume:
 
 Several schedules are frozen per arity, and a table takes the shortest:
 each candidate is built on the exact model (a candidate whose verdict
-preconditions fail simply raises and is skipped), the winner is replayed
-row by row on the real interpreter, and at least one candidate covers
-every table -- the suite's exhaustive ``n <= 3`` sweep is what pins that,
-the same status as the schedule constants themselves.
+preconditions fail simply raises and is skipped), and at least one
+candidate covers every table -- the suite's exhaustive ``n <= 3`` sweep,
+which runs the emitted programs on the real interpreter, is what pins
+that, the same status as the schedule constants themselves.
 
 Why constructed templates are still longer than the retired plans
 -----------------------------------------------------------------
@@ -109,7 +109,6 @@ from esolangs.tools.boolean.one_two_three_construct import (
     _endgame,
     _on_mark,
     _paint,
-    _replay,
     _table_val,
     _work,
     construct,
@@ -242,9 +241,11 @@ def _construct_small(truth_table: str, n: int) -> str:
     """Build the small-arity template arity ``n``'s separation law gives.
 
     One prototype, not a field of candidates: the law covers every table
-    at its arity, so there is nothing to choose between.  The template
-    is replayed row by row on the real interpreter before it is returned
-    -- the same contract as
+    at its arity, so there is nothing to choose between.  No closing
+    replay: ``test_all_small_tables`` sweeps every table at ``n <= 3``
+    through the real interpreter, so re-running each build here would
+    charge the caller for a property the suite proves exhaustively --
+    the same contract as
     :func:`~esolangs.tools.boolean.one_two_three_construct.construct`.
     """
     _work[0] = _WORK_BUDGET
@@ -254,9 +255,7 @@ def _construct_small(truth_table: str, n: int) -> str:
         _endgame(b)
     except ConstructError as exc:  # pragma: no cover - the sweep proves coverage
         raise ValueError(f"123 construction failed for {truth_table!r}: {exc}") from exc
-    template = b.template()
-    _replay(template, n, truth_table)
-    return template
+    return b.template()
 
 
 def _in_name_order(body: str, n: int) -> str:
@@ -288,9 +287,11 @@ def one_two_three(truth_table: str) -> str:
     from the bare-fill seed and the derived separation law; wider
     tables go to
     :func:`~esolangs.tools.boolean.one_two_three_construct.construct`
-    unchanged.  Both routes replay every row on the real interpreter
-    before returning, and raise :class:`ValueError` rather than emitting
-    an unproven template.
+    unchanged.  Both routes are constructions, not searches: they raise
+    :class:`ValueError` when a stage invariant breaks rather than
+    emitting a template the rule does not license.  Neither replays the
+    result -- that execution gate lives in the test suite, which runs
+    the emitted programs on the real interpreter.
     """
     n = _validate_truth_table(truth_table)
     if n > 3:
