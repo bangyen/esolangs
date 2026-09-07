@@ -340,6 +340,29 @@ def _tail_for(one_value: int, zero_value: int) -> str | None:
     return None
 
 
+#: The class pairs that actually print, which is 32 of the 342 in
+#: :data:`_CLASS_PAIRS`.  A tail is a bare translation, optionally after a
+#: ``p``, so it exists only when the pair is one step apart in one direction or
+#: the other -- and even then not always, because ``_sub_code`` has no spelling
+#: for a shift of 1, which is what strikes ``(1, 0)``, ``(1, 2)``, ``(-1, 0)``
+#: and ``(-1, -2)`` out of the survivors.
+#:
+#: This is a *filter on dead iterations*, not a change of search space.
+#: :func:`_solution` ends with ``_tail_for(classes[1], classes[0])`` and returns
+#: ``None`` when it misses, so a pair outside this tuple can never reach
+#: :func:`_derive`'s ``best``, whatever the rest of the parameter set is.  The
+#: comprehension preserves ``_CLASS_PAIRS`` order and ``best`` keeps the first
+#: candidate of a given width, so the winner is unchanged as well as the reach.
+#: Skipping the other 310 is worth 8.6x on the call count -- measured at
+#: 619k :func:`_solution` calls per two-input table against 72k -- and 6.1x
+#: end to end on the eighteen-table profile that found this loop (2.28s to
+#: 0.37s).  The remaining time is the same nest at a tenth the width, so
+#: hoisting inside it was measured and left out: it is worth about 0.1s.
+_VIABLE_CLASS_PAIRS = tuple(
+    pair for pair in _CLASS_PAIRS if _tail_for(pair[1], pair[0]) is not None
+)
+
+
 def _column_slopes(rows: dict[tuple[int, int], int]) -> list[list[int]]:
     """Return the admissible slopes per column, read straight off the table.
 
@@ -435,6 +458,11 @@ def _derive(truth_table: str) -> tuple[list[tuple[str, str]], str] | None:
     so what is enumerated here is only the constants input 0 contributes and
     the pair of class values.  Every candidate is priced and the shortest
     kept, so the result does not depend on enumeration order.
+
+    The class values come from :data:`_VIABLE_CLASS_PAIRS` rather than the
+    full grid, because a pair the tail cannot print rejects every parameter
+    set it appears in -- see that tuple for why the filter cannot move the
+    winner.
     """
     rows = {
         (x0, x1): int(truth_table[(x0 << 1) | x1]) for x0 in (0, 1) for x1 in (0, 1)
@@ -452,7 +480,7 @@ def _derive(truth_table: str) -> tuple[list[tuple[str, str]], str] | None:
                     continue
                 for zero_slope in options[0]:
                     for one_slope in options[1]:
-                        for classes in _CLASS_PAIRS:
+                        for classes in _VIABLE_CLASS_PAIRS:
                             found = _solution(
                                 rows,
                                 first,
