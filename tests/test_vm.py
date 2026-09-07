@@ -2025,6 +2025,36 @@ class TestRunUntilHaltOrGrowth:
         assert run_until_halt_or_growth(machine) is True
         assert machine.tape[1] == 9
 
+    def test_phased_growing_waves_select_their_own_period(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainfuck import _Machine
+        from esolangs.vm import run_until_halt_or_growth
+
+        # Each outer lap moves right one cell and maps 1 to 2 or 2 to 1.
+        # One lap is therefore not a translated state, but two are.  The
+        # old one-visit certificate reached its budget here; the automatic
+        # relative-tape checkpoint discovers the two-visit period instead.
+        code = "+[>+++<[->-<]>]"
+        assert run_until_halt_or_growth(_Machine(code, ScriptedIO()), 1_000) is False
+
+        # This is an executed positive control, not only a state comparison:
+        # the real program remains live and keeps extending its tape.
+        machine = _Machine(code, ScriptedIO())
+        for _ in range(500):
+            machine.step()
+        assert not machine.halted
+        assert len(machine.tape) > 30
+
+    def test_long_phased_wave_is_proved_without_a_period_argument(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainfuck import _Machine
+        from esolangs.vm import run_until_halt_or_growth
+
+        # The source cell is copied right and the new cell gains two.  From
+        # the initial odd value, that is a 128-phase travelling wave.  Its
+        # phase is not exposed by the API; Brent finds it automatically.
+        assert run_until_halt_or_growth(_Machine("+[[->+<]>++]", ScriptedIO())) is False
+
 
 class TestGrowthDetectorAcrossLanguages:
     """The certificate is not brainfuck-specific.
