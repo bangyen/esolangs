@@ -323,109 +323,46 @@ def test_a_flipped_embed_complements_in_place_and_keeps_slot_order() -> None:
 
 
 @pytest.mark.slow  # 7.1s: enumerates the stagings the screen claims to skip
-def test_span_screen_declines_no_reachable_table() -> None:
-    """The span screen never declines a table some staging prints.
+def test_the_batched_planned_bits_match() -> None:
+    """``_planned_bits`` equals ``_planned_bit`` per accumulator, per plan.
 
-    ``_span_admits`` is a necessary condition used to skip an enumeration
-    that would fail, so its only dangerous error is a false *negative*.  This
-    replays the derivation's own enumeration and asserts two things over
-    every column it prints: that the column lies in the span of the standing
-    columns at that staging, and that the screen therefore admits it.
-
-    This is the test that must fail if the caps, separators or setter ever
-    change -- the spans are a property of those, and a screen validated
-    against an older enumeration would silently decline tables the new one
-    reaches.  It is deliberately not a sampled check.
+    The batched form re-spells the per-accumulator case analysis one region
+    at a time, so the per-accumulator function stays as the specification
+    and every plan the staged arities actually build is walked both ways.
     """
-
     from esolangs.tools.boolean.minifuck import (
         _BASE,
         _MAX_ACC,
-        _MAX_BRACKETS,
-        _READS,
-        _SEPS,
-        _SPAN,
-        _clamp,
-        _embed,
-        _endgame,
-        _in_span,
-        _span_admits,
-        _span_basis,
-        _staging_spans,
-        _walk_to,
+        _insert_suffixes,
+        _planned_bit,
+        _planned_bits,
+        _slice_chains,
+        _slices,
+        _suffix_plan,
     )
 
-    n = 5
-    assert _staging_spans(n), "no spans built"
-    window = range(1, _BASE + n * _SPAN + 12)
-
-    def pack(table: tuple[int, ...] | str) -> int:
-        packed = 0
-        for bit in table:
-            packed = (packed << 1) | int(bit)
-        return packed
-
-    # Replay the enumeration, checking each printed column against the span
-    # of the staging that printed it, and against the screen as a whole.
+    accs = range(_BASE, _MAX_ACC + 1)
     checked = 0
-    for sep_index in range(len(_SEPS)):
-        for settle in (0, 1):
-            base = _embed(n, settle=settle, sep=_SEPS[sep_index])
-            _clamp(base)
-            _walk_to(base, _BASE - 1)
-            run = base.fork()
-            for _k in range(_MAX_BRACKETS + 1):
-                staged = run.fork()
-                staged.emit("<")
-                _clamp(staged)
-                # Built in place rather than indexed out of _staging_spans:
-                # that list interleaves each slice's pure runs with its
-                # insert family, so a counter that walks only the pure runs
-                # drifts onto another staging's span after the first slice.
-                # An indexing bug there would fail exactly like a violated
-                # rule, which is not a confusion this test may make.
-                basis = _span_basis([pack(staged.col(cell)) for cell in window])
-                for acc in range(9, _MAX_ACC + 1, 5):
-                    for read in _READS:
-                        probe = staged.fork()
-                        try:
-                            _endgame(probe, acc, read, 0)
-                        except ValueError:
-                            continue
-                        printed = probe.printed()
-                        if any(len(d) != 1 for d in printed):
-                            continue
-                        column = "".join(printed)
-                        checked += 1
-                        assert _in_span(pack(column), basis), (
-                            f"printed column outside its staging's span: {column}"
-                        )
-                        assert _span_admits(column, n), (
-                            f"screen declines a reachable table: {column}"
-                        )
-                run.emit("[")
-
-    assert checked > 1000, f"too few columns checked to be evidence: {checked}"
-
-
-def test_span_screen_is_only_offered_where_it_bites() -> None:
-    """The screen admits everything at an arity it does not serve.
-
-    It is gated to five inputs because at four the ambient dimension (16)
-    matches the ranks the bases reach, so the test is vacuous there and
-    evaluating it would cost more than it saves.  Pinning that keeps a future
-    widening honest: offering it at another arity must be a measured choice,
-    not an accident of the gate.
-    """
-    import importlib
-
-    module = importlib.import_module("esolangs.tools.boolean.minifuck")
-
-    assert module._SCREENED_ARITIES == (5,)  # noqa: SLF001
-    # Four inputs is not screened, so every table is admitted without the
-    # spans ever being built.
-    assert module._span_admits("0110100110010110", 4)  # noqa: SLF001
-    assert module._span_admits("1" * 16, 4)  # noqa: SLF001
+    modes: set[int] = set()
+    for n in (2, 3):
+        for sep_index, settle in _slices(n):
+            chains, _pools = _slice_chains(n, sep_index, settle)
+            suffixes: list[tuple[int, int]] = [(cut, 0) for cut in range(29)]
+            suffixes += [
+                (s.index("<"), len(s) - s.index("<") - 1) for s in _insert_suffixes()
+            ]
+            for cut, rest in suffixes:
+                for chain in chains:
+                    plan = _suffix_plan(chain, cut, rest)
+                    assert _planned_bits(chain, plan, accs) == [
+                        _planned_bit(chain, plan, acc) for acc in accs
+                    ], (n, sep_index, settle, cut, rest)
+                    modes.add(plan[0])
+                    checked += 1
+    assert checked > 10000, f"too few plans walked: {checked}"
+    # A sweep that never reaches a plan shape proves nothing about it: all
+    # three -- pure, point-flip, complemented chain -- must have fired.
+    assert modes == {0, 1, 2}, modes
 
 
 # 3.7s standalone: the target-set derivation is the cost.  It is free when the
@@ -1087,17 +1024,17 @@ class TestParameterizedMinifuck:
             module._STAGING_BUDGET = original  # noqa: SLF001
             module._derived_plans.cache_clear()  # noqa: SLF001
 
-    @pytest.mark.slow  # ~3.6s: a five-input screen plus a sculpted build
-    def test_the_span_screen_costs_length_not_coverage(self) -> None:
-        """A table the span screen declines still builds, the other way.
+    @pytest.mark.slow  # ~3.6s: a five-input index fill plus a sculpted build
+    def test_a_table_no_staging_reaches_costs_length_not_coverage(self) -> None:
+        """A table outside every staging still builds, the other way.
 
-        ``_span_admits`` is a linear-algebra screen run before the staging
-        tabulation, and it only ever declines -- so the danger is not that it
-        admits something wrong but that a table it rejects stops being built
-        at all.  Nothing drove that arm: every table the suite derives is
-        admitted, so the refusal and the fall-through below it were unrun.
+        A five-input table the tabulation cannot answer is an index miss --
+        the linear-algebra screen that used to pre-empt the lookup is gone,
+        see the note above ``_CHAIN_CAP`` -- so the danger is not a wrong
+        admission but a table that stops being built at all.  This drives
+        the miss and the fall-through below it.
 
-        Executed on every row rather than merely emitted, because a screen
+        Executed on every row rather than merely emitted, because a miss
         that quietly rerouted a table to a *wrong* program would look
         identical to one that rerouted it to a longer one.
         """
@@ -1106,7 +1043,6 @@ class TestParameterizedMinifuck:
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
         table = "01001100001110000110000011001011"
-        assert not module._span_admits(table, 5)  # noqa: SLF001
         module._derived_plans.cache_clear()  # noqa: SLF001
         assert module._derive_staging(table, 5) is None  # noqa: SLF001
 
@@ -2800,27 +2736,6 @@ class TestParameterizedMinifuck:
             patch.setattr(module, "_find_pool", lambda *_a, **_k: None)
             with pytest.raises(ValueError, match="no pool pattern"):
                 _endgame(joint.fork(), 12, "[<", 0)
-
-
-class TestMinifuckArityGates:
-    """The staging passes that decline outside the arities they serve.
-
-    Each pass is gated on an arity tuple, and the gate is what keeps a
-    three-input table from paying a four-input sweep.  Asking at an arity
-    outside the gate returns ``None`` without building anything.
-    """
-
-    @staticmethod
-    def module():
-        return importlib.import_module("esolangs.tools.boolean.minifuck")
-
-    def test_staging_spans_skips_the_insert_suffixes(self) -> None:
-        """Two inputs are not an insert arity, so only the bracket runs are
-        spanned -- the suffix loop is skipped rather than run and discarded.
-        """
-        m = self.module()
-        assert 2 not in m._INSERT_ARITIES  # noqa: SLF001
-        assert m._staging_spans(2)  # noqa: SLF001
 
 
 @pytest.mark.slow  # one four-input staging enumeration, ~1.2s
