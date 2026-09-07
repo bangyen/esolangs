@@ -20,6 +20,28 @@ numeric output alphabet, or cannot emit arbitrary byte sequences. Boolean
 construction is parameterized for 123 and `%^2^-1`; no program reading its
 own inputs overcomes the latter's two-input wall.
 
+## Text generator blockers
+
+| Language | Why it cannot emit arbitrary text |
+| --- | --- |
+| A Painter Ant | No I/O; its grid dump is limited to raster symbols. |
+| Algebraic Programming Language | Executed lines print numeric results only. |
+| ArrowQueue | Has no output. |
+| Back | Its halting tape dump has only `0`, `1`, and spaces. |
+| BF-PDA | Output is one bit at a time. |
+| Bitdeque | Its interpreter-only deque dump is numeric. |
+| COD | Its sink prints decimal integers only. |
+| Circuit Diagram | Output is a bit string only. |
+| Fargo | `$` prints the output register as a number. |
+| Flowchart | Its output node emits one bit; the spec's truth machine fixes that convention. |
+| Grapheme | String mode cannot contain `E`, and strings cannot be concatenated. |
+| Inject | `send` appends a newline to every emitted line, so texts without a final newline are unreachable. |
+| Jaune | `^` prints cells as decimal integers only. |
+| Lamfunc | Whitespace tokenization and no concatenation prevent arbitrary text. |
+| Minsky Swap | It has no output command; the halting register dump is numeric. |
+| Point Break | Has no output. |
+| RAM0 | Its fixed-format final dump cannot address arbitrary text. |
+
 Current caps are deliberate:
 
 - **6-5:** 35 addressable branch labels; a structural language wall.
