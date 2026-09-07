@@ -454,31 +454,45 @@ free, because `acc` is small while the pool code already advances the
 pointer ~28 cells.  At six they are level, which is the shape to plan
 against.
 
-Both runs now take a closed form on `_Sim` rather than being stepped:
+Since then the whole machine has become closed forms — `_Sim` advances by
+four laws, one per maximal run of the alphabet, and no longer imports the
+interpreter at all:
 
-- `"<" * k` is `ptr = max(ptr - k, 0)`.  `<` is the interpreter's cheapest
-  branch — no tape write, no print, no skip — so the whole run is one
+- `"<" * k` is `ptr = max(ptr - k, 0)`.  `<` is the language's cheapest
+  instruction — no tape write, no print, no skip — so the whole run is one
   saturating subtraction.
-- `"[x" * k` stays per-cell, because each `[` flips the cell it steps onto
-  and *cascades* into the cell beyond when that flip lands on zero.  The
-  win there is dropping the per-character call and six-tuple unpack, not
-  the loop.
+- A comment run can only consume a pending skip.
+- `"[x" * k` is the prefix-XOR carry law: each window cell becomes the
+  complement of the prefix XOR up to it, and the cell above the window
+  takes the window's total parity — `O(log k)` big-integer doublings.
+- `"[" * k` writes the same prefix-XOR window — a cascade folds into the
+  next cell's effective value — but *costs* the bracket staircase: a
+  crossing whose effective value is 1 spends two instructions, its skip
+  eating the next `[`, so the extent is the staircase inverse, and a run
+  can end one instruction into a crossing with the skip left pending.
+- `.` advances, flips, and prints the pool byte — or reads on a zero byte,
+  which marks the row dead with its state frozen where it stood.
 
-**The cascade is the trap.**  A first closed form that ignored it agreed
-with the stepper on fresh rows and diverged on 877 of 3000 random states.
-`test_the_closed_form_runs_agree_with_stepping_them` is that control, kept
-as a test: it builds arbitrary states before comparing, because a fresh row
-has a zero tape and no pending skip, which is exactly where a wrong model
-still looks right.
+`_Joint.emit` parses each emission into maximal runs once and advances
+every row by whole runs, so the `char x row` cost above is gone rather
+than optimized — the varied-code third included.
 
-`_Sim.exec` also inlines the two pointer-only instructions (`<` and a
-comment character) instead of delegating them.  Those are the only two that
-cannot print, read, cascade or set the skip; `.` and `[` still go to the
-interpreter's `_step`, which stays the single definition of what a Minifuck
-instruction means.
+**The cascade is the trap.**  A first walk law that ignored it agreed with
+the stepper on fresh rows and diverged on 877 of 3000 random states.  The
+laws are the emitter's own statement of the language now, so nothing rests
+on their derivation alone: `test_the_laws_agree_with_the_interpreters_step`
+pins every law to the interpreter's `_step` — still the single definition
+of what a Minifuck instruction means — from arbitrary states over the
+construction's whole gadget vocabulary,
+`test_the_closed_form_runs_agree_with_stepping_them` checks each run law
+against its own single-instruction case, and
+`test_the_simulator_agrees_with_a_real_run_on_random_streams` compares
+whole random programs against a real `run`.  All three build arbitrary
+states before comparing, because a fresh row has a zero tape and no
+pending skip, which is exactly where a wrong model still looks right.
 
-Measured end to end on the six-input parity table: **43.6s -> 18.1s.**  The
-remaining cost is the varied-code third, which no run-length form reaches.
-Getting past it means not iterating rows in Python at all — holding each
-cell as a `2**n`-bit int and executing an instruction once with bitwise ops
-— which is a much larger change and is not done here.
+The earlier stepping-era measurement on the six-input parity table —
+**43.6s -> 18.1s** from closing just the two straight runs — is kept above
+for why the runs mattered; with the laws the corpus re-emits byte for byte
+identically and build times are level to slightly better (five-input XOR
+3.1s -> 2.8s cold).

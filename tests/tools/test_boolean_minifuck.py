@@ -2420,10 +2420,12 @@ class TestParameterizedMinifuck:
 
         The edges above are hand-picked; this is the same claim made over
         random programs, which is what would catch a divergence nobody
-        thought to write a case for.  ``_Sim.exec`` calls the interpreter's
-        ``_step`` so the two *cannot* disagree today -- this is the test that
-        fails if some later change gives the emitter its own copy of the
-        dispatch again.
+        thought to write a case for.  ``_Sim`` advances by its own closed-
+        form laws -- that is the point of the module, the build path no
+        longer drives the interpreter -- so the two *can* disagree now, and
+        this comparison against a real ``run`` is one of the two tests that
+        would say so (the other pins each law to ``_step`` from arbitrary
+        states, below).
 
         Only live rows are compared cell by cell: once a row is ``dead`` the
         emitter stops tracking it by contract, while a real run keeps going,
@@ -2468,12 +2470,14 @@ class TestParameterizedMinifuck:
         assert skips, "no stream ended on a pending skip"
 
     def test_the_closed_form_runs_agree_with_stepping_them(self) -> None:
-        """``run_left`` and ``run_walk`` match ``exec``ing the same run.
+        """A whole run's law matches applying it one instruction at a time.
 
-        The two are the closed forms of ``"<" * k`` and ``"[x" * k``, which
-        together were two thirds of a six-input build's simulated steps.
-        They are an optimization only while they agree with the stepper, and
-        the disagreement they invite is not hypothetical: a first ``run_walk``
+        ``run_left``, ``run_walk`` and ``run_brackets`` each claim a closed
+        form over a run of ``k`` tokens; ``exec`` applies the same laws one
+        token at a time.  The two spellings must compose to the same state
+        -- the staircase inverse and the prefix-XOR doubling are exactly the
+        parts a per-token application does not share -- and the
+        disagreement this invites is not hypothetical: a first ``run_walk``
         that ignored the cascade a ``[`` fires when its flip lands on zero
         matched on the easy states and diverged on 877 of 3000 random ones.
 
@@ -2494,7 +2498,11 @@ class TestParameterizedMinifuck:
                 start.exec(rng.choice("<[.x"))
             count = rng.randrange(0, 12)
 
-            for token, closed in (("<", "run_left"), ("[x", "run_walk")):
+            for token, closed in (
+                ("<", "run_left"),
+                ("[x", "run_walk"),
+                ("[", "run_brackets"),
+            ):
                 stepped = start.copy()
                 for ins in token * count:
                     stepped.exec(ins)
@@ -2525,32 +2533,120 @@ class TestParameterizedMinifuck:
         assert clamped, "no clamp started away from cell 0"
         assert walks_cascaded, "no walk touched the tape"
 
-    def test_carrying_an_effect_matches_stepping_every_row(self) -> None:
-        """``_Joint.emit`` carries a mixed code's effect between like rows.
+    def test_the_laws_agree_with_the_interpreters_step(self) -> None:
+        """Every law matches ``_step``, from arbitrary states, over the
+        construction's own vocabulary.
 
-        Rows advance in lockstep, so they meet an emission having seen the
-        same instructions; what differs is the bits their setters embedded.
-        A short code reads only the cells it can reach, so rows agreeing
-        there transform identically and the effect is computed once and
-        applied as arithmetic to the rest.
+        The laws are the module's own statement of the language -- the build
+        path no longer delegates to the interpreter -- so this differential
+        is what now pins them to ``_step``, which stays Minifuck's single
+        definition.  The reference is the retired delegating stepper,
+        rebuilt here from ``_step`` itself; the states are arbitrary rather
+        than fresh (fresh ones are where a wrong model still looks right);
+        and the codes are the strings the generator actually emits --
+        separators, setters, reads, pool codes, weight gadgets, resets --
+        plus bare runs and random mixed streams, so no law is exercised
+        only on the shapes it was derived from.
+        """
+        import importlib
+        import random
 
-        The key is the whole claim.  It must hold everything the code can
-        observe -- the window *relative to the pointer*, the pointer itself,
-        the low byte a print reads, the skip -- and a key missing any of
-        those merges rows that are not equivalent.  Keying on absolute cells
-        alone did exactly that, and built 27 wrong programs out of 39 before
-        the corpus caught it.  So this compares a carried joint against one
-        that steps every row, over codes mixed enough to move the pointer,
-        print, and cascade.
+        from esolangs.interpreters.tape_based.minifuck import _step
+        from esolangs.tools.boolean.minifuck_sim import _runs, _Sim
+
+        # The package re-exports the generator function under the
+        # submodule's name, so the module comes through importlib.
+        m = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        def reference(row: _Sim, code: str) -> None:
+            """The retired stepper: one ``_step`` call per character."""
+            for ins in code:
+                if row.dead:
+                    return
+                if row.skip:
+                    row.skip = False
+                    continue
+                if ins == "<":
+                    if row.ptr:
+                        row.ptr -= 1
+                    continue
+                if ins not in ".[":
+                    continue
+                tape, length, ptr, skipped, char, reads = _step(
+                    ins, row.tape, row.length, row.ptr
+                )
+                if reads:
+                    row.dead = True
+                    return
+                if char is not None:
+                    row.out.append(char)
+                row.tape, row.length, row.ptr, row.skip = tape, length, ptr, skipped
+
+        gadgets = [
+            *m._SEPS,  # noqa: SLF001
+            *m._POOL_CODES,  # noqa: SLF001
+            *m._READS,  # noqa: SLF001
+            m._FLIP,  # noqa: SLF001
+            "[<",
+            "xx",
+            "[x",
+            "[x.",
+            m._reset_code(2),  # noqa: SLF001
+            m._mux_weight(4),  # noqa: SLF001
+            m._mux_weight(8),  # noqa: SLF001
+        ]
+
+        rng = random.Random(20260906)
+        deaths = printed = skips = 0
+        for _ in range(4000):
+            tape = rng.getrandbits(48)
+            ptr = rng.randrange(0, 40)
+            skip = rng.random() < 0.3
+            pick = rng.random()
+            if pick < 0.4:
+                code = rng.choice(gadgets)
+            elif pick < 0.55:
+                code = "[" * rng.randrange(1, 30)
+            elif pick < 0.7:
+                code = "[x" * rng.randrange(1, 20)
+            else:
+                code = "".join(rng.choice("[<x.") for _ in range(rng.randrange(1, 25)))
+
+            lawful = _Sim(48)
+            lawful.tape, lawful.ptr, lawful.skip = tape, ptr, skip
+            stepped = lawful.copy()
+            lawful.apply(_runs(code))
+            reference(stepped, code)
+            assert lawful.key() == stepped.key(), (
+                f"laws diverged from _step on {code!r} at tape={tape:#x} "
+                f"ptr={ptr} skip={skip}"
+            )
+            deaths += stepped.dead
+            printed += len(stepped.out)
+            skips += stepped.skip
+
+        # The comparison is worthless if the interesting transitions never
+        # fire, so assert the sample reached all three.
+        assert deaths, "no state hit the zero-pool read"
+        assert printed, "no state printed"
+        assert skips, "no state ended on a pending skip"
+
+    def test_the_parsed_emission_matches_stepping_every_row(self) -> None:
+        """``_Joint.emit`` parses a code once and advances rows by whole runs.
+
+        The parse and the per-run laws have to compose to exactly what
+        applying the laws one character at a time does -- the run boundaries
+        and the skip handed from one run to the next are where a parse bug
+        would live.  Synthetic codes do not reach the states this has to get
+        right: random emissions leave the rows' pointers converged, and it
+        is precisely the *divergent* pointers the real construction creates
+        that make an emission's effect differ row by row.  So the generator
+        itself drives the comparison, with every emission checked both ways
+        as it happens.
         """
         from esolangs.tools.boolean import minifuck_sim
         from esolangs.tools.boolean.minifuck import minifuck
 
-        # Synthetic codes do not reach the states this has to get right:
-        # random emissions leave the rows' pointers converged, and it is
-        # precisely the *divergent* pointers the real construction creates
-        # that a bad key merges.  So the generator itself drives the
-        # comparison, with every emission checked both ways as it happens.
         real_emit = minifuck_sim._Joint.emit  # noqa: SLF001
         checked = [0]
 
@@ -2562,11 +2658,11 @@ class TestParameterizedMinifuck:
                 for ch in code:
                     row.exec(ch)
             assert [m.key() for m in rows] == [m.key() for m in reference], (
-                f"carrying the effect of {code!r} diverged from stepping it"
+                f"the parsed emission of {code!r} diverged from stepping it"
             )
             # What makes the comparison bite is rows whose pointers differ:
-            # a key holding absolute cells merges those, and they are the
-            # ones the construction actually produces.
+            # an emission's effect is row-dependent exactly there, and they
+            # are the states the construction actually produces.
             if len({m.ptr for m in reference}) > 1:
                 checked[0] += 1
 
@@ -2581,6 +2677,66 @@ class TestParameterizedMinifuck:
         minifuck.cache_clear()
 
         assert checked[0], "no emission met rows whose pointers had diverged"
+
+    def test_the_computed_endgame_choice_matches_trying_all_four(self) -> None:
+        """``_try_print`` names the pair the retired four-fork trial found.
+
+        The trial loop -- fork the joint, run every ``(read, orientation)``
+        endgame, keep whichever printed -- is the specification, so it is
+        replayed here, spelled as it stood, against the computed choice on
+        the call sites real builds reach.  Corpus identity already pins
+        today's outcomes; this pins the *selection rule*, which is what
+        would drift if the polarity mapping or the trial order were edited.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+        def retired(joint: object, truth_table: str, acc: int) -> object:
+            """The replaced trial loop, verbatim."""
+            for read in module._READS:  # noqa: SLF001
+                for cell7 in (0, 1):
+                    probe = joint.fork()  # type: ignore[attr-defined]
+                    try:
+                        module._endgame(probe, acc, read, cell7)  # noqa: SLF001
+                    except ValueError:
+                        continue
+                    if probe.printed() == list(truth_table):
+                        return probe
+            return None
+
+        sites: list[tuple[object, str, int]] = []
+        real = module._try_print  # noqa: SLF001
+
+        def record(joint: object, truth_table: str, acc: int) -> object:
+            if len(sites) < 200:
+                sites.append((joint.fork(), truth_table, acc))  # type: ignore[attr-defined]
+            return real(joint, truth_table, acc)
+
+        # One table per route: a constant (the degenerate cell scan,
+        # including the in-pool cell 1 the computed refusal now answers), a
+        # staged pair, a reconverged projection, and the sculpted holdout.
+        with patch.object(module, "_try_print", record):
+            module.minifuck.cache_clear()
+            for table in ("1111", "0110", "0011", "01101101"):
+                module.minifuck.__wrapped__(table)
+        module.minifuck.cache_clear()
+
+        assert len(sites) > 10, f"expected real call sites, got {len(sites)}"
+        misses = hits = 0
+        for joint, table, acc in sites:
+            expected = retired(joint, table, acc)
+            got = real(joint, table, acc)
+            if expected is None:
+                assert got is None, (table, acc)
+                misses += 1
+            else:
+                assert got is not None, (table, acc)
+                assert got.template() == expected.template(), (table, acc)
+                hits += 1
+        # The comparison has to see both verdicts to mean anything.
+        assert hits, "no site printed"
+        assert misses, "no site declined"
 
     def test_the_walk_needs_a_converged_pointer_going_right(self) -> None:
         """``[x`` walks are only safe rightward from one shared position.

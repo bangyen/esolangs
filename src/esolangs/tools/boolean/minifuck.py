@@ -129,8 +129,12 @@ finish is not.
 
 Nothing here is hand-tracked either: :class:`_Joint` runs all ``2**n``
 instantiations in lockstep as the template is emitted, every choice is made
-against the simulated truth, and :func:`minifuck` raises rather than
-returning a program it has not seen print the table.
+against that tracked state, and :func:`minifuck` raises rather than
+returning a program it has not seen print the table.  The tracking itself
+is not an interpreter: the rows advance by the closed-form laws
+:mod:`esolangs.tools.boolean.minifuck_sim` states -- one law per maximal
+run of the alphabet -- and the tests pin those laws to the interpreter's
+``_step`` differentially, so the build path never drives an interpreter.
 
 **Mechanisms ruled out for real, not to be revisited.**  Chaining ``[<``
 reads across planted indicators: ``[<`` sets the cell to its *right* and
@@ -191,7 +195,7 @@ from esolangs.tools.boolean.helpers import (
 # are re-exported rather than referenced through the module because the test
 # suite imports them from here by name, and because every use in this file
 # reads as part of the construction rather than as a call into a simulator.
-from esolangs.tools.boolean.minifuck_sim import _clamp, _Joint, _Sim, _walk_to
+from esolangs.tools.boolean.minifuck_sim import _clamp, _Joint, _runs, _Sim, _walk_to
 
 __all__ = ["minifuck"]
 
@@ -730,8 +734,7 @@ def _pool_code_for_row(
         probe.tape = low
         probe.ptr = ptr
         probe.skip = skip
-        for char in code:
-            probe.exec(char)
+        probe.apply(_runs(code))
         # Neither guard the scan carried can fire inside the derived domain:
         # over its 7680 (key, code) runs no code leaves a row dead or
         # mid-skip, and none ends right of the probe's walk out.  They were
@@ -923,9 +926,22 @@ def _printed_column(j: _Joint, acc: int, cell7: int) -> tuple[int, ...] | None:
     hit = _PRINTED_COLUMNS.get(key, _MISSING)
     if hit is not _MISSING:
         return hit  # type: ignore[return-value]
+    column = _derive_column(j, acc, cell7)
+    _PRINTED_COLUMNS[key] = column
+    return column
+
+
+def _derive_column(j: _Joint, acc: int, cell7: int) -> tuple[int, ...] | None:
+    """Return the column :func:`_printed_column` memoises, derived fresh.
+
+    Split out because two callers want opposite cache behaviour: the staged
+    oracle asks about the same few stagings again and again, so the memo
+    above pays for itself, while :func:`_try_print` is handed a fresh
+    template on every sculpted build -- a memo keyed on those would grow one
+    entry per build and never hit.
+    """
     code = _find_pool(j, cell7, acc - 1)
     if code is None:
-        _PRINTED_COLUMNS[key] = None
         return None
     probe = j.fork()
     probe.emit(code)
@@ -944,11 +960,8 @@ def _printed_column(j: _Joint, acc: int, cell7: int) -> tuple[int, ...] | None:
         # and three inputs, walked over the whole accumulator range with the
         # cache cleared each time -- no failure.  A direct `_walk_to` to an
         # unreachable target raises, as the control.
-        _PRINTED_COLUMNS[key] = None
         return None
-    column = tuple(probe.col(probe.ms[0].ptr + 1))
-    _PRINTED_COLUMNS[key] = column
-    return column
+    return tuple(probe.col(probe.ms[0].ptr + 1))
 
 
 def _column_sweep(j: _Joint, cell7: int) -> dict[int, tuple[int, ...]]:
@@ -1035,16 +1048,64 @@ def _confirm(
 
 
 def _try_print(j: _Joint, truth_table: str, acc: int) -> _Joint | None:
-    """Try every read and orientation at ``acc``; return one that prints."""
+    """Emit the endgame that prints the table at ``acc``, or None.
+
+    The choice of read and orientation is **computed, not tried**.  This
+    used to fork the joint four ways, run all four endgames, and keep
+    whichever printed -- the last candidate search on the build path.  What
+    each pair prints was never in doubt, though: the column is fixed by the
+    tape once the pool is set and the walk has run (:func:`_derive_column`),
+    and the two reads differ only in polarity -- ``'[x<[<'`` reports the
+    column directly and ``'[<'`` complemented, the same mapping the staging
+    index's ``claim`` uses.  So one derivation per orientation names the
+    pair, in the order the trial loop used, and one endgame is emitted.
+
+    Nothing is returned on the strength of the algebra alone: the emitted
+    endgame's own output is still compared against the table, which is the
+    module-wide standard, and :func:`_endgame` still asserts the pool is
+    input-independent.  Both guards are kept as the acceptance even though
+    a divergence has never been observed -- the derivation was checked
+    against the emission over 15600 columns when it landed, and the corpus
+    is byte-identical under the computed choice.
+    """
+    if acc < _POOL_WIDTH:
+        # The endgame's own first refusal, mirrored: an accumulator inside
+        # the pool cannot be printed from, and asking the derivation about
+        # one would send its walk leftward instead.  ``_degenerate`` probes
+        # every recorded cell and the constant-one column stands at cell 1
+        # -- the walk-in's own wake -- so this is a case every degenerate
+        # build reaches rather than a guard.
+        return None
+    want = list(truth_table)
+    derived: dict[int, tuple[int, ...] | None] = {}
     for read in _READS:
         for cell7 in (0, 1):
+            if cell7 not in derived:
+                derived[cell7] = _derive_column(j, acc, cell7)
+            column = derived[cell7]
+            if column is None:
+                continue
+            digits = column if read == _READS[1] else _complement(column)
+            if list(map(str, digits)) != want:
+                continue
             probe = j.fork()
             try:
                 _endgame(probe, acc, read, cell7)
-            except ValueError:
+            except ValueError:  # pragma: no cover - not observed; see below
+                # The endgame refuses on exactly the two conditions the
+                # derivation already declined on -- no pool code, or a walk
+                # that cannot reach -- so a pair the derivation offered has
+                # somewhere to go.  Kept because the derivation and the
+                # emission disagreeing is precisely what the acceptance
+                # below exists to catch, and a raise here is that
+                # disagreement's other spelling.
                 continue
-            if probe.printed() == list(truth_table):
-                return probe
+            if probe.printed() != want:  # pragma: no cover - the acceptance
+                # Never observed -- the derivation is the emission's own
+                # algebra -- but this is the "seen to print" standard, so a
+                # divergence is reported as a miss rather than shipped.
+                continue
+            return probe
     return None
 
 
@@ -3017,12 +3078,13 @@ def _solve(truth_table: str) -> str:
 
     The emitted program embeds each input once, computes the table in cells
     past the pool, relays the answer into the *pointer* (values cannot travel
-    left, but the pointer can), and prints one ASCII digit.  Every step is
-    simulated against all ``2**n`` rows as it is emitted, and a
-    :class:`ValueError` is raised rather than returning a program that has
-    not been seen to print the table.
+    left, but the pointer can), and prints one ASCII digit.  Every emission
+    is tracked against all ``2**n`` rows by the closed-form laws in
+    :mod:`esolangs.tools.boolean.minifuck_sim`, and a :class:`ValueError` is
+    raised rather than returning a program that has not been seen to print
+    the table.
 
-    Cached, because at four inputs and above the simulated search is what
+    Cached, because at four inputs and above the derivation is what
     this module costs -- seconds to tens of seconds a table, against
     effectively zero to *run* the program it returns.  Below that nothing
     searches at all: two and three inputs are derived from the staging
