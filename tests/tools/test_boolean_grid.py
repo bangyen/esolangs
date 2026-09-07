@@ -1646,6 +1646,29 @@ class TestSuperSNUSP:
     that; a replayed truth table can.
     """
 
+    def test_cost_model_selects_the_emitted_anf(self) -> None:
+        """The selector prices both ANF layouts exactly through three inputs."""
+        from esolangs.tools.boolean.helpers import essential_inputs, read_at
+        from esolangs.tools.boolean.super_snusp import (
+            _TWO_INPUT_SHORT,
+            _anf_cost,
+            _emit_anf,
+            super_snusp,
+        )
+
+        for n in range(1, 4):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                used = essential_inputs(table, n)
+                reduced = read_at(table, used, n)
+                full = list(range(n))
+                full_cost = _anf_cost(n, table, full)
+                reduced_cost = _anf_cost(n, reduced, used)
+                assert full_cost == len(_emit_anf(n, table, full))
+                assert reduced_cost == len(_emit_anf(n, reduced, used))
+                if table not in _TWO_INPUT_SHORT:
+                    assert len(super_snusp(table)) == min(full_cost, reduced_cost)
+
     @staticmethod
     def run_table(table: str) -> str:
         """Return the generated program's output for every input, in order."""

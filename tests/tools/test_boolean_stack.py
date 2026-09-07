@@ -411,6 +411,26 @@ class TestUnsquare:
             improved += reordered < stack_ordered
         assert improved == 112
 
+    def test_reorder_cost_selects_the_emitted_program(self) -> None:
+        """The pricing model matches every candidate and picks the shortest."""
+        from esolangs.tools.boolean.stack import (
+            _unsquare_cost,
+            _unsquare_stack_programs,
+            _unsquare_tree,
+        )
+
+        for n in (1, 2, 3):
+            for value in range(2 ** (2**n)):
+                table = format(value, f"0{2**n}b")
+                costs = []
+                for arrangement, prefix in _unsquare_stack_programs(n).items():
+                    permuted = permute_truth_table(table, arrangement)
+                    assert _unsquare_cost(permuted, n, prefix) == len(
+                        prefix + _unsquare_tree(permuted, n)
+                    )
+                    costs.append(_unsquare_cost(permuted, n, prefix))
+                assert len(boolean.unsquare(table)) == min(costs)
+
     def test_sinks_are_interleaved_with_the_reads(self) -> None:
         """Weaving the sinks into the reads is what reaches the arrangements.
 

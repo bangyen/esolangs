@@ -1,5 +1,6 @@
 """Boolean-function generators for register-based languages."""
 
+from itertools import pairwise
 from typing import Any
 
 from esolangs.tools.boolean.helpers import (
@@ -454,20 +455,12 @@ def sophie(truth_table: str) -> str:
     consecutive conditionals must use the block form. Each leaf sets the
     result with ``#$48``/``#$49`` and prints it before halting.
 
-    Two constructions compete, as in :func:`polynomial` and for the same
-    reason.  :func:`_sophie_tree` nests the branches, so it can only collapse
-    a subtable that is *constant*.  :func:`_sophie_dag` carries a state label
-    in the accumulator between levels, which lets two prefixes with equal
-    *residual subfunctions* share one block -- an ordered BDD.  **The shorter
-    wins, with the tree first so ties keep the emission this generator
-    already had.**
+    :func:`_sophie_hybrid` nests unshared residual states like a tree and
+    labels only states reached from multiple parents. It therefore keeps
+    constant-subtree folding while merging equal residual subfunctions.
 
-    A DAG block costs more than a tree node, so the tree keeps small and
-    near-constant tables and the aggregate saving at n == 3 is only 1.9%
-    (22 of 256 tables).  It grows with width as the tree doubles and the
-    state count does not: 3.1% at n == 5, 13.4% at n == 6 and 29.3% at
-    n == 7 over random tables, and parity -- the tree's worst case -- goes
-    from 1911 characters to 283 at n == 7.
+    The hybrid only pays a label where sharing needs it, so it cannot lose
+    the tree's compact unshared regions.
 
     **Reordering the inputs is not available here**, unlike most tree
     generators: ``;`` and ``:`` *assign* to the accumulator, ``#`` loads only
@@ -476,9 +469,7 @@ def sophie(truth_table: str) -> str:
     collects the saving a reorder would have found.
     """
     _validate_truth_table(truth_table)
-    tree = _sophie_tree(truth_table)
-    dag = _sophie_dag(truth_table)
-    return dag if len(dag) < len(tree) else tree
+    return _sophie_hybrid(truth_table)
 
 
 def _sophie_tree(truth_table: str) -> str:
@@ -505,12 +496,67 @@ def _sophie_tree(truth_table: str) -> str:
     return build([])
 
 
+def _sophie_tree_cost(truth_table: str) -> int:
+    n = _validate_truth_table(truth_table)
+    return _sophie_tree_cost_unchecked(truth_table, n)
+
+
+def _sophie_tree_cost_unchecked(truth_table: str, n: int) -> int:
+    """Return the tree cost for an already-validated table."""
+    changes = [0]
+    for left, right in pairwise(truth_table):
+        changes.append(changes[-1] + (left != right))
+
+    def cost(start: int, depth: int) -> int:
+        width = 2 ** (n - depth)
+        if changes[start] == changes[start + width - 1]:
+            return n - depth + 6
+        half = width // 2
+        return 9 + cost(start, depth + 1) + cost(start + half, depth + 1)
+
+    return cost(0, 0)
+
+
 # Label bands for :func:`_sophie_dag`.  Consecutive levels must not share a
 # label, or a block that fires would leave the accumulator holding a value a
 # later test in the *same* chain matches, running two blocks for one input.
 # Alternating two disjoint bands is enough, and both avoid 48/49, which the
 # leaves test against.
 _SOPHIE_BANDS = ((1, 20), (21, 40))
+
+
+def _sophie_dag_cost(truth_table: str) -> int:
+    n = _validate_truth_table(truth_table)
+    return _sophie_dag_cost_unchecked(truth_table, n)
+
+
+def _sophie_dag_cost_unchecked(truth_table: str, n: int) -> int:
+    """Return the DAG cost for an already-validated table."""
+    levels = _polynomial_states(truth_table, n)
+    label_widths = [
+        {
+            state: len(str(_SOPHIE_BANDS[level % 2][0] + index))
+            for index, state in enumerate(states)
+        }
+        for level, states in enumerate(levels)
+    ]
+
+    total = 0
+    for k in range(n):
+        width = 2 ** (n - k - 1)
+        for state in levels[k]:
+            zero, one = state[:width], state[width:]
+            body = (
+                21
+                if k + 1 == n
+                else (
+                    3 + label_widths[k + 1][zero]
+                    if zero == one
+                    else 13 + label_widths[k + 1][zero] + label_widths[k + 1][one]
+                )
+            )
+            total += body if k == 0 else body + 4 + label_widths[k][state]
+    return total
 
 
 def _sophie_dag(truth_table: str) -> str:
@@ -558,6 +604,60 @@ def _sophie_dag(truth_table: str) -> str:
                 body = f";@$48{{#${label(k + 1, zero)}}}{{#${label(k + 1, one)}}}"
             blocks.append(body if k == 0 else f"@${label(k, state)}{{{body}}}")
         out.append("".join(blocks))
+    return "".join(out)
+
+
+def _sophie_hybrid(truth_table: str) -> str:
+    """Emit a Sophie tree that labels only shared residual states."""
+    n = _validate_truth_table(truth_table)
+    levels = _polynomial_states(truth_table, n)
+    references: list[dict[str, int]] = [{} for _ in levels]
+    for k in range(n - 1):
+        width = 2 ** (n - k - 1)
+        for state in levels[k]:
+            if len(set(state)) == 1:
+                continue
+            for child in {state[:width], state[width:]}:
+                references[k + 1][child] = references[k + 1].get(child, 0) + 1
+
+    retained = [
+        [
+            state
+            for state in states
+            if k == 0 or (len(set(state)) > 1 and references[k].get(state, 0) > 1)
+        ]
+        for k, states in enumerate(levels)
+    ]
+    labels = [
+        {state: _SOPHIE_BANDS[k % 2][0] + index for index, state in enumerate(states)}
+        for k, states in enumerate(retained)
+    ]
+
+    def body(k: int, state: str) -> str:
+        if len(set(state)) == 1:
+            return ";" * (n - k) + f"#${_ASCII_ZERO + int(state[0])},&"
+        width = 2 ** (n - k - 1)
+        zero, one = state[:width], state[width:]
+        if k + 1 == n:
+            return (
+                f";@$48{{#${_ASCII_ZERO + int(zero)},&}}"
+                f"{{#${_ASCII_ZERO + int(one)},&}}"
+            )
+
+        def next_body(child: str) -> str:
+            if child in labels[k + 1]:
+                return f"#${labels[k + 1][child]}"
+            return body(k + 1, child)
+
+        if zero == one:
+            return ";" + next_body(zero)
+        return f";@$48{{{next_body(zero)}}}{{{next_body(one)}}}"
+
+    out = []
+    for k, states in enumerate(retained):
+        for state in states:
+            block = body(k, state)
+            out.append(block if k == 0 else f"@${labels[k][state]}{{{block}}}")
     return "".join(out)
 
 
@@ -790,7 +890,10 @@ def polynomial(truth_table: str) -> str:
     old gate's worst case, now renders through n == 8.
     """
     n = _validate_truth_table(truth_table)
-    candidates = [_polynomial_tree(truth_table), _polynomial_dag(truth_table)]
+    candidates: list[tuple[int, str, str, list[list[int]]]] = [
+        (_polynomial_tree_cost(truth_table), "tree", truth_table, []),
+        (_polynomial_dag_cost(truth_table), "dag", truth_table, []),
+    ]
 
     # A table that ignores some of its inputs is a smaller table, and this
     # generator cannot get there on its own: a read *assigns* to the single
@@ -831,20 +934,26 @@ def polynomial(truth_table: str) -> str:
         # it shift every state and the machine falls off its own table --
         # measured, it answers correctly only while the drained bit is 0 and
         # emits nothing at all once it is 1.
-        candidates.append(prefix + _polynomial_tree(reduced))
+        candidates.append(
+            (len(prefix) + _polynomial_tree_cost(reduced), "tree", reduced, prefix)
+        )
 
-    fits = [c for c in candidates if len(c) <= _POLYNOMIAL_MAX_INSTRS]
+    fits = [
+        candidate for candidate in candidates if candidate[0] <= _POLYNOMIAL_MAX_INSTRS
+    ]
     if not fits:
         raise ValueError(
             "the Polynomial boolean generator emits one instruction per "
             f"prime and caps at {_POLYNOMIAL_MAX_INSTRS}, but this table "
-            f"needs {min(len(c) for c in candidates)} under its cheaper "
+            f"needs {min(cost for cost, *_ in candidates)} under its cheaper "
             "construction, which the interpreter cannot factor in "
             "practical time",
         )
     # The tree is first and the comparison is strict, so a table the state
     # machine does not shorten emits exactly what it emitted before.
-    return _polynomial_assemble(min(fits, key=len))
+    _cost, kind, table, prefix = min(fits, key=lambda candidate: candidate[0])
+    body = _polynomial_tree(table) if kind == "tree" else _polynomial_dag(table)
+    return _polynomial_assemble(prefix + body)
 
 
 def _polynomial_assemble(instrs: list[list[int]]) -> str:
@@ -916,6 +1025,21 @@ def _polynomial_tree(truth_table: str) -> list[list[int]]:
     return instrs
 
 
+def _polynomial_tree_cost(truth_table: str) -> int:
+    """Return :func:`_polynomial_tree`'s instruction count without emitting it."""
+    n = _validate_truth_table(truth_table)
+
+    def cost(rows: list[int], bit: int) -> int:
+        if len({truth_table[row] for row in rows}) == 1:
+            return 3 + 2 * (n - bit)
+        split = n - 1 - bit
+        zero = [row for row in rows if not ((row >> split) & 1)]
+        one = [row for row in rows if (row >> split) & 1]
+        return 6 + cost(one, bit + 1) + cost(zero, bit + 1)
+
+    return cost(list(range(2**n)), 0)
+
+
 def _polynomial_states(truth_table: str, n: int) -> list[list[str]]:
     """Return the distinct residual subfunctions at each level.
 
@@ -935,6 +1059,24 @@ def _polynomial_states(truth_table: str, n: int) -> list[list[str]]:
                     nxt.append(half)
         levels.append(nxt)
     return levels
+
+
+def _polynomial_dag_cost(truth_table: str) -> int:
+    """Return :func:`_polynomial_dag`'s instruction count without emitting it."""
+    n = _validate_truth_table(truth_table)
+    levels = _polynomial_states(truth_table, n)
+    index = [{state: i for i, state in enumerate(level)} for level in levels]
+    total = 0
+    for k in range(n):
+        width = 2 ** (n - k - 1)
+        states = levels[k]
+        transitions = 0
+        for state in states:
+            zero = index[k + 1][state[:width]]
+            one = index[k + 1][state[width:]]
+            transitions += 1 if zero == one or one - zero == 1 else 2
+        total += 5 * len(states) + transitions
+    return total + 5 * len(levels[n]) - 1
 
 
 def _polynomial_dag(truth_table: str) -> list[list[int]]:

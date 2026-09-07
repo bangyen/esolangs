@@ -76,7 +76,7 @@ stream delivers them, and that order decides how much folds: ``11110000``
 folds after one split where the same function written ``10101010`` folds
 only at the bottom.  The deque is what unsticks it -- ``m``/``n`` push the
 accumulator to either end and ``ŋ``/``ɲ`` pop either end back into it, so
-a bit read early can be retrieved late.  :func:`_hoisted` reads every input
+a bit read early can be retrieved late. :func:`_ordered` reads every input
 up front into the deque and has each node *fetch* the bit it tests, which
 lets :func:`~esolangs.tools.boolean.helpers.best_input_order` try every
 order and keep the shortest.
@@ -92,7 +92,7 @@ read costs a character more (the nasal) and a fetch costs three where a
 node read costs two.  What pays for it is that a folded subtree then owes
 *nothing* -- no run of ``so``, no ``cə`` -- where the node-read build still
 owes every read below it.  Both are built and the shorter returned, the
-same way six-five keeps its node-read build as one more candidate.
+while stream order keeps its direct reads.
 Measured over every table at ``n <= 3`` and 300 sampled at ``n == 4``, that
 is 13.8% and 17.9% shorter respectively, and no table grows.
 """
@@ -252,8 +252,8 @@ def _deque_schedule(
     return None
 
 
-def _hoisted(truth_table: str, perm: tuple[int, ...]) -> str | None:
-    """Build the read-everything-first program for ``truth_table``.
+def _stored(truth_table: str, perm: tuple[int, ...]) -> str | None:
+    """Build the stored-read CV(N)(C) program for ``perm``.
 
     ``truth_table`` is already permuted, so level ``k`` splits on ``perm[k]``.
     Every input is read once up front and stored, and each node fetches the
@@ -299,8 +299,8 @@ def _hoisted(truth_table: str, perm: tuple[int, ...]) -> str | None:
     return load + walk(truth_table, 0, None)
 
 
-def _hoisted_candidate(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Adapt :func:`_hoisted` to :func:`best_input_order`'s contract.
+def _stored_candidate(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Adapt :func:`_stored` to :func:`best_input_order`'s contract.
 
     The search wants a program for every order, but the deque serves only
     the unimodal ones (see :func:`_deque_schedule`).  An unservable order
@@ -314,7 +314,25 @@ def _hoisted_candidate(truth_table: str, perm: tuple[int, ...]) -> str:
     frame, so the node-read tree over it reads in stream order while testing
     as if permuted, and computes a different function.
     """
-    return _hoisted(truth_table, perm) or ""
+    return _stored(truth_table, perm) or ""
+
+
+def _ordered(truth_table: str, perm: tuple[int, ...]) -> str | None:
+    """Build the shortest read strategy available for ``perm``.
+
+    Stream order can read at its nodes or store inputs first; other orders
+    require storage. Ties preserve the direct tree.
+    """
+    if perm != tuple(range(len(perm))):
+        return _stored(truth_table, perm)
+    direct = _tree(truth_table, 0)
+    stored = _stored(truth_table, perm)
+    return stored if stored is not None and len(stored) < len(direct) else direct
+
+
+def _ordered_candidate(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Adapt :func:`_ordered` to :func:`best_input_order`'s contract."""
+    return _ordered(truth_table, perm) or ""
 
 
 def cvnc(truth_table: str) -> str:
@@ -329,22 +347,14 @@ def cvnc(truth_table: str) -> str:
     ending in the halting goto that keeps the arms from running into each
     other.
 
-    Two constructions are built and the shorter returned.  The node-read
-    tree above reads each bit where it tests it, which forces the split
-    order to be the stream order.  The hoisted one (:func:`_hoisted`) reads
-    every input up front into the deque, which frees the split order, so it
-    is built over every input order and the best fold taken -- but it pays a
-    nasal per input and a character per node for the fetch, so it does not
-    always win.  Keeping both is the six-five precedent: the hoist has a
-    price, so it is one more candidate rather than a replacement.
+    The input order selects the read strategy. Stream order reads at its
+    nodes; a reordered tree reads every input into the deque first. Every
+    order is measured and the shortest emitted program wins.
     """
     # Called for the refusal: a one-entry table has no input to read or
     # branch on, and the arity itself is not needed below.
     _validate_truth_table(truth_table)
-    program = _tree(truth_table, 0)
-    hoisted = best_input_order(truth_table, _hoisted_candidate)
-    if len(hoisted) < len(program):
-        program = hoisted
+    program = best_input_order(truth_table, _ordered_candidate)
     if len(program) >= _HALT_REACH:
         raise ValueError("program outgrew the halting goto's reach")
     return program
