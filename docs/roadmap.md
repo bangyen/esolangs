@@ -235,41 +235,56 @@ so byte-consecutive reads would diverge); Container's refills a queue with
 line contents minus the stripped terminator and consumes one char per pulse,
 so `_riscv_common.GETBYTE` plus a newline skip is the correct lowering there.
 
-### Jaune's computed dispatch: implement in both engines, or delete
+### Jaune's computed dispatch — **closed; implemented in both engines**
 
-`compilers/jaune.py` emits `switch:` and `.switch:` blocks for a `v`-operand
-marker — `v@` (call the subroutine the input names) and `v?`/`v!` (jump to
-the label it names).  **The interpreter does not implement those forms**:
-its `_READ_OPERAND` maps `+` and `-` only, so `v@`, `v?` and `v!` raise
-`ValueError`.  That is a scope decision to ratify or reverse, not an
-oversight to patch — and it is the one Jaune divergence the round-trip
-cases cannot settle, because there is no reference behaviour to compare
-against.
+The fork was the wiki spec, and it says implement.  The grammar makes `v` a
+`number` and every one of `: ? ! $ @` takes a `number`:
 
-Measured rather than assumed: the blocks are live, not dead.  `prep` strips
-`v:` and `v$` but leaves `v@`/`v?`/`v!` standing, and all four probes below
-emit a switch block.  What they then do is the argument for doing something:
+    numericCommand := number, "+" | number, "-" | number, ":"
+                    | number, "?" | number, "!" | number, "$" | number, "@" ;
+    number         := literalNumber | "v" ;
 
-| program | interpreter | compiled |
-| --- | --- | --- |
-| `v@^.1$5+;2$3+;` | `ValueError` | `1` — echoes the input, never calls sub 1 |
-| `v?^.1:9+;` | `ValueError` | emulator fault |
-| `v!^.1:9+;` | `ValueError` | emulator fault |
-| `5+1:v?^.` | `ValueError` | prints nothing |
+So `v?`, `v!` and `v@` are defined forms and the *delete* branch was wrong.
+The interpreter implements them as three more `_CountedOp`s — the idiom
+`v+`/`v-` already set, which keeps `_Numbered.arg` a plain `int` and leaves
+`_find` matching static markers only.  Three semantics were decided and are
+recorded in the module's documented-gaps block: a read operand is consumed
+whether or not the branch is taken; the target is looked up before the cell
+is tested, so an undefined label halts even on an untaken branch (the rule
+the static `?`/`!` already followed); and `v:`/`v$` are grammatical but
+define nothing, so both are dropped at parse, matching the compiler's `prep`.
 
-So the compiler accepts a form the interpreter rejects and then miscompiles
-it.  The fork is the wiki spec, and it decides the work:
+The compiler's blocks were then checked against that new oracle and had
+**three** bugs, none of which was the one the old entry here predicted — it
+guessed the switch ran on a stale `s7`, when in fact the preceding `v` had
+always loaded it:
 
-- **If the wiki defines the `v` forms** — implement them in the interpreter
-  (a `_READ_OPERAND` entry per marker plus dispatch), fix the emitted
-  blocks, and pin round-trip cases.  Only then is the compiler's existing
-  machinery worth keeping.
-- **If it does not** — delete the `switch:` blocks, the `inp` flags that
-  gate them, and the `-1` operand path in `count` that routes to them, and
-  let `prep` strip `v@`/`v?`/`v!` the way it already strips `v:`/`v$`.
+- the switches compared `s7` against the numbers `prep` renumbered *to*,
+  while `s7` holds what the program read, so every computed jump missed its
+  arm.  `prep` now also returns the spelled-to-renumbered pairs, and the
+  mapping is one-to-many because a run of adjacent markers (`1:2:`)
+  collapses to a single label;
+- the bare-`v` store fired for the marker forms too, putting the digit in
+  cell 0 — which is what made `v@` echo its input rather than call;
+- `switch` is reached by `call` and each arm is another `call`, so the arm
+  clobbered `ra` and returned into `switch`, the same family the `$`
+  prologue fixes.
 
-Do not settle it by reading `compilers/jaune.py`: the emitted code is the
-thing under suspicion, so it cannot be its own specification.
+Verified by compiling and running under unicorn against the interpreter: the
+four probes plus a doubled `v`, a collapsed label run, a computed call whose
+body calls, and both consumption cases all agree; every jaune case already
+in `COMPILER_CASES` still passes; and `compiler_goldens/jaune.s` is
+unchanged, which is what says static emission did not move.  The nine
+input-carrying cases are pinned in `COMPILER_CASES`.
+
+**One divergence is left deliberately**, commented where the switches are
+emitted: an input naming no label or subroutine raises `HaltError` in the
+interpreter, while the compiled switch has no error path and falls through.
+Pinning it would mean inventing a trap the language does not describe.
+
+The method note worth keeping: the old entry settled its diagnosis by
+reading the emitter, and got it wrong.  The three real bugs came out of
+running the compiled binary against the interpreter case by case.
 
 ## Forbin's expression-position recursion
 
@@ -515,17 +530,27 @@ open:
 
 ## Smaller open items
 
-- **Jaune's markers read one digit** — `count` takes the operand of `:`,
-  `$`, `@`, `?` and `!` from the single character before them, so a program
-  with ten or more labels or subroutines would spell one `10:` and be read
-  as `0:`.  Not reachable today, and that is the whole reason it is filed
-  here rather than fixed: `prep` renumbers labels and routines from 0
-  upward, so reaching two digits needs a program with ten of one kind.  The
-  counts beside them were widened to full digit runs when they turned out
-  to be broken (`10+` compiled to an add of one); the markers were left
-  alone deliberately, since widening an unreachable path is untestable
-  except through `prep` itself.  Fix it together with any change that lets
-  `prep` emit two-digit markers.
+- **Jaune's markers read one digit — reachable, and `prep` corrupts the
+  program before `count` ever misreads it.**  `count` takes the operand of
+  `:`, `$`, `@`, `?` and `!` from the single character before them, so ten
+  or more labels spell one `10:` that reads as `0:`.  This was filed as
+  unreachable because `prep` renumbers from 0 upward; **re-probed, that is
+  wrong on both halves.**  Renumbering is exactly what *creates* the
+  two-digit marker once a program has ten of one kind, and `prep` does not
+  survive it: measured on `+v?%^.` followed by eleven labels, it emits
+  `2:12:12:` — a duplicated, corrupted marker — where ten labels give
+  `1:11:`.  The cause is the substring rewrite in the renumbering loop
+  (`code.replace(n + k, m + k)` and `code.replace(s, m + c)`), which matches
+  a one-character number inside a two-character one.  Confirmed identical
+  on `main`, so it predates the computed-dispatch work and is not a
+  regression from it.  The interpreter is unaffected: it does not renumber,
+  and `_parse` reads whole digit runs already.
+  Fixing it means rewriting the renumbering to work on parsed positions
+  rather than by substring replacement, and widening the marker read in
+  `count` to a digit run the way the counts beside them were widened.  It
+  now has a test route it lacked: a program with ten labels reaches it
+  directly, and the computed forms make such a program meaningful rather
+  than merely spellable.
 - **Closed forms for the search-based boolean generators** — **all
   closed and shipped.**  Most generators construct their answer; five
   searched for it, and each now names what it finds instead.  A sweep of
