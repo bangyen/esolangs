@@ -935,14 +935,30 @@ open:
       inputs are read), at **+138.9%** over the five it covers.
       **`ANCHORS`** — `make_ztoalc_table.py --check` reproduces all 21;
       empirical Collatz records with a working regenerator is already
-      the right shape.  **`_SEPS` is load-bearing but its figures did
-      not reproduce, and the convention is unrecovered**: two
-      independent probes disagreed with the comment *and with each
-      other's denominator* (49 against the stated "Two separators: 99 of
-      109"; a 252-pair population via `_staging_index` against the
-      comment's 109), and the nearby "92 distinct columns" measured 126.
-      Flagged rather than corrected — an edit here would be guessing,
-      and whoever takes it should recover the population first.
+      the right shape.  **`_SEPS` — population recovered; the comment is
+      corrected and the earlier probes were right.**  The population is
+      **109 complement pairs of three-input tables that are
+      non-degenerate *and* depend on all three inputs** (128 pairs, less 3
+      degenerate, less 16 with an ignored input).  The comment said only
+      "non-degenerate", which is 125, and that missing projection filter
+      is the entire reason two re-probes could not reconcile it.  The
+      definition is pinned by the holdout, not by its size: under it the
+      enumeration reaches 108 and the one miss is `01101101`, the table
+      the comment names.  The "252-pair population" was never a
+      population — it is `len(_staging_index(3))`, twice 126 because the
+      index holds each column and its complement.
+      Both disputed figures were the *comment's* error: two separators
+      reach **49** of 109, not 99 (likely copied from the settle line
+      below it, whose 99 is correct), and the first two leave **126** of
+      252 columns, not 92.  The direction of the two-separator argument
+      survives and is stronger than stated.  A test re-derives the
+      population and the holdout each run.
+      One method note came out of it, the module's *third* false negative
+      of this shape: the settle ablation first measured 108 because it
+      patched `_stagings`, which reads like the enumeration and has zero
+      callers — `_staging_index` walks `_slices`, and `@cache` hides the
+      rest.  Instrument what the shipped entry calls, and carry a control
+      that must move.
       One further priced option: adding 3 to `_INSERT_ARITIES` reaches
       `01101101`/`10010010`, which prose near `_Staging` calls
       unreachable, changing exactly 2 of 256 templates (60382 → 60128).
