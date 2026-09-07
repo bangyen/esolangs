@@ -4,7 +4,7 @@ Compiled Jaune programs read one character per input operation, so a
 program can only input a single character at a time.
 """
 
-from re import findall, sub
+from re import Match, findall, sub
 from typing import Literal
 
 from esolangs.compilers import _riscv_common as _common
@@ -83,12 +83,14 @@ def count(code: str, ind: int) -> tuple[int | str, int]:
             ind += 1
         return (run if start == "+" else -run), ind
     if start in ":$@?!":
-        # These still read a single preceding character, which is safe only
-        # because ``prep`` renumbers labels and routines from 0 upward: a
-        # program with ten or more of either would spell one ``10:`` and be
-        # read here as ``0:``.  Not reachable through ``prep`` today, and
-        # left alone rather than widened along with the counts above.
-        num = -1 if (c := at(ind - 1)) == "v" else int(c) if c.isdigit() else -1
+        # ``prep`` can assign a marker number above nine, so walk back over
+        # the whole run it emitted.  The interpreter parses the same
+        # ``<digits><marker>`` shape forward as one numbered command.
+        j = ind
+        while j > 0 and code[j - 1].isdigit():
+            j -= 1
+        operand = code[j:ind]
+        num = -1 if at(ind - 1) == "v" else int(operand) if operand else -1
         ind += 1
     else:
         while at(ind) == start:
@@ -132,25 +134,43 @@ def prep(
     rout: list[int] = []
     spelled: dict[str, list[tuple[int, int]]] = {":": [], "$": []}
 
+    mappings: dict[str, dict[int, int]] = {":": {}, "$": {}}
     for c in ":$":
         esc = "\\$" if c == "$" else c
-        r = rf"(?:[\d]{esc})+"
-        for s in findall(r, code):
-            lst = [k for k in s if k.isnumeric()]
-            num = jump if c == ":" else rout
-            opr = "?!" if c == ":" else "@"
+        num = jump if c == ":" else rout
 
-            plus = num[-1] + 1 if num else 0
-            num.append(plus)
-            m = str(plus)
+        def renumber(
+            match: Match[str],
+            marker: str = c,
+            target: list[int] = num,
+            token_pattern: str = rf"(\d+){esc}",
+        ) -> str:
+            # The pattern guarantees a regex match; keeping the callback
+            # local lets each occurrence be rewritten exactly once instead
+            # of finding its spelling again inside a newly emitted ``10:``.
+            text = match.group(0)
+            originals = [int(n) for n in findall(token_pattern, text)]
+            new = target[-1] + 1 if target else 0
+            target.append(new)
+            spelled[marker].extend((old, new) for old in originals)
+            for old in originals:
+                mappings[marker].setdefault(old, new)
+            return f"{new}{marker}"
 
-            spelled[c].extend((int(n), plus) for n in lst)
+        code = sub(rf"(?:\d+{esc})+", renumber, code)
 
-            for n in lst:
-                for k in opr:
-                    code = code.replace(n + k, m + k)
+    def rewrite_jump(match: Match[str]) -> str:
+        text = match.group(0)
+        old = int(text[:-1])
+        return f"{mappings[':'].get(old, old)}{text[-1]}"
 
-            code = code.replace(s, m + c)
+    def rewrite_call(match: Match[str]) -> str:
+        text = match.group(0)
+        old = int(text[:-1])
+        return f"{mappings['$'].get(old, old)}@"
+
+    code = sub(r"\d+[?!]", rewrite_jump, code)
+    code = sub(r"\d+@", rewrite_call, code)
 
     for s in findall(r"(?:[v\d][?!]){2,}", code):
         if "?" in s and "!" in s:

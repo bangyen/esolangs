@@ -170,6 +170,15 @@ for _program, _expected, _stdin in [
     ("v@^.1$5+;2$3+;", "3", "2\n"),  # ... and a different digit names the other
     ("+v?%^.3:7+^.", "8", "3\n"),  # v? jumps to the label the input names
     ("v!%^.3:7+^.", "7", "3\n"),  # v! is its zero-testing mirror
+    # Eleven separated labels force ``prep`` to emit ``10:``.  Its old
+    # substring rewrite found the source ``0:`` inside that new token and
+    # changed the first definition too, leaving ``v?``'s ``.label0`` target
+    # undefined.  This executes the computed jump through that first label.
+    (
+        "+v?%.0:4+^.1:#2:#3:#4:#5:#6:#7:#8:#9:#10:#.",
+        "5",
+        "0\n",
+    ),
     # The read happens whether or not the branch is taken, so the following
     # ``v`` sees the second digit.
     ("v?v^.3:", "8", "3\n8\n"),
