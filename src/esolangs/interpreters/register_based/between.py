@@ -47,7 +47,7 @@ many reads a line will make.  In practice a *nested* argument never has a
 side effect at all: a group must produce an integer or a condition, and
 every operation that reads, prints, declares, assigns or exits returns
 none, so none of them can sit inside one.  The threading through nested
-arguments is therefore uniform rather than load-bearing, and two mutants
+arguments is therefore uniform rather than required, and two mutants
 that break it -- discarding the variables an ``s``'s value expression
 returns, and swapping the order the two operands of a binary operation are
 evaluated in -- are equivalent for that reason rather than untested.

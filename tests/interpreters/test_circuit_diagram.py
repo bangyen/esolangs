@@ -474,7 +474,7 @@ class TestParseErrors:
         """An output sinks its wire and drives nothing, so arity skips its ports.
 
         ``_check_arity`` inspects every parsed gate, outputs included, and
-        returns early for them.  The early return is load-bearing rather than
+        returns early for them. The early return is required rather than
         defensive: an output always parses with zero out-ports, so without it
         the ``wanted_out = 1`` check below would reject every program that
         prints.  This asserts the port counts the parser actually assigns.

@@ -403,7 +403,7 @@ class TestMachine:
         return seen
 
     def test_snapshot_separates_the_state_it_claims_to_carry(self) -> None:
-        """Each field is load-bearing, so a run's states are all distinct.
+        """Each field matters, so a run's states are all distinct.
 
         The cycle detector's soundness rests on the snapshot being
         *complete*: a field it drops is a difference two runs can hide

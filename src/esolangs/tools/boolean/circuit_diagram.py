@@ -8,7 +8,7 @@ and prints the answer through ``:``.
 Layout
 ------
 
-The geometry is the load-bearing part -- the language has no statements to
+The geometry controls the program -- the language has no statements to
 sequence, only cells that have to line up -- so the program is built as a
 *model* of wire segments first and rendered to characters afterwards,
 rather than painted cell by cell in draw order.

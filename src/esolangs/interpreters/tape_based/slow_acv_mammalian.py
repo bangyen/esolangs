@@ -148,7 +148,7 @@ def _advance(state: _State, n: int, byte: int | None = None) -> _State:
     read and already XORed against nothing, since the accumulator it mixes
     with lives here.
 
-    Two positional rules survive from the original and are load-bearing:
+    Two positional rules survive from the original and are required:
 
     * SPRINT's guard is ``acc < len(curr)``, which a *negative*
       accumulator also passes, and the index that follows then counts from

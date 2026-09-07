@@ -1658,7 +1658,7 @@ class TestParameterizedMinifuck:
                             stranded.append(table)
                 stranding[codes[dropped]] = len(stranded)
 
-            # Three codes are load-bearing outright.
+            # Three codes are required.
             assert sum(1 for n in stranding.values() if n) == 3, stranding
             # The other two strand nothing, and are kept for slot order:
             # dropping both takes the out-of-order count from 10 to 18.
