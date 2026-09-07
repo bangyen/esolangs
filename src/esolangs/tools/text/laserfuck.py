@@ -456,12 +456,38 @@ def _laserfuck_snake_ring(text: str, width: int) -> str | None:
             row += 1
             put(row, laserfuck_layout.MARGIN - 1, "}")
             entry = laserfuck_layout.MARGIN
+        # A preload can be wider than the whole width on its own: the walk
+        # out to the counter is one '>' per cell, so 55 characters spend 56
+        # columns before the first '+'.  No reland helps -- the entry is
+        # already at the margin -- but a preload is a straight run of tape
+        # ops, which is exactly what a fold takes rows for instead of
+        # columns.  This is the once-executed half of the program; the
+        # walk stays here rather than moving to cell 0, which would delete
+        # it from the preload only to re-run it inside a body that repeats
+        # about ``base`` times.
         col = entry
-        for char in preload:
-            put(row, col, char)
-            col += 1
+        if entry + len(preload) > right - 5:
+            laid = max((index for index, _ in cells), default=row)
+            folded = [[" "] * (width + 2) for _ in range(max(laid, row) + 1)]
+            for (index, index_col), char in cells.items():
+                folded[index][index_col] = char
+            end_row, end_col = laserfuck_layout.fold(folded, preload, row, entry, width)
+            cells.clear()
+            for index, laid_row in enumerate(folded):
+                for index_col, char in enumerate(laid_row):
+                    put(index, index_col, char)
+            row, col = end_row, end_col
+        else:
+            for char in preload:
+                put(row, col, char)
+                col += 1
         spine = col
-        if spine >= right - 2:
+        # A fold that turned at least once leaves the beam just past a "}"
+        # it laid at the margin, so the spine is already as far left as it
+        # can be and needs no reland; one that never turned ends where a
+        # straight lay would.  Either way the footprint rule decides
+        # whether a block still fits.
+        if spine > right - 5:
             return None
         # drop the beam into this block's entry '}', directly below
         put(row, spine, "v")
