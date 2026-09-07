@@ -1,161 +1,26 @@
-# Line: open questions and standing constraints
+# Line: open questions and constraints
 
-`render.py`, `extract.py`, `simulate.py`, and `verify.py` implement a
-program renderer, a pixel-based extractor, and a runtime interpreter for
-[Line](https://esolangs.org/wiki/Line), an esolang whose spec is entirely
-hand-drawn curve images -- no text format, no reference implementation
-(tagged `Unimplemented` on the wiki). Module docstrings in
-`extract.py`/`render.py`/`simulate.py`/`lattice.py` carry the settled
-reasoning for how each module works; this file records only open questions,
-constraints a change could silently violate, and decisions deliberately not
-taken. `docs/streetcode.md` is the comparable file for Streetcode.
+Line remains a standalone image-language tool: it has no text format and is
+not registered as an `esolangs.run` language. The renderer, extractor,
+simulator, and lattice module docstrings are authoritative.
 
-Test suites: `test_simulate.py`, `test_line_boolean.py`, `test_bf_to_line.py`,
-`test_png.py`, `test_mask.py`. Run any with `uv run --with pytest --with
-pytest-xdist pytest <file>` from this directory, or a bare `pytest` from the
-repo root (`testpaths`). CI's `line` job also runs them under `--isolated
---no-project` (only pytest installed) -- the standing proof this subtree has
-no third-party dependencies, which an in-project run can't show. `verify.py`
-is the narrower round-trip check for `extract()` alone. `test_simulate.py`'s
-hand-built `Stroke` fixtures never exercise `render.py`'s loop-drawing
-geometry (`_layout`/`_loop_return_legs`); only `test_bf_to_line.py` does.
+## Open work
 
-## Still open
+- Validate extraction on genuine anti-aliased camera or scan input.
+- Derive the lattice probe length from `UNIT` before supporting smaller grid
+  units.
+- Establish practical Boolean-generation limits above seven inputs.
+- Define behavior for genuinely ambiguous arrowheads rather than choosing the
+  larger candidate.
 
-- Real (camera/scan) photographs with genuine anti-aliasing, unlike the
-  clean nearest-neighbor-scaled synthetic input `normalize_scale` was tested
-  against. Anti-aliased edges could make the exact-integer scale detection
-  (`round(ink/skeleton_length)`) land less cleanly.
-- `lattice.star`'s probe `length` is hardcoded to 15px while `lattice.UNIT`
-  is configurable; below a grid unit of ~20 the probe overruns its own
-  segment. A change supporting smaller units should derive the default from
-  `UNIT` (e.g. `UNIT - 5`, preserving today's 20 -> 15) rather than adjusting
-  `_UNIT_TOLERANCE`, which is not the limiting factor. Nothing in this tree
-  renders below 20 today.
-- Boolean generation (`line_boolean.py`) is verified through n=7; n=8 and up
-  is untested rather than known-bad (canvas roughly doubles in area per
-  input), so the real limit is whatever canvas/extraction time a caller
-  tolerates.
-- `find_cursor`'s arrowhead ambiguity: it rejects a non-arrowhead-shaped
-  candidate (fill-ratio bracket), but does not resolve genuine ambiguity
-  between two equally arrowhead-shaped candidates -- picks the larger by
-  design, unconditionally.
-- Hand-drawn input at a substantially different scale is unverified --
-  distinct from the anti-aliasing item above: here stroke width and unit
-  length could vary *independently* in a way this synthetic sweep (which
-  scales both together) never reproduces.
+## Do not regress
 
-## Runtime simulation
-
-The loop-back recovery mechanism, the zero/nonzero arm convention, and the
-no-step-limit decision live in `simulate.py`'s module docstring and
-`_compile`/`find_merge`'s own docstrings; the design history is in git.
-
-## Constraints a future change must respect
-
-- **`>`/`i` and `<`/`o` must not share identical geometry** -- confirmed by
-  re-measurement against the wiki's reference images. `_OPS`'s per-opcode
-  geometry is otherwise recorded in `render.py`'s module docstring and the
-  comment above `_OPS`.
-- **The coverage-check threshold in `extract()` (2px) is correctly
-  calibrated -- do not loosen it.** Measured across JPEG recompression at
-  every quality level and stroke width 1x-4x: gaps are 0 or enormous (tens
-  to hundreds of pixels), never marginal, so a permissive check would
-  recover nothing -- it would just return a wrong program. Redundancy at
-  write time (thicker strokes, `render(scale=k)`) beats leniency at read
-  time. A 1px stroke survives JPEG to quality 34; 2x+ survives to quality 15
-  and reconstructs exactly whenever it succeeds at all.
-- **`_STEM_LEN` (10 units) has ~1 unit of measured slack** (9 and 8 both
-  round-trip everything with flat corridors) but shrinking it isn't worth
-  it: the gain is under 3% of area against the 17-44% the corridor change
-  already bought, and the stem's length keeps the landing diagonal and
-  `lattice.star`'s probe geometry apart.
-- **`_UNIT` (20) has an untried compactness lever**: the pipeline is
-  documented clean at 16-28 (floor set by `lattice.star`'s hardcoded 15px
-  probe, see above), so dropping to 16 would shrink every rendered output
-  another ~20% linear / ~36% area. Not done, because it rescales every
-  drawing this repo produces -- a broader change than whatever prompted
-  looking at it.
-- **Parity with the wiki's own hand-drawn fixture size is not reachable,
-  and is not a bug.** A constructed loop-back must travel out and around
-  (cardinal-only, `_CLEARANCE`-separated from existing ink); the wiki's hand
-  drawing reconnects on a short diagonal flush against its own earlier ink
-  -- legal for a human, but exactly what `_CLEARANCE` forbids
-  (`lattice._band_lit`'s +-1 lateral reach can't tell a flush parallel
-  stroke from a real junction). Do not chase this gap by loosening
-  `_CLEARANCE`.
-- **Reserve routing corridors during layout, not after.** No routing scheme
-  for drawn loop-backs may resurrect free-form search-based routing (the
-  deleted A* router): nested `?`-loop detours are topologically nested, and
-  a scheme letting them compete for space globally hits the same enclosure
-  wall this one did, however good its heuristic. See below for the measured
-  mechanism.
-
-### Why free-form loop-back routing does not scale with nesting depth
-
-`render.py` and `test_bf_to_line.py` cite this pair of findings by name; it
-is why `_loop_return_legs` constructs each loop-back deterministically from
-measured geometry instead of searching for one.
-
-**Why depth 4 fails: enclosure, not routing quality or padding.**
-Instrumented on `+[>+[>+[>+[>+<-]<-]<-]<-]>>>>.`: the third of four
-loop-backs reports 154 "no corridor exists at any padding" and 0 "route
-folded back on itself" -- routing quality isn't involved. Doubling padding
-to 256 cells (against an ~80x66 drawing) doesn't help, nor does detour
-ordering, nor a pixel-exact `step=1` A* (0 of 22 otherwise-viable candidates
-route). A flood fill from the failing detour's start, using the router's own
-clearance rule, reaches only 15% of the canvas: fixed geometry (215 cells)
-plus the two already-routed detours (117 and 182 cells) seal the departure
-point into a pocket, each blocking a 3-cell-wide swath, 28% blocked overall.
-
-**Depth 5: soft costs don't fix it either.** Extending soft `avoid` regions
-from doorstep blobs to each pending detour's whole start-to-stem rectangle
-was measured and rejected: depth 4 renders identically, depth 5/6 still
-fail. A soft cost steers a route among alternatives that exist, but when
-every route for a big outer detour must cross an inner lane somewhere, it
-pays the toll and crosses -- cutting the lane as thoroughly as a free
-crossing would. The fix had to be structural (rings constructed per nesting
-level, not searched): "make the router smarter" is a dead end measured
-twice, not an untried option.
-
-## Deliberately out of scope
-
-- **Not wired into the interpreter registry**: Line has no text format, so
-  it doesn't fit the `run(code, io)` convention every other language in
-  `src/esolangs/` uses. Stays a standalone `extra/` tool.
-- **No non-PNG image formats.** JPEG, BMP, GIF and TIFF went with Pillow
-  when the dependency was dropped (see `extract.py`'s module-level comment
-  above the imports for the full per-library reasoning). A baseline JPEG
-  decoder was written, verified working, then deliberately removed: it
-  supported only baseline JPEG, and progressive JPEG (common on the web)
-  would have needed another ~100-130 lines and a restructuring -- partial
-  format support in 300 lines was the least defensible option. `render(scale=)`
-  addresses the underlying need (drawings surviving a lossy round trip) in
-  20 lines regardless of who decodes them. A need for JPEG input should
-  reconsider full progressive support as a deliberate scope expansion, not
-  resurrect the partial decoder.
-- **No step limit or cycle-hang detection in `simulate.run`.** Matches every
-  other interpreter in this repo (`brainfuck.py`'s `run` is a bare `while
-  not machine.halted: machine.step()`); `src/esolangs/vm.py`'s cycle
-  detection is an opt-in debugger wrapper no language's main run path uses.
-  A non-halting Line program hangs, same as an infinite Brainfuck `[]`
-  loop would. If a limit is ever wanted, real cycle detection matching
-  `vm.py`'s convention is the right upgrade, not a step cap (already
-  rejected once as a wrong-fit pattern).
-- **Arbitrary-precision tape cells**, not wrapped/bounded width -- this
-  module's own reading of the wiki's silence on the question, not something
-  the wiki confirms either way. A future change assuming byte-width cells
-  would be changing behavior, not fixing a bug.
-
-## Hand-decoded ground truth (not derivable from any source file)
-
-The confirmed merge pixel in `fixtures/multiplication.png`'s normalized mask
-is `(194, 228)` (the `root.nonzero.nonzero` arm), hand-decoded end to end by
-a human reading the actual drawing: branch right onto E, immediate corner
-onto N, then `>`, `+`, `>`, `+`, `<`, `<`, `-`, then this merge point, where
-the stroke's own NW diagonal run ends one step before a pixel where a
-*different*, already-drawn stroke (the outer branch's horizontal bar,
-travelling W) is the only ink physically touching. `lattice.py`'s module
-docstring cites this pixel as the worked example for why its 8-direction
-star probe reads 3 lit directions there; keep this paragraph in sync if
-that fixture or the probe's behavior on it ever changes.
+- Keep opcode geometries distinct and retain the two-pixel extraction coverage
+  threshold.
+- Construct loop returns from reserved geometry. Do not restore global
+  search-based routing; nested returns enclose its corridors.
+- Keep PNG-only input unless full image-format support is deliberately added.
+- Do not add an arbitrary step limit to simulation; use semantic cycle
+  detection if that capability is ever needed.
+- Preserve the hand-decoded multiplication fixture behavior exercised by the
+  Line tests.

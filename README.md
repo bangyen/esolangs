@@ -1,72 +1,25 @@
 # Esolang Interpreters
 
-[![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://python.org)
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Coverage](docs/coverage-badge.svg)](docs/coverage-badge.svg)
+Interpreters, generators, transpilers, and RISC-V compilers for esoteric
+languages. Current work is in [the roadmap](docs/roadmap.md); contracts and
+known boundaries are in [limitations](docs/limitations.md).
 
-## Table of Contents
-
-- [About](#about)
-- [Usage](#usage)
-  - [Examples](#examples)
-- [Implemented Languages](#implemented-languages)
-- [Extra Implementations](#extra-implementations)
-- [Compilers](#compilers)
-- [Transpilers](#transpilers)
-- [Tools](#tools)
-- [Contributing](#contributing)
-- [License](#license)
-
-## About
-
-Working interpreters, compilers, and transpilers for esoteric programming
-languages, each verified against its spec.  Most interpreters read the
-program file from the first command-line argument.
-
-Planned work: [`docs/roadmap.md`](docs/roadmap.md).  Limitations and
-ruled-out ideas: [`docs/limitations.md`](docs/limitations.md), with the full
-wall arguments in [`docs/walls.md`](docs/walls.md).  Annotated programs —
-one per state model (tape, stack, OISC, 2D grid), traced command by command
-— are in [`docs/walkthroughs/`](docs/walkthroughs/).
-
-## Usage
-
-### Installation
+## Use
 
 ```bash
-git clone https://github.com/bangyen/esolangs.git
-cd esolangs
 just install-dev
+esolangs list
+esolangs run Suffolk program.txt
+esolangs generate Suffolk "Hello, World!"
+esolangs transpile BFStack brainfuck program.txt
+just test
 ```
 
-### Running a Program
+The Python API is `esolangs.run`, `generate`, `list_languages`, and
+`transpile`. Use `--width` for command-oriented generated programs; grids
+and newline-sensitive languages retain their own layout.
 
-Interpreters run as modules, with the program file as the first argument
-(categories: `grid_based`, `stack_based`, `queue_based`, `tape_based`,
-`register_based`, `other`), or through the `esolangs` command:
-
-```bash
-python -m esolangs.interpreters.<category>.<language> program.txt
-esolangs run <language> program.txt
-esolangs list                          # list the supported languages
-esolangs generate <language> "Hello"   # print a program that outputs "Hello"
-esolangs transpile BFStack brainfuck program.txt  # rewrite between languages
-```
-
-Most generators emit one long line.  `--width N` (default 80) bounds a
-program to that many columns, as in the [committed examples](examples/),
-breaking only between whole commands.  Shape-based generators (Clockwise,
-Streetcode, WII2D, LaserFuck) lay out their shape to that width instead.
-Languages whose newlines carry meaning (the 2D grid languages, NoComment)
-ignore the flag.
-
-Assembly compilers run the same way and write `output.asm`:
-
-```bash
-python -m esolangs.compilers.<language> program.txt
-```
-
-### Examples
+## Examples
 
 <!-- EXAMPLES:START -->
 
@@ -78,30 +31,7 @@ regenerate via `scripts/write_examples.py`.
 
 <!-- EXAMPLES:END -->
 
-```bash
-esolangs run Suffolk examples/hello-world/suffolk.txt
-```
-
-### Public API
-
-The package exposes a small typed API:
-
-```python
-import esolangs
-
-program = esolangs.generate("Suffolk", "Hello, World!")
-output = esolangs.run("Suffolk", program)
-esolangs.list_languages()
-bf = esolangs.transpile("BFStack", "brainfuck", bfstack_program)
-```
-
-### Running the Tests
-
-```bash
-just test
-```
-
-## Implemented Languages
+## Implemented languages
 
 <details>
 <!-- IMPLEMENTED:START -->
@@ -205,10 +135,9 @@ Languages that don't fit into the above categories.
 - [ZTOALC L](https://esolangs.org/wiki/ZTOALC_L) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/ztoalc_l.py))
 
 <!-- IMPLEMENTED:END -->
-
 </details>
 
-## Extra Implementations
+## Extra implementations
 
 <details>
 <!-- EXTRA:START -->
@@ -226,18 +155,10 @@ Implementations written in languages other than Python, used as cross-check refe
 - [RAM0](https://esolangs.org/wiki/RAM0)
 
 <!-- EXTRA:END -->
-
 </details>
 
-One more body of work lives under `extra/` without being a cross-check
-interpreter, so it is not listed above:
-
-- **Line** (`extra/line`) implements
-  [Line](https://esolangs.org/wiki/Line), whose spec is a set of hand-drawn
-  curve images with no text format.  Its programs are PNGs, so it cannot go
-  through the registry's pipeline; it keeps its own renderer, pixel
-  extractor, and interpreter, plus brainfuck and boolean generators that
-  target it.  `just test-line` runs its suites.
+Line remains a standalone PNG-language tool under `extra/line`; run
+`just test-line` for its suite.
 
 ## Compilers
 
@@ -268,60 +189,17 @@ Compilers that translate esoteric languages to other target languages.
 - [Unsquare](https://esolangs.org/wiki/Unsquare)
 
 <!-- COMPILERS:END -->
-
 </details>
 
 ## Transpilers
 
-Transpilers rewrite a program in one esolang into an equivalent program in another.  Each is verified end-to-end: source and translation both run, and the outputs must agree.
+The supported translators are total over their source language: brainfuck
+to 3D Brainfuck or Painfuck, BFStack to brainfuck, and Decleq to S*bleq.
+Each runs end-to-end verification against its source semantics.
 
-Every transpiler here is **total** over its source language: it accepts
-every program that language's own interpreter accepts.  Partial ones are
-not carried; `esolangs/tools/transpilers.py` documents the admission
-criteria.
+## Generators
 
-| Source | Direction | Target |
-| --- | :---: | --- |
-| brainfuck | → | 3D Brainfuck |
-| brainfuck | → | Painfuck |
-| BFStack | → | brainfuck |
-| Decleq | → | S*bleq |
-
-```bash
-esolangs transpile BFStack brainfuck program.txt  # rewrite a program into another esolang
-esolangs transpile Decleq "S*bleq" program.txt    # emits a Decleq emulator; any program
-```
-
-```python
-bf = esolangs.transpile("BFStack", "brainfuck", source)  # or via the API
-```
-
-## Tools
-
-### Boolean Function Generator
-
-The `boolean` package builds a program computing a truth table
-(most-significant input first) in each language with suitable control flow:
-
-```python
-from esolangs.tools.boolean import (
-    between,
-    circlefuck_byte,
-    dig,
-    polynomial,
-    sophie,
-    suffolk,
-    taglate,
-)
-
-dig("0110")  # 2-input XOR in Dig
-between("0110")  # the same truth table in Between
-suffolk("0110")  # and in Suffolk
-sophie("0110")  # and in Sophie
-polynomial("0110")  # in Polynomial (up to n = 4)
-taglate("0110")  # 2-input XOR in Taglate (up to n = 2)
-circlefuck_byte(table)  # arbitrary byte-valued functions
-```
+Boolean generators accept a most-significant-input-first binary truth table.
 
 <!-- BOOLEAN-COUNT:START -->
 
@@ -332,49 +210,11 @@ tables.
 
 <!-- BOOLEAN-COUNT:END -->
 
-### Program Generator
-
-The `text` package builds a program printing a given string in each
-language with a text generator:
-
-```bash
-python -m esolangs.tools.text "Hello, World!"
-```
-
-Every generator is also reachable through `esolangs generate` (see above);
-run `esolangs list` for the full set.
-
-### Single-Interpreter Install
-
-`scripts/install_one.sh` fetches one language's interpreter without cloning
-the repo, inlining the shared `io` and `exceptions` modules (plus any
-interpreter it imports, e.g.  Factor's brainfuck) into one self-contained
-file:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/bangyen/esolangs/main/scripts/install_one.sh | sh -s Suffolk
-python esolangs_suffolk.py program.txt
-```
-
-The language name matches `esolangs list` (e.g. `Suffolk`, `Nevermind`,
-`Forþ`).  Factor and Polynomial need `pip install sympy`; the bundled file
-notes this.  `scripts/bundle_one.py` does the same from a local checkout:
-
-```bash
-python scripts/bundle_one.py Nevermind
-```
+Text generators are available through `esolangs generate`; see `esolangs
+list` for support. Regenerate committed examples with
+`python scripts/write_examples.py`.
 
 ## Contributing
 
-Before proposing a language, check the [roadmap](docs/roadmap.md) and
-[limitations](docs/limitations.md), and read
-[CONTRIBUTING.md](docs/CONTRIBUTING.md) — including whether a language is
-worth adding.  New languages register in `src/esolangs/registry.py`.  Run
-`just test` (lint, pytest, bandit, and the Python verify scripts, scoped to
-this branch) to verify a change; `just test-full` runs every step over the
-whole tree.  `just install-dev` already wires `scripts/verify.py` into a
-pre-push hook.
-
-## License
-
-GPL v3 — see [LICENSE](LICENSE).
+Read [the contribution guide](docs/CONTRIBUTING.md), then run `just test`.
+The project is GPL v3; see [LICENSE](LICENSE).
