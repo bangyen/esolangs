@@ -119,7 +119,7 @@ def star(mask: Mask, y: int, x: int, length: int = 15) -> set[int]:
 
     ``length`` only needs to be shorter than the shortest real segment
     anywhere in the drawing (see module docstring's band-probe rationale --
-    the exact length is not load-bearing the way it was in an earlier,
+    the exact length is no longer required as it was in an earlier,
     discarded exact-match design); the default comfortably clears every
     real segment length measured on both wiki fixtures (all >= 19px)
     without risking running past a short real segment into whatever
@@ -160,7 +160,7 @@ def _snap(mask: Mask, y: int, x: int, direction: int) -> tuple[int, int]:
     two perpendicular-offset neighbors, return whichever one has a real,
     several-pixel-deep run in ``direction`` -- the true centerline for that
     specific leg, whatever pixel the previous leg's own walk happened to
-    land on.  Requiring several pixels, not just one, is load-bearing: a
+    land on. Requiring several pixels, not just one, is required: a
     single step is not enough to tell a genuine leg apart from a
     *different*, nearby leg's own ink brushing past for a pixel (confirmed
     to happen one row off the true corner in exactly this situation).

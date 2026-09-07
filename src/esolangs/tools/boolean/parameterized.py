@@ -1,48 +1,13 @@
-r"""Boolean-function generators via input-by-substitution.
+r"""Boolean generators that embed each input once.
 
-A normal boolean generator produces one program that *reads* its inputs.
-Some languages have no input mechanism but still have enough computation
-power (output, constant construction, and a value-testable branch) to
-evaluate a boolean function from *embedded* constants.  For those, a
-parameterized generator emits a **template** with ``{X0}``.. placeholders
-for the input bits; :func:`instantiate` replaces each placeholder with the
-language's code that sets that input cell to the bit value.  The harness
-instantiates the template once per input and runs it, so the program is a
-decision tree over constants rather than a reader of input.
-
-This is a separate class from the input-reading generators: it is useful
-exactly for the no-input languages, and it does not make them read input —
-the harness performs the injection.  :func:`bio` replaces ``{Xi}`` with an
-increment that loads the raw bit into a register; :func:`back` replaces
-``{Xi}`` with a ``\\`` or ``/`` mirror so the beam is reflected toward the
-correct subtree; :func:`nocomment` replaces ``{Xi}`` with a constant-length
-tape setter (``c``/``i``) and routes a decision tree with the ``s`` skip
-(a runtime prologue computes each bit's complement via ``s``-as-NOT-gate,
-so no ``{Ci}`` is needed); :func:`bitdeque`, :func:`ram0`, and
-:func:`minsky_swap` replace ``{Xi}`` with fixed-length setters and route a
-``POP``/``GOTO``, ``C``/``goto``, or ``~`` decision tree.
-
-**Every input must be embedded exactly once.**  An input-capable language
-reads each of its ``n`` inputs exactly once per run; a no-input language's
-parameterized generator should match that, so a template may contain each
-``{Xi}`` placeholder at most once.  Re-embedding a bit at multiple decision
-nodes would let a no-input program "read" an input more than its
-input-capable counterpart does, muddying the generator API.  Each generator
-below therefore stores every input once (a tape load, a register pack, a
-deque/stack push, a variable, or a mirror) and reads it back, rather than
-re-substituting it.
-
-There is no complement placeholder.  :func:`instantiate` used to fill a
-``{Ci}`` beside each ``{Xi}``, for a generator that wanted ``1 - bit``
-embedded as a constant, but none does: ``bfpda``'s node structure needs a
-truthy marker to stay on the stack after each bit is consumed, and the
-marker's value never depends on the bit, so it is a constant written
-straight into the template; ``nocomment`` computes each bit's complement
-from ``{Xi}`` at runtime with its ``s``-as-NOT-gate.  The placeholder and the
-``set_comp`` argument that filled it are gone.
+Templates contain {Xi} placeholders. The harness instantiates and runs one
+program per input row, allowing no-input languages to compute Boolean
+functions without pretending to read stdin. Equal-width setters prevent input
+bits leaking through program length.
 """
 
 from functools import cache
+from math import factorial
 
 # Re-exported so this module stays the import site for the whole
 # parameterized family; each of these owns a file because its
@@ -218,24 +183,37 @@ def _eval_fill_runs(
     is the running out-mass minus in-mass; a word is valid exactly when it
     lands back at zero, every value pushed onto the tree stack having come
     home.
+
+    The caller only passes skeletons whose *last* run is an in-run, so the
+    final run's length is not searched: it has to be exactly ``balance`` to
+    land at zero, and the walk emits at that one length when the budget
+    still affords it.  Collapsing the innermost -- and by far the widest --
+    level of the recursion from a loop to a single test cuts the walk from
+    1091320 calls to 690617; the caller's skip takes it to 348053.
     """
+    count = len(directions)
+    last = count - 1
 
     def fill(index: int, spent: int, balance: int, runs: tuple[int, ...]) -> None:
-        if index == len(directions):
-            if balance == 0:
-                parts = iter(runs)
+        side = directions[index]
+        remaining = count - index - 1
+        ceiling = budget - spent - remaining
+        if side == _EVAL_TREE_STACK:
+            # An in-run can only carry back what is already parked.
+            ceiling = min(ceiling, balance)
+        if index == last:
+            # The last run is an in-run of exactly ``balance``: anything
+            # shorter leaves values stranded on the tree stack, anything
+            # longer pops it empty.  A run still has to be non-empty and
+            # still has to fit what the cap leaves.
+            if 1 <= balance <= ceiling:
+                parts = iter((*runs, balance))
                 words.add(
                     "".join(
                         "=" * next(parts) if char == "E" else char for char in skeleton
                     )
                 )
             return
-        side = directions[index]
-        remaining = len(directions) - index - 1
-        ceiling = budget - spent - remaining
-        if side == _EVAL_TREE_STACK:
-            # An in-run can only carry back what is already parked.
-            ceiling = min(ceiling, balance)
         for length in range(1, ceiling + 1):
             shift = length if side == _EVAL_READ_STACK else -length
             fill(index + 1, spent + length, balance + shift, (*runs, length))
@@ -255,6 +233,14 @@ def _eval_reorders(max_ops: int = _EVAL_MAX_OPS) -> tuple[str, ...]:
             # discarded by the fold anyway.
             if skeleton == "~*~":
                 words.add(skeleton)
+            continue
+        if directions[-1] == _EVAL_READ_STACK:
+            # A skeleton ending in an out-run spells no word at all.  An
+            # in-run is capped at ``balance``, so the balance never goes
+            # negative; a final out-run then adds at least one and leaves it
+            # strictly positive, meaning values are still parked on the tree
+            # stack when the word ends.  Half the skeletons (32721 of 65535)
+            # are this shape, and filling them was pure waste.
             continue
         _eval_fill_runs(
             skeleton, directions, max_ops - (len(skeleton) - len(directions)), words
@@ -291,6 +277,14 @@ def _eval_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     input a level tests.
     """
     reached: dict[tuple[int, ...], str] = {}
+    # A word only shuttles and reverses, never copies or drops, so every
+    # arrangement it can leave is a permutation of ``range(n)``.  Once ``n!``
+    # of them are claimed there is nothing left for a later word to claim,
+    # and first-claim-wins means the ones already held are the cheapest --
+    # so stopping is not a heuristic.  It fires at ``n <= 4``, where the
+    # catalog collapses onto all ``n!`` arrangements; from ``n == 5`` the
+    # reach is short of ``n!`` (119 of 120) and the loop runs to the end.
+    everything = factorial(n)
     for ops in _eval_reorders():
         stacks: tuple[list[int], list[int]] = ([], list(range(n)))
         active = _EVAL_TREE_STACK
@@ -311,6 +305,8 @@ def _eval_stack_programs(n: int) -> dict[tuple[int, ...], str]:
                 and arrangement not in reached
             ):
                 reached[arrangement] = ops
+                if len(reached) == everything:
+                    break
     return reached
 
 
@@ -598,7 +594,7 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # beam off the load's end, one to turn it back right -- are both gone along
     # with the row and the indent they cost.
     #
-    # Riding off the top edge makes the grid's toroidal wrap load-bearing:
+    # Riding off the top edge makes the grid's toroidal wrap required:
     # ``_Machine.step`` advances with ``% len(code)``, so up from row 0 lands
     # on the last row.  The wiki text the interpreter quotes does not mention
     # the edges at all, and no interpreter test covers a wrap, so this is the

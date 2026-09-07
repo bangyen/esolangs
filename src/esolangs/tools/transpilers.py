@@ -77,7 +77,7 @@ def bf_to_three_d_brainfuck(program: str) -> str:
 
     The one disagreement is the left edge.  Brainfuck *clamps* ``<`` at
     cell 0 while 3D Brainfuck's ``s`` walks into the negative cells, and
-    the clamping is load-bearing rather than incidental: ``+.<.`` prints
+    clamping is required: ``+.<.`` prints
     the same byte twice in brainfuck precisely because ``<`` was a no-op
     there.  No static shift of the origin repairs that -- a shift cannot
     turn a move into a non-move -- so ``<`` compiles to a *runtime* guard
@@ -145,9 +145,9 @@ def bf_to_painfuck(program: str) -> str:
     Painfuck's source is first translated through a fixed two-cycle Caesar
     substitution (each source character in a cycle is rewritten ``k`` steps
     along it, ``k`` counting the characters translated), then executed.
-    Brainfuck maps onto Painfuck's commands directly — ``>``/``<`` become
+    Brainfuck maps onto Painfuck's commands directly: ``>``/``<`` become
     ``rl``/``l``, ``+``/``-`` become ``ps``/``s``, ``[``/``]``/``,``/``.``
-    become ``a``/``b``/``j``/``u`` — and the interpreter's forward shift is
+    become ``a``/``b``/``j``/``u``.  The interpreter's forward shift is
     undone by pre-shifting each emitted command ``k`` steps *back* along its
     cycle, so a generated program round-trips.  Every brainfuck program is in
     class; comment characters are dropped (Painfuck ignores characters in no

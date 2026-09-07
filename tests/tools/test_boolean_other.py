@@ -138,7 +138,7 @@ class TestInject:
         definition.  Swept over every table to three inputs, the depth
         clause explains none of the 1522 collapses.  Stated as a test so
         the disjunct is known to be belt-and-braces rather than assumed to
-        be load-bearing.
+        be required.
         """
         from esolangs.tools.boolean.inject import _tree
 
@@ -1096,7 +1096,7 @@ class TestZtoalc:
         The program is one line per value up to the trajectory's peak, so
         most lines carry nothing -- 38 of ``0110``'s 52.  ZTOALC L reads a
         blank line as a no-op, and anything else there would be executed,
-        so the padding is load-bearing rather than cosmetic.
+        so the padding is required rather than cosmetic.
         """
         from esolangs.tools.boolean.ztoalc_l import _collatz_prefix, _commands
 

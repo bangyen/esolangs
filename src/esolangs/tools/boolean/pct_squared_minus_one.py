@@ -1,168 +1,10 @@
-r"""Parameterized boolean generator for %^2^-1.
+r"""Build parameterized Boolean programs for %^2^-1.
 
-``%^2^-1`` has one accumulator and one control-flow command, ``t``, which
-rewinds to the start of the program while the accumulator is nonzero.  There
-is no forward jump and no skip, so a program that *reads* its inputs cannot
-branch on them: ``docs/proofs.md`` records the proof that no such
-program computes XOR or AND at any length, because ``n`` overwrites the
-accumulator and nothing an earlier bit computed can survive the next read.
-
-That theorem is a statement about the **reading** model.  It does not carry
-over to embedded inputs, and this generator is the counterpart: the bits are
-substituted into the program text, so no ``n`` ever runs and the erasure the
-proof turns on never happens.
-
-The construction needs no branch at all, which is what lets it fit a
-language whose only jump target is position 0:
-
-* ``l`` prints the accumulator **in decimal**, so an accumulator holding 0
-  prints ``"0"`` and one holding 1 prints ``"1"``.  The answer therefore
-  never has to be routed to a print site -- it only has to *be* the
-  accumulator when the single ``l`` runs.
-* Each input's setter is a short command string, and command strings compose
-  as affine maps ``x -> a*x + b`` (``p`` gives ``a = -1``, ``'`` gives
-  ``a = 0``, ``m`` doubles, ``s``/``i`` translate).  Chaining one map per
-  input makes the final accumulator a *product-weighted* function of the
-  bits -- genuinely nonlinear, because a later ``p`` negates everything the
-  earlier bits contributed.  That nonlinearity is what reaches XOR, which no
-  purely additive weighting separates: an additive one gives each row a
-  distinct consecutive value and every affine-plus-threshold tail is
-  monotone in it, so ``{00, 11}`` and ``{01, 10}`` can never be split.
-
-**The solution is derived, not searched.**  Input 0 leaves one of two
-constants in the accumulator; input 1 applies an affine map to it.  So for a
-fixed value of input 1, the accumulator is affine in input 0, and the *slope*
-is read straight off that column of the truth table: ``+1`` where the column
-rises with input 0 and ``-1`` where it falls.  Choosing the two accumulator
-values the answers land on then *forces* both offsets --
-:func:`_offset_for` solves them, and a column whose two rows disagree about
-the offset is not realisable that way.  :func:`_tail_for` prints,
-translating the two class values onto ``1`` and ``0`` -- ``l`` prints the
-accumulator in decimal, so no branch is needed and the over-3003 reset
-never has to act as a comparator.
-
-What remains enumerated is small and structural: the two constants input 0
-contributes, whether it spells them with an explicit ``'`` erase, and the
-pair of class values.  None of that is a search over *programs* -- the
-multipliers come from the table and the offsets are solved -- so the emitted
-program can be reasoned about rather than merely measured.
-
-Above two inputs a second construction takes over, :func:`_cascade`, which
-escapes the two-input derivation's structural limit by using the erase
-multiplier as a conditional -- the position at which the accumulator is wiped
-depends on the inputs, which is a branch realised arithmetically.  It builds
-every conjunction or disjunction of literals at any arity, in ``2n + 4``
-characters, which is why it is tried first.
-
-A third construction, :func:`_affine`, catches tables that are no subcube.
-It composes one affine setter per input the way the two-input derivation
-does, and like it the setters are **solved rather than searched**: after two
-setters the accumulator is a vector of four values that the third maps by one
-branch per value of the last input, so the table's even and odd rows are two
-affine images of one shared vector.  Reading that backwards gives the whole
-construction -- the vector's partition is forced by which rows the table
-agrees on, two points fix each branch of the last setter, and the first two
-setters invert by division.  The equal-width spelling by
-:func:`_spellings_by_width` is what lets an odd width gap close --
-``_pad_pair`` pads with ``pp`` and refuses an odd shortfall, and parity-3's
-witness wants branches of width 6 and 5.
-
-A fourth construction, :func:`_ladder`, is the only one that computes *with*
-the over-3003 reset instead of keeping clear of it.  Every path above is
-affine in the accumulator -- each command acts uniformly on it, so the rows
-keep their order and no two merge unless they already agree.  The reset is
-the one primitive that is not affine: it maps everything above 3003 onto
-zero and leaves everything below alone, which is a threshold.  So the ladder
-gives each input a weight, subtracts them into a negative accumulator
-(negatives never reset, so stage one is exactly affine), and then lets the
-reset read the weighted sum.  A threshold on a weighted sum is a majority,
-which is why this path builds majority-3 -- the smallest OR of disjoint
-subcubes, and one the composed-affine search cannot reach.
-
-A single reset is one threshold, so widening the ladder's grid cannot make it
-total.  What lifts it is not more arithmetic but a different *printing
-command*, which is the fifth construction, :func:`_deep_band`.
-
-Every path above prints with ``l``, which spells the accumulator in decimal and
-so needs it to *be* 0 or 1 -- that is what pins the two answer classes to two
-exact values.  ``e`` prints ``chr(acc & 0xFF)``, so a row only has to be
-**congruent** to 48 or 49 mod 256, and with residues rather than values as the
-target the reset can be used once per run of the table instead of once in total.
-The band weights each input by a multiple of 256, so every row starts
-congruent; sorting the rows by the weighted sum turns the table into runs; and
-one stage clears each run, since the reset wipes only values past the limit.
-Nothing is searched -- a wiped band thereafter takes the same translations as
-the survivors, so the parking amount cancels out of their residue gap and each
-stage's translation is fixed by one congruence.
-
-Two shape choices decide how far that reaches: the ladder is built by
-**subtraction**, putting the whole order below zero where the reset cannot
-fire, and rows are allowed to **collide when they share a class**, which
-prices a table's span by its number of runs instead of by ``2**n`` and admits
-the popcount ladder -- every weight one -- on which parity spans ``n`` units
-rather than ``2**n - 1``.  Both are assumptions of the shape rather than of
-the language, and together they carry :func:`_deep_band` from three inputs to
-four: all 65536 four-input tables build, against the 496 the constructions
-above reach.
-
-What bounds it is **distinctness** -- the span it costs to keep rows apart,
-not the number of runs, which is the obvious guess and is wrong.  Symmetric
-tables escape that bound at any arity, so parity-5, majority-5 and
-threshold-5 all build, and parity is executed on the interpreter through six
-inputs.  ``docs/pct_squared_minus_one_generator.md`` has the spans, the
-collision counts and the positive-ladder variant that was measured and
-removed.
-
-The distinctness budget is a property of reading the table off **one**
-weighting, and :func:`_fold` is the construction that stops doing that.  It
-treats the program as a sequence of *relocations*: rows start on a rigid
-ladder, each use of the reset moves a group of rows by exactly ``3004`` plus
-a slack bounded by the gap to its nearest survivor, the doubling ``m``
-regrows gaps -- without it every wipe caps the spread at 3003, one short of
-the jump, and the groups' cyclic order would be provably invariant -- and
-rows of one class are merged by landing them on a shared value.  Once each
-class is a single point, only their mutual gap carries a residue
-requirement, and the final relocation's window spans a full residue system.
-The plan is constructed by a fixed case analysis over the relative
-geometry -- merge where a landing window holds a same-class point, wipe a
-same-class end run together, double to grow the windows, hop an end group
-to compress -- and the emitted program is then mirrored on every row and
-asserted rather than trusted.
-
-Five inputs close on that path, and it is not *proved* total at any arity it
-does not enumerate.  What bounds it is the **workspace**: the ladder's
-footprint has to fit inside ``[-3003, 0]``, which is what
-:data:`_FOLD_NARROW_STEP` and the packed :data:`_FOLD_SUBSET_LADDER` are for
--- the latter meets the exact distinctness floor ``2**n + 1`` and carries
-eleven inputs.  Twelve ends it, and there the wall is the move algebra rather
-than the spelling: the doubling ``m`` is offered only under a spread bound
-that ``2**12`` distinct positions cannot meet, so no twelve-input ladder ever
-doubles.  Thirteen is impossible by counting alone.
-
-The fold is tried last because it is the most expensive path, and
-:func:`_deep_band` is screened rather than enumerated above four inputs for
-the same reason.  ``docs/pct_squared_minus_one_generator.md`` has the
-measured plan costs, the screening trade and the arity arithmetic.
-
-As before whatever it misses is *unreached*, not proved unreachable -- the
-wall in ``docs/proofs.md`` and the Lean wall in ``Esolangs.PctBooleanWall``
-cover the reading model only, and nothing here bounds embedded-input programs
-in general.  ``docs/limitations.md`` records what bounds are actually known.
-
-Unlike the other parameterized generators, *which* command strings a setter
-uses is derived per table rather than fixed by the language, so a bare
-``{Xi}`` cannot be filled by a table-independent lambda.  The template
-therefore carries a header naming each setter's two branches, followed by
-the ``{Xi}`` placeholders themselves; :func:`fill` reads the header and
-substitutes the branch each bit selects.  This mirrors ArrowQueue, whose
-template likewise needs a structure-aware filler rather than a lambda.
-
-Both branches of a setter come out the same width, so every instantiation of
-a template has the same length and no program leaks its inputs through
-``len()``.  The derivation and the cascade reach that by padding with ``pp``
--- two negations, which the interpreter executes and which compose to the
-identity -- and :func:`_affine` by spelling both branches at a width they
-share.  Padding can only close an even gap; respelling closes either.
+Programs that read their own inputs cannot compute a two-input function, so
+this module embeds each input once and uses affine setters, threshold ladders,
+and relocation folds. Every construction is derived and replayed on all
+instantiated rows. The fold's twelve-input workspace limit is not a language
+wall; interleaving remains open research.
 """
 
 import re
@@ -188,7 +30,7 @@ _OFFSETS = range(-10, 11)
 #: Accumulator values the answers ``(0, 1)`` may land on before the tail runs.
 #: The tail has to move these onto ``0``/``1``, and :func:`_tail_for` does that
 #: with one translation, which needs the pair a step apart -- so nearby pairs
-#: are not merely the ones worth offering, they are the only ones that print.
+#: are the only pairs that print.
 _CLASS_PAIRS = tuple(
     (zero, one) for zero in range(-9, 10) for one in range(-9, 10) if zero != one
 )
@@ -340,6 +182,29 @@ def _tail_for(one_value: int, zero_value: int) -> str | None:
     return None
 
 
+#: The class pairs that actually print, which is 32 of the 342 in
+#: :data:`_CLASS_PAIRS`.  A tail is a bare translation, optionally after a
+#: ``p``, so it exists only when the pair is one step apart in one direction or
+#: the other -- and even then not always, because ``_sub_code`` has no spelling
+#: for a shift of 1, which is what strikes ``(1, 0)``, ``(1, 2)``, ``(-1, 0)``
+#: and ``(-1, -2)`` out of the survivors.
+#:
+#: This is a *filter on dead iterations*, not a change of search space.
+#: :func:`_solution` ends with ``_tail_for(classes[1], classes[0])`` and returns
+#: ``None`` when it misses, so a pair outside this tuple can never reach
+#: :func:`_derive`'s ``best``, whatever the rest of the parameter set is.  The
+#: comprehension preserves ``_CLASS_PAIRS`` order and ``best`` keeps the first
+#: candidate of a given width, so the winner is unchanged as well as the reach.
+#: Skipping the other 310 is worth 8.6x on the call count -- measured at
+#: 619k :func:`_solution` calls per two-input table against 72k -- and 6.1x
+#: end to end on the eighteen-table profile that found this loop (2.28s to
+#: 0.37s).  The remaining time is the same nest at a tenth the width, so
+#: hoisting inside it was measured and left out: it is worth about 0.1s.
+_VIABLE_CLASS_PAIRS = tuple(
+    pair for pair in _CLASS_PAIRS if _tail_for(pair[1], pair[0]) is not None
+)
+
+
 def _column_slopes(rows: dict[tuple[int, int], int]) -> list[list[int]]:
     """Return the admissible slopes per column, read straight off the table.
 
@@ -435,6 +300,11 @@ def _derive(truth_table: str) -> tuple[list[tuple[str, str]], str] | None:
     so what is enumerated here is only the constants input 0 contributes and
     the pair of class values.  Every candidate is priced and the shortest
     kept, so the result does not depend on enumeration order.
+
+    The class values come from :data:`_VIABLE_CLASS_PAIRS` rather than the
+    full grid, because a pair the tail cannot print rejects every parameter
+    set it appears in -- see that tuple for why the filter cannot move the
+    winner.
     """
     rows = {
         (x0, x1): int(truth_table[(x0 << 1) | x1]) for x0 in (0, 1) for x1 in (0, 1)
@@ -452,7 +322,7 @@ def _derive(truth_table: str) -> tuple[list[tuple[str, str]], str] | None:
                     continue
                 for zero_slope in options[0]:
                     for one_slope in options[1]:
-                        for classes in _CLASS_PAIRS:
+                        for classes in _VIABLE_CLASS_PAIRS:
                             found = _solution(
                                 rows,
                                 first,
@@ -578,7 +448,7 @@ def _cascade(truth_table: str, n: int) -> str | None:
 #: because the bound is the only measured part: widening past ``|a| == 4``
 #: reaches no further table, while the *shape* -- signed powers of two --
 #: is what the two commands generate and is not a search result.  Order is
-#: load-bearing, since the wide search takes the first spelling that
+#: required because the wide search takes the first spelling that
 #: behaves: ascending magnitude, positive before negative.
 _WIDE_A_LIMIT = 4
 
@@ -755,7 +625,7 @@ _Branch = tuple[int, int]
 #: between them reach all twenty.
 #:
 #: The cover is minimal -- dropping any one of the eight strands tables (four
-#: for the first three, two for the rest) -- and it is load-bearing on *size*:
+#: for the first three, two for the rest) -- and it determines *size*:
 #: removing the ladder path entirely costs no correctness but 88% more
 #: characters over the twenty it serves (31615 against 59457), with
 #: majority-of-three going 874 to 2280.
@@ -2967,12 +2837,12 @@ def _fold_positions(n: int, weights: tuple[int, ...]) -> list[int]:
 def _fold_at(truth_table: str, n: int, weights: tuple[int, ...]) -> str | None:
     """Build a fold template on a given ladder, or ``None``.
 
-    **The ladder is gated against ``_LIMIT``, not ``2 * _LIMIT``.**  The plan
+    **The ladder is bounded by ``_LIMIT``, not ``2 * _LIMIT``.**  The plan
     state is relative -- :func:`_fold_moves` allows a *span* of ``2 * _LIMIT``
     because a state may sit anywhere in ``[-_LIMIT, _LIMIT]`` -- but the
     emitter lays the rows at absolute positions starting from a zero
     accumulator, so the ladder itself has to fit in ``[-_LIMIT, _LIMIT]``.
-    Gating on the relative bound lets the planner spend thousands of moves on
+    Checking only the relative bound lets the planner spend thousands of moves on
     a geometry the emitter then refuses on its first op: the alternating
     table at eleven inputs plans 2833 ops on a 4094-wide uniform ladder and
     asserts immediately.

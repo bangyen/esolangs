@@ -1363,7 +1363,7 @@ def flowchart(truth_table: str) -> str:
     against each other, since a rail only has to clear a node when it needs
     to pass *through* that node's row.  Sibling subtrees never do -- they
     descend in their own column bands -- so the gutter an earlier version
-    kept between them was never load-bearing, and dropping it takes the
+    kept between them was never required, and dropping it takes the
     ``n = 4`` drawing from 2444 characters to 1557.
 
     **The tree holds many ``/ /`` nodes but reads each input once.**  A
