@@ -436,6 +436,32 @@ class TestGeneratorRoundTrips:
         """
         assert roundtrip(streetcode_run, gen.streetcode(char).splitlines()) == char
 
+    @pytest.mark.parametrize(
+        "text",
+        ["\x00H", "\x00\xff", "\x00\x00H", "\x00Hello", "\x00\x01", "\x00"],
+    )
+    def test_streetcode_rings_past_an_unringable_start(self, text: str) -> None:
+        """A leading NUL costs the NUL, not the whole ring.
+
+        ``_plan_ring(0)`` is ``None`` -- there is nothing to factor for a
+        zero -- and the ring used to build the *first* character only, so
+        any text starting with NUL walked every later value unarily:
+        ``"\\x00\\xff"`` came to 1047 characters against 231 for the
+        ``"\\xff"`` alone.  The ring builds its product in cell 1 and
+        leaves CP there, so cell 0 is free to print the characters before
+        it, and the ring goes to the first character that can use one.
+        """
+        assert roundtrip(streetcode_run, gen.streetcode(text).splitlines()) == text
+
+    def test_streetcode_unringable_start_is_not_paid_for_twice(self) -> None:
+        """The saving is real: a leading NUL is worth a few characters.
+
+        Pinned as a bound rather than a length so the test survives a
+        cheaper ring, but tight enough to fail if the ring is forfeited
+        again -- the old shape was over four times this.
+        """
+        assert len(gen.streetcode("\x00\xff")) < 300
+
     def test_streetcode_ring_beats_the_straight_walk(self) -> None:
         """A ring is only emitted when it is smaller than walking.
 

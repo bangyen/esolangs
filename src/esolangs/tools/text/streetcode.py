@@ -221,21 +221,49 @@ def _streetcode_ring(text: str) -> str | None:
     block is drivable, so those trailing spaces are padding rather than
     road, and keeping them would cost more than the ring saves.
     """
-    first = ord(text[0])
-    plan = _plan_ring(first)
-    if plan is None:
+    # The ring builds its product in cell 1 and leaves CP there, so cell 0
+    # is free and still zero when the street resumes.  That is what lets a
+    # text whose *first* character cannot be ringed keep the ring anyway:
+    # ring the first character that can be, and print the ones before it
+    # from cell 0 on the way past.  A leading NUL used to forfeit the ring
+    # for the whole string -- _plan_ring(0) is None, there being nothing to
+    # factor for a zero -- which walked every later value unarily and cost
+    # far more than the zero itself.
+    target = next(
+        (i for i, char in enumerate(text) if _plan_ring(ord(char)) is not None),
+        None,
+    )
+    if target is None:
         return None
+    plan = _plan_ring(ord(text[target]))
+    assert plan is not None  # nosec B101 - target was chosen by this test
     k, counter, per_lap, remainder = plan
     block = _ring_rows(k, counter, per_lap)
     block_width = len(block[0])
 
+    # The characters before the ring's own are printed from cell 0, which
+    # holds zero, so each is a walk from the last one; then '=' steps onto
+    # the ring's cell to print the product.  With no such characters this
+    # is empty and the street is exactly what it always was.
+    prefix = ""
+    if target:
+        previous = 0
+        for char in text[:target]:
+            delta = ord(char) - previous
+            prefix += ("^" if delta >= 0 else "~") * abs(delta) + "O"
+            previous = ord(char)
+        # '_' steps down onto cell 0 before the walks, '=' back onto the
+        # ring's cell after them: CP arrives here naming cell 1, since that
+        # is where the ring counted its product up.
+        prefix = "_" + prefix + "="
+
     tail = []
-    prev = first
-    for char in text[1:]:
+    prev = ord(text[target])
+    for char in text[target + 1 :]:
         delta = ord(char) - prev
         tail.append(("^" if delta >= 0 else "~") * abs(delta) + "O")
         prev = ord(char)
-    after = "^" * remainder + "O" + "".join(tail) + ";"
+    after = prefix + "^" * remainder + "O" + "".join(tail) + ";"
 
     left = 3
     width = left + block_width + len(after) + 1
