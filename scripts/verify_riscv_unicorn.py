@@ -160,9 +160,34 @@ for _program, _expected, _stdin in [
     ("v+>v+1@^.1$#<&&;", "11", "3\n4\n"),
 ]:
     COMPILER_CASES.append(("jaune", "jaune", _program, _expected, _stdin))
-# Jaune's computed dispatch ("v@", "v?") reaches the `switch:` blocks below
-# and has no interpreter counterpart -- the interpreter rejects those forms
-# -- so there is nothing to round-trip it against here.
+# Jaune's computed dispatch: the grammar makes ``v`` a ``number``, so the
+# input names the label to jump to or the subroutine to call.  The
+# interpreter implements those forms now, so these round-trip against it
+# like every case above -- where the switch blocks previously had no
+# counterpart to be checked against, and all four probes miscompiled.
+for _program, _expected, _stdin in [
+    ("v@^.1$5+;2$3+;", "5", "1\n"),  # the input names the subroutine
+    ("v@^.1$5+;2$3+;", "3", "2\n"),  # ... and a different digit names the other
+    ("+v?%^.3:7+^.", "8", "3\n"),  # v? jumps to the label the input names
+    ("v!%^.3:7+^.", "7", "3\n"),  # v! is its zero-testing mirror
+    # The read happens whether or not the branch is taken, so the following
+    # ``v`` sees the second digit.
+    ("v?v^.3:", "8", "3\n8\n"),
+    ("+v!v^.3:", "8", "3\n8\n"),
+    # ``vv?`` is a read into the cell, then a read naming the label -- the
+    # run split ``count`` applies to ``vv+`` extended to the markers.
+    ("vv?^.3:9+^.", "14", "5\n3\n"),
+    # Adjacent labels collapse to one under ``prep``, so both spellings have
+    # to reach it: the switch selects on what the source named.
+    ("+v?%^.3:7+^.4:", "8", "3\n"),
+    ("v@^.1$2@;2$5+;", "5", "1\n"),  # a computed call whose body calls
+]:
+    COMPILER_CASES.append(("jaune", "jaune", _program, _expected, _stdin))
+# Not pinned here: an input naming no label or subroutine.  The interpreter
+# raises HaltError; the compiled switch has no error path and falls through
+# (the call switch returns, the jump switch continues past the branch), so
+# the two disagree by construction.  See the comment on the switch blocks in
+# ``compilers/jaune.py``.
 # BF-PDA: the stack, its loops, and the fact that non-commands are comments.
 # Same provenance -- the interpreter's expected outputs, each confirmed
 # against the compiled binary.
