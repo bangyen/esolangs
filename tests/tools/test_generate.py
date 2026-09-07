@@ -847,6 +847,28 @@ class TestGeneratorRoundTrips:
         for heading in range(4):
             assert laserfuck_roundtrip(program, heading) == text
 
+    @pytest.mark.parametrize("length", [21, 34, 55])
+    def test_laserfuck_snake_ring_folds_a_preload_wider_than_the_width(
+        self, length: int
+    ) -> None:
+        """A preload wider than the width costs rows, not a refusal.
+
+        The walk out to the counter is one ``>`` per cell, so 55 characters
+        spend 56 columns before the first ``+`` -- wider than a width of 40
+        on its own, with the entry already at the margin and nothing left to
+        reland.  A preload is a straight run of tape ops, so it folds like
+        any other run, and the form survives a width its preload could not
+        have met.
+        """
+        from esolangs.tools.text.laserfuck import _laserfuck_snake_ring
+
+        text = "".join(chr(0x21 + (index * 13) % 90) for index in range(length))
+        program = _laserfuck_snake_ring(text, 40)
+        assert program is not None
+        assert max(len(line) for line in program.split("\n")) <= 40
+        for heading in range(4):
+            assert laserfuck_roundtrip(program, heading) == text
+
     def test_laserfuck_snake_needs_a_spine_and_a_margin(self) -> None:
         """A spine with no room either side cannot carry a snake."""
         from esolangs.tools.text.laserfuck import _laserfuck_snake
