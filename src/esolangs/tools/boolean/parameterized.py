@@ -43,6 +43,7 @@ from ``{Xi}`` at runtime with its ``s``-as-NOT-gate.  The placeholder and the
 """
 
 from functools import cache
+from math import factorial
 
 # Re-exported so this module stays the import site for the whole
 # parameterized family; each of these owns a file because its
@@ -218,24 +219,37 @@ def _eval_fill_runs(
     is the running out-mass minus in-mass; a word is valid exactly when it
     lands back at zero, every value pushed onto the tree stack having come
     home.
+
+    The caller only passes skeletons whose *last* run is an in-run, so the
+    final run's length is not searched: it has to be exactly ``balance`` to
+    land at zero, and the walk emits at that one length when the budget
+    still affords it.  Collapsing the innermost -- and by far the widest --
+    level of the recursion from a loop to a single test cuts the walk from
+    1091320 calls to 690617; the caller's skip takes it to 348053.
     """
+    count = len(directions)
+    last = count - 1
 
     def fill(index: int, spent: int, balance: int, runs: tuple[int, ...]) -> None:
-        if index == len(directions):
-            if balance == 0:
-                parts = iter(runs)
+        side = directions[index]
+        remaining = count - index - 1
+        ceiling = budget - spent - remaining
+        if side == _EVAL_TREE_STACK:
+            # An in-run can only carry back what is already parked.
+            ceiling = min(ceiling, balance)
+        if index == last:
+            # The last run is an in-run of exactly ``balance``: anything
+            # shorter leaves values stranded on the tree stack, anything
+            # longer pops it empty.  A run still has to be non-empty and
+            # still has to fit what the cap leaves.
+            if 1 <= balance <= ceiling:
+                parts = iter((*runs, balance))
                 words.add(
                     "".join(
                         "=" * next(parts) if char == "E" else char for char in skeleton
                     )
                 )
             return
-        side = directions[index]
-        remaining = len(directions) - index - 1
-        ceiling = budget - spent - remaining
-        if side == _EVAL_TREE_STACK:
-            # An in-run can only carry back what is already parked.
-            ceiling = min(ceiling, balance)
         for length in range(1, ceiling + 1):
             shift = length if side == _EVAL_READ_STACK else -length
             fill(index + 1, spent + length, balance + shift, (*runs, length))
@@ -255,6 +269,14 @@ def _eval_reorders(max_ops: int = _EVAL_MAX_OPS) -> tuple[str, ...]:
             # discarded by the fold anyway.
             if skeleton == "~*~":
                 words.add(skeleton)
+            continue
+        if directions[-1] == _EVAL_READ_STACK:
+            # A skeleton ending in an out-run spells no word at all.  An
+            # in-run is capped at ``balance``, so the balance never goes
+            # negative; a final out-run then adds at least one and leaves it
+            # strictly positive, meaning values are still parked on the tree
+            # stack when the word ends.  Half the skeletons (32721 of 65535)
+            # are this shape, and filling them was pure waste.
             continue
         _eval_fill_runs(
             skeleton, directions, max_ops - (len(skeleton) - len(directions)), words
@@ -291,6 +313,14 @@ def _eval_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     input a level tests.
     """
     reached: dict[tuple[int, ...], str] = {}
+    # A word only shuttles and reverses, never copies or drops, so every
+    # arrangement it can leave is a permutation of ``range(n)``.  Once ``n!``
+    # of them are claimed there is nothing left for a later word to claim,
+    # and first-claim-wins means the ones already held are the cheapest --
+    # so stopping is not a heuristic.  It fires at ``n <= 4``, where the
+    # catalog collapses onto all ``n!`` arrangements; from ``n == 5`` the
+    # reach is short of ``n!`` (119 of 120) and the loop runs to the end.
+    everything = factorial(n)
     for ops in _eval_reorders():
         stacks: tuple[list[int], list[int]] = ([], list(range(n)))
         active = _EVAL_TREE_STACK
@@ -311,6 +341,8 @@ def _eval_stack_programs(n: int) -> dict[tuple[int, ...], str]:
                 and arrangement not in reached
             ):
                 reached[arrangement] = ops
+                if len(reached) == everything:
+                    break
     return reached
 
 
