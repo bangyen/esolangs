@@ -38,9 +38,25 @@ testable boolean-generator route. The assessed-and-rejected ledger is in
   workspace geometry, not a language wall. Develop a total planner that
   interleaves embedding and folding; the existing verified ten-input route is
   an experiment, not a general construction.
+- **Scale Line boolean drawings.** The standalone Line generator has
+  end-to-end measurements through seven inputs, while its regression suite
+  reaches five; eight and above are unmeasured. Establish the renderer →
+  extractor → simulator frontier with an all-leaf-reaching corpus, then only
+  pursue subtree sharing or a denser layout if that measurement finds a real
+  resource limit.
+- **Collapse competing boolean constructions.** Audit generators that emit
+  multiple routes and keep the shorter. Where loop semantics permit it, derive
+  one construction or a dominance rule that covers every table; retain a
+  fallback only when executed counterexamples show it is necessary. This is
+  about removing avoidable selection work, not beating the generic `O(2**n)`
+  truth-table lower bound.
 
 ## Conditional follow-up
 
 - **ArrowQueue reusable drain.** Ship the verified deep-fold drain only if a
   proof makes folding meaningfully testable at `n >= 5`; current coverage does
   not reach its crossover.
+- **Reorder ArrowQueue inputs.** A three-input screen leaves 12.4% headroom,
+  but its queued inputs cannot be renamed in place. Find a re-enqueue and
+  grid-routing construction, then compare emitted, executed programs against
+  the current template; abandon it if the routing spends the apparent gain.
