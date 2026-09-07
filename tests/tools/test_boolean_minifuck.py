@@ -2150,6 +2150,48 @@ class TestParameterizedMinifuck:
                     joint, cell7, walk_out
                 ), [(s.tape & ((1 << width) - 1), s.ptr) for s in sims]
 
+    def test_the_pool_slices_cover_the_whole_domain(self) -> None:
+        """Deriving a slice at a time answers what one big table would.
+
+        The slices exist so a caller pays for the ``(pointer, skip)`` it
+        actually asks about -- a build touches one of the six, and deriving
+        all of them on first use billed a 0.2ms build 57ms of work it had no
+        use for.  What must not change is the *answers*: this rebuilds the
+        whole-domain derivation the slices replaced and pins the union to it,
+        so a slice that quietly disagreed with it would fail here.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        codes = module._POOL_CODES  # noqa: SLF001
+        ptr_max = module._POOL_PTR_MAX  # noqa: SLF001
+
+        whole = {
+            (low, ptr, skip, cell7): answer
+            for low in range(1 << module._POOL_WIDTH)  # noqa: SLF001
+            for ptr in range(ptr_max + 1)
+            for skip in (False, True)
+            for cell7 in (0, 1)
+            if (
+                answer := module._pool_code_for_row(  # noqa: SLF001
+                    codes, low, ptr, cell7, skip=skip
+                )
+            )
+            is not None
+        }
+
+        union = {
+            (low, ptr, skip, cell7): answer
+            for ptr in range(ptr_max + 1)
+            for skip in (False, True)
+            for (low, cell7), answer in module._pool_slice(  # noqa: SLF001
+                codes, ptr, skip=skip
+            ).items()
+        }
+
+        assert union == whole
+        assert whole, "the derivation should not be empty"
+
     def test_the_pool_rule_declines_outside_its_domain(self) -> None:
         """The bound is a refusal, not a gap in a table.
 

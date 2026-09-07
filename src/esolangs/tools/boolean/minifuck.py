@@ -753,27 +753,33 @@ def _pool_code_for_row(
 
 
 @cache
-def _pool_code_table(
-    codes: tuple[str, ...],
-) -> dict[tuple[int, int, bool, int], tuple[int, int]]:
-    """Derive which code each row state admits, over the whole domain.
+def _pool_slice(
+    codes: tuple[str, ...], ptr: int, *, skip: bool
+) -> dict[tuple[int, int], tuple[int, int]]:
+    """Derive the verdict for every window byte at one ``(pointer, skip)``.
 
-    The key is ``(window byte, pointer, pending skip, orientation)`` and the
-    domain is everything a verdict can depend on -- one byte of window, a
-    pointer bounded by :data:`_POOL_PTR_MAX`, one skip bit, one orientation
-    bit.  So this is the *predicate*, derived, not a memo of the states a
-    build happens to reach: it is the same size whether one table is asked
-    for or every table is.
+    The slice is **exhaustive in the coordinates the caller does not fix**:
+    every one of the 256 window bytes at both orientations.  So this is still
+    the predicate over its slice rather than a memo of the states a build
+    reached -- ask it once and it answers for windows that never occur as
+    readily as for the one that did.
+
+    Deriving a slice at a time is what keeps a caller from paying for the
+    whole domain.  Builds only ever ask at the origin with no skip -- all 1956
+    sites at two and three inputs -- so a build derives one slice of six and
+    the rest come into being only if something asks, which in practice is the
+    test that sweeps them.  Whole-domain derivation cost 57ms on first touch
+    against a 0.2ms one-input build; the slice is a sixth of that, and the
+    exhaustiveness argument the whole-domain form was carrying now lives where
+    it belongs, in the test that checks every key against the scan.
 
     Keyed on the code list because the codes are ablated -- dropped one at a
     time to measure what each is worth -- and a table derived against a list
     no longer in force would report that a dropped code stranded nothing.
     """
     return {
-        (low, ptr, skip, cell7): answer
+        (low, cell7): answer
         for low in range(1 << _POOL_WIDTH)
-        for ptr in range(_POOL_PTR_MAX + 1)
-        for skip in (False, True)
         for cell7 in (0, 1)
         if (answer := _pool_code_for_row(codes, low, ptr, cell7, skip=skip)) is not None
     }
@@ -816,7 +822,6 @@ def _find_pool(j: _Joint, cell7: int, walk_out: int) -> str | None:
     del walk_out
 
     codes = tuple(_POOL_CODES)
-    table = _pool_code_table(codes)
 
     def answer_for(row: _Sim) -> tuple[int, int] | None:
         """Which code this row names, and where that code leaves it."""
@@ -824,7 +829,8 @@ def _find_pool(j: _Joint, cell7: int, walk_out: int) -> str | None:
             # A dead row prints nothing, and one past the bound is outside the
             # window's reach.  Both mean "no pool from here".
             return None
-        return table.get((row.tape & _POOL_MASK, row.ptr, row.skip, cell7))
+        rows = _pool_slice(codes, row.ptr, skip=row.skip)
+        return rows.get((row.tape & _POOL_MASK, cell7))
 
     chosen = answer_for(j.ms[0])
     if chosen is None:
@@ -2767,7 +2773,8 @@ def _mux_separate(n: int) -> _Joint | None:
 #: when that landed, :func:`_pool_reaches` was 3% of a build and every call
 #: left came from :func:`_find_pool` on the derivation path; those calls are
 #: gone now that the derivation path looks the code up too, and
-#: :func:`_pool_reaches` runs only at import and in the tests.  The rest of
+#: :func:`_pool_reaches` runs only when a slice is first derived and in the
+#: tests -- never on a build's own path.  The rest of
 #: :func:`_mux_probe` is the *column derivation* -- the walk and clamp over
 #: every row, once a round -- which is a different question from which code
 #: to use and is not closed by this constant.
