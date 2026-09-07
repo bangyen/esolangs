@@ -7,7 +7,7 @@ Everything that can be checked on a dev machine without a Linux host:
    image libraries the package itself does not depend on), and the
    interpreter-vs-native differential corpora
 3. unicorn-based round-trips (RISC-V assembly compilers and the
-   differential corpora) — skipped when unicorn or the RISC-V
+   differential corpora), skipped when unicorn or the RISC-V
    cross-compiler is missing
 
 The native qemu-riscv64 checks need Linux, so they run only in CI (see
@@ -645,7 +645,7 @@ def main() -> int:
     # appends `-m "not slow"` itself, but `just test-quick` instead exports
     # PYTEST_ADDOPTS and passes --only, which suppresses the append while
     # pytest still reads the env var and runs the subset.  Keying on --only
-    # alone would leave that path strict-gating subset data -- the exact
+    # alone would leave that path enforcing strict subset data -- the exact
     # false failure --partial exists to prevent, on the blessed fast loop.
     gate: tuple[str, list[str], dict[str, str]] | None = None
     if any(name == "pytest" for name, _, _ in runnable):

@@ -3,38 +3,38 @@
 The ``extra/`` implementations are not upstream references: they are
 cross-checks written in this repository (see README "Extra
 Implementations").  They still serve as oracles for the in-package Python
-interpreters, so this script runs a *full-surface corpus* — every
-instruction plus edge cases, not just generator output — through both the
+interpreters, so this script runs a *full-surface corpus*: every
+instruction plus edge case, not just generator output, through both the
 Python interpreter and the native implementation and asserts they agree.
 
 Languages with both an in-package interpreter and a native cross-check:
 
-* **NoComment** — ``tape_based/nocomment.py`` vs
+* **NoComment:** ``tape_based/nocomment.py`` vs
   ``extra/assembly/nocomment-riscv.s``.  Both implement the full wiki language
   (10 commands over a tape and stack).  The assembly is run under unicorn
   via ``riscv_elf_runner`` and must agree with the Python interpreter on the
   full corpus; both error on non-commands, stack underflow, and out-of-range
   jumps.
-* **BF-PDA** — ``stack_based/bf_pda.py`` vs
+* **BF-PDA:** ``stack_based/bf_pda.py`` vs
   ``extra/assembly/bfpda-riscv.s``.  Both implement the full wiki language
   (6 commands over a bit stack whose top is the current cell, with comments).
   The assembly is run under unicorn via ``riscv_elf_runner`` and must agree
   with the Python interpreter on the full corpus; both error on empty
   programs and unbalanced brackets as malformed (exit 2).
-* **RAM0** — ``register_based/ram0.py`` vs
+* **RAM0:** ``register_based/ram0.py`` vs
   ``extra/assembly/ram0-riscv.s``.  Both implement the full wiki language
   (7 tokens over two registers and RAM, with digit gotos and comments).  The
   assembly is run under unicorn via ``riscv_elf_runner`` and must agree with
   the Python interpreter on the full corpus and the insertion-order state
   dump.
-* **BIO** — ``register_based/bio.py`` vs ``extra/assembly/bio-riscv.s``.
+* **BIO:** ``register_based/bio.py`` vs ``extra/assembly/bio-riscv.s``.
   Both implement the full wiki language (3 registers x/y/z, while loops
   written ``0i[xyz]{ ... };``, every command ended by ``;``, and ``//``
   comments).  The assembly is run under unicorn via ``riscv_elf_runner``
   and must agree with the Python interpreter on the full corpus; both
   check the whole program when it loads, so every rejection is "malformed"
   (exit 2) and is raised before any output.
-* **Minsky Swap** — ``register_based/minsky_swap.py`` vs
+* **Minsky Swap:** ``register_based/minsky_swap.py`` vs
   ``extra/assembly/minsky_swap-riscv.s``.  Both implement the compact
   notation (a `+`/`~`/`*` command line plus a jump-target line, one number
   per `~` in program order).  Each `~` token keeps its own fixed target

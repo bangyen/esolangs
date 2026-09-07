@@ -8,8 +8,8 @@ maintenance branches for older versions.
 ## What is in scope
 
 Interpreters execute untrusted programs by design, so a program producing
-wrong output, looping forever, or exhausting memory is a correctness bug —
-open a normal issue for those.
+wrong output, looping forever, or exhausting memory is a correctness bug.
+Open a normal issue for those.
 
 In scope for a security report is anything that escapes the interpreter:
 

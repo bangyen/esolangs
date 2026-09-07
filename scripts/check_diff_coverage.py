@@ -3,7 +3,7 @@
 The diff picks the files; the whole file is then judged.  Touch a file and
 you answer for all of it, not only the lines you added.
 
-This is deliberately stronger than gating the added lines alone, which is what
+This is deliberately stronger than checking the added lines alone, which is what
 this script used to do.  That earlier rule was chosen when eight files under
 ``tools/boolean/`` carried pre-existing misses and billing a one-line fix for
 closing debts it did not create seemed unfair.  That debt is now paid: the
