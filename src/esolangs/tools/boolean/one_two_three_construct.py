@@ -64,14 +64,19 @@ The pipeline
 exact tracked model of all rows while emitting; a violated stage invariant
 raises rather than handing back a template the rule does not license.
 
-It does not replay the finished template.  :func:`_replay_verdict` is a
-123 interpreter written here against the language's rules — it is *not*
-``esolangs.interpreters.tape_based.one_two_three``, and nothing in this
-module imports that.  It exists for the suite, which is where the
-execution gate lives: the tests run emitted programs on the real shipped
-interpreter, exhaustively at ``n <= 3`` and row by row above it.  Passing
-``verify=True`` re-runs the in-module replay, off by default because a
-check that costs 81-95% of a call is a tax on every caller.
+It does not replay the finished template, and there is no flag to make it:
+a check that costs 81-95% of a call does not belong on the caller, and a
+switch nothing turns on is worse than no switch.  The execution gate lives
+in the suite, which runs emitted programs on the real shipped interpreter
+— exhaustively at ``n <= 3``, row by row above it, and over all 65536
+four-input tables in ``scripts/check_123_four_input.py``.
+
+:func:`_replay_verdict` remains for those tests.  It is a 123 interpreter
+written here against the language's rules — *not*
+``esolangs.interpreters.tape_based.one_two_three``, which nothing in this
+module imports — and the suite checks it against that real interpreter on
+random programs, a stronger test than running it on the well-behaved
+shapes this builder emits.
 """
 
 from __future__ import annotations
@@ -864,26 +869,6 @@ def _replay_verdict(code: str) -> str:
         lam += 1
 
 
-def _replay(template: str, n: int, table: str) -> None:
-    """Run every instantiation and check its verdict against ``table``.
-
-    Raises on any wrong verdict: the builder's model is exact, but
-    nothing ships on the model's word alone.
-    """
-    for combo in range(2**n):
-        program = template
-        for i in range(n):
-            bit = (combo >> (n - 1 - i)) & 1
-            program = program.replace(f"{{X{i}}}", _ONE if bit else _ZERO)
-        try:
-            verdict = _replay_verdict(program)
-        except ConstructError:  # pragma: no cover - the gate
-            verdict = None
-        if verdict != table[combo]:  # pragma: no cover - the gate
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            raise ConstructError(f"replay disagrees at row {bits}: {verdict!r}")
-
-
 #: Simulated commands a :func:`construct` call may spend before raising.
 #: Counted work, not wall clock, so the same table either builds or
 #: raises identically on every machine.
@@ -898,7 +883,7 @@ def _replay(template: str, n: int, table: str) -> None:
 _WORK_BUDGET = 2_000_000_000
 
 
-def construct(truth_table: str, *, verify: bool = False) -> str:
+def construct(truth_table: str) -> str:
     """Build a 123 template for ``truth_table`` at any arity.
 
     Deterministic; the construction is a stated rule, and every stage
@@ -906,20 +891,20 @@ def construct(truth_table: str, *, verify: bool = False) -> str:
     when a stage invariant is violated or the build exhausts its work
     budget.
 
-    ``verify=True`` adds a closing replay of all ``2**n`` rows through
-    :func:`_replay_verdict`.  It is off by default because it is a
-    *check*, not part of the construction: it re-derives nothing the
-    build needs, and its cost grows with the row count -- 81% of a
-    four-input call, 90% at five and 95% at six, so every caller paid an
-    exponentially growing tax for a property the suite already proves.
+    Nothing is replayed here.  A closing replay of all ``2**n`` rows is a
+    *check*, not part of the construction -- it re-derives nothing the
+    build needs, and its cost grows with the row count (81% of a
+    four-input call, 90% at five, 95% at six), so it belongs in the
+    suite rather than on every caller.
 
-    The execution gate lives in the test suite, where it belongs, and is
-    stronger there than it ever was here: ``test_all_small_tables``
-    sweeps *every* table at ``n <= 3`` and the wider sweeps replay their
-    templates row by row -- all through the real shipped interpreter
-    (``interpreters.tape_based.one_two_three``), not the in-module
-    reimplementation this flag runs.  ``scripts/check_123_four_input.py``
-    carries the exhaustive four-input sweep.
+    The execution gate is stronger there than it ever was here:
+    ``test_all_small_tables`` sweeps *every* table at ``n <= 3``, the
+    wider tests replay their templates row by row, and
+    ``scripts/check_123_four_input.py`` carries the exhaustive
+    four-input sweep -- all through the real shipped interpreter
+    (``interpreters.tape_based.one_two_three``) rather than the
+    in-module :func:`_replay_verdict`, which the suite checks separately
+    against that interpreter on random programs.
     """
     n = max(1, (len(truth_table) - 1).bit_length())
     # The mark geometry comes from _geometry: the tight linear layout
@@ -943,8 +928,6 @@ def construct(truth_table: str, *, verify: bool = False) -> str:
         _verdict(b, truth_table)
         _endgame(b)
         template = b.template()
-        if verify:
-            _replay(template, n, truth_table)
     except _WorkExhaustedError:
         raise ValueError(
             f"123 construction failed for {truth_table!r}: "

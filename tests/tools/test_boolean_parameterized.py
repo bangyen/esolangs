@@ -2777,9 +2777,9 @@ class TestParameterizedOneTwoThree:
         for name, fn in originals.items():
             setattr(construct_mod, name, watch(name, fn))
         try:
-            # verify=False: every row is replayed below, and the
-            # generator's own closing replay is the same execution twice.
-            template = construct_mod.construct("00111000", verify=False)
+            # construct() emits without replaying; every row is run on
+            # the real interpreter below, which is the execution gate.
+            template = construct_mod.construct("00111000")
         finally:
             for name, fn in originals.items():
                 setattr(construct_mod, name, fn)
@@ -2803,8 +2803,8 @@ class TestParameterizedOneTwoThree:
         from esolangs.tools.boolean.one_two_three_construct import construct
 
         for table in ("1000110011010101", "0100000011001001"):
-            # verify=False: construct()'s replay is re-run row by row here.
-            template = construct(table, verify=False)
+            # construct() emits without replaying; the rows below are the gate.
+            template = construct(table)
             for combo in range(16):
                 bits = [(combo >> (3 - i)) & 1 for i in range(4)]
                 program = self.instantiate(template, bits)
@@ -2822,7 +2822,7 @@ class TestParameterizedOneTwoThree:
         from esolangs.tools.boolean.one_two_three_construct import construct
 
         table = "1100010001000111"
-        template = construct(table, verify=False)
+        template = construct(table)
         for combo in range(16):
             bits = [(combo >> (3 - i)) & 1 for i in range(4)]
             program = self.instantiate(template, bits)
@@ -3223,19 +3223,26 @@ class TestParameterizedOneTwoThree:
         with pytest.raises(ValueError, match="123 construction failed"):
             module.construct("0110")
 
-    def test_the_replay_gate_reads_a_looping_row_as_a_one(self) -> None:
-        """The closing replay decides each row on the real interpreter.
+    def test_a_looping_row_reads_as_a_one(self) -> None:
+        """A 1-row is decided by cycle detection, not by halting.
 
         A 1-row does not halt -- it is the loop the kill built -- so the
         verdict comes from Brent's cycle detection rather than from the
-        machine stopping.  The wider tests here replay the template
-        themselves and so build with ``verify=False``; this is the default
-        path, where the gate runs.
+        machine stopping.  Both readings of that row are pinned here: the
+        real interpreter's, which is the shipped contract, and
+        :func:`_replay_verdict`'s, the in-module executor the suite uses
+        elsewhere.  They must agree, and the 1-row must be the looping one.
         """
-        from esolangs.tools.boolean.one_two_three_construct import construct
+        from esolangs.tools.boolean.one_two_three_construct import (
+            _replay_verdict,
+            construct,
+        )
 
-        template = construct("01", verify=True)
-        assert "{X0}" in template
+        template = construct("01")
+        for bit in (0, 1):
+            program = self.instantiate(template, [bit])
+            assert self.run(program) == "01"[bit], bit
+            assert _replay_verdict(program) == "01"[bit], bit
 
     def test_a_spread_of_three_input_tables_builds(self) -> None:
         """A stride-17 sample of the 256 three-input tables all build.
@@ -3248,7 +3255,7 @@ class TestParameterizedOneTwoThree:
         built = 0
         for value in range(0, 256, 17):
             try:
-                construct(format(value, "08b"), verify=False)
+                construct(format(value, "08b"))
             except ValueError:
                 continue
             built += 1
