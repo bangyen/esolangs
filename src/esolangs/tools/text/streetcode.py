@@ -30,7 +30,7 @@ def streetcode(text: str, width: int | None = None) -> str:
     an ``O``.  CP stays at 0 throughout -- no ``=``/``_`` and no second
     cell is ever needed.
 
-    The walls are load-bearing rather than decoration: they are what makes
+    The walls are required: they make
     the right-hand-wall rule send the car straight down the row (the
     initial heading is derived from having a wall on the right, which is
     why the instructions occupy the southern lane), and with no

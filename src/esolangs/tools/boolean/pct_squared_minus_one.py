@@ -30,7 +30,7 @@ _OFFSETS = range(-10, 11)
 #: Accumulator values the answers ``(0, 1)`` may land on before the tail runs.
 #: The tail has to move these onto ``0``/``1``, and :func:`_tail_for` does that
 #: with one translation, which needs the pair a step apart -- so nearby pairs
-#: are not merely the ones worth offering, they are the only ones that print.
+#: are the only pairs that print.
 _CLASS_PAIRS = tuple(
     (zero, one) for zero in range(-9, 10) for one in range(-9, 10) if zero != one
 )
@@ -448,7 +448,7 @@ def _cascade(truth_table: str, n: int) -> str | None:
 #: because the bound is the only measured part: widening past ``|a| == 4``
 #: reaches no further table, while the *shape* -- signed powers of two --
 #: is what the two commands generate and is not a search result.  Order is
-#: load-bearing, since the wide search takes the first spelling that
+#: required because the wide search takes the first spelling that
 #: behaves: ascending magnitude, positive before negative.
 _WIDE_A_LIMIT = 4
 
@@ -625,7 +625,7 @@ _Branch = tuple[int, int]
 #: between them reach all twenty.
 #:
 #: The cover is minimal -- dropping any one of the eight strands tables (four
-#: for the first three, two for the rest) -- and it is load-bearing on *size*:
+#: for the first three, two for the rest) -- and it determines *size*:
 #: removing the ladder path entirely costs no correctness but 88% more
 #: characters over the twenty it serves (31615 against 59457), with
 #: majority-of-three going 874 to 2280.

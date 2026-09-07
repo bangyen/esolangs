@@ -4,10 +4,8 @@ Streetcode is a 2D esolang where a car drives along two-way streets,
 executing the instruction it passes over.  ``^``/``~`` increment/decrement
 the CPth cell, ``=``/``_`` move CP right/left, ``I``/``O`` read/write the
 CPth cell as a character, ``U`` turns the car around, ``;`` halts, and
-space is a no-op.  See ``docs/streetcode.md`` for the spec-gap decisions
-this interpreter makes (initial heading, "Nth register", the
-drive-on-the-right geometry, and so on) -- these tests exercise and confirm
-them, including all four of the wiki's worked examples.
+space is a no-op. These tests pin the implementation's choices for initial
+heading, numbered registers, and drive-on-the-right geometry.
 """
 
 import io
@@ -616,7 +614,7 @@ class TestStreetcodeCrossingMouthDecision:
 class TestStreetcodeLaneMerge:
     """A genuinely multi-cell-wide junction: turning must land in the new
     road's right-hand lane, not just the first open cell (see
-    ``docs/streetcode.md`` for the derivation of this trace)."""
+    the interpreter tests for this trace)."""
 
     def _lane_merge_code(self) -> list[str]:
         # A vertical 2-wide corridor (columns 1-2) hugging a West wall
@@ -778,8 +776,7 @@ class TestStreetcodeLaneMerge:
         branch through the same lane-merge machinery. This pins current
         behavior on the four-way corner pattern -- unlike the three-way
         case in ``test_merge_lands_in_the_right_hand_lane``, no hand-drawn,
-        user-confirmed trace exists for a four-way junction (see the "Still
-        open" section of ``docs/streetcode.md``).
+        user-confirmed trace exists for a four-way junction.
 
         The arms are two characters wide, per the spec: with one-cell arms
         the shape is drawn but there are no roads to drive down, so
@@ -820,8 +817,7 @@ class TestStreetcodeCountingLoop:
     one works, and the rules that make it work (a road must be two cells
     deep, a turn may not enter the oncoming lane, a junction reads the cell
     as the car arrives) are pinned individually above; this is the
-    end-to-end program.  See "The counting loop" in ``docs/streetcode.md``
-    for the two ring invariants a future change must not violate.
+    end-to-end program.
     """
 
     def _code(self) -> list[str]:

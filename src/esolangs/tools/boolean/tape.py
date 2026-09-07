@@ -923,7 +923,7 @@ def jaune(truth_table: str) -> str:
     used to sit *at* the nodes, so a folded tree skipped them: a constant
     table consumed no input at all while a parity table consumed every bit,
     making the program's stream consumption a function of its truth table.
-    That is the one thing every generator here may not do -- the reads are
+    Every generator here must avoid this -- the reads are
     the interface -- and Jaune escaped the contract test that sweeps for it
     only by not being registered in ``BY_FUNCTION``.
 

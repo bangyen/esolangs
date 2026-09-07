@@ -40,7 +40,7 @@ frame is a tuple rather than a record for the same reason Eval's is: the
 call stack is then a value, which is what lets :meth:`snapshot` hash it and
 the cycle detector prove a loop.
 
-The value stack is the one thing *not* threaded, and the reason is cost.  A
+The value stack is not threaded because of cost. A
 Grapheme program can push without bound -- ``HKHKZ`` does, which is exactly
 the class a snapshot repeat cannot catch and ``esolangs.run``'s wall-clock
 ``timeout`` is the backstop for -- so rebuilding a stack tuple per command
@@ -52,7 +52,7 @@ instead: a count to remove, the values to add, and whether ``P`` reversed
 what was left.  COD's per-cod transition reports what it wants done for the
 same reason.
 
-That model leans on an invariant worth stating, because nothing enforces it:
+The model depends on an invariant that nothing enforces:
 **every command pops before it pushes.**  The pure layer therefore reads its
 operands from the live stack by index -- ``stack[-1 - pops]``, counting up as
 it goes -- and never has to see a value it has itself pushed.
