@@ -179,6 +179,7 @@ measurements behind these.
 """
 
 import re
+from bisect import bisect_left
 from collections.abc import Callable, Iterator
 from functools import cache
 
@@ -2020,12 +2021,18 @@ class _Chain:
         The extent is the staircase's inverse -- the last cell whose
         crossing still fits the budget -- and the skip is pending when the
         budget ran out between a crossing and the skip it owes.
+
+        ``t`` is nondecreasing by construction (``t[i] = t[i-1] + 1 + v[i]``
+        with ``v`` a bit), so the walk this used to make is a binary search:
+        the loop advanced while ``t[m] < budget``, which lands on the first
+        index at or past ``_BASE - 1`` whose staircase reaches the budget,
+        clamped to the ceiling the loop stopped at.  Same answer, in C --
+        checked against the walk over 279000 ``(chain, budget)`` pairs.
         """
-        m = _BASE - 1
-        t = self.t
-        while m + 1 < _CHAIN_CAP - 2 and t[m] + 1 <= budget:
-            m += 1
-        return m, m >= _BASE and budget < t[m]
+        m = bisect_left(self.t, budget, _BASE - 1, _CHAIN_CAP - 2)
+        if m > _CHAIN_CAP - 3:
+            m = _CHAIN_CAP - 3
+        return m, m >= _BASE and budget < self.t[m]
 
 
 # What a row does under one suffix, reduced to five ints so the per-``acc``
@@ -2120,7 +2127,7 @@ def _planned_bit(chain: _Chain, plan: _Plan, acc: int) -> int:
     return x
 
 
-def _planned_bits(chain: _Chain, plan: _Plan, accs: range) -> list[int]:
+def _planned_bits(chain: _Chain, plan: _Plan, accs: range, const: int = 0) -> list[int]:
     """Return every accumulator's :func:`_planned_bit`, resolved by region.
 
     The per-accumulator spelling re-decides the plan's shape on every call
@@ -2130,32 +2137,45 @@ def _planned_bits(chain: _Chain, plan: _Plan, accs: range) -> list[int]:
     the same case analysis once per region instead; the loop body is that
     function's arms verbatim, and ``test_the_batched_planned_bits_match``
     holds the two spellings equal over every plan the staged arities build.
+
+    ``const`` is the caller's slice constant, XORed onto every bit.  Every
+    arm below is a XOR chain ending in a term the region fixes, so the
+    constant folds into that term rather than costing a second pass over
+    the list: :func:`_closed_sweeps` used to build the row's bits and then
+    rebuild them XORed, 77720 lists an 18-table build.  ``const == 0``
+    recovers the plain :func:`_planned_bit` exactly, which is the default
+    and what the equality test compares against.
     """
     w, v = chain.w, chain.v
     mode = plan[0]
+    # The saturated arm's parity term is ``(acc - _BASE + 1) & 1``; adding
+    # the constant to the offset flips which of the two values it takes,
+    # which is exactly XORing it, so no arm pays for the fold.
+    par = 1 - _BASE + const
     if mode != 2:
         m, g = plan[1], plan[2]
+        gc = g ^ const
         out = [
-            (((acc - _BASE + 1) & 1) ^ w[acc]) if acc <= m else (g ^ v[acc])
-            for acc in accs
+            (((acc + par) & 1) ^ w[acc]) if acc <= m else (gc ^ v[acc]) for acc in accs
         ]
         if mode == 1 and plan[3]:
             for i in range(max(plan[3] - accs.start, 0), len(out)):
                 out[i] ^= 1
         return out
     _, c, m2, head, x_past = plan
-    hb = head ^ w[max(c + 1, _BASE) - 1]
-    tail = x_past ^ v[m2 + 1]
+    hb = head ^ w[max(c + 1, _BASE) - 1] ^ const
+    tail = x_past ^ v[m2 + 1] ^ const
+    xc = x_past ^ const
     out = []
     for acc in accs:
         if acc < c:
-            out.append(((acc - _BASE + 1) & 1) ^ w[acc])
+            out.append(((acc + par) & 1) ^ w[acc])
         elif acc <= m2:
             out.append(hb ^ w[acc])
         elif acc >= m2 + 2:
             out.append(tail ^ v[acc])
         else:
-            out.append(x_past)
+            out.append(xc)
     return out
 
 
@@ -2239,6 +2259,11 @@ def _closed_sweeps(
         cut = suffix.index("<")
         rest = len(suffix) - cut - 1
         lflip = 1 if cut == 0 and rest > 0 else 0
+    # The plans are the suffix's whole per-row response and cost nothing to
+    # share, but only one orientation ever has a pool: ``_find_pool`` answers
+    # ``cell7 == 1`` with None at every staged arity and every slice (40 of
+    # 40, measured), so the region walk below runs once per suffix, not twice,
+    # and hoisting it out of the loop would buy nothing.
     plans = [_suffix_plan(chain, cut, rest) for chain in chains]
     sweeps: dict[int, dict[int, tuple[int, ...]]] = {}
     for cell7 in (0, 1):
@@ -2261,7 +2286,7 @@ def _closed_sweeps(
         accs = range(_BASE, _MAX_ACC + 1)
         const = lowfull ^ lflip
         rowbits = [
-            [const ^ bit for bit in _planned_bits(chain, plan, accs)]
+            _planned_bits(chain, plan, accs, const)
             for chain, plan in zip(chains, plans, strict=True)
         ]
         for acc, column in zip(accs, zip(*rowbits, strict=True), strict=True):
