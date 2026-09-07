@@ -1699,6 +1699,12 @@ def _insert_suffixes() -> Iterator[str]:
             yield "[" * cut + "<" + "[" * (k - cut)
 
 
+# The insert family, materialized once: the constraint query needs to hand
+# a winning ordinal back as its suffix string, and the family is 435 short
+# strings.  :func:`_insert_suffixes` stays the specification of the order.
+_INSERT_SUFFIXES = tuple(_insert_suffixes())
+
+
 def _stagings(n: int) -> Iterator[_Staging]:
     """Enumerate ``(separator, settle, suffix, accumulator)`` in order.
 
@@ -1936,6 +1942,7 @@ def _clear_derived_plans(
     _wrapped()
     _PRINTED_COLUMNS.clear()
     _staging_index.cache_clear()
+    _row_constraints.cache_clear()
 
 
 _derived_plans.cache_clear = _clear_derived_plans  # type: ignore[method-assign]
@@ -2267,9 +2274,12 @@ def _closed_sweeps(
 def _staging_index(n: int) -> dict[tuple[int, ...], _Staging]:
     """Map every column the stagings reach to the staging that prints it.
 
-    The inverse of the enumeration, tabulated once per arity.  With it a
-    table is a dict lookup rather than a sweep: :func:`_derive_staging` no
-    longer enumerates per table at all.
+    The inverse of the enumeration, tabulated once per arity.  **This is
+    the oracle spelling now, not the build path**: :func:`_derive_staging`
+    assigns through :func:`_first_staging`'s constraint intersection, and
+    the tests hold the two equal key for key -- on top of the standing
+    index-vs-:func:`_derived_plans` checks, so all three spellings of the
+    one order keep pinning each other.
 
     **The columns are derived, not observed.**  This used to run the
     interpreter for every staging -- fork the embed, emit the pool code,
@@ -2369,34 +2379,172 @@ def _staging_index(n: int) -> dict[tuple[int, ...], _Staging]:
     return index
 
 
+# One pass's constraint masks for a slice, keyed by ``(cell7, acc)``: the
+# suffixes whose sweep reaches that pair at all, and, per row, the suffixes
+# under which the row's printed bit is 1 for the direct read.
+_RowMasks = dict[tuple[int, int], tuple[int, tuple[int, ...]]]
+
+
+@cache
+def _row_constraints(n: int) -> dict[tuple[int, int], dict[str, _RowMasks]]:
+    """Tabulate, per slice, what every staging does to every row.
+
+    The same walk :func:`_staging_index` makes, transposed: instead of
+    filing each staging's finished column under first-claim-wins, this
+    records per-row *facts* -- bit ``s`` of a row's mask says the slice's
+    suffix ``s`` leaves that row's printed bit at 1 for the direct read at
+    that ``(orientation, accumulator)``.  The assignment then stops being a
+    property of dict insertion order and becomes the rule
+    :func:`_first_staging` states: a table's staging is the first one, in
+    enumeration order, that every row's constraint admits.
+
+    The enumeration does not disappear -- it produces row facts instead of
+    final answers, and it cannot do less: the 4640 stagings collapse to
+    only ~4190 distinct behaviours (the density note above
+    :data:`_STAGED_ARITIES`), so anything that answers arbitrary tables
+    carries index-equivalent information.  What changes is what the
+    tabulated object *means*.  A mask bit is one row's behaviour under one
+    staging -- checkable against a single :class:`_Chain` walk -- where an
+    index entry is only "the answer", explainable by nothing short of
+    replaying the whole claim order.
+
+    Budget-independent, unlike the index: the budget caps which stagings a
+    *query* may consult, so it is applied as a mask prefix in
+    :func:`_first_staging` rather than baked into the tabulation.
+    """
+    rows = 2**n
+    inserts: tuple[int | str, ...] = _INSERT_SUFFIXES if n in _INSERT_ARITIES else ()
+    pures: tuple[int | str, ...] = tuple(range(_MAX_BRACKETS + 1))
+    out: dict[tuple[int, int], dict[str, _RowMasks]] = {}
+    for sep_index, settle in _slices(n):
+        chains, pools = _slice_chains(n, sep_index, settle)
+        per: dict[str, _RowMasks] = {}
+        for name, suffixes in (("pure", pures), ("insert", inserts)):
+            building: dict[tuple[int, int], tuple[int, list[int]]] = {}
+            for ordinal, suffix in enumerate(suffixes):
+                bit = 1 << ordinal
+                sweeps = _closed_sweeps(chains, pools, suffix)
+                for cell7 in (0, 1):
+                    for acc, column in sweeps[cell7].items():
+                        entry = building.get((cell7, acc))
+                        if entry is None:
+                            entry = building[cell7, acc] = (0, [0] * rows)
+                        present, rowmasks = entry
+                        building[cell7, acc] = (present | bit, rowmasks)
+                        for row, value in enumerate(column):
+                            if value:
+                                rowmasks[row] |= bit
+            per[name] = {
+                key: (present, tuple(rowmasks))
+                for key, (present, rowmasks) in building.items()
+            }
+        out[sep_index, settle] = per
+    return out
+
+
+def _first_staging(truth_table: str, n: int) -> _Staging | None:
+    """Return the first staging, in enumeration order, printing the table.
+
+    **The order is the contract, and it is stated here once**: the pure
+    bracket runs across every slice, then the insert family across every
+    slice -- interleaving the passes still yields valid stagings and
+    assigns five-input XOR the wrong one -- and within a slice the
+    comparison key ``(suffix, accumulator, orientation, read)``, which is
+    exactly :func:`_staging_index`'s claim order.  What used to be implicit
+    in dict insertion is the ``min`` below.
+
+    The rule itself is one sentence.  A row admits the suffixes whose
+    printed bit matches its wanted bit -- its constraint mask directly for
+    the direct read, complemented for the complementing one -- so the
+    stagings that print the table are the AND of the rows' masks, and the
+    winner is the lowest set bit.  Where no bit survives the AND, no
+    staging at this slice and accumulator prints the table, which is the
+    miss the caller falls through on.
+
+    The budget caps how many stagings may be consulted.  It is counted in
+    claims of ``_MAX_ACC - _POOL_WIDTH`` accumulators each, exactly as the
+    index's walk spends it, so the cap in suffixes is the ceiling division,
+    laid over the passes in the same global order.
+    """
+    want = [int(c) for c in truth_table]
+    budget = _budget(n)
+    allowed: int | None = None
+    if budget is not None:
+        allowed = 0 if budget <= 0 else -(-budget // (_MAX_ACC - _POOL_WIDTH))
+    slices = _slices(n)
+    inserts = _INSERT_SUFFIXES if n in _INSERT_ARITIES else ()
+    constraints = _row_constraints(n)
+    passes = (
+        ("pure", _MAX_BRACKETS + 1, 0),
+        ("insert", len(inserts), len(slices) * (_MAX_BRACKETS + 1)),
+    )
+    for name, count, done in passes:
+        if count == 0:
+            continue
+        for position, slot in enumerate(slices):
+            cap = count
+            if allowed is not None:
+                cap = min(count, max(0, allowed - done - position * count))
+                if cap == 0:
+                    break
+            capmask = (1 << cap) - 1
+            masks = constraints[slot][name]
+            best: tuple[int, int, int, int] | None = None
+            for acc in range(_PROBE_WALK_OUT, _MAX_ACC + 1):
+                for cell7 in (0, 1):
+                    entry = masks.get((cell7, acc))
+                    if entry is None:
+                        continue
+                    present, rowmasks = entry
+                    for read_index, read in enumerate(_READS):
+                        direct = read == _READS[1]
+                        admissible = present & capmask
+                        for rowmask, target in zip(rowmasks, want, strict=True):
+                            wanted = target if direct else 1 - target
+                            admissible &= rowmask if wanted else ~rowmask
+                            if not admissible:
+                                break
+                        if admissible:
+                            lowest = (admissible & -admissible).bit_length() - 1
+                            candidate = (lowest, acc, cell7, read_index)
+                            if best is None or candidate < best:
+                                best = candidate
+            if best is not None:
+                ordinal, acc, _cell7, _read_index = best
+                suffix: int | str = ordinal if name == "pure" else inserts[ordinal]
+                return (*slot, suffix, acc)
+    return None
+
+
 def _derive_staging(truth_table: str, n: int) -> _Staging | None:
     """Return the staging that builds ``truth_table``, or None if none does.
 
-    A lookup in :func:`_staging_index`, which tabulates the enumeration once
-    per arity.  The enumeration order is still the whole specification -- it,
-    and not a stored answer, decides which program a truth table gets -- but
-    it is now walked once for the arity rather than once per table.
+    :func:`_first_staging` answers from the tabulated row constraints --
+    the enumeration order is still the whole specification, it decides
+    which program a truth table gets, but the assignment is now the stated
+    intersection rule rather than a finished-answer dictionary.
+    :func:`_staging_index` keeps the dictionary spelling as the oracle the
+    tests hold this to, key for key.
 
-    That moves where the cost falls, the same trade :func:`_mux_separate`
-    makes.  The first staged table at an arity pays the whole pass (a
-    measured 0.62s at four inputs, 0.03s at three, now that the pass derives
-    its columns arithmetically) and every table after it is a dict lookup;
-    before, each table paid its own sweep -- 0.05s for a four-input hit and
-    4.8s for a span-admitted miss, every time.
+    The cost trade, measured: the first staged table at an arity pays the
+    tabulation (0.45s at four inputs, 0.9s at five, about a tenth over the
+    index fill it replaced) and each table after it costs ~0.6ms of mask
+    intersection where the dict hit was ~1us -- the price of an assignment
+    that reads as a rule, and small beside the ~10ms replay below.
 
     Nothing is returned on the strength of the algebra alone.  The
     enumeration used to run :func:`_confirm` on each column it claimed;
-    confirming all of them here would mean an endgame per reachable column
-    (15994 of them at four inputs) for the few a process actually asks about,
-    so the check moves to the lookup instead -- the plan this hands back is
-    the one that gets confirmed, which is the same standard applied to
-    exactly the plans that are used.  A plan that fails it is reported as a
-    miss, so the caller falls through to :func:`_mux` rather than receiving a
+    confirming all of them would mean an endgame per reachable column
+    (15994 of them at four inputs) for the few a process actually asks
+    about, so the check rides on the answer instead -- the plan handed back
+    is the one that gets confirmed, the same standard applied to exactly
+    the plans that are used.  A plan that fails it is reported as a miss,
+    so the caller falls through to :func:`_mux` rather than receiving a
     program that does not print.
     """
     if n not in _STAGED_ARITIES:
         return None
-    plan = _staging_index(n).get(tuple(int(c) for c in truth_table))
+    plan = _first_staging(truth_table, n)
     if plan is None:
         return None
     return plan if _replay(truth_table, n, plan) is not None else None
