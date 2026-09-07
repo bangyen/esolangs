@@ -1,8 +1,8 @@
 """Hang-detection tests for APL, kept apart from the interpreter's own.
 
 These import :mod:`esolangs.vm`, which drops the whole module from the
-mutation bundle (``docs/roadmap.md``, "Naming ``esolangs.vm`` ... drops
-the test").  Keeping them in their own file means only these tests are
+mutation bundle (``docs/verification_tooling.md``, "Naming ``esolangs.vm``
+... drops the test").  Keeping them in their own file means only these tests are
 dropped, rather than the interpreter's entire suite -- so a survivor in
 ``snapshot()`` or ``step()`` still names a real gap.
 """

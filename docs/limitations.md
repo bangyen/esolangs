@@ -231,6 +231,20 @@ because it trades away acceptance parity: the interpreter runs `2**63 0 0`,
 and a compiler that refuses it no longer accepts what the interpreter
 accepts.
 
+### Jaune: a computed jump naming nothing falls through
+
+Jaune's computed dispatch (`v?`, `v!`, `v@`) is implemented in both engines,
+and the two agree everywhere except one input.  An input naming **no** label
+or subroutine raises `HaltError` in the interpreter, while the compiled
+switch has no error path and falls through to the next instruction.
+
+This is left deliberate rather than pinned, and is commented where the
+switches are emitted.  Closing it would mean inventing a trap the language
+does not describe: the wiki grammar makes `v` a `number` and says nothing
+about a number matching no marker, so the interpreter's raise is itself a
+choice rather than a specified behaviour.  A future change that wants the two
+to agree should decide what the *language* does first.
+
 ## Divergent example outputs
 
 `examples/boolean` holds one committed program per boolean generator, and
@@ -408,15 +422,23 @@ one that was tried.**
   proof.
 - **`Dimensional → LaserFuck`** and **`Streetcode → LaserFuck`** — partial
   on LaserFuck's output convention (no output command; only a tape dump at
-  halt) and, for Streetcode, on control flow. **Streetcode's control-flow
-  wall is real and separate, and it recurs for any future rewrite target**:
-  Streetcode has no loop command, so brainfuck's `[` needs a revisited
-  program state to close on, but a ring re-entering the road past a
-  junction returns under a different heading/steering-latch state — the
-  state that would decide the loop is never revisited.  Showing a ring
-  *can* re-close would need proving a cell stays non-negative across
-  arbitrary loops, i.e. value analysis, which this module's unsound static
-  analysis attempt has already failed twice.
+  halt) and, for Streetcode, on recovering control flow from a drawn grid.
+  **The verdict stands, but the "control-flow wall" this entry used to claim
+  does not** — it was two wrong mechanisms, and a future attempt should not
+  inherit either.  It said a ring cannot close because the car "returns under
+  a different heading/steering-latch state".  Driving the emitted grids shows
+  the opposite: the full steering tuple — position, heading, every latch —
+  recurs on every lap, and only the *cell* differs.  A ring closes precisely
+  because the steering state repeats while the tape falls.  It then said
+  closing a ring needs proving a cell stays non-negative, i.e. value
+  analysis; but `streetcode.py:1125` is `roads[0] if current_cell == 0 else
+  roads[1]`, a **runtime** test that is total over signed ints.  A
+  compile-time proof obligation (real for the removed static analysis) was
+  attributed to a runtime dispatch.  What survives is the difficulty of
+  Streetcode-as-*source*: recovering an arbitrary grid's control flow is a
+  genuinely different problem from the per-command transliteration every
+  shipped transpiler does, and it is priced under "Transpilers" in
+  [`docs/roadmap.md`](roadmap.md).
 - **Earlier drops.**  `nocomment_to_bf` silently dropped commands; the
   `6-5 → bf` and `Circlefuck → bf` decoders only reversed the forward
   transpilers' canonical form (round-trip-only, not total).
