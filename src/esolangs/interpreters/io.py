@@ -102,16 +102,25 @@ class IO:
         return val
 
     def input_char(self, prompt: str = "Input: ") -> int:
-        """Read a line and return its first character as a byte value.
+        r"""Read a line and return its first character as a byte value.
 
-        A line is delivered without its terminator, so an *empty* line is
-        one the user ended immediately: the character read is the newline
-        that ended it, which is what a terminal hands a program for a bare
-        Enter.  Reading past the end of the input is a different thing and
-        still raises :class:`EOFError`, from :meth:`input_str`.
+        An *empty* line reads as 0.  A line is delivered without its
+        terminator, so there is no character to take, and 0 is what every
+        interpreter reading through :meth:`input_str` already returns for
+        the same input -- Streetcode, LaserFuck, Suffolk and Jaune each
+        spell ``if line else 0`` at their own call site, and Dig reaches 0
+        by leaving the read unset.  This method used to return ``ord("\n")``
+        instead, which split the package in two: the same blank line read
+        as 10 through here and as 0 through those.
+
+        Reading *past the end* of the input is a different thing and still
+        raises :class:`EOFError`, from :meth:`input_str`.  That distinction
+        is what ``53ea8121`` was really protecting, and it is unchanged:
+        ``"".splitlines()`` is ``[]`` (no line at all -- EOF), while
+        ``"\n".splitlines()`` is ``[""]`` (one line, which is empty -- 0).
         """
         line = self.input_str(prompt)
-        return ord(line[0]) if line else ord("\n")
+        return ord(line[0]) if line else 0
 
     def input_num(self, prompt: str = "Input: ") -> int:
         """Read a line and parse it as an integer."""
