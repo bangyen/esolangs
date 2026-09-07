@@ -10,7 +10,9 @@ jumps to it when the current cell is nonzero, ``(number)!`` when it is zero,
 subroutines, and ``.`` ends the main program.  A bare ``+``/``-`` (no
 number) adds/subtracts 1; a repeated command like ``^^`` is a counted
 command (repeat 2 times).  ``v`` as a command operand (``v+``) reads an
-input digit and uses it as the count.
+input digit and uses it as the count; the grammar makes ``v`` a ``number``,
+so ``v?``/``v!`` jump to the label the input names and ``v@`` calls the
+subroutine it names.
 
 Documented decisions for gaps in the wiki spec:
 - ``^`` prints the current cell as a decimal integer (the compiler's RISC-V
@@ -21,6 +23,15 @@ Documented decisions for gaps in the wiki spec:
   zero-initialized cells; cells hold plain integers with no wrapping (the
   author's reference JauneJS stores each cell as a JavaScript number and
   does plain ``+=``/``-=``, no modulo or bitmask);
+- a read operand is evaluated to have a command at all, so ``v?``/``v!``
+  consume their input digit whether or not the branch is taken;
+- a read operand converts exactly as ``v`` does (``ord(c) - 48``, an empty
+  read as zero), so it may name any integer -- a non-digit simply names a
+  label that is almost certainly undefined, which halts by the rule below
+  rather than by a separate validation;
+- ``v:`` and ``v$`` are admitted by the grammar but define nothing, since a
+  marker read at runtime has no identity a jump could find; both are dropped
+  at parse, matching the compiler's ``prep``;
 - a jump to an undefined label, a call to an undefined subroutine, or a
   ``;`` with no active subroutine call is an invalid runtime operation
   (:class:`~esolangs.exceptions.HaltError`); a command that requires a
@@ -44,7 +55,9 @@ from esolangs.interpreters.io import IO
 # inside ``cmd.op == "?"`` the checker knows the command is a _Numbered and
 # that its ``arg`` is an ``int``, so the jumps and the call read the operand
 # without testing what :func:`_parse` has already guaranteed.
-_CountedOp = Literal["^", "v", "v+", "v-", ">", "<", "#", "&", "%", "+", "-", ";", "."]
+_CountedOp = Literal[
+    "^", "v", "v+", "v-", "v?", "v!", "v@", ">", "<", "#", "&", "%", "+", "-", ";", "."
+]
 _NumberedOp = Literal[":", "?", "!", "$", "@"]
 
 # Spelling the alphabets as typed containers rather than plain strings is
@@ -52,7 +65,26 @@ _NumberedOp = Literal[":", "?", "!", "$", "@"]
 # constructors below take it directly instead of casting.
 _BARE: frozenset[_CountedOp] = frozenset(("^", ">", "<", "#", "&", "%", "."))
 _NUMBERED: frozenset[_NumberedOp] = frozenset((":", "?", "!", "$", "@"))
-_READ_OPERAND: dict[str, _CountedOp] = {"+": "v+", "-": "v-"}
+
+# The grammar makes ``v`` a ``number``, so every operator taking one admits
+# it: ``v+``/``v-`` count, ``v?``/``v!`` name the label to jump to, and
+# ``v@`` names the subroutine to call.  Each is its own op rather than a
+# _Numbered carrying a runtime operand, which is what keeps ``_Numbered.arg``
+# a plain ``int`` and ``_find`` matching against static markers only.
+#
+# ``v:`` and ``v$`` are admitted by the grammar and deliberately absent: a
+# marker read at runtime has no findable identity, since ``_find`` matches
+# the parsed argument and the markers are fall-through positions that never
+# execute.  The compiler's ``prep`` strips both (``compilers/jaune.py``), so
+# dropping them at parse keeps the two engines agreeing.
+_READ_OPERAND: dict[str, _CountedOp] = {
+    "+": "v+",
+    "-": "v-",
+    "?": "v?",
+    "!": "v!",
+    "@": "v@",
+}
+_READ_MARKER = ":$"
 
 
 @dataclass
@@ -97,10 +129,13 @@ def _parse(code: str) -> list[_Command]:
             out.append(_Counted(";"))
             i += 1
         elif c == "v":
-            # 'v' reads a digit; as an operand ('v+') the read value is the count
+            # 'v' reads a digit; as an operand ('v+') the read value is the
+            # count, and for 'v?'/'v!'/'v@' the label or subroutine named.
             if i + 1 < n and (read := _READ_OPERAND.get(code[i + 1])) is not None:
                 out.append(_Counted(read))
                 i += 2
+            elif i + 1 < n and code[i + 1] in _READ_MARKER:
+                i += 2  # a read marker defines nothing: dropped, as prep does
             else:
                 out.append(_Counted("v"))
                 i += 1
@@ -225,6 +260,24 @@ def _advance(
         if target is None:
             raise HaltError(f"call to undefined subroutine {cmd.arg}")
         return (cells, ptr, hold, target, (*calls, pos + 1))
+    elif c in ("v?", "v!"):
+        # The read names the label, so the operand is the digit just taken
+        # rather than a parsed one.  The read happens whether or not the
+        # branch is taken -- the grammar evaluates the number to have a
+        # command at all -- so input advances either way.
+        num = value if value is not None else 0
+        target = _find(commands, ":", num)
+        if target is None:
+            raise HaltError(f"jump to undefined label {num}")
+        taken = cells[ptr] != 0 if c == "v?" else cells[ptr] == 0
+        if taken:
+            return (cells, ptr, hold, target, calls)
+    elif c == "v@":
+        num = value if value is not None else 0
+        target = _find(commands, "$", num)
+        if target is None:
+            raise HaltError(f"call to undefined subroutine {num}")
+        return (cells, ptr, hold, target, (*calls, pos + 1))
     elif c == ";":
         if not calls:
             raise HaltError("; with no active subroutine call")
@@ -340,7 +393,7 @@ class _Machine:
         value = None
         if cmd.op == "^":
             self.io.print_num(self.cells[self.ptr])
-        elif cmd.op in ("v", "v+", "v-"):
+        elif cmd.op in ("v", "v+", "v-", "v?", "v!", "v@"):
             ch = self.io.input_str()
             value = ord(ch[0]) - 48 if ch else 0
 
