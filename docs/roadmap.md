@@ -959,9 +959,25 @@ open:
       callers — `_staging_index` walks `_slices`, and `@cache` hides the
       rest.  Instrument what the shipped entry calls, and carry a control
       that must move.
-      One further priced option: adding 3 to `_INSERT_ARITIES` reaches
-      `01101101`/`10010010`, which prose near `_Staging` calls
-      unreachable, changing exactly 2 of 256 templates (60382 → 60128).
+      The `_INSERT_ARITIES` option filed here is **closed: it is a
+      no-op, not a priced win.**  This said adding 3 reaches
+      `01101101`/`10010010` "changing exactly 2 of 256 templates
+      (60382 → 60128)".  Re-measured, the reach is real and the price is
+      not: the holdout does enter the index (252 → 256 columns) and
+      `_first_staging` returns `(0, 0, '[[[[<[[[', 22)` for it, but
+      **0 of 256 shipped templates change and the corpus stays 60382
+      bytes.**  `_solve` reaches `_mux` before `_staged` for a
+      fully-essential three-input table, and the sculpt already builds
+      the holdout at 332 bytes — exactly what the new staging builds it
+      at, verified by executing both on all 8 rows.  So there is nothing
+      to buy: the gap the option was meant to close was already closed
+      by another route at the same size.
+      Note the figure was not merely stale.  The sculpt route landed at
+      `604ea14c`/`2c72c9d0` (2026-09-02) and this figure was written at
+      `318c1357` (2026-09-06), four days later — in the commit whose own
+      subject is "fix two prices".  It did not reproduce when it was
+      written, which is the argument for executing a size claim rather
+      than recording one.
       Also swept module-level literals by *provenance language* rather
       than element count, which found three the size sweeps missed:
       `_WIDE_A_VALS` (closed, above), **`_X0` (A Painter Ant)** — dead
