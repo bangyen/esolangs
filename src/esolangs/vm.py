@@ -476,12 +476,16 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
     merely *looks* aligned: the fresh cells must be exactly the ``d`` zeros
     the growth created.
 
-    Two things this does not do.  It compares *consecutive* visits to a
-    position, so growth whose period spans two visits stays undecided --
-    like the ancestor detector's ``f(x - 1)``, a real gap, left to the
-    caller's timeout.  And ``d == 0`` is not its business: a loop that
-    grows a cell's value rather than the tape, such as ``+[<+]``, revisits
-    an exact state once the value wraps at 256 and is
+    Consecutive visits retain the full certificate above.  Alongside that,
+    a Brent checkpoint normalizes a position's state relative to its tape
+    pointer and discovers an arbitrary repeating phase without a caller
+    choosing its length.  It keeps two checkpoints per position, rather
+    than one snapshot for every possible period.  This automatic path is
+    deliberately narrower: a phase must not move left of its checkpoint,
+    so the normalized suffix is a complete translated state.  And ``d ==
+    0`` is not its business: a loop that grows a cell's value rather than
+    the tape, such as ``+[<+]``, revisits an exact state once the value
+    wraps at 256 and is
     :func:`run_until_halt_or_cycle`'s to prove.
 
     ``limit`` bounds the walk in steps.  Exhausting it raises
@@ -493,26 +497,57 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
     nothing to grow and raises :class:`TypeError` rather than a verdict.
     """
     machine = cast(_TapeMachine, _unwrap(machine, _TapeMachine, "a tape machine"))
-    # Per code position: the last visit's (pointer, tape, input cursor),
-    # and the lowest pointer seen since that visit.  One entry per position
-    # rather than per state, so this is bounded by the program's length.
+    # The last visit keeps the broad, one-period certificate.  ``origins``
+    # proves a steady wave after its first full phase, while ``waves`` is
+    # Brent's O(1)-per-position checkpoint for a phase that begins after a
+    # transient.  Both minima are updated on every step because the proof
+    # is invalid if the period ever reached the clamped left edge.
     last: dict[Hashable, tuple[int, tuple[int, ...], int]] = {}
     lowest: dict[Hashable, int] = {}
+    origins: dict[Hashable, tuple[tuple[int, tuple[int, ...], int], int]] = {}
+    waves: dict[Hashable, tuple[tuple[int, tuple[int, ...], int], int, int, int]] = {}
     for _ in range(limit):
         if machine.halted:
             return True
         ip, ptr, tape = machine.ip, machine.ptr, machine.tape
         for position in lowest:
-            if ptr < lowest[position]:
-                lowest[position] = ptr
+            lowest[position] = min(lowest[position], ptr)
+        for position, (before, low) in origins.items():
+            origins[position] = (before, min(low, ptr))
+        for position, (before, low, power, length) in waves.items():
+            waves[position] = (before, min(low, ptr), power, length)
         cursor = machine.input_position()
+        current = (ptr, tape, cursor)
         previous = last.get(ip)
-        if previous is not None and _grows_forever(
-            previous, (ptr, tape, cursor), lowest[ip]
-        ):
+        if previous is not None and _grows_forever(previous, current, lowest[ip]):
             return False
-        last[ip] = (ptr, tape, cursor)
+        last[ip] = current
         lowest[ip] = ptr
+
+        origin = origins.get(ip)
+        if origin is None:
+            origins[ip] = (current, ptr)
+        else:
+            before, low = origin
+            if _same_relative_tape(before, current) and _grows_forever(
+                before, current, low
+            ):
+                return False
+
+        checkpoint = waves.get(ip)
+        if checkpoint is None:
+            waves[ip] = (current, ptr, 1, 0)
+        else:
+            before, low, power, length = checkpoint
+            if _same_relative_tape(before, current) and _grows_forever(
+                before, current, low
+            ):
+                return False
+            length += 1
+            if length == power:
+                waves[ip] = (current, ptr, power * 2, 0)
+            else:
+                waves[ip] = (before, low, power, length)
         machine.step()
     raise TimeoutError(
         f"undecided after {limit} steps: neither halted nor grew by a "
@@ -542,6 +577,23 @@ def _grows_forever(
         and all(
             tape_after[i + displacement] == tape_before[i]
             for i in range(lowest, len(tape_before))
+        )
+    )
+
+
+def _same_relative_tape(
+    before: tuple[int, tuple[int, ...], int],
+    after: tuple[int, tuple[int, ...], int],
+) -> bool:
+    """Whether two visits have equal tape suffixes relative to their pointers."""
+    ptr_before, tape_before, input_before = before
+    ptr_after, tape_after, input_after = after
+    return (
+        input_after == input_before
+        and len(tape_after) - ptr_after == len(tape_before) - ptr_before
+        and all(
+            tape_after[ptr_after + i] == tape_before[ptr_before + i]
+            for i in range(len(tape_before) - ptr_before)
         )
     )
 
