@@ -1970,7 +1970,7 @@ class TestRunUntilHaltOrGrowth:
         from esolangs.interpreters.tape_based.brainfuck import _Machine
         from esolangs.vm import run_until_halt_or_growth
 
-        # The input cursor is load-bearing, and this is the input that
+        # The input cursor matters, and this is the input that
         # proves it.  Every lap of `+[>,]` reads the same byte, so the tape
         # really is a clean right-shift of itself and all three of the
         # other conditions hold -- 16 times over, before the input runs

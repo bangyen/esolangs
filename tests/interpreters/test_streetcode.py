@@ -1092,7 +1092,7 @@ class TestStreetcodeStreetWidth:
         _Machine(["+---+", "|C^;|", "|~~~|", "+---+"], IO())
 
     def test_crossing_of_two_streets_is_accepted(self) -> None:
-        """The load-bearing case: where two legal two-wide streets cross, the
+        """The critical case: where two legal two-wide streets cross, the
         open centre is two-by-two with walls at the diagonals, so no fully
         open three-by-three block exists."""
         _Machine(

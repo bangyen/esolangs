@@ -1282,7 +1282,7 @@ class TestParameterizedArrowQueue:
             assert got == table[combo], f"inputs {bits}"
 
     def test_folded_one_leaf_drains_the_bits_it_skipped(self) -> None:
-        """The drain is load-bearing: a ring needs the queue it expects.
+        """The drain is required: a ring needs the queue it expects.
 
         A folded ``1`` leaf pops a direction at each of its ring's corners
         and requires exactly ``R, D, L, U``.  Without the drains, the bits
@@ -2105,7 +2105,7 @@ class TestEvalBoolean:
     def test_reorder_catalog_invariants(self) -> None:
         """The built words are capped, deduplicated and (length, ~<*<=)-sorted.
 
-        The sort order is load-bearing: ``_eval_stack_programs`` folds the
+        The sort order is required: ``_eval_stack_programs`` folds the
         words first-claim-wins, so cheapest-first is what makes every
         claimed string minimal, and the ``~`` < ``*`` < ``=`` tie order is
         what keeps the fold byte-identical to the search it replaced.

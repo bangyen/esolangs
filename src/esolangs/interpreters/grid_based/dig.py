@@ -127,7 +127,7 @@ def _advance(
             move += 1
         elif n == 0:
             move -= 1
-        # The modulo is load-bearing, not defensive: a grid that keeps
+        # The modulo is required, not defensive: a grid that keeps
         # turning drives the heading past the ends of _DIRECT.
         move %= 4
     elif char == "$":

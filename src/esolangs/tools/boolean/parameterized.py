@@ -594,7 +594,7 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # beam off the load's end, one to turn it back right -- are both gone along
     # with the row and the indent they cost.
     #
-    # Riding off the top edge makes the grid's toroidal wrap load-bearing:
+    # Riding off the top edge makes the grid's toroidal wrap required:
     # ``_Machine.step`` advances with ``% len(code)``, so up from row 0 lands
     # on the last row.  The wiki text the interpreter quotes does not mention
     # the edges at all, and no interpreter test covers a wrap, so this is the

@@ -222,7 +222,7 @@ def test_painfuck_fuzz_agrees() -> None:
     [
         ">+<<.",  # walks past the left edge
         "<",  # a bare left move on the empty tape
-        "+.<.",  # the clamp is load-bearing: prints the same byte twice
+        "+.<.",  # the clamp is required: prints the same byte twice
         "+.<<<<<<.",  # a deep dip still lands on cell 0
         "++>+[<-].",  # the drift a static scan misses: the loop repeats
         "++[>+<-]<<.>.",  # guards nested inside the program's own loop

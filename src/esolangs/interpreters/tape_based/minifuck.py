@@ -118,7 +118,7 @@ def _load(state: _State, byte: int) -> _State:
     window: clearing any further would silently drop cell 8 once the pointer
     had walked out that far.
 
-    The ``& ~_WINDOW`` is defensive rather than load-bearing, and mutation
+    The ``& ~_WINDOW`` is defensive rather than required, and mutation
     testing reports it as a survivor for that reason: :func:`_advance` calls
     this only when it found a zero print window, so the bits being cleared
     are already zero (6016 calls checked, never once non-zero).  It stays
