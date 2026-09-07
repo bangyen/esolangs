@@ -105,3 +105,92 @@ survive cap 10, and cost ~7ms a step after it, so halving the ceiling only
 halves the bill.  Four languages (COD, Factor, Painfuck, Suptiftam) exceed
 any cap worth setting, and the subprocess timeout is what actually bounds
 them.
+
+## Triage rules for a mutation sweep
+
+Per-language scores and survivor counts are deliberately not recorded
+anywhere: they go stale on any test change and are cheap to re-derive (`just
+mutate <language>`, wrapping `scripts/mutate_one.py`).  Re-run the language
+you touched, and re-run everything after a change to the shared machinery.
+What follows is the part that does not go stale — rules a triage pass has to
+get right, each cheap to violate silently.
+
+**Trusting the measurement:**
+
+- Measure on an idle machine — a contended run's per-test alarm scores
+  slow-but-passing tests as kills, under-reporting survivors.
+- `uv run` can silently measure the wrong tree (reinstalls from the project
+  root, so a worktree's edits never reach the bundle) — use
+  `PYTHONPATH=$PWD/src`.  Tell: a survivor on a line already deleted.
+- A probe whose own baseline is unstable (e.g. an interpolated object with
+  no `__repr__`) can witness a large batch of otherwise-unkillable mutants.
+- Naming `esolangs.vm` in a docstring drops the test from the bundle exactly
+  as an import would; a survivor is not a gap until the harness is trusted.
+
+**The last survivor is often the source's fault, not the suite's** — a
+construct that cannot be observed is usually one that need not exist:
+
+- A redundant argument restating an already-default value is unkillable by
+  construction; delete it rather than testing it.
+- A default guarded by something upstream that already ran is dead code.
+- A `*` regex quantifier never fails, so its fallback branch is dead;
+  `partition` often says the same thing with no unmatched case.
+- Dead guards (unreachable early returns, seed values every path treats
+  alike) produce survivors that teach nothing — delete the guard.
+- Two copies of one bounds check can each be half-dead in a different half;
+  merging into one check over a signed delta leaves every fragment live.
+
+**Writing the test that kills it:**
+
+- A survivor is only as tested as the observables compared — output and step
+  count miss bookkeeping fields; compare full `snapshot()`.
+- "Symmetric table" is not an equivalence argument by itself — check what
+  the snapshot actually carries (coordinates, heading) before calling a
+  relabelling invisible.  Assert the coordinate, not just the output.
+- `pytest.raises(match=...)` is a substring search; use
+  `assert str(caught.value) == message` to catch a widened message.
+- A default argument every test overrides explicitly is untested at its
+  default value.
+
+**A rewrite can install a gap where it removed slack** — re-measure after
+every refactor rather than assuming the score only improves.  Two observed
+mechanisms: swapping a regex for `partition`/`rpartition` can introduce an
+agreement neither version's differences previously required; and factoring
+matched-length iteration into `zip` can make ruff's `strict=` argument
+unfireable when both operands are always fixed-length.  A lint rule can
+mandate slack that then can't be tested.
+
+Triage from the test file, not the diffs — recurring shapes are
+substring-matched `pytest.raises`, comment tests outside the command set,
+truth-only `bool` flags, one-sided boundaries, write-only attributes, and
+assertions on a constant.  A score is a means: stop where survivors stop
+teaching anything.
+
+### Sweeping survivors against a corpus
+
+This beats triaging one mutant at a time.  `mutate_one.py --keep` leaves the
+mutated bundle on disk; import `mutants/bundled.py`, set
+`MUTANT_UNDER_TEST=bundled.<name>` in the environment, run each program in a
+corpus, and report the first whose output differs.  Test-writing then aims at
+a witness instead of a guess.  Three mechanics to get right:
+
+- `MUTANT_UNDER_TEST` is the only switch — rebinding the module attribute
+  does nothing.  A module with an import-time dispatch table needs that
+  table entry patched too, for the same reason.
+- Drive the machine with a step limit, not `run` — goto loops and unbounded
+  tape walks are legal in most of these languages and will hang an
+  uncapped sweep.
+- Match the language's own entry convention (e.g. a list of lines vs. a
+  string) or every program in the corpus silently misparses.
+
+**The yield is a function of corpus breadth — a no-witness result means "not
+reached by this corpus," not equivalence.**  Read the diffs of the
+no-witness set and ask what input shape each one needs; missing shapes
+cluster, and widening the corpus (unusual operands, multi-pass loops, both
+operand slots of every operation) has repeatedly turned "equivalent" verdicts
+into witnessed kills.
+
+A corpus worth writing covers each command with a non-default argument, both
+directions of every movement, a zero and a maximum operand, an empty
+container and one of length three, a loop of more than one pass, each error
+path, and every optional token both present and absent.
