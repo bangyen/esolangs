@@ -60,11 +60,18 @@ The pipeline
    fuse; once some residue class mod 4 is free the final ``"1"*k`` parks
    every survivor on a negative ring cell and the program halts.
 
-:func:`construct` runs the whole pipeline, validates every stage on an
-exact tracked model of all rows while emitting, and replays every row
-of the finished template on the real interpreter before returning it —
-a wrong program is never handed out; a violated stage invariant raises
-instead.
+:func:`construct` runs the whole pipeline and validates every stage on an
+exact tracked model of all rows while emitting; a violated stage invariant
+raises rather than handing back a template the rule does not license.
+
+It does not replay the finished template.  :func:`_replay_verdict` is a
+123 interpreter written here against the language's rules — it is *not*
+``esolangs.interpreters.tape_based.one_two_three``, and nothing in this
+module imports that.  It exists for the suite, which is where the
+execution gate lives: the tests run emitted programs on the real shipped
+interpreter, exhaustively at ``n <= 3`` and row by row above it.  Passing
+``verify=True`` re-runs the in-module replay, off by default because a
+check that costs 81-95% of a call is a tax on every caller.
 """
 
 from __future__ import annotations
@@ -891,24 +898,28 @@ def _replay(template: str, n: int, table: str) -> None:
 _WORK_BUDGET = 2_000_000_000
 
 
-def construct(truth_table: str, *, verify: bool = True) -> str:
+def construct(truth_table: str, *, verify: bool = False) -> str:
     """Build a 123 template for ``truth_table`` at any arity.
 
-    Deterministic; every emitted template is replayed row by row on the
-    real interpreter before it is returned.  Raises :class:`ValueError`
+    Deterministic; the construction is a stated rule, and every stage
+    asserts its own invariants as it runs.  Raises :class:`ValueError`
     when a stage invariant is violated or the build exhausts its work
-    budget — no unproven template is ever produced.
+    budget.
 
-    ``verify=False`` skips that closing replay, which is 40-65% of a
-    four-input build (the program is long, and running it sixteen times
-    is most of the work).  It exists for callers that replay the result
-    themselves anyway — the wider tests here do, and paying for both is
-    the same execution twice.  The default stays ``True``: this is the
-    only execution gate the constructed route has, since the exhaustive
-    sweeps in the suite cover ``n <= 3``, which the tight route in
-    ``one_two_three`` serves without ever calling this.  A caller that
-    skips it and does not check the template itself is shipping an
-    unproven program.
+    ``verify=True`` adds a closing replay of all ``2**n`` rows through
+    :func:`_replay_verdict`.  It is off by default because it is a
+    *check*, not part of the construction: it re-derives nothing the
+    build needs, and its cost grows with the row count -- 81% of a
+    four-input call, 90% at five and 95% at six, so every caller paid an
+    exponentially growing tax for a property the suite already proves.
+
+    The execution gate lives in the test suite, where it belongs, and is
+    stronger there than it ever was here: ``test_all_small_tables``
+    sweeps *every* table at ``n <= 3`` and the wider sweeps replay their
+    templates row by row -- all through the real shipped interpreter
+    (``interpreters.tape_based.one_two_three``), not the in-module
+    reimplementation this flag runs.  ``scripts/check_123_four_input.py``
+    carries the exhaustive four-input sweep.
     """
     n = max(1, (len(truth_table) - 1).bit_length())
     # The mark geometry comes from _geometry: the tight linear layout
