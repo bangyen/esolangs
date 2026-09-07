@@ -104,15 +104,13 @@ sculpted route, which since its separation became a construction reaches
 five as readily as four.  ``docs/minifuck_generator.md`` has the column
 counts and why no flat family closes this arity.
 
-Paying that per table is what makes a *screen* worth having, and there is
-one: everything the endgame emits after the suffix is GF(2)-affine in the
-columns standing at that point, so a printed column lies in their span.  A
-table in no staging's span cannot be printed by any of them, and
-:func:`_span_admits` says so in about 3.6 milliseconds where the enumeration
-takes 143 seconds to find nothing.  It only ever declines, so no table that
-built before builds differently now.  A table that ignores some inputs is
-solved at the arity it uses and renumbered back, so a wide table with a
-narrow core is as cheap as that core.
+A linear-algebra screen used to sit before that lookup, declining tables
+outside every staging's span; the index inversion made it redundant -- an
+unreachable table is a dict miss -- and it is gone, its mechanism and the
+equivalence measurements recorded where it stood, above
+:data:`_CHAIN_CAP`.  A table that ignores some inputs is solved at the
+arity it uses and renumbered back, so a wide table with a narrow core is
+as cheap as that core.
 
 **Nothing here searches.**  Every route is a construction or an enumeration
 of a small derived product: the staged families enumerate a bounded plan
@@ -1928,112 +1926,23 @@ def _clear_derived_plans(
 _derived_plans.cache_clear = _clear_derived_plans  # type: ignore[method-assign]
 
 
-# The arities whose enumeration is worth screening before it is run.  Only
-# five: the screen below is *vacuous* at four inputs and cheaper to skip than
-# to evaluate.  See :func:`_span_admits` for why the arity is what decides it.
-_SCREENED_ARITIES = (5,)
+# **A linear-algebra screen sat here, and it is gone.**  Everything the
+# endgame emits after the suffix is GF(2)-affine in the columns standing at
+# that point, so a printed column lies in the span of the staging's standing
+# columns, and ``_span_admits`` used that to decline unreachable five-input
+# tables before the per-table enumeration -- 3.6 milliseconds against the
+# 143 seconds a doomed sweep cost.  The index inversion made both numbers
+# obsolete: the arity is tabulated once and a miss is a dict lookup, so the
+# screen's only remaining effect was its own setup -- a measured 0.72s of
+# span bases against the 0.88s index build it could at best skip, paid by
+# every process that built any staged five-input table.  Equivalence at
+# removal: an index key is a printed column and the screen admitted every
+# printed column by its own standing test, so screen-then-lookup and bare
+# lookup answer identically -- checked directly, 400 sampled keys with 0
+# declines and 120 tables with 0 divergences.  The affine-span fact stays
+# true; nothing consumes it any more.
 
 
-def _span_basis(vectors: list[int]) -> list[int]:
-    """Row-reduce ``vectors`` to a GF(2) basis, greatest leading bit first.
-
-    Columns are packed one bit per row, so a table and a tape column are the
-    same kind of object and XOR is their addition.
-    """
-    basis: list[int] = []
-    for v in vectors:
-        cur = v
-        for b in basis:
-            cur = min(cur, cur ^ b)
-        if cur:
-            basis.append(cur)
-            basis.sort(reverse=True)
-    return basis
-
-
-def _in_span(v: int, basis: list[int]) -> bool:
-    """Whether ``v`` is a GF(2) combination of ``basis``."""
-    cur = v
-    for b in basis:
-        cur = min(cur, cur ^ b)
-    return cur == 0
-
-
-@cache
-def _staging_spans(n: int) -> tuple[tuple[int, ...], ...]:
-    """Return one basis per staging, spanning its standing columns.
-
-    Built once per arity and cached, because it does not depend on the table
-    being asked for: it is a property of the enumeration, not of the target.
-    """
-    out: list[tuple[int, ...]] = []
-    window = range(1, _BASE + n * _SPAN + 12)
-
-    def pack(j: _Joint) -> list[int]:
-        cols = []
-        for cell in window:
-            v = 0
-            for bit in j.col(cell):
-                v = (v << 1) | bit
-            cols.append(v)
-        return cols
-
-    for sep_index in range(len(_SEPS)):
-        for settle in (0, 1):
-            base = _embed(n, settle=settle, sep=_SEPS[sep_index])
-            _clamp(base)
-            _walk_to(base, _BASE - 1)
-            run = base.fork()
-            for _k in range(_MAX_BRACKETS + 1):
-                staged = run.fork()
-                staged.emit("<")
-                _clamp(staged)
-                out.append(tuple(_span_basis(pack(staged))))
-                run.emit("[")
-            if n not in _INSERT_ARITIES:
-                continue
-            for suffix in _insert_suffixes():
-                staged = base.fork()
-                staged.emit(suffix + "<")
-                _clamp(staged)
-                out.append(tuple(_span_basis(pack(staged))))
-    return tuple(out)
-
-
-def _span_admits(truth_table: str, n: int) -> bool:
-    """Whether any staging *could* print this table, on a linear-algebra test.
-
-    A **necessary** condition, and the asymmetry is the point: False means no
-    staging prints the table and the enumeration can be skipped outright,
-    while True means only that the enumeration has to run.  A miss at five
-    inputs costs a measured 143 seconds and this answers in about 3.6
-    milliseconds, so what it saves is the sweep that was going to fail.
-
-    Everything the endgame emits after the suffix is GF(2)-affine in the
-    columns standing at that point, so a printed column lies in their span.
-    Measured over the whole family rather than argued: 241280 of 241280
-    (staging, printed column) incidences are contained at five inputs, and no
-    reachable table is declined -- 0 false negatives over all 24582.  The
-    check that matters most is the one against the *generator* rather than
-    against that harvest: sampled declined tables were handed to the real
-    derivation and it agreed, taking about 143 seconds each to find nothing.
-
-    **Only five inputs.**  At four the test is vacuous -- ambient dimension
-    16 against bases whose rank reaches 16, so every table is admitted at
-    exactly the base rate -- and evaluating it would cost more than it saves.
-    At five the ambient dimension is 32 against a median rank of 16, which is
-    what makes it bite: it declines 53.4% of unreachable tables.
-
-    Scope is the shipped caps, separators and setter.  Change any of them and
-    the spans change with them; ``test_span_screen_declines_no_reachable_table``
-    is what fails if this is ever no longer true.
-    """
-    if n not in _SCREENED_ARITIES:
-        return True
-    packed = 0
-    for bit in truth_table:
-        packed = (packed << 1) | int(bit)
-    return any(_in_span(packed, list(b)) for b in _staging_spans(n))
 
 
 # How far right the closed-form column derivation tracks the tape.  The
@@ -2191,6 +2100,45 @@ def _planned_bit(chain: _Chain, plan: _Plan, acc: int) -> int:
     return x
 
 
+def _planned_bits(chain: _Chain, plan: _Plan, accs: range) -> list[int]:
+    """Return every accumulator's :func:`_planned_bit`, resolved by region.
+
+    The per-accumulator spelling re-decides the plan's shape on every call
+    -- 2.9 million times filling the five-input index -- when the region
+    boundaries (the extent, the re-crossed cell, the phase-two extent) are
+    fixed by the plan and the accumulators are asked in order.  This walks
+    the same case analysis once per region instead; the loop body is that
+    function's arms verbatim, and ``test_the_batched_planned_bits_match``
+    holds the two spellings equal over every plan the staged arities build.
+    """
+    w, v = chain.w, chain.v
+    mode = plan[0]
+    if mode != 2:
+        m, g = plan[1], plan[2]
+        out = [
+            (((acc - _BASE + 1) & 1) ^ w[acc]) if acc <= m else (g ^ v[acc])
+            for acc in accs
+        ]
+        if mode == 1 and plan[3]:
+            for i in range(max(plan[3] - accs.start, 0), len(out)):
+                out[i] ^= 1
+        return out
+    _, c, m2, head, x_past = plan
+    hb = head ^ w[max(c + 1, _BASE) - 1]
+    tail = x_past ^ v[m2 + 1]
+    out = []
+    for acc in accs:
+        if acc < c:
+            out.append(((acc - _BASE + 1) & 1) ^ w[acc])
+        elif acc <= m2:
+            out.append(hb ^ w[acc])
+        elif acc >= m2 + 2:
+            out.append(tail ^ v[acc])
+        else:
+            out.append(x_past)
+    return out
+
+
 def _slice_chains(n: int, sep_index: int, settle: int) -> tuple[list[_Chain], _Pools]:
     """One slice's row chains and per-orientation pool facts.
 
@@ -2280,19 +2228,24 @@ def _closed_sweeps(
             continue
         cur, lowfull, lowxor = facts
         columns: dict[int, tuple[int, ...]] = {}
-        for acc in range(_PROBE_WALK_OUT, _MAX_ACC + 1):
+        for acc in range(_PROBE_WALK_OUT, _BASE):
             if acc - 1 < cur:
                 # Mirrors _column_sweep's guard; the pool lands at 4 or 5,
                 # below the accumulator range, so it never fires.
                 continue  # pragma: no cover - the pool lands below the range
-            if acc < _BASE:
-                bit = lowxor[acc] ^ (lflip if acc == _BASE - 1 else 0)
-                columns[acc] = (bit,) * len(chains)
-            else:
-                columns[acc] = tuple(
-                    lowfull ^ lflip ^ _planned_bit(chain, plan, acc)
-                    for chain, plan in zip(chains, plans, strict=True)
-                )
+            bit = lowxor[acc] ^ (lflip if acc == _BASE - 1 else 0)
+            columns[acc] = (bit,) * len(chains)
+        # The accumulators at ``_BASE`` and above, batched: one region walk
+        # per row rather than one plan dispatch per (row, accumulator), and
+        # the row-major bits transposed to columns at the C level.
+        accs = range(_BASE, _MAX_ACC + 1)
+        const = lowfull ^ lflip
+        rowbits = [
+            [const ^ bit for bit in _planned_bits(chain, plan, accs)]
+            for chain, plan in zip(chains, plans, strict=True)
+        ]
+        for acc, column in zip(accs, zip(*rowbits, strict=True), strict=True):
+            columns[acc] = column
         sweeps[cell7] = columns
     return sweeps
 
@@ -2429,12 +2382,6 @@ def _derive_staging(truth_table: str, n: int) -> _Staging | None:
     program that does not print.
     """
     if n not in _STAGED_ARITIES:
-        return None
-    # A linear-algebra screen before the pass, where one is worth running.
-    # It only ever declines -- see :func:`_span_admits` -- so the result is
-    # the same and a table it rejects skips a tabulation that was going to
-    # fail to answer it.
-    if not _span_admits(truth_table, n):
         return None
     plan = _staging_index(n).get(tuple(int(c) for c in truth_table))
     if plan is None:
