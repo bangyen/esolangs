@@ -463,6 +463,19 @@ class TestJaune:
         assert "bnez t0" in mod.comp("5?")
         assert "beqz t0" in mod.comp("5!")
 
+    def test_eleven_separate_labels_keep_distinct_positions(self) -> None:
+        """Renumbering must not find a source token inside an emitted one."""
+        mod = importlib.import_module("esolangs.compilers.jaune")
+        source = "#".join(f"{n}:" for n in range(11))
+        prepared, labels, _, _ = mod.prep(source)
+        assert prepared == "#".join(f"{n}:" for n in range(11))
+        assert labels == list(range(11))
+
+    def test_count_reads_a_multi_digit_marker_operand(self) -> None:
+        """A generated ``10:`` is marker ten, not marker zero."""
+        mod = importlib.import_module("esolangs.compilers.jaune")
+        assert mod.count("10:", 2) == (10, 3)
+
     def test_subroutine_call(self) -> None:
         mod = importlib.import_module("esolangs.compilers.jaune")
         assert "call sub" in mod.comp("5@")
