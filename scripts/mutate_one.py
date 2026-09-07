@@ -22,8 +22,7 @@ Usage:
     python scripts/mutate_one.py Grapheme --keep   # leave the work dir
 
 Requires: mutmut==3.7.0, which fixes a 3.3.1 bug that silently reported
-class-method mutants as killed.  Mutant IDs are not comparable across the
-two versions.  ``docs/verification_tooling.md`` has both arguments in full.
+class-method mutants as killed. Mutant IDs are not comparable across versions.
 """
 
 import argparse

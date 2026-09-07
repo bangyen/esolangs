@@ -577,7 +577,7 @@ def _prepare(
 def _check_shadowing(proj: Path, family: str, module: str) -> None:
     """Fail unless the copied package is what an import in ``proj`` resolves to.
 
-    This is the positive control, and it is the one thing about this layout
+    This positive control checks the part of this layout that
     that cannot be verified by reading.  ``mutate_one`` sidesteps the
     question with a flat single file; a package copy instead relies on the
     runner's cwd leading ``sys.path``, so that the copy shadows the editable

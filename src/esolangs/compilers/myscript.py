@@ -81,7 +81,7 @@ left out, each aborting at runtime or rejected at compile time:
 * **Integer width.**  MyScript's integers are Python's, so unbounded;
   these are 64-bit and wrap.
 
-Two divergences in *timing* rather than domain are worth naming.  The
+Two timing differences do not change the accepted domain. The
 interpreter raises its ``ValueError``s when a statement executes, so a
 malformed statement in a branch that never runs never raises; this
 compiler walks the whole tree and rejects it eagerly, matching the way

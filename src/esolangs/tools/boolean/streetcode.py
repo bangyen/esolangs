@@ -474,7 +474,7 @@ def _streetcode_shared(n: int, perm: tuple[int, ...] | None = None) -> list[str]
     legs.  The two junctions read cells chosen for the job: the descent gap
     and the exit corner both read the counter, and the drop on the way out
     lands CP on the loader, which is seeded to 1 and only climbs from there.
-    That seed is load-bearing for this reason.
+    That seed is required.
 
     The trailing ``_`` then walk CP back to cell 1.  There is nothing to
     correct on the way: with no ``^`` after the reads the ring subtracts 48

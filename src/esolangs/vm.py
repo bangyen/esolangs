@@ -679,7 +679,7 @@ class _DelegatingVM:
     different for every one of them -- lives on each interpreter's
     ``_Machine`` rather than here, in a file that does not otherwise know
     the languages.  Keeping it next to the state it describes leaves the
-    adapter with the one thing that really is per-language: how the machine
+    adapter with the per-language detail: how the machine
     is constructed.  Subclasses provide ``__init__`` only; everything else
     forwards, and ``output`` is captured here.
 
