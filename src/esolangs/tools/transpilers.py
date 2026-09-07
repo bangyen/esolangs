@@ -77,7 +77,7 @@ def bf_to_three_d_brainfuck(program: str) -> str:
 
     The one disagreement is the left edge.  Brainfuck *clamps* ``<`` at
     cell 0 while 3D Brainfuck's ``s`` walks into the negative cells, and
-    the clamping is load-bearing rather than incidental: ``+.<.`` prints
+    clamping is required: ``+.<.`` prints
     the same byte twice in brainfuck precisely because ``<`` was a no-op
     there.  No static shift of the origin repairs that -- a shift cannot
     turn a move into a non-move -- so ``<`` compiles to a *runtime* guard

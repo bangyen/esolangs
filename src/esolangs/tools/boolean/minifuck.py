@@ -80,7 +80,7 @@ _POOL = (0, 0, 1, 1, 0, 0, 0)
 #   ``_POOL_WIDTH + 1``;
 # * the sculpting accumulator loop's start, ``span + _POOL_WIDTH + 1``.
 #
-# That last pair is the load-bearing one.  The loop starting one *past* the
+# The last pair is essential. The loop starting one *past* the
 # guard is exactly what makes the rewind bound tight rather than slack: the
 # worst rewind is ``lo - _POOL_WIDTH``, which is the guard itself, so the
 # guard can never fire.  Written as ``8`` and ``9`` the two look independent
@@ -2228,9 +2228,7 @@ def _derive_staging(truth_table: str, n: int) -> _Staging | None:
 # ones.  Taken deliberately -- a shorter program is not worth minutes to
 # compute -- and paid only by tables the plain enumeration already missed.
 #
-# ``docs/minifuck_generator.md`` keeps the mechanism and the 94.35%
-# measurement, which are still true and still the reason the residue was
-# worth attacking.
+# The route trades longer output for a much faster build.
 
 
 def _staged(truth_table: str, n: int) -> str | None:
@@ -2303,7 +2301,7 @@ def _staged(truth_table: str, n: int) -> str | None:
 # lands does not help and cannot" was measured over a *stale* bit -- the
 # setter-read unit is shift-invariant over the uniform wake only once a walk
 # has crossed the bit.  Read while fresh and sandboxed, it is the whole
-# construction.  ``docs/minifuck_generator.md`` keeps the superseded reasoning.
+# construction.
 #
 # **Sculpting** then edits the separated rows individually.  Fix a target
 # cell ``C`` below every row.  One round ``'<' * K + '[x' * K`` with

@@ -344,7 +344,7 @@ _STEM_LEN = 10
 # 6 here is 120 raster pixels, comfortably longer than `lattice.star`'s own
 # 15px probe).
 #
-# The diagonal arrival is load-bearing, not cosmetic.  Every other leg of a
+# The diagonal arrival is required. Every other leg of a
 # return path is cardinal, and the stem being landed on is itself a cardinal
 # run, so a cardinal final approach is necessarily *perpendicular* to the
 # stem -- and a perpendicular touch-down onto a straight run lights the
