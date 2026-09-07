@@ -323,6 +323,86 @@ def test_a_flipped_embed_complements_in_place_and_keeps_slot_order() -> None:
 
 
 @pytest.mark.slow  # 7.1s: enumerates the stagings the screen claims to skip
+def test_the_constraint_query_matches_the_index() -> None:
+    """``_first_staging`` answers exactly what the index spelling answers.
+
+    The constraint intersection is the shipped assignment and the
+    first-claim-wins dictionary stays as its oracle, so the two are held
+    equal key for key -- every reachable column at two and three inputs,
+    plus random tables for the misses, plus small budgets, whose cap the
+    query lays over the passes where the index bakes it into the fill.
+    """
+    import importlib
+    import random
+
+    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+    rng = random.Random(17)
+    for n in (2, 3):
+        index = module._staging_index(n)  # noqa: SLF001
+        assert index, n
+        for key in index:
+            table = "".join(str(bit) for bit in key)
+            assert module._first_staging(table, n) == index[key], table  # noqa: SLF001
+        for _ in range(30):
+            table = format(rng.getrandbits(2**n), f"0{2**n}b")
+            expected = index.get(tuple(int(c) for c in table))
+            assert module._first_staging(table, n) == expected, table  # noqa: SLF001
+
+    # The budget arm: a capped query consults the same staging prefix the
+    # capped fill visits, including budgets that stop mid-slice and before
+    # the first staging.
+    original = module._STAGING_BUDGET  # noqa: SLF001
+    try:
+        for budget in (0, 1, 40, 900):
+            module._STAGING_BUDGET = budget  # noqa: SLF001
+            module._derived_plans.cache_clear()  # noqa: SLF001
+            capped = module._staging_index(3)  # noqa: SLF001
+            probes = ["".join(str(bit) for bit in key) for key in capped]
+            probes += [format(rng.getrandbits(8), "08b") for _ in range(20)]
+            for table in probes:
+                expected = capped.get(tuple(int(c) for c in table))
+                assert module._first_staging(table, 3) == expected, (  # noqa: SLF001
+                    budget,
+                    table,
+                )
+    finally:
+        module._STAGING_BUDGET = original  # noqa: SLF001
+        module._derived_plans.cache_clear()  # noqa: SLF001
+
+
+@pytest.mark.slow  # two arity tabulations plus ~2600 mask queries, ~4s
+def test_the_constraint_query_matches_the_index_where_inserts_live() -> None:
+    """The same equality at the arities the insert family serves.
+
+    Two and three inputs never reach the insert pass, so this is the check
+    that the pass boundary -- pure runs across every slice before any
+    insert -- survives in the query's spelling of the order.  Sampled,
+    because the full four-input key set costs ~10s; the sample is spread
+    across the whole index rather than taken from its head, so both passes
+    and every slice appear.
+    """
+    import importlib
+    import random
+
+    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+    rng = random.Random(23)
+    for n, width in ((4, 2000), (5, 400)):
+        index = module._staging_index(n)  # noqa: SLF001
+        keys = list(index)
+        sampled = keys[:: max(1, len(keys) // width)]
+        inserts = sum(isinstance(index[key][2], str) for key in sampled)
+        assert inserts, "the sample missed the insert family entirely"
+        for key in sampled:
+            table = "".join(str(bit) for bit in key)
+            assert module._first_staging(table, n) == index[key], table  # noqa: SLF001
+        for _ in range(25):
+            table = format(rng.getrandbits(2**n), f"0{2**n}b")
+            expected = index.get(tuple(int(c) for c in table))
+            assert module._first_staging(table, n) == expected, table  # noqa: SLF001
+
+
 def test_the_batched_planned_bits_match() -> None:
     """``_planned_bits`` equals ``_planned_bit`` per accumulator, per plan.
 
