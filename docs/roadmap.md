@@ -1,9 +1,14 @@
 # Roadmap
 
-Future work only, in priority order.  Language assessments, documented
-walls, and ruled-out ideas live in `docs/limitations.md` and
-`docs/walls.md`; completed work — including sections removed from this
-file — lives in the commit history.
+Future work only, in priority order.  **An item leaves this file when it
+closes**, and closing one is a migration rather than a deletion: the
+structural negatives and instrumentation traps it produced go to
+[`docs/walls.md`](walls.md), recurring method that binds a future sweep goes
+to [`docs/verification_tooling.md`](verification_tooling.md), and a
+deliberate engine-to-engine divergence goes to
+[`docs/limitations.md`](limitations.md).  Only the status prose is dropped,
+and the construction itself lives in the source and the commit history.
+Language assessments and ruled-out ideas live in those same two files.
 
 ## New interpreters (in priority order)
 
@@ -134,18 +139,23 @@ rest of the pass, is in `notes/twod-unimplemented-audit.md`.
 
 ## Transpilers
 
-**Open research item: lowering drawn control flow.**  A Streetcode ring has
-no brainfuck loop image -- the car never returns to the junction that steers
-it as the same drive state -- and the boolean generator's programs are
-decision trees whose leaves each print.  Both are lowerable in principle
-with scratch cells and a converged answer, which is a compiler rather than a
-program rewrite.  The OISC pair is the precedent to follow: `decleq_to_sbleq`
+**Open research item: lowering drawn control flow.**  Recovering an
+arbitrary Streetcode grid's control flow, and lowering the boolean
+generator's decision trees (whose leaves each print), are both compilers
+rather than program rewrites.  It would be the first real control-flow
+lowering: the other three shipped transpilers are per-command
+transliteration onto a superset target.
+
+**Read `docs/limitations.md` before scoping this: the reason this entry
+used to give was false.**  It claimed a Streetcode ring has no brainfuck
+loop image because the car never returns to a junction in the same drive
+state.  Driving the emitted grids shows the full steering tuple *does*
+recur on every lap — only the cell differs, and the road choice is a
+runtime test (`streetcode.py:1125`), not a compile-time proof obligation.
+The difficulty is real but it is the one below, not a control-flow wall.
+The OISC pair is still the precedent worth following: `decleq_to_sbleq`
 clears the admission bar by *emulating* the source machine's semantics,
-because only an emulator has no interiors (Decleq can jump into a block's
-interior; Streetcode revisits junctions under a different drive state -- the
-same shape of problem).  It would be the first real control-flow lowering:
-the other three shipped transpilers are per-command transliteration onto a
-superset target.
+and an emulator has no interiors to jump into.
 
 Three things price this as **large**, not as queued work.  Following the
 OISC precedent means emulating a 2115-line interpreter
@@ -235,57 +245,6 @@ so byte-consecutive reads would diverge); Container's refills a queue with
 line contents minus the stripped terminator and consumes one char per pulse,
 so `_riscv_common.GETBYTE` plus a newline skip is the correct lowering there.
 
-### Jaune's computed dispatch — **closed; implemented in both engines**
-
-The fork was the wiki spec, and it says implement.  The grammar makes `v` a
-`number` and every one of `: ? ! $ @` takes a `number`:
-
-    numericCommand := number, "+" | number, "-" | number, ":"
-                    | number, "?" | number, "!" | number, "$" | number, "@" ;
-    number         := literalNumber | "v" ;
-
-So `v?`, `v!` and `v@` are defined forms and the *delete* branch was wrong.
-The interpreter implements them as three more `_CountedOp`s — the idiom
-`v+`/`v-` already set, which keeps `_Numbered.arg` a plain `int` and leaves
-`_find` matching static markers only.  Three semantics were decided and are
-recorded in the module's documented-gaps block: a read operand is consumed
-whether or not the branch is taken; the target is looked up before the cell
-is tested, so an undefined label halts even on an untaken branch (the rule
-the static `?`/`!` already followed); and `v:`/`v$` are grammatical but
-define nothing, so both are dropped at parse, matching the compiler's `prep`.
-
-The compiler's blocks were then checked against that new oracle and had
-**three** bugs, none of which was the one the old entry here predicted — it
-guessed the switch ran on a stale `s7`, when in fact the preceding `v` had
-always loaded it:
-
-- the switches compared `s7` against the numbers `prep` renumbered *to*,
-  while `s7` holds what the program read, so every computed jump missed its
-  arm.  `prep` now also returns the spelled-to-renumbered pairs, and the
-  mapping is one-to-many because a run of adjacent markers (`1:2:`)
-  collapses to a single label;
-- the bare-`v` store fired for the marker forms too, putting the digit in
-  cell 0 — which is what made `v@` echo its input rather than call;
-- `switch` is reached by `call` and each arm is another `call`, so the arm
-  clobbered `ra` and returned into `switch`, the same family the `$`
-  prologue fixes.
-
-Verified by compiling and running under unicorn against the interpreter: the
-four probes plus a doubled `v`, a collapsed label run, a computed call whose
-body calls, and both consumption cases all agree; every jaune case already
-in `COMPILER_CASES` still passes; and `compiler_goldens/jaune.s` is
-unchanged, which is what says static emission did not move.  The nine
-input-carrying cases are pinned in `COMPILER_CASES`.
-
-**One divergence is left deliberately**, commented where the switches are
-emitted: an input naming no label or subroutine raises `HaltError` in the
-interpreter, while the compiled switch has no error path and falls through.
-Pinning it would mean inventing a trap the language does not describe.
-
-The method note worth keeping: the old entry settled its diagnosis by
-reading the emitter, and got it wrong.  The three real bugs came out of
-running the compiled binary against the interpreter case by case.
-
 ## Forbin's expression-position recursion
 
 Forbin's *expression-position* calls (`x = f(y)`) recurse natively, so their
@@ -303,27 +262,6 @@ half-evaluated tree.  Forbin has no realistic program shape that recurses
 this way — `return` exits a call immediately, so values thread through
 statements, not nested expressions.  **Not pursued unless a concrete program
 needs it.**
-
-## Hanging-test optimization via state-cycle detection
-
-See `docs/limitations.md` for what `esolangs.vm.run_until_halt_or_cycle`
-already covers.  **Randomness no longer costs a language its hang proof.**
-All six random-drawing interpreters — Painfuck's `y`, WII2D's `?`,
-LaserFuck's heading, Super SNUSP's `=`, Modulous's `RND` and COD's junction
-— implement the branching protocol, so `run_until_halt_or_all_branches_cycle`
-decides them by searching every draw instead of one sampled run.
-`tests/test_vm.py` derives that set from the registry and asserts the whole
-of it conforms, so a new random language fails until it is decided too.
-
-What remains is the class no snapshot can catch: an unbounded-growth loop
-never revisits a state, so it stays on the wall-clock backstop whatever else
-is built — a property of cycle detection rather than an open question.  Two
-undecided results sit beside it by design: a reachable input command, which
-cannot be forked without sibling branches sharing one cursor, and a
-transition whose fanout exceeds its language's per-transition cap.  Both
-raise rather than guessing.
-
-**This section is closed.**  Nothing here is scheduled work.
 
 ## Input reordering (remainder)
 
@@ -352,94 +290,6 @@ Before reopening any of these, read that section's four rules first — the
 screen is neither a floor nor a ceiling, reachable orders are usually far
 fewer than `n!`, the cell map is the inverse of the permutation, and a
 generator that validates its own output needs that check frame-mapped too.
-
-## Mutation-testing sweep
-
-Per-language scores and survivor counts are not recorded here: they go
-stale on any test change and are cheap to re-derive (`just mutate
-<language>`, wrapping `scripts/mutate_one.py`) — re-run the language you
-touched, and re-run everything after a change to the shared machinery.
-Rules a future triage pass has to get right, each cheap to violate
-silently; see git history for the worked examples behind them.
-
-**Trusting the measurement:**
-
-- Measure on an idle machine — a contended run's per-test alarm scores
-  slow-but-passing tests as kills, under-reporting survivors.
-- `uv run` can silently measure the wrong tree (reinstalls from the project
-  root, so a worktree's edits never reach the bundle) — use
-  `PYTHONPATH=$PWD/src`.  Tell: a survivor on a line already deleted.
-- A probe whose own baseline is unstable (e.g. an interpolated object with
-  no `__repr__`) can witness a large batch of otherwise-unkillable mutants.
-- Naming `esolangs.vm` in a docstring drops the test from the bundle exactly
-  as an import would; a survivor is not a gap until the harness is trusted.
-
-**The last survivor is often the source's fault, not the suite's** — a
-construct that cannot be observed is usually one that need not exist:
-
-- A redundant argument restating an already-default value is unkillable by
-  construction; delete it rather than testing it.
-- A default guarded by something upstream that already ran is dead code.
-- A `*` regex quantifier never fails, so its fallback branch is dead;
-  `partition` often says the same thing with no unmatched case.
-- Dead guards (unreachable early returns, seed values every path treats
-  alike) produce survivors that teach nothing — delete the guard.
-- Two copies of one bounds check can each be half-dead in a different half;
-  merging into one check over a signed delta leaves every fragment live.
-
-**Writing the test that kills it:**
-
-- A survivor is only as tested as the observables compared — output and step
-  count miss bookkeeping fields; compare full `snapshot()`.
-- "Symmetric table" is not an equivalence argument by itself — check what
-  the snapshot actually carries (coordinates, heading) before calling a
-  relabelling invisible.  Assert the coordinate, not just the output.
-- `pytest.raises(match=...)` is a substring search; use
-  `assert str(caught.value) == message` to catch a widened message.
-- A default argument every test overrides explicitly is untested at its
-  default value.
-
-**A rewrite can install a gap where it removed slack** — re-measure after
-every refactor rather than assuming the score only improves.  Two observed
-mechanisms: swapping a regex for `partition`/`rpartition` can introduce an
-agreement neither version's differences previously required; and factoring
-matched-length iteration into `zip` can make ruff's `strict=` argument
-unfireable when both operands are always fixed-length. A lint rule can
-mandate slack that then can't be tested.
-
-Triage from the test file, not the diffs — recurring shapes are
-substring-matched `pytest.raises`, comment tests outside the command set,
-truth-only `bool` flags, one-sided boundaries, write-only attributes, and
-assertions on a constant.  A score is a means: stop where survivors stop
-teaching anything.
-
-**Sweeping survivors against a corpus** beats triaging one mutant at a time.
-`mutate_one.py --keep` leaves the mutated bundle on disk; import
-`mutants/bundled.py`, set `MUTANT_UNDER_TEST=bundled.<name>` in the
-environment, run each program in a corpus, and report the first whose output
-differs.  Test-writing then aims at a witness instead of a guess.  Three
-mechanics to get right:
-
-- `MUTANT_UNDER_TEST` is the only switch — rebinding the module attribute
-  does nothing.  A module with an import-time dispatch table needs that
-  table entry patched too, for the same reason.
-- Drive the machine with a step limit, not `run` — goto loops and unbounded
-  tape walks are legal in most of these languages and will hang an
-  uncapped sweep.
-- Match the language's own entry convention (e.g. a list of lines vs. a
-  string) or every program in the corpus silently misparses.
-
-**The yield is a function of corpus breadth — a no-witness result means "not
-reached by this corpus," not equivalence.**  Read the diffs of the
-no-witness set and ask what input shape each one needs; missing shapes
-cluster, and widening the corpus (unusual operands, multi-pass loops, both
-operand slots of every operation) has repeatedly turned "equivalent" verdicts
-into witnessed kills.
-
-A corpus worth writing covers each command with a non-default argument, both
-directions of every movement, a zero and a maximum operand, an empty
-container and one of length three, a loop of more than one pass, each error
-path, and every optional token both present and absent.
 
 ## Generator build cost
 
@@ -501,32 +351,12 @@ What the two fixes did **not** buy is the interesting part:
 
 A table ignoring some inputs is a smaller table, and where a generator's cost
 scales with *input count* rather than row count that beats any per-row
-saving.  Clockwise is the obvious remaining candidate and does not reduce:
-`clockwise` (`other.py:681-888`) makes no `essential_inputs` call.  What is
-open:
-
-- **Taglate's odd-sized sets** — **closed; the premise was wrong.**  Earlier
-  text here said widening the window by one adjacent ignored input "costs a
-  tier back".  It does not: `taglate` already pads any odd `n` to
-  `n_eff = n + 1` with a leading ghost digit (`other.py:630-637`), and the
-  whole `_even_reduce`/`_odd_reduce` cascade is written for even `n_eff`
-  only, so an odd-sized essential set lands on the same tier either way.
-  Measured on parity tables (all inputs essential, so no reduction fires):
-
-  | `n` | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
-  | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-  | chars | 14 | 121 | 451 | 451 | 1521 | 1521 | 5499 | 5499 |
-
-  Odd `n` costs exactly what `n + 1` costs, so the sidestep is already near
-  optimal — its marginal cost is one `h` read plus a few selector
-  characters, not a tier.  A real saving would need `taglate`'s core
-  rewritten to handle odd `n_eff` natively: a new odd-parity cascade and a
-  replacement for `_SEL1_N2`, which is committed to exactly two remaining
-  inputs (`other.py:355-368`), plus the seed/prefix formulas that assume
-  even `n_eff`.  That is new machinery rather than a thirteenth instance of
-  the reduction pattern, its payoff is unmeasured, and it would break the
-  read-count contract `test_reduced_programs_still_read_every_input` asserts.
-  Not scheduled.
+saving.  **Nothing is currently open here.**  Clockwise, the obvious
+remaining candidate, does not reduce: `clockwise` (`other.py:681-888`) makes
+no `essential_inputs` call.  Taglate's odd-sized sets were the last live
+item and the premise turned out to be wrong — the refutation and its
+measurements are in [`docs/walls.md`](walls.md), which is also where a
+future attempt should look before re-running the pattern.
 
 ## Smaller open items
 
@@ -537,9 +367,14 @@ open:
   unreachable because `prep` renumbers from 0 upward; **re-probed, that is
   wrong on both halves.**  Renumbering is exactly what *creates* the
   two-digit marker once a program has ten of one kind, and `prep` does not
-  survive it: measured on `+v?%^.` followed by eleven labels, it emits
-  `2:12:12:` — a duplicated, corrupted marker — where ten labels give
-  `1:11:`.  The cause is the substring rewrite in the renumbering loop
+  survive it.  Measured on `'+v?' + '0:+1:+...'` — eleven labels separated
+  by commands, so no run collapses — ten labels round-trip unchanged, and
+  the eleventh makes `prep` emit **`10:` twice**: the *first* label, spelled
+  `0:` and renumbered to `0`, is clobbered into a duplicate of the eleventh,
+  so the program ends up with two `10:` markers and no label `0` at all.
+  (Adjacent markers are a separate, documented case — a run like `0:1:`
+  collapses to a single label by design.)  The cause is the substring
+  rewrite in the renumbering loop
   (`code.replace(n + k, m + k)` and `code.replace(s, m + c)`), which matches
   a one-character number inside a two-character one.  Confirmed identical
   on `main`, so it predates the computed-dispatch work and is not a
@@ -551,154 +386,6 @@ open:
   now has a test route it lacked: a program with ten labels reaches it
   directly, and the computed forms make such a program meaningful rather
   than merely spellable.
-- **Closed forms for the search-based boolean generators** — **all
-  closed and shipped.**  Most generators construct their answer; five
-  searched for it, and each now names what it finds instead.  A sweep of
-  every module in `tools/boolean/` for a live frontier (rather than for
-  the word "search", which appears mostly in prose describing searches
-  that were *replaced*) found these, all confirmed by instrumenting the
-  function and building real tables.  **Instrument the function the
-  shipped entry actually calls, over enough tables to see it fire**: this
-  sweep has now reported a false negative *twice*.  It first missed
-  Minifuck by patching `_derived_plans`, the offline sibling, which
-  fires zero times in a real build — the runtime path reaches the
-  enumeration through `_staging_index` instead.  Then, having closed
-  `_staging_index`, it declared Minifuck done while `_mux_probe` was
-  still probing the interpreter per table, because the tables sampled
-  happened not to route through the sculpt.  Patching the wrong name —
-  or the right name on too few tables — reports a clean negative:
-    - **Eval** — **closed; shipped.**  `_eval_stack_programs`
-      (`parameterized.py`) was a genuine BFS over `(tree stack, input
-      stack, active stack)`; it is now a fold over `_EVAL_REORDERS`, the
-      named catalog of every reorder program the 16-op cap admits.  The
-      catalog is finite because a non-identity program spends two ops on
-      toggles and one on a reversal, leaving at most 13 `=`s of travel —
-      it never moves more than six values, so past `n == 12` no new
-      arrangement can appear: the capped search returns 620, 691, 717,
-      728, 733, 735 entries over `n == 7..12` and is frozen at 735 from
-      then on (checked through `n == 16`; byte-identical dicts, order
-      included, plus a 736-table corpus with zero output diffs).  Two
-      hypotheses failed on the way and are worth not rediscovering: the
-      *uncapped* metric has no small exact theory — minimal op strings at
-      `n >= 5` zigzag the cursor, and contracting runs to units is lossy
-      (133 arrangements at `n <= 7` are only optimal via maneuvers that
-      transiently split a run) — so the closed form names the capped
-      catalog, not a distance formula.  The BFS itself survives as the
-      specification oracle in `test_reorder_catalog_matches_search`.
-    - **%^2^-1** — **closed; shipped.**  All five searches are gone.  The
-      two enumerations froze as named data, the way `_FOLD_SKELETONS` froze
-      the mined plans: `_ladder_tables`' suffix BFS became `_LADDER_BUILT`
-      (24 witnesses, byte-identical templates, each re-derived by `_apply`
-      over its ladder's rungs in the tests) and `_spellings_by_width`'s
-      enumeration became `_SPELL_BASES` (a minimal witness per parity per
-      grid map; every other width derives by `pp`-suffix or, after the
-      erase, `s`-prefix padding — width sets checked equal to the
-      enumeration's over the whole grid, so which tables build and at what
-      width is unchanged).  The three planner searches (`_fold_search`,
-      `_fold_beam`, `_fold_to_cofactors`) fell to one rule construction,
-      `_fold_rule_move`: merge where a landing window holds a same-class
-      wiped point, wipe a same-class end run together, double to grow the
-      windows, hop an end group by the first *collision-free* amount to
-      compress — that computed amount is what the descent's ±2/±4
-      candidate sweeps were actually buying, and naming it is what made
-      the packed eleven-input ladder plan under rules.  Acceptance is
-      measured, not argued: 610 planner states (n == 3 exhaustive, 200 at
-      four, 150 at five, specials included) and 658 harvested bridge
-      states accept exactly the search's set — zero lost, zero gained —
-      and a 452-table baseline diff shows 72 outputs changed (22 affine
-      respellings at non-minimal widths, 50 fold plans at `r >= 6`), every
-      one re-executed on the interpreter, aggregate 22.1% shorter.  Plans
-      are also faster than the searches they replace: 89ms → 1.0ms median
-      at five inputs, 0.53s → 3.2ms at six, and a 997-group eleven-input
-      table plans in 2.3s.  What the mining falsified is worth keeping:
-      the `(r, delta, pat[1])` skeleton key is ambiguous at `r == 6`
-      (patterns 011000 and 110000 share it and need different plans), so
-      the generalisation past the tabulated `r <= 5` is the rule loop, not
-      a wider table.
-    - **123** — **closed; shipped.**  `_verdict_search` — a bounded DFS
-      over kills, boosts and ring rounds whose totality was a conjecture,
-      and which made a dense table expensive (a sampled `n == 5` table
-      took 401s) — was replaced by a planned shield-and-sweep: separation
-      leaves every row at a distinct odd position with nothing marked
-      above its own cell, on which one kill segment is a closed form
-      (dipped rows provably loop unless their tested cell was pre-marked,
-      undipped rows return to their exact positions), so the verdict is
-      one `_paint` shield per 0-row plus a single kill above the highest
-      1-row.  The whole move algebra the DFS chose from went with it —
-      `_try_kill`, boosts, ring rounds, `_gap_fix`, `_align_residues`,
-      and the two-geometry budget probe (the parity law that forced it
-      bound the searched kills' mark anchors, which no longer exist).
-      Exhaustive at `n == 4` (65536/65536 built and replayed) and random
-      sampling at 5 and 6: `n == 5` builds in ~0.5s against the 401s
-      sample, and dense tables stopped being the expensive case.  See
-      `docs/walls.md` for the derivation.
-    - **Minifuck's staging index** — **closed** (the module's *other*
-      search is the mux sculpt below, also closed).
-      `_staging_index` used to run the
-      interpreter over every staging — 4640 `claim` calls driving 63.8M
-      steps, 25.6s of a 38.4s `n == 5` build — and now derives every
-      column arithmetically: the suffix is a prefix-XOR staircase
-      (`_Chain`), the pool code is a slice constant (the embed leaves
-      every cell below 16 row-independent, a suffix never writes below 15,
-      and no pool code reaches past cell 6), and the walk out is an
-      interval XOR.  The recorded negative — "the printed column does not
-      reduce in `(suffix, accumulator)`" — was about translations and
-      still holds; the column *is* closed-form in the embed's standing
-      columns once the pool's state-dependence is proved slice-constant.
-      Accepted on whole-index equality, key for key and staging for
-      staging, at every staged arity, so the first-hit contract is intact
-      and no template changed.  Measured cold: `_staging_index(4)` 6.5s to
-      0.62s, `_staging_index(5)` 31.5s to 1.12s; what survives of the old
-      cost is ten embeds and twenty pool probes per arity.  The emit-and-walk
-      spelling lives on in `_derived_plans`/`_column_sweep` as the oracle
-      the tests compare against.
-    - **Minifuck's mux sculpt — closed; shipped.**  `_mux_probe` scanned
-      `_POOL_CODES` through `_pool_reaches`, a real interpreter probe, once
-      a round.  It is now `_SCULPT_POOL_CODE`: the fifth code answers
-      `cell7 == 0` at every arity, accumulator and round, and `cell7 == 1`
-      is answered by none.  The rule is structural in three steps —
-      `_mux_probe` emits `x` and clamps, so every probe sees rows at
-      pointer 0 with pool region `(0,1,1,1,1,1,1,1)`; running a pool code
-      from there touches at most cell 6, inside the 8-wide region the
-      verdict reads; and a sculpting round cannot write into that region
-      under the rewind guard `rewind > min(ptrs) - _POOL_WIDTH`.  So the
-      state the verdict reads is a constant of the construction, and the
-      `hint`'s "zero switches" was a theorem, not a coincidence.  Measured
-      at 2 distinct full probe states (the two `cell7` values, nothing
-      else) over exhaustive `n == 3`, 200 sampled at four and 12 at five —
-      169628 probes, code index 4 every time, hint suppressed so the scan's
-      own verdict was recorded.  Acceptance is byte equality on 468 tables
-      (exhaustive three, 200 at four, 12 at five): **0 differ**.  The scan
-      survives as the specification oracle in
-      `test_sculpt_pool_code_matches_scan`, and `_find_pool` keeps its own
-      scan — it asks the same question of the *derivation* path, whose
-      joints are not clamped to this state.
-      **What the entry that opened this got wrong, worth not repeating.**
-      It read "14.5s of a 17.9s warm five-input build" as the cost of the
-      scan.  That was cumulative time in `_mux_probe`, and the scan was the
-      smaller half: the `hint` already skipped the list on every round but
-      the first, so naming the code is worth about 10% (~3.1s to ~2.8s
-      warm), and `_pool_reaches` profiles at 3% afterwards.  The bulk of
-      `_mux_probe` is the *column derivation* — the walk and clamp over
-      every row, once a round — which is a different question and is not
-      closed by this constant.  A cumulative-time attribution names the
-      caller, not the cost; the value here is the rule, not the seconds.
-      **The round loop itself does not close, and the reason is
-      structural.**  A round is provably clean above the frontier — over
-      36864 round transitions at exhaustive `n == 3`, **0** moved a row
-      above the frontier, which is the monotonicity that bounds the loop —
-      but **27656 of 36864 (75%) moved a row below it**, exactly the
-      "value-dependent cascade debris" the section comment predicts for
-      rows that cross `C - 1` on the way back.  So the post-fix column is
-      not predictable without walking, the frontier sequence cannot be
-      computed up front, and the loop stays.  Only the search inside it
-      was removable.
-  The five entries above stay as the record of what each search was and
-  what named it.  SLOW ACV MAMMALIAN is the worked precedent for what
-  closing one buys: its own search was replaced by an arithmetic
-  construction once the `j1` sweep turned out to be a residue solve, taking
-  the contract sweep entry from 3.04s to 0.02s.  The move is always the
-  same — name what the search returns rather than caching the search.
 - **ArrowQueue's reusable drain** — a fixed-block leaf drain (rather than a
   staircase) is verified correct and written up in
   `docs/generator-optimizations.md`, but unshipped: it only wins from n≥5,
@@ -727,271 +414,3 @@ open:
   every shipped generator covers `n <= 2` at minimum.  6-5 is the one
   documented wall left (`docs/limitations.md`); %^2^-1 is partly lifted with
   the rest open.
-- **The remaining literal tables in `tools/boolean/`** — swept by AST over
-  every module in `src/`, classified by provenance, and each one probed
-  rather than read.  **Four closed and are shipped; the rest are not
-  candidates**, with the evidence for each recorded so the sweep is
-  not re-run from scratch.  The standing rule ("a named rule,
-  never a search or a frozen table") is about *frozen search output* — a
-  measured cover or a tuned ordering over a proven-total structure is a
-  different artefact and converting one trades a table for a search,
-  which is backwards.
-  Two method notes from the pass that closed `_SCHEDULES`, both of which
-  cost time here: **the multiplicity of a table can be the finding.**
-  Four schedules per arity looked like a cover and were a size contest —
-  every one served every table — and that is what turned "collapse ten
-  tuples" into "find one shape".  And **a longer entry can be the
-  collapsible one**: length-optimal entries are incompressible *because*
-  they are optimal, so the family that closes is found by relaxing size,
-  not by chasing the shipped bytes.  Both closures that needed a new
-  construction (`_LADDER_GADGETS`, `_LAWS`) came from paying characters
-  for uniformity; every attempt to reproduce a minimal entry exactly
-  failed.
-    - **`_FOLD_SERVED` (%^2^-1)** — **closed; shipped** at `57d4c0bb`.  The
-      twelve-entry frozenset is now `_fold_served()`.  Its comment called
-      the four absences a corpus measurement; they are structural.
-      `delta` is set when every middle index `{(r-1)//2, r//2}` is `1`, and
-      for `r` of 2, 3 and 4 that set contains index 1, so `delta` implies
-      `pat[1]` and `(2,1,0)`, `(3,1,0)`, `(4,1,0)` cannot be built; at
-      `r == 3` index 1 is the only middle, so the implication runs both
-      ways and `(3,0,1)` dies too; at `r == 5` the middles are `{2}`,
-      which frees index 1 and is why `(5,1,0)` is served where `(4,1,0)`
-      is not.  **The implication is one-directional** — `(2,0,1)` and
-      `(4,0,1)` are reachable, so the obvious `delta == pat1` predicate
-      looks right on the tabulated keys and silently drops two served
-      ones.  Enumerating every run pattern to `r == 12` reproduces the set
-      exactly; `test_fold_served_is_reachability` re-derives it each run.
-      Byte-identical on all 272 tables at `n <= 3`, and twelve
-      fold-served tables at `n == 4..7` execute every row correctly at
-      equal fill width.
-    - **`_WII2D_JUNCTIONS`** — **not a candidate.**  Not a freeze but the
-      *product* of one: `ea65a170` removed `_WII2D_BEAMS`, the
-      `(4, 16, 32)` width ladder, `_WII2D_MAX_STATE_BITS` and the
-      magnitude-first retry, leaving this catalogue plus the totality
-      argument for Horner in last place.  Order is a size preference, not
-      a correctness constraint: permuting the twenty merge entries (Horner
-      pinned last) changes 360 of 392 emitted programs with **zero
-      errors**, exhaustive at `n == 2, 3` and sampled at 4 and 5, and the
-      shipped order beats 7 of 8 random permutations on total size (57708
-      against up to 59557; worst case 382 against up to 476).  Recovering
-      the ordering would mean re-running that tuning.  **The negative is
-      now a proof, and the comment is fixed** (`8434def4`).  Widening the
-      earlier three failed sort keys to 1.9M candidates — 63 features
-      (field lengths, per-character counts, weighted op costs) in every
-      1-to-3-deep lexicographic composition, both directions — yields
-      **zero** monotone along the shipped sequence, against a positive
-      control recovering 172 keys for a deliberately sorted list.  Two
-      adjacent *descents* in total length (index 10→11 and 17→18) close
-      it outright: no key monotone in length can order this table, so no
-      wider battery is worth running.  The old "cheapest first" claim
-      was false and undercounted — `('', '0')` sits behind **six**
-      two-character entries, not three, and the table holds **42**
-      total-character inversions across two regions.  The header now
-      reads "in merge order", so a reader cannot mistake a size-tuned
-      preference for a cost sort.
-    - **`_SLICE_YIELD_ORDER` (Minifuck)** — **derived; the derivation is
-      now checked** (`8434def4`).  The order is the ten slices ranked by
-      *marginal* first-hit column yield at `n == 4` — what each slice is
-      first to reach walking the plain enumeration, not what it could
-      place alone, which ranks them differently and was the ambiguity
-      that made this look frozen.  All ten counts differ (2874 best, 424
-      worst, matching the figures the comment already quoted), so
-      descending order is total and needs no tie-break, and
-      `test_the_slice_order_is_its_measured_yield` reproduces the tuple
-      exactly from `_staging_index(4)` each run.  A stated measurement is
-      not a checked one, and this table is **dormant, not dead** — so
-      nothing else would have caught it drifting.  Unreachable as
-      shipped — `_slices` returns the plain
-      enumeration at every arity because `_STAGING_BUDGET` and
-      `_STAGING_BUDGET_N5` are both `None` and nothing outside the tests
-      assigns them — but a working knob rather than dead code.  With
-      a budget set at `n == 4`, the only state that reaches it, the frozen
-      order and the plain order disagree on **3 of 8 tables about whether
-      a staging is found at all** (budget 2000) and emit a different
-      template on one (budget 20000).  Deleting it would silently change
-      behaviour for the documented slow-machine case, whose surrounding
-      machinery is live and tested by
-      `test_a_budget_gives_up_length_not_coverage`.  Whether the frozen
-      order is *better* is **unmeasured**: over 40 random tables 35-38
-      decline at every budget tried, leaving 2-5 to compare, and those
-      split both ways.  Settling it needs a corpus sized to the decline
-      rate, which is a measurement task and not a retirement.
-    - **`_WIDE_A_VALS` (%^2^-1)** — **closed; shipped** at `765f9564`.
-      The seven multipliers are the closure of the two commands its own
-      comment already named — `m` doubles, `p` negates — so they are the
-      signed powers of two plus the erase, and only the *bound* is a
-      measurement (`|a| <= 4` reaches no further table).  Now generated
-      from `_WIDE_A_LIMIT`, byte-identical **including order**, which is
-      load-bearing: the wide search takes the first spelling that
-      behaves, so iteration order decides the winning spelling even
-      though it cannot change what is reachable.  Missed by every earlier
-      sweep because a seven-element tuple does not look like a table;
-      found by grepping module-level literals for *provenance language*
-      in their comments, which is the method note below applied.
-    - **`_LADDERS` (%^2^-1)** — **not a candidate; a minimal cover, and
-      its stated price was wrong by 240x.**  Eight ladders chosen by
-      greedy set cover over 150 yielding paths.  Re-probed: the cover is
-      **minimal** (dropping any one strands tables — 4,4,4,2,2,2,2,2) and
-      load-bearing on size (removing the ladder path costs no correctness
-      but **+88%** over the twenty it serves, 31615 → 59457).  The
-      comment priced the full-grid alternative at ~50s; folding all 256
-      takes **0.21s**.  What that alternative actually changes is reach —
-      50 tables against 26 — with all 24 extras already building by
-      earlier paths, so widening moves which path claims them.  The
-      defence is assignment stability, not build cost; comment corrected.
-    - **`_LADDER_GADGETS` (%^2^-1)** — **closed; the spellings are
-      constructed.**  The old comment's claim that deriving them meant
-      re-running the rung composition was wrong: every gadget is
-      `PRE + "psp" + MID + "ipsp"`, where `PRE` (`"s"*k + "m"*j`) spells
-      the outer cut as `ceil(3004/2^j) - 2k` — reproducing the measured
-      3004/1502/1500/751 exactly — and `MID`'s subtractions are *pinned*
-      by normalisation: the class surviving the first reset must land on
-      2 and a rung at 0 on 3, forcing the deficit `max(0, 2m - m*b - 4)`.
-      That formula predicts "msm" (4), "m" (0), "mimm" (12) and predicts
-      the `(1500, 4)` gadget cannot normalise rung 0 (it would need −8),
-      matching its measured garbage there.  `_ladder_gadget(cut, slope)`
-      emits all five byte-identically from `_LADDER_CUTS`; the frozen
-      strings moved into the suite as the fixture
-      (`test_ladder_gadgets_match_frozen_spellings`).  The five pairs
-      that remain are a measured cover in the `_LADDERS` sense, with the
-      analogous defence now measured: folding every comparator the
-      grammar spells (83, one per outer band per slope) serves nothing
-      the five miss — ten extra tables all build through earlier paths,
-      and four would flip away from the deep band/fold, so the full
-      family is a behaviour change, not reach.  Going fully literal-free
-      is therefore a priced option, not a gap.
-    - **`_TWO_INPUT_SHORT` (Super SNUSP)** — **not a candidate.**  Five
-      hand-found forms that beat the general ANF path by reusing `48`;
-      deleting them is safe (ANF is correct and total) but regresses size,
-      which is the metric.
-    - Method note, since element count misled this sweep once: a small
-      literal can hold a large frozen table.  The `>= 4`-element threshold
-      that found the six above would have missed the ten separation
-      schedules (three keys, one per arity) entirely — and their
-      replacement `_LAWS` is three keys too, so the threshold would miss
-      it again.  Sweep by provenance, not by size.
-    - **`_SCHEDULES` (123)** — **closed; the table is gone** (`56c3754a`).
-      The ten frozen schedules are replaced by `_LAWS`, one separation
-      *shape* per arity.  Two findings reframed it.  First, the
-      multiplicity bought nothing structural: **every schedule serves
-      every table at `n >= 2`** (4/4 candidates build all 16 and all 256),
-      so the four per arity were a size contest over an already-total
-      structure, not a cover.  Second, the reason a walk-only law fails
-      here: after a bare fill the rows differ in their **marks**, not
-      their positions (8 distinct states for 8 rows, all sharing a
-      parity), so no walk can split them and the separator has to be a
-      *test* whose displacement leaves some rows marked and others clear.
-      That collapses the grammar — one constant pre-fill walk, then pure
-      tests alternating `1`-runs and `2`-runs, no raw repositioning part
-      at all.  Selecting by least mean template length, one rule at every
-      arity, gives `(0, ())`, `(2, (3,2,4))`, `(3, (1,3,9,4))`; at
-      `n == 3` only **13 laws** cover all 256 tables and the winner leads
-      by 18%.  Price: **1.28x** (55238 characters over 276 tables against
-      43020; 1.02/1.26/1.29 by arity, worst single table 3.0x, best
-      0.62x), still 2.9x under `construct()`'s 158152.  All 276 replay
-      row by row, and `test_the_separation_law_is_the_least_mean`
-      re-derives the `n <= 2` constants by the same sweep each run.
-      **Two routes rejected first, both worth not re-running.** Deriving
-      the shipped moves by shortest-then-lex search reproduces 3 of 4 at
-      `n == 2` but is **not cap-stable** at `n == 3` — widening the
-      per-field cap returns *costlier* tuples (14→22, 11→25), so those
-      constants are not canonical and re-freezing a search's output only
-      moves the table.  And the retired synchronized pipeline's geometry
-      *is* a real closed form — `marks[i] = (i+1)*2**n + 1`,
-      `ws[i] = 2**(n-i)`, which its own comment called "an observation,
-      not a totality argument" but which **separates at `n = 4` and `5`**,
-      two arities past its freeze — yet costs **2.65x**, because the
-      merge choreography that buys a mark per input is what makes
-      gap-halving work at all.
-    - Re-audit additions (2026-09-05, second pass): **`_PLANS`
-      (Minifuck)** is already the accepted end state — five semantic
-      parameter tuples rendered by `_step`, an ablation-measured cover,
-      the same class as `_LADDERS`; not a candidate.  **`_RING_ROWS` /
-      `_SHARED_ROWS` (Streetcode, boolean and text)** are hand-designed
-      2D program blocks mirrored from the hand-written test program —
-      code, not data, the assembly-template class.  **`_POOL`,
-      `_DEGENERATE_COLUMNS`, `_STAGED_ARITIES` (Minifuck)** are spec
-      constants (ASCII `'0'` bits with the rule in the comment; the
-      complete `<= 1`-bit column enumeration; an arity range); `_SEPS`
-      is a measured cover with its ablation recorded in-line.  A sweep
-      over long *string* literals in `tools/` (the hole the AST
-      element-count sweep leaves) found nothing frozen — four hits, all
-      spec or derived.  Six-Five has no literal table; its capped input-
-      order search is live code with its cost trade documented, a
-      different artefact class.
-    - Third pass (2026-09-06), re-probing rather than quoting the five
-      covers — which is what caught three wrong stated numbers.
-      **`_PLANS`**: the *spelling* is already a construction (`_step`
-      derives each code from `(carry, backs, odd)` by the `ceil(k/2)`
-      law); only the values are a cover, and drop-one strands
-      0/0/20/18/8.  **Plans 0 and 1 strand nothing** — dropping both is
-      byte-identical at `n == 3` exhaustive (256/256 build, all rows
-      correct, 60382 bytes either way) and over 60 sampled `n == 4`
-      tables (30799 bytes either way).  A priced deletion, not a
-      closure: the remaining defence is unsampled `n >= 4` behaviour.
-      **`_TWO_INPUT_SHORT`** confirmed exactly — with it monkeypatched
-      away all 16 tables still build and execute correctly (including
-      the `"0000"` constant, the case that could have changed how many
-      inputs are read), at **+138.9%** over the five it covers.
-      **`ANCHORS`** — `make_ztoalc_table.py --check` reproduces all 21;
-      empirical Collatz records with a working regenerator is already
-      the right shape.  **`_SEPS` — population recovered; the comment is
-      corrected and the earlier probes were right.**  The population is
-      **109 complement pairs of three-input tables that are
-      non-degenerate *and* depend on all three inputs** (128 pairs, less 3
-      degenerate, less 16 with an ignored input).  The comment said only
-      "non-degenerate", which is 125, and that missing projection filter
-      is the entire reason two re-probes could not reconcile it.  The
-      definition is pinned by the holdout, not by its size: under it the
-      enumeration reaches 108 and the one miss is `01101101`, the table
-      the comment names.  The "252-pair population" was never a
-      population — it is `len(_staging_index(3))`, twice 126 because the
-      index holds each column and its complement.
-      Both disputed figures were the *comment's* error: two separators
-      reach **49** of 109, not 99 (likely copied from the settle line
-      below it, whose 99 is correct), and the first two leave **126** of
-      252 columns, not 92.  The direction of the two-separator argument
-      survives and is stronger than stated.  A test re-derives the
-      population and the holdout each run.
-      One method note came out of it, the module's *third* false negative
-      of this shape: the settle ablation first measured 108 because it
-      patched `_stagings`, which reads like the enumeration and has zero
-      callers — `_staging_index` walks `_slices`, and `@cache` hides the
-      rest.  Instrument what the shipped entry calls, and carry a control
-      that must move.
-      The `_INSERT_ARITIES` option filed here is **closed: it is a
-      no-op, not a priced win.**  This said adding 3 reaches
-      `01101101`/`10010010` "changing exactly 2 of 256 templates
-      (60382 → 60128)".  Re-measured, the reach is real and the price is
-      not: the holdout does enter the index (252 → 256 columns) and
-      `_first_staging` returns `(0, 0, '[[[[<[[[', 22)` for it, but
-      **0 of 256 shipped templates change and the corpus stays 60382
-      bytes.**  `_solve` reaches `_mux` before `_staged` for a
-      fully-essential three-input table, and the sculpt already builds
-      the holdout at 332 bytes — exactly what the new staging builds it
-      at, verified by executing both on all 8 rows.  So there is nothing
-      to buy: the gap the option was meant to close was already closed
-      by another route at the same size.
-      Note the figure was not merely stale.  The sculpt route landed at
-      `604ea14c`/`2c72c9d0` (2026-09-02) and this figure was written at
-      `318c1357` (2026-09-06), four days later — in the commit whose own
-      subject is "fix two prices".  It did not reproduce when it was
-      written, which is the argument for executing a size claim rather
-      than recording one.
-      Also swept module-level literals by *provenance language* rather
-      than element count, which found three the size sweeps missed:
-      `_WIDE_A_VALS` (closed, above), **`_X0` (A Painter Ant)** — dead
-      code, its own comment said "Unused", one definition and zero uses,
-      now deleted — and **`_COND` (Polynomial)** plus
-      **`_PRINTED_COLUMNS` (Minifuck)**, which are not tables at all: a
-      spec dispatch on instruction codes, and an empty runtime memo.
-- **NoComment's tape size** — **closed; already shipped.**  The `tape`
-  argument on `run`/`nocomment` is the whole mechanism this item proposed,
-  and `n == 12` at `tape=16384` already builds, runs and is asserted by
-  `test_a_bigger_tape_lifts_the_cap`, with the lifted bound recorded in
-  `docs/limitations.md`.  Measured source is 27158 characters at `n == 11`
-  and 51407 at `n == 12`; the default 4096 refuses `n == 12` because the
-  generator needs cell 4650, and it stays 4096 because the size is
-  observable through the wrap.  Nothing in the repo calls for `n >= 12`, and
-  raising the tape further buys little: the wide path's *construction* walls
-  well before the tape does (an `n == 15` build does not finish).

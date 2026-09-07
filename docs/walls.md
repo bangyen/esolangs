@@ -1095,3 +1095,112 @@ state-cycle detection matters beyond speed: it removes the deadlock hazard
 entirely for the machines it covers.  The one alarm that stays by design is
 `test_api.py`'s `+[]` case, a feature test of `esolangs.run`'s `timeout`
 parameter rather than a hang-detection strategy.
+
+## Closing a generator's search: the traps that cost a round twice
+
+Five boolean generators searched for their answer and now name it instead
+(Eval, `%^2^-1`, 123, Minifuck's staging index, Minifuck's mux sculpt).  The
+constructions themselves live in the source and the commit history.  What
+belongs here is the class of negative each closure produced: results that
+look like a clean verdict and are an artifact of how the question was asked,
+plus the two sub-searches that provably do **not** close.
+
+**Instrument the function the shipped entry actually calls, over enough
+tables to see it fire.**  A sweep for live search frontiers reported a false
+negative *twice* on the same module.  It first missed Minifuck by patching
+`_derived_plans`, the offline sibling, which fires zero times in a real build
+— the runtime path reaches the enumeration through `_staging_index`.  Then,
+having closed that, it declared Minifuck done while `_mux_probe` was still
+probing the interpreter per table, because the tables sampled happened not to
+route through the sculpt.  Patching the wrong name, or the right name on too
+few tables, reports a clean negative.  Sweeping for the *word* "search" finds
+mostly prose describing searches already replaced; sweep for a live frontier.
+
+**A cumulative-time attribution names the caller, not the cost.**  The mux
+sculpt entry was opened by reading "14.5s of a 17.9s warm five-input build"
+as the cost of the pool scan.  That was cumulative time in `_mux_probe`, and
+the scan was the smaller half: the `hint` already skipped the list on every
+round but the first, so naming the code is worth about 10% (~3.1s to ~2.8s
+warm) and `_pool_reaches` profiles at 3% afterwards.  The bulk is the column
+derivation — the walk and clamp over every row, once a round — a different
+question that the constant does not close.
+
+**Minifuck's sculpting round loop does not close, and the reason is
+structural.**  A round is provably clean *above* the frontier — over 36864
+round transitions at exhaustive `n == 3`, **0** moved a row above it, which
+is the monotonicity that bounds the loop — but **27656 of 36864 (75%) moved a
+row below it**, the value-dependent cascade debris predicted for rows that
+cross `C - 1` on the way back.  So the post-fix column is not predictable
+without walking, the frontier sequence cannot be computed up front, and the
+loop stays.  Only the search inside it was removable.
+
+**Eval's uncapped reorder metric has no small exact theory.**  Two hypotheses
+failed before the catalog was named, and are worth not rediscovering:
+minimal op strings at `n >= 5` zigzag the cursor, and contracting runs to
+units is lossy — 133 arrangements at `n <= 7` are optimal only via maneuvers
+that transiently split a run.  The closed form therefore names the *capped*
+catalog (frozen at 735 entries from `n == 12`, checked through `n == 16`),
+not a distance formula.
+
+**`%^2^-1`'s fold-skeleton key is ambiguous, so the generalisation is a rule
+rather than a wider table.**  The `(r, delta, pat[1])` key collides at
+`r == 6` — patterns `011000` and `110000` share it and need different plans.
+Tabulating further would encode the collision; the five-case rule loop is
+what covers `r > 5`.
+
+**A one-directional implication reads as an equivalence on the tabulated
+keys.**  `_FOLD_SERVED`'s four absences are structural, not a corpus
+measurement: `delta` is set when every middle index `{(r-1)//2, r//2}` is
+`1`, and for `r` of 2, 3 and 4 that set contains index 1, so `delta` implies
+`pat[1]`.  But the converse fails — `(2,0,1)` and `(4,0,1)` are reachable —
+so the obvious `delta == pat1` predicate looks right on the tabulated keys
+and silently drops two served ones.  Enumerating every run pattern to
+`r == 12` reproduces the set exactly.
+
+**A frozen table is not automatically a candidate for collapse.**  The
+standing rule ("a named rule, never a search or a frozen table") is about
+frozen *search output*.  A measured cover or a tuned ordering over a
+proven-total structure is a different artefact, and converting one trades a
+table for a search, which is backwards.  Two method notes from the pass that
+closed `_SCHEDULES`: **the multiplicity of a table can be the finding** —
+four schedules per arity looked like a cover and were a size contest, every
+one serving every table, which is what turned "collapse ten tuples" into
+"find one shape".  And **a longer entry can be the collapsible one** —
+length-optimal entries are incompressible *because* they are optimal, so the
+family that closes is found by relaxing size, not by chasing shipped bytes.
+Both closures needing a new construction (`_LADDER_GADGETS`, `_LAWS`) came
+from paying characters for uniformity; every attempt to reproduce a minimal
+entry exactly failed.
+
+**`_WII2D_JUNCTIONS`' ordering is a size preference, not a correctness
+constraint**, and recovering it would mean re-running a tuning: permuting the
+twenty merge entries (Horner pinned last) changes 360 of 392 emitted programs
+with **zero errors**, exhaustive at `n == 2, 3` and sampled at 4 and 5, and
+the shipped order beats 7 of 8 random permutations on total size (57708
+against up to 59557).
+
+## Taglate (an odd-sized essential set costs nothing to widen)
+
+A refuted premise, kept so the reduction pattern is not re-attempted here.
+It was believed that widening `taglate`'s window by one adjacent ignored
+input "costs a tier back", which would have made an odd-sized essential set
+the one case dependency reduction could not exploit.  It does not.
+`taglate` already pads any odd `n` to `n_eff = n + 1` with a leading ghost
+digit (`other.py:630-637`), and the whole `_even_reduce`/`_odd_reduce`
+cascade is written for even `n_eff` only, so an odd-sized essential set lands
+on the same tier either way.  Measured on parity tables (all inputs
+essential, so no reduction fires):
+
+| `n` | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| chars | 14 | 121 | 451 | 451 | 1521 | 1521 | 5499 | 5499 |
+
+Odd `n` costs exactly what `n + 1` costs, so the sidestep is already near
+optimal — its marginal cost is one `h` read plus a few selector characters,
+not a tier.  A real saving would need `taglate`'s core rewritten to handle
+odd `n_eff` natively: a new odd-parity cascade and a replacement for
+`_SEL1_N2`, which is committed to exactly two remaining inputs
+(`other.py:355-368`), plus the seed/prefix formulas that assume even
+`n_eff`.  That is new machinery rather than another instance of the
+reduction pattern, its payoff is unmeasured, and it would break the
+read-count contract `test_reduced_programs_still_read_every_input` asserts.
