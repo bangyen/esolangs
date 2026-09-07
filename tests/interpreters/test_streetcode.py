@@ -407,11 +407,20 @@ class TestStreetcodeAmbiguousTurns:
         The numbers are properties of the committed examples.  If an
         example is redrawn they change with it, and the fix is to re-derive
         them rather than to loosen the assertion.
+
+        They fell from 469 and 316 when the search stopped walking into
+        *wrong-side* states -- the oncoming lane travelled backwards, which
+        the geometry admits but the car can never occupy (see
+        :func:`_drives_on_the_right`).  Those states have no successor of
+        their own, so they used to look like wedged streets and made
+        ``_validate_total`` reject correct programs.  Every state the car
+        actually visits in these examples is right-hand-side, so nothing
+        the run needs was pruned.
         """
         root = Path(__file__).resolve().parents[2]
         for path, expected in (
-            ("examples/hello-world/streetcode.txt", 469),
-            ("examples/boolean/streetcode.txt", 316),
+            ("examples/hello-world/streetcode.txt", 384),
+            ("examples/boolean/streetcode.txt", 268),
         ):
             code = (root / path).read_text().split("\n")
             if code and code[-1] == "":

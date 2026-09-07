@@ -534,6 +534,36 @@ def _left(heading: _Heading) -> _Heading:
     return _HEADINGS[(_HEADINGS.index(heading) - 1) % 4]
 
 
+def _drives_on_the_right(grid: _Grid, state: _State) -> bool:
+    """Whether a car in ``state`` is on the right-hand side of its street.
+
+    Streets are two-way and two cells wide, and the car drives on the
+    right -- so each lane of a street is one-way, and a lane is the car's
+    own only when the wall it hugs is on its *right*.  A state with the
+    wall on the left is the oncoming lane travelled backwards: geometry
+    the drive-state search can name, but the car can never occupy.
+
+    The distinction matters to :meth:`_Machine._drive_states`.  That
+    search probes each state under both branch conditions, so it walks
+    into successors a real run never reaches -- including wrong-side
+    ones, which have no successor of their own and so looked like the
+    wedged streets :meth:`_Machine._validate_total` exists to reject.
+    That made the check reject correct programs: a nested loop whose
+    lanes are drawn tightly enough puts a wrong-side state in the graph
+    while the car passes it only on the legal side.
+
+    A cell with walls on both sides, or on neither, is not a
+    right-hand-side violation -- the first is a one-wide corridor the
+    width check has already rejected, and the second is open road where
+    the hug has nothing to follow yet.  Only "wall on the left and open
+    on the right" is the oncoming lane.
+    """
+    car = _Car(state.row, state.col, state.heading)
+    open_right = _open_toward(grid, car, _right(state.heading))
+    open_left = _open_toward(grid, car, _left(state.heading))
+    return not (open_right and not open_left)
+
+
 def _opposite(heading: _Heading) -> _Heading:
     """Return the heading 180 degrees from ``heading``."""
     return _HEADINGS[(_HEADINGS.index(heading) + 2) % 4]
@@ -1611,6 +1641,7 @@ class _Machine:
                         successor is not None
                         and successor != "halt"
                         and successor not in graph
+                        and _drives_on_the_right(self.grid, successor)
                     ):
                         graph[successor] = {}
                         pending.append(successor)
