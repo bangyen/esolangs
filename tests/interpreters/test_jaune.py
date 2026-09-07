@@ -155,6 +155,78 @@ class TestControlFlow:
         assert run_program("1@2@^.1$5+;2$3+;") == "8"
 
 
+class TestComputedDispatch:
+    """``v`` as the operand of a jump or a call.
+
+    The grammar makes ``v`` a ``number`` and every one of ``: ? ! $ @``
+    takes a ``number``, so the input names the label to jump to or the
+    subroutine to call.  These four programs are the divergence probes the
+    roadmap recorded: each raised ``ValueError`` before the forms existed,
+    and the compiler emitted a switch block for each and miscompiled it.
+    """
+
+    def test_the_input_names_the_subroutine(self) -> None:
+        assert run_program("v@^.1$5+;2$3+;", "1\n") == "5"
+        assert run_program("v@^.1$5+;2$3+;", "2\n") == "3"
+
+    def test_jump_on_nonzero_to_the_named_label(self) -> None:
+        assert run_program("+v?%^.3:7+^.", "3\n") == "8"
+
+    def test_jump_on_zero_to_the_named_label(self) -> None:
+        assert run_program("v!%^.3:7+^.", "3\n") == "7"
+
+    def test_a_read_operand_is_consumed_when_the_branch_is_not_taken(
+        self,
+    ) -> None:
+        """The number is evaluated to have a command at all.
+
+        So the digit is taken whether or not the jump follows it, and the
+        next read sees the *following* character.  Both programs print the
+        second digit, not the first.
+        """
+        assert run_program("v?v^.3:", "3\n8\n") == "8"
+        assert run_program("+v!v^.3:", "3\n8\n") == "8"
+
+    def test_an_undefined_named_target_halts(self) -> None:
+        with pytest.raises(HaltError, match="undefined subroutine 7"):
+            run_program("v@^.1$5+;", "7\n")
+        with pytest.raises(HaltError, match="undefined label 4"):
+            run_program("v?^.1:9+;", "4\n")
+
+    def test_the_target_is_looked_up_before_the_branch_is_tested(self) -> None:
+        """An undefined label halts even when the jump would not be taken.
+
+        This mirrors the static ``?``/``!``, which call ``_find`` and raise
+        before testing the cell -- one rule for the operator, whichever
+        spelling names its operand.
+        """
+        with pytest.raises(HaltError, match="undefined label 1"):
+            run_program("v?^.9:", "1\n")
+
+    def test_a_read_marker_defines_nothing(self) -> None:
+        """``v:`` and ``v$`` are grammatical but have no findable identity.
+
+        ``_find`` matches a parsed argument, and a marker read at runtime
+        has none, so both are dropped at parse -- which is what the
+        compiler's ``prep`` does with them.
+        """
+        from esolangs.interpreters.tape_based.jaune import _parse
+
+        assert [c.op for c in _parse("v:5+")] == ["+"]
+        assert [c.op for c in _parse("v$5+")] == ["+"]
+        assert run_program("v:5+^.") == "5"
+        assert run_program("v$5+^.") == "5"
+
+    def test_a_loop_reading_its_own_target_exhausts_its_input(self) -> None:
+        """Each pass of the loop reads again, so input decides the end.
+
+        The cell is never cleared, so the jump is taken every time and the
+        run ends on the read rather than on the branch.
+        """
+        with pytest.raises(EOFError):
+            run_program("5+1:v?^.", "1\n1\n1\n")
+
+
 class TestParsing:
     def test_bare_number_is_ignored(self) -> None:
         # a number with no following operator is a no-op
