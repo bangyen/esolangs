@@ -45,19 +45,28 @@ a candidate must satisfy before it is added.
    interpreters and comparing, never by reading the code.  Each raise site
    an admitted transpiler keeps must be reached by a test.
 
-The four that meet this are ``brainfuck -> 3D Brainfuck``,
-``brainfuck -> Painfuck``, ``BFStack -> brainfuck`` and
-``Decleq -> S*bleq``.  The six removed, and why each failed, are recorded
-under "Transpilers: the admission bar, and what it removed" in
-``docs/limitations.md``.
+The five that meet this are ``brainfuck -> 3D Brainfuck``,
+``brainfuck -> Painfuck``, ``brainfuck -> Streetcode``,
+``BFStack -> brainfuck`` and ``Decleq -> S*bleq``.  The six removed, and why
+each failed, are recorded under "Transpilers: the admission bar, and what it
+removed" in ``docs/limitations.md``.
+
+``brainfuck -> Streetcode`` lowers brainfuck's tape to Streetcode's road
+network: a loop is a room the car laps until the tested cell is zero.  It is
+in ``tools/_bf_streetcode.py`` rather than here because its geometry pass is
+large; the wraparound Streetcode lacks is handled by a brainfuck-level
+canonicalizer before the drawing, so the drawing stays total.
 """
 
 from collections.abc import Callable
 from typing import Any
 
+from esolangs.tools._bf_streetcode import bf_to_streetcode
+
 __all__ = [
     "TRANSPILERS",
     "bf_to_painfuck",
+    "bf_to_streetcode",
     "bf_to_three_d_brainfuck",
     "bfstack_to_bf",
     "decleq_to_sbleq",
@@ -533,6 +542,7 @@ def decleq_to_sbleq(program: str) -> str:
 TRANSPILERS: dict[tuple[str, str], Callable[..., str]] = {
     ("brainfuck", "3D Brainfuck"): bf_to_three_d_brainfuck,
     ("brainfuck", "Painfuck"): bf_to_painfuck,
+    ("brainfuck", "Streetcode"): bf_to_streetcode,
     ("BFStack", "brainfuck"): bfstack_to_bf,
     ("Decleq", "S*bleq"): decleq_to_sbleq,
 }
