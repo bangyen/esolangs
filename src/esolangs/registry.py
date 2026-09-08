@@ -320,6 +320,13 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.dimensional,
         id="dimensional",
     ),
+    "DINAC": Language(
+        "DINAC",
+        _generate.dinac,
+        "other.dinac",
+        boolean=_boolean.dinac,
+        id="dinac",
+    ),
     "Eval": Language(
         "Eval",
         _generate.eval,

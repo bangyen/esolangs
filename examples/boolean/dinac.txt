@@ -1,0 +1,11 @@
+SET c0:\0
+IN c0
+SET c1:\0
+IN c1
+IF c0 = '1
+    IF c1 = '1
+        OUT '1
+    ELSE
+        OUT '0
+ELSE
+    OUT '0

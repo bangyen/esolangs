@@ -542,6 +542,7 @@ def _register() -> None:
         "decleq": _reader(b.decleq, "register_based.decleq"),
         "dig": _reader(b.dig, "grid_based.dig", split=True),
         "dimensional": _reader(b.dimensional, "tape_based.dimensional"),
+        "dinac": _reader(b.dinac, "other.dinac"),
         "factor": _reader(b.factor, "tape_based.factor"),
         # Fargo reads one *number* before the program starts, not a bit per
         # line, and ``@ k`` indexes that number's bits.  The boolean
