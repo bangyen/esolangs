@@ -33,12 +33,11 @@ testable boolean-generator route. The assessed-and-rejected ledger is in
   source-machine emulator, not command transliteration. It needs a constructed
   Streetcode-program corpus/fuzzer and resolution of the reference
   interpreter's junction and post-corner gaps.
-- **Scale Line boolean drawings.** The standalone Line generator has
-  end-to-end measurements through seven inputs, while its regression suite
-  reaches five; eight and above are unmeasured. Establish the renderer →
-  extractor → simulator frontier with an all-leaf-reaching corpus, then only
-  pursue subtree sharing or a denser layout if that measurement finds a real
-  resource limit.
+- **Scale Line boolean drawings.** The standalone Line generator reaches
+  eight inputs end to end, with all 256 parity leaves correct; its regression
+  suite now carries that case. Nine and above are unmeasured. Establish the
+  renderer → extractor → simulator frontier, then only pursue subtree sharing
+  or a denser layout if that measurement finds a real resource limit.
 ## Conditional follow-up
 
 - **ArrowQueue reusable drain.** Ship the verified deep-fold drain only if a
