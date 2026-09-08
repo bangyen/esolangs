@@ -11,6 +11,7 @@ than the one they asked for.
 """
 
 import importlib.util
+import tomllib
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -94,3 +95,42 @@ class TestLineStepIsNamedOnce:
         names = [name for name, _ in verify.STEPS]
         assert verify.LINE_STEP in names
         assert verify.LINE_STEP in verify.STEP_SCOPE
+
+
+class TestPytestScopeCollects:
+    """A scoped path pytest collects nothing from fails the run it narrows.
+
+    Scoping may only drop work that provably could not have broken, so a
+    changed file whose tests live elsewhere has to widen rather than be run
+    as though it were the test.
+    """
+
+    def test_a_helper_module_widens(self) -> None:
+        """A non-collected module under ``tests/`` is imported, not run.
+
+        Aimed at itself it collects nothing, which pytest exits non-zero for
+        -- the failure this guards against -- and the tests that import it
+        are not named by the path, so only the whole suite covers it.
+        """
+        verify = load_script()
+        scope = verify._pytest_scope(["tests/tools/boolean_oracles.py"])  # noqa: SLF001
+        assert scope == verify.WHOLE_SUITE
+
+    def test_a_test_module_stays_scoped(self) -> None:
+        """The widening is narrow: a real test module still runs alone."""
+        verify = load_script()
+        scope = verify._pytest_scope(["tests/test_vm.py"])  # noqa: SLF001
+        assert scope == ["tests/test_vm.py"]
+
+    def test_the_patterns_match_pyproject(self) -> None:
+        """``COLLECTED_PATTERNS`` is pytest's ``python_files``, not a guess.
+
+        A pattern here that pyproject does not share would either widen for
+        files pytest collects or, worse, scope to files it does not.
+        """
+        verify = load_script()
+        config = tomllib.loads(
+            (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        )
+        patterns = config["tool"]["pytest"]["ini_options"]["python_files"]
+        assert list(verify.COLLECTED_PATTERNS) == patterns
