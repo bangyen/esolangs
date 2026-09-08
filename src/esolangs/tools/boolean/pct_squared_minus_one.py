@@ -1247,6 +1247,16 @@ def _deep_band(truth_table: str, n: int) -> str | None:
     shorter program it occasionally finds, so the check runs first and the
     enumeration is skipped when it cannot pay off.
     """
+    if n > _LIMIT // _BAND_UNIT:
+        # Each unit prices a whole residue system, so even the all-ones
+        # weighting costs ``n * 256`` of span and the budget tops out at
+        # eleven inputs.  A zero unit cannot rescue a table here either:
+        # only symmetric tables pass the screen below, and a symmetric
+        # table that ignores an input is constant -- which the cascade
+        # already served.  Refusing up front matters because the
+        # enumeration below walks ``(cap + 1) ** n`` tuples before its sum
+        # filter, hours at thirteen inputs, for a refusal this line proves.
+        return None
     if n > 4 and any(
         len({truth_table[r] for r in range(2**n) if bin(r).count("1") == pop}) > 1
         for pop in range(n + 1)
@@ -2656,9 +2666,8 @@ def _fold_span(state: _FoldState) -> int:
     )
 
 
-def _centred_setter(span: int) -> tuple[str, str, int, int] | None:
-    """Separate a span with equal-width upward and downward setters."""
-    total = span + 2
+def _split_setter(total: int) -> tuple[str, str, int, int] | None:
+    """Spell an up/down setter pair whose moves sum to ``total``."""
     middle = total // 2
     for up in range(max(2, middle - 8), min(total - 1, middle + 8) + 1):
         down = total - up
@@ -2669,11 +2678,37 @@ def _centred_setter(span: int) -> tuple[str, str, int, int] | None:
     return None
 
 
-def _interleaved_twelve(truth_table: str) -> str | None:
-    """Build all twelve-input tables by folding only the final two inputs."""
-    n = 12
+def _centred_setter(span: int) -> tuple[str, str, int, int] | None:
+    """Separate a span with equal-width upward and downward setters."""
+    return _split_setter(span + 2)
+
+
+def _interleaved_final_pair(truth_table: str, n: int) -> str | None:
+    """Build a table by laying a prefix ladder and folding the final two inputs.
+
+    The all-row fold ends at eleven inputs by counting: ``2**12`` distinct
+    positions span at least 4095, past what any laid ladder can hold.  This
+    route never holds all rows apart.  The first ``n - 2`` inputs lay as a
+    ladder whose points carry four-row cofactors; the next input splits them
+    into two-row cofactors -- at most four *distinct* ones -- which the fold
+    merges class by class; the last input splits the survivors into answer
+    bits for the ordinary two-class endgame.  Merging by cofactor class
+    rather than answer bit is what keeps every wipe's victim block
+    class-homogeneous, so the reduce is thousands of cheap merges rather
+    than the one-per-doubling starvation an answer-keyed interleave hits.
+
+    The prefix ladder is picked by the same rule the all-row fold uses: the
+    narrow uniform ladder while its footprint fits the workspace (ten
+    inputs, so twelve-input tables), and the packed distinct-subset-sum
+    ladder past that (eleven, so thirteen).  Fourteen inputs would need a
+    twelve-input prefix, and no ladder lays ``2**12`` distinct positions
+    inside the footprint -- the same counting wall, one stage later.
+    """
     prefix = n - 2
-    weights = _fold_uniform(prefix, _FOLD_NARROW_STEP)
+    narrow = _fold_uniform(prefix, _FOLD_NARROW_STEP)
+    weights = narrow if sum(narrow) <= _LIMIT else _fold_subset_weights(prefix)
+    if weights is None:
+        return None
     setters = _fold_setters(prefix, weights)
     positions = _fold_positions(prefix, weights)
     emitter = _FoldEmitter.__new__(_FoldEmitter)
@@ -2693,7 +2728,30 @@ def _interleaved_twelve(truth_table: str) -> str | None:
     def lay(index: int, *, cofactor: bool) -> tuple[str, str] | None:
         lo = min(emitter.pos.values())
         hi = max(emitter.pos.values())
-        got = _centred_setter(hi - lo)
+        span = hi - lo
+        if weights is narrow:
+            got = _centred_setter(span)
+        else:
+            # A compacted state's points can span past 3001, where disjoint
+            # bands no longer fit the workspace -- and with class-many
+            # points they are not needed.  Two children collide only when
+            # their parents sit exactly ``up + down`` apart, so the first
+            # even total that is no pair's distance splits collision-free,
+            # the same computed value the wipe rules land on.  Odd totals
+            # never spell: the identity has no odd-width hold.
+            dists = {
+                b - a
+                for a in emitter.pos.values()
+                for b in emitter.pos.values()
+                if b > a
+            }
+            got = None
+            for total in range(4, 2 * len(dists) + 8, 2):
+                if total in dists:
+                    continue
+                got = _split_setter(total)
+                if got is not None:
+                    break
         if got is None:
             return None
         zero, one, up, down = got
@@ -2754,6 +2812,29 @@ def _interleaved_twelve(truth_table: str) -> str | None:
             else:
                 emitter.rise(amount, rows)
 
+    if weights is not narrow:
+        # The packed ladder lays its rows at *unit* gaps, so every landing
+        # window is one already-occupied amount and the first wipe has no
+        # collision-free landing; the split below would double the points
+        # and put the span past the doubling bound, freezing that jam in.
+        # Compacted first -- one point per four-row cofactor, at most
+        # sixteen -- the state still spans only the ladder, where the
+        # doubling fires and regrows the gaps the conveyor needs, and every
+        # later stage works on class-many points rather than row-many.
+        compact = state()
+        # Sixteen live classes rather than two: case 2's window only ever
+        # serves its own class, so the conveyor hops more between merges --
+        # measured 11.3 ops per starting point where the two-class corpus
+        # fits slope 8.  Doubling the slope keeps the guard linear and the
+        # refusal path intact.
+        packed = _fold_reduce(
+            compact,
+            _cofactor_done,
+            budget=2 * _FOLD_STEP_SLOPE * len(compact) + _FOLD_STEP_SLACK,
+        )
+        if packed is None:
+            return None
+        emit(packed)
     first = lay(prefix, cofactor=True)
     if first is None:
         return None
@@ -2789,10 +2870,10 @@ def _interleaved_fold(truth_table: str, n: int) -> str | None:
     states; it is an executable replacement skeleton, not yet the large-state
     gap controller.  A miss lets the established fold try its ladders.
     """
-    if n == 12:
-        twelve = _interleaved_twelve(truth_table)
-        if twelve is not None:
-            return twelve
+    if n in (12, 13):
+        staged = _interleaved_final_pair(truth_table, n)
+        if staged is not None:
+            return staged
     setters: list[tuple[str, str]] = []
     rows = frozenset(range(2**n))
     emitter = _FoldEmitter.__new__(_FoldEmitter)
@@ -3378,7 +3459,7 @@ def pct_squared_minus_one(truth_table: str) -> str:
         if fold is None:
             raise ValueError(
                 f"%^2^-1 builds every table at one, two, three and four "
-                f"inputs, and every table tried from five through eleven; "
+                f"inputs, and every table tried from five through thirteen; "
                 f"beyond those a conjunction or disjunction of literals at "
                 f"any arity, the thresholds a weighted ladder crosses, the "
                 f"tables a deep band schedules, the tables the all-row fold "
