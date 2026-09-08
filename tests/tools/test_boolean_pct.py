@@ -2278,33 +2278,28 @@ class TestPctFoldPlan:
             assert io.getvalue() == table[row], f"row {row}"
         assert len(widths) == 1, widths
 
-    def test_past_the_workspace_the_generator_raises(self) -> None:
-        """Eleven inputs refuse for real, not by a patched planner.
-
-        The narrow ladder is the finest that spells and would span 4094
-        against a 3003-value workspace, so the fold serves nothing at eleven
-        inputs and a table no *earlier* construction covers raises rather
-        than getting a program for the wrong function.  The refusal is
-        immediate -- the ladder is gated before any planning -- which is what
-        keeps a doomed arity from costing a search.
-
-        **The table has to be generic.**  Arity alone does not refuse: the
-        cascade builds every conjunction or disjunction of literals at any
-        width, so the alternating and single-minterm tables build at any
-        arity, and only a table that reaches the fold exercises this path.
-        """
+    @pytest.mark.slow  # generic twelve-input fold: ~12s to plan
+    def test_interleaved_fold_builds_a_generic_twelve_input_table(self) -> None:
+        """A centred final embed escapes the all-row ladder's limit."""
         import random
 
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.pct_squared_minus_one import run
         from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.examples import _fill_pct_squared_minus_one
 
         rng = random.Random(1)
         table = "".join(rng.choice("01") for _ in range(2**12))
-        with pytest.raises(ValueError, match="caps it at eleven inputs"):
-            parameterized.pct_squared_minus_one(table)
-
-        # A subcube at the same arity still builds, so the refusal above is
-        # the fold's workspace and not the arity itself.
-        assert parameterized.pct_squared_minus_one("1" + "0" * (2**12 - 1))
+        template = parameterized.pct_squared_minus_one(table)
+        widths = set()
+        for row in range(0, 2**12, 97):
+            bits = [(row >> shift) & 1 for shift in range(11, -1, -1)]
+            program = _fill_pct_squared_minus_one(template, bits)
+            widths.add(len(program))
+            io = ScriptedIO()
+            run(program, io)
+            assert io.getvalue() == table[row], row
+        assert len(widths) == 1, widths
 
     def test_a_table_whose_plan_fails_builds_nothing(
         self, monkeypatch: pytest.MonkeyPatch
