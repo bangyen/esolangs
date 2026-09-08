@@ -99,8 +99,7 @@ def test_no_interpreter_hand_rolls_a_divergent_blank_line_guard() -> None:
             if int(match.group(1)) != BLANK_LINE:
                 offenders.append(f"{name}: {match.group(0)}")
     assert not offenders, (
-        "these read a blank line as something other than "
-        f"{BLANK_LINE}: {offenders}"
+        f"these read a blank line as something other than {BLANK_LINE}: {offenders}"
     )
 
 
