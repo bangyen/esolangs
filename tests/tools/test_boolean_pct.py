@@ -1703,19 +1703,21 @@ class TestPctInterleavedFold:
             run(module.fill(template, bits), io)
             assert io.getvalue() == want
 
+    # Split by cost, measured: the 256 builds are 0.28s and the 1088
+    # interpreter replays are 5.15s.  The build sweep carries the contract a
+    # mutant can break -- the selective count, decline-is-None, slot order --
+    # so it stays in the fast run, and the exhaustive replay moves to the
+    # slow-marked sibling below.  Splitting rather than sampling keeps the
+    # whole 256-table space on the route-reaching half.
     def test_every_three_input_table_builds_or_declines_exactly(self) -> None:
         """Sweep all 256 three-input tables through the staged build.
 
         One table exercises one route; the whole space is what reaches the
         merge, split and refusal arms, and it is the only way to hold the
-        two outcomes to their contracts at once.  A build must replay every
-        row on the interpreter -- a template that computes the wrong table
-        is worse than a decline -- and a decline must be exactly ``None``,
-        never a partial template a caller might emit.
+        two outcomes to their contracts at once.  A decline must be exactly
+        ``None``, never a partial template a caller might emit.  That a
+        build *computes* its table is the sibling's job.
         """
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.pct_squared_minus_one import run
-
         module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
         built = 0
         for value in range(256):
@@ -1727,14 +1729,33 @@ class TestPctInterleavedFold:
             assert template.count("{X") == 3, table
             slots = [template.index("{X" + str(i) + "}") for i in range(3)]
             assert slots == sorted(slots), table  # slots stay in stream order
+        # The route is selective by design -- it runs before the all-row
+        # fallback -- so pin that it neither builds everything nor nothing.
+        assert built == 136
+
+    @pytest.mark.slow  # ~5s: 1088 interpreter replays
+    def test_every_three_input_build_computes_its_table(self) -> None:
+        """Every table the route builds is replayed row by row.
+
+        A template that computes the wrong table is worse than a decline, so
+        the rows are checked on the interpreter rather than the shape being
+        trusted.  The build half runs in the fast loop; this is the half that
+        costs interpreter time.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.pct_squared_minus_one import run
+
+        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        for value in range(256):
+            table = format(value, "08b")
+            template = module._interleaved_fold(table, 3)  # noqa: SLF001
+            if template is None:
+                continue
             for row, want in enumerate(table):
                 bits = [(row >> 2) & 1, (row >> 1) & 1, row & 1]
                 io = ScriptedIO()
                 run(module.fill(template, bits), io)
                 assert io.getvalue() == want, (table, row)
-        # The route is selective by design -- it runs before the all-row
-        # fallback -- so pin that it neither builds everything nor nothing.
-        assert built == 136
 
     @pytest.mark.slow  # ~10s: 4096 four-input builds
     def test_four_input_tables_build_or_decline_without_raising(self) -> None:

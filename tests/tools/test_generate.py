@@ -137,7 +137,10 @@ def assert_text_roundtrip(generator: Callable[[str], str], text: str) -> None:
     assert roundtrip_language(BY_FUNCTION[generator.__name__], program) == text
 
 
-@pytest.fixture
+# Session-scoped: the subprocess spawn is ~1.8s, the whole of this file's
+# setup cost, and the result is read-only -- every consumer only asserts on
+# the captured returncode and stdout, so one run serves them all.
+@pytest.fixture(scope="session")
 def text_module_output() -> subprocess.CompletedProcess[str]:
     """Run the text-generator module once for its subprocess contract."""
     import sys
