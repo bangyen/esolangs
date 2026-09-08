@@ -65,11 +65,15 @@ Current caps are deliberate:
   and `56c0d850` removed `%^2^-1`'s `_fold_search`, `_fold_beam` and
   `_fold_to_cofactors`. The current sources say those constructions keep no
   alternative and never backtrack, which describes what they are now, not
-  what was tried. WII2D's beam was recovered and now ships as an optional
-  second candidate (below). `%^2^-1`'s was recovered too and loses clearly:
-  over 40 five-input fold states the shipped rules plan all 40 while the
-  descent plans 5 at width 1 and 13 at width 4, slower at both. Recovering a
-  predecessor does not re-derive the recorded ratio — the audited variants
+  what was tried. Both were recovered and re-measured, and neither ships.
+  WII2D's beam does shorten output — as an optional second decode it shrank
+  19,864 of 66,108 tables, none grown, median 5.2% — but it costs 9.8x
+  generation at n=5 and reintroduces into a deterministic construction the
+  search `ea65a170` removed; the size is not worth that. `%^2^-1`'s descent
+  loses outright: over 40 five-input fold states the shipped rules plan all
+  40 while the descent plans 5 at width 1 and 13 at width 4, slower at both.
+  Recovering a predecessor does not re-derive the recorded ratio — the
+  audited variants
   lived in a worktree and may differ — but it does mean these were never
   guesswork to retry.
 
