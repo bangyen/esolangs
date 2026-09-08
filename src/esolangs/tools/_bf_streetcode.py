@@ -67,11 +67,13 @@ _DIVMOD = "[->-[>+>>]>[+[-<+>]>+>>]<<<<<]"
 #: the divmod runs, the remainder is moved back over ``x``, and the two
 #: leftover scratch cells (``n - r`` and ``q``) are cleared.
 _CANON = (
-    ">" + "+" * 256 + "<"      # x+1 = 256
-    + _DIVMOD                    # x -> 0 ; x+2 = x % 256 ; x+3 = x // 256
-    + ">>[-<<+>>]<<"            # move the remainder from x+2 back to x
-    + ">[-]<"                    # clear x+1 ( = 256 - remainder)
-    + ">>>[-]<<<"                # clear x+3 ( = quotient)
+    ">"
+    + "+" * 256
+    + "<"  # x+1 = 256
+    + _DIVMOD  # x -> 0 ; x+2 = x % 256 ; x+3 = x // 256
+    + ">>[-<<+>>]<<"  # move the remainder from x+2 back to x
+    + ">[-]<"  # clear x+1 ( = 256 - remainder)
+    + ">>>[-]<<<"  # clear x+3 ( = quotient)
 )
 
 
