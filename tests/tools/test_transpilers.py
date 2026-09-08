@@ -18,7 +18,7 @@ from esolangs.exceptions import (
     HaltError,
     UnsupportedTranspilationError,
 )
-from esolangs.vm import make_vm, run_until_halt_or_cycle
+from esolangs.vm import make_vm, run_until_halt_or_cycle, run_until_halt_or_growth
 
 # (brainfuck program, stdin) pairs; every pair must terminate and agree.
 BATTERY = (
@@ -426,17 +426,38 @@ def test_streetcode_end_of_input_raises_in_both() -> None:
 
 
 def _brainfuck_can_halt(program: str, stdin: str) -> bool:
-    """False when a repeated state proves ``program`` never halts.
+    """False when a certificate proves ``program`` never halts.
 
     Most of the corpus's non-halting draws are trivial (``--++++[]``), and
-    waiting one out costs the source timeout each.  A revisited state is a
-    proof, so those are dropped for free instead.  True is the undecided
-    answer as well as the halting one -- an unbounded-growth loop never
-    repeats a state -- so the wall-clock skip below stays as the backstop.
-    ``EOFError`` here is the same refusal the timed run reports; leave it to
-    that arm rather than duplicating the judgement.
+    waiting one out costs the source timeout each.  A proof drops them for
+    free instead.
+
+    Both provers are needed, in this order.
+    :func:`run_until_halt_or_cycle` is unbounded by design -- it steps until
+    a state repeats -- so the growth class hangs it outright rather than
+    returning undecided: ``+[>+]`` grows the tape a cell a lap and never
+    repeats a state.  :func:`run_until_halt_or_growth` is the prover for
+    that class and takes a step ``limit``, so asking it first means a growth
+    program is answered or bounded before the unbounded detector runs.
+
+    Growth exhausting its limit is *undecided*, not halting, so the cycle
+    detector still gets its turn -- that is what keeps the cheap corpus
+    hangs (``--++++[]``) proven rather than waited out.  Reaching it needs
+    growth to have declined the program, which rules out the input that
+    would hang it.  Measured worst case over both arms is under half a
+    second.
+
+    True is the undecided answer as well as the halting one, so the
+    wall-clock skip below stays as the backstop.  ``EOFError`` is the same
+    refusal the timed run reports; leave it to that arm rather than
+    duplicating the judgement here.
     """
     try:
+        try:
+            if not run_until_halt_or_growth(make_vm("brainfuck", program, stdin)):
+                return False
+        except TimeoutError:
+            pass  # undecided by growth; a repeated state may still decide it
         return run_until_halt_or_cycle(make_vm("brainfuck", program, stdin))
     except (EOFError, TimeoutError):
         return True
