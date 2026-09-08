@@ -33,11 +33,6 @@ testable boolean-generator route. The assessed-and-rejected ledger is in
   source-machine emulator, not command transliteration. It needs a constructed
   Streetcode-program corpus/fuzzer and resolution of the reference
   interpreter's junction and post-corner gaps.
-- **Lift the `%^2^-1` generic-table frontier.** The shipped packed ladder
-  covers sampled tables through eleven inputs, but its twelve-input limit is
-  workspace geometry, not a language wall. Develop a total planner that
-  interleaves embedding and folding; the existing verified ten-input route is
-  an experiment, not a general construction.
 - **Scale Line boolean drawings.** The standalone Line generator has
   end-to-end measurements through seven inputs, while its regression suite
   reaches five; eight and above are unmeasured. Establish the renderer →
@@ -53,3 +48,11 @@ testable boolean-generator route. The assessed-and-rejected ledger is in
   but its queued inputs cannot be renamed in place. Find a re-enqueue and
   grid-routing construction, then compare emitted, executed programs against
   the current template; abandon it if the routing spends the apparent gain.
+- **`%^2^-1` fourteen inputs.** The staged fold's endgame strands its last
+  duplicated cofactor pairs: rank order is steerable (pulsed doubling), but a
+  merge needs the pair's value gap `d` inside a wipe window, and diving the
+  partner maps `d -> amount - d` with the amount free in the window -- a
+  derived, unbuilt alignment controller. Build it only if a ~20x-thirteen
+  build cost (~430k plan ops, ~8MB templates, ~226 ops per merge) is
+  acceptable; the walls around it are recorded in
+  [`docs/walls.md`](walls.md).

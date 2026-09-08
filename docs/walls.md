@@ -11,8 +11,15 @@ claim is accepted.
 - **3x, Dotlang, ROTfuck, 2dFish:** their documented input/control-flow
   mechanics do not support the proposed universal decision-tree construction.
 - **`%^2^-1`:** a program reading its own inputs cannot compute a two-input
-  function. The embedded-input ladder's twelve-input limit is only a
-  construction limit; interleaving embedding and folds remains open.
+  function. The staged cofactor fold reaches generic thirteen-input tables;
+  its walls are measured, not open: no ladder lays `2**12` distinct
+  positions inside the 3003 footprint (so no fourteen-input prefix), the
+  256-class compaction a fourteen needs converges at ~226 ops per merge but
+  strands its last duplicated pairs in a rules cycle -- pulsed doubling
+  breaks the rank rigidity, yet a merge still needs the pair's *value* gap
+  steered into a wipe window, an unbuilt controller -- and fifteen-plus
+  generic tables are closed by counting: 16-bit cofactors over 2048 prefix
+  points are nearly all distinct, so compaction stops biting.
 - **WII2D:** routing plus accumulator decoding is the shipped construction;
   its remaining guards are source-cost policies, not language walls.
 - **Termination convention:** use only where a specification supplies a
