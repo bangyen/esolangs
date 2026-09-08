@@ -52,8 +52,15 @@ Current caps are deliberate:
 - **Route hybrids:** CV(N)(C), Polynomial, Circlefuck, `%^2^-1`, and WII2D
   alternatives were rejected. Occasional smaller output did not repay slower
   generation: 1.25x, 1.08x, 29x, 3,100x, and 1.85x on their audit cases.
-  A tree-prefix/DAG-suffix Polynomial hybrid also lost on all 65,536
-  four-input tables.
+  The tree-prefix/DAG-suffix Polynomial hybrid is the exception and now
+  ships: a table whose residuals merge within a top-level split but not
+  across it defeats both parent constructions. It shortens 8 of 256
+  three-input tables (24-30%) and 718 of 65,536 four-input ones (median
+  15.5%, best 38.2%, smallest 2.0%); none grow, and none previously refused
+  becomes renderable. An instruction-count screen holds generation to
+  1.01-1.12x by rendering only a candidate that could win; comparing every
+  render costs 4.94x. The screen is conservative, so those counts are lower
+  bounds.
 
 ## Spec and engine boundaries
 
