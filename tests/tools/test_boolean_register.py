@@ -13,6 +13,8 @@ from esolangs.tools.boolean.register import (
     _addsubjump_ordered,
     _polynomial_dag,
     _polynomial_states,
+)
+from tests.tools.boolean_oracles import (
     _polynomial_tree,
     _sophie_dag,
     _sophie_tree,
@@ -242,17 +244,13 @@ class TestPolynomial:
             bits = [(combo >> (2 - i)) & 1 for i in range(3)]
             assert run_polynomial(program, [str(b) for b in bits]) == table[combo]
 
-    def test_cost_models_match_the_emitters(self) -> None:
-        """Selection prices instructions without building the losing program."""
-        from esolangs.tools.boolean.register import (
-            _polynomial_dag_cost,
-            _polynomial_tree_cost,
-        )
+    def test_dag_cost_mirrors_its_emitter(self) -> None:
+        """``_polynomial_hybrid_cost`` prices a residual through this."""
+        from esolangs.tools.boolean.register import _polynomial_dag_cost
 
         for n in range(1, 4):
             for value in range(1 << (1 << n)):
                 table = format(value, f"0{1 << n}b")
-                assert _polynomial_tree_cost(table) == len(_polynomial_tree(table))
                 assert _polynomial_dag_cost(table) == len(_polynomial_dag(table))
 
     def test_polynomial_hybrid_cost_mirrors_build(self) -> None:
@@ -344,10 +342,7 @@ class TestPolynomial:
         the n == 3 corpus these tables render 24-30% shorter, and no table
         grows.
         """
-        from esolangs.tools.boolean.register import (
-            _polynomial_hybrid,
-            _polynomial_tree,
-        )
+        from esolangs.tools.boolean.register import _polynomial_hybrid
 
         assert len(_polynomial_hybrid(table, 1)) < len(_polynomial_tree(table))
         program = boolean.polynomial(table)
@@ -386,7 +381,6 @@ class TestPolynomial:
         from esolangs.tools.boolean.register import (
             _polynomial_assemble,
             _polynomial_hybrid,
-            _polynomial_tree,
         )
 
         hybrid = _polynomial_assemble(_polynomial_hybrid(table, 1))
@@ -500,19 +494,6 @@ class TestSophie:
                     len(_sophie_tree(table)), len(_sophie_dag(table))
                 )
         assert improved == 132
-
-    def test_cost_models_match_the_emitters(self) -> None:
-        """Selection prices strings without building the losing program."""
-        from esolangs.tools.boolean.register import (
-            _sophie_dag_cost,
-            _sophie_tree_cost,
-        )
-
-        for n in range(1, 4):
-            for value in range(1 << (1 << n)):
-                table = format(value, f"0{1 << n}b")
-                assert _sophie_tree_cost(table) == len(_sophie_tree(table))
-                assert _sophie_dag_cost(table) == len(_sophie_dag(table))
 
     @pytest.mark.parametrize(
         ("table", "n"),
