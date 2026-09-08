@@ -50,8 +50,16 @@ Current caps are deliberate:
 - **NoComment, Factor:** host/runtime configuration limits.
 - **Polynomial, WII2D, ZTOALC L:** program-cost guards, not capability claims.
 - **Route hybrids:** CV(N)(C), Polynomial, Circlefuck, `%^2^-1`, and WII2D
-  alternatives were rejected. Occasional smaller output did not repay slower
-  generation: 1.25x, 1.08x, 29x, 3,100x, and 1.85x on their audit cases.
+  alternatives were rejected on the grounds that occasional smaller output
+  did not repay slower generation — 1.25x, 1.08x, 29x, 3,100x, and 1.85x on
+  their audit cases. **Treat those five numbers as unverified.** The harness
+  that produced them was not kept, and only CV(N)(C) and Circlefuck still
+  build competing routes in-tree, so nothing here can re-derive the other
+  three. The Polynomial figure is known wrong: its hybrid was reimplemented
+  and ships (below). The live two were re-priced — CV(N)(C) builds both
+  routes per call (direct wins 202 of 256 at n=3, stored 54) and
+  Circlefuck's greedy route never wins on size at n=3, so both verdicts
+  stand on their own measurements rather than on the recorded ratios.
   Polynomial is the exception. Its tree and state machine are the endpoints
   of one family — `k` tree levels above one machine per residual — and the
   interior wins where both lose: a table whose residuals merge within a
