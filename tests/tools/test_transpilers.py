@@ -18,6 +18,7 @@ from esolangs.exceptions import (
     HaltError,
     UnsupportedTranspilationError,
 )
+from esolangs.vm import make_vm, run_until_halt_or_cycle
 
 # (brainfuck program, stdin) pairs; every pair must terminate and agree.
 BATTERY = (
@@ -328,6 +329,14 @@ def test_bfstack_fuzz_stack_programs() -> None:
 # (``-.`` -> 255), overflow past 255 inside a loop (``+[+].``), a wrapping
 # multiply, a pointer-moving loop body (``+[>].``), a ``,`` of a code point
 # above U+00FF (mod 256), a skipped loop, and a deeply nested one.
+#
+# The wide-cell programs cost seconds each in the target grid rather than
+# milliseconds: a Streetcode cell is reached by driving to it, so a value
+# near 255 (underflow, the 8x8 multiply, input above U+00FF) is that many
+# steps of geometry.  Those carry ``slow`` individually, keeping the cheap
+# rows -- which still cover wraparound, input, nesting and the skipped loop
+# -- in the fast run and in the mutation harness, which deselects ``slow``.
+_SLOW = pytest.mark.slow
 STREETCODE_BATTERY = (
     ("-.", ""),
     ("+.", ""),
@@ -335,18 +344,18 @@ STREETCODE_BATTERY = (
     ("+-.", ""),
     (">+<.", ""),
     ("+++[-].", ""),
-    ("+[+].", ""),
+    pytest.param("+[+].", "", marks=_SLOW),
     ("+[->+<]>.", ""),
     ("+++[>].", ""),
     ("++>++<[>]<.", ""),
     ("++[>[-]<-].", ""),
-    ("+++[>++[>+<-]<-]>+++.", ""),
-    ("++++++++[>++++++++<-]>.", ""),
-    ("+[>+[>[-]+<-]<-].", ""),
+    pytest.param("+++[>++[>+<-]<-]>+++.", "", marks=_SLOW),
+    pytest.param("++++++++[>++++++++<-]>.", "", marks=_SLOW),
+    pytest.param("+[>+[>[-]+<-]<-].", "", marks=_SLOW),
     (",.", "a"),
     (",.", "Ā"),
-    (",.", "中"),
-    (",[.-]", "a"),
+    pytest.param(",.", "中", marks=_SLOW),
+    pytest.param(",[.-]", "a", marks=_SLOW),
     (",>,<.>.", "a\nb"),
     ("[-].", ""),
     ("[+].", ""),
@@ -354,13 +363,15 @@ STREETCODE_BATTERY = (
     ("xx+++xx.xx", ""),
 )
 
-# a subset with pinned output, so the battery checks more than agreement
-STREETCODE_PINNED = {
-    "-.": ("", "\xff"),
-    "+[+].": ("", "\x00"),
-    "++++++++[>++++++++<-]>.": ("", "@"),
-    ",.": ("Ā", "\x00"),  # U+0100 taken mod 256 is 0
-}
+# a subset with pinned output, so the battery checks more than agreement.
+# Marked like the battery above, and for the same reason: ``-.`` pins the
+# wraparound and ``,.`` the mod-256 input without paying for a wide cell.
+STREETCODE_PINNED = (
+    ("-.", "", "\xff"),
+    pytest.param("+[+].", "", "\x00", marks=_SLOW),
+    pytest.param("++++++++[>++++++++<-]>.", "", "@", marks=_SLOW),
+    (",.", "Ā", "\x00"),  # U+0100 taken mod 256 is 0
+)
 
 
 @pytest.mark.parametrize(("program", "stdin"), STREETCODE_BATTERY)
@@ -377,10 +388,9 @@ def test_streetcode_transpiled_output_matches_source(program: str, stdin: str) -
     )
 
 
-@pytest.mark.parametrize(("program", "expected"), STREETCODE_PINNED.items())
-def test_streetcode_pinned_output(program: str, expected: tuple[str, str]) -> None:
+@pytest.mark.parametrize(("program", "stdin", "want"), STREETCODE_PINNED)
+def test_streetcode_pinned_output(program: str, stdin: str, want: str) -> None:
     """Pinned outputs, so the battery is not merely self-consistent."""
-    stdin, want = expected
     target = esolangs.transpile("brainfuck", "Streetcode", program)
     assert esolangs.run("Streetcode", target, stdin, timeout=30) == want
 
@@ -415,6 +425,24 @@ def test_streetcode_end_of_input_raises_in_both() -> None:
         esolangs.run("Streetcode", target, "")
 
 
+def _brainfuck_can_halt(program: str, stdin: str) -> bool:
+    """False when a repeated state proves ``program`` never halts.
+
+    Most of the corpus's non-halting draws are trivial (``--++++[]``), and
+    waiting one out costs the source timeout each.  A revisited state is a
+    proof, so those are dropped for free instead.  True is the undecided
+    answer as well as the halting one -- an unbounded-growth loop never
+    repeats a state -- so the wall-clock skip below stays as the backstop.
+    ``EOFError`` here is the same refusal the timed run reports; leave it to
+    that arm rather than duplicating the judgement.
+    """
+    try:
+        return run_until_halt_or_cycle(make_vm("brainfuck", program, stdin))
+    except (EOFError, TimeoutError):
+        return True
+
+
+@pytest.mark.slow
 def test_streetcode_fuzz_agrees() -> None:
     """Random terminating brainfuck programs agree through Streetcode.
 
@@ -462,6 +490,8 @@ def test_streetcode_fuzz_agrees() -> None:
         parts.append("]" * depth)
         program = "".join(parts)
         stdin = "\n".join(rng.choice(["", "a", "Ā", "中"]) for _ in range(4))
+        if not _brainfuck_can_halt(program, stdin):
+            continue  # a repeated state proves it never halts
         try:
             expected = esolangs.run("brainfuck", program, stdin, timeout=15)
         except EOFError:
