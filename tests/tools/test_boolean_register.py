@@ -255,6 +255,90 @@ class TestPolynomial:
                 assert _polynomial_tree_cost(table) == len(_polynomial_tree(table))
                 assert _polynomial_dag_cost(table) == len(_polynomial_dag(table))
 
+    def test_polynomial_hybrid_cost_mirrors_build(self) -> None:
+        """The hybrid's cost function is a deliberate mirror of its emitter.
+
+        The dispatch screens on the cost before rendering, so a drift here
+        silently skips a table the emitter would have shortened.
+        """
+        from esolangs.tools.boolean.register import (
+            _polynomial_hybrid,
+            _polynomial_hybrid_cost,
+        )
+
+        for n in range(2, 4):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                for level in range(1, n):
+                    assert _polynomial_hybrid_cost(table, level) == len(
+                        _polynomial_hybrid(table, level)
+                    ), f"{table} k={level}"
+
+    @pytest.mark.parametrize(
+        "table",
+        ["00000101", "00001010", "01010000", "01011111", "10100000", "11111010"],
+    )
+    def test_hybrid_shortens_and_still_computes(self, table: str) -> None:
+        """A split whose halves merge separately beats both parents.
+
+        ``00000101`` is 43 instructions as a tree and 39 as a state machine,
+        but 36 when the first bit branches and each half runs its own
+        machine: the residuals merge *within* the top split and not across
+        it, so neither parent construction sees the merge.  Measured over
+        the n == 3 corpus these tables render 24-30% shorter, and no table
+        grows.
+        """
+        from esolangs.tools.boolean.register import (
+            _polynomial_hybrid,
+            _polynomial_tree,
+        )
+
+        assert len(_polynomial_hybrid(table, 1)) < len(_polynomial_tree(table))
+        program = boolean.polynomial(table)
+        for combo in range(8):
+            bits = [(combo >> (2 - i)) & 1 for i in range(3)]
+            assert run_polynomial(program, [str(b) for b in bits]) == table[combo]
+
+    def test_drained_machine_survives_a_one_in_the_drained_bit(self) -> None:
+        """The reduction reaches the machine, not just the tree.
+
+        Draining with ``-= 48`` leaves 0 or 1 and the machine's entry chain
+        tests for zero, so a drained ``1`` fell past every state test -- the
+        failure that made this pairing look impossible.  ``//= 50`` lands on
+        0 either way, so the rows with a 1 in the drained bit are the ones
+        that matter here.
+        """
+        from esolangs.tools.boolean.register import _polynomial_drained_dag
+
+        table = "0000010100000101"  # ignores its first input
+        assert _polynomial_drained_dag(table) is not None
+        program = boolean.polynomial(table)
+        for combo in range(16):
+            bits = [(combo >> (3 - i)) & 1 for i in range(4)]
+            got = run_polynomial(program, [str(b) for b in bits])
+            assert got == table[combo], f"inputs {bits}"
+
+    @pytest.mark.parametrize("table", ["01100000", "01101111", "10010000", "10011111"])
+    def test_hybrid_losing_on_characters_does_not_ship(self, table: str) -> None:
+        """Fewer instructions is not fewer characters.
+
+        These four are 42 instructions against the tree's 43 and still
+        render 11008 characters against 9507, because a longer program's
+        later instructions consume larger primes.  The dispatch compares
+        *rendered* programs, so they keep the tree's emission.
+        """
+        from esolangs.tools.boolean.register import (
+            _polynomial_assemble,
+            _polynomial_hybrid,
+            _polynomial_tree,
+        )
+
+        hybrid = _polynomial_assemble(_polynomial_hybrid(table, 1))
+        tree = _polynomial_assemble(_polynomial_tree(table))
+        assert len(_polynomial_hybrid(table, 1)) < len(_polynomial_tree(table))
+        assert len(hybrid) > len(tree)
+        assert boolean.polynomial(table) == tree
+
     def test_every_path_reads_each_input_once(self) -> None:
         """Whichever construction wins, a run consumes exactly ``n`` inputs.
 
