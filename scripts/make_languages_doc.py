@@ -208,7 +208,7 @@ def render() -> str:
         "The generator combines subcube, affine, threshold, band, and fold",
         "constructions. It is exhaustive through four inputs; the fold reaches",
         "sampled generic tables through eleven inputs, and the interleaved",
-        "fold reaches generic twelve-input tables.",
+        "fold reaches generic twelve- and thirteen-input tables.",
         "",
         "## The matrix",
         "",

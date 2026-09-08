@@ -530,6 +530,22 @@ class TestParameterizedPctSquaredMinusOne:
         assert _deep_band(table, 5) is None  # the arm above must still refuse
         assert pct_squared_minus_one(table) == _fold(table, 5)
 
+    def test_deep_band_refuses_past_its_span_budget_without_enumerating(
+        self,
+    ) -> None:
+        """Past eleven inputs no weighting fits, and the refusal is instant.
+
+        Each unit prices a whole residue system, so even the all-ones
+        weighting costs ``n * 256`` against the 3003 limit.  Without the
+        up-front gate, ``_deep_weightings`` walks ``7**n`` tuples before
+        its sum filter -- hours at twelve inputs -- so this test hanging
+        rather than failing is what removing the gate looks like.
+        """
+        from esolangs.tools.boolean.pct_squared_minus_one import _deep_band
+
+        parity = "".join(str(bin(r).count("1") & 1) for r in range(2**12))
+        assert _deep_band(parity, 12) is None
+
     @pytest.mark.slow  # derives the whole three-input arity once
     def test_affine_reach_is_exactly_characterized(self) -> None:
         """The composed-affine path's 86/256 is a predicate, not a measurement.
@@ -2318,6 +2334,34 @@ class TestPctFoldPlan:
         widths = set()
         for row in range(0, 2**12, 97):
             bits = [(row >> shift) & 1 for shift in range(11, -1, -1)]
+            program = _fill_pct_squared_minus_one(template, bits)
+            widths.add(len(program))
+            io = ScriptedIO()
+            run(program, io)
+            assert io.getvalue() == table[row], row
+        assert len(widths) == 1, widths
+
+    @pytest.mark.slow  # packed prefix + sixteen-class compaction: ~60s to plan
+    def test_interleaved_fold_builds_a_generic_thirteen_input_table(self) -> None:
+        """The packed prefix ladder compacts to its cofactors before laying.
+
+        Thirteen inputs need the eleven-input packed ladder, whose unit gaps
+        jam the conveyor; the pre-lay compaction to at most sixteen cofactor
+        points, and the collision-free split total, are what this exercises.
+        """
+        import random
+
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.pct_squared_minus_one import run
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.examples import _fill_pct_squared_minus_one
+
+        rng = random.Random(13)
+        table = "".join(rng.choice("01") for _ in range(2**13))
+        template = parameterized.pct_squared_minus_one(table)
+        widths = set()
+        for row in range(0, 2**13, 331):
+            bits = [(row >> shift) & 1 for shift in range(12, -1, -1)]
             program = _fill_pct_squared_minus_one(template, bits)
             widths.add(len(program))
             io = ScriptedIO()

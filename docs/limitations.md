@@ -45,8 +45,9 @@ own inputs overcomes the latter's two-input wall.
 Current caps are deliberate:
 
 - **6-5:** 35 addressable branch labels; a structural language wall.
-- **`%^2^-1`:** generic samples build through eleven inputs; its twelve-input
-  ladder limit is open research, not a wall.
+- **`%^2^-1`:** generic samples build through thirteen inputs; a
+  fourteen-input table would need a twelve-input prefix ladder, which is
+  open research, not a wall.
 - **NoComment, Factor:** host/runtime configuration limits.
 - **Polynomial, WII2D, ZTOALC L:** program-cost guards, not capability claims.
 - **Route hybrids:** CV(N)(C), Polynomial, Circlefuck, `%^2^-1`, and WII2D
