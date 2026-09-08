@@ -192,6 +192,7 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Decleq": ("-2 5 9 9 9 65 0 0", ""),
     "Dig": (">$5:\n 2 ", ""),
     "Dimensional": ("+.+.+.", ""),
+    "DINAC": ("OUT 'a", ""),
     "Eval": ("0+.", ""),
     "Factor": ("15", ""),
     "Fargo": ("$", "0\n"),
