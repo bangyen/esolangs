@@ -8,8 +8,11 @@ there.
 
 import importlib
 import itertools
+import time
 
 import pytest
+
+from esolangs.tools import boolean
 
 
 class TestParameterizedPctSquaredMinusOne:
@@ -2352,6 +2355,40 @@ class TestPctAffineSolver:
     @staticmethod
     def module():
         return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+
+    def test_the_shorter_of_cascade_and_affine_ships(self) -> None:
+        """The cascade is usually shorter at three inputs, but not always.
+
+        The dispatch used to return it on sight, which served 44 of 256
+        tables a longer program than the affine path builds.  Both are
+        cheap at this arity, so both are built and the shorter kept;
+        ``00000101`` is the worst case, 40 characters against 33.
+        """
+        module = self.module()
+        improved = 0
+        for value in range(256):
+            table = format(value, "08b")
+            shipped = len(boolean.pct_squared_minus_one(table))
+            cascade = module._cascade(table, 3)  # noqa: SLF001
+            assert cascade is None or shipped <= len(cascade), table
+            improved += cascade is not None and shipped < len(cascade)
+        assert improved == 42  # the other two tie, keeping the cascade
+
+    def test_affine_stays_gated_above_three_inputs(self) -> None:
+        """The comparison must not reach the four-input enumeration.
+
+        ``_affine`` derives a whole arity at once -- 36458 composition
+        states at n == 4, about two minutes a table -- so the deep band
+        serves those instead.  Building both would pay that cost on every
+        four-input table, served or not.
+        """
+        module = self.module()
+        assert module._affine.__doc__  # noqa: SLF001
+        parity4 = "".join(str(bin(row).count("1") % 2) for row in range(16))
+        # The deep band answers this instantly; reaching _affine would not.
+        start = time.perf_counter()
+        boolean.pct_squared_minus_one(parity4)
+        assert time.perf_counter() - start < 10.0
 
     def test_constant_values_cannot_meet_differing_wants(self) -> None:
         """One value cannot map to two answers, whatever the line.

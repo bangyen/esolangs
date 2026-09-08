@@ -3309,12 +3309,16 @@ def pct_squared_minus_one(truth_table: str) -> str:
         # slope per column of a two-input table -- but the minterm cascade
         # does, at any arity.  A table it cannot build is still refused rather
         # than served by a program computing the wrong function.
-        # The cascade is tried first because it is much the shorter of the
-        # two -- ``2n + 4`` characters against the affine path's setters --
-        # and it covers every subcube at any arity.
+        # The cascade covers every subcube at any arity, and is usually the
+        # shorter -- ``2n + 4`` characters against the affine path's setters.
+        # *Usually* is not always, so at three inputs, where both are cheap,
+        # the two are built and the shorter kept: returning the cascade on
+        # sight served 44 of 256 tables a longer program than the affine
+        # path gives, by up to 7 characters (``00000101`` is 40 against 33).
+        # Building both over that corpus costs 0.466s against 0.590s for
+        # returning early, since a served cascade skips no work the affine
+        # path would have done -- the comparison is free here.
         cascade = _cascade(truth_table, n)
-        if cascade is not None:
-            return cascade
         # Tables that are not subcubes may still compose from one affine
         # setter per input, which is what reaches XOR at three inputs.
         #
@@ -3324,12 +3328,16 @@ def pct_squared_minus_one(truth_table: str) -> str:
         # ends up served -- parity-4 was measured at 125s, against 0.01s for the
         # deep band that serves it instead.  The deep band covers every table
         # this path reaches above three inputs, so the enumeration is skipped
-        # rather than paid for; at three inputs it stays, where it is instant
-        # and its programs are much the shorter.
-        if n == 3:
-            affine = _affine(truth_table, n)
-            if affine is not None:
-                return affine
+        # rather than paid for; at three inputs it stays, where it is instant.
+        affine = _affine(truth_table, n) if n == 3 else None
+        # Ties keep the cascade, which is what the order emitted before.
+        best = min(
+            (build for build in (cascade, affine) if build is not None),
+            key=len,
+            default=None,
+        )
+        if best is not None:
+            return best
         # Everything above is affine in the accumulator, so it cannot merge
         # rows that do not already agree.  The ladder path is the one that
         # uses the over-3003 reset as a threshold, which is what reaches a
