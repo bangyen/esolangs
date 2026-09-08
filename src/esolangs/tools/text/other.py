@@ -1050,3 +1050,40 @@ def _quote_split(text: str) -> list[str]:
         if line:
             pieces.append(line)
     return pieces
+# The five escapes DINAC's aschar literal defines, so a character that has
+# no printable spelling still has one.  Everything else is written as
+# ``'`` plus the character itself.
+_DINAC_ESCAPES = {"\0": r"\0", "\n": r"\n", "\t": r"\t", "\r": r"\r", "\\": "\\\\"}
+
+
+def dinac(text: str) -> str:
+    r"""Build a DINAC program that outputs ``text``.
+
+    One ``OUT`` per character.  An aschar is ``'`` plus the character, or
+    one of the five escapes (``\0 \n \t \r \\``) written bare -- the
+    spelling the wiki's own ``OUT \n`` uses.
+
+    A space is emitted as ``OUT '!-``, the predecessor of ``!``, rather than
+    as ``OUT '`` with the space itself: the literal spelling puts the
+    character in trailing position, which the committed examples may not
+    carry (``tests/scripts/test_examples.py``).  The wiki's own Hello World
+    writes the literal form; both print a space, and this one survives a
+    file.
+
+    The alphabet is ASCII 0-127, which is the aschar type's whole range, so
+    a character above 127 has no literal and is refused.
+    """
+    lines = []
+    for char in text:
+        if ord(char) > 127:
+            raise ValueError(
+                f"DINAC can only output ASCII 0-127, got {char!r} (U+{ord(char):04X})"
+            )
+        escape = _DINAC_ESCAPES.get(char)
+        if escape:
+            lines.append(f"OUT {escape}")
+        elif char == " ":
+            lines.append("OUT '!-")
+        else:
+            lines.append(f"OUT '{char}")
+    return "\n".join(lines)
