@@ -65,6 +65,7 @@ def _polynomial_tree(truth_table: str) -> list[list[int]]:
     build(list(range(2**n)), 0, 0)
     return instrs
 
+
 def _sophie_tree(truth_table: str) -> str:
     """Emit the nested-branch Sophie program; see :func:`sophie`."""
     n = _validate_truth_table(truth_table)
@@ -87,6 +88,7 @@ def _sophie_tree(truth_table: str) -> str:
         return ";" + "@$48{" + build([*path, 0]) + "}" + "{" + build([*path, 1]) + "}"
 
     return build([])
+
 
 def _sophie_dag(truth_table: str) -> str:
     """Emit the state-machine Sophie program; see :func:`sophie`.
