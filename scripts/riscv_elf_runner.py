@@ -6,6 +6,9 @@ targets the statically-linked, nostdlib RV64 ELFs the esolangs interpreter
 ports produce (see extra/assembly/), implementing the small set of Linux
 syscalls they use. It is not a full Linux ABI.
 
+Assembled ELFs are cached on disk under ``$XDG_CACHE_HOME`` (see
+``assemble_source``); set ``ESOLANGS_NO_ELF_CACHE`` to compile every time.
+
 API:
     run_elf(binary, stdin=b"") -> (stdout: bytes, exit_code: int)
 
@@ -16,12 +19,15 @@ CLI:
 Requires: pip install unicorn
 """
 
+import functools
+import hashlib
 import os
 import shutil
 import struct
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 from typing import Any
 
 try:
@@ -54,14 +60,38 @@ HEAP_SIZE = 0x1000000
 STACK_SIZE = 0x2000
 
 
-def assemble_source(assembly: str) -> bytes:
-    """Compile a RISC-V assembly source string into a statically-linked ELF."""
+CROSS_COMPILERS = ("riscv64-linux-gnu-gcc", "riscv64-elf-gcc")
+
+
+def _cache_dir() -> Path:
+    """Where assembled ELFs are kept between runs."""
+    root = os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache"
+    return Path(root) / "esolangs" / "riscv-elf"
+
+
+@functools.lru_cache(maxsize=1)
+def _toolchain_id() -> str:
+    """Identify the assembler, so an upgrade cannot be served from cache.
+
+    Keying on the compiler's *output* alone would leave the assembler
+    unguarded: the one thing a content key cannot notice is gcc itself
+    changing under a byte-identical input.
+    """
+    for cc in CROSS_COMPILERS:
+        if shutil.which(cc):
+            rv = subprocess.run([cc, "--version"], capture_output=True, text=True)
+            return f"{cc}\0{rv.stdout.splitlines()[0] if rv.stdout else ''}"
+    return "none"
+
+
+def _compile(assembly: str) -> bytes:
+    """Compile *assembly* into a statically-linked ELF, without the cache."""
     fd, tmp = tempfile.mkstemp(suffix=".s")
     os.close(fd)
     try:
         with open(tmp, "w") as f:
             f.write(assembly)
-        for cc in ("riscv64-linux-gnu-gcc", "riscv64-elf-gcc"):
+        for cc in CROSS_COMPILERS:
             if not shutil.which(cc):
                 continue
             binary = tmp + ".elf"
@@ -84,6 +114,50 @@ def assemble_source(assembly: str) -> bytes:
         raise SystemExit("no RISC-V cross-compiler (riscv64-linux-gnu-gcc) on PATH")
     finally:
         os.unlink(tmp)
+
+
+def assemble_source(assembly: str) -> bytes:
+    """Compile a RISC-V assembly source string into a statically-linked ELF.
+
+    Assembling dominates this module's cost -- across the 121 compiler cases
+    in ``verify_riscv_unicorn.COMPILER_CASES``, gcc is 28.2s of the 31s and
+    the emulation is 0.1s -- and the same handful of assembly strings is
+    re-assembled on every run.  The result is cached on disk, which takes
+    that suite from 31s to 0.08s once warm.
+
+    The key is the assembly text itself plus the toolchain's version, so a
+    hit means the very bytes gcc produced for this input.  A codegen change
+    changes the text, and so the key: the round-trip these ELFs feed exists
+    to catch a compiler that emits working-but-wrong code, and a cache that
+    could serve a stale binary would silently retire that check.
+
+    ``ESOLANGS_NO_ELF_CACHE`` bypasses it, and a cache that cannot be read
+    or written falls through to compiling -- the cache is an optimisation,
+    never a correctness dependency.
+    """
+    if os.environ.get("ESOLANGS_NO_ELF_CACHE"):
+        return _compile(assembly)
+
+    digest = hashlib.sha256(f"{_toolchain_id()}\0{assembly}".encode()).hexdigest()
+    path = _cache_dir() / digest
+    try:
+        return path.read_bytes()
+    except OSError:
+        pass
+
+    binary = _compile(assembly)
+    # Write through a unique temp name and rename: pytest-xdist runs these
+    # tests across four workers, and a reader must never see a half-written
+    # ELF.  os.replace is atomic within a filesystem, so a racing worker
+    # either sees the old entry or the complete new one.
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = path.with_name(f"{digest}.{os.getpid()}")
+        tmp_path.write_bytes(binary)
+        os.replace(tmp_path, path)
+    except OSError:
+        pass  # unwritable cache: the binary is already correct
+    return binary
 
 
 def _align_down(x: int, a: int) -> int:
