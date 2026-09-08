@@ -3,8 +3,7 @@ r"""Build parameterized Boolean programs for %^2^-1.
 Programs that read their own inputs cannot compute a two-input function, so
 this module embeds each input once and uses affine setters, threshold ladders,
 and relocation folds. Every construction is derived and replayed on all
-instantiated rows. The fold's twelve-input workspace limit is not a language
-wall; interleaving remains open research.
+instantiated rows.
 """
 
 import re
@@ -2650,6 +2649,134 @@ def _fold_to_cofactors(state: _FoldState) -> list[_FoldOp] | None:
     return _fold_reduce(start, _cofactor_done)
 
 
+def _fold_span(state: _FoldState) -> int:
+    """Return ``state``'s occupied top-to-bottom extent."""
+    return max(point for point, _, _, _ in state) - min(
+        point - extent for point, extent, _, _ in state
+    )
+
+
+def _centred_setter(span: int) -> tuple[str, str, int, int] | None:
+    """Separate a span with equal-width upward and downward setters."""
+    total = span + 2
+    middle = total // 2
+    for up in range(max(2, middle - 8), min(total - 1, middle + 8) + 1):
+        down = total - up
+        pair = _pad_pair(_affine_code(1, up), _affine_code(1, -down))
+        if pair is not None:
+            zero, one = pair
+            return zero, one, up, down
+    return None
+
+
+def _interleaved_twelve(truth_table: str) -> str | None:
+    """Build all twelve-input tables by folding only the final two inputs."""
+    n = 12
+    prefix = n - 2
+    weights = _fold_uniform(prefix, _FOLD_NARROW_STEP)
+    setters = _fold_setters(prefix, weights)
+    positions = _fold_positions(prefix, weights)
+    emitter = _FoldEmitter.__new__(_FoldEmitter)
+    emitter.table = truth_table
+    emitter.rows = 2**n
+    block = 2 ** (n - prefix)
+    emitter.pos = {
+        frozenset(range(row * block, (row + 1) * block)): positions[row]
+        for row in range(2**prefix)
+    }
+    emitter.cls = {
+        key: truth_table[row * block : (row + 1) * block]
+        for row, key in enumerate(emitter.pos)
+    }
+    emitter.body = ["{X" + str(index) + "}" for index in range(prefix)]
+
+    def lay(index: int, *, cofactor: bool) -> tuple[str, str] | None:
+        lo = min(emitter.pos.values())
+        hi = max(emitter.pos.values())
+        got = _centred_setter(hi - lo)
+        if got is None:
+            return None
+        zero, one, up, down = got
+        shift = -_LIMIT - lo + down
+        if shift > _LIMIT - hi - up:
+            return None
+        emitter.preshift(shift)
+        next_pos: dict[_FoldKey, int] = {}
+        next_cls: dict[_FoldKey, str] = {}
+        occupied: dict[int, str] = {}
+        for key, value in emitter.pos.items():
+            rows = set(key) if isinstance(key, frozenset) else {key}
+            for bit, code in ((0, zero), (1, one)):
+                picked = {row for row in rows if (row >> (n - 1 - index)) & 1 == bit}
+                if not picked:
+                    continue
+                value2 = _apply(value, code)
+                if not -_LIMIT <= value2 <= _LIMIT:
+                    return None
+                cls = (
+                    _cofactor_class(truth_table, n, next(iter(picked)), index + 1)
+                    if cofactor
+                    else truth_table[next(iter(picked))]
+                )
+                if value2 in occupied and occupied[value2] != cls:
+                    return None
+                occupied[value2] = cls
+                key2: _FoldKey = (
+                    next(iter(picked)) if len(picked) == 1 else frozenset(picked)
+                )
+                next_pos[key2] = value2
+                next_cls[key2] = cls
+        emitter.pos, emitter.cls = next_pos, next_cls
+        emitter.body.append("{X" + str(index) + "}")
+        return zero, one
+
+    def state() -> _FoldState:
+        return _fold_norm(
+            [
+                (
+                    value,
+                    0,
+                    emitter.cls[key],
+                    key if isinstance(key, frozenset) else frozenset({key}),
+                )
+                for key, value in emitter.pos.items()
+            ]
+        )
+
+    def emit(ops: list[_FoldOp]) -> None:
+        for index, (kind, _, amount, rows) in enumerate(ops):
+            if kind == "m":
+                emitter.double(
+                    next_is_rise=index + 1 < len(ops) and ops[index + 1][0] == "u"
+                )
+            elif kind == "d":
+                emitter.dive(amount, rows)
+            else:
+                emitter.rise(amount, rows)
+
+    first = lay(prefix, cofactor=True)
+    if first is None:
+        return None
+    setters.append(first)
+    partial = _fold_reduce(state(), _cofactor_done)
+    if partial is None:
+        return None
+    emit(partial)
+    second = lay(prefix + 1, cofactor=False)
+    if second is None:
+        return None
+    setters.append(second)
+    final = _fold_plan(state())
+    if final is None:
+        return None
+    emit(final)
+    emitter.finish()
+    header = ";".join(
+        f"{index}={zero}|{one}" for index, (zero, one) in enumerate(setters)
+    )
+    return header + _HEADER_END + "".join(emitter.body)
+
+
 def _interleaved_fold(truth_table: str, n: int) -> str | None:
     """Try a placeholder/fold/placeholder build before the all-row fallback.
 
@@ -2662,6 +2789,10 @@ def _interleaved_fold(truth_table: str, n: int) -> str | None:
     states; it is an executable replacement skeleton, not yet the large-state
     gap controller.  A miss lets the established fold try its ladders.
     """
+    if n == 12:
+        twelve = _interleaved_twelve(truth_table)
+        if twelve is not None:
+            return twelve
     setters: list[tuple[str, str]] = []
     rows = frozenset(range(2**n))
     emitter = _FoldEmitter.__new__(_FoldEmitter)
@@ -3244,8 +3375,7 @@ def pct_squared_minus_one(truth_table: str) -> str:
                 f"any arity, the thresholds a weighted ladder crosses, the "
                 f"tables a deep band schedules, the tables the all-row fold "
                 f"can plan, and the compactable suffix-cofactor stages the "
-                f"interleaved fold can plan (the all-row ladder caps it at "
-                f"eleven inputs); "
+                f"interleaved fold can plan; "
                 f"got {n} inputs ({truth_table!r})"
             )
         return fold
