@@ -10,6 +10,9 @@ Their cost functions are *not* kept: those existed to choose between the
 constructions without building them, and there is no longer a choice to make.
 """
 
+# These independent construction oracles deliberately mirror generated programs.
+# pylint: disable=duplicate-code
+
 from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
 from esolangs.tools.boolean.register import _SOPHIE_BANDS, _polynomial_states
 
