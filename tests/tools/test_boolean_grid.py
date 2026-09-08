@@ -806,21 +806,23 @@ class TestWII2D:
             got = self.run_chain(template, bits)
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_decode_takes_one_candidate_and_never_backtracks(self) -> None:
-        """The decode is a single pass: the head candidate, every step.
+    def test_greedy_takes_one_candidate_and_never_backtracks(self) -> None:
+        """The greedy build is a single pass: the head candidate, every step.
 
         This is the property that makes it a construction rather than a
         search, so it is pinned directly.  Wrapping ``_wii2d_folds`` to hand
-        back *only* its first candidate cannot change any emitted op string,
-        because the decode never looks at the others.
+        back *only* its first candidate cannot change any op string it
+        emits, because it never looks at the others.  The beam beside it
+        does, which is why this targets :func:`_wii2d_greedy` rather than
+        the dispatch.
         """
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.wii2d")
         from esolangs.tools.boolean.wii2d import (
             _wii2d_apply,
-            _wii2d_decode,
             _wii2d_folds,
+            _wii2d_greedy,
         )
 
         patterns = [
@@ -828,7 +830,7 @@ class TestWII2D:
             [0, 1] * 8,
             [1, 1, 0, 0, 1, 0, 1, 0],
         ]
-        before = [_wii2d_decode(list(p)) for p in patterns]
+        before = [_wii2d_greedy(list(p)) for p in patterns]
 
         head_only = _wii2d_folds
         with pytest.MonkeyPatch.context() as patch:
@@ -837,12 +839,77 @@ class TestWII2D:
                 "_wii2d_folds",
                 lambda values, bits: head_only(values, bits)[:1],
             )
-            after = [_wii2d_decode(list(p)) for p in patterns]
+            after = [_wii2d_greedy(list(p)) for p in patterns]
 
         assert after == before
         for pattern, ops in zip(patterns, before, strict=True):
             assert ops is not None
             assert [_wii2d_apply(ops, x) for x in range(len(pattern))] == pattern
+
+    def test_the_beam_only_ever_shortens(self) -> None:
+        """The beam is a second candidate, taken on strict improvement only.
+
+        It is the decode ``ea65a170`` retired, recovered as an *optional*
+        pass rather than the primary it was: neither build dominates -- at
+        ``D == 16`` the recovered beam is shorter on 186 of 400 random
+        patterns and longer on 75 -- so the dispatch keeps whichever is
+        shorter and a pattern the beam stalls on falls back rather than
+        failing.
+
+        49 of the 256 patterns here improve.  The recovered beam's own
+        measurement at this domain was 53, under the magnitude-first
+        *retry* pass that shipped with it; that pass existed to escape the
+        doubling trap when the beam had to answer, and a fallback to the
+        greedy build replaces it.
+        """
+        import itertools
+
+        from esolangs.tools.boolean.wii2d import (
+            _wii2d_apply,
+            _wii2d_beam,
+            _wii2d_decode,
+            _wii2d_greedy,
+        )
+
+        improved = 0
+        for bits in itertools.product([0, 1], repeat=8):
+            pattern = list(bits)
+            shipped = _wii2d_decode(list(pattern))
+            greedy = _wii2d_greedy(list(pattern))
+            assert shipped is not None
+            assert greedy is not None
+            assert len(shipped) <= len(greedy), pattern
+            # Whatever wins has to realize the pattern, not merely be short.
+            assert [_wii2d_apply(shipped, x) for x in range(8)] == pattern
+            beam = _wii2d_beam(list(pattern))
+            if beam is not None and len(beam) < len(greedy):
+                improved += 1
+                assert shipped == beam, pattern
+        assert improved == 49  # the rest tie or lose, keeping the greedy build
+
+    def test_the_beam_is_gated_to_the_domains_it_was_measured_on(self) -> None:
+        """A wide domain stays greedy-only.
+
+        The retired beam's cost tail lived above ``D == 16`` -- ranking
+        states by live count merges through ever-larger numbers -- and no
+        win is measured there, so the dispatch does not attempt it.
+        """
+        import importlib
+
+        module = importlib.import_module("esolangs.tools.boolean.wii2d")
+        from esolangs.tools.boolean.wii2d import _wii2d_decode, _wii2d_greedy
+
+        calls = []
+        beam = module._wii2d_beam  # noqa: SLF001
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(
+                module,
+                "_wii2d_beam",
+                lambda pattern: calls.append(len(pattern)) or beam(pattern),
+            )
+            wide = [(x * 7 + 3) % 2 for x in range(32)]
+            assert _wii2d_decode(list(wide)) == _wii2d_greedy(list(wide))
+        assert calls == []  # never attempted above the gate
 
     def test_decode_is_exhaustive_over_the_widest_shipped_domain(self) -> None:
         """Every eight-point pattern decodes under the single-candidate rule.
