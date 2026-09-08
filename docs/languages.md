@@ -27,8 +27,8 @@ harness instantiates and runs one program per input row.
 
 The generator combines subcube, affine, threshold, band, and fold
 constructions. It is exhaustive through four inputs; the fold reaches
-sampled generic tables through eleven inputs. Its twelve-input workspace
-limit is open research, not a language limit.
+sampled generic tables through eleven inputs, and the interleaved
+fold reaches generic twelve-input tables.
 
 ## The matrix
 
