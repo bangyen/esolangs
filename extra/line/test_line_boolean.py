@@ -88,6 +88,15 @@ class TestLineBoolean:
         """
         _check_truth_table("01101001100101101001011001101001", 5, tmp_path)
 
+    @pytest.mark.slow  # 44s: all 256 rendered-tree executions
+    def test_parity_n8(self, tmp_path: Path) -> None:
+        """8-input parity reaches every leaf through the real PNG round trip."""
+        _check_truth_table(
+            "".join(str(bits.bit_count() % 2) for bits in range(2**8)),
+            8,
+            tmp_path,
+        )
+
     def test_invalid_length_rejected(self) -> None:
         """A truth table whose length is not a power of two is rejected."""
         with pytest.raises(ValueError, match="power-of-two"):
