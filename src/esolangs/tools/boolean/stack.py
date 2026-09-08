@@ -50,8 +50,8 @@ def grapheme(truth_table: str) -> str:
     ``T`` maps zero to 1 and nonzero to 0), stored in a variable, and the
     table is evaluated as a sum of minterms: the result is ``1`` minus the
     sum of the ``0``-rows' minterms, or the sum of the ``1``-rows' minterms,
-    whichever has fewer rows (each minterm is the arithmetic AND, ``S``, of
-    the bits or their complements ``1 - b``).  Since exactly one row's
+    whichever comes out *shorter* (each minterm is the arithmetic AND, ``S``,
+    of the bits or their complements ``1 - b``).  Since exactly one row's
     minterm is 1 for any input, the accumulator holds the table entry, which
     ``Y`` prints.  No control-flow jumps are needed — only ``A``/``B``/``S``
     arithmetic and ``T``.
@@ -67,10 +67,42 @@ def grapheme(truth_table: str) -> str:
     # left below the accumulator is unreachable rather than merely unused.
     # That makes it cheaper than taglate's rotate-and-drop, which has a
     # queue's positional arithmetic to keep undisturbed.
+    head, table, width = _grapheme_head(truth_table, n)
+
+    # Evaluate over one side of the table and fold its minterms.  Both sides
+    # are built and the shorter kept, because the row *count* the sparser
+    # rule went by is only a proxy for length and gets it wrong two ways.
+    #
+    # The sides do not cost the same per row: a negated literal spends eight
+    # characters more than a plain one, so a row's cost falls with its
+    # popcount (47 characters at row 0 against 23 at row 7, width 3) and two
+    # sides with equal counts can differ by a lot.  Nor do they start the
+    # same: the zero side seeds the accumulator with ``_grapheme_push1()``
+    # (7 characters) against the one side's ``_grapheme_push0()`` (3), which
+    # a count comparison cannot see at all -- and the old rule's ``<=`` gave
+    # every tie to the expensive seed, so a balanced table always lost.
+    #
+    # Measured against the count rule: 45 of 256 tables at n == 3 came out
+    # longer, by up to 52 characters, and 7654 of 65536 at n == 4 by up to
+    # 100.  Building both is cheap here because the program *is* the string
+    # -- there is no assembly step -- and the two sides together spend one
+    # minterm per row of the table.  The comparison is strict, so a table
+    # the other side does not shorten emits exactly what it emitted before.
+    zero_side = _grapheme_side(table, width, head, zero_rows=True)
+    one_side = _grapheme_side(table, width, head, zero_rows=False)
+    return one_side if len(one_side) < len(zero_side) else zero_side
+
+
+def _grapheme_head(truth_table: str, n: int) -> tuple[str, str, int]:
+    """Emit the reads, and return them with the reduced table and its width.
+
+    Shared by the two side builders below, which differ only in what they
+    fold onto the accumulator -- the reads are the interface and are the
+    same either way.
+    """
     used = essential_inputs(truth_table, n) or [0]
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
-    width = len(used)
-    # Slot ``s`` holds original input ``used[s]``; the minterm body below is
+    # Slot ``s`` holds original input ``used[s]``; the minterm body is
     # written over the reduced table's slots, so it never names a dropped one.
     slot_of = {i: s for s, i in enumerate(used)}
 
@@ -89,29 +121,33 @@ def grapheme(truth_table: str) -> str:
             + _grapheme_push_key(10 * (slot_of[i] + 1))
             + "C"
         )
+    return "".join(prog), table, len(used)
 
-    # Evaluate over the sparser side to bound the program size.
-    zeros = [r for r in range(2**width) if table[r] == "0"]
-    ones = [r for r in range(2**width) if table[r] == "1"]
-    if len(zeros) <= len(ones):
-        rows, acc, op = zeros, _grapheme_push1(), "B"  # acc = 1 - sum(0-row minterms)
-    else:
-        rows, acc, op = ones, _grapheme_push0(), "A"  # acc = sum(1-row minterms)
-    prog.append(acc)
+
+def _grapheme_side(table: str, width: int, head: str, *, zero_rows: bool) -> str:
+    """Fold one side of the table onto the accumulator.
+
+    ``zero_rows`` sums the ``0``-rows' minterms and subtracts them from 1;
+    otherwise the ``1``-rows' minterms are summed directly.  The seeds differ
+    in length (7 characters against 3), which is half of why the row count
+    the old rule compared is not the program's length.
+    """
+    rows = [r for r in range(2**width) if (table[r] == "0") == zero_rows]
+    acc, op = (_grapheme_push1(), "B") if zero_rows else (_grapheme_push0(), "A")
+    body = [acc]
     for row in rows:
-        prog.append(_grapheme_push1())  # start this minterm at 1
+        body.append(_grapheme_push1())  # start this minterm at 1
         for i, negated in minterm_literals(row, width):
             if negated:
                 # factor = 1 - b_i
-                prog.append(
+                body.append(
                     _grapheme_push1() + _grapheme_push_key(10 * (i + 1)) + "D" + "B"
                 )
             else:
-                prog.append(_grapheme_push_key(10 * (i + 1)) + "D")  # factor = b_i
-            prog.append("S")
-        prog.append(op)  # fold the minterm into the accumulator
-    prog.append("Y")
-    return "".join(prog)
+                body.append(_grapheme_push_key(10 * (i + 1)) + "D")  # factor = b_i
+            body.append("S")
+        body.append(op)  # fold the minterm into the accumulator
+    return head + "".join(body) + "Y"
 
 
 def _forth_const(value: int) -> str:

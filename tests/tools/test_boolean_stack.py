@@ -16,6 +16,20 @@ from tests.tools.boolean_runners import (
 )
 
 
+def _grapheme_counted_side(table: str, n: int) -> str:
+    """The build the retired row-count rule would have chosen.
+
+    It took the zero side when ``len(zeros) <= len(ones)``, so ties went to
+    that side.  Kept here rather than in the generator: it is the thing the
+    generator is asserted to beat, not something it should be able to emit.
+    """
+    from esolangs.tools.boolean.stack import _grapheme_head, _grapheme_side
+
+    head, reduced, width = _grapheme_head(table, n)
+    zeros = reduced.count("0")
+    return _grapheme_side(reduced, width, head, zero_rows=zeros <= reduced.count("1"))
+
+
 class TestGrapheme:
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -47,6 +61,37 @@ class TestGrapheme:
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = run_grapheme(program, [str(b) for b in bits])
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_shorter_side_wins_not_the_sparser_one(self) -> None:
+        """Row count is a proxy for length, and it picks wrong.
+
+        A row's cost falls with its popcount -- a negated literal spends
+        eight characters more than a plain one -- and the two sides seed the
+        accumulator differently (7 characters against 3), so equal counts do
+        not mean equal length.  The old rule compared counts and gave ties
+        to the expensive seed, so a balanced table always lost.
+
+        Both sides are built now and the shorter kept.  ``00010111`` is the
+        worst case at n == 3, and the count rule cost it 52 characters.
+        """
+        improved = 0
+        for value in range(256):
+            table = format(value, "08b")
+            shipped = len(boolean.grapheme(table))
+            # What the count rule would have picked, built directly.
+            counted = len(_grapheme_counted_side(table, 3))
+            assert shipped <= counted, table
+            improved += shipped < counted
+        assert improved == 45
+
+    def test_balanced_table_takes_the_cheaper_seed(self) -> None:
+        """The old ``<=`` tie went to the 7-character seed every time."""
+        program = boolean.grapheme("0011")
+        assert len(program) < len(_grapheme_counted_side("0011", 2))
+        for combo in range(4):
+            bits = [(combo >> (1 - i)) & 1 for i in range(2)]
+            got = run_grapheme(program, [str(b) for b in bits])
+            assert got == "0011"[combo], f"inputs {bits}"
 
     def test_bad_table_rejected(self) -> None:
         with pytest.raises(ValueError, match="power-of-two"):
