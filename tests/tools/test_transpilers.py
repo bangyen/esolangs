@@ -15,6 +15,7 @@ import pytest
 import esolangs
 from esolangs.exceptions import (
     EsolangError,
+    HaltError,
     UnsupportedTranspilationError,
 )
 
@@ -317,6 +318,147 @@ def test_bfstack_fuzz_stack_programs() -> None:
         program = "".join(parts)
         bf_program = esolangs.transpile("BFStack", "brainfuck", program)
         assert esolangs.run("BFStack", program) == esolangs.run("brainfuck", bf_program)
+
+
+# (brainfuck program, stdin) pairs for Streetcode.  Streetcode is a 2D
+# language whose only branch is a junction that reads whether the pointer's
+# cell is zero -- exactly brainfuck's loop test -- so a ``[``/``]`` draws as
+# a room the car laps.  The cases that matter beyond plain agreement are the
+# ones the doubled non-wrapping cell model has to reproduce: underflow
+# (``-.`` -> 255), overflow past 255 inside a loop (``+[+].``), a wrapping
+# multiply, a pointer-moving loop body (``+[>].``), a ``,`` of a code point
+# above U+00FF (mod 256), a skipped loop, and a deeply nested one.
+STREETCODE_BATTERY = (
+    ("-.", ""),
+    ("+.", ""),
+    ("--.", ""),
+    ("+-.", ""),
+    (">+<.", ""),
+    ("+++[-].", ""),
+    ("+[+].", ""),
+    ("+[->+<]>.", ""),
+    ("+++[>].", ""),
+    ("++>++<[>]<.", ""),
+    ("++[>[-]<-].", ""),
+    ("+++[>++[>+<-]<-]>+++.", ""),
+    ("++++++++[>++++++++<-]>.", ""),
+    ("+[>+[>[-]+<-]<-].", ""),
+    (",.", "a"),
+    (",.", "Ā"),
+    (",.", "中"),
+    (",[.-]", "a"),
+    (",>,<.>.", "a\nb"),
+    ("[-].", ""),
+    ("[+].", ""),
+    ("", ""),
+    ("xx+++xx.xx", ""),
+)
+
+# a subset with pinned output, so the battery checks more than agreement
+STREETCODE_PINNED = {
+    "-.": ("", "\xff"),
+    "+[+].": ("", "\x00"),
+    "++++++++[>++++++++<-]>.": ("", "@"),
+    ",.": ("Ā", "\x00"),  # U+0100 taken mod 256 is 0
+}
+
+
+@pytest.mark.parametrize(("program", "stdin"), STREETCODE_BATTERY)
+def test_streetcode_transpiled_output_matches_source(program: str, stdin: str) -> None:
+    """Every battery program agrees byte-for-byte through Streetcode.
+
+    The wraparound brainfuck has and Streetcode does not is reproduced by a
+    canonicalizer the transpiler emits after each arithmetic run and each
+    ``,``, so underflow, overflow and above-byte input all match.
+    """
+    target = esolangs.transpile("brainfuck", "Streetcode", program)
+    assert esolangs.run("brainfuck", program, stdin, timeout=30) == esolangs.run(
+        "Streetcode", target, stdin, timeout=30
+    )
+
+
+@pytest.mark.parametrize(("program", "expected"), STREETCODE_PINNED.items())
+def test_streetcode_pinned_output(program: str, expected: tuple[str, str]) -> None:
+    """Pinned outputs, so the battery is not merely self-consistent."""
+    stdin, want = expected
+    target = esolangs.transpile("brainfuck", "Streetcode", program)
+    assert esolangs.run("Streetcode", target, stdin, timeout=30) == want
+
+
+def test_streetcode_transpiler_is_total() -> None:
+    """Every brainfuck program translates; only unbalanced brackets raise.
+
+    Unbalanced brackets are malformed in brainfuck too, so raising on them
+    is not a class restriction -- the brainfuck interpreter raises on the
+    identical input.
+    """
+    for program in (">+<<.", "<<<", "+.<.", "", "xx", "-.", "+[+].", ",."):
+        esolangs.transpile("brainfuck", "Streetcode", program)
+    for bad in ("[", "]", "[[]"):
+        with pytest.raises(ValueError, match=r"unmatched"):
+            esolangs.transpile("brainfuck", "Streetcode", bad)
+        with pytest.raises(ValueError, match=r"unbalanced|unmatched"):
+            esolangs.run("brainfuck", bad)
+
+
+def test_streetcode_fuzz_agrees() -> None:
+    """Random terminating brainfuck programs agree through Streetcode.
+
+    The generator mixes arithmetic, pointer moves, I/O and balanced loops.
+    A program the *source* interpreter does not halt on within its step
+    budget is skipped -- that is a property of brainfuck, not a rejection by
+    the transpiler, which has no reject arm -- and the count of programs
+    that actually ran is asserted so the fuzz cannot quietly stop
+    exercising the geometry.
+    """
+    rng = random.Random(5)
+    checked = 0
+    for _ in range(40):
+        depth = 0
+        parts: list[str] = []
+        for _ in range(rng.randint(1, 14)):
+            kind = rng.choice(
+                ("inc", "dec", "right", "left", "print", "in", "open", "close")
+            )
+            if kind == "inc":
+                parts.append("+" * rng.randint(1, 4))
+            elif kind == "dec":
+                parts.append("-" * rng.randint(1, 4))
+            elif kind == "right":
+                parts.append(">")
+            elif kind == "left":
+                parts.append("<")
+            elif kind == "print":
+                parts.append(".")
+            elif kind == "in":
+                parts.append(",")
+            elif kind == "open":
+                parts.append("[")
+                depth += 1
+            elif kind == "close" and depth:
+                parts.append("]")
+                depth -= 1
+        parts.append("]" * depth)
+        program = "".join(parts)
+        stdin = "\n".join(rng.choice(["", "a", "Ā", "中"]) for _ in range(4))
+        try:
+            expected = esolangs.run("brainfuck", program, stdin, timeout=15)
+        except EOFError:
+            continue  # ``,`` past the end of stdin; the source refuses it
+        except HaltError:
+            continue  # brainfuck did not halt in the wall-clock budget
+        try:
+            got = esolangs.run(
+                "Streetcode",
+                esolangs.transpile("brainfuck", "Streetcode", program),
+                stdin,
+                timeout=30,
+            )
+        except HaltError:
+            continue  # the (equivalent, larger) grid did not finish in time
+        assert got == expected, program
+        checked += 1
+    assert checked > 12, f"only {checked} programs ran; fuzz is not exercising"
 
 
 # (Decleq program, stdin) pairs.  The transpiler emits a Decleq emulator,
