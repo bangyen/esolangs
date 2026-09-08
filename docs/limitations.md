@@ -49,6 +49,9 @@ Current caps are deliberate:
   ladder limit is open research, not a wall.
 - **NoComment, Factor:** host/runtime configuration limits.
 - **Polynomial, WII2D, ZTOALC L:** program-cost guards, not capability claims.
+- **Route hybrids:** CV(N)(C), Polynomial, Circlefuck, `%^2^-1`, and WII2D
+  alternatives were rejected. Occasional smaller output did not repay slower
+  generation: 1.25x, 1.08x, 29x, 3,100x, and 1.85x on their audit cases.
 
 ## Spec and engine boundaries
 

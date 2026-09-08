@@ -44,13 +44,6 @@ testable boolean-generator route. The assessed-and-rejected ledger is in
   extractor → simulator frontier with an all-leaf-reaching corpus, then only
   pursue subtree sharing or a denser layout if that measurement finds a real
   resource limit.
-- **Collapse competing boolean constructions.** Audit generators that emit
-  multiple routes and keep the shorter. Where loop semantics permit it, derive
-  one construction or a dominance rule that covers every table; retain a
-  fallback only when executed counterexamples show it is necessary. This is
-  about removing avoidable selection work, not beating the generic `O(2**n)`
-  truth-table lower bound.
-
 ## Conditional follow-up
 
 - **ArrowQueue reusable drain.** Ship the verified deep-fold drain only if a
