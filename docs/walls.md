@@ -17,6 +17,14 @@ claim is accepted.
   its remaining guards are source-cost policies, not language walls.
 - **Termination convention:** use only where a specification supplies a
   reliable halt/loop verdict and the runtime can decide it soundly.
+- **Empty input line:** `io.input_char` now returns `0`, matching every
+  interpreter that guards `io.input_str` at its own call site; the package
+  used to answer `10` through one path and `0` through the other, which no
+  cross-camp transpiler could reconcile. Exhausted input is still `EOFError`.
+  Pinned by `tests/interpreters/test_input_convention.py`, which enumerates
+  the registry rather than a list. Open: whether any language's `0` was ever
+  sourced from its own specification rather than chosen — the docstrings
+  citing "the original" are the same author's earlier readings.
 
 ## Verification boundaries
 
