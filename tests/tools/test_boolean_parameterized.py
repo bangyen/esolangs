@@ -2623,6 +2623,13 @@ class TestParameterizedOneTwoThree:
             build would; here that only means "not this law", so the
             raise is caught rather than propagated.
             """
+            # pylint: disable=duplicate-code
+            # The overlap with ``_separated``'s replay is the point, not
+            # an oversight: this test re-derives the shipped constants,
+            # so it has to replay the law independently.  Sharing a
+            # helper would check the generator against itself and a bug
+            # in the replay would pass here, so the copy stays and the
+            # similarity check is told so rather than left to fail in CI.
             _work[0] = _WORK_BUDGET
             try:
                 b = _Builder(n)
