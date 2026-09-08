@@ -401,6 +401,20 @@ def test_streetcode_transpiler_is_total() -> None:
             esolangs.run("brainfuck", bad)
 
 
+def test_streetcode_end_of_input_raises_in_both() -> None:
+    """Exhausted input raises ``EOFError`` through both, not one silently.
+
+    The doc claims this agreement; criterion 5 wants it executed rather than
+    read.  ``,`` against empty stdin has no line to consume in either
+    language, so both must raise.
+    """
+    target = esolangs.transpile("brainfuck", "Streetcode", ",")
+    with pytest.raises(EOFError):
+        esolangs.run("brainfuck", ",", "")
+    with pytest.raises(EOFError):
+        esolangs.run("Streetcode", target, "")
+
+
 def test_streetcode_fuzz_agrees() -> None:
     """Random terminating brainfuck programs agree through Streetcode.
 
@@ -410,9 +424,16 @@ def test_streetcode_fuzz_agrees() -> None:
     the transpiler, which has no reject arm -- and the count of programs
     that actually ran is asserted so the fuzz cannot quietly stop
     exercising the geometry.
+
+    A skip on the *target* side is different: a mistranslation that turned a
+    halting program into a non-terminating one would look exactly like a
+    slow grid timing out.  So target-side timeouts are counted and bounded
+    -- if most of the corpus were skipping there, the fuzz would be proving
+    nothing, and the assertion says so.
     """
     rng = random.Random(5)
     checked = 0
+    target_timeouts = 0
     for _ in range(40):
         depth = 0
         parts: list[str] = []
@@ -455,10 +476,15 @@ def test_streetcode_fuzz_agrees() -> None:
                 timeout=30,
             )
         except HaltError:
-            continue  # the (equivalent, larger) grid did not finish in time
+            target_timeouts += 1  # a slow grid -- counted, not silently dropped
+            continue
         assert got == expected, program
         checked += 1
     assert checked > 12, f"only {checked} programs ran; fuzz is not exercising"
+    assert target_timeouts < checked, (
+        f"{target_timeouts} target-side timeouts vs {checked} checked: "
+        "the fuzz is mostly skipping the geometry it exists to test"
+    )
 
 
 # (Decleq program, stdin) pairs.  The transpiler emits a Decleq emulator,
