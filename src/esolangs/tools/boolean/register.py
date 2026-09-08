@@ -873,7 +873,11 @@ def polynomial(truth_table: str) -> str:
         candidate = _polynomial_assemble(build())
         if program is None or len(candidate) < len(program):
             program = candidate
-    assert program is not None
+    if program is None:  # pragma: no cover - the cheapest member always fits
+        raise AssertionError(
+            "the Polynomial screen dropped every candidate, which the "
+            "cheapest member cannot do",
+        )
     return program
 
 
