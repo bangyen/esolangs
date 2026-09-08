@@ -84,7 +84,7 @@ and skip when zero. The room is a working
 `while cell != 0 { cell -= 1; scratch += k }` — the countdown/multiplier
 class.
 
-### The open sub-problem: body cp-movement across lap gaps
+### The sub-problem: body cp-movement across lap gaps
 
 Every wall gap the lap crosses reads the cell under `cp` as the car arrives
 (`streetcode-gap-junction-law`). The island keeps its steering gaps reading a
@@ -94,23 +94,65 @@ if the body's net `cp` displacement is a fixed constant.
 
 A general bf body moves `cp` by a data-dependent amount: a nested loop
 `[>...]` whose trip count depends on cell contents leaves `cp` displaced by a
-runtime-variable offset by the time control reaches the enclosing `]`. No
-fixed glyph sequence restores `cp` to the tested cell across the lap's
+runtime-variable offset by the time control reaches the enclosing `]`. A naive
+fixed glyph sequence cannot restore `cp` to the tested cell across the lap's
 steering gaps, so the lap's mid-gaps read an uncontrolled cell and steer the
 car out of the island.
 
-This is the same barrier the roadmap files under **"Lower drawn control
-flow"** (`docs/roadmap.md`): the construction is a compiler / source-machine
-problem, not command transliteration, and it needs the reference
-interpreter's junction and post-corner semantics pinned before a general
-lowering. The countdown room above is the reachable fragment; the general
-`while` with cp-moving, nesting bodies is not yet constructed.
+Three re-park strategies were prototyped and traced:
+
+1. **Value-based homing** (walk `cp` to a unique sentinel cell) — **dead.**
+   Streetcode junctions read one bit only (`streetcode.py:1161`,
+   `roads[0] if current_cell == 0 else roads[1]`), so no value distinguishes a
+   sentinel from a data cell; and the walk is itself an unparked loop, whose
+   gaps read the unknown-position cell — the very thing being fixed. Circular.
+
+2. **Fixed-return rail** (rewrite bf so every loop body is net-zero `cp`
+   movement) — **works over compile-time-constant-displacement bodies only.**
+   A body's displacement is a constant iff every nested loop in it is itself
+   net-zero; the obstruction is a loop whose body has *nonzero constant*
+   displacement, canonically `[>]` (walk right to the first zero: +1 per lap ×
+   data-dependent trip count). It cannot be normalised away: cancelling `[>]`
+   with a `[<]` return-walk is net-zero only at the enclosing-body level, but
+   Streetcode draws each loop as a *separate room*, so the re-park at the end
+   of the `[>]` room must fire before the `[<]` room exists to cancel it —
+   wrong granularity — and the return-walk is itself a nonzero-displacement
+   loop, so the regress does not bottom out.
+
+3. **Clamp-reset** (`_`-saturation) — **works over statically-pointer-bounded
+   programs, a strictly larger class.** Streetcode's `_` clamps at 0, so
+   `_` * K forces `cp = max(0, cp - K)`: for `K >= cp` this is an
+   *unconditional, data- and position-independent reset to 0*, and it is
+   **not a loop** (built-in saturation), so it dodges homing's circularity.
+   Re-park after a cp-moving body is then `_` * K to zero the pointer, then a
+   *fixed* `=`/`_` walk to the loop cell's statically-known index, with a
+   fixed-index scratch supplying the nonzero cell the steering gaps need — all
+   walks between fixed indices, because the clamp erased the data-dependence.
+   Traced by surgery on the countdown island: one `=` in the body derails
+   (cp marches, never halts); the same body with one `_` clamp on the climb
+   re-parks deterministically and the loop halts and drains.
+
+   The boundary: `K` must be at least the maximum `cp` the run ever reaches.
+   bf's pointer is unbounded, so no finite `K` is total; but for any program
+   whose pointer stays within a static bound `B`, `K = B` works. This class is
+   strictly larger than (2)'s — it admits data-dependent pointer *drift within
+   a fixed window*, which net-zero cannot — and the residue that remains
+   (unbounded-pointer bf) is the halting/space barrier, not a drawable-road
+   problem.
+
+So the barrier the roadmap files under **"Lower drawn control flow"**
+(`docs/roadmap.md`) is not one wall but a boundary: a loop room is drawable
+whenever the program's pointer range is statically bounded (clamp-reset), and
+the general unbounded case is what remains. The construction is a compiler /
+source-machine problem, and the reference interpreter's junction and
+post-corner semantics are pinned enough for the bounded fragment.
 
 ## Status
 
 Not registered in `TRANSPILERS`: registering a transpiler that is total over
-the source is the contract, and the geometry is total only over the countdown
-class, not over all bf. Per the admission bar, a partial transpiler is not
-carried. The IL layer and the traced room components are recorded here and in
-`notes/` so a later attempt at the general lowering starts from proven pieces
-rather than re-deriving them.
+the source is the contract, and the geometry is total only over the
+statically-pointer-bounded fragment, not over all bf. Per the admission bar, a
+partial transpiler is not carried. The IL layer, the traced room components,
+and the three re-park prototypes are recorded here and in `notes/` so a later
+attempt at the general lowering starts from proven pieces and the exact
+boundary rather than re-deriving them.
