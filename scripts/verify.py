@@ -58,6 +58,7 @@ import shutil
 import subprocess
 import sys
 import time
+from fnmatch import fnmatch
 from pathlib import Path
 from typing import Any
 
@@ -304,6 +305,16 @@ def _scope_plan(*, full: bool) -> tuple[set[str] | None, str]:
 # the *opposite* of WHOLE_SUITE, and one sentinel meaning both is a trap.
 WHOLE_SUITE = "whole-suite"
 
+# pyproject's ``python_files``.  Kept in step by a test, since a path this
+# says is collectable but pytest does not would fail the run it is scoped to.
+COLLECTED_PATTERNS = ("test_*.py", "*_test.py")
+
+
+def _is_collected(path: str) -> bool:
+    """Whether pytest would collect tests from *path*."""
+    name = Path(path).name
+    return any(fnmatch(name, pattern) for pattern in COLLECTED_PATTERNS)
+
 
 def _pytest_scope(changed: list[str]) -> list[str] | str:
     """Return the pytest paths covering *changed*.
@@ -318,10 +329,12 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
     paths: set[str] = set()
     for f in changed:
         if f.startswith("tests/"):
-            # A conftest configures every test beneath it, and a non-.py file
-            # is fixture data some unknown test reads.  Either scoped to itself
-            # would collect nothing and pass trivially, so both widen.
-            if Path(f).name == "conftest.py" or not f.endswith(".py"):
+            # A conftest configures every test beneath it, a non-.py file is
+            # fixture data some unknown test reads, and a module pytest does
+            # not collect is a helper imported from tests that live elsewhere.
+            # Scoped to itself each collects nothing, which pytest exits
+            # non-zero for, so all three widen.
+            if Path(f).name == "conftest.py" or not _is_collected(f):
                 return WHOLE_SUITE
             if (ROOT / f).exists():
                 paths.add(f)
