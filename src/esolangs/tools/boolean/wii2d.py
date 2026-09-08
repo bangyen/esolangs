@@ -104,36 +104,6 @@ _WII2D_MAX_CENTRE = 4096
 # ``docs/wii2d_generator.md``.
 _WII2D_SHORTLIST = 4
 
-# Fold width for :func:`_wii2d_beam`, the optional second decode, and the
-# widest domain it is attempted on.
-#
-# ``ea65a170`` removed a beam search that was the *primary* decode, behind a
-# (4, 16, 32) width ladder and a magnitude-first retry pass.  As a primary it
-# had to serve every pattern, which is what gave it a 13411-character, 393ms
-# worst case at ``n == 6`` -- its first pass ranked states by live count,
-# merging as hard as possible through ever-larger numbers.
-#
-# The greedy construction that replaced it is total and fast, so a beam is
-# no longer required to answer: it is tried second, on strict improvement
-# only, and any pattern where it stalls or trips its magnitude bail simply
-# keeps the greedy program.  That makes every pathology skippable rather
-# than something to escape, and no table can grow.
-#
-# Measured over uniform random patterns, beam against greedy: at ``D == 8``
-# it is shorter on 53 of 256 and longer on 35; at ``D == 16``, shorter on
-# 186 of 400 and longer on 75, best case 124 characters against 67.  Neither
-# dominates, which is why both are built.  Domains above 16 stay greedy-only
-# -- that is where the old beam's cost tail lived, and no win is measured
-# there.
-_WII2D_BEAM = 16
-_WII2D_BEAM_MAX_DOMAIN = 16
-
-# Magnitude bail for the beam, in bits.  A state whose values pass this is in
-# the doubling trap, where every further fold squares numbers already
-# thousands of bits wide; the beam abandons the pattern to greedy rather than
-# grinding.  Retained from ``ea65a170^``'s ``_WII2D_MAX_STATE_BITS``.
-_WII2D_BEAM_MAX_BITS = 4096
-
 # The widest decode domain the general (non-symmetric) path will attempt, so
 # that path is used up to ``n == 7`` by default.
 #
@@ -357,69 +327,14 @@ def _wii2d_folds(
 
 
 def _wii2d_decode(pattern: list[int]) -> str | None:
-    """Return the shorter of the greedy construction and the beam.
-
-    :func:`_wii2d_greedy` is the total one and always runs; the beam
-    (:func:`_wii2d_beam`) is attempted only up to
-    :data:`_WII2D_BEAM_MAX_DOMAIN` and only replaces it on a strict
-    improvement, so a pattern the beam stalls on keeps the greedy program
-    and no pattern grows.  Neither dominates -- see :data:`_WII2D_BEAM`.
-    """
-    greedy = _wii2d_greedy(pattern)
-    if greedy is None or len(pattern) > _WII2D_BEAM_MAX_DOMAIN:
-        return greedy
-    beam = _wii2d_beam(pattern)
-    return beam if beam is not None and len(beam) < len(greedy) else greedy
-
-
-def _wii2d_beam(pattern: list[int]) -> str | None:
-    """Fold with a width-``_WII2D_BEAM`` beam instead of a single candidate.
-
-    Recovered from ``ea65a170^``, where it was the primary decode behind a
-    width ladder and a retry pass.  Here it is optional, so the ladder and
-    the retry are gone: one width, one ranking, and a bail to ``None`` on
-    the doubling trap, which hands the pattern back to the greedy build.
-
-    Keeping the shipped magnitude-first ranking for *candidate generation*
-    matters -- ranking folds by emitted width instead is 4-20x worse, which
-    is the measurement the whole fold order rests on.  The beam widens only
-    which states survive between steps, not how folds are scored.
-    """
-    bits = list(pattern)
-    if all(bit == bits[0] for bit in bits):
-        return str(bits[0])
-    values, ops = _wii2d_compress(list(range(len(bits))), bits, "")
-    states = [(values, ops)]
-    for _ in range(len(bits) + 1):
-        nxt: list[tuple[list[int], str]] = []
-        for state_values, state_ops in states:
-            live = _wii2d_points(state_values, bits)
-            if live is None:
-                continue
-            if len(live) <= 2:
-                return state_ops + _wii2d_threshold(live)
-            for candidate in _wii2d_folds(state_values, bits)[:_WII2D_BEAM]:
-                *_rank, fragment, folded = candidate
-                nxt.append((folded, state_ops + fragment))
-        if not nxt:
-            return None
-        nxt.sort(key=lambda state: (len(set(state[0])), len(state[1])))
-        states = nxt[:_WII2D_BEAM]
-        if max(abs(v) for v in states[0][0]).bit_length() > _WII2D_BEAM_MAX_BITS:
-            return None  # the doubling trap; the greedy build serves instead
-    return None
-
-
-def _wii2d_greedy(pattern: list[int]) -> str | None:
     """Construct an op string realizing ``pattern`` on ``0 .. len(pattern)-1``.
 
-    A construction rather than a search: from the starting state it
-    repeatedly takes the *single* best fold :func:`_wii2d_folds` offers,
-    until two live values remain, and reads those out with a threshold
+    This is the one primitive the general path needs, and it is a
+    construction rather than a search: from the starting state it repeatedly
+    takes the *single* best fold :func:`_wii2d_folds` offers, until two live
+    values remain, and reads those out with a threshold
     (:func:`_wii2d_threshold`).  No alternative is kept, so nothing
-    backtracks -- the op string is a direct function of the table.  This is
-    the total one; :func:`_wii2d_decode` may return a beam's shorter answer
-    instead, but only when there is one.
+    backtracks -- the op string is a direct function of the table.
 
     The step count is bounded a priori.  A fold merges at least one pair, so
     the live-value count strictly drops at every step, putting the loop at no
