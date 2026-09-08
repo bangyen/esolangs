@@ -266,13 +266,69 @@ class TestPolynomial:
             _polynomial_hybrid_cost,
         )
 
-        for n in range(2, 4):
+        for n in range(1, 4):
             for value in range(1 << (1 << n)):
                 table = format(value, f"0{1 << n}b")
-                for level in range(1, n):
+                for level in range(n + 1):
                     assert _polynomial_hybrid_cost(table, level) == len(
                         _polynomial_hybrid(table, level)
                     ), f"{table} k={level}"
+
+    def test_hybrid_endpoints_are_the_two_old_constructions(self) -> None:
+        """``k == n`` is the tree and ``k == 0`` is the machine.
+
+        The family is not a third construction beside two others -- it
+        contains both, which is what let the separate emitters go.  The
+        machine's identity holds except on a constant table, where the
+        hybrid collapses to a leaf before reaching it and comes out
+        shorter (5 instructions against 10 at n == 1).
+        """
+        from esolangs.tools.boolean.register import _polynomial_hybrid
+
+        for n in range(1, 4):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                assert _polynomial_hybrid(table, n) == _polynomial_tree(table), table
+                machine = _polynomial_hybrid(table, 0)
+                if len(set(table)) == 1:
+                    assert len(machine) < len(_polynomial_dag(table)), table
+                else:
+                    assert machine == _polynomial_dag(table), table
+
+    def test_polynomial_screen_slack(self) -> None:
+        """The screen's slack is a measurement, and it is arity-dependent.
+
+        Selection is on rendered characters while the screen is on
+        instructions, so the shortest render can sit above the cheapest
+        candidate.  Every table at n <= 3 needs at most 6; a slack fitted
+        there would emit the worse program at n == 4, which reaches 9.
+        """
+        from esolangs.tools.boolean.register import (
+            _POLYNOMIAL_SCREEN_SLACK,
+            _polynomial_assemble,
+            _polynomial_hybrid,
+            _polynomial_hybrid_cost,
+        )
+
+        worst = 0
+        for n in range(1, 4):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                built = [
+                    (_polynomial_hybrid_cost(table, k), _polynomial_hybrid(table, k))
+                    for k in range(n + 1)
+                ]
+                rendered = [
+                    (len(_polynomial_assemble(instrs)), cost) for cost, instrs in built
+                ]
+                shortest = min(length for length, _ in rendered)
+                needed = min(cost for length, cost in rendered if length == shortest)
+                worst = max(worst, needed - min(cost for cost, _ in built))
+        # Pure-``k`` candidates only; the drained variants were measured
+        # separately and reach the same 6 here, so widening this sweep
+        # would not raise the bound.
+        assert worst == 6
+        assert worst <= _POLYNOMIAL_SCREEN_SLACK
 
     @pytest.mark.parametrize(
         "table",
