@@ -668,31 +668,28 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
 # build past its own arity cap does so in under 3s.
 _MAX_ARITY = 5
 
-# The generators that cannot reach _MAX_ARITY, each with the arity it does
-# reach and the refusal that stops it.  Measured over 69 generators x 2 table
-# shapes x n=1..5 (690 builds, 8 failures, all from these two, both first
-# failing at n=4).
+# Every generator reaches _MAX_ARITY.  There used to be two that did not,
+# and both refusals were the *construction's* limit rather than the
+# language's, which is why neither survived being worked on:
 #
-# Both refusals are their *construction's* limit rather than the language's,
-# and both explain themselves when they raise, though not in the same terms:
-# interprogck8 names the arity, Factor names the digit ceiling it hit.  A
-# generator that grows past its cap leaves this table; a generator that
-# starts refusing joins it only with the measurement that put it there.
+#   interprogck8 capped at n=3 because one ``DownAccLines`` reaches 255
+#   lines and the n=4 bit-0 crossing spans 452.  Long hops now chain
+#   through rungs parked in the dead line after each unconditional jump,
+#   so the crossing is spelled in several hops instead of one.
 #
-# The pattern is half the entry.  Asserting only that *something* refused
-# accepts a generator that has started failing for an unrelated reason --
-# an encoding bug reads exactly like a cap from the outside -- so each entry
-# pins the phrase its own refusal is built around.
-_ARITY_CAPPED: dict[str, tuple[int, str]] = {
-    # MAX_INPUTS = 3.  At n=4 the bit-0 jump must clear a 456-line subtree
-    # against the 255-line ceiling, and the nine-line window spells at most
-    # 70.  The module docstring calls this a bound on what is built here.
-    "interprogck8": (3, "places at most 3 inputs"),
-    # The encoded integer outgrows Python's 4300-digit int-to-str limit at
-    # n=4.  A CPython interpreter limit reached through the construction's
-    # encoding, not a property of Factor.
-    "factor": (3, "4300-digit limit"),
-}
+#   factor capped at n=3 because CPython refuses to render an integer past
+#   ``sys.get_int_max_str_digits()`` (4300 by default) and n=4 parity
+#   encodes to 6390 digits.  That guard is a DoS defence against quadratic
+#   conversions, not a property of Factor, so the generator and the
+#   interpreter both raise it to fit the program and put it back.
+#
+# The dict is kept rather than deleted: it is where a *newly* capped
+# generator gets recorded, and an empty one states that none is.  An entry
+# needs the measurement that put it there and the phrase its own refusal is
+# built around -- asserting only that something refused would accept a
+# generator that had started failing for an unrelated reason, since an
+# encoding bug reads exactly like a cap from the outside.
+_ARITY_CAPPED: dict[str, tuple[int, str]] = {}
 
 
 # The two table shapes every generator is built against.  A dense
