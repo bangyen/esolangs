@@ -1,6 +1,6 @@
 # Esolang Interpreters
 
-Interpreters, generators, and transpilers for esoteric
+Interpreters and generators for esoteric
 languages. Current work is in [the roadmap](docs/roadmap.md); contracts and
 known boundaries are in [limitations](docs/limitations.md).
 
@@ -11,12 +11,11 @@ just install-dev
 esolangs list
 esolangs run Suffolk program.txt
 esolangs generate Suffolk "Hello, World!"
-esolangs transpile BFStack brainfuck program.txt
 just test
 ```
 
-The Python API is `esolangs.run`, `generate`, `list_languages`, and
-`transpile`. Use `--width` for command-oriented generated programs; grids
+The Python API is `esolangs.run`, `generate`, and `list_languages`.
+Use `--width` for command-oriented generated programs; grids
 and newline-sensitive languages retain their own layout.
 
 ## Examples
@@ -144,12 +143,6 @@ Languages that don't fit into the above categories.
 
 Line remains a standalone PNG-language tool under `extra/line`; run
 `just test-line` for its suite.
-
-## Transpilers
-
-The supported translators are total over their source language: brainfuck
-to 3D Brainfuck or Painfuck, BFStack to brainfuck, and Decleq to S*bleq.
-Each runs end-to-end verification against its source semantics.
 
 ## Generators
 

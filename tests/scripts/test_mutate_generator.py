@@ -293,7 +293,7 @@ class TestParseTarget:
         caught here rather than by a run that cannot find its target.
         """
         script = load_script()
-        for family in ("boolean", "text", "tools", "transpilers"):
+        for family in ("boolean", "text", "tools"):
             kind = script._KINDS[family]  # noqa: SLF001
             for name in script._modules(family):  # noqa: SLF001
                 assert (kind.pkg_dir / f"{name}.py").exists()
@@ -313,25 +313,6 @@ class TestParseTarget:
         assert "text" not in modules
         kind = script._KINDS["tools"]  # noqa: SLF001
         assert kind.rel_target("wrap") == "esolangs/tools/wrap.py"
-
-    def test_the_transpilers_are_a_target_kind(self) -> None:
-        """Both transpiler modules are reachable, not just the package init.
-
-        ``transpilers`` turns one language's program into another's, and
-        without a kind it has no harness path at all.  The body lives in
-        ``transpilers/transpilers.py`` rather than the package ``__init__``
-        for exactly this reason: ``_modules`` skips ``__init__`` as a
-        non-target, so code there would be silently exempt from mutation.
-        ``_bf_streetcode`` carries the Streetcode geometry pass and is a
-        target on the same reasoning that keeps ``helpers`` one: it is
-        shared machinery, not an entry point.
-        """
-        script = load_script()
-        modules = script._modules("transpilers")  # noqa: SLF001
-        assert "transpilers" in modules
-        assert "_bf_streetcode" in modules
-        kind = script._KINDS["transpilers"]  # noqa: SLF001
-        assert kind.rel_target("transpilers") == "esolangs/transpilers/transpilers.py"
 
 
 class TestPrepare:

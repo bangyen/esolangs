@@ -9,8 +9,8 @@ see a change that leaves it running and computing something else.
 
 Several kinds of target share this harness, differing only in where their
 source and tests live (see ``_KINDS``): the ``boolean`` and ``text``
-generator families under ``esolangs.tools``, the modules directly under
-``esolangs.tools``, and the ``transpilers``.
+generator families under ``esolangs.tools``, and the modules directly
+under ``esolangs.tools``.
 
 Where this differs from ``mutate_one`` is that it does not bundle.
 ``mutate_one`` inlines the interpreter into one dependency-closed file
@@ -155,10 +155,6 @@ _KINDS = {
     # files, so the ``boolean`` and ``text`` subpackages are not swept in
     # twice.
     "tools": _Kind("tools", "tools", "tests/tools", _TOOLS_SUPPORT),
-    # The transpilers, which turn one language's program into another's and
-    # are covered by ``test_transpilers``.  They live in their own package
-    # rather than under ``esolangs.tools``.
-    "transpilers": _Kind("transpilers", "transpilers", "tests/tools", _TOOLS_SUPPORT),
 }
 
 _FAMILIES = tuple(_KINDS)

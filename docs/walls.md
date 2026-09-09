@@ -27,7 +27,7 @@ claim is accepted.
 - **Empty input line:** `io.input_char` now returns `0`, matching every
   interpreter that guards `io.input_str` at its own call site; the package
   used to answer `10` through one path and `0` through the other, which no
-  cross-camp transpiler could reconcile. Exhausted input is still `EOFError`.
+  cross-camp translation could reconcile. Exhausted input is still `EOFError`.
   Pinned by `tests/interpreters/test_input_convention.py`, which enumerates
   the registry rather than a list. Open: whether any language's `0` was ever
   sourced from its own specification rather than chosen — the docstrings

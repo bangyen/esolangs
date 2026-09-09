@@ -3,9 +3,8 @@
 Provides ``generate`` (produce a program that prints a text), ``run``
 (execute a program through an interpreter), ``make_vm`` (a step-and-inspect
 wrapper around the step-capable interpreters), ``make_debugger`` (a
-breakpoint/watch layer over the VM), ``transpile`` (rewrite a
-program between languages), ``describe`` (a structured language summary),
-and ``list_languages``.
+breakpoint/watch layer over the VM), ``describe`` (a structured language
+summary), and ``list_languages``.
 """
 
 import importlib
@@ -16,15 +15,10 @@ from collections.abc import Callable
 from typing import Any
 
 from esolangs.debug import Debugger, make_debugger
-from esolangs.exceptions import (
-    HaltError,
-    UnknownLanguageError,
-    UnsupportedTranspilationError,
-)
+from esolangs.exceptions import HaltError, UnknownLanguageError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import GENERATORS, LANGUAGES, RUNNERS
 from esolangs.tools.wrap import takes_width, wrap_program
-from esolangs.transpilers import TRANSPILERS
 from esolangs.vm import VM, make_vm
 
 _EXAMPLES = pathlib.Path(__file__).resolve().parents[2] / "examples"
@@ -147,7 +141,7 @@ def describe(language: str) -> dict[str, object]:
 
     The summary carries the state model (derived from the interpreter's
     module family), whether the language has text and boolean generators,
-    its transpilers, its example programs, and its esolangs.org page.
+    its example programs, and its esolangs.org page.
     """
     try:
         lang = LANGUAGES[language]
@@ -158,11 +152,6 @@ def describe(language: str) -> dict[str, object]:
     examples = sorted(
         str(p.relative_to(_EXAMPLES.parent)) for p in _EXAMPLES.glob(f"*/{lang.id}.txt")
     )
-    transpilers = sorted(
-        (source, target)
-        for (source, target) in TRANSPILERS
-        if source == language or target == language
-    )
     return {
         "name": language,
         "id": lang.id,
@@ -170,23 +159,9 @@ def describe(language: str) -> dict[str, object]:
         "interpreter": lang.interpreter,
         "text_generator": lang.text is not None,
         "boolean_generator": lang.boolean is not None,
-        "transpilers": transpilers,
         "examples": examples,
         "wiki_url": f"https://esolangs.org/wiki/{language.replace(' ', '_')}",
     }
-
-
-def transpile(source: str, target: str, program: str, **kwargs: int) -> str:
-    """Rewrite a ``program`` in ``source`` into an equivalent one in ``target``.
-
-    Extra keyword arguments are forwarded to the transpiler; none of the
-    shipped ones takes any today.
-    """
-    try:
-        fn = TRANSPILERS[(source, target)]
-    except KeyError:
-        raise UnsupportedTranspilationError(source, target) from None
-    return fn(program, **kwargs)
 
 
 def list_languages() -> list[str]:

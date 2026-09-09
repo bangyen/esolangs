@@ -1,8 +1,7 @@
 """Interpreter for Brainfuck.
 
 The tape is 8-bit wrapping and grows rightward, ``<`` is clamped at the
-left edge, and loops are matching-bracket.  The transpiler targets are held
-to these same semantics, which lets each one be verified end-to-end.
+left edge, and loops are matching-bracket.
 
 The execution model is a pure function over an immutable ``_State``:
 :func:`_advance` maps a state and a command to the next state, and never

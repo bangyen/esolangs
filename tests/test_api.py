@@ -3,11 +3,7 @@
 import pytest
 
 import esolangs
-from esolangs.exceptions import (
-    EsolangError,
-    UnknownLanguageError,
-    UnsupportedTranspilationError,
-)
+from esolangs.exceptions import EsolangError, UnknownLanguageError
 from esolangs.tools import boolean
 
 
@@ -43,25 +39,6 @@ def test_run_eof_when_input_runs_out() -> None:
     program = boolean.circlefuck("10")  # reads one input bit
     with pytest.raises(EOFError):
         esolangs.run("Circlefuck", program, stdin="")
-
-
-def test_transpile_round_trips() -> None:
-    program = esolangs.generate("brainfuck", "Hi")
-    painfuck = esolangs.transpile("brainfuck", "Painfuck", program)
-    assert esolangs.run("Painfuck", painfuck) == "Hi"
-
-
-def test_transpile_unsupported_pair_raises() -> None:
-    with pytest.raises(UnsupportedTranspilationError):
-        esolangs.transpile("brainfuck", "Unsquare", "x")
-    assert issubclass(UnsupportedTranspilationError, EsolangError)
-    assert issubclass(UnsupportedTranspilationError, ValueError)
-
-
-def test_transpile_to_three_d_brainfuck() -> None:
-    program = esolangs.generate("brainfuck", "Hi")
-    target = esolangs.transpile("brainfuck", "3D Brainfuck", program)
-    assert esolangs.run("3D Brainfuck", target) == "Hi"
 
 
 def test_run_timeout_halts_runaway_program() -> None:
@@ -110,7 +87,6 @@ def test_describe_structured_summary() -> None:
     assert info["text_generator"] is True
     assert info["boolean_generator"] is True
     assert info["interpreter"] == "tape_based.brainfuck"
-    assert ("brainfuck", "Painfuck") in info["transpilers"]
     assert info["wiki_url"] == "https://esolangs.org/wiki/brainfuck"
 
 
@@ -129,4 +105,3 @@ def test_describe_unknown_language_raises() -> None:
 def test_describe_language_without_interpreter() -> None:
     info = esolangs.describe("123")
     assert info["state_model"] == "tape"
-    assert isinstance(info["transpilers"], list)
