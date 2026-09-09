@@ -271,16 +271,13 @@ def _divide_quadratic(
             value -= b0 * quotient[index - 2]
         quotient.append(value)
     # Both remainder positions have to vanish for this to be a factor.
-    linear = coefficients[size - 2]
-    if size >= 3:
-        linear -= b1 * quotient[size - 3]
+    # ``size >= 3`` from the guard above, so that much always applies.
+    linear = coefficients[size - 2] - b1 * quotient[size - 3]
     if size >= 4:
         linear -= b0 * quotient[size - 4]
     if linear:
         return None
-    constant = coefficients[size - 1]
-    if size >= 3:
-        constant -= b0 * quotient[size - 3]
+    constant = coefficients[size - 1] - b0 * quotient[size - 3]
     if constant:
         return None
     return quotient
@@ -344,20 +341,28 @@ def _peel_instruction_quadratics(
     # primes a program of this size can have reached.
     prime_count = max(1, (len(coefficients) - 1) * _PEEL_PRIME_SLACK)
     candidates: set[tuple[int, int]] = set()
-    for index, base in enumerate(sp.primerange(2, prime_count * prime_count + 3)):
+    # `primerange(2, n*n + 3)` always holds more than `n` primes, so the loop
+    # leaves on the `break` and never by running out.
+    for index, base in enumerate(  # pragma: no branch
+        sp.primerange(2, prime_count * prime_count + 3)
+    ):
         if index >= prime_count:
             break
         for exponent in range(1, _PEEL_MAX_IMAGINARY_EXPONENT + 1):
             square = base ** (2 * exponent)
             root_of_negative = sp.sqrt_mod((-square) % modulus, modulus)
             if root_of_negative is None:
-                continue
+                # _PEEL_MODULUS is prime and 1 mod 4, so -1 is a quadratic
+                # residue; `square` is a square, so -square is one too.  Only
+                # a retuned modulus can land here, and skipping would silently
+                # drop candidates.
+                raise AssertionError(f"-{square} has no square root mod {modulus}")
             offset = int(root_of_negative)
             for root in roots:
                 real_mod = (root - offset) % modulus
                 # A genuine factor puts *both* of its roots in the set.
-                if (real_mod + offset) % modulus not in roots:
-                    continue
+                # ``real_mod + offset`` is ``root`` itself, so only the
+                # other one is worth asking about.
                 if (real_mod - offset) % modulus not in roots:
                     continue
                 real = real_mod if real_mod < modulus // 2 else real_mod - modulus
@@ -404,7 +409,10 @@ def _peel_prime_power_roots(
     """
     found: list[int] = []
     limit = max(1, (len(coefficients) - 1) * _PEEL_PRIME_SLACK)
-    for prime_index, base in enumerate(sp.primerange(2, limit * limit + 3)):
+    # As above: the range always outlasts `limit`, so this ends on the `break`.
+    for prime_index, base in enumerate(  # pragma: no branch
+        sp.primerange(2, limit * limit + 3)
+    ):
         if prime_index >= limit or len(coefficients) <= 1:
             break
         candidate = base
