@@ -486,6 +486,13 @@ def decision_tree_tokens[Token](
       language's own business, so Between keeps its own arithmetic.
     * Rows split most-significant-first, keeping each subtree contiguous.
       Modulous walks its bits the other way, so its halves are not runs.
+    * Both children are always built.  A generator that *skips* a subtree
+      cannot say so: AddSubJump and Jaune drop an input no node tests and
+      descend into one half alone, and a ``node`` that discards the other
+      half still pays for the tokens the walk already built -- measured on
+      AddSubJump, 24 of 256 tables came out longer at ``n == 3``, which the
+      suite catches as a reordering regression rather than a wrong answer.
+      Skipping has to happen instead of the recursion, not after it.
     * Lamfunc returns one plain string with no index to thread, so it would
       spend a one-element list at every use to gain four lines.
     * The grid generators' tree is a placement on a plane, not a token

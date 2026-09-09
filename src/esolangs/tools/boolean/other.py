@@ -328,21 +328,22 @@ def _nevermind_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         lines.append("input,?")
         lines.append(f"make,{chr(ord('a') + i)},$answer")
 
-    def build(k: int, row: int) -> None:
-        indent = "  " * k
-        # ``row`` is accumulated a bit at a time, so at depth ``k`` it is a
-        # partial index: shifting it into place names the first row of the
-        # run its remaining bits span.
-        lo = row << (n - k)
-        if k == n or len(set(truth_table[lo : lo + 2 ** (n - k)])) == 1:
-            lines.append(f"{indent}print,{truth_table[lo]}")
-            return
-        for bit in (0, 1):
-            lines.append(f"{indent}if,${chr(ord('a') + perm[k])},==,{bit}")
-            build(k + 1, row * 2 + bit)
-            lines.append(f"{indent}endif")
+    def leaf(level: int, row: int) -> list[str]:
+        return [f"{'  ' * level}print,{truth_table[row]}"]
 
-    build(0, 0)
+    def node(level: int, zero: list[str], one: list[str], _at: int) -> list[str]:
+        indent = "  " * level
+        var = f"${chr(ord('a') + perm[level])}"
+        return [
+            f"{indent}if,{var},==,0",
+            *zero,
+            f"{indent}endif",
+            f"{indent}if,{var},==,1",
+            *one,
+            f"{indent}endif",
+        ]
+
+    lines += decision_tree_tokens(truth_table, leaf, node, collapse=True)
     return "\n".join(lines)
 
 
