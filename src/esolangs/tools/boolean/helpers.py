@@ -474,18 +474,32 @@ def decision_tree_tokens[Token](
 
     **What this deliberately cannot do**, with the generator each rules out:
 
-    * A node acts only *after* both children, never between them.  6-5
-      allocates its branch label between the two recursive calls and
-      Polynomial appends to a shared buffer while threading the running cell
-      value, so both need a hook this does not offer; giving them one turns
-      the walker back into the recursion with more moving parts.
-    * The zero subtree is laid down first.  Between emits its *one* subtree
-      first, so the indices threaded here would reach its children swapped
-      and every branch line would name the wrong target -- on any table
-      whose two subtrees differ in size.  Which side goes first is a
-      language's own business, so Between keeps its own arithmetic.
+    * A node acts only *after* both children, never between them.  6-5,
+      Jaune and Interprogck8 allocate a branch label between the two
+      recursive calls, and Polynomial appends to a shared buffer while
+      threading the running cell value, so all need a hook this does not
+      offer; giving them one turns the walker back into the recursion with
+      more moving parts.
+    * Nothing is threaded *down* the walk.  ``leaf`` and ``node`` see the
+      level and the index, not the path that reached them, so CV(N)(C)'s
+      accumulator, Jaune's held bit and entry cell, and Circlefuck's pointer
+      position -- each a function of the branch taken above -- have nowhere
+      to live.
+    * The zero subtree is laid down first.  Between, CV(N)(C), Unsquare and
+      Interprogck8 emit their *one* subtree first, so the indices threaded
+      here would reach their children swapped and every branch line would
+      name the wrong target -- on any table whose two subtrees differ in
+      size.  Which side goes first is a language's own business, so those
+      keep their own arithmetic.
     * Rows split most-significant-first, keeping each subtree contiguous.
-      Modulous walks its bits the other way, so its halves are not runs.
+      Modulous and Unsquare walk their bits the other way, so their halves
+      are not runs.
+    * The tree is a token *sequence*, laid out by nesting.  Eval and Forth
+      store theirs in a positional heap instead -- children pinned at
+      ``2i+1``/``2i+2``, a node's own width a function of its index -- so a
+      folded subtree has to be blanked in place rather than deleted, or
+      every later index shifts.  Concatenating variable-length subtrees is
+      exactly what breaks that.
     * Both children are always built.  A generator that *skips* a subtree
       cannot say so: AddSubJump and Jaune drop an input no node tests and
       descend into one half alone, and a ``node`` that discards the other
