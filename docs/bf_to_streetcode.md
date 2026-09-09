@@ -1,10 +1,11 @@
 # brainfuck -> Streetcode: how the lowering is total
 
 `brainfuck -> Streetcode` is a registered transpiler
-(`src/esolangs/tools/_bf_streetcode.py`, in `TRANSPILERS` under the
-admission contract in `src/esolangs/tools/transpilers.py`). It is total over
-brainfuck and equivalent on every completed run, with no residue. This
-records the two ideas that make it work; the code is the reference.
+(`src/esolangs/transpilers/_bf_streetcode.py`, in `TRANSPILERS` under the
+admission contract in `src/esolangs/transpilers/transpilers.py`). It is
+total over brainfuck and equivalent on every completed run, with no
+residue. This records the two ideas that make it work; the code is the
+reference.
 
 ## The one branch Streetcode offers is brainfuck's loop test
 
