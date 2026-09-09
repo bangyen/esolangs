@@ -13,6 +13,8 @@ from esolangs.tools.boolean.register import (
     _addsubjump_ordered,
     _polynomial_dag,
     _polynomial_states,
+)
+from tests.tools.boolean_oracles import (
     _polynomial_tree,
     _sophie_dag,
     _sophie_tree,
@@ -242,6 +244,151 @@ class TestPolynomial:
             bits = [(combo >> (2 - i)) & 1 for i in range(3)]
             assert run_polynomial(program, [str(b) for b in bits]) == table[combo]
 
+    def test_dag_cost_mirrors_its_emitter(self) -> None:
+        """``_polynomial_hybrid_cost`` prices a residual through this."""
+        from esolangs.tools.boolean.register import _polynomial_dag_cost
+
+        for n in range(1, 4):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                assert _polynomial_dag_cost(table) == len(_polynomial_dag(table))
+
+    def test_polynomial_hybrid_cost_mirrors_build(self) -> None:
+        """The hybrid's cost function is a deliberate mirror of its emitter.
+
+        The dispatch screens on the cost before rendering, so a drift here
+        silently skips a table the emitter would have shortened.
+        """
+        from esolangs.tools.boolean.register import (
+            _polynomial_hybrid,
+            _polynomial_hybrid_cost,
+        )
+
+        for n in range(1, 4):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                for level in range(n + 1):
+                    assert _polynomial_hybrid_cost(table, level) == len(
+                        _polynomial_hybrid(table, level)
+                    ), f"{table} k={level}"
+
+    def test_hybrid_endpoints_are_the_two_old_constructions(self) -> None:
+        """``k == n`` is the tree and ``k == 0`` is the machine.
+
+        The family is not a third construction beside two others -- it
+        contains both, which is what let the separate emitters go.  The
+        machine's identity holds except on a constant table, where the
+        hybrid collapses to a leaf before reaching it and comes out
+        shorter (5 instructions against 10 at n == 1).
+        """
+        from esolangs.tools.boolean.register import _polynomial_hybrid
+
+        for n in range(1, 4):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                assert _polynomial_hybrid(table, n) == _polynomial_tree(table), table
+                machine = _polynomial_hybrid(table, 0)
+                if len(set(table)) == 1:
+                    assert len(machine) < len(_polynomial_dag(table)), table
+                else:
+                    assert machine == _polynomial_dag(table), table
+
+    def test_polynomial_screen_slack(self) -> None:
+        """The screen's slack is a measurement, and it is arity-dependent.
+
+        Selection is on rendered characters while the screen is on
+        instructions, so the shortest render can sit above the cheapest
+        candidate.  Every table at n <= 3 needs at most 6; a slack fitted
+        there would emit the worse program at n == 4, which reaches 9.
+        """
+        from esolangs.tools.boolean.register import (
+            _POLYNOMIAL_SCREEN_SLACK,
+            _polynomial_assemble,
+            _polynomial_hybrid,
+            _polynomial_hybrid_cost,
+        )
+
+        worst = 0
+        for n in range(1, 4):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                built = [
+                    (_polynomial_hybrid_cost(table, k), _polynomial_hybrid(table, k))
+                    for k in range(n + 1)
+                ]
+                rendered = [
+                    (len(_polynomial_assemble(instrs)), cost) for cost, instrs in built
+                ]
+                shortest = min(length for length, _ in rendered)
+                needed = min(cost for length, cost in rendered if length == shortest)
+                worst = max(worst, needed - min(cost for cost, _ in built))
+        # Pure-``k`` candidates only; the drained variants were measured
+        # separately and reach the same 6 here, so widening this sweep
+        # would not raise the bound.
+        assert worst == 6
+        assert worst <= _POLYNOMIAL_SCREEN_SLACK
+
+    @pytest.mark.parametrize(
+        "table",
+        ["00000101", "00001010", "01010000", "01011111", "10100000", "11111010"],
+    )
+    def test_hybrid_shortens_and_still_computes(self, table: str) -> None:
+        """A split whose halves merge separately beats both parents.
+
+        ``00000101`` is 43 instructions as a tree and 39 as a state machine,
+        but 36 when the first bit branches and each half runs its own
+        machine: the residuals merge *within* the top split and not across
+        it, so neither parent construction sees the merge.  Measured over
+        the n == 3 corpus these tables render 24-30% shorter, and no table
+        grows.
+        """
+        from esolangs.tools.boolean.register import _polynomial_hybrid
+
+        assert len(_polynomial_hybrid(table, 1)) < len(_polynomial_tree(table))
+        program = boolean.polynomial(table)
+        for combo in range(8):
+            bits = [(combo >> (2 - i)) & 1 for i in range(3)]
+            assert run_polynomial(program, [str(b) for b in bits]) == table[combo]
+
+    def test_drained_machine_survives_a_one_in_the_drained_bit(self) -> None:
+        """The reduction reaches the machine, not just the tree.
+
+        Draining with ``-= 48`` leaves 0 or 1 and the machine's entry chain
+        tests for zero, so a drained ``1`` fell past every state test -- the
+        failure that made this pairing look impossible.  ``//= 50`` lands on
+        0 either way, so the rows with a 1 in the drained bit are the ones
+        that matter here.
+        """
+        from esolangs.tools.boolean.register import _polynomial_drained_dag
+
+        table = "0000010100000101"  # ignores its first input
+        assert _polynomial_drained_dag(table) is not None
+        program = boolean.polynomial(table)
+        for combo in range(16):
+            bits = [(combo >> (3 - i)) & 1 for i in range(4)]
+            got = run_polynomial(program, [str(b) for b in bits])
+            assert got == table[combo], f"inputs {bits}"
+
+    @pytest.mark.parametrize("table", ["01100000", "01101111", "10010000", "10011111"])
+    def test_hybrid_losing_on_characters_does_not_ship(self, table: str) -> None:
+        """Fewer instructions is not fewer characters.
+
+        These four are 42 instructions against the tree's 43 and still
+        render 11008 characters against 9507, because a longer program's
+        later instructions consume larger primes.  The dispatch compares
+        *rendered* programs, so they keep the tree's emission.
+        """
+        from esolangs.tools.boolean.register import (
+            _polynomial_assemble,
+            _polynomial_hybrid,
+        )
+
+        hybrid = _polynomial_assemble(_polynomial_hybrid(table, 1))
+        tree = _polynomial_assemble(_polynomial_tree(table))
+        assert len(_polynomial_hybrid(table, 1)) < len(_polynomial_tree(table))
+        assert len(hybrid) > len(tree)
+        assert boolean.polynomial(table) == tree
+
     def test_every_path_reads_each_input_once(self) -> None:
         """Whichever construction wins, a run consumes exactly ``n`` inputs.
 
@@ -331,6 +478,23 @@ class TestDig:
 
 
 class TestSophie:
+    def test_hybrid_subsumes_both_routes(self) -> None:
+        """The hybrid is no longer than either prior construction through n=3."""
+        from esolangs.tools.boolean.register import _sophie_hybrid
+
+        improved = 0
+        for n in range(1, 4):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                hybrid = _sophie_hybrid(table)
+                assert len(hybrid) <= min(
+                    len(_sophie_tree(table)), len(_sophie_dag(table))
+                )
+                improved += len(hybrid) < min(
+                    len(_sophie_tree(table)), len(_sophie_dag(table))
+                )
+        assert improved == 132
+
     @pytest.mark.parametrize(
         ("table", "n"),
         [
@@ -373,10 +537,8 @@ class TestSophie:
     def test_merge_only_shrinks(self) -> None:
         """No table comes out longer than the nested tree alone.
 
-        A state block costs more than a tree node, so the tree wins small and
-        near-constant tables -- 22 of 256 at n == 3 go the other way.  Both
-        are built and the shorter is emitted, ties keeping the tree, so the
-        dispatch cannot regress a table the merge does not help.
+        The hybrid inlines unshared states as tree branches, so labels only
+        pay for actual merges. At n == 3, 130 of 256 tables shrink.
         """
         improved = 0
         for value in range(256):
@@ -385,7 +547,7 @@ class TestSophie:
             tree = len(_sophie_tree(table))
             assert dispatched <= tree, table
             improved += dispatched < tree
-        assert improved == 22
+        assert improved == 130
 
     def test_merge_is_linear_where_the_tree_doubles(self) -> None:
         """Parity needs two states per level however wide it gets.

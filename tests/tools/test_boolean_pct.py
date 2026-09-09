@@ -8,8 +8,11 @@ there.
 
 import importlib
 import itertools
+import time
 
 import pytest
+
+from esolangs.tools import boolean
 
 
 class TestParameterizedPctSquaredMinusOne:
@@ -526,6 +529,22 @@ class TestParameterizedPctSquaredMinusOne:
         table = "11011111100100101001101110111000"
         assert _deep_band(table, 5) is None  # the arm above must still refuse
         assert pct_squared_minus_one(table) == _fold(table, 5)
+
+    def test_deep_band_refuses_past_its_span_budget_without_enumerating(
+        self,
+    ) -> None:
+        """Past eleven inputs no weighting fits, and the refusal is instant.
+
+        Each unit prices a whole residue system, so even the all-ones
+        weighting costs ``n * 256`` against the 3003 limit.  Without the
+        up-front gate, ``_deep_weightings`` walks ``7**n`` tuples before
+        its sum filter -- hours at twelve inputs -- so this test hanging
+        rather than failing is what removing the gate looks like.
+        """
+        from esolangs.tools.boolean.pct_squared_minus_one import _deep_band
+
+        parity = "".join(str(bin(r).count("1") & 1) for r in range(2**12))
+        assert _deep_band(parity, 12) is None
 
     @pytest.mark.slow  # derives the whole three-input arity once
     def test_affine_reach_is_exactly_characterized(self) -> None:
@@ -1703,19 +1722,21 @@ class TestPctInterleavedFold:
             run(module.fill(template, bits), io)
             assert io.getvalue() == want
 
+    # Split by cost, measured: the 256 builds are 0.28s and the 1088
+    # interpreter replays are 5.15s.  The build sweep carries the contract a
+    # mutant can break -- the selective count, decline-is-None, slot order --
+    # so it stays in the fast run, and the exhaustive replay moves to the
+    # slow-marked sibling below.  Splitting rather than sampling keeps the
+    # whole 256-table space on the route-reaching half.
     def test_every_three_input_table_builds_or_declines_exactly(self) -> None:
         """Sweep all 256 three-input tables through the staged build.
 
         One table exercises one route; the whole space is what reaches the
         merge, split and refusal arms, and it is the only way to hold the
-        two outcomes to their contracts at once.  A build must replay every
-        row on the interpreter -- a template that computes the wrong table
-        is worse than a decline -- and a decline must be exactly ``None``,
-        never a partial template a caller might emit.
+        two outcomes to their contracts at once.  A decline must be exactly
+        ``None``, never a partial template a caller might emit.  That a
+        build *computes* its table is the sibling's job.
         """
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.pct_squared_minus_one import run
-
         module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
         built = 0
         for value in range(256):
@@ -1727,14 +1748,33 @@ class TestPctInterleavedFold:
             assert template.count("{X") == 3, table
             slots = [template.index("{X" + str(i) + "}") for i in range(3)]
             assert slots == sorted(slots), table  # slots stay in stream order
+        # The route is selective by design -- it runs before the all-row
+        # fallback -- so pin that it neither builds everything nor nothing.
+        assert built == 136
+
+    @pytest.mark.slow  # ~5s: 1088 interpreter replays
+    def test_every_three_input_build_computes_its_table(self) -> None:
+        """Every table the route builds is replayed row by row.
+
+        A template that computes the wrong table is worse than a decline, so
+        the rows are checked on the interpreter rather than the shape being
+        trusted.  The build half runs in the fast loop; this is the half that
+        costs interpreter time.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.pct_squared_minus_one import run
+
+        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        for value in range(256):
+            table = format(value, "08b")
+            template = module._interleaved_fold(table, 3)  # noqa: SLF001
+            if template is None:
+                continue
             for row, want in enumerate(table):
                 bits = [(row >> 2) & 1, (row >> 1) & 1, row & 1]
                 io = ScriptedIO()
                 run(module.fill(template, bits), io)
                 assert io.getvalue() == want, (table, row)
-        # The route is selective by design -- it runs before the all-row
-        # fallback -- so pin that it neither builds everything nor nothing.
-        assert built == 136
 
     @pytest.mark.slow  # ~10s: 4096 four-input builds
     def test_four_input_tables_build_or_decline_without_raising(self) -> None:
@@ -2278,33 +2318,56 @@ class TestPctFoldPlan:
             assert io.getvalue() == table[row], f"row {row}"
         assert len(widths) == 1, widths
 
-    def test_past_the_workspace_the_generator_raises(self) -> None:
-        """Eleven inputs refuse for real, not by a patched planner.
-
-        The narrow ladder is the finest that spells and would span 4094
-        against a 3003-value workspace, so the fold serves nothing at eleven
-        inputs and a table no *earlier* construction covers raises rather
-        than getting a program for the wrong function.  The refusal is
-        immediate -- the ladder is gated before any planning -- which is what
-        keeps a doomed arity from costing a search.
-
-        **The table has to be generic.**  Arity alone does not refuse: the
-        cascade builds every conjunction or disjunction of literals at any
-        width, so the alternating and single-minterm tables build at any
-        arity, and only a table that reaches the fold exercises this path.
-        """
+    @pytest.mark.slow  # generic twelve-input fold: ~12s to plan
+    def test_interleaved_fold_builds_a_generic_twelve_input_table(self) -> None:
+        """A centred final embed escapes the all-row ladder's limit."""
         import random
 
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.pct_squared_minus_one import run
         from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.examples import _fill_pct_squared_minus_one
 
         rng = random.Random(1)
         table = "".join(rng.choice("01") for _ in range(2**12))
-        with pytest.raises(ValueError, match="caps it at eleven inputs"):
-            parameterized.pct_squared_minus_one(table)
+        template = parameterized.pct_squared_minus_one(table)
+        widths = set()
+        for row in range(0, 2**12, 97):
+            bits = [(row >> shift) & 1 for shift in range(11, -1, -1)]
+            program = _fill_pct_squared_minus_one(template, bits)
+            widths.add(len(program))
+            io = ScriptedIO()
+            run(program, io)
+            assert io.getvalue() == table[row], row
+        assert len(widths) == 1, widths
 
-        # A subcube at the same arity still builds, so the refusal above is
-        # the fold's workspace and not the arity itself.
-        assert parameterized.pct_squared_minus_one("1" + "0" * (2**12 - 1))
+    @pytest.mark.slow  # packed prefix + sixteen-class compaction: ~60s to plan
+    def test_interleaved_fold_builds_a_generic_thirteen_input_table(self) -> None:
+        """The packed prefix ladder compacts to its cofactors before laying.
+
+        Thirteen inputs need the eleven-input packed ladder, whose unit gaps
+        jam the conveyor; the pre-lay compaction to at most sixteen cofactor
+        points, and the collision-free split total, are what this exercises.
+        """
+        import random
+
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.pct_squared_minus_one import run
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.examples import _fill_pct_squared_minus_one
+
+        rng = random.Random(13)
+        table = "".join(rng.choice("01") for _ in range(2**13))
+        template = parameterized.pct_squared_minus_one(table)
+        widths = set()
+        for row in range(0, 2**13, 331):
+            bits = [(row >> shift) & 1 for shift in range(12, -1, -1)]
+            program = _fill_pct_squared_minus_one(template, bits)
+            widths.add(len(program))
+            io = ScriptedIO()
+            run(program, io)
+            assert io.getvalue() == table[row], row
+        assert len(widths) == 1, widths
 
     def test_a_table_whose_plan_fails_builds_nothing(
         self, monkeypatch: pytest.MonkeyPatch
@@ -2336,6 +2399,40 @@ class TestPctAffineSolver:
     @staticmethod
     def module():
         return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+
+    def test_the_shorter_of_cascade_and_affine_ships(self) -> None:
+        """The cascade is usually shorter at three inputs, but not always.
+
+        The dispatch used to return it on sight, which served 44 of 256
+        tables a longer program than the affine path builds.  Both are
+        cheap at this arity, so both are built and the shorter kept;
+        ``00000101`` is the worst case, 40 characters against 33.
+        """
+        module = self.module()
+        improved = 0
+        for value in range(256):
+            table = format(value, "08b")
+            shipped = len(boolean.pct_squared_minus_one(table))
+            cascade = module._cascade(table, 3)  # noqa: SLF001
+            assert cascade is None or shipped <= len(cascade), table
+            improved += cascade is not None and shipped < len(cascade)
+        assert improved == 42  # the other two tie, keeping the cascade
+
+    def test_affine_stays_gated_above_three_inputs(self) -> None:
+        """The comparison must not reach the four-input enumeration.
+
+        ``_affine`` derives a whole arity at once -- 36458 composition
+        states at n == 4, about two minutes a table -- so the deep band
+        serves those instead.  Building both would pay that cost on every
+        four-input table, served or not.
+        """
+        module = self.module()
+        assert module._affine.__doc__  # noqa: SLF001
+        parity4 = "".join(str(bin(row).count("1") % 2) for row in range(16))
+        # The deep band answers this instantly; reaching _affine would not.
+        start = time.perf_counter()
+        boolean.pct_squared_minus_one(parity4)
+        assert time.perf_counter() - start < 10.0
 
     def test_constant_values_cannot_meet_differing_wants(self) -> None:
         """One value cannot map to two answers, whatever the line.

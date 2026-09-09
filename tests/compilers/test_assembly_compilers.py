@@ -444,10 +444,16 @@ class TestJaune:
         move, so once a subroutine saved ``ra`` the floor shifted four cells
         and ``<`` inside one landed a cell off.  ``s0`` holds it instead,
         set once in the header.
+
+        The floor is the *start* cell, ``sp - 60``.  It sat at ``sp - 48``
+        -- three cells to the right of the start, since the tape grows
+        downward -- which let a ``<`` at cell 0 step into scratch below the
+        tape rather than clamping.
         """
         mod = importlib.import_module("esolangs.compilers.jaune")
         out = mod.comp("<")
-        assert "addi s0, sp, -48" in out
+        assert "addi s1, sp, -60" in out
+        assert "addi s0, sp, -60" in out
         assert "bge  s0, s1" in out
         assert "addi t1, sp, -48" not in out
 

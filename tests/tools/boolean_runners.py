@@ -263,6 +263,12 @@ def run_streetcode(program: str, inputs: list[str]) -> str:
     return run_program(run, program.splitlines(), _stdin(inputs))
 
 
+def run_interprogck8(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.register_based.interprogck8 import run
+
+    return run_program(run, program.splitlines(), _stdin(inputs))
+
+
 def run_flowchart(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.grid_based.flowchart import run
 
@@ -383,6 +389,12 @@ def run_laserfuck(program: str, inputs: list[str], heading: int) -> str:
 
 def run_myscript(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.myscript import run
+
+    return run_program(run, program, _stdin(inputs))
+
+
+def run_function_x_y(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.other.function_x_y import run
 
     return run_program(run, program, _stdin(inputs))
 

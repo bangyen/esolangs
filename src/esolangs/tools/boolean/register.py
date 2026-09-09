@@ -454,20 +454,12 @@ def sophie(truth_table: str) -> str:
     consecutive conditionals must use the block form. Each leaf sets the
     result with ``#$48``/``#$49`` and prints it before halting.
 
-    Two constructions compete, as in :func:`polynomial` and for the same
-    reason.  :func:`_sophie_tree` nests the branches, so it can only collapse
-    a subtable that is *constant*.  :func:`_sophie_dag` carries a state label
-    in the accumulator between levels, which lets two prefixes with equal
-    *residual subfunctions* share one block -- an ordered BDD.  **The shorter
-    wins, with the tree first so ties keep the emission this generator
-    already had.**
+    :func:`_sophie_hybrid` nests unshared residual states like a tree and
+    labels only states reached from multiple parents. It therefore keeps
+    constant-subtree folding while merging equal residual subfunctions.
 
-    A DAG block costs more than a tree node, so the tree keeps small and
-    near-constant tables and the aggregate saving at n == 3 is only 1.9%
-    (22 of 256 tables).  It grows with width as the tree doubles and the
-    state count does not: 3.1% at n == 5, 13.4% at n == 6 and 29.3% at
-    n == 7 over random tables, and parity -- the tree's worst case -- goes
-    from 1911 characters to 283 at n == 7.
+    The hybrid only pays a label where sharing needs it, so it cannot lose
+    the tree's compact unshared regions.
 
     **Reordering the inputs is not available here**, unlike most tree
     generators: ``;`` and ``:`` *assign* to the accumulator, ``#`` loads only
@@ -476,88 +468,64 @@ def sophie(truth_table: str) -> str:
     collects the saving a reorder would have found.
     """
     _validate_truth_table(truth_table)
-    tree = _sophie_tree(truth_table)
-    dag = _sophie_dag(truth_table)
-    return dag if len(dag) < len(tree) else tree
+    return _sophie_hybrid(truth_table)
 
 
-def _sophie_tree(truth_table: str) -> str:
-    """Emit the nested-branch Sophie program; see :func:`sophie`."""
-    n = _validate_truth_table(truth_table)
-
-    def build(path: list[int]) -> str:
-        depth = len(path)
-        row = 0
-        for bit in path:
-            row = row * 2 + bit
-        # A short path has its unconsumed bits still to come, so it names
-        # the start of the run they span rather than a row outright.
-        row <<= n - depth
-        if depth == n or len(set(truth_table[row : row + 2 ** (n - depth)])) == 1:
-            # Sophie reads inside the tree -- a node is ``;`` then its
-            # branch -- so a folded leaf still spends the reads it skipped.
-            # A program whose input count depended on its table would
-            # desync a caller feeding several programs from one stream.
-            reads = ";" * (n - depth)
-            return f"{reads}#${_ASCII_ZERO + int(truth_table[row])},&"
-        return ";" + "@$48{" + build([*path, 0]) + "}" + "{" + build([*path, 1]) + "}"
-
-    return build([])
-
-
-# Label bands for :func:`_sophie_dag`.  Consecutive levels must not share a
-# label, or a block that fires would leave the accumulator holding a value a
-# later test in the *same* chain matches, running two blocks for one input.
-# Alternating two disjoint bands is enough, and both avoid 48/49, which the
 # leaves test against.
 _SOPHIE_BANDS = ((1, 20), (21, 40))
 
 
-def _sophie_dag(truth_table: str) -> str:
-    """Emit the state-machine Sophie program; see :func:`sophie`.
-
-    Each level is a *flat chain* of ``@$L{...}`` blocks, one per live state,
-    and the read happens inside whichever block fires.  Nesting the blocks
-    would restate the tree -- what makes this a DAG is that two prefixes
-    leaving the same residual subfunction get the same label and so the same
-    block.
-
-    Re-fire needs no arithmetic here, unlike :func:`_polynomial_dag`: Sophie
-    tests equality against an arbitrary literal, so consecutive levels
-    drawing labels from disjoint bands is enough.  A fired block leaves the
-    accumulator holding a *next*-level label, which no remaining test in the
-    current chain can match.
-
-    Level 0 has one state and the accumulator starts at 0, so its dispatch is
-    skipped.  Leaves halt inside their block, so the last level cannot
-    re-fire whatever the labels.
-    """
+def _sophie_hybrid(truth_table: str) -> str:
+    """Emit a Sophie tree that labels only shared residual states."""
     n = _validate_truth_table(truth_table)
     levels = _polynomial_states(truth_table, n)
-
-    def label(level: int, state: str) -> int:
-        return _SOPHIE_BANDS[level % 2][0] + levels[level].index(state)
-
-    out: list[str] = []
-    for k in range(n):
+    references: list[dict[str, int]] = [{} for _ in levels]
+    for k in range(n - 1):
         width = 2 ** (n - k - 1)
-        blocks: list[str] = []
         for state in levels[k]:
-            zero, one = state[:width], state[width:]
-            if k + 1 == n:
-                # The children are single characters -- the answers.
-                body = (
-                    f";@$48{{#${_ASCII_ZERO + int(zero)},&}}"
-                    f"{{#${_ASCII_ZERO + int(one)},&}}"
-                )
-            elif zero == one:
-                # Merged children: this bit cannot change the answer, so the
-                # read still happens and the label is set unconditionally.
-                body = f";#${label(k + 1, zero)}"
-            else:
-                body = f";@$48{{#${label(k + 1, zero)}}}{{#${label(k + 1, one)}}}"
-            blocks.append(body if k == 0 else f"@${label(k, state)}{{{body}}}")
-        out.append("".join(blocks))
+            if len(set(state)) == 1:
+                continue
+            for child in {state[:width], state[width:]}:
+                references[k + 1][child] = references[k + 1].get(child, 0) + 1
+
+    retained = [
+        [
+            state
+            for state in states
+            if k == 0 or (len(set(state)) > 1 and references[k].get(state, 0) > 1)
+        ]
+        for k, states in enumerate(levels)
+    ]
+    labels = [
+        {state: _SOPHIE_BANDS[k % 2][0] + index for index, state in enumerate(states)}
+        for k, states in enumerate(retained)
+    ]
+
+    def body(k: int, state: str) -> str:
+        if len(set(state)) == 1:
+            return ";" * (n - k) + f"#${_ASCII_ZERO + int(state[0])},&"
+        width = 2 ** (n - k - 1)
+        zero, one = state[:width], state[width:]
+        if k + 1 == n:
+            return (
+                f";@$48{{#${_ASCII_ZERO + int(zero)},&}}"
+                f"{{#${_ASCII_ZERO + int(one)},&}}"
+            )
+
+        def next_body(child: str) -> str:
+            if child in labels[k + 1]:
+                return f"#${labels[k + 1][child]}"
+            return body(k + 1, child)
+
+        if zero == one:
+            return ";" + next_body(zero)
+        return f";@$48{{{next_body(zero)}}}{{{next_body(one)}}}"
+
+    out = []
+    for k, states in enumerate(retained):
+        for state in states:
+            block = body(k, state)
+            out.append(block if k == 0 else f"@${labels[k][state]}{{{block}}}")
     return "".join(out)
 
 
@@ -742,6 +710,23 @@ def qoibl(truth_table: str) -> str:
 # the old gate refused it from n == 5.
 _POLYNOMIAL_MAX_INSTRS = 138
 
+# How far above the cheapest candidate the dispatch still renders.  Selection
+# is on characters, so the instruction count only screens -- and a strict
+# screen picks wrong, because the two disagree.  ``01100110`` is the case:
+# the drained
+# machine is 30 instructions and renders 5267 characters, while a drained
+# ``k == 2`` build is 32 and renders 4814, since a longer program's later
+# instructions consume larger primes.
+#
+# The slack has to be measured per arity, not guessed: every table at
+# n <= 3 needs at most 6 (242 of 256 need 0), but 1000 sampled tables at
+# n == 4 reach 9, and 32 of them need more than 6 -- a slack fitted to the
+# smaller corpus silently emits the worse program on those.  Held at the
+# n == 4 worst case with a margin of one, so a table needing more is a real
+# finding rather than a quiet regression; ``test_polynomial_screen_slack``
+# re-derives it.
+_POLYNOMIAL_SCREEN_SLACK = 10
+
 
 def polynomial(truth_table: str) -> str:
     """Build a Polynomial program computing the given truth table.
@@ -756,31 +741,43 @@ def polynomial(truth_table: str) -> str:
     program's size and the interpreter's factorization cost both track the
     *instruction count* -- which is what the two constructions compete on.
 
-    :func:`_polynomial_tree` is a decision tree that collapses a constant
-    subtable to its output.  :func:`_polynomial_dag` is a state machine
-    whose state lives in the instruction cursor, merging any two prefixes
-    with the *same residual subfunction* rather than only constant ones --
-    an ordered BDD where the tree is a plain tree.  **The shortest wins,
-    with the tree first so ties keep the emission this generator already
-    had.**
+    Every construction here is :func:`_polynomial_hybrid` at some ``k``:
+    ``k == n`` branches every bit and never reaches a machine (a plain
+    decision tree, collapsing a constant subtable to its output), ``k == 0``
+    hands the whole table to one machine, and the interior branches ``k``
+    bits and gives each surviving residual its own machine.  The reduced
+    variants prepend a drain for a leading run of ignored inputs and rebuild
+    on the smaller table.
 
-    The merge is strictly stronger than the fold and the gap grows with
-    ``n``: parity is the tree's worst case at every width (``2**n - 1``
-    internal nodes, 2298 instructions at n == 8) and needs just two states
-    per level, so the machine is *linear* -- 13 instructions per input, 106
-    at n == 8.  Over random tables the machine wins from n == 3 up (median
-    0.87x the tree's instructions at n == 3, 0.43x at n == 6), while small
-    or near-constant tables still favour the tree, which is why both are
-    built and measured.  Over all 256 tables at n == 3 the dispatch is 18.4%
-    shorter than the tree alone, improving 112 and growing none.
+    The machine merges any two prefixes with the *same residual
+    subfunction* rather than only constant ones -- an ordered BDD where the
+    tree is a plain tree.  That merge is strictly stronger than the fold and
+    the gap grows with ``n``: parity is the tree's worst case at every width
+    (``2**n - 1`` internal nodes, 2298 instructions at n == 8) and needs just
+    two states per level, so ``k == 0`` is *linear* there -- 13 instructions
+    per input, 106 at n == 8.  Small or near-constant tables still favour the
+    tree end.
+
+    The interior is where neither endpoint serves: a table whose residuals
+    merge *within* a top-level split but not *across* it defeats both, since
+    the tree cannot merge them at all and the machine pays a full state level
+    for the split.  ``00000101`` is 43 instructions at ``k == n`` and 39 at
+    ``k == 0``, but 36 at ``k == 1``.  Against the two-construction dispatch
+    this family shortens 36 of 256 tables at n == 3 (median 3.6%, best
+    30.3%) and 3846 of 65536 at n == 4 (median 6.5%, best 39.8%), and grows
+    none.
 
     **The order the tree tests its inputs in is not free here**, unlike
     every other decision-tree generator: a read *assigns* to the single
     register, so nothing survives it and the tested bit is always the one
-    just read.  Both constructions consume input in stream order, so
+    just read.  Every construction consumes input in stream order, so
     reordering is unreachable rather than merely unhelpful.  What the machine
     recovers is the *saving* a reorder would have bought -- the residual
     merge subsumes the folds a better order would have exposed.
+
+    Selection is on *rendered characters* rather than instruction count,
+    because the two disagree; the count screens which candidates are worth
+    rendering.  See the dispatch below.
 
     A table needing more than ``_POLYNOMIAL_MAX_INSTRS`` instructions under
     both constructions raises :class:`ValueError`: the interpreter recovers
@@ -790,61 +787,98 @@ def polynomial(truth_table: str) -> str:
     old gate's worst case, now renders through n == 8.
     """
     n = _validate_truth_table(truth_table)
-    candidates = [_polynomial_tree(truth_table), _polynomial_dag(truth_table)]
+
+    # Every construction here is :func:`_polynomial_hybrid` at some ``k``.
+    # ``k == n`` is the plain decision tree, ``k == 0`` the plain state
+    # machine, and the interior splits the difference; the reduced variants
+    # below prepend a drain and rebuild on a smaller table.
+    builders: list[tuple[int, Any]] = [
+        (
+            _polynomial_hybrid_cost(truth_table, level),
+            lambda level=level: _polynomial_hybrid(truth_table, level),
+        )
+        for level in range(n, -1, -1)
+    ]
 
     # A table that ignores some of its inputs is a smaller table, and this
     # generator cannot get there on its own: a read *assigns* to the single
-    # register, so the tree must consume the inputs in stream order and an
-    # ignored one still costs a full level of branching before the tree can
-    # reach the input that matters.  Folding collapses the subtrees, not the
-    # levels above them -- ``10101010`` costs 66 instructions where the
-    # one-input table it really is costs 12.
+    # register, so the construction consumes inputs in stream order and an
+    # ignored one still costs a full level of branching before reaching the
+    # input that matters.  Folding collapses subtrees, not the levels above
+    # them -- ``10101010`` costs 66 instructions where the one-input table
+    # it really is costs 12.
     #
     # Reduction sidesteps that because it is *order-blind*: it rewrites the
-    # table before any tree is built.  The ignored inputs are drained first
-    # -- read, subtract 48 -- the same pair the tree already emits for a
-    # collapsed leaf's untaken siblings, so every path still consumes exactly
-    # ``n`` inputs.
-    # Only a *leading* run of ignored inputs can be handled this way. The
-    # drain reads the stream in order, so it can stand in for inputs the
-    # reduced tree would otherwise have read *before* the ones it keeps; an
-    # ignored input sitting after an essential one would be drained out of
-    # turn and the tree would branch on the wrong bit -- measured, 26 tables
-    # at ``n <= 3`` and 92 wrong rows. Reordering the drains is not available
-    # either, since a read assigns to the single register, so a non-prefix
-    # ignored set keeps the unreduced build.
+    # table before anything is built.  The ignored inputs are drained first,
+    # so every path still consumes exactly ``n`` inputs.  Only a *leading*
+    # run can be handled this way -- an ignored input sitting after an
+    # essential one would be drained out of turn and the build would branch
+    # on the wrong bit (measured: 92 wrong rows over 26 tables).
     essential = essential_inputs(truth_table, n) or [0]
     lead = next((i for i in range(n) if i in essential), n)
     if lead:
         prefix: list[list[int]] = []
         for _ in range(lead):
             prefix.extend([[0, 2], [_ASCII_ZERO, 2]])  # input; -= 48
-        # Keep every input from the first essential one onward, not just the
-        # essential ones: a *trailing* ignored input is already free, since
-        # the tree collapses its subtree and drains the read at the leaf,
-        # while a middle one cannot be dropped at all -- the drain consumes
-        # the stream in order, so removing it would make the tree branch on
-        # the wrong bit (measured: 92 wrong rows over 26 tables).
         reduced = read_at(truth_table, list(range(lead, n)), n)
-        # Only the *tree* takes the prefix. The DAG's states are indexed by
-        # how many bits have been read, so instructions prepended ahead of
-        # it shift every state and the machine falls off its own table --
-        # measured, it answers correctly only while the drained bit is 0 and
-        # emits nothing at all once it is 1.
-        candidates.append(prefix + _polynomial_tree(reduced))
+        reduced_n = n - lead
+        builders += [
+            (
+                len(prefix) + _polynomial_hybrid_cost(reduced, level),
+                lambda level=level, r=reduced, pre=prefix: (
+                    pre + _polynomial_hybrid(r, level)
+                ),
+            )
+            for level in range(reduced_n, 0, -1)
+        ]
+        # The machine cannot take the ``-= 48`` drain above: its entry chain
+        # tests for zero, so a drained 1 fell past every state test.  Its
+        # own drain divides the bit away instead; see
+        # :func:`_polynomial_drained_dag`.
+        drained = _polynomial_drained_dag_cost(truth_table)
+        if drained is not None:
+            builders.append((drained, lambda: _polynomial_drained_dag(truth_table)))
 
-    fits = [c for c in candidates if len(c) <= _POLYNOMIAL_MAX_INSTRS]
+    fits = [(cost, build) for cost, build in builders if cost <= _POLYNOMIAL_MAX_INSTRS]
     if not fits:
         raise ValueError(
             "the Polynomial boolean generator emits one instruction per "
             f"prime and caps at {_POLYNOMIAL_MAX_INSTRS}, but this table "
-            f"needs {min(len(c) for c in candidates)} under its cheaper "
+            f"needs {min(cost for cost, _ in builders)} under its cheapest "
             "construction, which the interpreter cannot factor in "
             "practical time",
         )
-    # The tree is first and the comparison is strict, so a table the state
-    # machine does not shorten emits exactly what it emitted before.
-    return _polynomial_assemble(min(fits, key=len))
+
+    # Selection is on *rendered characters*, because instructions and
+    # characters disagree: `01100000` and three relatives are 42
+    # instructions against the tree's 43 and still render 11008 characters
+    # against 9507, since a longer program's later instructions consume
+    # larger primes.
+    #
+    # So the instruction count only screens: a candidate more than
+    # ``_POLYNOMIAL_SCREEN_SLACK`` above the cheapest cannot win and is not
+    # built.  That renders 604 of 1064 candidates over the n == 3 corpus,
+    # which costs 2.54x there (0.3s across 256 programs) and 1.09x on an
+    # n == 4 sample -- the arity where generation time actually lives.
+    # The screen is a measured bound, not a proof: a candidate rendering
+    # shorter from a further-out instruction count would be skipped.
+    #
+    # ``k`` descends so the tree is tried first, and the comparison is
+    # strict, so a table nothing shortens emits what it always emitted.
+    cheapest = min(cost for cost, _ in fits)
+    program: str | None = None
+    for cost, build in fits:
+        if cost > cheapest + _POLYNOMIAL_SCREEN_SLACK:
+            continue
+        candidate = _polynomial_assemble(build())
+        if program is None or len(candidate) < len(program):
+            program = candidate
+    if program is None:  # pragma: no cover - the cheapest member always fits
+        raise AssertionError(
+            "the Polynomial screen dropped every candidate, which the "
+            "cheapest member cannot do",
+        )
+    return program
 
 
 def _polynomial_assemble(instrs: list[list[int]]) -> str:
@@ -867,55 +901,6 @@ def _polynomial_assemble(instrs: list[list[int]]) -> str:
     return str(format_coeffs(coeffs))
 
 
-def _polynomial_tree(truth_table: str) -> list[list[int]]:
-    """Emit the decision-tree instructions; see :func:`polynomial`.
-
-    A subtree whose rows are all the same value collapses to its single
-    output, so constant and near-constant tables skip the tree that would
-    otherwise isolate every leaf.  A collapsed leaf still drains the reads
-    its untaken siblings would have made, so every path consumes ``n``.
-    """
-    n = _validate_truth_table(truth_table)
-    instrs: list[list[int]] = []
-
-    def emit_delta(delta: int) -> None:
-        if delta > 0:
-            instrs.append([delta, 1])
-        # The tree walks the accumulator up from zero and every answer is 0
-        # or 1, so the deltas the builder emits are never negative; the
-        # subtract instruction is here for a builder that needs one.
-        elif delta < 0:  # pragma: no cover - the tree only ever steps upward
-            instrs.append([-delta, 2])
-
-    def build(rows: list[int], bit: int, last: int) -> None:
-        vals = {truth_table[r] for r in rows}
-        if len(vals) == 1:
-            v = int(vals.pop())
-            emit_delta(_ASCII_ZERO + v - last)
-            instrs.append([0, 1])  # output
-            # Drain the reads the untaken siblings would have made, *after*
-            # printing so they cannot disturb the value being output: an
-            # input-capable language reads each of its n inputs exactly once
-            # per run whatever the table says, or the caller's remaining bits
-            # are left on the input stream.
-            for _ in range(bit, n):
-                instrs.extend([[0, 2], [_ASCII_ZERO, 2]])  # input; -= 48
-            emit_delta(1)  # reg back to nonzero so the enclosing else skips
-            return
-        instrs.extend([[0, 2], [_ASCII_ZERO, 2]])  # input; -= 48
-        g1 = [r for r in rows if ((r >> (n - 1 - bit)) & 1) == 1]
-        g0 = [r for r in rows if ((r >> (n - 1 - bit)) & 1) == 0]
-        instrs.append([1])  # if reg > 0 -> the one-bit subtree
-        build(g1, bit + 1, 1)
-        instrs.append([2])
-        instrs.append([4])  # if reg == 0 -> the zero-bit subtree
-        build(g0, bit + 1, 0)
-        instrs.append([2])
-
-    build(list(range(2**n)), 0, 0)
-    return instrs
-
-
 def _polynomial_states(truth_table: str, n: int) -> list[list[str]]:
     """Return the distinct residual subfunctions at each level.
 
@@ -935,6 +920,24 @@ def _polynomial_states(truth_table: str, n: int) -> list[list[str]]:
                     nxt.append(half)
         levels.append(nxt)
     return levels
+
+
+def _polynomial_dag_cost(truth_table: str) -> int:
+    """Return :func:`_polynomial_dag`'s instruction count without emitting it."""
+    n = _validate_truth_table(truth_table)
+    levels = _polynomial_states(truth_table, n)
+    index = [{state: i for i, state in enumerate(level)} for level in levels]
+    total = 0
+    for k in range(n):
+        width = 2 ** (n - k - 1)
+        states = levels[k]
+        transitions = 0
+        for state in states:
+            zero = index[k + 1][state[:width]]
+            one = index[k + 1][state[width:]]
+            transitions += 1 if zero == one or one - zero == 1 else 2
+        total += 5 * len(states) + transitions
+    return total + 5 * len(levels[n]) - 1
 
 
 def _polynomial_dag(truth_table: str) -> list[list[int]]:
@@ -1023,6 +1026,142 @@ def _polynomial_dag(truth_table: str) -> list[list[int]]:
                 "I/O rather than arithmetic",
             )
     return instrs
+
+
+def _polynomial_hybrid(truth_table: str, k: int) -> list[list[int]]:
+    """Emit ``k`` tree levels above a state machine per surviving residual.
+
+    This is the whole construction family, not a third option beside two
+    others.  ``k == n`` never reaches the machine and emits exactly what a
+    plain decision tree emits; ``k == 0`` hands the whole table to one
+    machine.  Between them the tree branches the top ``k`` bits and each
+    surviving residual gets its own machine.
+
+    The endpoints are worth having as one function because the interior is
+    where the wins are.  The tree cannot merge two prefixes leaving the same
+    residual; the machine pays for a level of states even where the table's
+    top split is the only structure there is.  A table whose residuals merge
+    *within* a top-level split but not *across* it is served by neither --
+    ``00000101`` costs 43 instructions at ``k == n`` and 39 at ``k == 0``,
+    but 36 at ``k == 1``.
+
+    The splice has one requirement.  The machine's entry chain opens with
+    ``if reg == 0`` on its first state, while a tree arm arrives holding the
+    bit it branched on, so each arm normalizes to 0 first (``last`` is what
+    it carries).  Inside a tree arm the register is then parked nonzero,
+    exactly as a collapsed leaf parks it, so the enclosing ``else`` skips;
+    at the top level there is no enclosing ``else``, so the park is dropped
+    and ``k == 0`` is the machine itself.
+    """
+    n = _validate_truth_table(truth_table)
+    instrs: list[list[int]] = []
+
+    def emit_delta(delta: int) -> None:
+        if delta > 0:
+            instrs.append([delta, 1])
+        elif delta < 0:
+            instrs.append([-delta, 2])
+
+    def build(rows: list[int], bit: int, last: int) -> None:
+        vals = {truth_table[r] for r in rows}
+        if len(vals) == 1:
+            v = int(vals.pop())
+            emit_delta(_ASCII_ZERO + v - last)
+            instrs.append([0, 1])  # output
+            for _ in range(bit, n):
+                instrs.extend([[0, 2], [_ASCII_ZERO, 2]])  # input; -= 48
+            emit_delta(1)
+            return
+        if bit == k:
+            emit_delta(-last)  # the machine's chain tests for zero
+            instrs.extend(_polynomial_dag("".join(truth_table[r] for r in rows)))
+            if bit:  # inside a tree arm; the top level has no else to skip
+                instrs.append([1, 1])
+            return
+        instrs.extend([[0, 2], [_ASCII_ZERO, 2]])  # input; -= 48
+        g1 = [r for r in rows if ((r >> (n - 1 - bit)) & 1) == 1]
+        g0 = [r for r in rows if ((r >> (n - 1 - bit)) & 1) == 0]
+        instrs.append([1])  # if reg > 0
+        build(g1, bit + 1, 1)
+        instrs.append([2])
+        instrs.append([4])  # if reg == 0
+        build(g0, bit + 1, 0)
+        instrs.append([2])
+
+    build(list(range(2**n)), 0, 0)
+    return instrs
+
+
+def _polynomial_drained_dag(truth_table: str) -> list[list[int]] | None:
+    """Drain a leading run of ignored inputs, then run the machine.
+
+    The reduction the tree gets above is available to the machine too, but
+    only once the drain stops leaving a bit behind.  ``input; -= 48`` leaves
+    0 or 1, and the machine's entry chain opens by testing for zero, so a
+    drained ``1`` fell past every state test -- the combination answered
+    correctly only while the drained bit was 0.  Draining with the
+    ``//= 50`` pair the machine already uses for a merged child lands on 0
+    either way, for the same two instructions per level.
+
+    Returns ``None`` when no input is ignored, or when the reduction leaves
+    a single row (a constant, which the tree already spells cheaply).
+    """
+    n = _validate_truth_table(truth_table)
+    essential = essential_inputs(truth_table, n) or [0]
+    lead = next((i for i in range(n) if i in essential), n)
+    if not lead:
+        return None
+    reduced = read_at(truth_table, list(range(lead, n)), n)
+    if len(reduced) < 2:
+        return None
+    instrs: list[list[int]] = []
+    for _ in range(lead):
+        instrs.extend([[0, 2], [_ASCII_ZERO + 2, 4]])  # input; //= 50 -> 0
+    instrs.extend(_polynomial_dag(reduced))
+    return instrs
+
+
+def _polynomial_drained_dag_cost(truth_table: str) -> int | None:
+    """Return :func:`_polynomial_drained_dag`'s instruction count."""
+    n = _validate_truth_table(truth_table)
+    essential = essential_inputs(truth_table, n) or [0]
+    lead = next((i for i in range(n) if i in essential), n)
+    if not lead:
+        return None
+    reduced = read_at(truth_table, list(range(lead, n)), n)
+    if len(reduced) < 2:
+        return None
+    return 2 * lead + _polynomial_dag_cost(reduced)
+
+
+def _polynomial_hybrid_cost(truth_table: str, k: int) -> int:
+    """Return :func:`_polynomial_hybrid`'s instruction count without emitting it.
+
+    A deliberate mirror of the emitter above: the dispatch screens on this
+    before rendering, so a drift between the two would screen out a table
+    the emitter would have won.  ``test_polynomial_hybrid_cost_mirrors_build``
+    asserts they agree over the whole ``n <= 3`` corpus.
+    """
+    n = _validate_truth_table(truth_table)
+
+    def delta(value: int) -> int:
+        return 1 if value else 0
+
+    def cost(rows: list[int], bit: int, last: int) -> int:
+        vals = {truth_table[r] for r in rows}
+        if len(vals) == 1:
+            v = int(vals.pop())
+            return delta(_ASCII_ZERO + v - last) + 1 + 2 * (n - bit) + delta(1)
+        if bit == k:
+            residual = "".join(truth_table[r] for r in rows)
+            # The park is emitted only inside a tree arm; see the emitter.
+            return delta(-last) + _polynomial_dag_cost(residual) + (1 if bit else 0)
+        split = n - 1 - bit
+        g1 = [r for r in rows if ((r >> split) & 1) == 1]
+        g0 = [r for r in rows if ((r >> split) & 1) == 0]
+        return 6 + cost(g1, bit + 1, 1) + cost(g0, bit + 1, 0)
+
+    return cost(list(range(2**n)), 0, 0)
 
 
 def _pb_name(index: int) -> str:

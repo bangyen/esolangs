@@ -1,0 +1,4 @@
+function truthTable()
+var b0: [~]
+var b1: [~]
+`(b0 == "1")<(b1 == "1")<"1", "0">, "0">

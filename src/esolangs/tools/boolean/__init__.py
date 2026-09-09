@@ -16,17 +16,21 @@ module re-exports them for compatibility.
 from esolangs.tools.boolean.algebraic_programming_language import (
     algebraic_programming_language,
 )
+from esolangs.tools.boolean.alight import alight
 from esolangs.tools.boolean.circuit_diagram import circuit_diagram
 from esolangs.tools.boolean.cvnc import cvnc
 from esolangs.tools.boolean.fargo import fargo
 from esolangs.tools.boolean.inject import inject
+from esolangs.tools.boolean.interprogck8 import interprogck8
 from esolangs.tools.boolean.other import (
     between,
     bit_tilde,
     clockwise,
     container,
+    dinac,
     flowchart,
     forbin_boolean,
+    function_x_y,
     laserfuck,
     myscript,
     nevermind,
@@ -36,6 +40,7 @@ from esolangs.tools.boolean.other import (
     three_x,
     ztoalc_l_boolean,
 )
+from esolangs.tools.boolean.packlang import packlang
 from esolangs.tools.boolean.parameterized import (
     a_painter_ant,
     arrowqueue,
@@ -94,6 +99,7 @@ __all__ = [
     "a_painter_ant",
     "addsubjump",
     "algebraic_programming_language",
+    "alight",
     "arrowqueue",
     "back",
     "basicfuck",
@@ -118,16 +124,19 @@ __all__ = [
     "dig",
     "dimensional",
     "dimensional_tree",
+    "dinac",
     "eval",
     "factor",
     "fargo",
     "flowchart",
     "forbin_boolean",
     "forth",
+    "function_x_y",
     "grapheme",
     "home_row",
     "inject",
     "instantiate",
+    "interprogck8",
     "jaune",
     "jaune_multiply",
     "lamfunc",
@@ -139,6 +148,7 @@ __all__ = [
     "nevermind",
     "nocomment",
     "one_two_three",
+    "packlang",
     "painfuck",
     "pct_squared_minus_one",
     "point_break",

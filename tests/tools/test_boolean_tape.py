@@ -6,6 +6,7 @@ single-language modules that share its tape-machine shape: ``rotfuck``,
 """
 
 import contextlib
+from importlib import import_module
 from itertools import permutations
 
 import pytest
@@ -15,8 +16,9 @@ from esolangs.tools.boolean.helpers import permute_truth_table
 from esolangs.tools.boolean.six_five import (
     _six_five_hoisted,
     _six_five_markers,
-    _six_five_node_read,
+    _six_five_stream_ordered,
 )
+from esolangs.tools.wrap import shortest
 from tests.tools.boolean_runners import (
     run_bf,
     run_bit_tilde,
@@ -93,7 +95,7 @@ class TestSixFive:
         with ``78``, and ends every path on ``A0``.
         """
 
-        for program in (boolean.six_five("0110"), _six_five_node_read("0110")):
+        for program in (boolean.six_five("0110"), _six_five_stream_ordered("0110")):
             assert program.startswith("B" + "2" * 8)
             assert "78" in program
             assert program.endswith("A0")
@@ -146,7 +148,7 @@ class TestSixFive:
         the program consumes instead of reading its shape.
         """
 
-        program = _six_five_node_read(table)
+        program = _six_five_stream_ordered(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_six_five(program, [str(b) for b in bits])
@@ -289,7 +291,7 @@ class TestSixFive:
         alternating = ("10" * 128)[: 2**n]
         assert _six_five_markers(alternating) == 2**n - 1 > 35
         with pytest.raises(ValueError, match="35 branch labels"):
-            _six_five_node_read(alternating)
+            _six_five_stream_ordered(alternating)
         assert _six_five_hoisted(alternating, tuple(range(n))) == ""
 
         program = boolean.six_five(alternating)
@@ -330,22 +332,15 @@ class TestSixFive:
             boolean.six_five(parity6)
 
     def test_reordering_only_shrinks(self) -> None:
-        """No table comes out longer than the node-read build alone.
-
-        The hoist is not free -- a pointer move per node and eight ``2``s
-        per stored input -- so it loses on shallow tables, which is why the
-        node-read build stays a candidate and ties keep it.  Sweeping every
-        n == 3 table proves the dispatch is a pure shrink rather than a
-        trade.
-        """
+        """No table comes out longer than its identity-order program."""
 
         improved = 0
         for value in range(256):
             table = format(value, "08b")
             dispatched = len(boolean.six_five(table))
-            node_read = len(_six_five_node_read(table))
-            assert dispatched <= node_read, table
-            improved += dispatched < node_read
+            identity = len(_six_five_stream_ordered(table))
+            assert dispatched <= identity, table
+            improved += dispatched < identity
         assert improved == 186  # the rest tie, keeping the old emission
 
     @pytest.mark.parametrize(
@@ -412,7 +407,7 @@ class TestSixFive:
             assert built == orders, f"n={n} built {built} candidates"
 
     def test_retired_arithmetic_kernel_is_gone(self) -> None:
-        """The second construction and its assembler are no longer exported."""
+        """Retired construction helpers do not return as dispatch candidates."""
         import importlib
 
         # The package re-exports the generator under the submodule's own
@@ -423,9 +418,24 @@ class TestSixFive:
         assert module.__all__ == ["six_five"]
         assert not hasattr(module, "_SixFiveAsm")  # the assembler went too
         assert not hasattr(module, "_six_five_nav")
+        assert not hasattr(module, "_six_five_node_read")
 
 
 class TestStreetcode:
+    def test_default_uses_only_shared_layouts(self) -> None:
+        """Per-input loops are width fallbacks, never default candidates."""
+        module = import_module("esolangs.tools.boolean.streetcode")
+
+        for n in range(1, 4):
+            for value in range(1 << (1 << n)):
+                table = format(value, f"0{1 << n}b")
+                tree = module._streetcode_tree(table)  # noqa: SLF001
+                all_programs = [
+                    module._streetcode_hallway_program(n, tree),  # noqa: SLF001
+                    *module._streetcode_shared_programs(table, n, tree),  # noqa: SLF001
+                ]
+                assert boolean.streetcode(table) == shortest(*all_programs)
+
     @pytest.mark.parametrize(
         ("table", "n"),
         [
@@ -539,9 +549,9 @@ class TestStreetcode:
     def test_width_is_a_shape_choice(self) -> None:
         """A width picks a narrower shape, and that shape still computes.
 
-        The shapes differ in aspect -- the ring is the shortest program but
-        the widest -- so a width the default overruns is met by a shape that
-        was built anyway, at the cost of rows.  A Streetcode program cannot
+        The hallway trades columns for rows, so a width the default overruns
+        is met by a shape that was built anyway, at the cost of rows. A
+        Streetcode program cannot
         be reflowed after the fact, so this is the only way a width is met.
         """
         table = "10"
@@ -1349,6 +1359,19 @@ class TestSlowAcvMammalian:
 
 
 class TestSuffolk:
+    def test_candidate_costs_select_the_emitted_program(self) -> None:
+        """The selector's model is exact across every non-constant table to n=3."""
+        from esolangs.tools.boolean.tape import _suffolk_candidate_cost
+
+        for n in range(1, 4):
+            for value in range(2 ** (2**n)):
+                table = f"{value:0{2**n}b}"
+                if len({*table}) == 1:
+                    continue
+                plain = _suffolk_candidate_cost(table, "1", invert=False)
+                flipped = _suffolk_candidate_cost(table, "0", invert=True)
+                assert len(boolean.suffolk(table)) == min(plain, flipped)
+
     @pytest.mark.parametrize(
         ("table", "n"),
         [
@@ -1714,17 +1737,17 @@ class TestSbleq:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_program_structure(self) -> None:
-        """The root reads and normalizes, then every leaf outputs and halts."""
+        """The root reads, then its branch normalizes and tests it."""
         program = boolean.sbleq("0110")
         cells = [int(tok) for tok in program.split()]
-        data_base = len(cells) - 13
-        assert cells[:3] == [data_base + 4, -2, data_base + 7]  # root read
-        assert cells[3:6] == [  # root normalize
+        data_base = len(cells) - 11
+        assert cells[:3] == [data_base + 4, -2, data_base + 6]  # root read
+        assert cells[6:9] == [  # root branch and normalization
             data_base + 4,
             data_base,
-            data_base + 10,
+            data_base + 8,
         ]
-        assert cells[-13:-9] == [-49, 48, 49, -1]  # NEG49, D48, D49, HALT
+        assert cells[-11:-7] == [-49, 48, 49, -1]  # NEG49, D48, D49, HALT
         code = cells[:data_base]
         triples = [tuple(code[i : i + 3]) for i in range(0, len(code), 3)]
         outputs = [
@@ -1740,26 +1763,11 @@ class TestSbleq:
             (0, 0, data_base + 3)
         ]  # one halt per leaf
 
-    def test_reordering_only_shrinks(self) -> None:
-        """No table comes out longer than the node-read build it replaces."""
-        from esolangs.tools.boolean.tape import _sbleq_node_read
+    def test_only_the_hoisted_route_remains(self) -> None:
+        """The former node-read builder is gone, not merely bypassed."""
+        import esolangs.tools.boolean.tape as module
 
-        for i in range(256):
-            table = format(i, "08b")
-            assert len(boolean.sbleq(table)) <= len(_sbleq_node_read(table))
-
-    def test_node_read_build_survives_for_the_constant_tables(self) -> None:
-        """The drain beats a read block when no node ever branches.
-
-        Both constructions are kept as candidates precisely for these two:
-        the whole program is one leaf, so the hoisted read block pays for
-        inputs nothing tests.  If this starts passing with the hoisted build
-        the dispatch has stopped earning its keep.
-        """
-        from esolangs.tools.boolean.tape import _sbleq_node_read
-
-        for table in ("0" * 8, "1" * 8):
-            assert boolean.sbleq(table) == _sbleq_node_read(table)
+        assert not hasattr(module, "_sbleq_node_read")
 
     def test_hoisted_build_reads_every_input_once_up_front(self) -> None:
         """The read block is 2n instructions and precedes every branch."""

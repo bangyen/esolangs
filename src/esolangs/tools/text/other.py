@@ -35,12 +35,14 @@ __all__ = [
     "dimensional",
     "forbin",
     "forth",
+    "function_x_y",
     "home_row",
     "laserfuck",
     "myscript",
     "nevermind",
     "nocomment",
     "one_two_three",
+    "packlang",
     "painfuck",
     "pct_squared_minus_one",
     "sbleq",
@@ -986,6 +988,23 @@ def sbleq(text: str) -> str:
     return " ".join(map(str, cells))
 
 
+def packlang(text: str) -> str:
+    """Build a Packlang program that outputs ``text``.
+
+    One ``charPut(<byte>);`` per character inside a single ``main``, with
+    the literal in decimal -- the base the interpreter resolves the wiki's
+    conflicting examples to (see ``interpreters/other/packlang.py``).  The
+    trailing ``0;`` is the function's value, as every wiki example writes.
+
+    ``charPut`` prints ``value % 256``, so the alphabet is any byte; the
+    text is required to be ASCII anyway, since a non-ASCII ``str``
+    character has no single-byte code to emit.
+    """
+    _require_ascii(text, "Packlang")
+    body = "".join(f"    charPut({ord(c)});\n" for c in text)
+    return f"Package : IO {{\n  Integer main {{\n{body}    0;\n  }}\n}} printer;\n"
+
+
 def suptiftam(text: str) -> str:
     """Build a Suptiftam program that outputs ``text``.
 
@@ -1001,3 +1020,90 @@ def suptiftam(text: str) -> str:
                 "Suptiftam can only output printable non-quote ASCII (32-126 except ')"
             )
     return "\n".join(f"term='{c}'\nright(:term:)" for c in text)
+
+
+def function_x_y(text: str) -> str:
+    """Build a function x(y) program that prints ``text``.
+
+    One ``` `"..." ``` statement per line of the text, so the whole string
+    is emitted literally with no arithmetic: the backtick print adds no
+    newline of its own, which is what lets a text with no trailing newline
+    be reproduced exactly.  Each newline in the text is its own statement,
+    since a literal cannot contain one.
+
+    The language has no escape or character-code mechanism, so a double
+    quote cannot appear inside a string literal and is not emissible; the
+    alphabet is otherwise printable ASCII plus the newline.
+    """
+    _require_ascii(text, "function x(y)")
+    if '"' in text:
+        raise ValueError(
+            'function x(y) has no string escape, so it cannot output a quote (")'
+        )
+    for c in text:
+        if c != "\n" and not 32 <= ord(c) <= 126:
+            raise ValueError(
+                "function x(y) can only output printable ASCII (32-126) and newline"
+            )
+    # ``[""]`` prints just the newline; a run of text prints with a backtick
+    # so nothing extra is appended.
+    body = ['[""]' if not line else f'`"{line}"' for line in _quote_split(text)]
+    return (
+        "\n".join(["function printText()", *body]) if body else "function printText()"
+    )
+
+
+def _quote_split(text: str) -> list[str]:
+    r"""Split ``text`` into the pieces one statement each prints.
+
+    A newline is not representable inside a literal, so it becomes its own
+    ``[""]`` statement (print-with-newline of nothing).  Splitting on
+    ``"\\n"`` and interleaving is what keeps a trailing newline -- and a run
+    of blank lines -- reproduced exactly rather than collapsed.
+    """
+    pieces: list[str] = []
+    for i, line in enumerate(text.split("\n")):
+        if i:
+            pieces.append("")
+        if line:
+            pieces.append(line)
+    return pieces
+
+
+# The five escapes DINAC's aschar literal defines, so a character that has
+# no printable spelling still has one.  Everything else is written as
+# ``'`` plus the character itself.
+_DINAC_ESCAPES = {"\0": r"\0", "\n": r"\n", "\t": r"\t", "\r": r"\r", "\\": "\\\\"}
+
+
+def dinac(text: str) -> str:
+    r"""Build a DINAC program that outputs ``text``.
+
+    One ``OUT`` per character.  An aschar is ``'`` plus the character, or
+    one of the five escapes (``\0 \n \t \r \\``) written bare -- the
+    spelling the wiki's own ``OUT \n`` uses.
+
+    A space is emitted as ``OUT '!-``, the predecessor of ``!``, rather than
+    as ``OUT '`` with the space itself: the literal spelling puts the
+    character in trailing position, which the committed examples may not
+    carry (``tests/scripts/test_examples.py``).  The wiki's own Hello World
+    writes the literal form; both print a space, and this one survives a
+    file.
+
+    The alphabet is ASCII 0-127, which is the aschar type's whole range, so
+    a character above 127 has no literal and is refused.
+    """
+    lines = []
+    for char in text:
+        if ord(char) > 127:
+            raise ValueError(
+                f"DINAC can only output ASCII 0-127, got {char!r} (U+{ord(char):04X})"
+            )
+        escape = _DINAC_ESCAPES.get(char)
+        if escape:
+            lines.append(f"OUT {escape}")
+        elif char == " ":
+            lines.append("OUT '!-")
+        else:
+            lines.append(f"OUT '{char}")
+    return "\n".join(lines)

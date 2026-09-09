@@ -12,6 +12,7 @@ from esolangs.tools.boolean.helpers import (
     _maybe_complement,
     _validate_truth_table,
     best_input_order,
+    decision_tree_tokens,
     essential_inputs,
     minterm_literals,
     read_at,
@@ -26,6 +27,7 @@ __all__ = [
     "clockwise",
     "container",
     "forbin_boolean",
+    "function_x_y",
     "laserfuck",
     "nevermind",
     "streetcode",
@@ -70,6 +72,45 @@ def _const(n: int) -> str:
     for d in reversed(digits[:-1]):
         prog += _NEG_THIRD + "#" + _NEG_DIGIT[d] + "x"
     return prog
+
+
+def function_x_y(truth_table: str) -> str:
+    """Build a function x(y) program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.
+
+    The program reads all ``n`` input lines up front into ``b0..b(n-1)``,
+    then prints one nested ternary: at level ``k`` the condition is
+    ``(b_perm[k] == "1")`` and the arms are the two subtrees, folded to a
+    literal wherever the subtable is constant.  The reads stay in input
+    order and happen unconditionally, so a constant table still consumes
+    all ``n`` inputs -- the reads are the interface.
+
+    A ternary is an expression, so the whole tree is one statement and the
+    construction needs no control flow beyond it.  **The tree splits in
+    whichever input order emits the shortest program**
+    (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
+    """
+    return best_input_order(truth_table, _function_x_y_ordered)
+
+
+def _function_x_y_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's function x(y) program; see :func:`function_x_y`."""
+    n = _validate_truth_table(truth_table)
+
+    def build(i: int, combo: int) -> str:
+        # ``combo`` has the bits above level ``i`` set and the rest clear,
+        # so it is the first row of the run this subtree covers.
+        run = truth_table[combo : combo + 2 ** (n - i)]
+        if i == n or len(set(run)) == 1:
+            return f'"{truth_table[combo]}"'
+        one = build(i + 1, combo | (1 << (n - 1 - i)))
+        zero = build(i + 1, combo)
+        return f'(b{perm[i]} == "1")<{one}, {zero}>'
+
+    reads = [f"var b{i}: [~]" for i in range(n)]
+    return "\n".join(["function truthTable()", *reads, f"`{build(0, 0)}"])
 
 
 def myscript(truth_table: str) -> str:
@@ -1393,3 +1434,59 @@ def flowchart(truth_table: str) -> str:
     """
     _validate_truth_table(truth_table)
     return _flowchart_render(_flowchart_cells(truth_table))
+
+
+def _dinac_name(i: int) -> str:
+    """Return the variable holding input ``i``, per the spec's name regex."""
+    return f"c{i}"
+
+
+def _dinac_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit the tree that splits on ``perm[k]`` at level ``k``.
+
+    ``truth_table`` is already permuted, so row indices here are in the
+    permuted frame and ``perm`` is spent only where a node names the
+    variable it tests.
+    """
+    n = _validate_truth_table(truth_table)
+
+    def leaf(_level: int, row: int) -> list[str]:
+        return [f"OUT '{truth_table[row]}"]
+
+    def node(level: int, zero: list[str], one: list[str], _at: int) -> list[str]:
+        # An IF needs its ELSE (the wiki: they "always come in pairs"), and
+        # each branch needs a non-empty body, so both sides are always
+        # emitted -- there is no one-armed form to fold into.
+        head = f"IF {_dinac_name(perm[level])} = '1"
+        body = [f"    {line}" for line in one]
+        body += ["ELSE"]
+        body += [f"    {line}" for line in zero]
+        return [head, *body]
+
+    # Every input is read whatever the table says: the reads are the
+    # interface, and a folded tree that skipped one would leave the caller's
+    # bit on the input stream.  The tree below may test fewer.
+    reads = [f"SET {_dinac_name(i)}:\\0\nIN {_dinac_name(i)}" for i in range(n)]
+    tree = decision_tree_tokens(truth_table, leaf, node, collapse=True)
+    return "\n".join([*reads, *tree])
+
+
+def dinac(truth_table: str) -> str:
+    """Build a DINAC program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.  Each
+    input is read as an aschar with ``IN``, and the program prints ``'0'``
+    or ``'1'``.
+
+    A nested ``IF``/``ELSE`` tree, which is what DINAC is shaped for: a node
+    tests ``ci = '1`` and its two arms are the subtrees.  A subtree whose
+    rows all agree collapses to a single ``OUT``, so a table that ignores an
+    input costs nothing for it below the fold -- but the ``IN`` still runs,
+    since the reads are the interface.
+
+    The split order is searched (:func:`best_input_order`) and the shortest
+    program wins; indentation is four spaces per level, so a deep tree pays
+    for its depth and folding is what a reorder is buying.
+    """
+    return best_input_order(truth_table, _dinac_ordered)

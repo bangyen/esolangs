@@ -65,6 +65,20 @@ class TestCirclefuck:
         """, stores a byte of input in the current cell."""
         assert run_and_capture(",.@", inputs=["A"]) == "A"
 
+    def test_an_input_character_above_255_is_taken_modulo_256(self) -> None:
+        """``,`` writes a cell, so it reduces exactly as ``+`` and ``-`` do.
+
+        Only a code point above 255 reaches this: an ASCII character is
+        already its own residue, so the echo above cannot tell a reduced
+        read from an unreduced one.  It used to be unreduced, which put the
+        raw code point in a cell the arithmetic arms keep in 0..255 -- and
+        left it disagreeing with itself, since ``,+`` reduced where ``,``
+        alone did not.
+        """
+        assert run_and_capture(",.@", inputs=["Ā"]) == "\x00"
+        assert run_and_capture(",.@", inputs=["ā"]) == "\x01"
+        assert run_and_capture(",+.@", inputs=["Ā"]) == "\x01"
+
     def test_insert_cell(self) -> None:
         """{ inserts a new zero cell before the current one."""
         assert run_and_capture("{+.@") == "\x01"

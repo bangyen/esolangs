@@ -48,6 +48,7 @@ against the truth table) after the change:
  5   4000x2620      1.0s        32     all correct
  6   4160x4000      1.5s        64     all correct
  7   8160x4340      4.0s       128     all correct
+ 8   8320x7360      5.5s       256     all correct
 ===  ===========  ==========  =======  ==========
 
 For scale, n=5 was previously projected at roughly 35000x17000px and called
@@ -57,9 +58,10 @@ It used to additionally trip Pillow's decompression-bomb threshold, needing
 the caller to raise ``Image.MAX_IMAGE_PIXELS`` (as the measurement above
 did), but ``png.py`` replaced Pillow here and imposes no such ceiling.
 
-Nothing here is enforced, and n=8 upward is simply untested rather than
-known-bad -- the growth is roughly 2x area per input, so the practical limit
-is now whatever canvas and extraction time a caller will tolerate.
+Nothing here is enforced, and n=9 upward is simply untested rather than
+known-bad.  n=8's all-combination simulation adds 37.7s, so the practical
+limit is now whatever canvas, extraction, and simulation time a caller will
+tolerate.
 """
 
 from __future__ import annotations

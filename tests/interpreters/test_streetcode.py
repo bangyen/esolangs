@@ -407,11 +407,20 @@ class TestStreetcodeAmbiguousTurns:
         The numbers are properties of the committed examples.  If an
         example is redrawn they change with it, and the fix is to re-derive
         them rather than to loosen the assertion.
+
+        They fell from 469 and 316 when the search stopped walking into
+        *wrong-side* states -- the oncoming lane travelled backwards, which
+        the geometry admits but the car can never occupy (see
+        :func:`_drives_on_the_right`).  Those states have no successor of
+        their own, so they used to look like wedged streets and made
+        ``_validate_total`` reject correct programs.  Every state the car
+        actually visits in these examples is right-hand-side, so nothing
+        the run needs was pruned.
         """
         root = Path(__file__).resolve().parents[2]
         for path, expected in (
-            ("examples/hello-world/streetcode.txt", 469),
-            ("examples/boolean/streetcode.txt", 316),
+            ("examples/hello-world/streetcode.txt", 384),
+            ("examples/boolean/streetcode.txt", 268),
         ):
             code = (root / path).read_text().split("\n")
             if code and code[-1] == "":
@@ -876,9 +885,19 @@ class TestStreetcodeIO:
 
 
 class TestStreetcodeCPBounds:
-    def test_cp_decrement_below_zero_halts(self) -> None:
-        with pytest.raises(HaltError):
-            run(["C_;"], io=IO())
+    def test_cp_decrement_below_zero_is_clamped(self) -> None:
+        """``_`` at CP 0 moves nothing rather than raising.
+
+        The wiki bounds CP on the left ("The CP is unsigned and
+        right-unbounded") but never says what a below-zero ``_`` does -- no
+        example uses ``_``, and the page has no error-handling text.  An
+        unsigned quantity that cannot go lower saturates, which is also how
+        brainfuck's ``<`` and CVNC's accumulator behave.  This used to
+        raise ``HaltError``.
+        """
+        assert run_street("C_^O;") == chr(1)
+        # repeated clamping stays on cell 0 rather than drifting
+        assert run_street("C___^O;") == chr(1)
 
     def test_cp_can_move_right_and_back_to_zero(self) -> None:
         assert run_street("C=_^O;") == chr(1)
