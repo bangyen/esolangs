@@ -174,11 +174,15 @@ _KINDS = {
     "boolean": _Kind("boolean", "tools/boolean", "tests/tools", _TOOLS_SUPPORT),
     "text": _Kind("text", "tools/text", "tests/tools", _TOOLS_SUPPORT),
     # The modules directly under ``esolangs.tools`` rather than in a family
-    # package -- ``transpilers`` above all, which turns one language's
-    # program into another's and is covered by ``test_transpilers``.  The
-    # glob picks up only files, so the ``boolean`` and ``text`` subpackages
-    # are not swept in twice.
+    # package -- ``wrap`` and the layout helpers.  The glob picks up only
+    # files, so the ``boolean`` and ``text`` subpackages are not swept in
+    # twice.
     "tools": _Kind("tools", "tools", "tests/tools", _TOOLS_SUPPORT),
+    # The transpilers, which turn one language's program into another's and
+    # are covered by ``test_transpilers``.  They moved out of
+    # ``esolangs.tools`` into their own package to sit beside the compilers;
+    # the kind moved with them so they keep a harness path.
+    "transpilers": _Kind("transpilers", "transpilers", "tests/tools", _TOOLS_SUPPORT),
     "compilers": _Kind(
         "compilers",
         "compilers",

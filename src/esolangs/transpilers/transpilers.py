@@ -53,7 +53,7 @@ removed" in ``docs/limitations.md``.
 
 ``brainfuck -> Streetcode`` lowers brainfuck's tape to Streetcode's road
 network: a loop is a room the car laps until the tested cell is zero.  It is
-in ``tools/_bf_streetcode.py`` rather than here because its geometry pass is
+in ``transpilers/_bf_streetcode.py`` rather than here because its geometry pass is
 large; the wraparound Streetcode lacks is handled by a brainfuck-level
 canonicalizer before the drawing, so the drawing stays total.
 """
@@ -61,7 +61,7 @@ canonicalizer before the drawing, so the drawing stays total.
 from collections.abc import Callable
 from typing import Any
 
-from esolangs.tools._bf_streetcode import bf_to_streetcode
+from esolangs.transpilers._bf_streetcode import bf_to_streetcode
 
 __all__ = [
     "TRANSPILERS",

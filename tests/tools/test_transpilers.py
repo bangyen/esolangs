@@ -3,7 +3,7 @@
 The contract is that a program and its translation are interchangeable:
 the translation runs to identical output through the target interpreter.
 Every transpiler here is *total* over its source language -- the admission
-criteria in ``esolangs.tools.transpilers`` say why partial ones are not
+criteria in ``esolangs.transpilers`` say why partial ones are not
 carried -- so each section pairs a pinned battery with a fuzz that has no
 rejection skip-arm.
 """
@@ -73,7 +73,7 @@ def test_partial_transpilers_are_not_offered(pair: tuple[str, str]) -> None:
 
     Each rejected programs its source language accepts, or -- for BIO --
     mistranslated them silently.  The admission criteria in
-    ``esolangs.tools.transpilers`` set the bar they failed.
+    ``esolangs.transpilers`` set the bar they failed.
     """
     with pytest.raises(UnsupportedTranspilationError):
         esolangs.transpile(pair[0], pair[1], "+")
@@ -81,7 +81,7 @@ def test_partial_transpilers_are_not_offered(pair: tuple[str, str]) -> None:
 
 def test_listed_transpilers_are_known_languages() -> None:
     """Every transpiler source and target is a registered language."""
-    from esolangs.tools.transpilers import TRANSPILERS
+    from esolangs.transpilers import TRANSPILERS
 
     known = set(esolangs.list_languages())
     for source, target in TRANSPILERS:
@@ -399,7 +399,7 @@ def test_streetcode_pinned_output(program: str, stdin: str, want: str) -> None:
 
 def test_streetcode_clear_and_set_skips_the_canonicalizer() -> None:
     """A byte clear makes its following arithmetic residue statically known."""
-    from esolangs.tools._bf_streetcode import _lower
+    from esolangs.transpilers._bf_streetcode import _lower
 
     assert _lower("[-]---") == "[-]" + "+" * 253
 
@@ -418,7 +418,7 @@ def test_streetcode_byte_safe_affine_prefixes(
 ) -> None:
     """Affine transfers lower directly; unknown code falls back at its boundary."""
     from esolangs.interpreters.brackets import match_brackets
-    from esolangs.tools._bf_streetcode import _byte_safe_prefix
+    from esolangs.transpilers._bf_streetcode import _byte_safe_prefix
 
     assert _byte_safe_prefix(program, match_brackets(program)) == prefix
     target = esolangs.transpile("brainfuck", "Streetcode", program)
@@ -770,7 +770,7 @@ def test_assembler_rejects_a_duplicate_label() -> None:
     add one.  The assemblers are internal, but the guard is what keeps a
     macro that mints its own labels from colliding with a hand-written one.
     """
-    from esolangs.tools.transpilers import _SbleqAsm
+    from esolangs.transpilers.transpilers import _SbleqAsm
 
     asm = _SbleqAsm()
     asm.mark("loop")
