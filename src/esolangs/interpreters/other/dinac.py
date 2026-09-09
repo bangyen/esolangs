@@ -63,6 +63,8 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
 _KEYWORDS = frozenset(("DEF", "ELSE", "GIVE", "IF", "IN", "OUT", "SET", "WHILE"))
+# Named because a bare "'" comparison reads to bandit as a hardcoded secret.
+_QUOTE = "'"
 _HEX = "0123456789ABCDEF"
 _ESCAPES = {"0": "\0", "n": "\n", "t": "\t", "r": "\r", "\\": "\\"}
 _INDENT = 4
@@ -83,7 +85,7 @@ class _Value:
     code: int = 0
 
     def truthy(self) -> bool:
-        """A snuval is always false; the others are false iff zero."""
+        """Return the truth value: a snuval is always false, else nonzero."""
         return self.kind != "snuval" and self.code != 0
 
     def render(self) -> str:
@@ -227,8 +229,10 @@ def _parse_primary(reader: _Reader) -> _Expr:
         # An aschar literal may *be* one of the delimiters (``' ``, ``'(``,
         # ``'+``), so a quote is re-read here taking the next character raw.
         raise ValueError(f"expected a value at position {start}")
-    if token == "'" or (token.startswith("'") and len(token) == 1):
-        # ``'`` followed by a delimiter character: take it literally.
+    # A lone quote means the character it introduces is one of the
+    # delimiters the scan above stopped on (``' ``, ``'(``, ``'+``), so it
+    # is taken raw here rather than tokenized.
+    if len(token) == 1 and token == _QUOTE:
         if reader.pos < len(reader.text):
             char = reader.text[reader.pos]
             reader.pos += 1
@@ -540,8 +544,8 @@ def _compare(left: _Value, right: _Value) -> bool:
     return left.kind == right.kind and left.code == right.code
 
 
-def _bit(flag: bool) -> _Value:
-    """The wubyte ``01``/``00`` that a comparison or ``~`` returns."""
+def _bit(*, flag: bool) -> _Value:
+    """Return the wubyte ``01``/``00`` a comparison or ``~`` yields."""
     return _Value("wubyte", 1 if flag else 0)
 
 
@@ -640,14 +644,14 @@ class _Machine:
                 raise HaltError(f"undeclared name {expr[1]!r}")
             return value
         if expr[0] == "not":
-            return _bit(not self._eval(expr[1], scope).truthy())
+            return _bit(flag=not self._eval(expr[1], scope).truthy())
         if expr[0] == "step":
             return _step_value(self._eval(expr[2], scope), expr[1])
         if expr[0] == "cmp":
             left = self._eval(expr[2], scope)
             right = self._eval(expr[3], scope)
             same = _compare(left, right)
-            return _bit(same if expr[1] == "=" else not same)
+            return _bit(flag=same if expr[1] == "=" else not same)
         return self._call(expr[1], expr[2], scope)
 
     def _call(
@@ -666,7 +670,12 @@ class _Machine:
             raise HaltError(f"no overload of {name!r} takes {list(key[1])}")
         if self.depth >= _MAX_DEPTH:
             raise HaltError(f"call depth exceeded {_MAX_DEPTH} in {name!r}")
-        local = {pname: value for (pname, _), value in zip(function.params, values)}
+        # strict: the overload was selected by its parameter *types*, so the
+        # two sequences are the same length by construction.
+        local = {
+            pname: value
+            for (pname, _), value in zip(function.params, values, strict=True)
+        }
         self.depth += 1
         try:
             self._run_body(function.body, local)

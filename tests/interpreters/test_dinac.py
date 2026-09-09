@@ -348,7 +348,7 @@ class TestMalformedPrograms:
 
     def test_an_aschar_holds_exactly_one_character(self) -> None:
         """There is no string type, so ``'hi`` is not a literal."""
-        with raises_message(ValueError, "malformed value \"'hi\""):
+        with raises_message(ValueError, 'malformed value "\'hi"'):
             run("OUT 'hi", ScriptedIO())
 
     def test_the_empty_program_halts_with_no_output(self) -> None:
@@ -361,7 +361,15 @@ class TestTextGenerator:
 
     @pytest.mark.parametrize(
         "text",
-        ["Hello, World!\n", "a", "", "tab\there", "back\\slash", "\0nul", "~!@#$%^&*()"],
+        [
+            "Hello, World!\n",
+            "a",
+            "",
+            "tab\there",
+            "back\\slash",
+            "\0nul",
+            "~!@#$%^&*()",
+        ],
     )
     def test_generated_program_prints_the_text(self, text: str) -> None:
         assert _run(dinac_text(text)) == text
