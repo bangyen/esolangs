@@ -23,8 +23,8 @@ from esolangs.exceptions import (
 )
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import GENERATORS, LANGUAGES, RUNNERS
-from esolangs.tools.transpilers import TRANSPILERS
 from esolangs.tools.wrap import takes_width, wrap_program
+from esolangs.transpilers import TRANSPILERS
 from esolangs.vm import VM, make_vm
 
 _EXAMPLES = pathlib.Path(__file__).resolve().parents[2] / "examples"
