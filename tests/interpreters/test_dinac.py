@@ -108,11 +108,21 @@ class TestWikiExamples:
     def test_cat_terminates_only_because_eof_is_falsy(self) -> None:
         """EOF must be falsy or the wiki's cat could never stop.
 
-        ``WHILE c`` exits exactly when ``IN`` can produce a falsy value, and
-        the spec's empty-line ``\\n`` is truthy, so a non-falsy EOF would
-        leave the program spinning on exhausted input.
+        ``WHILE c`` exits exactly when ``IN`` can produce a falsy value, so
+        a non-falsy EOF would leave the program spinning on exhausted
+        input.  A blank line is falsy too under the package convention, so
+        the cat also stops on one -- pinned below.
         """
         assert _run(CAT, "a\n") == "\0"
+
+    def test_cat_stops_on_a_blank_line(self) -> None:
+        """A consequence of the blank-line convention, worth pinning.
+
+        Under the wiki's ``\\n`` a blank line was truthy and the cat read
+        on past it; at 0 it is falsy and ends the loop, so the text after
+        one is never echoed.
+        """
+        assert _run(CAT, "a\n\nb\n") == "\0"
 
     def test_plus_or_minus_interpreter(self) -> None:
         """Two ``+`` then a ``-`` prints chr(2); the outer WHILE never ends."""
@@ -232,9 +242,17 @@ class TestInput:
     def test_an_aschar_read_takes_the_first_character(self) -> None:
         assert _run(r"SET c:\0" + "\nIN c\nOUT c", "xyz\n") == "x"
 
-    def test_an_empty_line_reads_as_a_newline(self) -> None:
-        r"""The wiki: "Empty input returns \\n"."""
-        assert _run(r"SET c:\0" + "\nIN c\nOUT c", "\n") == "\n"
+    def test_an_empty_line_reads_as_the_package_convention(self) -> None:
+        r"""0, not the wiki's ``\\n``.
+
+        The wiki says "Empty input returns \\n", but the package answers
+        this question once for every language
+        (``tests/interpreters/test_input_convention.py``): a blank line is
+        0, because the same line reading 10 here and 0 elsewhere is what
+        once made a brainfuck -> Streetcode translation wrong.  Packlang
+        resolves the identical clash the same way.
+        """
+        assert _run(r"SET c:\0" + "\nIN c\nOUT c", "\n") == "\0"
 
     def test_a_wubyte_reads_decimal(self) -> None:
         """The wiki: 1-3 char base-10 form, so "255" is FF."""
@@ -311,10 +329,47 @@ class TestFunctions:
         )
         assert _run(program) == "0100"
 
-    def test_runaway_recursion_halts_rather_than_crashing(self) -> None:
-        """An explicit depth cap, so Python's own limit is never reached."""
-        with raises_message(HaltError, "call depth exceeded 200 in 'f'"):
-            run("DEF/00 f n:00\n    GIVE f(n)\nOUT f(01)", ScriptedIO())
+    def test_runaway_recursion_grows_frames_without_crashing(self) -> None:
+        """No depth cap: frames grow on the heap, never on Python's stack.
+
+        ``GIVE f(n)`` recurses forever through states that never repeat, so
+        the cycle detector cannot prove it and there is nothing to raise --
+        that class is what ``esolangs.run``'s wall-clock ``timeout`` exists
+        to catch, exactly as in ``grapheme.py`` and ``function_x_y.py``.
+        What is asserted here is that it stays *steppable*: the stack keeps
+        growing and no ``RecursionError`` escapes.
+        """
+        machine = _Machine("DEF/00 f n:00\n    GIVE f(n)\nOUT f(01)", ScriptedIO())
+        for _ in range(4000):
+            machine.step()
+        # Far past Python's own recursion limit, and still going.
+        assert len(machine.frames) > 1000
+        assert not machine.halted
+
+    def test_a_loop_inside_a_function_body_is_provable(self) -> None:
+        """The reason calls are framed rather than evaluated inline.
+
+        A ``WHILE`` in a function body used to run to completion inside one
+        ``step()``, so an endless one hung with the frame stack never
+        observed growing and nothing for the cycle detector to see.  Framed,
+        every lap reaches ``snapshot`` and the repeat proves the hang.
+
+        The loop must revisit a state to be provable, so it holds ``n``
+        fixed rather than counting -- a counter would make each lap a new
+        state, which is the separate class the timeout covers.
+        """
+        program = "\n".join(
+            [
+                "DEF/00 spin n:00",
+                "    WHILE 01",
+                "        OUT n",
+                "    GIVE n",
+                "OUT spin(01)",
+            ]
+        )
+        io = ScriptedIO()
+        assert run_until_halt_or_cycle(_Machine(program, io)) is False
+        assert set(io.getvalue()) == {"0", "1"}
 
 
 class TestMalformedPrograms:

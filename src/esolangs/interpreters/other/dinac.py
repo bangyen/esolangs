@@ -13,23 +13,37 @@ type tuple.  ``+``/``-`` are postfix successor/predecessor (wrapping mod
 negates, and parentheses group.  A wubyte prints as its two hex digits, an
 aschar as its character.
 
-``_Machine`` steps one statement at a time over an explicit frame stack, so
-a top-level loop is provable by state-cycle detection.  Function calls
-appear *inside* expressions (``OUT add1(x)``, ``WHILE and(a,b)``), which a
-frame stack cannot suspend, so a call is evaluated inline by a recursive
-evaluator bounded by an explicit depth counter checked at call entry;
-runaway recursion is a :class:`~esolangs.exceptions.HaltError` rather than
-a Python ``RecursionError``.
+``_Machine`` steps one statement at a time over an explicit frame stack,
+and a *call* pushes a frame like anything else -- including a call inside
+an expression (``OUT add1(x)``, ``WHILE and(a,b)``), which is where the
+work is.  A statement holding calls is re-entered once per call: each step
+runs the leftmost-innermost one that has not returned, and its value comes
+back rewritten into the statement's expression as a literal.  Nothing is
+evaluated inside another statement's step, so a ``WHILE`` in a function
+body is stepped like any other loop and :func:`esolangs.vm.
+run_until_halt_or_cycle` can prove it hangs.  Lamfunc frames calls in
+argument position for the same reason and is the closer model; the only
+native recursion left is :meth:`_Machine._eval` over a call-free
+expression, bounded by the program text's own nesting.
+
+There is therefore no recursion ceiling.  A program that recurses forever
+through ever-new states grows the frame list rather than Python's stack;
+that class never repeats a state, so it is what ``esolangs.run``'s
+wall-clock ``timeout`` is for, exactly as in ``grapheme.py``.
 
 Decisions for gaps in the wiki spec (documented):
-- EOF: the wiki defines only *empty* input (``\n`` for an aschar, ``00``
-  for a wubyte) and is silent on input running out.  Reading past the end
-  yields ``\0`` for an aschar and ``00`` for a wubyte rather than raising
-  :class:`EOFError`.  That is the only reading under which the wiki's own
-  cat program terminates: ``WHILE c`` exits exactly when ``IN`` can produce
-  a falsy value, and the spec's empty-line ``\n`` is truthy;
-- an empty line reads as the wiki says (``\n`` / ``00``), so EOF and a
-  blank line are distinguishable, and one ``IN`` consumes one line;
+- EOF: the wiki defines only *empty* input and is silent on input running
+  out.  Reading past the end yields ``\0`` for an aschar and ``00`` for a
+  wubyte rather than raising :class:`EOFError`, which is what lets the
+  wiki's own cat program terminate -- ``WHILE c`` exits exactly when ``IN``
+  can produce a falsy value;
+- a blank line reads as 0, *not* the wiki's ``\n``.  The package pins one
+  answer for this across every interpreter
+  (``tests/interpreters/test_input_convention.py``), since the same line
+  reading 10 here and 0 elsewhere is what once broke a brainfuck ->
+  Streetcode translation; the shared convention wins over the wiki, as it
+  does in Packlang for the same clash.  A blank line and EOF are therefore
+  the same value to an aschar read, and one ``IN`` still consumes one line;
 - ``OUT`` of a wubyte prints its two hex digits (the wiki: "printed as
   their 2-char literals"), so the truth machine prints ``00``, not ``0``;
 - ``=`` and ``!`` across two different types compare false and true
@@ -46,8 +60,7 @@ Decisions for gaps in the wiki spec (documented):
 - :class:`~esolangs.exceptions.HaltError` for an invalid runtime operation:
   assigning across types, using an undeclared name, calling an overload
   that does not exist, a non-snuval function that returns nothing or the
-  wrong type, ``GIVE`` outside a function, and exceeding the call-depth
-  cap;
+  wrong type, and ``GIVE`` outside a function;
 - ``SET x:$`` is refused (the wiki requires a non-snuval initial value so a
   variable has a type); ``x . $`` is allowed and stores the snuval, which
   is always false.
@@ -57,7 +70,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -68,11 +81,6 @@ _QUOTE = "'"
 _HEX = "0123456789ABCDEF"
 _ESCAPES = {"0": "\0", "n": "\n", "t": "\t", "r": "\r", "\\": "\\"}
 _INDENT = 4
-
-# Depth cap for the inline call evaluator.  An explicit counter rather than
-# a caught RecursionError: partial effects survive a raise, and Python's
-# own limit would land at an arbitrary point inside an expression.
-_MAX_DEPTH = 200
 
 _Kind = Literal["wubyte", "aschar", "snuval"]
 
@@ -298,6 +306,18 @@ _If = tuple[Literal["if"], _Expr, tuple["_Stmt", ...], tuple["_Stmt", ...]]
 _While = tuple[Literal["while"], _Expr, tuple["_Stmt", ...]]
 _Stmt = _Out | _In | _Set | _Assign | _Give | _CallStmt | _If | _While
 
+#: Where each statement kind keeps the expression it evaluates.  ``IN`` is
+#: absent because it has none -- it names a variable and reads into it.
+_EXPR_SLOT = {
+    "out": 1,
+    "give": 1,
+    "callstmt": 1,
+    "if": 1,
+    "while": 1,
+    "set": 2,
+    "assign": 2,
+}
+
 
 @dataclass(frozen=True)
 class _Function:
@@ -522,14 +542,6 @@ def _parse(code: str) -> tuple[_Overloads, tuple[_Stmt, ...]]:
 # -- evaluation ------------------------------------------------------------
 
 
-class _Return(Exception):  # noqa: N818 - a control-flow signal, not an error
-    """Carries a ``GIVE``'s value out of the inline call evaluator."""
-
-    def __init__(self, value: _Value) -> None:
-        super().__init__()
-        self.value = value
-
-
 def _step_value(value: _Value, op: str) -> _Value:
     """Apply postfix ``+``/``-``, wrapping at 256 (wubyte) or 128 (aschar)."""
     if value.kind == "snuval":
@@ -561,11 +573,27 @@ class _Frame:
     than a copy.  A loop needs no marker here: ``step`` rewinds the
     *parent's* cursor onto the ``WHILE`` before pushing the body, so the
     condition is re-tested when this frame runs out.
+
+    ``function`` marks a *call* boundary rather than a plain block.  It
+    carries the overload so ``GIVE`` -- which unwinds to the innermost
+    such frame, not merely one level -- can check the returned type, and
+    so falling off the body's end can deliver a snuval.  A block frame
+    (an ``IF`` arm, a ``WHILE`` body) leaves it None and shares its
+    parent's scope.
+
+    ``pending`` is the statement's expression with the calls that have
+    already returned rewritten into it as literals, and ``returned``
+    the value a just-finished call frame is handing back.  Both are what
+    let a call inside an expression suspend: the statement is re-entered
+    once per call it contains, each time with one more call resolved.
     """
 
     body: tuple[_Stmt, ...]
     scope: dict[str, _Value]
     ind: int = 0
+    function: _Function | None = None
+    pending: _Expr | None = None
+    returned: _Value | None = None
 
 
 #: The whole run state as a value: the frame stack (each frame's block
@@ -573,17 +601,19 @@ class _Frame:
 #: This is what :meth:`_Machine.snapshot` hands the cycle detector, and it
 #: is complete -- the overload table and the parsed bodies are fixed at
 #: parse time, so nothing outside these fields can change during a run.
-type _State = tuple[tuple[tuple[int, int, tuple[tuple[str, str, int], ...]], ...], int]
+type _Bindings = tuple[tuple[str, str, int], ...]
+type _FrameState = tuple[int, int, _Bindings, str, tuple[str, int] | None]
+type _State = tuple[tuple[_FrameState, ...], int]
 
 
 class _Machine:
     """One DINAC run: the parsed program, the frame stack, and the ports.
 
-    ``step()`` executes one statement of the innermost frame.  A ``WHILE``
-    pushes a frame carrying its condition, so a top-level loop is stepped
-    rather than recursed and :func:`esolangs.vm.run_until_halt_or_cycle`
-    can prove the truth machine's hang.  Calls inside expressions are
-    evaluated inline instead, bounded by ``_MAX_DEPTH``.
+    ``step()`` executes one statement of the innermost frame, and a call --
+    wherever it sits, including inside an expression -- pushes a frame
+    rather than recursing.  So every loop is stepped, and
+    :func:`esolangs.vm.run_until_halt_or_cycle` can prove a hang whether it
+    is at the top level or inside a function body.
     """
 
     def __init__(self, code: str, io: IO) -> None:
@@ -591,8 +621,6 @@ class _Machine:
         self.functions, top = _parse(code)
         self.globals: dict[str, _Value] = {}
         self.frames: list[_Frame] = [_Frame(top, self.globals)]
-        self.depth = 0
-        self._pending: list[str] = []
 
     @property
     def halted(self) -> bool:
@@ -605,12 +633,24 @@ class _Machine:
         # cursor: a lap that consumed a line is not a repeat.  A body is
         # identified by ``id``, which is stable for the run because every
         # block tuple is built once at parse time and never rebuilt.
+        #
+        # ``pending`` is by *value*: it is rewritten as each call returns,
+        # so it is freshly built rather than a parse-time tuple, and two
+        # states differing only in how far a statement's calls have got are
+        # not the same state.
         return (
             tuple(
                 (
                     id(frame.body),
                     frame.ind,
                     tuple(sorted((k, v.kind, v.code) for k, v in frame.scope.items())),
+                    repr(frame.pending),
+                    None
+                    if frame.returned is None
+                    else (
+                        frame.returned.kind,
+                        frame.returned.code,
+                    ),
                 )
                 for frame in self.frames
             ),
@@ -652,38 +692,26 @@ class _Machine:
             right = self._eval(expr[3], scope)
             same = _compare(left, right)
             return _bit(flag=same if expr[1] == "=" else not same)
-        return self._call(expr[1], expr[2], scope)
+        # Unreachable: ``step`` pushes a frame for every call and rewrites
+        # its value in before evaluating, so what arrives here is call-free.
+        raise HaltError(f"unresolved call to {expr[1]!r}")
 
-    def _call(
-        self, name: str, args: tuple[_Expr, ...], scope: dict[str, _Value]
-    ) -> _Value:
-        """Run one call to completion and return its value.
+    def _resolve(self, function: _Function, values: list[_Value]) -> dict[str, _Value]:
+        """Bind a call's evaluated arguments to its overload's parameters."""
+        # strict: the overload was selected by its parameter *types*, so the
+        # two sequences are the same length by construction.
+        return {
+            pname: value
+            for (pname, _), value in zip(function.params, values, strict=True)
+        }
 
-        Inline rather than frame-suspended: a call can sit inside an
-        expression (``WHILE and(a,b)``), and suspending mid-expression
-        would need continuations the frame stack does not model.
-        """
-        values = [self._eval(arg, scope) for arg in args]
+    def _overload(self, name: str, values: list[_Value]) -> _Function:
+        """Return the overload ``name`` selects for these argument types."""
         key = (name, tuple(v.kind for v in values))
         function = self.functions.get(key)
         if function is None:
             raise HaltError(f"no overload of {name!r} takes {list(key[1])}")
-        if self.depth >= _MAX_DEPTH:
-            raise HaltError(f"call depth exceeded {_MAX_DEPTH} in {name!r}")
-        # strict: the overload was selected by its parameter *types*, so the
-        # two sequences are the same length by construction.
-        local = {
-            pname: value
-            for (pname, _), value in zip(function.params, values, strict=True)
-        }
-        self.depth += 1
-        try:
-            self._run_body(function.body, local)
-        except _Return as give:
-            return self._checked(function, give.value)
-        finally:
-            self.depth -= 1
-        return self._checked(function, _SNUVAL)
+        return function
 
     def _checked(self, function: _Function, value: _Value) -> _Value:
         """Validate a call's result against the overload's declared type."""
@@ -695,23 +723,56 @@ class _Machine:
             )
         return value
 
-    def _run_body(self, body: tuple[_Stmt, ...], scope: dict[str, _Value]) -> None:
-        """Execute a function body to completion, inside one ``step``."""
-        for stmt in body:
-            self._exec(stmt, scope)
+    def _pending_call(self, expr: _Expr) -> _Call | None:
+        """Return the call ``_eval`` would reach first, or None if there is none.
 
-    def _exec(self, stmt: _Stmt, scope: dict[str, _Value]) -> None:
-        """Execute one statement inside a called function (not stepped)."""
-        if stmt[0] == "if":
-            branch = stmt[2] if self._eval(stmt[1], scope).truthy() else stmt[3]
-            self._run_body(branch, scope)
-        elif stmt[0] == "while":
-            while self._eval(stmt[1], scope).truthy():
-                self._run_body(stmt[2], scope)
-        elif stmt[0] == "give":
-            raise _Return(self._eval(stmt[1], scope))
-        else:
-            self._simple(stmt, scope)
+        Leftmost-innermost, which is ``_eval``'s own order: a call's own
+        arguments are searched before the call itself, and ``cmp``'s left
+        operand before its right.  Keeping the order is what preserves
+        which ``HaltError`` fires first and the order of any output a
+        called body prints.
+        """
+        if expr[0] == "lit" or expr[0] == "name":
+            return None
+        if expr[0] == "not":
+            return self._pending_call(expr[1])
+        if expr[0] == "step":
+            return self._pending_call(expr[2])
+        if expr[0] == "cmp":
+            return self._pending_call(expr[2]) or self._pending_call(expr[3])
+        for arg in expr[2]:
+            found = self._pending_call(arg)
+            if found is not None:
+                return found
+        return expr
+
+    def _substitute(self, expr: _Expr, target: _Call, value: _Value) -> _Expr:
+        """Return ``expr`` with ``target`` replaced by the literal ``value``.
+
+        A rewritten *copy*: the parse tree is shared between frames and
+        across a ``WHILE``'s laps, so writing into it would corrupt the
+        next lap's view of the statement.
+        """
+        if expr is target:
+            return ("lit", value)
+        if expr[0] == "lit" or expr[0] == "name":
+            return expr
+        if expr[0] == "not":
+            return ("not", self._substitute(expr[1], target, value))
+        if expr[0] == "step":
+            return ("step", expr[1], self._substitute(expr[2], target, value))
+        if expr[0] == "cmp":
+            return (
+                "cmp",
+                expr[1],
+                self._substitute(expr[2], target, value),
+                self._substitute(expr[3], target, value),
+            )
+        return (
+            "call",
+            expr[1],
+            tuple(self._substitute(arg, target, value) for arg in expr[2]),
+        )
 
     # -- the simple statements, shared by both execution paths -------------
 
@@ -740,15 +801,19 @@ class _Machine:
                     f"{stmt[1]!r} is {current.kind}, cannot take a {value.kind}"
                 )
             scope[stmt[1]] = value
-        else:
-            raise HaltError("GIVE outside a function")
 
     def _read(self, name: str, scope: dict[str, _Value]) -> None:
         r"""Read one line into ``name``, per its declared type.
 
-        The wiki fixes the *empty line* conventions (``\n`` for an aschar,
-        ``00`` for a wubyte) and is silent on input running out; EOF gives
-        ``\0``/``00`` so the wiki's cat program terminates.
+        A blank line reads as 0, not the wiki's ``\n``.  The package
+        answers this question once -- ``tests/interpreters/
+        test_input_convention.py`` pins 0 across every interpreter, because
+        a blank line reading 10 here and 0 elsewhere is what once made a
+        brainfuck -> Streetcode translation wrong.  The shared convention
+        wins over the wiki, as it does in Packlang for the same clash.
+
+        Input running out is the separate case the wiki is silent on, and
+        gives ``\0``/``00`` so the wiki's cat program terminates.
         """
         current = scope.get(name)
         if current is None:
@@ -761,24 +826,75 @@ class _Machine:
             scope[name] = _Value(current.kind, 0)
             return
         if current.kind == "aschar":
-            # An empty line is legal and has no character to take, so the
-            # wiki's newline convention applies rather than an IndexError.
-            code = ord(line[0]) if line else ord("\n")
+            # An empty line is legal and has no character to take; 0 is the
+            # package-wide answer, the same one ``io.input_char`` gives.
+            code = ord(line[0]) if line else 0
             scope[name] = _Value("aschar", code if code < 128 else 0)
             return
         scope[name] = _Value("wubyte", _wubyte_of(line))
 
     # -- the stepped shell -------------------------------------------------
 
+    def _finish(self, frame: _Frame) -> None:
+        """Pop an exhausted frame, delivering a call's value if it was one."""
+        self.frames.pop()
+        if frame.function is None:
+            return
+        # A function body that runs out without a GIVE returns the snuval,
+        # which ``_checked`` refuses unless the overload declares one.
+        self._deliver(self._checked(frame.function, _SNUVAL))
+
+    def _deliver(self, value: _Value) -> None:
+        """Hand a finished call's value back to the frame that wanted it."""
+        if self.frames:
+            self.frames[-1].returned = value
+
+    def _expression_of(self, stmt: _Stmt) -> _Expr | None:
+        """Return the expression ``stmt`` evaluates, or None if it has none.
+
+        ``IN`` is the one statement with no expression; every other kind
+        holds exactly one, at the slot :data:`_EXPR_SLOT` names.
+        """
+        slot = _EXPR_SLOT.get(stmt[0])
+        return None if slot is None else cast("_Expr", stmt[slot])
+
     def step(self) -> None:
-        """Execute one statement of the innermost frame."""
+        """Execute one statement of the innermost frame.
+
+        A statement holding calls takes more than one step: each step runs
+        the leftmost-innermost call that has not returned yet by *pushing*
+        its body, and the value comes back rewritten into ``pending`` as a
+        literal.  The statement itself runs on the step where no call is
+        left, so no part of a DINAC program executes inside another
+        statement's step and every intermediate state reaches
+        :meth:`snapshot`.
+        """
         if not self.frames:
             return
         frame = self.frames[-1]
         if frame.ind >= len(frame.body):
-            self.frames.pop()
+            self._finish(frame)
             return
         stmt = frame.body[frame.ind]
+
+        # An expression is re-entered once per call it contains, carrying
+        # the calls already resolved; ``returned`` is the one that just did.
+        expr = self._expression_of(stmt)
+        if expr is not None:
+            working = frame.pending if frame.pending is not None else expr
+            if frame.returned is not None:
+                call = self._pending_call(working)
+                if call is not None:
+                    working = self._substitute(working, call, frame.returned)
+                frame.returned = None
+            call = self._pending_call(working)
+            if call is not None:
+                frame.pending = working
+                self._push_call(call, frame.scope)
+                return
+            frame.pending = None
+            stmt = self._resolved(stmt, working)
+
         frame.ind += 1
         if stmt[0] == "if":
             branch = stmt[2] if self._eval(stmt[1], frame.scope).truthy() else stmt[3]
@@ -786,11 +902,46 @@ class _Machine:
         elif stmt[0] == "while":
             if self._eval(stmt[1], frame.scope).truthy():
                 # Rewind onto the WHILE itself, so finishing the body
-                # re-tests the condition rather than falling past it.
+                # re-tests the condition rather than falling past it.  The
+                # next lap re-reads the *parsed* condition, so its calls run
+                # again rather than reusing this lap's resolved values.
                 frame.ind -= 1
                 self.frames.append(_Frame(stmt[2], frame.scope))
+        elif stmt[0] == "give":
+            self._give(self._eval(stmt[1], frame.scope))
         else:
             self._simple(stmt, frame.scope)
+
+    def _resolved(self, stmt: _Stmt, expr: _Expr) -> _Stmt:
+        """Return ``stmt`` with its expression replaced by the resolved one."""
+        slot = _EXPR_SLOT[stmt[0]]
+        parts = list(stmt)
+        parts[slot] = expr
+        return cast("_Stmt", tuple(parts))
+
+    def _push_call(self, call: _Call, scope: dict[str, _Value]) -> None:
+        """Start a call: select its overload and push its body as a frame."""
+        # Every argument is call-free by now -- ``_pending_call`` returns the
+        # innermost call, so any call among the arguments was resolved first.
+        values = [self._eval(arg, scope) for arg in call[2]]
+        function = self._overload(call[1], values)
+        self.frames.append(
+            _Frame(function.body, self._resolve(function, values), function=function)
+        )
+
+    def _give(self, value: _Value) -> None:
+        """Return ``value`` from the innermost call, unwinding its blocks.
+
+        ``GIVE`` leaves the function, not merely the block it sits in, so
+        the ``IF`` and ``WHILE`` frames between here and the call boundary
+        are dropped with it.
+        """
+        while self.frames:
+            frame = self.frames.pop()
+            if frame.function is not None:
+                self._deliver(self._checked(frame.function, value))
+                return
+        raise HaltError("GIVE outside a function")
 
 
 def _wubyte_of(line: str) -> int:
