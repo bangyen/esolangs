@@ -195,9 +195,14 @@ def _index(items: list[_Item]) -> tuple[list[int], dict[str, int]]:
 
 
 #: Rounds the router may go without beating its best over-reach count
-#: before it gives up.  Generous because the count rises before it falls:
-#: n=8 dense peaks in round 3 and takes until round 10 to come back under
-#: its round-1 value, so a tight patience would refuse a table that routes.
+#: before it gives up.  Generous because the count rises before it falls,
+#: so a tight patience refuses a table that routes.
+#:
+#: This is where the arity ceiling actually sits, and it is a price rather
+#: than a bound: n=8 dense needs 191 rounds and 2031s to close, against
+#: n=7's 11 rounds and 3.5s.  Admitting it would make this generator about
+#: ten times slower than the slowest one the suite already calls slow, for
+#: a 114319-line program, so it is left out by default.
 _PATIENCE = 32
 
 #: How far apart rungs of one chain are parked.  The gap below
@@ -383,17 +388,19 @@ def interprogck8(truth_table: str) -> str:
             best, stuck = remaining, 0
             continue
         # A round that does not improve is not yet a stall.  Laying a chain
-        # pushes later labels apart, so a table can get worse before it
-        # gets better -- n=8 dense peaks at 256 over-reach jumps in round 3
-        # and is back under 110 by round 10.  Only a run of rounds that
-        # never beats the best seen is evidence the routing has stopped
-        # gaining, and then the count is the certificate.
+        # pushes later labels apart, so a table gets worse before it gets
+        # better.  This is a *cost* policy and not a proof of anything: n=8
+        # dense is refused here and nevertheless routes given 191 rounds
+        # and 2031s, which is roughly ten times what the slowest generator
+        # in this suite spends.  The count it gives up on is what it has to
+        # report, since it never learns whether more rounds would close.
         stuck += 1
         if stuck > _PATIENCE:
             raise ValueError(
-                f"jump routing stalled: {remaining} jumps past the "
-                f"{_REACH}-line reach, and {_PATIENCE} rounds without "
-                f"improving on {best}"
+                f"jump routing gave up with {remaining} jumps past the "
+                f"{_REACH}-line reach, after {_PATIENCE} rounds without "
+                f"improving on {best} -- raising _PATIENCE may still route "
+                "it, at a cost this generator does not spend by default"
             )
     starts, labels = _index(items)
     out: list[str] = []
