@@ -839,7 +839,9 @@ def _laserfuck_multiply(text: str, width: int | None = None) -> str:
         # trick the unfolded path uses does not apply: the fallback run
         # carries straight on from wherever the fold left the beam, folding
         # again if it has to, and the "x" goes where that ends.
-        if fallback:
+        # ``chunks(1)`` writes one run per value and empty text raises at
+        # ``max(values)`` above, so the linear program is never empty here.
+        if fallback:  # pragma: no branch
             # Carry on across the frame's own row until the turn, then drop
             # past its two mirror rows before folding further -- those rows
             # belong to the last segment's markers, and writing the run
