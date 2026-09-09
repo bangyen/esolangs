@@ -27,6 +27,7 @@ inverts that, and makes a language read as having a channel when what it
 has is a workaround for lacking one.
 """
 
+import ast
 import pathlib
 
 import pytest
@@ -43,8 +44,56 @@ _EXEMPT = {
 }
 
 
+#: The :class:`~esolangs.interpreters.io.IO` methods that reach the caller.
+_OUTPUT_PORTS = frozenset({"print_str", "print_char", "write_char"})
+
+
 def _named() -> list[tuple[str, Language]]:
     return sorted(LANGUAGES.items())
+
+
+def _interpreter_path(lang: Language) -> pathlib.Path:
+    """Return the module file implementing ``lang``."""
+    root = pathlib.Path(esolangs.__file__).parent / "interpreters"
+    return root / (lang.interpreter.replace(".", "/") + ".py")
+
+
+def _output_calls(module: pathlib.Path) -> list[str]:
+    """Return the enclosing function of every output-port call in ``module``.
+
+    Parsed rather than grepped: ``"print_str" in source`` matches the word
+    in a comment or a docstring, and every interpreter here *discusses* its
+    output convention in prose.  An AST sees only calls.
+
+    This deliberately answers "does it emit", not "where from".  The seven
+    interpreter-only languages emit from four different shapes -- a
+    halt-guarded ``step`` (ArrowQueue, Minsky Swap, Point Break), an
+    opcode-guarded ``step`` (Back, on its ``*`` command), and an unguarded
+    ``run``, ``render`` or ``_dump`` (A Painter Ant, Bitdeque, RAM0) -- so
+    no structural rule separates a dump from an ordinary print.
+
+    Nor could a stricter check run the other way and *derive* ``io``.  Six
+    languages with a defined output command call no port in their own
+    module at all: Jaune, Fargo, Eval, Between, MyScript and Qoibl return
+    the text from a pure transition and leave the write to the shell
+    ("``^``'s printing is the caller's business").  An absent call means
+    "emits elsewhere" as readily as "emits nothing", which is why ``io`` is
+    declared from the language's spec instead of inferred from ours.
+    """
+    tree = ast.parse(module.read_text(encoding="utf-8"))
+    found = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.FunctionDef):
+            continue
+        for inner in ast.walk(node):
+            if (
+                isinstance(inner, ast.Call)
+                and isinstance(inner.func, ast.Attribute)
+                and inner.func.attr in _OUTPUT_PORTS
+            ):
+                found.append(node.name)
+                break
+    return found
 
 
 _IDS = lambda v: v if isinstance(v, str) else ""  # noqa: E731
@@ -116,25 +165,23 @@ def test_an_interpreter_only_language_actually_dumps(name: str, lang: Language) 
     printing.  Both were wrong: the dump belongs in the shell, where
     ``_advance`` never sees it, and Point Break carries variables exactly
     as Minsky Swap carries registers.  Being awkward to fit is not a
-    category, so this runs the sample and checks output arrives -- the
-    convention verified rather than asserted.
+    category.
+
+    The check is that the interpreter calls an output port at all, read off
+    the AST -- see :func:`_output_calls` for why the placement is not
+    checked and why the reverse inference does not exist.  Asserting on
+    *output* instead would pass vacuously for a language whose sample dumps
+    an empty final state, which Back's blank tape does.
     """
     if lang.io != "interpreter_only":
         return
-    # The dump has two legal placements -- a post-halt ``step`` (Minsky
-    # Swap, Bitdeque, ArrowQueue, Point Break, RAM0) or straight from
-    # ``run`` (Back, A Painter Ant) -- so the check is that the interpreter
-    # *calls* the port, not where from.  Reading the source is what suits
-    # this: the assertion is about the interpreter owing a dump, and a
-    # language whose sample happens to dump an empty final state (Back's
-    # blank tape) would pass an output check vacuously.
-    source = pathlib.Path(esolangs.__file__).parent / "interpreters"
-    module = source / (lang.interpreter.replace(".", "/") + ".py")
-    assert "print_str" in module.read_text(encoding="utf-8"), (
+    module = _interpreter_path(lang)
+    sites = _output_calls(module)
+    assert sites, (
         f"{name} declares io='interpreter_only' -- the language defines no "
-        f"I/O, so its interpreter owes a final-state dump -- but "
-        f"{module.name} never writes to the output port.  Either add the "
-        f"dump, or the language has I/O after all and io= is wrong"
+        f"output, so its interpreter owes a final-state dump -- but "
+        f"{module.name} never calls the output port.  Either add the dump, "
+        f"or the language has output after all and io= is wrong"
     )
 
 
