@@ -29,6 +29,7 @@ Exhausted input raises :class:`EOFError` (the repo-wide convention).
 import sys
 
 from esolangs.exceptions import HaltError
+from esolangs.interpreters.brackets import unmatched
 from esolangs.interpreters.io import IO
 
 _SINGLE = frozenset("abcdefhijt")
@@ -180,7 +181,9 @@ def _partner(match: dict[int, int], ind: int, tok: str) -> int:
     """Return the token index ``ind`` jumps to, rejecting an unmatched one."""
     partner = match.get(ind)
     if partner is None:
-        raise ValueError(f"unmatched '{tok}'")
+        # The position is the *token* index, which is what Taglate counts:
+        # its program is a token list, not a character string.
+        raise unmatched(tok, ind)
     return partner
 
 

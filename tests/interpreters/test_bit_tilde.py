@@ -162,9 +162,18 @@ class TestBitTilde:
         the text could be rewritten around the word "unmatched" and still
         pass.  One scan raises for both directions, so asserting it once
         from each side covers the message wherever it comes from.
+
+        The two sides now read differently, which is the point of the
+        shared rejection in :mod:`~esolangs.interpreters.brackets`: the
+        message names the loose bracket and where it stands, so the ``{``
+        case and the ``}`` case are told apart by it.  The position is the
+        bracket the scan set out from, not where the walk ran off the code.
         """
-        for code in ("{~", "~}"):
-            with raises_message(ValueError, "unmatched bit~ bracket"):
+        for code, message in (
+            ("{~", "unmatched '{' at position 0"),
+            ("~}", "unmatched '}' at position 1"),
+        ):
+            with raises_message(ValueError, message):
                 run_and_capture(code)
 
 

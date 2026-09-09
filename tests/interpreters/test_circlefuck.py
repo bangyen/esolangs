@@ -155,9 +155,14 @@ class TestStepMachine:
         assert run_and_capture("\\0[.].@") == "\x00"
 
     def test_the_unmatched_bracket_message_reads_exactly(self) -> None:
-        """``match=`` only looks for a substring, so pin the whole message."""
+        """``match=`` only looks for a substring, so pin the whole message.
 
-        with raises_message(ValueError, "unmatched bracket"):
+        The position is the bracket the ring walk set out from: the walk
+        wraps all the way round and returns to it, so the one it started
+        on is the one with no partner.
+        """
+
+        with raises_message(ValueError, "unmatched '[' at position 1"):
             run_and_capture("\\0[.@")
 
     def test_loop_skip_finds_matching_bracket(self) -> None:

@@ -36,6 +36,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import cast
 
+from esolangs.interpreters.brackets import unmatched
 from esolangs.interpreters.io import IO
 
 
@@ -138,7 +139,7 @@ def _matches(code: str) -> dict[int, int]:
             stack_b.append(i)
         elif char == "]":
             if not stack_b:
-                raise ValueError(f"unmatched ']' at position {i}")
+                raise unmatched("]", i)
             open_i = stack_b.pop()
             res[open_i] = i
             res[i] = open_i
@@ -146,14 +147,14 @@ def _matches(code: str) -> dict[int, int]:
             stack_c.append(i)
         elif char == "}":
             if not stack_c:
-                raise ValueError(f"unmatched '}}' at position {i}")
+                raise unmatched("}", i)
             open_i = stack_c.pop()
             res[open_i] = i
             res[i] = open_i
     if stack_b:
-        raise ValueError(f"unmatched '[' at position {stack_b[-1]}")
+        raise unmatched("[", stack_b[-1])
     if stack_c:
-        raise ValueError(f"unmatched '{{' at position {stack_c[-1]}")
+        raise unmatched("{", stack_c[-1])
     return res
 
 
