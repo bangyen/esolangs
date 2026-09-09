@@ -212,14 +212,18 @@ class _Machine:
 
         The tape dump is here rather than in the transition: this is the
         shell, so it is where an effect belongs.  It fires on the step that
-        reaches the ``*``, before the transition records the stop.
+        reaches the ``*``, which is the step the transition records the
+        stop on -- ``*`` is Back's halt command and nothing else sets
+        ``halted``, so the dump is guarded by the halt itself rather than
+        by re-reading the grid for the character that caused it.  The tape
+        printed is the one ``_advance`` carried through, which ``*`` leaves
+        untouched.
         """
-        if self.state[6]:
+        if self.halted:
             return
-        row, col, _a, _b, tape, _cell, _done = self.state
-        if self.code[row][col] == "*":
-            self.io.print_str(" ".join(map(str, tape)))
         self.state = _advance(self.state, self.code, self.size)
+        if self.halted:
+            self.io.print_str(" ".join(map(str, self.tape)))
 
 
 def run(code: list[str], io: IO) -> None:
