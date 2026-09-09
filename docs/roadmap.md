@@ -22,11 +22,11 @@ readings.
   Streetcode-program corpus/fuzzer and resolution of the reference
   interpreter's junction and post-corner gaps.
 - **Scale Line boolean drawings.** The standalone Line generator reaches
-  nine inputs end to end, with all 512 parity leaves correct. Its 14880x8320
-  canvas extracts in 11.9s; all-leaf simulation takes roughly six minutes.
-  Ten and above are unmeasured. Establish the renderer → extractor → simulator
-  frontier, then only pursue subtree sharing or a denser layout if that
-  measurement finds a real resource limit.
+  ten inputs end to end, with all 1024 parity leaves correct. Its
+  16800x14880 canvas extracts in 23.7s; all-leaf simulation takes roughly
+  43 minutes. Eleven and above are unmeasured. Establish the renderer →
+  extractor → simulator frontier, then only pursue subtree sharing or a denser
+  layout if that measurement finds a real resource limit.
 ## Conditional follow-up
 
 - **ArrowQueue reusable drain.** Ship the verified deep-fold drain only if a
