@@ -89,9 +89,13 @@ def _factorint(number: int) -> dict[int, int]:
     them sat above the ceiling, and the sweep that runs it hung.
 
     So the sieve extends in chunks until the residue is prime or fully
-    divided, and sympy is only ever asked about a residue that is prime,
-    or one left when the number is genuinely hard -- never a composite
-    this loop simply gave up on.
+    divided, and never hands a composite off to ``factorint`` because it
+    gave up on it: a chunk that finds nothing widens the sieve instead.
+    A genuinely hard number therefore sieves toward its own root rather
+    than wedging in Pollard rho, and that wait is bounded from outside --
+    ``scripts/verify_no_exception_leaks.py`` documents the wedge and kills
+    the subprocess, since the cost is in this constructor and no step cap
+    can reach it.
 
     Deciding that must not cost an ``isprime`` per chunk, and this is the
     subtlety that replaced the old one.  ``isprime`` runs BPSW -- a
@@ -107,15 +111,17 @@ def _factorint(number: int) -> dict[int, int]:
     after the first chunk is still 27412 of the original 41740 bits.
 
     So ``isprime`` is gated on a *barren* chunk -- a full chunk that
-    divided nothing out.  That is exactly the signal its answer is worth
-    paying for: every remaining factor is above the sieve, so the residue
-    is either prime or genuinely hard.  While chunks keep yielding factors
-    the sieve is winning and is left alone, and a number of this shape
-    reaches 1 without a barren chunk ever occurring.  Measured 60.0s ->
-    0.05s on n=5 parity, and the committed examples stay at 1.4ms.
+    divided nothing out -- and asked at most once per residue value.  That
+    is exactly the signal its answer is worth paying for: every remaining
+    factor is above the sieve, so the residue is either prime or hard.
+    While chunks keep yielding factors the sieve is winning and is left
+    alone, and a number of this shape reaches 1 without a barren chunk
+    ever occurring.  Measured 60.0s -> 0.04s on n=5 parity, and the
+    committed examples stay at 1.4ms.
     """
     factors: dict[int, int] = {}
     start = 2
+    checked = 0
     while number > 1:
         stop = start + _SIEVE_CHUNK
         divided = False
@@ -141,14 +147,20 @@ def _factorint(number: int) -> dict[int, int]:
             start = stop
             continue
         # A barren chunk: every remaining factor is above the sieve, so
-        # the residue's primality is finally worth the BPSW test.
-        if sympy.isprime(number):
-            factors[number] = factors.get(number, 0) + 1
-            return factors
-        break
-    if number > 1:
-        for prime, exponent in sympy.factorint(number).items():
-            factors[prime] = factors.get(prime, 0) + exponent
+        # the residue's primality is finally worth the BPSW test -- but
+        # only once per value, since consecutive barren chunks would
+        # otherwise re-ask the same question at the same full width.
+        if number != checked:
+            checked = number
+            if sympy.isprime(number):
+                factors[number] = factors.get(number, 0) + 1
+                return factors
+        # Composite, with every factor above the sieve.  Widening is the
+        # only sound move: handing it to ``sympy.factorint`` here would
+        # make the barren chunk a ceiling, and a ceiling's leftover is the
+        # large composite that sends ``factorint`` to Pollard rho for
+        # minutes -- the very failure the chunked sieve exists to avoid.
+        start = stop
     return factors
 
 

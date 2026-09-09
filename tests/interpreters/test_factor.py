@@ -1,6 +1,7 @@
 """Unit tests for the Factor interpreter."""
 
 import sys
+from unittest.mock import patch
 
 import pytest
 
@@ -215,6 +216,71 @@ class TestFactorint:
         # a stranded composite costs, so this fails on the bug and not on
         # a slow machine.
         assert elapsed < 5.0, f"factorizing took {elapsed:.1f}s"
+
+    def test_never_hands_a_composite_to_sympy(self) -> None:
+        """The same guarantee as above, asserted on the handoff itself.
+
+        The timing test next to this one passes whenever the machine is
+        fast enough, so it cannot see a handoff that happens to be cheap.
+        This one makes ``factorint`` fail if it is called at all, and
+        picks the input that provokes the handoff: every factor sits just
+        above ``_SIEVE_CHUNK``, so the first chunk divides nothing out and
+        a loop that treated a barren chunk as a ceiling would give up
+        here with the composite intact.
+        """
+        import sympy
+
+        from esolangs.interpreters.tape_based import factor as factor_module
+        from esolangs.interpreters.tape_based.factor import (
+            _SIEVE_CHUNK,
+            _factorint,
+        )
+
+        primes = [20011, 20021, 20023]
+        assert min(primes) > _SIEVE_CHUNK, "the case needs a barren first chunk"
+        number = primes[0] * primes[1] * primes[2]
+
+        def refuse(*_args: object, **_kwargs: object) -> dict[int, int]:
+            raise AssertionError("a composite was stranded on sympy.factorint")
+
+        with patch.object(factor_module.sympy, "factorint", refuse):
+            assert _factorint(number) == dict.fromkeys(primes, 1)
+        # The sieve, not sympy, is what found them.
+        assert sympy.factorint(number) == dict.fromkeys(primes, 1)
+
+    def test_does_not_pay_isprime_per_chunk(self) -> None:
+        """``isprime`` must be gated, not asked once per sieve chunk.
+
+        It runs BPSW -- two modular exponentiations priced by the full
+        width of the argument -- so asking about a 41740-bit residue costs
+        tens of seconds.  Asking once per chunk made the n=5 parity table
+        take 60s to factorize when the sieve that finds every factor
+        measures 0.000s.  The residue here needs three chunks, and every
+        factor is small, so a correctly gated loop never asks at all.
+        """
+        from esolangs.interpreters.tape_based import factor as factor_module
+        from esolangs.interpreters.tape_based.factor import (
+            _SIEVE_CHUNK,
+            _factorint,
+        )
+
+        asked: list[int] = []
+        real_isprime = factor_module.sympy.isprime
+
+        def counting_isprime(value: int) -> bool:
+            asked.append(value)
+            return bool(real_isprime(value))
+
+        # A prime in the third chunk, so the sieve must widen twice, with
+        # a fat small-prime tail to make the residue a real bignum.
+        far = int(factor_module.sympy.nextprime(_SIEVE_CHUNK * 2))
+        assert far > _SIEVE_CHUNK * 2, far
+        number = 3**40 * 5**20 * far
+        with patch.object(factor_module.sympy, "isprime", counting_isprime):
+            factors = _factorint(number)
+
+        assert factors == {3: 40, 5: 20, far: 1}, factors
+        assert not asked, f"isprime asked about {len(asked)} residues, expected none"
 
     def test_matches_sympy_on_random_integers(self) -> None:
         """A sweep, since the cases above are all deliberately chosen."""
