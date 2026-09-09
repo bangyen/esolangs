@@ -190,8 +190,8 @@ class TestErrors:
         assert run_and_capture(code) == "0"
 
     def test_while_loop_inside_a_function_body(self) -> None:
-        # a while loop nested in a function body runs through _run_statement's
-        # own while handling, not the top-level frame stack's
+        # a while loop nested in a function body is stepped on the frame
+        # stack like any other, not run to completion inside one step()
         code = (
             "var f is func\n"
             "  var i is 2\n"
@@ -266,6 +266,55 @@ class TestStepMachine:
 
     def test_top_level_assignment(self) -> None:
         assert run_and_capture("var a is 1\na is 2\nsay a") == "2"
+
+
+class TestFrameStack:
+    """The guarantees a call being a frame -- rather than Python recursion -- buys."""
+
+    def test_deep_recursion_is_not_capped(self) -> None:
+        """A terminating recursion past Python's default 1000-frame limit runs.
+
+        A call pushes a frame rather than recursing natively, so depth is
+        heap rather than Python stack and no ``RecursionError`` is possible.
+        """
+        depth = 2000
+        lines = ["var countdown is func n"]
+        lines.append("  check n,")
+        lines.append("    if 0,")
+        lines.append('      return "done"')
+        lines.append("    else,")
+        lines.append("      return countdown subtract n 1")
+        lines.append(f"say countdown {depth}")
+        assert run_and_capture("\n".join(lines)) == "done"
+
+    def test_a_loop_inside_a_function_body_is_provably_cyclic(self) -> None:
+        """A hang inside a call is visible to the state-cycle detector.
+
+        Running a called function to completion inside one ``step()`` hid
+        this: the loop never returned, so no intermediate state ever
+        reached ``snapshot()`` and the detector could not see it.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.myscript import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        code = "var f is func\n  while yes,\n    var q is 1\nsay f"
+        machine = _Machine(code, ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is False
+
+    def test_one_statement_inside_a_call_is_one_step(self) -> None:
+        """A called function's statements are stepped, not run in one step."""
+        from esolangs.interpreters.io import IO
+        from esolangs.interpreters.register_based.myscript import _Machine
+
+        code = "var f is func\n  var a is 1\n  var b is 2\nsay f"
+        machine = _Machine(code, IO())
+        depths = set()
+        while not machine.halted:
+            depths.add(len(machine.frames))
+            machine.step()
+        # The body's own frame is entered, so the run is seen at depth 2.
+        assert max(depths) >= 2
 
 
 class TestGenerator:
