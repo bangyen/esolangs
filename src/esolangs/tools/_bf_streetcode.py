@@ -47,12 +47,61 @@ interpreter in ``tests/tools/test_transpilers.py``.
 from __future__ import annotations
 
 from esolangs.interpreters.brackets import match_brackets as _match_brackets
+from esolangs.tools.text.streetcode import streetcode as _streetcode_text
+from esolangs.tools.text.tape import brainfuck as _brainfuck_text
 
 # -- the brainfuck-to-brainfuck rewrite -----------------------------------
 
 #: Stride of the widened tape.  The canonicalizer reaches five scratch cells
 #: past the one it reduces, so the next source cell starts at offset ``6``.
 _STRIDE = 6
+
+
+def _generated_text(program: str) -> str | None:
+    """Recover text from the exact Brainfuck text-generator output."""
+    text: list[str] = []
+    current = pos = 0
+    while pos < len(program):
+        start = pos
+        if program.startswith("[-]", pos):
+            pos += 3
+            a = 0
+            while pos < len(program) and program[pos] == "+":
+                a += 1
+                pos += 1
+            if not program.startswith("[>", pos):
+                return None
+            pos += 2
+            b = 0
+            while pos < len(program) and program[pos] == "+":
+                b += 1
+                pos += 1
+            if not program.startswith("<-]>", pos):
+                return None
+            pos += 4
+            r = 0
+            while pos < len(program) and program[pos] == "+":
+                r += 1
+                pos += 1
+            value = a * b + r
+        else:
+            while pos < len(program) and program[pos] in "+-":
+                current += 1 if program[pos] == "+" else -1
+                pos += 1
+            value = current
+        if (
+            pos == start
+            or pos >= len(program)
+            or program[pos] != "."
+            or not 0 <= value <= 255
+        ):
+            return None
+        text.append(chr(value))
+        current = value
+        pos += 1
+    result = "".join(text)
+    return result if _brainfuck_text(result) == program else None
+
 
 #: The divmod-by-256 core, operating on ``x n 0 0 0`` from the pointer:
 #: it leaves ``0  (n - r)  r  q`` where ``r = x % n`` and ``q = x // n``.
@@ -403,4 +452,7 @@ def bf_to_streetcode(program: str) -> str:
     ``,`` of a code point above U+00FF all reproduced by the canonicalizer,
     and end-of-input raising :class:`EOFError` in both.
     """
+    text = _generated_text(program)
+    if text is not None:
+        return _streetcode_text(text)
     return "\n".join(_build(_lower(program)))
