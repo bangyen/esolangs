@@ -15,12 +15,13 @@ defaults to ``"bytes"`` -- the failing direction is the default one.
 
 ``io`` is the second half, and it is a fact about the language's *spec*
 rather than about this repo's interpreter.  Seven languages here define no
-I/O at all -- Back, Bitdeque, Minsky Swap, RAM0, A Painter Ant, ArrowQueue
+*output* -- Back, Bitdeque, Minsky Swap, RAM0, A Painter Ant, ArrowQueue
 and Point Break -- and their interpreters dump final state when the
 program ends precisely *because* of that: the dump is the repo's
 convention for reporting something from a language that cannot report
 anything itself, so its format is the repo's choice and not the spec's.
-Each of those interpreters says so in its module docstring.
+Each of those interpreters says so in its module docstring.  (Output, not
+I/O: Point Break's spec gives it ``?`` for input and no way to print.)
 
 Recording the dump as though it were the language's own output mechanism
 inverts that, and makes a language read as having a channel when what it
@@ -33,6 +34,7 @@ import pathlib
 import pytest
 
 import esolangs
+from esolangs.interpreters.io import IO
 from esolangs.registry import LANGUAGES, Language
 
 # The alphabets that excuse a missing text generator, and what each claims.
@@ -44,8 +46,30 @@ _EXEMPT = {
 }
 
 
-#: The :class:`~esolangs.interpreters.io.IO` methods that reach the caller.
-_OUTPUT_PORTS = frozenset({"print_str", "print_char", "write_char"})
+def _output_ports() -> frozenset[str]:
+    """Every :class:`~esolangs.interpreters.io.IO` method that writes out.
+
+    Read off the class rather than typed here.  A hand-written list of
+    three said ``print_str``, ``print_char`` and ``write_char``: the last
+    of those has never existed, and the two it left out -- ``print_num``
+    and ``print_value`` -- are used by fifteen and eight call sites.  The
+    check passed only because the seven interpreter-only languages all dump
+    with ``print_str``, so a language that dumped a number would have been
+    reported as never emitting.
+
+    ``_write`` is the seam every one of them routes through, and is
+    excluded: an interpreter calling it directly would bypass the
+    newline-tracking the public methods do, so the ports are the public
+    surface, not the seam under it.
+    """
+    return frozenset(
+        name
+        for name in vars(IO)
+        if name.startswith("print_") and callable(getattr(IO, name))
+    )
+
+
+_OUTPUT_PORTS = _output_ports()
 
 
 def _named() -> list[tuple[str, Language]]:
@@ -188,6 +212,30 @@ def test_an_interpreter_only_language_actually_dumps(name: str, lang: Language) 
         f"output, so its interpreter owes a final-state dump -- but "
         f"{module.name} never calls the output port.  Either add the dump, "
         f"or the language has output after all and io= is wrong"
+    )
+
+
+def test_the_output_ports_cover_what_io_offers() -> None:
+    """:data:`_OUTPUT_PORTS` names every way an interpreter can emit.
+
+    The dump check looks for a call to one of these, so a port missing
+    from the set reads as "never emits" for any language that uses it.
+    Deriving the set from :class:`IO` fixes that, and this pins the
+    derivation: a rename that leaves the prefix behind (``print_num`` to
+    ``emit_num``, say) would quietly shrink the set to the ports that still
+    match, and every dump check would keep passing on the languages that
+    happened not to use the renamed one.
+    """
+    assert {
+        "print_str",
+        "print_char",
+        "print_num",
+        "print_value",
+    } <= _OUTPUT_PORTS, (
+        f"IO's output methods are no longer all named print_*: "
+        f"_OUTPUT_PORTS derived {sorted(_OUTPUT_PORTS)}.  Update "
+        f"_output_ports to match, or the dump check silently stops seeing "
+        f"the renamed one"
     )
 
 
