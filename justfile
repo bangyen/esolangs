@@ -95,8 +95,12 @@ test-docstring *args:
 
 # mutation-test one interpreter: what its tests would NOT have caught
 # (not part of `just test` -- it is a few minutes per language)
+# `language` is quoted below: twelve of the sixty-nine display names contain
+# a space ("Point Break", "A Painter Ant", "Minsky Swap", ...), and unquoted
+# they split into two arguments -- `just mutate "Point Break"` failed with
+# `unrecognized arguments: Break`, for every one of the twelve.
 mutate language *args:
-    {{PYTHON}} scripts/mutate_one.py {{language}} {{args}}
+    {{PYTHON}} scripts/mutate_one.py "{{language}}" {{args}}
 
 # the same for one generator, named family/module after where it lives under
 # src/esolangs/tools (e.g. just mutate-gen boolean/register, just mutate-gen
