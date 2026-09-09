@@ -66,6 +66,14 @@ operation.
   a counter guessing at one; a walk that never repeats a state is what
   ``esolangs.run``'s wall-clock ``timeout`` is for.  ``grapheme.py``
   documents removing exactly such a budget, as duplicating that timeout.
+
+  One limit of that comes from calls being run inline: a *callee* that
+  rings forever walks inside the caller's single ``step()``, so its
+  repeating state never reaches ``snapshot`` and the cycle detector cannot
+  see it -- only the wall clock ends it.  A ring in the *entry* function is
+  proved, as above.  Framing calls the way ``lamfunc.py`` and ``dinac.py``
+  do would close this; it is not done here, and saying so is the honest
+  version of what ``myscript.py`` records about the same shape.
 """
 
 import sys
@@ -121,10 +129,18 @@ _RESERVED = frozenset(
     }
 )
 
-# Depth cap on nested calls: a function that calls
-# itself unconditionally would otherwise exhaust the Python stack with a
-# RecursionError rather than a HaltError.
-_CALL_DEPTH_CAP = 200
+# Depth cap on nested calls: a function that calls itself unconditionally
+# would otherwise exhaust the Python stack with a RecursionError rather
+# than a HaltError.  A call runs its callee inside the caller's frame
+# (``_user_call`` -> while -> ``step`` -> eval -> ``_call``), so it is
+# native recursion and the cap has to beat Python's own limit.
+#
+# Measured, not guessed: one language-level call costs 6 Python frames, so
+# the 1000-frame default dies at language depth 164 -- and this cap was
+# 200, which meant it never fired and the RecursionError it documents
+# preventing was what a runaway program actually got.  100 leaves ~400
+# frames of headroom for the expression nesting above the call.
+_CALL_DEPTH_CAP = 100
 
 
 def _grid(code: list[str]) -> list[str]:
