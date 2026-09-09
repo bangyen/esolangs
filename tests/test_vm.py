@@ -2241,6 +2241,81 @@ class TestTheDetectorsTakeAVM:
         assert run_until_halt_or_growth(make_vm("brainfuck", "+[>]")) is True
         assert run_until_halt_or_growth(make_vm("brainfuck", "+[>+]")) is False
 
+    def test_the_value_growth_detector_proves_a_climbing_cell(self) -> None:
+        """Suffolk's ``>>!`` loops climb in value on a tape that never grows.
+
+        Neither existing detector can see these.  The tape stays five cells
+        wide and the pointer stays put, so nothing grows; a cell climbs by
+        4501 a lap and the cells are unbounded ints, so nothing repeats.
+        """
+        from esolangs.vm import make_vm, run_until_halt_or_value_growth
+
+        climbing = ">>!>>!>>!>>!>>!>>!>>!>>!>>>!>>!>>!>><!>>"
+        assert run_until_halt_or_value_growth(make_vm("Suffolk", climbing)) is False
+        assert (
+            run_until_halt_or_value_growth(make_vm("Suffolk", "1{z:[}] !. ;")) is False
+        )
+
+    def test_the_value_growth_detector_declines_a_repeating_program(self) -> None:
+        """A program that cycles is the cycle detector's, and is not certified.
+
+        Suffolk's sample returns to a state it has been in, which
+        :func:`run_until_halt_or_cycle` proves.  This detector must reach
+        its limit rather than claim the run climbs forever -- an undecided
+        answer where another detector has a proof, never a wrong one.
+        """
+        from esolangs.vm import (
+            make_vm,
+            run_until_halt_or_cycle,
+            run_until_halt_or_value_growth,
+        )
+
+        sample = "!" * 66 + "<."
+        assert run_until_halt_or_cycle(make_vm("Suffolk", sample)) is False
+        with pytest.raises(TimeoutError):
+            run_until_halt_or_value_growth(make_vm("Suffolk", sample), 20_000)
+
+        # `<` alone rewinds to a cell it already read: a repeat, not a climb.
+        assert run_until_halt_or_cycle(make_vm("Suffolk", "<")) is False
+        with pytest.raises(TimeoutError):
+            run_until_halt_or_value_growth(make_vm("Suffolk", "<"), 5_000)
+
+    def test_a_drifting_clamp_is_not_a_certificate(self) -> None:
+        """Two laps agreeing on a delta do not carry to the hundredth.
+
+        ``!`` writes ``max(0, tape[ptr] + 1 - acc)``.  A slack that shrinks
+        a little each lap agrees with itself for as long as anyone watches
+        and then flips, after which the lap is a different affine map.  The
+        clamp conditions are what refuse it, so a delta that repeats while
+        a clamp drifts toward zero must not be certified.
+        """
+        from esolangs.vm import _clamps_hold
+
+        # Unclamped and falling, and clamped and rising: both flip later.
+        assert _clamps_hold([5], [3]) is False
+        assert _clamps_hold([-5], [-3]) is False
+        # Holding: away from the boundary, or already past it and sinking.
+        assert _clamps_hold([3], [5]) is True
+        assert _clamps_hold([-3], [-5]) is True
+        # A clamp that already changed side between the two laps.
+        assert _clamps_hold([1], [-1]) is False
+        # Laps that clamped in different places are not comparable at all.
+        assert _clamps_hold([None, 1], [1, None]) is False
+        assert _clamps_hold([1], [1, 1]) is False
+
+    def test_the_value_growth_detector_refuses_a_bounded_language(self) -> None:
+        """Brainfuck's cells wrap, so a climb there is a cycle, not a proof.
+
+        The certificate needs values with no ceiling; a byte that keeps
+        being incremented comes back around and is
+        :func:`run_until_halt_or_cycle`'s to prove.  Brainfuck exposes no
+        ``values``, so the question is refused rather than answered.
+        """
+        from esolangs.vm import make_vm, run_until_halt_or_value_growth
+
+        with pytest.raises(TypeError, match="affine machine"):
+            run_until_halt_or_value_growth(make_vm("brainfuck", "+[>+]"))
+
     def test_a_language_without_the_surface_raises_type_error(self) -> None:
         """A missing surface is a wrong question, not a hang verdict.
 

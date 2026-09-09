@@ -146,6 +146,43 @@ class _Machine:
         """The wiki's rerun never halts; only a repeated state proves a loop."""
         return False
 
+    # ``esolangs.vm._AffineMachine``: the growing-cell hang certificate.
+    # Suffolk qualifies because ``_advance`` never reads a value to decide
+    # what to do -- ``ind`` wraps unconditionally and the pointer moves by
+    # fixed rules -- and every value it writes is affine but for ``!``'s
+    # one ``max(0, ...)``, which ``clamp_slack`` exposes.  The class this
+    # decides is the one :func:`run`'s docstring leaves to the caller:
+    # cells growing without bound, with no input to run out of.
+
+    @property
+    def key(self) -> tuple[int, int, int]:
+        """The equality-compared state: cursor, pointer, and tape width."""
+        ind, ptr, _acc, tape = self.state
+        return (ind, ptr, len(tape))
+
+    @property
+    def values(self) -> tuple[int, ...]:
+        """The unbounded values: the accumulator, then the cells."""
+        _ind, _ptr, acc, tape = self.state
+        return (acc, *tape)
+
+    @property
+    def clamp_slack(self) -> int | None:
+        """``!``'s clamped quantity before it is clamped, else ``None``.
+
+        ``!`` writes ``max(0, tape[ptr] + 1 - acc)``, so that sum is the
+        one place a value steers the machine rather than only feeding
+        arithmetic.  Every other command clamps nothing.
+        """
+        ind, ptr, acc, tape = self.state
+        if self.code[ind] != "!":
+            return None
+        return tape[ptr] + 1 - acc
+
+    def input_position(self) -> int:
+        """Return the input cursor, so a reading loop is not a repeat."""
+        return self.io.position()
+
     # The VM's language-shaped view: Tape + accumulator; ip the cursor, memory the tape.
 
     @property
