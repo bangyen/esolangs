@@ -2766,7 +2766,13 @@ def _interleaved_final_pair(truth_table: str, n: int) -> str | None:
             rows = set(key) if isinstance(key, frozenset) else {key}
             for bit, code in ((0, zero), (1, one)):
                 picked = {row for row in rows if (row >> (n - 1 - index)) & 1 == bit}
-                if not picked:
+                # No known table reaches this: a merged key would have to
+                # hold rows agreeing on the bit being laid, and the reduce
+                # merges by cofactor class, which splits on exactly that
+                # bit.  320 random tables at three to ten inputs, every
+                # documented shape, and the low-bit-ignoring families all
+                # miss it.
+                if not picked:  # pragma: no cover - see above
                     continue
                 value2 = _apply(value, code)
                 if not -_LIMIT <= value2 <= _LIMIT:

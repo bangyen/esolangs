@@ -925,7 +925,9 @@ class _Machine:
         """
         if name in _BUILTINS:
             return _builtin(name, args)
-        raise HaltError(f"unresolved call to {name!r}")
+        raise HaltError(  # pragma: no cover - step resolves every user call
+            f"unresolved call to {name!r}"
+        )
 
     def _push_call(self, name: str, args: list[_Value]) -> None:
         """Start a user call by pushing a walker for its body.

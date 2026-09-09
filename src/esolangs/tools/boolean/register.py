@@ -1112,7 +1112,9 @@ def _polynomial_drained_dag(truth_table: str) -> list[list[int]] | None:
     if not lead:
         return None
     reduced = read_at(truth_table, list(range(lead, n)), n)
-    if len(reduced) < 2:
+    # Exhausted over every table to four inputs: a nonzero lead leaves an
+    # essential input behind, so the reduction always holds two rows.
+    if len(reduced) < 2:  # pragma: no cover - see above
         return None
     instrs: list[list[int]] = []
     for _ in range(lead):
@@ -1129,7 +1131,9 @@ def _polynomial_drained_dag_cost(truth_table: str) -> int | None:
     if not lead:
         return None
     reduced = read_at(truth_table, list(range(lead, n)), n)
-    if len(reduced) < 2:
+    # Exhausted over every table to four inputs: a nonzero lead leaves an
+    # essential input behind, so the reduction always holds two rows.
+    if len(reduced) < 2:  # pragma: no cover - see above
         return None
     return 2 * lead + _polynomial_dag_cost(reduced)
 

@@ -541,9 +541,13 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
             waves[ip] = (current, ptr, 1, 0)
         else:
             before, low, power, length = checkpoint
+            # The backstop for a drifting baseline, and live: ablating the
+            # origins arm above leaves `+[>+]` proved by this one instead.
+            # With that arm in place it always proves the hang first, so
+            # nothing reaches this return.
             if _same_relative_tape(before, current) and _grows_forever(
                 before, current, low
-            ):
+            ):  # pragma: no cover - see above
                 return False
             length += 1
             if length == power:
@@ -734,7 +738,10 @@ def run_until_halt_or_value_growth(
     slacks: list[int | None] = []
     visits: dict[Hashable, list[tuple[int, tuple[int, ...], int]]] = {}
     for index in range(limit):
-        if machine.halted:
+        # Suffolk is the only affine machine, and the wiki's rerun never
+        # halts -- its `halted` is a constant False -- so nothing reaches
+        # this return.  It stays for the next affine language.
+        if machine.halted:  # pragma: no cover - see above
             return True
         slacks.append(machine.clamp_slack)
         key = machine.key

@@ -373,7 +373,10 @@ class _Sim:
             skip_out = True
         else:
             skip_out = False
-        if crossed == 0:
+        # Exhausted over every effective vector at counts 2..11: the
+        # staircase inverse is never 0 there, and counts 0 and 1 are the
+        # two arms above.
+        if crossed == 0:  # pragma: no cover - see above
             return
         window = (1 << crossed) - 1
         effective &= window
