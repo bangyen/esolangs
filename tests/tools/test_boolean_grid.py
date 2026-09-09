@@ -7,6 +7,7 @@ Covers :mod:`esolangs.tools.boolean.a_painter_ant`,
 two-dimensional grids rather than instruction strings.
 """
 
+import hashlib
 import importlib
 import io
 from contextlib import redirect_stdout
@@ -636,6 +637,32 @@ class TestWII2D:
             assert ops is not None, pattern
             got = [_wii2d_apply(ops, x) for x in range(16)]
             assert got == pattern, (pattern, ops, got)
+
+    def test_a_dense_table_at_the_widest_admitted_domain_runs(self) -> None:
+        """The arity the guard now admits is executed, not just rendered.
+
+        Raising :data:`_WII2D_MAX_INDEX_DOMAIN` buys width, and width is
+        exactly what could break silently: a decode too wide to be laid out
+        correctly still renders.  So the last arity the guard admits is run
+        on every row rather than checked for size.
+        """
+        from esolangs.tools.boolean.wii2d import _WII2D_MAX_INDEX_DOMAIN
+
+        # The widest arity the guard still admits on its worst case.
+        n = (_WII2D_MAX_INDEX_DOMAIN).bit_length()
+        assert 2 ** (n - 1) <= _WII2D_MAX_INDEX_DOMAIN
+        digest = hashlib.sha256(f"dense:{n}".encode()).digest()
+        bits: list[str] = []
+        block = 0
+        while len(bits) < 2**n:
+            digest = hashlib.sha256(digest + bytes([block & 255])).digest()
+            bits.extend(str(byte & 1) for byte in digest)
+            block += 1
+        table = "".join(bits[: 2**n])
+        template = boolean.wii2d(table)
+        for combo in range(2**n):
+            row = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            assert self.run_chain(template, row) == table[combo], f"row {combo}"
 
     def test_index_domain_guard_is_cost_not_capability(self) -> None:
         """The refusal is a size guard, and it charges the *real* domain.
