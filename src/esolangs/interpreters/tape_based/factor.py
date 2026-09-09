@@ -91,30 +91,60 @@ def _factorint(number: int) -> dict[int, int]:
     So the sieve extends in chunks until the residue is prime or fully
     divided, and sympy is only ever asked about a residue that is prime,
     or one left when the number is genuinely hard -- never a composite
-    this loop simply gave up on.  ``isprime`` is what makes that cheap to
-    decide.  Measured 1.7x faster than plain ``factorint`` on the
-    committed examples, and no slower on the sweep's tables.
+    this loop simply gave up on.
+
+    Deciding that must not cost an ``isprime`` per chunk, and this is the
+    subtlety that replaced the old one.  ``isprime`` runs BPSW -- a
+    Miller-Rabin base-2 test and a Lucas test, each a modular
+    exponentiation priced by the *full* width of its argument -- so asking
+    it about a residue that is still tens of thousands of bits wide costs
+    tens of seconds.  A loop that asks once per chunk pays that toll even
+    though the sieve is what finds every factor: sieving to 58099 measures
+    0.000s and the divisions 0.04s, against 60.02s for three ``isprime``
+    calls on the n=5 parity table (12565 digits, 3000 primes reaching
+    58099).  Dividing the small primes out first does not help either --
+    the bit mass is in *large* primes with large exponents, so the residue
+    after the first chunk is still 27412 of the original 41740 bits.
+
+    So ``isprime`` is gated on a *barren* chunk -- a full chunk that
+    divided nothing out.  That is exactly the signal its answer is worth
+    paying for: every remaining factor is above the sieve, so the residue
+    is either prime or genuinely hard.  While chunks keep yielding factors
+    the sieve is winning and is left alone, and a number of this shape
+    reaches 1 without a barren chunk ever occurring.  Measured 60.0s ->
+    0.05s on n=5 parity, and the committed examples stay at 1.4ms.
     """
     factors: dict[int, int] = {}
     start = 2
     while number > 1:
-        if sympy.isprime(number):
-            factors[number] = factors.get(number, 0) + 1
-            return factors
         stop = start + _SIEVE_CHUNK
+        divided = False
         for prime in sympy.sieve.primerange(start, stop):
+            if number == 1:
+                # The chunk finished the number off; nothing is left to
+                # test, and the root check below would read 1 as a factor.
+                break
             if prime * prime > number:
                 # Nothing below the root divides it, so the residue is
-                # prime and the test at the top of the loop will take it.
-                break
+                # prime -- the one case worth taking without ``isprime``.
+                factors[number] = factors.get(number, 0) + 1
+                return factors
             while not number % prime:
                 factors[prime] = factors.get(prime, 0) + 1
                 number //= prime
-        else:
-            # The chunk ran out with the residue still composite and still
-            # bigger than the primes tried, so widen and keep going.
+                divided = True
+        if number == 1:
+            break
+        if divided:
+            # The sieve is still finding factors, so widen it rather than
+            # pay ``isprime`` on a residue that is plainly composite.
             start = stop
             continue
+        # A barren chunk: every remaining factor is above the sieve, so
+        # the residue's primality is finally worth the BPSW test.
+        if sympy.isprime(number):
+            factors[number] = factors.get(number, 0) + 1
+            return factors
         break
     if number > 1:
         for prime, exponent in sympy.factorint(number).items():
