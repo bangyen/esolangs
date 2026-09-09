@@ -6,6 +6,34 @@ k-th instruction uses the k-th prime p, turned into a complex root
 stay integers.
 """
 
+import contextlib
+import sys
+from collections.abc import Iterator
+
+
+@contextlib.contextmanager
+def _digit_limit_for(digits: int) -> Iterator[None]:
+    """Raise CPython's ``int``/``str`` digit cap to fit ``digits``, then restore.
+
+    ``sys.get_int_max_str_digits()`` defaults to 4300 and is a DoS guard
+    against quadratic conversions, not anything Polynomial says.  A
+    program's coefficients grow with its instruction count -- a 541
+    instruction table needs more than that -- so at some arity the guard
+    stops the generator from rendering a program the interpreter could run.
+    It is process-global and ours to borrow, so it is raised to what this
+    render needs and handed straight back, exactly as Factor's ``_parse``
+    and boolean ``factor`` already do for the same reason.
+    """
+    limit = sys.get_int_max_str_digits()
+    if digits <= limit:
+        yield
+        return
+    sys.set_int_max_str_digits(digits + 1)
+    try:
+        yield
+    finally:
+        sys.set_int_max_str_digits(limit)
+
 
 def primes(count: int) -> list[int]:
     primes: list[int] = []
@@ -26,6 +54,20 @@ def multiply(a: list[int], b: list[int]) -> list[int]:
 
 
 def format_coeffs(coeffs: list[int]) -> str:
+    """Render the coefficient list as the program's ``f(x) = ...`` text.
+
+    The widest coefficient sets how far CPython's digit cap has to be lifted
+    for the ``str`` calls below; it is estimated from the bit length
+    (``log10(2) ~= 0.30103``) so sizing it does not pay for the very
+    conversion it is about to allow.
+    """
+    widest = max((abs(coeff) for coeff in coeffs), default=0)
+    digits = int(widest.bit_length() * 0.30103) + 2
+    with _digit_limit_for(digits):
+        return _format_coeffs(coeffs)
+
+
+def _format_coeffs(coeffs: list[int]) -> str:
     terms: list[str] = []
     degree = len(coeffs) - 1
     for i, coeff in enumerate(coeffs):

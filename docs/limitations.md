@@ -61,7 +61,7 @@ generators cover one and refuse the other at the same arity):
 | --- | --- | --- | --- |
 | Interprogck8 | 7 | 7 | n=8 needs 191 routing rounds and 2031s, refused by the `_PATIENCE` cost policy rather than by the reach |
 | 6-5 | 6 | 10 | 35 branch labels against the table's *distinct* subtrees; dense n=7 needs 47 (parity is unbounded here -- it builds n=14 in 0.2s) |
-| Polynomial | 5 | 10 | caps at 138 instructions, one per prime; dense n=6 needs 187, and one row of it takes 86s to *run* |
+| Polynomial | 7 | 10 | caps at 328 instructions, one per prime; dense n=8 needs 541, and one row of it takes 82s to *run* |
 | WII2D | 8 | 10 | dense n=9 decode spans 256 points past the `_WII2D_MAX_INDEX_DOMAIN = 128` cost guard |
 | ZTOALC L | 8 | 8 | would need 11.8M lines against a 4.19M limit |
 
@@ -138,9 +138,15 @@ capability limits; the rest of the gap between five and ten is wall-clock.
 - **NoComment:** a host/runtime configuration limit.  Factor used to sit
   here and no longer does: its limit was CPython's digit guard, which is
   raised and restored around the conversion rather than reported.
-- **Polynomial:** a cost guard on the *interpreter*, not the generator.
-  Dense n=6 renders instantly and then takes 86s to run a single row, since
-  the interpreter factors the encoded polynomial; the guard is load-bearing.
+- **Polynomial:** a cost guard on the *interpreter*, not the generator, and
+  now at 328 instructions rather than 138.  The interpreter peels both
+  instruction shapes out of the polynomial before factoring -- real roots by
+  Horner evaluation, complex ones by solving for the real part modulo a prime
+  -- which took dense n=6 from 99.3s a row to 5.3s, so the bound moved with
+  it: dense n=7 (328 instructions) renders and runs a row in 21.1s, while
+  n=8 (541) runs correctly at 82.4s and is refused on cost, since a verified
+  256-row table there is near six hours.  Still an instruction count and not
+  an arity -- parity renders through n=10 well inside the bound.
 - **WII2D:** a chosen cost guard, now at 128 rather than 64: dense n=8
   builds in 0.8s (18466 characters) and all 256 rows compute their table.
   Dense n=9 needs 256, four times the width, and is untested.
