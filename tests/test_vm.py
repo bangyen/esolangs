@@ -617,13 +617,17 @@ class TestBack:
         vm.step()  # - flips the current bit
         assert vm.memory == [1]
         assert vm.ip == (0, 1, 0, 1)
-        vm.step()  # * prints the tape and halts
-        assert vm.output == "1"
+        vm.step()  # * halts the beam
         assert vm.halted
+        assert vm.output == ""  # the dump happens on the next step
+        vm.step()  # the post-halt step prints the tape
+        assert vm.output == "1"
 
     def test_halt_prints_tape(self) -> None:
         vm = esolangs.make_vm("Back", ">--*")
         _run_all(vm)
+        assert vm.output == ""  # the dump happens on the next step
+        vm.step()  # the post-halt step prints it, as run's own last step does
         assert vm.output == "0 0"
 
 
