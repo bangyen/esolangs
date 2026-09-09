@@ -165,10 +165,7 @@ Current caps are deliberate:
 
 - 6-5's interpreter accepts operands outside the specification; generators
   must stay in `0..35`.
-- RISC-V compilers agree with unbounded Python integers only within their
-  fixed machine-word range.
-- Jaune's dispatch to an undefined marker is unspecified; its interpreter and
-  compiler deliberately choose different outcomes.
+- Jaune's dispatch to an undefined marker is unspecified.
 - Alight's prose contradicts its own examples twice, and the examples decide
   both. It calls all operators postfix, but every example is infix
   (`turn c = eof`, `len{l}-0.5`), so expressions evaluate infix left to right

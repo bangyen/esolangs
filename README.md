@@ -1,6 +1,6 @@
 # Esolang Interpreters
 
-Interpreters, generators, transpilers, and RISC-V compilers for esoteric
+Interpreters, generators, and transpilers for esoteric
 languages. Current work is in [the roadmap](docs/roadmap.md); contracts and
 known boundaries are in [limitations](docs/limitations.md).
 
@@ -38,7 +38,7 @@ regenerate via `scripts/write_examples.py`.
 
 <summary>Show all 69 languages</summary>
 
-The full capability matrix (generators, cross-check and boolean support, examples) is in [`docs/languages.md`](docs/languages.md).
+The full capability matrix (generators, boolean support, examples) is in [`docs/languages.md`](docs/languages.md).
 
 ### Grid-based Languages
 
@@ -142,59 +142,8 @@ Languages that don't fit into the above categories.
 <!-- IMPLEMENTED:END -->
 </details>
 
-## Extra implementations
-
-<details>
-<!-- EXTRA:START -->
-
-<summary>Show all 5 implementations</summary>
-
-Implementations written in languages other than Python, used as cross-check references in CI: most generators are round-trip verified against them.  The cross-checks share an exit-code convention mirroring the Python interpreters: 0 = success, 2 = malformed program, 3 = invalid runtime operation.
-
-### RISC-V Assembly Implementations
-
-- [BF-PDA](https://esolangs.org/wiki/BF-PDA)
-- [BIO](https://esolangs.org/wiki/BIO)
-- [Minsky Swap](https://esolangs.org/wiki/Minsky_Swap)
-- [NoComment](https://esolangs.org/wiki/NoComment)
-- [RAM0](https://esolangs.org/wiki/RAM0)
-
-<!-- EXTRA:END -->
-</details>
-
 Line remains a standalone PNG-language tool under `extra/line`; run
 `just test-line` for its suite.
-
-## Compilers
-
-<details>
-<!-- COMPILERS:START -->
-
-<summary>Show all 16 compilers</summary>
-
-Compilers that translate esoteric languages to other target languages.
-
-### RISC-V Assembly Compilers
-
-- [AddSubJump](https://esolangs.org/wiki/AddSubJump)
-- [BF-PDA](https://esolangs.org/wiki/BF-PDA)
-- [BFStack](https://esolangs.org/wiki/BFStack)
-- [CV(N)(C)](https://esolangs.org/wiki/CV(N)(C))
-- [Collatz Multiverse](https://esolangs.org/wiki/Collatz_Multiverse)
-- [Container](https://esolangs.org/wiki/Container)
-- [Decleq](https://esolangs.org/wiki/Decleq)
-- [Forbin](https://esolangs.org/wiki/Forbin)
-- [Forþ](https://esolangs.org/wiki/Forþ)
-- [Home Row](https://esolangs.org/wiki/Home_Row)
-- [Jaune](https://esolangs.org/wiki/Jaune)
-- [MyScript](https://esolangs.org/wiki/MyScript)
-- [RAM0](https://esolangs.org/wiki/RAM0)
-- [S*bleq](https://esolangs.org/wiki/S*bleq)
-- [Suffolk](https://esolangs.org/wiki/Suffolk)
-- [Unsquare](https://esolangs.org/wiki/Unsquare)
-
-<!-- COMPILERS:END -->
-</details>
 
 ## Transpilers
 

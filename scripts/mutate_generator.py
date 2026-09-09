@@ -1,4 +1,4 @@
-"""Mutation-test one generator or compiler against the suite that covers it.
+"""Mutation-test one generator against the suite that covers it.
 
 The companion to ``scripts/mutate_one.py``, which does this for
 interpreters.  The question is the same one line coverage cannot answer:
@@ -7,14 +7,10 @@ line being wrong.  A generator is a good target for it, because the thing
 it emits is a program -- a test that only checks the program *runs* cannot
 see a change that leaves it running and computing something else.
 
-Three kinds of target share this harness, differing only in where their
+Several kinds of target share this harness, differing only in where their
 source and tests live (see ``_KINDS``): the ``boolean`` and ``text``
-generator families under ``esolangs.tools``, and the ``compilers`` -- the
-RISC-V backends, covered by ``tests/compilers``.  The compilers were the
-reason the third kind exists: their suite asserted that output *looked*
-like assembly rather than what it was, and a first measurement put 48% of
-``jaune``'s mutants surviving.  Goldens and a unicorn round-trip now answer
-that, and this harness is how the answer is checked.
+generator families under ``esolangs.tools``, the modules directly under
+``esolangs.tools``, and the ``transpilers``.
 
 Where this differs from ``mutate_one`` is that it does not bundle.
 ``mutate_one`` inlines the interpreter into one dependency-closed file
@@ -52,20 +48,17 @@ selecting by import alone under-reported 19 of the 27 generator modules.
 Every kind is reachable as ``family/module``.  Eight module names --
 helpers, laserfuck, other, register, stack, streetcode, super_snusp, tape
 -- exist in *both* generator packages, so a bare name is accepted only
-where it is unambiguous; see :func:`_parse_target`.  The compiler names are
-all unambiguous, so ``jaune`` needs no prefix.
+where it is unambiguous; see :func:`_parse_target`.
 
 Usage:
     python scripts/mutate_generator.py boolean/register
     python scripts/mutate_generator.py text/streetcode
-    python scripts/mutate_generator.py compilers/jaune
     python scripts/mutate_generator.py dimensional --keep   # leave the work dir
 
 Requires: mutmut==3.7.0, the same pin ``mutate_one`` documents.
 """
 
 import argparse
-import importlib.util
 import json
 import os
 import re
@@ -101,35 +94,21 @@ _TOOLS_SUPPORT = (
     Path("tests/interpreters/runner.py"),
 )
 
-# The compiler suite reaches one level up for its shared sample programs and
-# for the root conftest, neither of which lives in ``tests/compilers``.  A
-# missing one fails collection rather than a mutant, which the baseline gate
-# turns into a stop instead of a wrong number.
-_COMPILER_SUPPORT = (
-    Path("tests/__init__.py"),
-    Path("tests/raises.py"),
-    Path("tests/samples.py"),
-    Path("tests/conftest.py"),
-    Path("tests/interpreters/__init__.py"),
-    Path("tests/interpreters/runner.py"),
-)
-
 
 class _Kind:
     """Where one mutable family's source, tests and support files live.
 
-    The three kinds differ only in these paths, so they are a table rather
-    than three code paths.  Every one satisfies the two preconditions the
+    The kinds differ only in these paths, so they are a table rather
+    than separate code paths.  Every one satisfies the two preconditions the
     layout relies on: each module imports cleanly on its own, and nothing it
     reaches does work at import time.  ``text.*`` reaches only
     ``text.helpers``, ``wrap``, ``_polynomial``, ``laserfuck_layout`` and
-    ``ztoalc_starts``; the compilers reach ``_riscv_common`` and the
-    registry, which the copied package resolves like any other import.
+    ``ztoalc_starts``, which the copied package resolves like any other
+    import.
 
-    ``tests_dir`` is deliberately narrow.  Pointing mutmut at the whole
-    suite made its stats pass collect ``tests/fuzz/test_differential_fuzz.py``,
-    which imports ``scripts.*`` and so cannot resolve from the work
-    directory -- the run died before generating a mutant.
+    ``tests_dir`` is deliberately narrow: pointing mutmut at the whole
+    suite widens its stats pass past the tests that actually cover the
+    target.
     """
 
     def __init__(
@@ -145,8 +124,7 @@ class _Kind:
         self.pkg_rel = pkg_rel  # under src/esolangs, e.g. "tools/boolean"
         self.tests_rel = tests_rel  # e.g. "tests/tools"
         self.support = support
-        # Whether the suite reaches scripts/ -- true only for the compilers,
-        # whose round-trip test shares its cases with verify_riscv_unicorn.
+        # Whether the suite reaches scripts/.
         self.needs_scripts = needs_scripts
 
     @property
@@ -168,8 +146,7 @@ class _Kind:
         return f"esolangs/{self.pkg_rel}/{module}.py"
 
 
-# Keyed by the name the CLI takes.  ``compilers`` is the third kind: its
-# modules are the RISC-V backends, whose tests live in ``tests/compilers``.
+# Keyed by the name the CLI takes.
 _KINDS = {
     "boolean": _Kind("boolean", "tools/boolean", "tests/tools", _TOOLS_SUPPORT),
     "text": _Kind("text", "tools/text", "tests/tools", _TOOLS_SUPPORT),
@@ -179,17 +156,9 @@ _KINDS = {
     # twice.
     "tools": _Kind("tools", "tools", "tests/tools", _TOOLS_SUPPORT),
     # The transpilers, which turn one language's program into another's and
-    # are covered by ``test_transpilers``.  They moved out of
-    # ``esolangs.tools`` into their own package to sit beside the compilers;
-    # the kind moved with them so they keep a harness path.
+    # are covered by ``test_transpilers``.  They live in their own package
+    # rather than under ``esolangs.tools``.
     "transpilers": _Kind("transpilers", "transpilers", "tests/tools", _TOOLS_SUPPORT),
-    "compilers": _Kind(
-        "compilers",
-        "compilers",
-        "tests/compilers",
-        _COMPILER_SUPPORT,
-        needs_scripts=True,
-    ),
 }
 
 _FAMILIES = tuple(_KINDS)
@@ -386,9 +355,9 @@ _CONFTEST = '''"""mutmut workarounds, all of which otherwise fail silently.
 3. The alarm must not run during mutmut's *stats* pass.  That pass executes
    every test under coverage tracing to record which tests reach which
    functions, and tracing costs far more than the untraced baseline the
-   budget was derived from.  A fast suite is the dangerous case: the
-   compiler suite baselines at 0.73s, so the budget lands at its 5s floor,
-   and the traced ``jaune`` compile blows straight through it.  The alarm
+   budget was derived from.  A fast suite is the dangerous case: a suite
+   baselining under a second lands the budget at its 5s floor, and a traced
+   run blows straight through it.  The alarm
    then fails the *stats* pass rather than a mutant; mutmut writes no stats,
    every mutant is skipped as "not checked", and the run still prints a
    percentage -- a confident 0/711 that has tested nothing.
@@ -522,14 +491,11 @@ def _prepare(
     for base in (proj, proj / "mutants"):
         base.mkdir(parents=True, exist_ok=True)
         (base / "examples").symlink_to(ROOT / "examples")
-        # The round-trip test imports ``verify_riscv_unicorn`` for its
-        # shared cases, which imports ``riscv_elf_runner`` flatly; both
-        # resolve through a scripts/ directory the test finds relative to
-        # its own parents, which lands in the work dir rather than the repo.
+        # A suite that reaches scripts/ resolves it relative to the test
+        # file's parents, which lands in the work dir rather than the repo.
         # mutmut chdirs into mutants/ for the stats pass and every mutant
-        # run, so the link has to exist under both roots or the round-trip
-        # vanishes from the run that matters while the baseline still
-        # passes.  Linked, not copied: nothing under scripts/ is mutated.
+        # run, so the link has to exist under both roots.  Linked, not
+        # copied: nothing under scripts/ is mutated.
         if kind.needs_scripts and not (base / "scripts").exists():
             (base / "scripts").symlink_to(ROOT / "scripts")
     (proj / "tests" / "fixtures").symlink_to(ROOT / "tests" / "fixtures")
@@ -557,10 +523,9 @@ def _prepare(
         "backup = false\n"
         f'runner = "{runner}"\n'
         # The kind's own directory rather than ``tests``.  mutmut's stats
-        # pass collects this path ignoring the runner's own arguments, and
-        # the wider path swept in ``tests/fuzz/test_differential_fuzz.py``,
-        # which imports ``scripts.*`` and cannot resolve from the work
-        # directory -- the run died before generating a mutant.
+        # pass collects this path ignoring the runner's own arguments, so a
+        # wider path sweeps in tests that cannot resolve from the work
+        # directory.
         f'tests_dir = ["{kind.tests_rel}"]\n'
         "\n"
         # The work dir has its own pyproject, so the repo's pytest config
@@ -571,7 +536,6 @@ def _prepare(
         "markers = [\n"
         '    "slow: marks tests as slow",\n'
         '    "integration: marks tests as integration tests",\n'
-        '    "unicorn: round-trips compiled output under unicorn",\n'
         "]\n" + addopts
     )
     (work / "sitecustomize.py").write_text(_SITECUSTOMIZE)
@@ -636,31 +600,6 @@ def _score(proj: Path, family: str, module: str) -> tuple[int, int, list[str]]:
     return killed, len(codes), sorted(k for k, v in codes.items() if not v)
 
 
-def _report_unicorn(family: str) -> None:
-    """Say whether the compiled-output round-trip is part of the kill test.
-
-    ``tests/compilers/test_unicorn_roundtrip`` skips itself when unicorn or
-    the RISC-V cross-compiler is missing, and a skipped test kills nothing.
-    That would quietly cost a compiler score its sharpest assertion -- the
-    only one that can see output which assembles and computes the wrong
-    thing -- and the run would still print a percentage.  So the state is
-    reported rather than left to be inferred from a number.
-    """
-    if family != "compilers":
-        return
-    have = importlib.util.find_spec("unicorn") is not None and (
-        shutil.which("riscv64-elf-gcc") is not None
-        or shutil.which("riscv64-linux-gnu-gcc") is not None
-    )
-    if have:
-        print("[note] unicorn round-trip is in the kill test")
-    else:
-        print(
-            "[warn] unicorn or the RISC-V cross-compiler is missing, so the "
-            "round-trip tests skip and this score is measured without them"
-        )
-
-
 def main() -> int:
     """Copy the package, mutate one generator, and report what survived."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
@@ -698,7 +637,6 @@ def main() -> int:
         print(f"[note] selected {len(tests)} test file(s): {', '.join(tests)}")
         _check_shadowing(proj, family, module)
         print("[note] the copied package shadows the installed one")
-        _report_unicorn(family)
 
         started = time.monotonic()
         try:
