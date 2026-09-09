@@ -3,23 +3,16 @@
 Everything that can be checked on a dev machine without a Linux host:
 
 1. pre-commit (lint, format, types) and pytest (the test suite)
-2. bandit (via uv), the ``extra/line`` suites (via uv, which supplies the
-   image libraries the package itself does not depend on), and the
-   interpreter-vs-native differential corpora
-3. unicorn-based round-trips (RISC-V assembly compilers and the
-   differential corpora), skipped when unicorn or the RISC-V
-   cross-compiler is missing
+2. bandit (via uv) and the ``extra/line`` suites (via uv, which supplies the
+   image libraries the package itself does not depend on)
 
-The native qemu-riscv64 checks need Linux, so they run only in CI (see
-.github/workflows/ci.yml).  ``.githooks/pre-push`` and ``just test`` both run
-this script.
+``.githooks/pre-push`` and ``just test`` both run this script.
 
 By default the run is *scoped*: each step declares the paths it guards (see
 ``STEP_SCOPE``), and a step whose paths this branch never touched is skipped,
-because nothing the branch did could have broken it.  Three steps take a file
+because nothing the branch did could have broken it.  Two steps take a file
 list instead, so they are narrowed rather than skipped -- pre-commit to the
-changed files, pytest to the matching test modules, and the differential
-corpora to the cross-checked languages that moved.
+changed files, and pytest to the matching test modules.
 
 Scoping only ever subtracts work that provably could not have broken.  When
 the branch's diff cannot be read, or it touches the shared interpreter
@@ -28,10 +21,8 @@ everything (see ``scripts/_scope.py``).  ``--full`` forces that too, and CI
 still runs the complete suite on every push regardless.
 
 A default run also leaves work to CI where CI already covers it: the steps in
-``FULL_ONLY`` (the differential corpora, which CI runs twice with ``--fuzz
-50``; the ZTOALC anchor table, which CI's lint job re-derives; and the
-RISC-V unicorn round-trip, which CI's assembly job runs) and the ``slow``
-marker in both test suites -- pytest's (the fuzzers' divergence-detection
+``FULL_ONLY`` (the ZTOALC anchor table, which CI's lint job re-derives) and
+the ``slow`` marker in both test suites -- pytest's (the fuzzers' divergence-detection
 tests, which CI runs by that same marker and errors on if they skip) and
 extra/line's (its two 5.2s render round trips, which CI's ``line`` job runs
 unfiltered).  ``--full``, ``just test-full``, and an explicit ``--only`` all
@@ -94,20 +85,13 @@ def python_cmd() -> list[str]:
 PY = python_cmd()
 
 # Steps a default run leaves to CI.  These guard real bugs but cost more than
-# they save at push time, and CI already runs them on every push -- the
-# differential twice, and with --fuzz 50, so more thoroughly than here.  They
+# they save at push time, and CI already runs them on every push.  They
 # still run under --full, under an explicit --only, and via `just test-full`.
 FULL_ONLY = frozenset(
     {
-        "interpreter vs native differential corpora",
         # Re-deriving the table costs ~3.2s and only guards two files that
         # rarely move; CI's lint job runs it on every push instead.
         "ztoalc anchor table is reproducible",
-        # Assembling and emulating every compiler's output is the slowest
-        # non-pytest step (~8s, a third of the rest put together), and its
-        # scope includes all of src/esolangs/, so it fires on any interpreter
-        # edit.  CI's assembly job runs the identical script on every push.
-        "RISC-V assembly under unicorn (compilers + cross-checks)",
     }
 )
 
@@ -160,11 +144,6 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
     "ztoalc anchor table is reproducible": (
         "scripts/make_ztoalc_table.py",
         "src/esolangs/tools/ztoalc_starts.py",
-    ),
-    "RISC-V assembly under unicorn (compilers + cross-checks)": (
-        "extra/assembly/",
-        "src/esolangs/",
-        "scripts/verify_riscv_unicorn.py",
     ),
     "duplicate-code check (pylint)": ("src/esolangs/", "scripts/", "tests/"),
     "single-interpreter installer": (
@@ -219,20 +198,8 @@ STEPS = [
         [*PY, "scripts/make_ztoalc_table.py", "--check"],
     ),
     (
-        "RISC-V assembly under unicorn (compilers + cross-checks)",
-        [*PY, "scripts/verify_riscv_unicorn.py"],
-    ),
-    (
-        "interpreter vs native differential corpora",
-        [*PY, "scripts/verify_differential.py"],
-    ),
-    (
         "docstring check",
         [*PY, "scripts/check_docstrings.py"],
-    ),
-    (
-        "compiler conventions check",
-        [*PY, "scripts/check_compilers.py"],
     ),
     (
         "transpiler conventions check",
@@ -380,8 +347,6 @@ def _scoped_cmd(name: str, cmd: list[str], changed: list[str]) -> list[str] | No
         if not paths:
             return None  # nothing the Python tests cover moved
         return [*cmd, *paths]
-    if name == "interpreter vs native differential corpora":
-        return [*cmd, "--scope"]
     return cmd
 
 
@@ -548,8 +513,6 @@ def _run_steps(
 
 def main() -> int:
     """Compile and run every example, reporting failures."""
-    import importlib.util
-
     only, skip, full, quiet = _parse_only_skip()
 
     # An explicit --only is already a hand-picked subset; scoping it further
@@ -562,7 +525,6 @@ def main() -> int:
         print(f"scope: {len(STEPS) - len(unaffected)}/{len(STEPS)} steps ({why})")
 
     env = dict(os.environ, PYTHONPATH=str(ROOT / "src"))
-    have_unicorn = importlib.util.find_spec("unicorn") is not None
     # Probe PY rather than the running interpreter: verify.py may be launched
     # by a different python than the one it runs the steps with (e.g.
     # `uv run --with pylint python scripts/verify.py`, which leaves PY pointing
@@ -575,11 +537,6 @@ def main() -> int:
         ).returncode
         == 0
     )
-    have_riscv_gcc = (
-        shutil.which("riscv64-elf-gcc") is not None
-        or shutil.which("riscv64-linux-gnu-gcc") is not None
-    )
-
     # Decide every step first, then run.  Deciding is pure bookkeeping (scope
     # lookups, tool probes) while running is where the time goes, so keeping
     # the two apart lets the runner overlap the long step with the short ones
@@ -603,17 +560,13 @@ def main() -> int:
                 print(f"[skip] {name}: branch touched none of its files")
                 continue
             cmd = narrowed
-        # The `slow` marker is on 81 of the suite's 6502 tests: the fuzzers'
-        # divergence-detection tests, which drive the native toolchains, plus
-        # the generator derivations and fuzz loops whose cost is seconds each.
-        # Deselecting them locally trades no coverage, because CI's `test`
-        # matrix job runs pytest *unfiltered* -- every marked test still runs
-        # on every push.  (The separate divergence job additionally re-runs
-        # `tests/fuzz/test_differential_fuzz.py -m slow` and errors if any is
-        # skipped, guarding that file's toolchain skipifs specifically.)  This
-        # is keyed on --full rather than on scoping because a run that widens
-        # back to everything -- a tooling change, an unreadable diff -- should
-        # still not pay for them.
+        # The `slow` marker covers the generator derivations and fuzz loops
+        # whose cost is seconds each.  Deselecting them locally trades no
+        # coverage, because CI's `test` matrix job runs pytest *unfiltered* --
+        # every marked test still runs on every push.  This is keyed on
+        # --full rather than on scoping because a run that widens back to
+        # everything -- a tooling change, an unreadable diff -- should still
+        # not pay for them.
         #
         # The extra/line suites carry the same marker on their two 5.2s tests
         # (the eight-level nesting round trip and the n=5 parity table), which
@@ -639,12 +592,6 @@ def main() -> int:
                 # rest of the step's own options.  PYTEST_ADDOPTS is applied
                 # by pytest itself wherever it ends up running.
                 step_env = dict(env, PYTEST_ADDOPTS=_line_addopts(env))
-        if not have_unicorn and "unicorn" in name:
-            print(f"[skip] {name}: unicorn not installed (pip install unicorn)")
-            continue
-        if not have_riscv_gcc and "assembly" in name:
-            print(f"[skip] {name}: RISC-V cross-compiler not installed")
-            continue
         if shutil.which("uv") is None and ("bandit" in name or "(uv)" in name):
             print(f"[skip] {name}: uv not installed")
             continue
