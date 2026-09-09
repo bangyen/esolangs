@@ -23,7 +23,7 @@ import pytest
 from extract import extract
 from line_boolean import line_boolean
 from render import render
-from simulate import IO, run
+from simulate import IO, compile_program, run_compiled
 
 
 def _io(inputs: list[int]) -> tuple[IO, list[int]]:
@@ -35,11 +35,11 @@ def _io(inputs: list[int]) -> tuple[IO, list[int]]:
 def _check_truth_table(truth_table: str, n: int, tmp_path: Path) -> None:
     path = str(tmp_path / "bool.png")
     render(line_boolean(truth_table)).save(path)
-    tree = extract(path)
+    program = compile_program(extract(path))
     for combo in range(2**n):
         bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
         io, outputs = _io(bits)
-        run(tree, io=io)
+        run_compiled(program, io=io)
         assert outputs == [int(truth_table[combo])], (
             f"inputs={bits} expected {truth_table[combo]} got {outputs}"
         )
@@ -88,12 +88,30 @@ class TestLineBoolean:
         """
         _check_truth_table("01101001100101101001011001101001", 5, tmp_path)
 
-    @pytest.mark.slow  # 44s: all 256 rendered-tree executions
+    @pytest.mark.slow  # 7s: all 256 rendered-tree executions
     def test_parity_n8(self, tmp_path: Path) -> None:
         """8-input parity reaches every leaf through the real PNG round trip."""
         _check_truth_table(
             "".join(str(bits.bit_count() % 2) for bits in range(2**8)),
             8,
+            tmp_path,
+        )
+
+    @pytest.mark.slow
+    def test_parity_n9(self, tmp_path: Path) -> None:
+        """9-input parity reaches every leaf through the real PNG round trip."""
+        _check_truth_table(
+            "".join(str(bits.bit_count() % 2) for bits in range(2**9)),
+            9,
+            tmp_path,
+        )
+
+    @pytest.mark.slow
+    def test_parity_n10(self, tmp_path: Path) -> None:
+        """10-input parity reaches every leaf through the real PNG round trip."""
+        _check_truth_table(
+            "".join(str(bits.bit_count() % 2) for bits in range(2**10)),
+            10,
             tmp_path,
         )
 

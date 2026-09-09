@@ -24,7 +24,7 @@ readings.
 - **Scale Line boolean drawings.** The standalone Line generator reaches
   ten inputs end to end, with all 1024 parity leaves correct. Its
   16800x14880 canvas extracts in 23.7s; all-leaf simulation takes roughly
-  43 minutes. Eleven and above are unmeasured. Establish the renderer →
+  29 seconds. Eleven and above are unmeasured. Establish the renderer →
   extractor → simulator frontier, then only pursue subtree sharing or a denser
   layout if that measurement finds a real resource limit.
 ## Conditional follow-up
