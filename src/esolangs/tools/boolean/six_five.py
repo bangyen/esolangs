@@ -35,8 +35,7 @@ __all__ = ["six_five"]
 # This interpreter would decode past ``Z`` through an unguarded
 # fallthrough, which is undefined behaviour rather than a language feature
 # (see the conformance note in ``docs/limitations.md``), so nothing may
-# emit into that region.  This lived in ``esolangs.transpilers``
-# while a BF-to-6-5 transpiler existed; it is the generator's now.
+# emit into that region.
 _SIX_FIVE_MAX_LABEL = 10 + len(string.ascii_uppercase) - 1
 
 

@@ -3,8 +3,7 @@
 NoComment is a full wiki language: 10 commands (``i d c l r n f s b o``)
 over a byte tape and a byte stack.  Non-command characters are errors (the
 wiki allows no comments), as are stack underflow and jumps out of code
-space.  These tests pin the plain semantics and the parity with the
-transpiled brainfuck subset.
+space.  These tests pin the plain semantics.
 """
 
 import importlib
