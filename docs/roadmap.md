@@ -10,8 +10,6 @@ Candidates are prioritized by a complete specification and an uncapped,
 testable boolean-generator route. The assessed-and-rejected ledger is in
 [`docs/limitations.md`](limitations.md).
 
-- **DINAC:** ordinary nested IF/ELSE tree; indentation-sensitive parsing and
-  defined EOF sentinels are the main interpreter work.
 - **Alight:** indexed string-table lookup; 2D walking and function semantics
   are the cost. Its boolean construction is derived, not supplied by a wiki
   truth-machine.
