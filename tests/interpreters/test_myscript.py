@@ -302,6 +302,28 @@ class TestFrameStack:
         machine = _Machine(code, ScriptedIO())
         assert run_until_halt_or_cycle(machine) is False
 
+    def test_a_call_in_a_while_condition_is_stepped(self) -> None:
+        """A condition may itself call, on the first check and every re-check.
+
+        The re-check runs on the body's own frame, so a call there stacks a
+        frame above the loop and unwinds back into it once per lap.
+        """
+        code = (
+            "var i is 2\n"
+            "var dec is func n\n"
+            "  say n\n"
+            "  return n\n"
+            "while dec i,\n"
+            "  var i is subtract i 1"
+        )
+        # 2 and 1 run the body; 0 is the check that ends the loop.
+        assert run_and_capture(code) == "210"
+
+    def test_a_call_in_a_check_subject_and_case_is_stepped(self) -> None:
+        """A ``check`` evaluates its subject and each case lazily, calls included."""
+        code = 'var idf is func n\n  return n\ncheck idf 5,\n  if idf 5,\n    say "hit"'
+        assert run_and_capture(code) == "hit"
+
     def test_one_statement_inside_a_call_is_one_step(self) -> None:
         """A called function's statements are stepped, not run in one step."""
         from esolangs.interpreters.io import IO
