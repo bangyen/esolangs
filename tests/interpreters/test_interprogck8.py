@@ -13,9 +13,14 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.randomness import Seeded
 from esolangs.interpreters.register_based.interprogck8 import (
+    _capture,
     _dice,
     _Machine,
     _pips,
+    _roll,
+    _split_args,
+    _State,
+    _value,
     run,
 )
 from esolangs.vm import run_until_halt_or_cycle
@@ -304,6 +309,96 @@ class TestErrors:
     def test_exhausted_input_raises_eof(self) -> None:
         with pytest.raises(EOFError):
             go("u", "")
+
+
+class TestBranchingSearch:
+    """``[a b]`` and ``~`` draw, so a hang proof must hold over every draw."""
+
+    def test_a_draw_forks_into_every_outcome(self) -> None:
+        """``[. :]`` rolls 1 or 2, so its line has two successor states."""
+        machine = _Machine("[. :]\ndiv", ScriptedIO(""))
+        start = machine.branching_snapshot()
+        assert not machine.branching_halted(start)
+        successors = machine.branching_successors(start, 100)
+        assert successors is not None
+        # Distinct only in the accumulator: 1 and 2 pips.
+        assert {s[2] for s in successors} == {1, 2}
+
+    def test_tilde_has_one_outcome_the_state_can_see(self) -> None:
+        """``~``'s ten draws differ only in output, which is left out."""
+        machine = _Machine("~\nx", ScriptedIO(""))
+        successors = machine.branching_successors(machine.branching_snapshot(), 100)
+        assert successors is not None
+        assert len(successors) == 1
+
+    def test_a_reading_line_declines_to_fork(self) -> None:
+        """Siblings cannot share one input cursor, so the search declines."""
+        machine = _Machine("u\ndiv", ScriptedIO("a\n"))
+        assert machine.branching_successors(machine.branching_snapshot(), 100) is None
+
+    def test_an_unexecutable_line_ends_its_branch(self) -> None:
+        """A line that raises is a dead end, not a failed search."""
+        machine = _Machine("nonsense", ScriptedIO(""))
+        assert machine.branching_successors(machine.branching_snapshot(), 100) == ()
+
+    def test_a_finished_program_is_branching_halted(self) -> None:
+        machine = _Machine("x", ScriptedIO(""))
+        machine.step()
+        assert machine.branching_halted(machine.branching_snapshot())
+
+
+class TestNestedArguments:
+    def test_an_omitted_range_bound_is_the_accumulator(self) -> None:
+        """``[ ]`` with both bounds empty can only roll the accumulator."""
+        assert go("nNnN\n[ ]\ndiv") == "A"
+
+    def test_a_nested_py_supplies_a_range_bound(self) -> None:
+        assert go("NnNn\n[. $py]\ndiv", ":\n") in {chr(1), chr(2)}
+
+    def test_a_malformed_range_is_a_runtime_error(self) -> None:
+        with pytest.raises(HaltError):
+            go("[. : .]")
+
+    def test_a_nested_range_supplies_a_comparison_argument(self) -> None:
+        """``[. .]`` can only be 1, so it agrees with an accumulator of 1."""
+        assert go("NnNn\n@nd\n{values/=/=/=[. .]}\ndiv") == "Q"
+
+    def test_a_stray_closer_is_a_no_op(self) -> None:
+        """A ``>`` reached outside a captured body does nothing."""
+        assert go("nNnN\n>\ndiv") == "A"
+
+    def test_an_empty_function_body_returns_at_once(self) -> None:
+        assert go("<\n>\nnNnN\nEXE\ndiv") == "A"
+
+
+class TestConstructedGuards:
+    """Guards no whole program reaches, driven on hand-built states.
+
+    Each is a real refusal the transition owes its caller; none is
+    reachable from source text, because ``_capture`` skips a body before
+    it can run and the shell always supplies the reads a line asks for.
+    """
+
+    def test_an_opener_inside_a_body_is_refused(self) -> None:
+        inside = _State(("<", "x"), 0, 0, ("<",), ((("<",), 0),))
+        with pytest.raises(HaltError, match="inside other functions"):
+            _capture(inside)
+
+    @pytest.mark.parametrize(
+        "line", ["{values/=a/=b}", "{valuesX/=a/=b/=c}", "{values/=a/=b/=c/=d}"]
+    )
+    def test_a_misshapen_comparison_is_not_a_comparison(self, line: str) -> None:
+        """Refused as *unknown*, not as a comparison, so the caller can tell."""
+        with pytest.raises(ValueError, match=r"\{values"):
+            _split_args(line)
+
+    def test_a_range_bound_with_no_byte_is_refused(self) -> None:
+        with pytest.raises(HaltError, match="read nothing"):
+            _roll("[$py .]", 0, None, None)
+
+    def test_a_comparison_argument_with_no_byte_is_refused(self) -> None:
+        with pytest.raises(HaltError, match="read nothing"):
+            _value("$py", 0, None, None)
 
 
 class TestMachine:

@@ -36,18 +36,13 @@ def _interprogck8_reach(target: int, current: int | None) -> list[str]:
     exactly this by hand; taking the minimum beats it on every text
     measured, because it can also count *down* to a target.
     """
-    best: list[str] | None = None
-    starts = dict(_INTERPROGCK8_ANCHORS)
-    for loader, value in list(starts.items()):
-        candidate = [loader, *_interprogck8_steps(value, target)]
-        if best is None or len(candidate) < len(best):
-            best = candidate
+    candidates = [
+        [loader, *_interprogck8_steps(value, target)]
+        for loader, value in _INTERPROGCK8_ANCHORS.items()
+    ]
     if current is not None:
-        candidate = _interprogck8_steps(current, target)
-        if len(candidate) < len(best or []):
-            best = candidate
-    assert best is not None
-    return best
+        candidates.append(_interprogck8_steps(current, target))
+    return min(candidates, key=len)
 
 
 def _interprogck8_steps(start: int, target: int) -> list[str]:
