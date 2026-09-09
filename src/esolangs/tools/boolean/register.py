@@ -836,7 +836,9 @@ def polynomial(truth_table: str) -> str:
         # own drain divides the bit away instead; see
         # :func:`_polynomial_drained_dag`.
         drained = _polynomial_drained_dag_cost(truth_table)
-        if drained is not None:
+        # Only reached inside ``if lead:``, and the cost is None only when
+        # there is no lead to drain, so it always answers here.
+        if drained is not None:  # pragma: no branch
             builders.append((drained, lambda: _polynomial_drained_dag(truth_table)))
 
     fits = [(cost, build) for cost, build in builders if cost <= _POLYNOMIAL_MAX_INSTRS]

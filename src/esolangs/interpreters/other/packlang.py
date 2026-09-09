@@ -908,7 +908,9 @@ def _advance(
             pc = _int(stmt[2])
     elif op == _JUMP:
         pc = _int(stmt[1])
-    elif op == _VALUE:
+    # Every opcode the parser emits has an arm above, so the chain is
+    # exhaustive and this last test never falls through.
+    elif op == _VALUE:  # pragma: no branch
         result = _evaluate(_node(stmt[1]), store, program, package)
 
     new = _Frame(frame.func, store, pc)
@@ -1110,7 +1112,9 @@ class _Machine:
         package = frame.func.package
         if frame.returned is not None:
             call = _pending_call(working, frame.store, self.program, package)
-            if call is not None:
+            # A value is waiting only because a call was found and stepped,
+            # so the same search finds it again here.
+            if call is not None:  # pragma: no branch
                 working = _substitute(working, call, frame.returned)
             frame.returned = None
         call = _pending_call(working, frame.store, self.program, package)

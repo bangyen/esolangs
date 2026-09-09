@@ -1522,7 +1522,9 @@ def _fold_moves(
             if hi - lo > 2 * _LIMIT:
                 continue
             merged = _fold_merge(items)
-            if merged is not None:
+            # The span check above is the merge's own precondition, so a
+            # pair that passes it always merges.
+            if merged is not None:  # pragma: no branch
                 yield (
                     "u",
                     k,
@@ -2746,11 +2748,14 @@ def _interleaved_final_pair(truth_table: str, n: int) -> str | None:
                 if b > a
             }
             got = None
-            for total in range(4, 2 * len(dists) + 8, 2):
+            # The range holds more even totals than there are distances,
+            # so a free one always exists and the loop always breaks --
+            # and `_split_setter` spells every total it is handed here.
+            for total in range(4, 2 * len(dists) + 8, 2):  # pragma: no branch
                 if total in dists:
                     continue
                 got = _split_setter(total)
-                if got is not None:
+                if got is not None:  # pragma: no branch
                     break
         if got is None:
             return None
