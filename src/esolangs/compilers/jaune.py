@@ -207,7 +207,13 @@ def comp(code: str) -> str:
         # and ``<`` inside one landed a cell off.  Anchoring it in a saved
         # register keeps the floor a property of the tape rather than of
         # the call depth.
-        "    addi s0, sp, -48\n"
+        # The floor is cell 0 itself.  It used to sit at ``sp - 48``, three
+        # cells to the *right* of the ``sp - 60`` start (the tape grows
+        # downward), so ``<`` at cell 0 stepped into scratch below the tape
+        # instead of clamping: ``5+<^.`` printed 0 where the interpreter now
+        # prints 5.  Anchoring the floor at the start cell makes ``<`` a
+        # no-op there, matching ``_advance``.
+        "    addi s0, sp, -60\n"
         "    li   s2, 0\n"
         "    li   s3, 1\n"
         "    li   s7, 0\n\n"

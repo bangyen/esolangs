@@ -4,18 +4,12 @@ Streetcode is a grid language whose programs are laid out as streets, so
 the generator builds a decision tree from labelled loop strips
 (:func:`_streetcode_strip`) and joins the per-level blocks side by side.
 
-Each strip walks one cell by 48, which is what turns an ASCII digit into a
-bare bit and a fresh cell into an ASCII digit.  There are two shapes for
-that walk and the generator builds both, keeping the shorter program:
+Each per-input strip walks one cell by 48, turning an ASCII digit into a
+bare bit and a fresh cell into an ASCII digit. Its hallway loop spends the
+48 as unary cells, two per row -- 29 rows tall but only 4 columns wide.
 
-* :func:`_streetcode_hallway` spends the 48 as unary cells, two per row --
-  29 rows tall but only 4 columns wide.
-* :func:`_streetcode_ring` makes it a product instead, lapping an island
-  eight times under the control of a counter and walking the value six per
-  lap -- 8 rows, but 8 columns.
-
-The ring is the same counting loop the text generator uses, mirrored so the
-counter sits above the value rather than below it.
+The shared-lap construction uses a product ring, mirrored from the text
+generator so the counter sits above the value rather than below it.
 """
 
 from collections.abc import Callable
@@ -121,9 +115,8 @@ def _streetcode_hallway(c: str) -> list[str]:
     (``'0'`` = 48, ``'1'`` = 49) down to a bare 0/1, or a fresh 0 cell up to
     ASCII ``'0'``.
 
-    Twenty-nine rows tall and four columns wide, against the ring's eight
-    and eight: which is cheaper depends on the tree beside it, so
-    :func:`streetcode` builds both programs and keeps the shorter.
+    Twenty-nine rows tall and four columns wide, so it remains available for
+    width-constrained programs whose shared-lap layout is too wide.
     """
     top = ["----", "    ", "    ", "+  +", "|  |"]
     row = f"|{c * 2}|"
@@ -148,23 +141,6 @@ def _streetcode_strip(before: str, block: list[str]) -> list[str]:
     return _streetcode_combine([first, block])
 
 
-def _streetcode_ring_block(c: str) -> list[str]:
-    """Draw the ring with the three street rows it hangs below.
-
-    The hallway draws its own street rows; the ring's top row is already
-    the street's southern wall, so it needs them added.  Row 0 is the
-    street's northern wall and stays solid; rows 1 and 2 are the oncoming
-    and driving lanes the car passes over the block on.
-    """
-    ring = _streetcode_ring(c)
-    width = len(ring[0])
-    return ["-" * width, " " * width, " " * width, *ring]
-
-
-# The two loop shapes, as (collect label, loader label, block builder).  Both
-# hand the tree the same thing -- a cell holding ``bit + 1`` -- so everything
-# downstream of the loops is shared.
-#
 # ``~=I^`` leads into a collect loop: ``~`` consumes the +1 the previous loop
 # left on the cell behind, ``=`` advances CP onto a fresh cell, ``I`` reads
 # the next bit (ASCII ``'0'``/``'1'``), and ``^`` bumps it to 49 or 50, which
@@ -172,21 +148,12 @@ def _streetcode_ring_block(c: str) -> list[str]:
 # ambiguous-turn rule (leftmost when the CPth cell is 0, otherwise
 # second-leftmost) has to see a nonzero cell to turn into the loop rather
 # than drive past it.  The loader label is the same without an ``I``.
-#
-# The ring's labels carry a further ``=^``, which steps CP one cell on and
-# starts the ring's counter there.  That second ``^`` is the forced-nonzero
-# the ring's descent gap needs, and the counter is the right cell to force
-# because the value is a ``'0'`` half the time.  The counter drains to 0 and
-# is overwritten by the next loop's own ``I``, so it costs no tape.
-#
-# The +1 both shapes leave behind is not slack.  Every gap crossing reads the
-# CPth cell, the ring's exit gap included, and it reads the value the ring
-# just walked; a bare 0 there would steer the car West back down the street
-# instead of East onto the next loop.
+# The +1 it leaves behind is not slack. Every gap crossing reads the CPth
+# cell; a bare 0 there would steer the car West back down the street instead
+# of East onto the next loop.
 _Shape = tuple[str, str, Callable[[str], list[str]]]
 
 _HALLWAY_SHAPE: _Shape = ("~=I^", "~=^", _streetcode_hallway)
-_RING_SHAPE: _Shape = ("~=I^=^", "~=^=^", _streetcode_ring_block)
 
 
 def _streetcode_constant(block: list[str]) -> bool:
@@ -208,8 +175,7 @@ def _streetcode_leaf(bit: int, skipped: int = 0) -> list[str]:
     closing loop ramped to ASCII ``'0'`` + 1 (one more than 48, from that
     loop's own forced-nonzero ``^``); ``~`` corrects it back down to plain
     ``'0'`` for a 0 leaf, or a no-op leaves it at ``'1'`` for a 1 leaf, and
-    ``O`` prints whichever digit results.  Both loop shapes leave the same
-    49 here, so the leaf is shared.
+    ``O`` prints whichever digit results.
 
     ``skipped`` is how many levels folded away above this leaf.  Every hall
     advances CP by one ``=`` on the way down, so a leaf reached without them
@@ -456,7 +422,7 @@ def _streetcode_cells(n: int, perm: tuple[int, ...]) -> list[int]:
 def _streetcode_shared(n: int, perm: tuple[int, ...] | None = None) -> list[str]:
     """Build the populate phase as one shared 48-lap loop over every cell.
 
-    The per-loop shapes spend a whole 48-cell loop on each input and another
+    The per-input hallway spends a whole 48-cell loop on each input and another
     on the loader.  48 only has to be built once, though: with a counter
     holding it, a single lap that walks *every* cell -- each input down one,
     the loader up one, the counter down one -- does all of that work at
@@ -592,6 +558,34 @@ def _streetcode_columns(program: str) -> int:
     return max(len(line) for line in program.split("\n"))
 
 
+def _streetcode_hallway_program(n: int, tree: list[str]) -> str:
+    """Render the narrow per-input layout used for width selection."""
+    return "\n".join(
+        _streetcode_lift(
+            _streetcode_combine([_streetcode_populate(n, _HALLWAY_SHAPE), tree])
+        )
+    )
+
+
+def _streetcode_shared_programs(truth_table: str, n: int, tree: list[str]) -> list[str]:
+    """Render the shared-lap layouts for every permitted input order."""
+    identity = tuple(range(n))
+    programs = []
+    for perm in _streetcode_orders(n):
+        shared = _streetcode_combine(
+            [
+                _streetcode_shared(n, perm),
+                tree
+                if perm == identity
+                else _streetcode_tree(permute_truth_table(truth_table, perm)),
+            ],
+        )
+        # Padding siblings to a common width leaves trailing blanks on the
+        # shorter one's rows; they are outside the walls and never driven.
+        programs.append("\n".join(row.rstrip() for row in shared))
+    return programs
+
+
 def streetcode(truth_table: str, width: int | None = None) -> str:
     """Build a Streetcode program computing the given truth table.
 
@@ -618,33 +612,28 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     moving which cell an input is read into is enough to change what every
     junction tests, and only the shared shape's prefix changes (see
     :func:`_streetcode_shared`).  The reads stay in stream order.  The
-    per-loop shapes are built at the identity order alone -- they are never
-    the shortest program at any ``n`` the suite reaches, so they survive
-    only as ``width`` fallbacks, and their labels thread the ``+1``
+    hallway is built only when a width is requested: its narrower geometry
+    can meet a bound the shared layout cannot. Its labels thread the ``+1``
     hand-off between neighbouring loops in a way a permuted placement would
     have to re-derive for no measured gain.
 
     ``width`` bounds the columns by *choosing among the shapes* rather than
     reflowing the winner: a Streetcode program's rows are streets, so no
     after-the-fact fold can narrow one.  The shapes already differ in aspect
-    -- the ring is the shortest program but the widest, the hallway trades
-    columns for rows -- so a width the shortest shape overruns is often met
-    by another that was built anyway.  The narrowest shape wins when none
+    -- the hallway trades columns for rows -- so a width the shortest shape
+    overruns is often met by another that was built anyway. The narrowest
+    shape wins when none
     fits, since a width is a preference about layout and returning nothing
     would be worse than returning the best available; the generator has no
     shape narrower than its tree.
     """
     n = _validate_truth_table(truth_table)
     tree = _streetcode_tree(truth_table)
-    # Both shapes are built and the shorter one wins, rather than predicting
-    # the winner from ``n``: the two layouts are what they cost.  The ring is
-    # 8 rows to the hallway's 29 but 8 columns to its 4, so the ring wins
-    # while the loops set the program's height (n <= 2) and the hallway wins
-    # once the tree is taller than either and only the width still counts.
-    programs = []
-    for shape in (_RING_SHAPE, _HALLWAY_SHAPE):
-        rows = _streetcode_combine([_streetcode_populate(n, shape), tree])
-        programs.append("\n".join(_streetcode_lift(rows)))
+    # The per-input loops trade rows for columns, so only width selection
+    # needs them.  The shared lap is strictly shorter through every table at
+    # n <= 3 and every sampled n == 4 table, while its fixed setup wins more
+    # decisively as the input count grows.
+    programs = [_streetcode_hallway_program(n, tree)] if width is not None else []
     # The shared shape is not lifted.  Its prefix reads every input and seeds
     # three more cells, which makes it as long as the street it heads, so a
     # westbound run of it crosses the loops' own mouths -- and at each one CP
@@ -656,17 +645,7 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     # no reorder improves keeps the program it already emitted -- ties are
     # settled by :func:`~esolangs.tools.wrap.shortest`, which keeps its first
     # argument.
-    for perm in _streetcode_orders(n):
-        shared = _streetcode_combine(
-            [
-                _streetcode_shared(n, perm),
-                _streetcode_tree(permute_truth_table(truth_table, perm)),
-            ],
-        )
-        # Padding siblings to a common width leaves trailing blanks on the
-        # shorter one's rows; they are outside the walls and never driven, so
-        # trim them the way :func:`_streetcode_lift` trims its own.
-        programs.append("\n".join(row.rstrip() for row in shared))
+    programs.extend(_streetcode_shared_programs(truth_table, n, tree))
     if width is not None:
         fitting = [p for p in programs if _streetcode_columns(p) <= width]
         if fitting:

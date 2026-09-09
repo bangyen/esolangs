@@ -138,6 +138,14 @@ LANGUAGES: dict[str, Language] = {
         id="a_painter_ant",
         interpreter="grid_based.a_painter_ant",
     ),
+    "Alight": Language(
+        "Alight",
+        _generate.alight,
+        "grid_based.alight",
+        boolean=_boolean.alight,
+        id=canonical_id("Alight"),
+        split=True,
+    ),
     "Algebraic Programming Language": Language(
         "Algebraic Programming Language",
         boolean=_boolean.algebraic_programming_language,
@@ -320,6 +328,13 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.dimensional,
         id="dimensional",
     ),
+    "DINAC": Language(
+        "DINAC",
+        _generate.dinac,
+        "other.dinac",
+        boolean=_boolean.dinac,
+        id="dinac",
+    ),
     "Eval": Language(
         "Eval",
         _generate.eval,
@@ -363,6 +378,13 @@ LANGUAGES: dict[str, Language] = {
         id="forbin",
         compiler="forbin",
     ),
+    "function x(y)": Language(
+        "function x(y)",
+        _generate.function_x_y,
+        "other.function_x_y",
+        boolean=_boolean.function_x_y,
+        id="function_x_y",
+    ),
     "Grapheme": Language(
         "Grapheme",
         boolean=_boolean.grapheme,
@@ -382,6 +404,14 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.inject,
         id="inject",
         interpreter="other.inject",
+    ),
+    "Interprogck8": Language(
+        "Interprogck8",
+        _generate.interprogck8,
+        "register_based.interprogck8",
+        boolean=_boolean.interprogck8,
+        id=canonical_id("Interprogck8"),
+        split=True,
     ),
     "Jaune": Language(
         "Jaune",
@@ -453,6 +483,13 @@ LANGUAGES: dict[str, Language] = {
         "tape_based.nocomment",
         boolean=_boolean.nocomment,
         id="nocomment",
+    ),
+    "Packlang": Language(
+        "Packlang",
+        _generate.packlang,
+        "other.packlang",
+        boolean=_boolean.packlang,
+        id="packlang",
     ),
     "Painfuck": Language(
         "Painfuck",

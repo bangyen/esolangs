@@ -504,6 +504,7 @@ def _register() -> None:
             expected="0\n",
             note="an executed line prints its result, so the answer ends in a newline",
         ),
+        "alight": _reader(b.alight, "grid_based.alight", split=True),
         "basicfuck": _reader(b.basicfuck, "tape_based.basicfuck"),
         "between": _reader(b.between, "register_based.between", split=True),
         "bfstack": _reader(b.bfstack, "stack_based.bfstack"),
@@ -528,6 +529,11 @@ def _register() -> None:
             expected="0\n",
             note="send terminates each line, so the answer ends in a newline",
         ),
+        "interprogck8": _reader(
+            b.interprogck8,
+            "register_based.interprogck8",
+            split=True,
+        ),
         "circuit_diagram": _reader(
             b.circuit_diagram,
             "grid_based.circuit_diagram",
@@ -542,6 +548,7 @@ def _register() -> None:
         "decleq": _reader(b.decleq, "register_based.decleq"),
         "dig": _reader(b.dig, "grid_based.dig", split=True),
         "dimensional": _reader(b.dimensional, "tape_based.dimensional"),
+        "dinac": _reader(b.dinac, "other.dinac"),
         "factor": _reader(b.factor, "tape_based.factor"),
         # Fargo reads one *number* before the program starts, not a bit per
         # line, and ``@ k`` indexes that number's bits.  The boolean
@@ -558,6 +565,7 @@ def _register() -> None:
         "flowchart": _reader(b.flowchart, "grid_based.flowchart", split=True),
         "forbin": _reader(b.forbin_boolean, "other.forbin"),
         "forþ": _reader(b.forth, "stack_based.forth"),
+        "function-x(y)": _reader(b.function_x_y, "other.function_x_y"),
         "grapheme": _reader(b.grapheme, "stack_based.grapheme"),
         "jaune": _reader(b.jaune, "tape_based.jaune"),
         "laserfuck": _reader(
@@ -578,6 +586,7 @@ def _register() -> None:
             "register_based.nevermind",
             split=True,
         ),
+        "packlang": _reader(b.packlang, "other.packlang"),
         "painfuck": _reader(b.painfuck, "tape_based.painfuck"),
         "point-break": _reader(
             b.point_break,

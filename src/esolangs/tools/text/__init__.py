@@ -7,6 +7,7 @@ family; this module re-exports them for compatibility and provides the
 
 import sys
 
+from esolangs.tools.text.alight import alight
 from esolangs.tools.text.helpers import _ilog
 from esolangs.tools.text.other import (
     basicfuck,
@@ -16,14 +17,17 @@ from esolangs.tools.text.other import (
     container,
     cvnc,
     dimensional,
+    dinac,
     forbin,
     forth,
+    function_x_y,
     home_row,
     laserfuck,
     myscript,
     nevermind,
     nocomment,
     one_two_three,
+    packlang,
     painfuck,
     pct_squared_minus_one,
     sbleq,
@@ -41,6 +45,7 @@ from esolangs.tools.text.register import (
     decleq,
     dig,
     eval,  # noqa: A004 - the language is named "Eval"
+    interprogck8,
     polynomial,
     qoibl,
     sophie,
@@ -65,6 +70,7 @@ from esolangs.tools.text.tape import (
 __all__ = [
     "_ilog",
     "addsubjump",
+    "alight",
     "basicfuck",
     "between",
     "bfstack",
@@ -80,11 +86,14 @@ __all__ = [
     "decleq",
     "dig",
     "dimensional",
+    "dinac",
     "eval",
     "factor",
     "forbin",
     "forth",
+    "function_x_y",
     "home_row",
+    "interprogck8",
     "laserfuck",
     "minifuck",
     "modulous",
@@ -92,6 +101,7 @@ __all__ = [
     "nevermind",
     "nocomment",
     "one_two_three",
+    "packlang",
     "painfuck",
     "pct_squared_minus_one",
     "polynomial",

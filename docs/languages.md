@@ -27,8 +27,8 @@ harness instantiates and runs one program per input row.
 
 The generator combines subcube, affine, threshold, band, and fold
 constructions. It is exhaustive through four inputs; the fold reaches
-sampled generic tables through eleven inputs. Its twelve-input workspace
-limit is open research, not a language limit.
+sampled generic tables through eleven inputs, and the interleaved
+fold reaches generic twelve- and thirteen-input tables.
 
 ## The matrix
 
@@ -42,6 +42,7 @@ limit is open research, not a language limit.
 | A Painter Ant |  | yes |  | yes |  |
 | AddSubJump | yes | yes |  | yes | yes |
 | Algebraic Programming Language |  | yes |  | yes |  |
+| Alight | yes | yes |  | yes |  |
 | ArrowQueue |  | yes |  | yes |  |
 | BF-PDA |  | yes | yes | yes | yes |
 | BFStack | yes | yes |  | yes | yes |
@@ -58,6 +59,7 @@ limit is open research, not a language limit.
 | Clockwise | yes | yes |  | yes |  |
 | Collatz Multiverse | yes | yes |  | yes | yes |
 | Container | yes | yes |  | yes | yes |
+| DINAC | yes | yes |  | yes |  |
 | Decleq | yes | yes |  | yes | yes |
 | Dig | yes | yes |  | yes |  |
 | Dimensional | yes | yes |  | yes |  |
@@ -70,6 +72,7 @@ limit is open research, not a language limit.
 | Grapheme |  | yes |  | yes |  |
 | Home Row | yes | yes |  | yes | yes |
 | Inject |  | yes |  | yes |  |
+| Interprogck8 | yes | yes |  | yes |  |
 | Jaune |  | yes |  | yes | yes |
 | Lamfunc |  | yes |  | yes |  |
 | LaserFuck | yes | yes |  | yes |  |
@@ -79,6 +82,7 @@ limit is open research, not a language limit.
 | MyScript | yes | yes |  | yes | yes |
 | Nevermind | yes | yes |  | yes |  |
 | NoComment | yes | yes | yes | yes |  |
+| Packlang | yes | yes |  | yes |  |
 | Painfuck | yes | yes |  | yes |  |
 | Point Break |  | yes |  | yes |  |
 | Polynomial | yes | yes |  | yes |  |
@@ -98,6 +102,7 @@ limit is open research, not a language limit.
 | ZTOALC L | yes | yes |  | yes |  |
 | bit~ | yes | yes |  | yes |  |
 | brainfuck | yes | yes |  | yes |  |
+| function x(y) | yes | yes |  | yes |  |
 
 The `esolangs` command lists the languages with Python support:
 

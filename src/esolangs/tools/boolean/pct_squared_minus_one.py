@@ -3,8 +3,7 @@ r"""Build parameterized Boolean programs for %^2^-1.
 Programs that read their own inputs cannot compute a two-input function, so
 this module embeds each input once and uses affine setters, threshold ladders,
 and relocation folds. Every construction is derived and replayed on all
-instantiated rows. The fold's twelve-input workspace limit is not a language
-wall; interleaving remains open research.
+instantiated rows.
 """
 
 import re
@@ -1248,6 +1247,16 @@ def _deep_band(truth_table: str, n: int) -> str | None:
     shorter program it occasionally finds, so the check runs first and the
     enumeration is skipped when it cannot pay off.
     """
+    if n > _LIMIT // _BAND_UNIT:
+        # Each unit prices a whole residue system, so even the all-ones
+        # weighting costs ``n * 256`` of span and the budget tops out at
+        # eleven inputs.  A zero unit cannot rescue a table here either:
+        # only symmetric tables pass the screen below, and a symmetric
+        # table that ignores an input is constant -- which the cascade
+        # already served.  Refusing up front matters because the
+        # enumeration below walks ``(cap + 1) ** n`` tuples before its sum
+        # filter, hours at thirteen inputs, for a refusal this line proves.
+        return None
     if n > 4 and any(
         len({truth_table[r] for r in range(2**n) if bin(r).count("1") == pop}) > 1
         for pop in range(n + 1)
@@ -2650,6 +2659,205 @@ def _fold_to_cofactors(state: _FoldState) -> list[_FoldOp] | None:
     return _fold_reduce(start, _cofactor_done)
 
 
+def _fold_span(state: _FoldState) -> int:
+    """Return ``state``'s occupied top-to-bottom extent."""
+    return max(point for point, _, _, _ in state) - min(
+        point - extent for point, extent, _, _ in state
+    )
+
+
+def _split_setter(total: int) -> tuple[str, str, int, int] | None:
+    """Spell an up/down setter pair whose moves sum to ``total``."""
+    middle = total // 2
+    for up in range(max(2, middle - 8), min(total - 1, middle + 8) + 1):
+        down = total - up
+        pair = _pad_pair(_affine_code(1, up), _affine_code(1, -down))
+        if pair is not None:
+            zero, one = pair
+            return zero, one, up, down
+    return None
+
+
+def _centred_setter(span: int) -> tuple[str, str, int, int] | None:
+    """Separate a span with equal-width upward and downward setters."""
+    return _split_setter(span + 2)
+
+
+def _interleaved_final_pair(truth_table: str, n: int) -> str | None:
+    """Build a table by laying a prefix ladder and folding the final two inputs.
+
+    The all-row fold ends at eleven inputs by counting: ``2**12`` distinct
+    positions span at least 4095, past what any laid ladder can hold.  This
+    route never holds all rows apart.  The first ``n - 2`` inputs lay as a
+    ladder whose points carry four-row cofactors; the next input splits them
+    into two-row cofactors -- at most four *distinct* ones -- which the fold
+    merges class by class; the last input splits the survivors into answer
+    bits for the ordinary two-class endgame.  Merging by cofactor class
+    rather than answer bit is what keeps every wipe's victim block
+    class-homogeneous, so the reduce is thousands of cheap merges rather
+    than the one-per-doubling starvation an answer-keyed interleave hits.
+
+    The prefix ladder is picked by the same rule the all-row fold uses: the
+    narrow uniform ladder while its footprint fits the workspace (ten
+    inputs, so twelve-input tables), and the packed distinct-subset-sum
+    ladder past that (eleven, so thirteen).  Fourteen inputs would need a
+    twelve-input prefix, and no ladder lays ``2**12`` distinct positions
+    inside the footprint -- the same counting wall, one stage later.
+    """
+    prefix = n - 2
+    narrow = _fold_uniform(prefix, _FOLD_NARROW_STEP)
+    weights = narrow if sum(narrow) <= _LIMIT else _fold_subset_weights(prefix)
+    if weights is None:
+        return None
+    setters = _fold_setters(prefix, weights)
+    positions = _fold_positions(prefix, weights)
+    emitter = _FoldEmitter.__new__(_FoldEmitter)
+    emitter.table = truth_table
+    emitter.rows = 2**n
+    block = 2 ** (n - prefix)
+    emitter.pos = {
+        frozenset(range(row * block, (row + 1) * block)): positions[row]
+        for row in range(2**prefix)
+    }
+    emitter.cls = {
+        key: truth_table[row * block : (row + 1) * block]
+        for row, key in enumerate(emitter.pos)
+    }
+    emitter.body = ["{X" + str(index) + "}" for index in range(prefix)]
+
+    def lay(index: int, *, cofactor: bool) -> tuple[str, str] | None:
+        lo = min(emitter.pos.values())
+        hi = max(emitter.pos.values())
+        span = hi - lo
+        if weights is narrow:
+            got = _centred_setter(span)
+        else:
+            # A compacted state's points can span past 3001, where disjoint
+            # bands no longer fit the workspace -- and with class-many
+            # points they are not needed.  Two children collide only when
+            # their parents sit exactly ``up + down`` apart, so the first
+            # even total that is no pair's distance splits collision-free,
+            # the same computed value the wipe rules land on.  Odd totals
+            # never spell: the identity has no odd-width hold.
+            dists = {
+                b - a
+                for a in emitter.pos.values()
+                for b in emitter.pos.values()
+                if b > a
+            }
+            got = None
+            for total in range(4, 2 * len(dists) + 8, 2):
+                if total in dists:
+                    continue
+                got = _split_setter(total)
+                if got is not None:
+                    break
+        if got is None:
+            return None
+        zero, one, up, down = got
+        shift = -_LIMIT - lo + down
+        if shift > _LIMIT - hi - up:
+            return None
+        emitter.preshift(shift)
+        next_pos: dict[_FoldKey, int] = {}
+        next_cls: dict[_FoldKey, str] = {}
+        occupied: dict[int, str] = {}
+        for key, value in emitter.pos.items():
+            rows = set(key) if isinstance(key, frozenset) else {key}
+            for bit, code in ((0, zero), (1, one)):
+                picked = {row for row in rows if (row >> (n - 1 - index)) & 1 == bit}
+                if not picked:
+                    continue
+                value2 = _apply(value, code)
+                if not -_LIMIT <= value2 <= _LIMIT:
+                    return None
+                cls = (
+                    _cofactor_class(truth_table, n, next(iter(picked)), index + 1)
+                    if cofactor
+                    else truth_table[next(iter(picked))]
+                )
+                if value2 in occupied and occupied[value2] != cls:
+                    return None
+                occupied[value2] = cls
+                key2: _FoldKey = (
+                    next(iter(picked)) if len(picked) == 1 else frozenset(picked)
+                )
+                next_pos[key2] = value2
+                next_cls[key2] = cls
+        emitter.pos, emitter.cls = next_pos, next_cls
+        emitter.body.append("{X" + str(index) + "}")
+        return zero, one
+
+    def state() -> _FoldState:
+        return _fold_norm(
+            [
+                (
+                    value,
+                    0,
+                    emitter.cls[key],
+                    key if isinstance(key, frozenset) else frozenset({key}),
+                )
+                for key, value in emitter.pos.items()
+            ]
+        )
+
+    def emit(ops: list[_FoldOp]) -> None:
+        for index, (kind, _, amount, rows) in enumerate(ops):
+            if kind == "m":
+                emitter.double(
+                    next_is_rise=index + 1 < len(ops) and ops[index + 1][0] == "u"
+                )
+            elif kind == "d":
+                emitter.dive(amount, rows)
+            else:
+                emitter.rise(amount, rows)
+
+    if weights is not narrow:
+        # The packed ladder lays its rows at *unit* gaps, so every landing
+        # window is one already-occupied amount and the first wipe has no
+        # collision-free landing; the split below would double the points
+        # and put the span past the doubling bound, freezing that jam in.
+        # Compacted first -- one point per four-row cofactor, at most
+        # sixteen -- the state still spans only the ladder, where the
+        # doubling fires and regrows the gaps the conveyor needs, and every
+        # later stage works on class-many points rather than row-many.
+        compact = state()
+        # Sixteen live classes rather than two: case 2's window only ever
+        # serves its own class, so the conveyor hops more between merges --
+        # measured 11.3 ops per starting point where the two-class corpus
+        # fits slope 8.  Doubling the slope keeps the guard linear and the
+        # refusal path intact.
+        packed = _fold_reduce(
+            compact,
+            _cofactor_done,
+            budget=2 * _FOLD_STEP_SLOPE * len(compact) + _FOLD_STEP_SLACK,
+        )
+        if packed is None:
+            return None
+        emit(packed)
+    first = lay(prefix, cofactor=True)
+    if first is None:
+        return None
+    setters.append(first)
+    partial = _fold_reduce(state(), _cofactor_done)
+    if partial is None:
+        return None
+    emit(partial)
+    second = lay(prefix + 1, cofactor=False)
+    if second is None:
+        return None
+    setters.append(second)
+    final = _fold_plan(state())
+    if final is None:
+        return None
+    emit(final)
+    emitter.finish()
+    header = ";".join(
+        f"{index}={zero}|{one}" for index, (zero, one) in enumerate(setters)
+    )
+    return header + _HEADER_END + "".join(emitter.body)
+
+
 def _interleaved_fold(truth_table: str, n: int) -> str | None:
     """Try a placeholder/fold/placeholder build before the all-row fallback.
 
@@ -2662,6 +2870,10 @@ def _interleaved_fold(truth_table: str, n: int) -> str | None:
     states; it is an executable replacement skeleton, not yet the large-state
     gap controller.  A miss lets the established fold try its ladders.
     """
+    if n in (12, 13):
+        staged = _interleaved_final_pair(truth_table, n)
+        if staged is not None:
+            return staged
     setters: list[tuple[str, str]] = []
     rows = frozenset(range(2**n))
     emitter = _FoldEmitter.__new__(_FoldEmitter)
@@ -3178,12 +3390,16 @@ def pct_squared_minus_one(truth_table: str) -> str:
         # slope per column of a two-input table -- but the minterm cascade
         # does, at any arity.  A table it cannot build is still refused rather
         # than served by a program computing the wrong function.
-        # The cascade is tried first because it is much the shorter of the
-        # two -- ``2n + 4`` characters against the affine path's setters --
-        # and it covers every subcube at any arity.
+        # The cascade covers every subcube at any arity, and is usually the
+        # shorter -- ``2n + 4`` characters against the affine path's setters.
+        # *Usually* is not always, so at three inputs, where both are cheap,
+        # the two are built and the shorter kept: returning the cascade on
+        # sight served 44 of 256 tables a longer program than the affine
+        # path gives, by up to 7 characters (``00000101`` is 40 against 33).
+        # Building both over that corpus costs 0.466s against 0.590s for
+        # returning early, since a served cascade skips no work the affine
+        # path would have done -- the comparison is free here.
         cascade = _cascade(truth_table, n)
-        if cascade is not None:
-            return cascade
         # Tables that are not subcubes may still compose from one affine
         # setter per input, which is what reaches XOR at three inputs.
         #
@@ -3193,12 +3409,16 @@ def pct_squared_minus_one(truth_table: str) -> str:
         # ends up served -- parity-4 was measured at 125s, against 0.01s for the
         # deep band that serves it instead.  The deep band covers every table
         # this path reaches above three inputs, so the enumeration is skipped
-        # rather than paid for; at three inputs it stays, where it is instant
-        # and its programs are much the shorter.
-        if n == 3:
-            affine = _affine(truth_table, n)
-            if affine is not None:
-                return affine
+        # rather than paid for; at three inputs it stays, where it is instant.
+        affine = _affine(truth_table, n) if n == 3 else None
+        # Ties keep the cascade, which is what the order emitted before.
+        best = min(
+            (build for build in (cascade, affine) if build is not None),
+            key=len,
+            default=None,
+        )
+        if best is not None:
+            return best
         # Everything above is affine in the accumulator, so it cannot merge
         # rows that do not already agree.  The ladder path is the one that
         # uses the over-3003 reset as a threshold, which is what reaches a
@@ -3239,13 +3459,12 @@ def pct_squared_minus_one(truth_table: str) -> str:
         if fold is None:
             raise ValueError(
                 f"%^2^-1 builds every table at one, two, three and four "
-                f"inputs, and every table tried from five through eleven; "
+                f"inputs, and every table tried from five through thirteen; "
                 f"beyond those a conjunction or disjunction of literals at "
                 f"any arity, the thresholds a weighted ladder crosses, the "
                 f"tables a deep band schedules, the tables the all-row fold "
                 f"can plan, and the compactable suffix-cofactor stages the "
-                f"interleaved fold can plan (the all-row ladder caps it at "
-                f"eleven inputs); "
+                f"interleaved fold can plan; "
                 f"got {n} inputs ({truth_table!r})"
             )
         return fold

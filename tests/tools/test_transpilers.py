@@ -15,8 +15,10 @@ import pytest
 import esolangs
 from esolangs.exceptions import (
     EsolangError,
+    HaltError,
     UnsupportedTranspilationError,
 )
+from esolangs.vm import make_vm, run_until_halt_or_cycle, run_until_halt_or_growth
 
 # (brainfuck program, stdin) pairs; every pair must terminate and agree.
 BATTERY = (
@@ -319,6 +321,269 @@ def test_bfstack_fuzz_stack_programs() -> None:
         assert esolangs.run("BFStack", program) == esolangs.run("brainfuck", bf_program)
 
 
+# (brainfuck program, stdin) pairs for Streetcode.  Streetcode is a 2D
+# language whose only branch is a junction that reads whether the pointer's
+# cell is zero -- exactly brainfuck's loop test -- so a ``[``/``]`` draws as
+# a room the car laps.  The cases that matter beyond plain agreement are the
+# ones the doubled non-wrapping cell model has to reproduce: underflow
+# (``-.`` -> 255), overflow past 255 inside a loop (``+[+].``), a wrapping
+# multiply, a pointer-moving loop body (``+[>].``), a ``,`` of a code point
+# above U+00FF (mod 256), a skipped loop, and a deeply nested one.
+#
+# The wide-cell programs cost seconds each in the target grid rather than
+# milliseconds: a Streetcode cell is reached by driving to it, so a value
+# near 255 (underflow, the 8x8 multiply, input above U+00FF) is that many
+# steps of geometry.  Those carry ``slow`` individually, keeping the cheap
+# rows -- which still cover wraparound, input, nesting and the skipped loop
+# -- in the fast run and in the mutation harness, which deselects ``slow``.
+_SLOW = pytest.mark.slow
+STREETCODE_BATTERY = (
+    ("-.", ""),
+    ("+.", ""),
+    ("--.", ""),
+    ("+-.", ""),
+    (">+<.", ""),
+    ("+++[-].", ""),
+    pytest.param("+[+].", "", marks=_SLOW),
+    ("+[->+<]>.", ""),
+    ("+++[>].", ""),
+    ("++>++<[>]<.", ""),
+    ("++[>[-]<-].", ""),
+    pytest.param("+++[>++[>+<-]<-]>+++.", "", marks=_SLOW),
+    pytest.param("++++++++[>++++++++<-]>.", "", marks=_SLOW),
+    pytest.param("+[>+[>[-]+<-]<-].", "", marks=_SLOW),
+    (",.", "a"),
+    (",.", "Ā"),
+    pytest.param(",.", "中", marks=_SLOW),
+    pytest.param(",[.-]", "a", marks=_SLOW),
+    (",>,<.>.", "a\nb"),
+    ("[-].", ""),
+    ("[+].", ""),
+    ("", ""),
+    ("xx+++xx.xx", ""),
+)
+
+# a subset with pinned output, so the battery checks more than agreement.
+# Marked like the battery above, and for the same reason: ``-.`` pins the
+# wraparound and ``,.`` the mod-256 input without paying for a wide cell.
+STREETCODE_PINNED = (
+    ("-.", "", "\xff"),
+    ("[-]---.", "", "\xfd"),
+    pytest.param("+[+].", "", "\x00", marks=_SLOW),
+    pytest.param("++++++++[>++++++++<-]>.", "", "@", marks=_SLOW),
+    (",.", "Ā", "\x00"),  # U+0100 taken mod 256 is 0
+)
+
+
+@pytest.mark.parametrize(("program", "stdin"), STREETCODE_BATTERY)
+def test_streetcode_transpiled_output_matches_source(program: str, stdin: str) -> None:
+    """Every battery program agrees byte-for-byte through Streetcode.
+
+    The wraparound brainfuck has and Streetcode does not is reproduced by a
+    canonicalizer the transpiler emits after arithmetic runs and ```,``,
+    except clear-and-set runs whose byte residue is known, so underflow,
+    overflow and above-byte input all match.
+    """
+    target = esolangs.transpile("brainfuck", "Streetcode", program)
+    assert esolangs.run("brainfuck", program, stdin, timeout=30) == esolangs.run(
+        "Streetcode", target, stdin, timeout=30
+    )
+
+
+@pytest.mark.parametrize(("program", "stdin", "want"), STREETCODE_PINNED)
+def test_streetcode_pinned_output(program: str, stdin: str, want: str) -> None:
+    """Pinned outputs, so the battery is not merely self-consistent."""
+    target = esolangs.transpile("brainfuck", "Streetcode", program)
+    assert esolangs.run("Streetcode", target, stdin, timeout=30) == want
+
+
+def test_streetcode_clear_and_set_skips_the_canonicalizer() -> None:
+    """A byte clear makes its following arithmetic residue statically known."""
+    from esolangs.tools._bf_streetcode import _lower
+
+    assert _lower("[-]---") == "[-]" + "+" * 253
+
+
+@pytest.mark.parametrize(
+    ("program", "stdin", "prefix"),
+    [
+        ("+++[->+>++<<]>.>.", "", 17),
+        (">++[<+>-]<.", "", 11),
+        ("++.,.", "a", 3),
+        ("+[>+[>+<-]<-]", "", 1),
+    ],
+)
+def test_streetcode_byte_safe_affine_prefixes(
+    program: str, stdin: str, prefix: int
+) -> None:
+    """Affine transfers lower directly; unknown code falls back at its boundary."""
+    from esolangs.interpreters.brackets import match_brackets
+    from esolangs.tools._bf_streetcode import _byte_safe_prefix
+
+    assert _byte_safe_prefix(program, match_brackets(program)) == prefix
+    target = esolangs.transpile("brainfuck", "Streetcode", program)
+    assert esolangs.run("Streetcode", target, stdin, timeout=30) == esolangs.run(
+        "brainfuck", program, stdin, timeout=30
+    )
+
+
+def test_streetcode_affine_transfer_fuzz_agrees() -> None:
+    """Accepted multi-target transfer shapes agree with the generic semantics."""
+    rng = random.Random(23)
+    for _ in range(12):
+        counter = rng.randint(0, 15)
+        first = rng.randint(0, 8)
+        second = rng.randint(0, (255 - counter * first) // counter if counter else 8)
+        program = "+" * counter + "[->" + "+" * first + ">" + "+" * second + "<<]>.>."
+        target = esolangs.transpile("brainfuck", "Streetcode", program)
+        assert esolangs.run("Streetcode", target, timeout=30) == esolangs.run(
+            "brainfuck", program, timeout=30
+        )
+
+
+def test_streetcode_transpiler_is_total() -> None:
+    """Every brainfuck program translates; only unbalanced brackets raise.
+
+    Unbalanced brackets are malformed in brainfuck too, so raising on them
+    is not a class restriction -- the brainfuck interpreter raises on the
+    identical input.
+    """
+    for program in (">+<<.", "<<<", "+.<.", "", "xx", "-.", "+[+].", ",."):
+        esolangs.transpile("brainfuck", "Streetcode", program)
+    for bad in ("[", "]", "[[]"):
+        with pytest.raises(ValueError, match=r"unmatched"):
+            esolangs.transpile("brainfuck", "Streetcode", bad)
+        with pytest.raises(ValueError, match=r"unbalanced|unmatched"):
+            esolangs.run("brainfuck", bad)
+
+
+def test_streetcode_end_of_input_raises_in_both() -> None:
+    """Exhausted input raises ``EOFError`` through both, not one silently.
+
+    The doc claims this agreement; criterion 5 wants it executed rather than
+    read.  ``,`` against empty stdin has no line to consume in either
+    language, so both must raise.
+    """
+    target = esolangs.transpile("brainfuck", "Streetcode", ",")
+    with pytest.raises(EOFError):
+        esolangs.run("brainfuck", ",", "")
+    with pytest.raises(EOFError):
+        esolangs.run("Streetcode", target, "")
+
+
+def _brainfuck_can_halt(program: str, stdin: str) -> bool:
+    """False when a certificate proves ``program`` never halts.
+
+    Most of the corpus's non-halting draws are trivial (``--++++[]``), and
+    waiting one out costs the source timeout each.  A proof drops them for
+    free instead.
+
+    Both provers are needed, in this order.
+    :func:`run_until_halt_or_cycle` is unbounded by design -- it steps until
+    a state repeats -- so the growth class hangs it outright rather than
+    returning undecided: ``+[>+]`` grows the tape a cell a lap and never
+    repeats a state.  :func:`run_until_halt_or_growth` is the prover for
+    that class and takes a step ``limit``, so asking it first means a growth
+    program is answered or bounded before the unbounded detector runs.
+
+    Growth exhausting its limit is *undecided*, not halting, so the cycle
+    detector still gets its turn -- that is what keeps the cheap corpus
+    hangs (``--++++[]``) proven rather than waited out.  Reaching it needs
+    growth to have declined the program, which rules out the input that
+    would hang it.  Measured worst case over both arms is under half a
+    second.
+
+    True is the undecided answer as well as the halting one, so the
+    wall-clock skip below stays as the backstop.  ``EOFError`` is the same
+    refusal the timed run reports; leave it to that arm rather than
+    duplicating the judgement here.
+    """
+    try:
+        try:
+            if not run_until_halt_or_growth(make_vm("brainfuck", program, stdin)):
+                return False
+        except TimeoutError:
+            pass  # undecided by growth; a repeated state may still decide it
+        return run_until_halt_or_cycle(make_vm("brainfuck", program, stdin))
+    except (EOFError, TimeoutError):
+        return True
+
+
+@pytest.mark.slow
+def test_streetcode_fuzz_agrees() -> None:
+    """Random terminating brainfuck programs agree through Streetcode.
+
+    The generator mixes arithmetic, pointer moves, I/O and balanced loops.
+    A program the *source* interpreter does not halt on within its step
+    budget is skipped -- that is a property of brainfuck, not a rejection by
+    the transpiler, which has no reject arm -- and the count of programs
+    that actually ran is asserted so the fuzz cannot quietly stop
+    exercising the geometry.
+
+    A skip on the *target* side is different: a mistranslation that turned a
+    halting program into a non-terminating one would look exactly like a
+    slow grid timing out.  So target-side timeouts are counted and bounded
+    -- if most of the corpus were skipping there, the fuzz would be proving
+    nothing, and the assertion says so.
+    """
+    rng = random.Random(5)
+    checked = 0
+    target_timeouts = 0
+    for _ in range(40):
+        depth = 0
+        parts: list[str] = []
+        for _ in range(rng.randint(1, 14)):
+            kind = rng.choice(
+                ("inc", "dec", "right", "left", "print", "in", "open", "close")
+            )
+            if kind == "inc":
+                parts.append("+" * rng.randint(1, 4))
+            elif kind == "dec":
+                parts.append("-" * rng.randint(1, 4))
+            elif kind == "right":
+                parts.append(">")
+            elif kind == "left":
+                parts.append("<")
+            elif kind == "print":
+                parts.append(".")
+            elif kind == "in":
+                parts.append(",")
+            elif kind == "open":
+                parts.append("[")
+                depth += 1
+            elif kind == "close" and depth:
+                parts.append("]")
+                depth -= 1
+        parts.append("]" * depth)
+        program = "".join(parts)
+        stdin = "\n".join(rng.choice(["", "a", "Ā", "中"]) for _ in range(4))
+        if not _brainfuck_can_halt(program, stdin):
+            continue  # a repeated state proves it never halts
+        try:
+            expected = esolangs.run("brainfuck", program, stdin, timeout=15)
+        except EOFError:
+            continue  # ``,`` past the end of stdin; the source refuses it
+        except HaltError:
+            continue  # brainfuck did not halt in the wall-clock budget
+        try:
+            got = esolangs.run(
+                "Streetcode",
+                esolangs.transpile("brainfuck", "Streetcode", program),
+                stdin,
+                timeout=30,
+            )
+        except HaltError:
+            target_timeouts += 1  # a slow grid -- counted, not silently dropped
+            continue
+        assert got == expected, program
+        checked += 1
+    assert checked > 12, f"only {checked} programs ran; fuzz is not exercising"
+    assert target_timeouts < checked, (
+        f"{target_timeouts} target-side timeouts vs {checked} checked: "
+        "the fuzz is mostly skipping the geometry it exists to test"
+    )
+
+
 # (Decleq program, stdin) pairs.  The transpiler emits a Decleq emulator,
 # so nothing about a program's shape puts it out of class: self-modifying
 # code, computed jumps, lengths and targets that are not multiples of
@@ -404,23 +669,38 @@ def test_decleq_transpiler_is_total() -> None:
         esolangs.transpile("Decleq", "S*bleq", "1 x 3")
 
 
-def test_decleq_empty_input_line_is_a_target_language_collision() -> None:
-    """An empty input line is the one thing S*bleq cannot represent.
+def test_decleq_end_of_input_is_a_target_language_collision() -> None:
+    """End-of-input is the one thing S*bleq cannot represent.
 
-    Decleq's reader turns an empty line into ``10`` (the newline that ended
-    it) and a ``"\x00"`` line into ``0``.  S*bleq's only input primitive,
-    address ``-2``, yields ``0`` for *both* -- two inputs reaching one
-    value.  Every S*bleq computation is a function of the values it reads,
-    so no S*bleq program can separate them and no translation can either;
-    the same collision sends end-of-input to ``0`` where Decleq raises
-    ``EOFError``.  This asserts the divergence rather than hiding it.
+    S*bleq's only input primitive, address ``-2``, yields ``0`` when the
+    input is exhausted, where Decleq raises :class:`EOFError`.  Every
+    S*bleq computation is a function of the values it reads, so no S*bleq
+    program can tell "a zero was read" from "there was nothing to read",
+    and no translation can either.  This asserts the divergence rather
+    than hiding it.
+
+    The *empty line* used to belong to this collision too, because
+    ``io.input_char`` returned ``10`` there while S*bleq returned ``0``.
+    It no longer does: ``input_char`` reads a blank line as ``0``, the
+    value the interpreters calling ``input_str`` already used, so the two
+    languages now agree.  What remains below the surface is a genuine
+    S*bleq property -- it still cannot separate an empty line from a NUL
+    line -- but that is no longer a *divergence*, because Decleq collapses
+    them the same way.
     """
     program = "-1 0 3 -2 0 0"
     sb_program = esolangs.transpile("Decleq", "S*bleq", program)
-    assert esolangs.run("Decleq", program, "\n") == "\n"
+
+    # the empty line now agrees, in both directions
+    assert esolangs.run("Decleq", program, "\n") == "\x00"
     assert esolangs.run("S*bleq", sb_program, "\n") == "\x00"
-    # the collision: a NUL line is what S*bleq reports for both
+    # ... and S*bleq still cannot separate it from a NUL line
     assert esolangs.run("S*bleq", sb_program, "\x00") == "\x00"
+
+    # the surviving collision: exhausted input
+    with pytest.raises(EOFError):
+        esolangs.run("Decleq", program, "")
+    assert esolangs.run("S*bleq", sb_program, "") == "\x00"
 
 
 def test_decleq_fuzz_unrestricted_programs() -> None:

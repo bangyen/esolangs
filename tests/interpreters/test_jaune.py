@@ -99,20 +99,22 @@ class TestMemory:
     def test_zero_cell(self) -> None:
         assert run_program("5+%^.") == "0"
 
-    def test_pointer_left_of_zero_inserts_a_cell(self) -> None:
-        # '<' at cell 0 inserts a fresh zero cell to the left
+    def test_pointer_left_of_zero_is_clamped(self) -> None:
+        # '<' at cell 0 moves nothing, as brainfuck's own '<' does
         assert run_program("<^.") == "0"
 
-    def test_the_inserted_cell_is_left_of_the_old_one(self) -> None:
-        """``<`` at cell 0 puts the new cell *before* the old contents.
+    def test_a_clamped_left_move_stays_on_the_same_cell(self) -> None:
+        """``<`` at cell 0 leaves the pointer on the cell it was already on.
 
-        On a blank tape every cell is 0, so which side the insert lands on
-        makes no difference to what prints.  Writing a value first tells
-        the two apart: the pointer must end on the fresh zero, with the
-        old value one step to its right.
+        On a blank tape every cell is 0, so a clamp and a leftward insert
+        print alike.  Writing a value first tells them apart: clamped, the
+        pointer is still on the 5, where an insert would have put a fresh
+        zero under it.  This interpreter used to insert.
         """
-        assert run_program("5+<^.") == "0"
-        assert run_program("5+<>^.") == "5"
+        assert run_program("5+<^.") == "5"
+        assert run_program("5+<<<^.") == "5"
+        # and a clamped move is not a lost one: '>' still finds a fresh cell
+        assert run_program("5+<>^.") == "0"
 
     def test_the_hold_cell_starts_at_zero(self) -> None:
         """``&`` before any ``#`` adds nothing.

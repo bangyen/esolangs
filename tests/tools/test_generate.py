@@ -137,7 +137,10 @@ def assert_text_roundtrip(generator: Callable[[str], str], text: str) -> None:
     assert roundtrip_language(BY_FUNCTION[generator.__name__], program) == text
 
 
-@pytest.fixture
+# Session-scoped: the subprocess spawn is ~1.8s, the whole of this file's
+# setup cost, and the result is read-only -- every consumer only asserts on
+# the captured returncode and stdout, so one run serves them all.
+@pytest.fixture(scope="session")
 def text_module_output() -> subprocess.CompletedProcess[str]:
     """Run the text-generator module once for its subprocess contract."""
     import sys
@@ -1316,6 +1319,48 @@ class TestGeneratorRoundTrips:
                 gen.suptiftam(bad)
         assert roundtrip(suptiftam_run, gen.suptiftam("a b")) == "a b"
 
+    def test_function_x_y(self) -> None:
+        """One backtick print per run of text, one ``[""]`` per newline."""
+        function_x_y_run = importlib.import_module(
+            "esolangs.interpreters.other.function_x_y"
+        ).run
+
+        def out(text: str) -> str:
+            return roundtrip(function_x_y_run, gen.function_x_y(text))
+
+        for text in (
+            "Hello, World!",
+            "Hi",
+            "",
+            "x",
+            "a\nb\nc",
+            "Hello\n",  # a trailing newline survives
+            "a\n\n\nb",  # so do consecutive blank lines
+            "\n",
+            " leading and trailing ",
+        ):
+            assert out(text) == text, f"did not reproduce {text!r}"
+        assert gen.function_x_y("Hi\nthere").splitlines() == [
+            "function printText()",
+            '`"Hi"',
+            '[""]',
+            '`"there"',
+        ]
+
+    def test_function_x_y_alphabet_limits(self) -> None:
+        """No escape mechanism, so a quote cannot be emitted at all."""
+        with raises_message(
+            ValueError,
+            'function x(y) has no string escape, so it cannot output a quote (")',
+        ):
+            gen.function_x_y('say "hi"')
+        for bad in ("a\tb", "\x00", "\x7f"):
+            with pytest.raises(ValueError, match="printable ASCII"):
+                gen.function_x_y(bad)
+        for bad in ("é", "😀"):
+            with pytest.raises(ValueError, match="ASCII"):
+                gen.function_x_y(bad)
+
     def test_minifuck(self) -> None:
         """Each character is printed by flipping the differing tape bits."""
         minifuck_run = importlib.import_module(
@@ -1786,6 +1831,20 @@ HOSTILE_REFUSALS = {
             "nul_trailing",
             "nul_leading",
             "nul_run",
+            "big_drop",
+        },
+    ),
+    "function_x_y": (
+        "function x(y) can only output printable ASCII (32-126) and newline",
+        {
+            "nul_only",
+            "nul_interior",
+            "nul_trailing",
+            "nul_leading",
+            "nul_run",
+            "low_after_first",
+            "low_leading",
+            "max_byte",
             "big_drop",
         },
     ),

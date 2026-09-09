@@ -6,25 +6,13 @@ conditional ideas stay in [`docs/walls.md`](walls.md) and
 
 ## New interpreters
 
-Candidates are prioritized by a complete specification and an uncapped,
-testable boolean-generator route. The assessed-and-rejected ledger is in
-[`docs/limitations.md`](limitations.md).
-
-- **DINAC:** ordinary nested IF/ELSE tree; indentation-sensitive parsing and
-  defined EOF sentinels are the main interpreter work.
-- **Alight:** indexed string-table lookup; 2D walking and function semantics
-  are the cost. Its boolean construction is derived, not supplied by a wiki
-  truth-machine.
-- **function x(y):** recursive expression language. Choose native recursion
-  with a documented ceiling or an explicit evaluation-frame stack before
-  implementation.
-- **Packlang:** C-like blocks and namespaces; its boolean generator reuses
-  the existing ANF construction. Resolve the wiki's conflicting literal-base
-  examples.
-- **Interprogck8:** establish whether `DownAccLines` can route a full
-  decision tree through its single current-function slot.
-- **Pinyin:** re-audit and price a real two-input program before scheduling;
-  required phonetic command triples and routing semantics are still unpinned.
+The candidate list is empty: DINAC, Alight, function x(y), Packlang and
+Interprogck8 are implemented, and Pinyin is rejected. Both outcomes are
+recorded in [`docs/limitations.md`](limitations.md) — Pinyin's routing
+pinned and its two-input program priced at 4 characters, but its triples
+did not: the page's own selection rule reroutes 8 of 23 Hello, world!
+characters, and its truth machine on input 1 is unreachable under all 384
+readings.
 
 ## Research
 
@@ -33,24 +21,11 @@ testable boolean-generator route. The assessed-and-rejected ledger is in
   source-machine emulator, not command transliteration. It needs a constructed
   Streetcode-program corpus/fuzzer and resolution of the reference
   interpreter's junction and post-corner gaps.
-- **Lift the `%^2^-1` generic-table frontier.** The shipped packed ladder
-  covers sampled tables through eleven inputs, but its twelve-input limit is
-  workspace geometry, not a language wall. Develop a total planner that
-  interleaves embedding and folding; the existing verified ten-input route is
-  an experiment, not a general construction.
-- **Scale Line boolean drawings.** The standalone Line generator has
-  end-to-end measurements through seven inputs, while its regression suite
-  reaches five; eight and above are unmeasured. Establish the renderer →
-  extractor → simulator frontier with an all-leaf-reaching corpus, then only
-  pursue subtree sharing or a denser layout if that measurement finds a real
-  resource limit.
-- **Collapse competing boolean constructions.** Audit generators that emit
-  multiple routes and keep the shorter. Where loop semantics permit it, derive
-  one construction or a dominance rule that covers every table; retain a
-  fallback only when executed counterexamples show it is necessary. This is
-  about removing avoidable selection work, not beating the generic `O(2**n)`
-  truth-table lower bound.
-
+- **Scale Line boolean drawings.** The standalone Line generator reaches
+  eight inputs end to end, with all 256 parity leaves correct; its regression
+  suite now carries that case. Nine and above are unmeasured. Establish the
+  renderer → extractor → simulator frontier, then only pursue subtree sharing
+  or a denser layout if that measurement finds a real resource limit.
 ## Conditional follow-up
 
 - **ArrowQueue reusable drain.** Ship the verified deep-fold drain only if a
@@ -60,3 +35,11 @@ testable boolean-generator route. The assessed-and-rejected ledger is in
   but its queued inputs cannot be renamed in place. Find a re-enqueue and
   grid-routing construction, then compare emitted, executed programs against
   the current template; abandon it if the routing spends the apparent gain.
+- **`%^2^-1` fourteen inputs.** The staged fold's endgame strands its last
+  duplicated cofactor pairs: rank order is steerable (pulsed doubling), but a
+  merge needs the pair's value gap `d` inside a wipe window, and diving the
+  partner maps `d -> amount - d` with the amount free in the window -- a
+  derived, unbuilt alignment controller. Build it only if a ~20x-thirteen
+  build cost (~430k plan ops, ~8MB templates, ~226 ops per merge) is
+  acceptable; the walls around it are recorded in
+  [`docs/walls.md`](walls.md).

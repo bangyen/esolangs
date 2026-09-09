@@ -22,6 +22,7 @@ from tests.tools.boolean_runners import (
     run_fargo,
     run_flowchart,
     run_forbin_boolean,
+    run_function_x_y,
     run_inject,
     run_laserfuck,
     run_myscript,
@@ -416,7 +417,7 @@ class TestCvnc:
 
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_every_table_computes_its_function(self, n: int) -> None:
-        """Exhaustive over both constructions, since either may be returned."""
+        """Exhaustive over the stream and reordered paths."""
         for value in range(2 ** (2**n)):
             table = bin(value)[2:].zfill(2**n)
             program = boolean.cvnc(table)
@@ -449,7 +450,7 @@ class TestCvnc:
         module = importlib.import_module("esolangs.tools.boolean.cvnc")
         # (0, 2, 1, 3) is the smallest non-unimodal permutation.
         assert module._deque_schedule((0, 2, 1, 3)) is None  # noqa: SLF001
-        assert module._hoisted_candidate("0" * 16, (0, 2, 1, 3)) == ""  # noqa: SLF001
+        assert module._stored_candidate("0" * 16, (0, 2, 1, 3)) == ""  # noqa: SLF001
         # The identity is always unimodal, so a candidate always exists.
         assert module._deque_schedule((0, 1, 2, 3)) is not None  # noqa: SLF001
 
@@ -496,7 +497,7 @@ class TestCvnc:
 
         The comparison has to be driven through ``best_input_order``, the
         way the generator does it -- that helper permutes the *table* per
-        order, so calling ``_hoisted_candidate`` on the unpermuted one and
+        order, so calling ``_ordered_candidate`` on the unpermuted one and
         taking the best is a different quantity, and gives a different set.
         """
         from esolangs.tools.boolean.helpers import best_input_order
@@ -509,7 +510,7 @@ class TestCvnc:
             tree = module._tree(table, 0)  # noqa: SLF001
             hoisted = best_input_order(
                 table,
-                module._hoisted_candidate,  # noqa: SLF001
+                module._stored_candidate,  # noqa: SLF001
             )
             if hoisted and len(hoisted) == len(tree):
                 tied.append(table)
@@ -557,7 +558,7 @@ class TestCvnc:
         climbs from that and prints one too many for a 1 input.
         """
         module = importlib.import_module("esolangs.tools.boolean.cvnc")
-        program = module._hoisted("00", (0,))  # noqa: SLF001
+        program = module._ordered("00", (0,))  # noqa: SLF001
         assert program is not None
         assert "cə" in program
         for bit in ("0", "1"):
@@ -2427,3 +2428,88 @@ class TestAlgebraicProgrammingLanguageShapes:
 
         assert list(_NAMES) == sorted(_NAMES)
         assert len(set(_NAMES)) == len(_NAMES)
+
+
+class TestFunctionXY:
+    """A nested-ternary decision tree over inputs read up front."""
+
+    @staticmethod
+    def _check(table: str) -> None:
+        """Execute the program on every row and compare with the table."""
+        n = len(table).bit_length() - 1
+        program = boolean.function_x_y(table)
+        for combo in range(2**n):
+            bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+            assert run_function_x_y(program, bits) == table[combo], (
+                f"table {table} inputs {bits}"
+            )
+
+    @pytest.mark.parametrize(
+        "table",
+        [
+            "01",  # identity
+            "10",  # NOT
+            "00",  # constant zero
+            "11",  # constant one
+            "0001",  # AND
+            "0111",  # OR
+            "0110",  # XOR
+            "1110",  # NAND
+            "01101001",  # XOR3
+            "11111110",  # NAND3
+            "1000000000000000",  # AND4
+            "0110100110010110",  # parity4: nothing folds
+        ],
+    )
+    def test_truth_table(self, table: str) -> None:
+        self._check(table)
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_every_table_of_small_arity(self, n: int) -> None:
+        """Exhaustive over all ``2**(2**n)`` tables, not a sample."""
+        for value in range(2 ** (2**n)):
+            self._check(bin(value)[2:].zfill(2**n))
+
+    @pytest.mark.parametrize("n", [4, 5])
+    def test_a_sample_of_wider_tables(self, n: int) -> None:
+        """The claimed arities run; 2**16 and 2**32 tables are sampled."""
+        rng = random.Random(n)
+        for _ in range(12):
+            table = "".join(rng.choice("01") for _ in range(2**n))
+            self._check(table)
+
+    def test_a_constant_table_still_reads_every_input(self) -> None:
+        """The reads are the interface, so a constant must not skip them.
+
+        This is the boolean contract's rule; pinned here on the emission
+        because the contract sweep only compares two tables' read counts.
+        """
+        for table in ("0000", "1111"):
+            program = boolean.function_x_y(table)
+            assert program.count("[~]") == 2
+            # and it still answers correctly
+            assert run_function_x_y(program, ["0", "0"]) == table[0]
+
+    def test_a_constant_table_folds_to_a_literal(self) -> None:
+        """Nothing branches when the whole table is one value."""
+        program = boolean.function_x_y("1111")
+        assert "<" not in program.split("\n")[-1].replace('`"1"', "")
+        assert program.endswith('`"1"')
+
+    def test_the_tree_folds_a_constant_subtree(self) -> None:
+        """``0011`` depends only on the second input, so one test suffices."""
+        program = boolean.function_x_y("0011")
+        assert program.count("==") == 1
+
+    def test_reads_stay_in_input_order(self) -> None:
+        """Reordering moves which input a node tests, never the reads."""
+        program = boolean.function_x_y("0110100110010110")
+        reads = [ln for ln in program.split("\n") if ln.startswith("var ")]
+        assert reads == [f"var b{i}: [~]" for i in range(4)]
+
+    def test_a_malformed_table_is_refused(self) -> None:
+        with pytest.raises(ValueError, match="power-of-two"):
+            boolean.function_x_y("011")
+        # a nullary table is a constant, not a boolean function
+        with pytest.raises(ValueError, match="at least one input"):
+            boolean.function_x_y("0")

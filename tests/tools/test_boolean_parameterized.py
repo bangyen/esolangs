@@ -9,6 +9,7 @@ import importlib
 import io
 import random
 import re
+from collections.abc import Iterable
 from contextlib import redirect_stdout
 
 import pytest
@@ -648,15 +649,15 @@ class TestParameterizedNoComment:
             got = self.run_nocomment(self.instantiate(template, bits))
             assert got == str(int("1010101010101010"[combo])), f"inputs {bits}"
 
-    # The decode is exponential in the arity, so all three widest cases cost
-    # seconds: measured 9.3s at n=9, 29.0s at n=10 and 99.4s at n=11.  n=9
-    # used to stay in the fast run as the case exercising the composed skip
-    # past a byte-sized index, but it is four times the one-second budget
-    # every other case is held to.  The mechanism is still proved on every
-    # push, just not at push time: CI's `test` matrix job runs pytest
-    # unfiltered, so a slow-marked case runs there like any other.  (The
-    # separate `-m slow` job is scoped to the differential fuzzer's file
-    # and never selects these.)
+    # The decode is exponential in the arity, so the swept cases cost
+    # seconds: measured 9.3s at n=9 and 29.0s at n=10 (n=11 swept was 99.4s,
+    # now sampled below).  n=9 used to stay in the fast run as the case
+    # exercising the composed skip past a byte-sized index, but it is four
+    # times the one-second budget every other case is held to.  The
+    # mechanism is still proved on every push, just not at push time: CI's
+    # `test` matrix job runs pytest unfiltered, so a slow-marked case runs
+    # there like any other.  (The separate `-m slow` job is scoped to the
+    # differential fuzzer's file and never selects these.)
     #
     # These are ~2x the figures first recorded here (4.1/13.0/43.5s), which
     # were measured before NoComment's tape became immutable.  The write
@@ -666,12 +667,19 @@ class TestParameterizedNoComment:
     # than a tuple of ints took the rebuild back to a memcpy and these cases
     # from 45.7/139.7/561.6s to what they are now; the residue over the
     # original is the immutable state the purity refactor bought.
+    # n=11 is sampled rather than swept: the summand plan introduces no new
+    # stage shape above n=10.  Measured plan sizes are q=2/4/6/10 at
+    # n=8/9/10/11; n=9 first splits one bit's weight across stages, n=10
+    # first carries both a repeated full stage and a mixed-cell stage, and
+    # n=11 only repeats those same two shapes more often.  The emitter is a
+    # uniform loop over plan entries with no branch keyed on stage index or
+    # cell, so every shape is already swept exhaustively at the smallest
+    # arity where it appears.  Sweeping n=11 cost 99.4s to re-prove that.
     @pytest.mark.parametrize(
         "n",
         [
             pytest.param(9, marks=pytest.mark.slow),
             pytest.param(10, marks=pytest.mark.slow),
-            pytest.param(11, marks=pytest.mark.slow),
         ],
     )
     def test_wide_arity_is_exact(self, n: int) -> None:
@@ -683,6 +691,27 @@ class TestParameterizedNoComment:
         renderable -- each table below is run through the interpreter for
         all ``2**n`` combinations.
         """
+        self._check_wide_arity(n, range(2**n))
+
+    @pytest.mark.slow  # ~3s: the same decode at n=11, sampled
+    def test_the_widest_arity_is_exact_on_sampled_rows(self) -> None:
+        """The n=11 decode is checked where a stage boundary can go wrong.
+
+        The rows are chosen rather than swept: every single-bit index, the
+        all-zero and all-one rows, and both sides of each byte boundary --
+        which is where a composed skip hands off between stages -- plus a
+        stride through the rest so no region goes unvisited.
+        """
+        n = 11
+        rows = {0, 2**n - 1}
+        rows.update(1 << i for i in range(n))
+        for edge in (255, 511, 1023, 2047):
+            rows.update({edge - 1, edge, edge + 1} & set(range(2**n)))
+        rows.update(range(0, 2**n, 41))
+        self._check_wide_arity(n, sorted(rows))
+
+    def _check_wide_arity(self, n: int, rows: Iterable[int]) -> None:
+        """Run the four probe tables at arity ``n`` over ``rows``."""
         from esolangs.tools.boolean import parameterized
 
         tables = {
@@ -691,9 +720,10 @@ class TestParameterizedNoComment:
             "constant": "0" * (2**n),
             "and": "0" * (2**n - 1) + "1",
         }
+        rows = list(rows)
         for name, table in tables.items():
             template = parameterized.nocomment(table)
-            for combo in range(2**n):
+            for combo in rows:
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = self.run_nocomment(self.instantiate(template, bits))
                 assert got == table[combo], f"{name} n={n} inputs {bits}"
@@ -2063,6 +2093,28 @@ class TestEvalBoolean:
             improved += dispatched < staged
         assert improved == 114
 
+    def test_reorder_cost_selects_the_emitted_template(self) -> None:
+        """The pricing model matches every candidate and picks the shortest."""
+        from esolangs.tools import boolean
+        from esolangs.tools.boolean.helpers import permute_truth_table
+        from esolangs.tools.boolean.parameterized import (
+            _eval_cost,
+            _eval_ordered,
+            _eval_stack_programs,
+        )
+
+        for n in (1, 2, 3):
+            for value in range(2 ** (2**n)):
+                table = format(value, f"0{2**n}b")
+                costs = []
+                for arrangement, ops in _eval_stack_programs(n).items():
+                    permuted = permute_truth_table(table, tuple(reversed(arrangement)))
+                    assert _eval_cost(permuted, ops) == len(
+                        _eval_ordered(permuted, ops)
+                    )
+                    costs.append(_eval_cost(permuted, ops))
+                assert len(boolean.eval(table)) == min(costs)
+
     def test_reorder_ops_run_outside_the_placeholders(self) -> None:
         """The rearrangement is emitted code, not a change to the fills.
 
@@ -2601,6 +2653,13 @@ class TestParameterizedOneTwoThree:
             build would; here that only means "not this law", so the
             raise is caught rather than propagated.
             """
+            # pylint: disable=duplicate-code
+            # The overlap with ``_separated``'s replay is the point, not
+            # an oversight: this test re-derives the shipped constants,
+            # so it has to replay the law independently.  Sharing a
+            # helper would check the generator against itself and a bug
+            # in the replay would pass here, so the copy stays and the
+            # similarity check is told so rather than left to fail in CI.
             _work[0] = _WORK_BUDGET
             try:
                 b = _Builder(n)
