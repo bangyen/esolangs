@@ -52,8 +52,10 @@ operation.
 * **Invalid runtime operations** -- an undeclared variable, a redeclared
   one, division by zero, a non-integral or out-of-range list index, a type
   mismatch, ``out`` of a value that is not a character number, a guard that
-  is not ``left``/``right``, an unknown function, and exceeding the call
-  depth cap -- raise ``HaltError``.
+  is not ``left``/``right``, and an unknown function -- raise
+  ``HaltError``.  There is no call-depth cap: a call pushes a walker, so
+  runaway recursion grows the heap rather than Python's stack, and that
+  class is the wall-clock ``timeout``'s to catch.
 * **``wait`` is a nop.**  Its argument is evaluated (so an error in it still
   fires) and discarded: a real sleep is unobservable through this repo's I/O
   and would hang the suite.
@@ -67,13 +69,10 @@ operation.
   ``esolangs.run``'s wall-clock ``timeout`` is for.  ``grapheme.py``
   documents removing exactly such a budget, as duplicating that timeout.
 
-  One limit of that comes from calls being run inline: a *callee* that
-  rings forever walks inside the caller's single ``step()``, so its
-  repeating state never reaches ``snapshot`` and the cycle detector cannot
-  see it -- only the wall clock ends it.  A ring in the *entry* function is
-  proved, as above.  Framing calls the way ``lamfunc.py`` and ``dinac.py``
-  do would close this; it is not done here, and saying so is the honest
-  version of what ``myscript.py`` records about the same shape.
+  That holds inside a called function too: a call *pushes* a walker rather
+  than running the callee in the caller's step, so a callee that rings
+  forever reaches ``snapshot`` on every command and is proved the same
+  way.  ``lamfunc.py`` and ``dinac.py`` frame calls for the same reason.
 """
 
 import sys
@@ -129,18 +128,59 @@ _RESERVED = frozenset(
     }
 )
 
-# Depth cap on nested calls: a function that calls itself unconditionally
-# would otherwise exhaust the Python stack with a RecursionError rather
-# than a HaltError.  A call runs its callee inside the caller's frame
-# (``_user_call`` -> while -> ``step`` -> eval -> ``_call``), so it is
-# native recursion and the cap has to beat Python's own limit.
-#
-# Measured, not guessed: one language-level call costs 6 Python frames, so
-# the 1000-frame default dies at language depth 164 -- and this cap was
-# 200, which meant it never fired and the RecursionError it documents
-# preventing was what a runaway program actually got.  100 leaves ~400
-# frames of headroom for the expression nesting above the call.
-_CALL_DEPTH_CAP = 100
+#: The four functions the language supplies.  Everything else a call
+#: names is a ``func`` on the grid, which ``step`` runs by pushing a
+#: walker rather than by evaluating it in place.
+_BUILTINS = ("at", "len", "trunc", "sign")
+
+# There is no call-depth cap.  A call pushes a walker rather than running
+# the callee inside the caller's step, so a runaway program grows the
+# walker list on the heap and never touches Python's stack.  That class
+# revisits no state, so it is what ``esolangs.run``'s wall-clock
+# ``timeout`` is for -- the reasoning ``grapheme.py`` records.
+
+
+class _Walker:
+    """One walk in progress: where it is, what it can see, and its call.
+
+    A call is a *separate walk* with its own pointer and namespace, which
+    is what makes the Evil Hack -- a function's code sharing cells with
+    the caller's -- need nothing special: whoever is walking reads the
+    cell in their own direction.
+
+    ``pending`` is the current command's expression with the calls that
+    have already returned rewritten into it as literals, and ``returned``
+    the value a just-finished callee is handing back.  Both are what let a
+    call inside an expression suspend: the command is re-entered once per
+    call it contains, each time with one more resolved.
+    """
+
+    __slots__ = ("col", "heading", "pending", "returned", "row", "vars")
+
+    def __init__(
+        self,
+        row: int,
+        col: int,
+        heading: tuple[int, int],
+        variables: dict[str, "_Value"],
+    ) -> None:
+        self.row = row
+        self.col = col
+        self.heading = heading
+        self.vars = variables
+        self.pending: _Expr | None = None
+        self.returned: _Value | None = None
+
+    def key(self) -> tuple[object, ...]:
+        """Return the walker as a hashable value for :meth:`snapshot`."""
+        return (
+            self.row,
+            self.col,
+            self.heading,
+            _freeze(self.vars),
+            _freeze(self.pending),
+            _freeze(self.returned),
+        )
 
 
 def _grid(code: list[str]) -> list[str]:
@@ -503,13 +543,14 @@ def _index(value: _Value) -> int:
 
 
 class _Machine:
-    """Per-run Alight state: the grid, the pointer, and the variable frames.
+    """Per-run Alight state: the grid and a stack of walks in progress.
 
-    ``step()`` reads and executes exactly one command, leaving the pointer on
-    the cell the next command starts at.  A function call runs to completion
-    inside the step that made it -- the callee is a separate walk with its own
-    pointer and namespace -- so ``snapshot`` describes the caller between
-    commands, never mid-call.
+    ``step()`` reads and executes exactly one command of the innermost
+    walk, leaving its pointer on the cell the next command starts at.  A
+    function call *pushes* a walker rather than running the callee inside
+    the step that made it, so every command of every function reaches
+    ``snapshot`` and a loop inside a called function is provable by
+    :func:`esolangs.vm.run_until_halt_or_cycle`.
     """
 
     def __init__(self, code: list[str] | str, io: IO) -> None:
@@ -526,19 +567,49 @@ class _Machine:
         drow, dcol = heading
         # The walk resumes from just past ``begin``'s last character; the
         # ``;`` that terminates it is the first thing ``_scan`` will see.
-        self.row = row + 5 * drow
-        self.col = col + 5 * dcol
-        self.heading = heading
-        self.vars: dict[str, _Value] = {}
-        self.depth = 0
+        self.walkers = [_Walker(row + 5 * drow, col + 5 * dcol, heading, {})]
+
+    @property
+    def walker(self) -> _Walker:
+        """The innermost walk: the one ``step`` advances."""
+        return self.walkers[-1]
+
+    @property
+    def row(self) -> int:
+        return self.walker.row
+
+    @row.setter
+    def row(self, value: int) -> None:
+        self.walker.row = value
+
+    @property
+    def col(self) -> int:
+        return self.walker.col
+
+    @col.setter
+    def col(self, value: int) -> None:
+        self.walker.col = value
+
+    @property
+    def heading(self) -> tuple[int, int]:
+        return self.walker.heading
+
+    @heading.setter
+    def heading(self, value: tuple[int, int]) -> None:
+        self.walker.heading = value
+
+    @property
+    def vars(self) -> dict[str, _Value]:
+        """The innermost walk's namespace, which a call does not share."""
+        return self.walker.vars
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
+        # Every walker, not only the innermost: a callee that returns to a
+        # caller standing somewhere else is a different state, and a lap
+        # that consumed a line is not a repeat.
         return (
-            self.row,
-            self.col,
-            self.heading,
-            _freeze(self.vars),
+            tuple(walker.key() for walker in self.walkers),
             self.halted,
             self.io.position(),
         )
@@ -564,17 +635,110 @@ class _Machine:
 
     @property
     def stack(self) -> list[object]:
-        """No operand stack in this language."""
-        return []
+        """The suspended callers, outermost first.
+
+        Alight has no *operand* stack, but a call is a walker now, so
+        there is something to observe: each entry is the cell its caller
+        is waiting on.
+        """
+        return [(w.row, w.col) for w in self.walkers[:-1]]
+
+    def _reduce(self, expr: _Expr) -> tuple[_Expr, str | None]:
+        """Resolve calls left to right, stopping at the first user one.
+
+        Returns the rewritten expression and the name of the user call to
+        push, or None when nothing is left to run.  Every call it passes
+        -- **builtins included** -- is replaced by its value, so an
+        effectful ``at{l, i, v}`` runs exactly once no matter how many
+        times the command is re-entered.  Re-evaluating the whole
+        expression instead would fire it once per contained call:
+        measured, ``set v at{l,0.5,67}+f{1}+g{2}`` would write three
+        times.
+
+        Left to right, innermost first, which is ``_eval``'s own order --
+        so which ``HaltError`` fires first, and the order of any output a
+        callee prints, are both unchanged.
+        """
+        tag = expr[0]
+        if tag in ("num", "special", "var", "val"):
+            return expr, None
+        if tag == "not":
+            inner, pending = self._reduce(cast(_Expr, expr[1]))
+            return ("not", inner), pending
+        if tag == "bin":
+            left, pending = self._reduce(cast(_Expr, expr[2]))
+            if pending is not None:
+                return ("bin", expr[1], left, expr[3]), pending
+            right, pending = self._reduce(cast(_Expr, expr[3]))
+            return ("bin", expr[1], left, right), pending
+        if tag == "list":
+            items: list[_Expr] = []
+            rest = list(cast(list[_Expr], expr[1]))
+            while rest:
+                item, pending = self._reduce(rest.pop(0))
+                items.append(item)
+                if pending is not None:
+                    return ("list", [*items, *rest]), pending
+            return ("list", items), None
+        args: list[_Expr] = []
+        rest = list(cast(list[_Expr], expr[2]))
+        while rest:
+            arg, pending = self._reduce(rest.pop(0))
+            args.append(arg)
+            if pending is not None:
+                return ("call", expr[1], [*args, *rest]), pending
+        name = cast(str, expr[1])
+        if name not in _BUILTINS:
+            return ("call", name, args), name
+        # A builtin with every argument resolved: run it now and keep the
+        # value, so a re-entry never runs it again.
+        return ("val", _builtin(name, [self._eval(a) for a in args])), None
+
+    def _resolve(self, text: str, word: str) -> bool:
+        """Push a walker for the command's next unresolved call, if any.
+
+        Returns whether this step was spent starting a call, in which case
+        the command stays put and is re-entered once the value is in.
+        """
+        walker = self.walker
+        if word not in ("turn", "skip", "wait", "set", "end") and not _is_call(
+            text, word
+        ):
+            return False
+        if walker.pending is None:
+            expr = _command_expr(text, word)
+            if expr is None:
+                return False
+            walker.pending = expr
+        if walker.returned is not None:
+            walker.pending = _substitute_first(walker.pending, walker.returned)
+            walker.returned = None
+        walker.pending, name = self._reduce(walker.pending)
+        if name is None:
+            return False
+        call = _first_call(walker.pending, name)
+        self._push_call(name, [self._eval(a) for a in cast(list[_Expr], call[2])])
+        return True
 
     def step(self) -> None:
-        """Execute one command, leaving the pointer at the next one's start."""
+        """Execute one command, leaving the pointer at the next one's start.
+
+        A command holding calls takes more than one step: each step runs
+        the leftmost-innermost user call by *pushing* a walker for it, and
+        the value comes back rewritten into ``pending`` as a literal.  The
+        command itself runs on the step where none is left, so no part of
+        an Alight program executes inside another command's step.
+        """
         if self.halted:
             return
         text, row, col = _scan(self.grid, self.row, self.col, self.heading)
         word = _Parser(text).word()
         if word == "end":
-            self.halted = True
+            if self._resolve(text, word):
+                return
+            self._finish(text)
+            return
+        if self._resolve(text, word):
             return
         heading = self.heading
         if word == "turn":
@@ -588,21 +752,37 @@ class _Machine:
         else:
             self._exec(text, word)
         drow, dcol = heading
+        self.walker.pending = None
+        self.walker.returned = None
         self.row, self.col, self.heading = row + drow, col + dcol, heading
         if not self._in_bounds(self.row, self.col):
             raise HaltError("walked off the grid")
+
+    def _finish(self, text: str) -> None:
+        """Run an ``end``: halt the program, or return from a call."""
+        value = self._return_value(text)
+        if len(self.walkers) == 1:
+            self.halted = True
+            return
+        self.walkers.pop()
+        self.walker.returned = value
 
     def _in_bounds(self, row: int, col: int) -> bool:
         return 0 <= row < len(self.grid) and 0 <= col < len(self.grid[0])
 
     def _eval_rest(self, text: str, word: str) -> _Value:
-        """Parse and evaluate the expression following a keyword."""
+        """Evaluate the expression following a keyword.
+
+        The parse still happens, so a trailing-text error is raised where
+        it always was; the *value* comes from ``pending``, which holds the
+        same expression with its calls already resolved.
+        """
         p = _Parser(text)
         p.word()
         expr = _parse_expr(p)
         if not p.at_end():
             raise ValueError(f"trailing text after {word!r} expression: {text!r}")
-        return self._eval(expr)
+        return self._eval(self.walker.pending or expr)
 
     def _exec(self, text: str, word: str) -> None:
         """Run one non-control command."""
@@ -629,7 +809,7 @@ class _Machine:
             expr = _parse_expr(p)
             if not p.at_end():
                 raise ValueError(f"trailing text in set: {text!r}")
-            self.vars[name] = self._eval(expr)
+            self.vars[name] = self._eval(self.walker.pending or expr)
             return
         if word == "inp":
             self.vars[self._existing(text)] = self._read()
@@ -652,7 +832,12 @@ class _Machine:
             p.pos += 1
             args = _parse_args(p, "}")
             if p.at_end():
-                self._call(word, [self._eval(a) for a in args])
+                # ``pending`` already holds this call resolved -- including
+                # the builtin's own effect, run once by ``_reduce``.
+                if self.walker.pending is not None:
+                    self._eval(self.walker.pending)
+                else:
+                    self._call(word, [self._eval(a) for a in args])
                 return
         raise ValueError(f"unknown command {word!r} in {text!r}")
 
@@ -704,6 +889,10 @@ class _Machine:
         tag = expr[0]
         if tag == "num":
             return cast(float, expr[1])
+        if tag == "val":
+            # A call ``_reduce`` already ran, carrying its value so that a
+            # re-entry of this command does not run it a second time.
+            return cast(_Value, expr[1])
         if tag == "special":
             return cast(_Special, expr[1])
         if tag == "var":
@@ -728,21 +917,24 @@ class _Machine:
         return self._call(cast(str, expr[1]), args)
 
     def _call(self, name: str, args: list[_Value]) -> _Value:
-        """Apply a builtin or a grid-defined function."""
-        if name in ("at", "len", "trunc", "sign"):
-            return _builtin(name, args)
-        return self._user_call(name, args)
+        """Apply a builtin.  A user call never reaches here.
 
-    def _user_call(self, name: str, args: list[_Value]) -> _Value:
-        """Run a ``func`` defined on the grid, in a fresh namespace.
+        ``step`` resolves every user call by pushing a walker for it and
+        rewriting its value into the expression, so what survives to
+        evaluation is builtins alone.
+        """
+        if name in _BUILTINS:
+            return _builtin(name, args)
+        raise HaltError(f"unresolved call to {name!r}")
+
+    def _push_call(self, name: str, args: list[_Value]) -> None:
+        """Start a user call by pushing a walker for its body.
 
         The callee is a separate walk with its own pointer and variables, so
         the Evil Hack -- a function's code sharing cells with the caller's --
         needs nothing special: whoever is walking reads the cell in their own
         direction and keeps their own frame until they hit an ``end``.
         """
-        if self.depth >= _CALL_DEPTH_CAP:
-            raise HaltError(f"call depth exceeded {_CALL_DEPTH_CAP}")
         found = _find_func(self.grid, name)
         if found is None:
             raise HaltError(f"no such function: {name!r}")
@@ -751,25 +943,17 @@ class _Machine:
             raise HaltError(
                 f"function {name!r} takes {len(params)} arguments, got {len(args)}"
             )
-        callee = object.__new__(_Machine)
-        callee.grid = self.grid
-        callee.io = self.io
-        callee.halted = False
-        callee.row, callee.col, callee.heading = row, col, heading
-        callee.vars = dict(zip(params, args, strict=True))
-        callee.depth = self.depth + 1
-        while not callee.halted:
-            text, prow, pcol = _scan(
-                callee.grid, callee.row, callee.col, callee.heading
-            )
-            if _Parser(text).word() == "end":
-                return callee._return_value(text)  # noqa: SLF001 - same class
-            callee.step()
-            del prow, pcol
-        return "nil"  # pragma: no cover - the loop returns at the ``end``
+        self.walkers.append(
+            _Walker(row, col, heading, dict(zip(params, args, strict=True)))
+        )
 
     def _return_value(self, text: str) -> _Value:
-        """Evaluate the expression an ``end <value>`` returns, or ``nil``."""
+        """Evaluate the expression an ``end <value>`` returns, or ``nil``.
+
+        Like the other commands, the value comes from ``pending`` when
+        there is one -- ``end inner{n}+1`` holds a call, and that call is
+        resolved by a pushed walker before this runs.
+        """
         p = _Parser(text)
         p.word()
         if p.at_end():
@@ -777,7 +961,7 @@ class _Machine:
         expr = _parse_expr(p)
         if not p.at_end():
             raise ValueError(f"trailing text after end value: {text!r}")
-        return self._eval(expr)
+        return self._eval(self.walker.pending or expr)
 
 
 def _builtin(name: str, args: list[_Value]) -> _Value:
@@ -883,6 +1067,109 @@ def _turned(heading: _Heading, *, left: bool) -> _Heading:
     return _CLOCKWISE[(i - 1) % 4] if left else _CLOCKWISE[(i + 1) % 4]
 
 
+def _is_call(text: str, word: str) -> bool:
+    """Whether a command is a bare call, run for its effect."""
+    p = _Parser(text)
+    p.word()
+    return bool(word) and word not in _RESERVED and p.peek() == "{"
+
+
+def _command_expr(text: str, word: str) -> "_Expr | None":
+    """Return the expression a command evaluates, or None if it has none.
+
+    ``var``/``inp``/``out`` name a variable and evaluate nothing; ``set``
+    names one and then evaluates; the rest are a keyword and an
+    expression, or a bare call which is itself the expression.
+    """
+    p = _Parser(text)
+    p.word()
+    if word == "set":
+        p.word()
+    elif word not in ("turn", "skip", "wait", "end"):
+        if not _is_call(text, word):
+            return None
+        p = _Parser(text)  # a bare call: parse the whole command
+    if word == "end" and p.at_end():
+        return None
+    return _parse_expr(p)
+
+
+def _substitute_first(expr: "_Expr", value: "_Value") -> "_Expr":
+    """Replace the leftmost unresolved ``call`` node with ``value``.
+
+    The leftmost remaining call *is* the one that just returned: a walker
+    is pushed for it and nothing else runs until it does, so no identity
+    tracking is needed.
+    """
+    replaced, _ = _replace_first(expr, value)
+    return replaced
+
+
+def _replace_first(expr: "_Expr", value: "_Value") -> tuple["_Expr", bool]:
+    """Return ``expr`` with its first call replaced, and whether one was."""
+    tag = expr[0]
+    if tag in ("num", "special", "var", "val"):
+        return expr, False
+    if tag == "not":
+        inner, done = _replace_first(cast(_Expr, expr[1]), value)
+        return ("not", inner), done
+    if tag == "bin":
+        left, done = _replace_first(cast(_Expr, expr[2]), value)
+        if done:
+            return ("bin", expr[1], left, expr[3]), True
+        right, done = _replace_first(cast(_Expr, expr[3]), value)
+        return ("bin", expr[1], left, right), done
+    if tag == "list":
+        items = list(cast(list[_Expr], expr[1]))
+        for i, item in enumerate(items):
+            items[i], done = _replace_first(item, value)
+            if done:
+                return ("list", items), True
+        return ("list", items), False
+    args = list(cast(list[_Expr], expr[2]))
+    for i, arg in enumerate(args):
+        args[i], done = _replace_first(arg, value)
+        if done:
+            return ("call", expr[1], args), True
+    return ("val", value), True
+
+
+def _first_call(expr: "_Expr", name: str) -> "_Expr":
+    """Return the leftmost ``call`` node to ``name`` in ``expr``.
+
+    ``_reduce`` has already replaced every call to its left, so this is
+    the one it stopped at.
+    """
+    found = _first_call_or_none(expr, name)
+    if found is None:  # pragma: no cover - _reduce just found one
+        raise HaltError(f"lost the pending call to {name!r}")
+    return found
+
+
+def _first_call_or_none(expr: "_Expr", name: str) -> "_Expr | None":
+    """Return the leftmost ``call`` to ``name``, or None if there is none."""
+    tag = expr[0]
+    if tag in ("num", "special", "var", "val"):
+        return None
+    if tag == "not":
+        return _first_call_or_none(cast(_Expr, expr[1]), name)
+    if tag == "bin":
+        return _first_call_or_none(cast(_Expr, expr[2]), name) or _first_call_or_none(
+            cast(_Expr, expr[3]), name
+        )
+    if tag == "list":
+        for item in cast(list[_Expr], expr[1]):
+            found = _first_call_or_none(item, name)
+            if found is not None:
+                return found
+        return None
+    for arg in cast(list[_Expr], expr[2]):
+        found = _first_call_or_none(arg, name)
+        if found is not None:
+            return found
+    return expr if expr[1] == name else None
+
+
 def _freeze(value: object) -> object:
     """Return a hashable copy of a value, for :meth:`_Machine.snapshot`.
 
@@ -893,6 +1180,12 @@ def _freeze(value: object) -> object:
     if isinstance(value, dict):
         return tuple(sorted((k, _freeze(v)) for k, v in value.items()))
     if isinstance(value, list):
+        return tuple(_freeze(v) for v in value)
+    if isinstance(value, tuple):
+        # A pending expression is a tuple *tree* whose leaves can be live
+        # lists -- a ``("list", [...])`` node, or a ``("val", <list>)`` an
+        # evaluated ``at`` left behind.  Returning it unchanged would bank
+        # a snapshot that a later mutation silently rewrites.
         return tuple(_freeze(v) for v in value)
     return value
 
