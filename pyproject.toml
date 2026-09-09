@@ -93,20 +93,15 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
-"**/__main__.py" = ["E402"]
 # The leak sweep imports the package under test, so it has to extend
 # sys.path before those imports can resolve.
 "scripts/verify_no_exception_leaks.py" = ["E402"]
 # The badge is a single multi-line SVG template string; its long lines are
 # part of the generated markup and cannot be wrapped without changing it.
 "scripts/make_coverage_badge.py" = ["E501"]
-# Module filenames match the esolang names and are referenced by the registry.
-"src/esolangs/interpreters/**/*.py" = ["N999"]
 # Test files are exempt from docstring requirements: test method and class
 # names are self-documenting, so the D rules would only add boilerplate.
 "tests/**/*.py" = ["D", "N802"]
-# Parametrized tests share a (program, stdin) battery; some tests only use
-# program, but pytest requires the parameter to be declared.
 # CV(N)(C)'s source code *is* IPA, so the ambiguous-unicode rules fire on
 # every command in the language: the fricative is U+03B8 GREEK SMALL LETTER
 # THETA, the multiplication plosive U+0261 LATIN SMALL LETTER SCRIPT G, and
