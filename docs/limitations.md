@@ -90,6 +90,68 @@ Current caps are deliberate:
   1.09x at n=4. The screen's slack is arity-dependent and measured, not
   derived — 6 at n<=3 but 9 at n=4 — so the counts are lower bounds.
 
+## Assessed and rejected
+
+- **Pinyin** ([wiki](https://esolangs.org/wiki/Pinyin)) — rejected: the
+  command triples are not pinnable to any deterministic reading, and the
+  wiki's own truth machine is unreachable under all of them.
+
+  A command is a Chinese character; its tone picks the IP turn, its consonant
+  a guard, its vowel a stack operation. Nothing in the repo or the page maps a
+  character to a reading, so the table has to come from a pronunciation
+  database, and the page's selection rule — smallest tone, then
+  lexicographically smallest pinyin — **contradicts its own examples**.
+  Applied over the full heteronym set it changes the tone, hence the routing,
+  on 8 of the 23 Hello, world! characters: 邓 becomes `shan1` (turn) where the
+  program needs `deng4` (straight, push stack size), and 但 兑 兔 待 淡 漏 道
+  likewise. The rule reproduces the page's own five-row worked example
+  perfectly (一 二 的 我 人, 5/5), so it is the *rule* that is example-hostile,
+  not the reading source.
+
+  Routing itself pins cleanly and was worth establishing: start at (0,0)
+  facing right; the vowel effect runs, then the tone turns, and only when the
+  consonant guard passes; the top and left edges deflect as in Nopfunge Solid;
+  outside the written lines is blank, not Nopfunge Solid's infinite tiling;
+  and escaping right or below halts. Under that model with common readings,
+  Hello, world! emits `Qᮓ\t\tᮟè World!`, whose tail is exact up to the capital
+  `W`; the page never states its output string, so that scores 7/13 against
+  `Hello, World!` and 6/13 against its own lowercase section title. The tail is
+  what fixes the model, and it also settles the duplicated `ui` row in favour
+  of `b**a` over `a^b`, since `a^b` breaks it.
+
+  It does not fix the programs. Searching every dictionary reading of every
+  character crossed with the five open spec-gap choices (`ui` as power or
+  xor, `iu` literal or reduced, EOF halts or pushes 0, division by zero halts
+  or pushes 0, tone applied on a failed guard or not) reproduces the cat and
+  the trivial half of the truth machine, and nothing else:
+
+  | Example | Runs | Reproductions | Best |
+  | --- | --- | --- | --- |
+  | Truth machine, input 1 | 384 | **0** | 39/40 — `110111…`, a stray `0` third |
+  | Truth machine, input 0 | 384 | 192 | exact |
+  | Cat | 384 | 64 | exact, only where EOF halts |
+
+  Input 1 is the falsifier, and it is exhaustive: the half that makes a truth
+  machine a truth machine is one output character wrong under every one of its
+  384 readings, and no spec-gap choice moves it. Hello, world! reproduces no
+  better — its common-reading assignment, the only one matching the author's
+  evident intent, is the 7/13 above, tail right and prefix wrong — but
+  its 1,327,104-run sweep was not carried to completion, so no exhaustive
+  claim is made for it.
+
+  The page also defines `ui` twice (`b**a` and `a^b`) and gives `h` and `j`
+  the same condition, never corrected; the examples were added by a third party
+  (Cleverxia, "fix yet again"), never confirmed by the author, who left the
+  proofs "as an exercise to the reader"; the page is `Category:Unimplemented`.
+
+  Cost is not the objection. A two-input boolean program is **4 characters,
+  12 bytes** — `业业但乍` (`ye4` read integer, twice; `dan4` multiply; `zha4`
+  print integer), straight-line at tone 4, halting by escaping the right edge.
+  Executed over the full truth table it is correct 4/4 for AND, and `业业令乍`
+  4/4 for OR, under common readings; AND also holds under the spec's own
+  selection rule. The language would price well. It fails CONTRIBUTING's
+  "stable, deterministic, verifiable" bar on the spec, not on the generator.
+
 ## Spec and engine boundaries
 
 - 6-5's interpreter accepts operands outside the specification; generators

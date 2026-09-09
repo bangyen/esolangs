@@ -23,8 +23,11 @@ testable boolean-generator route. The assessed-and-rejected ledger is in
   examples.
 - **Interprogck8:** establish whether `DownAccLines` can route a full
   decision tree through its single current-function slot.
-- **Pinyin:** re-audit and price a real two-input program before scheduling;
-  required phonetic command triples and routing semantics are still unpinned.
+- ~~**Pinyin**~~ — audited and rejected; see
+  [`docs/limitations.md`](limitations.md). Routing pinned and the two-input
+  program prices at 4 characters, but the triples do not: the page's own
+  selection rule reroutes 8 of 23 Hello, world! characters, and its truth
+  machine on input 1 is unreachable under all 384 readings.
 
 ## Research
 
