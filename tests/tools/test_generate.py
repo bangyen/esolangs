@@ -82,19 +82,15 @@ def roundtrip_language(language: Any, program: str) -> str:
     """Run ``program`` through the interpreter its language registers.
 
     The width contract is swept from the registry rather than from a list of
-    imports, so it needs a runner keyed the same way.  Container exits rather
-    than returning, which is deliberate, so ``SystemExit`` is caught here.
+    imports, so it needs a runner keyed the same way.
     """
     import io
     from contextlib import redirect_stdout
 
     module = importlib.import_module("esolangs.interpreters." + language.interpreter)
     buffer = io.StringIO()
-    try:
-        with redirect_stdout(buffer):
-            module.run(program.splitlines() if language.split else program, io=IO())
-    except SystemExit:
-        pass
+    with redirect_stdout(buffer):
+        module.run(program.splitlines() if language.split else program, io=IO())
     return buffer.getvalue()
 
 
@@ -1535,10 +1531,8 @@ class TestGeneratorRoundTrips:
         import contextlib
         import io
 
-        import pytest
-
         buffer = io.StringIO()
-        with pytest.raises(SystemExit), contextlib.redirect_stdout(buffer):
+        with contextlib.redirect_stdout(buffer):
             container_run(gen.container("Hi").splitlines(), io=IO())
         assert buffer.getvalue() == "Hi"
 

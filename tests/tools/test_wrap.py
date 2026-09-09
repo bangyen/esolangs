@@ -14,7 +14,7 @@ must come back unwrapped rather than subtly broken.
 import importlib
 import io
 import re
-from contextlib import redirect_stdout, suppress
+from contextlib import redirect_stdout
 
 import pytest
 
@@ -124,7 +124,7 @@ def _run(name: str, program: str) -> str:
     run = importlib.import_module("esolangs.interpreters." + lang.interpreter).run
     argument = program.splitlines() if lang.split else program
     buffer = io.StringIO()
-    with redirect_stdout(buffer), suppress(SystemExit):
+    with redirect_stdout(buffer):
         run(argument, io=IO())
     return buffer.getvalue()
 
