@@ -1305,15 +1305,21 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # width(level)`` on the zero subtree.  The load block occupies ``2n``
     # commands ahead of the tree, which is where the indices start, so the
     # ``GOTO`` operands are right after substitution.
-    tree = decision_tree_tokens(
-        truth_table,
-        lambda _level, row: leaf(truth_table[row]),
-        lambda level, zero, one, at: [
+    def leaf_tokens(_level: int, row: int) -> list[str]:
+        return leaf(truth_table[row])
+
+    def node(level: int, zero: list[str], one: list[str], at: int) -> list[str]:
+        return [
             *rotations[level],
             f"GOTO {at + width(level) + len(zero)}",
             *zero,
             *one,
-        ],
+        ]
+
+    tree = decision_tree_tokens(
+        truth_table,
+        leaf_tokens,
+        node,
         parent_width=width,
         start=2 * n,
         collapse=True,
