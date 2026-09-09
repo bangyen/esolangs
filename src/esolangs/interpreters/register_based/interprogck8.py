@@ -62,6 +62,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass, replace
+from typing import cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -337,6 +338,17 @@ def _advance(
     return _advance_cursor(state), out
 
 
+#: A ``_State`` flattened for the branching search: the same five fields,
+#: without the output the search deliberately drops.
+type _BranchState = tuple[
+    tuple[str, ...],
+    int,
+    int,
+    tuple[str, ...] | None,
+    tuple[tuple[tuple[str, ...], int], ...],
+]
+
+
 class _Pinned:
     """A :class:`Randomness` answering every draw with one fixed value.
 
@@ -355,8 +367,7 @@ class _Pinned:
 
 def _branch_state(state: object) -> _State:
     """Rebuild a ``_State`` from a branching-search tuple."""
-    lines, ip, acc, slot, frames = state  # type: ignore[misc]
-    return _State(lines, ip, acc, slot, frames)
+    return _State(*cast("_BranchState", state))
 
 
 def _draw_range(line: str) -> int:
