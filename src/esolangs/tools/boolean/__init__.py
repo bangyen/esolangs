@@ -21,6 +21,7 @@ from esolangs.tools.boolean.circuit_diagram import circuit_diagram
 from esolangs.tools.boolean.cvnc import cvnc
 from esolangs.tools.boolean.fargo import fargo
 from esolangs.tools.boolean.inject import inject
+from esolangs.tools.boolean.interprogck8 import interprogck8
 from esolangs.tools.boolean.other import (
     between,
     bit_tilde,
@@ -135,6 +136,7 @@ __all__ = [
     "home_row",
     "inject",
     "instantiate",
+    "interprogck8",
     "jaune",
     "jaune_multiply",
     "lamfunc",

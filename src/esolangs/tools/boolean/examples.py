@@ -529,6 +529,11 @@ def _register() -> None:
             expected="0\n",
             note="send terminates each line, so the answer ends in a newline",
         ),
+        "interprogck8": _reader(
+            b.interprogck8,
+            "register_based.interprogck8",
+            split=True,
+        ),
         "circuit_diagram": _reader(
             b.circuit_diagram,
             "grid_based.circuit_diagram",
