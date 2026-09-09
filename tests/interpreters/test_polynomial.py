@@ -310,6 +310,136 @@ class TestPolynomialExecution:
             assert machine.reg == -1
 
 
+class TestPeelPrimePowerRoots:
+    """The prime-power peel is a head start and must never change the answer.
+
+    ``_factor_roots`` divides out real roots of the form ``p**v`` by Horner
+    evaluation before ``factor_list`` sees the polynomial.  A candidate is
+    accepted only because the polynomial vanishes there, so the factor is
+    genuine whatever wrote the program -- but the enumeration is bounded, and
+    what it misses has to survive in the remainder rather than disappear.
+    These check the shapes the peel cannot see, which are exactly the ones a
+    hand-written program may use.
+    """
+
+    @staticmethod
+    def _reference(coefficients: tuple[int, ...]) -> list[complex]:
+        """Recover roots the way the interpreter did before the peel."""
+        import math
+
+        import sympy as sp
+
+        x = sp.Symbol("x")
+        _, factors = sp.factor_list(sp.Poly.from_list(list(coefficients), x))
+        roots: list[complex] = []
+        for factor, multiplicity in factors:
+            degree = factor.degree()
+            if degree == 1:
+                a, b = (int(k) for k in factor.all_coeffs())
+                roots.extend([complex(-b // a, 0)] * multiplicity)
+            elif degree == 2:
+                a, b, c = (int(k) for k in factor.all_coeffs())
+                if a != 1 or b % 2:
+                    continue
+                real = -b // 2
+                q = c - real * real
+                if q < 0:
+                    continue
+                imag = math.isqrt(q)
+                if imag * imag != q:
+                    continue
+                roots.extend([complex(real, imag), complex(real, -imag)] * multiplicity)
+        return sorted(roots, key=lambda z: (z.imag, z.real))
+
+    @pytest.mark.parametrize(
+        "description",
+        [
+            "composite_root",
+            "prime_past_window",
+            "exponent_past_cap",
+            "negative_root",
+            "irreducible",
+            "repeated_prime_power",
+        ],
+    )
+    def test_roots_match_factoring_alone(self, description: str) -> None:
+        """Every shape the peel cannot enumerate still comes back."""
+        import sympy as sp
+
+        from esolangs.interpreters.register_based.polynomial import (
+            _PEEL_MAX_EXPONENT,
+            _factor_roots,
+        )
+
+        x = sp.Symbol("x")
+        # A composite root and a negative one are not prime powers; a large
+        # prime sits past the window the degree affords; and an exponent past
+        # the cap is a prime power the enumeration stops short of.
+        cases = {
+            "composite_root": (x - 6) * (x - 8) * ((x - 3) ** 2 + 16),
+            "prime_past_window": (x - int(sp.nextprime(10**4))) * (x - 4),
+            "exponent_past_cap": (x - 2 ** (_PEEL_MAX_EXPONENT + 4)) * (x - 9),
+            "negative_root": (x + 8) * (x - 8),
+            "irreducible": x**3 - x - 1,
+            "repeated_prime_power": (x - 8) ** 3 * (x - 27),
+        }
+        coefficients = tuple(
+            int(k) for k in sp.Poly(cases[description], x).all_coeffs()
+        )
+
+        _factor_roots.cache_clear()
+        recovered = sorted(_factor_roots(coefficients), key=lambda z: (z.imag, z.real))
+        assert recovered == self._reference(coefficients)
+
+    def test_peel_leaves_what_it_cannot_take(self) -> None:
+        """A root outside the enumeration stays in the remainder.
+
+        The soundness argument is that the peel is *incomplete*, never wrong,
+        so the remainder must still carry the roots it skipped -- asserting on
+        the returned pair rather than on the roots proves that directly.
+        """
+        import sympy as sp
+
+        from esolangs.interpreters.register_based.polynomial import (
+            _peel_prime_power_roots,
+        )
+
+        x = sp.Symbol("x")
+        # 8 is a prime power the peel takes; 6 is not, so it must remain.
+        poly = sp.Poly((x - 8) * (x - 6), x)
+        coefficients = [int(k) for k in poly.all_coeffs()]
+        peeled, remainder = _peel_prime_power_roots(coefficients)
+
+        assert peeled == [8]
+        # The remainder is the deflated quotient, x - 6.
+        assert remainder == [1, -6]
+
+    def test_peeled_roots_are_exact_factors(self) -> None:
+        """Anything peeled divides the polynomial with no remainder.
+
+        This is the whole licence for skipping ``factor_list`` on those
+        roots, so it is asserted rather than trusted: dividing the original
+        by every peeled factor must come out exact.
+        """
+        import sympy as sp
+
+        from esolangs.interpreters.register_based.polynomial import (
+            _peel_prime_power_roots,
+        )
+
+        x = sp.Symbol("x")
+        poly = sp.Poly((x - 2**3) * (x - 3**2) * (x - 5) * ((x - 4) ** 2 + 2**6), x)
+        coefficients = [int(k) for k in poly.all_coeffs()]
+        peeled, _remainder = _peel_prime_power_roots(list(coefficients))
+
+        assert peeled, "the polynomial has prime-power roots to take"
+        product = sp.Poly(1, x)
+        for root in peeled:
+            product = product * sp.Poly(x - root, x)
+        _quotient, rest = sp.div(poly, product)
+        assert rest == sp.Poly(0, x), f"peeled {peeled} is not an exact divisor"
+
+
 class TestPolynomialHighPrecisionRoots:
     """Wide codepoint deltas and pathological root spreads are recovered
     exactly by factoring the integer polynomial (no floating point)."""
