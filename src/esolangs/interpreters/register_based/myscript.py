@@ -227,6 +227,20 @@ class Scope:
         raise HaltError(f"assignment to undefined variable: {name}")
 
 
+#: A todo item's fields are ``object`` to the checker, since one tuple type
+#: covers every continuation shape.  :func:`_typed` narrows a field back to
+#: what the shape guarantees and raises if the machine ever built one wrong.
+#:
+#: A raise rather than an ``assert``: these hold up the whole transition, and
+#: an ``assert`` disappears under ``python -O``, which would turn a broken
+#: frame into a silent wrong answer instead of a stack trace.
+def _typed[T](value: object, kind: type[T]) -> T:
+    """Return ``value`` narrowed to ``kind``, raising if it is not one."""
+    if not isinstance(value, kind):
+        raise AssertionError(f"malformed frame: expected {kind.__name__}")
+    return value
+
+
 #: A pending evaluation step, or a continuation waiting on operands.
 #:
 #: ``("expr", tokens, pos)`` evaluates one prefix expression starting at
@@ -334,8 +348,7 @@ def _return_value(frames: _Frames, value: object) -> _Frames:
         kind = frames[-1][5]
         frames = frames[:-1]
         if isinstance(kind, tuple) and kind and kind[0] == "call":
-            end = kind[1]
-            assert isinstance(end, int)
+            end = _typed(kind[1], int)
             return _deliver(frames, value, end)
     return ()
 
@@ -389,18 +402,16 @@ def _resume(frames: _Frames, io: IO, scope: Scope) -> _Frames:
     head = item[0]
 
     if head == "expr":
-        tokens, pos = item[1], item[2]
-        assert isinstance(tokens, list)
-        assert isinstance(pos, int)
+        tokens = _typed(item[1], list)
+        pos = _typed(item[2], int)
         return _schedule_expr(_with(frames, rest, operands), tokens, pos, io, scope)
 
     if head == "apply":
-        name, base, wanted, tokens, start = item[1], item[2], item[3], item[4], item[5]
-        assert isinstance(base, int)
-        assert isinstance(wanted, int)
-        assert isinstance(tokens, list)
-        assert isinstance(start, int)
-        assert isinstance(name, str)
+        name = _typed(item[1], str)
+        base = _typed(item[2], int)
+        wanted = _typed(item[3], int)
+        tokens = _typed(item[4], list)
+        start = _typed(item[5], int)
         # ``base`` is where this call's own operands start.  Counting the
         # whole stack instead would fold in an enclosing call's finished
         # operands and satisfy the arity early.
@@ -413,13 +424,11 @@ def _resume(frames: _Frames, io: IO, scope: Scope) -> _Frames:
         return _deliver(_with(frames, rest, operands[:base]), value, end)
 
     if head == "ucall":
-        function, base, wanted = item[1], item[2], item[3]
-        tokens, start = item[4], item[5]
-        assert isinstance(function, _Function)
-        assert isinstance(base, int)
-        assert isinstance(wanted, int)
-        assert isinstance(tokens, list)
-        assert isinstance(start, int)
+        function = _typed(item[1], _Function)
+        base = _typed(item[2], int)
+        wanted = _typed(item[3], int)
+        tokens = _typed(item[4], list)
+        start = _typed(item[5], int)
         if len(operands) - base < wanted:
             pos = operands[-1][1] if len(operands) > base else start
             return _with(frames, (("expr", tokens, pos), item, *rest), operands)
@@ -434,10 +443,9 @@ def _resume(frames: _Frames, io: IO, scope: Scope) -> _Frames:
         )
 
     if head == "arr":
-        base, tokens, pos = item[1], item[2], item[3]
-        assert isinstance(base, int)
-        assert isinstance(tokens, list)
-        assert isinstance(pos, int)
+        base = _typed(item[1], int)
+        tokens = _typed(item[2], list)
+        pos = _typed(item[3], int)
         # ``base`` is where this display's items start on the operand stack,
         # so enclosing calls' operands below it are never miscounted.
         if len(operands) > base:
@@ -465,21 +473,19 @@ def _finish_statement(frames: _Frames, item: _Todo, scope: Scope) -> _Frames:
     base = _with(frames, todo[1:], kept)
 
     if kind == "declare":
-        name = item[2]
-        assert isinstance(name, str)
+        name = _typed(item[2], str)
         scope.declare(name, value)
         return base
     if kind == "assign":
-        name = item[2]
-        assert isinstance(name, str)
+        name = _typed(item[2], str)
         scope.assign(name, value)
         return base
     if kind == "return":
         return _return_value(base, value)
     if kind == "while":
-        tokens, children, rearm = item[2], item[3], item[4]
-        assert isinstance(tokens, list)
-        assert isinstance(children, list)
+        tokens = _typed(item[2], list)
+        children = _typed(item[3], list)
+        rearm = item[4]
         if _truthy(value):
             if rearm:
                 # Re-entering from the body frame's own re-check: restart it
@@ -492,13 +498,12 @@ def _finish_statement(frames: _Frames, item: _Todo, scope: Scope) -> _Frames:
         # frame, which simply carries on.
         return base[:-1] if rearm else base
     if kind == "check":
-        cases = item[2]
-        assert isinstance(cases, list)
+        cases = _typed(item[2], list)
         return _check_case(base, value, cases, scope)
     if kind == "case":
-        subject, cases, body = item[2], item[3], item[4]
-        assert isinstance(cases, list)
-        assert isinstance(body, list)
+        subject = item[2]
+        cases = _typed(item[3], list)
+        body = _typed(item[4], list)
         if subject == value:
             return (*base, _frame(body, scope))
         return _check_case(base, subject, cases, scope)
@@ -587,8 +592,7 @@ def _advance(frames: _Frames, io: IO) -> _Frames:
     if pos >= len(nodes):
         rest = frames[:-1]
         if isinstance(kind, tuple) and kind and kind[0] == "while":
-            tokens = kind[1]
-            assert isinstance(tokens, list)
+            tokens = _typed(kind[1], list)
             # Re-check the condition on the frame the body just finished on,
             # so a call inside the condition is stepped like any other.
             return (*rest, (nodes, 0, scope, _while_todo(tokens, nodes), (), kind))
