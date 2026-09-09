@@ -82,18 +82,21 @@ Generator = Callable[..., str]
 #                            it dumps final state when the program ends:
 #                            Back's tape, Bitdeque's deque, Minsky Swap's
 #                            registers, RAM0's machine, A Painter Ant's grid
-#                            raster.  The dump exists *because* there is no
-#                            I/O -- it is the consequence, not the channel,
-#                            and its format is the repo's choice, not the
-#                            spec's.  Each of those interpreters says so in
-#                            its module docstring.
-# - ``"none"``            -- no I/O and no dump either: nothing reaches the
-#                            caller at all.
+#                            raster, ArrowQueue's queue, Point Break's
+#                            variables.  The dump exists *because* there is
+#                            no I/O -- it is the consequence, not the
+#                            channel, and its format is the repo's choice,
+#                            not the spec's.  Each of those interpreters
+#                            says so in its module docstring.
 #
-# Naming the dump as though it were the language's own output mechanism got
-# this backwards, and made five languages read as having a channel when what
-# they have is a workaround for not having one.
-type Io = Literal["defined", "interpreter_only", "none"]
+# There is deliberately no third value for "emits nothing at all".
+# ArrowQueue and Point Break were it, on the grounds that a dump would cost
+# ArrowQueue's pure fold and that Point Break had no state worth printing.
+# Both were wrong: the dump belongs in the shell, where it leaves
+# ``_advance`` untouched, and Point Break carries variables exactly as
+# Minsky Swap carries registers.  A language with no I/O gets the
+# convention; being awkward to fit is not a category.
+type Io = Literal["defined", "interpreter_only"]
 
 # ``alphabet`` is what that channel can carry.  Declared rather than
 # inferred: "only prints numbers" is a semantic negative, not decidable by
@@ -108,7 +111,9 @@ type Io = Literal["defined", "interpreter_only", "none"]
 #                    text, because the emission has a fixed shape: a forced
 #                    trailing newline, whitespace tokenization with no
 #                    concatenation, a fixed-format dump, a grid raster.
-# - ``"none"``    -- nothing is emitted, so there is no alphabet.
+#
+# Every language emits something, so there is no "nothing" alphabet: the two
+# that used to claim one now dump like the rest.
 #
 # A text generator is required exactly when ``alphabet`` is ``"bytes"``;
 # ``io`` records why, and is what makes "the language defines no I/O" a fact
@@ -116,7 +121,7 @@ type Io = Literal["defined", "interpreter_only", "none"]
 # The two are independent: an interpreter-only dump can carry any alphabet,
 # and a language with a defined output command can still be numeric.
 # ``docs/limitations.md`` carries the per-language prose.
-type Alphabet = Literal["bytes", "numbers", "shaped", "none"]
+type Alphabet = Literal["bytes", "numbers", "shaped"]
 
 
 @dataclass(frozen=True)
@@ -230,8 +235,8 @@ LANGUAGES: dict[str, Language] = {
         id="arrowqueue",
         interpreter="grid_based.arrowqueue",
         split=True,
-        io="none",
-        alphabet="none",
+        io="interpreter_only",
+        alphabet="numbers",
     ),
     "Back": Language(
         "Back",
@@ -577,8 +582,8 @@ LANGUAGES: dict[str, Language] = {
         id="point_break",
         interpreter="register_based.point_break",
         split=True,
-        io="none",
-        alphabet="none",
+        io="interpreter_only",
+        alphabet="numbers",
     ),
     "Qoibl": Language(
         "Qoibl",

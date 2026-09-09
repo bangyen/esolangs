@@ -110,7 +110,7 @@ def bits_of(value: int) -> str:
 # the two in both directions: a language whose trait was dropped fails
 # rather than quietly rejoining the majority.
 DUMPS_ON_THE_POST_HALT_STEP = frozenset(
-    {"Minsky Swap", "RAM0", "Bitdeque", "LaserFuck"}
+    {"Minsky Swap", "RAM0", "Bitdeque", "LaserFuck", "ArrowQueue", "Point Break"}
 )
 
 # Languages with no self-halt at all: ``esolangs.run`` stops them from
@@ -164,7 +164,7 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Algebraic Programming Language": ("a + 1", "41\n"),
     "AddSubJump": ("-1 1 0 -7", ""),
     "Alight": ("begin;var c;set c 65;out c;end;", ""),
-    "ArrowQueue": ("~*+", ""),
+    "ArrowQueue": ("~*+", "0"),
     "BF-PDA": ("<@.", ""),
     "BFStack": (">+.", ""),
     "Back": ("-*", ""),
@@ -222,7 +222,7 @@ SAMPLES: dict[str, tuple[str, str]] = {
         "",
     ),
     "Painfuck": ("pp", ""),
-    "Point Break": ("LET zero:=0", ""),
+    "Point Break": ("LET zero:=0", "0"),
     "Polynomial": ("f(x) = x^2+4", ""),
     "Qoibl": ("we y we yyeeee we\ntt qe y qe tt", ""),
     "RAM0": ("ZA", ""),
