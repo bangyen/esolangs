@@ -672,7 +672,8 @@ def _value_key(value: object) -> tuple[object, ...]:
     """Capture a scalar or tape by content for an ancestor-entry key."""
     if isinstance(value, _Var):
         return ("var", value.kind, value.value)
-    assert isinstance(value, _Tape)  # nosec B101
+    if not isinstance(value, _Tape):
+        raise AssertionError("isinstance(value, _Tape)")
     return (
         "tape",
         value.fixed,

@@ -460,7 +460,8 @@ class _Parser:
             # ``_primary`` always builds an "apply" with a tuple of nodes,
             # so this narrowing cannot fail; it is spelled for the checker
             # and would be a malformed tree rather than a bad program.
-            assert isinstance(args, tuple)  # nosec B101
+            if not isinstance(args, tuple):
+                raise AssertionError("isinstance(args, tuple)")
             if expr[1] == "charPut":
                 if len(args) != 1:
                     raise ValueError("charPut takes exactly one argument")
@@ -475,7 +476,8 @@ class _Parser:
             index = None
             if target[0] == "apply":
                 slots = target[2]
-                assert isinstance(slots, tuple)  # nosec B101
+                if not isinstance(slots, tuple):
+                    raise AssertionError("isinstance(slots, tuple)")
                 index = slots[0] if slots else None
             out.append([_READ, name, index])
             return
@@ -1006,7 +1008,8 @@ class _Machine:
         self.program = _parse(code)
         entry = self.program.entry
         # _parse raises when a program has no entry, so this cannot be None.
-        assert entry is not None  # nosec B101
+        if entry is None:
+            raise AssertionError("entry is not None")
         self.frames = [_Frame(entry, _initial_store(entry, self.program))]
 
     @property

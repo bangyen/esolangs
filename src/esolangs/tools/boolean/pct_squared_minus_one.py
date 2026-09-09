@@ -527,7 +527,8 @@ def _spell_bases() -> dict[tuple[int, int], tuple[str | None, str | None]]:
     # The empty string is the identity map, and it is even-width.
     identity = _spell_map(window)
     # The window is x itself.
-    assert identity is not None  # nosec B101
+    if identity is None:
+        raise AssertionError("identity is not None")
     shortest[identity, 0] = ""
     frontier = {window: ""}
     for length in range(1, _SPELL_MAX + 1):
@@ -555,11 +556,13 @@ def _spell_bases() -> dict[tuple[int, int], tuple[str | None, str | None]]:
                 # every width above its own and the odd slot stays empty.
                 found = [code for code in (even, odd) if code is not None]
                 # Every grid map spells.
-                assert found, (a, b)  # nosec B101
+                if not found:
+                    raise AssertionError((a, b))
                 bases[a, b] = (min(found, key=len), None)
             else:
                 # As above.
-                assert even or odd, (a, b)  # nosec B101
+                if not (even or odd):
+                    raise AssertionError((a, b))
                 bases[a, b] = (even, odd)
     return bases
 
@@ -592,7 +595,8 @@ def _spellings_by_width(a: int, b: int) -> dict[int, str]:
     even, odd = found
     if a == 0:
         base = even if even is not None else odd
-        assert base is not None  # nosec B101
+        if base is None:
+            raise AssertionError("base is not None")
         for width in range(len(base), _SPELL_MAX + 1):
             out[width] = "s" * (width - len(base)) + base
         return out
@@ -768,7 +772,8 @@ def _sub_units(units: int) -> str:
     unspellable, which no caller asks for).
     """
     # Unspellable; silence would emit "ss".
-    assert units != 1  # nosec B101
+    if units == 1:
+        raise AssertionError("units != 1")
     if units % 3 == 0:
         return "i" * (units // 3)
     if units % 3 == 2:
@@ -805,15 +810,20 @@ def _ladder_gadget(cut: int, slope: int) -> str:
     if remainder < 0 or remainder % 2:
         j -= 1
         remainder = -(-3004 // (1 << j)) - cut
-    assert j >= 0  # nosec B101
-    assert remainder >= 0  # nosec B101
-    assert remainder % 2 == 0  # nosec B101
+    if j < 0:
+        raise AssertionError("j >= 0")
+    if remainder < 0:
+        raise AssertionError("remainder >= 0")
+    if remainder % 2 != 0:
+        raise AssertionError("remainder % 2 == 0")
     k = remainder // 2
     pre = "s" * k + "m" * j
     offset = 2 * k * (1 << j)
     doublings = slope // (1 << j)
-    assert doublings * (1 << j) == slope  # nosec B101
-    assert doublings >= 2  # nosec B101
+    if doublings * (1 << j) != slope:
+        raise AssertionError("doublings * (1 << j) == slope")
+    if doublings < 2:
+        raise AssertionError("doublings >= 2")
     deficit = max(0, 2 * doublings - doublings * offset - 4)
     mid = ""
     for gap in range(doublings.bit_length() - 1):
@@ -821,7 +831,8 @@ def _ladder_gadget(cut: int, slope: int) -> str:
         units = deficit // weight
         mid += "m" + _sub_units(units)
         deficit -= units * weight
-    assert deficit == 0  # nosec B101
+    if deficit != 0:
+        raise AssertionError("deficit == 0")
     return pre + "psp" + mid + "ipsp"
 
 
@@ -859,7 +870,8 @@ def _ladder_built() -> dict[str, tuple[int, str]]:
     for weights, base in _LADDERS:
         spelled = _ladder_setters(weights, base)
         # The cover spells.
-        assert spelled is not None, weights  # nosec B101
+        if spelled is None:
+            raise AssertionError(weights)
         setters, lead = spelled
         vectors.append(_ladder_vector(setters, lead, 3))
     for gadget in _LADDER_GADGETS:
@@ -905,7 +917,8 @@ def _ladder(truth_table: str, n: int) -> str | None:
     weights, base = _LADDERS[index]
     spelled = _ladder_setters(weights, base)
     # Every shipped weight spells.
-    assert spelled is not None, index  # nosec B101
+    if spelled is None:
+        raise AssertionError(index)
     setters, lead = spelled
     header = ";".join(f"{k}={zero}|{one}" for k, (zero, one) in enumerate(setters))
     body = lead + "".join("{X" + str(k) + "}" for k in range(n)) + suffix
@@ -2231,7 +2244,8 @@ class _FoldEmitter:
 
     def _sub(self, k: int) -> str:
         code = _sub_code(k)
-        assert code is not None, k  # nosec B101
+        if code is None:
+            raise AssertionError(k)
         return code
 
     def descend(self, k: int) -> None:
@@ -2241,8 +2255,10 @@ class _FoldEmitter:
             self.descend(3)
             self.plain_rise(2)
             return
-        assert k >= 2  # nosec B101
-        assert all(v <= _LIMIT for v in self.pos.values())  # nosec B101
+        if k < 2:
+            raise AssertionError("k >= 2")
+        if not all(v <= _LIMIT for v in self.pos.values()):
+            raise AssertionError("all(v <= _LIMIT for v in self.pos.values())")
         self.body.append(self._sub(k))
         for p in self.pos:
             self.pos[p] -= k
@@ -2254,9 +2270,14 @@ class _FoldEmitter:
             self.plain_rise(3)
             self.descend(2)
             return
-        assert k >= 2  # nosec B101
-        assert all(-_LIMIT <= v <= _LIMIT for v in self.pos.values())  # nosec B101
-        assert all(v + k <= _LIMIT for v in self.pos.values())  # nosec B101
+        if k < 2:
+            raise AssertionError("k >= 2")
+        if not all(-_LIMIT <= v <= _LIMIT for v in self.pos.values()):
+            raise AssertionError(
+                "all(-_LIMIT <= v <= _LIMIT for v in self.pos.values())"
+            )
+        if not all(v + k <= _LIMIT for v in self.pos.values()):
+            raise AssertionError("all(v + k <= _LIMIT for v in self.pos.values())")
         self.body.append("p" + self._sub(k) + "p")
         for p in self.pos:
             self.pos[p] += k
@@ -2271,15 +2292,18 @@ class _FoldEmitter:
         top = max(self.pos.values())
         bot = min(self.pos.values())
         spread = top - bot
-        assert 2 * spread <= 2 * _LIMIT  # nosec B101
+        if 2 * spread > 2 * _LIMIT:
+            raise AssertionError("2 * spread <= 2 * _LIMIT")
         want_top = 1501
         if next_is_rise:
             # The next command sequence opens with ``p``, which wipes
             # anything below -3003, so the doubled state must fit both ways.
             want_top = max(spread - 1501, 0)
-            assert want_top <= 1501, spread  # nosec B101
+            if want_top > 1501:
+                raise AssertionError(spread)
         self.preshift(want_top - top)
-        assert all(2 * v <= _LIMIT for v in self.pos.values())  # nosec B101
+        if not all(2 * v <= _LIMIT for v in self.pos.values()):
+            raise AssertionError("all(2 * v <= _LIMIT for v in self.pos.values())")
         self.body.append("m")
         for p in self.pos:
             self.pos[p] *= 2
@@ -2291,49 +2315,60 @@ class _FoldEmitter:
         got: set[int] = set()
         for p in vic:
             got |= set(p) if isinstance(p, frozenset) else {p}
-        assert vic, vids  # nosec B101
-        assert got == vids, vids  # nosec B101
+        if not vic:
+            raise AssertionError(vids)
+        if got != vids:
+            raise AssertionError(vids)
         return vic
 
     def dive(self, c: int, vids: frozenset[int]) -> None:
         vic = self._vic(vids)
-        assert len({self.cls[v] for v in vic}) == 1  # nosec B101
+        if len({self.cls[v] for v in vic}) != 1:
+            raise AssertionError("len({self.cls[v] for v in vic}) == 1")
         vt = max(self.pos[v] for v in vic)
         surv = [p for p in self.pos if p not in vic]
         q1 = (min(self.pos[p] for p in surv) - vt) if surv else 40
-        assert _LIMIT + 1 <= c <= _LIMIT + q1, (c, q1)  # nosec B101
+        if not (_LIMIT + 1 <= c <= _LIMIT + q1):
+            raise AssertionError((c, q1))
         d = c + vt
         if d < 2:
             self.preshift(2 - d)
             d = c + max(self.pos[v] for v in vic)
         self.descend(d)
         below = {p for p, v in self.pos.items() if v < -_LIMIT}
-        assert below == vic, (below, vic)  # nosec B101
+        if below != vic:
+            raise AssertionError((below, vic))
         self.body.append("pp")
         for p in vic:
             self.pos[p] = 0
         for p in self.pos:
-            assert -_LIMIT <= self.pos[p] <= _LIMIT  # nosec B101
+            if not (-_LIMIT <= self.pos[p] <= _LIMIT):
+                raise AssertionError("-_LIMIT <= self.pos[p] <= _LIMIT")
         self._land(vic)
 
     def rise(self, c: int, vids: frozenset[int]) -> None:
         vic = self._vic(vids)
-        assert len({self.cls[v] for v in vic}) == 1  # nosec B101
+        if len({self.cls[v] for v in vic}) != 1:
+            raise AssertionError("len({self.cls[v] for v in vic}) == 1")
         vb = min(self.pos[v] for v in vic)
         surv = [p for p in self.pos if p not in vic]
         q1 = (vb - max(self.pos[p] for p in surv)) if surv else 40
-        assert _LIMIT + 1 <= c <= _LIMIT + q1, (c, q1)  # nosec B101
+        if not (_LIMIT + 1 <= c <= _LIMIT + q1):
+            raise AssertionError((c, q1))
         u = c - vb
         if u < 2:
             self.preshift(-(2 - u))
             u = c - min(self.pos[v] for v in vic)
-        assert min(self.pos.values()) >= -_LIMIT  # nosec B101
-        assert all(self.pos[p] + u <= _LIMIT for p in surv)  # nosec B101
+        if min(self.pos.values()) < -_LIMIT:
+            raise AssertionError("min(self.pos.values()) >= -_LIMIT")
+        if not all(self.pos[p] + u <= _LIMIT for p in surv):
+            raise AssertionError("all(self.pos[p] + u <= _LIMIT for p in surv)")
         self.body.append("p" + self._sub(u) + "p")
         for p in self.pos:
             self.pos[p] += u
         over = {p for p, v in self.pos.items() if v > _LIMIT}
-        assert over == vic, (over, vic)  # nosec B101
+        if over != vic:
+            raise AssertionError((over, vic))
         # Any next command's pre-check resets the victims; one ``s`` makes
         # that flush explicit and costs a uniform -2 everyone absorbs.
         self.body.append("s")
@@ -2351,7 +2386,8 @@ class _FoldEmitter:
         c = self.cls[next(iter(vic))]
         absorbed = [p for p in self.pos if p not in vic and self.pos[p] == val]
         for o in absorbed:
-            assert self.cls[o] == c, "cross-class landing"  # nosec B101
+            if self.cls[o] != c:
+                raise AssertionError("cross-class landing")
             new = new | (o if isinstance(o, frozenset) else frozenset([o]))
         for v in set(vic) | set(absorbed):
             del self.pos[v], self.cls[v]
@@ -2384,19 +2420,23 @@ class _FoldEmitter:
             if self.pos[hi] - self.pos[lo] < 258:
                 self.preshift(-(self.pos[lo] + 2600))
                 u1 = max(_LIMIT + 1 - self.pos[hi], 2)
-                assert self.pos[lo] + u1 <= _LIMIT  # nosec B101
+                if self.pos[lo] + u1 > _LIMIT:
+                    raise AssertionError("self.pos[lo] + u1 <= _LIMIT")
                 self.body.append("p" + self._sub(u1) + "ps")
                 for p in self.pos:
                     self.pos[p] += u1
-                assert self.pos[hi] > _LIMIT  # nosec B101
-                assert self.pos[lo] <= _LIMIT  # nosec B101
+                if self.pos[hi] <= _LIMIT:
+                    raise AssertionError("self.pos[hi] > _LIMIT")
+                if self.pos[lo] > _LIMIT:
+                    raise AssertionError("self.pos[lo] <= _LIMIT")
                 self.pos[hi] = 0
                 for p in self.pos:
                     self.pos[p] -= 2
                 pts = sorted(self.pos, key=lambda q: self.pos[q])
                 lo, hi = pts
             gap = self.pos[hi] - self.pos[lo]
-            assert gap >= 258, gap  # nosec B101
+            if gap < 258:
+                raise AssertionError(gap)
             need = (-(self.byte(hi) - self.byte(lo)) - self.pos[lo]) % 256
             umin = max(_LIMIT + 1 - self.pos[hi], 2)
             umax = _LIMIT - self.pos[lo]
@@ -2404,12 +2444,15 @@ class _FoldEmitter:
                 (c0 for c0 in range(umin, umax + 1) if c0 % 256 == need),
                 None,
             )
-            assert u is not None, (umin, umax, need)  # nosec B101
+            if u is None:
+                raise AssertionError((umin, umax, need))
             self.body.append("p" + self._sub(u) + "ps")
             for p in self.pos:
                 self.pos[p] += u
-            assert self.pos[hi] > _LIMIT  # nosec B101
-            assert self.pos[lo] <= _LIMIT  # nosec B101
+            if self.pos[hi] <= _LIMIT:
+                raise AssertionError("self.pos[hi] > _LIMIT")
+            if self.pos[lo] > _LIMIT:
+                raise AssertionError("self.pos[lo] <= _LIMIT")
             self.pos[hi] = 0
             for p in self.pos:
                 self.pos[p] -= 2
@@ -2427,11 +2470,15 @@ class _FoldEmitter:
                 t -= 256
             self.preshift(t)
         for p in self.pos:
-            assert self.pos[p] % 256 == self.byte(p) % 256, (  # nosec B101
-                self.pos[p],
-                self.cls[p],
-            )
-            assert self.pos[p] <= _LIMIT  # nosec B101
+            if self.pos[p] % 256 != self.byte(p) % 256:
+                raise AssertionError(
+                    (
+                        self.pos[p],
+                        self.cls[p],
+                    )
+                )
+            if self.pos[p] > _LIMIT:
+                raise AssertionError("self.pos[p] <= _LIMIT")
         self.body.append("e")
 
 
@@ -2470,7 +2517,8 @@ def _fold_setters(n: int, weights: tuple[int, ...]) -> list[tuple[str, str]]:
     out = []
     for i in range(n):
         amount = weights[i]
-        assert amount > 0, amount  # nosec B101
+        if amount <= 0:
+            raise AssertionError(amount)
         code = _sub_code(amount)
         if code is not None and len(code) % 2 == 0:
             out.append(("p" * len(code), code))
@@ -2529,8 +2577,10 @@ def _fold_setters(n: int, weights: tuple[int, ...]) -> list[tuple[str, str]]:
                 key=len,
                 default=None,
             )
-        assert widened is not None, amount  # nosec B101
-        assert _apply(0, widened) == -amount, (amount, widened)  # nosec B101
+        if widened is None:
+            raise AssertionError(amount)
+        if _apply(0, widened) != -amount:
+            raise AssertionError((amount, widened))
         out.append(("p" * len(widened), widened))
     return out
 
@@ -3091,7 +3141,8 @@ def _fold_at(truth_table: str, n: int, weights: tuple[int, ...]) -> str | None:
     # never be separated again, so every ladder offered is a distinct-sum
     # one.  Asserted rather than guarded: a ladder that collides is a bug in
     # :func:`_fold_ladders`, not a table this construction declines.
-    assert len(set(pos)) == len(pos), (n, weights)  # nosec B101
+    if len(set(pos)) != len(pos):
+        raise AssertionError((n, weights))
     if max(abs(p) for p in pos) > _LIMIT:
         return None
     order = sorted(range(2**n), key=lambda r: -pos[r])
