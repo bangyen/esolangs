@@ -200,12 +200,19 @@ def _index(items: list[_Item]) -> tuple[list[int], dict[str, int]]:
 #: its round-1 value, so a tight patience would refuse a table that routes.
 _PATIENCE = 32
 
-#: How far apart rungs of one chain are parked.  Under :data:`_REACH`, and
-#: the slack is what makes a chain survive being laid: sizing the rungs and
-#: laying other chains both push lines apart afterwards, so a chain spaced
-#: at the reach itself would be over it by the time it was sized.  Slots
-#: recur every 100 lines at worst, so a gap this wide always has one.
-_SPACING = 200
+#: How far apart rungs of one chain are parked.  The gap below
+#: :data:`_REACH` is the slack a link has to survive on: sizing the rungs
+#: and laying the other chains both push lines apart afterwards, so a
+#: chain spaced at the reach itself is over it by the time it is sized.
+#:
+#: The number is tuned, not derived.  Nearly every link that breaks is
+#: only just over the reach -- at n=8 dense all of them are under 400 --
+#: so the slack is what decides whether a round gains ground.  Widening it
+#: from 200 to 150 takes the links still broken at round 8 from 127 to 58;
+#: 120 is worse again (74), since more rungs are themselves more
+#: interference.  Slots recur every 100 lines at worst, so a window this
+#: wide always has one to take.
+_SPACING = 150
 
 
 def _relay(items: list[_Item]) -> bool:
