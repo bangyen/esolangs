@@ -321,12 +321,12 @@ def _subtree(
     one = _subtree(table, n, depth + 1, f"{row}1", *taken, landing, widths)
     target = landing + max(len(one), _MIN_HOP)
     hop, out_array, out_acc = _trampoline(*fell, target)
-    if len(hop) > slot:  # pragma: no cover - alarm for a stale _widths
+    if len(hop) > slot:
         raise AssertionError(
             f"trampoline of {len(hop)} tokens overflowed its {slot}-token slot"
         )
     dead = landing - node_end - len(hop)
-    if dead < 0:  # pragma: no cover - alarm for a stale _widths
+    if dead < 0:
         raise AssertionError(f"the 1-subtree landed {-dead} tokens into the slot")
     zero = _subtree(table, n, depth + 1, f"{row}0", out_array, out_acc, target, widths)
     return [
