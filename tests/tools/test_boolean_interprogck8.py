@@ -11,7 +11,17 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.interprogck8 import _Machine, run
 from esolangs.tools import text as gen
 from esolangs.tools.boolean import interprogck8
-from esolangs.tools.boolean.interprogck8 import MAX_INPUTS, _check, _set_acc
+from esolangs.tools.boolean.interprogck8 import (
+    _PASSES,
+    _REACH,
+    _check,
+    _emit,
+    _index,
+    _Jump,
+    _relay,
+    _resolve,
+    _set_acc,
+)
 from esolangs.vm import run_until_halt_or_cycle
 from tests.tools.boolean_runners import run_interprogck8
 
@@ -55,21 +65,44 @@ class TestReads:
         assert io.getvalue() == table[0b011]
 
 
-class TestArityCap:
-    def test_four_inputs_is_refused_with_a_reason(self) -> None:
-        """The cap is enforced, not merely documented."""
-        with pytest.raises(ValueError, match="at most 3 inputs"):
-            interprogck8("0" * 16)
+class TestRelay:
+    """Past n=3 the tree outgrows one hop, so hops chain through rungs."""
 
-    def test_the_cap_is_the_construction_and_not_the_language(self) -> None:
-        """Three inputs place; the failure above it is a jump-reach bound.
+    @pytest.mark.parametrize("n", [4, 5])
+    def test_a_tree_past_one_hop_still_computes_its_table(self, n: int) -> None:
+        """Every row of a table too long to route in single hops.
 
-        Recorded as a number so a later widening has something to beat: the
-        n=3 program is under a thousand lines and every hop inside it is
-        under the 255 one ``DownAccLines`` can spell.
+        This is what the arity cap used to refuse.  The n=5 parity tree is
+        2688 lines with crossings of over 1000 against a reach of 255, so
+        it only works if the rungs relay -- and a rung that relays to the
+        wrong place is a *wrong answer* rather than a refusal, which is why
+        the assertion is on the output and not on the program building.
         """
-        assert MAX_INPUTS == 3
-        assert len(interprogck8("01101001").splitlines()) < 1000
+        table = "".join(str(bin(row).count("1") & 1) for row in range(2**n))
+        program = interprogck8(table)
+        assert "<" not in program, "routing must not use the function slot"
+        for row in range(2**n):
+            bits = list(bin(row)[2:].zfill(n))
+            assert run_interprogck8(program, bits) == table[row], f"n={n} row {row}"
+
+    def test_every_hop_in_a_relayed_program_is_inside_the_reach(self) -> None:
+        """The relay leaves no jump the gadget cannot spell.
+
+        The emission pass would raise on one, so this pins the property the
+        raise defends rather than re-testing the raise: after routing, every
+        distance is within a single ``DownAccLines``.
+        """
+        parity = "".join(str(bin(row).count("1") & 1) for row in range(32))
+        items = _emit(parity, 5)
+        for _ in range(_PASSES):
+            _resolve(items)
+            if not _relay(items):
+                break
+        starts, labels = _index(items)
+        for item, start in zip(items, starts, strict=True):
+            if isinstance(item, _Jump):
+                distance = labels[item.label] - (start + item.width)
+                assert 0 <= distance <= _REACH, f"{item.label} spans {distance}"
 
 
 class TestJumpChecks:

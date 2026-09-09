@@ -6,6 +6,7 @@ single-language modules that share its tape-machine shape: ``rotfuck``,
 """
 
 import contextlib
+import sys
 from importlib import import_module
 from itertools import permutations
 
@@ -1063,14 +1064,44 @@ class TestFactor:
         assert boolean.factor("0" * 16).isdigit()
         assert boolean.factor("1" * 16).isdigit()
 
-    def test_dense_table_past_the_digit_cap_is_rejected(self) -> None:
-        """A dense n == 4 table (XOR4) encodes a brainfuck program whose
-        Factor integer exceeds CPython's int-to-string digit limit; the
-        generator raises instead of letting that ValueError leak from
-        str() with its raw CPython wording."""
+    def test_a_table_past_cpythons_own_limit_still_renders(self) -> None:
+        """XOR4 encodes to 6390 digits, past CPython's 4300-digit default.
+
+        That default is a DoS guard on quadratic int-to-str conversion, not
+        anything Factor says, so it is raised for the render rather than
+        reported as a property of the language -- which is what used to cap
+        this generator at n=3.
+        """
         xor4 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(16))
-        with pytest.raises(ValueError, match="digit limit"):
-            boolean.factor(xor4)
+        program = boolean.factor(xor4)
+        assert program.isdigit()
+        assert len(program) > sys.get_int_max_str_digits()
+
+    def test_the_render_leaves_the_global_limit_alone(self) -> None:
+        """The digit limit is process-global, so it is borrowed, not kept.
+
+        A generator that raised it and walked away would silently disarm
+        the guard for everything else in the process.
+        """
+        before = sys.get_int_max_str_digits()
+        boolean.factor(
+            "".join("1" if bin(i).count("1") % 2 else "0" for i in range(16))
+        )
+        assert sys.get_int_max_str_digits() == before
+
+    def test_max_digits_bounds_one_call(self) -> None:
+        """``max_digits`` is the cap, and it names the size it refused.
+
+        The count is the bit-length estimate rather than the exact 6390, so
+        it is asserted as such: sizing it exactly means doing the very
+        conversion the check exists to avoid.  The limit has to stay
+        restored on the refusing path too.
+        """
+        before = sys.get_int_max_str_digits()
+        xor4 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(16))
+        with pytest.raises(ValueError, match="about 6391 digits"):
+            boolean.factor(xor4, max_digits=1000)
+        assert sys.get_int_max_str_digits() == before
 
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
