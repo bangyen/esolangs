@@ -497,6 +497,62 @@ def test_streetcode_affine_transfer_fuzz_agrees() -> None:
         )
 
 
+@pytest.mark.parametrize(
+    ("program", "depth"),
+    [("+[+]", 1), ("+[>+[>+<-]<-]", 2), ("+[+[+[+]]]", 3)],
+)
+def test_streetcode_room_height_is_eight_rows_per_nesting_level(
+    program: str, depth: int
+) -> None:
+    """Each nested loop adds exactly ``_FLAT_ROOM_ROWS`` rows, and no more.
+
+    The geometry is checked only through execution elsewhere, and a room
+    drawn *larger* than it needs runs every program correctly -- so a
+    widened margin is invisible to the rest of this file.  Mutating the
+    island wall, the restore shaft's offset or the gap after a child each
+    leaves output identical while inflating the grid (one such mutant grew
+    a nested program from 70265 to 71750 characters).
+
+    Height is the one dimension with a closed form: a childless room is
+    ``_FLAT_ROOM_ROWS`` rows and every nesting level adds that many again,
+    so it is asserted as a law rather than pinned as a snapshot.
+    """
+    from esolangs.transpilers._bf_streetcode import _FLAT_ROOM_ROWS
+
+    target = esolangs.transpile("brainfuck", "Streetcode", program)
+    rows = len(target.splitlines())
+    # The constant is the outermost room's own scaffolding, which does not
+    # vary with depth; the slope is the invariant this pins.
+    assert rows == _FLAT_ROOM_ROWS * depth + 29
+
+
+@pytest.mark.parametrize(
+    ("program", "rows", "cols"),
+    [
+        # Flat: pins the island bound, which needs no child to widen.
+        ("+++[->+<]>.", 13, 62),
+        # Nested: the child margins -- the restore shaft's offset and the
+        # gap after a child -- only exist once a room has a sub-room, so a
+        # flat program cannot see them widen.
+        ("++[>++[>+<-]<-]>>.", 45, 1591),
+    ],
+)
+def test_streetcode_widening_a_margin_is_visible(
+    program: str, rows: int, cols: int
+) -> None:
+    """A room's drawn extent is pinned, so a wider one is caught.
+
+    Width has no closed form the way height does -- it depends on the body
+    run -- so this pins whole grids instead.  Without it the
+    ``max(c + 1, ...)`` island bound, the ``child.east + 2`` shaft offset
+    and the ``rest_l + 5`` gap can each be widened with every other test in
+    this file still passing: the program runs correctly either way.
+    """
+    target = esolangs.transpile("brainfuck", "Streetcode", program)
+    lines = target.splitlines()
+    assert (len(lines), max(len(row) for row in lines)) == (rows, cols)
+
+
 def test_streetcode_transpiler_is_total() -> None:
     """Every brainfuck program translates; only unbalanced brackets raise.
 
