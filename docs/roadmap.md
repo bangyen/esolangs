@@ -28,6 +28,14 @@ readings.
   billion pixels, expected to take 2-5 minutes and 4-8GiB RAM on this 16GiB
   host. Only pursue subtree sharing or a denser layout if that measurement
   finds a real resource limit.
+- **Extend Interprogck8's boolean tree.** `DownAccLines` routes the current
+  tree without using the current-function slot, but its 255-line hop and
+  nine-line branch window stop n=4: the bit-0 arm must cross 456 lines. Build
+  and execute a relay rung inside that subtree to lift both bounds.
+- **Close Minifuck's mux sculpt.** At n=5, the warm build spends 14.5 of
+  17.9 seconds probing pool-code candidates; the chosen code never changes
+  within a sculpt. Derive that selector rather than replaying the interpreter,
+  then compare the emitted, executed programs with the current probe.
 ## Conditional follow-up
 
 - **ArrowQueue reusable drain.** Ship the verified deep-fold drain only if a
