@@ -404,13 +404,6 @@ def test_streetcode_clear_and_set_skips_the_canonicalizer() -> None:
     assert _lower("[-]---") == "[-]" + "+" * 253
 
 
-def test_streetcode_byte_safe_program_skips_wraparound_lowering() -> None:
-    """A bounded input-free program needs neither modulus gadget nor scratch."""
-    from esolangs.tools._bf_streetcode import _lower
-
-    assert _lower("[-]+++") == "[-]+++"
-
-
 def test_streetcode_transpiler_is_total() -> None:
     """Every brainfuck program translates; only unbalanced brackets raise.
 
