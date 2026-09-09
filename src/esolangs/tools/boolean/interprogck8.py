@@ -239,8 +239,13 @@ def _relay(items: list[_Item]) -> bool:
             for position, line in slots.items()
             if here <= line <= min(here + _REACH, target)
         ]
-        if not usable:
-            continue
+        # Never empty, by one of two slots depending on the jump.  An
+        # unsealed jump has its own trailing slot, exactly at ``here``.
+        # The sealed bit-0 jump -- the one this whole pass exists for --
+        # does not, but the relay label sits immediately behind it and the
+        # relay's own jump is unsealed, so its slot is two lines past
+        # ``here``.  Either way the worst rung is a hop of nearly zero
+        # distance, which still splits the crossing for the next pass.
         _, position = max(usable)
         tag += 1
         name = f"P{tag}"
@@ -285,7 +290,14 @@ def _resolve(items: list[_Item]) -> None:
                 changed = True
         if not changed:
             return
-    raise ValueError("jump widths did not converge")  # pragma: no cover
+    # Reachable, and the de facto ceiling: n=7 dense hits this.  It is a
+    # bound on the sizing loop rather than on the geometry -- the relay has
+    # no arity limit of its own -- so what it refuses is a program whose
+    # widths were still moving, not one that cannot be laid out.
+    raise ValueError(
+        f"jump widths did not converge in {_PASSES} passes: the table is "
+        "too large for the sizing loop, not for the layout"
+    )
 
 
 def _check(label: str, distance: int, width: int) -> None:
