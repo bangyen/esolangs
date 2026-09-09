@@ -331,7 +331,7 @@ def _return_value(frames: _Frames, value: object) -> _Frames:
     where the call's operands stopped.
     """
     while frames:
-        nodes, pos, scope, todo, operands, kind = frames[-1]
+        kind = frames[-1][5]
         frames = frames[:-1]
         if isinstance(kind, tuple) and kind and kind[0] == "call":
             end = kind[1]
@@ -361,9 +361,7 @@ def _schedule_expr(
     if tok[0].isdigit():
         return _deliver(frames, float(tok) if "." in tok else int(tok), pos + 1)
     if tok == "[":
-        return _with(
-            frames, (("arr", len(operands), tokens, pos + 1), *todo), operands
-        )
+        return _with(frames, (("arr", len(operands), tokens, pos + 1), *todo), operands)
     if tok in _BUILTINS:
         return _with(
             frames,
@@ -392,13 +390,16 @@ def _resume(frames: _Frames, io: IO, scope: Scope) -> _Frames:
 
     if head == "expr":
         tokens, pos = item[1], item[2]
-        assert isinstance(tokens, list) and isinstance(pos, int)
+        assert isinstance(tokens, list)
+        assert isinstance(pos, int)
         return _schedule_expr(_with(frames, rest, operands), tokens, pos, io, scope)
 
     if head == "apply":
         name, base, wanted, tokens, start = item[1], item[2], item[3], item[4], item[5]
-        assert isinstance(base, int) and isinstance(wanted, int)
-        assert isinstance(tokens, list) and isinstance(start, int)
+        assert isinstance(base, int)
+        assert isinstance(wanted, int)
+        assert isinstance(tokens, list)
+        assert isinstance(start, int)
         assert isinstance(name, str)
         # ``base`` is where this call's own operands start.  Counting the
         # whole stack instead would fold in an enclosing call's finished
@@ -415,8 +416,10 @@ def _resume(frames: _Frames, io: IO, scope: Scope) -> _Frames:
         function, base, wanted = item[1], item[2], item[3]
         tokens, start = item[4], item[5]
         assert isinstance(function, _Function)
-        assert isinstance(base, int) and isinstance(wanted, int)
-        assert isinstance(tokens, list) and isinstance(start, int)
+        assert isinstance(base, int)
+        assert isinstance(wanted, int)
+        assert isinstance(tokens, list)
+        assert isinstance(start, int)
         if len(operands) - base < wanted:
             pos = operands[-1][1] if len(operands) > base else start
             return _with(frames, (("expr", tokens, pos), item, *rest), operands)
@@ -432,7 +435,8 @@ def _resume(frames: _Frames, io: IO, scope: Scope) -> _Frames:
 
     if head == "arr":
         base, tokens, pos = item[1], item[2], item[3]
-        assert isinstance(base, int) and isinstance(tokens, list)
+        assert isinstance(base, int)
+        assert isinstance(tokens, list)
         assert isinstance(pos, int)
         # ``base`` is where this display's items start on the operand stack,
         # so enclosing calls' operands below it are never miscounted.
@@ -449,12 +453,10 @@ def _resume(frames: _Frames, io: IO, scope: Scope) -> _Frames:
         items = [value for value, _ in operands[base:]]
         return _deliver(_with(frames, rest, operands[:base]), items, pos + 1)
 
-    return _finish_statement(frames, item, io, scope)
+    return _finish_statement(frames, item, scope)
 
 
-def _finish_statement(
-    frames: _Frames, item: _Todo, io: IO, scope: Scope
-) -> _Frames:
+def _finish_statement(frames: _Frames, item: _Todo, scope: Scope) -> _Frames:
     """Complete a statement whose expression has produced its value."""
     kind = item[1]
     _, _, _, todo, operands, _ = frames[-1]
@@ -476,7 +478,8 @@ def _finish_statement(
         return _return_value(base, value)
     if kind == "while":
         tokens, children, rearm = item[2], item[3], item[4]
-        assert isinstance(tokens, list) and isinstance(children, list)
+        assert isinstance(tokens, list)
+        assert isinstance(children, list)
         if _truthy(value):
             if rearm:
                 # Re-entering from the body frame's own re-check: restart it
@@ -494,7 +497,8 @@ def _finish_statement(
         return _check_case(base, value, cases, scope)
     if kind == "case":
         subject, cases, body = item[2], item[3], item[4]
-        assert isinstance(cases, list) and isinstance(body, list)
+        assert isinstance(cases, list)
+        assert isinstance(body, list)
         if subject == value:
             return (*base, _frame(body, scope))
         return _check_case(base, subject, cases, scope)
@@ -519,9 +523,7 @@ def _check_case(
             raise ValueError("malformed check case")
         rest = cases[index + 1 :]
         item: _Todo = ("stmt", "case", subject, rest, body)
-        return _with(
-            frames, (("expr", case_tokens[1:-1], 0), item, *todo), operands
-        )
+        return _with(frames, (("expr", case_tokens[1:-1], 0), item, *todo), operands)
     return frames
 
 
@@ -549,9 +551,7 @@ def _begin_statement(
             return _return_value(frames, None)
         return sched(tokens[1:], ("stmt", "return"))
     if head == "while":
-        return sched(
-            tokens[1:-1], ("stmt", "while", tokens[1:-1], children, False)
-        )
+        return sched(tokens[1:-1], ("stmt", "while", tokens[1:-1], children, False))
     if head == "check":
         return sched(tokens[1:-1], ("stmt", "check", children))
     if head in ("if", "else"):
@@ -579,7 +579,7 @@ def _advance(frames: _Frames, io: IO) -> _Frames:
     statement's expression may read and print any number of times, at points
     that depend on values computed part-way through it.
     """
-    nodes, pos, scope, todo, operands, kind = frames[-1]
+    nodes, pos, scope, todo, _, kind = frames[-1]
 
     if todo:
         return _resume(frames, io, scope)
@@ -603,7 +603,7 @@ def _advance(frames: _Frames, io: IO) -> _Frames:
 
 
 def _while_todo(tokens: list[str], nodes: list[Node]) -> tuple[_Todo, ...]:
-    """The pending steps that re-check a ``while`` condition and re-enter."""
+    """Build the pending steps that re-check a ``while`` and re-enter it."""
     return (("expr", tokens, 0), ("stmt", "while", tokens, nodes, True))
 
 

@@ -940,17 +940,30 @@ class TestBetween:
 
 class TestMyScript:
     def test_frame_position_and_scope(self) -> None:
+        """Positions, variables and operands, stepped one evaluation at a time.
+
+        A statement is several steps rather than one: its expression is
+        scheduled, evaluated, and only then does the statement finish.  That
+        finer granularity is the point of the frame stack -- it is what lets
+        a statement inside a call be observed at all -- so this walks to each
+        assertion rather than assuming a step per line.
+        """
+
+        def run_to(vm: object, predicate: object, limit: int = 50) -> None:
+            for _ in range(limit):
+                if predicate():  # type: ignore[operator]
+                    return
+                vm.step()  # type: ignore[attr-defined]
+            raise AssertionError("predicate never held")
+
         vm = esolangs.make_vm("MyScript", "var a is 5\nsay a")
         assert vm.ip == (1, 0)
         assert vm.memory == []
         assert vm.stack == []
-        vm.step()  # declares a = 5
+        run_to(vm, lambda: vm.memory == [5])  # a is declared
         assert vm.ip == (1, 1)
-        assert vm.memory == [5]
-        vm.step()  # say a
-        assert vm.output == "5"
-        vm.step()  # the root frame's statements are exhausted; it pops
-        assert vm.halted
+        run_to(vm, lambda: vm.output == "5")  # say a
+        run_to(vm, lambda: vm.halted)  # the root frame pops
         assert vm.ip is None  # the frame stack has emptied
         assert vm.memory == []
 
