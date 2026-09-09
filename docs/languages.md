@@ -42,6 +42,7 @@ fold reaches generic twelve- and thirteen-input tables.
 | A Painter Ant |  | yes |  | yes |  |
 | AddSubJump | yes | yes |  | yes | yes |
 | Algebraic Programming Language |  | yes |  | yes |  |
+| Alight | yes | yes |  | yes |  |
 | ArrowQueue |  | yes |  | yes |  |
 | BF-PDA |  | yes | yes | yes | yes |
 | BFStack | yes | yes |  | yes | yes |

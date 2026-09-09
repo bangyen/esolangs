@@ -45,6 +45,7 @@ The full capability matrix (generators, cross-check and boolean support, example
 Languages that move a pointer or beam across a 2D grid.
 
 - [A Painter Ant](https://esolangs.org/wiki/A_Painter_Ant) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/a_painter_ant.py))
+- [Alight](https://esolangs.org/wiki/Alight) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/alight.py))
 - [ArrowQueue](https://esolangs.org/wiki/ArrowQueue) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/arrowqueue.py))
 - [COD](https://esolangs.org/wiki/COD) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/cod.py))
 - [Circuit Diagram](https://esolangs.org/wiki/Circuit_Diagram) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/circuit_diagram.py))

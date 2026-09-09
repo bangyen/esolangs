@@ -138,6 +138,14 @@ LANGUAGES: dict[str, Language] = {
         id="a_painter_ant",
         interpreter="grid_based.a_painter_ant",
     ),
+    "Alight": Language(
+        "Alight",
+        _generate.alight,
+        "grid_based.alight",
+        boolean=_boolean.alight,
+        id=canonical_id("Alight"),
+        split=True,
+    ),
     "Algebraic Programming Language": Language(
         "Algebraic Programming Language",
         boolean=_boolean.algebraic_programming_language,

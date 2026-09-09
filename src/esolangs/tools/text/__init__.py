@@ -7,6 +7,7 @@ family; this module re-exports them for compatibility and provides the
 
 import sys
 
+from esolangs.tools.text.alight import alight
 from esolangs.tools.text.helpers import _ilog
 from esolangs.tools.text.other import (
     basicfuck,
@@ -67,6 +68,7 @@ from esolangs.tools.text.tape import (
 __all__ = [
     "_ilog",
     "addsubjump",
+    "alight",
     "basicfuck",
     "between",
     "bfstack",
