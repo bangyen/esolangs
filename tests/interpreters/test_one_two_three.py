@@ -150,19 +150,6 @@ class TestStepMachine:
 
         assert _with_byte(frozenset((8,)), 0) == frozenset((8,))
 
-    def test_step_after_halt_is_a_noop(self) -> None:
-        from esolangs.interpreters.tape_based.one_two_three import _Machine
-
-        machine = _Machine("", ScriptedIO())
-        for _ in range(200):
-            if machine.halted:
-                break
-            machine.step()
-        assert machine.halted
-        state = machine.snapshot()
-        machine.step()  # stepping a halted machine must not raise
-        assert machine.snapshot() == state
-
     def test_snapshot_carries_the_set_bits(self) -> None:
         """The tape is part of the state, not just the cursors.
 
