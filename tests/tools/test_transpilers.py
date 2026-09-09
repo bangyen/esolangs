@@ -405,12 +405,68 @@ def test_streetcode_clear_and_set_skips_the_canonicalizer() -> None:
 
 
 @pytest.mark.parametrize(
+    ("body", "want"),
+    [
+        # A lap that does not decrement its source by exactly one is not an
+        # affine transfer: ``+`` drives the cell *up*, so the loop's trip
+        # count is not the source's value and no ``source * change`` bound
+        # describes its effect.  Weakening the ``offset or`` guard to ``and``
+        # accepts it as an empty transfer -- a mutation the suite did not
+        # catch, and one that would let ``_byte_safe_prefix`` carry ``+[+]``
+        # past a loop whose byte behaviour it has not proved.
+        ("+", None),
+        (">+<", None),
+        # Net pointer drift is disqualifying even when the source decrements,
+        # since the next lap would read a different cell.
+        (">+", None),
+        # The accepted shapes: a bare countdown, and a one-target transfer.
+        ("-", {}),
+        ("->+<", {1: 1}),
+    ],
+)
+def test_streetcode_affine_loop_rejects_non_transfers(
+    body: str, want: dict[int, int] | None
+) -> None:
+    """Only loops that decrement their source and return the pointer count."""
+    from esolangs.transpilers._bf_streetcode import _affine_loop
+
+    assert _affine_loop(body, 0) == want
+
+
+@pytest.mark.parametrize(
+    ("program", "prefix"),
+    [
+        # The byte bound is the point of the proof, so both sides of it are
+        # pinned: 255 increments stay in range and prove, the 256th leaves
+        # 0-255 and stops the prefix one short of itself.  Without this a
+        # bound of ``<= 256`` -- or ``< 255``, or ``1 <=`` -- passes the suite.
+        ("+" * 255, 255),
+        ("+" * 256, 255),
+        # ``.`` does not change the cell, so it extends a proven prefix.
+        ("+" * 255 + ".", 256),
+    ],
+)
+def test_streetcode_byte_safe_prefix_stops_at_the_byte_bound(
+    program: str, prefix: int
+) -> None:
+    """A run proves exactly while it stays in ``0..255``."""
+    from esolangs.interpreters.brackets import match_brackets
+    from esolangs.transpilers._bf_streetcode import _byte_safe_prefix
+
+    assert _byte_safe_prefix(program, match_brackets(program)) == prefix
+
+
+@pytest.mark.parametrize(
     ("program", "stdin", "prefix"),
     [
         ("+++[->+>++<<]>.>.", "", 17),
         (">++[<+>-]<.", "", 11),
         ("++.,.", "a", 3),
         ("+[>+[>+<-]<-]", "", 1),
+        # The rejected loop above, through the whole lowering: the prefix
+        # stops before it and the generic path takes over, and the two
+        # interpreters still agree on the result.
+        ("+[+]", "", 1),
     ],
 )
 def test_streetcode_byte_safe_affine_prefixes(
