@@ -369,6 +369,23 @@ class TestFunctions:
                 ScriptedIO(),
             )
 
+    def test_recursion_in_a_body_halts_too_not_only_in_the_return(self) -> None:
+        """The costlier recursion shape, which the cap used to miss.
+
+        Recursing from ``end loop{a}`` above spends fewer Python frames per
+        language-level call than recursing from a ``set`` in the body does.
+        At the old cap of 200 this shape reached Python's own limit first
+        and raised ``RecursionError`` -- the very thing the cap documents
+        preventing -- while the cheaper shape above still passed.  Both
+        shapes are pinned now so a cap that stops beating the interpreter's
+        real frame cost fails here.
+        """
+        with pytest.raises(HaltError, match="call depth"):
+            run(
+                ["begin;var v;set v f{1};end;", "func f{a};var b;set b f{a};end b;"],
+                ScriptedIO(),
+            )
+
 
 class TestGenerators:
     """Both generators, checked by running what they emit.
