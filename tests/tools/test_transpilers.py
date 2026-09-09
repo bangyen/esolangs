@@ -770,7 +770,7 @@ def test_assembler_rejects_a_duplicate_label() -> None:
     add one.  The assemblers are internal, but the guard is what keeps a
     macro that mints its own labels from colliding with a hand-written one.
     """
-    from esolangs.transpilers.transpilers import _SbleqAsm
+    from esolangs.transpilers._sbleq_asm import _SbleqAsm
 
     asm = _SbleqAsm()
     asm.mark("loop")

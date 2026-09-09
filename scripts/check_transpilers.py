@@ -80,9 +80,7 @@ def main() -> int:
             print(f"{pair[0]} -> {pair[1]}: " + "; ".join(issues))
 
     # __all__ must not promise a transpiler the table no longer carries.
-    registered = {
-        getattr(fn, "__name__", "") for fn in TRANSPILERS.values()
-    }
+    registered = {getattr(fn, "__name__", "") for fn in TRANSPILERS.values()}
     for stale in sorted(set(transpilers.__all__) - registered - {"TRANSPILERS"}):
         failures += 1
         print(f"{stale}: exported but not in TRANSPILERS")
