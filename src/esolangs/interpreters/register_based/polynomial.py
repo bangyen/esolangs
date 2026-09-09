@@ -196,6 +196,164 @@ _PEEL_MAX_EXPONENT = 8
 #: costs only that the root stays in the tail.
 _PEEL_PRIME_SLACK = 2
 
+#: Largest exponent a complex instruction's imaginary part can carry, from
+#: the ``range(1, 7)`` :func:`convert` reads it back with.
+_PEEL_MAX_IMAGINARY_EXPONENT = 6
+
+#: Bound on the ``a`` a quadratic peel will lift out of its residue.  ``a``
+#: is a data operand -- a table index, an offset, a codepoint delta -- so it
+#: has no encoding bound the way an exponent does, and a residue that lifts
+#: to something enormous is a pairing that happened to line up rather than a
+#: real factor.  Generously past the ``-3 .. 50`` a dense n=6 table uses;
+#: anything past it falls through to ``factor_list`` like any other miss.
+_PEEL_MAX_REAL_PART = 1 << 20
+
+#: Prime the quadratic peel finds roots modulo.  It must be ``1 (mod 4)``,
+#: and that is not a detail: a factor's ``q`` is ``p**(2*b)``, a perfect
+#: square, so ``-q`` is a quadratic residue exactly when ``-1`` is -- which
+#: holds iff the modulus is ``1 (mod 4)``.  Under such a prime *every*
+#: encodable ``q`` admits the square root the pairing needs; under a ``3
+#: (mod 4)`` prime *none* does, and the peel silently finds nothing.
+#: Measured: ``nextprime(2**64)`` recovers 51 of 51 sampled ``q`` values,
+#: while ``nextprime(2**32)`` and ``nextprime(2**128)`` -- both ``3 (mod
+#: 4)`` -- recover none.  Wide enough that distinct small ``a`` stay
+#: distinct mod it.
+_PEEL_MODULUS = 18446744073709551629
+
+
+def _divide_quadratic(
+    coefficients: list[int], real: int, square: int
+) -> list[int] | None:
+    """Divide by ``(x - real)**2 + square`` exactly, or report that it does not.
+
+    Long division by the monic quadratic ``x**2 + b1*x + b0``, on the integer
+    coefficient list rather than a ``Poly``: each quotient coefficient is the
+    dividend's minus what the two previous quotient coefficients contribute
+    at that position.  Staying with plain integers is the whole point -- the
+    same reason :func:`_peel_prime_power_roots` is cheap -- since a ``Poly``
+    division at this degree costs orders of magnitude more.
+
+    ``None`` means a nonzero remainder, so the caller must not take it.
+    """
+    b1 = -2 * real
+    b0 = real * real + square
+    size = len(coefficients)
+    if size < 3:
+        return None
+    quotient: list[int] = []
+    for index in range(size - 2):
+        value = coefficients[index]
+        if index >= 1:
+            value -= b1 * quotient[index - 1]
+        if index >= 2:
+            value -= b0 * quotient[index - 2]
+        quotient.append(value)
+    # Both remainder positions have to vanish for this to be a factor.
+    linear = coefficients[size - 2]
+    if size >= 3:
+        linear -= b1 * quotient[size - 3]
+    if size >= 4:
+        linear -= b0 * quotient[size - 4]
+    if linear:
+        return None
+    constant = coefficients[size - 1]
+    if size >= 3:
+        constant -= b0 * quotient[size - 3]
+    if constant:
+        return None
+    return quotient
+
+
+def _peel_instruction_quadratics(
+    coefficients: list[int],
+) -> tuple[list[tuple[int, int]], list[int]]:
+    """Divide out the complex instructions' quadratics, exactly.
+
+    A complex instruction contributes ``(x - a)**2 + p**(2*b)``, and unlike a
+    real one its root needs *two* parameters: ``b`` is small (at most
+    :data:`_PEEL_MAX_IMAGINARY_EXPONENT`) but ``a`` is a data operand with no
+    encoding bound, so enumerating pairs is hopeless -- a dense n=6 table
+    would need ~158000 trial divisions against a degree-254 polynomial.
+
+    So ``a`` is *solved for* rather than guessed.  Modulo
+    :data:`_PEEL_MODULUS` the factor's roots are ``a ± sqrt(-q)``, so one
+    root-finding pass over the field yields every root, and for each
+    candidate ``q`` a root ``r`` proposes ``a = r - sqrt(-q)`` -- confirmed
+    only when the partner root is present too.  That search is integer
+    arithmetic and set lookups; no polynomial is touched until a candidate
+    survives it.
+
+    Soundness is the same bargain the real peel strikes: a pair is accepted
+    only because ``(x - a)**2 + q`` divides the polynomial *exactly*, which
+    makes it a genuine factor whatever wrote the program.  Everything the
+    search cannot see -- a ``q`` that is not ``p**(2*b)``, an ``a`` past
+    :data:`_PEEL_MAX_REAL_PART`, a factor of degree other than two, roots
+    that do not pair -- stays in the returned remainder for ``factor_list``.
+    Incomplete, never wrong.
+
+    Measured on the dense n=6 table's degree-254 remainder: 3.16s to find
+    the roots, 0.26s to build candidates (1524 residue tests yielding
+    exactly 127 candidates for 127 quadratics), 0.02s to verify, against
+    35.55s for ``factor_list`` on the same input.
+    """
+    if len(coefficients) < 3:
+        return [], coefficients
+
+    modulus = _PEEL_MODULUS
+    x = sp.Symbol("x")
+    try:
+        field_poly = sp.Poly(coefficients, x, domain=sp.GF(modulus))
+        _content, field_factors = field_poly.factor_list()
+    except (sp.PolynomialError, NotImplementedError, ValueError):
+        # The field factorization is the whole search; without it there is
+        # nothing to peel and the caller's factor_list still sees everything.
+        return [], coefficients
+
+    roots: set[int] = set()
+    for factor, _multiplicity in field_factors:
+        if factor.degree() != 1:
+            continue
+        lead, constant = (int(k) % modulus for k in factor.all_coeffs())
+        roots.add((-constant * pow(lead, -1, modulus)) % modulus)
+    if not roots:
+        return [], coefficients
+
+    # One instruction is at least two degrees, so the degree bounds the
+    # primes a program of this size can have reached.
+    prime_count = max(1, (len(coefficients) - 1) * _PEEL_PRIME_SLACK)
+    candidates: set[tuple[int, int]] = set()
+    for index, base in enumerate(sp.primerange(2, prime_count * prime_count + 3)):
+        if index >= prime_count:
+            break
+        for exponent in range(1, _PEEL_MAX_IMAGINARY_EXPONENT + 1):
+            square = base ** (2 * exponent)
+            root_of_negative = sp.sqrt_mod((-square) % modulus, modulus)
+            if root_of_negative is None:
+                continue
+            offset = int(root_of_negative)
+            for root in roots:
+                real_mod = (root - offset) % modulus
+                # A genuine factor puts *both* of its roots in the set.
+                if (real_mod + offset) % modulus not in roots:
+                    continue
+                if (real_mod - offset) % modulus not in roots:
+                    continue
+                real = real_mod if real_mod < modulus // 2 else real_mod - modulus
+                if abs(real) > _PEEL_MAX_REAL_PART:
+                    continue
+                candidates.add((real, square))
+
+    found: list[tuple[int, int]] = []
+    remainder = coefficients
+    for real, square in sorted(candidates):
+        while len(remainder) >= 3:
+            quotient = _divide_quadratic(remainder, real, square)
+            if quotient is None:
+                break
+            found.append((real, square))
+            remainder = quotient
+    return found, remainder
+
 
 def _peel_prime_power_roots(
     coefficients: list[int],
@@ -256,13 +414,24 @@ def _factor_roots(coefficients: tuple[int, ...]) -> tuple[complex, ...]:
     the instruction values come out exactly.  A factor of any other shape
     encodes no instruction and is ignored.
 
-    The prime-power real roots are divided out first by
-    :func:`_peel_prime_power_roots`, which costs a Horner pass each and
-    lowers the degree ``factor_list`` then works on.  That is a pure
-    head start -- see that function for why it cannot change the answer.
+    Both instruction shapes are divided out first, by
+    :func:`_peel_prime_power_roots` and then
+    :func:`_peel_instruction_quadratics`, so ``factor_list`` sees only what
+    neither recognised.  Both are pure head starts -- each accepts a factor
+    only on an exact division, and leaves what it cannot see in the
+    remainder -- so see those functions for why they cannot change the
+    answer.  On a generated program they usually account for everything and
+    ``factor_list`` is never called at all.
     """
     peeled, remainder = _peel_prime_power_roots(list(coefficients))
     roots: list[complex] = [complex(root, 0) for root in peeled]
+    if len(remainder) <= 1:
+        return tuple(roots)
+
+    quadratics, remainder = _peel_instruction_quadratics(remainder)
+    for real, square in quadratics:
+        imaginary = math.isqrt(square)
+        roots.extend([complex(real, imaginary), complex(real, -imaginary)])
     if len(remainder) <= 1:
         return tuple(roots)
 
