@@ -192,28 +192,44 @@ def _index(items: list[_Item]) -> tuple[list[int], dict[str, int]]:
     return starts, labels
 
 
+#: Rounds the router may go without beating its best over-reach count
+#: before it gives up.  Generous because the count rises before it falls:
+#: n=8 dense peaks in round 3 and takes until round 10 to come back under
+#: its round-1 value, so a tight patience would refuse a table that routes.
+_PATIENCE = 32
+
+#: How far apart rungs of one chain are parked.  Under :data:`_REACH`, and
+#: the slack is what makes a chain survive being laid: sizing the rungs and
+#: laying other chains both push lines apart afterwards, so a chain spaced
+#: at the reach itself would be over it by the time it was sized.  Slots
+#: recur every 100 lines at worst, so a gap this wide always has one.
+_SPACING = 200
+
+
 def _relay(items: list[_Item]) -> bool:
-    """Break every out-of-reach jump over a rung, and say whether one was laid.
+    """Break every out-of-reach jump into a chain of rungs, in one go.
 
     One ``DownAccLines`` reaches :data:`_REACH` lines and the tree is far
     longer than that above n=3 -- 2109 lines for parity at n=5, carrying
     hops of 1036.  A hop that cannot be spelled in one go is spelled in
     several, which needs somewhere to land in between.
 
-    A rung is a real jump onward to the same destination, not a marker: a
-    hop that lands on a bare label runs whatever follows it in the stream,
-    which is how a rerouted tree once printed the wrong bit on 40 rows.
+    A rung is a real jump onward, not a marker: a hop that lands on a bare
+    label runs whatever follows it in the stream, which is how a rerouted
+    tree once printed the wrong bit on 40 rows.
 
-    Where it can be parked is the whole constraint.  The slot has to be a
+    Where one can be parked is the whole constraint.  The slot has to be a
     line control never falls into, or the rung would run as part of what
     precedes it -- and the line just past an unconditional jump is exactly
-    that, since the jump always leaves.  Those slots recur every few dozen
-    lines (the widest gap is 100 at n=5), inside :data:`_REACH`.
+    that, since the jump always leaves.
 
-    Each rung is itself an unsealed jump, so it opens a fresh slot behind
-    it and the chain extends as far as it has to.  Rungs are parked
-    strictly between a jump and its destination and every hop runs
-    forwards, so a chain advances and cannot circle.
+    **The whole chain is laid at once**, which is the difference between
+    this terminating and not.  Extending a chain by one rung per round
+    looked equivalent and was not: every round each of ~22 open chains
+    inserted a rung, and the insertions landing inside the other chains'
+    spans pushed their targets further away than the rung had gained.  At
+    n=7 the count of over-reach jumps rose from 22 to 198 while the program
+    grew to 47k lines -- the chase diverged rather than converged.
     """
     starts, labels = _index(items)
     # Dead slots, by the index of the item that must follow them.
@@ -221,6 +237,7 @@ def _relay(items: list[_Item]) -> bool:
     for position, (item, start) in enumerate(zip(items, starts, strict=True)):
         if isinstance(item, _Jump) and not item.fixed and not item.sealed:
             slots[position + 1] = start + item.width
+    by_line = sorted((line, position) for position, line in slots.items())
     laid: dict[int, list[_Item]] = {}
     tag = sum(isinstance(i, _Jump) for i in items)
     for item, start in zip(items, starts, strict=True):
@@ -233,24 +250,30 @@ def _relay(items: list[_Item]) -> bool:
         target = labels[item.label]
         if 0 <= target - here <= _REACH:
             continue
-        # The furthest slot this jump can still reach that is on the way.
-        usable = [
-            (line, position)
-            for position, line in slots.items()
-            if here <= line <= min(here + _REACH, target)
-        ]
-        # Never empty, by one of two slots depending on the jump.  An
-        # unsealed jump has its own trailing slot, exactly at ``here``.
-        # The sealed bit-0 jump -- the one this whole pass exists for --
-        # does not, but the relay label sits immediately behind it and the
-        # relay's own jump is unsealed, so its slot is two lines past
-        # ``here``.  Either way the worst rung is a hop of nearly zero
-        # distance, which still splits the crossing for the next pass.
-        _, position = max(usable)
-        tag += 1
-        name = f"P{tag}"
-        laid.setdefault(position, []).extend([_Label(name), _Jump(item.label, 2)])
-        item.label = name
+        # Step towards the target, taking the furthest slot within one
+        # spacing each time, until the last rung can finish in one hop.
+        chain: list[int] = []
+        line = here
+        while target - line > _REACH:
+            reachable = [
+                (slot_line, position)
+                for slot_line, position in by_line
+                if line < slot_line <= min(line + _SPACING, target)
+            ]
+            if not reachable:
+                break
+            line, position = max(reachable)
+            chain.append(position)
+        if not chain:
+            continue
+        # Link each rung to the next and the last to the real destination,
+        # then send the original jump to the first.
+        names = [f"P{tag + i}" for i in range(1, len(chain) + 1)]
+        tag += len(chain)
+        onward = [*names[1:], item.label]
+        for position, name, goes_to in zip(chain, names, onward, strict=True):
+            laid.setdefault(position, []).extend([_Label(name), _Jump(goes_to, 2)])
+        item.label = names[0]
     if not laid:
         return False
     out: list[_Item] = []
@@ -260,6 +283,16 @@ def _relay(items: list[_Item]) -> bool:
     out.extend(laid.get(len(items), ()))
     items[:] = out
     return True
+
+
+def _over_reach(items: list[_Item]) -> int:
+    """How many jumps still span further than one hop can carry."""
+    starts, labels = _index(items)
+    return sum(
+        not 0 <= labels[item.label] - (start + item.width) <= _REACH
+        for item, start in zip(items, starts, strict=True)
+        if isinstance(item, _Jump)
+    )
 
 
 def _resolve(items: list[_Item]) -> None:
@@ -323,12 +356,36 @@ def interprogck8(truth_table: str) -> str:
     # Sizing and rerouting feed each other: a rerouted jump changes width,
     # which moves every label after it, which can pull another jump out of
     # reach.  Alternate until neither pass has anything left to do.
-    for _ in range(_PASSES):
+    #
+    # The guard is progress, not a pass count.  A cap alone would report a
+    # table as unbuildable when the routing was merely slow, and -- worse --
+    # would have hidden the one-rung-per-round relay that used to *lose*
+    # ground here, taking the over-reach count from 22 up to 198 while the
+    # program tripled.  Each round must leave strictly fewer jumps out of
+    # reach; when one does not, that count is the certificate of the stall.
+    best = len(items)
+    stuck = 0
+    while True:
         _resolve(items)
         if not _relay(items):
             break
-    else:  # pragma: no cover
-        raise ValueError("jump routing did not converge")
+        remaining = _over_reach(items)
+        if remaining < best:
+            best, stuck = remaining, 0
+            continue
+        # A round that does not improve is not yet a stall.  Laying a chain
+        # pushes later labels apart, so a table can get worse before it
+        # gets better -- n=8 dense peaks at 256 over-reach jumps in round 3
+        # and is back under 110 by round 10.  Only a run of rounds that
+        # never beats the best seen is evidence the routing has stopped
+        # gaining, and then the count is the certificate.
+        stuck += 1
+        if stuck > _PATIENCE:
+            raise ValueError(
+                f"jump routing stalled: {remaining} jumps past the "
+                f"{_REACH}-line reach, and {_PATIENCE} rounds without "
+                f"improving on {best}"
+            )
     starts, labels = _index(items)
     out: list[str] = []
     for item, start in zip(items, starts, strict=True):
