@@ -33,12 +33,12 @@ at n=1, 2 and 3 are executed over every input row; n≥4 raises `ValueError`.
 
 | Language | Why it cannot emit arbitrary text |
 | --- | --- |
-| A Painter Ant | It has no output command; the grid dump its interpreter renders at halt is limited to raster symbols. |
+| A Painter Ant | No I/O, so the interpreter dumps state at halt; that grid raster is limited to its symbols. |
 | Algebraic Programming Language | Executed lines print numeric results only. |
 | ArrowQueue | Has no output. |
-| Back | Its halting tape dump has only `0`, `1`, and spaces. |
+| Back | No I/O, so the interpreter dumps the tape at halt; that has only `0`, `1`, and spaces. |
 | BF-PDA | Output is one bit at a time. |
-| Bitdeque | Its interpreter-only deque dump is numeric. |
+| Bitdeque | No I/O, so the interpreter dumps the deque at halt; that dump is numeric. |
 | COD | Its sink prints decimal integers only. |
 | Circuit Diagram | Output is a bit string only. |
 | Fargo | `$` prints the output register as a number. |
@@ -47,9 +47,9 @@ at n=1, 2 and 3 are executed over every input row; n≥4 raises `ValueError`.
 | Inject | `send` appends a newline to every emitted line, so texts without a final newline are unreachable. |
 | Jaune | `^` prints cells as decimal integers only. |
 | Lamfunc | Whitespace tokenization and no concatenation prevent arbitrary text. |
-| Minsky Swap | It has no output command; the halting register dump is numeric. |
+| Minsky Swap | No I/O, so the interpreter dumps the registers at halt; that dump is numeric. |
 | Point Break | Has no output. |
-| RAM0 | It has no output command; its fixed-format final dump cannot address arbitrary text. |
+| RAM0 | No I/O, so the interpreter dumps state at halt; that fixed format cannot address arbitrary text. |
 
 Current caps are deliberate:
 

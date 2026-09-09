@@ -13,13 +13,18 @@ carry one.  Adding a language that prints text and forgetting its
 generator fails here, with no list to update, because ``alphabet``
 defaults to ``"bytes"`` -- the failing direction is the default one.
 
-``emits`` is the second half, and the two are independent.  Four languages
-here have no print instruction at all: their interpreter renders final
-state when the program halts, which is how A Painter Ant, RAM0, Minsky
-Swap and Bitdeque produce output.  Sorting on the alphabet alone put
-Minsky Swap among the languages with no output and A Painter Ant among the
-ones with a print command, and neither is true -- the mechanism and the
-alphabet cut across each other.
+``io`` is the second half, and it is a fact about the language's *spec*
+rather than about this repo's interpreter.  Five languages here define no
+I/O at all -- Back, Bitdeque, Minsky Swap, RAM0 and A Painter Ant -- and
+their interpreters dump final state when the program ends precisely
+*because* of that: the dump is the repo's convention for reporting
+something from a language that cannot report anything itself, so its
+format is the repo's choice and not the spec's.  Each of those
+interpreters says so in its module docstring.
+
+Recording the dump as though it were the language's own output mechanism
+inverts that, and makes a language read as having a channel when what it
+has is a workaround for lacking one.
 """
 
 import pytest
@@ -30,7 +35,7 @@ from esolangs.registry import LANGUAGES, Language
 # Spelled out here so a failure message can say *why* a language was
 # excused rather than only that it was.
 _EXEMPT = {
-    "none": "emits nothing at all",
+    "none": "defines no I/O and dumps nothing, so nothing reaches the caller",
     "numbers": "has a numeric or binary output alphabet",
     "shaped": "cannot spell an arbitrary text through its shaped output",
 }
@@ -94,20 +99,20 @@ def test_an_exempt_language_really_has_no_text_generator(
 
 
 @pytest.mark.parametrize(("name", "lang"), _named(), ids=_IDS)
-def test_emitting_nothing_leaves_no_alphabet(name: str, lang: Language) -> None:
-    """``emits`` and ``alphabet`` must agree about whether anything is emitted.
+def test_reaching_nobody_leaves_no_alphabet(name: str, lang: Language) -> None:
+    """``io`` and ``alphabet`` must agree about whether anything is emitted.
 
-    The two fields are independent in general -- a halt dump can carry any
-    alphabet -- but not at the ends: a language that emits nothing has no
-    alphabet to describe, and a language with an alphabet must have some
-    channel to carry it.  Pinning that corner keeps a half-edited entry
-    (``emits`` changed, ``alphabet`` left behind) from reading as a
-    coherent claim.
+    The two are independent in general -- an interpreter-only dump can
+    carry any alphabet, and a defined output command can still be numeric
+    -- but not at the ends: a language nothing reaches the caller from has
+    no alphabet to describe, and an alphabet needs something to carry it.
+    Pinning that corner keeps a half-edited entry (``io`` changed,
+    ``alphabet`` left behind) from reading as a coherent claim.
     """
-    assert (lang.emits == "nothing") == (lang.alphabet == "none"), (
-        f"{name} declares emits={lang.emits!r} with alphabet="
-        f"{lang.alphabet!r} -- 'nothing' and 'none' are the same claim and "
-        f"have to be made together"
+    assert (lang.io == "none") == (lang.alphabet == "none"), (
+        f"{name} declares io={lang.io!r} with alphabet={lang.alphabet!r} -- "
+        f"a language with no I/O and no dump emits nothing, so both have to "
+        f"say 'none' together"
     )
 
 
@@ -128,19 +133,20 @@ def test_the_exempt_categories_are_all_used() -> None:
     )
 
 
-def test_every_emission_mechanism_is_used() -> None:
-    """The same, for ``emits``.
+def test_every_io_category_is_used() -> None:
+    """The same, for ``io``.
 
-    ``"halt_dump"`` is the one worth pinning: it describes four languages
-    and nothing else in the suite depends on it, so it could be quietly
-    emptied by a recategorization and leave the vocabulary claiming a
-    distinction the registry no longer draws.
+    ``"interpreter_only"`` is the one worth pinning: it describes the five
+    languages whose spec defines no I/O, and nothing else in the suite
+    depends on it, so it could be quietly emptied by a recategorization and
+    leave the vocabulary claiming a distinction the registry no longer
+    draws.
     """
-    used = {lang.emits for lang in LANGUAGES.values()}
-    missing = sorted({"instruction", "halt_dump", "nothing"} - used)
+    used = {lang.io for lang in LANGUAGES.values()}
+    missing = sorted({"defined", "interpreter_only", "none"} - used)
     assert not missing, (
-        f"these emission mechanisms are declared but unused: {missing} -- "
-        f"delete them from Emits, or the distinction is not being drawn"
+        f"these I/O categories are declared but unused: {missing} -- delete "
+        f"them from Io, or the distinction is not being drawn"
     )
 
 
