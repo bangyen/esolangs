@@ -184,23 +184,6 @@ class _Sim:
         """Return the whole state, hashable, so a caller can dedup on it."""
         return (self.tape, self.length, self.ptr, tuple(self.out), self.dead, self.skip)
 
-    @staticmethod
-    def restore(key: tuple[object, ...]) -> "_Sim":
-        """Rebuild the machine :meth:`key` described.
-
-        The inverse of :meth:`key`, so a memo can hold states rather than
-        machines and hand back something the probes can advance.
-        """
-        tape, length, ptr, out, dead, skip = key
-        clone = _Sim.__new__(_Sim)
-        clone.tape = tape  # type: ignore[assignment]
-        clone.length = length  # type: ignore[assignment]
-        clone.ptr = ptr  # type: ignore[assignment]
-        clone.out = list(out)  # type: ignore[call-overload]
-        clone.dead = dead  # type: ignore[assignment]
-        clone.skip = skip  # type: ignore[assignment]
-        return clone
-
     def run_left(self, count: int) -> None:
         """Apply ``"<" * count``: the left law.
 
