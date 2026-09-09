@@ -59,7 +59,7 @@ generators cover one and refuse the other at the same arity):
 
 | Generator | dense | parity | what stops it |
 | --- | --- | --- | --- |
-| Interprogck8 | 7 | 7 | n=8 routing is slow to close; rungs laid to fix one over-long jump break others, and the round-on-round gain is small |
+| Interprogck8 | 7 | 7 | n=8 needs 191 routing rounds and 2031s, refused by the `_PATIENCE` cost policy rather than by the reach |
 | 6-5 | 6 | 10 | 35 branch labels against the table's *distinct* subtrees; dense n=7 needs 47 (parity is unbounded here -- it builds n=14 in 0.2s) |
 | Polynomial | 5 | 10 | caps at 138 instructions, one per prime; dense n=6 needs 187, and one row of it takes 86s to *run* |
 | WII2D | 8 | 10 | dense n=9 decode spans 256 points past the `_WII2D_MAX_INDEX_DOMAIN = 128` cost guard |
@@ -76,9 +76,18 @@ rung gained, taking n=7 from 22 over-reach jumps to 198.  It builds n=7 in
 open edge: a rung laid to fix one over-long jump lands inside another
 chain's span and breaks it, so each round both repairs and damages.  The
 spacing is tuned against exactly that (see `_SPACING`) and the breakage now
-falls round on round instead of sitting flat, but whether n=8 closes in
-practical time is not yet measured.  Routing that stops gaining ground is
-refused with the count rather than run forever.
+falls round on round instead of sitting flat.  Routing that stops gaining
+ground is refused with the count rather than run forever.
+
+n=8 is refused by cost rather than by geometry, and the distinction is
+measured: given `_PATIENCE = 400` instead of the shipped 32 it *does*
+close, in 191 rounds and 2031s, emitting 114319 lines.  That is about ten
+times the slowest generator this suite calls merely slow (Minifuck at
+187s), so the shipped patience keeps it out rather than admitting it --
+but the refusal is a cost policy and not the wall its message suggests.
+**The 114319-line program was never executed**, so it is not known to be
+correct, only to have been laid out.  n=9 is unmeasured; the line count
+grew 8.6x from n=7 to n=8, which would put it near a million.
 
 Factor was capped at 3 by CPython's 4300-digit `int`/`str` guard -- a DoS
 defence, not a Factor property -- which the generator and the interpreter
