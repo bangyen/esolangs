@@ -52,6 +52,7 @@ from __future__ import annotations
 
 import sys
 
+from esolangs.interpreters.brackets import unmatched
 from esolangs.interpreters.io import IO
 
 #: One instant of a run: ``(ind, cell, tape)`` -- the code cursor, the
@@ -90,11 +91,15 @@ def _match(code: str, ind: int, step: int) -> int:
     shell calls it rather than the transition: :func:`_advance` is handed
     the resolved target and has no error case of its own.
     """
+    start = ind
     depth = step
     while depth:
         ind += step
         if not 0 <= ind < len(code):
-            raise ValueError("unmatched bit~ bracket")
+            # The scan walks away from the bracket, so the position named
+            # is the one it started from -- the bracket that has no match,
+            # not wherever the walk fell off the code.
+            raise unmatched(code[start], start)
         if code[ind] == "{":
             depth += 1
         elif code[ind] == "}":
