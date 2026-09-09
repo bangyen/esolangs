@@ -384,14 +384,16 @@ def _sub(node: _Expr, i: int) -> _Expr:
     guarantees the shape; this only tells the checker about it.
     """
     child = node[i]
-    assert isinstance(child, tuple)  # nosec B101
+    if not isinstance(child, tuple):
+        raise AssertionError("isinstance(child, tuple)")
     return child
 
 
 def _text(node: _Expr, i: int) -> str:
     """Return child ``i`` of a node as the name or operator it is."""
     value = node[i]
-    assert isinstance(value, str)  # nosec B101
+    if not isinstance(value, str):
+        raise AssertionError("isinstance(value, str)")
     return value
 
 
@@ -527,7 +529,8 @@ def _const(node: _Expr) -> _Value:
     """Evaluate a parameter default, which the wiki only ever writes literal."""
     if node[0] == "lit":
         value = node[1]
-        assert isinstance(value, int | str)  # nosec B101
+        if not isinstance(value, int | str):
+            raise AssertionError("isinstance(value, int | str)")
         return value
     raise ValueError("a parameter default must be a literal")
 
@@ -589,10 +592,12 @@ def _advance(
 
     if kind == "lit":
         value = node[1]
-        assert isinstance(value, int | str)  # nosec B101
+        if not isinstance(value, int | str):
+            raise AssertionError("isinstance(value, int | str)")
         return (*stack[:-1], frame), [*values, value], None
     if kind in ("read_line", "read_char"):
-        assert byte is not None  # nosec B101
+        if byte is None:
+            raise AssertionError("byte is not None")
         return (*stack[:-1], frame), [*values, byte], None
     if kind == "var":
         name = node[1]
@@ -652,15 +657,18 @@ def _advance(
         if target is None:
             raise HaltError(f"unknown function {node[1]!r}")
         args = node[2] if kind == "call" else node[1]
-        assert isinstance(args, tuple)  # nosec B101
+        if not isinstance(args, tuple):
+            raise AssertionError("isinstance(args, tuple)")
         # The two leading slots are ignored: ``_push_operands`` reads a
         # node's operands from index 2, the shape ``bin`` and ``call`` share.
         enter = ("enter", target, len(args))
         return _push_operands(stack, values, frame, ("x", "x", *args), enter)
     if kind == "enter":
         index, count = node[1], node[2]
-        assert isinstance(index, int)  # nosec B101
-        assert isinstance(count, int)  # nosec B101
+        if not isinstance(index, int):
+            raise AssertionError("isinstance(index, int)")
+        if not isinstance(count, int):
+            raise AssertionError("isinstance(count, int)")
         callee = functions[index]
         if count > len(callee.params):
             raise HaltError(

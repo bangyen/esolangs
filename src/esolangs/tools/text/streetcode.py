@@ -237,7 +237,8 @@ def _streetcode_ring(text: str) -> str | None:
         return None
     plan = _plan_ring(ord(text[target]))
     # target was chosen by this test, so the replan cannot fail.
-    assert plan is not None  # nosec B101
+    if plan is None:
+        raise AssertionError("plan is not None")
     k, counter, per_lap, remainder = plan
     block = _ring_rows(k, counter, per_lap)
     block_width = len(block[0])
