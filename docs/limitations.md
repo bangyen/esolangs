@@ -60,7 +60,7 @@ generators cover one and refuse the other at the same arity):
 | Generator | dense | parity | what stops it |
 | --- | --- | --- | --- |
 | Interprogck8 | 7 | 7 | n=8 routing is slow to close; rungs laid to fix one over-long jump break others, and the round-on-round gain is small |
-| 6-5 | 5 | 5 | 35 branch labels; n=6 needs 37 dense, 63 parity |
+| 6-5 | 6 | 10 | 35 branch labels against the table's *distinct* subtrees; dense n=7 needs 47 (parity is unbounded here -- it builds n=14 in 0.2s) |
 | Polynomial | 5 | 10 | caps at 138 instructions, one per prime; dense n=6 needs 187, and one row of it takes 86s to *run* |
 | WII2D | 8 | 10 | dense n=9 decode spans 256 points past the `_WII2D_MAX_INDEX_DOMAIN = 128` cost guard |
 | ZTOALC L | 8 | 8 | would need 11.8M lines against a 4.19M limit |
@@ -96,11 +96,13 @@ parity, ROTfuck 16s and 20MB at n=10 parity. Only the five above are
 capability limits; the rest of the gap between five and ten is wall-clock.
 
 - **6-5:** 35 addressable branch labels is the language's (operands are
-  `0-9A-Z`), but the *cap* is the construction's.  `8n` jumps to the n-th
-  `4` marker, so markers are positional and two branch sites may target
-  one; the tree spends a marker per internal node instead of sharing the
-  identical subtrees.  Sharing them costs n=6 dense 24 markers rather than
-  37, and n=8 parity 15 rather than 255 -- both inside the budget.
+  `0-9A-Z`), and it now binds on the table's *distinct* subtrees rather
+  than its nodes.  `8n` jumps to the n-th `4` marker, so markers are
+  positional and two branches may name one; past the budget the tree is
+  emitted as a DAG.  This inverts the hard case: parity was the witness
+  that fixed the cap at five and is now the cheapest wide table (20 markers
+  at n=10 against 1023), while a dense table has genuinely different
+  subtrees and refuses at n=7 with 47.
 - **Interprogck8:** a relay-interference limit, not the 255-line reach.
   Rungs repairing one chain break others, and the spacing is tuned against
   that.  Reusing an existing rung instead of laying a new one looked like

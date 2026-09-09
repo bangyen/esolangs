@@ -6,6 +6,7 @@ single-language modules that share its tape-machine shape: ``rotfuck``,
 """
 
 import contextlib
+import hashlib
 import sys
 from importlib import import_module
 from itertools import permutations
@@ -15,6 +16,7 @@ import pytest
 from esolangs.tools import boolean
 from esolangs.tools.boolean.helpers import permute_truth_table
 from esolangs.tools.boolean.six_five import (
+    _six_five_dag_cost,
     _six_five_hoisted,
     _six_five_markers,
     _six_five_stream_ordered,
@@ -232,27 +234,24 @@ class TestSixFive:
             table = format(value, "08b")
             assert _markers(boolean.six_five(table)) <= _six_five_markers(table)
 
-    def test_wide_table_is_refused(self) -> None:
-        """A table no input order can fold has no representation.
+    def test_folding_is_still_per_order_even_though_sharing_is_not(self) -> None:
+        """Parity resists folding under every order, and is built anyway.
 
-        The budget is spent per *order*, so overflowing in stream order is
-        not a refusal: the table must overflow under all ``n!`` of them.
-        Parity is the shape that does -- any permutation of parity is parity
-        -- so it needs the full 63 internal nodes however its inputs are
-        renamed.
+        Any permutation of parity is parity, so no renaming folds a single
+        one of its 63 internal nodes -- which is what made it the refusal
+        witness.  Sharing does not care: the nodes are duplicates of each
+        other, so the distinct count is 11 whatever the order.
 
-        The arithmetic kernel that used to catch these was retired: it needs
-        ``T`` (or its complement) small enough to build, which confines the
-        ones to low indices, which leaves the rest of the table constant --
-        the shape that folds well inside the budget.  So it never covered a
-        table the tree could not.
+        The arithmetic kernel that used to be the other candidate was
+        retired: it needs ``T`` (or its complement) small enough to build,
+        which confines the ones to low indices, which leaves the rest of the
+        table constant -- the shape that folds well inside the budget.
         """
         parity = "".join(str(bin(row).count("1") % 2) for row in range(64))
-        assert _six_five_markers(parity) == 63 > 35
         for perm in permutations(range(6)):
             assert _six_five_markers(permute_truth_table(parity, perm)) == 63
-        with pytest.raises(ValueError, match="35 branch labels"):
-            boolean.six_five(parity)
+        assert _six_five_dag_cost(parity) == 12 <= 35
+        assert boolean.six_five(parity)
 
     def test_reordering_widens_what_renders(self) -> None:
         """A table that overflows in stream order can fold under another.
@@ -271,7 +270,8 @@ class TestSixFive:
             )
             assert best == folded <= 35
             program = boolean.six_five(table)
-            assert _markers(program) == folded
+            # At most the folded count: the winning order may also share.
+            assert _markers(program) <= folded
             for combo in range(64):
                 bits = [(combo >> (5 - i)) & 1 for i in range(6)]
                 got = run_six_five(program, [str(b) for b in bits])
@@ -293,7 +293,10 @@ class TestSixFive:
         assert _six_five_markers(alternating) == 2**n - 1 > 35
         with pytest.raises(ValueError, match="35 branch labels"):
             _six_five_stream_ordered(alternating)
-        assert _six_five_hoisted(alternating, tuple(range(n))) == ""
+        # The identity order no longer returns "": its tree overflows, so
+        # the shared build takes it -- this table is NOT of the last input,
+        # whose distinct subtrees are a handful whatever the order.
+        assert _six_five_hoisted(alternating, tuple(range(n)))
 
         program = boolean.six_five(alternating)
         assert _markers(program) == 1  # greedy tests the last input first
@@ -315,22 +318,41 @@ class TestSixFive:
         assert _six_five_markers(alternating) == 2**n - 1 <= 35
         boolean.six_five(alternating)  # renders rather than raising
 
-    def test_refusals_begin_at_six_inputs(self) -> None:
-        """n == 6 is the first width whose worst case overflows the budget.
+    def test_parity_is_the_easy_case_once_subtrees_are_shared(self) -> None:
+        """Sharing inverts which table is the worst case.
 
-        The worst case is the table no renaming folds, which is parity --
-        an alternating table is only the worst case for a tree stuck with
-        stream order, and reordering renders it (see
-        :meth:`test_reordering_widens_what_renders`).
+        An unshared tree spends a marker per internal node, so parity --
+        which folds nothing -- was the witness that fixed the cap at five.
+        Its *distinct* subtrees are two per level, so shared it is the
+        cheapest wide table there is: n == 10 spends 20 markers where the
+        tree would spend 1023.
         """
-        parity5 = "".join(str(bin(row).count("1") % 2) for row in range(32))
-        assert _six_five_markers(parity5) == 31 <= 35
-        boolean.six_five(parity5)  # renders rather than raising
-
         parity6 = "".join(str(bin(row).count("1") % 2) for row in range(64))
         assert _six_five_markers(parity6) == 63 > 35
-        with pytest.raises(ValueError, match="35 branch labels"):
-            boolean.six_five(parity6)
+        assert _six_five_dag_cost(parity6) == 12 <= 35
+        assert boolean.six_five(parity6)
+
+        parity10 = "".join(str(bin(row).count("1") % 2) for row in range(1024))
+        assert _six_five_dag_cost(parity10) == 20 <= 35
+        assert boolean.six_five(parity10)
+
+    def test_a_table_whose_distinct_subtrees_overflow_is_refused(self) -> None:
+        """The budget still binds -- on distinct subtrees rather than nodes.
+
+        Dense n == 7 has 46 of them against 35, and the refusal reports
+        that count rather than the 92 an unshared tree would spend.
+        """
+        digest = hashlib.sha256(b"dense:7").digest()
+        bits: list[str] = []
+        block = 0
+        while len(bits) < 128:
+            digest = hashlib.sha256(digest + bytes([block & 255])).digest()
+            bits.extend(str(byte & 1) for byte in digest)
+            block += 1
+        dense7 = "".join(bits[:128])
+        assert _six_five_dag_cost(dense7) > 35
+        with pytest.raises(ValueError, match="47 for its distinct subtrees"):
+            boolean.six_five(dense7)
 
     def test_reordering_only_shrinks(self) -> None:
         """No table comes out longer than its identity-order program."""
