@@ -15,8 +15,9 @@ Exhausted input raises :class:`EOFError` (the repo-wide convention).
 The interpreter runs on a :class:`_Machine` (the containers, their current
 values, and the exit code once EXIT fires), so it is step-capable:
 ``step()`` executes one full tick and ``halted`` is true once EXIT fires.
-:func:`run` still raises :class:`SystemExit` on halt, matching the
-original's direct ``sys.exit`` call.
+:func:`run` returns the EXIT code (``None`` if EXIT never fired) instead
+of exiting the process, so a halt is a value the caller receives rather
+than a ``SystemExit`` the library throws at it.
 
 The execution model is a pure function over an immutable ``_State``:
 :func:`_advance` maps a state and the container rules to the next state,
@@ -53,7 +54,7 @@ type _Vars = tuple[tuple[str, int], ...]
 #:
 #: ``exit_code`` is state because halting here is a value a tick produces,
 #: not a position: EXIT changing is what stops the run, and the code it
-#: changed to is what ``run`` exits with.
+#: changed to is what ``run`` returns.
 #:
 #: ``tick`` is deliberately excluded from ``snapshot``: it counts steps, not
 #: state, and including it would make every state unique by construction
@@ -289,17 +290,24 @@ def _advance(
     return (new, queue, exit_code, count + 1)
 
 
-def run(code: list[str], io: IO) -> None:
-    """Run a Container program by ticking its rules until EXIT fires."""
+def run(code: list[str], io: IO) -> int | None:
+    """Run a Container program by ticking its rules until EXIT fires.
+
+    Returns the EXIT code, or ``None`` if the program ended without one.
+    EXIT is Container's *normal* halt, not an invalid operation, so it
+    returns like every other interpreter here rather than raising.  Only
+    the ``__main__`` block below turns the code into a process exit.
+    """
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()
-    if machine.exit_code is not None:
-        sys.exit(machine.exit_code)
+    return machine.exit_code
 
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.readlines()
-            run(data, IO())
+            code = run(data, IO())
+        if code is not None:
+            sys.exit(code)
