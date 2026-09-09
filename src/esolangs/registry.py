@@ -73,21 +73,27 @@ def canonical_id(name: str) -> str:
 # with the text alone, which is how every width-less caller invokes them.
 Generator = Callable[..., str]
 
-# *How* a language emits, and *what* it can spell.  Two independent facts:
-# collapsing them into one field mis-sorted four languages, because "has no
-# print instruction" and "cannot spell arbitrary bytes" cut across each
-# other.  A Painter Ant, RAM0, Minsky Swap and Bitdeque all have no output
-# instruction *and* a limited alphabet -- their interpreter dumps state when
-# the program halts -- so either fact alone describes them wrongly.
+# Whether the *language* defines I/O, which is a fact about its
+# specification and not about this repo's interpreter for it.
 #
-# ``emits`` is the mechanism:
+# - ``"defined"``         -- the wiki gives the language an output command.
+# - ``"interpreter_only"``-- the wiki defines no I/O.  The interpreter still
+#                            has to report something, so by repo convention
+#                            it dumps final state when the program ends:
+#                            Back's tape, Bitdeque's deque, Minsky Swap's
+#                            registers, RAM0's machine, A Painter Ant's grid
+#                            raster.  The dump exists *because* there is no
+#                            I/O -- it is the consequence, not the channel,
+#                            and its format is the repo's choice, not the
+#                            spec's.  Each of those interpreters says so in
+#                            its module docstring.
+# - ``"none"``            -- no I/O and no dump either: nothing reaches the
+#                            caller at all.
 #
-# - ``"instruction"`` -- the language has an output command a program runs.
-# - ``"halt_dump"``   -- it has none; the interpreter renders final state
-#                        when the run ends (``io.print_str`` from ``run``,
-#                        a ``_dump``, or a halt-guarded branch of ``step``).
-# - ``"nothing"``     -- no output reaches the caller at all.
-type Emits = Literal["instruction", "halt_dump", "nothing"]
+# Naming the dump as though it were the language's own output mechanism got
+# this backwards, and made five languages read as having a channel when what
+# they have is a workaround for not having one.
+type Io = Literal["defined", "interpreter_only", "none"]
 
 # ``alphabet`` is what that channel can carry.  Declared rather than
 # inferred: "only prints numbers" is a semantic negative, not decidable by
@@ -105,8 +111,10 @@ type Emits = Literal["instruction", "halt_dump", "nothing"]
 # - ``"none"``    -- nothing is emitted, so there is no alphabet.
 #
 # A text generator is required exactly when ``alphabet`` is ``"bytes"``;
-# ``emits`` records why, and is what makes "it has no print command" a fact
-# the registry states rather than one a reader infers.
+# ``io`` records why, and is what makes "the language defines no I/O" a fact
+# the registry states rather than one a reader infers from an interpreter.
+# The two are independent: an interpreter-only dump can carry any alphabet,
+# and a language with a defined output command can still be numeric.
 # ``docs/limitations.md`` carries the per-language prose.
 type Alphabet = Literal["bytes", "numbers", "shaped", "none"]
 
@@ -127,13 +135,14 @@ class Language:
     derived from them, so registering a generator here is the whole of
     adding one, with no second list to keep in step.
 
-    ``emits`` and ``alphabet`` describe the language's output channel: how
-    it emits, and what it can spell.  ``alphabet`` decides whether ``text``
-    is allowed to be None -- a ``"bytes"`` language with no text generator
-    is a gap, anything else is an exemption -- and ``emits`` records the
-    mechanism, so "it has no print instruction" is stated rather than
-    inferred.  The two are independent: a halt dump can still be the only
-    output a language has.  See :data:`Emits` and :data:`Alphabet`.
+    ``io`` says whether the language's *specification* defines I/O, and
+    ``alphabet`` what its output can spell.  ``alphabet`` decides whether
+    ``text`` is allowed to be None -- a ``"bytes"`` language with no text
+    generator is a gap, anything else is an exemption.  A language whose
+    wiki defines no I/O is ``"interpreter_only"``: its interpreter dumps
+    final state by repo convention *because* the language has no output,
+    so the dump is a consequence of the spec, not a channel the language
+    provides.  See :data:`Io` and :data:`Alphabet`.
 
     ``interpreter`` is the dotted module under
     ``esolangs.interpreters`` that runs programs (None if the executable
@@ -158,7 +167,7 @@ class Language:
     split: bool = False
     id: str = ""
     boolean: Callable[[str], str] | None = None
-    emits: Emits = "instruction"
+    io: Io = "defined"
     alphabet: Alphabet = "bytes"
 
 
@@ -175,7 +184,7 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.a_painter_ant,
         id="a_painter_ant",
         interpreter="grid_based.a_painter_ant",
-        emits="halt_dump",
+        io="interpreter_only",
         alphabet="shaped",
     ),
     "Alight": Language(
@@ -191,7 +200,7 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.algebraic_programming_language,
         id="algebraic_programming_language",
         interpreter="other.algebraic_programming_language",
-        emits="instruction",
+        io="defined",
         alphabet="numbers",
     ),
     "123": Language(
@@ -221,7 +230,7 @@ LANGUAGES: dict[str, Language] = {
         id="arrowqueue",
         interpreter="grid_based.arrowqueue",
         split=True,
-        emits="nothing",
+        io="none",
         alphabet="none",
     ),
     "Back": Language(
@@ -230,7 +239,7 @@ LANGUAGES: dict[str, Language] = {
         id="back",
         interpreter="tape_based.back",
         split=True,
-        emits="halt_dump",
+        io="interpreter_only",
         alphabet="numbers",
     ),
     "BF-PDA": Language(
@@ -238,7 +247,7 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.bfpda,
         id="bf_pda",
         interpreter="stack_based.bf_pda",
-        emits="instruction",
+        io="defined",
         alphabet="numbers",
     ),
     "Basicfuck": Language(
@@ -289,7 +298,7 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.bitdeque,
         id="bitdeque",
         interpreter="queue_based.bitdeque",
-        emits="halt_dump",
+        io="interpreter_only",
         alphabet="numbers",
     ),
     "BrainIf": Language(
@@ -313,7 +322,7 @@ LANGUAGES: dict[str, Language] = {
         id="circuit_diagram",
         interpreter="grid_based.circuit_diagram",
         split=True,
-        emits="instruction",
+        io="defined",
         alphabet="numbers",
     ),
     "Clockwise": Language(
@@ -329,7 +338,7 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.cod,
         id="cod",
         interpreter="grid_based.cod",
-        emits="instruction",
+        io="defined",
         alphabet="numbers",
     ),
     "Collatz Multiverse": Language(
@@ -402,7 +411,7 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.fargo,
         id="fargo",
         interpreter="other.fargo",
-        emits="instruction",
+        io="defined",
         alphabet="numbers",
     ),
     "Flowchart": Language(
@@ -411,7 +420,7 @@ LANGUAGES: dict[str, Language] = {
         id="flowchart",
         interpreter="grid_based.flowchart",
         split=True,
-        emits="instruction",
+        io="defined",
         alphabet="numbers",
     ),
     "Forþ": Language(
@@ -440,7 +449,7 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.grapheme,
         id="grapheme",
         interpreter="stack_based.grapheme",
-        emits="instruction",
+        io="defined",
         alphabet="shaped",
     ),
     "Home Row": Language(
@@ -455,7 +464,7 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.inject,
         id="inject",
         interpreter="other.inject",
-        emits="instruction",
+        io="defined",
         alphabet="shaped",
     ),
     "Interprogck8": Language(
@@ -471,7 +480,7 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.jaune,
         id="jaune",
         interpreter="tape_based.jaune",
-        emits="instruction",
+        io="defined",
         alphabet="numbers",
     ),
     "Lamfunc": Language(
@@ -479,7 +488,7 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.lamfunc,
         id="lamfunc",
         interpreter="other.lamfunc",
-        emits="instruction",
+        io="defined",
         alphabet="shaped",
     ),
     "LaserFuck": Language(
@@ -509,7 +518,7 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.minsky_swap,
         id="minsky_swap",
         interpreter="register_based.minsky_swap",
-        emits="halt_dump",
+        io="interpreter_only",
         alphabet="numbers",
     ),
     "Modulous": Language(
@@ -568,7 +577,7 @@ LANGUAGES: dict[str, Language] = {
         id="point_break",
         interpreter="register_based.point_break",
         split=True,
-        emits="nothing",
+        io="none",
         alphabet="none",
     ),
     "Qoibl": Language(
@@ -584,7 +593,7 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.ram0,
         id="ram0",
         interpreter="register_based.ram0",
-        emits="halt_dump",
+        io="interpreter_only",
         alphabet="shaped",
     ),
     "ROTfuck": Language(
