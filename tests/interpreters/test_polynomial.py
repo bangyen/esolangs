@@ -6,12 +6,15 @@ statements are executed based on the zeroes of the function.
 """
 
 import io
+import sys
 from contextlib import redirect_stdout
 
 import pytest
 
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.polynomial import (
+    _divide_quadratic,
+    _factor_roots,
     brackets,
     convert,
     prime,
@@ -438,6 +441,135 @@ class TestPeelPrimePowerRoots:
             product = product * sp.Poly(x - root, x)
         _quotient, rest = sp.div(poly, product)
         assert rest == sp.Poly(0, x), f"peeled {peeled} is not an exact divisor"
+
+
+class TestFactorRootsRejections:
+    """A quadratic factor only encodes an instruction in one exact shape.
+
+    ``(x - a)**2 + p**(2*b)`` expands to a monic quadratic with an even
+    linear term whose ``q = c - a**2`` is a positive perfect square.  Every
+    other quadratic sympy hands back is some other polynomial's factor and
+    carries no instruction, so it is skipped rather than decoded.
+    """
+
+    def test_a_non_square_imaginary_part_is_skipped(self) -> None:
+        """``x**2 + 2`` has ``q = 2``, which is not a perfect square."""
+        assert _factor_roots((1, 0, 2)) == ()
+
+    def test_a_negative_imaginary_part_is_skipped(self) -> None:
+        """``x**2 - 4`` factors into real roots, not an instruction pair."""
+        assert _factor_roots((1, 0, -4)) == ((2 + 0j), (-2 + 0j))
+
+    def test_an_odd_linear_term_is_skipped(self) -> None:
+        """``x**2 + x + 1`` cannot be ``(x - a)**2 + square`` for integer ``a``."""
+        assert _factor_roots((1, 1, 1)) == ()
+
+    def test_the_shape_that_does_decode(self) -> None:
+        """``x**2 + 4`` is ``(x - 0)**2 + 2**2``, so it yields its pair."""
+        assert _factor_roots((1, 0, 4)) == (2j, -2j)
+
+    def test_a_pair_the_peels_miss_is_decoded_by_factor_list(self) -> None:
+        """A real part past the peel's bound still decodes, one stage later.
+
+        ``_peel_instruction_quadratics`` only accepts a real part within
+        ``_PEEL_MAX_REAL_PART``, so a wider one survives into the remainder
+        and is recovered by ``factor_list`` instead -- the path that makes
+        the peels pure head starts rather than the whole search.
+        """
+        from esolangs.interpreters.register_based.polynomial import (
+            _PEEL_MAX_REAL_PART,
+        )
+
+        real = _PEEL_MAX_REAL_PART + 10
+        # (x - real)**2 + 4
+        coefficients = (1, -2 * real, real * real + 4)
+        assert _factor_roots(coefficients) == (
+            complex(real, 2),
+            complex(real, -2),
+        )
+
+
+class TestPeelQuadraticsFallback:
+    """When the field factorization fails there is nothing to peel.
+
+    The modular factor list is the whole search, so if sympy refuses it the
+    function hands the coefficients back untouched and the caller's own
+    ``factor_list`` still sees everything.
+    """
+
+    def test_a_refused_factorization_returns_the_input(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A ``PolynomialError`` from sympy leaves the coefficients alone."""
+        import sympy as sp
+
+        from esolangs.interpreters.register_based import polynomial as mod
+
+        def refuse(*_args: object, **_kwargs: object) -> object:
+            raise sp.PolynomialError("constructed")
+
+        monkeypatch.setattr(mod.sp, "Poly", refuse)
+        coefficients = [1, 0, 1, 0, 1]
+        peeled = mod._peel_instruction_quadratics(coefficients)  # noqa: SLF001
+        assert peeled == ([], coefficients)
+
+
+class TestDivideQuadratic:
+    """Exact division by ``(x - real)**2 + square``, and its refusals.
+
+    The size guards matter because the caller feeds it whatever is left of
+    the coefficient list: a list too short to hold a quadratic and a
+    remainder has no quotient at all, and the two remainder positions are
+    read from quotient entries that only exist above a certain size.
+    """
+
+    def test_a_list_too_short_to_divide_is_refused(self) -> None:
+        """Below three coefficients there is no room for the quotient."""
+        assert _divide_quadratic([1], 0, 1) is None
+        assert _divide_quadratic([1, 2], 0, 1) is None
+
+    def test_the_smallest_exact_division(self) -> None:
+        """``x**2 + 1`` divided by itself is 1, with both remainders zero."""
+        assert _divide_quadratic([1, 0, 1], 0, 1) == [1]
+
+    def test_a_nonzero_linear_remainder_is_refused(self) -> None:
+        """The linear position has to vanish, so a stray ``x`` term refuses."""
+        assert _divide_quadratic([1, 5, 1], 0, 1) is None
+
+    def test_a_nonzero_constant_remainder_is_refused(self) -> None:
+        """The constant position has to vanish too."""
+        assert _divide_quadratic([1, 0, 9], 0, 1) is None
+
+    def test_a_longer_exact_division(self) -> None:
+        """``(x**2 + 1)(x + 2)`` divides back to ``x + 2``.
+
+        Four coefficients is the first size that reads a quotient entry two
+        places back, which the three-coefficient case never does.
+        """
+        assert _divide_quadratic([1, 2, 1, 2], 0, 1) == [1, 2]
+
+
+class TestWideCoefficientParsing:
+    """A program whose coefficients are wider than CPython's digit cap.
+
+    The cap is a DoS guard on ``int``/``str`` conversion, not anything
+    Polynomial says, so the parser raises it for the width of the source it
+    is handed and puts it straight back.
+    """
+
+    def test_a_number_past_the_digit_cap_still_parses(self) -> None:
+        """``sanitize`` reads a coefficient wider than the default limit."""
+        limit = sys.get_int_max_str_digits()
+        digits = "9" * (limit + 5)
+        coefficients = sanitize(f"f(x) = {digits}x^2 + 1")
+        assert sys.get_int_max_str_digits() == limit, "the cap is handed back"
+        # Reading the value back needs the cap raised again, which is the
+        # whole reason the parser raises it in the first place.
+        sys.set_int_max_str_digits(limit + 10)
+        try:
+            assert len(str(coefficients[0])) == limit + 5
+        finally:
+            sys.set_int_max_str_digits(limit)
 
 
 class TestPeelInstructionQuadratics:

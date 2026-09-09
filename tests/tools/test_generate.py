@@ -1275,6 +1275,34 @@ class TestGeneratorRoundTrips:
         """
         assert roundtrip(polynomial_run, gen.polynomial("a日a日")) == "a日a日"
 
+    def test_polynomial_digit_limit_is_raised_and_handed_back(self) -> None:
+        """The digit cap is borrowed for a wide render, then restored.
+
+        ``sys.get_int_max_str_digits`` is process-global and defaults to
+        4300, which a large instruction table's coefficients outgrow.  The
+        helper raises it only when the render needs it and always puts the
+        old value back, including when the body raises.
+        """
+        import sys
+
+        from esolangs.tools._polynomial import _digit_limit_for
+
+        limit = sys.get_int_max_str_digits()
+
+        # A render that fits leaves the cap alone.
+        with _digit_limit_for(limit - 1):
+            assert sys.get_int_max_str_digits() == limit
+
+        # One that does not raises it to fit, then hands it back.
+        with _digit_limit_for(limit + 100):
+            assert sys.get_int_max_str_digits() == limit + 101
+        assert sys.get_int_max_str_digits() == limit
+
+        # The restore is in a `finally`, so an error does not strand it.
+        with pytest.raises(RuntimeError), _digit_limit_for(limit + 100):
+            raise RuntimeError("the body failed")
+        assert sys.get_int_max_str_digits() == limit
+
     def test_polynomial_format(self) -> None:
         """Zero coefficients are omitted from the formatted polynomial."""
         from esolangs.tools._polynomial import format_coeffs
