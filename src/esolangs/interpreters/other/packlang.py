@@ -17,13 +17,23 @@ pure transition over an immutable state.  The variable store is a tuple of
 ``(name, value)`` pairs, so :meth:`_Machine.snapshot` is hashable as it
 stands and a repeated state proves a loop.
 
-Only the *entry* function is stepped.  A called function runs to
-completion inside the expression that calls it (:func:`_call`), so there
-is no suspended frame to keep and one statement of the visible program is
-one ``step()``.  The transition performs no IO itself: it *requests* a
-read by returning a flag, and the shell takes the byte and calls back --
-which is why a ``charGet`` inside a called function is refused rather than
-given a guessed ordering.
+Every function is stepped, the entry one and its callees alike.  A call
+*pushes* a frame rather than running the callee inside the calling
+statement, so a statement holding calls is re-entered once per call: each
+step runs the leftmost-innermost one that has not returned, and its value
+comes back rewritten into the statement's expression as a literal.  So
+one command of whichever function is innermost is one ``step()``, every
+intermediate state reaches :meth:`_Machine.snapshot`, and a loop inside a
+called function is provable by
+:func:`esolangs.vm.run_until_halt_or_cycle` rather than hanging where
+nothing can observe it.  The transition still performs no IO itself: it
+*requests* a read by returning a flag and the shell takes the byte, which
+is now reachable from a callee as well.
+
+There is therefore no recursion ceiling.  A program that recurses forever
+grows the frame list rather than Python's stack; that class revisits no
+state, so it is what ``esolangs.run``'s wall-clock ``timeout`` is for,
+exactly as ``grapheme.py`` records.
 
 **Numeric literals are decimal.**  The wiki's examples disagree, and this
 is the gap the roadmap flags.  ``charPut(72)`` (Hello, World!),
@@ -68,18 +78,16 @@ Further decisions for gaps the wiki leaves open:
   the same construction with a reachable guard.
 * **Invalid runtime operations** raise
   :class:`~esolangs.exceptions.HaltError`: an undefined variable or
-  function, an array index outside its length, recursion past
-  :data:`_MAX_DEPTH` frames, and two rules of this interpreter's own --
-
-  - **Dependency visibility is enforced** (:func:`_visible`).  A package
-    calls its own functions and those of the packages it depends on, and
-    nothing else.  The wiki says a dependency may itself have
-    dependencies, so the relation is followed transitively.
-  - **IO inside a called function is refused.**  ``charPut``/``charGet``
-    need the shell's ports, but a call is evaluated inside a statement
-    rather than stepped, so there is no point at which the shell could
-    perform them.  Every wiki example does its IO in the entry function.
-    Refusing is honest; inventing an ordering would not be.
+  function, an array index outside its length, and one rule of this
+  interpreter's own -- **dependency visibility is enforced**
+  (:func:`_visible`).  A package calls its own functions and those of the
+  packages it depends on, and nothing else.  The wiki says a dependency
+  may itself have dependencies, so the relation is followed transitively.
+* **IO inside a called function works.**  It was refused, on the
+  rationale that a call was evaluated inside a statement and so gave the
+  shell no point at which to perform its ports.  Framing calls removed
+  that rationale: a callee's statements are stepped like any other, so
+  the same shell performs its ``charPut``/``charGet`` in call order.
 * **Bounds.**  A plain ``Integer`` and a ``Char`` are unbounded below at 0
   and wrap modulo 256 above, matching ``charPut``'s byte output;
   ``Integer(min, max, under, over)`` wraps to the named values instead.
@@ -97,20 +105,11 @@ from collections.abc import Callable
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-# Recursion ceiling.  The wiki gives no limit, but an interpreter must
-# terminate by construction: the fuzz suite feeds random programs, and a
-# self-calling function would otherwise exhaust the Python stack rather
-# than raise.  A call is evaluated inside the calling statement, so this
-# is native Python recursion and the ceiling only works if it is reached
-# before Python's own.
-#
-# Measured, not guessed: one language-level call costs 5 Python frames, so
-# the 1000-frame default is spent at language depth ~198.  This was 1000
-# -- unreachable twice over, since the count also restarted at every call
-# (``_advance`` passed a literal 0), so a runaway program got the
-# RecursionError this exists to prevent.  100 leaves ~500 frames for the
-# expression nesting above the call.
-_MAX_DEPTH = 100
+# There is no recursion ceiling.  A call pushes a frame rather than
+# recursing natively, so a runaway program grows the frame list on the
+# heap and never touches Python's stack.  That class revisits no state, so
+# it is what ``esolangs.run``'s wall-clock ``timeout`` is for -- the same
+# reasoning ``grapheme.py`` and ``function_x_y.py`` record.
 
 #: Statement opcodes.  A program is parsed into a flat tuple of these per
 #: function, with the two jump targets resolved at parse time, so stepping
@@ -212,23 +211,22 @@ class _Function:
 class _Frame:
     """One call frame: the function, its cursor, and its own variables.
 
-    ``depth`` is how many calls deep this frame sits.  It is carried here
-    rather than only threaded through :func:`_evaluate` because a called
-    function runs its body through :func:`_advance`, which starts a fresh
-    evaluation: passing a literal 0 there -- as this did -- restarted the
-    count at every call, so the cap could never be reached.
+    ``pending`` is the current statement's expression with the calls that
+    have already returned rewritten into it as literals, and ``returned``
+    the value a just-finished callee is handing back.  Both are what let a
+    call inside an expression suspend: the statement is re-entered once per
+    call it contains, each time with one more resolved.
     """
 
-    __slots__ = ("depth", "func", "pc", "result", "store")
+    __slots__ = ("func", "pc", "pending", "result", "returned", "store")
 
-    def __init__(
-        self, func: _Function, store: _Store, pc: int = 0, depth: int = 0
-    ) -> None:
+    def __init__(self, func: _Function, store: _Store, pc: int = 0) -> None:
         self.func = func
         self.store = store
         self.pc = pc
         self.result = 0
-        self.depth = depth
+        self.pending: _Expr | None = None
+        self.returned: int | None = None
 
     def key(self) -> tuple[object, ...]:
         """Return the frame as a hashable value for :meth:`snapshot`."""
@@ -670,20 +668,16 @@ def _int(value: object) -> int:
     return value
 
 
-def _evaluate(
-    node: _Expr, store: _Store, program: _Program, depth: int, caller: str
-) -> int:
-    """Return the value of an expression, calling functions as needed.
+def _evaluate(node: _Expr, store: _Store, program: _Program, caller: str) -> int:
+    """Return the value of an expression, which contains no unresolved call.
 
-    Pure with respect to the store: a call runs on its own frame's store
-    and returns only its value, so nothing here writes to ``store``.
-    Recursion is bounded by ``depth`` so a self-calling program raises
-    rather than exhausting the Python stack.
+    Pure with respect to the store, and no longer recursive through a
+    call: ``_Machine.step`` pushes a frame for every function call and
+    rewrites its value in as a ``val`` node, so what reaches here is the
+    call-free remainder.
     """
-    if depth > _MAX_DEPTH:
-        raise HaltError("call depth exceeded")
     kind = node[0]
-    if kind == "lit":
+    if kind in ("lit", "done"):
         return _int(node[1])
     if kind == "var":
         value = _get(store, str(node[1]))
@@ -696,44 +690,37 @@ def _evaluate(
             raise HaltError(f"{node[1]!r} is not an array")
         return len(value)
     if kind == "xor":
-        left = _evaluate(_node(node[1]), store, program, depth, caller)
-        right = _evaluate(_node(node[2]), store, program, depth, caller)
+        left = _evaluate(_node(node[1]), store, program, caller)
+        right = _evaluate(_node(node[2]), store, program, caller)
         return left ^ right
     if kind == "not":
-        value = _evaluate(_node(node[1]), store, program, depth, caller)
+        value = _evaluate(_node(node[1]), store, program, caller)
         return 0 if _truth(value) else 1
     if kind == "apply":
-        return _apply(node, store, program, depth, caller)
+        return _apply(node, store, program, caller)
     raise HaltError(f"cannot evaluate {kind!r}")
 
 
-def _apply(
-    node: _Expr, store: _Store, program: _Program, depth: int, caller: str
-) -> int:
-    """Evaluate an array index or a function call, which look alike."""
+def _apply(node: _Expr, store: _Store, program: _Program, caller: str) -> int:
+    """Evaluate an array index.  A function call never reaches here.
+
+    Indexing and calling look alike in the grammar, and the store decides
+    which one a name is.  ``_Machine.step`` resolves every *call* into a
+    ``done`` node before evaluating, so what survives is the index case.
+    """
     name = str(node[1])
     args = [_node(arg) for arg in _node(node[2])]
-    known = any(slot == name for slot, _ in store)
-    if known:
-        value = _get(store, name)
-        if not isinstance(value, tuple):
-            raise HaltError(f"{name!r} is not an array")
-        if len(args) != 1:
-            raise HaltError(f"indexing {name!r} takes exactly one index")
-        index = _evaluate(args[0], store, program, depth, caller)
-        if not 0 <= index < len(value):
-            raise HaltError(f"index {index} is outside {name!r}")
-        return _int(value[index])
-    func = program.functions.get(name)
-    if func is None:
-        raise HaltError(f"undefined function {name!r}")
-    if not _visible(func, caller, program):
-        raise HaltError(
-            f"{caller!r} does not depend on {func.package!r}, "
-            f"so {name!r} is not in scope"
-        )
-    values = [_evaluate(arg, store, program, depth, caller) for arg in args]
-    return _call(func, values, program, depth + 1)
+    if not any(slot == name for slot, _ in store):
+        raise HaltError(f"unresolved call to {name!r}")
+    value = _get(store, name)
+    if not isinstance(value, tuple):
+        raise HaltError(f"{name!r} is not an array")
+    if len(args) != 1:
+        raise HaltError(f"indexing {name!r} takes exactly one index")
+    index = _evaluate(args[0], store, program, caller)
+    if not 0 <= index < len(value):
+        raise HaltError(f"index {index} is outside {name!r}")
+    return _int(value[index])
 
 
 def _visible(func: _Function, caller: str, program: _Program) -> bool:
@@ -759,33 +746,90 @@ def _visible(func: _Function, caller: str, program: _Program) -> bool:
     return func.package in seen
 
 
-def _call(func: _Function, values: list[int], program: _Program, depth: int) -> int:
-    """Run a function to completion and return its value.
+def _pending_call(
+    node: _Expr, store: _Store, program: _Program, caller: str
+) -> _Expr | None:
+    """Return the call :func:`_evaluate` would reach first, or None.
 
-    A called function runs its own statement list on its own store, so it
-    is a plain recursive evaluation rather than a frame pushed onto the
-    machine: only the *entry* function is stepped, which is what keeps
-    ``step()`` one statement of the visible program.
+    Leftmost-innermost, which is ``_evaluate``'s own order: a call's own
+    arguments are searched before the call, and ``xor``'s left operand
+    before its right.  Keeping that order is what preserves which
+    ``HaltError`` fires first and the order of a callee's output.
+
+    An ``apply`` over an array *name* is an index, not a call, so it is
+    searched but never returned -- indexing has no body to step.
     """
-    if depth > _MAX_DEPTH:
-        raise HaltError("call depth exceeded")
+    kind = node[0]
+    if kind in ("lit", "done", "var", "length"):
+        return None
+    if kind == "not":
+        return _pending_call(_node(node[1]), store, program, caller)
+    if kind == "xor":
+        return _pending_call(_node(node[1]), store, program, caller) or _pending_call(
+            _node(node[2]), store, program, caller
+        )
+    if kind != "apply":
+        return None
+    for arg in _node(node[2]):
+        found = _pending_call(_node(arg), store, program, caller)
+        if found is not None:
+            return found
+    name = str(node[1])
+    if any(slot == name for slot, _ in store):
+        return None  # an array index, evaluated in place
+    return node
+
+
+def _substitute(node: _Expr, target: _Expr, value: int) -> _Expr:
+    """Return ``node`` with ``target`` replaced by the literal ``value``.
+
+    A rewritten *copy*: the parsed program is shared by every frame and by
+    each lap of a ``While``, so writing into it would corrupt the next
+    reader's view of the statement.
+    """
+    if node is target:
+        return ("done", value)
+    kind = node[0]
+    if kind in ("lit", "done", "var", "length"):
+        return node
+    if kind == "not":
+        return ("not", _substitute(_node(node[1]), target, value))
+    if kind == "xor":
+        return (
+            "xor",
+            _substitute(_node(node[1]), target, value),
+            _substitute(_node(node[2]), target, value),
+        )
+    if kind != "apply":
+        return node
+    return (
+        "apply",
+        node[1],
+        tuple(_substitute(_node(arg), target, value) for arg in _node(node[2])),
+    )
+
+
+def _callee(node: _Expr, program: _Program, caller: str) -> _Function:
+    """Resolve the function a pending call names, checking visibility."""
+    name = str(node[1])
+    func = program.functions.get(name)
+    if func is None:
+        raise HaltError(f"undefined function {name!r}")
+    if not _visible(func, caller, program):
+        raise HaltError(
+            f"{caller!r} does not depend on {func.package!r}, "
+            f"so {name!r} is not in scope"
+        )
+    return func
+
+
+def _entered(func: _Function, values: list[int], program: _Program) -> _Frame:
+    """Build the frame a call runs in, binding its arguments."""
     if len(values) != len(func.params):
         raise HaltError(f"{func.name!r} takes {len(func.params)} arguments")
     store = _initial_store(func, program)
-    store = tuple(
-        (slot, dict(zip(func.params, values, strict=True)).get(slot, value))
-        for slot, value in store
-    )
-    frame = _Frame(func, store, depth=depth)
-    while frame.pc < len(func.body):
-        frame, out, read = _advance(frame, program, None)
-        if out is not None or read:
-            # charPut/charGet inside a called function would need the
-            # shell's ports, and no wiki example does it -- every IO call
-            # sits in the entry function.  Refusing is honest; guessing an
-            # order in which a pure evaluation performs IO is not.
-            raise HaltError("IO inside a called function is not supported")
-    return frame.result
+    bound = dict(zip(func.params, values, strict=True))
+    return _Frame(func, tuple((slot, bound.get(slot, value)) for slot, value in store))
 
 
 def _initial_store(func: _Function, program: _Program) -> _Store:
@@ -800,7 +844,10 @@ def _type_of(name: str, func: _Function, program: _Program) -> _Type:
 
 
 def _advance(
-    frame: _Frame, program: _Program, byte: int | None
+    frame: _Frame,
+    program: _Program,
+    byte: int | None,
+    stmt: tuple[object, ...] | None = None,
 ) -> tuple[_Frame, str | None, bool]:
     """Return the frame after one statement, any output, and whether to read.
 
@@ -809,7 +856,8 @@ def _advance(
     shell calls back with the byte in ``byte`` -- so the transition stays a
     function of its arguments and the two ports remain the shell's.
     """
-    stmt = frame.func.body[frame.pc]
+    if stmt is None:
+        stmt = frame.func.body[frame.pc]
     op = stmt[0]
     store = frame.store
     # Name resolution is done from the running function's own package.
@@ -819,7 +867,7 @@ def _advance(
     result = frame.result
 
     if op == _PRINT:
-        value = _evaluate(_node(stmt[1]), store, program, frame.depth, package)
+        value = _evaluate(_node(stmt[1]), store, program, package)
         out = chr(value % 256)
     elif op == _READ:
         if byte is None:
@@ -831,7 +879,6 @@ def _advance(
             stmt[2],
             lambda _old: byte,
             package,
-            depth=frame.depth,
         )
     elif op == _INIT:
         kind = _type_of(str(stmt[1]), frame.func, program)
@@ -843,7 +890,6 @@ def _advance(
             lambda _o: kind.low,
             package,
             whole=kind,
-            depth=frame.depth,
         )
     elif op in (_INCR, _DECR):
         step = 1 if op == _INCR else -1
@@ -855,18 +901,17 @@ def _advance(
             stmt[2],
             lambda old: kind.clamp(old + step),
             package,
-            depth=frame.depth,
         )
     elif op == _JUMP_UNLESS:
-        guard = _evaluate(_node(stmt[1]), store, program, frame.depth, package)
+        guard = _evaluate(_node(stmt[1]), store, program, package)
         if not _truth(guard):
             pc = _int(stmt[2])
     elif op == _JUMP:
         pc = _int(stmt[1])
     elif op == _VALUE:
-        result = _evaluate(_node(stmt[1]), store, program, frame.depth, package)
+        result = _evaluate(_node(stmt[1]), store, program, package)
 
-    new = _Frame(frame.func, store, pc, frame.depth)
+    new = _Frame(frame.func, store, pc)
     new.result = result
     return new, out, False
 
@@ -879,7 +924,6 @@ def _write(
     update: Callable[[int], int],
     caller: str,
     whole: _Type | None = None,
-    depth: int = 0,
 ) -> _Store:
     """Apply ``update`` to a variable or one array element.
 
@@ -892,7 +936,7 @@ def _write(
             if whole is not None:
                 return _set(store, name, whole.zero())
             raise HaltError(f"{name!r} is an array and needs an index")
-        at = _evaluate(_node(index), store, program, depth, caller)
+        at = _evaluate(_node(index), store, program, caller)
         if not 0 <= at < len(value):
             raise HaltError(f"index {at} is outside {name!r}")
         row = list(value)
@@ -903,8 +947,56 @@ def _write(
     return _set(store, name, update(_int(value)))
 
 
+#: Where each statement kind keeps the expression a call can hide in.
+#: The three write opcodes carry an array index at slot 2, which may
+#: itself be a call; ``_JUMP`` alone carries none.
+_EXPR_SLOT = {
+    _PRINT: 1,
+    _JUMP_UNLESS: 1,
+    _VALUE: 1,
+    _READ: 2,
+    _INIT: 2,
+    _INCR: 2,
+    _DECR: 2,
+}
+
+
+def _expression_of(stmt: tuple[object, ...]) -> _Expr | None:
+    """Return the expression ``stmt`` evaluates, or None if it has none."""
+    slot = _EXPR_SLOT.get(str(stmt[0]))
+    if slot is None or slot >= len(stmt) or stmt[slot] is None:
+        return None
+    return _node(stmt[slot])
+
+
+def _resolved(frame: _Frame) -> tuple[object, ...]:
+    """Return the statement to run: the parsed one, or the resolved copy.
+
+    Handing the rewritten *statement* to :func:`_advance` rather than
+    rebuilding the function keeps the parsed program untouched -- it is
+    shared by every frame and by each lap of a ``While``.
+    """
+    stmt = frame.func.body[frame.pc]
+    if frame.pending is None:
+        return stmt
+    slot = _EXPR_SLOT.get(str(stmt[0]))
+    if slot is None:
+        return stmt
+    parts = list(stmt)
+    parts[slot] = frame.pending
+    return tuple(parts)
+
+
 class _Machine:
-    """The run state: the entry function's frame and the parsed program."""
+    """The run state: a stack of call frames and the parsed program.
+
+    ``step()`` advances the innermost frame by one statement, and a call
+    -- wherever it sits in an expression -- *pushes* a frame rather than
+    running the callee inside the caller's step.  So every statement of
+    every function reaches :meth:`snapshot`, and a loop inside a called
+    function is provable by :func:`esolangs.vm.run_until_halt_or_cycle`
+    rather than hanging where nothing can see it.
+    """
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
@@ -912,52 +1004,69 @@ class _Machine:
         entry = self.program.entry
         # _parse raises when a program has no entry, so this cannot be None.
         assert entry is not None  # nosec B101
-        self.frame = _Frame(entry, _initial_store(entry, self.program))
+        self.frames = [_Frame(entry, _initial_store(entry, self.program))]
+
+    @property
+    def frame(self) -> _Frame:
+        """The innermost frame: the one ``step`` advances."""
+        return self.frames[-1]
 
     @property
     def halted(self) -> bool:
-        return self.frame.pc >= len(self.frame.func.body)
+        """Whether every frame has run out, the entry function last."""
+        return not self.frames
 
     @property
     def ip(self) -> int:
         """The current statement position."""
-        return self.frame.pc
+        return self.frame.pc if self.frames else 0
 
     @property
     def memory(self) -> list[object]:
-        """The addressable cells: the entry function's variables, in order.
+        """The addressable cells: the innermost frame's variables, in order.
 
         An array variable contributes its row, so the list is flat and a
         caller reading it sees the same cells the program writes.
         """
         cells: list[object] = []
+        if not self.frames:
+            return cells
         for _name, value in self.frame.store:
             cells.extend(value) if isinstance(value, tuple) else cells.append(value)
         return cells
 
     @property
     def stack(self) -> list[object]:
-        """The stack.
+        """The suspended callers, innermost last.
 
-        Packlang has no user-visible stack: a call is evaluated to its
-        value within one statement rather than pushed as a frame, so
-        nothing is ever suspended for a caller to observe.
+        A call is a frame now, so there *is* something to observe: each
+        entry is the statement its caller is waiting on.
         """
-        return []
+        return [frame.pc for frame in self.frames[:-1]]
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The frame carries the store and the cursor; the input position
-        # joins them, since a repeat that ignores consumed input is not a
-        # real cycle.
-        return (self.frame.key(), self.io.position())
+        # Every frame's cursor, store and result, plus how far each has got
+        # through resolving the calls in its current statement, plus the
+        # input position -- a repeat that ignores consumed input is not a
+        # real cycle.  ``pending`` is by value: it is rewritten as each call
+        # returns, so it is built fresh rather than fixed at parse time.
+        return (
+            tuple(
+                (frame.key(), repr(frame.pending), frame.returned)
+                for frame in self.frames
+            ),
+            self.io.position(),
+        )
 
     def step(self) -> None:
-        """Execute one statement, owning the two ports.
+        """Advance the innermost frame, owning the two ports.
 
-        The transition asks for a read by returning True rather than
-        reaching ``io`` itself, so the read happens here and the byte goes
-        back in as an argument.
+        A statement holding calls takes more than one step: each step
+        pushes a frame for the leftmost-innermost call that has not
+        returned, and the value comes back rewritten into ``pending`` as a
+        literal.  The statement itself runs on the step where none is
+        left.
 
         Stepping a halted machine is a no-op rather than an
         ``IndexError``: ``run_until_halt_or_cycle`` steps once more after
@@ -965,16 +1074,62 @@ class _Machine:
         """
         if self.halted:
             return
-        frame, out, wants_read = _advance(self.frame, self.program, None)
+        frame = self.frame
+        if frame.pc >= len(frame.func.body):
+            self._finish(frame)
+            return
+        if self._resolve(frame):
+            return
+        prepared = _resolved(frame)
+        result, out, wants_read = _advance(frame, self.program, None, prepared)
         if wants_read:
             # ``input_char`` reads a line and takes its first byte, and
             # already gives a blank line the package-wide 0 that
-            # ``tests/interpreters/test_input_convention.py`` pins.
+            # ``tests/interpreters/test_input_convention.py`` pins.  A
+            # callee reaches this the same way the entry function does:
+            # its statements are stepped, so the shell is right here.
             byte = self.io.input_char()
-            frame, out, _ = _advance(self.frame, self.program, byte)
-        self.frame = frame
+            result, out, _ = _advance(frame, self.program, byte, prepared)
+        result.pending = None
+        result.returned = None
+        self.frames[-1] = result
         if out is not None:
             self.io.print_char(out)
+
+    def _resolve(self, frame: _Frame) -> bool:
+        """Push a frame for the next unresolved call, if the statement has one.
+
+        Returns whether this step was spent starting a call, in which case
+        the statement stays put and is re-entered once the value is in.
+        """
+        expr = _expression_of(frame.func.body[frame.pc])
+        if expr is None:
+            return False
+        working = frame.pending if frame.pending is not None else expr
+        package = frame.func.package
+        if frame.returned is not None:
+            call = _pending_call(working, frame.store, self.program, package)
+            if call is not None:
+                working = _substitute(working, call, frame.returned)
+            frame.returned = None
+        call = _pending_call(working, frame.store, self.program, package)
+        if call is None:
+            frame.pending = working
+            return False
+        frame.pending = working
+        func = _callee(call, self.program, package)
+        values = [
+            _evaluate(_node(arg), frame.store, self.program, package)
+            for arg in _node(call[2])
+        ]
+        self.frames.append(_entered(func, values, self.program))
+        return True
+
+    def _finish(self, frame: _Frame) -> None:
+        """Pop a finished frame, delivering its value to the caller."""
+        self.frames.pop()
+        if self.frames:
+            self.frames[-1].returned = frame.result
 
 
 def run(code: str, io: IO) -> None:

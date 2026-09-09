@@ -21,6 +21,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.packlang import _Machine, run
 from esolangs.tools.boolean.packlang import packlang as packlang_boolean
 from esolangs.tools.text.other import packlang as packlang_text
+from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -414,17 +415,17 @@ class TestErrors:
         with pytest.raises(ValueError, match="no parameterless entry"):
             _run("Dependency {\n  Integer f : Integer a {\n    a;\n  }\n} d;")
 
-    def test_unbounded_recursion_is_a_runtime_error(self) -> None:
-        """The depth ceiling fires, rather than Python's own limit.
+    def test_unbounded_recursion_grows_frames_without_crashing(self) -> None:
+        """No depth ceiling: frames grow on the heap, not Python's stack.
 
-        This had no test, and the guard had never run: the count restarted
-        at every call because ``_advance`` passed a literal 0, and the
-        ceiling stood at 1000 where 5 Python frames per call spend the
-        interpreter's 1000-frame budget by language depth ~198.  A
-        self-calling function therefore raised ``RecursionError`` -- the
-        crash the ceiling documents preventing.  Pinning ``HaltError``
-        keeps both halves honest: the count has to accumulate, and the
-        ceiling has to stay under the real frame cost.
+        There was a ceiling here, and it never fired -- the count restarted
+        at every call and the value stood above the ~198 language depth 5
+        Python frames per call allowed, so a self-calling program raised
+        ``RecursionError``.  Framing calls removes the cause rather than
+        retuning the number: recursion no longer touches Python's stack at
+        all.  Such a program revisits no state, so nothing can prove it
+        halts and the wall-clock ``timeout`` is the backstop, as in
+        ``grapheme.py``.  What is asserted is that it stays *steppable*.
         """
         program = (
             "Package : IO {\n"
@@ -432,8 +433,35 @@ class TestErrors:
             "  Integer main {\n    f();\n    0;\n  }\n"
             "} app;"
         )
-        with pytest.raises(HaltError, match="call depth exceeded"):
-            _run(program)
+        machine = _Machine(program, ScriptedIO())
+        for _ in range(4000):
+            machine.step()
+        # Far past Python's own recursion limit, and still going.
+        assert len(machine.frames) > 1000
+        assert not machine.halted
+
+    def test_a_loop_inside_a_called_function_is_provable(self) -> None:
+        """The reason calls are framed rather than evaluated inline.
+
+        A ``While`` in a called function used to run to completion inside
+        the caller's single ``step()``, so an endless one hung with the
+        frame stack never observed growing and nothing for the cycle
+        detector to see.  Framed, every lap reaches ``snapshot`` and the
+        repeat proves the hang.
+
+        The loop holds its state fixed -- no read, no counter -- because a
+        state that grows is the separate class only the timeout covers.
+        """
+        program = (
+            "Package : IO {\n"
+            "  Integer spin {\n    While 1 Do {\n      charPut(65);\n    }\n"
+            "    0;\n  }\n"
+            "  Integer main {\n    spin();\n    0;\n  }\n"
+            "} app;"
+        )
+        io = ScriptedIO()
+        assert run_until_halt_or_cycle(_Machine(program, io)) is False
+        assert set(io.getvalue()) == {"A"}
 
     def test_garbage_is_malformed(self) -> None:
         with pytest.raises(ValueError, match="not Packlang tokens"):
@@ -496,9 +524,16 @@ Package : IO, outer {
 """
         assert _run(code) == "1"
 
-    def test_io_inside_a_called_function_is_refused(self) -> None:
-        """A call is evaluated inside a statement, not stepped, so the
-        shell has no point at which to perform its ports."""
+    def test_io_inside_a_called_function_works(self) -> None:
+        """A callee's ``charPut`` reaches the shell, in call order.
+
+        This was refused, on the rationale that a call was evaluated
+        inside a statement and so had no point at which the shell could
+        perform its ports.  Framing calls removed that rationale: a
+        callee's statements are stepped like any other, so the same shell
+        performs its IO.  ``A`` precedes the caller's own output because
+        the argument is evaluated before ``charPut`` runs.
+        """
         code = """
 Dependency {
   Integer shout : Integer a {
@@ -513,8 +548,26 @@ Package : IO, d {
   }
 } p;
 """
-        with pytest.raises(HaltError, match="IO inside a called function"):
-            _run(code)
+        assert _run(code) == "A1"
+
+    def test_input_inside_a_called_function_works(self) -> None:
+        """The read port reaches a callee too, not only the entry function."""
+        code = """
+Dependency {
+  Integer echo : Integer a {
+    Char c;
+    charGet(c);
+    c;
+  }
+} d;
+Package : IO, d {
+  Integer main {
+    charPut(echo(0));
+    0;
+  }
+} p;
+"""
+        assert _run(code, "Z\n") == "Z"
 
     def test_index_outside_an_array_halts(self) -> None:
         code = """
