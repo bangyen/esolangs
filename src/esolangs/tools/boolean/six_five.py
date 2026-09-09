@@ -267,12 +267,15 @@ def _six_five_shared(
         q, r = divmod(delta, 6)
         return "6" * q + "62" * r + "A0"
 
-    def target(window: str, held: int) -> str:
-        """Return the branch to ``window``: a jump, or the code inline."""
+    def right_branch(window: str) -> str:
+        """Return the jump taken when the test succeeds.
+
+        Always a jump, never inline code: the ``7`` skips exactly one
+        token, so the taken branch has one token to spend.  That is why a
+        right leaf needs a marker where a left one does not.
+        """
         if len(set(window)) == 1:
-            if held == 9:
-                return "8" + _six_five_label(leaf_label[window[0]])
-            return leaf_code(window[0], held)
+            return "8" + _six_five_label(leaf_label[window[0]])
         return "8" + _six_five_label(label_of[window])
 
     def block(window: str, arrive: int) -> str:
@@ -285,7 +288,7 @@ def _six_five_shared(
         """
         _, cell = test_cell(window)
         left, right = children(window)
-        code = _six_five_move(arrive, cell) + "78" + target(right, 9)
+        code = _six_five_move(arrive, cell) + "78" + right_branch(right)
         if len(set(left)) == 1:
             return code + leaf_code(left[0], 8)
         # The left arm is a node of its own, reached by falling through the
