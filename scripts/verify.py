@@ -202,10 +202,6 @@ STEPS = [
         [*PY, "scripts/check_docstrings.py"],
     ),
     (
-        "transpiler conventions check",
-        [*PY, "scripts/check_transpilers.py"],
-    ),
-    (
         "generator conventions check",
         [*PY, "scripts/check_generators.py"],
     ),

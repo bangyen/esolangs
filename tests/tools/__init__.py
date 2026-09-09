@@ -1,1 +1,1 @@
-"""Tests for the generators and transpilers in esolangs.tools."""
+"""Tests for the generators in esolangs.tools."""

@@ -99,10 +99,9 @@ def _written(memory: tuple[int, ...], addr: int, value: int) -> tuple[int, ...]:
 
     A negative ``addr`` indexes from the right, as a write through Python's
     own subscript did before the store became a tuple -- ``-1`` is the last
-    cell.  That is not a nicety: the transpiler fuzz relies on such a write
-    landing somewhere real (or raising on an empty store) rather than
-    growing the store, and growing instead turns a terminating program into
-    a non-terminating one.
+    cell.  That is not a nicety: such a write must land somewhere real (or
+    raise on an empty store) rather than grow the store, since growing
+    instead turns a terminating program into a non-terminating one.
     """
     if addr < 0:
         # IndexError on an empty or too-short store, exactly as a list

@@ -107,7 +107,6 @@ ignore = [
 "tests/**/*.py" = ["D", "N802"]
 # Parametrized tests share a (program, stdin) battery; some tests only use
 # program, but pytest requires the parameter to be declared.
-"tests/tools/test_transpilers.py" = ["ARG001"]
 # CV(N)(C)'s source code *is* IPA, so the ambiguous-unicode rules fire on
 # every command in the language: the fricative is U+03B8 GREEK SMALL LETTER
 # THETA, the multiplication plosive U+0261 LATIN SMALL LETTER SCRIPT G, and

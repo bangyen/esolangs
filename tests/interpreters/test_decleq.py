@@ -224,3 +224,27 @@ class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
     machine = staticmethod(_machine)
     stepping_program = "-2 5 9 9 9 65 0 0"
     halting_program = "-2 5 9 9 9 65 0 0"
+
+
+class TestNegativeWriteIndex:
+    """``_written`` indexes a negative ``b`` from the right, or raises.
+
+    Decleq's store is a tuple, so a negative write cannot fall through to
+    Python's own subscript.  The interpreter reproduces that indexing
+    explicitly: it must land on a real cell rather than grow the store,
+    because growing turns a terminating program into a non-terminating one.
+    """
+
+    def test_negative_addr_writes_from_the_right(self) -> None:
+        from esolangs.interpreters.register_based.decleq import _written
+
+        assert _written((1, 2, 3), -1, 9) == (1, 2, 9)
+        assert _written((1, 2, 3), -3, 9) == (9, 2, 3)
+
+    def test_negative_addr_past_the_left_end_raises(self) -> None:
+        from esolangs.interpreters.register_based.decleq import _written
+
+        with pytest.raises(IndexError):
+            _written((1, 2, 3), -4, 9)
+        with pytest.raises(IndexError):
+            _written((), -1, 9)
