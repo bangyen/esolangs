@@ -190,9 +190,9 @@ def _tokens(line: str) -> list[str]:
     return out
 
 
-def _number(token: str) -> _Number:
+def _number(word: str) -> _Number:
     """Parse a numeric literal, keeping integers exact."""
-    return float(token) if "." in token else int(token)
+    return float(word) if "." in word else int(word)
 
 
 # -- parser ---------------------------------------------------------------
@@ -232,14 +232,14 @@ class _Parser:
         branch here -- ``_atom`` raises that message where it *can*
         happen.
         """
-        token = self.tokens[self.ind]
+        word = self.tokens[self.ind]
         self.ind += 1
-        return token
+        return word
 
-    def expect(self, token: str) -> None:
+    def expect(self, word: str) -> None:
         """Consume ``token`` or fail as malformed."""
-        if self.peek() != token:
-            raise ValueError(f"expected {token!r}")
+        if self.peek() != word:
+            raise ValueError(f"expected {word!r}")
         self.ind += 1
 
     def parse(self) -> _Node:
@@ -263,14 +263,14 @@ class _Parser:
             return self._power()
         node = self._binary(level + 1)
         while True:
-            token = self.peek()
+            word = self.peek()
             # No ``**`` guard is needed here: ``_power`` consumes one
             # before returning, so the cursor never sits on the first
             # ``*`` of a ``**`` by the time this loop sees it.
-            if token is None or token not in self._LEVELS[level]:
+            if word is None or word not in self._LEVELS[level]:
                 return node
             self.take()
-            node = ("bin", token, node, self._binary(level + 1))
+            node = ("bin", word, node, self._binary(level + 1))
 
     def _at_power(self) -> bool:
         """Whether the cursor sits on a ``**`` rather than a ``*``."""
@@ -291,11 +291,11 @@ class _Parser:
 
     def _unary(self) -> _Node:
         """Parse unary ``-``, the ``$`` return operator, and prefix operators."""
-        token = self.peek()
-        if token == "-":  # nosec B105
+        word = self.peek()
+        if word == "-":
             self.take()
             return ("neg", self._unary())
-        if token == "$":  # nosec B105
+        if word == "$":
             self.take()
             return ("ret", self._unary())
         return self._operand()
@@ -386,30 +386,30 @@ class _Parser:
 
     def _atom(self) -> _Node:
         """Parse a literal, name, call, or bracketed expression."""
-        token = self.peek()
-        if token is None:
+        word = self.peek()
+        if word is None:
             raise ValueError("unexpected end of expression")
-        if token[0] in _DIGITS:
+        if word[0] in _DIGITS:
             self.take()
-            node: _Node = ("lit", _number(token))
+            node: _Node = ("lit", _number(word))
             # ``1(2)`` is invalid syntax by the spec, and so is ``1 a``:
             # implied multiplication is between *variables*.
             if self.peek() == "(":
                 raise ValueError("bracket multiplication is invalid syntax")
             return self._implied(node)
-        if token == "(":  # nosec B105
+        if word == "(":
             self.take()
             inner = self.expr()
             self.expect(")")
             return self._implied(inner)
-        if _is_lower(token):
+        if _is_lower(word):
             self.take()
             if self.peek() == "(":
                 # ``c()`` where ``c`` is a parameter holding a function:
                 # the wiki's ``IF(x, c) = x & c()`` calls its argument.
-                return ("call", token, self._arguments())
-            return self._implied(("var", token))
-        if _is_upper(token):
+                return ("call", word, self._arguments())
+            return self._implied(("var", word))
+        if _is_upper(word):
             name = ""
             while self.peek() is not None and _is_upper(str(self.peek())):
                 name += self.take()
@@ -418,7 +418,7 @@ class _Parser:
             # A bare uppercase name is the function itself, which is how
             # ``WHILE(x, c)`` receives something it can call.
             return ("ref", name)
-        raise ValueError(f"unexpected token {token!r}")
+        raise ValueError(f"unexpected token {word!r}")
 
     def _arguments(self) -> list[_Node]:
         """Parse a parenthesised, comma-separated argument list."""
@@ -435,11 +435,11 @@ class _Parser:
     def _implied(self, node: _Node) -> _Node:
         """Fold implied multiplication (``ab`` is ``a * b``) onto ``node``."""
         while True:
-            token = self.peek()
-            if token is None or not _is_lower(token):
+            word = self.peek()
+            if word is None or not _is_lower(word):
                 return node
             self.take()
-            node = ("bin", "*", node, ("var", token))
+            node = ("bin", "*", node, ("var", word))
 
 
 def _split_definition(line: str) -> tuple[str, str] | None:
@@ -506,12 +506,12 @@ def _parse_lhs(lhs: str) -> tuple[str, list[str]]:
     # literal symbol of the pattern.
     pattern = ""
     op_params: list[str] = []
-    for token in tokens:
-        if _is_lower(token):
+    for word in tokens:
+        if _is_lower(word):
             pattern += "\0"
-            op_params.append(token)
-        elif len(token) == 1 and _is_symbol(token):
-            pattern += token
+            op_params.append(word)
+        elif len(word) == 1 and _is_symbol(word):
+            pattern += word
         else:
             raise ValueError(f"bad operator pattern {lhs!r}")
     if not op_params or "\0" not in pattern:

@@ -289,16 +289,16 @@ class _Parser:
         return self.tokens[self.pos] if self.pos < len(self.tokens) else None
 
     def next_token(self) -> str:
-        token = self.peek()
-        if token is None:
+        word = self.peek()
+        if word is None:
             raise ValueError("unexpected end of program")
         self.pos += 1
-        return token
+        return word
 
-    def expect(self, token: str) -> None:
+    def expect(self, word: str) -> None:
         got = self.next_token()
-        if got != token:
-            raise ValueError(f"expected {token!r}, got {got!r}")
+        if got != word:
+            raise ValueError(f"expected {word!r}, got {got!r}")
 
     # -- types ---------------------------------------------------------
 
@@ -339,12 +339,12 @@ class _Parser:
 
     def number(self) -> int:
         """Parse a decimal integer literal; see the module docstring."""
-        token = self.next_token()
-        if token == ",":  # nosec B105
-            token = self.next_token()
-        if not token.isdigit():
-            raise ValueError(f"expected a number, got {token!r}")
-        return int(token)
+        word = self.next_token()
+        if word == ",":
+            word = self.next_token()
+        if not word.isdigit():
+            raise ValueError(f"expected a number, got {word!r}")
+        return int(word)
 
     # -- expressions ---------------------------------------------------
 
@@ -363,15 +363,15 @@ class _Parser:
         return self.primary()
 
     def primary(self) -> tuple[object, ...]:
-        token = self.next_token()
-        if token == "(":  # nosec B105
+        word = self.next_token()
+        if word == "(":
             node = self.expression()
             self.expect(")")
             return node
-        if token.isdigit():
-            return ("lit", int(token))
-        if not token[:1].isalpha() and token[:1] != "_":
-            raise ValueError(f"unexpected token {token!r} in an expression")
+        if word.isdigit():
+            return ("lit", int(word))
+        if not word[:1].isalpha() and word[:1] != "_":
+            raise ValueError(f"unexpected token {word!r} in an expression")
         if self.peek() == "(":
             self.next_token()
             # ``myArray(length)`` is spelled exactly like that on the wiki,
@@ -379,7 +379,7 @@ class _Parser:
             if self.peek() == "length":
                 self.next_token()
                 self.expect(")")
-                return ("length", token)
+                return ("length", word)
             args = []
             if self.peek() != ")":
                 args.append(self.expression())
@@ -389,8 +389,8 @@ class _Parser:
             self.expect(")")
             # An index and a call are spelled identically; which one it is
             # depends on the name, so it is resolved at run time.
-            return ("apply", token, tuple(args))
-        return ("var", token)
+            return ("apply", word, tuple(args))
+        return ("var", word)
 
     # -- statements ----------------------------------------------------
 
@@ -416,15 +416,15 @@ class _Parser:
         self.next_token()
 
     def statement(self, out: list[list[object]], local_types: dict[str, _Type]) -> None:
-        token = self.peek()
-        if token in ("INIT", "INCR", "DECR"):
+        word = self.peek()
+        if word in ("INIT", "INCR", "DECR"):
             self.next_token()
             name, index = self.lvalue()
             self.expect(";")
-            op = {"INIT": _INIT, "INCR": _INCR, "DECR": _DECR}[str(token)]
+            op = {"INIT": _INIT, "INCR": _INCR, "DECR": _DECR}[str(word)]
             out.append([op, name, index])
             return
-        if token == "If":  # nosec B105
+        if word == "If":
             self.next_token()
             guard = self.expression()
             self.expect("Then")
@@ -433,7 +433,7 @@ class _Parser:
             self.block(out, local_types)
             out[patch][2] = len(out)
             return
-        if token == "While":  # nosec B105
+        if word == "While":
             self.next_token()
             top = len(out)
             guard = self.expression()
@@ -445,7 +445,7 @@ class _Parser:
             out[patch][2] = len(out)
             return
         # A declaration inside a function body: a type followed by a name.
-        if token is not None and token in _DATATYPES and self.is_declaration():
+        if word is not None and word in _DATATYPES and self.is_declaration():
             declared = self.parse_type()
             name = self.next_token()
             self.expect(";")
