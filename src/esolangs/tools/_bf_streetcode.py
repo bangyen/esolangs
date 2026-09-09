@@ -93,6 +93,19 @@ def _lower(program: str) -> str:
     i, n = 0, len(code)
     while i < n:
         char = code[i]
+        # A byte cell is always non-negative, so ``[-]`` reaches zero
+        # without wrapping.  Its following arithmetic run starts from a
+        # known zero too, so emit its residue directly rather than a
+        # canonicalizer -- the text generator uses this clear-and-set form.
+        if code.startswith("[-]", i):
+            out.append("[-]")
+            i += 3
+            delta = 0
+            while i < n and code[i] in "+-":
+                delta += 1 if code[i] == "+" else -1
+                i += 1
+            out.append("+" * (delta % 256))
+            continue
         if char in "+-":
             delta = 0
             while i < n and code[i] in "+-":

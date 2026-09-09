@@ -368,6 +368,7 @@ STREETCODE_BATTERY = (
 # wraparound and ``,.`` the mod-256 input without paying for a wide cell.
 STREETCODE_PINNED = (
     ("-.", "", "\xff"),
+    ("[-]---.", "", "\xfd"),
     pytest.param("+[+].", "", "\x00", marks=_SLOW),
     pytest.param("++++++++[>++++++++<-]>.", "", "@", marks=_SLOW),
     (",.", "Ā", "\x00"),  # U+0100 taken mod 256 is 0
@@ -379,8 +380,9 @@ def test_streetcode_transpiled_output_matches_source(program: str, stdin: str) -
     """Every battery program agrees byte-for-byte through Streetcode.
 
     The wraparound brainfuck has and Streetcode does not is reproduced by a
-    canonicalizer the transpiler emits after each arithmetic run and each
-    ``,``, so underflow, overflow and above-byte input all match.
+    canonicalizer the transpiler emits after arithmetic runs and ```,``,
+    except clear-and-set runs whose byte residue is known, so underflow,
+    overflow and above-byte input all match.
     """
     target = esolangs.transpile("brainfuck", "Streetcode", program)
     assert esolangs.run("brainfuck", program, stdin, timeout=30) == esolangs.run(
@@ -393,6 +395,13 @@ def test_streetcode_pinned_output(program: str, stdin: str, want: str) -> None:
     """Pinned outputs, so the battery is not merely self-consistent."""
     target = esolangs.transpile("brainfuck", "Streetcode", program)
     assert esolangs.run("Streetcode", target, stdin, timeout=30) == want
+
+
+def test_streetcode_clear_and_set_skips_the_canonicalizer() -> None:
+    """A byte clear makes its following arithmetic residue statically known."""
+    from esolangs.tools._bf_streetcode import _lower
+
+    assert _lower("[-]---") == "[-]" + "+" * 253
 
 
 def test_streetcode_transpiler_is_total() -> None:
