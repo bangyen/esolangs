@@ -14,6 +14,7 @@ import re
 import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Literal
 
 from esolangs.tools import boolean as _boolean
 from esolangs.tools import text as _generate
@@ -72,6 +73,27 @@ def canonical_id(name: str) -> str:
 # with the text alone, which is how every width-less caller invokes them.
 Generator = Callable[..., str]
 
+# What a language's output channel can spell, which is what decides whether a
+# text generator can exist for it.  Declared here rather than inferred: "only
+# prints numbers" is a semantic negative, not decidable by executing programs
+# (the sweep would have to cover all of them) and not soundly decidable by
+# reading interpreter source, which is how a hard-coded category tuple once
+# exempted twelve interpreters here and hid three real violations.
+#
+# - ``"text"``     -- can emit arbitrary bytes, so a text generator must exist.
+# - ``"nothing"``  -- no output command at all.
+# - ``"numbers"``  -- a numeric or binary alphabet: digits, bits, or a dump
+#                     of registers/cells rendered as integers.
+# - ``"constrained"`` -- a rich alphabet that still cannot spell an arbitrary
+#                     text, because the emission is shaped: a forced trailing
+#                     newline, whitespace tokenization with no concatenation,
+#                     a fixed-format dump, or a raster of grid symbols.
+#
+# The last three are the exemptions.  ``docs/limitations.md`` carries the
+# per-language prose; this field is the machine-readable half, so a test can
+# ask the registry instead of parsing the doc or carrying its own list.
+type Prints = Literal["text", "nothing", "numbers", "constrained"]
+
 
 @dataclass(frozen=True)
 class Language:
@@ -88,6 +110,12 @@ class Language:
     :data:`GENERATORS` and :data:`~esolangs.tools.boolean.BOOLEAN` are
     derived from them, so registering a generator here is the whole of
     adding one, with no second list to keep in step.
+
+    ``prints`` declares what the language's output channel can spell, and so
+    whether ``text`` is allowed to be None: everything but ``"text"`` is an
+    exemption, and a ``"text"`` language with no text generator is a gap.
+    See :data:`Prints` for the categories and why the fact is declared
+    rather than inferred.
 
     ``interpreter`` is the dotted module under
     ``esolangs.interpreters`` that runs programs (None if the executable
@@ -112,6 +140,7 @@ class Language:
     split: bool = False
     id: str = ""
     boolean: Callable[[str], str] | None = None
+    prints: Prints = "text"
 
 
 LANGUAGES: dict[str, Language] = {
@@ -127,6 +156,7 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.a_painter_ant,
         id="a_painter_ant",
         interpreter="grid_based.a_painter_ant",
+        prints="constrained",
     ),
     "Alight": Language(
         "Alight",
@@ -141,6 +171,7 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.algebraic_programming_language,
         id="algebraic_programming_language",
         interpreter="other.algebraic_programming_language",
+        prints="numbers",
     ),
     "123": Language(
         "123",
@@ -169,6 +200,7 @@ LANGUAGES: dict[str, Language] = {
         id="arrowqueue",
         interpreter="grid_based.arrowqueue",
         split=True,
+        prints="nothing",
     ),
     "Back": Language(
         "Back",
@@ -176,12 +208,14 @@ LANGUAGES: dict[str, Language] = {
         id="back",
         interpreter="tape_based.back",
         split=True,
+        prints="numbers",
     ),
     "BF-PDA": Language(
         "BF-PDA",
         boolean=_boolean.bfpda,
         id="bf_pda",
         interpreter="stack_based.bf_pda",
+        prints="numbers",
     ),
     "Basicfuck": Language(
         "Basicfuck",
@@ -231,6 +265,7 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.bitdeque,
         id="bitdeque",
         interpreter="queue_based.bitdeque",
+        prints="numbers",
     ),
     "BrainIf": Language(
         "BrainIf",
@@ -253,6 +288,7 @@ LANGUAGES: dict[str, Language] = {
         id="circuit_diagram",
         interpreter="grid_based.circuit_diagram",
         split=True,
+        prints="numbers",
     ),
     "Clockwise": Language(
         "Clockwise",
@@ -267,6 +303,7 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.cod,
         id="cod",
         interpreter="grid_based.cod",
+        prints="numbers",
     ),
     "Collatz Multiverse": Language(
         "Collatz Multiverse",
@@ -338,6 +375,7 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.fargo,
         id="fargo",
         interpreter="other.fargo",
+        prints="numbers",
     ),
     "Flowchart": Language(
         "Flowchart",
@@ -345,6 +383,7 @@ LANGUAGES: dict[str, Language] = {
         id="flowchart",
         interpreter="grid_based.flowchart",
         split=True,
+        prints="numbers",
     ),
     "Forþ": Language(
         "Forþ",
@@ -372,6 +411,7 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.grapheme,
         id="grapheme",
         interpreter="stack_based.grapheme",
+        prints="constrained",
     ),
     "Home Row": Language(
         "Home Row",
@@ -385,6 +425,7 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.inject,
         id="inject",
         interpreter="other.inject",
+        prints="constrained",
     ),
     "Interprogck8": Language(
         "Interprogck8",
@@ -399,12 +440,14 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.jaune,
         id="jaune",
         interpreter="tape_based.jaune",
+        prints="numbers",
     ),
     "Lamfunc": Language(
         "Lamfunc",
         boolean=_boolean.lamfunc,
         id="lamfunc",
         interpreter="other.lamfunc",
+        prints="constrained",
     ),
     "LaserFuck": Language(
         "LaserFuck",
@@ -433,6 +476,7 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.minsky_swap,
         id="minsky_swap",
         interpreter="register_based.minsky_swap",
+        prints="nothing",
     ),
     "Modulous": Language(
         "Modulous",
@@ -490,6 +534,7 @@ LANGUAGES: dict[str, Language] = {
         id="point_break",
         interpreter="register_based.point_break",
         split=True,
+        prints="nothing",
     ),
     "Qoibl": Language(
         "Qoibl",
@@ -504,6 +549,7 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.ram0,
         id="ram0",
         interpreter="register_based.ram0",
+        prints="constrained",
     ),
     "ROTfuck": Language(
         "ROTfuck",
