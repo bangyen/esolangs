@@ -168,6 +168,22 @@ Current caps are deliberate:
   result: under copy semantics that is a no-op and the example crashes on its
   own first `out`, so `at` sets in place. Both readings are pinned by running
   all three wiki programs.
+- Packlang's wiki examples disagree on what base a numeric literal is in.
+  Literals are read as **decimal**: Hello World, truth-machine and cat only
+  work that way, while PlusOrMinus's `101011`/`101101` and the dependency
+  example's `110000`/`101`/`011`/`001` were written as binary character
+  codes and are declared wrong. A pure binary reading is refuted outright --
+  four of the five examples contain non-binary digits, PlusOrMinus's own
+  `Integer(0, 255, 255, 0)` among them. The tie against a hybrid reading
+  breaks on the author's error markers: the comment `48 (1100000)`
+  mis-writes 48 (`110000`), and `equals(101, 011)` uses leading zeros.
+  Rebasing the dependency example's literals reproduces the `0110` its
+  comments claim, so its logic is right and only its base is wrong.
+- Packlang's cat cannot reach its own terminator here. `While c ^ 10 Do`
+  waits for a newline *byte* from `charGet`, but input is line-delimited
+  (`splitlines`), so no line begins with byte 10 and a blank line reads as
+  the package-wide 0. The program parses and accumulates but never exits
+  the loop; this is the line-IO convention, not an interpreter defect.
 
 All generator output claims require execution through the interpreter. Do not
 use permissive interpreter behavior or a bounded search as a new capability.

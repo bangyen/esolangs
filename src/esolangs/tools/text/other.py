@@ -42,6 +42,7 @@ __all__ = [
     "nevermind",
     "nocomment",
     "one_two_three",
+    "packlang",
     "painfuck",
     "pct_squared_minus_one",
     "sbleq",
@@ -985,6 +986,23 @@ def sbleq(text: str) -> str:
     cells += [ord(c) for c in text]
     cells += [len(cells) + 1]
     return " ".join(map(str, cells))
+
+
+def packlang(text: str) -> str:
+    """Build a Packlang program that outputs ``text``.
+
+    One ``charPut(<byte>);`` per character inside a single ``main``, with
+    the literal in decimal -- the base the interpreter resolves the wiki's
+    conflicting examples to (see ``interpreters/other/packlang.py``).  The
+    trailing ``0;`` is the function's value, as every wiki example writes.
+
+    ``charPut`` prints ``value % 256``, so the alphabet is any byte; the
+    text is required to be ASCII anyway, since a non-ASCII ``str``
+    character has no single-byte code to emit.
+    """
+    _require_ascii(text, "Packlang")
+    body = "".join(f"    charPut({ord(c)});\n" for c in text)
+    return f"Package : IO {{\n  Integer main {{\n{body}    0;\n  }}\n}} printer;\n"
 
 
 def suptiftam(text: str) -> str:

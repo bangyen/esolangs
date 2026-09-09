@@ -1,0 +1,17 @@
+Package : IO {
+  Char x0;
+  Char x1;
+  Integer(0, 1, 1, 0) acc;
+  Integer main {
+    INIT acc;
+    charGet(x0);
+    charGet(x1);
+    If x0 ^ 48 Then {
+      If x1 ^ 48 Then {
+        INCR acc;
+      }
+    }
+    charPut(48 ^ acc);
+    0;
+  }
+} truthTable;

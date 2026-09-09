@@ -133,6 +133,7 @@ Languages that don't fit into the above categories.
 - [Forbin](https://esolangs.org/wiki/Forbin) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/forbin.py))
 - [Inject](https://esolangs.org/wiki/Inject) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/inject.py))
 - [Lamfunc](https://esolangs.org/wiki/Lamfunc) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/lamfunc.py))
+- [Packlang](https://esolangs.org/wiki/Packlang) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/packlang.py))
 - [Suptiftam](https://esolangs.org/wiki/Suptiftam) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/suptiftam.py))
 - [ZTOALC L](https://esolangs.org/wiki/ZTOALC_L) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/ztoalc_l.py))
 - [function x(y)](https://esolangs.org/wiki/function_x(y)) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/function_x_y.py))
