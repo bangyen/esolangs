@@ -110,7 +110,15 @@ def bits_of(value: int) -> str:
 # the two in both directions: a language whose trait was dropped fails
 # rather than quietly rejoining the majority.
 DUMPS_ON_THE_POST_HALT_STEP = frozenset(
-    {"Minsky Swap", "RAM0", "Bitdeque", "LaserFuck", "ArrowQueue", "Point Break"}
+    {
+        "Minsky Swap",
+        "RAM0",
+        "Bitdeque",
+        "LaserFuck",
+        "ArrowQueue",
+        "Point Break",
+        "Back",
+    }
 )
 
 # Languages with no self-halt at all: ``esolangs.run`` stops them from

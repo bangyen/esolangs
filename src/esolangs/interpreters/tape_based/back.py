@@ -14,8 +14,9 @@ name.)
 
 The interpreter runs on a :class:`_Machine` (the beam's position and
 direction, the bit tape, and the tape pointer), so it is step-capable:
-``step()`` executes one cell, printing the tape and setting ``halted`` when
-the beam reaches a ``*``.
+``step()`` executes one cell, setting ``halted`` when the beam reaches a
+``*`` and printing the tape on the step after that -- the post-halt dump
+the other interpreter-only languages here share.
 
 A program with no ``*`` bounces the beam forever.  The beam itself lives in
 a finite grid, so a loop that never moves the tape pointer right revisits a
@@ -113,10 +114,17 @@ def _advance(state: _State, code: Sequence[str], size: int) -> _State:
 class _Machine:
     """Per-run Back state: the beam, the bit tape, and the tape pointer.
 
-    ``step()`` executes one cell, printing the tape and setting ``halted``
-    when the beam reaches a ``*``.  The VM and the state-cycle hang detector
-    expose this object.
+    ``step()`` executes one cell, setting ``halted`` when the beam reaches
+    a ``*`` and printing the tape on the step after that.  The VM and the
+    state-cycle hang detector expose this object.
     """
+
+    #: Whether the tape is written on the step *after* the halt.  It
+    #: belongs to the language, not to whoever is stepping it: ``run`` ends
+    #: its loop with one more ``step()``, so a caller who stops at
+    #: ``halted`` has driven the program correctly and still holds none of
+    #: its output.
+    dumps_on_the_post_halt_step = True
 
     def __init__(self, code: list[str], io: IO) -> None:
         """Pad ``code`` to a rectangle and start the beam at the top-left."""
@@ -127,6 +135,9 @@ class _Machine:
         self.code = tuple(line.ljust(self.size) for line in code)
         # The beam starts top-left heading right: (a, b) is (d_row, d_col).
         self.state: _State = (0, 0, 0, 1, (0,), 0, False)
+        # Out of ``_State``: the dump is the shell's, and ``snapshot`` must
+        # keep hashing the fields it always has.
+        self._dumped = False
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -180,6 +191,11 @@ class _Machine:
         """Whether the beam has reached a ``*``."""
         return self.state[6]
 
+    @property
+    def dumped(self) -> bool:
+        """Whether the end-of-run tape dump has already been printed."""
+        return self._dumped
+
     # The VM's language-shaped view: 2D beam; ip is the beam's (row, col, direction),
     # memory the bit tape.
 
@@ -208,22 +224,26 @@ class _Machine:
         return (row, col, a, b, tape, cell, self.io.position())
 
     def step(self) -> None:
-        """Execute one cell, moving the beam.
+        """Execute one cell, or dump the tape on the post-halt step.
 
-        The tape dump is here rather than in the transition: this is the
-        shell, so it is where an effect belongs.  It fires on the step that
-        reaches the ``*``, which is the step the transition records the
-        stop on -- ``*`` is Back's halt command and nothing else sets
-        ``halted``, so the dump is guarded by the halt itself rather than
-        by re-reading the grid for the character that caused it.  The tape
-        printed is the one ``_advance`` carried through, which ``*`` leaves
-        untouched.
+        The dump is here rather than in the transition: this is the shell,
+        so it is where an effect belongs.  ``*`` is Back's halt command and
+        nothing else sets ``halted``, so the halt is the guard -- the
+        character that caused it does not have to be read back off the
+        grid.
+
+        It fires on the step *after* the halt, as Minsky Swap, Bitdeque,
+        RAM0, ArrowQueue and Point Break all do: a caller who drives the
+        machine itself then sees the same output from all six, rather than
+        holding Back's tape and none of the others'.  ``dumped`` keeps it
+        to one dump however many times a halted machine is stepped.
         """
         if self.halted:
+            if not self.dumped:
+                self.io.print_str(" ".join(map(str, self.tape)))
+                self._dumped = True
             return
         self.state = _advance(self.state, self.code, self.size)
-        if self.halted:
-            self.io.print_str(" ".join(map(str, self.tape)))
 
 
 def run(code: list[str], io: IO) -> None:
@@ -231,6 +251,7 @@ def run(code: list[str], io: IO) -> None:
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()
+    machine.step()  # the post-halt step prints the tape
 
 
 if __name__ == "__main__":
