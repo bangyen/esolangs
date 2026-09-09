@@ -9,11 +9,12 @@ grid.
 
 The execution model is a pure function over an immutable ``_State``:
 :func:`_advance` maps a state and the grid to the next state, and never
-mutates what it is given.  ArrowQueue defines no I/O at all, so unlike the
-other languages in this repo the transition needs no effect parameter and
-no shell cooperation -- a whole run is a fold of :func:`_advance` over a
-starting state, and :class:`_Machine` exists only to supply the mutable
-protocol the rest of the library expects.
+mutates what it is given.  ArrowQueue defines no I/O, so the transition
+needs no effect parameter and no shell cooperation -- a whole run is a fold
+of :func:`_advance` over a starting state, and :class:`_Machine` exists
+only to supply the mutable protocol the rest of the library expects.  The
+one effect is the end-of-run queue dump, which :func:`run` performs after
+the fold; putting it there is what keeps the transition pure.
 
 The halted flag is *in* the state rather than derived from it.  Everywhere
 else a machine halts when its cursor passes the end of the program, which
@@ -120,21 +121,28 @@ class _Machine:
     rings that sustain).
     """
 
-    def __init__(
-        self,
-        code: list[str],
-        io: IO | None = None,  # noqa: ARG002 - see ``run``
-    ) -> None:
+    #: Whether the queue is written on the step *after* the halt.  It
+    #: belongs to the language, not to whoever is stepping it: ``run`` ends
+    #: its loop with one more ``step()``, so a caller who stops at
+    #: ``halted`` has driven the program correctly and still holds none of
+    #: its output.
+    dumps_on_the_post_halt_step = True
+
+    def __init__(self, code: list[str], io: IO | None = None) -> None:
         """Pad ``code`` to a rectangle and reset the machine to the corner.
 
-        ``io`` is accepted and ignored, exactly as :func:`run` accepts it:
-        ArrowQueue defines no I/O, and taking the parameter anyway lets
-        every caller build a machine the same way.
+        ``io`` defaults to a fresh :class:`IO` so a caller that only wants
+        to step the grid -- the cycle detector does -- can still build a
+        machine without one, as this signature has always allowed.
         """
+        self.io = io if io is not None else IO()
         self.width = max(map(len, code), default=0)
         self.grid = tuple(line.ljust(self.width) for line in code)
         # An empty program has nowhere to start, so it is stopped already.
         self.state: _State = (0, 0, 0, (), not self.grid)
+        # Out of ``_State``: the dump is the shell's, and ``snapshot`` must
+        # keep hashing the four live fields it always has.
+        self._dumped = False
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -171,6 +179,11 @@ class _Machine:
         """Whether the IP has left the grid or halted on an empty pop."""
         return self.state[4]
 
+    @property
+    def dumped(self) -> bool:
+        """Whether the end-of-run queue dump has already been printed."""
+        return self._dumped
+
     # The VM's language-shaped view: Direction queue; ip is the IP's (row, col,
     # heading).
 
@@ -200,21 +213,49 @@ class _Machine:
         return (row, col, d, queue)
 
     def step(self) -> None:
-        """Execute one grid cell, advancing the IP."""
+        """Execute one grid cell, or dump the queue on the post-halt step.
+
+        The dump is here rather than in :func:`_advance`: this is the
+        shell, so it is where an effect belongs, and the transition stays
+        pure and total.  ``dumped`` keeps it to exactly one dump however
+        many times a halted machine is stepped -- the same shape Minsky
+        Swap and Bitdeque use.
+        """
         if self.state[4]:
+            if not self.dumped:
+                self.io.print_str(" ".join(map(str, self.queue)))
+                self._dumped = True
             return
         self.state = _advance(self.state, self.grid, self.width)
 
 
-def run(
-    code: list[str],
-    io: IO,  # noqa: ARG001 - ArrowQueue defines no I/O; the param follows the
-    # repo convention so `esolangs.run` and the example harness pass it uniformly
-) -> None:
-    """Run an ArrowQueue program, halting on an empty-queue pop or off-grid."""
-    machine = _Machine(code)
+def run(code: list[str], io: IO) -> None:
+    """Run an ArrowQueue program and print the queue when it halts.
+
+    The wiki defines no I/O, so the dump follows the repo convention for
+    interpreter-only languages (Minsky Swap's registers, Back's tape,
+    Bitdeque's deque): the headings left in the queue, space-separated on
+    one line with no trailing newline.  A heading is its :data:`DELTA`
+    index -- 0 right, 1 down, 2 left, 3 up -- printed as a number, since
+    the spec names no spelling for a direction.  The separator, the
+    encoding, and the choice to print at all are the repo's, not the
+    spec's.
+
+    A run that halts on an empty pop necessarily dumps nothing -- that is
+    the halt condition -- so the dump carries content only for a program
+    that walks off the grid with a queue still loaded.  That is a thin
+    channel, not an absent one, and a language whose sibling
+    interpreter-only languages all report their final state should not be
+    the one exception.
+
+    The dump is :meth:`_Machine.step`'s, on the step after the halt, so a
+    caller driving the machine itself gets the same output this does --
+    :func:`_advance` still never sees an effect.
+    """
+    machine = _Machine(code, io)
     while not machine.halted:
         machine.step()
+    machine.step()  # the post-halt step prints the queue
 
 
 if __name__ == "__main__":

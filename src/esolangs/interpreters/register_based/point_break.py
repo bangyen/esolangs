@@ -4,8 +4,12 @@ Point Break is a variable-based imperative language with four commands:
 ``LET`` assigns a variable the value of an arithmetic expression (``?`` in
 an expression reads a number from input), ``POINT``/``END`` delimit a
 labeled infinite loop, and ``IF``/``BREAK`` exits a labeled loop when a
-variable is nonzero.  The language has no output command, so a program's
-only observable behavior is whether it halts.
+variable is nonzero.  The wiki gives the language ``?`` for input but no
+output command, so -- following the repo convention for interpreter-only
+languages -- the interpreter prints the variables when the program ends.  A
+program that never halts still reports nothing, so termination remains
+observable in its own right, which is what the boolean generator's
+halt-for-0 convention answers with.
 
 The wiki leaves several details open; this interpreter decides as follows.
 ``BREAK`` resumes after the ``END`` that closes the loop; a loop closed
@@ -340,6 +344,13 @@ class _Machine:
     repeated snapshot is a *proof* that a deterministic run loops forever.
     """
 
+    #: Whether the variables are written on the step *after* the halt.  It
+    #: belongs to the language, not to whoever is stepping it: ``run`` ends
+    #: its loop with one more ``step()``, so a caller who stops at
+    #: ``halted`` has driven the program correctly and still holds none of
+    #: its output.
+    dumps_on_the_post_halt_step = True
+
     def __init__(self, code: str | list[str], io: IO) -> None:
         """Parse ``code`` into statements.
 
@@ -347,6 +358,9 @@ class _Machine:
         :class:`HaltError`s fire during ``step`` instead.
         """
         self.io = io
+        # Out of ``snapshot``: the dump is the shell's, and the detector
+        # compares states of a running machine.
+        self._dumped = False
         lines = code.splitlines() if isinstance(code, str) else code
         stmts: list[Statement] = []
         for line in lines:
@@ -363,6 +377,11 @@ class _Machine:
     def halted(self) -> bool:
         """Whether the cursor has run past the last statement."""
         return self.pc >= len(self.stmts)
+
+    @property
+    def dumped(self) -> bool:
+        """Whether the end-of-run variable dump has already been printed."""
+        return self._dumped
 
     # The VM's language-shaped view: Variable store + loop frames; ip is the statement
     # cursor.
@@ -402,13 +421,18 @@ class _Machine:
         self.variables = dict(variables)
 
     def step(self) -> None:
-        """Execute one statement, advancing the machine.
+        """Execute one statement, or dump the variables after the halt.
 
-        The one port lives here rather than in the transition: this is the
-        shell.  It is handed over as a callback because ``?`` is read as
-        the expression walk reaches it, not before the statement runs.
+        Both effects live here rather than in the transition: this is the
+        shell.  The input port is handed over as a callback because ``?``
+        is read as the expression walk reaches it, not before the statement
+        runs; the dump is the once-per-run effect ``dumped`` keeps to one,
+        the same shape Minsky Swap and Bitdeque use.
         """
         if self.halted:
+            if not self.dumped:
+                self.io.print_str(" ".join(map(str, self.memory)))
+                self._dumped = True
             return
         self._restore(_advance(self._state, self.stmts, self.ends, self.io.input_num))
 
@@ -419,10 +443,18 @@ def run(code: str | list[str], io: IO) -> None:
     The program is a sequence of statements, one per line, with ``#``
     starting a line comment; ``code`` may be a single string or a list of
     lines.
+
+    The wiki gives the language ``?`` for input but defines no *output*, so
+    the run ends by printing the variables -- the repo convention for
+    interpreter-only languages, space-separated in name order on one line
+    with no trailing newline, as Minsky Swap prints its registers.  The
+    separator and the choice to print at all are the repo's, not the
+    spec's.
     """
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()
+    machine.step()  # the post-halt step prints the variables
 
 
 if __name__ == "__main__":
