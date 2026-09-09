@@ -59,7 +59,7 @@ generators cover one and refuse the other at the same arity):
 
 | Generator | dense | parity | what stops it |
 | --- | --- | --- | --- |
-| Interprogck8 | 7 | 7 | n=8 routing stalls: over-reach jumps bottom out at 7 and sit at 10-19 while the program grows |
+| Interprogck8 | 7 | 7 | n=8 routing is slow to close; rungs laid to fix one over-long jump break others, and the round-on-round gain is small |
 | 6-5 | 5 | 5 | 35 branch labels; n=6 needs 37 dense, 63 parity |
 | Polynomial | 5 | 10 | caps at 138 instructions, one per prime; dense n=6 needs 187 |
 | WII2D | 7 | 10 | decode spans 128 points past the `_WII2D_MAX_INDEX_DOMAIN = 64` cost guard |
@@ -72,10 +72,13 @@ just past an unconditional jump -- and a chain is laid whole rather than a
 rung per round, which is what makes the routing close: extending chains one
 rung at a time lost more ground to the other chains' insertions than each
 rung gained, taking n=7 from 22 over-reach jumps to 198.  It builds n=7 in
-3.5s (13427 lines dense, 22249 parity), every row executed.  n=8 stalls,
-and the guard refuses it with the count rather than running forever; what
-is left there is chain *placement*, since rungs are spaced greedily with no
-account of the other chains being laid in the same round.
+3.5s (12985 lines dense, 20032 parity), every row executed.  n=8 is the
+open edge: a rung laid to fix one over-long jump lands inside another
+chain's span and breaks it, so each round both repairs and damages.  The
+spacing is tuned against exactly that (see `_SPACING`) and the breakage now
+falls round on round instead of sitting flat, but whether n=8 closes in
+practical time is not yet measured.  Routing that stops gaining ground is
+refused with the count rather than run forever.
 
 Factor was capped at 3 by CPython's 4300-digit `int`/`str` guard -- a DoS
 defence, not a Factor property -- which the generator and the interpreter
@@ -93,8 +96,10 @@ parity, ROTfuck 16s and 20MB at n=10 parity. Only the five above are
 capability limits; the rest of the gap between five and ten is wall-clock.
 
 - **6-5:** 35 addressable branch labels; a structural language wall.
-- **Interprogck8:** a relay-placement limit, not the 255-line reach; the
-  rungs are spaced greedily rather than against the other chains.
+- **Interprogck8:** a relay-interference limit, not the 255-line reach.
+  Rungs repairing one chain break others; the spacing is tuned against
+  that, and reusing existing rungs rather than laying new ones is the
+  obvious next lever.
 - **`%^2^-1`:** generic samples build through thirteen inputs; a
   fourteen-input table would need a twelve-input prefix ladder, which is
   open research, not a wall.
