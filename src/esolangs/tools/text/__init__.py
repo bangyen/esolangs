@@ -45,6 +45,7 @@ from esolangs.tools.text.register import (
     decleq,
     dig,
     eval,  # noqa: A004 - the language is named "Eval"
+    interprogck8,
     polynomial,
     qoibl,
     sophie,
@@ -92,6 +93,7 @@ __all__ = [
     "forth",
     "function_x_y",
     "home_row",
+    "interprogck8",
     "laserfuck",
     "minifuck",
     "modulous",

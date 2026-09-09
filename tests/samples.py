@@ -207,6 +207,7 @@ SAMPLES: dict[str, tuple[str, str]] = {
     # interpreter's module docstring), on the input that halts: the "1"
     # branch loops forever.
     "Inject": (INJECT_TRUTH_MACHINE, "0\n"),
+    "Interprogck8": ("nNnN\ndiv", ""),
     "Jaune": ("++^", ""),
     "Lamfunc": ("p 5", ""),
     "LaserFuck": ("ÿ   x\n    +\n    o", ""),

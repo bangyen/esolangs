@@ -20,6 +20,15 @@ numeric output alphabet, or cannot emit arbitrary byte sequences. Boolean
 construction is parameterized for 123 and `%^2^-1`; no program reading its
 own inputs overcomes the latter's two-input wall.
 
+Interprogck8's boolean generator caps at three inputs, and the cap is the
+*construction's*, not the language's. `DownAccLines` routes the whole
+decision tree — the current-function slot is never touched, which answers
+the roadmap question it was posed under — but a branch's nine-line jump
+window spells a hop of at most 70 lines and one `DownAccLines` at most 255,
+while at n=4 the bit-0 arm has to cross a 456-line subtree. A rung parked
+inside the crossed region would lift both bounds. All 4, 16 and 256 tables
+at n=1, 2 and 3 are executed over every input row; n≥4 raises `ValueError`.
+
 ## Text generator blockers
 
 | Language | Why it cannot emit arbitrary text |
