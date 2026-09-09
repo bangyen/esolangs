@@ -540,7 +540,13 @@ _REDUCING = {
     "super_snusp",
 }
 
+# ``alight`` is a branch-free lookup of the same class as
+# ``ztoalc_l_boolean``: the inputs are folded into a row index by Horner's
+# rule and the table is a string literal read with ``at{table, i+0.5}``, so
+# there are no subtrees to collapse and every table of a given arity renders
+# to exactly the same length.  A 0% fold is the construction working.
 _UNSHAPED = {
+    "alight",
     "wii2d",
     "minifuck",
     "ztoalc_l_boolean",

@@ -163,6 +163,7 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "A Painter Ant": ("Pnn", ""),
     "Algebraic Programming Language": ("a + 1", "41\n"),
     "AddSubJump": ("-1 1 0 -7", ""),
+    "Alight": ("begin;var c;set c 65;out c;end;", ""),
     "ArrowQueue": ("~*+", ""),
     "BF-PDA": ("<@.", ""),
     "BFStack": (">+.", ""),
