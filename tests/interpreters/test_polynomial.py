@@ -440,6 +440,105 @@ class TestPeelPrimePowerRoots:
         assert rest == sp.Poly(0, x), f"peeled {peeled} is not an exact divisor"
 
 
+class TestPeelInstructionQuadratics:
+    """The quadratic peel is a head start too, under the same rules.
+
+    A complex instruction is ``(x - a)**2 + p**(2*b)``, and ``a`` is solved
+    for modulo :data:`_PEEL_MODULUS` rather than enumerated.  A pair is
+    accepted only when it divides exactly, so what the search cannot see has
+    to survive in the remainder instead of vanishing.
+    """
+
+    @staticmethod
+    def _product(pairs: list[tuple[int, int]], extra: object = None) -> list[int]:
+        import sympy as sp
+
+        x = sp.Symbol("x")
+        poly = sp.Poly(1, x)
+        for real, square in pairs:
+            poly = poly * sp.Poly((x - real) ** 2 + square, x)
+        if extra is not None:
+            poly = poly * extra
+        return [int(k) for k in poly.all_coeffs()]
+
+    def test_modulus_admits_every_encodable_square(self) -> None:
+        """``_PEEL_MODULUS`` must be ``1 (mod 4)``, or the peel finds nothing.
+
+        ``q`` is ``p**(2*b)``, a perfect square, so ``-q`` is a quadratic
+        residue exactly when ``-1`` is -- which holds iff the modulus is
+        ``1 (mod 4)``.  Under a ``3 (mod 4)`` modulus no ``q`` at all admits
+        the square root the pairing needs and the peel quietly does nothing,
+        which is why this is asserted rather than left to the constant.
+        """
+        import sympy as sp
+
+        from esolangs.interpreters.register_based.polynomial import (
+            _PEEL_MAX_IMAGINARY_EXPONENT,
+            _PEEL_MODULUS,
+        )
+
+        assert _PEEL_MODULUS % 4 == 1, "a 3 (mod 4) modulus disables the peel"
+        assert sp.isprime(_PEEL_MODULUS)
+        for base in (2, 3, 5, 7, 11):
+            for exponent in range(1, _PEEL_MAX_IMAGINARY_EXPONENT + 1):
+                square = base ** (2 * exponent)
+                assert sp.sqrt_mod((-square) % _PEEL_MODULUS, _PEEL_MODULUS) is not None
+
+    @pytest.mark.parametrize(
+        "description",
+        [
+            "square_not_a_prime_power",
+            "real_part_past_window",
+            "cubic_factor",
+            "odd_leftover",
+            "repeated_quadratic",
+        ],
+    )
+    def test_nothing_skipped_is_lost(self, description: str) -> None:
+        """What the peel cannot take stays in the remainder, exactly."""
+        import sympy as sp
+
+        from esolangs.interpreters.register_based.polynomial import (
+            _PEEL_MAX_REAL_PART,
+            _peel_instruction_quadratics,
+        )
+
+        x = sp.Symbol("x")
+        cases = {
+            # 15 is not p**(2*b), so this quadratic is unrecognisable.
+            "square_not_a_prime_power": self._product([(3, 15)]),
+            "real_part_past_window": self._product([(_PEEL_MAX_REAL_PART + 7, 4)]),
+            "cubic_factor": self._product([(3, 4)], sp.Poly(x**3 - x - 1, x)),
+            "odd_leftover": self._product([(5, 9)], sp.Poly(x - 7, x)),
+            "repeated_quadratic": self._product([(4, 9), (4, 9)]),
+        }
+        coefficients = cases[description]
+
+        found, remainder = _peel_instruction_quadratics(list(coefficients))
+
+        # Whatever came out must divide the original exactly, and the
+        # remainder must be precisely the cofactor -- nothing dropped.
+        original = sp.Poly(coefficients, x)
+        taken = sp.Poly(1, x)
+        for real, square in found:
+            taken = taken * sp.Poly((x - real) ** 2 + square, x)
+        recomposed = taken * sp.Poly(remainder, x) if len(remainder) > 1 else taken
+        assert recomposed == original
+
+    def test_divide_quadratic_refuses_a_non_divisor(self) -> None:
+        """The exact-division gate is what makes an accepted pair sound."""
+        import sympy as sp
+
+        from esolangs.interpreters.register_based.polynomial import _divide_quadratic
+
+        x = sp.Symbol("x")
+        coefficients = [int(k) for k in sp.Poly((x - 3) ** 2 + 4, x).all_coeffs()]
+        assert _divide_quadratic(coefficients, 3, 4) == [1]
+        assert _divide_quadratic(coefficients, 99, 7) is None
+        # A quadratic sharing only the real part must not be taken either.
+        assert _divide_quadratic(coefficients, 3, 9) is None
+
+
 class TestPolynomialHighPrecisionRoots:
     """Wide codepoint deltas and pathological root spreads are recovered
     exactly by factoring the integer polynomial (no floating point)."""
