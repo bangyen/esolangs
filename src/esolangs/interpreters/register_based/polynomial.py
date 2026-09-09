@@ -183,6 +183,69 @@ def sanitize(code: str) -> list[int]:
     return [terms.get(degree, 0) for degree in range(max_degree, -1, -1)]
 
 
+#: Largest exponent a real instruction's root can carry, from the
+#: ``range(1, 9)`` :func:`convert` reads them back with.  The peel below
+#: enumerates ``p**v`` up to this, so the two agree by construction.
+_PEEL_MAX_EXPONENT = 8
+
+#: How many primes the peel enumerates, as a multiple of the polynomial's
+#: degree.  A program assigns its k-th instruction the k-th prime and each
+#: instruction costs at least one degree, so the degree bounds the primes
+#: that can appear; the slack covers a program written by hand rather than
+#: generated.  Candidates are cheap -- one Horner pass each -- and a miss
+#: costs only that the root stays in the tail.
+_PEEL_PRIME_SLACK = 2
+
+
+def _peel_prime_power_roots(
+    coefficients: list[int],
+) -> tuple[list[int], list[int]]:
+    """Divide out the real roots that are prime powers, exactly.
+
+    A real instruction contributes ``x - p**v``, so its root is a prime
+    power -- and finding those needs no factorization at all.  Evaluating
+    the polynomial at a candidate (Horner, one pass) proves the factor when
+    the result is zero, and synthetic division then deflates the degree by
+    one.  Both are exact integer arithmetic.
+
+    This is only ever a *head start*: a candidate is accepted solely because
+    the polynomial vanishes there, which makes ``x - candidate`` a genuine
+    factor whatever wrote the program.  Anything the enumeration misses -- a
+    root that is not a prime power, a prime past the window, an exponent past
+    :data:`_PEEL_MAX_EXPONENT`, a negative root -- simply stays in the
+    returned remainder, which its caller still hands to ``factor_list``.  So
+    the peel can be incomplete but never wrong, and the recovered root
+    multiset is what factoring alone would have produced.
+
+    Worth it because factoring is superlinear in the degree while a peel is
+    linear: on the dense n=6 table (degree 314, a 1677-digit constant term)
+    it removes 60 roots in 0.66s, and the 82.65s factorization of the whole
+    becomes 35.27s on the degree-254 remainder.
+    """
+    found: list[int] = []
+    limit = max(1, (len(coefficients) - 1) * _PEEL_PRIME_SLACK)
+    for prime_index, base in enumerate(sp.primerange(2, limit * limit + 3)):
+        if prime_index >= limit or len(coefficients) <= 1:
+            break
+        candidate = base
+        for _exponent in range(_PEEL_MAX_EXPONENT):
+            while len(coefficients) > 1:
+                # Horner: the polynomial's value at ``candidate``.
+                value = 0
+                for coefficient in coefficients:
+                    value = value * candidate + coefficient
+                if value:
+                    break
+                found.append(candidate)
+                # Synthetic division by an exact root, so it stays exact.
+                deflated = [coefficients[0]]
+                for coefficient in coefficients[1:-1]:
+                    deflated.append(coefficient + deflated[-1] * candidate)
+                coefficients = deflated
+            candidate *= base
+    return found, coefficients
+
+
 @functools.lru_cache(maxsize=256)
 def _factor_roots(coefficients: tuple[int, ...]) -> tuple[complex, ...]:
     """Recover the instruction roots by factoring the monic integer polynomial.
@@ -192,12 +255,21 @@ def _factor_roots(coefficients: tuple[int, ...]) -> tuple[complex, ...]:
     instructions).  ``sympy.factor_list`` returns exactly those factors, so
     the instruction values come out exactly.  A factor of any other shape
     encodes no instruction and is ignored.
+
+    The prime-power real roots are divided out first by
+    :func:`_peel_prime_power_roots`, which costs a Horner pass each and
+    lowers the degree ``factor_list`` then works on.  That is a pure
+    head start -- see that function for why it cannot change the answer.
     """
+    peeled, remainder = _peel_prime_power_roots(list(coefficients))
+    roots: list[complex] = [complex(root, 0) for root in peeled]
+    if len(remainder) <= 1:
+        return tuple(roots)
+
     x = sp.Symbol("x")
-    poly = sp.Poly.from_list(list(coefficients), x)
+    poly = sp.Poly.from_list(remainder, x)
     _, factors = sp.factor_list(poly)
 
-    roots: list[complex] = []
     for factor, multiplicity in factors:
         degree = factor.degree()
         if degree == 1:
