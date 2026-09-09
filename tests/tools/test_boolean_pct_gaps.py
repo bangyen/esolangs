@@ -18,6 +18,7 @@ from esolangs.tools.boolean.pct_squared_minus_one import (
     _fold_norm,
     _fold_span,
     _fold_to_cofactors,
+    _FoldEmitter,
     _interleaved_final_pair,
     _interleaved_fold,
     _solution,
@@ -51,6 +52,19 @@ class TestSolution:
         the padding rejected the pair -- not the tail check above.
         """
         assert _solution(self.ROWS, ("p", "p"), (0, 0), [1, 1], (0, 1)) is None
+
+
+class TestPreshift:
+    def test_a_zero_shift_emits_nothing(self) -> None:
+        """Neither arm fires: no move is spelled for a move of nothing.
+
+        Every shipped caller computes a nonzero delta, so this is the one
+        place the no-op is exercised.
+        """
+        emitter = _FoldEmitter.__new__(_FoldEmitter)
+        emitter.body = []
+        emitter.preshift(0)
+        assert emitter.body == []
 
 
 class TestFoldSpan:
