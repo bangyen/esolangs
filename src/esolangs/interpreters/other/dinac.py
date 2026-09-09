@@ -694,7 +694,9 @@ class _Machine:
             return _bit(flag=same if expr[1] == "=" else not same)
         # Unreachable: ``step`` pushes a frame for every call and rewrites
         # its value in before evaluating, so what arrives here is call-free.
-        raise HaltError(f"unresolved call to {expr[1]!r}")
+        raise HaltError(  # pragma: no cover - see the comment above
+            f"unresolved call to {expr[1]!r}"
+        )
 
     def _resolve(self, function: _Function, values: list[_Value]) -> dict[str, _Value]:
         """Bind a call's evaluated arguments to its overload's parameters."""
