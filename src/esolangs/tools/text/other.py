@@ -1068,6 +1068,8 @@ def _quote_split(text: str) -> list[str]:
         if line:
             pieces.append(line)
     return pieces
+
+
 # The five escapes DINAC's aschar literal defines, so a character that has
 # no printable spelling still has one.  Everything else is written as
 # ``'`` plus the character itself.
