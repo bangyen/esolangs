@@ -363,6 +363,13 @@ LANGUAGES: dict[str, Language] = {
         id="forbin",
         compiler="forbin",
     ),
+    "function x(y)": Language(
+        "function x(y)",
+        _generate.function_x_y,
+        "other.function_x_y",
+        boolean=_boolean.function_x_y,
+        id="function_x_y",
+    ),
     "Grapheme": Language(
         "Grapheme",
         boolean=_boolean.grapheme,

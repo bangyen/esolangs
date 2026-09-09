@@ -15,9 +15,6 @@ testable boolean-generator route. The assessed-and-rejected ledger is in
 - **Alight:** indexed string-table lookup; 2D walking and function semantics
   are the cost. Its boolean construction is derived, not supplied by a wiki
   truth-machine.
-- **function x(y):** recursive expression language. Choose native recursion
-  with a documented ceiling or an explicit evaluation-frame stack before
-  implementation.
 - **Packlang:** C-like blocks and namespaces; its boolean generator reuses
   the existing ANF construction. Resolve the wiki's conflicting literal-base
   examples.

@@ -26,6 +26,7 @@ __all__ = [
     "clockwise",
     "container",
     "forbin_boolean",
+    "function_x_y",
     "laserfuck",
     "nevermind",
     "streetcode",
@@ -70,6 +71,45 @@ def _const(n: int) -> str:
     for d in reversed(digits[:-1]):
         prog += _NEG_THIRD + "#" + _NEG_DIGIT[d] + "x"
     return prog
+
+
+def function_x_y(truth_table: str) -> str:
+    """Build a function x(y) program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.
+
+    The program reads all ``n`` input lines up front into ``b0..b(n-1)``,
+    then prints one nested ternary: at level ``k`` the condition is
+    ``(b_perm[k] == "1")`` and the arms are the two subtrees, folded to a
+    literal wherever the subtable is constant.  The reads stay in input
+    order and happen unconditionally, so a constant table still consumes
+    all ``n`` inputs -- the reads are the interface.
+
+    A ternary is an expression, so the whole tree is one statement and the
+    construction needs no control flow beyond it.  **The tree splits in
+    whichever input order emits the shortest program**
+    (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
+    """
+    return best_input_order(truth_table, _function_x_y_ordered)
+
+
+def _function_x_y_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's function x(y) program; see :func:`function_x_y`."""
+    n = _validate_truth_table(truth_table)
+
+    def build(i: int, combo: int) -> str:
+        # ``combo`` has the bits above level ``i`` set and the rest clear,
+        # so it is the first row of the run this subtree covers.
+        run = truth_table[combo : combo + 2 ** (n - i)]
+        if i == n or len(set(run)) == 1:
+            return f'"{truth_table[combo]}"'
+        one = build(i + 1, combo | (1 << (n - 1 - i)))
+        zero = build(i + 1, combo)
+        return f'(b{perm[i]} == "1")<{one}, {zero}>'
+
+    reads = [f"var b{i}: [~]" for i in range(n)]
+    return "\n".join(["function truthTable()", *reads, f"`{build(0, 0)}"])
 
 
 def myscript(truth_table: str) -> str:
