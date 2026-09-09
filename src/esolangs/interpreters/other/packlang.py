@@ -100,9 +100,17 @@ from esolangs.interpreters.io import IO
 # Recursion ceiling.  The wiki gives no limit, but an interpreter must
 # terminate by construction: the fuzz suite feeds random programs, and a
 # self-calling function would otherwise exhaust the Python stack rather
-# than raise.  1000 frames is far past what any wiki example needs (the
-# deepest calls one level, into a dependency).
-_MAX_DEPTH = 1000
+# than raise.  A call is evaluated inside the calling statement, so this
+# is native Python recursion and the ceiling only works if it is reached
+# before Python's own.
+#
+# Measured, not guessed: one language-level call costs 5 Python frames, so
+# the 1000-frame default is spent at language depth ~198.  This was 1000
+# -- unreachable twice over, since the count also restarted at every call
+# (``_advance`` passed a literal 0), so a runaway program got the
+# RecursionError this exists to prevent.  100 leaves ~500 frames for the
+# expression nesting above the call.
+_MAX_DEPTH = 100
 
 #: Statement opcodes.  A program is parsed into a flat tuple of these per
 #: function, with the two jump targets resolved at parse time, so stepping
@@ -202,15 +210,25 @@ class _Function:
 
 
 class _Frame:
-    """One call frame: the function, its cursor, and its own variables."""
+    """One call frame: the function, its cursor, and its own variables.
 
-    __slots__ = ("func", "pc", "result", "store")
+    ``depth`` is how many calls deep this frame sits.  It is carried here
+    rather than only threaded through :func:`_evaluate` because a called
+    function runs its body through :func:`_advance`, which starts a fresh
+    evaluation: passing a literal 0 there -- as this did -- restarted the
+    count at every call, so the cap could never be reached.
+    """
 
-    def __init__(self, func: _Function, store: _Store, pc: int = 0) -> None:
+    __slots__ = ("depth", "func", "pc", "result", "store")
+
+    def __init__(
+        self, func: _Function, store: _Store, pc: int = 0, depth: int = 0
+    ) -> None:
         self.func = func
         self.store = store
         self.pc = pc
         self.result = 0
+        self.depth = depth
 
     def key(self) -> tuple[object, ...]:
         """Return the frame as a hashable value for :meth:`snapshot`."""
@@ -758,7 +776,7 @@ def _call(func: _Function, values: list[int], program: _Program, depth: int) -> 
         (slot, dict(zip(func.params, values, strict=True)).get(slot, value))
         for slot, value in store
     )
-    frame = _Frame(func, store)
+    frame = _Frame(func, store, depth=depth)
     while frame.pc < len(func.body):
         frame, out, read = _advance(frame, program, None)
         if out is not None or read:
@@ -801,13 +819,19 @@ def _advance(
     result = frame.result
 
     if op == _PRINT:
-        value = _evaluate(_node(stmt[1]), store, program, 0, package)
+        value = _evaluate(_node(stmt[1]), store, program, frame.depth, package)
         out = chr(value % 256)
     elif op == _READ:
         if byte is None:
             return frame, None, True
         store = _write(
-            store, program, str(stmt[1]), stmt[2], lambda _old: byte, package
+            store,
+            program,
+            str(stmt[1]),
+            stmt[2],
+            lambda _old: byte,
+            package,
+            depth=frame.depth,
         )
     elif op == _INIT:
         kind = _type_of(str(stmt[1]), frame.func, program)
@@ -819,6 +843,7 @@ def _advance(
             lambda _o: kind.low,
             package,
             whole=kind,
+            depth=frame.depth,
         )
     elif op in (_INCR, _DECR):
         step = 1 if op == _INCR else -1
@@ -830,17 +855,18 @@ def _advance(
             stmt[2],
             lambda old: kind.clamp(old + step),
             package,
+            depth=frame.depth,
         )
     elif op == _JUMP_UNLESS:
-        guard = _evaluate(_node(stmt[1]), store, program, 0, package)
+        guard = _evaluate(_node(stmt[1]), store, program, frame.depth, package)
         if not _truth(guard):
             pc = _int(stmt[2])
     elif op == _JUMP:
         pc = _int(stmt[1])
     elif op == _VALUE:
-        result = _evaluate(_node(stmt[1]), store, program, 0, package)
+        result = _evaluate(_node(stmt[1]), store, program, frame.depth, package)
 
-    new = _Frame(frame.func, store, pc)
+    new = _Frame(frame.func, store, pc, frame.depth)
     new.result = result
     return new, out, False
 
@@ -853,6 +879,7 @@ def _write(
     update: Callable[[int], int],
     caller: str,
     whole: _Type | None = None,
+    depth: int = 0,
 ) -> _Store:
     """Apply ``update`` to a variable or one array element.
 
@@ -865,7 +892,7 @@ def _write(
             if whole is not None:
                 return _set(store, name, whole.zero())
             raise HaltError(f"{name!r} is an array and needs an index")
-        at = _evaluate(_node(index), store, program, 0, caller)
+        at = _evaluate(_node(index), store, program, depth, caller)
         if not 0 <= at < len(value):
             raise HaltError(f"index {at} is outside {name!r}")
         row = list(value)

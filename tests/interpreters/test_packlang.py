@@ -414,6 +414,27 @@ class TestErrors:
         with pytest.raises(ValueError, match="no parameterless entry"):
             _run("Dependency {\n  Integer f : Integer a {\n    a;\n  }\n} d;")
 
+    def test_unbounded_recursion_is_a_runtime_error(self) -> None:
+        """The depth ceiling fires, rather than Python's own limit.
+
+        This had no test, and the guard had never run: the count restarted
+        at every call because ``_advance`` passed a literal 0, and the
+        ceiling stood at 1000 where 5 Python frames per call spend the
+        interpreter's 1000-frame budget by language depth ~198.  A
+        self-calling function therefore raised ``RecursionError`` -- the
+        crash the ceiling documents preventing.  Pinning ``HaltError``
+        keeps both halves honest: the count has to accumulate, and the
+        ceiling has to stay under the real frame cost.
+        """
+        program = (
+            "Package : IO {\n"
+            "  Integer f {\n    f();\n    0;\n  }\n"
+            "  Integer main {\n    f();\n    0;\n  }\n"
+            "} app;"
+        )
+        with pytest.raises(HaltError, match="call depth exceeded"):
+            _run(program)
+
     def test_garbage_is_malformed(self) -> None:
         with pytest.raises(ValueError, match="not Packlang tokens"):
             _run("~~~ not packlang @@@")
