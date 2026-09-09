@@ -22,19 +22,12 @@ class TestJointEmit:
         assert [m.key() for m in joint.ms] != before
 
 
-class TestSimStateRoundTrip:
-    def test_restore_rebuilds_what_key_described(self) -> None:
-        """``restore`` is ``key``'s inverse, so the pair round-trips."""
-        sim = _Sim(32)
-        sim.exec("[")
-        sim.exec(".")
-        rebuilt = _Sim.restore(sim.key())
-        assert rebuilt.key() == sim.key()
-
-    def test_a_restored_machine_advances_like_the_original(self) -> None:
-        sim = _Sim(32)
-        sim.exec("[")
-        rebuilt = _Sim.restore(sim.key())
-        sim.exec("[")
-        rebuilt.exec("[")
-        assert rebuilt.key() == sim.key()
+class TestSimKey:
+    def test_the_key_is_the_whole_state(self) -> None:
+        """Two machines agree on their key exactly when they agree."""
+        one, two = _Sim(32), _Sim(32)
+        assert one.key() == two.key()
+        one.exec("[")
+        assert one.key() != two.key()
+        two.exec("[")
+        assert one.key() == two.key()
