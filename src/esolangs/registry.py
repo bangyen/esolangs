@@ -476,6 +476,13 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.nocomment,
         id="nocomment",
     ),
+    "Packlang": Language(
+        "Packlang",
+        _generate.packlang,
+        "other.packlang",
+        boolean=_boolean.packlang,
+        id="packlang",
+    ),
     "Painfuck": Language(
         "Painfuck",
         _generate.painfuck,

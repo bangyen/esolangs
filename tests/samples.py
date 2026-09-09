@@ -216,6 +216,10 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "MyScript": ("var a is 5\nsay a", ""),
     "Nevermind": ("make,x,5\nprint,$x", ""),
     "NoComment": ("ciio", ""),
+    "Packlang": (
+        "Package : IO {\n  Integer main {\n    charPut(65);\n    0;\n  }\n} p;",
+        "",
+    ),
     "Painfuck": ("pp", ""),
     "Point Break": ("LET zero:=0", ""),
     "Polynomial": ("f(x) = x^2+4", ""),
