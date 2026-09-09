@@ -97,6 +97,21 @@ renders and runs, verified row by row.  Its ceiling is program size against
 construction's rather than the language's, which is what made them
 liftable.
 
+What n=5 parity cost to *run* was a second, separate limit, and it is gone
+too.  `_factorint` asked `sympy.isprime` once per sieve chunk, and BPSW is
+two modular exponentiations priced by the full width of the argument: three
+calls were 60.02s of a 60.06s factorization, while the sieve that finds
+every factor measured 0.000s and the divisions 0.04s.  Gating the test on a
+*barren* chunk -- one that divided nothing out, the only point its answer is
+worth paying for -- puts n=5 parity at 0.041s a row.  Numbers of this shape
+reach 1 without a barren chunk ever occurring.  Reach past n=5, generating
+and interpreting one row: n=7 0.56s, n=8 2.2s, n=9 8.8s, n=10 36s (454832
+digits), n=11 151s (952366 digits), each answering correctly.  The cost is
+roughly 4x an input, so n=12 is near ten minutes a row.  **These are single
+rows, not the row-by-row verification the n=5 claim above rests on** -- a
+full n=10 table is 1024 rows, about ten hours -- so the reach is where a row
+is affordable, not where a table is checked.
+
 The other 64 generators build both shapes at n=10. Five are slow rather
 than capped, and their cost is the reason `tests/tools/test_boolean_contract.py`
 sweeps to five inputs rather than ten: Minifuck 187s at n=8, Circuit Diagram
