@@ -116,6 +116,43 @@ def test_reaching_nobody_leaves_no_alphabet(name: str, lang: Language) -> None:
     )
 
 
+@pytest.mark.parametrize(("name", "lang"), _named(), ids=_IDS)
+def test_a_silent_language_still_answers(name: str, lang: Language) -> None:
+    """A language nothing reaches the caller from must answer by halting.
+
+    ``io="none"`` is a real category, but the two languages in it are not
+    alike, and only one of them is *unable* to dump.
+
+    Point Break cannot: its spec leaves "whether it halts" as a program's
+    only observable behavior, so there is no terminal state to report.
+
+    ArrowQueue could -- its ``_State`` carries a queue that survives the
+    halt -- but the dump would be worth little and cost a lot.  Of its two
+    halt paths, the empty pop leaves the queue provably ``()``, so only a
+    run that walks off the grid has anything to show; and ``_advance`` is
+    pure and total precisely because "ArrowQueue has no I/O, so there is no
+    effect to hoist out", so adding one would thread an effect parameter
+    through the layer built to avoid it.  That is an interpreter design
+    change, not something this test should force.
+
+    What that costs is the usual way of checking an answer, so the
+    termination convention carries it instead: the program halts for 0 and
+    loops forever for 1 (``docs/walls.md`` licenses this only where a spec
+    supplies a reliable verdict).  That convention is the language's whole
+    interface, so a silent language without a boolean generator is
+    unreachable -- nothing could observe it at all -- and that is the gap
+    worth failing on, rather than the missing dump.
+    """
+    if lang.io != "none":
+        return
+    assert lang.boolean is not None, (
+        f"{name} declares io='none' -- nothing it does reaches the caller -- "
+        f"and has no boolean generator, so no program of it is observable.  "
+        f"Either it answers by the termination convention, or its io= is "
+        f"wrong and it emits something after all"
+    )
+
+
 def test_the_exempt_categories_are_all_used() -> None:
     """Every exemption category earns its place in :data:`Alphabet`.
 
