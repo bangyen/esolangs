@@ -28,13 +28,13 @@ geometry pass never has to reason about them:
   loop that runs at most once is an ``if`` -- so it needs only the room the
   geometry already draws.  It keeps every cell ``>= 0`` throughout.
 
-The rewrite widens the tape to **stride 8** (brainfuck cell ``i`` becomes
-cell ``8i``; ``>``/``<`` become ``>``*8/``<``*8) so each canonicalizer's
-four scratch cells sit in the gap ``8i+1 .. 8i+4`` and can never collide
-with the next data cell ``8(i+1)``.  The geometry pass
+The rewrite widens the tape to **stride 6** (brainfuck cell ``i`` becomes
+cell ``6i``; ``>``/``<`` become ``>``*6/``<``*6) so each canonicalizer's
+five scratch cells sit in the gap ``6i+1 .. 6i+5`` and can never collide
+with the next data cell ``6(i+1)``.  The geometry pass
 (:func:`_build`) then doubles again -- brainfuck cell ``j`` to Streetcode
 cell ``2j`` -- for its own steering scratch, so a source cell lands at
-Streetcode cell ``16 i``.  Widening a disjoint scratch region is what makes
+Streetcode cell ``12 i``.  Widening a disjoint scratch region is what makes
 the two passes compose without an ordering constraint between gadgets.
 
 The result is total over brainfuck and linear in program size: the
@@ -50,10 +50,9 @@ from esolangs.interpreters.brackets import match_brackets as _match_brackets
 
 # -- the brainfuck-to-brainfuck rewrite -----------------------------------
 
-#: Stride of the widened tape.  The canonicalizer needs four scratch cells
-#: past the one it reduces; ``8`` leaves room and keeps the arithmetic on
-#: byte-aligned boundaries.
-_STRIDE = 8
+#: Stride of the widened tape.  The canonicalizer reaches five scratch cells
+#: past the one it reduces, so the next source cell starts at offset ``6``.
+_STRIDE = 6
 
 #: The divmod-by-256 core, operating on ``x n 0 0 0`` from the pointer:
 #: it leaves ``0  (n - r)  r  q`` where ``r = x % n`` and ``q = x // n``.
@@ -81,7 +80,7 @@ _CANON = (
 
 
 def _lower(program: str) -> str:
-    """Rewrite ``program`` as stride-8 brainfuck that never leaves 0-255.
+    """Rewrite ``program`` as stride-6 brainfuck that never leaves 0-255.
 
     Non-command characters are brainfuck comments and are dropped -- the
     same convention the ``brainfuck -> 3D Brainfuck`` and ``-> Painfuck``
@@ -136,7 +135,7 @@ def _lower(program: str) -> str:
 
 # -- the geometry: brainfuck (no wrap concerns) -> a Streetcode grid ------
 #
-# From here the input is the stride-8 rewrite: pure brainfuck whose cells
+# From here the input is the stride-6 rewrite: pure brainfuck whose cells
 # provably stay in 0-255, so the drawing never has to model wraparound.
 # brainfuck cell ``j`` is drawn at Streetcode cell ``2j`` (odd cells are
 # steering scratch no program can name), which is why ``>`` draws as ``==``
@@ -337,7 +336,7 @@ def _draw(room: _Room, grid: list[list[str]], run: int) -> None:
 
 
 def _build(program: str) -> list[str]:
-    """Draw a Streetcode grid for stride-8 brainfuck, at any nesting depth."""
+    """Draw a Streetcode grid for stride-6 brainfuck, at any nesting depth."""
     tree = _parse(program)
     segments, loops = _split(tree)
 
@@ -390,7 +389,7 @@ def bf_to_streetcode(program: str) -> str:
 
     The lowering is two passes.  :func:`_lower` rewrites brainfuck to
     brainfuck that provably stays in 0-255 (canonicalizing every arithmetic
-    run and every ``,`` mod 256, on a stride-8 tape whose scratch cells no
+    run and every ``,`` mod 256, on a stride-6 tape whose scratch cells no
     source cell can reach), so the second pass need not model Streetcode's
     non-wrapping unbounded cells at all.  :func:`_build` then draws that
     brainfuck as roads: a ``[``/``]`` loop is a room the car laps until its
