@@ -287,12 +287,12 @@ class _Parser:
         self.text = text
         self.pos = 0
 
-    def _skip_space(self) -> None:
+    def skip_space(self) -> None:
         while self.pos < len(self.text) and self.text[self.pos] == " ":
             self.pos += 1
 
     def peek(self) -> str:
-        self._skip_space()
+        self.skip_space()
         return self.text[self.pos] if self.pos < len(self.text) else ""
 
     def at_end(self) -> bool:
@@ -300,7 +300,7 @@ class _Parser:
 
     def word(self) -> str:
         """Read one alphanumeric identifier, or ``""`` if none is here."""
-        self._skip_space()
+        self.skip_space()
         start = self.pos
         while self.pos < len(self.text) and self.text[self.pos].isalnum():
             self.pos += 1
@@ -380,7 +380,7 @@ def _parse_operand(p: _Parser) -> "_Expr":
 
 def _parse_number(p: _Parser) -> float:
     """Read a decimal literal, which may be fractional (indices are ``k+0.5``)."""
-    p._skip_space()  # noqa: SLF001 - the parser's own cursor
+    p.skip_space()
     start = p.pos
     while p.pos < len(p.text) and (p.text[p.pos].isdigit() or p.text[p.pos] == "."):
         p.pos += 1
