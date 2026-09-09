@@ -62,14 +62,17 @@ _STRIDE = 8
 #: is ever driven below zero.
 _DIVMOD = "[->-[>+>>]>[+[-<+>]>+>>]<<<<<]"
 
+#: Build 256 in ``x+1`` from a 16-step counter in ``x+2``.  The loop exits
+#: with its counter zero and returns to ``x``; it costs 55 commands instead
+#: of a literal 256-step increment.
+_SET_256 = ">>" + "+" * 16 + "[<" + "+" * 16 + ">-]<<"
+
 #: Reduce the cell under the pointer mod 256, leaving every scratch cell at
 #: zero and the pointer where it started.  ``n = 256`` is set in ``x+1``,
 #: the divmod runs, the remainder is moved back over ``x``, and the two
 #: leftover scratch cells (``n - r`` and ``q``) are cleared.
 _CANON = (
-    ">"
-    + "+" * 256
-    + "<"  # x+1 = 256
+    _SET_256  # x+1 = 256
     + _DIVMOD  # x -> 0 ; x+2 = x % 256 ; x+3 = x // 256
     + ">>[-<<+>>]<<"  # move the remainder from x+2 back to x
     + ">[-]<"  # clear x+1 ( = 256 - remainder)
