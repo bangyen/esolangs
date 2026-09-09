@@ -10,9 +10,6 @@ Candidates are prioritized by a complete specification and an uncapped,
 testable boolean-generator route. The assessed-and-rejected ledger is in
 [`docs/limitations.md`](limitations.md).
 
-- **Alight:** indexed string-table lookup; 2D walking and function semantics
-  are the cost. Its boolean construction is derived, not supplied by a wiki
-  truth-machine.
 - **Packlang:** C-like blocks and namespaces; its boolean generator reuses
   the existing ANF construction. Resolve the wiki's conflicting literal-base
   examples.

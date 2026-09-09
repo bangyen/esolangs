@@ -160,6 +160,14 @@ Current caps are deliberate:
   fixed machine-word range.
 - Jaune's dispatch to an undefined marker is unspecified; its interpreter and
   compiler deliberately choose different outcomes.
+- Alight's prose contradicts its own examples twice, and the examples decide
+  both. It calls all operators postfix, but every example is infix
+  (`turn c = eof`, `len{l}-0.5`), so expressions evaluate infix left to right
+  with no precedence. It says three-argument `at` returns a copy, but the
+  reversed cat runs `at{l, len{l}-0.5, c}` as a bare command and discards the
+  result: under copy semantics that is a no-op and the example crashes on its
+  own first `out`, so `at` sets in place. Both readings are pinned by running
+  all three wiki programs.
 
 All generator output claims require execution through the interpreter. Do not
 use permissive interpreter behavior or a bounded search as a new capability.

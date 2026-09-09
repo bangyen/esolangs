@@ -504,6 +504,7 @@ def _register() -> None:
             expected="0\n",
             note="an executed line prints its result, so the answer ends in a newline",
         ),
+        "alight": _reader(b.alight, "grid_based.alight", split=True),
         "basicfuck": _reader(b.basicfuck, "tape_based.basicfuck"),
         "between": _reader(b.between, "register_based.between", split=True),
         "bfstack": _reader(b.bfstack, "stack_based.bfstack"),
