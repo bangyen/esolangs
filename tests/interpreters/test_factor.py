@@ -1,5 +1,7 @@
 """Unit tests for the Factor interpreter."""
 
+import sys
+
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
@@ -17,6 +19,13 @@ TRUTH = int(
 def run_program(number: int, stdin: str = "") -> str:
     io = ScriptedIO(stdin)
     run(str(number), io)
+    return io.getvalue()
+
+
+def run_program_text(program: str, stdin: str = "") -> str:
+    """Run an already-rendered program, for one too long to pass as an int."""
+    io = ScriptedIO(stdin)
+    run(program, io)
     return io.getvalue()
 
 
@@ -106,6 +115,41 @@ class TestStepMachine:
         machine.step()  # . prints it
         assert machine.io.getvalue() == "\x01"
         assert machine.halted
+
+
+class TestLongPrograms:
+    """A Factor program is one integer, so CPython's digit guard caps the
+    language rather than the interpreter."""
+
+    def test_a_program_past_cpythons_digit_limit_still_parses(self) -> None:
+        """4300 digits is a DoS guard on int/str, not a Factor rule.
+
+        The program is 2**k: one prime, so decoding is trivial and the test
+        pays only for the parse this is about.  ``k`` is chosen to put the
+        decimal form well past the default limit.
+        """
+        number = 2**20000
+        limit = sys.get_int_max_str_digits()
+        sys.set_int_max_str_digits(30000)
+        try:
+            program = str(number)
+        finally:
+            sys.set_int_max_str_digits(limit)
+        assert len(program) > limit, "the point of the test is to exceed it"
+        # 2 has residue 2 mod 11, so this decodes to 20000 '<' -- every one
+        # of them clamped at the left edge, printing nothing and halting.
+        assert run_program_text(program) == ""
+
+    def test_the_parse_leaves_the_global_limit_alone(self) -> None:
+        """The limit is process-global, so it is borrowed and handed back."""
+        before = sys.get_int_max_str_digits()
+        sys.set_int_max_str_digits(30000)
+        try:
+            program = str(2**20000)
+        finally:
+            sys.set_int_max_str_digits(before)
+        run_program_text(program)
+        assert sys.get_int_max_str_digits() == before
 
 
 class TestFactorint:
