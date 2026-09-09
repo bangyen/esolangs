@@ -195,7 +195,8 @@ def _weave_slots(grid: list[list[str]]) -> list[tuple[int, int]] | None:
         # ``ip`` is typed for every language's shape, so narrowing it to
         # this one's tuple is a type-level fact, not a runtime check.
         position = vm.ip
-        assert isinstance(position, tuple)  # nosec B101
+        if not isinstance(position, tuple):
+            raise AssertionError("isinstance(position, tuple)")
         cell = (position[0], position[1])
         try:
             vm.step()

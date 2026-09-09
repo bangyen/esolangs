@@ -738,7 +738,8 @@ class _Machine:
         read from returning, not looping.  See
         :func:`esolangs.vm.run_until_halt_or_ancestor`.
         """
-        assert isinstance(frame, _Frame)  # nosec B101
+        if not isinstance(frame, _Frame):
+            raise AssertionError("isinstance(frame, _Frame)")
         return (
             frame.fn.name,
             tuple(sorted((k, repr(v)) for k, v in frame.locals.items())),
