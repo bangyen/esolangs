@@ -426,6 +426,75 @@ class TestErrors:
         with pytest.raises(HaltError, match="undefined function"):
             _run("Package : IO {\n  Integer main {\n    nope(1);\n    0;\n  }\n} p;")
 
+    def test_calling_an_undeclared_dependency_halts(self) -> None:
+        """The wiki grants access only to a package's declared dependencies.
+
+        The function exists and is callable -- the positive control below
+        is the same program with the dependency declared -- so this pins
+        the visibility rule rather than a name lookup.
+        """
+        undeclared = """
+Dependency {
+  Integer helper : Integer a {
+    a;
+  }
+} myDependency;
+Package : IO {
+  Integer main {
+    charPut(48 ^ helper(1));
+    0;
+  }
+} myPackage;
+"""
+        with pytest.raises(HaltError, match="does not depend on"):
+            _run(undeclared)
+        # Positive control: declaring the dependency makes the same call work.
+        declared = undeclared.replace("Package : IO {", "Package : IO, myDependency {")
+        assert _run(declared) == "1"
+
+    def test_a_dependency_of_a_dependency_is_reachable(self) -> None:
+        """The wiki says dependencies may have dependencies; resolution
+        follows the chain rather than stopping one level down."""
+        code = """
+Dependency {
+  Integer deep : Integer a {
+    a;
+  }
+} inner;
+Dependency : inner {
+  Integer middle : Integer a {
+    a;
+  }
+} outer;
+Package : IO, outer {
+  Integer main {
+    charPut(48 ^ deep(1));
+    0;
+  }
+} myPackage;
+"""
+        assert _run(code) == "1"
+
+    def test_io_inside_a_called_function_is_refused(self) -> None:
+        """A call is evaluated inside a statement, not stepped, so the
+        shell has no point at which to perform its ports."""
+        code = """
+Dependency {
+  Integer shout : Integer a {
+    charPut(65);
+    a;
+  }
+} d;
+Package : IO, d {
+  Integer main {
+    charPut(48 ^ shout(1));
+    0;
+  }
+} p;
+"""
+        with pytest.raises(HaltError, match="IO inside a called function"):
+            _run(code)
+
     def test_index_outside_an_array_halts(self) -> None:
         code = """
 Package : IO {
