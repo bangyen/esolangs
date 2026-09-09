@@ -65,12 +65,18 @@ def _output_calls(module: pathlib.Path) -> list[str]:
     in a comment or a docstring, and every interpreter here *discusses* its
     output convention in prose.  An AST sees only calls.
 
-    This deliberately answers "does it emit", not "where from".  The seven
-    interpreter-only languages emit from four different shapes -- a
-    halt-guarded ``step`` (ArrowQueue, Minsky Swap, Point Break), an
-    opcode-guarded ``step`` (Back, on its ``*`` command), and an unguarded
-    ``run``, ``render`` or ``_dump`` (A Painter Ant, Bitdeque, RAM0) -- so
-    no structural rule separates a dump from an ordinary print.
+    This deliberately answers "does it emit", not "where from".  Six of the
+    seven interpreter-only languages now dump the same way -- guarded by
+    the halt inside ``step``, once per run, whether the printing itself is
+    inline or in a helper (RAM0's ``_dump``, Bitdeque's ``render``).  Back
+    was the exception until its guard stopped re-reading the grid for the
+    ``*`` that ``_advance`` had already turned into ``halted``.
+
+    A Painter Ant cannot join them: its ``halted`` is always ``False``,
+    because the language is an unconditional infinite loop, so there is no
+    halt for a dump to hang on.  ``run`` stops it by proving a repeated
+    state and dumps there.  That is a property of the language, not an
+    inconsistency to tidy.
 
     Nor could a stricter check run the other way and *derive* ``io``.  Six
     languages with a defined output command call no port in their own
