@@ -316,7 +316,7 @@ class _Parser:
             self.expect(",")
             length = self.number()
             self.expect(")")
-            if length < 0:
+            if length < 0:  # pragma: no cover - `number` requires isdigit
                 raise ValueError("array length must not be negative")
             return _Type(inner.low, inner.high, inner.under, inner.over, length)
         if name == "Pointer":
@@ -856,7 +856,7 @@ def _advance(
     shell calls back with the byte in ``byte`` -- so the transition stays a
     function of its arguments and the two ports remain the shell's.
     """
-    if stmt is None:
+    if stmt is None:  # pragma: no cover - both call sites pass `prepared`
         stmt = frame.func.body[frame.pc]
     op = stmt[0]
     store = frame.store
@@ -980,7 +980,8 @@ def _resolved(frame: _Frame) -> tuple[object, ...]:
     if frame.pending is None:
         return stmt
     slot = _EXPR_SLOT.get(str(stmt[0]))
-    if slot is None:
+    if slot is None:  # pragma: no cover - only _JUMP lacks a slot, and a
+        # jump never has a pending call, so the check above returns first
         return stmt
     parts = list(stmt)
     parts[slot] = frame.pending

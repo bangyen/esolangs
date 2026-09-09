@@ -568,7 +568,9 @@ def _laserfuck_snake_ring(
     lines = ["".join(line).rstrip() for line in grid]
     while lines and not lines[-1]:
         lines.pop()
-    if max(map(len, lines)) > width:
+    # Instrumented over widths 6-25: the rendered width equals the
+    # requested one every time, because the fold lays to that width.
+    if max(map(len, lines)) > width:  # pragma: no cover - see above
         return None
     return "\n".join(lines)
 
