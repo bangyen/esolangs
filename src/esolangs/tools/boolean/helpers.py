@@ -431,19 +431,22 @@ def _greedy_input_order(truth_table: str, n: int) -> tuple[int, ...]:
     return tuple(order)
 
 
-Leaf = Callable[[int, int], list[str]]
-Node = Callable[[int, list[str], list[str], int], list[str]]
+# The walker only concatenates tokens and measures runs of them, never looks
+# inside one, so a token is whatever the caller finds convenient: a string for
+# the generators that emit text, an instruction tuple for S*bleq.
+type Leaf[Token] = Callable[[int, int], list[Token]]
+type Node[Token] = Callable[[int, list[Token], list[Token], int], list[Token]]
 
 
-def decision_tree_tokens(
+def decision_tree_tokens[Token](
     truth_table: str,
-    leaf: Leaf,
-    node: Node,
+    leaf: Leaf[Token],
+    node: Node[Token],
     *,
     parent_width: int | Callable[[int], int] = 0,
     start: int = 0,
     collapse: bool = False,
-) -> list[str]:
+) -> list[Token]:
     """Walk a truth table's decision tree, combining caller-emitted parts.
 
     ``leaf(level, row)`` returns the tokens for a leaf reached at ``level``
@@ -465,9 +468,9 @@ def decision_tree_tokens(
     children -- a constant, or a function of the level when a node's own
     width grows with depth, as RAM0's address run does.  So ``at`` is the
     absolute index of the subtree ``node`` is building, which is what lets
-    Bitdeque and RAM0 name the index their one-subtree starts at.  Both used
-    to reserve a slot, recurse, and backpatch it; the index arrives up front
-    instead.
+    Bitdeque, RAM0 and S*bleq name the index their one-subtree starts at.
+    All three used to reserve a slot, recurse, and backpatch it; the index
+    arrives up front instead.
 
     **What this deliberately cannot do**, with the generator each rules out:
 
@@ -495,7 +498,7 @@ def decision_tree_tokens(
     n = _validate_truth_table(truth_table)
     width = parent_width if callable(parent_width) else lambda _level: parent_width
 
-    def walk(level: int, lo: int, hi: int, at: int) -> list[str]:
+    def walk(level: int, lo: int, hi: int, at: int) -> list[Token]:
         values = {truth_table[r] for r in range(lo, hi)}
         if level == n or (collapse and len(values) == 1):
             return leaf(level, lo)
