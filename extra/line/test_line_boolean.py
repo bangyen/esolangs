@@ -16,7 +16,7 @@ of by absolute depth -- see render.py's own comment for the full story).
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 import pytest
@@ -32,11 +32,13 @@ def _io(inputs: list[int]) -> tuple[IO, list[int]]:
     return IO(read=values.__next__, write=outputs.append), outputs
 
 
-def _check_truth_table(truth_table: str, n: int, tmp_path: Path) -> None:
+def _check_truth_table(
+    truth_table: str, n: int, tmp_path: Path, rows: Iterable[int] | None = None
+) -> None:
     path = str(tmp_path / "bool.png")
     render(line_boolean(truth_table)).save(path)
     program = compile_program(extract(path))
-    for combo in range(2**n):
+    for combo in range(2**n) if rows is None else rows:
         bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
         io, outputs = _io(bits)
         run_compiled(program, io=io)
@@ -97,22 +99,36 @@ class TestLineBoolean:
             tmp_path,
         )
 
-    @pytest.mark.slow
-    def test_parity_n9(self, tmp_path: Path) -> None:
-        """9-input parity reaches every leaf through the real PNG round trip."""
+    # n=9 is sampled, and n=10 is gone.  Both used to sweep every input
+    # combination, at 13.4s and 29.0s; measured against the n<=8 set they
+    # covered not one further line of render, extract, lattice, mask, png or
+    # simulate -- the tree is one recursive shape and n=8 already reaches
+    # every leaf of it, so a wider arity re-runs the same code on a bigger
+    # drawing.  What a ninth input does add is a carry the eighth does not:
+    # the rows below are the ones where the arm sizing can go wrong -- every
+    # single-bit index, both extremes, and both sides of each power-of-two
+    # boundary -- so a mis-sized arm still fails here rather than only
+    # showing up as a larger picture.
+    #
+    # Sampling the rows is not what makes this cheap, and the row list is
+    # not a speed measure: at n=9 the run is 11.6s of `extract` against
+    # 0.6s of execution, so the drawing is the cost and it is paid once
+    # whatever the rows.  Dropping n=10 is the saving (29.0s); the rows are
+    # chosen so the remaining arity still fails loudly rather than merely
+    # rendering.
+    @pytest.mark.slow  # 13s: one n=9 drawing, extracted once, at its boundary rows
+    def test_parity_n9_on_boundary_rows(self, tmp_path: Path) -> None:
+        """9-input parity is checked where an arm's size can go wrong."""
+        n = 9
+        rows = {0, 2**n - 1}
+        rows.update(1 << i for i in range(n))
+        for edge in (2**i for i in range(1, n)):
+            rows.update({edge - 1, edge, edge + 1} & set(range(2**n)))
         _check_truth_table(
-            "".join(str(bits.bit_count() % 2) for bits in range(2**9)),
-            9,
+            "".join(str(bits.bit_count() % 2) for bits in range(2**n)),
+            n,
             tmp_path,
-        )
-
-    @pytest.mark.slow
-    def test_parity_n10(self, tmp_path: Path) -> None:
-        """10-input parity reaches every leaf through the real PNG round trip."""
-        _check_truth_table(
-            "".join(str(bits.bit_count() % 2) for bits in range(2**10)),
-            10,
-            tmp_path,
+            rows=sorted(rows),
         )
 
     def test_invalid_length_rejected(self) -> None:
