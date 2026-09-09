@@ -45,9 +45,9 @@ class TestContainer:
     def test_hello_world(self) -> None:
         """Hello, World! program from esolangs.org."""
         buffer = io.StringIO()
-        with pytest.raises(SystemExit) as exc, redirect_stdout(buffer):
-            run(HELLO_WORLD, io=IO())
-        assert exc.value.code == 0
+        with redirect_stdout(buffer):
+            code = run(HELLO_WORLD, io=IO())
+        assert code == 0
         assert buffer.getvalue() == "Hello, world!"
 
     def test_container_update_clamps_at_zero(self) -> None:
@@ -66,11 +66,10 @@ class TestContainer:
         code = [":", "+1 A>=0", "", "A:", "+1 EXIT>=1", "", "EXIT=1:", "-1 A>=0"]
         with (
             patch("builtins.input", return_value="Z"),
-            pytest.raises(SystemExit) as exc,
             redirect_stdout(io.StringIO()),
         ):
-            run(code, IO())
-        assert exc.value.code == 0
+            exit_code = run(code, IO())
+        assert exit_code == 0
 
     def test_rule_before_declaration_rejected(self) -> None:
         """A rule line before any container declaration is malformed."""
@@ -99,9 +98,9 @@ class TestContainer:
             "-1 PRINT>=1",
         ]
         buffer = io.StringIO()
-        with pytest.raises(SystemExit) as exc, redirect_stdout(buffer):
-            run(code, io=IO())
-        assert exc.value.code == 0
+        with redirect_stdout(buffer):
+            exit_code = run(code, io=IO())
+        assert exit_code == 0
         assert buffer.getvalue() == "H"
 
     def test_empty_program_halts(self) -> None:
@@ -115,8 +114,21 @@ class TestContainer:
 
         output = io.StringIO()
         with redirect_stdout(output):
-            run([], IO())
+            assert run([], IO()) is None
         assert output.getvalue() == ""
+
+
+class TestPublicAPI:
+    def test_run_returns_output_instead_of_exiting(self) -> None:
+        """EXIT is a normal halt, so the public API returns the output.
+
+        Container used to call ``sys.exit``, which escaped
+        :func:`esolangs.run` as ``SystemExit`` and made the CLI print
+        nothing at all.
+        """
+        import esolangs
+
+        assert esolangs.run("Container", "\n".join(HELLO_WORLD)) == "Hello, world!"
 
 
 class TestStepMachine:
