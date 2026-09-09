@@ -558,6 +558,7 @@ def _register() -> None:
         "flowchart": _reader(b.flowchart, "grid_based.flowchart", split=True),
         "forbin": _reader(b.forbin_boolean, "other.forbin"),
         "forþ": _reader(b.forth, "stack_based.forth"),
+        "function-x(y)": _reader(b.function_x_y, "other.function_x_y"),
         "grapheme": _reader(b.grapheme, "stack_based.grapheme"),
         "jaune": _reader(b.jaune, "tape_based.jaune"),
         "laserfuck": _reader(

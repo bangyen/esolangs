@@ -24,9 +24,9 @@ and newline-sensitive languages retain their own layout.
 <!-- EXAMPLES:START -->
 
 Ready-to-run programs are committed under [`examples/`](examples/):
-`examples/hello-world/` holds a "Hello, World!" for each of the 47
+`examples/hello-world/` holds a "Hello, World!" for each of the 48
 languages with a text generator; `examples/boolean/` holds a truth-table
-program for each of the 64 languages with a boolean generator.  Both
+program for each of the 65 languages with a boolean generator.  Both
 regenerate via `scripts/write_examples.py`.
 
 <!-- EXAMPLES:END -->
@@ -36,7 +36,7 @@ regenerate via `scripts/write_examples.py`.
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 64 languages</summary>
+<summary>Show all 65 languages</summary>
 
 The full capability matrix (generators, cross-check and boolean support, examples) is in [`docs/languages.md`](docs/languages.md).
 
@@ -133,6 +133,7 @@ Languages that don't fit into the above categories.
 - [Lamfunc](https://esolangs.org/wiki/Lamfunc) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/lamfunc.py))
 - [Suptiftam](https://esolangs.org/wiki/Suptiftam) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/suptiftam.py))
 - [ZTOALC L](https://esolangs.org/wiki/ZTOALC_L) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/ztoalc_l.py))
+- [function x(y)](https://esolangs.org/wiki/function_x(y)) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/function_x_y.py))
 
 <!-- IMPLEMENTED:END -->
 </details>
@@ -204,7 +205,7 @@ Boolean generators accept a most-significant-input-first binary truth table.
 <!-- BOOLEAN-COUNT:START -->
 
 The truth table is a binary string of length `2**n`, most-significant input
-first; its length implies `n`, so it isn't passed separately.  64 of the
+first; its length implies `n`, so it isn't passed separately.  65 of the
 languages have such a generator, some covering only a documented subset of
 tables.
 

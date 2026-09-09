@@ -35,6 +35,7 @@ __all__ = [
     "dimensional",
     "forbin",
     "forth",
+    "function_x_y",
     "home_row",
     "laserfuck",
     "myscript",
@@ -1001,3 +1002,51 @@ def suptiftam(text: str) -> str:
                 "Suptiftam can only output printable non-quote ASCII (32-126 except ')"
             )
     return "\n".join(f"term='{c}'\nright(:term:)" for c in text)
+
+
+def function_x_y(text: str) -> str:
+    """Build a function x(y) program that prints ``text``.
+
+    One ``` `"..." ``` statement per line of the text, so the whole string
+    is emitted literally with no arithmetic: the backtick print adds no
+    newline of its own, which is what lets a text with no trailing newline
+    be reproduced exactly.  Each newline in the text is its own statement,
+    since a literal cannot contain one.
+
+    The language has no escape or character-code mechanism, so a double
+    quote cannot appear inside a string literal and is not emissible; the
+    alphabet is otherwise printable ASCII plus the newline.
+    """
+    _require_ascii(text, "function x(y)")
+    if '"' in text:
+        raise ValueError(
+            'function x(y) has no string escape, so it cannot output a quote (")'
+        )
+    for c in text:
+        if c != "\n" and not 32 <= ord(c) <= 126:
+            raise ValueError(
+                "function x(y) can only output printable ASCII (32-126) and newline"
+            )
+    # ``[""]`` prints just the newline; a run of text prints with a backtick
+    # so nothing extra is appended.
+    body = ['[""]' if not line else f'`"{line}"' for line in _quote_split(text)]
+    return (
+        "\n".join(["function printText()", *body]) if body else "function printText()"
+    )
+
+
+def _quote_split(text: str) -> list[str]:
+    r"""Split ``text`` into the pieces one statement each prints.
+
+    A newline is not representable inside a literal, so it becomes its own
+    ``[""]`` statement (print-with-newline of nothing).  Splitting on
+    ``"\\n"`` and interleaving is what keeps a trailing newline -- and a run
+    of blank lines -- reproduced exactly rather than collapsed.
+    """
+    pieces: list[str] = []
+    for i, line in enumerate(text.split("\n")):
+        if i:
+            pieces.append("")
+        if line:
+            pieces.append(line)
+    return pieces

@@ -98,6 +98,7 @@ fold reaches generic twelve- and thirteen-input tables.
 | ZTOALC L | yes | yes |  | yes |  |
 | bit~ | yes | yes |  | yes |  |
 | brainfuck | yes | yes |  | yes |  |
+| function x(y) | yes | yes |  | yes |  |
 
 The `esolangs` command lists the languages with Python support:
 

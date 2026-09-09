@@ -198,6 +198,7 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Flowchart": (FLOWCHART_TRUTH_MACHINE, "0\n"),
     "Forbin": ("main { x = 1; }", ""),
     "Forþ": ("65.", ""),
+    "function x(y)": ("function f()\n[[~]]", "a\n"),
     "Grapheme": ("FAFY", ""),
     "Home Row": ("ak;", ""),
     # A corrected truth machine (the wiki's own is inverted -- see the
