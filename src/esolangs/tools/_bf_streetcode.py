@@ -55,46 +55,69 @@ from esolangs.interpreters.brackets import match_brackets as _match_brackets
 _STRIDE = 6
 
 
-def _byte_safe(code: str) -> bool:
-    """Prove a straight-line clear/multiply program stays in byte range."""
+def _affine_loop(body: str, ptr: int) -> dict[int, int] | None:
+    """Return one lap's non-source increments for a bounded transfer loop."""
+    delta: dict[int, int] = {}
+    offset = 0
+    for char in body:
+        if char == ">":
+            offset += 1
+        elif char == "<":
+            offset -= 1
+            if ptr + offset < 0:
+                return None
+        elif char in "+-":
+            delta[offset] = delta.get(offset, 0) + (1 if char == "+" else -1)
+        else:  # Nested loops and I/O are not affine one-lap transfers.
+            return None
+    if offset or delta.get(0) != -1:
+        return None
+    if any(change < 0 for cell, change in delta.items() if cell):
+        return None
+    return {cell: change for cell, change in delta.items() if cell and change}
+
+
+def _byte_safe_prefix(code: str, brackets: dict[int, int]) -> int:
+    """Return the longest prefix proven to keep every cell in ``0..255``.
+
+    The accepted loops are affine countdown transfers such as
+    ``[->+>++<<]`` and ``[<+>-]``.  Their invariant is checked by the Z3
+    certificate tests; this matcher supplies concrete byte bounds.
+    """
     cells: dict[int, int] = {}
     ptr = pos = 0
     while pos < len(code):
         char = code[pos]
-        if code.startswith("[-]", pos):
-            cells[ptr] = 0
-            pos += 3
-            continue
         if char in "+-":
             value = cells.get(ptr, 0) + (1 if char == "+" else -1)
             if not 0 <= value <= 255:
-                return False
+                return pos
             cells[ptr] = value
         elif char == ">":
             ptr += 1
         elif char == "<":
             ptr = max(ptr - 1, 0)
+        elif char == ".":
+            pass
         elif char == ",":
-            return False
+            return pos
         elif char == "[":
-            end = code.find("<-]", pos)
-            if end == -1 or not code.startswith("[>", pos):
-                return False
-            body = code[pos + 2 : end]
-            if not body or any(ch != "+" for ch in body):
-                return False
-            target = ptr + 1
-            value = cells.get(target, 0) + cells.get(ptr, 0) * len(body)
-            if value > 255:
-                return False
-            cells[target] = value
+            end = brackets[pos]
+            transfers = _affine_loop(code[pos + 1 : end], ptr)
+            source = cells.get(ptr, 0)
+            if transfers is None or any(
+                cells.get(ptr + offset, 0) + source * change > 255
+                for offset, change in transfers.items()
+            ):
+                return pos
+            for offset, change in transfers.items():
+                cells[ptr + offset] = cells.get(ptr + offset, 0) + source * change
             cells[ptr] = 0
-            pos = end + 3
-            continue
-        elif char == "]":
-            return False
+            pos = end
+        else:  # A closing bracket can only appear inside a rejected loop.
+            return pos
         pos += 1
-    return True
+    return pos
 
 
 def _lower_byte_safe(code: str) -> str:
@@ -105,45 +128,8 @@ def _lower_byte_safe(code: str) -> str:
     )
 
 
-#: The divmod-by-256 core, operating on ``x n 0 0 0`` from the pointer:
-#: it leaves ``0  (n - r)  r  q`` where ``r = x % n`` and ``q = x // n``.
-#: Every loop it runs exits with the pointer parked on a cell it has just
-#: zeroed, so no loop iterates on a cell whose sign is unknown, and no cell
-#: is ever driven below zero.
-_DIVMOD = "[->-[>+>>]>[+[-<+>]>+>>]<<<<<]"
-
-#: Build 256 in ``x+1`` from a 16-step counter in ``x+2``.  The loop exits
-#: with its counter zero and returns to ``x``; it costs 55 commands instead
-#: of a literal 256-step increment.
-_SET_256 = ">>" + "+" * 16 + "[<" + "+" * 16 + ">-]<<"
-
-#: Reduce the cell under the pointer mod 256, leaving every scratch cell at
-#: zero and the pointer where it started.  ``n = 256`` is set in ``x+1``,
-#: the divmod runs, the remainder is moved back over ``x``, and the two
-#: leftover scratch cells (``n - r`` and ``q``) are cleared.
-_CANON = (
-    _SET_256  # x+1 = 256
-    + _DIVMOD  # x -> 0 ; x+2 = x % 256 ; x+3 = x // 256
-    + ">>[-<<+>>]<<"  # move the remainder from x+2 back to x
-    + ">[-]<"  # clear x+1 ( = 256 - remainder)
-    + ">>>[-]<<<"  # clear x+3 ( = quotient)
-)
-
-
-def _lower(program: str) -> str:
-    """Rewrite ``program`` as stride-6 brainfuck that never leaves 0-255.
-
-    Non-command characters are brainfuck comments and are dropped -- the
-    same convention the ``brainfuck -> 3D Brainfuck`` and ``-> Painfuck``
-    transpilers use, and required here because a later pass reads the
-    result as pure commands.  Unbalanced brackets are malformed in
-    brainfuck too, so they raise :class:`ValueError` before anything is
-    emitted, exactly where the source interpreter raises.
-    """
-    _match_brackets(program)
-    code = "".join(c for c in program if c in "+-<>.,[]")
-    if _byte_safe(code):
-        return _lower_byte_safe(code)
+def _lower_generic(code: str) -> str:
+    """Widen arbitrary code, adding canonicalizers where byte safety needs it."""
     out: list[str] = []
     i, n = 0, len(code)
     while i < n:
@@ -184,6 +170,58 @@ def _lower(program: str) -> str:
             out.append(char)
         i += 1
     return "".join(out)
+
+
+#: The divmod-by-256 core, operating on ``x n 0 0 0`` from the pointer:
+#: it leaves ``0  (n - r)  r  q`` where ``r = x % n`` and ``q = x // n``.
+#: Every loop it runs exits with the pointer parked on a cell it has just
+#: zeroed, so no loop iterates on a cell whose sign is unknown, and no cell
+#: is ever driven below zero.
+_DIVMOD = "[->-[>+>>]>[+[-<+>]>+>>]<<<<<]"
+
+#: Build 256 in ``x+1`` from a 16-step counter in ``x+2``.  The loop exits
+#: with its counter zero and returns to ``x``; it costs 55 commands instead
+#: of a literal 256-step increment.
+_SET_256 = ">>" + "+" * 16 + "[<" + "+" * 16 + ">-]<<"
+
+#: Reduce the cell under the pointer mod 256, leaving every scratch cell at
+#: zero and the pointer where it started.  ``n = 256`` is set in ``x+1``,
+#: the divmod runs, the remainder is moved back over ``x``, and the two
+#: leftover scratch cells (``n - r`` and ``q``) are cleared.
+_CANON = (
+    _SET_256  # x+1 = 256
+    + _DIVMOD  # x -> 0 ; x+2 = x % 256 ; x+3 = x // 256
+    + ">>[-<<+>>]<<"  # move the remainder from x+2 back to x
+    + ">[-]<"  # clear x+1 ( = 256 - remainder)
+    + ">>>[-]<<<"  # clear x+3 ( = quotient)
+)
+
+
+def _lower(program: str) -> str:
+    """Rewrite ``program`` as stride-6 brainfuck that never leaves 0-255.
+
+    Non-command characters are brainfuck comments and are dropped -- the
+    same convention the ``brainfuck -> 3D Brainfuck`` and ``-> Painfuck``
+    transpilers use, and required here because a later pass reads the
+    result as pure commands.  Unbalanced brackets are malformed in
+    brainfuck too, so they raise :class:`ValueError` before anything is
+    emitted, exactly where the source interpreter raises.
+    """
+    _match_brackets(program)
+    code = "".join(c for c in program if c in "+-<>.,[]")
+    brackets = _match_brackets(code)
+    prefix = _byte_safe_prefix(code, brackets)
+    # Keep a clear with an immediately following underflowing run in the
+    # generic suffix: its byte residue is known even though that run alone
+    # is not byte-safe, and ``_lower_generic`` can remove its canonicalizer.
+    if (
+        prefix < len(code)
+        and prefix >= 3
+        and code[prefix - 3 : prefix] == "[-]"
+        and code[prefix] in "+-"
+    ):
+        prefix -= 3
+    return _lower_byte_safe(code[:prefix]) + _lower_generic(code[prefix:])
 
 
 # -- the geometry: brainfuck (no wrap concerns) -> a Streetcode grid ------

@@ -404,6 +404,43 @@ def test_streetcode_clear_and_set_skips_the_canonicalizer() -> None:
     assert _lower("[-]---") == "[-]" + "+" * 253
 
 
+@pytest.mark.parametrize(
+    ("program", "stdin", "prefix"),
+    [
+        ("+++[->+>++<<]>.>.", "", 17),
+        (">++[<+>-]<.", "", 11),
+        ("++.,.", "a", 3),
+        ("+[>+[>+<-]<-]", "", 1),
+    ],
+)
+def test_streetcode_byte_safe_affine_prefixes(
+    program: str, stdin: str, prefix: int
+) -> None:
+    """Affine transfers lower directly; unknown code falls back at its boundary."""
+    from esolangs.interpreters.brackets import match_brackets
+    from esolangs.tools._bf_streetcode import _byte_safe_prefix
+
+    assert _byte_safe_prefix(program, match_brackets(program)) == prefix
+    target = esolangs.transpile("brainfuck", "Streetcode", program)
+    assert esolangs.run("Streetcode", target, stdin, timeout=30) == esolangs.run(
+        "brainfuck", program, stdin, timeout=30
+    )
+
+
+def test_streetcode_affine_transfer_fuzz_agrees() -> None:
+    """Accepted multi-target transfer shapes agree with the generic semantics."""
+    rng = random.Random(23)
+    for _ in range(12):
+        counter = rng.randint(0, 15)
+        first = rng.randint(0, 8)
+        second = rng.randint(0, (255 - counter * first) // counter if counter else 8)
+        program = "+" * counter + "[->" + "+" * first + ">" + "+" * second + "<<]>.>."
+        target = esolangs.transpile("brainfuck", "Streetcode", program)
+        assert esolangs.run("Streetcode", target, timeout=30) == esolangs.run(
+            "brainfuck", program, timeout=30
+        )
+
+
 def test_streetcode_transpiler_is_total() -> None:
     """Every brainfuck program translates; only unbalanced brackets raise.
 
