@@ -361,30 +361,92 @@ class TestFunctions:
                 ["begin;var v;set v one{1, 2};end;", "func one{a};end a;"], ScriptedIO()
             )
 
-    def test_unbounded_recursion_halts_rather_than_hanging(self) -> None:
-        """A self-call with no base case raises instead of blowing the stack."""
-        with pytest.raises(HaltError, match="call depth"):
-            run(
-                ["begin;var v;set v loop{1};end;", "func loop{a};end loop{a};"],
-                ScriptedIO(),
-            )
+    @pytest.mark.parametrize(
+        "program",
+        [
+            ["begin;var v;set v loop{1};end;", "func loop{a};end loop{a};"],
+            ["begin;var v;set v f{1};end;", "func f{a};var b;set b f{a};end b;"],
+        ],
+        ids=["return-position", "body-position"],
+    )
+    def test_unbounded_recursion_grows_walkers_without_crashing(
+        self, program: list[str]
+    ) -> None:
+        """No depth cap: walkers grow on the heap, not Python's stack.
 
-    def test_recursion_in_a_body_halts_too_not_only_in_the_return(self) -> None:
-        """The costlier recursion shape, which the cap used to miss.
+        There was a cap here, and it never fired on the second shape --
+        recursing from a ``set`` in the body spends more Python frames per
+        language-level call than recursing from ``end loop{a}``, so at a
+        cap of 200 that shape hit Python's own limit first and raised
+        ``RecursionError``, the very crash the cap documented preventing.
+        Framing calls removes the cause rather than retuning the number.
 
-        Recursing from ``end loop{a}`` above spends fewer Python frames per
-        language-level call than recursing from a ``set`` in the body does.
-        At the old cap of 200 this shape reached Python's own limit first
-        and raised ``RecursionError`` -- the very thing the cap documents
-        preventing -- while the cheaper shape above still passed.  Both
-        shapes are pinned now so a cap that stops beating the interpreter's
-        real frame cost fails here.
+        Such a program revisits no state, so nothing can prove it halts and
+        the wall-clock ``timeout`` is the backstop, as in ``grapheme.py``.
+        What is asserted is that it stays *steppable*.
         """
-        with pytest.raises(HaltError, match="call depth"):
-            run(
-                ["begin;var v;set v f{1};end;", "func f{a};var b;set b f{a};end b;"],
-                ScriptedIO(),
-            )
+        machine = _machine(program)
+        for _ in range(3000):
+            machine.step()
+        # Far past Python's own recursion limit, and still going.
+        assert len(machine.walkers) > 1000
+        assert not machine.halted
+
+    def test_an_effectful_at_beside_a_call_fires_exactly_once(self) -> None:
+        """The constraint that shapes how a command is re-entered.
+
+        A command holding calls is re-entered once per call, so anything
+        re-evaluated on the way runs again -- and 3-arg ``at`` *writes*.
+        The write here is a read-modify-write (``+1``), so a second firing
+        is visible as a second increment; an idempotent write would look
+        identical either way and prove nothing.
+
+        ``_reduce`` therefore substitutes the value of every call it
+        passes, builtins included, rather than only the user calls.
+        """
+        program = [
+            'begin;var l;set l "A";var v;'
+            "set v len{at{l, 0.5, at{l, 0.5}+1}}+f{0};"
+            "var c;set c at{l, 0.5};out c;end;",
+            "func f{a};end a;",
+        ]
+        # 'A' is 65: one increment gives 'B', two would give 'C'.
+        assert _run(program) == "B"
+
+    def test_two_calls_beside_an_effectful_at_still_fire_it_once(self) -> None:
+        """Two re-entries rather than one, so a per-entry bug is louder."""
+        program = [
+            'begin;var l;set l "A";var v;'
+            "set v len{at{l, 0.5, at{l, 0.5}+1}}+f{0}+g{0};"
+            "var c;set c at{l, 0.5};out c;end;",
+            "func f{a};end a;",
+            "func g{a};end a;",
+        ]
+        assert _run(program) == "B"
+
+    def test_a_ring_inside_a_called_function_is_provable(self) -> None:
+        """The reason calls are framed rather than run inline.
+
+        A callee that rings forever used to walk inside the caller's single
+        ``step()``, so its repeating state never reached ``snapshot`` and
+        the cycle detector could not see it -- only the wall clock ended
+        it.  Framed, every command reaches ``snapshot`` and the repeat
+        proves the hang.
+
+        The ring reads no input and sets no variable, so its state really
+        does repeat; a walk that grows is the separate class the timeout
+        covers.
+        """
+        # The proven ring from :class:`TestCycles`, entered by a call.  Its
+        # continuation rows shift right by 3: a walk resumes just past its
+        # header, which is column 5 for ``begin`` and column 8 for
+        # ``func r{}``, so the arms have to move with the pivots.
+        program = [
+            "begin;var v;set v r{};end;",
+            "func r{};turn right;",
+            *["   " + line for line in TestCycles.looping_program[1:]],
+        ]
+        assert run_until_halt_or_cycle(_machine(program)) is False
 
 
 class TestGenerators:
