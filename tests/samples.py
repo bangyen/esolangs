@@ -101,14 +101,27 @@ def bits_of(value: int) -> str:
 # no-op step is the second one past the halt, not the first.
 #
 # This is a fact about the language, so a caller does not have to come here
-# to learn it: each of the four declares
+# to learn it: each of the seven declares
 # ``dumps_on_the_post_halt_step = True`` on its ``_Machine``, and
 # :attr:`esolangs.vm.VM.dumps_on_the_post_halt_step` reports it -- the same
-# mechanism ``reproducible_seed`` uses, for the same reason.  The set stays
-# because the sweep needs the answer *without* building a machine, and
-# because ``test_the_dump_convention_matches_what_the_vm_reports`` compares
-# the two in both directions: a language whose trait was dropped fails
-# rather than quietly rejoining the majority.
+# mechanism ``reproducible_seed`` uses, for the same reason.
+#
+# **Do not derive this set from that flag.**  Importing every ``_Machine``
+# and reading the attribute reproduces these names exactly, which is the
+# reason not to: ``test_the_dump_convention_matches_what_the_vm_reports``
+# compares the declaration against the *behaviour*, driving a machine to
+# its halt and stepping once more, and it compares this set against the
+# flag in both directions.  A derived set would make that test compare the
+# flag to itself, so a language whose dump moved back into ``run`` would
+# keep a trait nobody rechecked.  The duplication is the check.
+#
+# Parsing the interpreters for the shape instead does not work either: the
+# dump sites are uniform (all seven guard on the halt inside ``step``) but
+# the *timing* is not visible in that shape -- A Painter Ant has the same
+# guarded ``step`` and is deliberately absent here, because ``interrupt``
+# is external and its ``halted`` is always False.  The sweep also needs
+# this answer without building a machine, which an AST pass would not give
+# any more cheaply than the import does.
 DUMPS_ON_THE_POST_HALT_STEP = frozenset(
     {
         "Minsky Swap",
