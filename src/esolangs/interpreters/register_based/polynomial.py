@@ -132,6 +132,28 @@ def convert(pre: list[complex]) -> list[list[int]]:
 
 
 def sanitize(code: str) -> list[int]:
+    """Parse polynomial string into coefficient list.
+
+    CPython's ``int``/``str`` digit cap (4300 by default) is a DoS guard
+    against quadratic conversions rather than anything Polynomial says, and a
+    program's coefficients grow with its instruction count -- so the cap is
+    raised to fit the widest number in this source text and put straight
+    back, the way the generator's ``format_coeffs`` does on the way out.
+    Without it a program the generator can write is one the interpreter
+    refuses to read.
+    """
+    longest = max((len(run) for run in re.findall(r"\d+", code)), default=0)
+    limit = sys.get_int_max_str_digits()
+    if longest <= limit:
+        return _sanitize(code)
+    sys.set_int_max_str_digits(longest + 1)
+    try:
+        return _sanitize(code)
+    finally:
+        sys.set_int_max_str_digits(limit)
+
+
+def _sanitize(code: str) -> list[int]:
     """Parse polynomial string into coefficient list."""
     # Remove "f(x) = " prefix (with or without surrounding spaces)
     match = re.match(r"f\(x\)\s*=\s*(.*)", code)

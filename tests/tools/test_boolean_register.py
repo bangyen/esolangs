@@ -192,15 +192,20 @@ class TestPolynomial:
         """The gate is the instruction count, not the input count.
 
         Each instruction takes a fresh prime and becomes a polynomial
-        factor, so what the interpreter's factorization cannot afford is
-        instructions.  A scattered n == 6 table needs ~200 under the
-        cheaper of the two constructions and is refused; the message names
-        the count rather than ``n``.
+        factor, so what the interpreter cannot afford per row is
+        instructions.  A scattered n == 8 table needs ~540 under the cheaper
+        of the two constructions and is refused; the message names the count
+        rather than ``n``.
+
+        The witness has to be re-picked whenever the cap moves: a scattered
+        n == 6 table needs ~200, which was refused under the old 138 and
+        renders comfortably under the 328 the peels bought, so the same test
+        body silently stopped exercising the gate.
         """
         import random
 
         random.seed(0)
-        scattered = "".join(random.choice("01") for _ in range(64))
+        scattered = "".join(random.choice("01") for _ in range(256))
         with pytest.raises(ValueError, match="one instruction per prime"):
             boolean.polynomial(scattered)
 
