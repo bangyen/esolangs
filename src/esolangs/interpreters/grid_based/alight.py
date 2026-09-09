@@ -60,8 +60,12 @@ operation.
 * **Multiple ``begin``s.**  The first in row-major order wins; the rest are
   ordinary grid text, which is what the Evil Hack already makes of any
   overlap.
-* **Step cap.**  A walk is bounded (:data:`_STEP_CAP`) so that a program
-  looping over a fixed grid terminates rather than hanging the fuzz suite.
+* **No step cap.**  A walk runs until it halts.  A program that loops over
+  a fixed grid revisits its whole state, so
+  :func:`esolangs.vm.run_until_halt_or_cycle` *proves* the hang instead of
+  a counter guessing at one; a walk that never repeats a state is what
+  ``esolangs.run``'s wall-clock ``timeout`` is for.  ``grapheme.py``
+  documents removing exactly such a budget, as duplicating that timeout.
 """
 
 import sys
@@ -117,15 +121,7 @@ _RESERVED = frozenset(
     }
 )
 
-# Walking bound.  The language has no halt guarantee of its own -- the cat
-# examples loop until EOF -- so a program whose guard never fires walks
-# forever.  The fuzz and robustness suites feed random grids, so the walk is
-# capped and a program that exceeds it raises rather than hangs.  The
-# generated programs here are straight lines of a few hundred commands, so
-# this is three orders of magnitude of headroom.
-_STEP_CAP = 1_000_000
-
-# Depth cap on nested calls, for the same reason: a function that calls
+# Depth cap on nested calls: a function that calls
 # itself unconditionally would otherwise exhaust the Python stack with a
 # RecursionError rather than a HaltError.
 _CALL_DEPTH_CAP = 200
@@ -505,7 +501,6 @@ class _Machine:
         self.grid = _grid(lines)
         self.io = io
         self.halted = False
-        self.steps = 0
         if not self.grid or not self.grid[0]:
             raise ValueError("empty program")
         start = _find(self.grid, "begin")
@@ -560,9 +555,6 @@ class _Machine:
         """Execute one command, leaving the pointer at the next one's start."""
         if self.halted:
             return
-        self.steps += 1
-        if self.steps > _STEP_CAP:
-            raise HaltError(f"program exceeded {_STEP_CAP} commands")
         text, row, col = _scan(self.grid, self.row, self.col, self.heading)
         word = _Parser(text).word()
         if word == "end":
@@ -747,7 +739,6 @@ class _Machine:
         callee.grid = self.grid
         callee.io = self.io
         callee.halted = False
-        callee.steps = 0
         callee.row, callee.col, callee.heading = row, col, heading
         callee.vars = dict(zip(params, args, strict=True))
         callee.depth = self.depth + 1
@@ -758,10 +749,6 @@ class _Machine:
             if _Parser(text).word() == "end":
                 return callee._return_value(text)  # noqa: SLF001 - same class
             callee.step()
-            self.steps += callee.steps
-            callee.steps = 0
-            if self.steps > _STEP_CAP:
-                raise HaltError(f"program exceeded {_STEP_CAP} commands")
             del prow, pcol
         return "nil"  # pragma: no cover - the loop returns at the ``end``
 
