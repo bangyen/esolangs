@@ -42,3 +42,22 @@ def test_multiply_loop_invariant() -> None:
     )
     step_case.add(z3.Not(next_invariant))
     assert step_case.check() == z3.unsat
+
+
+def test_multiply_loop_stays_in_a_byte_when_its_postcondition_does() -> None:
+    """A bounded clear-and-multiply template needs no wraparound gadget."""
+    counter, target, step, remainder, iteration = z3.Ints(
+        "counter target step remainder iteration"
+    )
+    solver = z3.Solver()
+    solver.add(
+        counter >= 0,
+        target == iteration * step,
+        step >= 0,
+        remainder >= 0,
+        iteration >= 0,
+        iteration <= counter,
+        counter * step + remainder <= 255,
+    )
+    solver.add(z3.Or(target < 0, target > 255, target + remainder > 255))
+    assert solver.check() == z3.unsat
