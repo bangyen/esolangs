@@ -35,7 +35,7 @@ at n=1, 2 and 3 are executed over every input row; n≥4 raises `ValueError`.
 | --- | --- |
 | A Painter Ant | No I/O, so the interpreter dumps state at halt; that grid raster is limited to its symbols. |
 | Algebraic Programming Language | Executed lines print numeric results only. |
-| ArrowQueue | Has no output. |
+| ArrowQueue | No I/O, so the interpreter dumps the queue at halt; those headings are numeric. |
 | Back | No I/O, so the interpreter dumps the tape at halt; that has only `0`, `1`, and spaces. |
 | BF-PDA | Output is one bit at a time. |
 | Bitdeque | No I/O, so the interpreter dumps the deque at halt; that dump is numeric. |
@@ -48,7 +48,7 @@ at n=1, 2 and 3 are executed over every input row; n≥4 raises `ValueError`.
 | Jaune | `^` prints cells as decimal integers only. |
 | Lamfunc | Whitespace tokenization and no concatenation prevent arbitrary text. |
 | Minsky Swap | No I/O, so the interpreter dumps the registers at halt; that dump is numeric. |
-| Point Break | Has no output. |
+| Point Break | No output command, so the interpreter dumps the variables at halt; that dump is numeric. |
 | RAM0 | No I/O, so the interpreter dumps state at halt; that fixed format cannot address arbitrary text. |
 
 Current caps are deliberate:

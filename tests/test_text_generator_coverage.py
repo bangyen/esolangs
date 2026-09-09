@@ -14,28 +14,30 @@ generator fails here, with no list to update, because ``alphabet``
 defaults to ``"bytes"`` -- the failing direction is the default one.
 
 ``io`` is the second half, and it is a fact about the language's *spec*
-rather than about this repo's interpreter.  Five languages here define no
-I/O at all -- Back, Bitdeque, Minsky Swap, RAM0 and A Painter Ant -- and
-their interpreters dump final state when the program ends precisely
-*because* of that: the dump is the repo's convention for reporting
-something from a language that cannot report anything itself, so its
-format is the repo's choice and not the spec's.  Each of those
-interpreters says so in its module docstring.
+rather than about this repo's interpreter.  Seven languages here define no
+I/O at all -- Back, Bitdeque, Minsky Swap, RAM0, A Painter Ant, ArrowQueue
+and Point Break -- and their interpreters dump final state when the
+program ends precisely *because* of that: the dump is the repo's
+convention for reporting something from a language that cannot report
+anything itself, so its format is the repo's choice and not the spec's.
+Each of those interpreters says so in its module docstring.
 
 Recording the dump as though it were the language's own output mechanism
 inverts that, and makes a language read as having a channel when what it
 has is a workaround for lacking one.
 """
 
+import pathlib
+
 import pytest
 
+import esolangs
 from esolangs.registry import LANGUAGES, Language
 
 # The alphabets that excuse a missing text generator, and what each claims.
 # Spelled out here so a failure message can say *why* a language was
 # excused rather than only that it was.
 _EXEMPT = {
-    "none": "defines no I/O and dumps nothing, so nothing reaches the caller",
     "numbers": "has a numeric or binary output alphabet",
     "shaped": "cannot spell an arbitrary text through its shaped output",
 }
@@ -99,57 +101,40 @@ def test_an_exempt_language_really_has_no_text_generator(
 
 
 @pytest.mark.parametrize(("name", "lang"), _named(), ids=_IDS)
-def test_reaching_nobody_leaves_no_alphabet(name: str, lang: Language) -> None:
-    """``io`` and ``alphabet`` must agree about whether anything is emitted.
+def test_an_interpreter_only_language_actually_dumps(name: str, lang: Language) -> None:
+    """A language with no I/O of its own must still report something.
 
-    The two are independent in general -- an interpreter-only dump can
-    carry any alphabet, and a defined output command can still be numeric
-    -- but not at the ends: a language nothing reaches the caller from has
-    no alphabet to describe, and an alphabet needs something to carry it.
-    Pinning that corner keeps a half-edited entry (``io`` changed,
-    ``alphabet`` left behind) from reading as a coherent claim.
+    ``io="interpreter_only"`` claims the repo convention has been applied:
+    the wiki gives the language no output, so the interpreter dumps final
+    state when the program ends.  Nothing else here would notice a language
+    that declares it and prints nothing -- the text-generator rule reads
+    ``alphabet``, not ``io``.
+
+    ArrowQueue and Point Break were that gap.  Both were carried as
+    emitting nothing at all, on the reasoning that a dump would cost
+    ArrowQueue its pure fold and that Point Break had no state worth
+    printing.  Both were wrong: the dump belongs in the shell, where
+    ``_advance`` never sees it, and Point Break carries variables exactly
+    as Minsky Swap carries registers.  Being awkward to fit is not a
+    category, so this runs the sample and checks output arrives -- the
+    convention verified rather than asserted.
     """
-    assert (lang.io == "none") == (lang.alphabet == "none"), (
-        f"{name} declares io={lang.io!r} with alphabet={lang.alphabet!r} -- "
-        f"a language with no I/O and no dump emits nothing, so both have to "
-        f"say 'none' together"
-    )
-
-
-@pytest.mark.parametrize(("name", "lang"), _named(), ids=_IDS)
-def test_a_silent_language_still_answers(name: str, lang: Language) -> None:
-    """A language nothing reaches the caller from must answer by halting.
-
-    ``io="none"`` is a real category, but the two languages in it are not
-    alike, and only one of them is *unable* to dump.
-
-    Point Break cannot: its spec leaves "whether it halts" as a program's
-    only observable behavior, so there is no terminal state to report.
-
-    ArrowQueue could -- its ``_State`` carries a queue that survives the
-    halt -- but the dump would be worth little and cost a lot.  Of its two
-    halt paths, the empty pop leaves the queue provably ``()``, so only a
-    run that walks off the grid has anything to show; and ``_advance`` is
-    pure and total precisely because "ArrowQueue has no I/O, so there is no
-    effect to hoist out", so adding one would thread an effect parameter
-    through the layer built to avoid it.  That is an interpreter design
-    change, not something this test should force.
-
-    What that costs is the usual way of checking an answer, so the
-    termination convention carries it instead: the program halts for 0 and
-    loops forever for 1 (``docs/walls.md`` licenses this only where a spec
-    supplies a reliable verdict).  That convention is the language's whole
-    interface, so a silent language without a boolean generator is
-    unreachable -- nothing could observe it at all -- and that is the gap
-    worth failing on, rather than the missing dump.
-    """
-    if lang.io != "none":
+    if lang.io != "interpreter_only":
         return
-    assert lang.boolean is not None, (
-        f"{name} declares io='none' -- nothing it does reaches the caller -- "
-        f"and has no boolean generator, so no program of it is observable.  "
-        f"Either it answers by the termination convention, or its io= is "
-        f"wrong and it emits something after all"
+    # The dump has two legal placements -- a post-halt ``step`` (Minsky
+    # Swap, Bitdeque, ArrowQueue, Point Break, RAM0) or straight from
+    # ``run`` (Back, A Painter Ant) -- so the check is that the interpreter
+    # *calls* the port, not where from.  Reading the source is what suits
+    # this: the assertion is about the interpreter owing a dump, and a
+    # language whose sample happens to dump an empty final state (Back's
+    # blank tape) would pass an output check vacuously.
+    source = pathlib.Path(esolangs.__file__).parent / "interpreters"
+    module = source / (lang.interpreter.replace(".", "/") + ".py")
+    assert "print_str" in module.read_text(encoding="utf-8"), (
+        f"{name} declares io='interpreter_only' -- the language defines no "
+        f"I/O, so its interpreter owes a final-state dump -- but "
+        f"{module.name} never writes to the output port.  Either add the "
+        f"dump, or the language has I/O after all and io= is wrong"
     )
 
 
@@ -180,7 +165,7 @@ def test_every_io_category_is_used() -> None:
     draws.
     """
     used = {lang.io for lang in LANGUAGES.values()}
-    missing = sorted({"defined", "interpreter_only", "none"} - used)
+    missing = sorted({"defined", "interpreter_only"} - used)
     assert not missing, (
         f"these I/O categories are declared but unused: {missing} -- delete "
         f"them from Io, or the distinction is not being drawn"

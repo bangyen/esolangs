@@ -38,16 +38,20 @@ class TestArrowQueue:
         assert run_and_capture(["   "]) == ""
 
     def test_registered_interpreter_runs(self) -> None:
-        assert esolangs.run("ArrowQueue", "~*+") == ""
+        # ``~`` queues heading 0 and ``*`` turns the IP down, which walks it
+        # off this one-row grid before ``+`` is ever reached -- so the queue
+        # still holds that 0 at the halt, and the dump prints it.
+        assert esolangs.run("ArrowQueue", "~*+") == "0"
 
 
 class TestMachineState:
     """Assertions on where the IP ends up, which output cannot show.
 
-    ArrowQueue prints nothing, so a test that only checks ``== ""`` passes
-    for any machine that terminates -- turning the wrong way, padding the
-    grid on the wrong side, or queueing the wrong heading all look alike.
-    These pin the state the empty string hides.
+    The end-of-run dump reports the queue, so the position and heading
+    never reach the output at all, and a run halting on an empty pop
+    reports nothing whatever it did on the way -- turning the wrong way or
+    padding the grid on the wrong side can still look alike.  These pin the
+    state the dump does not carry.
     """
 
     def final(self, code: list[str]) -> tuple[int, int, int, list[int]]:
