@@ -118,6 +118,11 @@ class TestRelay:
         module = importlib.import_module("esolangs.tools.boolean.interprogck8")
         with monkeypatch.context() as patch:
             patch.setattr(module, "_SPACING", 8)
+            # Patience is pinned small here so the control stays quick: the
+            # shipped value is sized for a table that takes 191 rounds, and
+            # this test is about *which* outcome a losing relay reaches,
+            # not how long the real budget lets it churn first.
+            patch.setattr(module, "_PATIENCE", 8)
             # Either backstop is a correct refusal; what must not happen is
             # a program that routes through the wrong place, or a hang.
             with pytest.raises(ValueError, match=r"stalled|max 255|did not"):
