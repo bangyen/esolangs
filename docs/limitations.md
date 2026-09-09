@@ -59,22 +59,30 @@ generators cover one and refuse the other at the same arity):
 
 | Generator | dense | parity | what stops it |
 | --- | --- | --- | --- |
-| Interprogck8 | 6 | 6 | n=7 exceeds the jump-sizing pass bound; widths can shrink after a reroute, so the settle is not monotone |
+| Interprogck8 | 7 | 7 | n=8 routing stalls: over-reach jumps bottom out at 7 and sit at 10-19 while the program grows |
 | 6-5 | 5 | 5 | 35 branch labels; n=6 needs 37 dense, 63 parity |
 | Polynomial | 5 | 10 | caps at 138 instructions, one per prime; dense n=6 needs 187 |
 | WII2D | 7 | 10 | decode spans 128 points past the `_WII2D_MAX_INDEX_DOMAIN = 64` cost guard |
 | ZTOALC L | 8 | 8 | would need 11.8M lines against a 4.19M limit |
 
-Two entries moved.  Interprogck8 was capped at 3 by the 255-line reach of
-one `DownAccLines` against a 452-line n=4 crossing; long hops now relay
-through rungs parked in the dead line after an unconditional jump, and it
-builds n=6 in 0.4s dense and 2.7s parity (36251 lines), so it is listed
-above at its new ceiling rather than removed.  Factor was capped at 3 by
-CPython's 4300-digit `int`/`str` guard -- a DoS defence, not a Factor
-property -- which the generator and the interpreter now both raise to fit
-the program and restore, so n=5 parity (12565 digits) renders and runs; its
-ceiling is program size against `max_digits`, not an arity.  Both caps were
-the construction's rather than the language's, which is what made them
+Both entries moved rather than vanished.  Interprogck8 was capped at 3 by
+the 255-line reach of one `DownAccLines` against a 452-line n=4 crossing.
+Long hops now relay through rungs -- jumps onward, parked in the dead line
+just past an unconditional jump -- and a chain is laid whole rather than a
+rung per round, which is what makes the routing close: extending chains one
+rung at a time lost more ground to the other chains' insertions than each
+rung gained, taking n=7 from 22 over-reach jumps to 198.  It builds n=7 in
+3.5s (13427 lines dense, 22249 parity), every row executed.  n=8 stalls,
+and the guard refuses it with the count rather than running forever; what
+is left there is chain *placement*, since rungs are spaced greedily with no
+account of the other chains being laid in the same round.
+
+Factor was capped at 3 by CPython's 4300-digit `int`/`str` guard -- a DoS
+defence, not a Factor property -- which the generator and the interpreter
+now both raise to fit the program and restore, so n=5 parity (12565 digits)
+renders and runs, verified row by row.  Its ceiling is program size against
+`max_digits`, not an arity, so it leaves this table.  Both caps were the
+construction's rather than the language's, which is what made them
 liftable.
 
 The other 64 generators build both shapes at n=10. Five are slow rather
@@ -85,10 +93,8 @@ parity, ROTfuck 16s and 20MB at n=10 parity. Only the five above are
 capability limits; the rest of the gap between five and ten is wall-clock.
 
 - **6-5:** 35 addressable branch labels; a structural language wall.
-- **Interprogck8:** the sizing loop's pass bound, not the 255-line reach.
-  Whether the widths settle at all past n=6 is untested -- a reroute can
-  shrink a width as well as grow one, so termination is no longer the
-  monotone argument it was.
+- **Interprogck8:** a relay-placement limit, not the 255-line reach; the
+  rungs are spaced greedily rather than against the other chains.
 - **`%^2^-1`:** generic samples build through thirteen inputs; a
   fourteen-input table would need a twelve-input prefix ladder, which is
   open research, not a wall.

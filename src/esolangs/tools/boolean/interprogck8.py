@@ -77,10 +77,12 @@ def _hop_width(distance: int) -> int:
     return len(_set_acc(distance)) + 1
 
 
-#: Passes ``_resolve`` and the routing loop each allow before giving up.
-#: Both settle far inside this -- the worst measured is 93 sizing passes
-#: (parity at n=5) -- so this bounds a construction that has stopped
-#: making progress rather than pacing one that is still working.
+#: Sizing passes ``_resolve`` allows before giving up.  The routing loop
+#: has its own guard (:data:`_PATIENCE`), which measures progress rather
+#: than counting.  820 passes is the worst measured (parity at n=7), so
+#: this bounds a sizing that has stopped settling rather than pacing one
+#: that is still working -- but it is a cap, not a convergence argument,
+#: and the number it can afford grows with the table.
 _PASSES = 4096
 
 #: Longest distance the nine-line window can spell.  Not ``_REACH``: the
@@ -301,7 +303,7 @@ def _resolve(items: list[_Item]) -> None:
     A jump's own width shifts every label after it, so this is a fixed
     point rather than one pass.  A width can shrink as well as grow -- a
     rerouted jump spells a shorter distance -- so the bound is measured
-    rather than argued: the worst settle is 93 passes (parity at n=5), and
+    rather than argued: the worst settle is 820 passes (parity at n=7), and
     the count of moving jumps wobbles on its way down rather than falling
     monotonically, so a pass that changes more than the last one is not a
     sign of trouble.
@@ -326,11 +328,11 @@ def _resolve(items: list[_Item]) -> None:
                 moving += 1
         if not moving:
             return
-    # Reachable, and the de facto ceiling: n=7 dense hits this, so n=6 is
-    # as far as this builds.  What it refuses is a program whose widths
-    # were still moving after ``_PASSES`` -- not, as far as is known, one
-    # that cannot be laid out, since a reroute can shrink a width as well
-    # as grow one and the settle was only ever measured, never argued.
+    # Not reached by anything built so far -- parity at n=7 is the worst
+    # measured, at 820 of these passes.  What it would refuse is a program
+    # whose widths were still moving, not one that cannot be laid out: a
+    # reroute can shrink a width as well as grow one, so the settle is
+    # measured rather than argued and wants a backstop.
     raise ValueError(
         f"jump widths did not converge in {_PASSES} passes: {moving} jumps still moving"
     )
