@@ -54,6 +54,57 @@ from esolangs.interpreters.brackets import match_brackets as _match_brackets
 #: past the one it reduces, so the next source cell starts at offset ``6``.
 _STRIDE = 6
 
+
+def _byte_safe(code: str) -> bool:
+    """Prove a straight-line clear/multiply program stays in byte range."""
+    cells: dict[int, int] = {}
+    ptr = pos = 0
+    while pos < len(code):
+        char = code[pos]
+        if code.startswith("[-]", pos):
+            cells[ptr] = 0
+            pos += 3
+            continue
+        if char in "+-":
+            value = cells.get(ptr, 0) + (1 if char == "+" else -1)
+            if not 0 <= value <= 255:
+                return False
+            cells[ptr] = value
+        elif char == ">":
+            ptr += 1
+        elif char == "<":
+            ptr = max(ptr - 1, 0)
+        elif char == ",":
+            return False
+        elif char == "[":
+            end = code.find("<-]", pos)
+            if end == -1 or not code.startswith("[>", pos):
+                return False
+            body = code[pos + 2 : end]
+            if not body or any(ch != "+" for ch in body):
+                return False
+            target = ptr + 1
+            value = cells.get(target, 0) + cells.get(ptr, 0) * len(body)
+            if value > 255:
+                return False
+            cells[target] = value
+            cells[ptr] = 0
+            pos = end + 3
+            continue
+        elif char == "]":
+            return False
+        pos += 1
+    return True
+
+
+def _lower_byte_safe(code: str) -> str:
+    """Widen a statically byte-safe program without canonicalizers."""
+    return "".join(
+        ">" * _STRIDE if char == ">" else "<" * _STRIDE if char == "<" else char
+        for char in code
+    )
+
+
 #: The divmod-by-256 core, operating on ``x n 0 0 0`` from the pointer:
 #: it leaves ``0  (n - r)  r  q`` where ``r = x % n`` and ``q = x // n``.
 #: Every loop it runs exits with the pointer parked on a cell it has just
@@ -91,6 +142,8 @@ def _lower(program: str) -> str:
     """
     _match_brackets(program)
     code = "".join(c for c in program if c in "+-<>.,[]")
+    if _byte_safe(code):
+        return _lower_byte_safe(code)
     out: list[str] = []
     i, n = 0, len(code)
     while i < n:
