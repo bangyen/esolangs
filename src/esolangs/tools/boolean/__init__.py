@@ -39,6 +39,7 @@ from esolangs.tools.boolean.other import (
     three_x,
     ztoalc_l_boolean,
 )
+from esolangs.tools.boolean.packlang import packlang
 from esolangs.tools.boolean.parameterized import (
     a_painter_ant,
     arrowqueue,
@@ -145,6 +146,7 @@ __all__ = [
     "nevermind",
     "nocomment",
     "one_two_three",
+    "packlang",
     "painfuck",
     "pct_squared_minus_one",
     "point_break",

@@ -10,9 +10,6 @@ Candidates are prioritized by a complete specification and an uncapped,
 testable boolean-generator route. The assessed-and-rejected ledger is in
 [`docs/limitations.md`](limitations.md).
 
-- **Packlang:** C-like blocks and namespaces; its boolean generator reuses
-  the existing ANF construction. Resolve the wiki's conflicting literal-base
-  examples.
 - **Interprogck8:** establish whether `DownAccLines` can route a full
   decision tree through its single current-function slot.
 - ~~**Pinyin**~~ — audited and rejected; see

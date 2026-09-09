@@ -81,6 +81,7 @@ fold reaches generic twelve- and thirteen-input tables.
 | MyScript | yes | yes |  | yes | yes |
 | Nevermind | yes | yes |  | yes |  |
 | NoComment | yes | yes | yes | yes |  |
+| Packlang | yes | yes |  | yes |  |
 | Painfuck | yes | yes |  | yes |  |
 | Point Break |  | yes |  | yes |  |
 | Polynomial | yes | yes |  | yes |  |

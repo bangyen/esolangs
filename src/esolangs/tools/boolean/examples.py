@@ -581,6 +581,7 @@ def _register() -> None:
             "register_based.nevermind",
             split=True,
         ),
+        "packlang": _reader(b.packlang, "other.packlang"),
         "painfuck": _reader(b.painfuck, "tape_based.painfuck"),
         "point-break": _reader(
             b.point_break,
